@@ -1,0 +1,122 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render } from '@testing-library/react'
+import { FOLDER_CUSTOM_ICON_CLASS, NoteIconDisplay } from './render-note-icon'
+
+// The library is a module store fed by IPC. Only two cases matter here: an id
+// the vault knows, and one it does not (deleted on a peer while a folder still
+// points at it).
+vi.mock('./custom-icons-store', () => ({
+  useCustomIcon: (id: string) =>
+    id === 'known'
+      ? {
+          id: 'known',
+          name: 'Rocket',
+          url: 'memry-file:///icons/known.png',
+          createdAt: '2026-01-01T00:00:00.000Z'
+        }
+      : undefined
+}))
+
+vi.mock('./hugeicon-renderer', () => ({
+  HugeIconByName: ({ name, className }: { name: string; className?: string }) => (
+    <span data-testid="huge-icon" data-name={name} className={className} />
+  )
+}))
+
+describe('NoteIconDisplay custom icons', () => {
+  it('sizes a custom icon to the caller box instead of the row text size', () => {
+    const { container } = render(
+      <NoteIconDisplay
+        value="custom:known"
+        className="text-sm leading-none"
+        customIconClassName={FOLDER_CUSTOM_ICON_CLASS}
+      />
+    )
+
+    const img = container.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(img?.getAttribute('src')).toBe('memry-file:///icons/known.png')
+    expect(img?.getAttribute('alt')).toBe('Rocket')
+    expect(img?.className).toContain(FOLDER_CUSTOM_ICON_CLASS)
+    expect(img?.className).toContain('object-contain')
+    // The 1em fallback must be gone, not merely joined with the box class.
+    expect(img?.className).not.toContain('h-[1em]')
+  })
+
+  it('reserves the same box while an icon is missing, so nothing shifts later', () => {
+    const { container } = render(
+      <NoteIconDisplay
+        value="custom:deleted-on-a-peer"
+        className="text-sm leading-none"
+        customIconClassName={FOLDER_CUSTOM_ICON_CLASS}
+      />
+    )
+
+    expect(container.querySelector('img')).toBeNull()
+    const placeholder = container.querySelector('span > span')
+    expect(placeholder?.className).toBe(FOLDER_CUSTOM_ICON_CLASS)
+  })
+
+  it('still tracks the surrounding text when no box is requested', () => {
+    const { container } = render(<NoteIconDisplay value="custom:known" className="text-sm" />)
+
+    expect(container.querySelector('img')?.className).toContain('h-[1em] w-[1em]')
+  })
+
+  it('leaves emoji and library icons untouched by the custom-icon box', () => {
+    const emoji = render(
+      <NoteIconDisplay value="📚" customIconClassName={FOLDER_CUSTOM_ICON_CLASS} />
+    )
+    expect(emoji.container.textContent).toBe('📚')
+    expect(emoji.container.innerHTML).not.toContain(FOLDER_CUSTOM_ICON_CLASS)
+
+    const library = render(
+      <NoteIconDisplay
+        value="icon:StarIcon"
+        className="text-sm"
+        customIconClassName={FOLDER_CUSTOM_ICON_CLASS}
+      />
+    )
+    const glyph = library.getByTestId('huge-icon')
+    expect(glyph.getAttribute('data-name')).toBe('StarIcon')
+    expect(glyph.className).not.toContain(FOLDER_CUSTOM_ICON_CLASS)
+  })
+})
+
+describe('NoteIconDisplay library icons', () => {
+  // Without a box the SVG falls back to its 24px default, so a library icon on
+  // a sidebar row renders larger than an emoji or custom image beside it.
+  it('sizes a library icon to the surrounding text, like emoji and custom icons', () => {
+    const { getByTestId } = render(<NoteIconDisplay value="icon:StarIcon" className="text-sm" />)
+
+    const glyph = getByTestId('huge-icon')
+    expect(glyph.className).toContain('h-[1em] w-[1em]')
+    expect(glyph.className).toContain('text-sm')
+  })
+
+  it('lets an explicit caller size replace the text-sized box', () => {
+    const { getByTestId } = render(<NoteIconDisplay value="icon:StarIcon" className="size-3.5" />)
+
+    expect(getByTestId('huge-icon').className).toBe('size-3.5')
+  })
+})
+
+describe('NoteIconDisplay emoji', () => {
+  // Without an explicit emoji family the glyph inherits the UI font stack, and a
+  // machine with no color emoji font draws it monochrome or as an empty box.
+  it('renders emoji with the bundled color emoji font family', () => {
+    const { container } = render(<NoteIconDisplay value="🥰" className="text-sm" />)
+
+    const span = container.querySelector('span')
+    expect(span?.textContent).toBe('🥰')
+    expect(span?.className).toContain('font-emoji')
+    expect(span?.className).toContain('text-sm')
+  })
+  // A color emoji glyph is wider than 1em. Unboxed, the label beside an emoji
+  // starts a few pixels further along than beside a library icon or an image.
+  it('boxes an emoji at 1em, the same box as library and custom icons', () => {
+    const { container } = render(<NoteIconDisplay value="🚀" className="text-base" />)
+
+    expect(container.querySelector('span')?.className).toContain('h-[1em] w-[1em]')
+  })
+})

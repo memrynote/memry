@@ -1,0 +1,128 @@
+import { CheckCircle2, Circle, FilePdf, FileText, Image, Mic, Video } from '@/lib/icons'
+import type {
+  NoteFileType,
+  SearchResultItem as SearchResultItemType
+} from '@memry/contracts/search-api'
+import { useT } from '@memry/i18n/renderer'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { TagGlyph } from '@/features/tag-fields/object-avatar'
+import { useOptionalObjectIdentity } from '@/features/tag-fields/use-optional-object-identity'
+import { InboxTypeIcon } from '@/components/inbox/inbox-type-icon'
+import { PriorityIcon } from '@/components/tasks/priority-icon'
+import { HighlightedText, SearchRow } from './search-row'
+import { dayLabel, folderSegments, hostOf, priorityFor } from './search-format'
+import { TYPE_ICONS } from './search-types'
+
+export const resultValue = (item: SearchResultItemType): string => `result:${item.type}:${item.id}`
+
+const FILE_ICONS: Record<Exclude<NoteFileType, 'markdown'>, typeof FileText> = {
+  pdf: FilePdf,
+  image: Image,
+  audio: Mic,
+  video: Video
+}
+
+function NoteResultIcon({ noteId }: { noteId: string }): React.JSX.Element {
+  const identity = useOptionalObjectIdentity(noteId)
+  return identity ? <TagGlyph look={identity} className="size-4" /> : <FileText />
+}
+
+function ResultIcon({ item }: { item: SearchResultItemType }): React.JSX.Element {
+  const meta = item.metadata
+  switch (meta.type) {
+    case 'note': {
+      if (meta.fileType && meta.fileType !== 'markdown') {
+        const FileIcon = FILE_ICONS[meta.fileType]
+        return <FileIcon />
+      }
+      if (meta.emoji) {
+        return (
+          <NoteIconDisplay
+            value={meta.emoji}
+            className="flex size-4 items-center justify-center text-sm leading-none"
+          />
+        )
+      }
+      return <NoteResultIcon noteId={item.id} />
+    }
+    case 'task':
+      return meta.completedAt ? <CheckCircle2 /> : <Circle />
+    case 'inbox':
+      return <InboxTypeIcon type={meta.itemType} className="size-[15px]" />
+    default: {
+      const Icon = TYPE_ICONS[item.type]
+      return <Icon />
+    }
+  }
+}
+
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; the implicit fallthrough is unreachable for typed input
+function trailingHint(item: SearchResultItemType, locale: string): string | null {
+  const meta = item.metadata
+  switch (meta.type) {
+    case 'note':
+      return folderSegments(meta.path).at(-1) ?? null
+    case 'journal':
+      return dayLabel(meta.date, locale)
+    case 'task':
+      return meta.dueDate ? dayLabel(meta.dueDate, locale) : null
+    case 'inbox':
+      return meta.sourceUrl ? hostOf(meta.sourceUrl) : null
+  }
+}
+
+interface SearchResultItemProps {
+  item: SearchResultItemType
+  query: string
+  /** How many times the query occurs in the body, when the note lists them. */
+  matchCount?: number
+  onSelect: (item: SearchResultItemType) => void
+}
+
+export function SearchResultItem({
+  item,
+  query,
+  matchCount,
+  onSelect
+}: SearchResultItemProps): React.JSX.Element {
+  const { i18n } = useT('common')
+  const { t } = useT('notes')
+  const meta = item.metadata
+  const isTask = meta.type === 'task'
+  const matchedName = meta.type === 'note' || meta.type === 'journal' ? meta.matchedName : undefined
+  const hint = trailingHint(item, i18n.resolvedLanguage ?? i18n.language) ?? ''
+  return (
+    <SearchRow
+      value={resultValue(item)}
+      onSelect={() => onSelect(item)}
+      icon={<ResultIcon item={item} />}
+      trailing={
+        matchCount ? (
+          <span className="flex items-center gap-2">
+            {hint}
+            <span className="flex h-[18px] min-w-5 items-center justify-center rounded-full bg-surface px-[5px] font-mono text-[11px] leading-none tabular-nums text-text-secondary">
+              {matchCount}
+            </span>
+          </span>
+        ) : (
+          hint
+        )
+      }
+      endLane={
+        isTask ? (
+          meta.priority > 0 ? (
+            <PriorityIcon priority={priorityFor(meta.priority)} />
+          ) : null
+        ) : undefined
+      }
+      muted={isTask && meta.completedAt !== null}
+    >
+      <HighlightedText text={item.title} query={query} />
+      {matchedName && (
+        <span className="ms-2 font-normal text-text-tertiary">
+          {t('names.also')} <HighlightedText text={matchedName} query={query} />
+        </span>
+      )}
+    </SearchRow>
+  )
+}

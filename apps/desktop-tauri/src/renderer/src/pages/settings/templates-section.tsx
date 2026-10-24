@@ -1,0 +1,327 @@
+import { useState, useCallback, type ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { FileText, Plus, MoreHorizontal, Pencil, Copy, Trash2, Lock } from '@/lib/icons'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { useTemplates } from '@/hooks/use-templates'
+import { useTabs } from '@/contexts/tabs'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
+import {
+  SettingsHeader,
+  SettingsGroupHeading,
+  SETTINGS_CARD
+} from '@/components/settings/settings-primitives'
+
+export function TemplatesSettings() {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
+  const { templates, isLoading, deleteTemplate, duplicateTemplate } = useTemplates()
+  const { openTab } = useTabs()
+  const { close: closeSettings } = useSettingsModal()
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [duplicateName, setDuplicateName] = useState('')
+  const [duplicateId, setDuplicateId] = useState<string | null>(null)
+
+  const handleCreateTemplate = useCallback(() => {
+    closeSettings()
+    openTab({
+      type: 'template-editor',
+      title: t('templates.newTemplateTitle'),
+      icon: 'file-text',
+      path: '/templates/new',
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+  }, [closeSettings, openTab, t])
+
+  const handleEditTemplate = useCallback(
+    (id: string, name: string) => {
+      closeSettings()
+      openTab({
+        type: 'template-editor',
+        title: name,
+        icon: 'file-text',
+        path: `/templates/${id}`,
+        entityId: id,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [closeSettings, openTab]
+  )
+
+  const handleDeleteTemplate = useCallback(async () => {
+    if (!deleteConfirm) return
+
+    const success = await deleteTemplate(deleteConfirm)
+    if (success) {
+      toast.success(t('templates.toasts.deleted'))
+    } else {
+      toast.error(t('templates.toasts.deleteFailed'))
+    }
+    setDeleteConfirm(null)
+  }, [deleteConfirm, deleteTemplate, t])
+
+  const handleDuplicateTemplate = useCallback(async () => {
+    if (!duplicateId || !duplicateName.trim()) return
+
+    const result = await duplicateTemplate(duplicateId, duplicateName.trim())
+    if (result) {
+      toast.success(t('templates.toasts.duplicated'))
+    } else {
+      toast.error(t('templates.toasts.duplicateFailed'))
+    }
+    setDuplicateId(null)
+    setDuplicateName('')
+  }, [duplicateId, duplicateName, duplicateTemplate, t])
+
+  const builtInTemplates = templates.filter((tpl) => tpl.isBuiltIn)
+  const customTemplates = templates.filter((tpl) => !tpl.isBuiltIn)
+
+  return (
+    <div className="flex flex-col text-xs/4">
+      <SettingsHeader
+        title={t('templates.header.title')}
+        subtitle={t('templates.header.subtitle')}
+      />
+
+      {isLoading ? (
+        <div className="text-muted-foreground text-xs/4 py-4">{t('templates.loading')}</div>
+      ) : (
+        <>
+          <TemplateGroup
+            label={t('templates.v2.groups.mine')}
+            action={
+              <Button
+                type="button"
+                onClick={handleCreateTemplate}
+                variant="outline"
+                size="sm"
+                className="h-auto gap-1 py-1 px-2 text-xs/4 font-normal shadow-none"
+              >
+                <Plus className="size-3" />
+                {t('templates.v2.new')}
+              </Button>
+            }
+          >
+            {customTemplates.length === 0 ? (
+              <div className="flex flex-col justify-center gap-0.5 min-h-14 py-3">
+                <span className="text-[13px]/4 text-foreground">{t('templates.empty.title')}</span>
+                <span className="text-xs/4 text-muted-foreground">
+                  {t('templates.empty.description')}
+                </span>
+              </div>
+            ) : (
+              customTemplates.map((template) => (
+                <TemplateRow
+                  key={template.id}
+                  template={template}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
+                  onDuplicate={() => {
+                    setDuplicateId(template.id)
+                    setDuplicateName(t('templates.copySuffix', { name: template.name }))
+                  }}
+                  onDelete={() => setDeleteConfirm(template.id)}
+                />
+              ))
+            )}
+          </TemplateGroup>
+
+          {builtInTemplates.length > 0 && (
+            <TemplateGroup label={t('templates.groups.builtIn')}>
+              {builtInTemplates.map((template) => (
+                <TemplateRow
+                  key={template.id}
+                  template={template}
+                  onSelect={() => handleEditTemplate(template.id, template.name)}
+                  onEdit={() => handleEditTemplate(template.id, template.name)}
+                  onDuplicate={() => {
+                    setDuplicateId(template.id)
+                    setDuplicateName(t('templates.copySuffix', { name: template.name }))
+                  }}
+                  onDelete={null}
+                />
+              ))}
+            </TemplateGroup>
+          )}
+        </>
+      )}
+
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('templates.dialogs.delete.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('templates.dialogs.delete.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDeleteTemplate()}
+              className="bg-destructive text-destructive-foreground"
+            >
+              {tCommon('button.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!duplicateId} onOpenChange={() => setDuplicateId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('templates.dialogs.duplicate.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('templates.dialogs.duplicate.description')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Input
+              value={duplicateName}
+              onChange={(e) => setDuplicateName(e.target.value)}
+              placeholder={t('templates.dialogs.duplicate.placeholder')}
+              // oxlint-disable-next-line jsx-a11y/no-autofocus -- the duplicate dialog exists to type a name, so its input takes focus on open
+              autoFocus
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('button.cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void handleDuplicateTemplate()}>
+              {t('templates.actions.duplicate')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+function TemplateGroup({
+  label,
+  action,
+  children
+}: {
+  label: string
+  action?: ReactNode
+  children: ReactNode
+}) {
+  return (
+    <section aria-label={label} className="flex flex-col pb-9">
+      <SettingsGroupHeading label={label} action={action} />
+      <div className={SETTINGS_CARD}>{children}</div>
+    </section>
+  )
+}
+
+interface TemplateRowProps {
+  template: {
+    id: string
+    name: string
+    description?: string
+    icon?: string | null
+    isBuiltIn: boolean
+  }
+  onSelect: () => void
+  onEdit: () => void
+  onDuplicate: () => void
+  onDelete: (() => void) | null
+}
+
+function TemplateRow({ template, onSelect, onEdit, onDuplicate, onDelete }: TemplateRowProps) {
+  const { t } = useT('settings')
+
+  return (
+    <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- card with nested controls cannot be a native button
+      role="button"
+      tabIndex={0}
+      aria-label={template.name}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onSelect()
+        }
+      }}
+      className="flex items-center justify-between min-h-11 py-2.5 shrink-0 group cursor-pointer rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <span className="flex items-center justify-center size-4 shrink-0 text-xs/4 text-muted-foreground">
+          {template.icon ? (
+            <NoteIconDisplay
+              value={template.icon}
+              className="size-3.5"
+              customIconClassName="size-3.5"
+            />
+          ) : (
+            <FileText className="size-3.5" />
+          )}
+        </span>
+        <span className="max-w-1/2 shrink-0 truncate text-[13px]/4 text-foreground">
+          {template.name}
+        </span>
+        {template.description && (
+          <span className="min-w-0 truncate text-xs/4 text-muted-foreground">
+            {template.description}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-1 shrink-0 ms-4">
+        {template.isBuiltIn ? (
+          <Lock className="size-3 text-muted-foreground/60" />
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className="p-1 rounded-sm text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <MoreHorizontal className="size-3.5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="w-4 h-4 me-2" />
+                {t('templates.actions.edit')}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="w-4 h-4 me-2" />
+                {t('templates.actions.duplicate')}
+              </DropdownMenuItem>
+              {onDelete && (
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                  <Trash2 className="w-4 h-4 me-2" />
+                  {t('templates.actions.delete')}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,1562 @@
+/**
+ * Folder View Page
+ *
+ * Displays notes in a folder as a database-like table view.
+ * Supports multiple views, filtering, and sorting.
+ */
+
+import { foldTag } from '@memry/shared/tag-fold'
+import { Fragment, useMemo, useState, useLayoutEffect, useCallback, useEffect, useRef } from 'react'
+import { ChevronRight, Plus, Search, X } from '@/lib/icons'
+
+import { useDebouncedValue } from '@/hooks/use-task-filters'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Skeleton } from '@/components/ui/skeleton'
+import { FolderViewEmptyState } from '@/components/folder-view/folder-view-empty-state'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { sidebarItemForRow } from '@/lib/folder-row-navigation'
+import { useOpenPage } from '@/hooks/use-open-target'
+import { useNoteTasks } from '@/hooks/use-note-tasks'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { FolderTableView } from '@/components/folder-view/folder-table-view'
+import { GroupedTable } from '@/components/folder-view/grouped-table'
+import { isMetadataEditableRow } from '@/components/folder-view/row-metadata-editability'
+import { ColumnSelector } from '@/components/folder-view/column-selector'
+import { FilterBuilder } from '@/components/folder-view/filter-builder'
+import { GroupBySelector } from '@/components/folder-view/group-by-selector'
+import { SortSelector } from '@/components/folder-view/sort-selector'
+import { FolderEmojiChip } from '@/components/folder-view/folder-emoji-chip'
+import { FolderListView } from '@/components/folder-view/folder-list-view'
+import { FolderGalleryView } from '@/components/folder-view/folder-gallery-view'
+import { BulkActionBar } from '@/components/folder-view/bulk-action-bar'
+import type { TagMetaMap } from '@/components/folder-view/note-card-pieces'
+import { ViewSwitcher } from '@/components/folder-view/view-switcher'
+import { LayoutToggle } from '@/components/folder-view/layout-toggle'
+import { FolderChartPanel } from '@/components/property-chart/folder-chart-panel'
+import { patchChart } from '@/components/property-chart/chart-settings'
+import type { ViewBlockChart } from '@memry/shared/view-block'
+import { TagIconChip } from '@/components/settings/tag-icon-chip'
+import { TagAndFilterBar } from '@/components/folder-view/tag-and-filter-bar'
+import { useTagAndTags } from '@/hooks/use-tag-and-tags'
+import type { TagSearch } from '@memry/contracts/tag-searches-api'
+import { TagOverflowMenu } from '@/components/folder-view/tag-overflow-menu'
+import { TagRenameDialog } from '@/components/sidebar/tag-rename-dialog'
+import { TagDeleteDialog } from '@/components/sidebar/tag-delete-dialog'
+import {
+  TagFieldsCount,
+  TagFieldsToolbar,
+  TagLinkedFilter,
+  TagMentionedIn,
+  TagSettingsHost,
+  useFolderViewTagFields
+} from '@/features/tag-fields/folder-view-tag-fields'
+import { TagTableProvider } from '@/features/tag-fields/tag-table'
+import { useTagScopeActions } from '@/components/folder-view/use-tag-scope-actions'
+import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import { getTagSegments } from '@/lib/tag-utils'
+import { cn } from '@/lib/utils'
+import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
+import {
+  DeleteNoteTasksOption,
+  deleteNoteTasks,
+  useNoteTasksChoice
+} from '@/components/note/delete-note-tasks'
+import { useFolderView } from '@/hooks/use-folder-view'
+import { useFolderNoteIcons } from '@/hooks/use-folder-note-icons'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import {
+  FOLDER_VIEW_STATE_KEYS,
+  folderScrollKey,
+  parseSearchOpen,
+  parseChartState,
+  parseSearchQuery,
+  parseViewName
+} from './folder-view-state'
+import { useFolderViewCommands } from './folder-view/use-folder-view-commands'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
+import { useNoteTagsQuery, useNoteFoldersQuery } from '@/hooks/use-notes-query'
+import { notesService } from '@/services/notes-service'
+import {
+  DEFAULT_COLUMNS,
+  scopeKey,
+  type FilterExpression,
+  type ColumnConfig,
+  type GroupByConfig,
+  type ViewScope
+} from '@memry/contracts/folder-view-api'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import type { TagSuggestion } from '@/lib/tag-suggestions'
+import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
+
+const log = createLogger('Page:FolderView')
+
+interface FolderViewPageProps {
+  /** What this page is scoped to — a folder directory or a tag. */
+  scope: ViewScope
+}
+
+/** Stable empty selection, so folder scope never produces a new array identity. */
+const EMPTY_TAG_SELECTION: string[] = []
+
+/**
+ * Folder View Page Component
+ */
+export function FolderViewPage({ scope }: FolderViewPageProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+  const { openTab, closeTab, getActiveTab } = useTabs()
+  // Plain opens honour the "clicking a page opens a new tab" preference (#1644).
+  const { openPage } = useOpenPage()
+  const { openSidebarItem } = useSidebarNavigation()
+  const { tags: allTags } = useNoteTagsQuery()
+  const { folders, setFolderIcon } = useNoteFoldersQuery()
+
+  // Folder scope's path, or undefined under tag scope — kept as a local so
+  // the (unchanged) folder-only breadcrumb/icon logic below reads the same
+  // as before the scope prop swap.
+  const folderPath = scope.kind === 'folder' ? scope.path : undefined
+
+  // Which of the folder's named views this tab is on. Stored by NAME, never by
+  // index: `.folder.md` is a file other devices and the user's own editor can
+  // reorder, and a stale index would quietly land on a different view. A name
+  // that no longer matches falls through to the folder's own `defaultIndex`
+  // inside `useFolderView`.
+  const [storedViewName, setStoredViewName] = useTabViewState<string | null>({
+    key: FOLDER_VIEW_STATE_KEYS.viewName,
+    defaultValue: null,
+    parse: parseViewName
+  })
+
+  const tagFields = useFolderViewTagFields(scope)
+  const { fieldTag } = tagFields
+
+  // Use the folder view hook
+  const {
+    views,
+    activeViewIndex,
+    activeView,
+    notes,
+    totalNotes,
+    unfilteredCount,
+    isLoading,
+    error,
+    folderNotFound,
+    setActiveViewIndex,
+    updateView,
+    addView,
+    deleteView,
+    renameView,
+    setViewAsDefault,
+    updateColumns,
+    updateSorting,
+    updateFilters,
+    updateDisplayName,
+    updateSummaryConfig,
+    updateGroupBy,
+    availableProperties,
+    builtInColumns,
+    formulas,
+    formulasMap,
+    summaries,
+    addFormula,
+    updateFormula,
+    deleteFormula,
+    refresh,
+    removeNotesOptimistically,
+    updateNoteProperty,
+    updateNoteHeaderTags,
+    updateNoteIcons,
+    hasMore,
+    loadMore
+  } = useFolderView({
+    scope,
+    initialViewName: storedViewName ?? undefined,
+    extraFilter: tagFields.linkedFilter
+  })
+
+  // Filters, sorts, groups and summaries run over the loaded rows, so a folder
+  // past the first page must load every page or its later entries never show.
+  useEffect(() => {
+    if (hasMore) void loadMore()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
+  }, [hasMore, loadMore, notes.length])
+
+  // Get first note for formula preview in editor
+  const sampleNote = notes.length > 0 ? notes[0] : null
+
+  // Active view render mode (table / list / grid) — persisted via the view config.
+  const viewType = activeView?.type ?? 'table'
+
+  // The chart layout, when on. Tab state, not the view config: see
+  // FOLDER_VIEW_STATE_KEYS.chart for why `.folder.md` must not hold it.
+  const [chartState, setChartState] = useTabViewState<ViewBlockChart | null>({
+    key: FOLDER_VIEW_STATE_KEYS.chart,
+    defaultValue: null,
+    parse: parseChartState
+  })
+
+  // Only one of the four scrollers is mounted at a time, and the tab holds ONE
+  // scroll record, so the key says which one wrote it. Without that, turning on
+  // grouping — or switching to the gallery — would apply the table's row offset
+  // to a completely differently-sized list.
+  const activeScrollKey = folderScrollKey(viewType, activeView?.groupBy !== undefined)
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [notesToDelete, setNotesToDelete] = useState<string[]>([])
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // Move to folder dialog state (Phase 27)
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false)
+  const [notesToMove, setNotesToMove] = useState<string[]>([])
+  const [movingNoteTitle, setMovingNoteTitle] = useState<string | undefined>()
+
+  // Tag scope: rename/delete dialog state (ported from tag-view.tsx)
+  const [tagRenameOpen, setTagRenameOpen] = useState(false)
+  const [tagDeleteOpen, setTagDeleteOpen] = useState(false)
+
+  // ============================================================================
+  // Phase 21: View Settings State
+  // ============================================================================
+
+  // ============================================================================
+  // Selection State (Phase 19 - Lifted for virtualization persistence)
+  // ============================================================================
+
+  /**
+   * Selected row IDs - lifted to page level so selection:
+   * 1. Persists when switching between named views
+   * 2. Can be accessed for bulk action toolbar (future)
+   * 3. Works seamlessly with row virtualization
+   */
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set())
+
+  /**
+   * Clear selection during render when the scope changes (folder or tag) —
+   * keeps the reset out of an effect so the no-adjust-state-on-prop-change
+   * rule stays happy.
+   */
+  const currentScopeKey = scopeKey(scope)
+  const [selectionScopeKey, setSelectionScopeKey] = useState(currentScopeKey)
+  if (selectionScopeKey !== currentScopeKey) {
+    setSelectionScopeKey(currentScopeKey)
+    setSelectedRowIds(new Set())
+  }
+
+  /**
+   * Prune stale ids from the selection when the visible row set changes —
+   * a stale id from before a filter change would otherwise silently
+   * reference a row that's no longer shown (use-folder-view.ts applies
+   * filters client-side, so `notes` shrinks reactively). Reset in render
+   * (not an effect) on a signature change, matching the render-phase sync
+   * convention `FolderTableView` itself uses for the same kind of
+   * derived-from-props reset. Keyed on the actual visible ids (not just a
+   * filter parameter) so a selection that stays fully visible across an
+   * unrelated filter change is left untouched.
+   */
+  const visibleNoteIdsKey = notes.map((note) => note.id).join(',')
+  const noteIds = useMemo(
+    () => notes.filter((note) => (note.kind ?? 'note') === 'note').map((note) => note.id),
+    [notes]
+  )
+  const noteTasks = useNoteTasks(noteIds)
+  const [lastVisibleNoteIdsKey, setLastVisibleNoteIdsKey] = useState(visibleNoteIdsKey)
+  if (lastVisibleNoteIdsKey !== visibleNoteIdsKey) {
+    setLastVisibleNoteIdsKey(visibleNoteIdsKey)
+    setSelectedRowIds((prev) => {
+      if (prev.size === 0) return prev
+      const visibleIds = new Set(notes.map((n) => n.id))
+      const next = new Set([...prev].filter((id) => visibleIds.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }
+
+  /**
+   * Handle selection change from table
+   */
+  const handleSelectionChange = useCallback((newSelection: Set<string>) => {
+    setSelectedRowIds(newSelection)
+  }, [])
+
+  // T121: Exiting row IDs for opacity fade animation
+  const [exitingRowIds, setExitingRowIds] = useState<Set<string>>(new Set())
+  const EXIT_ANIMATION_DURATION = 200 // ms
+
+  // Column search state for highlighting
+  const [columnSearchQuery, setColumnSearchQuery] = useState('')
+
+  // Global search state with debounce (T073, T076). Belongs to the tab: only
+  // the active tab is mounted, so local state threw the query away on every
+  // tab switch and the user came back to an unfiltered folder.
+  const [searchQuery, setSearchQuery] = useTabViewState<string>({
+    key: FOLDER_VIEW_STATE_KEYS.searchQuery,
+    defaultValue: '',
+    parse: parseSearchQuery
+  })
+  const debouncedSearchQuery = useDebouncedValue(searchQuery, 200)
+
+  // Search icon toggles an inline input; stays open while a query is active.
+  const [searchOpen, setSearchOpen] = useTabViewState<boolean>({
+    key: FOLDER_VIEW_STATE_KEYS.searchOpen,
+    defaultValue: false,
+    parse: parseSearchOpen
+  })
+  const showSearch = searchOpen || searchQuery.length > 0
+
+  // Compute which columns should be highlighted based on search query
+  const highlightedColumns = useMemo(() => {
+    if (!columnSearchQuery) return []
+    const query = columnSearchQuery.toLowerCase()
+
+    // Get visible column IDs
+    const visibleIds = new Set((activeView?.columns ?? DEFAULT_COLUMNS).map((c) => c.id))
+
+    // Find matching built-in columns
+    const builtInMatches = builtInColumns
+      .filter((col) => col.displayName.toLowerCase().includes(query))
+      .map((col) => col.id)
+
+    // Find matching property columns
+    const propMatches = availableProperties
+      .filter((prop) => prop.name.toLowerCase().includes(query))
+      .map((prop) => prop.name)
+
+    // Only return columns that are currently visible
+    return [...builtInMatches, ...propMatches].filter((id) => visibleIds.has(id))
+  }, [columnSearchQuery, builtInColumns, availableProperties, activeView])
+
+  // Breadcrumb trail starting at the real folder: ancestor folders › current folder
+  const breadcrumbs = useMemo(() => {
+    const segments = folderPath ? folderPath.split('/').filter(Boolean) : []
+    if (segments.length === 0) return [{ label: 'Notes', path: null }]
+    return segments.map((segment, i) => ({
+      label: segment,
+      path: segments.slice(0, i + 1).join('/') as string | null
+    }))
+  }, [folderPath])
+
+  // Current folder's custom icon (raw emoji or "icon:Name"), null = default glyph
+  const folderIcon = useMemo(
+    () => folders.find((f) => f.path === folderPath)?.icon ?? null,
+    [folders, folderPath]
+  )
+
+  // T116: Create property types map from available properties
+  const propertyTypesMap = useMemo(() => {
+    const map: Record<
+      string,
+      | 'text'
+      | 'number'
+      | 'checkbox'
+      | 'date'
+      | 'select'
+      | 'multiselect'
+      | 'url'
+      | 'rating'
+      | 'project'
+    > = {}
+    for (const prop of availableProperties) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- property definition type is a string in the IPC DTO; the stored value is one of these
+      map[prop.name] = prop.type as
+        | 'text'
+        | 'number'
+        | 'checkbox'
+        | 'date'
+        | 'select'
+        | 'multiselect'
+        | 'url'
+        | 'rating'
+        | 'project'
+    }
+    return map
+  }, [availableProperties])
+
+  const tagMetaMap = useMemo<TagMetaMap>(() => {
+    const map: TagMetaMap = new Map()
+    for (const tag of allTags) {
+      map.set(foldTag(tag.tag), { color: tag.color, icon: tag.icon ?? null })
+    }
+    return map
+  }, [allTags])
+
+  // Value suggestions for a `tags` filter condition — the same vault tags the
+  // pills are drawn from, so the dropdown's colors match the rows'.
+  const tagSuggestions = useMemo<TagSuggestion[]>(
+    () => allTags.map((tag) => ({ name: tag.tag, color: tag.color, count: tag.count })),
+    [allTags]
+  )
+
+  // Tag scope's header identity — the stored tag definition (color/icon), a
+  // deterministic color fallback via getTagColors (same as tag-view.tsx),
+  // and the hierarchy segments for a nested tag like "araba/lastik".
+  const tagRow =
+    scope.kind === 'tag'
+      ? allTags.find((row) => foldTag(row.tag) === foldTag(scope.tag))
+      : undefined
+  const tagResolvedColor = tagRow?.color ?? ''
+  const tagIcon = tagRow?.icon ?? null
+  const tagColors = useMemo(
+    () => (scope.kind === 'tag' ? getTagColors(tagResolvedColor, scope.tag) : null),
+    [scope, tagResolvedColor]
+  )
+  const tagSegments = useMemo(
+    () => (scope.kind === 'tag' ? getTagSegments(scope.tag) : []),
+    [scope]
+  )
+
+  // Handle opening a note (single click opens permanent tab)
+  const handleNoteOpen = (noteId: string): void => {
+    const note = notes.find((n) => n.id === noteId)
+    if (note) {
+      openPage({
+        type: 'note',
+        title: note.title,
+        icon: 'file-text',
+        emoji: note.emoji,
+        path: `/notes/${note.id}`,
+        entityId: note.id,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    }
+  }
+
+  // Handle opening a tag-scoped row by kind (ported from tag-view.tsx's
+  // handleNoteOpen, lines 106-154). Task and inbox rows route to their own
+  // pages instead of opening as a note tab; folder scope has no task/inbox
+  // rows and keeps handleNoteOpen above unchanged.
+  const handleTagRowOpen = useCallback(
+    (rowId: string): void => {
+      const item = notes.find((n) => n.id === rowId)
+      if (!item) return
+      openSidebarItem(sidebarItemForRow(item))
+    },
+    [notes, openSidebarItem]
+  )
+
+  // Middle-click: the row's "Open in New Tab" as a gesture, in the background,
+  // exactly as the sidebar rows behave. Both scopes route through the same
+  // sidebar item as a plain open, so a tag page's task/inbox rows still land
+  // on their own pages rather than opening as a note.
+  const handleRowOpenInBackgroundTab = useCallback(
+    (rowId: string): void => {
+      const item = notes.find((n) => n.id === rowId)
+      if (!item) return
+      openSidebarItem(sidebarItemForRow(item), { inNewTab: true, inBackground: true })
+    },
+    [notes, openSidebarItem]
+  )
+
+  // Tag scope opens rows by kind; folder scope only ever has note rows and
+  // keeps the plain-tab handler above.
+  const onRowOpen = scope.kind === 'tag' ? handleTagRowOpen : handleNoteOpen
+
+  // Handle clicking a subfolder
+  const handleFolderClick = (subfolderPath: string): void => {
+    // Combine current folder path with subfolder
+    const fullPath = folderPath ? `${folderPath}${subfolderPath}` : subfolderPath.slice(1)
+    const folderName = subfolderPath.split('/').pop() || 'Folder'
+
+    openPage({
+      type: 'folder',
+      title: folderName,
+      icon: 'folder',
+      path: `/folder/${encodeURIComponent(fullPath)}`,
+      entityId: fullPath,
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+  }
+
+  // Handle clicking a tag
+  const handleTagClick = useCallback(
+    (tag: string): void => {
+      const color = tagMetaMap.get(foldTag(tag))?.color ?? ''
+      openSidebarItem({
+        type: 'tag',
+        title: tag,
+        path: '/tags/' + tag,
+        entityId: tag,
+        color
+      })
+    },
+    [openSidebarItem, tagMetaMap]
+  )
+
+  // `updateNoteHeaderTags` goes to the notes-only `notesService.update` IPC, but the
+  // table wires this to every row's tag chips — and a row can be a task, an
+  // inbox item, or a PDF/image filed in the folder. The cells no longer offer
+  // the remove affordance on those rows; this stays as the last line before
+  // the IPC, because reaching `updateNote` with a binary id used to overwrite
+  // the file with markdown (#2073).
+  const handleTagRemove = useCallback(
+    (noteId: string, tag: string): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (!note) return
+      if (!isMetadataEditableRow(note)) {
+        log.warn('Ignoring tag removal on a row with no writable frontmatter', {
+          id: noteId,
+          kind: note.kind,
+          fileType: note.fileType
+        })
+        return
+      }
+      void updateNoteHeaderTags(noteId, { remove: [tag] })
+    },
+    [notes, updateNoteHeaderTags]
+  )
+
+  // Same gate for the property cells: `propertiesService.set` lands in the very
+  // same `updateNote` writer as a tag edit, so a PDF row must never reach it.
+  const handlePropertyUpdate = useCallback(
+    (noteId: string, propertyName: string, value: unknown): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (!note) return
+      if (tagFields.editTaskRowField(note, propertyName, value, () => void refresh())) return
+      if (!isMetadataEditableRow(note)) {
+        log.warn('Ignoring property update on a row with no writable frontmatter', {
+          id: noteId,
+          kind: note.kind,
+          fileType: note.fileType
+        })
+        return
+      }
+      void updateNoteProperty(noteId, propertyName, value)
+    },
+    [notes, updateNoteProperty, tagFields, refresh]
+  )
+
+  // ============================================================================
+  // Tag scope: rename/delete + lifecycle subscriptions (ported from
+  // tag-view.tsx:193-273, verbatim in behaviour). This page is only ever
+  // mounted as the active tab of some group, so the currently active tab is
+  // this page's own tab. The tab's identity is the tag name at open time and
+  // there's no tabs-context action to repoint an existing tab's `entityId`,
+  // so a rename (from this tab or another window) closes the tab, same as a
+  // delete — otherwise it would keep resolving color/items against a name
+  // that no longer exists while the tab strip shows the new one.
+  // ============================================================================
+
+  const activeTab = useActiveTab()
+  const closeThisTab = useCallback(() => {
+    if (activeTab) {
+      closeTab(activeTab.id)
+    }
+  }, [activeTab, closeTab])
+
+  const activeTagName = scope.kind === 'tag' ? scope.tag : null
+
+  // Tag scope's ANDed selection. Read straight off the scope — `TabContent`
+  // owns it in the tab's view state, and the sidebar writes it too.
+  const tagAndTags = useMemo(
+    () => (scope.kind === 'tag' ? (scope.andTags ?? []) : EMPTY_TAG_SELECTION),
+    [scope]
+  )
+  const { setAndTags, toggleTag, clearAndTags } = useTagAndTags(activeTagName ?? '', tagAndTags)
+
+  const handleOpenSavedSearch = useCallback(
+    (search: TagSearch): void => {
+      const [primary, ...rest] = search.tags
+      if (!primary) return
+      // Same primary tag: swap the extras in place, no navigation.
+      if (activeTagName && foldTag(primary) === foldTag(activeTagName)) {
+        setAndTags(rest)
+        return
+      }
+      // Different primary: a fresh tag tab seeded with the saved AND set.
+      // `forceNew` so the seed cannot be swallowed by dedup onto an existing
+      // tab that is showing the same tag with a different selection.
+      openTab(
+        {
+          type: 'tag',
+          title: primary,
+          icon: 'tag',
+          path: `/tags/${primary}`,
+          entityId: primary,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false,
+          viewState: { [FOLDER_VIEW_STATE_KEYS.tagAndTags]: rest }
+        },
+        { forceNew: true }
+      )
+    },
+    [activeTagName, openTab, setAndTags]
+  )
+
+  const { handleTagIconChange, handleTagRenameSubmit, handleTagDeleteConfirm } = useTagScopeActions(
+    activeTagName,
+    totalNotes,
+    closeThisTab
+  )
+
+  // View-rename isn't wired up for tag scope (renameView is .folder.md-backed
+  // and the hook gates it to folder scope) — surface why instead of letting
+  // ViewSwitcher's rename input silently revert on blur.
+  /**
+   * Everything that moves the active view also records its NAME, so the tab
+   * comes back to the same view rather than to whatever now sits at that index.
+   */
+  const handleViewChange = useCallback(
+    (index: number): void => {
+      setActiveViewIndex(index)
+      setStoredViewName(views[index]?.name ?? null)
+    },
+    [setActiveViewIndex, setStoredViewName, views]
+  )
+
+  // Making a view the folder's default also switches to it (see `useFolderView`).
+  const handleSetViewAsDefault = useCallback(
+    async (index: number): Promise<void> => {
+      await setViewAsDefault(index)
+      setStoredViewName(views[index]?.name ?? null)
+    },
+    [setViewAsDefault, setStoredViewName, views]
+  )
+
+  // Renaming is live, per keystroke. Without this the stored name would still
+  // hold the pre-rename spelling and the next restore would miss it entirely.
+  const handleRenameView = useCallback(
+    async (index: number, newName: string): Promise<void> => {
+      await renameView(index, newName)
+      if (index === activeViewIndex) setStoredViewName(newName)
+    },
+    [renameView, activeViewIndex, setStoredViewName]
+  )
+
+  // A deleted view leaves the stored name pointing at nothing; clearing it here
+  // is what makes the next restore fall back to the folder's default instead of
+  // to an index that has since shifted under it.
+  const handleDeleteView = useCallback(
+    async (viewName: string): Promise<void> => {
+      await deleteView(viewName)
+      if (viewName === storedViewName) setStoredViewName(null)
+    },
+    [deleteView, storedViewName, setStoredViewName]
+  )
+
+  // Handle opening note in new tab (for context menu). `forceNew` makes the
+  // command do what its label says — without it the open dedups by entityId and
+  // merely focuses a copy that is already open somewhere.
+  const handleOpenInNewTab = useCallback(
+    (noteId: string): void => {
+      const note = notes.find((n) => n.id === noteId)
+      if (note) {
+        openTab(
+          {
+            type: 'note',
+            title: note.title,
+            icon: 'file-text',
+            emoji: note.emoji,
+            path: `/notes/${note.id}`,
+            entityId: note.id,
+            isPinned: false,
+            isModified: false,
+            isPreview: false,
+            isDeleted: false
+          },
+          { forceNew: true }
+        )
+      }
+    },
+    [notes, openTab]
+  )
+
+  // Handle delete request (shows confirmation dialog)
+  const handleDeleteRequest = useCallback((requestedNoteIds: string[]): void => {
+    setNotesToDelete(requestedNoteIds)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  // Handle move to folder request (shows move dialog) - Phase 27
+  const handleMoveRequest = useCallback(
+    (requestedNoteIds: string[]): void => {
+      setNotesToMove(requestedNoteIds)
+      // Get title of first note for dialog header
+      if (requestedNoteIds.length === 1) {
+        const note = notes.find((n) => n.id === requestedNoteIds[0])
+        setMovingNoteTitle(note?.title)
+      } else {
+        setMovingNoteTitle(undefined)
+      }
+      setMoveDialogOpen(true)
+    },
+    [notes]
+  )
+
+  // Confirm and execute move to folder - Phase 27 (Optimized - no skeleton blink)
+  const handleMoveConfirm = useCallback(
+    async (targetFolder: string): Promise<void> => {
+      if (notesToMove.length === 0) return
+
+      // Optimistic removal - update UI immediately (no skeleton)
+      removeNotesOptimistically(notesToMove)
+
+      // Clear selection since moved notes are gone
+      setSelectedRowIds(new Set())
+
+      try {
+        // Move notes in parallel for performance
+        const results = await Promise.allSettled(
+          notesToMove.map((noteId) => notesService.move(noteId, targetFolder))
+        )
+
+        // Check for failures
+        const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+
+        if (failures.length > 0) {
+          log.error(`${failures.length} notes failed to move:`, failures)
+          await refresh() // Restore correct state on failure
+        }
+      } catch (err) {
+        log.error('Failed to move notes:', err)
+        await refresh() // Restore correct state on error
+      } finally {
+        setMoveDialogOpen(false)
+        setNotesToMove([])
+        setMovingNoteTitle(undefined)
+      }
+    },
+    [notesToMove, removeNotesOptimistically, refresh]
+  )
+
+  const noteDeleteGuard = useNoteDeleteGuard()
+  const deleteTasksChoice = useNoteTasksChoice(deleteDialogOpen, notesToDelete)
+  const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
+
+  // Confirm and execute delete (T121: with opacity fade animation)
+  const handleDeleteConfirm = useCallback(async () => {
+    if (notesToDelete.length === 0) return
+    const taskIds = carriedTaskIdsToDelete
+
+    // Other notes that show or link these get a say before they go.
+    const proceed = await noteDeleteGuard.confirmNoteDelete(
+      notesToDelete.map((id) => ({ id, title: notes.find((n) => n.id === id)?.title ?? '' }))
+    )
+    if (!proceed) return
+
+    setIsDeleting(true)
+
+    // T121: Start exit animation by adding IDs to exiting set
+    setExitingRowIds((prev) => new Set([...prev, ...notesToDelete]))
+
+    // Clear selection since notes are being deleted
+    setSelectedRowIds(new Set())
+
+    // Wait for animation to complete before removing from state
+    await new Promise((resolve) => setTimeout(resolve, EXIT_ANIMATION_DURATION))
+
+    // Clear exiting state
+    setExitingRowIds((prev) => {
+      const next = new Set(prev)
+      notesToDelete.forEach((id) => next.delete(id))
+      return next
+    })
+
+    // Optimistic removal - update UI after animation
+    removeNotesOptimistically(notesToDelete)
+
+    try {
+      // Delete notes in parallel for performance
+      const results = await Promise.allSettled(
+        notesToDelete.map((noteId) => notesService.delete(noteId))
+      )
+
+      // Check for failures
+      const failures = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected')
+
+      if (failures.length > 0) {
+        log.error(`${failures.length} notes failed to delete:`, failures)
+        await refresh() // Restore correct state on failure
+      }
+
+      // The tasks go only if every note they came from did.
+      const everyDeleteSucceeded = results.every((r) => r.status === 'fulfilled' && r.value.success)
+      if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)
+    } catch (err) {
+      log.error('Failed to delete notes:', err)
+      await refresh() // Restore correct state on error
+    } finally {
+      setIsDeleting(false)
+      setDeleteDialogOpen(false)
+      setNotesToDelete([])
+    }
+  }, [
+    notesToDelete,
+    notes,
+    noteDeleteGuard,
+    carriedTaskIdsToDelete,
+    removeNotesOptimistically,
+    refresh,
+    EXIT_ANIMATION_DURATION
+  ])
+
+  // Navigate to a breadcrumb ancestor folder
+  const handleBreadcrumbNav = useCallback(
+    (path: string, label: string): void => {
+      openPage({
+        type: 'folder',
+        title: label,
+        icon: 'folder',
+        path: `/folder/${encodeURIComponent(path)}`,
+        entityId: path,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openPage]
+  )
+
+  // ============================================================================
+  // Phase 20: Empty State Handlers
+  // ============================================================================
+
+  // The header's buttons and the palette commands open these the same way.
+  const openSearch = (): void => setSearchOpen(true)
+  const openTagRename = (): void => setTagRenameOpen(true)
+  const openTagDelete = (): void => setTagDeleteOpen(true)
+  const { createNote: handleCreateNote } = useFolderViewCommands({
+    scope,
+    openSearch,
+    openTagRename,
+    openTagDelete
+  })
+
+  /**
+   * Handle clearing all search and filters.
+   * Used by the 'no-results' empty state.
+   */
+  const handleClearAll = useCallback(() => {
+    setSearchQuery('')
+    void updateFilters(undefined)
+  }, [updateFilters, setSearchQuery])
+
+  // ============================================================================
+  // Phase 21: Toolbar Action Handlers
+  // ============================================================================
+
+  // ============================================================================
+  // Bulk Action Bar Handlers (floating toolbar shown while rows are selected)
+  // ============================================================================
+
+  const tagNames = useMemo(() => allTags.map((tag) => tag.tag), [allTags])
+
+  // Selected rows, derived from the live rows + selection set on every
+  // render — BulkActionBar uses `kind` to guard pin/delete/move to note
+  // rows only, so a stale or partial list here would silently let a
+  // task/inbox row through (or block a note row wrongly).
+  const selectedRows = useMemo(
+    () =>
+      notes
+        .filter((note) => selectedRowIds.has(note.id))
+        .map((note) => ({ id: note.id, kind: note.kind, emoji: note.emoji })),
+    [notes, selectedRowIds]
+  )
+
+  // Note-only subset of the selection, for the destructive Delete/Move
+  // handlers. Derived from the live `notes` (not the raw `selectedRowIds`)
+  // so a stale id — whether non-note in kind, or simply fallen out of view
+  // after a filter change — can never reach a notes-only IPC.
+  const selectedNoteIds = useMemo(
+    () =>
+      notes
+        .filter((note) => selectedRowIds.has(note.id) && (note.kind ?? 'note') === 'note')
+        .map((note) => note.id),
+    [notes, selectedRowIds]
+  )
+
+  const handleClearSelection = useCallback(() => setSelectedRowIds(new Set()), [])
+
+  const handleCopyLinks = useCallback(async () => {
+    const ids = Array.from(selectedRowIds)
+    if (ids.length === 0) return
+    try {
+      await navigator.clipboard.writeText(ids.map((id) => `memry://note/${id}`).join('\n'))
+      toast.success(t('bulkActions.copiedLinks', { count: ids.length }))
+    } catch (err) {
+      log.error('Failed to copy links', err)
+      toast.error(extractErrorMessage(err, t('phaseI.errors.failedToCopyLink')))
+    }
+  }, [selectedRowIds, t])
+
+  // Tags the note rows of the selection. Runs over `selectedNoteIds`, not the
+  // raw selection, so a task/inbox row in a mixed selection is skipped instead
+  // of being sent to the notes-only `notesService.update` IPC — the note rows
+  // of that same selection still get tagged.
+  const handleBulkAddTag = useCallback(
+    async (tag: string) => {
+      if (selectedNoteIds.length === 0 || !tag) return
+      await Promise.all(
+        selectedNoteIds.map((id) => {
+          const note = notes.find((n) => n.id === id)
+          // A PDF/image row in a mixed selection has no frontmatter to write.
+          if (!note || !isMetadataEditableRow(note)) return Promise.resolve()
+          return updateNoteHeaderTags(id, { add: [tag] })
+        })
+      )
+    },
+    [selectedNoteIds, notes, updateNoteHeaderTags]
+  )
+
+  const { setRowIcon, setSelectionIcon } = useFolderNoteIcons({
+    notes,
+    selectedNoteIds,
+    updateNoteIcons
+  })
+
+  const rowActions = useMemo(
+    () => ({
+      onOpenInNewTab: handleOpenInNewTab,
+      onMoveToFolder: handleMoveRequest,
+      onDelete: handleDeleteRequest,
+      onSetIcon: setRowIcon
+    }),
+    [handleOpenInNewTab, handleMoveRequest, handleDeleteRequest, setRowIcon]
+  )
+
+  // ponytail: per-note native save dialog (cancel aborts the run). A single-folder
+  // bulk export needs a directory-picker IPC + ExportNoteInput.outputPath — add then.
+  const handleBulkExport = useCallback(async () => {
+    for (const id of Array.from(selectedRowIds)) {
+      const result = await notesService.exportHtml({ noteId: id })
+      if (result.error === 'Export cancelled') break
+    }
+  }, [selectedRowIds])
+
+  const page = (
+    <div className="relative flex flex-col h-full w-full min-w-0 max-w-full overflow-hidden">
+      {/* Header - min-w-0 breaks minimum content size chain to prevent table from pushing it */}
+      <header className="flex h-14 items-center gap-3 px-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 flex-shrink-0 min-w-0 overflow-hidden text-xs antialiased">
+        {scope.kind === 'folder' ? (
+          <>
+            {/* Folder icon box — shows the folder's custom icon, click to change */}
+            <FolderEmojiChip
+              icon={folderIcon}
+              onIconChange={(icon) => void setFolderIcon(folderPath ?? '', icon)}
+            />
+
+            {/* Breadcrumb trail + note count */}
+            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+              {breadcrumbs.map((crumb, i) => {
+                const isLast = i === breadcrumbs.length - 1
+                const crumbPath = crumb.path
+                return (
+                  <Fragment key={crumbPath ?? 'root'}>
+                    {i > 0 && (
+                      <ChevronRight className="size-3 flex-shrink-0 text-muted-foreground/50" />
+                    )}
+                    {crumbPath !== null && !isLast ? (
+                      <button
+                        type="button"
+                        onClick={() => handleBreadcrumbNav(crumbPath, crumb.label)}
+                        className="truncate font-medium text-muted-foreground transition-colors hover:text-foreground"
+                      >
+                        {crumb.label}
+                      </button>
+                    ) : (
+                      <span
+                        className={cn(
+                          'truncate font-medium',
+                          isLast ? 'text-foreground/80' : 'text-muted-foreground'
+                        )}
+                      >
+                        {crumb.label}
+                      </span>
+                    )}
+                  </Fragment>
+                )
+              })}
+              <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
+              <span className="flex-shrink-0 whitespace-nowrap font-medium text-text-tertiary">
+                {isLoading ? (
+                  <Skeleton className="h-3.5 w-16" />
+                ) : totalNotes < unfilteredCount ? (
+                  `${totalNotes} of ${unfilteredCount} notes`
+                ) : (
+                  `${totalNotes} notes`
+                )}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Tag icon box — shows the tag's custom icon, click to change */}
+            <TagIconChip
+              icon={tagIcon}
+              color={tagColors?.text}
+              onIconChange={(icon) => void handleTagIconChange(icon)}
+            />
+
+            {/* Colored tag chip (segmented for a hierarchical tag) + item count */}
+            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+              <span
+                className="inline-flex min-w-0 max-w-56 shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium"
+                style={{
+                  backgroundColor: withAlpha(tagColors?.text ?? '', 0.12),
+                  color: tagColors?.text
+                }}
+              >
+                <span
+                  className="size-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: tagColors?.text }}
+                />
+                {tagSegments.map((segment, i) => (
+                  // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no identity beyond position
+                  <Fragment key={i}>
+                    {i > 0 && <span className="opacity-50">/</span>}
+                    <span className="truncate">{segment}</span>
+                  </Fragment>
+                ))}
+              </span>
+              <span className="flex-shrink-0 font-medium text-muted-foreground/50">·</span>
+              <span className="min-w-0 truncate whitespace-nowrap font-medium text-text-tertiary">
+                {isLoading ? (
+                  <Skeleton className="h-3.5 w-16" />
+                ) : totalNotes < unfilteredCount ? (
+                  t('page.itemsCountFiltered', { shown: totalNotes, total: unfilteredCount })
+                ) : (
+                  t('page.itemsCount', { count: totalNotes })
+                )}
+              </span>
+              <TagFieldsCount tag={fieldTag} />
+            </div>
+          </>
+        )}
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Actions cluster — order: search · sort · filter · properties · group | saved views | new note */}
+        <div className="flex flex-shrink-0 items-center gap-1.5">
+          {/* Search — icon expands to an inline input, stays open while a query is active */}
+          {showSearch ? (
+            <div className="relative w-48">
+              <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate focus on open of an inline editor/search field
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onBlur={() => {
+                  if (!searchQuery) setSearchOpen(false)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') {
+                    setSearchQuery('')
+                    setSearchOpen(false)
+                  }
+                }}
+                placeholder={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
+                className="h-8 ps-8 pe-8 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('')
+                  setSearchOpen(false)
+                }}
+                className="absolute end-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.clearSearch')}
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+          ) : (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 px-2"
+                    onClick={openSearch}
+                    aria-label={tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
+                  >
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {tPhaseF('phaseF.componentsFolderViewFolderViewToolbar.searchNotes')}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+
+          {/* Sort */}
+          <SortSelector
+            order={activeView?.order}
+            availableProperties={availableProperties}
+            builtInColumns={builtInColumns}
+            onSortingChange={(...args) => void updateSorting(...args)}
+          />
+
+          {/* Filter */}
+          <FilterBuilder
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
+            filters={activeView?.filters as FilterExpression | undefined}
+            availableProperties={availableProperties}
+            tagSuggestions={tagSuggestions}
+            builtInColumns={builtInColumns}
+            onFiltersChange={(...args) => void updateFilters(...args)}
+            lockedCondition={
+              scope.kind === 'tag'
+                ? { label: t('page.tagFilterLabel', { tag: scope.tag }), color: tagColors?.text }
+                : undefined
+            }
+          />
+
+          {/* Properties */}
+          <ColumnSelector
+            columns={activeView?.columns ?? DEFAULT_COLUMNS}
+            builtInColumns={builtInColumns}
+            availableProperties={availableProperties}
+            formulas={formulas}
+            onColumnsChange={(...args) => void updateColumns(...args)}
+            onSearchChange={setColumnSearchQuery}
+            onFormulaAdd={scope.kind === 'folder' ? addFormula : undefined}
+            onFormulaEdit={scope.kind === 'folder' ? updateFormula : undefined}
+            onFormulaDelete={scope.kind === 'folder' ? deleteFormula : undefined}
+            sampleNote={sampleNote}
+            summaries={summaries}
+            onSummaryChange={
+              scope.kind === 'folder' ? (...args) => void updateSummaryConfig(...args) : undefined
+            }
+            showSummaries={activeView?.showSummaries ?? false}
+            onToggleSummaries={() => void updateView({ showSummaries: !activeView?.showSummaries })}
+            columnBorders={activeView?.columnBorders ?? false}
+            onToggleColumnBorders={() =>
+              void updateView({ columnBorders: !activeView?.columnBorders })
+            }
+          />
+
+          {/* Group */}
+          <GroupBySelector
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
+            groupBy={activeView?.groupBy as GroupByConfig | undefined}
+            availableProperties={availableProperties}
+            builtInColumns={builtInColumns}
+            onGroupByChange={(...args) => void updateGroupBy(...args)}
+          />
+
+          {/* Divider */}
+          <div className="h-4 w-px flex-shrink-0 bg-border" />
+
+          {/* Layout: writes into the active view, so "New view" (which copies
+              the active view) saves it together with filters and sort. */}
+          <LayoutToggle
+            value={chartState ? 'chart' : viewType}
+            withChart
+            onChange={(type) => {
+              if (type === 'chart') {
+                setChartState({})
+                return
+              }
+              setChartState(null)
+              if (type !== viewType) void updateView({ type })
+            }}
+          />
+
+          {/* Saved views */}
+          <ViewSwitcher
+            views={views}
+            activeViewIndex={activeViewIndex}
+            activeView={activeView}
+            onViewChange={handleViewChange}
+            onAddView={addView}
+            onRenameView={handleRenameView}
+            onSetViewAsDefault={handleSetViewAsDefault}
+            onDeleteView={handleDeleteView}
+          />
+
+          {scope.kind === 'tag' && (
+            <TagFieldsToolbar
+              tag={fieldTag}
+              notes={notes}
+              partial={hasMore}
+              onEdit={() => tagFields.setSettingsOpen(true)}
+            />
+          )}
+
+          {/* New Note button */}
+          <button
+            type="button"
+            onClick={() => void handleCreateNote()}
+            title={tPhaseF('phaseF.pagesFolderView.createNewNote')}
+            className="flex h-8 items-center gap-1.5 rounded-md bg-[var(--tint)] px-3 text-[12.5px] font-semibold text-[var(--tint-foreground)] shadow-sm transition-colors hover:bg-[var(--tint-hover)]"
+          >
+            <Plus className="size-3.5" />
+            {fieldTag
+              ? t('tagObjects.table.new', { tag: fieldTag.name })
+              : tPhaseF('phaseF.pagesFolderView.createNewNote')}
+          </button>
+
+          {/* Tag actions overflow menu (rename, color, icon, delete) — tag scope only */}
+          {scope.kind === 'tag' && (
+            <TagOverflowMenu
+              tag={scope.tag}
+              color={tagResolvedColor}
+              onRequestRename={openTagRename}
+              onRequestDelete={openTagDelete}
+            />
+          )}
+        </div>
+      </header>
+
+      {/* Tag scope: the ANDed selection, clear-all and saved searches. Renders
+          nothing when there is no extra tag and no saved search, so a plain
+          single-tag page is byte-for-byte the page it was before. */}
+      {scope.kind === 'tag' && (
+        <TagAndFilterBar
+          primaryTag={scope.tag}
+          andTags={tagAndTags}
+          onRemoveTag={toggleTag}
+          onClearAll={clearAndTags}
+          onOpenSavedSearch={handleOpenSavedSearch}
+        />
+      )}
+      <TagLinkedFilter
+        filter={tagFields.linkedFilter}
+        shown={notes.length}
+        total={unfilteredCount}
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
+        viewFilters={activeView?.filters as FilterExpression | undefined}
+        onClear={() => tagFields.setLinkedFilter(null)}
+        updateFilters={updateFilters}
+      />
+
+      <div className="flex-1 relative min-w-0">
+        {/* Absolute positioned inner container isolates table width from layout */}
+        <div className="absolute inset-0 overflow-hidden">
+          {folderNotFound ? (
+            <FolderViewEmptyState
+              variant="folder-not-found"
+              onGoBack={() => {
+                // Close the current tab
+                const currentTab = getActiveTab()
+                if (currentTab) {
+                  closeTab(currentTab.id)
+                }
+              }}
+              className="h-full"
+            />
+          ) : error ? (
+            <FolderViewEmptyState
+              variant="error"
+              errorMessage={error}
+              onRetry={(...args) => void refresh(...args)}
+              className="h-full"
+            />
+          ) : isLoading ? (
+            <FolderViewSkeleton columns={activeView?.columns ?? DEFAULT_COLUMNS} />
+          ) : chartState ? (
+            <FolderChartPanel
+              notes={notes}
+              availableProperties={availableProperties}
+              chart={chartState}
+              onChange={(patch) => setChartState(patchChart(chartState, patch))}
+              onOpenNote={onRowOpen}
+            />
+          ) : viewType === 'list' ? (
+            <FolderListView
+              notes={notes}
+              searchQuery={debouncedSearchQuery}
+              scrollKey={activeScrollKey}
+              density="compact"
+              tagMetaMap={tagMetaMap}
+              onNoteOpen={onRowOpen}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
+              onTagClick={handleTagClick}
+              onCreateNote={() => void handleCreateNote()}
+              onClearAll={handleClearAll}
+              rowActions={rowActions}
+              className="h-full"
+            />
+          ) : viewType === 'grid' ? (
+            <FolderGalleryView
+              notes={notes}
+              searchQuery={debouncedSearchQuery}
+              scrollKey={activeScrollKey}
+              tagMetaMap={tagMetaMap}
+              onNoteOpen={onRowOpen}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
+              onTagClick={handleTagClick}
+              onCreateNote={() => void handleCreateNote()}
+              onClearAll={handleClearAll}
+              rowActions={rowActions}
+              className="h-full"
+            />
+          ) : activeView?.groupBy ? (
+            // Grouped table view when groupBy is set (Phase 24)
+            <GroupedTable
+              notes={notes}
+              columns={activeView?.columns ?? DEFAULT_COLUMNS}
+              formulas={formulasMap}
+              propertyTypes={propertyTypesMap}
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view filters/groupBy persist as untyped JSON; shape written by this page
+              groupBy={activeView.groupBy as GroupByConfig}
+              initialSorting={activeView?.order}
+              globalFilter={debouncedSearchQuery}
+              highlightQuery={debouncedSearchQuery}
+              selectedRowIds={selectedRowIds}
+              onSelectionChange={handleSelectionChange}
+              onNoteOpen={onRowOpen}
+              onOpenInNewTab={handleOpenInNewTab}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
+              onFolderClick={handleFolderClick}
+              onTagClick={handleTagClick}
+              onTagRemove={handleTagRemove}
+              onSetIcon={rowActions.onSetIcon}
+              tagMetaMap={tagMetaMap}
+              onPropertyUpdate={(...args) => handlePropertyUpdate(...args)}
+              onColumnsChange={(...args) => void updateColumns(...args)}
+              onSortingChange={(...args) => void updateSorting(...args)}
+              onDisplayNameChange={(...args) => void updateDisplayName(...args)}
+              onDelete={handleDeleteRequest}
+              onMoveToFolder={handleMoveRequest}
+              onCreateNote={(...args) => void handleCreateNote(...args)}
+              onClearAll={handleClearAll}
+              highlightedColumns={highlightedColumns}
+              density="compact"
+              showColumnBorders={activeView?.columnBorders ?? false}
+              showSummaries={activeView?.showSummaries ?? false}
+              summaries={summaries}
+              exitingRowIds={exitingRowIds}
+              scrollKey={activeScrollKey}
+              className="h-full"
+            />
+          ) : (
+            // Standard table view
+            <FolderTableView
+              notes={notes}
+              noteTasks={noteTasks}
+              columns={activeView?.columns ?? DEFAULT_COLUMNS}
+              formulas={formulasMap}
+              propertyTypes={propertyTypesMap}
+              initialSorting={activeView?.order}
+              globalFilter={debouncedSearchQuery}
+              highlightQuery={debouncedSearchQuery}
+              selectedRowIds={selectedRowIds}
+              onSelectionChange={handleSelectionChange}
+              onNoteOpen={onRowOpen}
+              onOpenInNewTab={handleOpenInNewTab}
+              onOpenInBackgroundTab={handleRowOpenInBackgroundTab}
+              onFolderClick={handleFolderClick}
+              onTagClick={handleTagClick}
+              onTagRemove={handleTagRemove}
+              onSetIcon={rowActions.onSetIcon}
+              tagMetaMap={tagMetaMap}
+              onPropertyUpdate={(...args) => handlePropertyUpdate(...args)}
+              onColumnsChange={(...args) => void updateColumns(...args)}
+              onSortingChange={(...args) => void updateSorting(...args)}
+              onDisplayNameChange={(...args) => void updateDisplayName(...args)}
+              onDelete={handleDeleteRequest}
+              onMoveToFolder={handleMoveRequest}
+              onCreateNote={(...args) => void handleCreateNote(...args)}
+              onClearAll={handleClearAll}
+              highlightedColumns={highlightedColumns}
+              density="compact"
+              showColumnBorders={activeView?.columnBorders ?? false}
+              showSummaries={activeView?.showSummaries ?? false}
+              summaries={summaries}
+              exitingRowIds={exitingRowIds}
+              scrollKey={activeScrollKey}
+              className="h-full"
+            />
+          )}
+        </div>
+
+        {/* Floating bulk action bar — table/grouped views, while rows are selected */}
+        {selectedRowIds.size > 0 &&
+          !chartState &&
+          viewType !== 'list' &&
+          viewType !== 'grid' &&
+          !folderNotFound &&
+          !error &&
+          !isLoading && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4">
+              <BulkActionBar
+                className="pointer-events-auto"
+                count={selectedRowIds.size}
+                scope={scope}
+                selectedRows={selectedRows}
+                availableTags={tagNames}
+                tagMeta={tagMetaMap}
+                onMove={() => handleMoveRequest(selectedNoteIds)}
+                onCopyLinks={() => void handleCopyLinks()}
+                onAddTag={(tag) => void handleBulkAddTag(tag)}
+                onSetIcon={(icon) => void setSelectionIcon(icon)}
+                onExport={() => void handleBulkExport()}
+                onDelete={() => handleDeleteRequest(selectedNoteIds)}
+                onClear={handleClearSelection}
+              />
+            </div>
+          )}
+      </div>
+
+      <TagMentionedIn tag={fieldTag} />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t('page.deleteDialogTitle', { count: notesToDelete.length })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {notesToDelete.length === 1
+                ? 'Are you sure you want to delete this note? This action cannot be undone.'
+                : `Are you sure you want to delete ${notesToDelete.length} notes? This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <DeleteNoteTasksOption choice={deleteTasksChoice} disabled={isDeleting} />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {tPhaseF('phaseF.pagesFolderView.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => void handleDeleteConfirm()}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? tCommon('state.deleting') : tCommon('button.delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {noteDeleteGuard.dialog}
+
+      {/* Move to Folder Dialog - Phase 27 */}
+      <MoveToFolderDialog
+        open={moveDialogOpen}
+        onOpenChange={setMoveDialogOpen}
+        noteIds={notesToMove}
+        currentFolder={folderPath}
+        onMove={(...args) => void handleMoveConfirm(...args)}
+        noteTitle={movingNoteTitle}
+      />
+
+      {scope.kind === 'tag' && (
+        <TagSettingsHost
+          tag={scope.tag}
+          open={tagFields.settingsOpen}
+          onClose={() => tagFields.setSettingsOpen(false)}
+        />
+      )}
+
+      {/* Tag scope: rename / delete dialogs (ported from tag-view.tsx) */}
+      {scope.kind === 'tag' && (
+        <>
+          <TagRenameDialog
+            tag={scope.tag}
+            open={tagRenameOpen}
+            onOpenChange={setTagRenameOpen}
+            onSubmit={handleTagRenameSubmit}
+          />
+          <TagDeleteDialog
+            tag={scope.tag}
+            open={tagDeleteOpen}
+            onOpenChange={setTagDeleteOpen}
+            onConfirm={handleTagDeleteConfirm}
+          />
+        </>
+      )}
+    </div>
+  )
+
+  return (
+    <TagTableProvider tag={fieldTag} onCreated={tagFields.onObjectCreated}>
+      {page}
+    </TagTableProvider>
+  )
+}
+
+// ============================================================================
+// Loading Skeleton Component (T094)
+// ============================================================================
+
+interface FolderViewSkeletonProps {
+  /** Column configs to match actual column widths */
+  columns: ColumnConfig[]
+  /** Additional CSS classes */
+  className?: string
+}
+
+/**
+ * Loading skeleton for folder view with dynamic column widths and viewport-aware row count.
+ */
+function FolderViewSkeleton({ columns, className }: FolderViewSkeletonProps): React.JSX.Element {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [rowCount, setRowCount] = useState(10)
+
+  // Calculate row count based on container height. useLayoutEffect avoids
+  // the unnecessary-effect lint and matches the DOM-measurement nature of
+  // the work (synchronous after layout).
+  useLayoutEffect(() => {
+    const container = containerRef.current
+    if (!container) return undefined
+
+    const calculateRows = (): void => {
+      const height = container.clientHeight
+      const headerHeight = 40 // Approximate header row height
+      const rowHeight = 44 // Approximate data row height
+      const padding = 32 // Container padding (16px top + 16px bottom)
+      const availableHeight = height - headerHeight - padding
+      const calculated = Math.floor(availableHeight / rowHeight)
+      // Clamp between 5 and 20 rows
+      setRowCount(Math.max(5, Math.min(calculated, 20)))
+    }
+
+    calculateRows()
+
+    // Recalculate on resize
+    const resizeObserver = new ResizeObserver(calculateRows)
+    resizeObserver.observe(container)
+
+    return () => resizeObserver.disconnect()
+  }, [])
+
+  return (
+    <div ref={containerRef} className={`h-full p-4 space-y-2 ${className ?? ''}`}>
+      {/* Header skeleton */}
+      <div className="flex gap-4 pb-2 border-b">
+        {columns.map((col) => (
+          <Skeleton key={col.id} className="h-6" style={{ width: col.width ?? 150 }} />
+        ))}
+      </div>
+      {/* Row skeletons */}
+      {Array.from({ length: rowCount }).map((_, i) => (
+        // oxlint-disable-next-line react/no-array-index-key -- static positional list; items have no identity beyond position
+        <div key={i} className="flex gap-4">
+          {columns.map((col) => (
+            <Skeleton key={col.id} className="h-8" style={{ width: col.width ?? 150 }} />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export default FolderViewPage

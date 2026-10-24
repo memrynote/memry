@@ -37,6 +37,10 @@ const TEST_FILES = [
 ]
 
 const RENDERER = 'apps/desktop/src/renderer/src'
+// The Tauri app carries a copy of the renderer until the cutover step deletes the Electron one;
+// both copies share every exemption.
+const RENDERERS = [RENDERER, 'apps/desktop-tauri/src/renderer/src']
+const forRenderers = (subpath: string): string[] => RENDERERS.map((root) => `${root}/${subpath}`)
 
 export default defineConfig({
   plugins: [
@@ -82,6 +86,10 @@ export default defineConfig({
     'apps/ios/**',
     // Static assets served verbatim (e.g. the Excalidraw asset-path shim)
     'apps/desktop/src/renderer/public/**',
+    'apps/desktop-tauri/src/renderer/public/**',
+    // Written by `pnpm ipc:generate` from the Rust command registry.
+    'apps/desktop-tauri/src/generated/**',
+    'apps/desktop-tauri/src-tauri/gen/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
     // Golden inputs for the i18n scanner and codemod tests: untranslated JSX and unresolved
@@ -349,11 +357,11 @@ export default defineConfig({
       rules: disable('typescript/no-require-imports')
     },
     {
-      files: [`${RENDERER}/**/*.tsx`],
+      files: [...forRenderers('**/*.tsx')],
       rules: enableAll('i18n/no-jsx-text-literals', 'i18n/no-string-attribute-literals')
     },
     {
-      files: [`${RENDERER}/**/*.{ts,tsx}`],
+      files: [...forRenderers('**/*.{ts,tsx}')],
       rules: enableAll('i18n/no-toast-string-literal', 'i18n/no-error-fallback-literal')
     },
     {
@@ -361,7 +369,7 @@ export default defineConfig({
       // the dispatcher in `renderer/src/commands/`. Binding a key to behavior here
       // instead skips Settings → Shortcuts rebinds, the help dialog and the palette.
       // Page-local keys (a find bar, a list's arrows) listen on `keydown` themselves.
-      files: [`${RENDERER}/**/*.{ts,tsx}`],
+      files: [...forRenderers('**/*.{ts,tsx}')],
       rules: {
         ...enableAll([
           'no-restricted-imports',
@@ -382,11 +390,11 @@ export default defineConfig({
       // Tests and the owners of the guarded imports are outside the keyboard-shortcut guard.
       files: [
         ...TEST_FILES,
-        `${RENDERER}/commands/resolve-chord.ts`,
-        `${RENDERER}/hooks/index.ts`,
+        ...forRenderers('commands/resolve-chord.ts'),
+        ...forRenderers('hooks/index.ts'),
         // Not commands: ⌘1-9 jumps to the Nth visible sidebar section, and Q focuses the capture bar.
-        `${RENDERER}/components/app-sidebar.tsx`,
-        `${RENDERER}/components/capture-bar/capture-bar.tsx`
+        ...forRenderers('components/app-sidebar.tsx'),
+        ...forRenderers('components/capture-bar/capture-bar.tsx')
       ],
       rules: { 'no-restricted-imports': 'off' }
     },
@@ -494,19 +502,23 @@ export default defineConfig({
       rules: disable('max-lines')
     },
     {
-      files: ['apps/desktop/src/preload/index.ts', 'apps/desktop/src/preload/index.d.ts'],
+      files: [
+        'apps/desktop/src/preload/index.ts',
+        'apps/desktop/src/preload/index.d.ts',
+        'apps/desktop-tauri/src/preload/index.d.ts'
+      ],
       // TODO(phase-tbd): preload is generated from contracts; drop overrides once chunked output lands
       rules: disable('max-lines', 'typescript/no-redundant-type-constituents')
     },
     {
       files: [
-        `${RENDERER}/components/calendar/use-week-infinite-scroll.ts`,
-        `${RENDERER}/components/note/note-title/HugeIconGrid.tsx`,
-        `${RENDERER}/components/tasks/project/virtualized-project-task-list.tsx`,
-        `${RENDERER}/components/tasks/virtualized-all-tasks-view.tsx`,
-        `${RENDERER}/components/virtualized-notes-tree.tsx`,
-        `${RENDERER}/components/folder-view/folder-table-view.tsx`,
-        `${RENDERER}/components/folder-view/grouped-table.tsx`
+        ...forRenderers('components/calendar/use-week-infinite-scroll.ts'),
+        ...forRenderers('components/note/note-title/HugeIconGrid.tsx'),
+        ...forRenderers('components/tasks/project/virtualized-project-task-list.tsx'),
+        ...forRenderers('components/tasks/virtualized-all-tasks-view.tsx'),
+        ...forRenderers('components/virtualized-notes-tree.tsx'),
+        ...forRenderers('components/folder-view/folder-table-view.tsx'),
+        ...forRenderers('components/folder-view/grouped-table.tsx')
       ],
       // TanStack Virtual/Table are the app virtualization and table layers; React
       // Compiler cannot optimize these call sites, but the usage is intentional
@@ -515,17 +527,17 @@ export default defineConfig({
     },
     {
       files: [
-        `${RENDERER}/components/diagnostics/report-incident-dialog.tsx`,
-        `${RENDERER}/components/tasks/projects/add-event-to-project-dialog.tsx`,
-        `${RENDERER}/components/tasks/projects/add-file-to-project-dialog.tsx`,
-        `${RENDERER}/components/tasks/projects/add-note-to-project-dialog.tsx`,
-        `${RENDERER}/components/tasks/projects/project-overview-note.tsx`,
-        `${RENDERER}/components/note/info-section/editors/use-relation-search.ts`,
-        `${RENDERER}/pages/canvas/canvas-add-card-dialog.tsx`,
-        `${RENDERER}/pages/canvas/use-canvas-add-search.ts`,
-        `${RENDERER}/pages/canvas/use-canvas-entities.ts`,
-        `${RENDERER}/pages/project-home.tsx`,
-        `${RENDERER}/sync/use-yjs-collaboration.ts`
+        ...forRenderers('components/diagnostics/report-incident-dialog.tsx'),
+        ...forRenderers('components/tasks/projects/add-event-to-project-dialog.tsx'),
+        ...forRenderers('components/tasks/projects/add-file-to-project-dialog.tsx'),
+        ...forRenderers('components/tasks/projects/add-note-to-project-dialog.tsx'),
+        ...forRenderers('components/tasks/projects/project-overview-note.tsx'),
+        ...forRenderers('components/note/info-section/editors/use-relation-search.ts'),
+        ...forRenderers('pages/canvas/canvas-add-card-dialog.tsx'),
+        ...forRenderers('pages/canvas/use-canvas-add-search.ts'),
+        ...forRenderers('pages/canvas/use-canvas-entities.ts'),
+        ...forRenderers('pages/project-home.tsx'),
+        ...forRenderers('sync/use-yjs-collaboration.ts')
       ],
       // Fetch-on-open dialogs and CRDT/IPC sync hooks set state inside effects to
       // synchronize with external systems (IPC fetches, the Y.Doc registry) and to
@@ -540,7 +552,7 @@ export default defineConfig({
       )
     },
     {
-      files: [`${RENDERER}/components/calendar/event-project-field.tsx`],
+      files: [...forRenderers('components/calendar/event-project-field.tsx')],
       // The mount-time load and the `onProjectUpdated` reload both call a
       // `load()` callback that moves the `pendingLoads` / `isWriting` guards
       // closing a stale-state race on `project_links` writes (see the file's
@@ -556,24 +568,24 @@ export default defineConfig({
     },
     {
       files: [
-        `${RENDERER}/pages/tasks.tsx`,
-        `${RENDERER}/pages/note.tsx`,
-        `${RENDERER}/pages/journal.tsx`,
-        `${RENDERER}/pages/folder-view.tsx`,
-        `${RENDERER}/pages/calendar.tsx`,
-        `${RENDERER}/pages/inbox/inbox-list-view.tsx`,
-        `${RENDERER}/components/folder-view/grouped-table.tsx`,
-        `${RENDERER}/components/folder-view/folder-table-view.tsx`,
-        `${RENDERER}/components/folder-view/property-cell.tsx`,
-        `${RENDERER}/components/kibo-ui/tree/index.tsx`,
-        `${RENDERER}/components/virtualized-notes-tree.tsx`,
-        `${RENDERER}/components/note/content-area/ContentArea.tsx`,
-        `${RENDERER}/contexts/tabs/context.tsx`,
-        `${RENDERER}/hooks/use-drag-handlers.ts`,
-        `${RENDERER}/hooks/use-folder-view.ts`,
-        `${RENDERER}/hooks/use-note-tree-actions.ts`,
-        `${RENDERER}/hooks/use-subtask-management.ts`,
-        `${RENDERER}/lib/expression-evaluator.ts`
+        ...forRenderers('pages/tasks.tsx'),
+        ...forRenderers('pages/note.tsx'),
+        ...forRenderers('pages/journal.tsx'),
+        ...forRenderers('pages/folder-view.tsx'),
+        ...forRenderers('pages/calendar.tsx'),
+        ...forRenderers('pages/inbox/inbox-list-view.tsx'),
+        ...forRenderers('components/folder-view/grouped-table.tsx'),
+        ...forRenderers('components/folder-view/folder-table-view.tsx'),
+        ...forRenderers('components/folder-view/property-cell.tsx'),
+        ...forRenderers('components/kibo-ui/tree/index.tsx'),
+        ...forRenderers('components/virtualized-notes-tree.tsx'),
+        ...forRenderers('components/note/content-area/ContentArea.tsx'),
+        ...forRenderers('contexts/tabs/context.tsx'),
+        ...forRenderers('hooks/use-drag-handlers.ts'),
+        ...forRenderers('hooks/use-folder-view.ts'),
+        ...forRenderers('hooks/use-note-tree-actions.ts'),
+        ...forRenderers('hooks/use-subtask-management.ts'),
+        ...forRenderers('lib/expression-evaluator.ts')
       ],
       // TODO(phase-5): drop these overrides once renderer files are split during UI polish
       rules: disable('max-lines')

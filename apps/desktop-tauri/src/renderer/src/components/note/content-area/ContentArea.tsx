@@ -1,0 +1,3881 @@
+/* oxlint-disable typescript/no-explicit-any */
+
+import { foldTag } from '@memry/shared/tag-fold'
+import { createPortal } from 'react-dom'
+import { DelayedSpinner } from '@/components/ui/spinner'
+import { memo, useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import {
+  SuggestionMenuController,
+  GridSuggestionMenuController,
+  useCreateBlockNote,
+  getDefaultReactSlashMenuItems,
+  FilePanelController,
+  type FilePanelProps,
+  type SuggestionMenuProps
+} from '@blocknote/react'
+import { SuggestionMenu } from '@blocknote/core/extensions'
+import { insertOrUpdateBlockForSlashMenu, type BlockNoteEditor } from '@blocknote/core'
+import { withCollaborationIfLive } from './collaboration-options'
+import { MENTION_MENU_FLOATING_OPTIONS } from './mention-menu-placement'
+import { Paperclip } from '@/lib/icons'
+import { BlockNoteView } from '@blocknote/shadcn'
+import {
+  ImageAttachmentMenu,
+  ImageHoverMenuButton,
+  useImageHoverMenu,
+  type ImageMenuTarget
+} from './attachment-block-menu'
+import { AttachmentRenameFlow } from './attachment-rename-dialog'
+import { ImageCropDialog } from './image-crop-dialog'
+import { ImageLightbox } from './image-lightbox'
+import { parseImageCrop, withImageCrop, type ImageCrop } from '@memry/editor-schema/blocks'
+import { useTheme } from 'next-themes'
+import { AIMenuController, getAISlashMenuItems } from '@blocknote/xl-ai'
+import { getDiagramSlashMenuItems } from '@blocknote/diagram-block'
+import { multiColumnDropCursor } from '@blocknote/xl-multi-column'
+import { getColumnSlashMenuItems } from './columns-slash-menu'
+import { CustomAIMenu } from './ai-menu'
+import { aiSuggestionMarksExtension } from './ai-suggestion-marks'
+import { en as aiEn } from '@blocknote/xl-ai/locales'
+import { en as coreEn } from '@blocknote/core/locales'
+
+import '@blocknote/shadcn/style.css'
+import '@blocknote/xl-ai/style.css'
+
+import type * as Y from 'yjs'
+import {
+  CRITIC_MARKUP_MARKS_ARRAY,
+  readCriticMarkupMarksFromYDoc,
+  serializeCriticMarkup,
+  writeCriticMarkupMarksToYDoc
+} from '@memry/shared'
+import { cn } from '@/lib/utils'
+import { blockNoteShadCNComponents } from '@/lib/blocknote-shadcn-components'
+import { notesService } from '@/services/notes-service'
+import { useYjsCollaboration } from '@/sync/use-yjs-collaboration'
+import { isLocalCrdtDocLive } from '@/sync/collaboration-status'
+import { useWikiLinkHover } from '@/hooks/use-wiki-link-hover'
+import { useLinkMentionHover } from '@/hooks/use-link-mention-hover'
+import { useAIInlineContext } from '@/contexts/ai-inline-context'
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
+import type { ContentAreaProps } from './types'
+import { WikiLinkMenu } from './wiki-link-menu'
+import { AddNameDialog } from '../names/add-name-dialog'
+import { useAddNameFlow } from '../names/use-add-name-flow'
+import { TagSuggestionPopover } from './tag-suggestion-popover'
+import { WikiLinkPreviewCard } from './wiki-link-preview-card'
+import { FootnoteHoverCard, useFootnotes } from './footnote-hover-card'
+import { LinkMentionPreviewCard } from './link-mention-preview-card'
+import { BlockDropIndicator, EmptyDocumentDropIndicator } from './block-drop-indicator'
+import { BodySyncPendingHint } from './body-sync-pending-hint'
+import { getCalloutSlashMenuItem, getCustomCalloutSlashMenuItems } from './callout-block'
+import { useCalloutTypes } from './callout-types-store'
+import { getMathSlashMenuItem } from './math-block'
+import { getWhiteboardSlashMenuItem } from './whiteboard-block'
+import { getChartSlashMenuItem, getViewSlashMenuItem } from './view-block'
+import { createViewBlockKeysPlugin } from './view-block-keys-plugin'
+import { isFromWhiteboard } from './whiteboard-events'
+import { buildTableContent, type TableSize } from './slash-menu-utils'
+import { TableSizePicker } from './table-size-picker'
+import { getLiveProseMirrorView } from './live-prosemirror-view'
+import {
+  buildSlashMenuItems,
+  readSlashMenuRecents,
+  recordSlashMenuRecent,
+  withSecondaryActions,
+  type SlashMenuItem
+} from './slash-menu-model'
+import { SlashMenu, SlashMenuFallbackContext, type SlashMenuFallbacks } from './slash-menu'
+import { getTaskSlashMenuItem } from './task-block'
+import { TaskPrefetchProvider, useTaskPrefetch } from './task-block/task-prefetch-context'
+import { tasksService } from '@/services/tasks-service'
+import { useTasksOptional } from '@/contexts/tasks'
+import { memrySyntaxHighlighter } from '@memry/editor-schema/code-block'
+import { parseQuickAdd } from '@/lib/quick-add-parser'
+import { buildObsidianTaskImport } from '@memry/shared/obsidian-task-import'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
+import { obsidianTaskImportBlocker } from '@memry/shared/obsidian-tasks'
+import { formatDateKey } from '@/lib/task-utils'
+import { editorSchema } from './editor-schema'
+import { analyzeTaskIntents } from './scan-task-intents'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { useEditorTeardown } from '@/hooks/use-editor-teardown'
+import { useFeatureFlags } from '@/hooks/use-feature-flags'
+import { vaultService } from '@/services/vault-service'
+import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
+import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/attachment-revision'
+import { NoteFileUrlProvider } from './note-file-url-context'
+import {
+  ReviewFormattingToolbar,
+  ReviewFormattingToolbarController,
+  getEditorSelectionFromState
+} from './review-formatting-toolbar'
+import { createCriticMarkupDecorationPlugin } from './critic-markup-decorations'
+import { Plugin } from 'prosemirror-state'
+import { isMac } from '@/lib/shortcut-catalog'
+import { checkboxLineMarkdown, serializeBlocksPreservingBlanks } from './markdown-utils'
+import { registerEditorPlugin } from './register-editor-plugin'
+import { createAnchorVisibilityPlugin } from './portal/anchor-visibility-plugin'
+import { createPortalTrailingParagraphPlugin } from './portal/portal-trailing-paragraph-plugin'
+import { BlockSideMenuController, duplicateBlock } from './block-side-menu'
+import { LinkAddressToolbarController, openLinkAddress } from './link-address-toolbar'
+import { registerBlockSelection } from './marquee-block-registry'
+import { MoveBlockDialog } from './move-block-dialog'
+import { PortalFlowsLayer } from './portal-flows/portal-flows-layer'
+import { getPortalSlashMenuItems } from './portal-flows/portal-slash-items'
+import { usePortalAncestryNotes } from './portal-flows/use-portal-ancestry'
+import { TaskRemovalDialog } from './task-removal-dialog'
+import {
+  markTaskRemovalsHandled,
+  relinkTaskNotes,
+  takeHandledTaskRemoval,
+  taskIdsInBlocks
+} from './task-removal'
+import { registerCheckboxTaskActions } from './checkbox-task-actions'
+import { turnTaskIntoCheckbox } from './task-to-checkbox'
+import {
+  AttachmentPickerDialog,
+  buildInsertedAttachmentBlock,
+  type AttachmentKind,
+  type InsertedAttachment
+} from './attachment-picker-dialog'
+import { insertTemplateBlocks, type TemplateAnchor } from './insert-template'
+import { TemplateSelector } from '@/components/note/template-selector'
+import { useTemplates } from '@/hooks/use-templates'
+import { createMultiBlockIndentPlugin } from './multi-block-indent-plugin'
+import { createBulletCollapsePlugin, BULLET_FOLD_GUTTER } from './bullet-collapse-plugin'
+
+import {
+  useBlockNoteSetup,
+  useBlockMarqueeSelection,
+  useEditorDragDrop,
+  useEditorFileUpload,
+  useEditorSync,
+  useTagSuggestions,
+  useWikiLinkBroken,
+  useWikiLinkSuggestions,
+  usePasteLinkMenu,
+  usePdfDisplayMenu,
+  useTableCellImage
+} from './hooks'
+import { BlockMarqueeOverlay } from './block-marquee-overlay'
+import { TableBorderHandles } from './table-border-handles'
+import { CodeBlockToolbar } from './code-block-toolbar'
+import { PasteLinkMenu } from './paste-link-menu'
+import { PdfDisplayMenu } from './pdf-display-menu'
+import { newFileDisplayProps } from './file-block-markers'
+import { handleEditorPaste, isSelectionInTableCell } from './table-cell-paste'
+import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { extractDomain, fetchLinkPreview } from '@/lib/url-metadata'
+import { createLinkMentionContent } from './link-mention'
+import { createDateMentionContent } from './date-mention'
+import { buildDateSuggestions } from './date-suggestions'
+import {
+  createDateMentionGhostPlugin,
+  isDateMentionActive,
+  dateMentionHasGhostFill
+} from './date-mention-ghost-plugin'
+import { createAutoCloseBracketsPlugin } from './auto-close-brackets-plugin'
+import { createWikiLinkEditPlugin, editWikiLinkAt, wikiLinkAtCoords } from './wiki-link-edit-plugin'
+import {
+  WikiLinkContextMenu,
+  type WikiLinkMenuAction,
+  type WikiLinkMenuTarget
+} from './wiki-link-context-menu'
+import { wikiLinkToText } from './wiki-link'
+import { setWikiLinkDisplayAt, wikiLinkDisplayAt } from './wiki-link-display'
+import { createWikiLinkCardPlugin } from './wiki-link-card-plugin'
+import { createInlineCheckboxPlugin } from './inline-checkbox-plugin'
+import { createInlineCheckboxContent } from '@memry/editor-schema/inline'
+import { useFiredDatePillAnchors, useTriggeredDatePills } from './use-triggered-date-pills'
+import { useDateMentionPrefs } from '@/hooks/use-date-mention-prefs'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
+import { DateMentionPopover, type DateMentionValue } from './date-mention-popover'
+import { CanvasChoiceMenu, MentionMenu, type MentionSuggestionItem } from './mention-menu'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { createLogger } from '@/lib/logger'
+import { useMentionSuggestions } from './hooks/use-mention-suggestions'
+import { useMentionCreate } from '@/features/tag-fields/use-mention-create'
+import { useObjectIdentityLookup } from '@/features/tag-fields/use-tag-schemas'
+import { useInlineTagObject } from '@/features/tag-fields/use-inline-tag-object'
+import { capNoteTaskTree, taskDepthBelow } from './hooks/task-block-marquee-indent'
+import type { PasteLinkOption } from './hooks/use-paste-link-menu'
+import { useT } from '@memry/i18n/renderer'
+import { AllSelection, TextSelection } from '@tiptap/pm/state'
+import { yUndoPluginKey } from 'y-prosemirror'
+import type { EditorContextMenuSpelling } from '@memry/contracts/writing-tools-api'
+import {
+  EditorContextMenu,
+  editorContextMenuEntries,
+  findWordAt,
+  isAlternativeRange,
+  isStashableRange,
+  type EditorMenuAction
+} from '../writing-tools'
+import { pasteClipboardIntoEditor } from '../writing-tools/editor-clipboard'
+import { writingToolsService } from '@/services/writing-tools-service'
+
+const log = createLogger('ContentArea')
+
+/**
+ * How long a claimed context menu waits for main to forward the spelling data
+ * before it opens without it. The forward normally lands within a frame.
+ */
+const EDITOR_MENU_SPELLING_WAIT_MS = 400
+
+/** The editor's own right-click menu, as captured when it opened. */
+interface EditorMenuTarget {
+  x: number
+  y: number
+  /** The selection when the menu opened */
+  from: number
+  to: number
+  /** Document position under the pointer */
+  clickPos: number | null
+  hasSelection: boolean
+  ghostId: string | null
+  canAddAlternative: boolean
+  canComment?: boolean
+  canStash: boolean
+  canUndo: boolean
+  canRedo: boolean
+  spelling: EditorContextMenuSpelling | null
+}
+
+/** localStorage flag: the first-conversion hint has been shown on this device. */
+const CONVERSION_HINT_KEY = 'memry_checkbox_task_hint_seen'
+
+function collectBlockIds(blocks: Array<{ id: string; children?: unknown[] }>): Set<string> {
+  const ids = new Set<string>()
+  const walk = (list: Array<{ id: string; children?: unknown[] }>): void => {
+    for (const block of list) {
+      ids.add(block.id)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block children are blocks of the same schema as the list being walked
+      if (block.children?.length) walk(block.children as typeof list)
+    }
+  }
+  walk(blocks)
+  return ids
+}
+
+const PRIORITY_REVERSE: Record<string, number> = { none: 0, low: 1, medium: 2, high: 3, urgent: 4 }
+
+// `TaskCreateSchema` caps a tag at 50 characters and a task at 20 of them, and
+// the Obsidian tag grammar is looser than both. One over-long tag rejects the
+// whole create, so the task never arrives at all. Dropping it here costs
+// nothing on disk: tags stay inline in the title, and the description keeps the
+// line verbatim.
+/**
+ * Moves BlockNote's side menu out of the bullet-fold gutter.
+ *
+ * The menu is placed `left-start` with no offset, so its drag handle lands on
+ * the exact pixels the fold chevron uses — and both surface on the same hover.
+ * Only in LTR: RTL puts the chevron on the block's other side, where the menu
+ * was never in the way.
+ */
+const BULLET_FOLD_HANDLE_OFFSET = {
+  name: 'bulletFoldGutter',
+  fn: ({ x, elements }: { x: number; elements: { floating: HTMLElement } }) => ({
+    x: elements.floating.ownerDocument.documentElement.dir === 'rtl' ? x : x - BULLET_FOLD_GUTTER
+  })
+}
+
+const TAG_MAX_LENGTH = 50
+const TAG_MAX_COUNT = 20
+
+/**
+ * Case-insensitive union, first casing kept, as `setTaskTags` stores them,
+ * clamped to what the create contract will accept.
+ */
+function tagsForCreate(obsidianTags: string[], parsedTags: string[]): string[] {
+  const byKey = new Map<string, string>()
+  for (const tag of [...obsidianTags, ...parsedTags]) {
+    if (tag.length > TAG_MAX_LENGTH) continue
+    const key = foldTag(tag)
+    if (!byKey.has(key)) byKey.set(key, tag)
+  }
+  return [...byKey.values()].slice(0, TAG_MAX_COUNT)
+}
+
+/**
+ * Rewrite the first inline node in `content` that `match` accepts.
+ *
+ * A text block's content is a flat inline-content array, but a table block's is
+ * `{ type: 'tableContent', rows: [{ cells: [...] }] }` — the inline content
+ * lives one level down, per cell. Reading `content.findIndex` on a table throws,
+ * and spreading it silently yields `[]`, which would wipe the table. Both
+ * shapes are walked here so callers never touch `block.content` directly.
+ *
+ * Returns the block content to write back, or null when nothing matched.
+ */
+function rewriteInlineContent(
+  content: any,
+  match: (node: any) => boolean,
+  rewrite: (inline: any[], index: number) => any[]
+): any {
+  if (Array.isArray(content)) {
+    const index = content.findIndex((c: any) => match(c))
+    return index === -1 ? null : rewrite(content, index)
+  }
+
+  if (content?.type !== 'tableContent' || !Array.isArray(content.rows)) return null
+
+  let matched = false
+  const rows = content.rows.map((row: any) => {
+    if (matched || !Array.isArray(row?.cells)) return row
+
+    let rowMatched = false
+    const cells = row.cells.map((cell: any) => {
+      if (matched) return cell
+      // A cell is a bare inline array in older documents and a `tableCell`
+      // object (with props) in newer ones; both still have to round-trip.
+      const inline = Array.isArray(cell) ? cell : Array.isArray(cell?.content) ? cell.content : null
+      if (!inline) return cell
+
+      const index = inline.findIndex((c: any) => match(c))
+      if (index === -1) return cell
+
+      matched = true
+      rowMatched = true
+      const next = rewrite(inline, index)
+      return Array.isArray(cell) ? next : { ...cell, content: next }
+    })
+
+    return rowMatched ? { ...row, cells } : row
+  })
+
+  return matched ? { ...content, rows } : null
+}
+
+function rewriteBlockWithLinkMention(
+  blocks: any[],
+  url: string,
+  rewrite: (inline: any[], index: number) => any[]
+): { block: any; content: any } | null {
+  for (const block of blocks) {
+    const content = rewriteInlineContent(
+      block.content,
+      (c: any) => c?.type === 'linkMention' && c.props?.url === url,
+      rewrite
+    )
+    if (content !== null) return { block, content }
+    if (block.children?.length) {
+      const found = rewriteBlockWithLinkMention(block.children, url, rewrite)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+function findBookmarkBlock(blocks: any[], url: string): any {
+  for (const block of blocks) {
+    if (block.type === 'bookmark' && block.props?.url === url) return block
+    if (block.children?.length) {
+      const found = findBookmarkBlock(block.children, url)
+      if (found) return found
+    }
+  }
+  return null
+}
+
+/** What the attachment picker was asked to do. */
+interface AttachmentPickerRequest {
+  kind: AttachmentKind
+  /**
+   * Set when the picker was opened from an empty media block: the result
+   * replaces that block instead of landing after the caret.
+   */
+  replaceBlockId?: string
+}
+
+/**
+ * The kind of attachment an empty media block is waiting for.
+ *
+ * BlockNote's block vocabulary, not the picker's, so the mapping lives here.
+ */
+function attachmentKindForBlockType(blockType: string | undefined): AttachmentKind {
+  if (blockType === 'image') return 'image'
+  if (blockType === 'video' || blockType === 'audio') return 'media'
+  return 'file'
+}
+
+// =============================================================================
+// CONTENT AREA EDITOR (inner component with all hooks)
+// =============================================================================
+
+interface ContentAreaEditorProps extends ContentAreaProps {
+  yjsFragment?: Y.XmlFragment
+  yjsDoc?: Y.Doc
+  isRemoteUpdateRef?: React.RefObject<boolean>
+}
+
+const relinkTask = (taskId: string, change: { unlink?: string; link?: string }): void => {
+  relinkTaskNotes(taskId, change).catch((err: unknown) =>
+    log.warn("Failed to update a task's linked notes", { taskId, err })
+  )
+}
+
+const ContentAreaEditor = memo(function ContentAreaEditor({
+  noteId,
+  notePath,
+  initialContent,
+  contentType = 'html',
+  externalContentRevision,
+  placeholder,
+  editable = true,
+  stickyToolbar = false,
+  onStickyToolbarChange,
+  spellCheck,
+  onContentChange,
+  onMarkdownChange,
+  onHeadingsChange,
+  onLinkClick,
+  onInternalLinkClick,
+  className,
+  initialHighlight,
+  initialAnchorId,
+  noteTags,
+  tagColorMap,
+  tagIconMap,
+  onInlineTagsChange,
+  focusAtEndRef,
+  openTemplateInsertRef,
+  flushMarkdownRef,
+  yjsFragment,
+  yjsDoc,
+  isRemoteUpdateRef,
+  marqueeZoneEl,
+  review,
+  writingTools,
+  runSideEffects = true
+}: ContentAreaEditorProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+  const portalAncestry = usePortalAncestryNotes()
+  const { clockFormat: dateMentionClockFormat } = useDateMentionPrefs()
+  const { settings: editorSettings, isLoading: editorSettingsLoading } = useEditorSettings()
+  // Starts the custom callout type sync before the first note parse (#3207).
+  useCalloutTypes()
+  // Off until the setting is read. The note's first scan runs before the read
+  // returns, and the default there would convert checkboxes the owner turned off.
+  const convertChecklists = !editorSettingsLoading && editorSettings.convertChecklistsToTasks
+  const { nestedSubtasks, taskParents } = useTaskPrefetch()
+  // Read by the Tab plugin at key time; it is registered once per editor.
+  const nestedSubtasksRef = useRef(nestedSubtasks)
+  // Read by the create paths and the Tab plugin, which outlive a render.
+  const taskParentsRef = useRef(taskParents)
+  useEffect(() => {
+    nestedSubtasksRef.current = nestedSubtasks
+    taskParentsRef.current = taskParents
+  }, [nestedSubtasks, taskParents])
+  const { resolvedTheme } = useTheme()
+  const editorTheme = resolvedTheme === 'dark' ? 'dark' : 'light'
+  const { openSidebarItem } = useSidebarNavigation()
+  const { enabled: aiEnabled } = useAISettingsContext()
+  const { port: aiPort, error: aiError, retry: retryAI } = useAIInlineContext()
+  const { isEnabled: isFeatureEnabled } = useFeatureFlags()
+  const resolvedPlaceholder = placeholder ?? t('editor.content.placeholder')
+
+  const tasksCtx = useTasksOptional()
+  const dismissedBlocksRef = useRef(new Set<string>())
+  // blockId -> the draft title `createTaskForDraftBlock` already attempted for
+  // it. Not a dismissal: the analyzer never reads it, so an edited title is a
+  // fresh attempt and a failed one can be retried. See that callback.
+  const draftCreateAttemptsRef = useRef(new Map<string, string>())
+  // The blocks a draft create is currently awaiting an answer for. One create
+  // per block at a time, whatever the title does in the meantime.
+  const draftCreateInFlightRef = useRef(new Set<string>())
+  const knownTaskBlockIdsRef = useRef<Set<string>>(new Set())
+  // Checkboxes this editor turned into tasks, by block id, with the line they
+  // were. Undo puts the checkbox back, and the task the conversion made goes.
+  const convertedCheckboxesRef = useRef(new Map<string, { taskId: string; content: unknown }>())
+  // Every block the note opened with. Only a checkbox made after that can
+  // continue a plain list; one already in the file converts on open.
+  const openedBlockIdsRef = useRef<ReadonlySet<string>>(new Set())
+  // Tasks whose blocks left this note while the task itself was kept, so the
+  // note was dropped from their linked notes. Undo brings a block back, and
+  // the link comes back with it.
+  const unlinkedTaskIdsRef = useRef<Set<string>>(new Set())
+  // Removed tasks the removal dialog is asking about. A ref, not state: the
+  // dialog's close runs `keep` right after its delete button ran `delete`, and
+  // only a synchronous take lets the second one find nothing left to do.
+  const pendingRemovalRef = useRef<string[]>([])
+  const [pendingRemovalCount, setPendingRemovalCount] = useState(0)
+  // True for the one synchronous dispatch a cut makes. Cut is a move, not a
+  // delete: the line is on the clipboard, and pasting it must find its task.
+  const cutInProgressRef = useRef(false)
+  // Blocks last written by another device or window (a Y.Doc update that
+  // arrived through main). The editor that typed a checkbox owns turning it
+  // into a task. When the note is open on two devices, both used to convert the
+  // same checkbox: each created its own row and wrote its own `taskId` onto the
+  // block, Yjs kept one, and each side then deleted the id that vanished from
+  // its doc, so both rows went and the block was left pointing at nothing. A
+  // local edit to the block takes it back.
+  const remoteAuthoredBlocksRef = useRef<Set<string>>(new Set())
+  const editorContainerRef = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const noteIdRef = useRef<string | undefined>(noteId)
+  const wikiLinkHover = useWikiLinkHover(editorContainerRef)
+  const linkMentionHover = useLinkMentionHover(editorContainerRef)
+  // Recolor inline date pills whose reminder has fired (red, per-device overlay).
+  const firedDatePillAnchors = useFiredDatePillAnchors(noteId)
+  useTriggeredDatePills(editorContainerRef, firedDatePillAnchors)
+  const reviewMarksRef = useRef(review?.marks ?? [])
+  const reviewMarkdownToEditorOffsetRef = useRef(review?.getEditorOffsetForMarkdownSourceOffset)
+  const skipNextCriticMarkupYjsWriteRef = useRef(false)
+  const isReviewEnabled = Boolean(review)
+  const onReviewEditorReady = review?.onEditorReady
+  const onReplaceMarksFromYjs = review?.onReplaceMarksFromYjs
+
+  // Keep noteIdRef in sync (used by uploadFile closure)
+  useEffect(() => {
+    noteIdRef.current = noteId
+  }, [noteId])
+
+  // BlockNote resolves an image block's URL once, while building the block's
+  // DOM, and keeps whatever came back — so unlike Memry's own file block there
+  // is no React state a fresh request can be re-rendered out of. When an
+  // attachment for this note lands, re-point the editor's vault-served images
+  // at the revisioned URL so they ask for the file again; a note that was open
+  // while its images synced in otherwise showed nothing until the app was
+  // restarted. This only ever touches the DOM: block props, and therefore the
+  // note's markdown on disk, are left exactly as they were.
+  useEffect(() => {
+    return subscribeToAttachmentRevisions(() => {
+      const revision = getAttachmentRevision(noteId)
+      if (revision <= 0) return
+      const root = containerRef.current
+      if (!root) return
+      for (const img of root.querySelectorAll<HTMLImageElement>('img[src^="memry-file:"]')) {
+        try {
+          const next = new URL(img.src)
+          next.searchParams.set('v', String(revision))
+          img.src = next.toString()
+        } catch {
+          // An unparseable src is not ours to rewrite.
+        }
+      }
+    })
+  }, [noteId])
+
+  // `uploadFile` is handed to BlockNote once, at editor creation, so anything it
+  // needs has to come through a ref or it goes stale (same reason as noteIdRef).
+  const editorRef = useRef<any>(null)
+  const tRef = useRef(t)
+  useEffect(() => {
+    tRef.current = t
+  }, [t])
+  // Read when a conversion settles, not when it starts: a note's first scan
+  // runs before the setting is read.
+  // A pasted PDF is filled in from `uploadFile` too, which has the same
+  // creation-time problem: the default and the menu opener come in by ref.
+  const pdfDisplayModeRef = useRef(editorSettings.pdfDisplayMode)
+  const openPdfDisplayMenuRef = useRef<(blockId: string) => void>(() => {})
+  useEffect(() => {
+    pdfDisplayModeRef.current = editorSettings.pdfDisplayMode
+  }, [editorSettings.pdfDisplayMode])
+  const convertChecklistsRef = useRef(convertChecklists)
+  useEffect(() => {
+    convertChecklistsRef.current = convertChecklists
+  }, [convertChecklists])
+
+  // Upload function — defined before editor creation so BlockNote can use it.
+  //
+  // BlockNote passes whatever this resolves to straight to `updateBlock`, and
+  // only wraps it when it is a plain string — as `{ props: { name, url } }`.
+  // For Memry's `file` block that wrapper is lossy: `size` stays 0 and
+  // `mimeType` stays '', so a PDF added through the `/file` panel rendered the
+  // download card while the same PDF dropped from Finder rendered the inline
+  // viewer. Returning the full props for `file` blocks makes both paths agree.
+  // Image/video/audio keep the string: they have no size/mimeType props and
+  // unknown props break them.
+  const uploadFile = useCallback(
+    async (file: File, blockId?: string): Promise<string | Record<string, unknown>> => {
+      const currentNoteId = noteIdRef.current
+      if (!currentNoteId) throw new Error('Cannot upload: no note selected')
+      try {
+        const result = await notesService.uploadAttachment(currentNoteId, file)
+        if (!result.success || !result.path) throw new Error(result.error || 'Upload failed')
+
+        const block = blockId ? editorRef.current?.getBlock?.(blockId) : undefined
+        if (block?.type === 'file') {
+          const mimeType = result.mimeType || file.type
+          // BlockNote applies this to the block after we return, so the menu
+          // opens on a block that already carries the default.
+          if (mimeType === 'application/pdf' && blockId) openPdfDisplayMenuRef.current(blockId)
+          return {
+            props: {
+              url: result.path,
+              name: result.name || file.name,
+              size: result.size ?? file.size,
+              mimeType,
+              ...newFileDisplayProps(mimeType, pdfDisplayModeRef.current)
+            }
+          }
+        }
+        return result.path
+      } catch (error) {
+        // BlockNote's upload tab only shows a generic "upload failed" line, so
+        // the real reason (too large, type not allowed) never reached the user.
+        toast.error(extractErrorMessage(error, tRef.current('editor.upload.failed')))
+        throw error
+      }
+    },
+    []
+  )
+
+  // Vaults written by other apps reference media with a plain relative path
+  // (`../Images/Media/photo.png`). Without this, BlockNote hands that string to
+  // `<img src>`, where it resolves against the renderer document's base URL
+  // instead of the vault and 404s. Render-time only — the markdown on disk keeps
+  // its relative path, so the vault stays readable by the app that wrote it.
+  // See `createNoteFileUrlResolver` for why the vault path is awaited rather
+  // than read off a hook.
+  const notePathRef = useRef(notePath)
+  useEffect(() => {
+    notePathRef.current = notePath
+  }, [notePath])
+
+  // Read through a ref by the wiki-link plugin below. Re-registering a
+  // ProseMirror plugin tears its view down and takes collaborative undo with it
+  // (see `registerEditorPlugin`), so that effect must not depend on a callback
+  // whose identity changes on every render of the page above.
+  const onInternalLinkClickRef = useRef(onInternalLinkClick)
+  useEffect(() => {
+    onInternalLinkClickRef.current = onInternalLinkClick
+  }, [onInternalLinkClick])
+
+  // Only `pages/note.tsx` passes `notePath`; the journal, canvas cards and a
+  // project's home note mount this editor knowing only the note's id. Desktop
+  // attachment refs are note-relative and mobile refs are rooted at
+  // `attachments/<noteId>/`, so those surfaces need both pieces. They are
+  // looked up once per note, reused by every block in it, and re-fetched when
+  // the mounted note changes.
+  const noteLookupRef = useRef<{
+    noteId: string
+    note: Promise<{ path?: string; title?: string } | undefined>
+  } | null>(null)
+  const fetchNote = useCallback(async (): Promise<
+    { path?: string; title?: string } | undefined
+  > => {
+    const id = noteIdRef.current
+    if (!id) return undefined
+    const cached = noteLookupRef.current
+    if (cached?.noteId === id) return cached.note
+    const lookup = notesService
+      .get(id)
+      .then((note) => (note ? { path: note.path, title: note.title } : undefined))
+      .catch(() => undefined)
+    noteLookupRef.current = { noteId: id, note: lookup }
+    return lookup
+  }, [])
+  const fetchNotePath = useCallback(
+    async (): Promise<string | undefined> => (await fetchNote())?.path,
+    [fetchNote]
+  )
+
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+  const resolveFileUrl = useRef(
+    createNoteFileUrlResolver(
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+      () => notePathRef.current,
+      async () => (await vaultService.getStatus()).path ?? null,
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+      fetchNotePath,
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+      () => noteIdRef.current
+    )
+  ).current
+
+  // Create the BlockNote editor instance. `withCollaborationIfLive` is what
+  // binds it to the Y.Doc — see that module for why a bare `collaboration`
+  // option compiles but does nothing from BlockNote 0.52 on.
+  const editor = useCreateBlockNote(
+    withCollaborationIfLive(yjsFragment, {
+      schema: editorSchema,
+      // Syntax highlighting is an extension in BlockNote 0.51+, not a code-block
+      // option. Without it a code block renders its text uncoloured.
+      // The AI suggestion marks must be in the schema from the start; the AI
+      // extension itself is registered later and cannot add them (#2527).
+      extensions: [memrySyntaxHighlighter, aiSuggestionMarksExtension],
+      setIdAttribute: true,
+      // All off by default in BlockNote 0.47. `headers` leaves the table handle
+      // menu with no way to make a header row at all — while markdown storage
+      // hands every table one on the way back in. The two colour flags are pure
+      // UI gates on the cell menu (nothing in the schema turns on with them), and
+      // without them a table was the one place in a note where colour was
+      // unreachable (#1639). What the cell holds is written back through the
+      // `<!-- table-colors:… -->` marker, so the colour survives the save.
+      tables: { headers: true, cellBackgroundColor: true, cellTextColor: true },
+      // With `onLinkClick` the click listener in `useBlockNoteSetup` opens the
+      // link; BlockNote's own opener would open it a second time (BBF-112).
+      links: { onClick: onLinkClick ? () => true : openLinkAddress },
+      uploadFile,
+      resolveFileUrl,
+      placeholders: {
+        default: resolvedPlaceholder,
+        heading: t('editor.content.headingPlaceholder'),
+        bulletListItem: t('editor.content.listPlaceholder'),
+        numberedListItem: t('editor.content.listPlaceholder'),
+        checkListItem: t('editor.content.todoPlaceholder')
+      },
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      dictionary: { ...coreEn, ai: aiEn } as any,
+      // Dropping a block on another block's left or right edge puts the two
+      // side by side, the way Notion does; anywhere else is BlockNote's own
+      // drop cursor.
+      dropCursor: multiColumnDropCursor,
+      pasteHandler: handleEditorPaste
+    })
+  )
+
+  // Closes the loop for `uploadFile`, which is built before the editor exists
+  // but needs `getBlock` to know whether it is filling a `file` block.
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor])
+
+  // Hook #1: Editor setup (AI extension, spellcheck, links, highlight scroll)
+  const { aiReady } = useBlockNoteSetup({
+    editor,
+    aiPort: aiEnabled ? aiPort : null,
+    spellCheck,
+    focusAtEndRef,
+    editorContainerRef,
+    onLinkClick,
+    initialHighlight,
+    initialAnchorId
+  })
+
+  // Hook #2: Content sync (initial load + debounced change handler)
+  const { handleChange, flushPendingMarkdown } = useEditorSync({
+    editor,
+    noteId,
+    notePath,
+    initialContent,
+    contentType,
+    externalContentRevision,
+    yjsFragment,
+    isRemoteUpdateRef,
+    noteTags,
+    tagColorMap,
+    tagIconMap,
+    onContentChange,
+    onMarkdownChange: onMarkdownChange
+      ? (markdown) => onMarkdownChange(review?.onPlainMarkdownChange?.(markdown) ?? markdown)
+      : undefined,
+    onHeadingsChange,
+    onInlineTagsChange
+  })
+
+  // Hook #2b: Explicit teardown. `useCreateBlockNote` never disposes what it
+  // builds, so the editor is destroyed here — after the pending markdown save
+  // has been flushed, since serializing needs a live editor.
+  //
+  // Serializing is async, so that flush lands after the owner has already run
+  // its own unmount cleanup, or moved on to another note (#1900). The owner's
+  // review state then belongs to whatever it shows now, so the flushed markdown
+  // is merged with this editor's last marks rather than routed through
+  // `review.onPlainMarkdownChange`, which would write it into that state.
+  const mergesReviewMarks = Boolean(review?.onPlainMarkdownChange)
+  useEditorTeardown(editor, () =>
+    flushPendingMarkdown((markdown) =>
+      onMarkdownChange?.(
+        mergesReviewMarks ? serializeCriticMarkup(markdown, reviewMarksRef.current) : markdown
+      )
+    )
+  )
+
+  useEffect(() => {
+    onReviewEditorReady?.(editor)
+    return () => onReviewEditorReady?.(null)
+  }, [editor, onReviewEditorReady])
+
+  useEffect(() => {
+    reviewMarksRef.current = review?.marks ?? []
+    reviewMarkdownToEditorOffsetRef.current = review?.getEditorOffsetForMarkdownSourceOffset
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+    const tiptap = (editor as any)._tiptapEditor
+    if (!tiptap?.view?.dispatch) return
+    tiptap.view.dispatch(tiptap.state.tr.setMeta('criticMarkupDecorations', true))
+  }, [editor, review?.getEditorOffsetForMarkdownSourceOffset, review?.marks])
+
+  useEffect(() => {
+    if (!isReviewEnabled || !yjsDoc) return undefined
+
+    const array = yjsDoc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
+    const applyYjsMarks = (): void => {
+      const nextMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
+      skipNextCriticMarkupYjsWriteRef.current = true
+      onReplaceMarksFromYjs?.(nextMarks)
+    }
+
+    const currentYjsMarks = readCriticMarkupMarksFromYDoc(yjsDoc)
+    if (currentYjsMarks.length > 0 || reviewMarksRef.current.length === 0) {
+      applyYjsMarks()
+    } else {
+      writeCriticMarkupMarksToYDoc(yjsDoc, reviewMarksRef.current)
+    }
+
+    array.observe(applyYjsMarks)
+    return () => {
+      array.unobserve(applyYjsMarks)
+    }
+  }, [isReviewEnabled, onReplaceMarksFromYjs, yjsDoc])
+
+  useEffect(() => {
+    if (!isReviewEnabled || !yjsDoc) return
+    if (skipNextCriticMarkupYjsWriteRef.current) {
+      skipNextCriticMarkupYjsWriteRef.current = false
+      return
+    }
+    writeCriticMarkupMarksToYDoc(yjsDoc, review?.marks ?? [])
+  }, [isReviewEnabled, review?.marks, yjsDoc])
+
+  useEffect(() => {
+    if (!isReviewEnabled) return undefined
+
+    const plugin = createCriticMarkupDecorationPlugin(
+      () => reviewMarksRef.current,
+      (sourceOffset) => reviewMarkdownToEditorOffsetRef.current?.(sourceOffset) ?? null
+    )
+    return registerEditorPlugin(editor, plugin)
+  }, [editor, isReviewEnabled])
+
+  // Hook #3: Wiki link suggestions
+  const addNameFlow = useAddNameFlow(editor)
+  const { getWikiLinkItems, handleWikiLinkSelect } = useWikiLinkSuggestions(
+    editor,
+    editable ? addNameFlow.requestAddName : undefined
+  )
+
+  // Hook #3b: Broken wiki-link styling — one batch resolve per mount, kept
+  // live by note created/renamed/deleted events (#1716).
+  useWikiLinkBroken(editor, useObjectIdentityLookup())
+  useEffect(() => registerEditorPlugin(editor, createWikiLinkCardPlugin()), [editor])
+  // The trailing ` ^anchor` of a portal-addressable block is markdown, not prose.
+  useEffect(() => registerEditorPlugin(editor, createAnchorVisibilityPlugin()), [editor])
+  useEffect(() => registerEditorPlugin(editor, createPortalTrailingParagraphPlugin()), [editor])
+
+  const footnoteHover = useFootnotes(editor)
+
+  // Hook #4: Tag suggestions + inline plugin
+  const { onTagClick: onInlineObjectTagClick, overlay: inlineTagObjectOverlay } =
+    useInlineTagObject(editor, editorContainerRef, runSideEffects ? noteId : undefined)
+  const { handleTagSuggestionSelect } = useTagSuggestions({
+    editor,
+    editorContainerRef,
+    tagColorMap,
+    tagIconMap,
+    onTagClick: onInlineObjectTagClick
+  })
+
+  // Hook #5: Drag and drop state
+  const { isDragging, dropTarget, handleDragOver, handleDragLeave, handleDrop } = useEditorDragDrop(
+    { containerRef }
+  )
+
+  // Hook #6: File upload capture-phase drop (non-image files)
+  const {
+    state: pdfDisplayState,
+    open: openPdfDisplayMenu,
+    select: selectPdfDisplay
+  } = usePdfDisplayMenu({
+    editor,
+    editorContainerRef,
+    defaultDisplay: editorSettings.pdfDisplayMode
+  })
+  useEffect(() => {
+    openPdfDisplayMenuRef.current = openPdfDisplayMenu
+  }, [openPdfDisplayMenu])
+  useEditorFileUpload({
+    editor,
+    noteId,
+    editable,
+    containerRef,
+    noteIdRef,
+    dropTarget,
+    onDragReset: handleDrop,
+    fetchNotePath,
+    pdfDisplay: editorSettings.pdfDisplayMode,
+    onPdfInserted: openPdfDisplayMenu
+  })
+
+  // Hook #6b: `/image`, paste and drop inside a table cell → inline image (#1640)
+  const { pickImageForCell } = useTableCellImage({ editor, editable, containerRef, noteIdRef })
+
+  // Hook #7: Paste link menu (URL / Mention / Embed)
+  const handlePasteLinkSelect = useCallback(
+    (option: PasteLinkOption, url: string) => {
+      const block = editor.getTextCursorPosition()?.block
+      if (!block) return
+
+      // Nothing to do: the editor's paste handler already inserted the URL as a
+      // plain inline link, leaving the block (list item, table cell, ...) and
+      // the surrounding text untouched. See `paste-url-link.ts`.
+      if (option === 'url') return
+
+      // The pasted URL sits in the block as either a link node or plain text
+      // containing it. Inside a table it sits in one of the cells instead.
+      const isPastedUrl = (c: any): boolean =>
+        (c?.type === 'link' && c.href === url) ||
+        (c?.type === 'text' && typeof c.text === 'string' && c.text.includes(url))
+
+      const dropPastedUrl = (inline: any[], index: number): any[] =>
+        inline.filter((_: any, i: number) => i !== index)
+
+      if (option === 'mention') {
+        const domain = extractDomain(url)
+        const newContent = rewriteInlineContent(block.content, isPastedUrl, (inline, index) => {
+          const next = [...inline]
+          next[index] = createLinkMentionContent(url, domain)
+          return next
+        })
+        if (newContent === null) return
+        editor.updateBlock(block, { content: newContent })
+
+        fetchLinkPreview(url)
+          .then((metadata) => {
+            const found = rewriteBlockWithLinkMention(editor.document, url, (inline, index) => {
+              const updated = [...inline]
+              updated[index] = createLinkMentionContent(
+                url,
+                metadata.domain || domain,
+                metadata.title,
+                metadata.favicon,
+                metadata.siteName
+              )
+              return updated
+            })
+            if (!found) return
+            editor.updateBlock(found.block, { content: found.content })
+          })
+          .catch(() => {})
+        return
+      }
+
+      // Embeds and bookmarks are blocks of their own, so they land after the
+      // cursor's block — after the whole table when the paste happened in a
+      // cell, since a table cell holds inline content only.
+      if (option === 'embed') {
+        const videoId = extractYouTubeVideoId(url)
+        if (!videoId) return
+
+        const newContent = rewriteInlineContent(block.content, isPastedUrl, dropPastedUrl)
+        if (newContent !== null) {
+          editor.updateBlock(block, { content: newContent })
+        }
+        editor.insertBlocks(
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+          [{ type: 'youtubeEmbed' as any, props: { videoId, videoUrl: url } }],
+          block,
+          'after'
+        )
+        return
+      }
+
+      if (option === 'bookmark') {
+        const domain = extractDomain(url)
+        const newContent = rewriteInlineContent(block.content, isPastedUrl, dropPastedUrl)
+        if (newContent !== null) {
+          editor.updateBlock(block, { content: newContent })
+        }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        editor.insertBlocks([{ type: 'bookmark' as any, props: { url, domain } }], block, 'after')
+
+        fetchLinkPreview(url)
+          .then((metadata) => {
+            const target = findBookmarkBlock(editor.document, url)
+            if (!target) return
+            editor.updateBlock(target, {
+              props: {
+                url,
+                domain: metadata.domain || domain,
+                title: metadata.title ?? '',
+                description: metadata.description ?? '',
+                image: metadata.image ?? '',
+                favicon: metadata.favicon ?? '',
+                siteName: metadata.siteName ?? ''
+              }
+            })
+          })
+          .catch(() => {})
+      }
+    },
+    [editor]
+  )
+
+  const { state: pasteLinkState, handleSelect: handlePasteLinkOptionSelect } = usePasteLinkMenu({
+    editorContainerRef,
+    onSelect: handlePasteLinkSelect
+  })
+
+  // Date mention editing: a single popover shared by the /date slash item and
+  // click-to-edit. anchorId identifies which dateMention inline content to
+  // update; anchorEl positions the popover next to the rendered pill.
+  const [dateMentionState, setDateMentionState] = useState<{
+    open: boolean
+    anchorId: string | null
+    value: DateMentionValue
+  }>({
+    open: false,
+    anchorId: null,
+    value: {
+      dateISO: '',
+      hasTime: false,
+      dateFormat: 'relative',
+      remind: 'none',
+      timeFormat: 'system'
+    }
+  })
+  // Mirror the live anchorId so handleDateMentionChange can mutate the editor
+  // outside the state updater (updaters must be pure; StrictMode double-invokes
+  // them in dev and would otherwise fire editor.updateBlock twice).
+  const dateMentionAnchorIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    dateMentionAnchorIdRef.current = dateMentionState.anchorId
+  }, [dateMentionState.anchorId])
+
+  // Walk the (nested) block tree — a pill can live inside a list item's
+  // children[], so recurse like rewriteBlockWithLinkMention does — find the
+  // dateMention with `anchorId`, and write back the content `mutate` returns.
+  // Stops at the first match.
+  const mutateDateMention = useCallback(
+    (anchorId: string, mutate: (content: any[], index: number) => any[]) => {
+      const walk = (blocks: any[]): boolean => {
+        for (const block of blocks) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+          const content = (block.content ?? []) as any[]
+          if (Array.isArray(content)) {
+            const index = content.findIndex(
+              (c: any) => c?.type === 'dateMention' && c.props?.anchorId === anchorId
+            )
+            if (index !== -1) {
+              editor.updateBlock(block, { content: mutate(content, index) })
+              return true
+            }
+          }
+          if (block.children?.length && walk(block.children)) return true
+        }
+        return false
+      }
+      walk(editor.document)
+    },
+    [editor]
+  )
+
+  const updateDateMention = useCallback(
+    (anchorId: string, next: DateMentionValue) => {
+      mutateDateMention(anchorId, (content, index) => {
+        const updated = [...content]
+        updated[index] = createDateMentionContent({ anchorId, ...next })
+        return updated
+      })
+    },
+    [mutateDateMention]
+  )
+
+  // Clear: splice the matching dateMention inline content out of its block.
+  const removeDateMention = useCallback(
+    (anchorId: string) => {
+      mutateDateMention(anchorId, (content, index) => {
+        const updated = [...content]
+        updated.splice(index, 1)
+        return updated
+      })
+    },
+    [mutateDateMention]
+  )
+
+  const handleDateMentionChange = useCallback(
+    (next: DateMentionValue) => {
+      const anchorId = dateMentionAnchorIdRef.current
+      // Mutate the editor OUTSIDE the state updater so it runs exactly once
+      // (updaters are double-invoked under StrictMode). ProseMirror applies
+      // updateBlock synchronously, so the recreated pill is queryable right
+      // after; the popover re-queries it by anchorId on its next measure.
+      if (anchorId) updateDateMention(anchorId, next)
+      setDateMentionState((prev) => ({ ...prev, value: next }))
+    },
+    [updateDateMention]
+  )
+
+  const handleDateMentionClose = useCallback(() => {
+    setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
+  }, [])
+
+  const handleDateMentionClear = useCallback(() => {
+    const anchorId = dateMentionAnchorIdRef.current
+    if (anchorId) removeDateMention(anchorId)
+    setDateMentionState((prev) => ({ ...prev, open: false, anchorId: null }))
+  }, [removeDateMention])
+
+  // Click-to-edit: open the popover seeded from a clicked pill's data-* props.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return undefined
+    const handleClick = (event: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = event.target as HTMLElement | null
+      const pill = target?.closest<HTMLElement>('[data-date-mention]')
+      if (!pill) return
+      const anchorId = pill.getAttribute('data-anchor-id')
+      const dateISO = pill.getAttribute('data-date-iso')
+      if (!anchorId || !dateISO || Number.isNaN(new Date(dateISO).getTime())) return
+      event.preventDefault()
+      setDateMentionState({
+        open: true,
+        anchorId,
+        value: {
+          dateISO,
+          hasTime: pill.getAttribute('data-has-time') === 'true',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-* attributes on date pills are written by the date mention renderer with these value sets
+          dateFormat: (pill.getAttribute('data-date-format') ||
+            'relative') as DateMentionValue['dateFormat'],
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-* attributes on date pills are written by the date mention renderer with these value sets
+          remind: (pill.getAttribute('data-remind') || 'none') as DateMentionValue['remind'],
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-* attributes on date pills are written by the date mention renderer with these value sets
+          timeFormat: (pill.getAttribute('data-time-format') ||
+            'system') as DateMentionValue['timeFormat']
+        }
+      })
+    }
+    container.addEventListener('click', handleClick)
+    return () => container.removeEventListener('click', handleClick)
+  }, [])
+
+  // Insert a configurable dateMention pill from a committed value (slash items
+  // and the `@` Date group both use this). No auto-open: the picker opens when
+  // the user clicks the pill (click-to-edit above).
+  const insertDatePill = useCallback(
+    (value: DateMentionValue) => {
+      const anchorId = `dm_${crypto.randomUUID()}`
+      editor.insertInlineContent([createDateMentionContent({ anchorId, ...value }), ' '], {
+        updateSelection: true
+      })
+    },
+    [editor]
+  )
+
+  // Tab-accept from the inline ghost plugin: drop the typed `@query` range, then
+  // reuse the standard pill insert at the resulting caret.
+  const insertDatePillAtRange = useCallback(
+    (from: number, to: number, value: DateMentionValue) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      const tiptap = (editor as any)._tiptapEditor
+      if (!tiptap?.view) return
+      tiptap.view.dispatch(tiptap.view.state.tr.delete(from, to))
+      insertDatePill(value)
+    },
+    [editor, insertDatePill]
+  )
+
+  // Tab / Shift+Tab over a selection spanning two or more blocks. Prepended
+  // because BlockNote's own keymap hands Tab back to the browser while any
+  // non-empty selection is live, so nothing indents without this. It registers
+  // before the date ghost below on purpose: each prepend goes to the front, so
+  // the ghost ends up ahead of it and keeps Tab while a date is being typed.
+  useEffect(() => {
+    const plugin = createMultiBlockIndentPlugin(editor, () => ({
+      nested: nestedSubtasksRef.current,
+      parents: taskParentsRef.current
+    }))
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
+
+  // Arrow keys into a view block, whose definition is hidden until the caret
+  // is in it and so unreachable by the browser's own caret movement (#2488).
+  useEffect(() => registerEditorPlugin(editor, createViewBlockKeysPlugin()), [editor])
+
+  // Inline `@`-date ghost text + Tab completion. Prepend the plugin so its Tab
+  // handler wins over block-indent keymaps while a date mention is active.
+  useEffect(() => {
+    const plugin = createDateMentionGhostPlugin({ onAcceptPill: insertDatePillAtRange })
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor, insertDatePillAtRange])
+
+  // Backspace/ArrowLeft next to a wiki-link chip opens it as raw `[[…]]` text so
+  // a heading can be typed into it. Prepended for the same reason as above: the
+  // default Backspace keymap would delete the chip before we saw the key.
+  // `deleteTriggerCharacter: false` because the `[[` is already in the
+  // document — the slash item above passes `true` precisely because there it
+  // is not. Without this the heading picker is unreachable from the path
+  // users actually take: pick a note from the dropdown, then try to add `#`.
+  const openWikiLinkSuggestions = useCallback(
+    () =>
+      editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+        deleteTriggerCharacter: false
+      }),
+    [editor]
+  )
+
+  useEffect(() => {
+    const plugin = createWikiLinkEditPlugin({
+      openMenu: openWikiLinkSuggestions,
+      // Following a link lives in the plugin rather than in a DOM click
+      // listener — `handleDOMEvents` there says why, and why it fires at
+      // mousedown. Both halves of what the listener did, in the same order, so
+      // nothing downstream can tell the difference: the callback opens the note,
+      // and the window event is kept because it was broadcast before (nothing in
+      // the renderer subscribes to it today, so dropping it would be a silent
+      // contract change for anything outside).
+      onNavigate: (target, open) => {
+        window.dispatchEvent(new CustomEvent('wikilink:click', { detail: { target } }))
+        onInternalLinkClickRef.current?.(target, open)
+      }
+    })
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor, openWikiLinkSuggestions])
+
+  // `(` and `[[` write their closing half. Prepended so its Backspace and
+  // type-over handling runs before the default keymap deletes one character.
+  useEffect(
+    () =>
+      registerEditorPlugin(editor, createAutoCloseBracketsPlugin(), (p, plugins) => [
+        p,
+        ...plugins
+      ]),
+    [editor]
+  )
+
+  // A chevron beside every bullet that has nested blocks and every heading
+  // that has a section, folding them away.
+  // Appended, not prepended: it handles mousedown on its own button only, so
+  // no other plugin's key or pointer handling is in its way.
+  useEffect(() => {
+    return registerEditorPlugin(
+      editor,
+      createBulletCollapsePlugin({
+        expand: t('editor.bulletFold.expand'),
+        collapse: t('editor.bulletFold.collapse'),
+        expandSection: t('editor.bulletFold.expandSection'),
+        collapseSection: t('editor.bulletFold.collapseSection')
+      })
+    )
+  }, [editor, t])
+
+  // `[ ] ` typed at the head of a table cell becomes an inline checkbox.
+  // BlockNote's own input rules own that gesture everywhere else and cannot
+  // fire inside a cell, so this never competes with them — see the plugin.
+  // Appended rather than prepended: it is an `appendTransaction`, so nothing
+  // about key handling order applies to it.
+  useEffect(() => {
+    return registerEditorPlugin(editor, createInlineCheckboxPlugin())
+  }, [editor])
+
+  const { openCreate: openMentionCreate, overlay: mentionCreateOverlay } = useMentionCreate(
+    editor,
+    editorContainerRef
+  )
+
+  // `@` quick-insert menu: a Date group (date + remind) when the query parses
+  // as a date, plus recent notes (insert as wiki links) and canvases (a
+  // Mention / Embed choice). The bound menu is memoized so it doesn't remount
+  // per render.
+  const {
+    getMentionItems,
+    handleMentionSelect,
+    mentionHasMore,
+    showMore,
+    canvasChoice,
+    selectCanvasChoice
+  } = useMentionSuggestions(editor, {
+    onInsertDate: insertDatePill,
+    editorContainerRef,
+    canvasesEnabled: isFeatureEnabled('spatialCanvas'),
+    onCreate: runSideEffects ? openMentionCreate : undefined
+  })
+  const MentionSuggestionMenu = useCallback(
+    // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
+    function BoundMentionMenu(props: SuggestionMenuProps<MentionSuggestionItem>) {
+      return <MentionMenu {...props} hasMore={mentionHasMore} onShowMore={showMore} />
+    },
+    [mentionHasMore, showMore]
+  )
+
+  const [innerContainerEl, setInnerContainerEl] = useState<HTMLDivElement | null>(null)
+  const setEditorContainerRef = useCallback((el: HTMLDivElement | null) => {
+    editorContainerRef.current = el
+    setInnerContainerEl(el)
+  }, [])
+
+  // State (not just editorContainerRef) so the marquee hook's useEffect
+  // re-runs when .bn-container first mounts — refs don't trigger effects.
+  const triggerEl = marqueeZoneEl ?? innerContainerEl
+
+  useEffect(() => {
+    if (!review) return undefined
+    const container = editorContainerRef.current
+    if (!container) return undefined
+
+    const handlePointerOver = (event: PointerEvent | FocusEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = event.target as HTMLElement | null
+      const mark = target?.closest<HTMLElement>('[data-critic-mark-id]')
+      if (!mark) return
+      review.onHoveredMarkChange?.(mark.dataset.criticMarkId ?? null)
+    }
+
+    const handlePointerOut = (event: PointerEvent | FocusEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = event.target as HTMLElement | null
+      const mark = target?.closest<HTMLElement>('[data-critic-mark-id]')
+      if (!mark) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const relatedTarget = event.relatedTarget as HTMLElement | null
+      const relatedMark = relatedTarget?.closest<HTMLElement>('[data-critic-mark-id]')
+      if (relatedMark?.dataset.criticMarkId === mark.dataset.criticMarkId) return
+      review.onHoveredMarkChange?.(null)
+    }
+
+    container.addEventListener('pointerover', handlePointerOver)
+    container.addEventListener('focusin', handlePointerOver)
+    container.addEventListener('pointerout', handlePointerOut)
+    container.addEventListener('focusout', handlePointerOut)
+    return () => {
+      container.removeEventListener('pointerover', handlePointerOver)
+      container.removeEventListener('focusin', handlePointerOver)
+      container.removeEventListener('pointerout', handlePointerOut)
+      container.removeEventListener('focusout', handlePointerOut)
+    }
+  }, [review])
+
+  useEffect(() => {
+    if (!review) return
+    const container = editorContainerRef.current
+    if (!container) return
+    container
+      .querySelectorAll<HTMLElement>('[data-critic-mark-id]')
+      .forEach((element) =>
+        element.classList.toggle(
+          'critic-mark-hovered',
+          element.dataset.criticMarkId === review.hoveredMarkId
+        )
+      )
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
+  }, [review, review?.hoveredMarkId, review?.marks])
+
+  useEffect(() => {
+    if (!review?.onMarkPositionsChange) return undefined
+    const container = editorContainerRef.current
+    if (!container) return undefined
+    const frame = window.requestAnimationFrame(() => {
+      const root = container.closest<HTMLElement>('.marquee-zone') ?? container
+      const rootTop = root.getBoundingClientRect().top
+      const positions: Record<string, number> = {}
+      container.querySelectorAll<HTMLElement>('[data-critic-mark-id]').forEach((element) => {
+        const id = element.dataset.criticMarkId
+        if (!id || positions[id] !== undefined) return
+        positions[id] = Math.max(0, element.getBoundingClientRect().top - rootTop)
+      })
+      review.onMarkPositionsChange?.(positions)
+    })
+    return () => window.cancelAnimationFrame(frame)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
+  }, [review, review?.marks])
+
+  // Finder-style multi-block marquee selection
+  const marquee = useBlockMarqueeSelection({
+    editor,
+    blockContainerRef: editorContainerRef,
+    triggerContainerEl: triggerEl,
+    enabled: editable,
+    nestedSubtasks,
+    taskParents
+  })
+
+  // Retyping from the toolbar or the block menu reads this at click time, not
+  // at render: the selection changes under menus BlockNote built earlier.
+  const marqueeSelectionRef = useRef(marquee.selectedBlockIds)
+  useEffect(() => {
+    marqueeSelectionRef.current = marquee.selectedBlockIds
+  }, [marquee.selectedBlockIds])
+  const clearMarqueeSelection = marquee.clearSelection
+  useEffect(
+    () =>
+      registerBlockSelection(editor, {
+        getIds: () => Array.from(marqueeSelectionRef.current),
+        clear: clearMarqueeSelection
+      }),
+    [editor, clearMarqueeSelection]
+  )
+
+  // The block becomes a `taskBlock` before the create call resolves, so every
+  // path that fails to produce a row has to put the checkbox back. Otherwise it
+  // holds `taskId: ''` forever: a task the file has no suffix for, the database
+  // has no row for, and whose every control early-returns on the empty id
+  // (#1907). The block stays in `dismissedBlocksRef` so the analyzer does not
+  // immediately re-schedule the conversion that just failed and loop on it;
+  // reopening the note retries with a fresh set.
+  const taskIntentExclusions = useCallback(
+    (): Set<string> => new Set([...dismissedBlocksRef.current, ...remoteAuthoredBlocksRef.current]),
+    []
+  )
+
+  const restoreCheckbox = useCallback(
+    (blockId: string, content: unknown, checked: boolean) => {
+      const stale = editor.getBlock(blockId)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+      if (!stale || (stale.props as any)?.taskId) return
+      editor.updateBlock(stale, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        type: 'checkListItem' as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        props: { checked } as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        content: content as any
+      })
+    },
+    [editor]
+  )
+
+  const discardTask = useCallback((taskId: string) => {
+    tasksService
+      .delete(taskId)
+      .catch((err: unknown) =>
+        log.warn('Failed to delete a task whose conversion was undone', { taskId, err })
+      )
+  }, [])
+
+  // A checkbox back where its task was stays a checkbox, including after the
+  // note is reopened. A tracked edit on purpose: it clears the redo stack, and
+  // a redo would otherwise bring back a task block whose row is gone.
+  const keepCheckboxPlain = useCallback(
+    (blockId: string) => {
+      const block = editor.getBlock(blockId)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      if (block?.type !== 'checkListItem' || (block.props as any)?.plain) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      editor.updateBlock(block, { props: { plain: true } as any })
+    },
+    [editor]
+  )
+
+  // The "Keep as checkbox" action on the first-conversion hint: the same as
+  // pressing undo right away, from a button.
+  const revertConversion = useCallback(
+    (blockId: string) => {
+      const converted = convertedCheckboxesRef.current.get(blockId)
+      const block = editor.getBlock(blockId)
+      if (!converted || block?.type !== 'taskBlock') return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+      if ((block.props as any)?.taskId !== converted.taskId) return
+      convertedCheckboxesRef.current.delete(blockId)
+      markTaskRemovalsHandled(editor, [converted.taskId])
+      editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        type: 'checkListItem' as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        props: { checked: !!(block.props as any)?.checked, plain: true } as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        content: converted.content as any
+      })
+      discardTask(converted.taskId)
+    },
+    [editor, discardTask]
+  )
+
+  // Once per device: the first checkbox that turns into a task on its own says
+  // so, and says how to keep it a checkbox. After that, undo is the way.
+  const showConversionHint = useCallback(
+    (blockId: string) => {
+      // The hint says a new checkbox becomes a task. With conversion off only a
+      // checkbox under a task converts, so it would be false.
+      if (!convertChecklistsRef.current) return
+      try {
+        if (localStorage.getItem(CONVERSION_HINT_KEY)) return
+        localStorage.setItem(CONVERSION_HINT_KEY, '1')
+      } catch {
+        return
+      }
+      toast(tRef.current('editor.checkboxTask.converted'), {
+        description: tRef.current('editor.checkboxTask.hint', { undo: isMac ? '⌘Z' : 'Ctrl+Z' }),
+        action: {
+          label: tRef.current('editor.checkboxTask.keepAsCheckbox'),
+          onClick: () => revertConversion(blockId)
+        }
+      })
+    },
+    [revertConversion]
+  )
+
+  // Bookkeeping once a conversion has its task id on the block.
+  const rememberConversion = useCallback(
+    (blockId: string, taskId: string, content: unknown, auto: boolean) => {
+      convertedCheckboxesRef.current.set(blockId, { taskId, content })
+      if (auto) showConversionHint(blockId)
+    },
+    [showConversionHint]
+  )
+
+  // A rejected completion must not cost the block its task id. The row already
+  // exists at this point, and a block left on `taskId: ''` can never find it.
+  const completeConverted = useCallback(async (taskId: string, completedAt: string | null) => {
+    try {
+      await tasksService.complete({ id: taskId, ...(completedAt ? { completedAt } : {}) })
+    } catch (err) {
+      toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.completeFailed')))
+    }
+  }, [])
+
+  // A row created nested below the first level keeps that parent in the DB,
+  // and the note lists it under its top-level task (MAX_NOTE_TASK_DEPTH).
+  const settleCreatedTask = useCallback(
+    (blockId: string, taskId: string, parentId: string) => {
+      taskParentsRef.current.set(taskId, parentId || null)
+      capNoteTaskTree(editor, blockId)
+    },
+    [editor]
+  )
+
+  const convertCheckboxToTask = useCallback(
+    (blockId: string, auto = false) => {
+      const block = editor.getBlock(blockId)
+      if (!block) return
+
+      const originalContent = block.content
+      const text = checkboxLineMarkdown(editor, block)
+
+      // An empty checkbox has no task in it yet. Converting one rewrites the
+      // block to a `taskBlock` whose title is empty, and the create below is
+      // refused for that empty title — leaving the block on `taskId: ''`
+      // forever (#2271). The analyzer declines empty checkboxes for the same
+      // reason; this guard is what covers the context menu, which reaches this
+      // converter directly. Returning before `dismissedBlocksRef` keeps the
+      // line convertible the moment the user types on it.
+      if (!text) return
+
+      // Refused where the rewrite happens rather than only where the analyzer
+      // proposes it. The context menu reaches this converter directly.
+      // Appending Memry's suffix un-anchors the plugin's field regexes, and an
+      // id or a dependency names lines in files Memry has never read.
+      if (obsidianTaskImportBlocker(text) !== null) {
+        toast.error(tRef.current('editor.obsidianTask.refused'))
+        return
+      }
+
+      dismissedBlocksRef.current.add(blockId)
+
+      // Markdown is the source of truth: a checkbox that arrives already
+      // ticked (`- [x] Buy milk`, typically from an import or an external
+      // editor) becomes a task that is already done.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      const wasChecked = !!(block.props as any)?.checked
+
+      // An Obsidian Tasks line carries its plugin fields in the text. They are
+      // read off here so the title the block keeps, and therefore the markdown
+      // line the suffix is appended to, is the description alone.
+      const obsidian = buildObsidianTaskImport(text, new Date())
+      const title = obsidian?.title ?? text
+
+      // The plugin's done date says the line is finished, so the box has to be
+      // ticked to match. Left unticked, the block serializes as `- [ ] ...
+      // {task:id}` over a task that has a completedAt, and the markdown
+      // reconciler un-completes it on the very next save of the note.
+      const doneAt = obsidian?.completedAt ?? null
+      const isDone = wasChecked || doneAt !== null
+
+      editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        type: 'taskBlock' as any,
+        props: { taskId: '', title, checked: isDone }
+      })
+
+      void (async () => {
+        // Defense in depth: if Tab moved this block under another taskBlock
+        // mid-flight (the analyzer's debounce should catch this and route to
+        // convertCheckboxToSubtask, but races are possible), respect the
+        // live parentTaskId and create as a subtask.
+        const liveBlock = editor.getBlock(blockId)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+        const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
+
+        // Everything that can fail sits inside this try: the project lookup
+        // rejects when no vault is open, not just when the create fails.
+        try {
+          let projects: any[] = tasksCtx?.projects ?? []
+          if (projects.length === 0) {
+            const res = await tasksService.listProjects()
+            projects = res.projects ?? []
+          }
+
+          let parentTaskProjectId: string | null = null
+          if (liveParentTaskId) {
+            const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+            if (parentTask) parentTaskProjectId = parentTask.projectId
+          }
+
+          // The plugin fields were lifted off the line already, so quick-add
+          // parses the description alone.
+          const parsed = title
+            ? parseQuickAdd(title, projects)
+            : { title: '', priority: 'none', projectId: null, dueDate: null, tags: [] }
+          // A checklist line of nothing but quick-add tokens ("- [ ] #errand")
+          // parses to an empty title, which `tasks:create` rejects. Leave it as
+          // a checkbox rather than surfacing a contract error (#1991) — the
+          // block was rewritten optimistically above, so putting the checkbox
+          // back is what actually leaves it as one (#2271). It stays dismissed:
+          // restoring re-enters `onChange`, and a candidate that converts and
+          // restores on every pass would spin.
+          if (!parsed.title.trim()) {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+            return
+          }
+
+          // The note's own project decides where its checklists land (#2271).
+          const projectId = await resolveProjectIdForNoteTask({
+            noteId,
+            parentTaskProjectId,
+            quickAddProjectId: parsed.projectId,
+            projects
+          })
+          if (!projectId) {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+            return
+          }
+
+          const result = await tasksService.create({
+            projectId,
+            ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
+            title: parsed.title,
+            priority: obsidian?.priority ?? PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: obsidian?.dueDate ?? (parsed.dueDate ? formatDateKey(parsed.dueDate) : null),
+            startDate: obsidian?.startDate ?? null,
+            repeatConfig: obsidian?.repeatConfig ?? null,
+            repeatFrom: obsidian?.repeatFrom ?? null,
+            description: obsidian?.description ?? null,
+            // A `#tag` on the checklist line leaves the title now that `#` means
+            // tag, so it has to land on the task instead of being dropped.
+            tags: tagsForCreate(obsidian?.tags ?? [], parsed.tags),
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            if (isDone) await completeConverted(result.task.id, doneAt)
+            const freshBlock = editor.getBlock(blockId)
+            // Undone while the row was being created: the checkbox is back, so
+            // the task it would have become goes.
+            if (freshBlock && freshBlock.type !== 'taskBlock') {
+              discardTask(result.task.id)
+              keepCheckboxPlain(blockId)
+              return
+            }
+            if (freshBlock) {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+              const currentTitle = (freshBlock.props as any).title || parsed.title
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+              const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
+              // `checked` off the live block, not the `isDone` read before the
+              // create: the row is tickable while the id is in flight, and
+              // writing the stale value back would clear the tick the user just
+              // made. The renderer replays that tick against the row as soon as
+              // the id lands, and markdown is what the reconciler believes.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+              const currentChecked = !!(freshBlock.props as any).checked
+              editor.updateBlock(freshBlock, {
+                props: {
+                  taskId: result.task.id,
+                  title: currentTitle,
+                  checked: currentChecked,
+                  parentTaskId: currentParentTaskId
+                }
+              })
+              settleCreatedTask(blockId, result.task.id, liveParentTaskId)
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+              rememberConversion(blockId, result.task.id, originalContent, auto)
+            }
+          } else {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+          }
+        } catch (err) {
+          // No row was created, so the block must not stay a taskBlock: one
+          // holding `taskId: ''` renders a task that nothing can ever open.
+          restoreCheckbox(blockId, originalContent, wasChecked)
+          toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.createFailed')))
+        }
+      })()
+    },
+    [
+      editor,
+      noteId,
+      tasksCtx,
+      completeConverted,
+      restoreCheckbox,
+      discardTask,
+      keepCheckboxPlain,
+      rememberConversion,
+      settleCreatedTask
+    ]
+  )
+
+  // The block menu's Turn into "Task" converts through this same path, and its
+  // "Turn into checkbox" goes the other way (checkbox-task-actions.ts).
+  useEffect(() => {
+    if (!runSideEffects) return undefined
+    return registerCheckboxTaskActions(editor, {
+      toTask: (blockId) => convertCheckboxToTask(blockId),
+      toCheckbox: (blockId) => {
+        // Asked about like any task leaving the note, even one converted this
+        // session: this is a choice, not an undo.
+        convertedCheckboxesRef.current.delete(blockId)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        turnTaskIntoCheckbox(editor as any, blockId).catch((err: unknown) =>
+          log.warn('Failed to turn a task into a checkbox', { blockId, err })
+        )
+      }
+    })
+  }, [editor, runSideEffects, convertCheckboxToTask])
+
+  const convertCheckboxToSubtask = useCallback(
+    (blockId: string, parentTaskId: string) => {
+      const block = editor.getBlock(blockId)
+      if (!block) return
+
+      const originalContent = block.content
+      const text = checkboxLineMarkdown(editor, block)
+
+      // Same refusal as the top-level path. A nested line is no safer to rewrite.
+      if (obsidianTaskImportBlocker(text) !== null) {
+        toast.error(tRef.current('editor.obsidianTask.refused'))
+        return
+      }
+
+      dismissedBlocksRef.current.add(blockId)
+
+      // Same markdown-wins rule as convertCheckboxToTask: an already-ticked
+      // nested checkbox becomes a completed subtask.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      const wasChecked = !!(block.props as any)?.checked
+
+      // And the same field lift. Left on the line, a due date would be
+      // serialized behind Memry's suffix, where the plugin's end-anchored
+      // regex can no longer see it, and Memry would never have read it either.
+      const obsidian = buildObsidianTaskImport(text, new Date())
+      const title = obsidian?.title ?? text
+      const doneAt = obsidian?.completedAt ?? null
+      const isDone = wasChecked || doneAt !== null
+
+      editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        type: 'taskBlock' as any,
+        props: { taskId: '', title, checked: isDone, parentTaskId }
+      })
+
+      void (async () => {
+        try {
+          const parentTask = await tasksService.get(parentTaskId)
+          if (!parentTask) {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+            return
+          }
+
+          const result = await tasksService.create({
+            projectId: parentTask.projectId,
+            parentId: parentTaskId,
+            title,
+            priority: obsidian?.priority ?? 0,
+            dueDate: obsidian?.dueDate ?? null,
+            startDate: obsidian?.startDate ?? null,
+            repeatConfig: obsidian?.repeatConfig ?? null,
+            repeatFrom: obsidian?.repeatFrom ?? null,
+            description: obsidian?.description ?? null,
+            tags: tagsForCreate(obsidian?.tags ?? [], []),
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            if (isDone) await completeConverted(result.task.id, doneAt)
+            const freshBlock = editor.getBlock(blockId)
+            // Same undo race as the top-level path.
+            if (freshBlock && freshBlock.type !== 'taskBlock') {
+              discardTask(result.task.id)
+              keepCheckboxPlain(blockId)
+              return
+            }
+            if (freshBlock) {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+              const currentTitle = (freshBlock.props as any).title || title
+              // Live `checked`, same reason as the top-level path: the block is
+              // tickable while the create is in flight.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+              const currentChecked = !!(freshBlock.props as any).checked
+              editor.updateBlock(freshBlock, {
+                props: {
+                  taskId: result.task.id,
+                  title: currentTitle,
+                  checked: currentChecked,
+                  parentTaskId
+                }
+              })
+              settleCreatedTask(blockId, result.task.id, parentTaskId)
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+              rememberConversion(blockId, result.task.id, originalContent, true)
+            }
+          } else {
+            restoreCheckbox(blockId, originalContent, wasChecked)
+          }
+        } catch (err) {
+          restoreCheckbox(blockId, originalContent, wasChecked)
+          toast.error(extractErrorMessage(err, tRef.current('editor.obsidianTask.createFailed')))
+        }
+      })()
+    },
+    [
+      editor,
+      noteId,
+      completeConverted,
+      restoreCheckbox,
+      discardTask,
+      keepCheckboxPlain,
+      rememberConversion,
+      settleCreatedTask
+    ]
+  )
+
+  const createTaskForDraftBlock = useCallback(
+    (blockId: string, title: string) => {
+      // De-duplication used to be `dismissedBlocksRef`, which the analyzer
+      // honours forever: every early exit below (no project yet, a title
+      // quick-add parses to nothing, a rejected lookup) marked the draft
+      // dismissed on the way in and never took it back, so the block kept
+      // `taskId: ''` for the rest of the session no matter what the user typed
+      // next (#2271). Keyed by the title instead: the same title is attempted
+      // once (no duplicate rows, and no spin on a title that can never create),
+      // an edited title is attempted again, and a transient failure drops the
+      // entry so the next change retries.
+      //
+      // The title changing is exactly what a user typing does, and the block's
+      // title prop is rewritten on every debounce tick, so the attempt key
+      // alone would let "Buy mil" and "Buy milk" create two rows for one block.
+      // `draftCreateInFlightRef` is the other half: one create per block at a
+      // time, and the post-create title reconciliation below carries whatever
+      // the user typed in the meantime.
+      if (
+        draftCreateInFlightRef.current.has(blockId) ||
+        draftCreateAttemptsRef.current.get(blockId) === title
+      ) {
+        return
+      }
+      draftCreateAttemptsRef.current.set(blockId, title)
+      draftCreateInFlightRef.current.add(blockId)
+      const retryDraft = (): void => {
+        draftCreateAttemptsRef.current.delete(blockId)
+      }
+
+      void (async () => {
+        // Re-read the live block. Between the onChange that scheduled this
+        // call and now, the renderer's Tab handler may have moved the block
+        // into another taskBlock's children[] and pre-set `parentTaskId` on
+        // its props. If we ignore that prop here we'll create a top-level
+        // DB row for what the user already sees as a subtask, and the
+        // demote-repair won't catch it (block prop already matches the tree
+        // parent, so no mismatch fires).
+        const liveBlock = editor.getBlock(blockId)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+        const liveParentTaskId = ((liveBlock?.props as any)?.parentTaskId as string) || ''
+
+        // Inside the try: `listProjects` rejects when no vault is open, and an
+        // unhandled rejection here used to abandon the draft mid-flight.
+        try {
+          let projects: any[] = tasksCtx?.projects ?? []
+          if (projects.length === 0) {
+            const res = await tasksService.listProjects()
+            projects = res.projects ?? []
+          }
+
+          // Projects are still loading, or the vault has none yet — nothing to
+          // create into *now*. Retry on the next change rather than stranding
+          // the block.
+          if (projects.length === 0) {
+            retryDraft()
+            return
+          }
+
+          // If this draft is parented, inherit the parent task's projectId so
+          // the subtask lands in the right project (mirrors convertCheckboxToSubtask).
+          let parentTaskProjectId: string | null = null
+          if (liveParentTaskId) {
+            const parentTask = await tasksService.get(liveParentTaskId).catch(() => null)
+            if (parentTask) parentTaskProjectId = parentTask.projectId
+          }
+
+          const parsed = title
+            ? parseQuickAdd(title, projects)
+            : { title: '', priority: 'none', projectId: null, dueDate: null }
+          // The draft scan only checks the raw block title, so a token-only draft
+          // reaches here with nothing left to name the task. Not retried for
+          // this title — it would fail the same way every keystroke — but the
+          // attempt record is keyed by title, so typing a real one retries.
+          if (!parsed.title.trim()) return
+
+          // The note's own project decides where a task typed in it lands (#2271).
+          const projectId = await resolveProjectIdForNoteTask({
+            noteId,
+            parentTaskProjectId,
+            quickAddProjectId: parsed.projectId,
+            projects
+          })
+          if (!projectId) {
+            retryDraft()
+            return
+          }
+
+          const result = await tasksService.create({
+            projectId,
+            // When parented, force parentId — never let parseQuickAdd's
+            // priority/date metadata leak into a top-level row.
+            ...(liveParentTaskId ? { parentId: liveParentTaskId } : {}),
+            title: parsed.title,
+            priority: PRIORITY_REVERSE[parsed.priority] ?? 0,
+            dueDate: parsed.dueDate ? formatDateKey(parsed.dueDate) : null,
+            linkedNoteIds: noteId ? [noteId] : []
+          })
+          if (result.success && result.task) {
+            const freshBlock = editor.getBlock(blockId)
+            if (freshBlock) {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+              const currentTitle = (freshBlock.props as any).title || parsed.title
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+              const currentParentTaskId = ((freshBlock.props as any).parentTaskId as string) || ''
+              // Live `checked`, not a hardcoded `false`: a draft row is
+              // tickable while the create is in flight, and the renderer
+              // replays that tick against the row once the id lands.
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+              const currentChecked = !!(freshBlock.props as any).checked
+              editor.updateBlock(freshBlock, {
+                props: {
+                  taskId: result.task.id,
+                  title: currentTitle,
+                  checked: currentChecked,
+                  parentTaskId: currentParentTaskId
+                }
+              })
+              settleCreatedTask(blockId, result.task.id, liveParentTaskId)
+              if (currentTitle && currentTitle !== result.task.title) {
+                void tasksService.update({ id: result.task.id, title: currentTitle })
+              }
+            }
+          }
+          // No `retryDraft()` on `success: false`: the service answered, and it
+          // answers the same way for the same input. Retrying would put one
+          // `tasks:create` on the wire per keystroke in the note. The attempt
+          // record is keyed by title, so an edited title still retries.
+        } catch {
+          // The call itself failed (no vault open, IPC down) rather than being
+          // refused — that is transient, so the next change tries again.
+          retryDraft()
+        } finally {
+          draftCreateInFlightRef.current.delete(blockId)
+        }
+      })()
+    },
+    [editor, noteId, tasksCtx, settleCreatedTask]
+  )
+
+  // The attachment picker every `/image`, `/media`, `/pdf`, `/file` opens
+  // (#2161). Its kind doubles as its open flag: a kind means "show me files of
+  // this sort", null means closed. Picking an existing file resolves block
+  // props that point at bytes the vault already stores, so the second note
+  // references the same file instead of getting a copy of it (#2077).
+  const [attachmentPicker, setAttachmentPicker] = useState<AttachmentPickerRequest | null>(null)
+
+  const openAttachmentPicker = useCallback((kind: AttachmentKind): void => {
+    setAttachmentPicker({ kind })
+  }, [])
+
+  // `/table` asks for a size before it inserts (#2568). The caret's box is
+  // both the open flag and where the grid opens; the caret itself stays put in
+  // the block the slash command was typed in, which is where the table lands.
+  const [tablePickerAnchor, setTablePickerAnchor] = useState<DOMRect | null>(null)
+
+  const openTableSizePicker = useCallback((): void => {
+    const view = getLiveProseMirrorView(editor)
+    if (!view) return
+    const caret = view.coordsAtPos(view.state.selection.from)
+    setTablePickerAnchor(
+      new DOMRect(caret.left, caret.top, caret.right - caret.left, caret.bottom - caret.top)
+    )
+  }, [editor])
+
+  const closeTableSizePicker = useCallback((): void => {
+    setTablePickerAnchor(null)
+    editor.focus()
+  }, [editor])
+
+  const insertTableOfSize = useCallback(
+    (size: TableSize): void => {
+      setTablePickerAnchor(null)
+      editor.focus()
+      insertOrUpdateBlockForSlashMenu(editor, { type: 'table', content: buildTableContent(size) })
+    },
+    [editor]
+  )
+
+  const { templates: templateList, getTemplate } = useTemplates()
+  const [templateAnchor, setTemplateAnchor] = useState<TemplateAnchor | null>(null)
+
+  const insertTemplate = useCallback(
+    async (templateId: string, anchor: TemplateAnchor): Promise<void> => {
+      try {
+        const template = await getTemplate(templateId)
+        if (!template) {
+          toast.error(tRef.current('editor.slashMenu.insertTemplate.failed'))
+          return
+        }
+        const note = await fetchNote()
+        const result = await insertTemplateBlocks({
+          editor,
+          content: template.content,
+          noteTitle: note?.title ?? '',
+          referenceBlockId: anchor.blockId,
+          placement: anchor.placement,
+          notePath: note?.path
+        })
+        if (!result.ok) {
+          toast.error(
+            tRef.current(
+              result.reason === 'empty'
+                ? 'editor.slashMenu.insertTemplate.empty'
+                : 'editor.slashMenu.insertTemplate.failed'
+            )
+          )
+        }
+      } catch (err) {
+        log.error('Failed to insert template', err)
+        toast.error(
+          extractErrorMessage(err, tRef.current('editor.slashMenu.insertTemplate.failed'))
+        )
+      }
+    },
+    [editor, fetchNote, getTemplate]
+  )
+
+  // The note's overflow menu opens the same picker `/insert template` does, at
+  // the caret. When the editor was never focused there is no text cursor, so
+  // the last block anchors the insert and the template lands at the end.
+  useEffect(() => {
+    if (!openTemplateInsertRef) return undefined
+    openTemplateInsertRef.current = () => {
+      const blocks = editor.document
+      let anchor: TemplateAnchor | null = null
+      try {
+        anchor = {
+          blockId: editor.getTextCursorPosition().block.id,
+          placement: 'replace-if-empty'
+        }
+      } catch {
+        const lastId = blocks[blocks.length - 1]?.id
+        if (lastId) anchor = { blockId: lastId, placement: 'after' }
+      }
+      if (anchor) setTemplateAnchor(anchor)
+    }
+    return () => {
+      openTemplateInsertRef.current = null
+    }
+  }, [editor, openTemplateInsertRef])
+
+  useEffect(() => {
+    if (!flushMarkdownRef) return undefined
+    flushMarkdownRef.current = () => flushPendingMarkdown()
+    return () => {
+      flushMarkdownRef.current = null
+    }
+  }, [flushMarkdownRef, flushPendingMarkdown])
+
+  /**
+   * BlockNote's file panel, replaced outright.
+   *
+   * The stock panel offers an "Embed" tab that writes a remote URL onto the
+   * block — the content then lives outside the vault and renders as a broken
+   * box offline, the opposite of what an offline-first note app promises — and
+   * an "Upload" tab built on a bare `<input type="file">`, which the OS styles:
+   * the same note looks like three different apps on macOS, Windows and Linux.
+   *
+   * So the panel is one row that opens the same picker `/image` and `/pdf` do,
+   * narrowed to what this block can hold. Upload and the vault's own files are
+   * both in there, which is more than the stock panel offered anyway.
+   *
+   * Created once: `FilePanelController` remounts its `filePanel` whenever the
+   * component's identity changes, and `t` is not identity-stable. What the
+   * panel needs is read through a ref each render refreshes instead — the label
+   * already translated, so the i18n scanner can still see which namespace the
+   * key belongs to.
+   */
+  const filePanelLabel = t('editor.filePanel.choose')
+  const filePanelDeps = useRef({ editor, label: filePanelLabel, open: setAttachmentPicker })
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+  filePanelDeps.current = { editor, label: filePanelLabel, open: setAttachmentPicker }
+  const [VaultFilePanel] = useState(
+    () =>
+      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
+      function VaultFilePanelContent({ blockId }: FilePanelProps): React.ReactElement {
+        const deps = filePanelDeps.current
+        return (
+          <div className="bn-panel z-30 rounded-lg border bg-popover p-1 shadow-md">
+            <button
+              type="button"
+              data-testid="file-panel-choose"
+              className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-sm text-popover-foreground outline-none hover:bg-accent focus-visible:bg-accent"
+              onClick={() =>
+                deps.open({
+                  kind: attachmentKindForBlockType(deps.editor.getBlock(blockId)?.type),
+                  replaceBlockId: blockId
+                })
+              }
+            >
+              <Paperclip className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {deps.label}
+            </button>
+          </div>
+        )
+      }
+  )
+
+  const insertPickedAttachment = useCallback(
+    (result: InsertedAttachment): void => {
+      const block = buildInsertedAttachmentBlock(result)
+      // Opened from an empty media block: that block IS the placeholder the
+      // user is filling in, so inserting after it would leave the empty one
+      // behind with its panel still up.
+      const replaceBlockId = attachmentPicker?.replaceBlockId
+      if (replaceBlockId) {
+        editor.replaceBlocks([replaceBlockId], [block])
+        return
+      }
+      editor.insertBlocks([block], editor.getTextCursorPosition().block.id, 'after')
+    },
+    [editor, attachmentPicker]
+  )
+
+  // "Move to" from the block side menu: the picker names a target note, then
+  // the block's markdown is appended there BEFORE it is removed here. Ordering
+  // matters — a failed append must leave the block where it is rather than lose
+  // it, so the removal only runs once the IPC resolves.
+  const [moveBlockId, setMoveBlockId] = useState<string | null>(null)
+
+  const requestBlockMove = useCallback((blockId: string) => {
+    setMoveBlockId(blockId)
+  }, [])
+
+  const requestTemplateInsert = useCallback((anchor: TemplateAnchor) => {
+    setTemplateAnchor(anchor)
+  }, [])
+
+  const moveBlockToNote = useCallback(
+    async (targetNoteId: string): Promise<void> => {
+      const blockId = moveBlockId
+      if (!blockId || !noteId) return
+      const block = editor.getBlock(blockId)
+      if (!block) return
+
+      try {
+        // The canonical renderer serializer, so Memry's block markers (callout,
+        // bookmark, colors) survive the trip instead of being flattened.
+        // `serializeBlocksPreservingBlanks` is typed against BlockNote's default
+        // schema; the note editor's schema is a superset, so widen at the call.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        const markdown = await serializeBlocksPreservingBlanks(editor, [block] as never)
+        if (!markdown.trim()) return
+
+        const result = await window.api.notes.appendBlocks({
+          sourceNoteId: noteId,
+          targetNoteId,
+          markdown
+        })
+        if (!result?.success) {
+          throw new Error(result?.error ?? 'append failed')
+        }
+
+        // The tasks moved with their lines: they belong to the target note
+        // now, so the removal here must neither delete them nor ask about them.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+        const movedTaskIds = taskIdsInBlocks([block] as never)
+        markTaskRemovalsHandled(editor, movedTaskIds)
+        editor.removeBlocks([block])
+        for (const taskId of movedTaskIds) {
+          relinkTaskNotes(taskId, { unlink: noteId, link: targetNoteId }).catch((err: unknown) =>
+            log.warn('Failed to relink a moved task', { taskId, err })
+          )
+        }
+      } catch (err) {
+        toast.error(extractErrorMessage(err, tRef.current('editor.blockMenu.moveDialog.failed')))
+      } finally {
+        setMoveBlockId(null)
+      }
+    },
+    [editor, moveBlockId, noteId]
+  )
+
+  // ⌘D duplicates the block under the caret, matching the side menu's item.
+  // Registered as a ProseMirror keymap plugin so it only fires inside the
+  // editor and never steals the chord from the rest of the app.
+  useEffect(() => {
+    const plugin = new Plugin({
+      props: {
+        handleKeyDown: (_view, event) => {
+          const mod = isMac ? event.metaKey : event.ctrlKey
+          if (!mod || event.shiftKey || event.altKey || event.key.toLowerCase() !== 'd') {
+            return false
+          }
+          const blockId = editor.getTextCursorPosition?.()?.block?.id
+          if (!blockId) return false
+          event.preventDefault()
+          return duplicateBlock(editor, blockId)
+        }
+      }
+    })
+    return registerEditorPlugin(editor, plugin, (p, plugins) => [p, ...plugins])
+  }, [editor])
+
+  // A context-menu click on an image block opens the attachment menu (reveal /
+  // open / copy path — issue #1709). The built-in image block has no custom
+  // render to mount a trigger in, so the menu is a controlled dropdown anchored
+  // at the click point, and a hover "⋯" button floats over the image.
+  const [imageMenuTarget, setImageMenuTarget] = useState<ImageMenuTarget | null>(null)
+
+  // Right-click on a wiki-link chip: open it here, in a new tab or beside, or
+  // edit / copy / unlink it. The chip is `contenteditable="false"`, so the
+  // editor's own menu skips it.
+  const [wikiLinkMenu, setWikiLinkMenu] = useState<WikiLinkMenuTarget | null>(null)
+
+  const runWikiLinkMenuAction = useCallback(
+    (menu: WikiLinkMenuTarget, action: WikiLinkMenuAction) => {
+      const view = getLiveProseMirrorView(editor)
+      switch (action) {
+        case 'open':
+          onInternalLinkClickRef.current?.(menu.target)
+          return
+        case 'openInNewTab':
+          onInternalLinkClickRef.current?.(menu.target, 'newTab')
+          return
+        case 'openToTheSide':
+          onInternalLinkClickRef.current?.(menu.target, 'side')
+          return
+        case 'copy':
+          navigator.clipboard
+            .writeText(wikiLinkToText(menu.target, menu.alias))
+            .catch((err: unknown) =>
+              toast.error(extractErrorMessage(err, t('wikiLinkMenu.copyFailed')))
+            )
+          return
+        default:
+          break
+      }
+      // Edit and unlink act on the chip as it was when the menu opened; a remote
+      // edit since then may have moved or removed it.
+      const node = view?.state.doc.nodeAt(menu.pos)
+      if (!view || node?.type.name !== 'wikiLink' || node.attrs.target?.trim() !== menu.target)
+        return
+      view.focus()
+      if (action === 'edit') {
+        editWikiLinkAt(view, menu.pos, openWikiLinkSuggestions)
+        return
+      }
+      const label = menu.alias || menu.target
+      view.dispatch(
+        view.state.tr.replaceWith(menu.pos, menu.pos + node.nodeSize, view.state.schema.text(label))
+      )
+    },
+    [editor, openWikiLinkSuggestions, t]
+  )
+
+  // From a DOM element inside an image block to the block's raw stored props.
+  const resolveImageFromElement = useCallback(
+    (element: HTMLElement): { url: string; name: string; blockId: string } | null => {
+      const blockId = element.closest('[data-id]')?.getAttribute('data-id')
+      if (!blockId) return null
+
+      const block = editor.getBlock(blockId)
+      if (block?.type !== 'image') return null
+      const { url, name } = block.props as { url?: string; name?: string }
+      if (!url) return null
+
+      // The crop suffix (#3170) is storage; the menus show the real name.
+      const shown = parseImageCrop(name ?? '').name
+      return { url, name: shown || url.split('/').pop() || url, blockId }
+    },
+    [editor]
+  )
+
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null)
+  const handleEditorDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const img = (e.target as HTMLElement).closest('img')
+      if (!img) return
+      const image = resolveImageFromElement(img)
+      if (image) setLightbox({ src: img.currentSrc, alt: image.name })
+    },
+    [resolveImageFromElement]
+  )
+
+  // The rename dialog for an image lives HERE, not in the menu (#1714). Both
+  // image surfaces are rendered only while their menu is open or the pointer is
+  // over the image, so a dialog parented to them was unmounted by the very
+  // click that opened it — Rename looked like it did nothing at all.
+  const [imageRenameTarget, setImageRenameTarget] = useState<{
+    url: string
+    name: string
+    blockId: string
+  } | null>(null)
+
+  // An attachment rename (#1714) has already renamed the file on disk; the
+  // block's url has to follow, or the note keeps pointing at the old name.
+  const applyImageRename = useCallback(
+    (next: { url: string; name: string }): void => {
+      const blockId = imageRenameTarget?.blockId
+      if (!blockId) return
+      const block = editor.getBlock(blockId)
+      if (block?.type === 'image') {
+        // A rename keeps the image's crop (#3170), which rides in its name.
+        const { crop } = parseImageCrop((block.props as { name?: string }).name ?? '')
+        editor.updateBlock(block, {
+          props: { url: next.url, name: withImageCrop(next.name, crop) }
+        })
+      }
+      setImageRenameTarget(null)
+    },
+    [editor, imageRenameTarget]
+  )
+
+  // Owned here for the same reason as the rename dialog: the image menus
+  // unmount the moment they close. `src` is the picture the block already
+  // shows, so the dialog needs no second URL resolution.
+  const [imageCropTarget, setImageCropTarget] = useState<{
+    blockId: string
+    src: string
+    name: string
+    crop: ImageCrop | null
+  } | null>(null)
+
+  const requestImageCrop = useCallback(
+    (blockId: string): void => {
+      const block = editor.getBlock(blockId)
+      const image = containerRef.current?.querySelector<HTMLImageElement>(
+        `[data-id="${CSS.escape(blockId)}"] img.bn-visual-media`
+      )
+      if (block?.type !== 'image' || !image?.src) {
+        toast.error(t('editor.imageCrop.unavailable'))
+        return
+      }
+      const { name, crop } = parseImageCrop((block.props as { name?: string }).name ?? '')
+      setImageCropTarget({ blockId, src: image.src, name, crop })
+    },
+    [editor, t]
+  )
+
+  const applyImageCrop = useCallback(
+    (crop: ImageCrop | null): void => {
+      const blockId = imageCropTarget?.blockId
+      setImageCropTarget(null)
+      if (!blockId) return
+      const block = editor.getBlock(blockId)
+      if (block?.type !== 'image') return
+      const name = (block.props as { name?: string }).name ?? ''
+      editor.updateBlock(block, { props: { name: withImageCrop(name, crop) } })
+    },
+    [editor, imageCropTarget]
+  )
+
+  const { hoverTarget: imageHoverTarget, handleMenuOpenChange: handleImageHoverMenuOpenChange } =
+    useImageHoverMenu(containerRef, resolveImageFromElement)
+
+  // Writing tools: the note page's session decorates this editor and owns
+  // alternatives, ghosts and overflow (see writing-tools-session.ts).
+  useEffect(() => {
+    if (!writingTools || !yjsDoc) return undefined
+    const container = editorContainerRef.current
+    if (!container) return undefined
+    return writingTools.attach({ editor, doc: yjsDoc, container })
+  }, [editor, writingTools, yjsDoc])
+
+  // The editor's own right-click menu for text. Only the note page has one
+  // (it needs the writing tools session); every other surface keeps the
+  // native menu. Spelling suggestions only exist in main's `context-menu`
+  // event, so the menu claims that event and opens once main forwards them.
+  const [editorMenu, setEditorMenu] = useState<EditorMenuTarget | null>(null)
+  const pendingEditorMenuRef = useRef<{ x: number; y: number; timer: number } | null>(null)
+
+  // Read at open time, not at the click: on macOS the right-click selects the
+  // word under the pointer, and the editor may not have caught up with that
+  // selection change by the time the DOM event is handled.
+  const describeEditorMenu = useCallback(
+    (x: number, y: number, spelling: EditorContextMenuSpelling | null): EditorMenuTarget | null => {
+      const view = getLiveProseMirrorView(editor)
+      if (!view || !writingTools) return null
+      const { from, to, empty } = view.state.selection
+      const clickPos = view.posAtCoords({ left: x, top: y })?.pos ?? null
+      const hasSelection =
+        !empty && view.state.doc.textBetween(from, to, '\n', '\ufffc').trim().length > 0
+      const undoManager = (
+        yUndoPluginKey.getState(view.state) as { undoManager?: Y.UndoManager } | undefined
+      )?.undoManager
+      const ghostId =
+        (clickPos !== null ? writingTools.ghostAt(clickPos) : null) ??
+        (hasSelection ? writingTools.ghostAt(from, to) : null)
+      const alternativeId = hasSelection
+        ? writingTools.alternativeAt(from, to)
+        : clickPos !== null
+          ? writingTools.alternativeAt(clickPos)
+          : null
+      return {
+        x,
+        y,
+        from,
+        to,
+        clickPos,
+        hasSelection,
+        ghostId,
+        canAddAlternative:
+          alternativeId !== null || (hasSelection && isAlternativeRange(view, from, to)),
+        canComment: review?.onAddComment
+          ? hasSelection && view.state.doc.resolve(from).sameParent(view.state.doc.resolve(to))
+          : undefined,
+        canStash: hasSelection && isStashableRange(view.state.doc, from, to),
+        // Without a collaborative undo manager (no Y.Doc) BlockNote's own
+        // history answers instead, so both stay available.
+        canUndo: undoManager ? undoManager.undoStack.length > 0 : true,
+        canRedo: undoManager ? undoManager.redoStack.length > 0 : true,
+        spelling: spelling?.misspelledWord ? spelling : null
+      }
+    },
+    [editor, review?.onAddComment, writingTools]
+  )
+
+  const openPendingEditorMenu = useCallback(
+    (spelling: EditorContextMenuSpelling | null) => {
+      const pending = pendingEditorMenuRef.current
+      if (!pending) return
+      pendingEditorMenuRef.current = null
+      window.clearTimeout(pending.timer)
+      setEditorMenu(describeEditorMenu(pending.x, pending.y, spelling))
+    },
+    [describeEditorMenu]
+  )
+
+  useEffect(
+    () => writingToolsService.onEditorContextMenu((spelling) => openPendingEditorMenu(spelling)),
+    [openPendingEditorMenu]
+  )
+  useEffect(
+    () => () => {
+      const pending = pendingEditorMenuRef.current
+      if (pending) window.clearTimeout(pending.timer)
+    },
+    []
+  )
+
+  const openEditorMenu = useCallback(
+    (e: React.MouseEvent) => {
+      if (!writingTools || !editable) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = e.target as HTMLElement
+      const view = getLiveProseMirrorView(editor)
+      if (!view || !view.dom.contains(target)) return
+      // Form fields and non-editable islands inside blocks (task titles,
+      // embeds, widgets) keep their own menu.
+      if (target.closest('input, textarea, select, [contenteditable="false"]')) return
+
+      if (pendingEditorMenuRef.current) window.clearTimeout(pendingEditorMenuRef.current.timer)
+      const { clientX: x, clientY: y } = e
+      if (writingToolsService.claimEditorContextMenu()) {
+        // Not prevented: Chromium must still send `context-menu` to main,
+        // which answers with the spelling data instead of a native popup.
+        pendingEditorMenuRef.current = {
+          x,
+          y,
+          timer: window.setTimeout(() => openPendingEditorMenu(null), EDITOR_MENU_SPELLING_WAIT_MS)
+        }
+        return
+      }
+      e.preventDefault()
+      pendingEditorMenuRef.current = null
+      setEditorMenu(describeEditorMenu(x, y, null))
+    },
+    [describeEditorMenu, editable, editor, openPendingEditorMenu, writingTools]
+  )
+
+  const replaceSpelling = useCallback(
+    (menu: EditorMenuTarget, suggestion: string) => {
+      const view = getLiveProseMirrorView(editor)
+      const word = menu.spelling?.misspelledWord
+      if (!view || !word) return
+      const { doc } = view.state
+      let range: { from: number; to: number } | null = null
+      if (menu.to <= doc.content.size && doc.textBetween(menu.from, menu.to) === word) {
+        range = { from: menu.from, to: menu.to }
+      } else if (menu.clickPos !== null && menu.clickPos <= doc.content.size) {
+        const $pos = doc.resolve(menu.clickPos)
+        if ($pos.parent.isTextblock) {
+          const start = $pos.start()
+          const text = $pos.parent.textBetween(0, $pos.parent.content.size, undefined, '\ufffc')
+          const hit = findWordAt(text, menu.clickPos - start, word)
+          if (hit) range = { from: start + hit.start, to: start + hit.end }
+        }
+      }
+      if (!range) return
+      view.dispatch(view.state.tr.insertText(suggestion, range.from, range.to))
+      view.focus()
+    },
+    [editor]
+  )
+
+  const runEditorMenuAction = useCallback(
+    (menu: EditorMenuTarget, action: EditorMenuAction) => {
+      const view = getLiveProseMirrorView(editor)
+      if (!view || !writingTools) return
+      const restoreSelection = (): void => {
+        view.focus()
+        const { selection, doc } = view.state
+        if (menu.to > doc.content.size) return
+        if (selection.from === menu.from && selection.to === menu.to) return
+        view.dispatch(view.state.tr.setSelection(TextSelection.create(doc, menu.from, menu.to)))
+      }
+      const at = menu.hasSelection
+        ? { from: menu.from, to: menu.to }
+        : { from: menu.clickPos ?? menu.from, to: menu.clickPos ?? menu.from }
+
+      switch (action) {
+        case 'cut':
+        case 'copy':
+          // ProseMirror's own cut/copy handlers serialize the slice, and a cut
+          // goes through the same task-aware path as ⌘X.
+          restoreSelection()
+          // oxlint-disable-next-line typescript/no-deprecated -- no replacement: execCommand is the only way to run the editor's own cut/copy handlers from this menu
+          document.execCommand(action)
+          return
+        case 'selectAll':
+          view.focus()
+          view.dispatch(view.state.tr.setSelection(new AllSelection(view.state.doc)))
+          return
+        case 'undo':
+          view.focus()
+          editor.undo()
+          return
+        case 'redo':
+          view.focus()
+          editor.redo()
+          return
+        case 'paste':
+          restoreSelection()
+          pasteClipboardIntoEditor(view, editor).catch((err: unknown) =>
+            toast.error(extractErrorMessage(err, t('writingTools.menu.clipboardFailed')))
+          )
+          return
+        case 'comment':
+          restoreSelection()
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+          review?.onAddComment?.(getEditorSelectionFromState(editor as BlockNoteEditor, view.state))
+          return
+        case 'addAlternative':
+          writingTools.startAlternative(at.from, at.to)
+          return
+        case 'suggestAlternatives': {
+          const toastId = toast.loading(t('writingTools.alternatives.suggesting'))
+          writingTools
+            .suggestAlternatives(at.from, at.to)
+            .then((count) => {
+              toast.dismiss(toastId)
+              if (count === 0) toast(t('writingTools.alternatives.noSuggestions'))
+            })
+            .catch((err: unknown) =>
+              toast.error(extractErrorMessage(err, t('writingTools.alternatives.suggestFailed')), {
+                id: toastId
+              })
+            )
+          return
+        }
+        case 'ghost':
+          writingTools.ghost(menu.from, menu.to)
+          return
+        case 'revive':
+          if (menu.ghostId) writingTools.revive(menu.ghostId)
+          return
+        case 'stash':
+          writingTools.stash(menu.from, menu.to)
+          return
+        case 'addToDictionary':
+          if (menu.spelling) {
+            void writingToolsService
+              .addWordToDictionary(menu.spelling.misspelledWord)
+              .catch((err: unknown) => log.warn('Failed to add a word to the dictionary', err))
+          }
+          return
+      }
+    },
+    [editor, review, t, writingTools]
+  )
+
+  // Actions run after the menu has closed and let go of focus, so the editor
+  // can take it back (the menu's focus trap would pull it away mid-close).
+  const handleEditorMenuAction = useCallback(
+    (action: EditorMenuAction) => {
+      const menu = editorMenu
+      setEditorMenu(null)
+      if (menu) window.setTimeout(() => runEditorMenuAction(menu, action), 0)
+    },
+    [editorMenu, runEditorMenuAction]
+  )
+
+  const handleEditorMenuSpelling = useCallback(
+    (suggestion: string) => {
+      const menu = editorMenu
+      setEditorMenu(null)
+      if (menu) window.setTimeout(() => replaceSpelling(menu, suggestion), 0)
+    },
+    [editorMenu, replaceSpelling]
+  )
+
+  const handleEditorContextMenu = useCallback(
+    (e: React.MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = e.target as HTMLElement
+
+      const checkListBlock = target.closest('[data-content-type="checkListItem"]')
+      if (checkListBlock) {
+        const blockId = checkListBlock.closest('[data-id]')?.getAttribute('data-id')
+        if (!blockId) return
+
+        const block = editor.getBlock(blockId)
+        if (block?.type !== 'checkListItem' || !runSideEffects) return
+
+        e.preventDefault()
+        convertCheckboxToTask(blockId)
+        return
+      }
+
+      const view = getLiveProseMirrorView(editor)
+      const chip = view ? wikiLinkAtCoords(view, e.clientX, e.clientY) : null
+      if (chip) {
+        e.preventDefault()
+        const alias = typeof chip.node.attrs.alias === 'string' ? chip.node.attrs.alias : ''
+        setWikiLinkMenu({
+          x: e.clientX,
+          y: e.clientY,
+          pos: chip.pos,
+          target: chip.target,
+          alias,
+          display: wikiLinkDisplayAt(view!.state.doc, chip.pos)
+        })
+        return
+      }
+
+      if (target.closest('img')) {
+        const image = resolveImageFromElement(target)
+        if (!image) return
+
+        e.preventDefault()
+        setImageMenuTarget({
+          x: e.clientX,
+          y: e.clientY,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+          src: (target.closest('img') as HTMLImageElement).currentSrc,
+          ...image
+        })
+        return
+      }
+
+      openEditorMenu(e)
+    },
+    [editor, convertCheckboxToTask, resolveImageFromElement, runSideEffects, openEditorMenu]
+  )
+
+  // Backspace-at-start guard for taskBlock neighbours.
+  //
+  // Without this, pressing Backspace at column 0 of a paragraph that sits
+  // directly below a taskBlock falls through to ProseMirror's default
+  // backspace handler. taskBlock declares `content: 'none'` and renders
+  // contentEditable={false}, so PM can't merge text into it — instead it
+  // *deletes* the entire previous node. If that node is a parent taskBlock,
+  // its subtask children get cascaded too: from the user's perspective the
+  // whole task list above the cursor disappears with one keypress.
+  //
+  // Fix: intercept Backspace BEFORE PM, locate the visually-previous
+  // taskBlock (diving into children[] when the previous top-level block
+  // hosts subtasks), and focus its title input via the renderer's
+  // clickable-title button. The user can then continue deleting characters
+  // from the task title; once that title is empty, the renderer's own
+  // Backspace branch (added in task-block-renderer.tsx) takes the block
+  // down cleanly.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return undefined
+
+    const findPreviousTaskBlock = (currentBlockId: string): any => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      const doc = editor.document as any[]
+      const idx = doc.findIndex((b: any) => b.id === currentBlockId)
+      if (idx <= 0) return null
+      let candidate: any = doc[idx - 1]
+      // Walk into children to find the visually-last task block. A parent
+      // taskBlock with subtasks renders its children below itself, so the
+      // visually-previous block is the deepest last child, not the parent.
+      while (candidate?.children?.length) {
+        const lastChild = candidate.children[candidate.children.length - 1]
+        if (!lastChild) break
+        candidate = lastChild
+      }
+      return candidate?.type === 'taskBlock' ? candidate : null
+    }
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (e.key !== 'Backspace') return
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return
+
+      // Skip when the keypress originated in a regular HTML control (the
+      // taskBlock title input or any other input/textarea) — those have
+      // their own Backspace semantics handled inside the renderer.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = e.target as HTMLElement | null
+      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) return
+      // Nor from a whiteboard: that Backspace deletes a shape, and the caret it
+      // would be read against is wherever the note last left it.
+      if (isFromWhiteboard(e)) return
+
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      const tiptap = (editor as any)._tiptapEditor
+      if (!tiptap) return
+      const sel = tiptap.state.selection
+      if (!sel?.empty) return
+      // Cursor must be at the very start of its parent text block.
+      if (sel.$from.parentOffset !== 0) return
+
+      const cursor = editor.getTextCursorPosition()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      const currentBlock = cursor?.block as any
+      if (!currentBlock) return
+      // The taskBlock's own renderer handles its own Backspace path.
+      if (currentBlock.type === 'taskBlock') return
+
+      const prevTaskBlock = findPreviousTaskBlock(currentBlock.id)
+      if (!prevTaskBlock) return
+
+      const blockEl = container.querySelector<HTMLElement>(`[data-id="${prevTaskBlock.id}"]`)
+      if (!blockEl) return
+      // The clickable title button inside the renderer flips
+      // isEditingTitle → true, which triggers a focus effect that places
+      // the cursor at the end of the title input.
+      const clickable = blockEl.querySelector<HTMLElement>('[data-task-title-trigger]')
+      if (!clickable) return
+
+      e.preventDefault()
+      e.stopPropagation()
+      clickable.click()
+    }
+
+    container.addEventListener('keydown', handleKeyDown, true)
+    return () => container.removeEventListener('keydown', handleKeyDown, true)
+  }, [editor])
+
+  // Turns the editor's block tree into task side effects: checkbox → task
+  // conversion, draft taskBlock creation, subtask re-parenting and deletes.
+  // A non-owner editor (a sibling on the same note in this window, R17) must
+  // not run it — exactly one editor owns task auto-conversion.
+  const applyTaskIntents = (
+    changes?: ReadonlyArray<{ type: string; block: { id: string } }>
+  ): void => {
+    if (!runSideEffects) return
+
+    // A remote change carries edits another editor made and will act on
+    // itself: record which blocks it touched, keep the task-id baseline
+    // current so its deletes are not replayed here, and do nothing else.
+    if (isRemoteUpdateRef?.current) {
+      for (const change of changes ?? []) {
+        if (change.type === 'delete') remoteAuthoredBlocksRef.current.delete(change.block.id)
+        else remoteAuthoredBlocksRef.current.add(change.block.id)
+      }
+      knownTaskBlockIdsRef.current = analyzeTaskIntents(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        editor.document as any[],
+        dismissedBlocksRef.current
+      ).currentTaskIds
+      return
+    }
+    for (const change of changes ?? []) remoteAuthoredBlocksRef.current.delete(change.block.id)
+
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+    const intents = analyzeTaskIntents(editor.document as any[], taskIntentExclusions(), {
+      openedBlockIds: openedBlockIdsRef.current,
+      convertChecklists,
+      nestedSubtasks
+    })
+
+    // Both paths convert in the same change that produced the checkbox, so a
+    // `- [ ]` line never renders as a plain checkbox first. Tab-to-subtask is
+    // handled by the taskBlock title input (see task-block-renderer).
+    if (intents.subtaskCandidate) {
+      convertCheckboxToSubtask(
+        intents.subtaskCandidate.blockId,
+        intents.subtaskCandidate.parentTaskId
+      )
+    } else if (intents.standaloneCandidate) {
+      convertCheckboxToTask(intents.standaloneCandidate.blockId, true)
+    } else if (intents.emptyCheckbox) {
+      // A bare `- [ ]` shows as a draft taskBlock immediately. No row is
+      // created: the draft path below creates it once a title is typed, and
+      // an empty draft is removed by Backspace/Enter in the title input.
+      const empty = editor.getBlock(intents.emptyCheckbox.blockId)
+      if (empty) {
+        editor.updateBlock(empty, {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+          type: 'taskBlock' as any,
+          props: {
+            taskId: '',
+            title: '',
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+            checked: !!(empty.props as any)?.checked,
+            parentTaskId: intents.emptyCheckbox.parentTaskId
+          }
+        })
+      }
+    }
+
+    if (intents.draftTaskBlock) {
+      createTaskForDraftBlock(intents.draftTaskBlock.blockId, intents.draftTaskBlock.title)
+    }
+
+    // Tab-indented (demote): a top-level taskBlock that became a
+    // child of another taskBlock via Tab. Wire up parentTaskId in the
+    // block prop AND in the DB row.
+    for (const demoted of intents.demotedTaskBlocks) {
+      const block = editor.getBlock(demoted.blockId)
+      if (!block) continue
+      editor.updateBlock(block, {
+        props: { ...block.props, parentTaskId: demoted.newParentTaskId }
+      })
+      // A task listed under its top-level task may sit deeper in the DB
+      // (MAX_NOTE_TASK_DEPTH). The DB parent owns that; only a task not yet
+      // under the new tree parent moves.
+      if (taskDepthBelow(demoted.taskId, demoted.newParentTaskId, taskParentsRef.current)) continue
+      void tasksService.update({
+        id: demoted.taskId,
+        parentId: demoted.newParentTaskId
+      })
+    }
+
+    // Shift+Tab promoted: a top-level taskBlock that still carries a
+    // stale parentTaskId. Clear both block prop and DB linkage.
+    for (const orphan of intents.unindentedTaskBlocks) {
+      const block = editor.getBlock(orphan.blockId)
+      if (!block) continue
+      editor.updateBlock(block, {
+        props: { ...block.props, parentTaskId: '' }
+      })
+      void tasksService.update({ id: orphan.taskId, parentId: null })
+    }
+
+    const removedTaskIds = [...knownTaskBlockIdsRef.current].filter(
+      (taskId) => !intents.currentTaskIds.has(taskId)
+    )
+    for (const taskId of intents.currentTaskIds) {
+      // Undo put back a block whose task was kept off this note: link it again.
+      if (!knownTaskBlockIdsRef.current.has(taskId) && unlinkedTaskIdsRef.current.delete(taskId)) {
+        relinkTask(taskId, { link: noteId })
+      }
+    }
+    knownTaskBlockIdsRef.current = intents.currentTaskIds
+    handleRemovedTasks(removedTaskIds)
+    markPlainByContext(intents.plainByContext)
+  }
+
+  // Enter in a plain list, or Tab under a plain checkbox: the new checkbox is
+  // plain too. Kept off the undo stack, or undo would take the flag off and the
+  // next change would put it straight back, and the user could never undo past
+  // it.
+  const markPlainByContext = (blockIds: string[]): void => {
+    if (blockIds.length === 0) return
+    const apply = (): void => {
+      for (const blockId of blockIds) {
+        const block = editor.getBlock(blockId)
+        if (block?.type === 'checkListItem') {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+          editor.updateBlock(block, { props: { plain: true } as any })
+        }
+      }
+    }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+    if (typeof (editor as any).transact !== 'function') {
+      apply()
+      return
+    }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+    ;(editor as any).transact((tr: any) => {
+      tr.setMeta?.('addToHistory', false)
+      apply()
+    })
+  }
+
+  // The block a removed task was converted from, when the removal is that
+  // conversion being undone: the checkbox is back (or, one undo step in, the
+  // task block has lost its id). Null for anything else, a deleted block
+  // included, which is asked about like any other removal.
+  const undoneConversionBlock = (taskId: string): string | null => {
+    for (const [blockId, converted] of convertedCheckboxesRef.current) {
+      if (converted.taskId !== taskId) continue
+      const block = editor.getBlock(blockId)
+      if (block?.type === 'checkListItem') return blockId
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block props are typed per block type; the taskBlock/checkListItem schema defines this prop
+      if (block?.type === 'taskBlock' && !(block.props as any)?.taskId) return blockId
+      return null
+    }
+    return null
+  }
+
+  // Undo of a conversion ends on a plain checkbox, and the task it made is
+  // deleted without asking: undo means it should never have existed.
+  const settleUndoneConversion = (blockId: string, taskId: string): void => {
+    const converted = convertedCheckboxesRef.current.get(blockId)
+    convertedCheckboxesRef.current.delete(blockId)
+    const block = editor.getBlock(blockId)
+    if (block?.type === 'taskBlock') {
+      editor.updateBlock(block, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        type: 'checkListItem' as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        props: { checked: !!(block.props as any)?.checked, plain: true } as any,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        content: converted?.content as any
+      })
+    } else {
+      keepCheckboxPlain(blockId)
+    }
+    discardTask(taskId)
+  }
+
+  // The task stays; this note just stops being one of its linked notes.
+  const keepTaskOffNote = (taskId: string): void => {
+    unlinkedTaskIdsRef.current.add(taskId)
+    relinkTask(taskId, { unlink: noteId })
+  }
+
+  // Every task id that left the document in one change. See task-removal.ts
+  // for the three outcomes.
+  const handleRemovedTasks = (taskIds: string[]): void => {
+    const asked: string[] = []
+    for (const taskId of taskIds) {
+      if (takeHandledTaskRemoval(editor, taskId)) continue
+      const undoneFrom = undoneConversionBlock(taskId)
+      if (undoneFrom) settleUndoneConversion(undoneFrom, taskId)
+      else if (cutInProgressRef.current) keepTaskOffNote(taskId)
+      else asked.push(taskId)
+    }
+    if (asked.length === 0) return
+    pendingRemovalRef.current = [...new Set([...pendingRemovalRef.current, ...asked])]
+    setPendingRemovalCount(pendingRemovalRef.current.length)
+  }
+
+  const takePendingRemoval = (): string[] => {
+    const taskIds = pendingRemovalRef.current
+    pendingRemovalRef.current = []
+    setPendingRemovalCount(0)
+    return taskIds
+  }
+
+  const keepRemovedTasks = (): void => {
+    for (const taskId of takePendingRemoval()) keepTaskOffNote(taskId)
+  }
+
+  const deleteRemovedTasks = (): void => {
+    const taskIds = takePendingRemoval()
+    if (taskIds.length === 0) return
+    tasksService
+      .bulkDelete(taskIds)
+      .then((result) => {
+        if (!result.success) toast.error(result.error ?? t('editor.taskRemoval.deleteFailed'))
+      })
+      .catch((err: unknown) =>
+        toast.error(extractErrorMessage(err, t('editor.taskRemoval.deleteFailed')))
+      )
+  }
+
+  // Cut removes the selection in the same synchronous dispatch that fires the
+  // `cut` event, so the flag only has to outlive that one turn. Capture phase:
+  // this container sits above ProseMirror's own listener.
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return undefined
+    const onCut = (): void => {
+      cutInProgressRef.current = true
+      setTimeout(() => {
+        cutInProgressRef.current = false
+      }, 0)
+    }
+    container.addEventListener('cut', onCut, true)
+    return () => container.removeEventListener('cut', onCut, true)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
+  }, [editor])
+
+  // The content a note opens with never reaches `onChange`. y-prosemirror
+  // (1.3, BlockNote 0.52+) renders the Y.Doc into ProseMirror synchronously
+  // while the view mounts, and the view mounts from a ref callback, before
+  // BlockNoteView's effect has subscribed `onChange`. Older y-prosemirror
+  // deferred that first render a tick, so the subscription caught it. Without
+  // this scan, a checkbox that arrived with the file (an Obsidian Tasks line)
+  // stays a plain checkbox until the user happens to type in the note.
+  //
+  // It also records which blocks the note opened with: those convert like any
+  // other checkbox, even under a plain one (see `TaskIntentOptions`).
+  const scanOpenedContent = useEffectEvent(() => {
+    openedBlockIdsRef.current = collectBlockIds(editor.document)
+    applyTaskIntents()
+  })
+  useEffect(() => {
+    scanOpenedContent()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- listed deps are intentional re-run triggers that the body does not read
+  }, [editor])
+
+  // Conversion turning on, once the setting is read or when the owner switches
+  // it on, converts what the note already holds, as opening it would have.
+  const scanWithConversion = useEffectEvent(() => applyTaskIntents())
+  useEffect(() => {
+    if (convertChecklists) scanWithConversion()
+  }, [convertChecklists])
+
+  const reportAIUnavailable = (): void => {
+    if (!aiError) return
+    toast.error(aiError, { action: { label: tCommon('button.retry'), onClick: retryAI } })
+  }
+  const reportAIUnavailableRef = useRef(reportAIUnavailable)
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+  reportAIUnavailableRef.current = reportAIUnavailable
+
+  // Cmd/Ctrl+J is the AI shortcut. Once the AI server failed to start no
+  // extension handles it, so say why instead of doing nothing.
+  useEffect(() => {
+    if (!aiEnabled || !aiError) return undefined
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault()
+        reportAIUnavailableRef.current()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [aiEnabled, aiError])
+
+  // What the `/` menu offers when nothing matches: the query is handed on
+  // rather than thrown away.
+  const slashMenuFallbacks: SlashMenuFallbacks = {
+    // Same hand-over as the `Link to note` row, with the query already typed
+    // into the `[[` search.
+    linkToNote: (query) => {
+      editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+        deleteTriggerCharacter: true
+      })
+      editor.insertInlineContent(query)
+    },
+    askAI: aiEnabled
+      ? aiReady
+        ? () => getAISlashMenuItems(editor)[0]?.onItemClick()
+        : aiError
+          ? reportAIUnavailable
+          : null
+      : null
+  }
+
+  // Memry's `file` block renders its own URL, so BlockNote's resolver never
+  // reaches it. Handing the same resolver down the tree is what lets a
+  // note-relative PDF/attachment ref load — see `note-file-url-context`.
+  return (
+    <NoteFileUrlProvider resolveFileUrl={resolveFileUrl} noteId={noteId}>
+      {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
+      <div
+        ref={containerRef}
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
+        role="region"
+        aria-label={t('editor.content.regionAria')}
+        className={cn('content-area h-full flex flex-col relative', className)}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragging && dropTarget && (
+          <BlockDropIndicator dropTarget={dropTarget} containerRef={containerRef} />
+        )}
+        {isDragging && !dropTarget && <EmptyDocumentDropIndicator />}
+
+        {yjsFragment && <BodySyncPendingHint fragment={yjsFragment} />}
+
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control */}
+        <div
+          ref={setEditorContainerRef}
+          className={cn(
+            'bn-container flex-1 min-h-[300px] relative',
+            stickyToolbar && 'sticky-toolbar-enabled'
+          )}
+          role="application"
+          aria-label={t('editor.content.richTextAria')}
+          onContextMenu={handleEditorContextMenu}
+          onDoubleClick={handleEditorDoubleClick}
+        >
+          {!marqueeZoneEl && (
+            <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />
+          )}
+          {editorMenu && (
+            <EditorContextMenu
+              x={editorMenu.x}
+              y={editorMenu.y}
+              entries={editorContextMenuEntries({
+                hasSelection: editorMenu.hasSelection,
+                canUndo: editorMenu.canUndo,
+                canRedo: editorMenu.canRedo,
+                canStash: editorMenu.canStash,
+                canAddAlternative: editorMenu.canAddAlternative,
+                canComment: editorMenu.canComment,
+                aiEnabled,
+                insideGhost: editorMenu.ghostId !== null,
+                spelling: editorMenu.spelling
+              })}
+              onAction={handleEditorMenuAction}
+              onReplaceSpelling={handleEditorMenuSpelling}
+              onClose={() => setEditorMenu(null)}
+            />
+          )}
+          {wikiLinkMenu && (
+            <WikiLinkContextMenu
+              x={wikiLinkMenu.x}
+              y={wikiLinkMenu.y}
+              target={wikiLinkMenu.target}
+              editable={editable}
+              display={wikiLinkMenu.display}
+              onClose={() => {
+                setWikiLinkMenu(null)
+                // The panel stays open across changes, so the editor takes focus back
+                // only when the menu closes. Focusing it per change would pull focus
+                // out of the panel and Radix would close it.
+                getLiveProseMirrorView(editor)?.focus()
+              }}
+              onDisplayChange={(patch) => {
+                const menu = wikiLinkMenu
+                const view = getLiveProseMirrorView(editor)
+                if (view) setWikiLinkDisplayAt(view, menu.pos, menu.target, patch)
+              }}
+              onAction={(action) => {
+                const menu = wikiLinkMenu
+                setWikiLinkMenu(null)
+                // After the menu lets go of focus, so the editor can take it.
+                window.setTimeout(() => runWikiLinkMenuAction(menu, action), 0)
+              }}
+            />
+          )}
+          {imageMenuTarget && (
+            <ImageAttachmentMenu
+              target={imageMenuTarget}
+              onClose={() => setImageMenuTarget(null)}
+              onRequestRename={() => {
+                setImageRenameTarget(imageMenuTarget)
+                setImageMenuTarget(null)
+              }}
+              onRequestView={() => {
+                setLightbox({ src: imageMenuTarget.src, alt: imageMenuTarget.name })
+                setImageMenuTarget(null)
+              }}
+              onRequestCrop={
+                editable
+                  ? () => {
+                      requestImageCrop(imageMenuTarget.blockId)
+                      setImageMenuTarget(null)
+                    }
+                  : undefined
+              }
+            />
+          )}
+          {templateAnchor && (
+            <TemplateSelector
+              isOpen
+              applyMode
+              onClose={() => setTemplateAnchor(null)}
+              onSelect={(templateId) => {
+                setTemplateAnchor(null)
+                if (templateId) void insertTemplate(templateId, templateAnchor)
+              }}
+            />
+          )}
+          <TableSizePicker
+            anchorRect={tablePickerAnchor}
+            onPick={insertTableOfSize}
+            onClose={closeTableSizePicker}
+          />
+          {attachmentPicker && noteId && (
+            <AttachmentPickerDialog
+              open
+              onOpenChange={(open) => !open && setAttachmentPicker(null)}
+              noteId={noteId}
+              kind={attachmentPicker.kind}
+              defaultPdfDisplay={editorSettings.pdfDisplayMode}
+              onInsert={insertPickedAttachment}
+            />
+          )}
+          <TaskRemovalDialog
+            count={pendingRemovalCount}
+            onKeep={keepRemovedTasks}
+            onDelete={deleteRemovedTasks}
+          />
+          {moveBlockId && noteId && (
+            <MoveBlockDialog
+              open
+              onOpenChange={(open) => !open && setMoveBlockId(null)}
+              currentNoteId={noteId}
+              onSelect={(targetNoteId) => void moveBlockToNote(targetNoteId)}
+            />
+          )}
+          {lightbox && (
+            <ImageLightbox
+              src={lightbox.src}
+              alt={lightbox.alt}
+              onClose={() => setLightbox(null)}
+            />
+          )}
+          {imageRenameTarget && (
+            <AttachmentRenameFlow
+              url={imageRenameTarget.url}
+              name={imageRenameTarget.name}
+              open
+              onOpenChange={(open) => !open && setImageRenameTarget(null)}
+              onRenamed={applyImageRename}
+            />
+          )}
+          {imageCropTarget && (
+            <ImageCropDialog
+              src={imageCropTarget.src}
+              name={imageCropTarget.name}
+              crop={imageCropTarget.crop}
+              onOpenChange={(open) => !open && setImageCropTarget(null)}
+              onApply={applyImageCrop}
+            />
+          )}
+          {imageHoverTarget && !imageMenuTarget && (
+            <ImageHoverMenuButton
+              target={imageHoverTarget}
+              onOpenChange={handleImageHoverMenuOpenChange}
+              onRequestRename={() => setImageRenameTarget(imageHoverTarget)}
+              onRequestCrop={
+                editable ? () => requestImageCrop(imageHoverTarget.blockId) : undefined
+              }
+            />
+          )}
+          <BlockNoteView
+            editor={editor}
+            editable={editable}
+            onChange={(_editor, context): void => {
+              handleChange()
+              applyTaskIntents(context.getChanges())
+            }}
+            theme={editorTheme}
+            shadCNComponents={blockNoteShadCNComponents}
+            formattingToolbar={false}
+            slashMenu={false}
+            emojiPicker={false}
+            filePanel={false}
+            linkToolbar={false}
+            // `BlockSideMenuController` below replaces the stock side menu.
+            // Left on, BlockNote renders its own on top and the default
+            // AddBlockButton's icon intercepts clicks meant for our drag handle.
+            sideMenu={false}
+            // BlockNote anchors its row/column handles with floating-ui beside
+            // the table, never on it. `TableBorderHandles` below draws ours on
+            // the cell borders instead and opens the same menus from them.
+            // Turning this off also removes the add/remove row+column extend
+            // buttons and row/column drag-to-reorder, which the bars do not
+            // carry yet.
+            tableHandles={false}
+          >
+            {/* Memry's toolbar on every surface, review or not: BlockNote's stock
+              one has no list toggles, so the template editor used to be the odd
+              one out with no visible way to turn selected lines into a list. */}
+            {stickyToolbar ? (
+              <ReviewFormattingToolbar
+                variant="sticky"
+                onAddComment={review?.onAddComment}
+                onStickyChange={onStickyToolbarChange}
+              />
+            ) : (
+              <ReviewFormattingToolbarController
+                onAddComment={review?.onAddComment}
+                onStickyChange={onStickyToolbarChange}
+              />
+            )}
+            {/* Memry's block menu: BlockNote's stock drag-handle menu carries
+              only Delete + Colors. This one keeps both and adds Turn into,
+              Duplicate, Move to and Comment. */}
+            {/* BlockNote pins the drag/plus handle flush against the block's
+              inline start (`placement: 'left-start'`, no offset), which is
+              exactly where the bullet-fold chevron sits. Both appear on the
+              same hover, so the handle moves over by the width of the gutter
+              the chevron claims. Written out rather than imported from
+              `@floating-ui/react`: floating-ui is BlockNote's dependency, not
+              this app's, and a middleware is just a named `fn`. */}
+            <BlockSideMenuController
+              onAddComment={review?.onAddComment}
+              onRequestMove={requestBlockMove}
+              onRequestInsertTemplate={requestTemplateInsert}
+              floatingUIOptions={{
+                useFloatingOptions: { middleware: [BULLET_FOLD_HANDLE_OFFSET] }
+              }}
+            />
+            {aiEnabled && aiReady && <AIMenuController aiMenu={CustomAIMenu} />}
+            <FilePanelController filePanel={VaultFilePanel} />
+            <PortalFlowsLayer
+              noteId={noteId}
+              notePath={notePath}
+              editable={editable}
+              ancestry={portalAncestry}
+            />
+            <LinkAddressToolbarController />
+            <SlashMenuFallbackContext value={slashMenuFallbacks}>
+              <SuggestionMenuController<(query: string) => Promise<SlashMenuItem[]>>
+                triggerCharacter="/"
+                suggestionMenuComponent={SlashMenu}
+                onItemClick={(item: SlashMenuItem) => {
+                  recordSlashMenuRecent(item.id)
+                  item.onItemClick()
+                }}
+                getItems={async (query): Promise<SlashMenuItem[]> => {
+                  // An image BLOCK cannot live in a table cell: BlockNote puts it
+                  // after the whole table and takes the caret with it, leaving the
+                  // cell empty (#1640). Same row, same label — inside a cell it
+                  // picks a file and inserts the inline node instead.
+                  const inCell = isSelectionInTableCell(editor)
+                  const defaults = getDefaultReactSlashMenuItems(editor)
+                    // Plain headings already fold their section (bullet-collapse-plugin),
+                    // so the toggle variants are not offered. Existing toggle headings
+                    // in notes keep working.
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
+                    .filter((item) => !(item as { key?: string }).key?.startsWith('toggle_heading'))
+                    .map((item) => {
+                      // Same reasoning for `/check`: `checkListItem` is a BLOCK,
+                      // so inside a cell BlockNote puts the checklist after the
+                      // whole table. Inside a cell the item inserts the inline
+                      // node at the caret instead — same row, same label.
+                      //
+                      // Outside a cell the row makes a PLAIN checkbox: picking
+                      // "Check List" from a menu is asking for a checkbox, and
+                      // the task is one ⌘Enter away (`As linked task`). Typing
+                      // `[] ` is still the quick way to a task.
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
+                      if ((item as { key?: string }).key === 'check_list') {
+                        return inCell
+                          ? {
+                              ...item,
+                              onItemClick: () =>
+                                editor.insertInlineContent([createInlineCheckboxContent(false)])
+                            }
+                          : {
+                              ...item,
+                              onItemClick: () =>
+                                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the slash menu insert takes the schema's block shape, which a literal cannot name
+                                insertOrUpdateBlockForSlashMenu(editor, {
+                                  type: 'checkListItem',
+                                  props: { plain: true }
+                                } as any)
+                            }
+                      }
+                      // Every attachment command opens the same picker (#2161).
+                      // BlockNote's own items insert an empty block and pop the
+                      // file panel, which can only upload — so a file already in
+                      // the vault had to be found through a separate "existing
+                      // attachment" command the user had to know existed. The
+                      // picker offers upload and the vault's own files together,
+                      // narrowed to the kind that was asked for.
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
+                      const key = (item as { key?: string }).key
+                      if (key === 'table') {
+                        return { ...item, onItemClick: openTableSizePicker }
+                      }
+                      if (key === 'image') {
+                        // `img` and `picture` already ship as image aliases;
+                        // `photo` did not, and is what people actually type.
+                        const withPhoto = {
+                          ...item,
+                          aliases: [...(item.aliases ?? []), 'photo']
+                        }
+                        return inCell
+                          ? { ...withPhoto, onItemClick: pickImageForCell }
+                          : {
+                              ...withPhoto,
+                              onItemClick: () => openAttachmentPicker('image')
+                            }
+                      }
+                      if (key === 'video' || key === 'audio') {
+                        return {
+                          ...item,
+                          onItemClick: () => openAttachmentPicker('media')
+                        }
+                      }
+                      if (key === 'file') {
+                        return {
+                          ...item,
+                          aliases: [...(item.aliases ?? []), 'attachment', 'upload'],
+                          onItemClick: () => openAttachmentPicker('file')
+                        }
+                      }
+                      return item
+                    })
+                  // `/pdf` and `/media` are the same item as `/file` — same
+                  // picker, same insert — relabelled and pre-narrowed, because
+                  // "attach a PDF" or "add a picture or a video" is what people
+                  // are actually after and neither word matched anything before.
+                  const fileItem = defaults.find(
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
+                    (item) => (item as { key?: string }).key === 'file'
+                  )
+                  const kindItems = fileItem
+                    ? [
+                        {
+                          ...fileItem,
+                          key: 'pdf',
+                          title: t('editor.slashMenu.pdf.title'),
+                          subtext: t('editor.slashMenu.pdf.subtext'),
+                          aliases: ['pdf', 'document'],
+                          onItemClick: () => openAttachmentPicker('pdf')
+                        },
+                        {
+                          ...fileItem,
+                          key: 'media',
+                          title: t('editor.slashMenu.media.title'),
+                          subtext: t('editor.slashMenu.media.subtext'),
+                          // No `photo`/`picture` here: both are already image aliases, and a
+                          // second row under the same word makes the user choose
+                          // between two things that do the same thing.
+                          aliases: ['media', 'video', 'audio', 'movie'],
+                          onItemClick: () => openAttachmentPicker('media')
+                        },
+                        {
+                          ...fileItem,
+                          key: 'html',
+                          title: t('editor.slashMenu.html.title'),
+                          subtext: t('editor.slashMenu.html.subtext'),
+                          aliases: ['html', 'htm', 'webpage', 'embed'],
+                          onItemClick: () => openAttachmentPicker('html')
+                        }
+                      ]
+                    : []
+                  // The AI server failed to start (bad key, Ollama down). The error is
+                  // shown only once the user reaches for AI, never on a plain note.
+                  const aiItems =
+                    aiEnabled && aiReady
+                      ? getAISlashMenuItems(editor)
+                      : aiEnabled && aiError
+                        ? [{ ...aiEn.slash_menu.ai, key: 'ai', onItemClick: reportAIUnavailable }]
+                        : []
+                  // `/mermaid` — upstream's own item, so the insert seeds the same
+                  // starter `graph TD` the preview needs something to draw from,
+                  // and the aliases (mermaid, flowchart, chart, graph) come with
+                  // it. Only the two strings a reader sees are Memry's, because
+                  // the package's dictionary is English-only and the rest of this
+                  // menu is translated.
+                  //
+                  // Excluded inside a table cell for the same reason as the
+                  // template item: a diagram is a BLOCK, so BlockNote lands it
+                  // after the whole table and takes the caret with it (#1640),
+                  // and unlike image and check there is no inline form to fall
+                  // back to.
+                  const diagramItems = inCell
+                    ? []
+                    : getDiagramSlashMenuItems(editor).map((item) => ({
+                        ...item,
+                        title: t('editor.diagram.title'),
+                        subtext: t('editor.diagram.subtext')
+                      }))
+                  // A column list is a block, so not in a table cell, for the
+                  // reason the diagram gives above.
+                  const columnItems = inCell
+                    ? []
+                    : getColumnSlashMenuItems(editor, {
+                        group: t('editor.columns.group'),
+                        two: {
+                          title: t('editor.columns.two.title'),
+                          subtext: t('editor.columns.two.subtext')
+                        },
+                        three: {
+                          title: t('editor.columns.three.title'),
+                          subtext: t('editor.columns.three.subtext')
+                        },
+                        four: {
+                          title: t('editor.columns.four.title'),
+                          subtext: t('editor.columns.four.subtext')
+                        },
+                        five: {
+                          title: t('editor.columns.five.title'),
+                          subtext: t('editor.columns.five.subtext')
+                        }
+                      })
+                  const calloutItem = getCalloutSlashMenuItem(editor, {
+                    title: t('editor.callout.title'),
+                    group: t('editor.callout.group'),
+                    subtext: t('editor.callout.subtext')
+                  })
+                  const customCalloutItems = getCustomCalloutSlashMenuItems(editor, {
+                    group: t('editor.callout.group'),
+                    subtext: t('editor.callout.customSubtext')
+                  })
+                  const mathItem = getMathSlashMenuItem(editor, {
+                    title: t('editor.math.title'),
+                    group: t('editor.math.group'),
+                    subtext: t('editor.math.subtext')
+                  })
+                  const taskItem = isFeatureEnabled('tasks')
+                    ? getTaskSlashMenuItem(editor, noteId)
+                    : null
+                  // `/whiteboard` makes a canvas this note owns, so it needs a
+                  // note to own it; and, being a block, it has no place in a
+                  // table cell for the same reason the diagram has none.
+                  const whiteboardItem =
+                    noteId && !inCell && isFeatureEnabled('spatialCanvas')
+                      ? getWhiteboardSlashMenuItem(
+                          editor,
+                          noteId,
+                          {
+                            title: t('editor.whiteboard.title'),
+                            group: t('editor.whiteboard.group'),
+                            subtext: t('editor.whiteboard.subtext')
+                          },
+                          async () => (await fetchNote())?.title
+                        )
+                      : null
+                  // `/view` embeds a live list of notes (#2488). A block, so not
+                  // in a table cell, for the reason the diagram gives above.
+                  const viewItem = inCell
+                    ? null
+                    : getViewSlashMenuItem(editor, {
+                        title: t('editor.viewBlock.title'),
+                        group: t('editor.viewBlock.group'),
+                        subtext: t('editor.viewBlock.subtext')
+                      })
+                  // `/portal` and `/search portal`: live windows onto other notes.
+                  const portalItems = inCell
+                    ? []
+                    : getPortalSlashMenuItems(
+                        editor,
+                        {
+                          portal: {
+                            title: t('portalFlows.slash.portal.title'),
+                            subtext: t('portalFlows.slash.portal.subtext')
+                          },
+                          searchPortal: {
+                            title: t('portalFlows.slash.searchPortal.title'),
+                            subtext: t('portalFlows.slash.searchPortal.subtext')
+                          }
+                        },
+                        t('editor.viewBlock.group')
+                      )
+                  // `/chart` is the same view block in its chart layout.
+                  const chartItem = inCell
+                    ? null
+                    : getChartSlashMenuItem(editor, {
+                        title: t('editor.chart.title'),
+                        group: t('editor.viewBlock.group'),
+                        subtext: t('editor.chart.subtext')
+                      })
+                  // `/date` and `/remind` both surface the same two-row Date group:
+                  // a plain date and a "Remind me — <subtitle>" (aliases overlap so
+                  // either trigger shows both). Selecting inserts a configurable pill.
+                  const suggestion = buildDateSuggestions('')
+                  const dateAliases = ['date', 'remind', 'reminder', 'when']
+                  const dateItems = suggestion
+                    ? [
+                        {
+                          id: 'date',
+                          title: suggestion.dateLabel,
+                          onItemClick: () => insertDatePill(suggestion.dateValue),
+                          aliases: dateAliases,
+                          group: 'Basic blocks',
+                          subtext: 'Insert a date'
+                        },
+                        {
+                          id: 'remind',
+                          title: 'Remind me',
+                          onItemClick: () => insertDatePill(suggestion.remindValue),
+                          aliases: dateAliases,
+                          group: 'Basic blocks',
+                          subtext: suggestion.remindSubtitle
+                        }
+                      ]
+                    : []
+                  // `/link` types `[[` for you and hands over to the wiki-link
+                  // menu that trigger already owns — one search UI, one place `#`
+                  // heading support lives, and the row teaches the shortcut. The
+                  // trigger characters have to enter the doc through the suggestion
+                  // plugin's own opener; inserting the text some other way leaves
+                  // the plugin with no state and no menu.
+                  const linkToNoteItem = {
+                    title: t('editor.slashMenu.linkToNote.title'),
+                    onItemClick: () =>
+                      editor
+                        .getExtension(SuggestionMenu)
+                        ?.openSuggestionMenu('[[', { deleteTriggerCharacter: true }),
+                    aliases: ['link', 'wiki', 'wikilink', 'note', 'backlink'],
+                    group: 'Basic blocks',
+                    subtext: t('editor.slashMenu.linkToNote.subtext')
+                  }
+                  // A template is a block insert. Inside a table cell it lands
+                  // after the whole table and takes the caret with it (#1640), and
+                  // unlike image and check there is no inline form to fall back to.
+                  const insertTemplateItem = {
+                    title: t('editor.slashMenu.insertTemplate.title'),
+                    onItemClick: () =>
+                      setTemplateAnchor({
+                        blockId: editor.getTextCursorPosition().block.id,
+                        placement: 'replace-if-empty'
+                      }),
+                    aliases: ['template', 'templates', 'snippet', 'insert'],
+                    group: 'Basic blocks',
+                    subtext: t('editor.slashMenu.insertTemplate.subtext')
+                  }
+                  const templateItems =
+                    query && !inCell
+                      ? templateList.map((template) => ({
+                          id: `template:${template.id}`,
+                          title: template.name,
+                          onItemClick: () =>
+                            void insertTemplate(template.id, {
+                              blockId: editor.getTextCursorPosition().block.id,
+                              placement: 'replace-if-empty'
+                            }),
+                          aliases: [] as string[],
+                          group: t('editor.slashMenu.insertTemplate.group'),
+                          subtext: template.description
+                        }))
+                      : []
+                  // Every row carries a stable id: recents are stored by it, and
+                  // it decides the row's icon, group and position (see
+                  // `slash-menu-model`). BlockNote's own rows already have one in
+                  // `key`.
+                  const items: SlashMenuItem[] = [
+                    ...defaults.map((item) => ({
+                      ...item,
+                      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote suggestion items carry an untyped `key` the slash menu sets
+                      id: (item as { key?: string }).key ?? item.title
+                    })),
+                    ...kindItems.map((item) => ({ ...item, id: item.key })),
+                    ...diagramItems.map((item, index) => ({
+                      ...item,
+                      id: index === 0 ? 'diagram' : `diagram_${index}`
+                    })),
+                    { ...calloutItem, id: 'callout' },
+                    ...customCalloutItems,
+                    ...columnItems.map((item) => ({ ...item, id: item.key })),
+                    { ...mathItem, id: 'math' },
+                    ...(whiteboardItem ? [{ ...whiteboardItem, id: 'whiteboard' }] : []),
+                    ...(viewItem ? [{ ...viewItem, id: 'view' }] : []),
+                    ...portalItems,
+                    ...(chartItem ? [{ ...chartItem, id: 'chart' }] : []),
+                    ...(taskItem ? [{ ...taskItem, id: 'task' }] : []),
+                    ...dateItems,
+                    { ...linkToNoteItem, id: 'link_to_note' },
+                    ...(inCell ? [] : [{ ...insertTemplateItem, id: 'insert_template' }]),
+                    ...aiItems.map((item) => ({ ...item, id: 'ai' })),
+                    ...templateItems
+                  ]
+                  return buildSlashMenuItems({
+                    items: withSecondaryActions(items, [
+                      {
+                        from: 'check_list',
+                        to: 'task',
+                        label: t('editor.slashMenu.secondary.asLinkedTask')
+                      },
+                      {
+                        from: 'date',
+                        to: 'remind',
+                        label: t('editor.slashMenu.secondary.asReminder')
+                      }
+                    ]),
+                    query,
+                    recentIds: readSlashMenuRecents(),
+                    labels: {
+                      recent: t('editor.slashMenu.groups.recent'),
+                      bestMatch: t('editor.slashMenu.groups.bestMatch'),
+                      blocks: t('editor.slashMenu.groups.blocks'),
+                      headings: t('editor.slashMenu.groups.headings'),
+                      insert: t('editor.slashMenu.groups.insert'),
+                      media: t('editor.slashMenu.groups.media'),
+                      ai: t('editor.slashMenu.groups.ai'),
+                      templates: t('editor.slashMenu.insertTemplate.group')
+                    }
+                  })
+                }}
+              />
+            </SlashMenuFallbackContext>
+            <SuggestionMenuController
+              triggerCharacter="[["
+              getItems={getWikiLinkItems}
+              suggestionMenuComponent={WikiLinkMenu}
+              onItemClick={(item) => void handleWikiLinkSelect(item)}
+            />
+            <AddNameDialog {...addNameFlow.dialogProps} />
+            <SuggestionMenuController
+              triggerCharacter="@"
+              getItems={getMentionItems}
+              suggestionMenuComponent={MentionSuggestionMenu}
+              floatingUIOptions={MENTION_MENU_FLOATING_OPTIONS}
+              onItemClick={(item) => handleMentionSelect(item)}
+              // While the inline date ghost still has text to fill (e.g. a time
+              // being typed: `@today 12` → ghost `:00`), keep this menu closed so
+              // Tab is owned by the ghost (which fills the time) instead of the menu
+              // committing a no-time date pill.
+              shouldOpen={(tr) => !dateMentionHasGhostFill(tr)}
+            />
+            {/* Re-add BlockNote's default `:` emoji picker (disabled above via
+              emojiPicker={false}), but gated so it never opens while the caret
+              is inside an inline date/reminder — the `:` in `@today 23:20` must
+              type a time, not pop clock emojis. */}
+            <GridSuggestionMenuController
+              triggerCharacter=":"
+              columns={10}
+              minQueryLength={2}
+              shouldOpen={(tr) => !isDateMentionActive(tr)}
+            />
+            {/* Inside the view, not beside it: the bars portal themselves onto
+              the table's own border lines, but their menus are BlockNote's own
+              `TableHandleMenu` / `TableCellMenu`, which need the editor and
+              components contexts this view provides. */}
+            <TableBorderHandles containerEl={innerContainerEl} />
+            <CodeBlockToolbar containerEl={innerContainerEl} />
+          </BlockNoteView>
+
+          {aiEnabled && (
+            <TagSuggestionPopover
+              editor={editor}
+              editorContainerRef={editorContainerRef}
+              onSelect={handleTagSuggestionSelect}
+            />
+          )}
+
+          <FootnoteHoverCard hover={footnoteHover} />
+
+          {wikiLinkHover.isVisible &&
+            (wikiLinkHover.preview || wikiLinkHover.missingTarget) &&
+            wikiLinkHover.position && (
+              <WikiLinkPreviewCard
+                preview={wikiLinkHover.preview}
+                missingTarget={wikiLinkHover.missingTarget}
+                position={wikiLinkHover.position}
+                onMouseEnter={wikiLinkHover.handleCardMouseEnter}
+                onMouseLeave={wikiLinkHover.handleCardMouseLeave}
+                onTagClick={(tag, color) =>
+                  openSidebarItem({
+                    type: 'tag',
+                    title: tag,
+                    path: '/tags/' + tag,
+                    entityId: tag,
+                    color
+                  })
+                }
+                onNoteClick={onInternalLinkClick}
+              />
+            )}
+
+          {linkMentionHover.isVisible &&
+            linkMentionHover.url &&
+            linkMentionHover.preview &&
+            linkMentionHover.position && (
+              <LinkMentionPreviewCard
+                url={linkMentionHover.url}
+                preview={linkMentionHover.preview}
+                position={linkMentionHover.position}
+                onMouseEnter={linkMentionHover.handleCardMouseEnter}
+                onMouseLeave={linkMentionHover.handleCardMouseLeave}
+              />
+            )}
+
+          <PasteLinkMenu
+            isOpen={pasteLinkState.isOpen}
+            position={pasteLinkState.position}
+            options={pasteLinkState.options}
+            selectedIndex={pasteLinkState.selectedIndex}
+            onSelect={handlePasteLinkOptionSelect}
+          />
+
+          <PdfDisplayMenu state={pdfDisplayState} onSelect={selectPdfDisplay} />
+          <CanvasChoiceMenu choice={canvasChoice} onSelect={selectCanvasChoice} />
+          {mentionCreateOverlay}
+          {inlineTagObjectOverlay}
+
+          <DateMentionPopover
+            open={dateMentionState.open}
+            anchorId={dateMentionState.anchorId}
+            value={dateMentionState.value}
+            clockFormat={dateMentionClockFormat}
+            onChange={handleDateMentionChange}
+            onClear={handleDateMentionClear}
+            onClose={handleDateMentionClose}
+          />
+        </div>
+        {marqueeZoneEl &&
+          createPortal(
+            <BlockMarqueeOverlay rect={marquee.marqueeRect} highlights={marquee.highlightRects} />,
+            marqueeZoneEl
+          )}
+      </div>
+    </NoteFileUrlProvider>
+  )
+})
+
+// =============================================================================
+// CONTENT AREA (outer wrapper with Yjs collaboration)
+// =============================================================================
+
+/**
+ * The wait for the note's binding. Usually a few frames, but right after a
+ * vault switch main is still starting up and it can run past a second: a
+ * blank pane then reads as an empty note, so a spinner comes in after a beat.
+ */
+function ContentAreaPending({ className }: { className?: string }) {
+  return (
+    <div className={cn('content-area h-full flex flex-col', className)}>
+      <div className="flex flex-1 items-center justify-center rounded-md animate-pulse bg-muted/10 motion-reduce:animate-none">
+        <DelayedSpinner className="size-4 text-muted-foreground" />
+      </div>
+    </div>
+  )
+}
+
+export const ContentArea = memo(function ContentArea(props: ContentAreaProps) {
+  // The local Y.Doc, not the sync session. This used to read
+  // `isCollaborationActive(syncState.status)`, which meant no session → no
+  // Y.Doc → keystrokes reached markdown and the DB but never became CRDT
+  // operations; the sign-in that rebuilt the doc from the server then wrote it
+  // back over the file. The canvas note-card lock reads the fragment this hook
+  // produces (pages/canvas/canvas-note-lock.ts), not the session — see
+  // sync/collaboration-status.ts for why nothing may re-derive this from it.
+  // An editor mounted with no note (an empty journal day) stays unbound for its
+  // lifetime. Its first save creates the note and hands in the id mid-typing;
+  // binding then would unmount the editor being typed in and drop keystrokes.
+  // Its markdown saves still reach the doc (main's feedJournalBodyToCrdt), and
+  // the next mount binds.
+  const [mountedWithoutNote] = useState(!props.noteId)
+  const localDocLive = !mountedWithoutNote && isLocalCrdtDocLive(props.noteId)
+  const { fragment, doc, isReady, isRemoteUpdateRef, isSideEffectOwner } = useYjsCollaboration({
+    noteId: props.noteId,
+    enabled: localDocLive
+  })
+  // Standalone/non-canvas callers pass no runSideEffects → own their effects.
+  // A second editor on the same note in this window (R17) is a non-owner.
+  const runSideEffects = props.runSideEffects ?? isSideEffectOwner
+
+  // Hold the render until the binding has settled. `useCreateBlockNote` builds
+  // its collaboration extension once and never rebuilds it, so the fragment has
+  // to be there at editor-creation time or it can never attach — which is why
+  // this is a wait rather than a fail-open. It is bounded: connect() settles
+  // either way, and crdt:open-doc waits on the store instead of rejecting.
+  if (localDocLive && !isReady) {
+    return <ContentAreaPending className={props.className} />
+  }
+
+  return (
+    <TaskPrefetchProvider noteId={props.noteId}>
+      <ContentAreaEditor
+        {...props}
+        runSideEffects={runSideEffects}
+        yjsFragment={isReady && fragment ? fragment : undefined}
+        yjsDoc={isReady && doc ? doc : undefined}
+        isRemoteUpdateRef={isRemoteUpdateRef}
+      />
+    </TaskPrefetchProvider>
+  )
+})
+
+export default ContentArea

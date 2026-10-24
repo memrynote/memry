@@ -24,7 +24,11 @@ const nonNodeClientRoots = [
 ]
 const desktopRoot = path.resolve(repoRoot, 'apps/desktop')
 const mainRoot = path.resolve(desktopRoot, 'src/main')
-const rendererRoot = path.resolve(desktopRoot, 'src/renderer/src')
+// Both copies of the renderer, until the Tauri cutover deletes the Electron one.
+const rendererRoots = [
+  path.resolve(desktopRoot, 'src/renderer/src'),
+  path.resolve(repoRoot, 'apps/desktop-tauri/src/renderer/src')
+]
 const ipcRoot = path.resolve(mainRoot, 'ipc')
 const generatedIpcInvokeMapPath = path.resolve(ipcRoot, 'generated-ipc-invoke-map.ts')
 const databaseRoot = path.resolve(mainRoot, 'database')
@@ -639,7 +643,7 @@ async function main() {
 
   await checkNonNodeReachability(blockingViolations)
 
-  const rendererFiles = await getFilesForRoot(rendererRoot)
+  const rendererFiles = (await Promise.all(rendererRoots.map(getFilesForRoot))).flat()
   for (const filePath of rendererFiles) {
     const source = await fs.readFile(filePath, 'utf8')
 

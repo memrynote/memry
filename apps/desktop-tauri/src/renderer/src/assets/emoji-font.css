@@ -1,0 +1,29 @@
+/* ===== COLOR EMOJI ===== */
+/* Emoji glyphs used to come from whatever the OS had installed. A machine with
+   no color emoji font (no Segoe UI Emoji, no Noto Color Emoji) fell back to a
+   monochrome symbol font: the original smileys drew as black-and-white
+   outlines and anything newer than Unicode 8 (U+1F9xx, U+1FAxx) drew as an
+   empty box. Windows 10 also stops at an older emoji release than the picker
+   data, so its newest rows were boxes even with a working color font.
+
+   The family is named `EmojiMart` because emoji-mart puts that name first in
+   the inline font stack of every native emoji it renders, so defining it here
+   reaches into the picker's shadow DOM without patching the library.
+
+   macOS keeps Apple Color Emoji through `local()`. Everywhere else the bundled
+   Noto Color Emoji (COLRv1, supported by Chromium on every desktop platform)
+   loads on first use, so the picker and the icons it writes always render in
+   color and cover the full emoji set the picker offers. */
+@font-face {
+  font-family: 'EmojiMart';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local('Apple Color Emoji'),
+    url('./fonts/noto-color-emoji/NotoColorEmoji-COLRv1.woff2') format('woff2');
+}
+
+@theme {
+  --font-emoji: 'EmojiMart', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}

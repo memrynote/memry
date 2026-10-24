@@ -1,0 +1,130 @@
+import { createContext, useContext, useState, useCallback, useMemo, useRef } from 'react'
+import {
+  SETTINGS_SECTIONS,
+  settingsCommandId,
+  type SettingsCommandId,
+  type SettingsSection
+} from '@memry/contracts/commands'
+import { toSafeToken } from '@memry/contracts/telemetry-api'
+import { useAppCommands } from '@/commands/use-command-impls'
+import { trackTelemetry } from '@/lib/telemetry'
+
+export type { SettingsSection }
+
+export type SettingsFocusTarget = 'voice-local-model' | 'vault-activity' | 'readwise-import'
+
+const DEFAULT_SECTION: SettingsSection = 'account'
+
+interface SettingsModalContextValue {
+  /** Settings is showing in place of the workspace, with its nav in the sidebar. */
+  isOpen: boolean
+  activeSection: SettingsSection
+  focusTarget: SettingsFocusTarget | null
+  focusRequestId: number
+  setActiveSection: (section: SettingsSection) => void
+  open: (section?: string) => void
+  close: () => void
+  /**
+   * The settings content pane. The nav (in the sidebar) and the content (in the
+   * workspace) render in different subtrees; search highlights and focuses rows
+   * in the content through this ref.
+   */
+  contentRef: React.RefObject<HTMLDivElement | null>
+}
+
+const SettingsModalContext = createContext<SettingsModalContextValue | null>(null)
+
+function parseSettingsTarget(section?: string): {
+  section: SettingsSection
+  focusTarget: SettingsFocusTarget | null
+} {
+  if (section === 'ai:voice-local-model') {
+    return { section: 'ai', focusTarget: 'voice-local-model' }
+  }
+  if (section === 'vault:activity') {
+    return { section: 'vault', focusTarget: 'vault-activity' }
+  }
+
+  if (section === 'import:readwise') {
+    return { section: 'import', focusTarget: 'readwise-import' }
+  }
+
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- section is an open string from callers and deep links; unknown values must pass through unchanged
+  return { section: (section as SettingsSection) ?? DEFAULT_SECTION, focusTarget: null }
+}
+
+export function SettingsModalProvider({ children }: { children: React.ReactNode }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [activeSection, setActiveSectionState] = useState<SettingsSection>(DEFAULT_SECTION)
+  const [focusTarget, setFocusTarget] = useState<SettingsFocusTarget | null>(null)
+  const [focusRequestId, setFocusRequestId] = useState(0)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  const setActiveSection = useCallback((section: SettingsSection) => {
+    setActiveSectionState(section)
+    setFocusTarget(null)
+  }, [])
+
+  const open = useCallback((section?: string) => {
+    const target = parseSettingsTarget(section)
+    setActiveSectionState(target.section)
+    setFocusTarget(target.focusTarget)
+    if (target.focusTarget) {
+      setFocusRequestId((id) => id + 1)
+    }
+    setIsOpen(true)
+    // Settings is not a tab, so App's tab-driven page_viewed never
+    // fires for it — emit here. Section names are a closed set of code tokens.
+    void trackTelemetry('page_viewed', {
+      surface: 'settings',
+      action: 'viewed',
+      objectType: toSafeToken(target.section, 'general')
+    })
+  }, [])
+
+  const close = useCallback(() => {
+    setIsOpen(false)
+    setFocusTarget(null)
+  }, [])
+
+  // Owns `nav.settings` (⌘, and File → Preferences), and one command per section.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries widens keys to string; keys are exactly SETTINGS_SECTIONS mapped through settingsCommandId
+  const sectionImpls = Object.fromEntries(
+    SETTINGS_SECTIONS.map((section) => [
+      settingsCommandId(section),
+      {
+        run: () => open(section)
+      }
+    ])
+  ) as Record<SettingsCommandId, { run: () => void }>
+  useAppCommands('settings', {
+    'nav.settings': {
+      run: () => open()
+    },
+    ...sectionImpls
+  })
+
+  const value = useMemo<SettingsModalContextValue>(
+    () => ({
+      isOpen,
+      activeSection,
+      focusTarget,
+      focusRequestId,
+      setActiveSection,
+      open,
+      close,
+      contentRef
+    }),
+    [isOpen, activeSection, focusTarget, focusRequestId, setActiveSection, open, close]
+  )
+
+  return <SettingsModalContext.Provider value={value}>{children}</SettingsModalContext.Provider>
+}
+
+export function useSettingsModal(): SettingsModalContextValue {
+  const context = useContext(SettingsModalContext)
+  if (!context) {
+    throw new Error('useSettingsModal must be used within a SettingsModalProvider')
+  }
+  return context
+}

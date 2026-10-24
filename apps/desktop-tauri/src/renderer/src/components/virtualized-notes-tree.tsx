@@ -1,0 +1,1704 @@
+/**
+ * VirtualizedNotesTree Component
+ *
+ * A virtualized version of the notes tree for performance with 100+ notes.
+ * Uses @tanstack/react-virtual for efficient rendering of only visible items.
+ * Supports drag-drop reordering, multi-selection, and bulk operations.
+ *
+ * @module components/virtualized-notes-tree
+ */
+
+import {
+  useRef,
+  useCallback,
+  useMemo,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useImperativeHandle
+} from 'react'
+import { defaultRangeExtractor, useVirtualizer } from '@tanstack/react-virtual'
+import {
+  FolderOpen,
+  LayoutGrid,
+  FilePlus,
+  FolderPlus,
+  Pencil,
+  Trash2,
+  LayoutTemplate,
+  Save,
+  X,
+  ExternalLink,
+  Smile,
+  ChevronsDown,
+  ChevronsUp
+} from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { MEMRY_NOTE_DRAG_MIME, setTabDragData } from '@/lib/drag-mime'
+import { CANVAS_ITEM_DRAG_MIME, canvasDragPayload } from '@/pages/canvas/canvas-cards'
+import type { NoteListItem } from '@/hooks/use-notes-query'
+import {
+  flattenTree,
+  getAllFolderIds,
+  SIDEBAR_SECTION_HEADER_HEIGHT,
+  TREE_ROW_HEIGHT,
+  withPinnedIndex,
+  type TreeStructure,
+  type FolderVirtualItem,
+  type NoteVirtualItem
+} from '@/lib/virtualized-tree-utils'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
+import { FolderIconButton } from '@/components/folder-icon-button'
+import { IconPickerButton } from '@/components/icon-picker-button'
+import {
+  collectFolderSubtreeIds,
+  extractFolderFromPath,
+  getDisplayName,
+  getFileIcon,
+  remapExpandedFolderIds,
+  setFoldersExpanded
+} from '@/components/notes-tree-utils'
+import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import {
+  TreeSelectionMenuItems,
+  type TreeSelectionActions
+} from '@/components/sidebar/tree-selection-menu-items'
+import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
+import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
+import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
+import { resolveDropPosition, type DropPosition } from '@/lib/tree-drop-position'
+import { isTreeNavKey, resolveTreeNavIntent, type TreeNavRow } from '@/lib/tree-keyboard-nav'
+import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
+import { handleInlineRenameBlur, stopInlineRenameKeyPropagation } from '@/lib/inline-rename-focus'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export type { DropPosition }
+
+export type MoveOperation = {
+  draggedId: string
+  targetId: string
+  position: DropPosition
+}
+
+type DragState = {
+  draggedId: string | null
+  dropTargetId: string | null
+  dropPosition: DropPosition | null
+}
+
+export interface VirtualizedTreeActions {
+  expandAll: () => void
+  collapseAll: () => void
+  expandNode: (nodeId: string) => void
+  expandNodes: (nodeIds: string[]) => void
+  /** Carry a folder's expanded state, and its open descendants', to a new id. */
+  renameNode: (oldNodeId: string, newNodeId: string) => void
+  /**
+   * Expand every folder on a note's path and scroll the row into view. The
+   * plain tree gets this from `RevealHandler` + `scrollIntoView`; here the row
+   * may not be mounted at all, so the virtualizer has to do the scrolling.
+   */
+  revealNote: (noteId: string) => void
+}
+
+interface VirtualizedNotesTreeProps {
+  /** localStorage key for the expanded folders (see `sidebarTreeExpandedKey`) */
+  expandedKey?: string
+  /** Ref to expose expand/collapse actions to the parent */
+  actionsRef?: React.RefObject<VirtualizedTreeActions | null>
+  /** Tree structure with folders and notes */
+  tree: TreeStructure
+  /** Currently selected note/folder IDs */
+  selectedIds: string[]
+  /** Callback when selection changes */
+  onSelectionChange: (ids: string[]) => void
+  /** Callback when items are moved via drag-drop */
+  onMove?: (operation: MoveOperation) => void
+  /** Callback for bulk delete */
+  onBulkDelete?: () => void
+  /** Context-menu actions for a row that is part of a multi-selection */
+  selectionActions: TreeSelectionActions
+  /** Callback when a note should be renamed */
+  onRenameNote?: (note: NoteListItem) => void
+  /** Callback when a template should be applied to a note */
+  onApplyTemplateToNote?: (note: NoteListItem) => void
+  onSaveNoteAsTemplate?: (note: NoteListItem) => void
+  onNewNoteFromNote?: (note: NoteListItem) => void
+  /** Callback when a note should be deleted */
+  onDeleteNote?: (note: NoteListItem) => void
+  /** Callback when opening a note externally */
+  onOpenExternal?: (note: NoteListItem) => void
+  /** Callback when revealing a note in Finder */
+  onRevealInFinder?: (note: NoteListItem) => void
+  /** Callback when a folder should be deleted */
+  onDeleteFolder?: (folderPath: string) => void
+  /** Callback when revealing a folder itself in the OS file manager */
+  onRevealFolderInFinder?: (folderPath: string) => void
+  /** Callback when creating a note in a folder */
+  onCreateNote?: (folderPath: string) => void
+  /** Callback when creating a subfolder */
+  onCreateFolder?: (folderPath: string) => void
+  /** Callback when renaming a folder */
+  onRenameFolder?: (folderPath: string) => void
+  /** Folder path whose row currently shows the inline rename input, if any */
+  renamingFolderPath?: string | null
+  /** Current text in the folder rename input */
+  folderRenameValue?: string
+  /** Callback when the folder rename input's text changes */
+  onFolderRenameValueChange?: (value: string) => void
+  /** Callback when a folder rename is committed */
+  onFolderRenameSubmit?: (folderPath: string) => void
+  /** Callback when a folder rename is abandoned */
+  onFolderRenameCancel?: () => void
+  /** Whether a folder rename is in flight */
+  isFolderRenaming?: boolean
+  /** Note ID whose row currently shows the inline rename input, if any */
+  renamingNoteId?: string | null
+  /** Current text in the note rename input */
+  renameValue?: string
+  /** Callback when the note rename input's text changes */
+  onRenameValueChange?: (noteId: string, value: string) => void
+  /** Callback when a note rename is committed */
+  onRenameSubmit?: (noteId: string, originalPath: string) => void
+  /** Callback when a note rename is abandoned */
+  onRenameCancel?: (noteId: string) => void
+  /** Whether a note rename is in flight */
+  isRenaming?: boolean
+  /** Callback when setting folder template */
+  onSetFolderTemplate?: (folderPath: string) => void
+  /** Callback when clearing folder template */
+  onClearFolderTemplate?: (folderPath: string) => void
+  /** Map of folder paths to template names */
+  folderTemplateNames?: Map<string, string>
+  /** Callback when setting folder icon */
+  onSetFolderIcon?: (folderPath: string, icon: string | null) => void
+  /** Callback when setting a note's icon (emoji) */
+  onSetNoteIcon?: (noteId: string, icon: string | null) => void
+  /** Map of note IDs to notes for quick lookup */
+  noteMap: Map<string, NoteListItem>
+  /** Whether drag operations are disabled */
+  isDragDisabled?: boolean
+  /**
+   * Vault-relative folder an in-flight external file drag is aimed at, or null
+   * when no file is being dragged. Only drives the highlight — the drop itself
+   * reads the destination straight off the DOM.
+   */
+  fileDropFolder?: string | null
+  /** Custom class name */
+  className?: string
+  /** Optional scroll container for virtualized rendering */
+  scrollContainerRef?: React.RefObject<HTMLElement>
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Storage key for expanded folders outside a vault workspace. Inside one the
+ * tree gets its vault's own key.
+ */
+const EXPANDED_FOLDERS_KEY = 'sidebar-tree-expanded'
+
+/**
+ * Load expanded folder IDs from localStorage
+ */
+function loadExpandedFolders(key: string): Set<string> {
+  try {
+    const stored = localStorage.getItem(key)
+    if (stored) {
+      return new Set(JSON.parse(stored))
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return new Set()
+}
+
+/**
+ * Save expanded folder IDs to localStorage
+ */
+function saveExpandedFolders(key: string, expandedIds: Set<string>): void {
+  try {
+    localStorage.setItem(key, JSON.stringify([...expandedIds]))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * `expanded` plus every folder holding `notePath`, so a note nested several
+ * levels down becomes reachable in one step. Node ids are built the same way
+ * `flattenTree` builds them — `folder-<vault-relative path>` — so every segment
+ * before the filename counts. A note one folder down is the common case and
+ * must expand that folder.
+ */
+function withAncestorsExpanded(expanded: Set<string>, notePath: string): Set<string> {
+  const parts = notePath.split('/')
+  parts.pop()
+  if (parts.length === 0) return expanded
+
+  const next = new Set(expanded)
+  let currentPath = ''
+  for (const part of parts) {
+    currentPath = currentPath ? `${currentPath}/${part}` : part
+    next.add(`folder-${currentPath}`)
+  }
+  return next
+}
+
+/**
+ * Check if an item is a folder based on its ID
+ */
+function isFolder(itemId: string): boolean {
+  return itemId.startsWith('folder-')
+}
+
+/** Same inline rename input styling the non-virtualized tree uses. */
+const RENAME_INPUT_CLASS =
+  'flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none'
+
+/**
+ * Focus and select the inline rename input once it has been laid out. A folder
+ * created from the sidebar drops straight into rename mode, so the input has to
+ * be typable without a click. Module-level for a stable callback-ref identity.
+ */
+function focusRenameInput(el: HTMLInputElement | null): void {
+  if (!el) return
+  requestAnimationFrame(() => {
+    el.focus()
+    el.select()
+  })
+}
+
+// ============================================================================
+// Row Components
+// ============================================================================
+
+interface FolderRowProps {
+  item: FolderVirtualItem
+  isSelected: boolean
+  isLastSelected: boolean
+  isDragging: boolean
+  isDropTarget: boolean
+  /** True while an external file drag is aimed at this row's folder. */
+  isFileDropTarget: boolean
+  dropPosition: DropPosition | null
+  selectedCount: number
+  draggable: boolean
+  onToggleExpand: (folderId: string) => void
+  /** Open or close this folder and every folder below it. */
+  onSetSubtreeExpanded: (folderPath: string, expanded: boolean) => void
+  onSelect: (folderId: string, event: React.MouseEvent) => void
+  onOpenFolderView?: (folderPath: string, icon?: string | null) => void
+  onCreateNote?: (folderPath: string) => void
+  onCreateFolder?: (folderPath: string) => void
+  onRenameFolder?: (folderPath: string) => void
+  /** True while this row shows the inline rename input instead of its label. */
+  isBeingRenamed: boolean
+  folderRenameValue?: string
+  onFolderRenameValueChange?: (value: string) => void
+  onFolderRenameSubmit?: (folderPath: string) => void
+  onFolderRenameCancel?: () => void
+  isFolderRenaming?: boolean
+  onDeleteFolder?: (folderPath: string) => void
+  onSetFolderTemplate?: (folderPath: string) => void
+  onClearFolderTemplate?: (folderPath: string) => void
+  onSetFolderIcon?: (folderPath: string, icon: string | null) => void
+  iconPickerFolderPath?: string | null
+  onIconPickerOpenChange?: (folderPath: string | null) => void
+  onRevealFolderInFinder?: (folderPath: string) => void
+  selectionActions: TreeSelectionActions
+  onDragStart: (e: React.DragEvent, itemId: string) => void
+  onDragEnd: () => void
+  onDragOver: (e: React.DragEvent, itemId: string, canDropInside: boolean) => void
+  onDragLeave: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
+  folderTemplateName?: string
+}
+
+function FolderRow({
+  item,
+  isSelected,
+  isLastSelected,
+  isDragging,
+  isDropTarget,
+  isFileDropTarget,
+  dropPosition,
+  selectedCount,
+  draggable,
+  onToggleExpand,
+  onSetSubtreeExpanded,
+  onSelect,
+  onOpenFolderView,
+  onCreateNote,
+  onCreateFolder,
+  onRenameFolder,
+  isBeingRenamed,
+  folderRenameValue,
+  onFolderRenameValueChange,
+  onFolderRenameSubmit,
+  onFolderRenameCancel,
+  isFolderRenaming,
+  onDeleteFolder,
+  onSetFolderTemplate,
+  onClearFolderTemplate,
+  onSetFolderIcon,
+  iconPickerFolderPath,
+  onIconPickerOpenChange,
+  onRevealFolderInFinder,
+  selectionActions,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  folderTemplateName
+}: FolderRowProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+  const fileActions = useFileActionLabels()
+  const { openInNewTab } = useOpenTarget()
+  const rowRef = useRef<HTMLDivElement>(null)
+  const showBulkActions = isSelected && selectedCount > 1
+  const showSelectionBadge = showBulkActions && isLastSelected
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      // A click landing inside the rename input must not collapse or reselect
+      // the row it is sitting in.
+      if (isBeingRenamed) return
+      // Toggle expand/collapse when clicking folder row. Option/Alt takes the
+      // whole subtree along: closed opens everything below, open closes it.
+      if (e.altKey) {
+        onSetSubtreeExpanded(item.folder.path, !item.isExpanded)
+      } else {
+        onToggleExpand(item.id)
+      }
+      onSelect(item.id, e)
+    },
+    [
+      isBeingRenamed,
+      item.id,
+      item.folder.path,
+      item.isExpanded,
+      onSelect,
+      onToggleExpand,
+      onSetSubtreeExpanded
+    ]
+  )
+
+  // Middle-click opens the folder view in a background tab — same gesture the
+  // note rows get, read on mousedown because middle never produces `click`.
+  const handleMiddleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 1 || isBeingRenamed) return
+      e.preventDefault()
+      openInNewTab(folderTabData(item.folder.path, item.folder.icon), { background: true })
+    },
+    [isBeingRenamed, item.folder.path, item.folder.icon, openInNewTab]
+  )
+
+  const _handleExpandClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onToggleExpand(item.id)
+    },
+    [item.id, onToggleExpand]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onToggleExpand(item.id)
+      }
+    },
+    [item.id, onToggleExpand]
+  )
+
+  // A context-menu click does not focus the row on its own, so the arrows had
+  // nothing to navigate from once the menu closed.
+  const handleContextMenu = useCallback(() => {
+    rowRef.current?.focus()
+  }, [])
+
+  const handleOpenFolderViewClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onOpenFolderView?.(item.folder.path, item.folder.icon)
+    },
+    [item.folder.path, item.folder.icon, onOpenFolderView]
+  )
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      onDragStart(e, item.id)
+    },
+    [item.id, onDragStart]
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      // `true` regardless of `item.hasChildren` — an empty folder is still a
+      // folder, and reading emptiness here is what made a newly created one
+      // refuse every drop until it had a child.
+      onDragOver(e, item.id, true)
+    },
+    [item.id, onDragOver]
+  )
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={rowRef}
+          role="treeitem"
+          aria-expanded={item.isExpanded}
+          aria-selected={isSelected}
+          tabIndex={0}
+          draggable={draggable}
+          {...{ [FILE_DROP_FOLDER_ATTR]: item.folder.path }}
+          className={cn(
+            'group/folder relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors min-w-0',
+            'hover:bg-muted focus-visible:outline-none',
+            isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
+            isDragging && 'opacity-50',
+            draggable && 'cursor-default'
+          )}
+          style={{ paddingLeft: `${item.level * 16 + 8}px` }}
+          onClick={handleClick}
+          onMouseDown={handleMiddleClick}
+          onContextMenu={handleContextMenu}
+          onKeyDown={handleKeyDown}
+          onDragStart={handleDragStart}
+          onDragEnd={onDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
+          {/* Drop indicator - before */}
+          {isDropTarget && dropPosition === 'before' && (
+            <div
+              className="absolute start-2 end-2 -top-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - after */}
+          {isDropTarget && dropPosition === 'after' && (
+            <div
+              className="absolute start-2 end-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - inside (for folders) */}
+          {isDropTarget && dropPosition === 'inside' && (
+            <div
+              className="absolute inset-0 rounded-md border-2 border-primary border-dashed bg-primary/10"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - external file landing in this folder */}
+          {isFileDropTarget && (
+            <div
+              className="absolute inset-0 rounded-md border-2 border-primary border-dashed bg-primary/10"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Folder icon — shows chevron on hover for expand/collapse */}
+          <FolderIconButton
+            icon={item.folder.icon ?? null}
+            isExpanded={item.isExpanded}
+            hasChildren={item.hasChildren}
+            onIconChange={(icon) => onSetFolderIcon?.(item.folder.path, icon)}
+            onToggleExpand={() => onToggleExpand(item.id)}
+            pickerOpen={iconPickerFolderPath === item.folder.path}
+            onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? item.folder.path : null)}
+          />
+
+          {isBeingRenamed ? (
+            <input
+              ref={focusRenameInput}
+              type="text"
+              aria-label={t('tree.actions.rename')}
+              value={folderRenameValue ?? ''}
+              onChange={(e) => onFolderRenameValueChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  onFolderRenameSubmit?.(item.folder.path)
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  onFolderRenameCancel?.()
+                }
+                stopInlineRenameKeyPropagation(e)
+              }}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => onFolderRenameSubmit?.(item.folder.path))
+              }
+              onClick={(e) => e.stopPropagation()}
+              disabled={isFolderRenaming}
+              className={RENAME_INPUT_CLASS}
+            />
+          ) : (
+            <>
+              {/* Folder name */}
+              <span className="sidebar-label-fade text-sm flex-1">{item.folder.name}</span>
+
+              {/* Selection count badge */}
+              {showSelectionBadge && (
+                <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                  {selectedCount}
+                </span>
+              )}
+
+              {/* Open-folder-view action. Revealed by focus as well as hover: the
+                  button is in the tab order, and the row itself is `tabIndex={0}`
+                  with `focus-visible:outline-none`, so hover-only left a keyboard
+                  user with nothing on screen (WCAG 2.4.7). */}
+              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 group-focus-within/folder:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={handleOpenFolderViewClick}
+                  className="p-1 cursor-pointer rounded hover:bg-accent/80 transition-colors"
+                  aria-label={t('tree.aria.openFolderView')}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        {showBulkActions ? (
+          <TreeSelectionMenuItems count={selectedCount} actions={selectionActions} />
+        ) : (
+          // Single item actions
+          <>
+            <OpenTargetMenuItems tab={folderTabData(item.folder.path, item.folder.icon)} />
+            <ShowTasksMenuItem location={{ folderPath: item.folder.path }} />
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onCreateNote?.(item.folder.path)}>
+              <FilePlus className="me-2 h-4 w-4" />
+              {t('tree.actions.newNote')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onCreateFolder?.(item.folder.path)}>
+              <FolderPlus className="me-2 h-4 w-4" />
+              {t('tree.actions.newFolder')}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onSetSubtreeExpanded(item.folder.path, true)}>
+              <ChevronsUp className="me-2 h-4 w-4" />
+              {t('tree.actions.expandSubfolders')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onSetSubtreeExpanded(item.folder.path, false)}>
+              <ChevronsDown className="me-2 h-4 w-4" />
+              {t('tree.actions.collapseSubfolders')}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onSetFolderTemplate?.(item.folder.path)}>
+              <LayoutTemplate className="me-2 h-4 w-4" />
+              {t('tree.actions.setDefaultTemplate')}
+              {folderTemplateName && (
+                <span className="ms-1 text-muted-foreground">({folderTemplateName})</span>
+              )}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onClearFolderTemplate?.(item.folder.path)}>
+              <X className="me-2 h-4 w-4" />
+              {t('tree.actions.clearDefaultTemplate')}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onIconPickerOpenChange?.(item.folder.path)}>
+              <Smile className="me-2 h-4 w-4" />
+              {t('tree.actions.setIcon')}
+            </ContextMenuItem>
+            {item.folder.icon && (
+              <ContextMenuItem onClick={() => onSetFolderIcon?.(item.folder.path, null)}>
+                <X className="me-2 h-4 w-4" />
+                {t('tree.actions.removeIcon')}
+              </ContextMenuItem>
+            )}
+            <ContextMenuSeparator />
+            <BookmarkMenuItem itemType="folder" itemId={item.folder.path} />
+            <VaultLockMenuItem kind="folder" target={item.folder.path} />
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onRevealFolderInFinder?.(item.folder.path)}>
+              <FolderOpen className="me-2 h-4 w-4" />
+              {fileActions.revealInFolder}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onRenameFolder?.(item.folder.path)}>
+              <Pencil className="me-2 h-4 w-4" />
+              {t('tree.actions.rename')}
+            </ContextMenuItem>
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDeleteFolder?.(item.folder.path)}
+            >
+              <Trash2 className="me-2 h-4 w-4" />
+              {tCommon('button.delete')}
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+interface NoteRowProps {
+  item: NoteVirtualItem
+  isSelected: boolean
+  isLastSelected: boolean
+  isDragging: boolean
+  isDropTarget: boolean
+  dropPosition: DropPosition | null
+  selectedCount: number
+  draggable: boolean
+  onSelect: (noteId: string, event: React.MouseEvent) => void
+  onDoubleClick?: (note: NoteListItem) => void
+  onRenameNote?: (note: NoteListItem) => void
+  /** True while this row shows the inline rename input instead of its label. */
+  isBeingRenamed: boolean
+  renameValue?: string
+  onRenameValueChange?: (noteId: string, value: string) => void
+  onRenameSubmit?: (noteId: string, originalPath: string) => void
+  onRenameCancel?: (noteId: string) => void
+  isRenaming?: boolean
+  onApplyTemplateToNote?: (note: NoteListItem) => void
+  onSaveNoteAsTemplate?: (note: NoteListItem) => void
+  onNewNoteFromNote?: (note: NoteListItem) => void
+  onDeleteNote?: (note: NoteListItem) => void
+  onOpenExternal?: (note: NoteListItem) => void
+  onRevealInFinder?: (note: NoteListItem) => void
+  onSetNoteIcon?: (noteId: string, icon: string | null) => void
+  iconPickerNoteId?: string | null
+  onIconPickerOpenChange?: (noteId: string | null) => void
+  selectionActions: TreeSelectionActions
+  onDragStart: (e: React.DragEvent, itemId: string) => void
+  onDragEnd: () => void
+  onDragOver: (e: React.DragEvent, itemId: string, canDropInside: boolean) => void
+  onDragLeave: (e: React.DragEvent) => void
+  onDrop: (e: React.DragEvent) => void
+}
+
+const NOTE_ICON_SPACER = <div className="h-4 w-4" />
+
+type NoteRowIconProps = Pick<
+  NoteRowProps,
+  'onSetNoteIcon' | 'iconPickerNoteId' | 'onIconPickerOpenChange'
+> & { note: NoteListItem }
+
+/**
+ * A note's icon, clickable to pick one. A journal entry (listed when the
+ * journal folder is shown) gets a plain journal icon: an icon set on it would
+ * be written to the journal as if it were a note.
+ */
+function NoteRowIcon({
+  note,
+  onSetNoteIcon,
+  iconPickerNoteId,
+  onIconPickerOpenChange
+}: NoteRowIconProps) {
+  const { t } = useT('notes')
+  if (note.journalDate) {
+    return (
+      <div className="shrink-0 flex items-center gap-0.5">
+        {NOTE_ICON_SPACER}
+        <span className="flex h-5 w-5 items-center justify-center text-base leading-none">
+          {getFileIcon(note)}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <IconPickerButton
+      leading={NOTE_ICON_SPACER}
+      hasIcon={!!note.emoji}
+      onIconChange={(icon) => onSetNoteIcon?.(note.id, icon)}
+      ariaLabel={t('tree.actions.setIcon')}
+      pickerOpen={iconPickerNoteId === note.id}
+      onPickerOpenChange={(open) => onIconPickerOpenChange?.(open ? note.id : null)}
+    >
+      {getFileIcon(note)}
+    </IconPickerButton>
+  )
+}
+
+type NoteOnlyMenuItemsProps = Pick<
+  NoteRowProps,
+  | 'onApplyTemplateToNote'
+  | 'onSaveNoteAsTemplate'
+  | 'onNewNoteFromNote'
+  | 'onSetNoteIcon'
+  | 'onIconPickerOpenChange'
+> & { note: NoteListItem }
+
+/** Template and icon actions; none of them apply to a journal entry. */
+function NoteOnlyMenuItems({
+  note,
+  onApplyTemplateToNote,
+  onSaveNoteAsTemplate,
+  onNewNoteFromNote,
+  onSetNoteIcon,
+  onIconPickerOpenChange
+}: NoteOnlyMenuItemsProps) {
+  const { t } = useT('notes')
+  if (note.journalDate) return null
+  return (
+    <>
+      <ContextMenuItem onClick={() => onApplyTemplateToNote?.(note)}>
+        <LayoutTemplate className="me-2 h-4 w-4" />
+        {t('tree.actions.applyTemplate')}
+      </ContextMenuItem>
+      <ContextMenuItem onClick={() => onSaveNoteAsTemplate?.(note)}>
+        <Save className="me-2 h-4 w-4" />
+        {t('tree.actions.saveAsTemplate')}
+      </ContextMenuItem>
+      {(note.fileType ?? 'markdown') === 'markdown' && (
+        <ContextMenuItem onClick={() => onNewNoteFromNote?.(note)}>
+          <FilePlus className="me-2 h-4 w-4" />
+          {t('newNoteFromNote.action')}
+        </ContextMenuItem>
+      )}
+      <ContextMenuSeparator />
+      <ContextMenuItem onClick={() => onIconPickerOpenChange?.(note.id)}>
+        <Smile className="me-2 h-4 w-4" />
+        {t('tree.actions.setIcon')}
+      </ContextMenuItem>
+      {note.emoji && (
+        <ContextMenuItem onClick={() => onSetNoteIcon?.(note.id, null)}>
+          <X className="me-2 h-4 w-4" />
+          {t('tree.actions.removeIcon')}
+        </ContextMenuItem>
+      )}
+    </>
+  )
+}
+
+function NoteRow({
+  item,
+  isSelected,
+  isLastSelected,
+  isDragging,
+  isDropTarget,
+  dropPosition,
+  selectedCount,
+  draggable,
+  onSelect,
+  onDoubleClick,
+  onRenameNote,
+  isBeingRenamed,
+  renameValue,
+  onRenameValueChange,
+  onRenameSubmit,
+  onRenameCancel,
+  isRenaming,
+  onApplyTemplateToNote,
+  onSaveNoteAsTemplate,
+  onNewNoteFromNote,
+  onDeleteNote,
+  onOpenExternal,
+  onRevealInFinder,
+  onSetNoteIcon,
+  iconPickerNoteId,
+  onIconPickerOpenChange,
+  selectionActions,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDragLeave,
+  onDrop
+}: NoteRowProps) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+  const fileActions = useFileActionLabels()
+  const { openInNewTab } = useOpenTarget()
+  const rowRef = useRef<HTMLDivElement>(null)
+  const showBulkActions = isSelected && selectedCount > 1
+  const showSelectionBadge = showBulkActions && isLastSelected
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      // A click landing inside the rename input must not reselect the row or
+      // open the note behind it.
+      if (isBeingRenamed) return
+      onSelect(item.id, e)
+    },
+    [isBeingRenamed, item.id, onSelect]
+  )
+
+  // Read on mousedown: a middle click never produces a `click` event. Opens in
+  // the background, browser-style, and always as a genuinely new tab.
+  const handleMiddleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.button !== 1 || isBeingRenamed) return
+      e.preventDefault()
+      openInNewTab(noteTabData(item.note), { background: true })
+    },
+    [isBeingRenamed, item.note, openInNewTab]
+  )
+
+  const handleDoubleClick = useCallback(() => {
+    if (isBeingRenamed) return
+    onDoubleClick?.(item.note)
+  }, [isBeingRenamed, item.note, onDoubleClick])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        onDoubleClick?.(item.note)
+      }
+    },
+    [item.note, onDoubleClick]
+  )
+
+  // See the folder row: a context-menu click leaves focus where it was, which
+  // strands arrow navigation.
+  const handleContextMenu = useCallback(() => {
+    rowRef.current?.focus()
+  }, [])
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent) => {
+      onDragStart(e, item.id)
+    },
+    [item.id, onDragStart]
+  )
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      onDragOver(e, item.id, false)
+    },
+    [item.id, onDragOver]
+  )
+
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          ref={rowRef}
+          role="treeitem"
+          aria-selected={isSelected}
+          tabIndex={0}
+          draggable={draggable}
+          // A file dropped on a note belongs in the folder that note lives in.
+          {...{ [FILE_DROP_FOLDER_ATTR]: extractFolderFromPath(item.note.path) }}
+          className={cn(
+            'group/note relative flex items-center gap-1 px-2 py-1 cursor-pointer rounded-sm transition-colors',
+            'hover:bg-muted focus-visible:outline-none',
+            isSelected && 'bg-sidebar-accent text-sidebar-accent-foreground',
+            isDragging && 'opacity-50',
+            draggable && 'cursor-default'
+          )}
+          style={{ paddingLeft: `${item.level * 16 + 8}px` }} // Icon button's leading slot replaces the expander gap
+          onClick={handleClick}
+          onMouseDown={handleMiddleClick}
+          onContextMenu={handleContextMenu}
+          onDoubleClick={handleDoubleClick}
+          onKeyDown={handleKeyDown}
+          onDragStart={handleDragStart}
+          onDragEnd={onDragEnd}
+          onDragOver={handleDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+        >
+          {/* Drop indicator - before */}
+          {isDropTarget && dropPosition === 'before' && (
+            <div
+              className="absolute start-2 end-2 -top-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Drop indicator - after */}
+          {isDropTarget && dropPosition === 'after' && (
+            <div
+              className="absolute start-2 end-2 -bottom-0.5 h-0.5 rounded-full bg-primary"
+              aria-hidden="true"
+            />
+          )}
+
+          {/* Note icon or emoji — click to set a custom icon/emoji */}
+          <NoteRowIcon
+            note={item.note}
+            onSetNoteIcon={onSetNoteIcon}
+            iconPickerNoteId={iconPickerNoteId}
+            onIconPickerOpenChange={onIconPickerOpenChange}
+          />
+
+          {isBeingRenamed ? (
+            <input
+              ref={focusRenameInput}
+              type="text"
+              aria-label={t('tree.actions.rename')}
+              value={renameValue ?? ''}
+              onChange={(e) => onRenameValueChange?.(item.note.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  onRenameSubmit?.(item.note.id, item.note.path)
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  onRenameCancel?.(item.note.id)
+                }
+                stopInlineRenameKeyPropagation(e)
+              }}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => onRenameSubmit?.(item.note.id, item.note.path))
+              }
+              onClick={(e) => e.stopPropagation()}
+              disabled={isRenaming}
+              className={RENAME_INPUT_CLASS}
+            />
+          ) : (
+            <>
+              {/* Note name */}
+              <span className="sidebar-label-fade text-sm flex-1">
+                {getDisplayName(item.note.path)}
+              </span>
+
+              {/* Selection count badge */}
+              {showSelectionBadge && (
+                <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full">
+                  {selectedCount}
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent>
+        {showBulkActions ? (
+          <TreeSelectionMenuItems count={selectedCount} actions={selectionActions} />
+        ) : (
+          // Single item actions
+          <>
+            <OpenTargetMenuItems tab={noteTabData(item.note)} />
+            {(item.note.fileType ?? 'markdown') === 'markdown' && (
+              <ShowTasksMenuItem location={{ noteId: item.note.id }} />
+            )}
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onRenameNote?.(item.note)}>
+              <Pencil className="me-2 h-4 w-4" />
+              {t('tree.actions.rename')}
+            </ContextMenuItem>
+            <NoteOnlyMenuItems
+              note={item.note}
+              onApplyTemplateToNote={onApplyTemplateToNote}
+              onSaveNoteAsTemplate={onSaveNoteAsTemplate}
+              onNewNoteFromNote={onNewNoteFromNote}
+              onSetNoteIcon={onSetNoteIcon}
+              onIconPickerOpenChange={onIconPickerOpenChange}
+            />
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={() => onOpenExternal?.(item.note)}>
+              <ExternalLink className="me-2 h-4 w-4" />
+              {t('tree.actions.openExternal')}
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onRevealInFinder?.(item.note)}>
+              <FolderOpen className="me-2 h-4 w-4" />
+              {fileActions.revealInFolder}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            {!item.note.journalDate && (
+              <>
+                <BookmarkMenuItem itemType="note" itemId={item.note.id} />
+                <VaultLockMenuItem kind="note" target={item.note.id} />
+                <ContextMenuSeparator />
+              </>
+            )}
+            <ContextMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={() => onDeleteNote?.(item.note)}
+            >
+              <Trash2 className="me-2 h-4 w-4" />
+              {tCommon('button.delete')}
+            </ContextMenuItem>
+          </>
+        )}
+      </ContextMenuContent>
+    </ContextMenu>
+  )
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function VirtualizedNotesTree({
+  actionsRef,
+  tree,
+  selectedIds,
+  onSelectionChange,
+  onMove,
+  onBulkDelete,
+  selectionActions,
+  onRenameNote,
+  onApplyTemplateToNote,
+  onSaveNoteAsTemplate,
+  onNewNoteFromNote,
+  onDeleteNote,
+  onOpenExternal,
+  onRevealInFinder,
+  onDeleteFolder,
+  onRevealFolderInFinder,
+  onCreateNote,
+  onCreateFolder,
+  onRenameFolder,
+  renamingFolderPath = null,
+  folderRenameValue,
+  onFolderRenameValueChange,
+  onFolderRenameSubmit,
+  onFolderRenameCancel,
+  isFolderRenaming,
+  renamingNoteId = null,
+  renameValue,
+  onRenameValueChange,
+  onRenameSubmit,
+  onRenameCancel,
+  isRenaming,
+  onSetFolderTemplate,
+  onClearFolderTemplate,
+  folderTemplateNames,
+  onSetFolderIcon,
+  onSetNoteIcon,
+  noteMap,
+  isDragDisabled = false,
+  fileDropFolder = null,
+  className,
+  scrollContainerRef,
+  expandedKey = EXPANDED_FOLDERS_KEY
+}: VirtualizedNotesTreeProps) {
+  const { t } = useT('notes')
+  // Same preference the non-virtualized tree honours through useNoteTreeActions'
+  // openPage — this tree opens tabs itself, so it has to read it too (#1644).
+  const { openPage } = useOpenPage()
+  const parentRef = useRef<HTMLDivElement>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
+  const usesExternalScroll = !!scrollContainerRef
+
+  // Expanded folders state (persisted to localStorage)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(() =>
+    loadExpandedFolders(expandedKey)
+  )
+
+  // Drag state
+  const [dragState, setDragStateInternal] = useState<DragState>({
+    draggedId: null,
+    dropTargetId: null,
+    dropPosition: null
+  })
+  // The `drop` event is dispatched straight after the last `dragover`, and on
+  // Windows the native drag runs in a nested OS message loop — React has no
+  // guarantee of having committed that `dragover`'s state by then. Reading
+  // `dragState` inside `drop` therefore saw `dropTargetId: null` and the move
+  // was dropped on the floor with no error anywhere. The ref is written
+  // synchronously, so `drop` always sees the last hover. State stays for the
+  // before/after/inside indicators, which only need to be eventually right.
+  const dragStateRef = useRef<DragState>(dragState)
+  const setDragState = useCallback((next: Partial<DragState>) => {
+    dragStateRef.current = { ...dragStateRef.current, ...next }
+    setDragStateInternal(dragStateRef.current)
+  }, [])
+
+  // Folder icon picker state
+  const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
+
+  // Note icon picker state
+  const [iconPickerNoteId, setIconPickerNoteId] = useState<string | null>(null)
+
+  // Anchor for shift-click range selection
+  const [anchorId, setAnchorId] = useState<string | null>(null)
+
+  // Persist expanded state changes
+  useEffect(() => {
+    saveExpandedFolders(expandedKey, expandedIds)
+  }, [expandedKey, expandedIds])
+
+  // Flatten tree based on expanded state
+  const flatItems = useMemo(() => {
+    return flattenTree(tree, expandedIds)
+  }, [tree, expandedIds])
+
+  useLayoutEffect(() => {
+    if (!scrollContainerRef?.current || !parentRef.current) {
+      setScrollMargin(0)
+      return undefined
+    }
+
+    const scrollElement = scrollContainerRef.current
+    let rafId: number | null = null
+
+    const updateScrollMargin = () => {
+      if (!parentRef.current) return
+      const scrollRect = scrollElement.getBoundingClientRect()
+      const listRect = parentRef.current.getBoundingClientRect()
+      const offset = listRect.top - scrollRect.top + scrollElement.scrollTop
+      // Defer state update to avoid flushSync warning during render
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+      rafId = requestAnimationFrame(() => {
+        setScrollMargin(offset)
+        rafId = null
+      })
+    }
+
+    updateScrollMargin()
+
+    const resizeObserver = new ResizeObserver(updateScrollMargin)
+    resizeObserver.observe(scrollElement)
+    resizeObserver.observe(parentRef.current)
+
+    return () => {
+      resizeObserver.disconnect()
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
+    }
+  }, [scrollContainerRef])
+
+  /**
+   * Index of the row whose icon picker is open, or -1.
+   *
+   * The picker is a Radix Popover living inside the row, so a row the
+   * virtualizer drops unmounts the popover with it and the panel vanishes
+   * mid-pick — the open state survives at this level, which is why it comes
+   * back when the row scrolls in again (#1986). Scrolling the sidebar at all,
+   * even by a stray trackpad nudge, is enough on rows near the edge of the
+   * virtual window.
+   */
+  const pinnedRowIndex = useMemo(() => {
+    const pinnedId = iconPickerFolderPath ? `folder-${iconPickerFolderPath}` : iconPickerNoteId
+    if (!pinnedId) return -1
+    return flatItems.findIndex((item) => item.id === pinnedId)
+  }, [flatItems, iconPickerFolderPath, iconPickerNoteId])
+
+  // Keep that row rendered wherever the scroll goes, so the popover stays mounted
+  // and Radix just re-anchors it instead of the picker disappearing.
+  const rangeExtractor = useCallback(
+    (range: Parameters<typeof defaultRangeExtractor>[0]) => {
+      return withPinnedIndex(defaultRangeExtractor(range), pinnedRowIndex)
+    },
+    [pinnedRowIndex]
+  )
+
+  // Virtual list setup
+  const virtualizer = useVirtualizer({
+    count: flatItems.length,
+    getScrollElement: () => scrollContainerRef?.current ?? parentRef.current,
+    estimateSize: () => TREE_ROW_HEIGHT,
+    overscan: 10, // Render 10 extra items above/below viewport
+    scrollMargin: usesExternalScroll ? scrollMargin : 0,
+    // The section header sticks to the top of the sidebar's scroll area, so a
+    // row scrolled "into view" right under it would still be covered.
+    scrollPaddingStart: usesExternalScroll ? SIDEBAR_SECTION_HEADER_HEIGHT : 0,
+    rangeExtractor
+  })
+
+  /**
+   * Open every folder above `path` and scroll that row into view.
+   *
+   * `withAncestorsExpanded` drops the last segment of the path it is given —
+   * the filename for a note, the folder's own name for a folder — so in both
+   * cases what is left is exactly the parent chain that has to be open for the
+   * row to exist at all.
+   */
+  const revealRow = useCallback(
+    (itemId: string, path: string) => {
+      // Opening the folders is what gives the row an index, so the index has to
+      // come from the flattening those folders produce — not from the one on
+      // screen right now.
+      const nextExpanded = withAncestorsExpanded(expandedIds, path)
+      const index = flattenTree(tree, nextExpanded).findIndex((item) => item.id === itemId)
+      setExpandedIds(nextExpanded)
+
+      // One frame later the virtualizer has been re-rendered with that row in
+      // its count, and can scroll to an index it would otherwise clamp away.
+      if (index !== -1) {
+        requestAnimationFrame(() => virtualizer.scrollToIndex(index, { align: 'center' }))
+      }
+    },
+    [tree, expandedIds, virtualizer]
+  )
+
+  /**
+   * A row outside the virtual window is not mounted, so the inline rename input
+   * on it does not exist either. Creating a folder or a note from the sidebar
+   * drops it straight into rename mode, and past the virtualization threshold
+   * that brand-new row is usually off screen — reveal it, or there is nothing
+   * to type into. Keyed on the id alone: re-running as `renameValue` changes
+   * would yank the list back on every keystroke.
+   */
+  const revealedRenameIdRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const renamingId = renamingFolderPath ? `folder-${renamingFolderPath}` : renamingNoteId
+    if (!renamingId) {
+      revealedRenameIdRef.current = null
+      return
+    }
+    if (revealedRenameIdRef.current === renamingId) return
+
+    // A note created a moment ago may not have reached `noteMap` yet; leaving
+    // the ref alone lets the next render try again.
+    const path = renamingFolderPath ?? (renamingNoteId ? noteMap.get(renamingNoteId)?.path : null)
+    if (!path) return
+
+    revealedRenameIdRef.current = renamingId
+    /* oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state -- genuine external sync: scrolling the virtualizer is an imperative side effect on a DOM scroll container, not state derivable during render, and rename mode is entered from the parent's action hook rather than from an event this component sees */
+    revealRow(renamingId, path)
+  }, [renamingFolderPath, renamingNoteId, noteMap, revealRow])
+
+  // Expose expand/collapse actions to parent
+  useImperativeHandle(
+    actionsRef,
+    () => ({
+      expandAll: () => {
+        setExpandedIds(new Set(getAllFolderIds(tree)))
+      },
+      collapseAll: () => {
+        setExpandedIds(new Set())
+      },
+      expandNode: (nodeId: string) => {
+        setExpandedIds((prev) => {
+          const next = new Set(prev)
+          next.add(nodeId)
+          return next
+        })
+      },
+      expandNodes: (nodeIds: string[]) => {
+        setExpandedIds(new Set(nodeIds))
+      },
+      renameNode: (oldNodeId: string, newNodeId: string) => {
+        setExpandedIds((prev) => remapExpandedFolderIds(prev, oldNodeId, newNodeId))
+      },
+      revealNote: (noteId: string) => {
+        const note = noteMap.get(noteId)
+        if (!note) return
+        revealRow(noteId, note.path)
+      }
+    }),
+    [tree, noteMap, revealRow]
+  )
+
+  // Toggle folder expand/collapse
+  const handleToggleExpand = useCallback((folderId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) {
+        next.delete(folderId)
+      } else {
+        next.add(folderId)
+      }
+      return next
+    })
+  }, [])
+
+  const handleSetSubtreeExpanded = useCallback(
+    (folderPath: string, expanded: boolean) => {
+      const ids = collectFolderSubtreeIds(tree, folderPath)
+      setExpandedIds((prev) => setFoldersExpanded(prev, ids, expanded))
+    },
+    [tree]
+  )
+
+  // Handle item selection with shift/cmd support
+  const handleSelect = useCallback(
+    (itemId: string, event: React.MouseEvent) => {
+      // Multi-select with Cmd/Ctrl - toggle individual item
+      if (event.metaKey || event.ctrlKey) {
+        const newSelection = selectedIds.includes(itemId)
+          ? selectedIds.filter((id) => id !== itemId)
+          : [...selectedIds, itemId]
+        onSelectionChange(newSelection)
+        setAnchorId(itemId)
+      }
+      // Range select with Shift
+      else if (event.shiftKey && anchorId) {
+        const anchorIndex = flatItems.findIndex((item) => item.id === anchorId)
+        const currentIndex = flatItems.findIndex((item) => item.id === itemId)
+
+        if (anchorIndex !== -1 && currentIndex !== -1) {
+          const start = Math.min(anchorIndex, currentIndex)
+          const end = Math.max(anchorIndex, currentIndex)
+          const rangeIds = flatItems.slice(start, end + 1).map((item) => item.id)
+          onSelectionChange(rangeIds)
+        } else {
+          onSelectionChange([itemId])
+          setAnchorId(itemId)
+        }
+        // Don't update anchor on shift+click
+      }
+      // Single select
+      else {
+        onSelectionChange([itemId])
+        setAnchorId(itemId)
+
+        // If it's a note, open it in a tab
+        if (!isFolder(itemId)) {
+          const note = noteMap.get(itemId)
+          if (note) {
+            openPage(noteTabData(note))
+          }
+        }
+      }
+    },
+    [selectedIds, onSelectionChange, flatItems, noteMap, openPage, anchorId]
+  )
+
+  // Handle note double-click
+  const handleNoteDoubleClick = useCallback(
+    (note: NoteListItem) => {
+      openPage(noteTabData(note))
+    },
+    [openPage]
+  )
+
+  // Handle opening folder view from hover icon
+  const handleOpenFolderView = useCallback(
+    (folderPath: string, icon?: string | null) => {
+      openPage(folderTabData(folderPath, icon))
+    },
+    [openPage]
+  )
+
+  // Drag event handlers
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, itemId: string) => {
+      if (isDragDisabled) return
+
+      e.dataTransfer.effectAllowed = 'copyMove'
+      e.dataTransfer.setData('text/plain', itemId)
+      if (!isFolder(itemId)) {
+        // Tag every note/file item so drop targets (note editor embed, sidebar
+        // project link) can resolve it by id. getFile(id) later discriminates
+        // a file (non-markdown, embeddable) from a plain note (returns null).
+        e.dataTransfer.setData(MEMRY_NOTE_DRAG_MIME, itemId)
+        // Every non-folder item is a note entity — tag it so the spatial canvas
+        // can create a referencing card on drop (markdown notes set no other MIME).
+        e.dataTransfer.setData(CANVAS_ITEM_DRAG_MIME, canvasDragPayload('note', itemId))
+        // What a click would open, so a pane's split zones can open it where
+        // it is dropped and the editor can link it.
+        const note = noteMap.get(itemId)
+        if (note) setTabDragData(e.dataTransfer, noteTabData(note))
+      }
+      setDragState({ draggedId: itemId })
+    },
+    [isDragDisabled, setDragState, noteMap]
+  )
+
+  const handleDragEnd = useCallback(() => {
+    setDragState({ draggedId: null, dropTargetId: null, dropPosition: null })
+  }, [setDragState])
+
+  const handleDragOver = useCallback(
+    (e: React.DragEvent, itemId: string, canDropInside: boolean) => {
+      // A file coming from outside the app is not a reorder — the sidebar's file
+      // drop zone handles it, and a before/after indicator would lie about it.
+      if (e.dataTransfer.types.includes('Files')) return
+      // Read the ref, not state: `dragstart` may not have committed yet, and a
+      // stale `null` here let a row register itself as its own drop target.
+      if (isDragDisabled || dragStateRef.current.draggedId === itemId) return
+
+      e.preventDefault()
+      e.dataTransfer.dropEffect = 'move'
+
+      const rect = e.currentTarget.getBoundingClientRect()
+      const position = resolveDropPosition(e.clientY - rect.top, rect.height, canDropInside)
+
+      setDragState({
+        dropTargetId: itemId,
+        dropPosition: position
+      })
+    },
+    [isDragDisabled, setDragState]
+  )
+
+  const handleDragLeave = useCallback(
+    (e: React.DragEvent) => {
+      // SAFETY: only passed to `Node.contains`, which accepts any node or null.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- focus event relatedTarget is an element or null; used with .closest
+      const relatedTarget = e.relatedTarget as HTMLElement
+      // SAFETY: `currentTarget` during dispatch is the element this listener is
+      // attached to — the row div rendered below — so it is always an HTMLElement.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- currentTarget is the element the handler is attached to
+      const currentTarget = e.currentTarget as HTMLElement
+      if (!currentTarget.contains(relatedTarget)) {
+        setDragState({
+          dropTargetId: null,
+          dropPosition: null
+        })
+      }
+    },
+    [setDragState]
+  )
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+
+      const { draggedId, dropTargetId, dropPosition } = dragStateRef.current
+      // `dragstart` writes `draggedId` through the same ref, but a drag whose
+      // start state was reset still carries the id in `dataTransfer` — trust
+      // that before giving up and silently doing nothing.
+      const resolvedDraggedId =
+        draggedId ||
+        e.dataTransfer.getData(MEMRY_NOTE_DRAG_MIME) ||
+        e.dataTransfer.getData('text/plain') ||
+        null
+
+      if (resolvedDraggedId && dropTargetId && dropPosition && onMove) {
+        onMove({
+          draggedId: resolvedDraggedId,
+          targetId: dropTargetId,
+          position: dropPosition
+        })
+      }
+
+      setDragState({ draggedId: null, dropTargetId: null, dropPosition: null })
+    },
+    [onMove, setDragState]
+  )
+
+  // Finder-style arrow navigation. Rows only carry their depth, and a parent is
+  // the nearest row above at a shallower depth — which is exactly what the flat
+  // visible list already encodes.
+  const navRows = useMemo<TreeNavRow[]>(
+    () =>
+      flatItems.map((item) => ({
+        id: item.id,
+        level: item.level,
+        // An empty folder is still a folder: Right has to open it so a note can
+        // be dropped in later, even though there is nothing to step into.
+        isExpandable: item.type === 'folder',
+        isExpanded: item.type === 'folder' && item.isExpanded
+      })),
+    [flatItems]
+  )
+
+  /**
+   * Focus a row by id. Only rows near the viewport are mounted, so a row the
+   * arrows just walked onto may not exist yet — scroll the virtualizer to it
+   * and focus one frame later, once it has been rendered.
+   */
+  const focusRow = useCallback(
+    (nodeId: string, index: number) => {
+      const find = (): HTMLElement | null => {
+        const wrappers = Array.from(
+          parentRef.current?.querySelectorAll('[data-tree-node-id]') ?? []
+        )
+        for (const wrapper of wrappers) {
+          if (wrapper.getAttribute('data-tree-node-id') !== nodeId) continue
+          // `data-tree-node-id` sits on the positioned wrapper; the focusable
+          // row is the treeitem inside it.
+          return wrapper.querySelector('[role="treeitem"]')
+        }
+        return null
+      }
+
+      const mounted = find()
+      if (mounted) {
+        mounted.focus()
+        return
+      }
+
+      virtualizer.scrollToIndex(index, { align: 'auto' })
+      requestAnimationFrame(() => find()?.focus())
+    },
+    [virtualizer]
+  )
+
+  // Keyboard handler: Delete, plus arrow navigation
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // An inline rename owns its own arrows — they move the caret, not the
+      // selection.
+      // SAFETY: only `tagName` and the optional `closest` are read, both guarded
+      // for absence, so a non-element target degrades to "no row".
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event target is an element inside the tree
+      const target = e.target as HTMLElement | null
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') return
+
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
+        e.preventDefault()
+        onBulkDelete?.()
+        return
+      }
+
+      if (!isTreeNavKey(e.key) || e.metaKey || e.ctrlKey || e.altKey) return
+
+      // Whichever row the keystroke came from wins; a keystroke on the
+      // container itself — right after a context menu closed, say — falls back
+      // to the current selection so the arrows still have somewhere to start.
+      const fromRow = target?.closest?.('[data-tree-node-id]')?.getAttribute('data-tree-node-id')
+      const currentId = fromRow ?? selectedIds[selectedIds.length - 1] ?? null
+
+      const intent = resolveTreeNavIntent(navRows, currentId, e.key)
+      if (!intent) return
+
+      e.preventDefault()
+
+      if (intent.type === 'expand' || intent.type === 'collapse') {
+        handleToggleExpand(intent.id)
+        return
+      }
+
+      onSelectionChange([intent.id])
+      setAnchorId(intent.id)
+      focusRow(intent.id, intent.index)
+    },
+    [selectedIds, onBulkDelete, navRows, handleToggleExpand, onSelectionChange, focusRow]
+  )
+
+  const virtualItems = virtualizer.getVirtualItems()
+  const draggable = !isDragDisabled
+  const selectedCount = selectedIds.length
+
+  return (
+    <div
+      ref={parentRef}
+      role="tree"
+      aria-label={t('tree.aria.tree')}
+      tabIndex={0}
+      className={cn(
+        'focus:outline-none',
+        usesExternalScroll ? 'overflow-visible' : 'h-full overflow-auto',
+        className
+      )}
+      onKeyDown={handleKeyDown}
+    >
+      <div
+        style={{
+          height: `${virtualizer.getTotalSize()}px`,
+          width: '100%',
+          position: 'relative'
+        }}
+      >
+        {virtualItems.map((virtualRow) => {
+          const item = flatItems[virtualRow.index]
+          const isSelected = selectedIds.includes(item.id)
+          const isLastSelected = item.id === selectedIds[selectedIds.length - 1]
+          const isDragging = dragState.draggedId === item.id
+          const isDropTarget = dragState.dropTargetId === item.id
+
+          return (
+            <div
+              key={item.id}
+              // The same hook the plain tree exposes, so "reveal" can flash the
+              // row it just scrolled to without knowing which tree is rendered.
+              data-tree-node-id={item.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: `${virtualRow.size}px`,
+                transform: `translateY(${virtualRow.start - (usesExternalScroll ? scrollMargin : 0)}px)`
+              }}
+            >
+              {item.type === 'folder' ? (
+                <FolderRow
+                  item={item}
+                  isSelected={isSelected}
+                  isLastSelected={isLastSelected}
+                  isDragging={isDragging}
+                  isDropTarget={isDropTarget}
+                  isFileDropTarget={fileDropFolder === item.folder.path}
+                  dropPosition={isDropTarget ? dragState.dropPosition : null}
+                  selectedCount={selectedCount}
+                  draggable={draggable}
+                  onToggleExpand={handleToggleExpand}
+                  onSetSubtreeExpanded={handleSetSubtreeExpanded}
+                  onSelect={handleSelect}
+                  onOpenFolderView={handleOpenFolderView}
+                  onCreateNote={onCreateNote}
+                  onCreateFolder={onCreateFolder}
+                  onRenameFolder={onRenameFolder}
+                  isBeingRenamed={renamingFolderPath === item.folder.path}
+                  folderRenameValue={folderRenameValue}
+                  onFolderRenameValueChange={onFolderRenameValueChange}
+                  onFolderRenameSubmit={onFolderRenameSubmit}
+                  onFolderRenameCancel={onFolderRenameCancel}
+                  isFolderRenaming={isFolderRenaming}
+                  onDeleteFolder={onDeleteFolder}
+                  onRevealFolderInFinder={onRevealFolderInFinder}
+                  onSetFolderTemplate={onSetFolderTemplate}
+                  onClearFolderTemplate={onClearFolderTemplate}
+                  onSetFolderIcon={(path, icon) => onSetFolderIcon?.(path, icon)}
+                  iconPickerFolderPath={iconPickerFolderPath}
+                  onIconPickerOpenChange={setIconPickerFolderPath}
+                  selectionActions={selectionActions}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  folderTemplateName={folderTemplateNames?.get(item.folder.path)}
+                />
+              ) : (
+                <NoteRow
+                  item={item}
+                  isSelected={isSelected}
+                  isLastSelected={isLastSelected}
+                  isDragging={isDragging}
+                  isDropTarget={isDropTarget}
+                  dropPosition={isDropTarget ? dragState.dropPosition : null}
+                  selectedCount={selectedCount}
+                  draggable={draggable}
+                  onSelect={handleSelect}
+                  onDoubleClick={handleNoteDoubleClick}
+                  onRenameNote={onRenameNote}
+                  isBeingRenamed={renamingNoteId === item.note.id}
+                  renameValue={renameValue}
+                  onRenameValueChange={onRenameValueChange}
+                  onRenameSubmit={onRenameSubmit}
+                  onRenameCancel={onRenameCancel}
+                  isRenaming={isRenaming}
+                  onApplyTemplateToNote={onApplyTemplateToNote}
+                  onSaveNoteAsTemplate={onSaveNoteAsTemplate}
+                  onNewNoteFromNote={onNewNoteFromNote}
+                  onDeleteNote={onDeleteNote}
+                  onOpenExternal={onOpenExternal}
+                  onRevealInFinder={onRevealInFinder}
+                  onSetNoteIcon={onSetNoteIcon}
+                  iconPickerNoteId={iconPickerNoteId}
+                  onIconPickerOpenChange={setIconPickerNoteId}
+                  selectionActions={selectionActions}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export default VirtualizedNotesTree

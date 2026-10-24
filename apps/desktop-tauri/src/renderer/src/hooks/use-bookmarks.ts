@@ -1,0 +1,509 @@
+import { getI18n } from 'react-i18next'
+/**
+ * useBookmarks Hook
+ * Manages bookmarks data with real IPC calls to the main process.
+ *
+ * @example
+ * ```tsx
+ * function BookmarksList() {
+ *   const { bookmarks, isLoading, toggleBookmark } = useBookmarks()
+ *
+ *   if (isLoading) return <div>Loading...</div>
+ *
+ *   return (
+ *     <ul>
+ *       {bookmarks.map(bookmark => (
+ *         <li key={bookmark.id}>{bookmark.itemTitle}</li>
+ *       ))}
+ *     </ul>
+ *   )
+ * }
+ * ```
+ */
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
+import type {
+  BookmarkWithItem,
+  BookmarkListResponse,
+  BookmarkToggleResponse
+} from '@memry/contracts/bookmarks-api'
+
+// ============================================================================
+// Bookmarks Service
+// ============================================================================
+
+const bookmarksService = {
+  list: async (options?: {
+    itemType?: string
+    sortBy?: 'position' | 'createdAt'
+    sortOrder?: 'asc' | 'desc'
+    limit?: number
+    offset?: number
+  }): Promise<BookmarkListResponse> => {
+    return window.api.bookmarks.list(options)
+  },
+
+  listByType: async (itemType: string): Promise<BookmarkListResponse> => {
+    return window.api.bookmarks.listByType(itemType)
+  },
+
+  toggle: async (input: { itemType: string; itemId: string }): Promise<BookmarkToggleResponse> => {
+    return window.api.bookmarks.toggle(input)
+  },
+
+  isBookmarked: async (input: { itemType: string; itemId: string }): Promise<boolean> => {
+    return window.api.bookmarks.isBookmarked(input)
+  },
+
+  delete: async (id: string): Promise<{ success: boolean; error?: string }> => {
+    return window.api.bookmarks.delete(id)
+  },
+
+  reorder: async (bookmarkIds: string[]): Promise<{ success: boolean; error?: string }> => {
+    return window.api.bookmarks.reorder(bookmarkIds)
+  }
+}
+
+// ============================================================================
+// Hook
+// ============================================================================
+
+export interface UseBookmarksOptions {
+  /** Filter by item type (e.g., 'note', 'task', 'journal') */
+  itemType?: string
+  /** Sort field */
+  sortBy?: 'position' | 'createdAt'
+  /** Sort direction */
+  sortOrder?: 'asc' | 'desc'
+  /** Page size */
+  limit?: number
+  /** Auto-load on mount */
+  autoLoad?: boolean
+}
+
+export interface UseBookmarksReturn {
+  // State
+  bookmarks: BookmarkWithItem[]
+  total: number
+  hasMore: boolean
+  isLoading: boolean
+  error: string | null
+
+  // Actions
+  loadBookmarks: (options?: {
+    itemType?: string
+    sortBy?: 'position' | 'createdAt'
+    sortOrder?: 'asc' | 'desc'
+    limit?: number
+    offset?: number
+  }) => Promise<BookmarkListResponse>
+  loadMore: () => Promise<void>
+  refresh: () => Promise<void>
+  toggleBookmark: (itemType: string, itemId: string) => Promise<BookmarkToggleResponse>
+  removeBookmark: (id: string) => Promise<boolean>
+  isBookmarked: (itemType: string, itemId: string) => Promise<boolean>
+  reorderBookmarks: (bookmarkIds: string[]) => Promise<boolean>
+  clearError: () => void
+}
+
+/**
+ * Hook for bookmarks state management.
+ * Provides bookmarks list, loading states, and CRUD actions.
+ */
+export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksReturn {
+  const {
+    itemType: initialItemType,
+    sortBy: initialSortBy = 'position',
+    sortOrder: initialSortOrder = 'asc',
+    limit: initialLimit = 100,
+    autoLoad = true
+  } = options
+
+  // State
+  const [bookmarks, setBookmarks] = useState<BookmarkWithItem[]>([])
+  const [total, setTotal] = useState(0)
+  const [hasMore, setHasMore] = useState(false)
+  // True until the first list arrives. Later loads (a refresh on a bookmark
+  // event, or the reload when a kept vault workspace is shown again) swap the
+  // rows in place: dropping to a loading row for each made the list flicker.
+  const [isLoading, setIsLoading] = useState(autoLoad)
+  const hasLoadedRef = useRef(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // Track current filter options for loadMore
+  const currentOptionsRef = useRef({
+    itemType: initialItemType,
+    sortBy: initialSortBy,
+    sortOrder: initialSortOrder,
+    limit: initialLimit,
+    offset: 0
+  })
+
+  /**
+   * Load bookmarks with optional filters.
+   */
+  const loadBookmarks = useCallback(
+    async (loadOptions?: {
+      itemType?: string
+      sortBy?: 'position' | 'createdAt'
+      sortOrder?: 'asc' | 'desc'
+      limit?: number
+      offset?: number
+    }): Promise<BookmarkListResponse> => {
+      if (!hasLoadedRef.current) setIsLoading(true)
+      setError(null)
+
+      const opts = {
+        itemType: loadOptions?.itemType ?? initialItemType,
+        sortBy: loadOptions?.sortBy ?? initialSortBy,
+        sortOrder: loadOptions?.sortOrder ?? initialSortOrder,
+        limit: loadOptions?.limit ?? initialLimit,
+        offset: loadOptions?.offset ?? 0
+      }
+
+      // Store for loadMore
+      currentOptionsRef.current = opts
+
+      try {
+        const result = await trackWorkspaceLoad(bookmarksService.list(opts))
+        hasLoadedRef.current = true
+        setBookmarks(result.bookmarks)
+        setTotal(result.total)
+        setHasMore(result.hasMore)
+        return result
+      } catch (err) {
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(
+            null,
+            'notes'
+          )('phaseF.componentsSidebarSidebarBookmarkList.failedToLoadBookmarks')
+        )
+        setError(message)
+        return { bookmarks: [], total: 0, hasMore: false }
+      } finally {
+        setIsLoading(false)
+      }
+    },
+    [initialItemType, initialSortBy, initialSortOrder, initialLimit]
+  )
+
+  /**
+   * Load more bookmarks (pagination).
+   */
+  const loadMore = useCallback(async (): Promise<void> => {
+    if (!hasMore || isLoading) return
+
+    setIsLoading(true)
+    setError(null)
+
+    const opts = {
+      ...currentOptionsRef.current,
+      offset: bookmarks.length
+    }
+
+    try {
+      const result = await bookmarksService.list(opts)
+      setBookmarks((prev) => [...prev, ...result.bookmarks])
+      setTotal(result.total)
+      setHasMore(result.hasMore)
+    } catch (err) {
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToLoadMoreBookmarks')
+      )
+      setError(message)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [hasMore, isLoading, bookmarks.length])
+
+  /**
+   * Refresh the current bookmarks list.
+   */
+  const refresh = useCallback(async (): Promise<void> => {
+    await loadBookmarks(currentOptionsRef.current)
+  }, [loadBookmarks])
+
+  /**
+   * Toggle bookmark status for an item.
+   */
+  const toggleBookmark = useCallback(
+    async (itemType: string, itemId: string): Promise<BookmarkToggleResponse> => {
+      setError(null)
+
+      try {
+        const result = await bookmarksService.toggle({ itemType, itemId })
+
+        if (!result.success) {
+          setError(
+            extractErrorMessage(
+              result.error,
+              getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToToggleBookmark')
+            )
+          )
+          return result
+        }
+
+        // Optimistic update: add or remove from list
+        if (result.isBookmarked && result.bookmark) {
+          // Bookmark was created - will be added via event listener
+        } else {
+          // Bookmark was removed - remove from local state immediately
+          setBookmarks((prev) => prev.filter((b) => b.itemId !== itemId || b.itemType !== itemType))
+          setTotal((prev) => Math.max(0, prev - 1))
+        }
+
+        return result
+      } catch (err) {
+        const message = extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToToggleBookmark')
+        )
+        setError(message)
+        return { success: false, isBookmarked: false, bookmark: null, error: message }
+      }
+    },
+    []
+  )
+
+  /**
+   * Remove a bookmark by ID.
+   */
+  const removeBookmark = useCallback(async (id: string): Promise<boolean> => {
+    setError(null)
+
+    try {
+      const result = await bookmarksService.delete(id)
+
+      if (!result.success) {
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRemoveBookmark')
+          )
+        )
+        return false
+      }
+
+      // Remove from local state
+      setBookmarks((prev) => prev.filter((b) => b.id !== id))
+      setTotal((prev) => Math.max(0, prev - 1))
+
+      return true
+    } catch (err) {
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRemoveBookmark')
+      )
+      setError(message)
+      return false
+    }
+  }, [])
+
+  /**
+   * Check if an item is bookmarked.
+   */
+  const isBookmarkedCheck = useCallback(
+    async (itemType: string, itemId: string): Promise<boolean> => {
+      try {
+        return await bookmarksService.isBookmarked({ itemType, itemId })
+      } catch {
+        return false
+      }
+    },
+    []
+  )
+
+  /**
+   * Reorder bookmarks.
+   */
+  const reorderBookmarks = useCallback(async (bookmarkIds: string[]): Promise<boolean> => {
+    setError(null)
+
+    try {
+      const result = await bookmarksService.reorder(bookmarkIds)
+
+      if (!result.success) {
+        setError(
+          extractErrorMessage(
+            result.error,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToReorderBookmarks')
+          )
+        )
+        return false
+      }
+
+      // Reorder local state to match
+      setBookmarks((prev) => {
+        const bookmarkMap = new Map(prev.map((b) => [b.id, b]))
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- filter(Boolean) drops the undefined misses, which the type cannot express
+        return bookmarkIds.map((id) => bookmarkMap.get(id)).filter(Boolean) as BookmarkWithItem[]
+      })
+
+      return true
+    } catch (err) {
+      const message = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToReorderBookmarks')
+      )
+      setError(message)
+      return false
+    }
+  }, [])
+
+  /**
+   * Clear error state.
+   */
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
+
+  // Load initial bookmarks
+  useEffect(() => {
+    if (!autoLoad) return undefined
+    let cancelled = false
+    void (async () => {
+      await loadBookmarks()
+      if (cancelled) return
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [autoLoad, loadBookmarks])
+
+  // Subscribe to bookmark events
+  useEffect(() => {
+    const unsubCreated = window.api.onBookmarkCreated?.(() => {
+      // Refresh to get the full bookmark with resolved item
+      void refresh()
+    })
+
+    // Only sync emits UPDATED: an inbound merge changed an existing row's
+    // position (a reorder done on another device). Refresh to pick up the order.
+    const unsubUpdated = window.api.onBookmarkUpdated?.(() => {
+      void refresh()
+    })
+
+    const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+      setBookmarks((prev) => prev.filter((b) => b.id !== event.id))
+      setTotal((prev) => Math.max(0, prev - 1))
+    })
+
+    const unsubReordered = window.api.onBookmarksReordered?.(() => {
+      // Refresh to get new order
+      void refresh()
+    })
+
+    return () => {
+      unsubCreated?.()
+      unsubUpdated?.()
+      unsubDeleted?.()
+      unsubReordered?.()
+    }
+  }, [refresh])
+
+  return {
+    // State
+    bookmarks,
+    total,
+    hasMore,
+    isLoading,
+    error,
+
+    // Actions
+    loadBookmarks,
+    loadMore,
+    refresh,
+    toggleBookmark,
+    removeBookmark,
+    isBookmarked: isBookmarkedCheck,
+    reorderBookmarks,
+    clearError
+  }
+}
+
+/**
+ * Hook for checking if a specific item is bookmarked.
+ * Useful for bookmark toggle buttons on individual items.
+ */
+export function useIsBookmarked(itemType: string, itemId: string) {
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const checkBookmark = useCallback(async () => {
+    if (!itemType || !itemId) {
+      setIsBookmarked(false)
+      setIsLoading(false)
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const result = await window.api.bookmarks.isBookmarked({ itemType, itemId })
+      setIsBookmarked(result)
+    } catch {
+      setIsBookmarked(false)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [itemType, itemId])
+
+  const toggle = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await window.api.bookmarks.toggle({ itemType, itemId })
+      setIsBookmarked(result.isBookmarked)
+      return result.isBookmarked
+    } catch {
+      return isBookmarked
+    }
+  }, [itemType, itemId, isBookmarked])
+
+  useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect -- effect syncs with an external system (IPC fetch/subscription); state set is the result of that sync
+    void checkBookmark()
+
+    // Subscribe to bookmark events.
+    //
+    // The local IPC path sends the resolved row / item pair, so the event alone
+    // says whether it concerns this item. Sync sends only `{ id }` for inbound
+    // changes — nothing to compare against — so fall back to asking the main
+    // process, otherwise the star icon silently keeps the pre-sync state.
+    const unsubCreated = window.api.onBookmarkCreated?.((event) => {
+      if (!event?.bookmark) {
+        void checkBookmark()
+        return
+      }
+      if (event.bookmark.itemType === itemType && event.bookmark.itemId === itemId) {
+        setIsBookmarked(true)
+      }
+    })
+
+    const unsubDeleted = window.api.onBookmarkDeleted?.((event) => {
+      if (!event?.itemType && !event?.itemId) {
+        void checkBookmark()
+        return
+      }
+      if (event.itemType === itemType && event.itemId === itemId) {
+        setIsBookmarked(false)
+      }
+    })
+
+    return () => {
+      unsubCreated?.()
+      unsubDeleted?.()
+    }
+  }, [checkBookmark, itemType, itemId])
+
+  return {
+    isBookmarked,
+    isLoading,
+    toggle,
+    refresh: checkBookmark
+  }
+}
+
+// Re-export types for convenience
+export type { BookmarkWithItem, BookmarkListResponse }

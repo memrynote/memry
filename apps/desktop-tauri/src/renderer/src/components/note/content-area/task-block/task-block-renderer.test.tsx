@@ -1,0 +1,682 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import { TaskBlockRenderer, type TaskBlock, type TaskBlockEditor } from './task-block-renderer'
+import { TaskDetailHost } from '@/components/tasks/task-detail-host'
+import type React from 'react'
+
+const mocks = vi.hoisted(() => ({
+  taskState: {
+    task: null as any,
+    isLoading: false,
+    isDeleted: false
+  },
+  projects: [] as any[],
+  openTab: vi.fn(),
+  update: vi.fn(),
+  complete: vi.fn(),
+  uncomplete: vi.fn(),
+  deleteTask: vi.fn()
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t: (key: string) => key })
+}))
+
+vi.mock('@/contexts/tasks', () => {
+  const context = () => ({
+    tasks: [{ id: 'task-1', title: 'Loaded task' }],
+    projects: mocks.projects,
+    addTask: vi.fn(),
+    updateTask: vi.fn(),
+    deleteTask: vi.fn()
+  })
+  return { useTasksOptional: context, useTasksContext: context }
+})
+
+// The real drawer is covered by its own tests; this stands in for what the
+// user sees open over the note.
+vi.mock('@/components/tasks/task-detail-drawer', () => ({
+  TaskDetailDrawer: ({
+    task,
+    isOpen,
+    onClose
+  }: {
+    task: { title: string } | null
+    isOpen: boolean
+    onClose: () => void
+  }) =>
+    isOpen ? (
+      <aside aria-label="Task details">
+        {task?.title}
+        <button type="button" onClick={onClose}>
+          close drawer
+        </button>
+      </aside>
+    ) : null
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: mocks.openTab })
+}))
+
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: {
+    update: mocks.update,
+    complete: mocks.complete,
+    uncomplete: mocks.uncomplete,
+    delete: mocks.deleteTask
+  }
+}))
+
+vi.mock('./use-task-block-data', () => ({
+  useTaskBlockData: () => mocks.taskState
+}))
+
+vi.mock('@/components/tasks/task-row', () => ({
+  TaskRow: ({
+    task,
+    project,
+    isCompleted,
+    onToggleComplete,
+    onUpdateTask,
+    onProjectChange,
+    actions,
+    renderTitle,
+    pickerControl
+  }: {
+    task: { id: string; title: string }
+    project: { id: string; name: string }
+    isCompleted: boolean
+    onToggleComplete: (taskId: string) => void
+    onUpdateTask: (taskId: string, updates: Record<string, unknown>) => void
+    onProjectChange: (projectId: string) => void
+    actions: React.ReactNode
+    renderTitle: () => React.ReactNode
+    pickerControl?: { open: string | null }
+  }) => (
+    <div data-testid="task-row" data-task-id={task.id} data-project-id={project.id}>
+      <span>{isCompleted ? 'done' : 'open'}</span>
+      <span data-testid="open-property">{pickerControl?.open ?? ''}</span>
+      {renderTitle()}
+      {actions}
+      <button type="button" onClick={() => onToggleComplete(task.id)}>
+        toggle
+      </button>
+      <button type="button" onClick={() => onUpdateTask(task.id, { priority: 'urgent' })}>
+        priority
+      </button>
+      <button type="button" onClick={() => onUpdateTask(task.id, { statusId: 'done' })}>
+        status
+      </button>
+      <button type="button" onClick={() => onProjectChange('project-2')}>
+        project
+      </button>
+    </div>
+  )
+}))
+
+function makeBlock(overrides: Partial<TaskBlock['props']> = {}): TaskBlock {
+  return {
+    id: 'block-1',
+    type: 'taskBlock',
+    props: {
+      taskId: 'task-1',
+      title: 'Draft task',
+      checked: false,
+      parentTaskId: '',
+      ...overrides
+    },
+    children: []
+  }
+}
+
+function makeEditor(document: TaskBlock[] = [makeBlock()]): TaskBlockEditor {
+  return {
+    document,
+    updateBlock: vi.fn(),
+    replaceBlocks: vi.fn((blocksToRemove: TaskBlock[], blocksToInsert: TaskBlock[]) => {
+      const ids = new Set(blocksToRemove.map((block) => block.id))
+      const firstIndex = document.findIndex((block) => ids.has(block.id))
+      document.splice(firstIndex >= 0 ? firstIndex : 0, blocksToRemove.length, ...blocksToInsert)
+    }),
+    removeBlocks: vi.fn((blocks: TaskBlock[]) => {
+      const ids = new Set(blocks.map((block) => block.id))
+      for (let index = document.length - 1; index >= 0; index--) {
+        if (ids.has(document[index].id)) document.splice(index, 1)
+      }
+    }),
+    insertBlocks: vi.fn((blocks, referenceBlock, placement) => {
+      const index = Math.max(
+        0,
+        document.findIndex((block) => block.id === referenceBlock.id)
+      )
+      const inserted = blocks.map((block, offset) => ({
+        id: `inserted-${offset}`,
+        type: block.type,
+        props: {
+          taskId: block.props?.taskId ?? '',
+          title: block.props?.title ?? '',
+          checked: block.props?.checked ?? false,
+          parentTaskId: block.props?.parentTaskId ?? ''
+        },
+        children: []
+      }))
+      document.splice(placement === 'after' ? index + 1 : index, 0, ...inserted)
+    }),
+    setTextCursorPosition: vi.fn(),
+    focus: vi.fn(),
+    getTextCursorPosition: vi.fn(() => ({ block: document[0] }))
+  }
+}
+
+const project = {
+  id: 'project-1',
+  name: 'Inbox',
+  color: '#000',
+  isDefault: true,
+  statuses: [
+    { id: 'todo', name: 'Todo', type: 'todo', color: '#aaa', order: 0 },
+    { id: 'done', name: 'Done', type: 'done', color: '#0a0', order: 1 }
+  ]
+}
+
+const task = {
+  id: 'task-1',
+  title: 'Loaded task',
+  description: null,
+  projectId: 'project-1',
+  statusId: 'todo',
+  priority: 2,
+  dueDate: null,
+  dueTime: null,
+  repeatConfig: null,
+  linkedNoteIds: [],
+  sourceNoteId: null,
+  parentId: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  completedAt: null,
+  archivedAt: null
+}
+
+describe('TaskBlockRenderer', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    mocks.projects = [project]
+    mocks.taskState.task = task
+    mocks.taskState.isDeleted = false
+    mocks.taskState.isLoading = false
+    mocks.update.mockResolvedValue({ success: true })
+    mocks.complete.mockResolvedValue({ success: true })
+    mocks.uncomplete.mockResolvedValue({ success: true })
+    mocks.deleteTask.mockResolvedValue({ success: true })
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0)
+      return 1
+    })
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  })
+
+  it('renders loading and deleted states', () => {
+    mocks.projects = []
+    mocks.taskState.task = null
+
+    const editor = makeEditor()
+    const block = makeBlock()
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    expect(
+      screen.getByText('phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.loading')
+    ).toBeInTheDocument()
+
+    mocks.projects = [project]
+    mocks.taskState.task = { ...task, title: 'Removed task' }
+    mocks.taskState.isDeleted = true
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
+
+    expect(screen.getByText('Removed task')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button'))
+    expect(editor.removeBlocks).toHaveBeenCalledWith([block])
+  })
+
+  it('does not grab focus when a saved task block remounts before its task loads', () => {
+    mocks.taskState.task = null
+    const editor = makeEditor()
+    const block = makeBlock()
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    mocks.taskState.task = task
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
+
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it('forwards row actions to services and falls back to the Tasks tab outside a host', async () => {
+    const editor = makeEditor()
+    const block = makeBlock()
+    render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    fireEvent.click(screen.getByText('toggle'))
+    await act(async () => Promise.resolve())
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+      props: { ...block.props, checked: true }
+    })
+    expect(mocks.complete).toHaveBeenCalledWith({ id: 'task-1' })
+
+    fireEvent.click(screen.getByText('priority'))
+    fireEvent.click(screen.getByText('status'))
+    fireEvent.click(screen.getByText('project'))
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 4 })
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', statusId: 'done' })
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', projectId: 'project-2' })
+
+    fireEvent.click(
+      screen.getByTitle(
+        'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.openInTaskPanel'
+      )
+    )
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'tasks',
+        viewState: expect.objectContaining({ openTaskId: 'task-1' })
+      })
+    )
+  })
+
+  it('opens the task detail drawer over the note from the arrow and Cmd+Enter', async () => {
+    vi.useRealTimers()
+    render(
+      <TaskDetailHost>
+        <TaskBlockRenderer block={makeBlock()} editor={makeEditor()} />
+      </TaskDetailHost>
+    )
+    expect(screen.queryByRole('complementary', { name: 'Task details' })).not.toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByTitle(
+        'phaseF.componentsNoteContentAreaTaskBlockTaskBlockRenderer.openInTaskPanel'
+      )
+    )
+    const drawer = await screen.findByRole('complementary', { name: 'Task details' })
+    expect(drawer).toHaveTextContent('Loaded task')
+    expect(mocks.openTab).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('close drawer'))
+    expect(screen.queryByRole('complementary', { name: 'Task details' })).not.toBeInTheDocument()
+
+    fireEvent.keyDown(screen.getByRole('group', { name: 'Loaded task' }), {
+      key: 'Enter',
+      metaKey: true
+    })
+    expect(await screen.findByRole('complementary', { name: 'Task details' })).toHaveTextContent(
+      'Loaded task'
+    )
+    expect(mocks.openTab).not.toHaveBeenCalled()
+  })
+
+  it('edits titles, creates a following task block, and removes empty drafts', async () => {
+    const editor = makeEditor()
+    const block = makeBlock()
+    const { unmount } = render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Renamed task' } })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    await act(async () => Promise.resolve())
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Renamed task' })
+
+    fireEvent.keyDown(titleInput, { key: 'Enter' })
+    expect(editor.insertBlocks).toHaveBeenCalledWith(
+      [{ type: 'taskBlock', props: { taskId: '', title: '', checked: false } }],
+      block,
+      'after'
+    )
+
+    const emptyBlock = makeBlock({ taskId: '', title: '' })
+    mocks.taskState.task = null
+    unmount()
+    render(<TaskBlockRenderer block={emptyBlock} editor={editor} />)
+
+    const emptyInput = screen.getByDisplayValue('')
+    fireEvent.keyDown(emptyInput, { key: 'Backspace' })
+    expect(editor.removeBlocks).toHaveBeenCalledWith([emptyBlock])
+  })
+
+  it('indents and promotes task blocks from the title input', () => {
+    const parent = makeBlock({ taskId: 'parent', title: 'Parent' })
+    const child = makeBlock({ taskId: 'child', title: 'Child' })
+    child.id = 'child-block'
+    const editor = makeEditor([parent, child])
+
+    const { rerender } = render(<TaskBlockRenderer block={child} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    fireEvent.keyDown(screen.getByDisplayValue('Child'), { key: 'Tab' })
+    expect(editor.replaceBlocks).toHaveBeenCalledWith(
+      [parent, child],
+      [
+        expect.objectContaining({
+          children: [
+            expect.objectContaining({ props: expect.objectContaining({ parentTaskId: 'parent' }) })
+          ]
+        })
+      ]
+    )
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'child', parentId: 'parent' })
+
+    const nestedChild = { ...child, props: { ...child.props, parentTaskId: 'parent' } }
+    const nestedParent = { ...parent, children: [nestedChild] }
+    const nestedEditor = makeEditor([nestedParent])
+
+    rerender(<TaskBlockRenderer block={nestedChild} editor={nestedEditor} />)
+    fireEvent.click(screen.getByText('Loaded task'))
+    fireEvent.keyDown(screen.getByDisplayValue('Child'), { key: 'Tab', shiftKey: true })
+
+    expect(nestedEditor.replaceBlocks).toHaveBeenCalledWith(
+      [nestedParent],
+      [
+        expect.objectContaining({ children: [] }),
+        expect.objectContaining({ props: expect.objectContaining({ parentTaskId: '' }) })
+      ]
+    )
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'child', parentId: null })
+  })
+
+  it('syncs loaded service data back into block props', async () => {
+    const editor = makeEditor()
+    const block = makeBlock({ title: 'Stale title', checked: false })
+    mocks.taskState.task = {
+      ...task,
+      title: 'Fresh DB title',
+      completedAt: '2026-01-02T00:00:00.000Z'
+    }
+
+    render(<TaskBlockRenderer block={block} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+      props: { ...block.props, title: 'Fresh DB title', checked: true }
+    })
+  })
+
+  it('persists a draft title when the backing task appears', async () => {
+    const editor = makeEditor()
+    const block = makeBlock({ taskId: '', title: 'Draft title' })
+    mocks.taskState.task = null
+
+    const { rerender } = render(<TaskBlockRenderer block={block} editor={editor} />)
+    expect(screen.getByDisplayValue('Draft title')).toBeInTheDocument()
+
+    mocks.taskState.task = { ...task, title: 'Server title' }
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: '', title: 'Draft title' })
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+      props: { ...block.props, title: 'Draft title' }
+    })
+  })
+
+  it('saves on Escape, skips the trailing blur, and uncompletes completed tasks', async () => {
+    const editor = makeEditor()
+    const block = makeBlock({ checked: true })
+    mocks.taskState.task = {
+      ...task,
+      title: 'Loaded task',
+      completedAt: '2026-01-02T00:00:00.000Z'
+    }
+
+    render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Escape saved' } })
+    fireEvent.keyDown(titleInput, { key: 'Escape' })
+    fireEvent.blur(titleInput)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Escape saved' })
+
+    fireEvent.click(screen.getByText('toggle'))
+    await act(async () => Promise.resolve())
+
+    expect(editor.updateBlock).toHaveBeenLastCalledWith(block, {
+      props: { ...block.props, checked: false }
+    })
+    expect(mocks.uncomplete).toHaveBeenCalledWith('task-1')
+  })
+
+  it('removes empty task blocks on Enter and keeps a paragraph cursor target', () => {
+    const paragraph = { id: 'paragraph-1', type: 'paragraph', props: {}, children: [] } as any
+    const block = makeBlock({ title: '' })
+    const editor = makeEditor([paragraph, block])
+    mocks.taskState.task = null
+
+    // Mounted as a draft; the task id lands while the title is still open.
+    const { rerender } = render(
+      <TaskBlockRenderer block={makeBlock({ taskId: '', title: '' })} editor={editor} />
+    )
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
+
+    const input = screen.getByDisplayValue('')
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(mocks.deleteTask).toHaveBeenCalledWith('task-1')
+    expect(editor.removeBlocks).toHaveBeenCalledWith([block])
+    expect(editor.insertBlocks).toHaveBeenCalledWith([{ type: 'paragraph' }], paragraph, 'after')
+    expect(editor.setTextCursorPosition).toHaveBeenCalled()
+    expect(editor.focus).toHaveBeenCalled()
+  })
+
+  it('removes empty task blocks on Backspace and focuses previous paragraphs', () => {
+    const paragraph = { id: 'paragraph-1', type: 'paragraph', props: {}, children: [] } as any
+    const block = makeBlock({ title: '' })
+    const editor = makeEditor([paragraph, block])
+    mocks.taskState.task = null
+
+    // Mounted as a draft; the task id lands while the title is still open.
+    const { rerender } = render(
+      <TaskBlockRenderer block={makeBlock({ taskId: '', title: '' })} editor={editor} />
+    )
+    rerender(<TaskBlockRenderer block={block} editor={editor} />)
+
+    fireEvent.keyDown(screen.getByDisplayValue(''), { key: 'Backspace' })
+
+    expect(mocks.deleteTask).toHaveBeenCalledWith('task-1')
+    expect(editor.removeBlocks).toHaveBeenCalledWith([block])
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('paragraph-1', 'end')
+    expect(editor.focus).toHaveBeenCalled()
+  })
+
+  // #2271 — the block is a `taskBlock` from the moment the checkbox is
+  // rewritten, but its `taskId` only arrives when `tasks:create` resolves.
+  // Edits made in that window used to be dropped without a trace: the project
+  // picker looked live and did nothing.
+  it('writes nothing while no task id exists and replays the edits when one arrives', async () => {
+    const editor = makeEditor()
+    const draft = makeBlock({ taskId: '', title: 'Draft task' })
+    mocks.taskState.task = null
+
+    const { rerender } = render(<TaskBlockRenderer block={draft} editor={editor} />)
+
+    fireEvent.click(screen.getByText('priority'))
+    fireEvent.click(screen.getByText('status'))
+    fireEvent.click(screen.getByText('project'))
+    await act(async () => Promise.resolve())
+
+    // #then nothing is written against the empty id
+    expect(mocks.update).not.toHaveBeenCalled()
+    expect(mocks.complete).not.toHaveBeenCalled()
+
+    // #when the create lands and the block is handed its id
+    const created = makeBlock({ taskId: 'task-9', title: 'Draft task' })
+    rerender(<TaskBlockRenderer block={created} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    // The project move is its own call, and it goes first: `updateTask`
+    // rewrites `statusId` to the destination project's equivalent status
+    // whenever `projectId` changes, so a combined payload would lose the
+    // status picked in the same window.
+    expect(mocks.update).toHaveBeenNthCalledWith(1, { id: 'task-9', projectId: 'project-2' })
+    expect(mocks.update).toHaveBeenNthCalledWith(2, {
+      id: 'task-9',
+      priority: 4,
+      statusId: 'done'
+    })
+  })
+
+  it('replays a completion ticked before the task id arrived', async () => {
+    const editor = makeEditor()
+    const draft = makeBlock({ taskId: '', title: 'Draft task' })
+    mocks.taskState.task = null
+
+    const { rerender } = render(<TaskBlockRenderer block={draft} editor={editor} />)
+
+    fireEvent.click(screen.getByText('toggle'))
+    await act(async () => Promise.resolve())
+
+    // The markdown checkbox is the source of truth, so the tick shows now
+    expect(editor.updateBlock).toHaveBeenCalledWith(draft, {
+      props: { ...draft.props, checked: true }
+    })
+    expect(mocks.complete).not.toHaveBeenCalled()
+
+    const created = makeBlock({ taskId: 'task-9', title: 'Draft task', checked: true })
+    rerender(<TaskBlockRenderer block={created} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.complete).toHaveBeenCalledWith({ id: 'task-9' })
+  })
+
+  // #2241 — the Tasks-page shorthand did nothing in a note.
+  it('applies shorthand typed into the title and keeps the tokens out of it', async () => {
+    const editor = makeEditor()
+    const block = makeBlock()
+    render(<TaskBlockRenderer block={block} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Ship it !high #launch' } })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    await act(async () => Promise.resolve())
+
+    // #then the half-parsed line is never written as the title
+    expect(mocks.update).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(titleInput, { key: 'Enter' })
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 3, tags: ['launch'] })
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Ship it' })
+    expect(editor.updateBlock).toHaveBeenCalledWith(block, {
+      props: { ...block.props, title: 'Ship it' }
+    })
+  })
+
+  it('holds shorthand typed into a draft until its task id arrives', async () => {
+    const editor = makeEditor()
+    const draft = makeBlock({ taskId: '', title: '' })
+    mocks.taskState.task = null
+
+    const { rerender } = render(<TaskBlockRenderer block={draft} editor={editor} />)
+
+    const input = screen.getByDisplayValue('')
+    fireEvent.change(input, { target: { value: 'Buy milk #groceries @tomorrow' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    await act(async () => Promise.resolve())
+
+    // The block is named without the tokens, which is what the create sees.
+    expect(editor.updateBlock).toHaveBeenCalledWith(draft, {
+      props: { ...draft.props, title: 'Buy milk' }
+    })
+    expect(mocks.update).not.toHaveBeenCalled()
+
+    const created = makeBlock({ taskId: 'task-9', title: 'Buy milk' })
+    rerender(<TaskBlockRenderer block={created} editor={editor} />)
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'task-9',
+        tags: ['groceries'],
+        dueDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        dueTime: null
+      })
+    )
+  })
+
+  it('opens a property picker from its key while the block itself has focus', () => {
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    const row = screen.getByRole('group', { name: 'Loaded task' })
+    fireEvent.keyDown(row, { key: 'd' })
+    expect(screen.getByTestId('open-property')).toHaveTextContent('due')
+
+    fireEvent.keyDown(row, { key: 'L', shiftKey: true })
+    expect(screen.getByTestId('open-property')).toHaveTextContent('related')
+
+    // A modified key is the app's, not a property's.
+    fireEvent.keyDown(row, { key: 's', metaKey: true })
+    expect(screen.getByTestId('open-property')).toHaveTextContent('related')
+
+    fireEvent.keyDown(row, { key: 'Enter', metaKey: true })
+    expect(mocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({ viewState: expect.objectContaining({ openTaskId: 'task-1' }) })
+    )
+
+    fireEvent.keyDown(row, { key: 'Enter' })
+    expect(screen.getByDisplayValue('Draft task')).toBeInTheDocument()
+  })
+
+  it('leaves letters typed into the title to the title', () => {
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    fireEvent.keyDown(screen.getByDisplayValue('Draft task'), { key: 'd' })
+
+    expect(screen.getByTestId('open-property')).toHaveTextContent('')
+  })
+
+  it('keeps the block selected after Escape leaves the title', () => {
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    fireEvent.keyDown(screen.getByDisplayValue('Draft task'), { key: 'Escape' })
+
+    expect(document.activeElement).toBe(screen.getByRole('group', { name: 'Loaded task' }))
+  })
+
+  // In the app, Esc in an input is a blur first: use-hint-activation blurs it
+  // in the capture phase, and the title's own key handler never runs.
+  it('selects the task once when Esc arrives as a bare blur', async () => {
+    // jsdom ties hasFocus() to a focused element; a browser ties it to the
+    // window, which keeps focus while the input blurs to <body>.
+    const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(true)
+    const editor = makeEditor()
+    render(<TaskBlockRenderer block={makeBlock()} editor={editor} />)
+
+    fireEvent.click(screen.getByText('Loaded task'))
+    const titleInput = screen.getByDisplayValue('Draft task')
+    fireEvent.change(titleInput, { target: { value: 'Ship it !high' } })
+    act(() => titleInput.blur())
+    await act(async () => Promise.resolve())
+
+    expect(mocks.update).toHaveBeenCalledTimes(2)
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', priority: 3 })
+    expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Ship it' })
+    // The mocked task keeps its loaded title; the block is what matters here.
+    expect(document.activeElement).toBe(screen.getByRole('group', { name: 'Loaded task' }))
+    hasFocus.mockRestore()
+  })
+})

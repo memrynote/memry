@@ -1,0 +1,270 @@
+import {
+  Check,
+  Flag,
+  Calendar,
+  FolderOpen,
+  Columns3,
+  Archive,
+  RotateCcw,
+  Trash2,
+  X
+} from '@/lib/icons'
+
+import { cn } from '@/lib/utils'
+import { BulkActionButton } from './bulk-action-button'
+import { BulkActionDropdown, type BulkActionOption } from './bulk-action-dropdown'
+import { priorityConfig, type Priority } from '@/data/task-model'
+import type { Project, Status } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface BulkActionToolbarProps {
+  /** Number of selected tasks */
+  selectedCount: number
+  /** Complete selected tasks */
+  onComplete: () => void
+  /** Change priority for selected tasks */
+  onChangePriority: (priority: Priority) => void
+  /** Change due date for selected tasks */
+  onChangeDueDate: (option: string) => void
+  /** Move selected tasks to project */
+  onMoveToProject: (projectId: string) => void
+  /** Change status for selected tasks (Kanban) */
+  onChangeStatus?: (statusId: string) => void
+  /** Archive selected tasks */
+  onArchive: () => void
+  /** Unarchive selected tasks — replaces Archive while the archived scope is shown */
+  onUnarchive?: () => void
+  /** The list currently shows archived tasks, so archiving again is meaningless */
+  isArchivedScope?: boolean
+  /** Delete selected tasks */
+  onDelete: () => void
+  /** Cancel/clear selection */
+  onCancel: () => void
+  /** Available projects for move action */
+  projects: Project[]
+  /** Available statuses for status action (Kanban only) */
+  statuses?: Status[]
+  /** Whether to show status action (Kanban view) */
+  showStatusAction?: boolean
+  /** Additional class names */
+  className?: string
+}
+
+// ============================================================================
+// OPTION CONFIGS
+// ============================================================================
+
+const priorityOptions: BulkActionOption<Priority>[] = [
+  {
+    value: 'urgent',
+    label: 'Urgent',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.urgent.color || undefined }}
+      />
+    ),
+    color: priorityConfig.urgent.color || undefined
+  },
+  {
+    value: 'high',
+    label: 'High',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.high.color || undefined }}
+      />
+    ),
+    color: priorityConfig.high.color || undefined
+  },
+  {
+    value: 'medium',
+    label: 'Medium',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.medium.color || undefined }}
+      />
+    ),
+    color: priorityConfig.medium.color || undefined
+  },
+  {
+    value: 'low',
+    label: 'Low',
+    icon: (
+      <span
+        className="size-2 rounded-full"
+        style={{ backgroundColor: priorityConfig.low.color || undefined }}
+      />
+    ),
+    color: priorityConfig.low.color || undefined
+  },
+  { value: 'none', label: 'None', isSeparator: false },
+  { value: 'none', label: 'Remove priority', isSeparator: false }
+]
+
+const dueDateOptions: BulkActionOption[] = [
+  { value: 'today', label: 'Today', icon: <Calendar className="size-4" /> },
+  { value: 'tomorrow', label: 'Tomorrow', icon: <Calendar className="size-4" /> },
+  { value: 'next-week', label: 'Next week', icon: <Calendar className="size-4" /> },
+  { value: 'next-month', label: 'Next month', icon: <Calendar className="size-4" /> },
+  { value: 'separator', label: '', isSeparator: true },
+  { value: 'pick-date', label: 'Pick a date...', icon: <Calendar className="size-4" /> },
+  { value: 'separator2', label: '', isSeparator: true },
+  { value: 'remove', label: 'Remove due date', icon: <X className="size-4" /> }
+]
+
+// ============================================================================
+// COMPONENT
+// ============================================================================
+
+const NO_STATUSES: Status[] = []
+
+/**
+ * Toolbar that appears when tasks are selected, providing bulk action buttons
+ */
+export const BulkActionToolbar = ({
+  selectedCount,
+  onComplete,
+  onChangePriority,
+  onChangeDueDate,
+  onMoveToProject,
+  onChangeStatus,
+  onArchive,
+  onUnarchive,
+  isArchivedScope = false,
+  onDelete,
+  onCancel,
+  projects,
+  statuses = NO_STATUSES,
+  showStatusAction = false,
+  className
+}: BulkActionToolbarProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
+  // Build project options
+  const projectOptions: BulkActionOption[] = projects
+    .filter((p) => !p.isArchived)
+    .map((project) => ({
+      value: project.id,
+      label: project.name,
+      icon: <span className="size-2 rounded-full" style={{ backgroundColor: project.color }} />
+    }))
+
+  // Build status options (for Kanban)
+  const statusOptions: BulkActionOption[] = statuses.map((status) => ({
+    value: status.id,
+    label: status.name,
+    icon: <span className="size-2 rounded-full" style={{ backgroundColor: status.color }} />,
+    color: status.color
+  }))
+
+  return (
+    <div
+      className={cn(
+        'flex h-11 shrink-0 items-center gap-0.5 rounded-xl border border-border bg-popover ps-1.5 pe-2 text-xs shadow-lg',
+        'animate-in fade-in slide-in-from-bottom-2 duration-150',
+        className
+      )}
+      role="toolbar"
+      aria-label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.bulkActions')}
+    >
+      {/* Count pill */}
+      <div className="flex h-8 items-center gap-1.5 rounded-lg bg-[var(--tint)]/10 px-2.5">
+        <span className="font-bold tabular-nums text-[var(--tint)]">{selectedCount}</span>
+        <span className="font-medium text-[var(--tint)]">
+          {tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.selected')}
+        </span>
+      </div>
+
+      <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+
+      {/* Complete */}
+      <BulkActionButton
+        icon={<Check className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.complete')}
+        onClick={onComplete}
+      />
+
+      {/* Priority dropdown */}
+      <BulkActionDropdown
+        icon={<Flag className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.priority')}
+        options={priorityOptions.filter((o) => !o.isSeparator || o.value !== 'none')}
+        onSelect={onChangePriority}
+        selectedCount={selectedCount}
+      />
+
+      {/* Due Date dropdown */}
+      <BulkActionDropdown
+        icon={<Calendar className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.dueDate')}
+        options={dueDateOptions}
+        onSelect={onChangeDueDate}
+        selectedCount={selectedCount}
+      />
+
+      {/* Move to project dropdown */}
+      <BulkActionDropdown
+        icon={<FolderOpen className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.moveTo')}
+        options={projectOptions}
+        onSelect={onMoveToProject}
+        selectedCount={selectedCount}
+      />
+
+      {/* Status dropdown (Kanban only) */}
+      {showStatusAction && statuses.length > 0 && onChangeStatus && (
+        <BulkActionDropdown
+          icon={<Columns3 className="size-3.5 shrink-0" />}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.status')}
+          options={statusOptions}
+          onSelect={onChangeStatus}
+          selectedCount={selectedCount}
+        />
+      )}
+
+      <div className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+
+      {/* Archive / Unarchive */}
+      {isArchivedScope && onUnarchive ? (
+        <BulkActionButton
+          icon={<RotateCcw className="size-3.5 shrink-0" />}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.unarchive')}
+          onClick={onUnarchive}
+          variant="secondary"
+        />
+      ) : (
+        <BulkActionButton
+          icon={<Archive className="size-3.5 shrink-0" />}
+          label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.archive')}
+          onClick={onArchive}
+          variant="secondary"
+        />
+      )}
+
+      {/* Delete */}
+      <BulkActionButton
+        icon={<Trash2 className="size-3.5 shrink-0" />}
+        label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.delete')}
+        onClick={onDelete}
+        variant="danger"
+      />
+
+      {/* Clear selection */}
+      <button
+        type="button"
+        onClick={onCancel}
+        aria-label={tPhaseF('phaseF.componentsTasksBulkActionsBulkActionToolbar.cancelSelection')}
+        className="flex size-7 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+      >
+        <X className="size-4" strokeWidth={2} />
+      </button>
+    </div>
+  )
+}
+
+export default BulkActionToolbar

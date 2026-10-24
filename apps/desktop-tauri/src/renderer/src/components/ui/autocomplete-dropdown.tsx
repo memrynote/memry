@@ -1,0 +1,149 @@
+/**
+ * Autocomplete Dropdown Component
+ *
+ * Displays a list of autocomplete suggestions with keyboard navigation support.
+ * Used with the useAutocomplete hook.
+ *
+ * @module components/ui/autocomplete-dropdown
+ */
+
+import { useEffect, useRef } from 'react'
+import { cn } from '@/lib/utils'
+import type { AutocompleteSuggestion } from '@/hooks/use-autocomplete'
+import { useT } from '@memry/i18n/renderer'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface AutocompleteDropdownProps {
+  /** List of suggestions to display */
+  suggestions: AutocompleteSuggestion[]
+  /** Currently selected index */
+  selectedIndex: number
+  /** Called when a suggestion is clicked */
+  onSelect: (index: number) => void
+  /** Whether the dropdown is visible */
+  visible: boolean
+  /** Additional CSS classes */
+  className?: string
+}
+
+// ============================================================================
+// Component
+// ============================================================================
+
+/**
+ * Dropdown component for displaying autocomplete suggestions.
+ *
+ * Features:
+ * - Keyboard navigation support (managed by parent via useAutocomplete)
+ * - Auto-scroll selected item into view
+ * - Function signature display in muted color
+ * - Visual distinction between functions and variables
+ */
+export function AutocompleteDropdown({
+  suggestions,
+  selectedIndex,
+  onSelect,
+  visible,
+  className
+}: AutocompleteDropdownProps): React.JSX.Element | null {
+  const { t: tPhaseF } = useT('common')
+  const listRef = useRef<HTMLDivElement>(null)
+  const selectedRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll selected item into view
+  useEffect(() => {
+    if (visible && selectedRef.current) {
+      selectedRef.current.scrollIntoView({
+        block: 'nearest',
+        behavior: 'smooth'
+      })
+    }
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- selectedIndex re-runs the scroll when the selection moves to a different row
+  }, [selectedIndex, visible])
+
+  if (!visible || suggestions.length === 0) {
+    return null
+  }
+
+  return (
+    <div
+      className={cn(
+        'absolute z-50 w-full mt-1',
+        'bg-popover border rounded-md shadow-md',
+        'overflow-hidden',
+        className
+      )}
+    >
+      <div
+        ref={listRef}
+        className="max-h-48 overflow-y-auto py-1"
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
+        role="listbox"
+        aria-label={tPhaseF('phaseF.componentsUiAutocompleteDropdown.suggestions')}
+      >
+        {suggestions.map((suggestion, index) => {
+          const isSelected = index === selectedIndex
+          const isFunction = suggestion.type === 'function'
+
+          return (
+            // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/interactive-supports-focus -- pointer-only wrapper; keyboard access is provided by the inner controls; option focus is managed by the owning input via aria-activedescendant-style selection
+            <div
+              key={suggestion.label}
+              ref={isSelected ? selectedRef : null}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
+              role="option"
+              aria-selected={isSelected}
+              className={cn(
+                'px-3 py-1.5 cursor-pointer',
+                'flex items-center gap-1',
+                'text-sm font-mono',
+                'transition-colors',
+                isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
+              )}
+              onClick={() => onSelect(index)}
+              onMouseEnter={() => {
+                // Optional: could update selectedIndex on hover
+              }}
+            >
+              {/* Type indicator */}
+              <span
+                className={cn(
+                  'flex-shrink-0 w-4 h-4 rounded text-[10px] font-bold',
+                  'flex items-center justify-center',
+                  isFunction
+                    ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                    : 'bg-green-500/20 text-green-600 dark:text-green-400'
+                )}
+              >
+                {isFunction ? 'ƒ' : 'x'}
+              </span>
+
+              {/* Label */}
+              <span className="font-semibold">{suggestion.label}</span>
+
+              {/* Signature (for functions) */}
+              {suggestion.signature && (
+                <span className="text-muted-foreground">{suggestion.signature}</span>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Hint footer */}
+      <div className="px-3 py-1 text-[10px] text-muted-foreground border-t bg-muted/30">
+        <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">Tab</kbd>{' '}
+        {tPhaseF('phaseF.componentsUiAutocompleteDropdown.or')}{' '}
+        <kbd className="px-1 py-0.5 bg-muted rounded text-[9px]">
+          {tPhaseF('phaseF.componentsUiAutocompleteDropdown.enter')}
+        </kbd>{' '}
+        {tPhaseF('phaseF.componentsUiAutocompleteDropdown.toInsert')}
+      </div>
+    </div>
+  )
+}
+
+export default AutocompleteDropdown

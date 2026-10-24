@@ -1,0 +1,262 @@
+/* oxlint-disable typescript/no-explicit-any */
+
+import { useEffect, useState } from 'react'
+import { AIExtension } from '@blocknote/xl-ai'
+import { linkDestination } from '@memry/editor-schema/inline'
+import { DefaultChatTransport } from 'ai'
+import type { HighlightInfo } from '../types'
+import { scrollToAnchor } from '../scroll-to-anchor'
+import { isFromWhiteboard } from '../whiteboard-events'
+import { useEditorTarget } from '@/commands'
+import { createLogger } from '@/lib/logger'
+
+const _log = createLogger('Hook:BlockNoteSetup')
+
+interface BlockNoteSetupParams {
+  editor: any
+  aiPort?: number | null
+  spellCheck?: boolean
+  focusAtEndRef?: React.RefObject<((clickY?: number) => void) | null>
+  editorContainerRef: React.RefObject<HTMLDivElement | null>
+  onLinkClick?: (href: string) => void
+  initialHighlight?: HighlightInfo
+  /** For 'note_date' reminders: scroll to the inline date pill with this anchor id. */
+  initialAnchorId?: string
+}
+
+interface BlockNoteSetupResult {
+  aiReady: boolean
+}
+
+export function useBlockNoteSetup({
+  editor,
+  aiPort,
+  spellCheck,
+  focusAtEndRef,
+  editorContainerRef,
+  onLinkClick,
+  initialHighlight,
+  initialAnchorId
+}: BlockNoteSetupParams): BlockNoteSetupResult {
+  const [aiReady, setAiReady] = useState(false)
+
+  // AI extension registration
+  useEffect(() => {
+    if (!aiPort) return undefined
+
+    if (!editor.getExtension('ai')) {
+      const transport = new DefaultChatTransport({
+        api: `http://127.0.0.1:${aiPort}/api/ai/chat`
+      })
+      const aiExtension = AIExtension({ transport })
+      editor.registerExtension(aiExtension)
+    }
+
+    const readyTimer = window.setTimeout(() => {
+      setAiReady(Boolean(editor.getExtension('ai')))
+    }, 0)
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault()
+        const ai = editor.getExtension('ai')
+        if (!ai?.openAIMenuAtBlock) return
+        const cursor = editor.getTextCursorPosition()
+        if (cursor?.block?.id) {
+          ai.openAIMenuAtBlock(cursor.block.id)
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.clearTimeout(readyTimer)
+      document.removeEventListener('keydown', handleKeyDown)
+      editor.unregisterExtension('ai')
+      // The editor can outlive this cleanup: a vault workspace kept mounted
+      // while hidden runs it on hide and the setup again on reveal. Drop the
+      // flag with the extension, so the reveal's setup flips it back and
+      // renders the AI menu again.
+      setAiReady(false)
+    }
+  }, [aiPort, editor])
+
+  // Offer the editable editor to the Edit, Insert and Format commands of the
+  // tab it renders in. Read-only instances (template preview) never are one.
+  useEditorTarget(editor.isEditable ? editor : null)
+
+  // SpellCheck DOM sync
+  useEffect(() => {
+    if (spellCheck === undefined) return undefined
+    const container = editorContainerRef.current
+    if (!container) return undefined
+    const applySpellCheck = (): void => {
+      const ce = container.querySelector<HTMLElement>('[contenteditable="true"]')
+      if (ce) ce.spellcheck = spellCheck
+    }
+    applySpellCheck()
+    const t = setTimeout(applySpellCheck, 100)
+    return () => clearTimeout(t)
+  }, [spellCheck, editorContainerRef])
+
+  // focusAtEndRef assignment
+  useEffect(() => {
+    if (!focusAtEndRef) return
+    focusAtEndRef.current = (clickY) => {
+      editor.focus()
+      const blocks = editor.document
+      if (blocks.length === 0) return
+
+      const lastBlock = blocks[blocks.length - 1]
+      // Only a click BELOW the last block is "start writing here". The same
+      // mousedown handler also fires in the gutter beside the column, which is
+      // where every block marquee starts, and inserting there appended a blank
+      // paragraph to the note on each marquee drag. Beside the text, keep the
+      // caret at the end of what is already written.
+      if (clickY !== undefined) {
+        const root: HTMLElement | undefined = editor.domElement
+        const lastEl = Array.from(root?.querySelectorAll<HTMLElement>('[data-id]') ?? []).find(
+          (el) => el.getAttribute('data-id') === lastBlock.id
+        )
+        if (lastEl && clickY <= lastEl.getBoundingClientRect().bottom) {
+          editor.setTextCursorPosition(lastBlock.id, 'end')
+          return
+        }
+      }
+
+      // A click in the empty space below the note means "start writing here",
+      // and until BlockNote 0.51 that worked by accident: every document
+      // carried a real trailing empty paragraph, so the last block WAS an
+      // empty paragraph and the caret landed in it. 0.51 made the trailing
+      // block a widget decoration instead, so the last block is now the last
+      // thing the user wrote — and typing appended to the end of it, turning
+      // a new line into the same line.
+      //
+      // Insert the paragraph BlockNote's own trailing widget would have
+      // inserted for a click on itself. Skipped when the document already
+      // ends in an empty paragraph, so repeated clicks do not stack blank
+      // blocks up.
+      const content = lastBlock.content
+      const isEmptyParagraph =
+        lastBlock.type === 'paragraph' && Array.isArray(content) && content.length === 0
+      if (isEmptyParagraph) {
+        editor.setTextCursorPosition(lastBlock.id, 'end')
+        return
+      }
+
+      const [inserted] = editor.insertBlocks([{ type: 'paragraph' }], lastBlock, 'after')
+      editor.setTextCursorPosition(inserted, 'start')
+    }
+  }, [editor, focusAtEndRef])
+
+  // External link click handler.
+  //
+  // Wiki-link chips are NOT handled here any more. A chip reads as its raw
+  // `[[…]]` while the caret is beside it, and the chip element is hidden to
+  // make room for that — which happens within milliseconds of mousedown, so by
+  // the time `click` fires the chip is gone from the DOM and the event has been
+  // retargeted to the paragraph. Navigation moved to
+  // `createWikiLinkEditPlugin`, which claims the press at MOUSEDOWN so the
+  // caret is never parked beside the chip and that paint never appears. Do not
+  // restore a branch here: with both in place a click opens the note twice.
+  useEffect(() => {
+    if (!onLinkClick) return undefined
+
+    const handleClick = (e: Event): void => {
+      // A link on a whiteboard is opened by the board's own handler; answering
+      // it here too opened every such link twice.
+      if (isFromWhiteboard(e)) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the listener is registered for mouse events only
+      const mouseEvent = e as globalThis.MouseEvent
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = mouseEvent.target as HTMLElement
+      const link = target.closest('a')
+      if (link) {
+        const href = link.getAttribute('href')
+        if (href && !href.startsWith('#')) {
+          mouseEvent.preventDefault()
+          onLinkClick?.(linkDestination(href))
+        }
+      }
+    }
+
+    // Scope the lookup to this instance's own container. `document.querySelector`
+    // returns whichever `.bn-editor` is first in the document, so with more than
+    // one editor mounted (split view, or a note alongside the inbox/task
+    // description editors) every instance bound to the same element: clicks in
+    // the first pane fired every pane's callbacks, and clicks in any later pane
+    // fired none.
+    const editorElement = editorContainerRef.current?.querySelector('.bn-editor')
+    editorElement?.addEventListener('click', handleClick)
+
+    return () => {
+      editorElement?.removeEventListener('click', handleClick)
+    }
+  }, [onLinkClick, editorContainerRef])
+
+  // Scroll to highlight on mount
+  useEffect(() => {
+    if (!initialHighlight?.text || !editorContainerRef.current) return undefined
+
+    const scrollToHighlight = (): void => {
+      const container = editorContainerRef.current
+      if (!container) return
+
+      const searchText = initialHighlight.text
+      const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null)
+      let node: Text | null
+
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the TreeWalker is created with SHOW_TEXT
+      while ((node = walker.nextNode() as Text | null)) {
+        const nodeText = node.textContent || ''
+        const index = nodeText.toLowerCase().indexOf(searchText.toLowerCase())
+
+        if (index !== -1) {
+          const parentElement = node.parentElement
+          if (parentElement) {
+            parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+            const originalBg = parentElement.style.backgroundColor
+            parentElement.style.backgroundColor = 'rgba(251, 191, 36, 0.4)'
+            parentElement.style.transition = 'background-color 0.3s ease'
+
+            setTimeout(() => {
+              parentElement.style.backgroundColor = originalBg
+            }, 3000)
+          }
+          break
+        }
+      }
+    }
+
+    const timeoutId = setTimeout(scrollToHighlight, 500)
+    return () => clearTimeout(timeoutId)
+  }, [initialHighlight, editorContainerRef])
+
+  // Scroll to inline date pill on mount (from note_date reminder navigation).
+  // The pill DOM only exists once the CRDT doc has loaded and rendered, which
+  // can take longer than a single fixed delay on large/slow notes — so retry
+  // until the anchor is found (or give up after ~2s) instead of a lone 500ms
+  // shot that silently misses.
+  useEffect(() => {
+    if (!initialAnchorId || !editorContainerRef.current) return undefined
+
+    let attempts = 0
+    let timeoutId: ReturnType<typeof setTimeout>
+    const tryScroll = (): void => {
+      const container = editorContainerRef.current
+      if (container && scrollToAnchor(container, initialAnchorId)) return
+      if (++attempts >= 20) return
+      timeoutId = setTimeout(tryScroll, 100)
+    }
+    timeoutId = setTimeout(tryScroll, 100)
+    return () => clearTimeout(timeoutId)
+  }, [initialAnchorId, editorContainerRef])
+
+  // Derive aiReady so we don't reset state in an effect on prop change. The
+  // registration is checked too: the AI components throw without the extension,
+  // and a hidden workspace can render between the cleanup that unregisters it
+  // and the state update that follows.
+  return { aiReady: aiPort ? aiReady && Boolean(editor.getExtension('ai')) : false }
+}

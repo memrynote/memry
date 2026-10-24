@@ -1,0 +1,202 @@
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
+import type { ResolvedField } from '@memry/contracts/tag-schema'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { propertiesService } from '@/services/properties-service'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { cn } from '@/lib/utils'
+import { ObjectAvatar, type ObjectLook } from './object-avatar'
+import { ObjectRelationPicker } from './object-relation-picker'
+import { RelationTitles } from './relation-titles'
+
+const QUICK_TYPES = new Set(['text', 'number', 'url', 'relation'])
+
+export function quickFields(fields: readonly ResolvedField[]): ResolvedField[] {
+  return fields.filter((field) => QUICK_TYPES.has(field.type)).slice(0, 2)
+}
+
+export interface QuickFieldsTarget {
+  noteId: string
+  title: string
+  tag: string
+  tagName: string
+  look: ObjectLook
+  fields: ResolvedField[]
+  position: { x: number; y: number }
+}
+
+type Values = Record<string, string | string[]>
+
+export function quickFieldValues(
+  fields: readonly ResolvedField[],
+  values: Values
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const field of fields) {
+    const value = values[field.name]
+    if (Array.isArray(value)) {
+      if (value.length > 0)
+        out[field.name] = field.relation?.many === false ? value.slice(-1) : value
+    } else if (typeof value === 'string' && value.trim() !== '') {
+      out[field.name] = field.type === 'number' ? Number(value) : value.trim()
+    }
+  }
+  return out
+}
+
+const stringArrayOf = (value: string | string[] | undefined): string[] =>
+  Array.isArray(value) ? value : []
+
+const stringOf = (value: string | string[] | undefined): string =>
+  typeof value === 'string' ? value : ''
+
+export function QuickFieldsCard({
+  target,
+  onClose
+}: {
+  target: QuickFieldsTarget
+  onClose: () => void
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  const [values, setValues] = useState<Values>({})
+  const firstRef = useRef<HTMLElement | null>(null)
+
+  useEffect(() => {
+    firstRef.current?.focus()
+  }, [])
+
+  const done = async (): Promise<void> => {
+    const typed = quickFieldValues(target.fields, values)
+    onClose()
+    if (Object.keys(typed).length === 0) return
+    try {
+      const result = await propertiesService.merge(target.noteId, typed)
+      if (!result.success) throw new Error(result.error)
+    } catch (error) {
+      toast.error(extractErrorMessage(error, t('tagObjects.quickFields.saveFailed')))
+    }
+  }
+
+  const onKeyDown = (event: React.KeyboardEvent): void => {
+    // Keys from the relation picker's portal bubble here through React; the
+    // picker owns those.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keydown target may be an SVG element, so an instanceof HTMLElement guard would change behavior
+    const eventTarget = event.target as HTMLElement
+    if (event.defaultPrevented || !event.currentTarget.contains(eventTarget)) return
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      event.stopPropagation()
+      onClose()
+    } else if (event.key === 'Enter' && eventTarget.tagName !== 'BUTTON') {
+      event.preventDefault()
+      event.stopPropagation()
+      void done()
+    }
+  }
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- pointer/hover handler is a convenience; keyboard access is provided by inner controls
+    <div
+      data-inline-choice-menu
+      data-testid="quick-fields-card"
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
+      role="dialog"
+      aria-label={t('tagObjects.quickFields.aria', { title: target.title })}
+      onKeyDown={onKeyDown}
+      className="absolute z-50 flex w-[300px] flex-col gap-2 rounded-lg border border-border bg-popover p-3 text-[13px] shadow-[var(--shadow-card-hover)] motion-safe:animate-in motion-safe:fade-in-0"
+      style={{ left: target.position.x, top: target.position.y }}
+    >
+      <div className="flex items-center gap-2">
+        <ObjectAvatar look={target.look} title={target.title} size={24} />
+        <div className="flex min-w-0 flex-col">
+          <span className="truncate font-semibold text-foreground">{target.title}</span>
+          <span className="text-xs text-muted-foreground">
+            {t('tagObjects.quickFields.newObject', { tag: target.tagName })}
+          </span>
+        </div>
+      </div>
+      {target.fields.map((field, index) => (
+        <label key={field.name} className="flex items-center gap-2">
+          <span className="w-[72px] shrink-0 truncate text-muted-foreground">{field.name}</span>
+          {field.relation?.target ? (
+            <RelationField
+              field={field}
+              value={stringArrayOf(values[field.name])}
+              onChange={(next) => setValues((prev) => ({ ...prev, [field.name]: next }))}
+              triggerRef={index === 0 ? firstRef : undefined}
+            />
+          ) : (
+            <input
+              ref={index === 0 ? (el) => void (firstRef.current = el) : undefined}
+              value={stringOf(values[field.name])}
+              type={field.type === 'number' ? 'number' : 'text'}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, [field.name]: event.target.value }))
+              }
+              placeholder={t('tagObjects.quickFields.add', { field: field.name.toLowerCase() })}
+              className="h-8 min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 outline-none focus:border-foreground/40"
+            />
+          )}
+        </label>
+      ))}
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <button type="button" onClick={onClose} className="flex items-center gap-1">
+          <kbd className="rounded border border-border px-1">{t('tagObjects.keys.esc')}</kbd>
+          {t('tagObjects.quickFields.later')}
+        </button>
+        <button type="button" onClick={() => void done()} className="flex items-center gap-1">
+          <kbd className="rounded border border-border px-1">{t('tagObjects.keys.enter')}</kbd>
+          {t('tagObjects.quickFields.done')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function RelationField({
+  field,
+  value,
+  onChange,
+  triggerRef
+}: {
+  field: ResolvedField
+  value: string[]
+  onChange: (next: string[]) => void
+  triggerRef?: React.RefObject<HTMLElement | null>
+}): React.JSX.Element {
+  const { t } = useT('notes')
+  const [open, setOpen] = useState(false)
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          ref={(el) => {
+            if (triggerRef) triggerRef.current = el
+          }}
+          type="button"
+          className={cn(
+            'flex h-8 min-w-0 flex-1 items-center gap-1 rounded-md border border-border px-2 text-start outline-none focus:border-foreground/40',
+            value.length === 0 && 'text-muted-foreground/70'
+          )}
+        >
+          {value.length > 0 ? (
+            <RelationTitles uris={value} />
+          ) : (
+            t('tagObjects.quickFields.add', { field: field.name.toLowerCase() })
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" sideOffset={6} className="w-auto p-0">
+        <ObjectRelationPicker
+          targetTag={field.relation!.target!}
+          selected={value}
+          onSelect={(uri) => {
+            onChange(field.relation?.many ? [...new Set([...value, uri])] : [uri])
+            setOpen(false)
+          }}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}

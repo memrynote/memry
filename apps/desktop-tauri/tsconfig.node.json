@@ -1,0 +1,37 @@
+{
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "scripts/**/*"
+  ],
+  "exclude": [
+    "**/*.test.ts",
+    "**/*.test.mjs"
+  ],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "noImplicitReturns": true,
+    "sourceMap": false,
+    "allowImportingTsExtensions": true,
+    "allowJs": false,
+    "noEmit": true,
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
+  }
+}

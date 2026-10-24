@@ -1,0 +1,186 @@
+/**
+ * Keyboard shortcuts utilities and hook
+ * Provides OS detection, input focus detection, and helpers for keyboard shortcuts
+ */
+
+/**
+ * Detect if the current platform is macOS
+ */
+export const isMac =
+  typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+
+/**
+ * Get the modifier key display string based on platform
+ * Returns ⌘ for Mac, Ctrl for other platforms
+ */
+export const modifierKey = isMac ? '⌘' : 'Ctrl'
+
+/**
+ * Get the alt/option key display string based on platform
+ * Returns ⌥ for Mac, Alt for other platforms
+ */
+export const altKey = isMac ? '⌥' : 'Alt'
+
+// A note's block selection blurs the editor, yet typed keys belong to it: they
+// replace the selected blocks. Each selecting editor claims the keyboard here so
+// app-wide single-key shortcuts (hint mode on `f`, `?`) stand down meanwhile.
+const blockSelectionOwners = new Set<object>()
+
+// oxlint-disable-next-line anti-slop/no-object-parameters -- owners are arbitrary editor instances compared by identity; no shared owner type exists
+export const claimKeysForBlockSelection = (owner: object): (() => void) => {
+  blockSelectionOwners.add(owner)
+  return () => {
+    blockSelectionOwners.delete(owner)
+  }
+}
+
+/**
+ * Check if the currently focused element is an input field
+ * Used to determine if keyboard shortcuts should be triggered
+ */
+export const isInputFocused = (): boolean => {
+  if (blockSelectionOwners.size > 0) return true
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
+  const activeElement = document.activeElement as HTMLElement | null
+  const tagName = activeElement?.tagName.toLowerCase()
+  const contentEditable = activeElement?.contentEditable
+  const isContentEditable =
+    activeElement?.isContentEditable === true ||
+    contentEditable === 'true' ||
+    contentEditable === 'plaintext-only'
+
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select' || isContentEditable
+}
+
+/**
+ * Check if a plain text-entry surface — input, textarea, or select — owns
+ * focus. Unlike `isInputFocused`, this does not include rich-text
+ * (contenteditable) surfaces: shortcuts that do not collide with any editor
+ * command should still fire while the caret is in a note body, and should
+ * only stand down for plain fields where typing the chord's letter is the
+ * expected outcome (e.g. renaming a note).
+ */
+export const isPlainTextInputFocused = (): boolean => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
+  const activeElement = document.activeElement as HTMLElement | null
+  const tagName = activeElement?.tagName.toLowerCase()
+  return tagName === 'input' || tagName === 'textarea' || tagName === 'select'
+}
+
+/**
+ * Check if the caret sits in rich text — the note editor, a task description,
+ * or any other contenteditable surface where formatting keys apply.
+ *
+ * App-level shortcuts that share a chord with an editor formatting command
+ * (⌘B is both Bold and Toggle Sidebar) must stand down here: the editor owns
+ * the keystroke, and both firing at once is what users report as a double
+ * action. Plain inputs are not rich text — there is nothing to bold — so they
+ * do not claim the chord.
+ */
+export const isRichTextFocused = (): boolean => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
+  const activeElement = document.activeElement as HTMLElement | null
+  if (!activeElement) return false
+  if (activeElement.isContentEditable) return true
+  // jsdom does not implement isContentEditable; fall back to the attribute.
+  return (
+    activeElement.closest('[contenteditable="true"], [contenteditable="plaintext-only"]') !== null
+  )
+}
+
+/**
+ * Check if a specific input element is the Quick-File input
+ * Quick-File inputs should still allow certain shortcuts
+ */
+export const isQuickFileInput = (element: EventTarget | null): boolean => {
+  if (!element || !(element instanceof HTMLElement)) return false
+  return element.getAttribute('aria-label') === 'Quick file folder search'
+}
+
+/**
+ * Keyboard shortcut definition
+ */
+export interface ShortcutDefinition {
+  key: string
+  label: string
+}
+
+/**
+ * Keyboard shortcut category for display
+ */
+export interface ShortcutCategory {
+  title: string
+  shortcuts: ShortcutDefinition[]
+}
+
+/**
+ * Get all keyboard shortcuts organized by category for display in the help modal
+ */
+export const getKeyboardShortcuts = (): ShortcutCategory[] => [
+  {
+    title: 'Navigation',
+    shortcuts: [
+      { key: '↓ / J', label: 'Next item' },
+      { key: '↑ / K', label: 'Previous item' },
+      { key: 'Home', label: 'First item' },
+      { key: 'End', label: 'Last item' },
+      { key: 'PageUp', label: 'Jump up 10 items' },
+      { key: 'PageDown', label: 'Jump down 10 items' }
+    ]
+  },
+  {
+    title: 'Selection',
+    shortcuts: [
+      { key: 'X', label: 'Toggle selection' },
+      { key: `${modifierKey}+A`, label: 'Select all' },
+      { key: 'Shift+↓', label: 'Extend selection down' },
+      { key: 'Shift+↑', label: 'Extend selection up' },
+      { key: 'Escape', label: 'Clear selection' }
+    ]
+  },
+  {
+    title: 'Actions',
+    shortcuts: [
+      { key: 'Enter', label: 'Open Filing Panel' },
+      { key: 'Space', label: 'Toggle Preview Panel' },
+      { key: '. / F', label: 'Open Quick-File (List View)' },
+      { key: 'Delete', label: 'Delete item(s)' },
+      { key: 'O', label: 'Open original link' }
+    ]
+  },
+  {
+    title: 'Panels',
+    shortcuts: [
+      { key: 'Escape', label: 'Close panel' },
+      { key: `${modifierKey}+Enter`, label: 'Confirm and file' },
+      { key: 'Tab', label: 'Next field' },
+      { key: 'Shift+Tab', label: 'Previous field' }
+    ]
+  },
+  {
+    title: 'Quick-File',
+    shortcuts: [
+      { key: '↓ / ↑', label: 'Navigate results' },
+      { key: 'Enter', label: 'File to selected' },
+      { key: '1-5', label: 'Select result by number' },
+      { key: 'Escape', label: 'Cancel' }
+    ]
+  },
+  {
+    title: 'Global',
+    shortcuts: [
+      { key: '?', label: 'Open shortcuts help' },
+      { key: `${modifierKey}+/`, label: 'Open shortcuts help' },
+      { key: 'V', label: 'Toggle List/Card view' },
+      { key: 'R', label: 'Refresh inbox' }
+    ]
+  },
+  {
+    title: 'Repeating Tasks',
+    shortcuts: [
+      { key: 'R', label: 'Open repeat configuration (task focused)' },
+      { key: 'Shift+S', label: 'Skip this occurrence' },
+      { key: 'Shift+X', label: 'Stop repeating' }
+    ]
+  }
+]

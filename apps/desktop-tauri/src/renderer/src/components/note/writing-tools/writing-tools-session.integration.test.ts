@@ -1,0 +1,377 @@
+/**
+ * The writing tools session against a REAL collaborative editor: a mounted
+ * `BlockNoteEditor` on the real `editorSchema`, bound to a real `Y.Doc`
+ * through the production collaboration helper. Anchors are Y relative
+ * positions, so only a live y-prosemirror binding can show that they resolve,
+ * follow edits, and re-anchor after an in-place swap.
+ */
+
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { BlockNoteEditor } from '@blocknote/core'
+import type { EditorView } from '@tiptap/pm/view'
+import * as Y from 'yjs'
+import { CRDT_FRAGMENT_NAME } from '@memry/contracts/ipc-crdt'
+import { TextSelection } from '@tiptap/pm/state'
+import { yUndoPluginKey } from 'y-prosemirror'
+import {
+  readWritingAlternativesFromYDoc,
+  readWritingGhostsFromYDoc,
+  readWritingOverflowFromYDoc,
+  writeWritingAlternativesToYDoc
+} from '@memry/shared'
+import type { WritingAssistResult } from '@memry/contracts/writing-tools-api'
+
+vi.mock('react-pdf', () => ({
+  Document: () => null,
+  Page: () => null,
+  pdfjs: { GlobalWorkerOptions: { workerSrc: '' } }
+}))
+
+vi.mock('@/lib/url-metadata', () => ({
+  fetchLinkPreview: vi.fn().mockResolvedValue({ domain: '', title: '', favicon: '' })
+}))
+
+import { DOMParser as ProseMirrorDOMParser } from '@tiptap/pm/model'
+import { editorSchema } from '../content-area/editor-schema'
+import { withCollaborationIfLive } from '../content-area/collaboration-options'
+import { WritingToolsSession, type GenerateWritingAssist } from './writing-tools-session'
+import { collectTextBlocks, writingToolsPluginKey } from './writing-tools-plugin'
+
+const cleanups: Array<() => void> = []
+
+afterEach(() => {
+  for (const cleanup of cleanups.splice(0).toReversed()) cleanup()
+})
+
+function setup(text: string, generateAssist: GenerateWritingAssist = vi.fn()) {
+  const doc = new Y.Doc()
+  const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+  const editor = BlockNoteEditor.create(
+    withCollaborationIfLive(fragment, { schema: editorSchema })
+  ) as unknown as BlockNoteEditor
+  const el = document.createElement('div')
+  document.body.appendChild(el)
+  editor.mount(el)
+  editor.replaceBlocks(editor.document, [
+    { type: 'paragraph', content: [{ type: 'text', text, styles: {} }] } as never
+  ])
+
+  const session = new WritingToolsSession(
+    generateAssist,
+    (position, total) => `${position}/${total}`,
+    true
+  )
+  let attached = true
+  const attachDetach = session.attach({ editor, doc, container: el })
+  const detach = (): void => {
+    if (attached) attachDetach()
+    attached = false
+  }
+  cleanups.push(() => {
+    detach()
+    editor.unmount()
+    el.remove()
+    doc.destroy()
+  })
+
+  const view = (editor as unknown as { _tiptapEditor: { view: EditorView } })._tiptapEditor.view
+  const bodyText = (): string =>
+    collectTextBlocks(view.state.doc)
+      .map((block) => block.text)
+      .join('\n')
+      .trim()
+  const rangeOf = (needle: string): { from: number; to: number } => {
+    for (const block of collectTextBlocks(view.state.doc)) {
+      const offset = block.text.indexOf(needle)
+      if (offset !== -1)
+        return { from: block.from + offset, to: block.from + offset + needle.length }
+    }
+    throw new Error(`"${needle}" is not in the body`)
+  }
+  /** Where the plugin currently resolves each alternative / ghost. */
+  const resolved = (kind: 'alternatives' | 'ghosts'): Array<{ from: number; to: number }> =>
+    (writingToolsPluginKey.getState(view.state)?.[kind] ?? []).map(({ from, to }) => ({ from, to }))
+  /** Re-resolve every anchor from the Y.Doc, as any records write does. */
+  const refresh = (): void => {
+    session.addOverflow(`refresh ${Math.random()}`)
+  }
+  return { doc, editor, view, session, bodyText, rangeOf, resolved, refresh, detach }
+}
+
+/** Add an alternative over `needle` with one user variant; returns its record. */
+function addAlternative(ctx: ReturnType<typeof setup>, needle: string, variant: string) {
+  const range = ctx.rangeOf(needle)
+  ctx.session.startAlternative(range.from, range.to)
+  ctx.session.submitDraft(variant)
+  return readWritingAlternativesFromYDoc(ctx.doc)[0]
+}
+
+describe('WritingToolsSession (live Y.Doc binding)', () => {
+  it('stores an alternative and swaps the body text in place, fixing "a"/"an"', () => {
+    const { doc, session, bodyText, rangeOf } = setup('It was a great idea today.')
+    const range = rangeOf('great idea')
+
+    expect(session.startAlternative(range.from, range.to)).toBe(true)
+    session.submitDraft('awful idea')
+
+    const [record] = readWritingAlternativesFromYDoc(doc)
+    expect(record).toMatchObject({ original: 'great idea', activeVariantId: null })
+    expect(record.variants.map((variant) => variant.text)).toEqual(['awful idea'])
+    expect(session.getSnapshot().alternatives.map((alt) => alt.id)).toEqual([record.id])
+
+    session.activateVariant(record.id, record.variants[0].id)
+    expect(bodyText()).toBe('It was an awful idea today.')
+    expect(readWritingAlternativesFromYDoc(doc)[0].activeVariantId).toBe(record.variants[0].id)
+
+    // Re-anchored on the new text: cycling forward wraps back to the original.
+    expect(session.cycleAlternative(record.id, 1)).toBe(true)
+    expect(bodyText()).toBe('It was a great idea today.')
+    expect(readWritingAlternativesFromYDoc(doc)[0].activeVariantId).toBeNull()
+  })
+
+  it('keeps an anchored range on its text while the body is edited around it', () => {
+    const { doc, view, session, rangeOf } = setup('Keep this phrase here.')
+    const range = rangeOf('this phrase')
+    session.startAlternative(range.from, range.to)
+    session.submitDraft('that phrase')
+    const id = readWritingAlternativesFromYDoc(doc)[0].id
+
+    view.dispatch(view.state.tr.insertText('Please ', rangeOf('Keep').from))
+    // A refresh re-resolves every anchor from the Y.Doc.
+    session.addOverflow('force a records refresh')
+
+    expect(session.alternativeAt(rangeOf('this phrase').from + 1)).toBe(id)
+    expect(session.alternativeAt(rangeOf('Please').from)).toBeNull()
+  })
+
+  it('drops the record when its last variant is removed and restores the original', () => {
+    const { doc, session, bodyText, rangeOf } = setup('One small step.')
+    const range = rangeOf('small')
+    session.startAlternative(range.from, range.to)
+    session.submitDraft('giant')
+    const record = readWritingAlternativesFromYDoc(doc)[0]
+    session.activateVariant(record.id, record.variants[0].id)
+    expect(bodyText()).toBe('One giant step.')
+
+    session.removeVariant(record.id, record.variants[0].id)
+
+    expect(bodyText()).toBe('One small step.')
+    expect(readWritingAlternativesFromYDoc(doc)).toEqual([])
+  })
+
+  it('stashes the selection into the overflow list and out of the body', () => {
+    const { doc, session, bodyText, rangeOf } = setup('Keep this. Move that.')
+    const range = rangeOf(' Move that.')
+
+    expect(session.stash(range.from, range.to)).toBe(true)
+
+    expect(bodyText()).toBe('Keep this.')
+    expect(readWritingOverflowFromYDoc(doc).map((item) => item.text)).toEqual(['Move that.'])
+  })
+
+  it('drops an alternative whose text was deleted instead of moving it onto the next character', () => {
+    const ctx = setup('One small step.')
+    addAlternative(ctx, 'small', 'giant')
+    const range = ctx.rangeOf('small')
+
+    ctx.view.dispatch(ctx.view.state.tr.delete(range.from, range.to))
+    ctx.refresh()
+
+    expect(ctx.resolved('alternatives')).toEqual([])
+    expect(ctx.session.getSnapshot().alternatives).toEqual([])
+  })
+
+  it('shrinks an anchored range when its last or first character is deleted', () => {
+    const ctx = setup('One small step.')
+    addAlternative(ctx, 'small', 'giant')
+    const range = ctx.rangeOf('small')
+
+    ctx.view.dispatch(ctx.view.state.tr.delete(range.to - 1, range.to))
+    ctx.refresh()
+    expect(ctx.resolved('alternatives')).toEqual([ctx.rangeOf('smal')])
+
+    const shrunk = ctx.rangeOf('smal')
+    ctx.view.dispatch(ctx.view.state.tr.delete(shrunk.from, shrunk.from + 1))
+    ctx.refresh()
+    expect(ctx.resolved('alternatives')).toEqual([ctx.rangeOf('mal')])
+  })
+
+  it('drops a ghost whose text was deleted', () => {
+    const ctx = setup('alpha beta gamma')
+    const range = ctx.rangeOf('beta')
+    ctx.session.ghost(range.from, range.to)
+
+    ctx.view.dispatch(ctx.view.state.tr.delete(range.from, range.to))
+    ctx.refresh()
+
+    expect(readWritingGhostsFromYDoc(ctx.doc)).toHaveLength(1)
+    expect(ctx.resolved('ghosts')).toEqual([])
+  })
+
+  it('lands back on the original text when a variant swap is undone', () => {
+    const ctx = setup('It was a great idea today.')
+    const record = addAlternative(ctx, 'great idea', 'awful idea')
+    const undoManager = (
+      yUndoPluginKey.getState(ctx.view.state) as { undoManager: Y.UndoManager } | undefined
+    )?.undoManager
+    undoManager?.stopCapturing()
+
+    ctx.session.activateVariant(record.id, record.variants[0].id)
+    expect(ctx.bodyText()).toBe('It was an awful idea today.')
+    ctx.editor.undo()
+
+    expect(ctx.bodyText()).toBe('It was a great idea today.')
+    expect(ctx.resolved('alternatives')).toEqual([ctx.rangeOf('great idea')])
+  })
+
+  it('falls back to text only when that text occurs exactly once', () => {
+    const lostAnchor = { item: { client: 987654, clock: 0 }, assoc: 0 }
+    const lost = {
+      id: 'alt-lost',
+      anchorStart: lostAnchor,
+      anchorEnd: { ...lostAnchor, assoc: -1 },
+      original: 'cat',
+      variants: [{ id: 'v', text: 'dog', source: 'user' as const, createdAt: 1 }],
+      activeVariantId: null
+    }
+
+    const repeated = setup('The cat met another cat.')
+    writeWritingAlternativesToYDoc(repeated.doc, [lost])
+    expect(repeated.resolved('alternatives')).toEqual([])
+
+    const unique = setup('The cat sat.')
+    writeWritingAlternativesToYDoc(unique.doc, [lost])
+    expect(unique.resolved('alternatives')).toEqual([unique.rangeOf('cat')])
+  })
+
+  it('cycles on ↑/↓ whenever the caret is in or touching the alternative, until Esc releases it', () => {
+    const ctx = setup('Start here. One small step.')
+    addAlternative(ctx, 'small', 'giant')
+    const setCaret = (pos: number): void =>
+      ctx.view.dispatch(
+        ctx.view.state.tr.setSelection(TextSelection.create(ctx.view.state.doc, pos))
+      )
+    const press = (key: string, target: EventTarget = ctx.view.dom): KeyboardEvent => {
+      const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+      target.dispatchEvent(event)
+      return event
+    }
+    const word = ctx.rangeOf('small')
+
+    // Caret elsewhere: arrows stay caret movement.
+    setCaret(ctx.rangeOf('Start').from)
+    expect(press('ArrowDown').defaultPrevented).toBe(false)
+    expect(ctx.bodyText()).toBe('Start here. One small step.')
+
+    // A suggestion menu owns the keys.
+    setCaret(word.from + 2)
+    const menu = document.createElement('div')
+    menu.className = 'bn-suggestion-menu'
+    document.body.appendChild(menu)
+    expect(press('ArrowDown').defaultPrevented).toBe(false)
+    menu.remove()
+
+    // Inside, no hover needed: swaps. Then at the start edge, then at the end edge.
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One giant step.')
+    setCaret(ctx.rangeOf('giant').from)
+    expect(press('ArrowUp').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One small step.')
+    setCaret(ctx.rangeOf('small').to)
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One giant step.')
+
+    // The caret is still in the word after every swap: repeated presses keep working.
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+    expect(ctx.bodyText()).toBe('Start here. One giant step.')
+
+    // Esc releases the caret: arrows move it until it leaves the word.
+    press('Escape')
+    expect(press('ArrowDown').defaultPrevented).toBe(false)
+    setCaret(ctx.rangeOf('Start').from)
+    setCaret(ctx.rangeOf('giant').from + 1)
+    expect(press('ArrowDown').defaultPrevented).toBe(true)
+
+    // Focus in some other control: left alone.
+    const button = document.createElement('button')
+    document.body.appendChild(button)
+    expect(press('ArrowDown', button).defaultPrevented).toBe(false)
+    button.remove()
+  })
+
+  it('drops alternatives the model returns after the editor left the doc', async () => {
+    let answer: (result: WritingAssistResult) => void = () => {}
+    const generateAssist = vi.fn<GenerateWritingAssist>(
+      () => new Promise((resolve) => (answer = resolve))
+    )
+    const ctx = setup('One small step.', generateAssist)
+    const range = ctx.rangeOf('small')
+
+    const pending = ctx.session.suggestAlternatives(range.from, range.to)
+    ctx.detach()
+    answer({ kind: 'alternatives', alternatives: ['giant'] })
+
+    expect(await pending).toBe(0)
+    expect(readWritingAlternativesFromYDoc(ctx.doc)).toEqual([])
+  })
+
+  it('keeps formatting and inline nodes through stash, render and paste back', () => {
+    const ctx = setup('placeholder')
+    ctx.editor.replaceBlocks(ctx.editor.document, [
+      {
+        type: 'paragraph',
+        content: [
+          { type: 'text', text: 'Keep. ', styles: {} },
+          { type: 'text', text: 'Bold words', styles: { bold: true } },
+          { type: 'text', text: ' and ', styles: {} },
+          { type: 'wikiLink', props: { target: 'Roadmap', alias: '' } }
+        ]
+      } as never
+    ])
+    const start = ctx.rangeOf('Bold words').from
+    const end = ctx.view.state.doc.child(0).nodeSize - 3
+
+    expect(ctx.session.stash(start, end)).toBe(true)
+    const [item] = readWritingOverflowFromYDoc(ctx.doc)
+    expect(item.html).toContain('<strong')
+
+    const preview = ctx.session.renderOverflow(item)
+    const holder = document.createElement('div')
+    holder.append(preview as Node)
+    expect(holder.querySelector('strong')?.textContent).toBe('Bold words')
+    expect(holder.querySelector('.wiki-link')?.textContent).toBe('Roadmap')
+    expect(holder.textContent).not.toContain('[[')
+
+    // What a drop or paste does with the HTML: parse it through the schema.
+    // (jsdom has no ClipboardEvent, so view.pasteHTML cannot run here.)
+    const template = document.createElement('template')
+    template.innerHTML = item.html as string
+    const slice = ProseMirrorDOMParser.fromSchema(ctx.view.state.schema).parseSlice(
+      template.content
+    )
+    const marks: string[] = []
+    const inline: string[] = []
+    slice.content.descendants((node) => {
+      if (node.isText) marks.push(...node.marks.map((mark) => mark.type.name))
+      else if (node.isInline) inline.push(node.type.name)
+    })
+    expect(marks).toContain('bold')
+    expect(inline).toContain('wikiLink')
+  })
+
+  it('renders only what the editor schema knows from stored overflow HTML', () => {
+    const ctx = setup('Body')
+    const fragment = ctx.session.renderOverflow({
+      id: 'o1',
+      text: 'hi',
+      html: '<p>hi <img src=x onerror="alert(1)"><script>alert(2)</script><strong>there</strong></p>',
+      createdAt: 1
+    })
+    const holder = document.createElement('div')
+    holder.append(fragment as Node)
+    expect(holder.querySelector('script')).toBeNull()
+    expect(holder.innerHTML).not.toContain('onerror')
+    expect(holder.querySelector('strong')?.textContent).toBe('there')
+  })
+})

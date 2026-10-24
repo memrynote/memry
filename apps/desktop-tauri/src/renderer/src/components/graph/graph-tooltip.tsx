@@ -1,0 +1,109 @@
+import type Graph from 'graphology'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { ProjectIcon } from '@/components/tasks/project-icon'
+import { useT } from '@memry/i18n/renderer'
+import { readNodeAttrs } from './graph-node-attrs'
+
+const TYPE_COLORS: Record<string, string> = {
+  note: 'bg-accent-cyan/15 text-accent-cyan',
+  journal: 'bg-accent-purple/15 text-accent-purple',
+  task: 'bg-accent-orange/15 text-accent-orange',
+  project: 'bg-accent-green/15 text-accent-green',
+  tag: 'bg-[var(--graph-node-tag)]/15 text-[var(--graph-node-tag)]',
+  group: 'bg-muted text-foreground'
+}
+
+const TYPE_LABEL_KEYS = {
+  note: 'entity.note',
+  journal: 'entity.journal',
+  task: 'entity.task',
+  project: 'entity.project',
+  tag: 'entity.tag',
+  group: 'entity.category'
+} as const
+
+function isTypeLabelKey(key: string): key is keyof typeof TYPE_LABEL_KEYS {
+  return key in TYPE_LABEL_KEYS
+}
+
+interface GraphTooltipProps {
+  nodeId: string
+  graph: Graph
+  x: number
+  y: number
+}
+
+export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.JSX.Element | null {
+  const { t } = useT('graph')
+
+  if (!graph.hasNode(nodeId)) return null
+
+  const attrs = readNodeAttrs(graph.getNodeAttributes(nodeId))
+  const { label, nodeType, emoji, isUnresolved } = attrs
+  const tags = attrs.tags ?? []
+  const connectionCount = attrs.connectionCount ?? 0
+  const isGroup = nodeType === 'group'
+  const nodeTypeLabel = isUnresolved
+    ? t('entity.unresolved')
+    : isTypeLabelKey(nodeType) && TYPE_LABEL_KEYS[nodeType]
+      ? t(TYPE_LABEL_KEYS[nodeType])
+      : nodeType
+
+  return (
+    <div
+      className="pointer-events-none absolute z-50 max-w-[240px] rounded-md border border-border bg-popover p-2.5 shadow-card"
+      style={{
+        left: x + 12,
+        top: y + 12
+      }}
+    >
+      <div className="flex items-center gap-1.5 mb-1">
+        {emoji &&
+          (nodeType === 'project' ? (
+            // A project node carries the project's icon, which can be a legacy
+            // lucide name ("Folder" is the default) that the note renderer would
+            // print as text.
+            <ProjectIcon icon={emoji} className="size-3.5 text-sm" fallback={null} />
+          ) : (
+            <NoteIconDisplay value={emoji} className="text-sm" />
+          ))}
+        <span className="text-sm font-medium text-foreground truncate">{label}</span>
+      </div>
+
+      <div className="flex items-center gap-1.5 mb-1">
+        <span
+          className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${TYPE_COLORS[nodeType] ?? 'bg-muted text-muted-foreground'}`}
+        >
+          {nodeTypeLabel}
+        </span>
+        <span className="text-[10px] text-muted-foreground">
+          {isGroup
+            ? t('tooltip.member-count', { count: attrs.memberCount ?? 0 })
+            : t('tooltip.connection-count', { count: connectionCount })}
+        </span>
+      </div>
+
+      {isGroup && (
+        <p className="text-[10px] text-muted-foreground mb-1">{t('tooltip.click-to-expand')}</p>
+      )}
+
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-1">
+          {tags.slice(0, 5).map((tag) => (
+            <span
+              key={tag}
+              className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground"
+            >
+              #{tag}
+            </span>
+          ))}
+          {tags.length > 5 && (
+            <span className="text-[10px] text-muted-foreground">
+              {t('tooltip.more-tags', { count: tags.length - 5 })}
+            </span>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}

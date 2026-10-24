@@ -85,7 +85,7 @@ After code changes, run these with full output and fix every error before commit
 
 ```bash
 pnpm lint           # oxlint, type-aware, over the whole JS/TS repo, held by the ratchet below
-pnpm typecheck      # TypeScript 7 via oxlint --type-check: shared packages, cli, desktop, sync-server; desktop's pretypecheck adds check:contracts, check:architecture, ipc:check
+pnpm typecheck      # TypeScript 7 via oxlint --type-check: shared packages, cli, desktop, desktop-tauri, sync-server; desktop's pretypecheck adds check:contracts, check:architecture, ipc:check
 pnpm format:check   # oxfmt
 git diff --check
 ```
@@ -99,7 +99,7 @@ cargo test -p <touched crates>
 node scripts/check-line-ceilings.mjs
 ```
 
-- `pnpm typecheck` skips landing, extension, marketing-emails, iOS, and Rust, and `pnpm lint` skips iOS and Rust. Their scoped guides name their gates.
+- `pnpm typecheck` covers the Tauri app (`apps/desktop-tauri`) and skips landing, extension, marketing-emails, iOS, and Rust, and `pnpm lint` covers the Tauri renderer and skips iOS and Rust. Their scoped guides name their gates.
 - Lint config lives in `oxlint.config.mts`. A rule with a backlog is a warning held at the per-file counts in `scripts/lint-baseline.json`; `pnpm lint` fails on any error or on any count above the baseline. Fix a violation, then run `pnpm lint --update` to lower the baseline. Raising it (`--allow-increase`) needs Kaan's approval. When a rule's backlog reaches zero it becomes an error with no config edit.
 - `scripts/typecheck.mjs` checks exactly the files each tsconfig includes. Code that needs the TypeScript compiler API imports the `typescript-6` alias, because TypeScript 7 has no JS API.
 - A package with its own `test` script runs its tests there. The other shared packages run under desktop's `shared` Vitest project (`pnpm --filter @memry/desktop test:shared`).
@@ -132,6 +132,7 @@ Multiple agent sessions may work in this checkout at once, each changing differe
 Read the matching guide in full before starting. Commands and details live there.
 
 - Desktop app, local databases, IPC, native modules, and the shared TypeScript packages: [apps/desktop/AGENTS.md](apps/desktop/AGENTS.md).
+- Tauri desktop app, its renderer copy, command and event rules: [apps/desktop-tauri/AGENTS.md](apps/desktop-tauri/AGENTS.md).
 - iOS app: [apps/ios/AGENTS.md](apps/ios/AGENTS.md).
 - Rust core, UniFFI bindings, and conformance vectors: [crates/AGENTS.md](crates/AGENTS.md).
 - Sync server, D1, and R2: [apps/sync-server/AGENTS.md](apps/sync-server/AGENTS.md).

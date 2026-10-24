@@ -1,0 +1,118 @@
+import type { ComponentProps, HTMLAttributes } from 'react'
+import { memo } from 'react'
+import { cjk } from '@streamdown/cjk'
+import { code } from '@streamdown/code'
+import { math } from '@streamdown/math'
+import { mermaid } from '@streamdown/mermaid'
+import type { Pluggable, PluggableList, Plugin } from 'unified'
+import {
+  defaultRehypePlugins,
+  defaultUrlTransform,
+  Streamdown,
+  type UrlTransform
+} from 'streamdown'
+
+import { cn } from '@/lib/utils'
+
+export type MessageProps = HTMLAttributes<HTMLDivElement> & {
+  from: 'assistant' | 'system' | 'tool' | 'user'
+}
+
+export function Message({ className, from, ...props }: MessageProps): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'group flex w-full max-w-[95%] flex-col gap-2',
+        from === 'user' ? 'is-user ms-auto items-end' : 'is-assistant items-start',
+        className
+      )}
+      data-role={from}
+      {...props}
+    />
+  )
+}
+
+export type MessageContentProps = HTMLAttributes<HTMLDivElement>
+
+export function MessageContent({
+  children,
+  className,
+  ...props
+}: MessageContentProps): React.JSX.Element {
+  return (
+    <div
+      className={cn(
+        'flex min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm',
+        'group-[.is-user]:ms-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-3 group-[.is-user]:py-2 group-[.is-user]:text-foreground',
+        'group-[.is-assistant]:text-foreground',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </div>
+  )
+}
+
+export type MessageResponseProps = ComponentProps<typeof Streamdown>
+
+const streamdownPlugins = { cjk, code, math, mermaid }
+const memryUrlTransform: UrlTransform = (url, key, node) => {
+  if (url.startsWith('memry://')) return url
+  return defaultUrlTransform(url, key, node)
+}
+type SanitizePluginEntry = [Plugin, { protocols?: Record<string, string[]> }]
+
+function isSanitizePluginEntry(entry: Pluggable | undefined): entry is SanitizePluginEntry {
+  return Array.isArray(entry) && entry.length >= 2
+}
+
+const sanitizeEntry = defaultRehypePlugins.sanitize
+if (!isSanitizePluginEntry(sanitizeEntry)) {
+  throw new Error('streamdown default sanitize plugin must be a [plugin, options] tuple')
+}
+const defaultSanitizePlugin = sanitizeEntry
+const memrySanitizePlugin: Pluggable = [
+  defaultSanitizePlugin[0],
+  {
+    ...defaultSanitizePlugin[1],
+    protocols: {
+      ...defaultSanitizePlugin[1].protocols,
+      href: [...(defaultSanitizePlugin[1].protocols?.href ?? []), 'memry']
+    }
+  }
+] as Pluggable
+const streamdownRehypePlugins: PluggableList = [
+  defaultRehypePlugins.raw,
+  memrySanitizePlugin,
+  defaultRehypePlugins.harden
+]
+
+/**
+ * Streaming motion is the caller's typewriter reveal (see `useStreamingText`),
+ * so Streamdown's own per-word animate plugin stays off.
+ */
+export const MessageResponse = memo(
+  ({ className, ...props }: MessageResponseProps) => {
+    return (
+      <Streamdown
+        className={cn(
+          'min-w-0 max-w-full break-words leading-6 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0',
+          className
+        )}
+        plugins={streamdownPlugins}
+        rehypePlugins={streamdownRehypePlugins}
+        urlTransform={memryUrlTransform}
+        animated={false}
+        {...props}
+      />
+    )
+  },
+  (previousProps, nextProps) =>
+    previousProps.children === nextProps.children &&
+    previousProps.isAnimating === nextProps.isAnimating &&
+    previousProps.className === nextProps.className &&
+    previousProps.components === nextProps.components
+)
+
+MessageResponse.displayName = 'MessageResponse'

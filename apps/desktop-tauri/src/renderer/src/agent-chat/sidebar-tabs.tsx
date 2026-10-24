@@ -1,0 +1,417 @@
+import { useEffect, useState, type ReactNode } from 'react'
+import { History } from 'lucide-react'
+import { useT } from '@memry/i18n/renderer'
+import type { Conversation } from '@memry/contracts/ipc-agent'
+
+import { useAISettingsContext } from '@/contexts/ai-settings-context'
+import { useDayPanel } from '@/contexts/day-panel-context'
+import { useTabs } from '@/contexts/tabs'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Bot, CalendarDays, Expand, MoreHorizontal, PlusSignIcon, X } from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { useWindowControlsOverlayVisible } from '@/lib/window-controls-overlay'
+import { useAgentOptional } from './agent-context'
+import { preferredConversationDefaults } from './agent-model-preference'
+import { ConversationList } from './conversation-list'
+
+export type RightSidebarTab = 'day' | 'agent'
+
+export const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
+const RIGHT_SIDEBAR_TABS: ReadonlySet<string> = new Set(['day', 'agent'])
+
+function isRightSidebarTab(value: string | null): value is RightSidebarTab {
+  return value !== null && RIGHT_SIDEBAR_TABS.has(value)
+}
+
+interface SidebarTabsProps {
+  children: { day: ReactNode; agent: ReactNode }
+  defaultTab?: RightSidebarTab
+  dayLabel?: string
+  agentLabel?: string
+  endAccessory?: ReactNode
+}
+
+function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
+  try {
+    const stored = localStorage.getItem(RIGHT_SIDEBAR_TAB_KEY)
+    if (isRightSidebarTab(stored)) return stored
+  } catch {
+    // localStorage may be unavailable in tests or restricted renderer contexts.
+  }
+  return defaultTab
+}
+
+export function SidebarTabs({
+  children,
+  defaultTab = 'day',
+  dayLabel,
+  agentLabel,
+  endAccessory
+}: SidebarTabsProps): React.JSX.Element {
+  const { t } = useT('common')
+  const [active, setActive] = useState<RightSidebarTab>(() => readInitialTab(defaultTab))
+  const { enabled: aiEnabled } = useAISettingsContext()
+  const agent = useAgentOptional()
+  // Windows caption buttons take ~138px of this header. The full agent action row
+  // no longer fits at the default panel width, so it folds into one menu; the
+  // close button goes too, since the Day switch next to it does the same.
+  const compactAgentActions = useWindowControlsOverlayVisible()
+  const dayTabLabel = t('agentChat.sidebar.day')
+  const agentTabLabel = t('agentChat.sidebar.agent')
+  const resolvedActive = aiEnabled ? active : active === 'agent' ? 'day' : active
+  const activeLabel =
+    resolvedActive === 'day' ? (dayLabel ?? dayTabLabel) : (agentLabel ?? agentTabLabel)
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RIGHT_SIDEBAR_TAB_KEY, active)
+    } catch {
+      // localStorage may be unavailable in tests or restricted renderer contexts.
+    }
+  }, [active])
+
+  const pendingApprovalCount = agent?.state.pendingApprovals.length ?? 0
+  const hasStreamingMessage = agent?.state.hasStreamingMessage ?? false
+  const hasInFlightTurn = Object.values(agent?.state.inFlight ?? {}).some(Boolean)
+  const hasBackgroundActivity =
+    aiEnabled &&
+    resolvedActive !== 'agent' &&
+    (pendingApprovalCount > 0 || hasStreamingMessage || hasInFlightTurn)
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      {/* The header sits in the window title row (main.css), so its empty space drags the
+          window; the controls opt out with no-drag. */}
+      <div
+        className="drag-region flex h-9 shrink-0 items-center gap-3 ps-3"
+        // The panel owns the window's top-end corner, so it clears the Windows caption
+        // buttons (--caption-reserve-end, 0 elsewhere; main.css).
+        style={{
+          paddingInlineEnd: endAccessory
+            ? 'var(--caption-reserve-end)'
+            : 'calc(0.75rem + var(--caption-reserve-end))'
+        }}
+      >
+        <div
+          role="tablist"
+          aria-label={t('agentChat.sidebar.label')}
+          className="no-drag inline-flex h-7 shrink-0 items-center gap-0.5 rounded-md border border-transparent bg-sidebar-surface p-0.5 hover:border-sidebar-border focus-within:border-sidebar-border"
+        >
+          <SidebarTabButton
+            active={resolvedActive === 'day'}
+            dataTour="rsb-day"
+            label={dayTabLabel}
+            onClick={() => setActive('day')}
+          >
+            <CalendarDays className="size-4" aria-hidden="true" />
+          </SidebarTabButton>
+          {aiEnabled && (
+            <SidebarTabButton
+              active={resolvedActive === 'agent'}
+              dataTour="rsb-agent"
+              label={agentTabLabel}
+              onClick={() => {
+                window.dispatchEvent(new Event('memry:agent-surface-opened'))
+                setActive('agent')
+              }}
+            >
+              <Bot className="size-4" aria-hidden="true" />
+              {hasBackgroundActivity && (
+                <span
+                  className="absolute end-1 top-1 size-1.5 rounded-full bg-primary"
+                  aria-label={
+                    pendingApprovalCount > 0
+                      ? t('agentChat.sidebar.pendingApproval', { count: pendingApprovalCount })
+                      : t('agentChat.sidebar.inProgress')
+                  }
+                />
+              )}
+            </SidebarTabButton>
+          )}
+        </div>
+        <div
+          data-slot="day-panel-header-actions"
+          className="no-drag ms-auto flex min-w-0 items-center gap-2"
+        >
+          <div className="flex h-9 min-w-0 items-center gap-1.5 pt-0.5">
+            {resolvedActive !== 'agent' ? (
+              <span className="min-w-0 truncate text-[13px] font-medium tracking-[-0.01em] text-foreground transition-colors duration-150">
+                {activeLabel}
+              </span>
+            ) : compactAgentActions ? (
+              <AgentActionsMenu />
+            ) : (
+              <>
+                <AgentConversationActions />
+                <TooltipProvider delayDuration={300}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={t('agentChat.sidebar.close')}
+                        title={t('agentChat.sidebar.close')}
+                        onClick={() => setActive('day')}
+                        className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <X className="size-3.5" aria-hidden="true" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {t('agentChat.sidebar.close')}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </>
+            )}
+          </div>
+          {endAccessory && (
+            <div data-slot="day-panel-toggle-slot" className="flex shrink-0 items-center pe-[13px]">
+              {endAccessory}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">
+        {resolvedActive === 'day' ? children.day : children.agent}
+      </div>
+    </div>
+  )
+}
+
+type AgentState = NonNullable<ReturnType<typeof useAgentOptional>>
+
+/** Opens the panel's active conversation as a tab and closes the panel. */
+function useOpenActiveConversationInTab(agent: AgentState | null): (() => void) | null {
+  const { openTab } = useTabs()
+  const { close } = useDayPanel()
+  const activeConversationId = agent?.state.activeConversationId
+  const activeConversation =
+    agent && activeConversationId ? agent.state.conversations[activeConversationId] : null
+  if (!agent || !activeConversation) return null
+
+  return () => {
+    openTab({
+      type: 'agent-chat',
+      title: activeConversation.title,
+      icon: 'bot',
+      path: `/agent-chat/${activeConversation.id}`,
+      entityId: activeConversation.id,
+      isPinned: false,
+      isModified: false,
+      isPreview: false,
+      isDeleted: false
+    })
+    close()
+    agent.clearActiveConversation()
+  }
+}
+
+function sortedConversations(agent: AgentState): Conversation[] {
+  return Object.values(agent.state.conversations).toSorted((left, right) => {
+    return right.updatedAt - left.updatedAt
+  })
+}
+
+/** The conversation actions folded into one menu (Windows, see SidebarTabs). */
+function AgentActionsMenu(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+  const openActiveConversationInTab = useOpenActiveConversationInTab(agent)
+
+  if (agent?.state.disclosureAccepted !== true) return null
+
+  const moreLabel = t('agentChat.sidebar.moreActions')
+  const conversations = sortedConversations(agent)
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={moreLabel}
+                title={moreLabel}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground"
+              >
+                <MoreHorizontal className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {moreLabel}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="w-56 p-1">
+          <DropdownMenuItem
+            className="text-xs"
+            onSelect={() => void agent.createConversation(preferredConversationDefaults())}
+          >
+            <PlusSignIcon className="size-3.5" aria-hidden="true" />
+            {t('agentChat.newConversation')}
+          </DropdownMenuItem>
+          {openActiveConversationInTab && (
+            <DropdownMenuItem className="text-xs" onSelect={openActiveConversationInTab}>
+              <Expand className="size-3.5" aria-hidden="true" />
+              {t('agentChat.openInTab')}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="text-xs" disabled={conversations.length === 0}>
+              <History className="size-3.5" aria-hidden="true" />
+              {t('agentChat.history')}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="w-72 border-0 p-1">
+              <ConversationList
+                conversations={conversations}
+                activeConversationId={agent.state.activeConversationId}
+                onSelectConversation={(id) => void agent.loadConversation(id)}
+              />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TooltipProvider>
+  )
+}
+
+function AgentConversationActions(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+  const openActiveConversationInTab = useOpenActiveConversationInTab(agent)
+
+  if (agent?.state.disclosureAccepted !== true) return null
+
+  const currentAgent = agent
+  const newConversationLabel = t('agentChat.newConversation')
+  const openInTabLabel = t('agentChat.openInTab')
+
+  return (
+    <div className="flex items-center gap-1">
+      <TooltipProvider delayDuration={300}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={newConversationLabel}
+              title={newConversationLabel}
+              onClick={() => void currentAgent.createConversation(preferredConversationDefaults())}
+              className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <PlusSignIcon className="size-3.5" aria-hidden="true" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {newConversationLabel}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      {openActiveConversationInTab && (
+        <TooltipProvider delayDuration={300}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={openInTabLabel}
+                title={openInTabLabel}
+                onClick={openActiveConversationInTab}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <Expand className="size-3.5" aria-hidden="true" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {openInTabLabel}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+      <AgentHistoryMenu />
+    </div>
+  )
+}
+
+function AgentHistoryMenu(): React.JSX.Element | null {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+
+  if (agent?.state.disclosureAccepted !== true) return null
+
+  const conversations = sortedConversations(agent)
+  const historyLabel = t('agentChat.history')
+
+  return (
+    <TooltipProvider delayDuration={300}>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={historyLabel}
+                title={historyLabel}
+                className="inline-flex size-6 shrink-0 items-center justify-center rounded-[5px] text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring data-[state=open]:bg-sidebar-accent data-[state=open]:text-foreground"
+              >
+                <History className="size-3.5" aria-hidden="true" />
+              </button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="text-xs">
+            {historyLabel}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="start" className="w-72 border-0 p-1">
+          <ConversationList
+            conversations={conversations}
+            activeConversationId={agent.state.activeConversationId}
+            onSelectConversation={(id) => void agent.loadConversation(id)}
+          />
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </TooltipProvider>
+  )
+}
+
+function SidebarTabButton({
+  active,
+  label,
+  onClick,
+  children,
+  dataTour
+}: {
+  active: boolean
+  label: string
+  onClick: () => void
+  children: ReactNode
+  dataTour?: string
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      role="tab"
+      data-tour={dataTour}
+      aria-label={label}
+      aria-selected={active}
+      title={label}
+      onClick={onClick}
+      className={cn(
+        'relative inline-flex size-6 items-center justify-center rounded-[5px] transition-colors',
+        active
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground'
+      )}
+    >
+      {children}
+    </button>
+  )
+}

@@ -1,0 +1,366 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { type ReactNode } from 'react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { JournalHeaderActions } from './journal/journal-header-actions'
+import { WikiLinkMenu, type WikiLinkSuggestionItem } from './note/content-area/wiki-link-menu'
+import { WikiLinkPreviewCard } from './note/content-area/wiki-link-preview-card'
+import { TabPane } from './split-view/tab-pane'
+import type * as UseTagSchemasModule from '@/features/tag-fields/use-tag-schemas'
+
+vi.mock('@/features/tag-fields/use-tag-schemas', async (importOriginal) => ({
+  ...(await importOriginal<typeof UseTagSchemasModule>()),
+  useTagSchemas: () => ({ data: undefined, isLoading: false }),
+  useResolvedTag: () => null,
+  useObjectIdentity: () => null,
+  useObjectIdentityLookup: () => () => null
+}))
+
+const mocks = vi.hoisted(() => ({
+  dispatch: vi.fn(),
+  tabGroup: null as null | {
+    id: string
+    activeTabId: string
+    tabs: Array<Record<string, unknown>>
+  },
+  dayPanel: { isOpen: false, width: 0, isResizing: false }
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t: (key: string) => key.split('.').at(-1) ?? key })
+}))
+
+vi.mock('@/components/ui/picker', () => {
+  let onValueChange: ((value: string) => void) | undefined
+  return {
+    Picker: Object.assign(
+      ({
+        children,
+        onValueChange: handler
+      }: {
+        children: ReactNode
+        onValueChange?: (value: string) => void
+      }) => {
+        onValueChange = handler
+        return <div>{children}</div>
+      },
+      {
+        Trigger: ({ children }: { children: ReactNode }) => <>{children}</>,
+        Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+        List: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+        Search: () => null,
+        Separator: () => <hr />,
+        Item: ({ label, value }: { label: string; value: string }) => (
+          <button type="button" onClick={() => onValueChange?.(value)}>
+            {label}
+          </button>
+        )
+      }
+    )
+  }
+})
+
+vi.mock('@/components/ui/popover', () => ({
+  Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  PopoverTrigger: ({ children }: { children: ReactNode }) => <>{children}</>
+}))
+
+vi.mock('@/components/ui/switch', () => ({
+  Switch: ({ checked }: { checked?: boolean }) => (
+    <input readOnly type="checkbox" checked={checked} />
+  )
+}))
+
+vi.mock('@/components/ui/button', () => ({
+  Button: ({ children, onClick, ...props }: any) => (
+    <button type="button" onClick={onClick} {...props}>
+      {children}
+    </button>
+  )
+}))
+
+vi.mock('./journal/journal-reminder-button', () => ({
+  JournalReminderButton: ({ journalDate }: { journalDate: string }) => (
+    <button type="button">reminder:{journalDate}</button>
+  )
+}))
+
+vi.mock('@/contexts/day-panel-context', () => ({
+  useDayPanel: () => mocks.dayPanel
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabGroup: () => mocks.tabGroup,
+  useTabs: () => ({ dispatch: mocks.dispatch })
+}))
+
+vi.mock('@/components/tabs', () => ({
+  TabBarWithDrag: ({ groupId }: { groupId: string }) => <div>tabbar:{groupId}</div>
+}))
+
+vi.mock('./split-view/empty-pane-state', () => ({
+  EmptyPaneState: ({ groupId }: { groupId: string }) => <div>empty:{groupId}</div>
+}))
+
+vi.mock('./split-view/tab-content', () => ({
+  TabContent: ({ groupId, tab }: { groupId: string; tab: { id: string } }) => (
+    <div>content:{`${groupId}:${tab.id}`}</div>
+  )
+}))
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.tabGroup = null
+  mocks.dayPanel = { isOpen: false, width: 0, isResizing: false }
+})
+
+describe('small zero-line renderer surfaces', () => {
+  it('renders tab panes, active content, empty groups, and inactive focus dispatch', () => {
+    const { container, rerender } = render(<TabPane groupId="missing" isActive={false} />)
+    expect(container).toBeEmptyDOMElement()
+
+    mocks.tabGroup = {
+      id: 'group-1',
+      activeTabId: 'tab-1',
+      tabs: [{ id: 'tab-1', title: 'Note' }]
+    }
+    mocks.dayPanel = { isOpen: true, width: 320, isResizing: false }
+    rerender(<TabPane groupId="group-1" isActive={false} />)
+    fireEvent.click(screen.getByTestId('tab-pane'))
+
+    expect(screen.getByText('tabbar:group-1')).toBeInTheDocument()
+    expect(screen.getByText('content:group-1:tab-1')).toBeInTheDocument()
+    expect(mocks.dispatch).toHaveBeenCalledWith({
+      type: 'SET_ACTIVE_GROUP',
+      payload: { groupId: 'group-1' }
+    })
+
+    mocks.tabGroup = { id: 'group-1', activeTabId: 'missing', tabs: [] }
+    rerender(<TabPane groupId="group-1" isActive={true} />)
+    expect(screen.getByText('empty:group-1')).toBeInTheDocument()
+  })
+
+  it('drives wiki-link menu loading, empty, note, and create rows', () => {
+    const onItemClick = vi.fn()
+    const items: WikiLinkSuggestionItem[] = [
+      {
+        id: 'note-1',
+        title: 'Existing Note',
+        target: 'Existing Note',
+        exists: true,
+        type: 'note',
+        lastEdited: '2026-05-10T00:00:00.000Z'
+      },
+      {
+        id: 'create-1',
+        title: 'New Note',
+        target: 'New Note',
+        exists: false,
+        type: 'create'
+      }
+    ]
+
+    const { rerender } = render(
+      <WikiLinkMenu items={[]} loadingState="loading" selectedIndex={0} onItemClick={onItemClick} />
+    )
+    expect(screen.getByText('loading')).toBeInTheDocument()
+
+    rerender(
+      <WikiLinkMenu items={[]} loadingState="loaded" selectedIndex={0} onItemClick={onItemClick} />
+    )
+    expect(screen.getByText('empty')).toBeInTheDocument()
+
+    rerender(
+      <WikiLinkMenu
+        items={items}
+        loadingState="loaded"
+        selectedIndex={1}
+        onItemClick={onItemClick}
+      />
+    )
+    const existingOption = screen.getByRole('option', { name: 'Existing Note' })
+    // A note without an icon of its own gets the generic note glyph (NoteMenuIcon).
+    expect(existingOption.querySelector('svg')).not.toBeNull()
+
+    fireEvent.click(screen.getByText('Existing Note'))
+    fireEvent.click(screen.getByText('create'))
+
+    expect(onItemClick).toHaveBeenCalledWith({ ...items[0], insertMode: 'wikiLink' })
+    expect(onItemClick).toHaveBeenCalledWith({ ...items[1], insertMode: 'wikiLink' })
+  })
+
+  it('renders wiki-link previews and forwards note, tag, and hover events', () => {
+    const onMouseEnter = vi.fn()
+    const onMouseLeave = vi.fn()
+    const onNoteClick = vi.fn()
+    const onTagClick = vi.fn()
+
+    render(
+      <WikiLinkPreviewCard
+        preview={{
+          id: 'note-1',
+          title: 'Previewed',
+          snippet: 'Snippet',
+          createdAt: '2026-05-10T00:00:00.000Z',
+          emoji: null,
+          tags: [{ name: 'work', color: '#22c55e' }],
+          matchedName: null,
+          path: 'Previewed.md',
+          cover: null,
+          description: null,
+          bodyText: null
+        }}
+        position={{ top: 10, left: 20, placement: 'above' }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+        onNoteClick={onNoteClick}
+        onTagClick={onTagClick}
+      />
+    )
+
+    const preview = document.querySelector('[data-wiki-link-preview]') as HTMLElement
+    fireEvent.mouseEnter(preview)
+    fireEvent.mouseLeave(preview)
+    fireEvent.click(screen.getByText('Previewed'))
+    fireEvent.click(screen.getByText('work'))
+
+    expect(onMouseEnter).toHaveBeenCalled()
+    expect(onMouseLeave).toHaveBeenCalled()
+    expect(onNoteClick).toHaveBeenCalledWith('Previewed')
+    expect(onTagClick).toHaveBeenCalledWith('work', '#22c55e')
+  })
+
+  it('drives journal header month navigation and entry actions', () => {
+    const handlers = {
+      onPrevious: vi.fn(),
+      onNext: vi.fn(),
+      onToggleFullWidth: vi.fn(),
+      onBookmarkToggle: vi.fn(),
+      onVersionHistory: vi.fn(),
+      onExport: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onToggleMindMap: vi.fn(),
+      onMenuAction: vi.fn()
+    }
+
+    const { rerender } = render(
+      <JournalHeaderActions
+        viewState={{ type: 'month', month: 4, year: 2026 }}
+        isBookmarked={false}
+        isFullWidth={false}
+        hasEntry={false}
+        journalDate={null}
+        {...handlers}
+      />
+    )
+
+    fireEvent.click(screen.getByLabelText('previousMonth'))
+    fireEvent.click(screen.getByLabelText('nextMonth'))
+    expect(handlers.onPrevious).toHaveBeenCalledTimes(1)
+    expect(handlers.onNext).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <JournalHeaderActions
+        viewState={{ type: 'day', date: '2026-05-10' }}
+        isBookmarked={true}
+        isFullWidth={true}
+        hasEntry={true}
+        journalDate="2026-05-10"
+        {...handlers}
+      />
+    )
+
+    fireEvent.click(screen.getByTitle('removeBookmark'))
+    fireEvent.click(screen.getByRole('button', { name: /versionHistory/ }))
+    fireEvent.click(screen.getByRole('button', { name: /export/ }))
+    fireEvent.click(screen.getByRole('button', { name: /fullWidth/ }))
+    fireEvent.click(screen.getByRole('button', { name: /journalSettings/ }))
+
+    expect(screen.getByText('reminder:2026-05-10')).toBeInTheDocument()
+    expect(handlers.onBookmarkToggle).toHaveBeenCalledTimes(1)
+    expect(handlers.onVersionHistory).toHaveBeenCalledTimes(1)
+    expect(handlers.onExport).toHaveBeenCalledTimes(1)
+    expect(handlers.onToggleFullWidth).toHaveBeenCalledTimes(1)
+    expect(handlers.onOpenSettings).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /showLocalGraph/ }))
+    fireEvent.click(screen.getByRole('button', { name: /copyPath/ }))
+    fireEvent.click(screen.getByRole('button', { name: /deleteEntry/ }))
+    expect(handlers.onMenuAction.mock.calls).toEqual([['local-graph'], ['copy-path'], ['delete']])
+  })
+
+  it('offers reminder, bookmark and mind map on an empty journal day', () => {
+    const handlers = {
+      onPrevious: vi.fn(),
+      onNext: vi.fn(),
+      onToggleFullWidth: vi.fn(),
+      onBookmarkToggle: vi.fn(),
+      onVersionHistory: vi.fn(),
+      onExport: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onToggleMindMap: vi.fn(),
+      onMenuAction: vi.fn()
+    }
+
+    render(
+      <JournalHeaderActions
+        viewState={{ type: 'day', date: '2026-05-11' }}
+        isBookmarked={false}
+        isFullWidth={false}
+        hasEntry={false}
+        journalDate="2026-05-11"
+        isMindMapAvailable
+        {...handlers}
+      />
+    )
+
+    expect(screen.getByText('reminder:2026-05-11')).toBeInTheDocument()
+    fireEvent.click(screen.getByTitle('addBookmark'))
+    fireEvent.click(screen.getByTestId('journal-mind-map-toggle'))
+    fireEvent.click(screen.getByRole('button', { name: 'title' }))
+    expect(handlers.onBookmarkToggle).toHaveBeenCalledTimes(1)
+    expect(handlers.onToggleMindMap).toHaveBeenCalledTimes(1)
+    expect(handlers.onMenuAction).toHaveBeenCalledWith('insert-template')
+    // Entry-bound actions wait for the entry file.
+    expect(screen.queryByRole('button', { name: /versionHistory/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /deleteEntry/ })).toBeNull()
+  })
+
+  it('offers Lock or Unlock for the entry as the page asks, and neither when it is locked above', () => {
+    const handlers = {
+      onPrevious: vi.fn(),
+      onNext: vi.fn(),
+      onToggleFullWidth: vi.fn(),
+      onBookmarkToggle: vi.fn(),
+      onVersionHistory: vi.fn(),
+      onExport: vi.fn(),
+      onOpenSettings: vi.fn(),
+      onMenuAction: vi.fn()
+    }
+    const header = (lockAction?: 'lock' | 'unlock'): React.JSX.Element => (
+      <JournalHeaderActions
+        viewState={{ type: 'day', date: '2026-05-10' }}
+        isBookmarked={false}
+        isFullWidth={false}
+        hasEntry={true}
+        journalDate="2026-05-10"
+        lockAction={lockAction}
+        {...handlers}
+      />
+    )
+
+    const { rerender } = render(header('lock'))
+    fireEvent.click(screen.getByRole('button', { name: 'lockEntry' }))
+    expect(screen.queryByRole('button', { name: 'unlockEntry' })).toBeNull()
+
+    rerender(header('unlock'))
+    fireEvent.click(screen.getByRole('button', { name: 'unlockEntry' }))
+    expect(screen.queryByRole('button', { name: 'lockEntry' })).toBeNull()
+    expect(handlers.onMenuAction.mock.calls).toEqual([['lock'], ['lock']])
+
+    rerender(header())
+    expect(screen.queryByRole('button', { name: 'lockEntry' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'unlockEntry' })).toBeNull()
+  })
+})

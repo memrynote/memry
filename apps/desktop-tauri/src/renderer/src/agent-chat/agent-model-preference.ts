@@ -1,0 +1,116 @@
+import { createLogger } from '@/lib/logger'
+import type {
+  AgentBackendId,
+  AgentCliBackendId,
+  ClaudeEffort,
+  CodexReasoningEffort,
+  LocalReasoningEffort
+} from '@memry/contracts/ipc-agent'
+
+const log = createLogger('AgentModelPreference')
+const STORAGE_KEY = 'memry:agent-model-preference'
+
+export type AgentProvider =
+  | 'claude_cli'
+  | 'codex_cli'
+  | 'antigravity_cli'
+  | 'local_openai_compatible'
+
+export interface AgentModelPreference {
+  provider: AgentProvider
+  models: Partial<Record<AgentCliBackendId, string | null>>
+  efforts?: {
+    claude_cli?: ClaudeEffort
+    codex_cli?: CodexReasoningEffort
+    local_openai_compatible?: LocalReasoningEffort
+  }
+  localModel?: string | null
+}
+
+const PROVIDERS: ReadonlySet<string> = new Set([
+  'claude_cli',
+  'codex_cli',
+  'antigravity_cli',
+  'local_openai_compatible'
+])
+const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
+const CLAUDE_EFFORTS: ReadonlySet<string> = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
+const CODEX_EFFORTS: ReadonlySet<string> = new Set(['low', 'medium', 'high', 'xhigh'])
+const LOCAL_EFFORTS: ReadonlySet<string> = new Set(['default', 'high', 'max'])
+
+function isProvider(value: unknown): value is AgentProvider {
+  return typeof value === 'string' && PROVIDERS.has(value)
+}
+function isClaudeEffort(value: unknown): value is ClaudeEffort {
+  return typeof value === 'string' && CLAUDE_EFFORTS.has(value)
+}
+function isCodexEffort(value: unknown): value is CodexReasoningEffort {
+  return typeof value === 'string' && CODEX_EFFORTS.has(value)
+}
+function isLocalEffort(value: unknown): value is LocalReasoningEffort {
+  return typeof value === 'string' && LOCAL_EFFORTS.has(value)
+}
+
+/** Last provider + per-backend model/effort the user picked. Device-local by design (no sync). */
+export function readAgentModelPreference(): AgentModelPreference | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const parsed: Partial<AgentModelPreference> | null = JSON.parse(raw)
+    if (!parsed || !isProvider(parsed.provider)) return null
+    const models: Partial<Record<AgentCliBackendId, string | null>> = {}
+    if (parsed.models && typeof parsed.models === 'object') {
+      for (const backend of CLI_BACKENDS) {
+        const value = parsed.models[backend]
+        if (typeof value === 'string' || value === null) models[backend] = value
+      }
+    }
+    // Older persisted shapes carry no efforts/localModel; treat them as unset.
+    const efforts: AgentModelPreference['efforts'] = {}
+    if (parsed.efforts && typeof parsed.efforts === 'object') {
+      if (isClaudeEffort(parsed.efforts.claude_cli)) {
+        efforts.claude_cli = parsed.efforts.claude_cli
+      }
+      if (isCodexEffort(parsed.efforts.codex_cli)) {
+        efforts.codex_cli = parsed.efforts.codex_cli
+      }
+      const local = parsed.efforts.local_openai_compatible
+      if (isLocalEffort(local)) {
+        efforts.local_openai_compatible = local
+      }
+    }
+    const localModel =
+      typeof parsed.localModel === 'string' || parsed.localModel === null
+        ? parsed.localModel
+        : undefined
+    return {
+      provider: parsed.provider,
+      models,
+      efforts,
+      ...(localModel !== undefined ? { localModel } : {})
+    }
+  } catch (error) {
+    log.warn('Failed to read agent model preference', error)
+    return null
+  }
+}
+
+export function persistAgentModelPreference(preference: AgentModelPreference): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(preference))
+  } catch (error) {
+    log.warn('Failed to persist agent model preference', error)
+  }
+}
+
+/** Backend + model to seed a new conversation with, from the last pick. Undefined = app default. */
+export function preferredConversationDefaults():
+  | { backend: AgentBackendId; backendModel?: string | null }
+  | undefined {
+  const pref = readAgentModelPreference()
+  if (!pref) return undefined
+  if (pref.provider !== 'local_openai_compatible') {
+    return { backend: pref.provider, backendModel: pref.models[pref.provider] ?? null }
+  }
+  return { backend: pref.provider, ...(pref.localModel ? { backendModel: pref.localModel } : {}) }
+}

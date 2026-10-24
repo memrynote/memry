@@ -6,7 +6,7 @@ import path from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
-import { isStrictSkipEnabled } from './docs-impact.mjs'
+import { analyzeDocsImpact, isStrictSkipEnabled } from './docs-impact.mjs'
 
 const scriptPath = fileURLToPath(new URL('./docs-impact.mjs', import.meta.url))
 
@@ -57,6 +57,20 @@ describe('isStrictSkipEnabled', () => {
     assert.equal(isStrictSkipEnabled({ MEMRY_DOCS_IMPACT_SKIP: '0' }), false)
     assert.equal(isStrictSkipEnabled({ MEMRY_DOCS_IMPACT_SKIP: 'true' }), false)
     assert.equal(isStrictSkipEnabled({}), false)
+  })
+})
+
+describe('analyzeDocsImpact for the Tauri app', () => {
+  it('flags the app sources, the shell crate and the desktop crate, and ignores its e2e specs', () => {
+    const flagged = [
+      'apps/desktop-tauri/src/renderer/src/main.tsx',
+      'apps/desktop-tauri/scripts/smoke-launch.mjs',
+      'apps/desktop-tauri/src-tauri/src/commands/app.rs',
+      'apps/desktop-tauri/package.json',
+      'crates/memry-desktop/src/paths.rs'
+    ]
+    assert.deepEqual(analyzeDocsImpact(flagged).relevantFiles, flagged)
+    assert.equal(analyzeDocsImpact(['apps/desktop-tauri/e2e/specs/a.ts']).status, 'not-needed')
   })
 })
 

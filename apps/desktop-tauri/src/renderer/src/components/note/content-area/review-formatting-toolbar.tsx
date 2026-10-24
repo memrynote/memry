@@ -1,0 +1,534 @@
+import type { BlockNoteEditor } from '@blocknote/core'
+import type { EditorState, Selection } from '@tiptap/pm/state'
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
+import {
+  BasicTextStyleButton,
+  ColorStyleButton,
+  CreateLinkButton,
+  FormattingToolbar,
+  FormattingToolbarController,
+  useBlockNoteEditor,
+  useComponentsContext,
+  useEditorState,
+  type FormattingToolbarProps
+} from '@blocknote/react'
+import { SuggestionMenu } from '@blocknote/core/extensions'
+import { Link2, MessageCircle } from '@/lib/icons'
+import { getLiveProseMirrorView } from './live-prosemirror-view'
+import type { ReviewSelection } from './types'
+import { ListTypeButtons } from './list-type-buttons'
+import { ToolbarBlockTypeSelect } from './toolbar-block-type-select'
+import { ToolbarMoreMenu } from './toolbar-more-menu'
+import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
+import { useT } from '@memry/i18n/renderer'
+
+interface ReviewFormattingToolbarProps {
+  variant?: 'floating' | 'sticky'
+  onAddComment?: (selection: ReviewSelection) => void
+  /** Pin/unpin from the overflow menu. Omitted: the menu item hides. */
+  onStickyChange?: (sticky: boolean) => void
+}
+
+export function ReviewFormattingToolbarController(props: ReviewFormattingToolbarProps) {
+  const editor = useBlockNoteEditor()
+  // The gate lives here, not in the toolbar below: BlockNote tears the toolbar
+  // down and mounts a fresh one mid-interaction, so state held there is lost
+  // exactly when it is needed. This component is mounted by ContentArea and
+  // outlives that churn.
+  const isContextMenuOpen = useContextMenuOpen(editor)
+
+  if (isContextMenuOpen) return null
+
+  return (
+    <FormattingToolbarController
+      // oxlint-disable-next-line react/no-unstable-nested-components -- render-prop/component closes over per-render state; its identity is held stable by the surrounding memo or state initializer
+      formattingToolbar={(toolbarProps) => (
+        <ReviewFormattingToolbar {...toolbarProps} {...props} variant="floating" />
+      )}
+    />
+  )
+}
+
+export function ReviewFormattingToolbar({
+  variant = 'floating',
+  onAddComment,
+  onStickyChange,
+  ...toolbarProps
+}: FormattingToolbarProps & ReviewFormattingToolbarProps) {
+  const editor = useBlockNoteEditor()
+  // A NodeSelection (e.g. the URL preview/bookmark atom selected via arrow
+  // keys) is non-empty but holds no inline text. BlockNote opens the floating
+  // toolbar on any non-empty selection, so suppress it here for node
+  // selections — otherwise the comment/suggest tooltip pops over the block.
+  const isNodeSelection = useEditorState({
+    editor,
+    selector: ({ editor: stateEditor }) => {
+      const state = getProseMirrorState(stateEditor)
+      const selection = state?.selection
+      return Boolean(selection && !selection.empty && selectionNode(selection))
+    }
+  })
+
+  if (variant === 'floating' && isNodeSelection) return null
+
+  // Same actions in both variants. Rarely used block actions (align, indent)
+  // live in the overflow menu. Renders null for blocks outside the block type
+  // list (task blocks, callouts, files); the slot collapses via `:empty`.
+  const blockType = (
+    <div className="memry-format-toolbar-block-type">
+      <ToolbarBlockTypeSelect items={toolbarProps.blockTypeSelectItems} />
+    </div>
+  )
+  const comment = <ReviewToolbarButton onSelect={onAddComment} />
+  const more = <ToolbarMoreMenu isPinned={variant === 'sticky'} onPinnedChange={onStickyChange} />
+
+  // Floating: a compact panel (block type, a five-column icon grid, comment)
+  // so it covers a few lines of text instead of a full-width row.
+  if (variant === 'floating') {
+    return (
+      <FormattingToolbar {...toolbarProps}>
+        <div className="memry-format-toolbar" data-variant="floating">
+          {blockType}
+          <div className="memry-format-toolbar-grid">
+            <ToolbarActions />
+            {more}
+          </div>
+          {onAddComment && <div className="memry-format-toolbar-footer">{comment}</div>}
+        </div>
+      </FormattingToolbar>
+    )
+  }
+
+  // Pinned: one row grouped by intent with a hairline between groups.
+  return (
+    <FormattingToolbar {...toolbarProps}>
+      <div className="memry-format-toolbar" data-variant={variant}>
+        {blockType}
+        <ToolbarDivider />
+        <ToolbarActions divided />
+        {onAddComment && <ToolbarDivider />}
+        {comment}
+        {more}
+      </div>
+    </FormattingToolbar>
+  )
+}
+
+/** Marks, colour, list toggles and links, in that order. */
+function ToolbarActions({ divided = false }: { divided?: boolean }) {
+  return (
+    <>
+      <BasicTextStyleButton basicTextStyle="bold" />
+      <BasicTextStyleButton basicTextStyle="italic" />
+      <BasicTextStyleButton basicTextStyle="underline" />
+      <BasicTextStyleButton basicTextStyle="strike" />
+      {/* Inline code (the backtick style) is in the schema and in the
+            markdown round-trip, but no toolbar surfaced it — the only way in
+            was typing backticks. */}
+      <BasicTextStyleButton basicTextStyle="code" />
+      <ColorStyleButton />
+      {divided && <ToolbarDivider />}
+      {/* Turning selected lines into a list is the reason most people open
+            this popup (#1206), so the toggles stay on the row rather than
+            behind the block type dropdown. */}
+      <ListTypeButtons />
+      {divided && <ToolbarDivider />}
+      <CreateLinkButton />
+      <LinkToNoteButton />
+    </>
+  )
+}
+
+function ToolbarDivider() {
+  return <span className="memry-format-toolbar-divider" aria-hidden="true" />
+}
+
+/**
+ * A secondary click pops the native context menu from the main process, while
+ * BlockNote independently opens this toolbar off the same pointer sequence
+ * (#1850). Two menus, and the toolbar is the one left without focus.
+ *
+ * Whether `contextmenu` arrives before or after the `pointerup` BlockNote opens
+ * on is platform-dependent, so this suppresses by state instead of racing that
+ * listener: hidden until the next ordinary interaction. Capture on `window`
+ * runs ahead of anything that might stop propagation.
+ *
+ * Call this from a component BlockNote does not own. Its controller remounts
+ * the toolbar during the very interaction being suppressed, which resets any
+ * state held below it.
+ */
+function useContextMenuOpen(editor: BlockNoteEditor): boolean {
+  const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    const open = (event: Event): void => {
+      const viewDom = getProseMirrorViewDom(editor)
+      const target = event.target
+      if (!viewDom || !(target instanceof Node) || !viewDom.contains(target)) return
+      setIsOpen(true)
+    }
+    const closeOnPointer = (event: Event): void => {
+      if ('button' in event && event.button === 2) return
+      setIsOpen(false)
+    }
+    const closeOnKey = (): void => setIsOpen(false)
+
+    window.addEventListener('contextmenu', open, true)
+    window.addEventListener('pointerdown', closeOnPointer, true)
+    window.addEventListener('keydown', closeOnKey, true)
+
+    return () => {
+      window.removeEventListener('contextmenu', open, true)
+      window.removeEventListener('pointerdown', closeOnPointer, true)
+      window.removeEventListener('keydown', closeOnKey, true)
+    }
+  }, [editor])
+
+  return isOpen
+}
+
+/**
+ * "Link this selection to a note or heading" (#1563 E2) — the internal
+ * counterpart to `CreateLinkButton`, which only ever offered an external URL.
+ *
+ * It hands the selection to the wiki-link edit plugin, which turns it into the
+ * same raw `[[…]]` run an edited chip becomes and binds the `[[` suggestion
+ * menu to it. One search UI, one place heading support lives.
+ *
+ * The work happens on pointer-down, before the toolbar button takes focus and
+ * ProseMirror's selection collapses — the same reason `ReviewToolbarButton`
+ * below captures pointer events.
+ */
+function LinkToNoteButton() {
+  const { t } = useT('notes')
+  const Components = useComponentsContext()
+  const editor = useBlockNoteEditor()
+  const handledRef = useRef(false)
+
+  const hasSelection = useEditorState({
+    editor,
+    selector: ({ editor: stateEditor }) => {
+      const selection = getProseMirrorState(stateEditor)?.selection
+      if (!selection || selection.empty || selectionNode(selection)) return false
+      // Read the resolved positions defensively, like everything else that
+      // reaches into the editor from this file: this selector runs on every
+      // editor state, including ones from before the view is mounted.
+      const { $from, $to }: { $from?: { parent?: unknown }; $to?: { parent?: unknown } } = selection
+      return Boolean($from?.parent) && $from?.parent === $to?.parent
+    }
+  })
+
+  if (!Components) return null
+
+  const label = t('editor.toolbar.linkToNote')
+
+  const run = (event: PointerEvent<HTMLElement> | MouseEvent<HTMLElement>): void => {
+    event.preventDefault()
+    if (handledRef.current) return
+
+    const opened = openWikiLinkForSelection(editor, {
+      openMenu: () =>
+        editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
+          // The `[[` is already in the document — this button wrote it.
+          deleteTriggerCharacter: false
+        })
+    })
+    if (!opened) return
+
+    handledRef.current = true
+    window.setTimeout(() => {
+      handledRef.current = false
+    }, 0)
+  }
+
+  return (
+    <span
+      className="review-formatting-toolbar-action"
+      onPointerDownCapture={run}
+      onMouseDownCapture={run}
+    >
+      <Components.FormattingToolbar.Button
+        className="bn-button"
+        data-test="link-to-note"
+        label={label}
+        mainTooltip={label}
+        isDisabled={!hasSelection}
+        icon={<Link2 size={16} />}
+        onClick={() => {
+          handledRef.current = false
+        }}
+      />
+    </span>
+  )
+}
+
+function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelection) => void }) {
+  const { t } = useT('notes')
+  const Components = useComponentsContext()
+  const editor = useBlockNoteEditor()
+  const ignoreNextClickRef = useRef(false)
+  const lastSelectionRef = useRef<ReviewSelection | null>(null)
+  const selectionState = useEditorState({
+    editor,
+    selector: ({ editor: stateEditor }) => {
+      const state = getProseMirrorState(stateEditor)
+      const selection = state.selection
+      if (selection.empty) {
+        const domSelection = getDomEditorSelection(stateEditor)
+        return {
+          hasSelection: Boolean(domSelection),
+          isMultiBlock: (domSelection?.text ?? '').includes('\n'),
+          selection: domSelection
+        }
+      }
+      const text = state.doc.textBetween(selection.from, selection.to, '\n')
+      const reviewSelection = getEditorSelectionFromState(stateEditor, state)
+      const selectedText = reviewSelection.text.length > 0 ? reviewSelection.text : text.trim()
+      const domSelection = getDomEditorSelection(stateEditor)
+      const activeSelection =
+        selectedText.length > 0 && !selectedText.includes('\n')
+          ? reviewSelection
+          : (domSelection ?? (selectedText.length > 0 ? reviewSelection : null))
+      return {
+        hasSelection: Boolean(activeSelection),
+        isMultiBlock: (activeSelection?.text ?? text).includes('\n'),
+        selection: activeSelection
+      }
+    }
+  })
+  if (selectionState.isMultiBlock) {
+    // Caches last single-block selection across renders so the comment button
+    // can reopen on a selection BlockNote has already cleared.
+    // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+    lastSelectionRef.current = null
+  } else {
+    const selected = getSelectableSelection(selectionState.selection)
+    if (selected) {
+      // Same selection cache; persists the prior frame's selection.
+      // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+      lastSelectionRef.current = selected
+    }
+  }
+
+  useEffect(() => {
+    const rememberDomSelection = () => {
+      window.setTimeout(() => {
+        const domSelection = getDomEditorSelection(editor)
+        if (!domSelection) {
+          if (hasMultiBlockDomSelection(editor)) {
+            lastSelectionRef.current = null
+          }
+          return
+        }
+        if (
+          !domSelection.isEmpty &&
+          domSelection.text.trim() &&
+          !domSelection.text.includes('\n')
+        ) {
+          lastSelectionRef.current = domSelection
+        }
+      }, 0)
+    }
+
+    document.addEventListener('selectionchange', rememberDomSelection)
+    window.addEventListener('mouseup', rememberDomSelection)
+    window.addEventListener('pointerup', rememberDomSelection)
+    rememberDomSelection()
+
+    return () => {
+      document.removeEventListener('selectionchange', rememberDomSelection)
+      window.removeEventListener('mouseup', rememberDomSelection)
+      window.removeEventListener('pointerup', rememberDomSelection)
+    }
+  }, [editor])
+
+  if (!Components) return null
+  if (!onSelect) return null
+
+  const label = t('comments.toolbarComment')
+  const Icon = MessageCircle
+  // Reads cached last single-block selection (written above) as a render fallback.
+  // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
+  const cachedSelection = getSelectableSelection(lastSelectionRef.current)
+  const renderSelection = getSelectableSelection(selectionState.selection) ?? cachedSelection
+  const isDisabled = !renderSelection
+
+  const getActionSelection = (): ReviewSelection | null => {
+    const hasMultiBlockSelection = hasMultiBlockDomSelection(editor)
+    if (hasMultiBlockSelection) {
+      return null
+    }
+
+    const currentSelection = getEditorSelection(editor)
+    const domSelection = getDomEditorSelection(editor)
+    const selection =
+      getSelectableSelection(currentSelection) ??
+      getSelectableSelection(selectionState.selection) ??
+      getSelectableSelection(lastSelectionRef.current) ??
+      getSelectableSelection(domSelection)
+    return selection
+  }
+
+  const runAction = (): boolean => {
+    const selection = getActionSelection()
+    if (!selection) {
+      return false
+    }
+
+    onSelect?.(selection)
+    return true
+  }
+
+  const markPointerHandled = () => {
+    ignoreNextClickRef.current = true
+    window.setTimeout(() => {
+      ignoreNextClickRef.current = false
+    }, 0)
+  }
+
+  const handlePreClickSelection = (
+    event: PointerEvent<HTMLElement> | MouseEvent<HTMLElement>
+  ): void => {
+    event.preventDefault()
+    if (ignoreNextClickRef.current) return
+    if (runAction()) {
+      markPointerHandled()
+    }
+  }
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
+    <span
+      className="review-formatting-toolbar-action"
+      onPointerDownCapture={handlePreClickSelection}
+      onMouseDownCapture={handlePreClickSelection}
+      onPointerDown={handlePreClickSelection}
+      onMouseDown={handlePreClickSelection}
+    >
+      <Components.FormattingToolbar.Button
+        className="bn-button"
+        data-test="review-comment"
+        label={label}
+        mainTooltip={label}
+        isDisabled={isDisabled}
+        icon={<Icon size={16} />}
+        onClick={() => {
+          if (ignoreNextClickRef.current) {
+            ignoreNextClickRef.current = false
+            return
+          }
+          runAction()
+        }}
+      >
+        {/* The one labelled button on the row: it is the only action that
+            leaves the text (it opens the review rail), and an icon alone read
+            as an unlabelled glyph. */}
+        {label}
+      </Components.FormattingToolbar.Button>
+    </span>
+  )
+}
+
+function getSelectableSelection(
+  selection: ReviewSelection | null | undefined
+): ReviewSelection | null {
+  if (!selection) return null
+  const text = selection.text.trim()
+  if (selection.isEmpty || !text || text.includes('\n')) return null
+  return { ...selection, text, isEmpty: false }
+}
+
+function getEditorSelection(editor: BlockNoteEditor): ReviewSelection {
+  const state = getProseMirrorState(editor)
+  return getEditorSelectionFromState(editor, state)
+}
+
+export function getEditorSelectionFromState(
+  editor: BlockNoteEditor,
+  state: EditorState
+): ReviewSelection {
+  const selection = state.selection
+  if (selection.empty) return { text: '', isEmpty: true }
+
+  return {
+    text: state.doc.textBetween(selection.from, selection.to, '\n').trim(),
+    isEmpty: false,
+    top: getSelectionTop(editor, selection.from),
+    from: selection.from,
+    to: selection.to
+  }
+}
+
+type TiptapHost = {
+  _tiptapEditor?: { state?: EditorState }
+  prosemirrorState?: EditorState
+}
+
+/** `node` is set only on a NodeSelection; other selections carry no such field. */
+function selectionNode(selection: Selection): unknown {
+  return 'node' in selection ? selection.node : undefined
+}
+
+export function getProseMirrorState(editor: BlockNoteEditor): EditorState {
+  const host: TiptapHost = editor
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- both fields are optional on a host that may not be mounted yet; callers (and the selectors above) already guard for the undefined case this type hides
+  return (host._tiptapEditor?.state ?? host.prosemirrorState) as EditorState
+}
+
+function getSelectionTop(editor: BlockNoteEditor, from: number): number | undefined {
+  const view = getLiveProseMirrorView(editor)
+  const viewDom = getProseMirrorViewDom(editor)
+  if (!viewDom || typeof view?.coordsAtPos !== 'function') return undefined
+
+  try {
+    const root = viewDom.closest<HTMLElement>('.marquee-zone')
+    if (!root) return undefined
+
+    const coords = view.coordsAtPos(from)
+    return Math.max(0, coords.top - root.getBoundingClientRect().top)
+  } catch {
+    return undefined
+  }
+}
+
+function getDomEditorSelection(editor: BlockNoteEditor): ReviewSelection | null {
+  const viewDom = getProseMirrorViewDom(editor)
+  const selection = window.getSelection()
+  if (!viewDom || !selection || selection.isCollapsed || selection.rangeCount === 0) return null
+  if (!selection.anchorNode || !selection.focusNode) return null
+  if (!viewDom.contains(selection.anchorNode) || !viewDom.contains(selection.focusNode)) return null
+
+  const text = selection.toString().trim()
+  if (!text) return null
+
+  const range = selection.getRangeAt(0)
+  const rect =
+    Array.from(range.getClientRects()).find((item) => item.width > 0 && item.height > 0) ??
+    range.getBoundingClientRect()
+  const root = viewDom.closest<HTMLElement>('.marquee-zone')
+  const top =
+    root && rect.width > 0 && rect.height > 0
+      ? Math.max(0, rect.top - root.getBoundingClientRect().top)
+      : undefined
+
+  return {
+    text,
+    isEmpty: false,
+    ...(top !== undefined ? { top } : {})
+  }
+}
+
+function getProseMirrorViewDom(editor: BlockNoteEditor): HTMLElement | undefined {
+  return getLiveProseMirrorView(editor)?.dom
+}
+
+function hasMultiBlockDomSelection(editor: BlockNoteEditor): boolean {
+  const viewDom = getProseMirrorViewDom(editor)
+  const selection = window.getSelection()
+  if (!viewDom || !selection || selection.isCollapsed) return false
+  if (!selection.anchorNode || !selection.focusNode) return false
+  if (!viewDom.contains(selection.anchorNode) || !viewDom.contains(selection.focusNode))
+    return false
+
+  return selection.toString().trim().includes('\n')
+}

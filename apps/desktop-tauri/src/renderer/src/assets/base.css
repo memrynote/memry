@@ -1,0 +1,5811 @@
+@import 'tailwindcss';
+
+/* BlockNote shadcn styles source */
+@source "../../../../node_modules/@blocknote/shadcn/src";
+@source "../../../../node_modules/streamdown/dist/*.js";
+
+@custom-variant dark (&:is(.dark *));
+
+@keyframes floating-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes floating-content-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(3px) scale(0.99);
+  }
+}
+
+.floating-content-motion {
+  transform-origin: var(
+    --radix-dropdown-menu-content-transform-origin,
+    var(
+      --radix-popover-content-transform-origin,
+      var(
+        --radix-select-content-transform-origin,
+        var(
+          --radix-context-menu-content-transform-origin,
+          var(--radix-hover-card-content-transform-origin, top center)
+        )
+      )
+    )
+  );
+  will-change: opacity, transform;
+}
+
+.floating-content-motion[data-state='open'] {
+  animation: floating-content-in 160ms var(--ease-out) both;
+}
+
+.floating-content-motion[data-state='closed'] {
+  animation: floating-content-out 90ms var(--ease-in) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-content-motion[data-state='open'],
+  .floating-content-motion[data-state='closed'] {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* ===== BLOCKNOTE EDITOR CUSTOMIZATION ===== */
+/* Override BlockNote's CSS variables + defaults to match app theme.
+   Uses CSS inheritance (not a wildcard * rule) so Shiki inline token styles still work.
+
+   Declared on `.bn-root`, not `.bn-container`. BlockNote 0.48 split the two:
+   `.bn-container` is the editor body alone, while `.bn-root` also covers the
+   floating UI, which 0.48 portals to `document.body` with only `bn-root` on
+   it. Left on `.bn-container` these variables stopped reaching the colour
+   picker in the formatting toolbar — the one menu whose whole job is showing
+   this palette. The editor element carries both classes, so the body is
+   unaffected either way. */
+:root .bn-root {
+  --bn-colors-editor-text: var(--foreground);
+  --bn-colors-editor-background: var(--background);
+
+  /* Text-colour palette, re-cut from BlockNote's Notion-legacy stock.
+     Reported: green read as plain grey while blue looked vivid. Measuring the
+     whole palette found three defects, and green had only the second:
+
+       1. AA. gray 2.58, red 3.90, orange 3.00, yellow 1.93 against the paper
+          background — all below the 4.5 WCAG AA floor for text.
+       2. Chroma. green sat at OKLCH hue 186 (teal, not green) with chroma
+          0.028, and brown at 0.045, against ~0.11 for blue. Below roughly 0.05
+          the eye cannot name a hue and the swatch reads as grey. This is why
+          green failed while measuring a comfortable 6.34 contrast: WCAG is
+          luminance-only and blind to it.
+       3. Separation from body text. brown sat 0.105 away in OKLab.
+
+     Re-cut so every swatch clears 4.5 on both light backgrounds, carries at
+     least 0.08 chroma (gray excepted — it is the one deliberate neutral), and
+     stays at least 0.15 from the body text. brown < orange < yellow in
+     lightness is held deliberately: they share the warm hue arc and lightness
+     order is the only thing that keeps brown from reading as dull orange.
+     AA is why yellow lands as gold rather than lemon — a light enough yellow
+     cannot clear 4.5 on white at all.
+
+     Backgrounds stay stock: a fill needs no chroma to be identified, and the
+     reporter confirmed the green background reads fine.
+
+     Presentation only. Colours persist by NAME (`textColor: "green"`, and
+     `<!-- colors:{...} -->` in vault markdown), never as hex, so existing notes
+     re-render under the new palette with no migration. */
+  --bn-colors-highlights-gray-text: #696969;
+  --bn-colors-highlights-brown-text: #824a32;
+  --bn-colors-highlights-red-text: #ba3f38;
+  --bn-colors-highlights-orange-text: #9d5b00;
+  --bn-colors-highlights-yellow-text: #7e7100;
+  --bn-colors-highlights-green-text: #007a44;
+  --bn-colors-highlights-blue-text: #0070a5;
+  --bn-colors-highlights-purple-text: #8550b8;
+  --bn-colors-highlights-pink-text: #b33e74;
+}
+
+/* The dark palette lives on `.bn-root[data-color-scheme=dark]` (0,2,0) in
+   @blocknote/shadcn, so this needs the extra attribute to win on specificity
+   rather than on stylesheet order.
+
+   Same three defects on the dark side: brown 3.69, purple 3.73 and pink 4.09
+   missed AA; green again had no chroma (0.037); and gray #bebdb8 sat 0.009 from
+   the #bcbab6 body text, close enough that "gray" was not a distinguishable
+   colour at all. Brown was lifted again when the dark canvas moved from
+   #121212 to #181818; it must stay AA there and darker than orange. */
+:root .bn-root[data-color-scheme='dark'] {
+  --bn-colors-highlights-gray-text: #838383;
+  --bn-colors-highlights-brown-text: #b17457;
+  --bn-colors-highlights-red-text: #da5c52;
+  --bn-colors-highlights-orange-text: #c07104;
+  --bn-colors-highlights-yellow-text: #998800;
+  --bn-colors-highlights-green-text: #199758;
+  --bn-colors-highlights-blue-text: #008ccd;
+  --bn-colors-highlights-purple-text: #a06cd5;
+  --bn-colors-highlights-pink-text: #d25a8f;
+}
+
+:root .bn-editor,
+:root .bn-container {
+  background-color: var(--background) !important;
+  color: #37352f !important;
+  caret-color: #37352f;
+  padding-inline: 0px;
+  -webkit-font-smoothing: auto !important;
+}
+
+.dark .bn-editor,
+.dark .bn-container {
+  background-color: var(--background) !important;
+  color: var(--text-bright) !important;
+  caret-color: #f0efed;
+}
+
+/* Inbox detail + task description drawers: editor inherits the drawer surface
+   bg (var(--surface)), not the page bg — stays theme-correct in white/warm/dark. */
+.inbox-content-editor .bn-editor,
+.inbox-content-editor .bn-container,
+.task-description-editor .bn-editor,
+.task-description-editor .bn-container {
+  background-color: transparent !important;
+}
+
+/* Task description editor: text starts flush, on the same 20px lane as the
+   drawer's section headings. The drag handle (the only side-menu button here,
+   see task-description-editor.tsx) sits in the drawer's 20px inline padding,
+   so it is 18px wide rather than shadcn's auto-sized 24px button. */
+.task-description-editor .bn-editor {
+  padding-inline-start: 0 !important;
+  padding-inline-end: 4px !important;
+}
+
+:root .task-description-editor .bn-side-menu .bn-button {
+  width: 18px;
+  min-width: 18px;
+}
+
+/* Task description body text at the drawer's 13px text size instead of the
+   note editor's 1rem. Kept in rem (13/16) so it still follows the Appearance
+   font-size setting like the note body does. Headings are em-based, so they
+   scale down with it. `:root` outranks the global `:root .bn-default-styles`
+   rule further down. */
+:root .task-description-editor .bn-default-styles {
+  font-size: 0.8125rem;
+}
+
+/* Side-menu height = the first line box at that 13px base (the global rules
+   below assume 1rem body text and rem-sized headings). Heading levels are the
+   same --level ems as the note editor, at line-height 1.3. `!important` for the
+   same reason as the global heading rules: shadcn's CSS loads after this file. */
+:root .task-description-editor .bn-side-menu {
+  height: calc(0.8125rem * 1.5 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'] {
+  height: calc(0.8125rem * 1.875 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='2'] {
+  height: calc(0.8125rem * 1.5 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='3'] {
+  height: calc(0.8125rem * 1.25 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='4'] {
+  height: calc(0.8125rem * 1.125 * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='5'] {
+  height: calc(0.8125rem * 1.3 + 2px) !important;
+}
+
+:root .task-description-editor .bn-side-menu[data-block-type='heading'][data-level='6'] {
+  height: calc(0.8125rem * 0.875 * 1.3 + 2px) !important;
+}
+
+/* Code block: theme-aware. The highlighter emits both github-light and
+   github-dark as CSS variables per token (see packages/editor-schema/src/
+   code-block.ts), so each theme picks its own token colours here. The surface
+   is the sidebar colour rather than shiki's own background, so the block reads
+   as part of the app in both themes instead of a white or black slab. */
+.bn-block-content[data-content-type='codeBlock'] {
+  background-color: var(--sidebar) !important;
+  color: var(--shiki-light, #24292e) !important;
+}
+
+.dark .bn-block-content[data-content-type='codeBlock'] {
+  color: var(--shiki-dark, #e1e4e8) !important;
+}
+
+.bn-block-content[data-content-type='codeBlock'] .shiki {
+  color: var(--shiki-light);
+}
+
+.dark .bn-block-content[data-content-type='codeBlock'] .shiki {
+  color: var(--shiki-dark);
+}
+
+/* View block (#2488): a `memry-view` code block drawn as a live list of notes
+   (view-block.tsx). It is a code block to the document, not to the reader, so
+   it takes the note's own surface and ink instead of the code slab. */
+.bn-block-content[data-content-type='codeBlock'][data-language='memry-view'] {
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+/* The view block renders app UI (folder list/table/gallery, tag chips, the
+   filter button) inside the editor, where two unlayered BlockNote rules beat
+   Tailwind's layered utilities: `.bn-default-styles li` resets font-size and
+   padding (a TagChip is an <li>, so it grew to body size and lost its pill),
+   and `.bn-shadcn svg:not([class*=size-])` reverts icon sizes (the filter icon
+   is `h-3.5 w-3.5`, so it grew to 24px). `revert-layer` hands both back to the
+   utilities, so the block looks the way the same components do everywhere
+   else. */
+.bn-default-styles .memry-view-block :is(p, li, h1, h2, h3, h4, h5, h6) {
+  font-size: revert-layer;
+  margin: revert-layer;
+  padding: revert-layer;
+}
+
+.bn-shadcn .memry-view-block svg:not([class*='size-']) {
+  width: revert-layer;
+  height: revert-layer;
+}
+
+/* Code text size. A bare `font-family: monospace` with no explicit font-size
+   makes browsers fall back to their own fixed default (~13px), unrelated to the
+   editor's S/M/L setting. `0.875em` re-ties code to that setting and keeps it a
+   notch below body text — 14px at the Medium 16px. */
+.bn-block-content[data-content-type='codeBlock'] > pre,
+.bn-block-content[data-content-type='codeBlock'] > pre code,
+.bn-inline-content code {
+  font-size: 0.875em;
+}
+
+/* Code block toolbar: one pill in the block's block-start / inline-end corner,
+   holding the language picker and the copy button. Placed from the DOM by
+   code-block-toolbar.tsx, hence `fixed` with no inset here. */
+.memry-code-toolbar {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06);
+}
+
+.memry-code-toolbar-language {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* The picker is a native select stripped to text plus our own chevron: the
+   chevron is a sibling because a <select> renders no children of its own. */
+.memry-code-toolbar-language > select {
+  appearance: none;
+  height: 24px;
+  padding-inline: 8px 20px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+  outline: none;
+}
+
+.memry-code-toolbar-language > svg {
+  position: absolute;
+  inset-inline-end: 6px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.memry-code-toolbar-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.memry-code-toolbar-language > select:hover,
+.memry-code-toolbar-language:hover > svg,
+.memry-code-toolbar-button:hover {
+  color: var(--foreground);
+}
+
+.memry-code-toolbar-language > select:hover,
+.memry-code-toolbar-button:hover {
+  background-color: var(--muted);
+}
+
+.memry-code-toolbar-language > select:focus-visible,
+.memry-code-toolbar-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memry-code-toolbar-button {
+    transition: none;
+  }
+}
+
+/* BlockNote's own picker, replaced by the toolbar above: a bare <select> at the
+   block's top-LEFT in hardcoded white, at half opacity. Hidden rather than
+   restyled — two pickers on one block is the confusing outcome, and the block
+   is still typed through ours. */
+.bn-block-content[data-content-type='codeBlock'] > div:has(> select) {
+  display: none;
+}
+
+/* ===== TYPOGRAPHY OVERRIDES ===== */
+/* Override BlockNote's Inter font with system font stack.
+   `.bn-root` for the same reason as the palette above: the floating menus are
+   portalled out of `.bn-container` and would otherwise render in Inter. */
+:root .bn-default-styles,
+:root .bn-root {
+  font-family: var(--font-sans) !important;
+}
+
+:root .bn-root {
+  --bn-font-family: var(--font-sans);
+}
+
+/* ===== EDITOR FONT SIZE (Appearance → Font Size: S/M/L) ===== */
+/* BlockNote pins `.bn-default-styles` to a fixed 16px, so the app's font-size
+   setting — applied by useThemeSync as the root <html> font-size (14/16/20px) —
+   never reached editor body text. `1rem` re-ties the editor to that root value,
+   so S/M/L now scales note body text (and inline #tags, sized at 0.9em) too.
+   At Medium (16px) this is identical to the previous fixed 16px. */
+:root .bn-default-styles {
+  font-size: 1rem;
+}
+
+/* ===== PROSEMIRROR OVERRIDES ===== */
+/* ProseMirror disables ligatures by default — re-enable for denser text */
+:root .bn-editor .ProseMirror {
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+  font-synthesis: none;
+}
+
+/* ===== BLOCK SPACING ===== */
+:root .bn-block-content {
+  padding: 1px 0 !important;
+}
+
+:root .bn-block-outer {
+  padding: 2px 0;
+}
+
+:root .bn-inline-content {
+  white-space: break-spaces;
+  word-break: break-word;
+  padding: 2px 0;
+}
+
+/* ===== EMBED NODE-SELECTION ===== */
+/* Drop BlockNote's default 4px blue outline on node-selected embeds
+   (PDF/file, image, video, audio, YouTube, bookmark, whiteboard). Each embed
+   already reads as selected via its own chrome; the big blue border felt heavy. */
+.bn-block-content.ProseMirror-selectednode:is(
+    [data-content-type='file'],
+    [data-content-type='image'],
+    [data-content-type='video'],
+    [data-content-type='audio'],
+    [data-content-type='youtubeEmbed'],
+    [data-content-type='bookmark'],
+    [data-content-type='whiteboard']
+  )
+  > *,
+.ProseMirror-selectednode
+  > .bn-block-content:is(
+    [data-content-type='file'],
+    [data-content-type='image'],
+    [data-content-type='video'],
+    [data-content-type='audio'],
+    [data-content-type='youtubeEmbed'],
+    [data-content-type='bookmark'],
+    [data-content-type='whiteboard']
+  )
+  > * {
+  outline: none !important;
+}
+
+/* A node-selected task block only means "Backspace deletes this" while the
+   editor itself holds focus. Once focus sits in any task's title input or row
+   (or anywhere else), drop BlockNote's ::after overlay (inset 4px blue) and the
+   task block's own ring (task-block-renderer.tsx); otherwise they linger or
+   flash on the task that was selected before the click. */
+:root
+  .bn-editor:not(:focus)
+  .bn-block-content[data-content-type='taskBlock'].ProseMirror-selectednode,
+:root
+  .bn-editor:not(:focus)
+  .bn-block[data-id]:has(
+    > .bn-block-content[data-content-type='taskBlock'].ProseMirror-selectednode
+  ) {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+:root
+  .bn-editor:not(:focus)
+  .bn-block-content[data-content-type='taskBlock'].ProseMirror-selectednode
+  > ::after,
+:root
+  .bn-editor:not(:focus)
+  .ProseMirror-selectednode
+  > .bn-block-content[data-content-type='taskBlock']
+  > ::after {
+  display: none !important;
+}
+
+/* Reveal the PDF resize brackets while the embed is node-selected, not just on
+   hover (so a click surfaces them too). */
+.ProseMirror-selectednode [data-pdf-resize-handle] {
+  opacity: 1;
+}
+
+/* ===== IMAGE RESIZE ===== */
+/* BlockNote shows an image's two width grips only while the pointer is over
+   it, by toggling an inline `display: none`, so a clicked image gave no sign
+   it could be resized. Keep them up while the image is node-selected, as the
+   PDF brackets are. `!important` because the hide is an inline style; editable
+   only, because a read-only note never resizes. */
+.bn-editor[contenteditable='true']
+  .bn-block-content.ProseMirror-selectednode[data-content-type='image']
+  .bn-resize-handle,
+.bn-editor[contenteditable='true']
+  .ProseMirror-selectednode
+  > .bn-block-content[data-content-type='image']
+  .bn-resize-handle {
+  display: block !important;
+}
+
+/* Corner grips (#2696, image-corner-handles.ts). A 24px hit box for a
+   trackpad, drawn as a 12px bracket. They follow the side grips: shown while
+   BlockNote shows those (hover, mid-drag; it clears their inline
+   `display: none`) and while the image is node-selected in an editable note. */
+[data-file-block] .memry-image-corner-handle {
+  position: absolute;
+  z-index: 1;
+  display: none;
+  width: 24px;
+  height: 24px;
+  touch-action: none;
+}
+[data-file-block] .memry-image-corner-handle::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-color: var(--foreground);
+  border-style: solid;
+  border-width: 0;
+  filter: drop-shadow(0 0 1px var(--background));
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='top'] {
+  top: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='bottom'] {
+  bottom: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='start'] {
+  inset-inline-start: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='end'] {
+  inset-inline-end: -4px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='top']::after {
+  top: 4px;
+  border-top-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner^='bottom']::after {
+  bottom: 4px;
+  border-bottom-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='start']::after {
+  inset-inline-start: 4px;
+  border-inline-start-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner$='end']::after {
+  inset-inline-end: 4px;
+  border-inline-end-width: 3px;
+}
+[data-file-block] .memry-image-corner-handle[data-corner='top-start'],
+[data-file-block] .memry-image-corner-handle[data-corner='bottom-end'] {
+  cursor: nwse-resize;
+}
+[data-file-block] .memry-image-corner-handle[data-corner='top-end'],
+[data-file-block] .memry-image-corner-handle[data-corner='bottom-start'] {
+  cursor: nesw-resize;
+}
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='top-start'],
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='bottom-end'] {
+  cursor: nesw-resize;
+}
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='top-end'],
+[dir='rtl'] [data-file-block] .memry-image-corner-handle[data-corner='bottom-start'] {
+  cursor: nwse-resize;
+}
+.bn-resize-handle:not([style*='display: none']) ~ .memry-image-corner-handle,
+.bn-editor[contenteditable='true']
+  .bn-block-content.ProseMirror-selectednode[data-content-type='image']
+  .memry-image-corner-handle,
+.bn-editor[contenteditable='true']
+  .ProseMirror-selectednode
+  > .bn-block-content[data-content-type='image']
+  .memry-image-corner-handle {
+  display: block;
+}
+
+/* The stored width is an inline px width on the wrapper (600 at insert). Under
+   a list item the block is narrower by the indent, and in a narrow pane the
+   picture ran past the column with its end grip out of reach. The width stays
+   the upper bound; the block's own width is the cap. */
+.bn-block-content[data-content-type='image'] > .bn-file-block-content-wrapper {
+  max-width: 100%;
+}
+
+/* ===== WHITEBOARD BLOCK ===== */
+/* The board is drawn inside ProseMirror's root, whose prose settings (kept
+   spaces, no ligatures) every descendant inherits. Excalidraw's own UI is laid
+   out against the page defaults, so the surface puts them back. */
+.whiteboard-surface {
+  white-space: normal;
+  word-wrap: normal;
+  font-variant-ligatures: normal;
+  font-feature-settings: normal;
+}
+
+/* Excalidraw's `.SVGLayer` (laser and eraser trails) is a fixed, full-viewport
+   layer that relies on inheriting `pointer-events: none`. BlockNote's shadcn
+   theme sets `.bn-shadcn svg { pointer-events: all }`, which inside the note
+   turns that layer's svg into a window-sized sheet swallowing every click —
+   the board's own header buttons included. */
+.whiteboard-surface .excalidraw .SVGLayer svg {
+  pointer-events: none;
+}
+
+/* ===== HEADING SIZES ===== */
+[data-content-type='heading'] {
+  --level: 1.875em !important;
+}
+
+[data-content-type='heading'][data-level='2'] {
+  --level: 1.5em !important;
+}
+
+[data-content-type='heading'][data-level='3'] {
+  --level: 1.25em !important;
+}
+
+[data-content-type='heading'][data-level='4'] {
+  --level: 1.125em !important;
+}
+
+[data-content-type='heading'][data-level='5'] {
+  --level: 1em !important;
+}
+
+[data-content-type='heading'][data-level='6'] {
+  --level: 0.875em !important;
+}
+
+[data-prev-level='1'] {
+  --prev-level: 1.875em !important;
+}
+
+[data-prev-level='2'] {
+  --prev-level: 1.5em !important;
+}
+
+[data-prev-level='3'] {
+  --prev-level: 1.25em !important;
+}
+
+[data-prev-level='4'] {
+  --prev-level: 1.125em !important;
+}
+
+[data-prev-level='5'] {
+  --prev-level: 1em !important;
+}
+
+[data-prev-level='6'] {
+  --prev-level: 0.875em !important;
+}
+
+/* ===== HEADING TYPOGRAPHY ===== */
+/* Heading spacing lives on `.bn-block-outer`, not on `.bn-block-content`.
+   The side menu is anchored (floating-ui `left-start`) to `.bn-block`, and
+   `.bn-block` is a flex column, so a margin on the content would sit *inside*
+   the anchor rect and push the +/drag handles above the heading text.
+   Spacing on the outer wrapper keeps the anchor equal to the text box, so the
+   handles line up with every block type. */
+:root .bn-block-content[data-content-type='heading'] {
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+  padding: 1px 0 !important;
+}
+
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='heading']) {
+  margin-top: 24px;
+}
+
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='2']
+  ) {
+  margin-top: 18px;
+}
+
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='3']
+  ) {
+  margin-top: 14px;
+}
+
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='4']
+  ) {
+  margin-top: 12px;
+}
+
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='5']
+  ) {
+  margin-top: 10px;
+}
+
+:root
+  .bn-block-outer:has(
+    > .bn-block > .bn-block-content[data-content-type='heading'][data-level='6']
+  ) {
+  margin-top: 8px;
+}
+
+:root
+  .bn-block-group
+  > .bn-block-outer:first-child:has(> .bn-block > .bn-block-content[data-content-type='heading']) {
+  margin-top: 0;
+}
+
+/* ===== CHECKBOX ALIGNMENT ===== */
+:root .bn-block-content[data-content-type='checkListItem'] {
+  align-items: center;
+}
+
+/* ===== LIST SPACING ===== */
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='bulletListItem']),
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='numberedListItem']),
+:root .bn-block-outer:has(> .bn-block > .bn-block-content[data-content-type='checkListItem']) {
+  padding: 2px 0;
+}
+
+/* ===== BULLET MARKER ALIGNMENT =====
+   BlockNote gives the bullet's ::before `height: 0; overflow: visible`, so the
+   glyph is drawn out of a zero-height box pinned to the top of the content and
+   lands ~1px above the row's other markers — the drag handle, the plus and the
+   fold chevron, which all centre on the same 30px box. Measured, not guessed:
+   at the default size the dot's ink spans 219..222 where the handles' spans
+   centre on 221.5. */
+:root .bn-block-content[data-content-type='bulletListItem']::before {
+  position: relative;
+  top: 1px;
+}
+
+/* ===== NESTED INDENT GUIDE ALIGNMENT =====
+   BlockNote's default vertical guide line for nested blocks sits at left:-20px
+   on the child .bn-block-outer, which lands ~6px left of where every block
+   type's marker (bullet "•", number "1.", task status icon) actually is.
+   Marker center is consistently at parent block-content left + 10px:
+   - bullet/numbered: ::before is min-width:24px; padding-right:4px → glyph
+     center at (24-4)/2 = 10px from block-content left
+   - taskBlock: button p-0.5 around 16px icon → button width 20px → center at
+     10px from block-content left (with px-0 override)
+   Nested .bn-block-group has margin-left:24px, so to land the line at
+   parent_block_content_left + 10, the :before's left must be 10 - 24 = -14px.
+   `!important` is needed because @blocknote/shadcn/style.css is imported in
+   ContentArea.tsx, which Vite injects into <head> AFTER this file — same
+   specificity loses on cascade order. */
+:root .bn-block-group .bn-block-group > .bn-block-outer::before {
+  left: -14px !important;
+}
+
+/* ===== TOGGLE ARROW SIZE =====
+   BlockNote draws the toggle block's chevron at 18px, a size larger than the
+   text and the bullet/number markers beside it (user feedback). At 14px the
+   button (14px + 2 x 3px padding = 20px) centres its glyph 10px from the
+   content's inline start — where every other block marker's centre already
+   sits, per the alignment note above. `!important` for the same cascade
+   reason: @blocknote/shadcn/style.css is JS-imported and lands after this
+   file. */
+:root .bn-toggle-button:hover {
+  background: none;
+  color: var(--foreground);
+}
+
+:root .bn-toggle-button > svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* ===== BULLET FOLD =====
+   A bullet with nested blocks folds from a chevron in the gutter beside it —
+   the outliner gesture that used to need the separate toggle block type. The
+   markup is a widget decoration from `bullet-collapse-plugin.ts`, and the fold
+   is view state only: nothing here reaches the vault file.
+
+   `.bn-block` is the containing block, not `.bn-block-outer`: only NESTED
+   outers are `position: relative` by default, so a top-level bullet would
+   otherwise anchor its chevron against the whole editor. `:has()` without a
+   child combinator on purpose — review mode wraps block content in extra
+   `[data-type='modification']` divs, and matching ancestors too is harmless
+   when only the nearest positioned one is used. */
+:root .bn-block:has(.memry-bullet-toggle) {
+  position: relative;
+}
+
+:root .memry-bullet-toggle {
+  position: absolute;
+  /* 20px = BULLET_FOLD_GUTTER, the same width ContentArea shifts BlockNote's
+     drag handle by so the two never overlap. */
+  inset-inline-start: -20px;
+  /* Aligned on BlockNote's side menu, not on the text: the drag handle and the
+     plus sit in a fixed box anchored at the block's top edge (`.bn-side-menu`),
+     so the same height from the same edge puts all three glyph centres on one
+     line at every font size — and keeps the chevron on the FIRST line of a
+     block that wraps, which is where the handle stays too. The height is the
+     `.bn-side-menu` rule below, restated: one body line box. */
+  inset-block-start: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 18px;
+  block-size: calc(1.5rem + 2px);
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  /* Opaque, not transparent: at depth two and beyond the nested-indent guide
+     line runs through these pixels, and a chevron with the line drawn across
+     it reads as a glyph with a bar through it. */
+  background-color: var(--background);
+  color: var(--muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  user-select: none;
+  transition: opacity 120ms var(--ease-out);
+}
+
+/* A heading's chevron spans the heading's own first line box, not a body line:
+   the heading is taller, so the fixed body-line box above would leave the
+   chevron hanging near the top. The box is the heading's font size times its
+   1.3 line-height, plus the 1px block padding above and below. The sizes are
+   the `HEADING SIZES` above (1.875, 1.5, 1.25, 1.125, 1 and .875em of the 16px
+   editor font); `em` cannot be used here because the chevron sits beside the
+   heading, not inside it. Level 1 carries no `data-level`. */
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading']:not([data-level]))
+  > .memry-bullet-toggle,
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading'][data-level='1'])
+  > .memry-bullet-toggle {
+  block-size: calc(30px * 1.3 + 2px);
+}
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading'][data-level='2'])
+  > .memry-bullet-toggle {
+  block-size: calc(24px * 1.3 + 2px);
+}
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading'][data-level='3'])
+  > .memry-bullet-toggle {
+  block-size: calc(20px * 1.3 + 2px);
+}
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading'][data-level='4'])
+  > .memry-bullet-toggle {
+  block-size: calc(18px * 1.3 + 2px);
+}
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading'][data-level='5'])
+  > .memry-bullet-toggle {
+  block-size: calc(16px * 1.3 + 2px);
+}
+:root
+  .bn-block:has(> .bn-block-content[data-content-type='heading'][data-level='6'])
+  > .memry-bullet-toggle {
+  block-size: calc(14px * 1.3 + 2px);
+}
+
+/* Revealed by hovering the bullet's own row — `~` from the content, so
+   hovering a CHILD row (which lives in the sibling .bn-block-group) never
+   surfaces the parent's chevron. Its own :hover keeps it up while the pointer
+   crosses into the gutter, and a folded bullet shows it permanently: with the
+   children gone it is the only sign anything is hidden. */
+:root .bn-block-content:hover ~ .memry-bullet-toggle,
+:root .memry-bullet-toggle:hover,
+:root .memry-bullet-toggle:focus-visible,
+:root .memry-bullet-toggle[data-collapsed='true'] {
+  opacity: 1;
+}
+
+:root .memry-bullet-toggle:hover {
+  color: var(--foreground);
+}
+
+:root .memry-bullet-toggle svg {
+  inline-size: 14px;
+  block-size: 14px;
+  transition: transform 120ms var(--ease-out);
+}
+
+/* The glyph points along the reading direction when folded and down when
+   open, so the rotation is the same 90deg in both directions. */
+:root .memry-bullet-toggle[data-collapsed='false'] svg {
+  transform: rotate(90deg);
+}
+
+[dir='rtl'] .memry-bullet-toggle[data-collapsed='true'] svg {
+  transform: rotate(180deg);
+}
+
+:root .memry-collapsed-children {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root .memry-bullet-toggle,
+  :root .memry-bullet-toggle svg {
+    transition: none;
+  }
+}
+
+/* ===== TABLE CELLS ===== */
+:root .bn-editor [data-content-type='table'] th,
+:root .bn-editor [data-content-type='table'] td {
+  padding: 7px 9px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  border-color: var(--border) !important;
+}
+
+:root .bn-editor [data-content-type='table'] th {
+  font-weight: 500 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th,
+.dark .bn-editor [data-content-type='table'] td {
+  border-color: #383836 !important;
+}
+
+.dark .bn-editor [data-content-type='table'] th {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+
+/* A color theme derives --border from its own palette; the charcoal literal
+   above only matches the built-in dark canvas. */
+:root[data-color-theme] .dark .bn-editor [data-content-type='table'] th,
+:root[data-color-theme] .dark .bn-editor [data-content-type='table'] td {
+  border-color: var(--border) !important;
+}
+
+/* ===== QUOTE BLOCK ===== */
+:root [data-content-type='quote'] blockquote {
+  border-left-width: 3px !important;
+  border-left-color: currentcolor !important;
+  color: inherit !important;
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+/* Make BlockNote editor fill available height */
+.content-area {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  user-select: text;
+}
+
+.content-area .bn-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* BlockNote renders the side-menu plus + drag-handle icons at a hardcoded
+   size={24}. The bundled @blocknote/shadcn/style.css reverts svg width/height
+   to that attribute via `svg:not([class*=size-]){width:revert}`, and is
+   JS-imported (loads after this file), so `!important` is required to win —
+   same reason as the block-group rule above. ponytail: bump to resize. */
+:root .bn-side-menu svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+/* Base height = one body line box (1.5rem line-height + 1px block padding top
+   and bottom). shadcn hardcodes 30px, which sat 2px below the text and drifted
+   further at the S/L font sizes. Deliberately not `!important`: shadcn's more
+   specific file/audio/url heights still win, since those blocks are taller than
+   a line of text. */
+:root .bn-side-menu {
+  height: calc(1.5rem + 2px);
+}
+
+/* A task block is a fixed-height TaskRow (7px padding around a 20px line, plus
+   the 1px block padding each side), not a line of body text, so the one-line
+   box above centred the plus and handle 5px above the task's title. */
+:root [data-side-menu-block-type='taskBlock'] > .bn-side-menu {
+  height: 36px;
+}
+
+/* @blocknote/shadcn hardcodes the side-menu height per block type (30px text,
+   78/54/37px for h1-h3) and centers the buttons in it. Those numbers assume
+   BlockNote's own 3em/2em/1.3em headings; ours are 1.875/1.5/1.25rem at
+   line-height 1.3 with 1px block padding, and h4-h6 get no rule at all, so the
+   handles drifted off the text as soon as a block became a heading. Restate the
+   height as the real first-line box (font-size * 1.3 + 2px padding) for every
+   level, in rem so it follows the Appearance -> Font Size setting.
+   Loaded before shadcn's style.css, hence `!important`. */
+:root .bn-side-menu[data-block-type='heading'] {
+  height: calc(1.875rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='2'] {
+  height: calc(1.5rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='3'] {
+  height: calc(1.25rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='4'] {
+  height: calc(1.125rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='5'] {
+  height: calc(1rem * 1.3 + 2px) !important;
+}
+
+:root .bn-side-menu[data-block-type='heading'][data-level='6'] {
+  height: calc(0.875rem * 1.3 + 2px) !important;
+}
+
+/* Floating page chrome — translucent material over scrolling content.
+   Blur + tint are always on (invisible while nothing is beneath the bar);
+   the scroll edge (softened hairline + falloff) materializes via
+   [data-scrolled] only once content actually passes under it.
+   .note-chrome is the note/journal instance of the same material. */
+.page-chrome,
+.note-chrome {
+  background: color-mix(in srgb, var(--background) 65%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  transition: box-shadow 200ms var(--ease-out);
+}
+
+.page-chrome[data-scrolled],
+.note-chrome[data-scrolled] {
+  box-shadow:
+    0 1px 0 0 color-mix(in srgb, var(--border) 55%, transparent),
+    0 4px 16px -8px rgb(0 0 0 / 0.1);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .page-chrome,
+  .note-chrome {
+    background: var(--background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Freshly captured inbox row: brief amber wash that reads as "just landed" */
+.fresh-capture-wash {
+  animation: fresh-capture-wash 1.4s var(--ease-out);
+}
+
+@keyframes fresh-capture-wash {
+  from {
+    background-color: rgb(245 158 11 / 0.1);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fresh-capture-wash {
+    animation: none;
+  }
+}
+
+/* Sticky toolbar mode - toolbar fixed at top of editor */
+.sticky-toolbar-enabled .bn-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar {
+  order: -1;
+  position: sticky !important;
+  /* Stick below the floating note chrome (var set by NoteLayout and the
+     journal page, 0 elsewhere), with a gap so the bar never sits on the
+     chrome's scroll-edge hairline. */
+  top: calc(var(--note-chrome-height, 0px) + 8px) !important;
+  /* position + z-index makes this element a stacking context, so its
+     un-portaled Select/Tooltip/Popover popper content (see the ::before
+     comment below) paints within THIS context's z-order, not the viewport's.
+     A tooltip popping up from a button near the top row can rise above the
+     toolbar's own top edge into the note-chrome (.note-chrome, z-30) — it
+     has to outrank that z-index or the chrome paints over it. */
+  z-index: 40;
+  width: 100%;
+  /* @blocknote/shadcn's base .bn-toolbar sets overflow-x: auto + max-width:
+     100vw for the floating popup case; the sticky bar wraps instead of
+     scrolling, so items that don't fit flow to a second row. */
+  max-width: none !important;
+  overflow: visible !important;
+  flex-wrap: wrap !important;
+  margin: 0 0 12px 0 !important;
+  padding: 3px 6px !important;
+  /* Background lives on ::before (below) rather than here: a background/
+     backdrop-filter on this element would make it the CSS containing block
+     for its own descendants' position: fixed content. BlockNote's shadcn
+     Select/Tooltip/Popover render un-portaled, so their popper content would
+     then be positioned and clipped relative to this bar instead of the
+     viewport — trapped inside it, unreachable and mostly invisible. */
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  /* Same translucent material as .note-chrome, as a floating pill. A
+     backdrop-filter on a pseudo-element does not make the toolbar a
+     containing block, so the un-portaled poppers above stay unaffected. */
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--background) 65%, transparent);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  transition:
+    border-color 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out);
+}
+
+/* Edge only once the bar is actually stuck and text scrolls under it; at
+   rest it sits flat on the page. */
+.sticky-toolbar-enabled .bn-formatting-toolbar {
+  container-type: scroll-state;
+}
+
+@container scroll-state(stuck: top) {
+  .sticky-toolbar-enabled .bn-formatting-toolbar::before {
+    border-color: color-mix(in srgb, var(--border) 70%, transparent);
+    box-shadow: 0 4px 16px -8px rgb(0 0 0 / 0.12);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .sticky-toolbar-enabled .bn-formatting-toolbar::before {
+    background: var(--background);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar > div {
+  gap: 2px;
+}
+
+/* Without flex-shrink: 0, the forced min-width below replaces the browser's
+   default content-based min-width protection, so items (esp. the block type
+   select's "Paragraph" trigger) shrink narrower than their text and overflow
+   onto neighboring buttons instead of wrapping to the next row. */
+.sticky-toolbar-enabled .bn-formatting-toolbar > * {
+  flex-shrink: 0;
+}
+
+.sticky-toolbar-enabled .bn-formatting-toolbar button {
+  padding: 4px 6px !important;
+  min-width: 28px !important;
+  height: 28px !important;
+}
+
+/* ===== Formatting toolbar =====
+   Floating popup: a compact panel (block type, five-column icon grid,
+   comment). Pinned bar: one row grouped by intent. Quiet at rest: neutral glyphs, a neutral tint on hover, the user's accent
+   only for a mark that is on. */
+.memry-format-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.content-area .bn-formatting-toolbar:has(.memry-format-toolbar[data-variant='floating']) {
+  width: auto !important;
+  max-width: calc(100vw - 32px) !important;
+  padding: 3px !important;
+  gap: 0 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  background: var(--popover) !important;
+  color: var(--popover-foreground) !important;
+  box-shadow:
+    0 1px 2px color-mix(in srgb, black 6%, transparent),
+    0 8px 24px -8px color-mix(in srgb, black 18%, transparent) !important;
+}
+
+.memry-format-toolbar[data-variant='sticky'] {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
+
+.memry-format-toolbar[data-variant='floating'] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+}
+
+.memry-format-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 28px);
+  gap: 2px;
+}
+
+.memry-format-toolbar[data-variant='floating'] > .memry-format-toolbar-block-type:not(:empty),
+.memry-format-toolbar-footer {
+  display: flex;
+  padding-block: 0 3px;
+  border-block-end: 1px solid var(--border);
+}
+
+.memry-format-toolbar-footer {
+  padding-block: 3px 0;
+  border-block-end: none;
+  border-block-start: 1px solid var(--border);
+}
+
+.memry-format-toolbar[data-variant='floating'] .memry-format-toolbar-block-type button,
+.memry-format-toolbar-footer .review-formatting-toolbar-action,
+.memry-format-toolbar-footer .bn-button {
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.memry-format-toolbar-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 16px;
+  margin-inline: 4px;
+  background: var(--border);
+}
+
+/* Block types without a select entry render nothing: drop the slot and the
+   divider that separates it from the marks. */
+.memry-format-toolbar-block-type:empty,
+.memry-format-toolbar-block-type:empty + .memry-format-toolbar-divider {
+  display: none;
+}
+
+.memry-format-toolbar > *,
+.memry-format-toolbar .review-formatting-toolbar-action {
+  flex-shrink: 0;
+}
+
+.memry-format-toolbar .bn-button,
+.memry-format-toolbar-block-type button {
+  height: 28px !important;
+  min-width: 28px !important;
+  padding: 0 6px !important;
+  gap: 6px;
+  border: none !important;
+  border-radius: 6px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: color-mix(in srgb, var(--foreground) 78%, transparent) !important;
+  font-size: 13px !important;
+  font-weight: 450;
+  justify-content: center;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.memry-format-toolbar .bn-button:hover:not(:disabled),
+.memry-format-toolbar-block-type button:hover,
+.memry-format-toolbar .bn-button[aria-expanded='true'],
+.memry-format-toolbar-block-type button[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--foreground) 7%, transparent) !important;
+  color: var(--foreground) !important;
+}
+
+.memry-format-toolbar .bn-button[aria-pressed='true'] {
+  background: var(--tint-lighter) !important;
+  color: var(--tint) !important;
+}
+
+.memry-format-toolbar .bn-button:disabled {
+  opacity: 0.4;
+  background: transparent !important;
+}
+
+.memry-format-toolbar .bn-button:focus-visible,
+.memry-format-toolbar-block-type button:focus-visible {
+  outline: 2px solid var(--tint-ring);
+  outline-offset: 0;
+}
+
+.memry-format-toolbar .bn-button svg {
+  width: 16px;
+  height: 16px;
+}
+
+.memry-format-toolbar-block-type button {
+  padding-inline: 8px 6px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memry-format-toolbar .bn-button,
+  .memry-format-toolbar-block-type button {
+    transition: none;
+  }
+}
+
+/* Toolbar tooltips: one line, name then shortcut, lifted clear of the row.
+   BlockNote stacks main/secondary tooltip spans in a column and draws an arrow
+   that lands on the button under the pointer; both are replaced here. */
+.bn-root [data-slot='tooltip-content'] {
+  flex-direction: row !important;
+  gap: 8px;
+  padding: 4px 6px 4px 8px !important;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap !important;
+  translate: 0 -4px;
+  box-shadow: 0 4px 12px -2px color-mix(in srgb, black 20%, transparent);
+}
+
+.bn-root [data-slot='tooltip-content'] > span + span {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--background) 16%, transparent);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.bn-root [data-slot='tooltip-content'] > :not(span) {
+  display: none;
+}
+
+.critic-mark-inline {
+  border-radius: 3px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: default;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+.critic-mark-inline-comment {
+  background: color-mix(in srgb, var(--accent-orange) 18%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent-orange) 60%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.critic-mark-inline-comment:hover,
+.critic-mark-inline-comment.critic-mark-hovered {
+  background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+  text-decoration-color: var(--accent-orange);
+}
+
+.critic-mark-inline-addition {
+  background: color-mix(in srgb, rgb(39, 131, 222) 20%, transparent);
+  color: color-mix(in srgb, rgb(39, 131, 222) 76%, var(--foreground));
+}
+
+.critic-mark-inline-deletion {
+  background: color-mix(in srgb, var(--destructive) 16%, transparent);
+  color: color-mix(in srgb, var(--destructive) 76%, var(--foreground));
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.critic-mark-inline-substitution {
+  background: color-mix(in srgb, var(--accent-cyan) 18%, transparent);
+  color: color-mix(in srgb, var(--accent-cyan) 78%, var(--foreground));
+}
+
+.critic-mark-inline:hover,
+.critic-mark-inline.critic-mark-hovered {
+  background: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+
+/* Agent edit review (components/note/agent-review). The style values and block
+   id prefixes come from block-diff.ts; the document they mark is display-only. */
+.memry-agent-diff [data-style-type='backgroundColor'][data-value='memry-diff-add'] {
+  background: var(--diff-add-surface);
+  color: var(--diff-add);
+  border-radius: 3px;
+}
+
+.memry-agent-diff [data-style-type='backgroundColor'][data-value='memry-diff-del'] {
+  background: var(--diff-del-surface);
+  color: var(--diff-del);
+  border-radius: 3px;
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-add-'] > .bn-block-content,
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content,
+.memry-agent-diff .bn-block[data-id^='diff-mod-'] > .bn-block-content {
+  position: relative;
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-add-'] > .bn-block-content::before,
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content::before,
+.memry-agent-diff .bn-block[data-id^='diff-mod-'] > .bn-block-content::before {
+  content: '';
+  position: absolute;
+  inset-block: 3px;
+  inset-inline-start: -14px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--diff-add);
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content::before {
+  background: var(--diff-del);
+}
+
+.memry-agent-diff .bn-block[data-id^='diff-del-'] > .bn-block-content {
+  opacity: 0.7;
+}
+
+.review-rail {
+  position: sticky;
+  top: 24px;
+  z-index: 20;
+  width: 340px;
+  min-height: 260px;
+  pointer-events: auto;
+}
+
+/* Review canvas: the content column stays centered at its max
+   width; when the rail is visible the whole content + gap + rail group is
+   centered as a unit by shifting the column with an animated transform. */
+.review-canvas {
+  position: relative;
+  transition: transform 200ms ease;
+  transform: translateX(calc(var(--direction, 1) * -1 * var(--review-rail-shift, 0px)));
+}
+
+.review-canvas-rail {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 100%;
+  margin-inline-start: 48px;
+  width: 340px;
+}
+
+.review-rail-inner {
+  position: relative;
+  z-index: 1;
+  min-height: 420px;
+  width: 340px;
+}
+
+.critic-review-card {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 1;
+  width: 308px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background-color: var(--background);
+  color: var(--foreground);
+  padding: 10px;
+  box-shadow: 0 10px 28px color-mix(in srgb, black 10%, transparent);
+  will-change: transform;
+  transition:
+    background-color 120ms ease,
+    transform 200ms ease;
+}
+
+.critic-review-card[data-hovered='true'],
+.critic-review-card:hover {
+  background-color: var(--critic-review-card-hover-background);
+  transform: translateX(-20px);
+}
+
+.critic-review-card[data-expanded='true'] {
+  z-index: 3;
+}
+
+.critic-review-card[data-editing='true'] {
+  padding: 0;
+  border-color: transparent;
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.critic-review-card[data-editing='true']:hover,
+.critic-review-card[data-editing='true'][data-hovered='true'] {
+  background-color: transparent;
+  transform: none;
+}
+
+.critic-review-text-collapsible {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.critic-review-card[data-expanded='true'] .critic-review-text-collapsible {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.critic-review-expand-toggle {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+}
+
+.critic-review-expand-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.critic-review-content {
+  position: relative;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.critic-review-content a,
+.critic-review-content button {
+  pointer-events: auto;
+}
+
+.critic-review-body {
+  margin-top: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.critic-review-content > .critic-review-body:first-child {
+  margin-top: 0;
+  padding-inline-end: 66px;
+}
+
+.critic-review-date {
+  display: block;
+  margin: 0 0 4px;
+  width: fit-content;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  line-height: 16px;
+  pointer-events: auto;
+}
+
+.critic-review-date + .critic-review-body {
+  margin-top: 0;
+}
+
+.critic-review-attachments {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.critic-review-actions {
+  position: absolute;
+  inset-block-start: 5px;
+  inset-inline-end: 6px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 6px;
+  background-color: var(--critic-review-actions-background);
+  padding: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+}
+
+.critic-review-card:hover .critic-review-actions,
+.critic-review-card:focus-within .critic-review-actions,
+.critic-review-card[data-hovered='true'] .critic-review-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.critic-review-action-button {
+  height: 24px;
+  width: 24px;
+  border-radius: 4px;
+}
+
+.critic-review-draft {
+  position: absolute;
+  inset-inline-start: 0;
+  z-index: 2;
+  width: 308px;
+}
+
+/* ===== Writing tools: alternatives and ghosts =====
+   Decorations only (writing-tools-plugin.ts); the note text is untouched. */
+.writing-alt {
+  border-radius: 3px 3px 0 0;
+  background-color: var(--tint-lighter);
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: var(--tint);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  transition: background-color 150ms ease-out;
+}
+
+/* The rail card for this alternative is hovered: light its words up. */
+.writing-alt.is-linked {
+  background-color: var(--tint-muted);
+}
+
+.writing-alt-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-inline-start: 3px;
+  vertical-align: middle;
+  user-select: none;
+}
+
+.writing-alt-dots > span {
+  width: 4px;
+  height: 4px;
+  border: 1px solid var(--tint);
+  border-radius: 9999px;
+}
+
+.writing-alt-dots > span.is-filled {
+  background-color: var(--tint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writing-alt {
+    transition: none;
+  }
+}
+
+.writing-alt-hint-anchor {
+  position: relative;
+  display: inline-block;
+  width: 0;
+  height: 1em;
+  vertical-align: baseline;
+}
+
+.writing-alt-hint {
+  position: absolute;
+  inset-inline-start: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--foreground);
+  color: var(--background);
+  font-size: 11px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.writing-ghost {
+  opacity: 0.18;
+  transition: opacity 150ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .writing-ghost {
+    transition: none;
+  }
+}
+
+/* Writing rails reuse the review rail geometry and card styling; cards that
+   hold inputs and rows stay put on hover instead of sliding. */
+.writing-rail-card[data-hovered='true'],
+.writing-rail-card:hover {
+  transform: none;
+}
+
+.writing-rail-card-title {
+  margin-block-end: 6px;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.writing-rail-panel {
+  width: 308px;
+}
+
+.writing-rail-empty {
+  width: 308px;
+  padding: 8px 2px;
+  color: var(--text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.writing-rail-heading {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.writing-overflow-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 8px;
+  background-color: var(--background);
+  cursor: grab;
+}
+
+.writing-overflow-item:active {
+  cursor: grabbing;
+}
+
+/* A stashed selection rendered through the editor schema: keep its marks and
+   links, drop block spacing so it reads as a compact snippet. */
+.writing-overflow-content :is(p, h1, h2, h3, h4, h5, h6, ul, ol, blockquote, pre) {
+  margin: 0;
+}
+
+.writing-overflow-content :is(h1, h2, h3, h4, h5, h6) {
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.writing-overflow-content a {
+  color: var(--tint);
+  text-decoration: underline;
+}
+
+.writing-overflow-content code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.writing-overflow-content > * + * {
+  margin-block-start: 4px;
+}
+
+/* Inline badge fallback when the review rail is hidden (narrow windows). */
+.critic-review-badge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.critic-review-badge {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding-inline: 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.critic-review-badge:hover,
+.critic-review-badge[data-state='open'] {
+  background-color: var(--critic-review-card-hover-background);
+}
+
+.critic-review-badge:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.critic-review-badge-icon {
+  width: 14px;
+  height: 14px;
+  color: color-mix(in srgb, var(--accent-orange) 85%, var(--foreground));
+}
+
+.critic-review-badge-count {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+}
+
+/* Invisible positioning wrapper: the cards/composer inside carry their own
+   chrome, so the flyout itself draws no border, background, or shadow. */
+.critic-review-flyout {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+.critic-review-flyout-draft {
+  width: fit-content;
+}
+
+.critic-review-flyout .critic-review-card {
+  position: relative;
+  inset-inline-start: auto;
+  width: 100%;
+}
+
+.critic-review-flyout .critic-review-card:hover,
+.critic-review-flyout .critic-review-card[data-hovered='true'] {
+  transform: none;
+}
+
+/* Drafted-but-unsubmitted comment selection: painted like an existing
+   comment mark while the flyout composer is open. */
+::highlight(critic-comment-draft) {
+  background-color: color-mix(in srgb, var(--accent-orange) 30%, transparent);
+}
+
+.critic-comment-composer {
+  width: 308px;
+  overflow: visible;
+}
+
+.critic-comment-main-row {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 10px;
+}
+
+/* Editor sizing lives in the editorClassName passed by CommentComposer. */
+.critic-comment-editor .ProseMirror p {
+  margin: 0;
+}
+
+.critic-comment-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+}
+
+.critic-comment-action-button,
+.critic-comment-send-button {
+  height: 24px;
+  width: 24px;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+}
+
+.critic-comment-action-button:hover,
+.critic-comment-send-button:hover {
+  background-color: color-mix(in srgb, var(--muted) 72%, transparent);
+  color: var(--foreground);
+}
+
+.critic-comment-send-button {
+  background-color: color-mix(in srgb, var(--muted-foreground) 24%, transparent);
+  color: var(--background);
+  opacity: 1;
+}
+
+.critic-comment-send-button:disabled {
+  cursor: default;
+  background-color: color-mix(in srgb, var(--muted-foreground) 28%, transparent);
+  color: color-mix(in srgb, var(--foreground) 58%, transparent);
+  opacity: 1;
+}
+
+.critic-comment-send-ready {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.critic-comment-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px 8px 10px;
+}
+
+.critic-comment-error {
+  padding: 0 10px 8px;
+  color: var(--destructive);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Selection toolbar inside the comment composer. Sizing mirrors the note
+   editor's compact formatting popover above so the two read as one system. */
+.critic-comment-format-toolbar {
+  z-index: 50;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 16px 40px color-mix(in srgb, black 24%, transparent);
+}
+
+.critic-comment-format-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.critic-comment-format-button {
+  display: inline-flex;
+  height: 28px;
+  width: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.critic-comment-format-button:hover,
+.critic-comment-format-button[aria-pressed='true'] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.critic-comment-format-button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+/* Marks in a saved comment stay inline so the collapsed card can still clamp. */
+.critic-review-body-mark {
+  display: inline;
+}
+
+.critic-review-textarea {
+  margin-top: 8px;
+  min-height: 78px;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 7px;
+  background: var(--background);
+  padding: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.45;
+  outline: none;
+}
+
+.critic-review-textarea:focus {
+  border-color: color-mix(in srgb, var(--accent-cyan) 55%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-cyan) 16%, transparent);
+}
+
+/* ===== COMPACT SLASH MENU (Suggestion Menu) ===== */
+/* BlockNote uses .bn-suggestion-menu class and [role="option"] for items.
+   The note editor's `/` menu renders its own rows (`slash-menu.tsx`) and opts
+   out with .memry-slash-menu; these rules still style any stock menu left. */
+.bn-suggestion-menu:not(.memry-slash-menu) {
+  max-height: 300px !important;
+  min-width: 180px !important;
+  padding: 4px !important;
+}
+
+/* Group labels (e.g., "Subheadings", "Others") */
+.bn-suggestion-menu:not(.memry-slash-menu) > div:not([role='option']) {
+  font-size: 9px !important;
+  padding: 4px 8px 2px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.5;
+}
+
+/* Menu items - compact layout */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] {
+  padding: 4px 8px !important;
+  gap: 6px !important;
+  min-height: 28px !important;
+  border-radius: 4px !important;
+  transition: background-color 0.1s ease;
+}
+
+/* Highlighted/selected item when navigating with arrow keys */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'][aria-selected='true'] {
+  background-color: var(--surface-active) !important;
+}
+
+.dark .bn-suggestion-menu:not(.memry-slash-menu) [role='option'][aria-selected='true'] {
+  background-color: #2a2a2e !important;
+}
+
+/* HIDE SUBTEXT - removes descriptions like "Resizable image with caption" */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] .flex-1 > .text-xs {
+  display: none !important;
+}
+
+/* Title text - compact */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] .flex-1 > .text-base {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+}
+
+/* Icon container - remove extra padding */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] [data-position='left'] {
+  padding: 0 !important;
+}
+
+/* Badge/shortcut - subtle styling */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] [data-position='right'] {
+  font-size: 10px !important;
+  opacity: 0.6;
+}
+
+/* Icon size - compact */
+.bn-suggestion-menu:not(.memry-slash-menu) [role='option'] svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.content-area .bn-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+/* Make the editable content area fill the space */
+.content-area .bn-block-group {
+  flex: 1;
+  min-height: 100%;
+}
+
+/* ===== CALLOUT BLOCK ===== */
+:root .bn-block-content[data-content-type='callout'] {
+  padding: 0 !important;
+}
+
+[data-content-type='callout'] .bn-inline-content {
+  flex-grow: 1;
+  min-height: 24px;
+}
+
+/* A callout's child blocks (#3186) live in the sibling .bn-block-group, so the
+   box continues around them: same tint and inline-start border as the
+   callout's own row, children aligned with its text (4px border + 12px
+   padding + 24px icon + 12px gap). The row stretches to the box's width. */
+:root .bn-block:has(> .node-callout [data-callout-type='info']) {
+  --callout-accent: var(--color-blue-500);
+}
+:root .bn-block:has(> .node-callout [data-callout-type='warning']) {
+  --callout-accent: var(--color-amber-500);
+}
+:root .bn-block:has(> .node-callout [data-callout-type='error']) {
+  --callout-accent: var(--color-red-500);
+}
+:root .bn-block:has(> .node-callout [data-callout-type='success']) {
+  --callout-accent: var(--color-green-500);
+}
+:root .bn-block:has(> .node-callout [data-callout-type]) > .bn-block-group {
+  margin-inline-start: 0 !important;
+  padding-block: 0 8px;
+  padding-inline: 48px 12px;
+  border-inline-start: 4px solid var(--callout-accent);
+  border-end-start-radius: 6px;
+  border-end-end-radius: 6px;
+  background: color-mix(in srgb, var(--callout-accent) 10%, transparent);
+}
+.dark .bn-block:has(> .node-callout [data-callout-type]) > .bn-block-group {
+  background: color-mix(in srgb, var(--callout-accent) 20%, transparent);
+}
+:root .bn-block:has(> .bn-block-group) > .node-callout [data-callout-type] {
+  width: 100%;
+  border-end-start-radius: 0;
+  border-end-end-radius: 0;
+}
+:root .bn-block:has(> .node-callout [data-callout-fold='closed']) > .bn-block-group {
+  display: none;
+}
+:root
+  .bn-block:has(> .node-callout [data-callout-type])
+  > .bn-block-group
+  > .bn-block-outer::before {
+  display: none;
+}
+
+/* Ensure clicking anywhere in the editor area focuses it */
+.content-area .bn-editor [data-content-editable-root='true'] {
+  min-height: 100%;
+  cursor: text;
+}
+
+/* Editor click-to-focus wrapper */
+.editor-click-area {
+  flex: 1;
+  min-height: 0;
+  cursor: text;
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-click-area .content-area,
+.editor-click-area .bn-container,
+.editor-click-area .bn-editor {
+  flex: 1;
+  min-height: 100%;
+}
+
+@layer base {
+  :root {
+    /* ===== TYPOGRAPHY - Font Families ===== */
+    --font-sans:
+      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
+      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
+      'Segoe UI Emoji', 'Segoe UI Symbol';
+    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
+
+    /* ===== BASE COLORS (Canvas) - "Warm Utility" Aesthetic ===== */
+    --background: #f6f5f0;
+
+    /* Warm Beige / "Paper" */
+    --foreground: #1a1a1a;
+    /* Primary Text - Near Black */
+    --surface: #efefe9;
+    /* Sidebar/Panels - Slightly darker warm grey */
+    --surface-active: #e4e4de;
+    /* Hover states */
+    --critic-review-card-hover-background: var(--surface-active);
+    --critic-review-actions-background: var(--background);
+
+    /* ===== SEMANTIC PASTELS (Card Backgrounds) ===== */
+    --card-sage: #e6efe6;
+    /* Biology/Nature */
+    --card-rose: #efe6e6;
+    /* Economics/History */
+    --card-sand: #efebdd;
+    /* Cyber Security/General */
+    --card-lavender: #e6e0ef;
+    /* Machine Learning */
+    --card-grey: #e0e0e0;
+    /* Unknown/Sort */
+
+    /* ===== TYPOGRAPHY COLORS ===== */
+    --text-primary: #1a1a1a;
+    /* Near Black - Title Headers */
+    --text-secondary: #4a4a4a;
+    /* Body text, sidebar items */
+    --text-tertiary: #8c8c8c;
+    /* Meta data, dates, unused icons */
+    --text-bright: #1a1a1a;
+
+    /* ===== ACCENT COLORS (Category Dots) ===== */
+    --accent-cyan: #06b6d4;
+    --accent-purple: #8b5cf6;
+    --accent-green: #22c55e;
+    --accent-orange: #f97316;
+
+    /* ===== UI SEMANTIC COLORS ===== */
+    --muted: #efefe9;
+    --muted-foreground: #4a4a4a;
+    --popover: #f6f5f0;
+    --popover-foreground: #1a1a1a;
+    --border: #e4e4de;
+    --input: #e4e4de;
+    --card: #ffffff;
+    --card-foreground: #1a1a1a;
+    --primary: #1a1a1a;
+    --primary-foreground: #f6f5f0;
+    --secondary: #efefe9;
+    --secondary-foreground: #1a1a1a;
+    --accent: #efefe9;
+    --accent-foreground: #1a1a1a;
+    --destructive: #dc2626;
+    --destructive-foreground: #fafafa;
+    --ring: #8c8c8c;
+
+    /* ===== BORDER RADIUS (Squircle/Soft Rounding) ===== */
+    --radius: 0.5rem;
+    /* 8px - Default */
+    --radius-sm: 0.375rem;
+    /* 6px */
+    --radius-md: 0.5rem;
+    /* 8px - List Rows */
+    --radius-lg: 0.75rem;
+    /* 12px */
+    --radius-xl: 1rem;
+    /* 16px - Cards */
+    --radius-2xl: 1.25rem;
+    /* 20px */
+    --radius-full: 9999px;
+    /* Fully rounded - Tags/Badges */
+
+    /* ===== SHADOWS (Flat-first design) ===== */
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.03), 0 1px 3px 0 rgb(0 0 0 / 0.05);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+
+    /* ===== SPACING (8pt Grid System) ===== */
+    --sidebar-width: 240px;
+    --card-width: 280px;
+    --card-height: 200px;
+
+    /* ===== GRAPH VIEW COLORS ===== */
+    --graph-node-note: #4a9e8e;
+    --graph-node-journal: #8b5cf6;
+    --graph-node-task: #d4944a;
+    --graph-node-project: #5a8a5a;
+    --graph-node-tag: #c2855a;
+    --graph-edge-default: #8c8c8c;
+    --graph-edge-wikilink: #8c8c8c;
+    --graph-edge-task-note: #c4a46a;
+    --graph-edge-project-task: #9a8abd;
+    --graph-edge-tag-cooccurrence: #a8a6a1;
+    --graph-edge-canvas: #6b8fb8;
+    --graph-ghost-node: #c4c2bc;
+    --graph-dimmed-node: #e4e4de;
+    --graph-edge-soft: #a8a6a0;
+    --graph-bg: #f6f5f0;
+    --graph-label-color: #1a1a1a;
+    --graph-group-1: #4a7fb5;
+    --graph-group-2: #c06a4a;
+    --graph-group-3: #5a9a6a;
+    --graph-group-4: #9a6ab5;
+    --graph-group-5: #b88f2e;
+    --graph-group-6: #3a9aa0;
+    --graph-group-7: #b55a7a;
+    --graph-group-8: #7a7a4a;
+    --graph-group-none: #c4c2bc;
+
+    /* ===== QUEUE LIST ===== */
+    --queue-bg: #eae8e1;
+    --queue-number-bg: #d4d1c5;
+
+    /* ===== TASK COLORS ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
+    --task-priority-high: #f97316;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.12);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.12);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.12);
+
+    /* Due date status */
+    --task-due-overdue: #dc2626;
+    --task-due-overdue-bg: #fef2f2;
+    --task-due-today: #d97706;
+    --task-due-today-bg: #fffbeb;
+    --task-due-tomorrow: #2563eb;
+    --task-due-tomorrow-bg: #eff6ff;
+    --task-due-upcoming: #4f46e5;
+
+    /* Completion / progress */
+    --task-complete: #22c55e;
+    --task-complete-bg: rgba(77, 166, 99, 0.1);
+    --task-progress: #3b82f6;
+
+    /* UI accents */
+    --task-star: #f59e0b;
+    --task-repeat: #3b82f6;
+    --task-token-date: #f59e0b;
+    --task-token-project: #60a5fa;
+    --task-token-tag: #8b5cf6;
+    --task-token-note: #0d9488;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+
+    /* ===== ANIMATION TOKENS ===== */
+    --duration-instant: 100ms;
+    /* Hover states, micro-feedback */
+    --duration-fast: 150ms;
+    /* Small transitions, appears/disappears */
+    --duration-normal: 200ms;
+    /* Most interactions */
+    --duration-slow: 300ms;
+    /* Panel slides, larger movements */
+    --duration-deliberate: 400ms;
+    /* Empty state entrance, significant changes */
+
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    /* Elements entering */
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    /* Elements leaving */
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+    /* Elements moving/transforming */
+  }
+
+  /* The light mode of the memrynote theme. The :root palette above is the
+     light mode of the warm theme, picked by data-light-palette="warm"
+     (applyColorTheme). Keyed off the attribute rather than the .white class so
+     the system mode's light half gets it too, and so an older build's `light`
+     and `white` values render the same as the theme the user chose. */
+  :root:not(.dark, [data-light-palette='warm']) {
+    /* ===== BASE COLORS - White Mode ===== */
+    --background: #ffffff;
+    --foreground: #1d1f22;
+    --surface: #f5f5f5;
+    --surface-active: #ebebec;
+    --critic-review-card-hover-background: var(--surface-active);
+    --critic-review-actions-background: var(--background);
+
+    /* ===== SEMANTIC PASTELS - White Mode ===== */
+    --card-sage: #dbeddb;
+    --card-rose: #ffe2dd;
+    --card-sand: #fdecc8;
+    --card-lavender: #e8deee;
+    --card-grey: #e3e2e0;
+
+    /* ===== TYPOGRAPHY COLORS - White Mode ===== */
+    --text-primary: #1d1f22;
+    --text-secondary: #656769;
+    --text-tertiary: #969798;
+    --text-bright: #1d1f22;
+
+    /* ===== ACCENT COLORS ===== */
+    --accent-cyan: #0891b2;
+    --accent-purple: #7c3aed;
+    --accent-green: #16a34a;
+    --accent-orange: #ea580c;
+
+    /* ===== UI SEMANTIC COLORS - White Mode ===== */
+    --muted: #f5f5f5;
+    --muted-foreground: #656769;
+    --popover: #ffffff;
+    --popover-foreground: #1d1f22;
+    --border: #ebebec;
+    --input: #ebebec;
+    --card: #ffffff;
+    --card-foreground: #1d1f22;
+    --primary: #1d1f22;
+    --primary-foreground: #ffffff;
+    --secondary: #f5f5f5;
+    --secondary-foreground: #1d1f22;
+    --accent: #f5f5f5;
+    --accent-foreground: #1d1f22;
+    --destructive: #e03e3e;
+    --destructive-foreground: #ffffff;
+    --ring: #9b9a97;
+
+    /* ===== SHADOWS - White Mode (crisper than warm) ===== */
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.06);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+
+    /* ===== GRAPH VIEW COLORS - White Mode ===== */
+    --graph-node-note: #448c7c;
+    --graph-node-journal: #7c3aed;
+    --graph-node-task: #c87533;
+    --graph-node-project: #4a7a4a;
+    --graph-node-tag: #b07040;
+    --graph-edge-default: #9b9a97;
+    --graph-edge-wikilink: #9b9a97;
+    --graph-edge-task-note: #c4a46a;
+    --graph-edge-project-task: #9a8abd;
+    --graph-edge-tag-cooccurrence: #c4c2bc;
+    --graph-edge-canvas: #5f86b3;
+    --graph-ghost-node: #d4d2cc;
+    --graph-dimmed-node: #e3e2e0;
+    --graph-edge-soft: #bfbdb6;
+    --graph-bg: #ffffff;
+    --graph-label-color: #37352f;
+
+    /* ===== QUEUE LIST - White Mode ===== */
+    --queue-bg: #f7f6f3;
+    --queue-number-bg: #e3e2e0;
+
+    /* ===== TASK COLORS - White Mode ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.12);
+    --task-priority-high: #f97316;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.12);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.12);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.12);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.12);
+
+    /* Due date status */
+    --task-due-overdue: #dc2626;
+    --task-due-overdue-bg: #fef2f2;
+    --task-due-today: #d97706;
+    --task-due-today-bg: #fffbeb;
+    --task-due-tomorrow: #2563eb;
+    --task-due-tomorrow-bg: #eff6ff;
+    --task-due-upcoming: #4f46e5;
+
+    /* Completion / progress */
+    --task-complete: #22c55e;
+    --task-complete-bg: rgba(77, 166, 99, 0.1);
+    --task-progress: #3b82f6;
+
+    /* UI accents */
+    --task-star: #f59e0b;
+    --task-repeat: #3b82f6;
+    --task-token-date: #f59e0b;
+    --task-token-project: #60a5fa;
+    --task-token-tag: #8b5cf6;
+    --task-token-note: #0d9488;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark {
+    /* ===== TYPOGRAPHY - Font Families (same in dark mode) ===== */
+    --font-sans:
+      ui-sans-serif, -apple-system, 'system-ui', 'Segoe UI Variable Display', 'Segoe UI', Helvetica,
+      'Apple Color Emoji', 'Noto Sans Arabic', 'Noto Sans Hebrew', Arial, sans-serif,
+      'Segoe UI Emoji', 'Segoe UI Symbol';
+    --font-serif: 'Crimson Pro Variable', Georgia, 'Times New Roman', serif;
+    --font-display: 'Playfair Display Variable', 'Crimson Pro Variable', Georgia, serif;
+    --font-heading: 'Space Grotesk Variable', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono Variable', 'SF Mono', 'Fira Code', monospace;
+
+    /* ===== BASE COLORS - Dark Mode (Neutral Charcoal) ===== */
+    --background: #181818;
+    --foreground: #dedede;
+    --surface: #212121;
+    --surface-active: #313131;
+    --critic-review-card-hover-background: #212121;
+    --critic-review-actions-background: #181818;
+
+    /* ===== SEMANTIC PASTELS - Dark Mode (Muted versions) ===== */
+    --card-sage: #1e261e;
+    --card-rose: #261e1e;
+    --card-sand: #26241e;
+    --card-lavender: #211e26;
+    --card-grey: #202020;
+
+    /* ===== TYPOGRAPHY COLORS - Dark Mode ===== */
+    --text-primary: #dedede;
+    --text-secondary: #cdcdcd;
+    --text-tertiary: #9a9a9a;
+    --text-bright: #ffffff;
+
+    /* ===== ACCENT COLORS (Same in dark mode) ===== */
+    --accent-cyan: #22d3ee;
+    --accent-purple: #a78bfa;
+    --accent-green: #4ade80;
+    --accent-orange: #fb923c;
+
+    /* ===== UI SEMANTIC COLORS - Dark Mode ===== */
+    --muted: #212121;
+    --muted-foreground: #9a9a9a;
+    --popover: #212121;
+    --popover-foreground: #dedede;
+    --border: #2e2e2e;
+    --input: #363636;
+    --card: #212121;
+    --card-foreground: #dedede;
+    --primary: #ededed;
+    --primary-foreground: #181818;
+    --secondary: #212121;
+    --secondary-foreground: #dedede;
+    --accent: #313131;
+    --accent-foreground: #dedede;
+    --destructive: #dc2626;
+    --destructive-foreground: #fafafa;
+    --ring: #6b6b6b;
+
+    /* ===== BORDER RADIUS (Same in dark mode) ===== */
+    --radius: 0.5rem;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.25rem;
+    --radius-full: 9999px;
+
+    /* ===== SHADOWS - Dark Mode ===== */
+    --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 1px 3px 0 rgb(0 0 0 / 0.4);
+    --shadow-card-hover: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+
+    /* ===== SPACING (Same in dark mode) ===== */
+    --sidebar-width: 240px;
+    --card-width: 280px;
+    --card-height: 200px;
+
+    /* ===== GRAPH VIEW COLORS - Dark Mode ===== */
+    --graph-node-note: #5abfad;
+    --graph-node-journal: #a78bfa;
+    --graph-node-task: #e8a960;
+    --graph-node-project: #6aaa6a;
+    --graph-node-tag: #d4a070;
+    --graph-edge-default: #6b6966;
+    --graph-edge-wikilink: #6b6966;
+    --graph-edge-task-note: #b89a5a;
+    --graph-edge-project-task: #8a7aad;
+    --graph-edge-tag-cooccurrence: #5a5855;
+    --graph-edge-canvas: #7aa2cf;
+    --graph-ghost-node: #3a3840;
+    --graph-dimmed-node: #2a2830;
+    --graph-edge-soft: #6b6966;
+    --graph-bg: #0e0e10;
+    --graph-label-color: #dedede;
+    --graph-group-1: #7aa8d8;
+    --graph-group-2: #e0906e;
+    --graph-group-3: #80c090;
+    --graph-group-4: #bb95d6;
+    --graph-group-5: #e0bc62;
+    --graph-group-6: #62bcc2;
+    --graph-group-7: #d8849e;
+    --graph-group-8: #a8a878;
+    --graph-group-none: #4a4850;
+
+    /* ===== QUEUE LIST - Dark Mode ===== */
+    --queue-bg: #161618;
+    --queue-number-bg: #2a2a2e;
+
+    /* ===== TASK COLORS - Dark Mode ===== */
+
+    /* Priority */
+    --task-priority-urgent: #ef4444;
+    --task-priority-urgent-bg: rgba(239, 68, 68, 0.1);
+    --task-priority-high: #fb923c;
+    --task-priority-high-bg: rgba(249, 115, 22, 0.1);
+    --task-priority-medium: #a0a0a8;
+    --task-priority-medium-bg: rgba(160, 160, 168, 0.1);
+    --task-priority-low: #50505a;
+    --task-priority-low-bg: rgba(80, 80, 90, 0.1);
+    --task-priority-none: #50505a;
+    --task-priority-none-bg: rgba(80, 80, 90, 0.1);
+
+    /* Due date status */
+    --task-due-overdue: #f87171;
+    --task-due-overdue-bg: rgba(239, 68, 68, 0.1);
+    --task-due-today: #fbbf24;
+    --task-due-today-bg: rgba(217, 119, 6, 0.1);
+    --task-due-tomorrow: #60a5fa;
+    --task-due-tomorrow-bg: rgba(37, 99, 235, 0.1);
+    --task-due-upcoming: #818cf8;
+
+    /* Completion / progress */
+    --task-complete: #4ade80;
+    --task-complete-bg: rgba(77, 166, 99, 0.15);
+    --task-progress: #60a5fa;
+
+    /* UI accents */
+    --task-star: #fbbf24;
+    --task-repeat: #60a5fa;
+    --task-token-date: #fbbf24;
+    --task-token-project: #93c5fd;
+    --task-token-tag: #a78bfa;
+    --task-token-note: #2dd4bf;
+
+    /* Checkbox */
+    --task-checkbox-done: #7b9e87;
+
+    /* Shadow */
+    --shadow-dropdown: 0 4px 24px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
+
+    /* ===== ANIMATION TOKENS (Same in dark mode) ===== */
+    --duration-instant: 100ms;
+    --duration-fast: 150ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+    --duration-deliberate: 400ms;
+
+    --ease-out: cubic-bezier(0, 0, 0.2, 1);
+    --ease-in: cubic-bezier(0.4, 0, 1, 1);
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+div.react-sigma {
+  --sigma-background-color: var(--graph-bg);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-family: var(--font-sans);
+    /* Make native scrollbars/form controls follow the app theme, not the OS. */
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
+    line-height: 1.5;
+    text-wrap: pretty;
+    user-select: none;
+    -webkit-font-smoothing: auto;
+  }
+
+  /* Serif font utility for content titles */
+  .font-serif {
+    font-family: var(--font-serif);
+  }
+
+  /* Display font utility for dramatic headers */
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  /* Typography Scale */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  /* Card Title Style - Serif */
+  .card-title {
+    font-family: var(--font-serif);
+    font-size: 1.125rem;
+    line-height: 1.2;
+    color: var(--text-primary);
+  }
+
+  /* Meta/Caption Style */
+  .text-meta {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    line-height: 1.5;
+  }
+
+  /* Tag/Badge Style */
+  .text-tag {
+    font-size: 0.625rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== ANIMATION UTILITIES ===== */
+
+  /* Card transition */
+  .transition-card {
+    transition:
+      transform var(--duration-fast) var(--ease-out),
+      box-shadow var(--duration-fast) var(--ease-out);
+  }
+
+  /* Hover lift effect */
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Press/active effect */
+  .press-effect:active {
+    transform: scale(0.98);
+  }
+
+  /* Quick action reveal (slide from right) */
+  .quick-actions-reveal {
+    opacity: 0;
+    transform: translateX(8px);
+    transition:
+      opacity var(--duration-instant) var(--ease-out),
+      transform var(--duration-instant) var(--ease-out);
+  }
+
+  .group:hover .quick-actions-reveal,
+  .group:focus-within .quick-actions-reveal {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* Item removal animation - List View */
+  .item-removing {
+    animation: item-remove var(--duration-normal) var(--ease-in) forwards;
+  }
+
+  /* Item removal animation - Card View */
+  .card-removing {
+    animation: card-remove var(--duration-normal) var(--ease-in) forwards;
+  }
+
+  /* Tag pill enter animation */
+  .tag-enter {
+    animation: tag-pop-in var(--duration-normal) var(--ease-out);
+  }
+
+  /* Tag pill exit animation */
+  .tag-exit {
+    animation: tag-pop-out var(--duration-fast) var(--ease-in) forwards;
+  }
+
+  /* Bulk action bar slide up */
+  .slide-up-enter {
+    animation: slide-up var(--duration-normal) var(--ease-out);
+  }
+
+  /* Empty state stagger entrance */
+  .stagger-1 {
+    animation-delay: 0ms;
+  }
+
+  .stagger-2 {
+    animation-delay: 100ms;
+  }
+
+  .stagger-3 {
+    animation-delay: 200ms;
+  }
+
+  .stagger-4 {
+    animation-delay: 300ms;
+  }
+
+  /* Fade in with translate (for staggered entrance) */
+  .fade-in-up {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fade-in-up var(--duration-normal) var(--ease-out) forwards;
+  }
+
+  /* Count pulse animation */
+  .count-pulse {
+    animation: count-pulse var(--duration-fast) var(--ease-out);
+  }
+
+  /* Dropdown highlight transition */
+  .dropdown-highlight {
+    transition: background-color var(--duration-instant) var(--ease-out);
+  }
+}
+
+/* ===== CUSTOM SCROLLBAR UTILITIES ===== */
+/* These need to be outside @layer to ensure higher specificity */
+
+/* Global default: every scrollbar follows the app theme, not the OS.
+   ponytail: themed default for all elements; .scrollbar-thin/.scrollbar-none
+   still win on class specificity. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 40px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.dark *,
+.dark {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Thin scrollbar for sidebars and panels */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  -webkit-appearance: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 40px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .scrollbar-thin {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.25);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+/* Force scrollbar corner to be transparent */
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== KEYFRAME ANIMATIONS ===== */
+
+/* Overdue severe tier — single pulse on mount */
+.overdue-pulse {
+  animation: overdue-pulse 0.6s var(--ease-out) 1;
+}
+
+@keyframes overdue-pulse {
+  0% {
+    background-color: oklch(0.93 0.04 15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+:is(.dark) .overdue-pulse {
+  animation: overdue-pulse-dark 0.6s var(--ease-out) 1;
+}
+
+@keyframes overdue-pulse-dark {
+  0% {
+    background-color: oklch(0.25 0.04 15);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.settings-focus-heartbeat {
+  animation: settings-focus-heartbeat 0.85s var(--ease-out) 3;
+  transition:
+    background-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out);
+}
+
+@keyframes settings-focus-heartbeat {
+  0%,
+  100% {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 1px transparent;
+  }
+
+  18%,
+  48% {
+    background-color: var(--tint-lighter);
+    box-shadow: inset 0 0 0 1px var(--tint-border);
+  }
+}
+
+/* Item removal - compresses height for smooth list reflow */
+@keyframes item-remove {
+  0% {
+    opacity: 1;
+    max-height: 60px;
+    margin-bottom: 2px;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(0.98);
+  }
+
+  100% {
+    opacity: 0;
+    max-height: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    transform: scale(0.95);
+  }
+}
+
+/* Card removal - shrink and fade */
+@keyframes card-remove {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* Tag pill pop in */
+@keyframes tag-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Agent Chat inline citation chip settles in as the sentence streams past it */
+.agent-source-chip {
+  animation: tag-pop-in 250ms cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+
+/* Tag pill pop out */
+@keyframes tag-pop-out {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+    width: 0;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+/* Slide up from bottom */
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in with upward movement */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Count number pulse */
+@keyframes count-pulse {
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Drop flash — blue highlight fade on kanban card drop */
+@keyframes drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.12);
+    border-color: rgb(59 130 246 / 0.4);
+  }
+
+  100% {
+    background-color: transparent;
+    border-color: transparent;
+  }
+}
+
+.animate-drop-flash {
+  animation: drop-flash 1s var(--ease-out) forwards;
+}
+
+/* Row drop flash — blue left-border + bg highlight for list view */
+@keyframes row-drop-flash {
+  0% {
+    background-color: rgb(59 130 246 / 0.08);
+    border-left: 3px solid rgb(59 130 246 / 0.6);
+  }
+  100% {
+    background-color: transparent;
+    border-left: 3px solid transparent;
+  }
+}
+
+.animate-row-drop-flash {
+  animation: row-drop-flash 300ms var(--ease-out) forwards;
+}
+
+/* Priority badge fade out after cross-section drop */
+.animate-fade-out {
+  animation: fade-out-badge 2s ease-in forwards;
+}
+
+@keyframes fade-out-badge {
+  0%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* Checkmark draw animation (SVG) */
+@keyframes draw-check {
+  0% {
+    stroke-dashoffset: 100;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ===== REDUCED MOTION SUPPORT ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* Keep opacity transitions for essential feedback */
+  .item-removing,
+  .card-removing {
+    animation: none;
+    opacity: 0;
+  }
+
+  .tag-enter,
+  .tag-exit {
+    animation: none;
+  }
+
+  .fade-in-up {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .settings-focus-heartbeat {
+    animation: none !important;
+    background-color: var(--tint-lighter);
+    box-shadow: inset 0 0 0 1px var(--tint-border);
+  }
+
+  .quick-actions-reveal {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ===== BLOCKNOTE XL-AI THEMING ===== */
+
+/* AI Menu (combobox) — match memrynote's warm palette */
+.bn-combobox {
+  background: var(--popover) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-card-hover) !important;
+}
+
+.bn-combobox-input {
+  background: transparent !important;
+  color: var(--foreground) !important;
+}
+
+.bn-combobox-input::placeholder {
+  color: var(--text-tertiary) !important;
+}
+
+/* AI suggestion items — consistent hover states */
+.bn-combobox-items [role='option'][aria-selected='true'] {
+  background-color: var(--surface-active) !important;
+}
+
+.dark .bn-combobox-items [role='option'][aria-selected='true'] {
+  background-color: #2a2a2e !important;
+}
+
+/* AI diff highlighting — warm-tinted insertion/deletion for light mode */
+ins[data-type='modification'],
+ins.bn-inline-content {
+  background: rgba(74, 158, 142, 0.12) !important;
+  border-bottom-color: rgba(74, 158, 142, 0.25) !important;
+  color: #2d7a6a !important;
+}
+
+del,
+del.bn-inline-content {
+  color: rgba(100, 90, 75, 0.4) !important;
+}
+
+/* Dark mode diff highlighting */
+.dark ins[data-type='modification'],
+.dark ins.bn-inline-content {
+  background: rgba(90, 191, 173, 0.15) !important;
+  border-bottom-color: rgba(90, 191, 173, 0.3) !important;
+  color: #7dd3c4 !important;
+}
+
+.dark del,
+.dark del.bn-inline-content {
+  color: rgba(168, 166, 161, 0.35) !important;
+}
+
+/*
+ * Agent approval previews reuse the in-editor AI diff language above rather
+ * than inventing a second one. Named tokens because the approval card is a
+ * component rather than an editor node, so it cannot inherit those ins/del
+ * rules, and warm rather than GitHub green because the card is something the
+ * user reads to decide, not a CI log.
+ */
+:root {
+  --diff-add: #2d7a6a;
+  --diff-add-surface: rgba(74, 158, 142, 0.12);
+  --diff-del: #7d766a;
+  --diff-del-surface: rgba(125, 118, 106, 0.1);
+}
+
+.dark {
+  --diff-add: #7dd3c4;
+  --diff-add-surface: rgba(90, 191, 173, 0.15);
+  --diff-del: #a8a6a1;
+  --diff-del-surface: rgba(168, 166, 161, 0.12);
+}
+
+/*
+ * Calendar item hues. Colour paints a chip's 3px rail and its surface; the
+ * title stays in --cal-ink so it reads the same on every theme. Each theme has
+ * its own literal values instead of an alpha over --background, because the
+ * old 50% alpha turned into a different, washed-out colour on every canvas.
+ *
+ * rail     the saturated identity colour (rail, dots, swatches)
+ * surface  the resting chip fill
+ * meta     time and duration text on the surface (AA on surface)
+ * solid    the fill of the one selected chip
+ * solid-ink  title ink on solid (AA on solid)
+ *
+ * lib/event-type-colors.test.ts holds every pair to AA.
+ */
+:root {
+  --cal-ink: #1f1d1a;
+
+  --cal-indigo-rail: #3e63dd;
+  --cal-indigo-surface: #e1e9ff;
+  --cal-indigo-meta: #3453bd;
+  --cal-indigo-solid: #3e63dd;
+  --cal-indigo-solid-ink: #ffffff;
+
+  --cal-violet-rail: #8e4ec6;
+  --cal-violet-surface: #f2e2fc;
+  --cal-violet-meta: #8145b5;
+  --cal-violet-solid: #8e4ec6;
+  --cal-violet-solid-ink: #ffffff;
+
+  --cal-green-rail: #30a46c;
+  --cal-green-surface: #d6f1df;
+  --cal-green-meta: #18744a;
+  --cal-green-solid: #218358;
+  --cal-green-solid-ink: #ffffff;
+
+  --cal-cyan-rail: #00a2c7;
+  --cal-cyan-surface: #caf1f6;
+  --cal-cyan-meta: #0c6f88;
+  --cal-cyan-solid: #0c7a94;
+  --cal-cyan-solid-ink: #ffffff;
+
+  --cal-amber-rail: #f5a524;
+  --cal-amber-surface: #fdebc2;
+  --cal-amber-meta: #935500;
+  --cal-amber-solid: #f5a524;
+  --cal-amber-solid-ink: #1f1d1a;
+
+  --cal-pink-rail: #d6409f;
+  --cal-pink-surface: #fbdcef;
+  --cal-pink-meta: #b8247f;
+  --cal-pink-solid: #c2298a;
+  --cal-pink-solid-ink: #ffffff;
+}
+
+.dark {
+  --cal-ink: #edebe8;
+
+  --cal-indigo-rail: #5b7fff;
+  --cal-indigo-surface: #1d2e62;
+  --cal-indigo-meta: #9eb1ff;
+
+  --cal-violet-rail: #a875e6;
+  --cal-violet-surface: #48295c;
+  --cal-violet-meta: #d19dff;
+
+  --cal-green-rail: #33b074;
+  --cal-green-surface: #174933;
+  --cal-green-meta: #3dd68c;
+
+  --cal-cyan-rail: #23afd0;
+  --cal-cyan-surface: #004558;
+  --cal-cyan-meta: #4ccce6;
+
+  --cal-amber-rail: #ffc53d;
+  --cal-amber-surface: #4d3000;
+  --cal-amber-meta: #ffca16;
+
+  --cal-pink-rail: #e4589f;
+  --cal-pink-surface: #591c47;
+  --cal-pink-meta: #ff8dcc;
+}
+
+/* AI agent cursor — warm accent */
+.bn-collaboration-cursor__caret {
+  background-color: var(--sidebar-terracotta) !important;
+}
+
+.bn-collaboration-cursor__label {
+  background-color: var(--sidebar-terracotta) !important;
+  color: white !important;
+  font-size: 11px !important;
+  border-radius: 3px 3px 3px 0 !important;
+}
+
+/* AI menu error state */
+.bn-combobox-error {
+  color: var(--destructive) !important;
+}
+
+/* macOS window drag region */
+.drag-region {
+  -webkit-app-region: drag;
+}
+
+.drag-region button,
+.drag-region a,
+.drag-region input,
+.drag-region textarea,
+.drag-region [role='button'],
+.no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* ===== USER ACCENT COLOR (tint) ===== */
+:root,
+.white,
+.dark {
+  --default-user-accent-color: #f97316;
+  --tint: var(--user-accent-color, var(--default-user-accent-color));
+  --tint-foreground: #ffffff;
+  --tint-hover: color-mix(in srgb, var(--tint) 85%, black);
+  --tint-light: color-mix(in srgb, var(--tint) 15%, transparent);
+  --tint-lighter: color-mix(in srgb, var(--tint) 10%, transparent);
+  --tint-muted: color-mix(in srgb, var(--tint) 50%, transparent);
+  --tint-ring: color-mix(in srgb, var(--tint) 30%, transparent);
+  --tint-border: color-mix(in srgb, var(--tint) 50%, transparent);
+}
+
+:root {
+  /* ===== SIDEBAR THEME - Warm Editorial Palette ===== */
+  --sidebar: #efefe9;
+  --sidebar-foreground: #8a857a;
+  --sidebar-primary: #1a1917;
+  --sidebar-primary-foreground: #edeae4;
+  --sidebar-accent: rgba(0, 0, 0, 0.05);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+  --sidebar-border: #d9d5ce;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #b5b0a6;
+  /* The sidebar's de-emphasized small-text colour: section and tag-group
+     headings, item counts, the tag list's show-more control — anything
+     carrying real information at 10-11px, which WCAG AA treats as small text
+     (4.5:1). Separate from --sidebar-muted, which also colors chevrons and
+     decorative icon buttons where the extra weight would be too loud.
+     5.07:1 on --sidebar, 5.07:1 on --muted (the row hover surface). */
+  --sidebar-section-heading: #6b6459;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #3d3a35;
+  --sidebar-text-child: #5c5850;
+  --sidebar-dot-inactive: #d9d5ce;
+  --sidebar-surface: rgba(0, 0, 0, 0.04);
+  /* App rail (the icon column). Light themes share the sidebar surface and
+     mark the active item with the canvas colour; .dark gives the rail its own
+     lighter band. Declared on :root so var(--sidebar) resolves per theme. */
+  --sidebar-rail: var(--sidebar);
+  --sidebar-rail-foreground: var(--sidebar-foreground);
+  --sidebar-rail-active: var(--background);
+  /* Fill of the active rail icon: the theme's ink. */
+  --sidebar-rail-active-foreground: var(--sidebar-primary);
+}
+
+:root:not(.dark, [data-light-palette='warm']) {
+  /* ===== SIDEBAR THEME - Clean White Palette ===== */
+  --sidebar: #fbfbfb;
+  --sidebar-foreground: #5a5c5e;
+  --sidebar-primary: #1d1f22;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(0, 0, 0, 0.04);
+  --sidebar-accent-foreground: var(--sidebar-foreground);
+  --sidebar-border: #ebebec;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #b0b1b2;
+  /* 5.4:1 on --sidebar, 5.2:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #656769;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #1d1f22;
+  --sidebar-text-child: #656769;
+  --sidebar-dot-inactive: #e4e5e6;
+  --sidebar-surface: rgba(0, 0, 0, 0.03);
+  /* Rail sits one step below the sidebar; active icon lifts to the canvas. */
+  --sidebar-rail: #f3f3f3;
+  --sidebar-rail-active: #ffffff;
+}
+
+.dark {
+  /* ===== SIDEBAR THEME - Neutral Charcoal ===== */
+  --sidebar: #1f1f1f;
+  --sidebar-foreground: #dedede;
+  --sidebar-primary: #ededed;
+  --sidebar-primary-foreground: #181818;
+  --sidebar-accent: #313131;
+  --sidebar-accent-foreground: var(--sidebar-primary);
+  --sidebar-border: #2e2e2e;
+  --sidebar-ring: var(--tint);
+  --sidebar-muted: #727272;
+  /* 6.07:1 on --sidebar, 5.93:1 on --muted. See the :root block. */
+  --sidebar-section-heading: #9d9d9d;
+  --sidebar-terracotta: var(--tint);
+  --sidebar-text-folder: #dedede;
+  --sidebar-text-child: #9a9a9a;
+  --sidebar-dot-inactive: #444444;
+  --sidebar-surface: #313131;
+  /* Rail foreground 4.80:1 on --sidebar-rail. */
+  --sidebar-rail: #282828;
+  --sidebar-rail-foreground: #939393;
+  --sidebar-rail-active: #393939;
+  --sidebar-rail-active-foreground: #ffffff;
+}
+
+/* ===== COLOR THEMES =====
+   Set by applyColorTheme (@memry/contracts/color-themes): `data-color-theme`
+   plus --ct-{light,dark}-{bg,fg,surface,accent} inline on <html>. Four colors
+   per mode, everything else derived here, so a theme is data only.
+
+   Unlayered and (0,2,0) on purpose: it has to beat the layered token blocks
+   above and the unlayered .dark sidebar and tint blocks (0,1,0). The later
+   declaration wins against the (0,2,0) white sidebar block. The built-in
+   palettes are untouched while the attribute is absent.
+
+   Nested `.dark` elements are listed too: BlockNote puts the color scheme as
+   a class on its own root and on its body-level portal (`bn-root dark`), and
+   the built-in `.dark` token block then re-declared --background/--foreground
+   there, so the editor and its menus painted the stock charcoal palette
+   inside a themed window. */
+:root[data-color-theme] {
+  --ct-bg: var(--ct-light-bg);
+  --ct-fg: var(--ct-light-fg);
+  --ct-surface: var(--ct-light-surface);
+  --ct-accent: var(--ct-light-accent);
+  --ct-raised: var(--ct-bg);
+  --ct-card: color-mix(in srgb, white 50%, var(--ct-bg));
+  --ct-tint-foreground: #ffffff;
+  --ct-rail-active: var(--ct-bg);
+}
+
+:root.dark[data-color-theme],
+:root[data-color-theme] .dark {
+  --ct-bg: var(--ct-dark-bg);
+  --ct-fg: var(--ct-dark-fg);
+  --ct-surface: var(--ct-dark-surface);
+  --ct-accent: var(--ct-dark-accent);
+  /* Dark themes often put panels below the canvas; overlays still step up. */
+  --ct-raised: color-mix(in srgb, var(--ct-fg) 6%, var(--ct-bg));
+  --ct-card: var(--ct-raised);
+  /* Dark-theme accents are light pastels; white ink on them fails contrast. */
+  --ct-tint-foreground: var(--ct-bg);
+  --ct-rail-active: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-surface));
+}
+
+:root[data-color-theme],
+:root[data-color-theme] .dark {
+  --background: var(--ct-bg);
+  --foreground: var(--ct-fg);
+  --surface: var(--ct-surface);
+  --surface-active: color-mix(in srgb, var(--ct-fg) 10%, var(--ct-surface));
+  --critic-review-card-hover-background: var(--surface-active);
+  --critic-review-actions-background: var(--ct-bg);
+
+  --text-primary: var(--ct-fg);
+  --text-secondary: color-mix(in srgb, var(--ct-fg) 82%, var(--ct-bg));
+  --text-tertiary: color-mix(in srgb, var(--ct-fg) 60%, var(--ct-bg));
+  --text-bright: var(--ct-fg);
+
+  --muted: var(--ct-surface);
+  --muted-foreground: color-mix(in srgb, var(--ct-fg) 70%, var(--ct-bg));
+  --popover: var(--ct-raised);
+  --popover-foreground: var(--ct-fg);
+  --border: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-bg));
+  --input: color-mix(in srgb, var(--ct-fg) 16%, var(--ct-bg));
+  --card: var(--ct-card);
+  --card-foreground: var(--ct-fg);
+  --primary: var(--ct-fg);
+  --primary-foreground: var(--ct-bg);
+  --secondary: var(--ct-surface);
+  --secondary-foreground: var(--ct-fg);
+  --accent: color-mix(in srgb, var(--ct-fg) 8%, var(--ct-bg));
+  --accent-foreground: var(--ct-fg);
+  --ring: color-mix(in srgb, var(--ct-fg) 45%, var(--ct-bg));
+
+  --queue-bg: var(--ct-surface);
+  --queue-number-bg: color-mix(in srgb, var(--ct-fg) 14%, var(--ct-surface));
+  --graph-bg: var(--ct-bg);
+  --graph-label-color: var(--ct-fg);
+  --graph-dimmed-node: var(--border);
+
+  --tint: var(--ct-accent);
+  --tint-foreground: var(--ct-tint-foreground);
+
+  --sidebar: var(--ct-surface);
+  --sidebar-foreground: color-mix(in srgb, var(--ct-fg) 72%, var(--ct-surface));
+  --sidebar-primary: var(--ct-fg);
+  --sidebar-primary-foreground: var(--ct-bg);
+  --sidebar-accent: color-mix(in srgb, var(--ct-fg) 9%, var(--ct-surface));
+  --sidebar-accent-foreground: var(--ct-fg);
+  --sidebar-border: color-mix(in srgb, var(--ct-fg) 12%, var(--ct-surface));
+  --sidebar-muted: color-mix(in srgb, var(--ct-fg) 45%, var(--ct-surface));
+  --sidebar-section-heading: color-mix(in srgb, var(--ct-fg) 65%, var(--ct-surface));
+  --sidebar-text-folder: var(--ct-fg);
+  --sidebar-text-child: color-mix(in srgb, var(--ct-fg) 75%, var(--ct-surface));
+  --sidebar-dot-inactive: var(--sidebar-border);
+  --sidebar-surface: color-mix(in srgb, var(--ct-fg) 6%, var(--ct-surface));
+  --sidebar-rail: var(--ct-surface);
+  --sidebar-rail-foreground: var(--sidebar-foreground);
+  --sidebar-rail-active: var(--ct-rail-active);
+  --sidebar-rail-active-foreground: var(--ct-fg);
+}
+
+/* ===== ADVANCED APPEARANCE (per-install, set by use-theme-sync) ===== */
+
+/* Reduce motion forced on: the same treatment the OS preference gets. */
+:root[data-reduce-motion='on'] *,
+:root[data-reduce-motion='on'] *::before,
+:root[data-reduce-motion='on'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+:root[data-pointer-cursors]
+  :is(
+    button,
+    [role='button'],
+    [role='menuitem'],
+    [role='menuitemradio'],
+    [role='menuitemcheckbox'],
+    [role='option'],
+    [role='tab'],
+    [role='switch'],
+    [role='checkbox'],
+    [role='radio'],
+    summary,
+    label[for],
+    select
+  ):not(:disabled, [aria-disabled='true'], [data-disabled]) {
+  cursor: pointer !important;
+}
+
+/* Beats the `auto` the body and the editor pin with !important. */
+:root[data-font-smoothing] *,
+:root[data-font-smoothing] {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* The editor pins its ink to literal colors above; follow the theme instead. */
+:root[data-color-theme] .bn-editor,
+:root[data-color-theme] .bn-container {
+  color: var(--foreground) !important;
+  caret-color: var(--foreground);
+}
+
+@theme inline {
+  /* ===== FONT FAMILIES ===== */
+  --font-sans: var(--font-sans);
+  --font-serif: var(--font-serif);
+  --font-heading: var(--font-heading);
+
+  /* ===== BASE COLORS ===== */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-active: var(--surface-active);
+
+  /* ===== SEMANTIC CARD COLORS ===== */
+  --color-card-sage: var(--card-sage);
+  --color-card-rose: var(--card-rose);
+  --color-card-sand: var(--card-sand);
+  --color-card-lavender: var(--card-lavender);
+  --color-card-grey: var(--card-grey);
+
+  /* ===== TYPOGRAPHY COLORS ===== */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-bright: var(--text-bright);
+
+  /* ===== ACCENT COLORS (Category Dots) ===== */
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-green: var(--accent-green);
+  --color-accent-orange: var(--accent-orange);
+
+  /* ===== UI SEMANTIC COLORS ===== */
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  /* ===== USER ACCENT (tint) ===== */
+  --color-tint: var(--tint);
+  --color-tint-foreground: var(--tint-foreground);
+  --color-tint-hover: var(--tint-hover);
+  --color-tint-light: var(--tint-light);
+  --color-tint-lighter: var(--tint-lighter);
+  --color-tint-muted: var(--tint-muted);
+  --color-tint-ring: var(--tint-ring);
+  --color-tint-border: var(--tint-border);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-ring: var(--ring);
+
+  /* ===== QUEUE LIST ===== */
+  --color-queue-bg: var(--queue-bg);
+  --color-queue-number-bg: var(--queue-number-bg);
+
+  /* ===== TASK COLORS ===== */
+  --color-task-priority-urgent: var(--task-priority-urgent);
+  --color-task-priority-urgent-bg: var(--task-priority-urgent-bg);
+  --color-task-priority-high: var(--task-priority-high);
+  --color-task-priority-high-bg: var(--task-priority-high-bg);
+  --color-task-priority-medium: var(--task-priority-medium);
+  --color-task-priority-medium-bg: var(--task-priority-medium-bg);
+  --color-task-priority-low: var(--task-priority-low);
+  --color-task-priority-low-bg: var(--task-priority-low-bg);
+  --color-task-due-overdue: var(--task-due-overdue);
+  --color-task-due-overdue-bg: var(--task-due-overdue-bg);
+  --color-task-due-today: var(--task-due-today);
+  --color-task-due-today-bg: var(--task-due-today-bg);
+  --color-task-due-tomorrow: var(--task-due-tomorrow);
+  --color-task-due-tomorrow-bg: var(--task-due-tomorrow-bg);
+  --color-task-due-upcoming: var(--task-due-upcoming);
+  --color-task-complete: var(--task-complete);
+  --color-task-complete-bg: var(--task-complete-bg);
+  --color-task-progress: var(--task-progress);
+  --color-task-star: var(--task-star);
+  --color-task-repeat: var(--task-repeat);
+  --color-task-token-date: var(--task-token-date);
+  --color-task-token-project: var(--task-token-project);
+  --color-task-token-tag: var(--task-token-tag);
+  --color-task-token-note: var(--task-token-note);
+  --color-task-checkbox-done: var(--task-checkbox-done);
+
+  /* ===== SIDEBAR ===== */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-section-heading: var(--sidebar-section-heading);
+  --color-sidebar-terracotta: var(--sidebar-terracotta);
+  --color-sidebar-text-folder: var(--sidebar-text-folder);
+  --color-sidebar-text-child: var(--sidebar-text-child);
+  --color-sidebar-dot-inactive: var(--sidebar-dot-inactive);
+  --color-sidebar-surface: var(--sidebar-surface);
+  --color-sidebar-rail: var(--sidebar-rail);
+  --color-sidebar-rail-foreground: var(--sidebar-rail-foreground);
+  --color-sidebar-rail-active: var(--sidebar-rail-active);
+  --color-sidebar-rail-active-foreground: var(--sidebar-rail-active-foreground);
+
+  /* ===== BORDER RADIUS ===== */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
+
+  /* ===== SHADOWS ===== */
+  --shadow-card: var(--shadow-card);
+  --shadow-card-hover: var(--shadow-card-hover);
+  --shadow-dropdown: var(--shadow-dropdown);
+
+  /* ===== SPACING ===== */
+  --spacing-sidebar: var(--sidebar-width);
+
+  /* ===== FONTS ===== */
+  --font-display: var(--font-display);
+  --font-heading: var(--font-heading);
+  --font-mono: var(--font-mono);
+}
+
+/* ===== JOURNAL PAGE SPECIFIC STYLES ===== */
+
+/* Journal page entrance animations */
+@keyframes journal-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes journal-scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes journal-slide-right {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes journal-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes journal-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Journal date fog — soft, time-of-day tinted atmosphere drifting behind the
+   date heading. Tints are provided inline via --fog-tint / --fog-tint-2 (see
+   JournalDateDisplay) so the mood follows getTimeOfDay(). */
+@keyframes journal-fog-drift-a {
+  0%,
+  100% {
+    transform: translate3d(-3%, 0, 0) scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate3d(5%, -10%, 0) scale(1.15);
+    opacity: 1;
+  }
+}
+
+@keyframes journal-fog-drift-b {
+  0%,
+  100% {
+    transform: translate3d(4%, 4%, 0) scale(1.08);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate3d(-6%, -4%, 0) scale(1.22);
+    opacity: 0.9;
+  }
+}
+
+.journal-date-fog {
+  position: absolute;
+  inset: -15% -10% -35% -10%;
+  z-index: 0;
+  pointer-events: none;
+  /* Fade the fog's own alpha to zero before it reaches the scroll/overflow
+     boundaries on every side, so the clip lands in a transparent region
+     instead of leaving a hard edge. Two linear masks (horizontal + vertical)
+     are intersected to feather all four edges symmetrically. */
+  -webkit-mask:
+    linear-gradient(to right, transparent, #000 16%, #000 84%, transparent),
+    linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+  -webkit-mask-composite: source-in;
+  mask:
+    linear-gradient(to right, transparent, #000 16%, #000 84%, transparent),
+    linear-gradient(to bottom, transparent, #000 26%, #000 74%, transparent);
+  mask-composite: intersect;
+}
+
+.journal-date-fog::before,
+.journal-date-fog::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(36px);
+  will-change: transform, opacity;
+}
+
+.journal-date-fog::before {
+  inset: 8% 40% 24% 0;
+  background: radial-gradient(closest-side, var(--fog-tint), transparent 82%);
+  animation: journal-fog-drift-a 15s ease-in-out infinite;
+}
+
+.journal-date-fog::after {
+  inset: 18% 0 0 34%;
+  background: radial-gradient(closest-side, var(--fog-tint-2, var(--fog-tint)), transparent 80%);
+  animation: journal-fog-drift-b 19s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journal-date-fog::before,
+  .journal-date-fog::after {
+    animation: none;
+  }
+}
+
+/* Journal animation utilities */
+.journal-animate-in {
+  animation: journal-fade-in 0.6s var(--ease-out) forwards;
+}
+
+.journal-animate-in-delayed {
+  opacity: 0;
+  animation: journal-fade-in 0.6s var(--ease-out) 0.1s forwards;
+}
+
+.journal-animate-scale {
+  animation: journal-scale-in 0.5s var(--ease-out) forwards;
+}
+
+.journal-animate-slide {
+  animation: journal-slide-right 0.5s var(--ease-out) forwards;
+}
+
+/* Stagger delays for journal sections */
+.journal-stagger-1 {
+  animation-delay: 0ms;
+}
+.journal-stagger-2 {
+  animation-delay: 80ms;
+}
+.journal-stagger-3 {
+  animation-delay: 160ms;
+}
+.journal-stagger-4 {
+  animation-delay: 240ms;
+}
+.journal-stagger-5 {
+  animation-delay: 320ms;
+}
+
+/* Journal decorative day number */
+.journal-day-watermark {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 0.8;
+  color: var(--foreground);
+  opacity: 0.03;
+  pointer-events: none;
+  user-select: none;
+}
+
+.dark .journal-day-watermark {
+  opacity: 0.04;
+}
+
+/* Journal focus mode paper effect */
+.journal-focus-paper {
+  background: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    color-mix(in srgb, var(--background) 97%, #f5e6d3) 50%,
+    var(--background) 100%
+  );
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.015);
+}
+
+.dark .journal-focus-paper {
+  background: linear-gradient(
+    to bottom,
+    var(--background) 0%,
+    color-mix(in srgb, var(--background) 97%, #2a2520) 50%,
+    var(--background) 100%
+  );
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.1);
+}
+
+/* Journal sidebar gradient */
+.journal-sidebar-gradient {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--muted) 30%, transparent) 0%,
+    color-mix(in srgb, var(--muted) 50%, transparent) 50%,
+    color-mix(in srgb, var(--muted) 60%, transparent) 100%
+  );
+}
+
+/* Journal greeting glow */
+.journal-greeting-glow {
+  box-shadow:
+    0 2px 16px -4px rgba(217, 119, 6, 0.12),
+    0 0 0 1px rgba(217, 119, 6, 0.06);
+}
+
+.dark .journal-greeting-glow {
+  box-shadow:
+    0 2px 16px -4px rgba(251, 191, 36, 0.15),
+    0 0 0 1px rgba(251, 191, 36, 0.1);
+}
+
+/* Journal section label styling */
+.journal-section-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-tertiary);
+}
+
+/* ===== NOTE PAGE SPECIFIC STYLES ===== */
+
+/* Note title input placeholder styling */
+.note-title-input::placeholder {
+  font-family: var(--font-sans);
+  font-style: normal;
+  opacity: 0.4;
+}
+
+/* Note property divider - subtle gradient line */
+.note-property-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, hsl(var(--border) / 0.3), transparent);
+}
+
+/* Wiki link styling inside notes */
+.wiki-link {
+  color: rgb(217, 119, 6) !important;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0 2px;
+  transition: color 0.2s ease;
+}
+
+.wiki-link:hover {
+  text-decoration: underline;
+}
+
+.dark .wiki-link {
+  color: rgb(251, 191, 36) !important;
+}
+
+/* A wiki link whose target note does not exist. Applied from outside the chip
+   by a decoration plugin (the inline spec's render() is synchronous and has no
+   IPC access). Calm, not red: a dashed underline plus a muted tint — and
+   !important because the base .wiki-link color above is. */
+.wiki-link-broken {
+  color: rgb(146, 124, 96) !important;
+  text-decoration: underline dashed;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+.dark .wiki-link-broken {
+  color: rgb(168, 152, 128) !important;
+}
+
+/* A wiki link to an object (a note with a tag with fields in its header).
+   Painted from outside the chip by the same decoration pass as broken links:
+   `--object-color` is the tag colour, and the leading 18px avatar (initials)
+   or icon tile is a ::before, so the link span itself still takes the clicks. */
+.wiki-link.wiki-link--object {
+  color: var(--text-primary) !important;
+  background: color-mix(in srgb, var(--object-color) 10%, transparent);
+  border-radius: 999px;
+  padding-block: 1px;
+  padding-inline: 2px 8px;
+  white-space: nowrap;
+}
+
+.wiki-link.wiki-link--object:hover {
+  text-decoration: none;
+  background: color-mix(in srgb, var(--object-color) 18%, transparent);
+}
+
+.wiki-link--object::before {
+  content: '';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 18px;
+  block-size: 18px;
+  margin-inline-end: 5px;
+  vertical-align: middle;
+  translate: 0 -1px;
+  border-radius: 5px;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.wiki-link--object[data-object-initials]::before {
+  content: attr(data-object-initials);
+  border-radius: 999px;
+  background: var(--object-color);
+  color: white;
+}
+
+.wiki-link--object[data-object-tile]::before {
+  background:
+    var(--object-icon, none) center / 12px 12px no-repeat,
+    color-mix(in srgb, var(--object-color) 14%, transparent);
+}
+
+.wiki-link--object[data-object-emoji]::before {
+  content: attr(data-object-emoji);
+  font-size: 12px;
+}
+
+/* A wiki link opened for editing: the `[[` and `]]` are real characters the
+   user can delete, so they are dimmed rather than hidden — the text still reads
+   as a link without the brackets shouting. */
+.wiki-link-bracket {
+  opacity: 0.4;
+}
+
+/* A chip the caret is parked beside shows its markdown instead — the same thing
+   the vault file holds, so what you edit and what you wrote line up. The chip is
+   hidden and the source text is a decoration widget: putting the caret next to a
+   link must stay a cursor movement, not a document edit that syncs to every
+   device and lands on the undo stack. */
+.wiki-link-hidden {
+  display: none;
+}
+
+.wiki-link-source {
+  font-weight: 500;
+}
+
+/* A wiki link alone in its paragraph can draw as a row (small) or a card
+   (medium), or keep the chip and show a preview after it (#2845). The chip's
+   elements are always in the DOM for a configured link; they show only where
+   the card plugin set data-wiki-link-sole on the chip, so a link inside running
+   text stays a chip. Logical properties throughout, so the row
+   mirrors in RTL. */
+.wiki-link-card-icon,
+.wiki-link-card-cover,
+.wiki-link-card-preview {
+  display: none;
+}
+
+/* The chip with a preview after it, flowing on in the same paragraph. The hover
+   underline moves from the whole chip to its title, so it stays off the preview. */
+.wiki-link[data-wiki-link-sole='none']:hover {
+  text-decoration: none;
+}
+
+.wiki-link[data-wiki-link-sole='none']:hover .wiki-link-card-title {
+  text-decoration: underline;
+}
+
+.wiki-link[data-wiki-link-sole='none'] .wiki-link-card-preview {
+  display: inline;
+  margin-inline-start: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  vertical-align: baseline;
+}
+
+.bn-inline-content:has(
+  > .wiki-link[data-wiki-link-sole='small'],
+  > .wiki-link[data-wiki-link-sole='medium']
+) {
+  /* BlockNote's block is a flex row that sizes its text to its content; a row or
+     card spans the column. */
+  flex: 1 1 auto;
+  min-inline-size: 0;
+}
+
+/* The trailing break ProseMirror adds after a final atom would add an empty
+   line under a block-level card. */
+.bn-inline-content:has(
+    > .wiki-link[data-wiki-link-sole='small'],
+    > .wiki-link[data-wiki-link-sole='medium']
+  )
+  > .ProseMirror-trailingBreak {
+  display: none;
+}
+
+.wiki-link[data-wiki-link-sole='small'],
+.wiki-link[data-wiki-link-sole='medium'] {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  border: 1px solid var(--border);
+  color: var(--text-primary) !important;
+  padding: 0;
+  text-decoration: none;
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wiki-link[data-wiki-link-sole='small'],
+  .wiki-link[data-wiki-link-sole='medium'] {
+    transition: background-color 0.15s ease;
+  }
+}
+
+.wiki-link[data-wiki-link-sole='small']:hover,
+.wiki-link[data-wiki-link-sole='medium']:hover {
+  background: var(--surface-active);
+  text-decoration: none;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-icon,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.wiki-link-card-icon svg {
+  inline-size: 100%;
+  block-size: 100%;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-text,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 0;
+  text-align: start;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-title,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-title {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-preview,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-preview {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-preview:empty,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-preview:empty {
+  display: none;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-cover,
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-cover {
+  display: block;
+  flex: none;
+  overflow: hidden;
+  background-position: center;
+  background-size: cover;
+}
+
+.wiki-link-card-cover:empty:not([style*='background-image']) {
+  display: none !important;
+}
+
+.wiki-link-card-cover img {
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: cover;
+}
+
+.wiki-link[data-wiki-link-sole='small'] {
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-icon {
+  inline-size: 16px;
+  block-size: 16px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.wiki-link[data-wiki-link-sole='small'] .wiki-link-card-cover {
+  inline-size: 64px;
+  block-size: 44px;
+  border-radius: 6px;
+}
+
+.wiki-link[data-wiki-link-sole='medium'] {
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 16px;
+}
+
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-icon {
+  inline-size: 48px;
+  block-size: 48px;
+  padding: 12px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* The tile backs the default document icon only. A note's own emoji stands alone. */
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-icon[data-emoji] {
+  padding: 0;
+  background: none;
+  font-size: 32px;
+}
+
+.wiki-link[data-wiki-link-sole='medium'] .wiki-link-card-cover {
+  inline-size: 96px;
+  block-size: 64px;
+  border-radius: 8px;
+}
+
+/* Inline image — a picture inside a line of text, which in practice means
+   inside a table cell (#1640). Capped by the line so one large screenshot
+   cannot blow a row's height out; the cell stays scannable and the image is
+   still clickable at full size in the vault. */
+.inline-image {
+  display: inline-block;
+  max-width: 100%;
+  max-height: 8em;
+  vertical-align: middle;
+  border-radius: 4px;
+  object-fit: contain;
+}
+
+/* The wrapper exists for the grip to be positioned against. `line-height: 0`
+   stops the inline box adding a descender strip under the picture, which would
+   put the grip a few pixels below the image it resizes. */
+.inline-image-wrap {
+  position: relative;
+  display: inline-block;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+/* A 10px hit strip on the inline-end edge — comfortably grabbable without
+   covering the picture. Shown on hover only: a grip painted on every cell image
+   at rest turns a table of screenshots into a row of handles. */
+.inline-image-grip {
+  position: absolute;
+  inset-inline-end: -4px;
+  inset-block: 0;
+  width: 10px;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.inline-image-wrap:hover .inline-image-grip {
+  opacity: 1;
+}
+
+.inline-image-grip::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: 4px;
+  inset-block: 12%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .inline-image-grip {
+    transition: none;
+  }
+}
+
+/* Inline checkbox — a tickable box inside a table cell, where `checkListItem`
+   (a BLOCK) cannot go. The node's own DOM ends in a space, and that space is
+   REAL CONTENT: it is what makes `| [ ] task |` serialize with a gap rather
+   than `| [ ]task |`. So nothing here may collapse or hide it. */
+.inline-checkbox {
+  display: inline;
+  white-space: nowrap;
+}
+
+.inline-checkbox input[type='checkbox'] {
+  /* Logical properties only: this flips to the right-hand side in RTL. */
+  margin-inline-end: 0.1em;
+  vertical-align: -0.1em;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.inline-checkbox input[type='checkbox']:disabled {
+  cursor: default;
+}
+
+/* HTML comment (AF-015) — a marker where the comment sits, never its text. */
+.html-comment-marker {
+  display: inline-block;
+  margin-inline: 0.15em;
+  padding-inline: 0.3em;
+  border-radius: 0.3em;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7em;
+  line-height: 1.4;
+  vertical-align: 0.1em;
+  color: var(--muted-foreground);
+  background: var(--muted);
+  opacity: 0.7;
+  user-select: none;
+  cursor: default;
+}
+
+/* Readwise section dividers (#3474): a filled band where the marker comment sits.
+   Logical properties only, so the band and its icon mirror in RTL. */
+.bn-inline-content:has(> .readwise-divider) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.readwise-divider {
+  display: block;
+  margin-block: 0.5rem;
+  user-select: none;
+  cursor: default;
+}
+
+.readwise-divider-band {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding-inline: 10px;
+  border-radius: 4px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-family: var(--font-sans, inherit);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+}
+
+/* Outranks `.bn-shadcn svg:not([class*='size-'])`, which reverts svg sizes in the editor. */
+.readwise-divider .readwise-divider-band > svg.readwise-divider-icon {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.readwise-divider-hint {
+  display: block;
+  padding-block-start: 4px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Footnotes (BBF-24): the raw `[^label]` stays the text and shows as its number
+   until the caret enters it. A definition line reads subdued in place. */
+.footnote-ref:not(.footnote-ref-editing) {
+  font-size: 0;
+}
+
+.footnote-ref:not(.footnote-ref-editing)::after {
+  content: attr(data-footnote-number);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 0;
+  vertical-align: super;
+  padding-inline: 0.1em;
+  color: var(--tint);
+  cursor: default;
+}
+
+.footnote-def {
+  color: var(--text-tertiary);
+  font-size: 0.92em;
+}
+
+/* Inline hash tag styles — needs .dark .bn-editor prefix to beat the wildcard rule */
+.dark .bn-editor .inline-hash-tag,
+.dark .bn-container .inline-hash-tag,
+.inline-hash-tag {
+  color: var(--hash-tag-color) !important;
+}
+
+.inline-hash-tag:hover {
+  opacity: 0.8;
+}
+
+/* Link mention — inline token: favicon + site name + title.
+   The `.bn-shadcn .bn-editor a` prefix is required to beat BlockNote's
+   `.bn-shadcn .bn-editor a { color: revert; text-decoration: revert }`,
+   which otherwise paints the whole token browser-default blue/underlined. */
+.bn-shadcn .bn-editor a.link-mention,
+.link-mention {
+  display: inline;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--bn-colors-editor-text, var(--foreground));
+  cursor: pointer;
+  text-decoration: none;
+  user-select: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background 0.15s ease;
+}
+
+/* Whole-token highlight on hover so it reads as one unit. --accent is the
+   theme-aware hover-surface token (light + dark). Tokens here are hex, so
+   reference them directly — hsl(var(--token)) would be invalid and dropped. */
+.bn-shadcn .bn-editor a.link-mention:hover,
+.link-mention:hover {
+  background: var(--accent);
+  text-decoration: none;
+}
+
+.link-mention-favicon {
+  display: inline-block;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 3px;
+  vertical-align: -0.22em;
+  margin-inline-end: 0.3em;
+  object-fit: contain;
+}
+
+.link-mention-site {
+  color: var(--muted-foreground);
+  margin-inline-end: 0.3em;
+}
+
+.link-mention-title {
+  color: inherit;
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-thickness: 0.05em;
+  text-underline-offset: 10%;
+  text-decoration-color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+}
+
+/* Date mention — inline date/reminder token: dimmed `@` +
+   relative label (Today/Tomorrow/…). A date-only pill (data-remind="none") is
+   muted and label-only. When a reminder is set the pill turns blue and gains an
+   alarm icon — blue + the alarm read as the reminder affordance (matches
+   --task-due-tomorrow). The whole token highlights on hover as one unit. */
+.bn-shadcn .bn-editor .date-mention,
+.date-mention {
+  --date-mention-color: var(--muted-foreground);
+  display: inline;
+  padding: 1px 4px;
+  border-radius: 5px;
+  color: var(--date-mention-color);
+  font-weight: 400;
+  cursor: pointer;
+  white-space: nowrap;
+  user-select: none;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  transition: background 0.15s ease;
+}
+
+/* A reminder is set → blue affordance. */
+.bn-shadcn .bn-editor .date-mention:not([data-remind='none']),
+.date-mention:not([data-remind='none']) {
+  --date-mention-color: #2563eb;
+}
+
+.dark .bn-editor .date-mention:not([data-remind='none']),
+.dark .date-mention:not([data-remind='none']) {
+  --date-mention-color: #60a5fa;
+}
+
+/* Fired (triggered) reminder pill → a spent chip: the reminder is in the past,
+   which is a record, not a fault. Set by useTriggeredDatePills via data-fired;
+   overrides the blue affordance above (same specificity, later in source).
+   Muted text at full opacity keeps the date and time readable — this is the one
+   place a user goes back to ask what they had scheduled — while the settled
+   background and the dimmed alarm say "already happened". Distinct from an
+   armed pill (blue, no fill) and from a date-only pill (muted, no fill, no
+   alarm); red is left to mean broken. Theme-aware through the muted token. */
+.bn-shadcn .bn-editor .date-mention[data-fired='true'],
+.dark .bn-editor .date-mention[data-fired='true'],
+.date-mention[data-fired='true'] {
+  --date-mention-color: var(--muted-foreground);
+  background: color-mix(in srgb, var(--muted-foreground) 10%, transparent);
+}
+
+.bn-shadcn .bn-editor .date-mention[data-fired='true'] .date-mention-icon,
+.date-mention[data-fired='true'] .date-mention-icon {
+  opacity: 0.6;
+}
+
+.bn-shadcn .bn-editor .date-mention:hover,
+.date-mention:hover {
+  background: color-mix(in srgb, var(--date-mention-color) 12%, transparent);
+}
+
+.date-mention-at {
+  color: color-mix(in srgb, var(--date-mention-color) 55%, transparent);
+  margin-inline-end: 1px;
+}
+
+.date-mention-icon {
+  display: inline-flex;
+  width: 0.95em;
+  height: 0.95em;
+  vertical-align: -0.15em;
+  margin-inline-start: 4px;
+  color: var(--date-mention-color);
+}
+
+.date-mention-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Inline `@`-date ghost autocomplete (date-mention-ghost-plugin.ts).
+   Two intentional, distinct states: a neutral grey background signals a
+   date/reminder is "activating" as you type (and firms into the blue pill on
+   accept), while the ghost previews that same blue — faded — so it reads as a
+   suggestion, never as typed text. */
+.date-mention-typing {
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--foreground) 9%, transparent);
+  /* Outset shadow fakes ~2px padding with zero layout shift while typing. */
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 9%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.date-mention-ghost {
+  --date-mention-ghost-color: #2563eb;
+  color: color-mix(in srgb, var(--date-mention-ghost-color) 50%, transparent);
+  white-space: pre; /* preserve a leading space, e.g. "next" → " Wednesday" */
+  pointer-events: none;
+  user-select: none;
+}
+
+.dark .date-mention-typing {
+  background: color-mix(in srgb, var(--foreground) 14%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--foreground) 14%, transparent);
+}
+
+.dark .date-mention-ghost {
+  --date-mention-ghost-color: #60a5fa;
+}
+
+/* Bookmark card link — beat BlockNote's `.bn-shadcn .bn-editor a` revert
+   that would otherwise underline the whole preview card. */
+.bn-shadcn .bn-editor a.bookmark-link,
+.bookmark-block a.bookmark-link {
+  text-decoration: none;
+}
+
+/* Plain inline links — paint with the user accent (--tint, from the Settings
+   accent color) instead of BlockNote's browser-default blue. The custom link
+   tokens (.link-mention, .bookmark-link) keep their own higher-specificity
+   colors, so they're excluded. The `.bn-shadcn .bn-editor a` prefix is needed
+   to beat BlockNote's `color: revert` rule. */
+.bn-shadcn .bn-editor a:not(.link-mention):not(.bookmark-link):not(.backlink-mention) {
+  color: var(--tint);
+}
+
+.bn-shadcn .bn-editor a:not(.link-mention):not(.bookmark-link):not(.backlink-mention):hover {
+  color: var(--tint-hover);
+}
+
+/* Backlink mention highlight - warm amber for wiki-style links */
+.backlink-mention {
+  color: rgb(217, 119, 6);
+  font-weight: 500;
+}
+
+.dark .backlink-mention {
+  color: rgb(251, 191, 36);
+}
+
+/* Note outline heading active state indicator */
+.outline-heading-active {
+  position: relative;
+}
+
+.outline-heading-active::before {
+  content: '';
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: linear-gradient(to bottom, rgba(245, 158, 11, 0.6), rgba(251, 191, 36, 0.3));
+  border-radius: 1px;
+}
+
+.dark .outline-heading-active::before {
+  background: linear-gradient(to bottom, rgba(251, 191, 36, 0.5), rgba(245, 158, 11, 0.2));
+}
+
+/* Note backlink card hover effect */
+.backlink-card {
+  transition: all 0.2s var(--ease-out);
+}
+
+.backlink-card:hover {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  transform: translateX(2px);
+}
+
+/* Note info section collapse transition */
+.note-info-collapse {
+  transition: all 0.3s var(--ease-in-out);
+  overflow: hidden;
+}
+
+/* Note tags row - refined hover states */
+.note-tag-chip {
+  transition: all 0.2s var(--ease-out);
+}
+
+.note-tag-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.dark .note-tag-chip:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Note content area margin line - subtle left border */
+.note-margin-line {
+  position: relative;
+}
+
+.note-margin-line::before {
+  content: '';
+  position: absolute;
+  left: 48px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(180, 120, 100, 0.1) 10%,
+    rgba(180, 120, 100, 0.15) 50%,
+    rgba(180, 120, 100, 0.1) 90%,
+    transparent
+  );
+  pointer-events: none;
+}
+
+.dark .note-margin-line::before {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(200, 160, 140, 0.06) 10%,
+    rgba(200, 160, 140, 0.1) 50%,
+    rgba(200, 160, 140, 0.06) 90%,
+    transparent
+  );
+}
+
+/* ===== RIGHT SIDEBAR SPECIFIC STYLES ===== */
+
+/* Sidebar tab active indicator glow */
+.sidebar-tab-active {
+  position: relative;
+}
+
+.sidebar-tab-active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(245, 158, 11, 0.6), transparent);
+}
+
+/* Related note card hover glow */
+.related-card-glow:hover {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.06),
+    0 0 0 1px rgba(245, 158, 11, 0.08);
+}
+
+.dark .related-card-glow:hover {
+  box-shadow:
+    0 2px 8px -2px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(251, 191, 36, 0.12);
+}
+
+/* Similarity badge pulse for high matches */
+@keyframes similarity-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.similarity-high {
+  animation: similarity-pulse 2s ease-in-out infinite;
+}
+
+/* Sidebar section divider */
+.sidebar-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    rgba(245, 158, 11, 0.3),
+    var(--sidebar-border) 30%,
+    transparent
+  );
+}
+
+/* Scholarly reference styling */
+.reference-snippet {
+  font-family: var(--font-serif);
+  font-style: italic;
+  quotes: '"' '"';
+}
+
+.reference-snippet::before {
+  content: open-quote;
+  color: var(--sidebar-foreground);
+  opacity: 0.3;
+}
+
+.reference-snippet::after {
+  content: close-quote;
+  color: var(--sidebar-foreground);
+  opacity: 0.3;
+}
+
+/* Sidebar scroll fade */
+.sidebar-scroll-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0%,
+    black 8px,
+    black calc(100% - 8px),
+    transparent 100%
+  );
+}
+
+/* Sidebar label fade */
+.sidebar-label-fade {
+  --sidebar-label-fade-width: 1.75rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+[dir='rtl'] .sidebar-label-fade {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
+/* Fade mask only — pair with `truncate`/`min-w-0` and apply conditionally so the
+   fade appears solely when the label actually overflows (e.g. sidebar tag pills
+   that shrink-wrap their text). */
+.sidebar-label-fade-mask {
+  --sidebar-label-fade-width: 1.75rem;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+}
+
+[dir='rtl'] .sidebar-label-fade-mask {
+  -webkit-mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  mask-image: linear-gradient(
+    to left,
+    #000 calc(100% - var(--sidebar-label-fade-width)),
+    rgba(0, 0, 0, 0.2) 100%
+  );
+}
+
+/* ============================================
+   Outline Indicator (T078)
+   Heading outline navigation component
+   ============================================ */
+
+/* Entrance animation */
+.outline-indicator {
+  animation: outline-fade-in 0.4s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .outline-indicator {
+    animation: none;
+  }
+}
+
+@keyframes outline-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Line hover effect */
+.outline-line:hover {
+  box-shadow: 0 0 8px rgba(28, 25, 23, 0.15);
+}
+
+/* Dark mode adjustments */
+.dark .outline-line {
+  background-color: rgb(168, 162, 158) !important;
+}
+
+.dark .outline-line[style*='rgb(28, 25, 23)'] {
+  background-color: rgb(245, 245, 244) !important;
+}
+
+.dark .vertical-connector {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgb(87, 83, 78) 8%,
+    rgb(87, 83, 78) 92%,
+    transparent 100%
+  ) !important;
+}
+
+.dark .outline-line:hover {
+  box-shadow: 0 0 8px rgba(245, 245, 244, 0.15);
+}
+
+/* ============================================
+   Templates Page - Editorial Collection Design
+   ============================================ */
+
+/* Templates page entrance animation */
+@keyframes templates-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Templates animation utilities */
+.templates-animate-in {
+  animation: templates-fade-in 0.5s var(--ease-out) forwards;
+}
+
+/* Stagger delays for templates sections */
+.templates-stagger-1 {
+  animation-delay: 0ms;
+}
+.templates-stagger-2 {
+  animation-delay: 60ms;
+}
+.templates-stagger-3 {
+  animation-delay: 120ms;
+}
+.templates-stagger-4 {
+  animation-delay: 180ms;
+}
+.templates-stagger-5 {
+  animation-delay: 280ms;
+}
+.templates-stagger-6 {
+  animation-delay: 380ms;
+}
+
+/* Template card entrance animation */
+@keyframes template-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Template specimen card hover glow */
+.template-card-glow {
+  transition: box-shadow 0.3s var(--ease-out);
+}
+
+.template-card-glow:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+}
+
+.dark .template-card-glow:hover {
+  box-shadow:
+    0 8px 30px -8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Template icon float animation */
+@keyframes template-icon-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.02);
+  }
+}
+
+.template-icon-float:hover {
+  animation: template-icon-float 2s ease-in-out infinite;
+}
+
+/* Template empty state decorative pulse */
+@keyframes template-plus-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px -2px rgba(245, 158, 11, 0.25);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px -2px rgba(245, 158, 11, 0.35);
+  }
+}
+
+.template-plus-pulse {
+  animation: template-plus-pulse 3s ease-in-out infinite;
+}
+
+/* Template section divider gradient */
+.template-section-divider {
+  height: 1px;
+  background: linear-gradient(to right, rgba(245, 158, 11, 0.2), var(--border) 20%, transparent);
+}
+
+.dark .template-section-divider {
+  background: linear-gradient(to right, rgba(251, 191, 36, 0.15), var(--border) 20%, transparent);
+}
+
+/* ===== SETUP WIZARD - Warm Library Vault ===== */
+
+@keyframes wizard-step-enter {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wizard-slot-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes wizard-card-lift {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes wizard-check-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(34, 197, 94, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.wizard-step-enter {
+  opacity: 1;
+}
+
+.wiz-delay-1 {
+  animation-delay: 0ms;
+}
+.wiz-delay-2 {
+  animation-delay: 80ms;
+}
+.wiz-delay-3 {
+  animation-delay: 160ms;
+}
+.wiz-delay-4 {
+  animation-delay: 240ms;
+}
+
+.wizard-slot-pop {
+  opacity: 0;
+  animation: wizard-slot-pop 0.35s var(--ease-out) forwards;
+}
+
+.wizard-card-lift {
+  opacity: 0;
+  animation: wizard-card-lift 0.5s var(--ease-out) forwards;
+}
+
+.wizard-check-ring {
+  animation: wizard-check-ring 1s ease-out;
+}
+
+/* Recovery phrase card - warm paper gradient */
+.recovery-phrase-card {
+  background: linear-gradient(
+    145deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 96%, #f5e6d3) 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.04),
+    0 4px 16px -4px rgba(0, 0, 0, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.dark .recovery-phrase-card {
+  background: linear-gradient(
+    145deg,
+    var(--card) 0%,
+    color-mix(in srgb, var(--card) 96%, #2a2520) 100%
+  );
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.2),
+    0 4px 16px -4px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Auth method selection card */
+.auth-method-card {
+  transition: all 0.2s var(--ease-out);
+}
+
+.auth-method-card:hover {
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 12px -4px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(217, 119, 6, 0.12);
+}
+
+.dark .auth-method-card:hover {
+  box-shadow:
+    0 4px 12px -4px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(251, 191, 36, 0.15);
+}
+
+.auth-method-card:active {
+  transform: scale(0.99);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wizard-step-enter,
+  .wizard-slot-pop,
+  .wizard-card-lift {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .wizard-check-ring {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   MARQUEE BLOCK SELECTION
+   ============================================================================ */
+
+/*
+ * Highlight rectangles are absolute-positioned overlay divs (not attribute
+ * mutations on .bn-block) because ProseMirror's MutationObserver reverts any
+ * DOM mutation it didn't make. The overlay is rendered (via portal) into the
+ * `.marquee-zone` wrapper, which is `position: relative` and extends
+ * horizontally beyond .bn-container into the parent's px-24 padding so users
+ * can start a marquee from the gray gutter on either side of the editor.
+ */
+.marquee-block-highlight {
+  position: absolute;
+  pointer-events: none;
+  background-color: rgba(59, 130, 246, 0.14);
+  border-radius: 4px;
+  z-index: 30;
+}
+
+.marquee-overlay {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid rgba(59, 130, 246, 0.6);
+  background-color: rgba(59, 130, 246, 0.08);
+  z-index: 40;
+  border-radius: 2px;
+}
+
+.marquee-zone[data-marquee-active='true'] {
+  cursor: default;
+  user-select: none;
+}
+.marquee-zone[data-marquee-active='true'] * {
+  user-select: none !important;
+}
+
+/* ============================================================================
+   THIRD-PARTY OVERRIDE — EXCALIDRAW CANVAS CONTEXT MENU
+   ============================================================================ */
+
+/*
+ * Verified against @excalidraw/excalidraw 0.18.1 — recheck on every upgrade.
+ * (excalidraw-context-menu-css.test.ts fails if the installed version moves
+ * past this pin, so the recheck cannot be skipped silently.)
+ *
+ * Symptom: right-clicking the spatial canvas opens a menu that is cut off at
+ * the canvas edge with no way to reach the hidden items.
+ *
+ * Upstream ships the menu inside its own clipping box and never bounds its
+ * height. In their stylesheet:
+ *   .excalidraw              -> position: relative; overflow: hidden
+ *                               (the containing block AND the clipper)
+ *   .excalidraw .popover     -> position: absolute; z-index: 10
+ *   .excalidraw .context-menu-> neither a max-height nor an overflow value
+ * Their only scroll path sets overflow-y on the menu when it is at least as
+ * tall as the entire container, so a menu that merely outgrows the space below
+ * the click point never gets a scrollbar — it just runs past the container edge
+ * and `overflow: hidden` eats the rest.
+ *
+ * The positioning half is an upstream coordinate-space bug we cannot reach from
+ * CSS. Their fit-in-viewport guard compares `top + height - offsetTop` against
+ * the viewport height, where `top` is already container-relative while
+ * `offsetTop` is viewport-relative. On excalidraw.com the container fills the
+ * window, both offsets are 0, and the mistake is invisible. In Memry the canvas
+ * sits below the tab strip and beside the sidebar, so the guard under-triggers
+ * by exactly those offsets and leaves the menu hanging past the bottom edge.
+ * Correcting that needs the menu's own layout code; patching node_modules or
+ * forking Excalidraw would have to be redone on every upgrade, so we do not.
+ *
+ * What CSS can do — and what removes the user-visible failure — is guarantee
+ * the menu never exceeds the canvas viewport and always scrolls when it would.
+ * The 96px reserve clears the 36px tab strip plus breathing room at both ends.
+ * overflow-x stays hidden so the vertical scrollbar can never induce a
+ * horizontal one in this shrink-to-fit box; upstream sets `white-space: nowrap`
+ * on the items, so there is no wrapped content to lose. Scroll chaining is
+ * contained because the element behind the menu is an infinite pan/zoom canvas.
+ * Height, padding, border and radius are otherwise left to upstream.
+ *
+ * Scoped under `.excalidraw` deliberately: our own menus are Radix
+ * (`data-slot="context-menu-content"` plus Tailwind classes) and never carry a
+ * `.context-menu` class, so this cannot leak outside the canvas. The scrollbar
+ * inherits the app-wide themed 8px/thin treatment from the global rules above.
+ */
+.excalidraw .context-menu {
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+/* ============================================================================
+   TABLE BORDER HANDLES — the overlay in `table-border-handles.tsx`
+   ============================================================================ */
+
+/*
+ * The geometry lives in the component (it measures cell rects from the DOM and
+ * inline-styles each bar onto a real border line); this file owns the two
+ * states the bar has and nothing else.
+ *
+ * BlockNote's own handles are off (`tableHandles={false}`), so nothing here
+ * fights `.bn-table-handle` — that element no longer renders in the note
+ * editor. These rules stand alone.
+ *
+ * Everything is logical (`inset-inline-start`, `inline-size`, `block-size`) so
+ * an RTL table puts the row bar on its other side with no second code path.
+ */
+
+.memry-table-handles {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  inline-size: 0;
+  block-size: 0;
+  z-index: 10;
+  -webkit-user-select: none;
+  user-select: none;
+
+  /*
+   * How far the nub's HIT area reaches past the bar it paints, on the bar's
+   * thin axis only.
+   *
+   * A 3px line is a 3px target, and the pointer has to arrive along the thin
+   * axis to reach it — approaching a vertical nub means crossing the last few
+   * pixels of a cell. Padding the long axis as well was tried and rejected:
+   * a vertical nub's 18px band is already easy to hit, and growing it upward
+   * would swallow the top of the cell's own edge, which is where a column
+   * resize drag starts.
+   */
+  --memry-table-handle-hit: 4px;
+}
+
+/*
+ * The positioner IS the border line: its box is exactly the 3px strip the bar
+ * paints over the cell's 1px border. Its own hit area is switched off — the
+ * control inside it takes the pointer, and at rest the two boxes coincide.
+ */
+.memry-table-handle {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.memry-table-handle[data-orientation='vertical'] {
+  inline-size: var(--memry-table-handle-thickness);
+  block-size: var(--memry-table-handle-length);
+}
+
+.memry-table-handle[data-orientation='horizontal'] {
+  inline-size: var(--memry-table-handle-length);
+  block-size: var(--memry-table-handle-thickness);
+}
+
+/*
+ * The control is the HIT area; `.memry-table-handle-pill` inside it is the
+ * paint. They were one element, sized to the 3px line, and the result was a
+ * control the pointer had to land on exactly — worse still inside the focused
+ * cell, whose resize shield covers the same line. Splitting them lets the
+ * target reach `--memry-table-handle-hit` past the line on the thin axis while
+ * what the user sees stays the width of the line.
+ *
+ * Transparent, and carrying none of the paint: no background, no border, no
+ * ring, no outline, no radius. Its box grows in step with the pill on hover so
+ * the pill, which clips its own glyph, is never clipped by this in turn.
+ */
+.memry-table-handle-control {
+  flex: none;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--primary-foreground);
+  transition:
+    inline-size 100ms ease-in-out,
+    block-size 100ms ease-in-out;
+}
+
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control {
+  inline-size: calc(var(--memry-table-handle-thickness) + 2 * var(--memry-table-handle-hit));
+  block-size: var(--memry-table-handle-length);
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control {
+  inline-size: var(--memry-table-handle-length);
+  block-size: calc(var(--memry-table-handle-thickness) + 2 * var(--memry-table-handle-hit));
+}
+
+/*
+ * Rest: a bare bar sitting on the cell border line, slightly thicker than it.
+ * Matching the border's own 1px was tried and rejected — at that width the nub
+ * is a control nobody can find. No border, no ring, no outline and no radius
+ * either. (A knock-out ring is what made the earlier attempt read as a pill
+ * floating beside the table.)
+ */
+.memry-table-handle-pill {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--text-tertiary);
+  /* Clips the glyph's own empty margins so they cannot take hover off the bar. */
+  overflow: hidden;
+  transition:
+    inline-size 100ms ease-in-out,
+    block-size 100ms ease-in-out,
+    background-color 100ms ease-in-out,
+    border-radius 100ms ease-in-out;
+}
+
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-pill {
+  inline-size: var(--memry-table-handle-thickness);
+  block-size: var(--memry-table-handle-length);
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-pill {
+  inline-size: var(--memry-table-handle-length);
+  block-size: var(--memry-table-handle-thickness);
+}
+
+/*
+ * Hover/focus: Notion's column selector geometry — 22x14 for a bar lying along
+ * the block axis, the same box rotated for one standing on the inline axis.
+ * It stays centred on the bar because a flex item larger than its container
+ * overflows `center` alignment evenly on both sides, which — unlike
+ * `margin: auto` — behaves the same in RTL.
+ *
+ * `--primary`, not the terracotta accent: a table hover is not an event worth
+ * flashing brand colour for.
+ */
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:hover,
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control:focus-visible,
+.memry-table-handle[data-orientation='vertical'] .memry-table-handle-control[data-state='open'] {
+  inline-size: calc(14px + 2 * var(--memry-table-handle-hit));
+  block-size: 22px;
+}
+
+.memry-table-handle[data-orientation='vertical']
+  .memry-table-handle-control:hover
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='vertical']
+  .memry-table-handle-control:focus-visible
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='vertical']
+  .memry-table-handle-control[data-state='open']
+  .memry-table-handle-pill {
+  inline-size: 14px;
+  block-size: 22px;
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:hover,
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control:focus-visible,
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-control[data-state='open'] {
+  inline-size: 22px;
+  block-size: calc(14px + 2 * var(--memry-table-handle-hit));
+}
+
+.memry-table-handle[data-orientation='horizontal']
+  .memry-table-handle-control:hover
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='horizontal']
+  .memry-table-handle-control:focus-visible
+  .memry-table-handle-pill,
+.memry-table-handle[data-orientation='horizontal']
+  .memry-table-handle-control[data-state='open']
+  .memry-table-handle-pill {
+  inline-size: 22px;
+  block-size: 14px;
+}
+
+/*
+ * `[data-state='open']` is the menu trigger's own state, set on the button by
+ * the dropdown. Without it the nub would snap back to a hairline the moment the
+ * pointer moved off it onto its own open menu, leaving the menu hanging off
+ * nothing.
+ */
+.memry-table-handle-control:hover .memry-table-handle-pill,
+.memry-table-handle-control:focus-visible .memry-table-handle-pill,
+.memry-table-handle-control[data-state='open'] .memry-table-handle-pill {
+  border-radius: 4px;
+  background-color: var(--primary);
+}
+
+.memry-table-handle-icon {
+  flex: none;
+  inline-size: 20px;
+  block-size: 20px;
+  fill: currentColor;
+  opacity: 0;
+  transition: opacity 100ms ease-in-out;
+}
+
+.memry-table-handle[data-orientation='horizontal'] .memry-table-handle-icon {
+  rotate: 90deg;
+}
+
+.memry-table-handle-control:hover .memry-table-handle-icon,
+.memry-table-handle-control:focus-visible .memry-table-handle-icon,
+.memry-table-handle-control[data-state='open'] .memry-table-handle-icon {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memry-table-handle-control,
+  .memry-table-handle-pill,
+  .memry-table-handle-icon {
+    transition: none;
+  }
+}
+
+/*
+ * The cell holding the caret, ringed in the user's accent.
+ *
+ * Painted as a box in the wrapper rather than as a border on the `<td>`:
+ * ProseMirror owns the cell's own attributes and redraws over anything it did
+ * not write (see `table-border-handles.tsx`). `--tint-border` is the accent the
+ * user picks in Settings, at 50%, so the ring reads as "this cell" without
+ * shouting over the text in it.
+ *
+ * Under the bars, over the table: a nub and the ring meet on the same line at
+ * the table's edges, and the nub is the one you can click.
+ */
+.memry-table-cell-focus {
+  position: absolute;
+  z-index: 9;
+  box-sizing: border-box;
+  border: 1px solid var(--tint-border);
+  pointer-events: none;
+}
+
+/*
+ * The menu a nub opens, mounted in `.bn-container` instead of beside the nub.
+ * `.tableWrapper` clips on both axes, so a menu left where its trigger lives
+ * would be cut to the table's box and painted under the editor — see
+ * `table-border-handles.tsx`.
+ *
+ * The layer is stated against BlockNote's own base rather than as a number:
+ * `--bn-ui-base-z-index` is what its floating UI (`+10`, `+20`) is measured
+ * from, and a menu has to sit above all of it.
+ *
+ * `cursor` is set here because the menu is not the editor's text surface, and
+ * because `@blocknote/shadcn` gives every item `cursor: default`.
+ */
+.memry-table-menu {
+  z-index: calc(var(--bn-ui-base-z-index, 0) + 30);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.memry-table-menu [data-slot^='dropdown-menu-'] {
+  cursor: pointer;
+}
+
+/*
+ * The anchor the keyboard menu hangs from: a box over the caret's cell, with no
+ * paint and no pointer of its own.
+ *
+ * It exists only while that menu is open. Radix positions the dropdown against
+ * its trigger and returns focus to it on `Escape`, so the trigger has to be a
+ * real element in the table's own coordinates — but the cell underneath it is
+ * still being typed in, so it must never take a click or show a cursor.
+ */
+.memry-table-keyboard-anchor {
+  position: absolute;
+  z-index: 8;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  pointer-events: none;
+}
+
+/*
+ * The focused cell's inline-end border carries our cell nub AND
+ * prosemirror-tables' column-resize grab zone. The resize cursor and drag win
+ * the pointer, which makes the nub hard to hit, so while a cell holds the
+ * caret its inline-end edge is shielded: a transparent strip that swallows the
+ * pointer events before they reach the editor root.
+ *
+ * Only that one cell, and only while it has the caret — every other column
+ * edge resizes exactly as it did.
+ */
+.memry-table-resize-shield {
+  position: absolute;
+  z-index: 3;
+  cursor: text;
+  background: transparent;
+}
+
+/*
+ * AICSS agent-chat primitives (https://www.aicss.dev), recoloured onto Memry
+ * tokens: the library's fixed #a1a1a1 greys become --muted-foreground and its
+ * near-black ink becomes currentColor.
+ *
+ * Thinking State: a soft brightness valley sweeps through the label, holding
+ * at each end so the sweep reads as a pulse rather than a scroll.
+ */
+.aicss-thinking-shimmer {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 30%,
+    color-mix(in srgb, var(--muted-foreground) 45%, transparent) 45%,
+    color-mix(in srgb, var(--muted-foreground) 45%, transparent) 55%,
+    var(--muted-foreground) 70%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  animation: aicss-label-shine 2.25s cubic-bezier(0.25, 0.1, 0.25, 1) infinite;
+}
+
+[dir='rtl'] .aicss-thinking-shimmer {
+  animation-direction: reverse;
+}
+
+@keyframes aicss-label-shine {
+  0%,
+  18% {
+    background-position: 100% 0;
+  }
+  82%,
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+/*
+ * Orbs, S3: a comet runs the perimeter of a 3x3 lattice. The lattice is drawn
+ * on a 28px stage and scaled by --orb-k; unlit cells keep a resting ink so the
+ * grid stays legible between beats, and the centre cell sits out dimmer.
+ */
+.aicss-orb {
+  --orb-rest-ink: 0.14;
+  --orb-dim-ink: 0.07;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  vertical-align: middle;
+  color: var(--foreground);
+}
+
+.dark .aicss-orb {
+  --orb-rest-ink: 0.2;
+  --orb-dim-ink: 0.1;
+}
+
+.aicss-orb-glyph {
+  position: relative;
+  display: block;
+  flex: none;
+  overflow: hidden;
+  contain: strict;
+}
+
+.aicss-orb-lattice {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 28px;
+  transform-origin: 0 0;
+  transform: scale(var(--orb-k, 1)) translate(6.5px, 6.5px);
+}
+
+.aicss-orb-cell {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: var(--orb-rest-ink);
+  animation: aicss-orb-comet 1.7s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+}
+
+.aicss-orb-cell[data-still] {
+  animation: none;
+  opacity: var(--orb-dim-ink);
+}
+
+/* Starts lit and decays linearly, so staggered ring cells form a head and an even tail. */
+@keyframes aicss-orb-comet {
+  0% {
+    opacity: 1;
+    transform: scale(1.2);
+    animation-timing-function: linear;
+  }
+  45% {
+    opacity: var(--orb-rest-ink);
+    transform: scale(1);
+  }
+  100% {
+    opacity: var(--orb-rest-ink);
+    transform: scale(1);
+  }
+}
+
+/*
+ * Streaming Text caret: a solid block after the last line while text is still
+ * being revealed, blinking once the reveal has caught up and the turn is only
+ * waiting. Code blocks and tables get no caret.
+ */
+.aicss-stream-caret {
+  --aicss-caret-animation: aicss-caret-blink 1s step-end infinite;
+}
+
+.aicss-stream-caret-steady {
+  --aicss-caret-animation: none;
+}
+
+.aicss-stream-caret > :is(p, h1, h2, h3, h4, h5, h6):last-child::after,
+.aicss-stream-caret > blockquote:last-child > p:last-child::after,
+.aicss-stream-caret > :is(ul, ol):last-child > li:last-child:not(:has(> p))::after,
+.aicss-stream-caret > :is(ul, ol):last-child > li:last-child > p:last-child::after {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 1.05em;
+  margin-inline-start: 2px;
+  background: currentColor;
+  vertical-align: text-bottom;
+  animation: var(--aicss-caret-animation);
+}
+
+@keyframes aicss-caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+/*
+ * Thinking + Reasoning: the block fades in, the reasoning folds on a grid-row
+ * transition, and the chevron turns with it. The viewport's cap and fade mask
+ * are set inline from thinking-reasoning.tsx.
+ */
+.aicss-tr {
+  animation: aicss-tr-block-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes aicss-tr-block-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.aicss-tr-header {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
+
+.aicss-tr-header.is-clickable {
+  cursor: pointer;
+}
+
+.aicss-tr-label,
+.aicss-tr-chevron {
+  color: var(--muted-foreground);
+  transition: color 150ms ease;
+}
+
+.aicss-tr-chevron {
+  transition:
+    color 150ms ease,
+    transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.aicss-tr-header[aria-expanded='true'] .aicss-tr-chevron {
+  transform: rotate(180deg);
+}
+
+.aicss-tr-header.is-clickable:hover .aicss-tr-label,
+.aicss-tr-header.is-clickable:hover .aicss-tr-chevron {
+  color: var(--foreground);
+}
+
+.aicss-tr-collapsible {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition:
+    grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 220ms ease;
+}
+
+.aicss-tr-collapsible.is-collapsed {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.aicss-tr-viewport {
+  overflow: hidden;
+}
+
+.aicss-tr-viewport.is-scroll {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.aicss-tr-viewport.is-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aicss-thinking-shimmer {
+    color: var(--muted-foreground);
+    -webkit-text-fill-color: currentColor;
+    background-image: none;
+    animation: none;
+  }
+
+  .aicss-orb-cell {
+    animation: none;
+  }
+
+  .aicss-orb-cell[data-mid] {
+    opacity: 1;
+  }
+
+  .aicss-stream-caret {
+    --aicss-caret-animation: none;
+  }
+
+  .aicss-tr,
+  .aicss-tr-collapsible,
+  .aicss-tr-chevron {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* An inline #tag whose "Make this note a …" popover is open (C3). */
+.inline-hash-tag.inline-hash-tag--active {
+  box-shadow: 0 0 0 1.5px currentColor;
+}

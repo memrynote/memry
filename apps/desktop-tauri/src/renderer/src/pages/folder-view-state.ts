@@ -1,0 +1,103 @@
+/**
+ * What a folder/tag view tab remembers, and how it is read back.
+ *
+ * Deliberately NARROW. Almost everything this page shows is already persisted
+ * in the folder's own `.folder.md` through `useFolderView` — the view `type`
+ * (table/list/grid), its columns, filters, `order`, `groupBy` (including
+ * `collapsed`), `limit` and `showSummaries`. Mirroring any of that into tab
+ * state would give one value two owners that overwrite each other on every
+ * reload, so only what the FILE cannot express lives here:
+ *
+ * - which of the folder's named views this particular tab is looking at
+ * - the transient in-page search
+ * - the chart layout, which the file must not hold: older builds validate a
+ *   saved view's `type` as table/list/gallery and would reject the file
+ *
+ * The active view is stored by NAME, never by index. `useFolderView` tracks an
+ * `activeViewIndex`, but indices shift the moment a view is added, deleted or
+ * reordered in `.folder.md` — possibly by another device, or by hand — and a
+ * stale index silently lands on someone else's view. A stale NAME just fails to
+ * match, and the folder's own `defaultIndex` takes over.
+ */
+
+import { readViewBlockChart, type ViewBlockChart } from '@memry/shared/view-block'
+
+export const FOLDER_VIEW_STATE_KEYS = {
+  /** Name of the folder's view this tab is on. `null` means "use the default". */
+  viewName: 'folderViewName',
+  /** In-page search text. */
+  searchQuery: 'folderSearchQuery',
+  /** Whether the search input is expanded. */
+  searchOpen: 'folderSearchOpen',
+  /**
+   * Tag scope only: extra tags ANDed onto the tab's primary tag. Lives here
+   * rather than in `.folder.md` because a tag has no config file, and because
+   * this is a per-tab lens — two tabs on `#work` may narrow differently.
+   */
+  tagAndTags: 'tagAndTags',
+  /**
+   * The chart layout's settings while the tab shows a chart; `null` when it
+   * shows the view's own layout. A lens over the active view, like the search.
+   */
+  chart: 'folderChart',
+  linkedFilter: 'tagLinkedFilter'
+} as const
+
+/**
+ * Each render mode owns its own scroller and a tab holds ONE scroll record, so
+ * every mode stamps which one it is. Table and grouped-table are separate
+ * components with different row heights, and list/gallery are not virtualized
+ * at all — an offset from one is meaningless in another.
+ */
+export const FOLDER_SCROLL_KEYS = {
+  table: 'folder-table',
+  grouped: 'folder-grouped',
+  list: 'folder-list',
+  gallery: 'folder-gallery'
+} as const
+
+export type FolderScrollKey = (typeof FOLDER_SCROLL_KEYS)[keyof typeof FOLDER_SCROLL_KEYS]
+
+/**
+ * Which scroller is on screen. `groupBy` splits the table in two: `GroupedTable`
+ * and `FolderTableView` are different components, so they must not share a key.
+ */
+export function folderScrollKey(viewType: string, isGrouped: boolean): FolderScrollKey {
+  if (viewType === 'list') return FOLDER_SCROLL_KEYS.list
+  if (viewType === 'grid') return FOLDER_SCROLL_KEYS.gallery
+  return isGrouped ? FOLDER_SCROLL_KEYS.grouped : FOLDER_SCROLL_KEYS.table
+}
+
+/**
+ * Persisted state can have been written by an older build, so every reader is
+ * total: anything unrecognised returns `undefined` and the caller falls back.
+ * `null` is a value for the view name — "no pinned view, use the default" — and
+ * has to be told apart from "nothing stored".
+ */
+export const parseViewName = (raw: unknown): string | null | undefined =>
+  raw === null || typeof raw === 'string' ? raw : undefined
+
+export const parseSearchQuery = (raw: unknown): string | undefined =>
+  typeof raw === 'string' ? raw : undefined
+
+export const parseSearchOpen = (raw: unknown): boolean | undefined =>
+  typeof raw === 'boolean' ? raw : undefined
+
+/** `null` is "no chart"; settings this build cannot use are dropped, as in the view block. */
+export const parseChartState = (raw: unknown): ViewBlockChart | null | undefined => {
+  if (raw === null) return null
+  return readViewBlockChart(raw)
+}
+
+/**
+ * Tag-scope AND selection. Older sessions have no such key at all, and a
+ * session written by a future build could hold anything, so this rejects
+ * everything that is not a list of non-empty strings.
+ */
+export const parseTagAndTags = (raw: unknown): string[] | undefined =>
+  Array.isArray(raw) && raw.every((v) => typeof v === 'string' && v.trim() !== '')
+    ? raw.map((v: string) => v.trim())
+    : undefined
+
+export const parseLinkedFilter = (raw: unknown): string | null | undefined =>
+  raw === null ? null : typeof raw === 'string' && raw.trim() !== '' ? raw : undefined

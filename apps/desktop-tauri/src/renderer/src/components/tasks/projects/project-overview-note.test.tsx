@@ -1,0 +1,255 @@
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { ProjectOverviewNote } from './project-overview-note'
+import type * as VaultLocksStoreModule from '@/lib/vault-locks-store'
+
+const mocks = vi.hoisted(() => ({
+  notesGet: vi.fn(),
+  notesCreate: vi.fn(),
+  notesUpdate: vi.fn(),
+  setProjectHomeNote: vi.fn(),
+  getProject: vi.fn(),
+  registerPendingSave: vi.fn(),
+  unregisterPendingSave: vi.fn(),
+  onMarkdownChange: null as ((markdown: string) => void) | null,
+  isNoteLocked: false
+}))
+
+vi.mock('@/lib/vault-locks-store', async (importOriginal) => ({
+  ...(await importOriginal<typeof VaultLocksStoreModule>()),
+  useIsNoteLocked: () => mocks.isNoteLocked
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({ error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() })
+}))
+
+vi.mock('sonner', () => ({
+  toast: { error: vi.fn(), success: vi.fn() }
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    get: mocks.notesGet,
+    create: mocks.notesCreate,
+    update: mocks.notesUpdate
+  }
+}))
+
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: {
+    setProjectHomeNote: mocks.setProjectHomeNote,
+    getProject: mocks.getProject
+  }
+}))
+
+vi.mock('@/lib/save-registry', () => ({
+  registerPendingSave: mocks.registerPendingSave,
+  unregisterPendingSave: mocks.unregisterPendingSave
+}))
+
+vi.mock('@/components/note', () => ({
+  ContentArea: ({
+    initialContent,
+    editable = true,
+    onMarkdownChange
+  }: {
+    initialContent: string
+    editable?: boolean
+    onMarkdownChange?: (markdown: string) => void
+  }) => {
+    mocks.onMarkdownChange = onMarkdownChange ?? null
+    return (
+      <div data-testid="content-area" data-editable={String(editable)}>
+        <div data-testid="editor-content">{initialContent}</div>
+        <button type="button" onClick={() => onMarkdownChange?.('# Changed')}>
+          Change markdown
+        </button>
+      </div>
+    )
+  }
+}))
+
+vi.mock('@/components/note/editor-error-boundary', () => ({
+  EditorErrorBoundary: ({ children }: { children: React.ReactNode }) => children
+}))
+
+const homeNote = {
+  id: 'n1',
+  path: 'Overview.md',
+  title: 'Overview',
+  content: '# Hi',
+  frontmatter: {},
+  created: new Date(),
+  modified: new Date(),
+  tags: [],
+  aliases: [],
+  wordCount: 1,
+  properties: {}
+}
+
+describe('ProjectOverviewNote', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.onMarkdownChange = null
+    mocks.isNoteLocked = false
+  })
+
+  it('#then opens a locked home note read-only with the lock notice (#2606)', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.isNoteLocked = true
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+
+    expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'false')
+    expect(screen.getByTestId('note-locked-indicator')).toBeInTheDocument()
+  })
+
+  it('#then keeps an unlocked home note editable with no lock notice', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+
+    expect(await screen.findByTestId('content-area')).toHaveAttribute('data-editable', 'true')
+    expect(screen.queryByTestId('note-locked-indicator')).not.toBeInTheDocument()
+  })
+
+  it('#then renders the inline editor when a home note exists', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+
+    expect(await screen.findByTestId('overview-editor')).toBeInTheDocument()
+    expect(await screen.findByText('# Hi')).toBeInTheDocument()
+  })
+
+  it('#then shows a loading state (not the create affordance) while homeNoteId is unresolved', () => {
+    render(<ProjectOverviewNote projectId="p1" homeNoteId={undefined} onHomeNoteChange={vi.fn()} />)
+
+    expect(screen.queryByRole('button', { name: /overview note/i })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('overview-editor')).not.toBeInTheDocument()
+  })
+
+  it('#then offers create when no home note', async () => {
+    const onHomeNoteChange = vi.fn()
+    mocks.notesCreate.mockResolvedValue({
+      success: true,
+      note: { id: 'new-1', title: 'Overview', content: '' }
+    })
+    mocks.setProjectHomeNote.mockResolvedValue({ success: true, project: null })
+
+    render(
+      <ProjectOverviewNote projectId="p1" homeNoteId={null} onHomeNoteChange={onHomeNoteChange} />
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: /overview note/i }))
+
+    await waitFor(() =>
+      expect(mocks.setProjectHomeNote).toHaveBeenCalledWith({ projectId: 'p1', noteId: 'new-1' })
+    )
+    expect(onHomeNoteChange).toHaveBeenCalledWith('new-1')
+  })
+
+  it('#then saves the edited markdown exactly once after the debounce', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
+
+    render(<ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />)
+
+    const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
+
+    vi.useFakeTimers()
+    try {
+      fireEvent.click(changeButton)
+      expect(mocks.notesUpdate).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
+      expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('#then registers a pending-save flush and does not double-save once already flushed', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
+
+    const { unmount } = render(
+      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
+    )
+
+    const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
+    fireEvent.click(changeButton)
+
+    const flush = mocks.registerPendingSave.mock.calls.find(
+      ([key]) => key === 'project-overview:n1'
+    )?.[1] as (() => Promise<void>) | undefined
+    expect(flush).toBeInstanceOf(Function)
+
+    // Simulates useFlushOnQuit calling the registered flush directly
+    // (before-quit / beforeunload), independent of the 1000ms debounce.
+    await act(async () => {
+      await flush?.()
+    })
+
+    expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
+    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
+
+    unmount()
+
+    expect(mocks.unregisterPendingSave).toHaveBeenCalledWith('project-overview:n1')
+    // Already flushed above — unmount must not save the same edit again.
+    expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('#then flushes a still-pending debounced save on unmount instead of dropping it', async () => {
+    mocks.notesGet.mockResolvedValue(homeNote)
+    mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
+
+    const { unmount } = render(
+      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
+    )
+
+    const changeButton = await screen.findByRole('button', { name: 'Change markdown' })
+    fireEvent.click(changeButton)
+    expect(mocks.notesUpdate).not.toHaveBeenCalled()
+
+    unmount()
+
+    await waitFor(() =>
+      expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Changed' })
+    )
+    expect(mocks.notesUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  // The editor's teardown flush reports its last edit after this component has
+  // already moved to the next home note and flushed the old one (#1900).
+  it('#then saves a late edit to the note it was typed in, not the next home note', async () => {
+    mocks.notesGet.mockImplementation((id: string) => Promise.resolve({ ...homeNote, id }))
+    mocks.notesUpdate.mockResolvedValue({ success: true, note: null })
+
+    const { rerender } = render(
+      <ProjectOverviewNote projectId="p1" homeNoteId="n1" onHomeNoteChange={vi.fn()} />
+    )
+    await screen.findByRole('button', { name: 'Change markdown' })
+    const reportLateEdit = mocks.onMarkdownChange!
+
+    rerender(<ProjectOverviewNote projectId="p1" homeNoteId="n2" onHomeNoteChange={vi.fn()} />)
+    reportLateEdit('# Typed in n1')
+
+    expect(mocks.notesUpdate).toHaveBeenCalledWith({ id: 'n1', content: '# Typed in n1' })
+
+    const flushN2 = mocks.registerPendingSave.mock.calls.find(
+      ([key]) => key === 'project-overview:n2'
+    )?.[1] as (() => Promise<void>) | undefined
+    expect(flushN2).toBeInstanceOf(Function)
+    await act(async () => {
+      await flushN2?.()
+    })
+    expect(mocks.notesUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ id: 'n2' }))
+  })
+})

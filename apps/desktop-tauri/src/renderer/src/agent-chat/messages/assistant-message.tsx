@@ -1,0 +1,246 @@
+import type { Message, AgentSourceRef, AgentToolsOffReason } from '@memry/contracts/ipc-agent'
+import { OctagonPauseIcon, WrenchIcon } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
+
+import {
+  Message as AIMessage,
+  MessageContent,
+  MessageResponse
+} from '@/components/ai-elements/message'
+import { ThinkingReasoning } from '@/components/ai-elements/thinking-reasoning'
+import { useStreamingText } from '@/components/ai-elements/use-streaming-text'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { AssistantActions } from './assistant-actions'
+import { AgentSourceRefsProvider, CitedMemryLink } from './memry-links'
+import { ThinkingIndicator, useSilentSince } from './thinking-indicator'
+
+/** Stable identity: a new `components` object would defeat the renderer's own memoisation. */
+const markdownComponents = { a: CitedMemryLink }
+
+const TOOLS_OFF_KEYS = {
+  tools_rejected: 'agentChat.toolsOff.toolsRejected',
+  no_tool_call: 'agentChat.toolsOff.noToolCall',
+  tool_result_rejected: 'agentChat.toolsOff.toolResultRejected',
+  streaming_unsupported: 'agentChat.toolsOff.streamingUnsupported'
+} as const satisfies Record<AgentToolsOffReason, string>
+
+// Tool-call syntax a model writes as text when it was sent no tool schemas: generic
+// XML-style calls, Anthropic-style invoke blocks, and DeepSeek's DSML markers.
+const TOOL_CALL_MARKUP = /<tool_calls?\b|<function_calls\b|<invoke name=|\uff5cDSML\uff5c/
+
+type AssistantMessageModel = Message & {
+  content: Extract<Message['content'], { role: 'assistant' }>
+}
+
+interface AssistantMessageProps {
+  message: Message
+  /** Offered on a turn that stopped at the step limit; sends a new "Continue" turn. */
+  onContinue?: () => void
+}
+
+function isAssistantMessage(message: Message): message is AssistantMessageModel {
+  return message.content.role === 'assistant'
+}
+
+export function AssistantMessage({
+  message,
+  onContinue
+}: AssistantMessageProps): React.JSX.Element | null {
+  if (!isAssistantMessage(message)) return null
+  return <AssistantMessageContent message={message} onContinue={onContinue} />
+}
+
+function AssistantMessageContent({
+  message,
+  onContinue
+}: {
+  message: AssistantMessageModel
+  onContinue?: () => void
+}): React.JSX.Element {
+  const { t } = useT('common')
+  const sourceRefs = 'sources' in message.content.data ? message.content.data.sources : undefined
+  const sources = useMemo(() => uniqueSources(sourceRefs), [sourceRefs])
+  const streaming = message.status === 'streaming'
+  const { shown, typing } = useStreamingText(message.content.data.text)
+  const answerStarted = message.content.data.text.trim().length > 0
+  const reasoning = message.content.data.reasoning ?? ''
+  const hasReasoning = reasoning.trim().length > 0
+  const reasoningNewest = useReasoningIsNewest(
+    message.content.data.text.length,
+    reasoning.length,
+    !answerStarted
+  )
+  const wroteToolCall = TOOL_CALL_MARKUP.test(message.content.data.text)
+  const toolsUnavailable = message.content.data.toolsUnavailable
+  const toolsNotice = toolsUnavailable && (
+    <ToolsOffNotice notice={toolsUnavailable} wroteToolCall={wroteToolCall} />
+  )
+  const silentSince = useSilentSince(
+    `${message.content.data.text.length}:${reasoning.length}`,
+    streaming && answerStarted
+  )
+
+  if (streaming && !answerStarted && !hasReasoning) {
+    return (
+      <AIMessage from="assistant" className="max-w-full">
+        {toolsNotice}
+        <MessageContent
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live-region wrapper; <output> carries form-result semantics and different default display
+          role="status"
+          aria-label={t('agentChat.thinking')}
+          className="min-w-10 overflow-visible border-0 bg-transparent px-3 py-0 shadow-none"
+        >
+          <ThinkingIndicator label={t('agentChat.thinking')} />
+        </MessageContent>
+      </AIMessage>
+    )
+  }
+
+  return (
+    <AIMessage from="assistant" className="max-w-full">
+      {toolsNotice}
+      <MessageContent className="w-full max-w-none overflow-visible rounded-none border-0 bg-transparent px-3 py-0">
+        {hasReasoning && (
+          <ThinkingReasoning
+            thinking={streaming && reasoningNewest}
+            streaming={streaming}
+            answerStarted={answerStarted}
+            durationMs={message.content.data.reasoningDurationMs}
+            thinkingLabel={t('agentChat.reasoning.thinking')}
+            formatSummary={(seconds) =>
+              seconds === null
+                ? t('agentChat.reasoning.thought')
+                : t('agentChat.reasoning.thoughtFor', { seconds })
+            }
+            toggleLabel={t('agentChat.reasoning.toggle')}
+          >
+            <MessageResponse className="space-y-2 text-[13px] leading-5 text-muted-foreground">
+              {reasoning}
+            </MessageResponse>
+          </ThinkingReasoning>
+        )}
+        {message.status === 'error' ? (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+            <p className="font-medium">{t('agentChat.errors.turnFailed')}</p>
+            {answerStarted && (
+              <p className="mt-1 whitespace-pre-wrap break-words">{message.content.data.text}</p>
+            )}
+          </div>
+        ) : (
+          (answerStarted || !streaming) && (
+            <AgentSourceRefsProvider sources={sources}>
+              <MessageResponse
+                components={markdownComponents}
+                isAnimating={streaming || typing}
+                className={cn(
+                  (streaming || typing) && 'aicss-stream-caret',
+                  typing && 'aicss-stream-caret-steady'
+                )}
+              >
+                {shown}
+              </MessageResponse>
+            </AgentSourceRefsProvider>
+          )
+        )}
+        {silentSince !== null && !typing && (
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- live-region wrapper; <output> carries form-result semantics and different default display
+          <div role="status" aria-label={t('agentChat.thinking')} className="mt-2">
+            <ThinkingIndicator label={t('agentChat.thinking')} since={silentSince} />
+          </div>
+        )}
+        {message.content.data.stepLimitReached && !streaming && message.status !== 'error' && (
+          <StepLimitNotice wroteToolCall={wroteToolCall} onContinue={onContinue} />
+        )}
+        {!streaming && !typing && message.status !== 'error' && (
+          <AssistantActions text={message.content.data.text} sources={sources} />
+        )}
+      </MessageContent>
+    </AIMessage>
+  )
+}
+
+/**
+ * True while reasoning is the stream that grew last. A turn is one message, so
+ * every step appends to the same text and reasoning; the answer having started
+ * does not mean the model stopped thinking. When both grow in one update the
+ * answer wins. `initial` covers a message first seen mid-turn.
+ */
+function useReasoningIsNewest(
+  textLength: number,
+  reasoningLength: number,
+  initial: boolean
+): boolean {
+  const [seen, setSeen] = useState({
+    text: textLength,
+    reasoning: reasoningLength,
+    newest: initial
+  })
+  if (seen.text === textLength && seen.reasoning === reasoningLength) return seen.newest
+  const newest = seen.text === textLength
+  setSeen({ text: textLength, reasoning: reasoningLength, newest })
+  return newest
+}
+
+function ToolsOffNotice({
+  notice,
+  wroteToolCall
+}: {
+  notice: NonNullable<AssistantMessageModel['content']['data']['toolsUnavailable']>
+  wroteToolCall: boolean
+}): React.JSX.Element {
+  const { t } = useT('common')
+  const { reason, detail } = notice
+  const sentence = reason
+    ? t(TOOLS_OFF_KEYS[reason])
+    : detail
+      ? t('agentChat.toolsUnavailableWithDetail', { detail })
+      : t('agentChat.toolsUnavailable')
+  return (
+    <p className="flex items-start gap-1.5 px-3 text-xs text-muted-foreground">
+      <WrenchIcon aria-hidden className="mt-0.5 size-3 shrink-0" />
+      <span>
+        {sentence}
+        {reason && detail && ` ${t('agentChat.toolsOff.providerSaid', { detail })}`}
+        {wroteToolCall && ` ${t('agentChat.toolsOff.wroteToolCall')}`}
+      </span>
+    </p>
+  )
+}
+
+function StepLimitNotice({
+  wroteToolCall,
+  onContinue
+}: {
+  wroteToolCall: boolean
+  onContinue?: () => void
+}): React.JSX.Element {
+  const { t } = useT('common')
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+      <OctagonPauseIcon aria-hidden className="size-3 shrink-0" />
+      <span>
+        {t('agentChat.stepLimit.notice')}
+        {wroteToolCall && ` ${t('agentChat.toolsOff.wroteToolCall')}`}
+      </span>
+      {onContinue && (
+        <Button type="button" variant="outline" size="sm" className="h-6 px-2" onClick={onContinue}>
+          {t('agentChat.stepLimit.continue')}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function uniqueSources(sources: AgentSourceRef[] | undefined): AgentSourceRef[] {
+  if (!sources) return []
+  const seen = new Set<string>()
+  const result: AgentSourceRef[] = []
+  for (const source of sources) {
+    if (seen.has(source.href)) continue
+    seen.add(source.href)
+    result.push(source)
+  }
+  return result
+}

@@ -1,0 +1,351 @@
+import { useEffect, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useT } from '@memry/i18n/renderer'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Spinner } from '@/components/ui/spinner'
+import { useImportRun } from '@/hooks/use-import-run'
+import { notesKeys } from '@/hooks/use-notes-query'
+import { formatImportMessage, formatSkippedReason } from '@/lib/import-message'
+import {
+  OneNoteImportPanel,
+  type OneNotePanelState
+} from '@/components/settings/onenote-import-panel'
+import { ReadwiseImportPanel } from '@/components/settings/readwise-import-panel'
+import {
+  AppleNotesFolderPanel,
+  type AppleNotesPanelState
+} from '@/components/settings/apple-notes-folder-panel'
+import type { ImporterItem } from '@/hooks/use-importers'
+
+/** Account-based importers bring their own source panel, keyed by importer id. */
+const ACCOUNT_PANELS: Record<
+  string,
+  React.ComponentType<{ disabled: boolean; onStateChange: (state: OneNotePanelState) => void }>
+> = {
+  onenote: OneNoteImportPanel,
+  readwise: ReadwiseImportPanel
+}
+
+interface ImportDialogProps {
+  item: ImporterItem | null
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function ImportDialog({ item, open, onOpenChange }: ImportDialogProps) {
+  const { t } = useT('settings')
+  const run = useImportRun()
+  const queryClient = useQueryClient()
+  const [paths, setPaths] = useState<string[]>([])
+  const [accountState, setAccountState] = useState<OneNotePanelState>({
+    ready: false,
+    options: {}
+  })
+  // Apple Notes narrows the run to picked folders once a source is chosen.
+  const [appleNotesState, setAppleNotesState] = useState<AppleNotesPanelState>({
+    ready: false,
+    options: {}
+  })
+
+  // The import runner drains its projection pipeline before resolving, so once a
+  // summary arrives the note_cache is complete. Refetch the sidebar tree (notes +
+  // folders + tags) so imported notes appear without a manual reload.
+  useEffect(() => {
+    if (!run.summary) return
+    void queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    void queryClient.invalidateQueries({ queryKey: notesKeys.folders() })
+    void queryClient.invalidateQueries({ queryKey: notesKeys.tags() })
+  }, [run.summary, queryClient])
+
+  const reset = () => {
+    setPaths([])
+    setAccountState({ ready: false, options: {} })
+    setAppleNotesState({ ready: false, options: {} })
+    run.reset()
+  }
+
+  const handleOpenChange = (next: boolean) => {
+    if (run.isRunning) return // don't dismiss an in-flight import
+    if (!next) reset()
+    onOpenChange(next)
+  }
+
+  const choose = async (directory = false) => {
+    if (!item) return
+    const result = await window.api.import.pickFiles({
+      label: item.fileSpec.label,
+      extensions: item.fileSpec.extensions,
+      allowMultiple: item.fileSpec.allowMultiple,
+      directory: directory || item.fileSpec.directory,
+      defaultPath: item.fileSpec.defaultPath,
+      message: item.fileSpec.message
+    })
+    if (result.canceled || result.filePaths.length === 0) return
+    setPaths(result.filePaths)
+    setAppleNotesState({ ready: false, options: {} })
+    if (item.supportsPreview) void run.runPreview(item.id, result.filePaths)
+  }
+
+  const isDirectoryPick = Boolean(item?.fileSpec.directory)
+  // Picker copy belongs to the importer: Apple Notes asks for one specific
+  // container folder, NotePlan for a whole vault. Absent → generic label, no hint.
+  const chooseLabelKey = item?.fileSpec.chooseLabelKey
+  const folderHintKey = item?.fileSpec.folderHintKey
+  // Electron degrades a combined file+directory panel to directory-only on
+  // Windows/Linux, so an importer that accepts either gets two buttons.
+  const offersFolderToo = Boolean(item?.fileSpec.allowDirectory) && !isDirectoryPick
+  // Account-based importers replace the file picker with their own panel. The
+  // flag decides the flow, not the map: an account importer whose panel is
+  // missing must not silently fall back to a file picker it cannot use.
+  const isAccountBased = Boolean(item?.accountBased)
+  const AccountPanel = isAccountBased && item ? ACCOUNT_PANELS[item.id] : undefined
+  const appleNotesSourcePath = item?.id === 'apple-notes' ? paths[0] : undefined
+
+  const startImport = () => {
+    if (!item || run.isRunning) return
+    if (isAccountBased) {
+      if (!AccountPanel || !accountState.ready) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- importer options are typed per importer; run.start takes them as an opaque record
+      void run.start(item.id, [], accountState.options as Record<string, unknown>)
+      return
+    }
+    if (paths.length === 0) return
+    void run.start(
+      item.id,
+      paths,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the importer's options payload is a plain JSON object forwarded as-is
+      appleNotesSourcePath ? (appleNotesState.options as Record<string, unknown>) : undefined
+    )
+  }
+
+  const summary = run.summary
+  const showProgress = (run.isRunning || Boolean(run.progress)) && !run.error
+  // Progress lines carry a code since 2026.8; older payloads send plain English
+  // strings, which `formatImportMessage` passes through untouched.
+  const statusText = run.progress ? formatImportMessage(run.progress.status) : ''
+  const needsPreview = Boolean(item?.supportsPreview)
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{item ? t('import.dialog.title', { name: item.name }) : ''}</DialogTitle>
+          <DialogDescription>{item ? t(item.descriptionKey) : ''}</DialogDescription>
+        </DialogHeader>
+
+        {!summary && (
+          <div className="flex min-w-0 flex-col gap-3 py-2">
+            {AccountPanel && (
+              <AccountPanel disabled={run.isRunning} onStateChange={setAccountState} />
+            )}
+            {!isAccountBased && isDirectoryPick && folderHintKey && (
+              <p className="text-xs/4 text-muted-foreground">{t(folderHintKey)}</p>
+            )}
+            {!isAccountBased && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void choose()}
+                  disabled={run.isRunning || run.isPreviewing}
+                >
+                  {isDirectoryPick
+                    ? t(chooseLabelKey ?? 'import.dialog.chooseDirectory')
+                    : t('import.dialog.choose')}
+                </Button>
+                {offersFolderToo && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void choose(true)}
+                    disabled={run.isRunning || run.isPreviewing}
+                  >
+                    {t('import.dialog.chooseDirectory')}
+                  </Button>
+                )}
+              </div>
+            )}
+            {offersFolderToo && (
+              <p className="text-xs/4 text-muted-foreground">
+                {t('import.dialog.folderKeepsAssets')}
+              </p>
+            )}
+            {paths.length > 0 && (
+              <p className="text-xs/4 text-muted-foreground truncate">
+                {t('import.dialog.selected', { count: paths.length })}
+              </p>
+            )}
+
+            {appleNotesSourcePath && !run.summary && (
+              <AppleNotesFolderPanel
+                key={appleNotesSourcePath}
+                sourcePath={appleNotesSourcePath}
+                disabled={run.isRunning}
+                onStateChange={setAppleNotesState}
+              />
+            )}
+
+            {run.isPreviewing && (
+              <div className="flex items-center gap-2 text-[13px]/4 text-foreground">
+                <Spinner />
+                <span>{t('import.dialog.running')}</span>
+              </div>
+            )}
+
+            {run.preview && (
+              <div className="flex flex-col border-t border-border">
+                {run.preview.groups.map((g, gi) => (
+                  // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
+                  <div key={gi} className="border-b border-border py-2.5 text-xs/4">
+                    <div className="font-medium text-[13px]/4 text-foreground">{g.label}</div>
+                    {g.error ? (
+                      <div className="mt-1 text-destructive">{formatImportMessage(g.error)}</div>
+                    ) : (
+                      <>
+                        <div className="mt-1 text-muted-foreground">
+                          {g.counts.map((c) => t(c.labelKey, { count: c.value })).join(' · ')}
+                        </div>
+                        {g.sampleTitles && g.sampleTitles.length > 0 && (
+                          <div className="mt-1 truncate text-muted-foreground">
+                            {g.sampleTitles.join(' · ')}
+                          </div>
+                        )}
+                        {g.warnings && g.warnings.length > 0 && (
+                          <details className="mt-1">
+                            <summary className="cursor-pointer">
+                              {t('import.preview.warnings')} ({g.warnings.length})
+                            </summary>
+                            <ul className="mt-1 ps-4 list-disc">
+                              {g.warnings.map((w, i) => (
+                                // oxlint-disable-next-line react/no-array-index-key -- positional list without stable ids; items are never reordered
+                                <li key={i}>{formatImportMessage(w)}</li>
+                              ))}
+                            </ul>
+                          </details>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {showProgress && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 text-[13px]/4 text-foreground">
+                  {run.isRunning && <Spinner />}
+                  <span className="truncate">{statusText || t('import.dialog.running')}</span>
+                </div>
+                {run.progress && run.progress.total > 0 && (
+                  <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-[var(--tint)] transition-[width]"
+                      style={{
+                        width: `${Math.min(100, Math.round((run.progress.completed / run.progress.total) * 100))}%`
+                      }}
+                    />
+                  </div>
+                )}
+                <p className="text-xs/4 text-muted-foreground">
+                  {t('import.dialog.progress', {
+                    completed: run.progress?.completed ?? 0,
+                    total: run.progress?.total ?? 0
+                  })}
+                </p>
+              </div>
+            )}
+
+            {run.error && <p className="text-xs/4 text-destructive">{run.error}</p>}
+          </div>
+        )}
+
+        {summary && (
+          <div className="flex flex-col gap-1.5 py-2">
+            <p className="font-medium text-[13px]/4 text-foreground">
+              {t('import.dialog.summary.title')}
+            </p>
+            <p className="text-xs/4 text-muted-foreground">
+              {t('import.dialog.summary.imported', { count: summary.imported })}
+            </p>
+            {summary.attachments > 0 && (
+              <p className="text-xs/4 text-muted-foreground">
+                {t('import.dialog.summary.attachments', { count: summary.attachments })}
+              </p>
+            )}
+            {summary.skipped > 0 && (
+              <p className="text-xs/4 text-muted-foreground">
+                {t('import.dialog.summary.skipped', { count: summary.skipped })}
+              </p>
+            )}
+            {/*
+              Absent on summaries from builds before grouped skip reasons. Not
+              sliced here: the main process already bounds the list, and a
+              render-side cut would drop exactly the coded lines it exempts.
+            */}
+            {summary.skippedReasons?.map((group) => (
+              <p
+                // The grouping key the main process used: a code, or the raw
+                // reason text. Unique per group by construction.
+                key={
+                  typeof group.reason === 'string'
+                    ? group.reason
+                    : (group.reason.code ?? group.reason.message)
+                }
+                className="ps-3 text-xs/4 text-muted-foreground"
+              >
+                {formatSkippedReason(group.reason, group.count)}
+              </p>
+            ))}
+            {summary.failed.length > 0 && (
+              <p className="text-xs/4 text-destructive">
+                {t('import.dialog.summary.failed', { count: summary.failed.length })}
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          {summary ? (
+            <Button size="sm" onClick={() => handleOpenChange(false)}>
+              {t('import.dialog.done')}
+            </Button>
+          ) : run.isRunning ? (
+            <Button variant="outline" size="sm" onClick={() => run.cancel()}>
+              {t('import.dialog.cancel')}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              disabled={
+                isAccountBased
+                  ? !AccountPanel || !accountState.ready
+                  : paths.length === 0 ||
+                    run.isPreviewing ||
+                    (needsPreview && !run.preview) ||
+                    (Boolean(appleNotesSourcePath) && !appleNotesState.ready)
+              }
+              onPointerDown={startImport}
+              onClick={startImport}
+            >
+              {isAccountBased && accountState.confirmLabel
+                ? accountState.confirmLabel
+                : item?.id === 'readwise'
+                  ? t('import.dialog.readwise.importNow')
+                  : needsPreview
+                    ? t('import.preview.confirm')
+                    : t('import.dialog.start')}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}

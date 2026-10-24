@@ -1,0 +1,98 @@
+import * as React from 'react'
+
+import { cn } from '@/lib/utils'
+import { Picker } from '@/components/ui/picker'
+import type { Status } from '@/data/tasks-data'
+import { resolveTaskStatus } from '@/lib/task-utils'
+import { StatusIcon } from './status-icon'
+
+const stopTriggerPropagation = (event: React.SyntheticEvent): void => {
+  event.stopPropagation()
+}
+
+interface InlineStatusPopoverProps {
+  statusId: string
+  statuses: Status[]
+  isCompleted: boolean
+  onStatusChange: (statusId: string) => void
+  onToggleComplete: () => void
+  disabled?: boolean
+  size?: 'sm' | 'md' | 'lg'
+  /** Controlled open state, for a host that opens the picker from the keyboard. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+
+export const InlineStatusPopover = ({
+  statusId,
+  statuses,
+  isCompleted,
+  onStatusChange,
+  onToggleComplete,
+  disabled = false,
+  size = 'lg',
+  open,
+  onOpenChange
+}: InlineStatusPopoverProps): React.JSX.Element => {
+  const currentStatus = resolveTaskStatus(statusId, statuses)
+  const statusColor = currentStatus?.color || '#6B7280'
+  const effectiveType = isCompleted ? 'done' : (currentStatus?.type ?? 'todo')
+
+  const handleSelect = React.useCallback(
+    (newStatusId: string) => {
+      if (newStatusId === statusId) return
+
+      const newStatus = statuses.find((s) => s.id === newStatusId)
+      onStatusChange(newStatusId)
+
+      if (newStatus?.type === 'done' && !isCompleted) {
+        onToggleComplete()
+      } else if (newStatus?.type !== 'done' && isCompleted) {
+        onToggleComplete()
+      }
+    },
+    [statusId, statuses, onStatusChange, isCompleted, onToggleComplete]
+  )
+
+  return (
+    <Picker
+      value={currentStatus?.id ?? statusId}
+      onValueChange={handleSelect}
+      open={open}
+      onOpenChange={onOpenChange}
+    >
+      <Picker.Trigger asChild disabled={disabled}>
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(
+            'shrink-0 rounded-sm p-0.5 transition-colors cursor-pointer',
+            'hover:bg-accent/80',
+            'focus-visible:outline-none',
+            disabled && 'pointer-events-none'
+          )}
+          aria-label={`Status: ${currentStatus?.name || 'Unknown'}. Click to change.`}
+          onClick={stopTriggerPropagation}
+          onPointerDown={stopTriggerPropagation}
+          onKeyDown={stopTriggerPropagation}
+        >
+          <StatusIcon type={effectiveType} color={statusColor} size={size} />
+        </button>
+      </Picker.Trigger>
+      <Picker.Content width="auto" align="start" sideOffset={4}>
+        <Picker.List>
+          {statuses.map((status) => (
+            <Picker.Item
+              key={status.id}
+              value={status.id}
+              label={status.name}
+              icon={<StatusIcon type={status.type} color={status.color} />}
+              indicator="check"
+              indicatorColor={status.color}
+            />
+          ))}
+        </Picker.List>
+      </Picker.Content>
+    </Picker>
+  )
+}

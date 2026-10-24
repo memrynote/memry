@@ -1,0 +1,41 @@
+/*
+ * The portal window (portal-window.tsx, portal-window-plugin.ts): a nested note
+ * editor that shows only the blocks the portal lets through.
+ */
+
+/* Blocks outside the window. They stay in the source's document. */
+.portal-window .portal-window-hidden {
+  display: none !important;
+}
+
+/* The anchor (` ^id`) that addresses a block is plumbing, not prose. */
+.portal-window .portal-window-anchor {
+  color: var(--muted-foreground);
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* The path from the note down to a block window's root: the root sits at the
+   window's left edge instead of under its ancestors' indents. */
+.portal-window .portal-window-ancestor > .bn-block > .bn-block-group {
+  margin-inline-start: 0;
+}
+
+/* The nested editor paints the note surface (white) over the frame behind it,
+   which hides the selected portal's tint. The window shows the frame instead. */
+.portal-window :is(.bn-container, .bn-root, .bn-editor) {
+  background-color: transparent !important;
+}
+
+/* The window sits inside the portal's padding, so the nested editor drops its
+   own gutters. */
+.portal-window .bn-editor {
+  padding-inline: 0 !important;
+}
+
+/* The window already sits behind the portal's own rail, so the vertical
+   indent guide BlockNote draws beside nested blocks is a second line down the
+   same edge. Nesting still reads from the indent. */
+:root .portal-window .bn-block-group .bn-block-group > .bn-block-outer::before {
+  display: none !important;
+}

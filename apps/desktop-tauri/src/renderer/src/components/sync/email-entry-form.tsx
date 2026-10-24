@@ -1,0 +1,89 @@
+import { useState, useCallback, type SyntheticEvent } from 'react'
+import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Loader2 } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
+
+const emailSchema = z.email()
+
+interface EmailEntryFormProps {
+  onSubmit: (email: string) => void
+  isLoading: boolean
+  error: string | null
+  defaultEmail?: string
+}
+
+export function EmailEntryForm({
+  onSubmit,
+  isLoading,
+  error,
+  defaultEmail
+}: EmailEntryFormProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const { t: tCommon } = useT('common')
+  const [email, setEmail] = useState(defaultEmail ?? '')
+  const [validationError, setValidationError] = useState<string | null>(null)
+
+  const displayError = error ?? validationError
+
+  const handleSubmit = useCallback(
+    (e: SyntheticEvent) => {
+      e.preventDefault()
+      setValidationError(null)
+      const result = emailSchema.safeParse(email.trim())
+      if (!result.success) {
+        setValidationError(t('setup.email.invalid'))
+        return
+      }
+      onSubmit(result.data)
+    },
+    [email, onSubmit, t]
+  )
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="space-y-2.5">
+        <Label htmlFor="email" className="sr-only">
+          {t('setup.email.label')}
+        </Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder={t('setup.email.placeholder')}
+          value={email}
+          onChange={(e) => {
+            setEmail(e.target.value)
+            setValidationError(null)
+          }}
+          disabled={isLoading}
+          aria-describedby={displayError ? 'email-error' : undefined}
+          aria-invalid={!!displayError}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
+          autoFocus
+          className="h-9 text-sm focus-visible:border-[var(--tint)]/50"
+        />
+        {displayError && (
+          <p id="email-error" className="text-sm text-destructive" role="alert">
+            {displayError}
+          </p>
+        )}
+      </div>
+      <Button
+        type="submit"
+        className="w-full h-9 bg-[var(--tint)] text-[var(--tint-foreground)] shadow-sm hover:bg-[var(--tint-hover)]"
+        disabled={isLoading || !email.trim()}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            {t('setup.email.sending')}
+          </>
+        ) : (
+          tCommon('button.continue')
+        )}
+      </Button>
+    </form>
+  )
+}

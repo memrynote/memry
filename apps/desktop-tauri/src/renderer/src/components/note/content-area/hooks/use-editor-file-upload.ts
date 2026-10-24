@@ -1,0 +1,325 @@
+/* oxlint-disable typescript/no-explicit-any */
+
+import { useCallback, useEffect } from 'react'
+import { notesService } from '@/services/notes-service'
+import { createFileBlockContent } from '../file-block'
+import { newFileDisplayProps } from '../file-block-markers'
+import type { DropTarget } from '../drop-target-utils'
+import { createLogger } from '@/lib/logger'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { toast } from 'sonner'
+import { getI18n } from 'react-i18next'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { noteRelativeRef } from '@/lib/resolve-note-relative-url'
+import { MEMRY_NOTE_DRAG_MIME, readTabDragData } from '@/lib/drag-mime'
+import { createWikiLinkInlineContent } from '../wiki-link'
+import { DEFAULT_IMAGE_PREVIEW_WIDTH } from '@memry/editor-schema/blocks'
+
+const log = createLogger('Hook:EditorFileUpload')
+
+// A rejected drop used to be log-only: the file simply never appeared and the
+// user was left guessing. The reasons are ones users hit (over the size cap, an
+// extension the vault does not accept), so they have to be said out loud.
+function reportUploadFailure(error: unknown): void {
+  const t = getI18n().getFixedT(null, 'notes')
+  toast.error(extractErrorMessage(error, t('editor.upload.failed')))
+}
+
+const IMAGE_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/jpg',
+  'image/gif',
+  'image/webp',
+  'image/svg+xml'
+])
+
+export function isImageFile(file: File): boolean {
+  return IMAGE_TYPES.has(file.type.toLowerCase())
+}
+
+interface EditorFileUploadParams {
+  editor: any
+  noteId?: string
+  editable?: boolean
+  containerRef: React.RefObject<HTMLDivElement | null>
+  noteIdRef: React.RefObject<string | undefined>
+  dropTarget: DropTarget | null
+  onDragReset: () => void
+  /**
+   * The note's own vault-relative path, so a dropped vault file can be
+   * referenced relative to it. Resolves to undefined when the note is not in
+   * the index, which drops the embed back to an absolute URL.
+   */
+  fetchNotePath: () => Promise<string | undefined>
+  /** The Settings default for a PDF that arrives by drop (#2517). */
+  pdfDisplay?: 'embed' | 'link'
+  /** A PDF block was just inserted by a drop; the caller offers Embedded / Link. */
+  onPdfInserted?: (blockId: string) => void
+}
+
+interface EditorFileUploadResult {
+  uploadFile: (file: File) => Promise<string>
+  handleNonImageDrop: (e: React.DragEvent) => Promise<boolean>
+  handleInternalItemDrop: (dataTransfer: DataTransfer) => Promise<void>
+}
+
+export function useEditorFileUpload({
+  editor,
+  noteId,
+  editable,
+  containerRef,
+  noteIdRef,
+  dropTarget,
+  onDragReset,
+  fetchNotePath,
+  pdfDisplay,
+  onPdfInserted
+}: EditorFileUploadParams): EditorFileUploadResult {
+  const uploadFile = useCallback(
+    async (file: File): Promise<string> => {
+      const currentNoteId = noteIdRef.current
+      if (!currentNoteId) {
+        throw new Error('Cannot upload: no note selected')
+      }
+
+      const result = await notesService.uploadAttachment(currentNoteId, file)
+      if (!result.success || !result.path) {
+        throw new Error(result.error || 'Upload failed')
+      }
+
+      return result.path
+    },
+    [noteIdRef]
+  )
+
+  const handleNonImageDrop = useCallback(
+    async (e: React.DragEvent) => {
+      const files = Array.from(e.dataTransfer.files)
+      const nonImageFiles = files.filter((f) => !isImageFile(f))
+
+      if (nonImageFiles.length === 0) {
+        return false
+      }
+
+      e.preventDefault()
+      e.stopPropagation()
+
+      const insertTarget = dropTarget
+      onDragReset()
+
+      if (!noteId) {
+        log.warn('Cannot upload attachment: no noteId provided')
+        return true
+      }
+
+      if (!editable) return true
+
+      let referenceBlockId: string
+      let placement: 'before' | 'after' = 'after'
+
+      if (insertTarget) {
+        referenceBlockId = insertTarget.blockId
+        placement = insertTarget.position
+      } else {
+        referenceBlockId = editor.getTextCursorPosition().block.id
+      }
+
+      for (const file of files) {
+        try {
+          const result = await notesService.uploadAttachment(noteId, file)
+
+          if (!result.success) {
+            log.error('Upload failed', result.error)
+            trackRendererError(
+              'editor_attachment_upload',
+              new Error(result.error || 'Upload failed')
+            )
+            reportUploadFailure(result.error)
+            continue
+          }
+
+          if (result.type === 'image' && result.path) {
+            editor.insertBlocks(
+              [
+                {
+                  type: 'image',
+                  props: {
+                    url: result.path,
+                    caption: result.name || file.name,
+                    previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH
+                  }
+                }
+              ],
+              referenceBlockId,
+              placement
+            )
+          } else if (result.path) {
+            const mimeType = result.mimeType || file.type
+            const [inserted] = editor.insertBlocks(
+              [
+                createFileBlockContent({
+                  url: result.path,
+                  name: result.name || file.name,
+                  size: result.size || file.size,
+                  mimeType,
+                  ...newFileDisplayProps(mimeType, pdfDisplay)
+                })
+              ],
+              referenceBlockId,
+              placement
+            )
+            if (mimeType === 'application/pdf') onPdfInserted?.(inserted.id)
+          }
+
+          placement = 'after'
+        } catch (error) {
+          log.error('Failed to upload file', file.name, error)
+          trackRendererError('editor_attachment_upload', error)
+          reportUploadFailure(error)
+        }
+      }
+
+      return true
+    },
+    [noteId, editable, editor, dropTarget, onDragReset, pdfDisplay, onPdfInserted]
+  )
+
+  // Embed a file-type item dragged out of the left sidebar. Unlike an OS file
+  // drop, the bytes already live in the vault, so we reference the item where it
+  // already is instead of copying into attachments/.
+  const handleInternalItemDrop = useCallback(
+    async (dataTransfer: DataTransfer): Promise<void> => {
+      const itemId = dataTransfer.getData(MEMRY_NOTE_DRAG_MIME)
+      if (!itemId) return
+      // Read before the first await: the drag data store is only readable
+      // while the drop event is being dispatched.
+      const draggedTab = readTabDragData(dataTransfer)
+
+      const insertTarget = dropTarget
+      onDragReset()
+
+      if (!editable) return
+
+      let referenceBlockId: string
+      let placement: 'before' | 'after' = 'after'
+      if (insertTarget) {
+        referenceBlockId = insertTarget.blockId
+        placement = insertTarget.position
+      } else {
+        referenceBlockId = editor.getTextCursorPosition().block.id
+      }
+
+      try {
+        const file = await notesService.getFile(itemId)
+        if (!file && draggedTab?.type === 'note') {
+          // A markdown note is not a file to embed: link it, as `[[` would.
+          editor.insertBlocks(
+            [
+              {
+                type: 'paragraph',
+                content: [createWikiLinkInlineContent(draggedTab.title, ''), ' ']
+              }
+            ],
+            referenceBlockId,
+            placement
+          )
+          return
+        }
+        if (!file?.absolutePath) {
+          log.warn('Cannot embed dropped item: no file path', itemId)
+          return
+        }
+
+        // Relative to the note, so the embed survives reaching another device
+        // where the vault sits at a different absolute path. Falls back to the
+        // absolute URL when the note's own path is unknown — the same trade
+        // `saveAttachment` makes in the main process.
+        const notePath = await fetchNotePath()
+        const url =
+          notePath && file.path
+            ? noteRelativeRef(notePath, file.path)
+            : toMemryFileUrl(file.absolutePath)
+        const name = file.title || 'file'
+        const mimeType = file.mimeType || ''
+
+        if (file.fileType === 'image' || mimeType.startsWith('image/')) {
+          editor.insertBlocks(
+            [
+              {
+                type: 'image',
+                props: { url, caption: name, previewWidth: DEFAULT_IMAGE_PREVIEW_WIDTH }
+              }
+            ],
+            referenceBlockId,
+            placement
+          )
+        } else {
+          const [inserted] = editor.insertBlocks(
+            [
+              createFileBlockContent({
+                url,
+                name,
+                size: file.fileSize ?? 0,
+                mimeType,
+                ...newFileDisplayProps(mimeType, pdfDisplay)
+              })
+            ],
+            referenceBlockId,
+            placement
+          )
+          if (mimeType === 'application/pdf') onPdfInserted?.(inserted.id)
+        }
+      } catch (error) {
+        log.error('Failed to embed dropped item', itemId, error)
+      }
+    },
+    [editable, editor, dropTarget, onDragReset, fetchNotePath, pdfDisplay, onPdfInserted]
+  )
+
+  // Capture-phase drop handler to intercept before BlockNote
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return undefined
+
+    const captureDropHandler = (e: DragEvent): void => {
+      const dataTransfer = e.dataTransfer
+      if (!dataTransfer) return
+
+      const files = Array.from(dataTransfer.files || [])
+      const hasNonImageFiles = files.some((f) => !isImageFile(f))
+
+      if (hasNonImageFiles) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- the assertion bridges two unrelated structural types; the unknown hop is deliberate; boundary cast: the runtime shape is fixed by the producer named at this call, which has no exported type
+        void handleNonImageDrop({
+          // oxlint-disable-next-line typescript/no-misused-spread -- spread kept as is: it builds the synthetic event object handed to handleNonImageDrop, and replacing it would change that object
+          ...e,
+          dataTransfer,
+          preventDefault: () => e.preventDefault(),
+          stopPropagation: () => e.stopPropagation(),
+          currentTarget: container
+        } as unknown as React.DragEvent)
+        return
+      }
+
+      // Internal file-type sidebar item (no OS files on the drag).
+      if (files.length === 0 && dataTransfer.types.includes(MEMRY_NOTE_DRAG_MIME)) {
+        e.preventDefault()
+        e.stopPropagation()
+        void handleInternalItemDrop(dataTransfer)
+      }
+    }
+
+    container.addEventListener('drop', captureDropHandler, { capture: true })
+
+    return () => {
+      container.removeEventListener('drop', captureDropHandler, { capture: true })
+    }
+  }, [handleNonImageDrop, handleInternalItemDrop, containerRef])
+
+  return { uploadFile, handleNonImageDrop, handleInternalItemDrop }
+}

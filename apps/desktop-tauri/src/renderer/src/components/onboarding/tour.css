@@ -1,0 +1,45 @@
+/* Restyle driver.js popover to match Memry theme tokens. */
+.driver-popover {
+  background-color: var(--popover, #fff);
+  color: var(--popover-foreground, #1a1a1a);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  padding: 16px;
+}
+
+.driver-popover-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.driver-popover-description {
+  font-size: 13px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+.driver-popover-progress-text {
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.driver-popover-next-btn,
+.driver-popover-prev-btn {
+  background-color: var(--primary, #ff671a);
+  color: var(--primary-foreground, #fff);
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  text-shadow: none;
+}
+
+.driver-popover-prev-btn {
+  background-color: transparent;
+  color: var(--popover-foreground, #1a1a1a);
+  opacity: 0.7;
+}
+
+.driver-popover-arrow {
+  border-color: var(--popover, #fff);
+}

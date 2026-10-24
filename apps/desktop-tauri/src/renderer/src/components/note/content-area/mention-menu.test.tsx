@@ -1,0 +1,254 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { CanvasChoiceMenu, MentionMenu, type MentionSuggestionItem } from './mention-menu'
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string) => {
+      const messages: Record<string, string> = {
+        'menus.mention.date': 'Date',
+        'menus.mention.now': 'Now',
+        'menus.mention.remindMe': 'Remind me',
+        'menus.mention.dateHint': 'Keep typing a date…',
+        'menus.mention.showMore': 'Show more',
+        'menus.mention.loading': 'Loading notes...',
+        'menus.mention.empty': 'No notes found',
+        'menus.mention.aria': 'Date and note suggestions',
+        'menus.mention.canvases': 'Canvases',
+        'menus.mention.choiceTitle': 'Insert canvas as',
+        'menus.mention.choiceMention': 'Mention',
+        'menus.mention.choiceEmbed': 'Embed'
+      }
+      return messages[key] ?? key
+    }
+  })
+}))
+
+const value = {
+  dateISO: '2026-06-21T09:00:00.000Z',
+  hasTime: false,
+  dateFormat: 'relative' as const,
+  remind: 'none' as const,
+  timeFormat: 'system' as const
+}
+
+const dateItem: MentionSuggestionItem = { kind: 'date', label: 'Next Sunday', value }
+const remindItem: MentionSuggestionItem = {
+  kind: 'remind',
+  subtitle: '21 June 2026',
+  value: { ...value, remind: 'at' }
+}
+const noteA: MentionSuggestionItem = { kind: 'note', id: 'n1', title: 'Q3 Roadmap' }
+const noteB: MentionSuggestionItem = { kind: 'note', id: 'n2', title: 'Meeting prep' }
+const canvasA: MentionSuggestionItem = { kind: 'canvas', id: 'cv1', title: 'Roadmap Board' }
+
+function renderMenu(props: Partial<React.ComponentProps<typeof MentionMenu>> = {}) {
+  const onItemClick = vi.fn()
+  const onShowMore = vi.fn()
+  render(
+    <MentionMenu
+      items={[dateItem, remindItem, noteA, noteB]}
+      loadingState="loaded"
+      selectedIndex={0}
+      onItemClick={onItemClick}
+      hasMore={false}
+      onShowMore={onShowMore}
+      {...props}
+    />
+  )
+  return { onItemClick, onShowMore }
+}
+
+describe('MentionMenu', () => {
+  it('renders the Date group, Remind row with subtitle, divider, and notes', () => {
+    renderMenu()
+    expect(screen.getByText('Date')).toBeInTheDocument()
+    expect(screen.getByText('Next Sunday')).toBeInTheDocument()
+    expect(screen.getByText('Remind me')).toBeInTheDocument()
+    expect(screen.getByText('— 21 June 2026')).toBeInTheDocument()
+    expect(screen.getByText('Q3 Roadmap')).toBeInTheDocument()
+    expect(screen.getByRole('separator')).toBeInTheDocument()
+  })
+
+  it('renders a non-selectable hint row for a date-hint item', () => {
+    const onItemClick = vi.fn()
+    render(
+      <MentionMenu
+        items={[{ kind: 'date-hint' }]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+        hasMore={false}
+        onShowMore={vi.fn()}
+      />
+    )
+    expect(screen.getByText('Keep typing a date…')).toBeInTheDocument()
+    // The hint is informational only — never an option, never the "Date" group.
+    expect(screen.queryByRole('option')).not.toBeInTheDocument()
+    expect(screen.queryByText('Date')).not.toBeInTheDocument()
+  })
+
+  it('renders no Date group and no divider when items are notes only', () => {
+    renderMenu({ items: [noteA, noteB] })
+    expect(screen.queryByText('Date')).not.toBeInTheDocument()
+    expect(screen.queryByText('Remind me')).not.toBeInTheDocument()
+    expect(screen.queryByRole('separator')).not.toBeInTheDocument()
+  })
+
+  it('shows "Show more" only when hasMore, and clicking it fires onShowMore (not onItemClick)', () => {
+    const { rerender } = render(
+      <MentionMenu
+        items={[noteA, noteB]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={vi.fn()}
+        hasMore={false}
+        onShowMore={vi.fn()}
+      />
+    )
+    expect(screen.queryByText('Show more')).not.toBeInTheDocument()
+
+    const onItemClick = vi.fn()
+    const onShowMore = vi.fn()
+    rerender(
+      <MentionMenu
+        items={[noteA, noteB]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+        hasMore={true}
+        onShowMore={onShowMore}
+      />
+    )
+    fireEvent.click(screen.getByText('Show more'))
+    expect(onShowMore).toHaveBeenCalledTimes(1)
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('calls onItemClick with the clicked note item', () => {
+    const { onItemClick } = renderMenu()
+    fireEvent.click(screen.getByText('Q3 Roadmap'))
+    expect(onItemClick).toHaveBeenCalledWith(noteA)
+  })
+
+  it('calls onItemClick with the date and remind items', () => {
+    const { onItemClick } = renderMenu()
+    fireEvent.click(screen.getByText('Next Sunday'))
+    expect(onItemClick).toHaveBeenCalledWith(dateItem)
+    fireEvent.click(screen.getByText('Remind me'))
+    expect(onItemClick).toHaveBeenCalledWith(remindItem)
+  })
+})
+
+describe('MentionMenu Tab selection', () => {
+  it('Tab selects the highlighted Remind row', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 1 })
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(remindItem)
+  })
+
+  it('Tab selects the highlighted Date row', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 0 })
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(dateItem)
+  })
+
+  it('Tab selects a highlighted note row', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 2 })
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(noteA)
+  })
+
+  it('Tab on the non-selectable hint defers to the ghost (no select)', () => {
+    const onItemClick = vi.fn()
+    render(
+      <MentionMenu
+        items={[{ kind: 'date-hint' }]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+        hasMore={false}
+        onShowMore={vi.fn()}
+      />
+    )
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+
+  it('Shift+Tab does not select', () => {
+    const { onItemClick } = renderMenu({ selectedIndex: 1 })
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(onItemClick).not.toHaveBeenCalled()
+  })
+})
+
+describe('MentionMenu Now row', () => {
+  const nowItem: MentionSuggestionItem = { kind: 'now' }
+
+  it('renders Now on top of the Date group and selects it by click or Tab', () => {
+    const { onItemClick } = renderMenu({ items: [nowItem, { kind: 'date-hint' }, noteA] })
+    expect(screen.getByText('Date')).toBeTruthy()
+    const options = screen.getAllByRole('option')
+    expect(options[0].textContent).toBe('Now')
+    fireEvent.click(screen.getByText('Now'))
+    expect(onItemClick).toHaveBeenCalledWith(nowItem)
+    onItemClick.mockClear()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(nowItem)
+  })
+})
+
+describe('MentionMenu canvases', () => {
+  it('renders canvases under their own group after the notes', () => {
+    renderMenu({ items: [noteA, canvasA] })
+    const options = screen.getAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual(['Q3 Roadmap', 'Roadmap Board'])
+    expect(screen.getByText('Canvases')).toBeInTheDocument()
+    // Separated from the notes above it, like the Date group is.
+    expect(screen.getByRole('separator')).toBeInTheDocument()
+  })
+
+  it('shows no canvas group when no canvas matched', () => {
+    renderMenu({ items: [noteA, noteB] })
+    expect(screen.queryByText('Canvases')).not.toBeInTheDocument()
+  })
+
+  it('calls onItemClick with the clicked canvas, by click or Tab', () => {
+    const { onItemClick } = renderMenu({ items: [noteA, canvasA], selectedIndex: 1 })
+    fireEvent.click(screen.getByText('Roadmap Board'))
+    expect(onItemClick).toHaveBeenCalledWith(canvasA)
+
+    onItemClick.mockClear()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(onItemClick).toHaveBeenCalledWith(canvasA)
+  })
+})
+
+describe('CanvasChoiceMenu', () => {
+  const choice = {
+    canvas: { id: 'cv1', title: 'Roadmap Board' },
+    position: { x: 10, y: 20 },
+    selectedIndex: 1
+  }
+
+  it('renders nothing without an open choice', () => {
+    render(<CanvasChoiceMenu choice={null} onSelect={vi.fn()} />)
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('offers Mention then Embed, marking the highlighted one', () => {
+    render(<CanvasChoiceMenu choice={choice} onSelect={vi.fn()} />)
+    expect(screen.getByRole('listbox', { name: 'Insert canvas as' })).toBeInTheDocument()
+    const options = screen.getAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual(['Mention', 'Embed'])
+    expect(options[1]).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('picks on mousedown so the editor keeps the caret', () => {
+    const onSelect = vi.fn()
+    render(<CanvasChoiceMenu choice={choice} onSelect={onSelect} />)
+    const embed = screen.getByRole('option', { name: 'Embed' })
+    expect(fireEvent.mouseDown(embed)).toBe(false)
+    expect(onSelect).toHaveBeenCalledWith('embed')
+  })
+})

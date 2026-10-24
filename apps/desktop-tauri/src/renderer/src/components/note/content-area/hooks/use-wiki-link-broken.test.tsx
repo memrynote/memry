@@ -1,0 +1,191 @@
+/**
+ * The IPC half of #1716: one batch resolve on mount, note-half-first candidate
+ * order, and the `notes:created` re-resolve that restyles an open editor.
+ */
+
+import { Schema } from '@tiptap/pm/model'
+import { EditorState } from '@tiptap/pm/state'
+import type { Transaction } from '@tiptap/pm/state'
+import { renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { WIKI_LINK_BROKEN_PLUGIN_KEY, createWikiLinkBrokenPlugin } from '../wiki-link-broken-plugin'
+
+const mocks = vi.hoisted(() => ({
+  resolveTitles: vi.fn<(titles: string[]) => Promise<Record<string, unknown>>>(),
+  listCanvases: vi.fn<() => Promise<{ canvases: Array<{ id: string; title: string | null }> }>>(),
+  createdCallbacks: [] as Array<() => void>,
+  renamedCallbacks: [] as Array<() => void>,
+  deletedCallbacks: [] as Array<() => void>,
+  linksChangedCallbacks: [] as Array<() => void>
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: { resolveTitles: mocks.resolveTitles },
+  onNoteCreated: (callback: () => void) => {
+    mocks.createdCallbacks.push(callback)
+    return () => {}
+  },
+  onNoteRenamed: (callback: () => void) => {
+    mocks.renamedCallbacks.push(callback)
+    return () => {}
+  },
+  onNoteDeleted: (callback: () => void) => {
+    mocks.deletedCallbacks.push(callback)
+    return () => {}
+  },
+  onNoteLinksChanged: (callback: () => void) => {
+    mocks.linksChangedCallbacks.push(callback)
+    return () => {}
+  }
+}))
+
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { list: () => mocks.listCanvases() },
+  onCanvasCreated: () => () => {},
+  onCanvasUpdated: () => () => {},
+  onCanvasDeleted: () => () => {}
+}))
+
+vi.mock('@/lib/logger', () => ({ createLogger: () => ({ error: vi.fn(), warn: vi.fn() }) }))
+
+import { clearCanvasLookupCache } from '@/lib/canvas-lookup'
+import { useWikiLinkBroken } from './use-wiki-link-broken'
+
+const schema = new Schema({
+  nodes: {
+    doc: { content: 'block+' },
+    paragraph: { group: 'block', content: 'inline*', toDOM: () => ['p', 0] },
+    wikiLink: {
+      group: 'inline',
+      inline: true,
+      atom: true,
+      attrs: { target: { default: '' }, alias: { default: '' } },
+      toDOM: () => ['span']
+    },
+    text: { group: 'inline' }
+  }
+})
+
+function editorWith(targets: string[]) {
+  const doc = schema.node('doc', null, [
+    schema.node(
+      'paragraph',
+      null,
+      targets.map((target) => schema.node('wikiLink', { target }))
+    )
+  ])
+  const view = {
+    state: EditorState.create({ doc, plugins: [createWikiLinkBrokenPlugin()] }),
+    dispatch(tr: Transaction) {
+      view.state = view.state.apply(tr)
+    }
+  }
+  return {
+    _tiptapEditor: {
+      view,
+      // Real tiptap sets `editorView` to the same view while mounted and nulls
+      // it on unmount; `view` alone is a Proxy that lies. The hook reads
+      // `editorView` to tell a live view from a torn-down one.
+      editorView: view,
+      on: vi.fn(),
+      off: vi.fn(),
+      // The hook's plugin-registration effect no-ops through these; the plugin
+      // is already in the state above so meta dispatches land on it.
+      registerPlugin: vi.fn(),
+      unregisterPlugin: vi.fn()
+    }
+  }
+}
+
+function brokenTargetsOf(state: EditorState): string[] {
+  const decorations = WIKI_LINK_BROKEN_PLUGIN_KEY.getState(state)?.decorations
+  if (!decorations) return []
+  return decorations.find().map((decoration) => {
+    const node = state.doc.nodeAt(decoration.from)
+    return typeof node?.attrs.target === 'string' ? node.attrs.target : ''
+  })
+}
+
+async function flushResolve(): Promise<void> {
+  await vi.advanceTimersByTimeAsync(500)
+}
+
+describe('useWikiLinkBroken', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mocks.resolveTitles.mockReset()
+    mocks.listCanvases.mockReset()
+    mocks.listCanvases.mockResolvedValue({ canvases: [] })
+    clearCanvasLookupCache()
+    mocks.createdCallbacks.length = 0
+    mocks.linksChangedCallbacks.length = 0
+    mocks.renamedCallbacks.length = 0
+    mocks.deletedCallbacks.length = 0
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('resolves the mount targets in one batch and marks only the miss', async () => {
+    mocks.resolveTitles.mockResolvedValue({
+      'Real Note': { id: 'nte_real', path: 'Real Note.md' },
+      Ghost: null
+    })
+    const editor = editorWith(['Real Note', 'Ghost'])
+
+    renderHook(() => useWikiLinkBroken(editor))
+    await flushResolve()
+
+    expect(mocks.resolveTitles).toHaveBeenCalledTimes(1)
+    expect(mocks.resolveTitles).toHaveBeenCalledWith(['Real Note', 'Ghost'])
+    expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])
+  })
+
+  it('reads Note#Heading through its note half and never marks [[#Heading]]', async () => {
+    mocks.resolveTitles.mockResolvedValue({
+      'Sprint Plan': { id: 'nte_sprint', path: 'Sprint Plan.md' },
+      'Sprint Plan#Goals': null,
+      Gone: null,
+      'Gone#Intro': null
+    })
+    const editor = editorWith(['Sprint Plan#Goals', 'Gone#Intro', '#Local Heading'])
+
+    renderHook(() => useWikiLinkBroken(editor))
+    await flushResolve()
+
+    expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Gone#Intro'])
+  })
+
+  it.each([
+    ['notes:created', () => mocks.createdCallbacks],
+    ['notes:links-changed (a note gained the name)', () => mocks.linksChangedCallbacks]
+  ])('re-resolves on %s and unmarks the link without a reload', async (_event, callbacks) => {
+    mocks.resolveTitles.mockResolvedValue({ Ghost: null })
+    const editor = editorWith(['Ghost'])
+
+    renderHook(() => useWikiLinkBroken(editor))
+    await flushResolve()
+    expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])
+
+    mocks.resolveTitles.mockResolvedValue({ Ghost: { id: 'nte_new', path: 'Ghost.md' } })
+    callbacks().forEach((callback) => callback())
+    await flushResolve()
+
+    expect(mocks.resolveTitles).toHaveBeenCalledTimes(2)
+    expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual([])
+  })
+
+  it('does not paint a canvas link broken (#1983)', async () => {
+    mocks.resolveTitles.mockResolvedValue({ 'Sprint Board': null, Ghost: null })
+    mocks.listCanvases.mockResolvedValue({
+      canvases: [{ id: 'canvas-1', title: 'Sprint Board' }]
+    })
+    const editor = editorWith(['Sprint Board', 'Ghost'])
+
+    renderHook(() => useWikiLinkBroken(editor))
+    await flushResolve()
+
+    expect(brokenTargetsOf(editor._tiptapEditor.view.state)).toEqual(['Ghost'])
+  })
+})

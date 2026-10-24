@@ -1,0 +1,1077 @@
+/**
+ * Tab System Context and Provider
+ * React context for tab state management
+ */
+
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  type ReactNode
+} from 'react'
+
+import type {
+  Tab,
+  TabGroup,
+  TabSystemState,
+  TabAction,
+  TabSettings,
+  OpenTabOptions,
+  SidebarItem,
+  SplitDirection,
+  TabScrollState,
+  TabScrollPanes
+} from './types'
+import { tabReducer } from './reducer'
+import { createInitialState, createTabFromSidebarItem, generateId } from './helpers'
+import { useCloseGuardRegistry, type TabCloseGuard } from './close-guard'
+import { UnsavedChangesDialog } from '@/components/tabs/unsaved-changes-dialog'
+
+// =============================================================================
+// CONTEXT TYPE
+// =============================================================================
+
+/**
+ * Tab actions interface. Every member keeps its identity for the provider's
+ * lifetime, so this half of the context is published separately and consumers
+ * that only act on tabs never re-render when tab state changes.
+ */
+interface TabActionsContextType {
+  /** Dispatch function for actions */
+  dispatch: React.Dispatch<TabAction>
+
+  // =========================================================================
+  // CONVENIENCE METHODS
+  // =========================================================================
+
+  /**
+   * Open a new tab or focus existing if singleton/same entity
+   */
+  openTab: (tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>, options?: OpenTabOptions) => void
+
+  /**
+   * Open a tab from sidebar item
+   */
+  openFromSidebar: (item: SidebarItem, options?: Omit<OpenTabOptions, 'forceNew'>) => void
+
+  /**
+   * Close a tab
+   */
+  closeTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Close every tab showing `entityId`, in every group, because the entity it
+   * showed has been deleted.
+   *
+   * Deliberately NOT routed through the close guards: they exist to offer
+   * "save before closing", and the row this tab would save to is already
+   * tombstoned. Prompting would hand the user a Save button that cannot work.
+   */
+  closeTabsByEntityId: (entityId: string) => void
+
+  /**
+   * Register a veto for this tab's close while it holds unsaved work.
+   * Returns an unregister function.
+   */
+  registerCloseGuard: (tabId: string, guard: TabCloseGuard) => () => void
+
+  /**
+   * Close other tabs in the same group
+   */
+  closeOtherTabs: (tabId: string, groupId?: string) => void
+
+  /**
+   * Close tabs to the right
+   */
+  closeTabsToRight: (tabId: string, groupId?: string) => void
+
+  /**
+   * Close all tabs in a group
+   */
+  closeAllTabs: (groupId?: string) => void
+
+  /**
+   * Set the active tab
+   */
+  setActiveTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Set the active group (for split views)
+   */
+  setActiveGroup: (groupId: string) => void
+
+  /**
+   * Navigate to next tab
+   */
+  goToNextTab: (groupId?: string) => void
+
+  /**
+   * Navigate to previous tab
+   */
+  goToPreviousTab: (groupId?: string) => void
+
+  /**
+   * Navigate to tab by index (1-9 for Ctrl+1-9)
+   */
+  goToTabIndex: (index: number, groupId?: string) => void
+
+  /**
+   * Re-activate the previously active tab in this group (browser-style back).
+   */
+  navBack: (groupId?: string) => void
+
+  /**
+   * Redo a back navigation (browser-style forward).
+   */
+  navForward: (groupId?: string) => void
+
+  /**
+   * Reopen the most recently closed tab (browser-style Cmd+Shift+T).
+   */
+  reopenClosedTab: () => void
+
+  /**
+   * Pin a tab
+   */
+  pinTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Unpin a tab
+   */
+  unpinTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Toggle pin state
+   */
+  togglePinTab: (tabId: string, groupId?: string) => void
+
+  /**
+   * Mark a tab as modified (unsaved changes)
+   */
+  setTabModified: (tabId: string, isModified: boolean, groupId?: string) => void
+
+  /**
+   * Mark a tab as deleted (strikethrough styling) by entity ID
+   */
+  setTabDeleted: (entityId: string, isDeleted: boolean) => void
+
+  /**
+   * Update a tab's title
+   */
+  updateTabTitle: (tabId: string, title: string, groupId?: string) => void
+
+  /**
+   * Update a tab's title by entity ID (searches all groups)
+   */
+  updateTabTitleByEntityId: (entityId: string, title: string) => void
+
+  /**
+   * Attach an entity id + path to an existing tab (draft → saved transition)
+   */
+  setTabEntity: (tabId: string, entityId: string, path: string, groupId?: string) => void
+
+  /**
+   * Reorder tabs within a group
+   */
+  reorderTabs: (fromIndex: number, toIndex: number, groupId?: string) => void
+
+  /**
+   * Move a tab to another group
+   */
+  moveTabToGroup: (tabId: string, fromGroupId: string, toGroupId: string, toIndex: number) => void
+
+  /**
+   * Save tab state (scroll position, view state)
+   */
+  saveTabState: (
+    tabId: string,
+    state: {
+      scrollPosition?: number
+      scrollState?: TabScrollState
+      scrollPanes?: TabScrollPanes
+      viewState?: Record<string, unknown>
+    },
+    groupId?: string
+  ) => void
+
+  /**
+   * Read a tab out of the current state WITHOUT subscribing to it.
+   *
+   * Backed by a ref, so the returned function is stable and the caller never
+   * re-renders on unrelated tab changes. Callers that need to re-render when the
+   * tab changes should use `useTabs`/`useTabGroup` instead — this exists for
+   * hooks that only need a one-shot read (restore-on-mount, state seeding).
+   */
+  getTab: (tabId: string, groupId?: string) => Tab | null
+
+  /**
+   * Read the active tab out of the current state WITHOUT subscribing to it.
+   * Same contract as `getTab`, for callers that do not know the tab id —
+   * notably the sidebar, which must not re-render on every tab change.
+   */
+  getActiveTabSnapshot: () => Tab | null
+
+  /**
+   * Split the view.
+   *
+   * Returns the id of the pane it created, so a caller can act on that pane in
+   * the same dispatch batch instead of guessing when the split lands: SPLIT_VIEW
+   * deliberately leaves `activeGroupId` on the source pane, so a follow-up
+   * `openTab` with no `groupId` would land back in the pane that was split.
+   * Returns null when the source group no longer exists and nothing was split.
+   *
+   * `options.cloneActiveTab` defaults to true (the keyboard/tab-menu behaviour).
+   * Pass false when you are about to open something specific into the new pane.
+   */
+  splitView: (
+    direction: SplitDirection,
+    groupId?: string,
+    options?: { cloneActiveTab?: boolean; position?: 'first' | 'second' }
+  ) => string | null
+
+  /**
+   * Close a split pane
+   */
+  closeSplit: (groupId: string) => void
+
+  /**
+   * Move a tab to a new split
+   */
+  moveTabToNewSplit: (
+    tabId: string,
+    fromGroupId: string,
+    direction: SplitDirection | 'left' | 'right' | 'up' | 'down'
+  ) => void
+
+  /**
+   * Update tab settings
+   */
+  updateSettings: (settings: Partial<TabSettings>) => void
+
+  /**
+   * Restore session from saved state
+   */
+  restoreSession: (state: TabSystemState) => void
+
+  /**
+   * Reset to default state
+   */
+  resetToDefault: () => void
+}
+
+/**
+ * Tab context interface providing state and methods
+ */
+interface TabContextType extends TabActionsContextType {
+  /** Current tab system state */
+  state: TabSystemState
+
+  /**
+   * True when navBack would activate a tab.
+   */
+  canNavBack: boolean
+
+  /**
+   * True when navForward would activate a tab.
+   */
+  canNavForward: boolean
+
+  /**
+   * True when there is a closed tab available to reopen.
+   */
+  canReopenClosedTab: boolean
+
+  // =========================================================================
+  // SELECTORS
+  // =========================================================================
+
+  /**
+   * Get the currently active tab
+   */
+  getActiveTab: () => Tab | null
+
+  /**
+   * Get the currently active tab group
+   */
+  getActiveGroup: () => TabGroup | null
+
+  /**
+   * Get all tabs across all groups
+   */
+  getAllTabs: () => Tab[]
+
+  /**
+   * Get tabs in a specific group
+   */
+  getTabsInGroup: (groupId: string) => Tab[]
+
+  /**
+   * Check if a tab exists by entity ID
+   */
+  hasTabForEntity: (entityId: string) => boolean
+}
+
+// =============================================================================
+// CONTEXT CREATION
+// =============================================================================
+
+const TabContext = createContext<TabContextType | null>(null)
+
+/**
+ * Published alongside `TabContext` so `useTabActions` can subscribe to the
+ * stable half alone. Its value is memoized over callbacks that never change
+ * identity, so it never notifies its consumers after the first render.
+ */
+const TabActionsContext = createContext<TabActionsContextType | null>(null)
+
+// =============================================================================
+// PROVIDER COMPONENT
+// =============================================================================
+
+interface TabProviderProps {
+  children: ReactNode
+  /** Optional initial state (for session restore) */
+  initialState?: TabSystemState
+  /** Optional initial settings from database (overrides defaults) */
+  initialSettings?: Partial<TabSettings>
+}
+
+export const TabProvider = ({
+  children,
+  initialState,
+  initialSettings
+}: TabProviderProps): React.JSX.Element => {
+  // Create initial state with database settings if provided
+  const computedInitialState = useMemo(() => {
+    const baseState = initialState ?? createInitialState()
+    if (initialSettings) {
+      return {
+        ...baseState,
+        settings: {
+          ...baseState.settings,
+          ...initialSettings
+        }
+      }
+    }
+    return baseState
+  }, [initialState, initialSettings])
+
+  const [state, dispatch] = useReducer(tabReducer, computedInitialState)
+
+  // Use refs for state values to avoid callback dependency changes
+  // This prevents cascade re-renders when activeGroupId/tabGroups change
+  const activeGroupIdRef = useRef(state.activeGroupId)
+  const tabGroupsRef = useRef(state.tabGroups)
+  const stateRef = useRef(state)
+
+  // Keep refs in sync with state (must be in useEffect per React rules).
+  // Every reader is a close/nav callback that runs from an event, so seeing the
+  // committed state rather than the in-progress render is what we want anyway.
+  useEffect(() => {
+    activeGroupIdRef.current = state.activeGroupId
+    tabGroupsRef.current = state.tabGroups
+    stateRef.current = state
+  })
+
+  const closeGuards = useCloseGuardRegistry()
+  // Destructured so the close callbacks below depend on a stable function and
+  // not on the registry object, whose identity tracks the pending prompt.
+  const { requestClose: requestTabClose, registerCloseGuard } = closeGuards
+
+  // Listen for settings changes from the database (other windows, settings page)
+  useEffect(() => {
+    const unsubscribe = window.api.onSettingsChanged((event) => {
+      if (event.key === 'tabs') {
+        // Update settings from database change
+        dispatch({
+          type: 'UPDATE_SETTINGS',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed payload is unknown over IPC; the reducer spreads a partial TabSettings
+          payload: event.value as Partial<TabSettings>
+        })
+      }
+    })
+
+    return unsubscribe
+  }, [])
+
+  // =========================================================================
+  // CONVENIENCE METHODS
+  // =========================================================================
+
+  const openTab = useCallback(
+    (tab: Omit<Tab, 'id' | 'openedAt' | 'lastAccessedAt'>, options: OpenTabOptions = {}) => {
+      dispatch({
+        type: 'OPEN_TAB',
+        payload: {
+          tab,
+          groupId: options.groupId,
+          position: options.position,
+          background: options.background,
+          forceNew: options.forceNew,
+          replaceActive: options.replaceActive,
+          reuseActiveTab: options.reuseActiveTab
+        }
+      })
+    },
+    []
+  )
+
+  const openFromSidebar = useCallback(
+    (item: SidebarItem, options: Omit<OpenTabOptions, 'forceNew'> = {}) => {
+      const tab = createTabFromSidebarItem(item, false)
+      dispatch({
+        type: 'OPEN_TAB',
+        payload: {
+          tab,
+          groupId: options.groupId,
+          position: options.position,
+          background: options.background
+        }
+      })
+    },
+    []
+  )
+
+  const closeTab = useCallback(
+    (tabId: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      requestTabClose([tabId], () => {
+        dispatch({ type: 'CLOSE_TAB', payload: { tabId, groupId: actualGroupId } })
+      })
+    },
+    [requestTabClose]
+  )
+
+  const closeTabsByEntityId = useCallback((entityId: string) => {
+    dispatch({ type: 'CLOSE_TABS_BY_ENTITY', payload: { entityId } })
+  }, [])
+
+  const closeOtherTabs = useCallback(
+    (tabId: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      const group = stateRef.current.tabGroups[actualGroupId]
+      const targets = (group?.tabs ?? [])
+        .filter((t) => t.id !== tabId && !t.isPinned)
+        .map((t) => t.id)
+      requestTabClose(targets, () => {
+        dispatch({ type: 'CLOSE_OTHER_TABS', payload: { tabId, groupId: actualGroupId } })
+      })
+    },
+    [requestTabClose]
+  )
+
+  const closeTabsToRight = useCallback(
+    (tabId: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      const tabs = stateRef.current.tabGroups[actualGroupId]?.tabs ?? []
+      const index = tabs.findIndex((t) => t.id === tabId)
+      const targets =
+        index === -1
+          ? []
+          : tabs
+              .slice(index + 1)
+              .filter((t) => !t.isPinned)
+              .map((t) => t.id)
+      requestTabClose(targets, () => {
+        dispatch({ type: 'CLOSE_TABS_TO_RIGHT', payload: { tabId, groupId: actualGroupId } })
+      })
+    },
+    [requestTabClose]
+  )
+
+  const closeAllTabs = useCallback(
+    (groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      const targets = (stateRef.current.tabGroups[actualGroupId]?.tabs ?? [])
+        .filter((t) => !t.isPinned)
+        .map((t) => t.id)
+      requestTabClose(targets, () => {
+        dispatch({ type: 'CLOSE_ALL_TABS', payload: { groupId: actualGroupId } })
+      })
+    },
+    [requestTabClose]
+  )
+
+  const setActiveTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'SET_ACTIVE_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
+
+  const setActiveGroup = useCallback((groupId: string) => {
+    dispatch({
+      type: 'SET_ACTIVE_GROUP',
+      payload: { groupId }
+    })
+  }, [])
+
+  const goToNextTab = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'GO_TO_NEXT_TAB',
+      payload: { groupId: actualGroupId }
+    })
+  }, [])
+
+  const goToPreviousTab = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'GO_TO_PREVIOUS_TAB',
+      payload: { groupId: actualGroupId }
+    })
+  }, [])
+
+  const goToTabIndex = useCallback((index: number, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'GO_TO_TAB_INDEX',
+      payload: { index, groupId: actualGroupId }
+    })
+  }, [])
+
+  const navBack = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({ type: 'NAV_BACK', payload: { groupId: actualGroupId } })
+  }, [])
+
+  const navForward = useCallback((groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({ type: 'NAV_FORWARD', payload: { groupId: actualGroupId } })
+  }, [])
+
+  const canNavBack = useMemo(
+    () => (state.tabGroups[state.activeGroupId]?.back?.length ?? 0) > 0,
+    [state.tabGroups, state.activeGroupId]
+  )
+
+  const canNavForward = useMemo(
+    () => (state.tabGroups[state.activeGroupId]?.forward?.length ?? 0) > 0,
+    [state.tabGroups, state.activeGroupId]
+  )
+
+  const reopenClosedTab = useCallback(() => {
+    dispatch({ type: 'REOPEN_CLOSED_TAB' })
+  }, [])
+
+  const canReopenClosedTab = useMemo(
+    () => (state.recentlyClosed?.length ?? 0) > 0,
+    [state.recentlyClosed]
+  )
+
+  const pinTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'PIN_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
+
+  const unpinTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'UNPIN_TAB',
+      payload: { tabId, groupId: actualGroupId }
+    })
+  }, [])
+
+  const togglePinTab = useCallback((tabId: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    const group = tabGroupsRef.current[actualGroupId]
+    const tab = group?.tabs.find((t) => t.id === tabId)
+    if (tab) {
+      dispatch({
+        type: tab.isPinned ? 'UNPIN_TAB' : 'PIN_TAB',
+        payload: { tabId, groupId: actualGroupId }
+      })
+    }
+  }, [])
+
+  const setTabModified = useCallback((tabId: string, isModified: boolean, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'SET_TAB_MODIFIED',
+      payload: { tabId, groupId: actualGroupId, isModified }
+    })
+  }, [])
+
+  const setTabDeleted = useCallback((entityId: string, isDeleted: boolean) => {
+    // Find the tab by entityId across all groups
+    for (const [groupId, group] of Object.entries(tabGroupsRef.current)) {
+      const tab = group.tabs.find((t) => t.entityId === entityId)
+      if (tab) {
+        dispatch({
+          type: 'SET_TAB_DELETED',
+          payload: { tabId: tab.id, groupId, isDeleted }
+        })
+        return
+      }
+    }
+  }, [])
+
+  const updateTabTitle = useCallback((tabId: string, title: string, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'UPDATE_TAB_TITLE',
+      payload: { tabId, groupId: actualGroupId, title }
+    })
+  }, [])
+
+  /**
+   * Retitles EVERY tab showing `entityId`, in every group.
+   *
+   * Every tab, not the first one found: an entity can be open in more than one
+   * pane, and retitling one of them leaves the other reading a name the entity
+   * no longer has — the same bug this function exists to prevent, one pane over.
+   *
+   * A tab that already carries the title is skipped, because the loudest caller
+   * hears an event on every SAVE and not only on a rename: dispatching per
+   * autosave would re-render the tab tree and re-arm the debounced write of tab
+   * state to disk, for a title that did not change.
+   */
+  const updateTabTitleByEntityId = useCallback((entityId: string, title: string) => {
+    for (const [groupId, group] of Object.entries(tabGroupsRef.current)) {
+      for (const tab of group.tabs) {
+        if (tab.entityId !== entityId || tab.title === title) continue
+        dispatch({
+          type: 'UPDATE_TAB_TITLE',
+          payload: { tabId: tab.id, groupId, title }
+        })
+      }
+    }
+  }, [])
+
+  const setTabEntity = useCallback(
+    (tabId: string, entityId: string, path: string, groupId?: string) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      dispatch({
+        type: 'SET_TAB_ENTITY',
+        payload: { tabId, groupId: actualGroupId, entityId, path }
+      })
+    },
+    []
+  )
+
+  const reorderTabs = useCallback((fromIndex: number, toIndex: number, groupId?: string) => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    dispatch({
+      type: 'REORDER_TABS',
+      payload: { groupId: actualGroupId, fromIndex, toIndex }
+    })
+  }, [])
+
+  const moveTabToGroup = useCallback(
+    (tabId: string, fromGroupId: string, toGroupId: string, toIndex: number) => {
+      dispatch({
+        type: 'MOVE_TAB',
+        payload: { tabId, fromGroupId, toGroupId, toIndex }
+      })
+    },
+    []
+  )
+
+  const getTab = useCallback((tabId: string, groupId?: string): Tab | null => {
+    const actualGroupId = groupId ?? activeGroupIdRef.current
+    return stateRef.current.tabGroups[actualGroupId]?.tabs.find((t) => t.id === tabId) ?? null
+  }, [])
+
+  /**
+   * One-shot read of the active tab WITHOUT subscribing to tab state — the
+   * ref-backed sibling of `getActiveTab`, for callers outside the tab tree
+   * (the sidebar) that must not re-render on every tab change.
+   */
+  const getActiveTabSnapshot = useCallback((): Tab | null => {
+    const group = stateRef.current.tabGroups[activeGroupIdRef.current]
+    if (!group?.activeTabId) return null
+    return group.tabs.find((t) => t.id === group.activeTabId) ?? null
+  }, [])
+
+  const saveTabState = useCallback(
+    (
+      tabId: string,
+      tabState: {
+        scrollPosition?: number
+        scrollState?: TabScrollState
+        scrollPanes?: TabScrollPanes
+        viewState?: Record<string, unknown>
+      },
+      groupId?: string
+    ) => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      dispatch({
+        type: 'SAVE_TAB_STATE',
+        payload: {
+          tabId,
+          groupId: actualGroupId,
+          ...tabState
+        }
+      })
+    },
+    []
+  )
+
+  const splitView = useCallback(
+    (
+      direction: SplitDirection,
+      groupId?: string,
+      options?: { cloneActiveTab?: boolean; position?: 'first' | 'second' }
+    ): string | null => {
+      const actualGroupId = groupId ?? activeGroupIdRef.current
+      // Mirrors the reducer's own guard: splitting a group that is already gone is
+      // a no-op, and callers must not get an id for a pane that was never created.
+      if (!tabGroupsRef.current[actualGroupId]) return null
+      // Naming the pane here (instead of inside the reducer) is what makes the
+      // split observable to the caller without waiting for a render to commit.
+      const newGroupId = generateId()
+      dispatch({
+        type: 'SPLIT_VIEW',
+        payload: {
+          direction,
+          groupId: actualGroupId,
+          newGroupId,
+          cloneActiveTab: options?.cloneActiveTab,
+          position: options?.position
+        }
+      })
+      return newGroupId
+    },
+    []
+  )
+
+  const closeSplit = useCallback((groupId: string) => {
+    dispatch({
+      type: 'CLOSE_SPLIT',
+      payload: { groupId }
+    })
+  }, [])
+
+  const moveTabToNewSplit = useCallback(
+    (
+      tabId: string,
+      fromGroupId: string,
+      direction: SplitDirection | 'left' | 'right' | 'up' | 'down'
+    ) => {
+      dispatch({
+        type: 'MOVE_TAB_TO_NEW_SPLIT',
+        payload: { tabId, fromGroupId, direction }
+      })
+    },
+    []
+  )
+
+  const updateSettings = useCallback((settings: Partial<TabSettings>) => {
+    dispatch({
+      type: 'UPDATE_SETTINGS',
+      payload: settings
+    })
+  }, [])
+
+  const restoreSession = useCallback((sessionState: TabSystemState) => {
+    dispatch({
+      type: 'RESTORE_SESSION',
+      payload: sessionState
+    })
+  }, [])
+
+  const resetToDefault = useCallback(() => {
+    dispatch({ type: 'RESET_TO_DEFAULT' })
+  }, [])
+
+  // =========================================================================
+  // SELECTORS
+  // =========================================================================
+
+  const getActiveTab = useCallback((): Tab | null => {
+    const group = state.tabGroups[state.activeGroupId]
+    if (!group?.activeTabId) return null
+    return group.tabs.find((t) => t.id === group.activeTabId) ?? null
+  }, [state.tabGroups, state.activeGroupId])
+
+  const getActiveGroup = useCallback((): TabGroup | null => {
+    return state.tabGroups[state.activeGroupId] ?? null
+  }, [state.tabGroups, state.activeGroupId])
+
+  const getAllTabs = useCallback((): Tab[] => {
+    return Object.values(state.tabGroups).flatMap((g) => g.tabs)
+  }, [state.tabGroups])
+
+  const getTabsInGroup = useCallback(
+    (groupId: string): Tab[] => {
+      return state.tabGroups[groupId]?.tabs ?? []
+    },
+    [state.tabGroups]
+  )
+
+  const hasTabForEntity = useCallback(
+    (entityId: string): boolean => {
+      return Object.values(state.tabGroups).some((g) => g.tabs.some((t) => t.entityId === entityId))
+    },
+    [state.tabGroups]
+  )
+
+  // =========================================================================
+  // CONTEXT VALUE
+  // =========================================================================
+
+  // Every member below is a `useCallback` that never changes identity (they read
+  // live state through refs, not through closures), so this object is created
+  // once and `useTabActions` consumers never re-render because of tab state.
+  const actions = useMemo<TabActionsContextType>(
+    () => ({
+      dispatch,
+      openTab,
+      openFromSidebar,
+      closeTab,
+      closeTabsByEntityId,
+      registerCloseGuard,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
+      setActiveTab,
+      setActiveGroup,
+      goToNextTab,
+      goToPreviousTab,
+      goToTabIndex,
+      navBack,
+      navForward,
+      reopenClosedTab,
+      pinTab,
+      unpinTab,
+      togglePinTab,
+      setTabModified,
+      setTabDeleted,
+      updateTabTitle,
+      updateTabTitleByEntityId,
+      setTabEntity,
+      reorderTabs,
+      moveTabToGroup,
+      saveTabState,
+      getTab,
+      getActiveTabSnapshot,
+      splitView,
+      closeSplit,
+      moveTabToNewSplit,
+      updateSettings,
+      restoreSession,
+      resetToDefault
+    }),
+    [
+      openTab,
+      openFromSidebar,
+      closeTab,
+      closeTabsByEntityId,
+      registerCloseGuard,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
+      setActiveTab,
+      setActiveGroup,
+      goToNextTab,
+      goToPreviousTab,
+      goToTabIndex,
+      navBack,
+      navForward,
+      reopenClosedTab,
+      pinTab,
+      unpinTab,
+      togglePinTab,
+      setTabModified,
+      setTabDeleted,
+      updateTabTitle,
+      updateTabTitleByEntityId,
+      setTabEntity,
+      reorderTabs,
+      moveTabToGroup,
+      saveTabState,
+      getTab,
+      getActiveTabSnapshot,
+      splitView,
+      closeSplit,
+      moveTabToNewSplit,
+      updateSettings,
+      restoreSession,
+      resetToDefault
+    ]
+  )
+
+  const value = useMemo<TabContextType>(
+    () => ({
+      ...actions,
+      state,
+      canNavBack,
+      canNavForward,
+      canReopenClosedTab,
+      // Selectors
+      getActiveTab,
+      getActiveGroup,
+      getAllTabs,
+      getTabsInGroup,
+      hasTabForEntity
+    }),
+    [
+      actions,
+      state,
+      canNavBack,
+      canNavForward,
+      canReopenClosedTab,
+      getActiveTab,
+      getActiveGroup,
+      getAllTabs,
+      getTabsInGroup,
+      hasTabForEntity
+    ]
+  )
+
+  const pendingTabTitle = closeGuards.pending
+    ? (Object.values(state.tabGroups)
+        .flatMap((g) => g.tabs)
+        .find((t) => t.id === closeGuards.pending?.tabId)?.title ?? '')
+    : ''
+
+  // Both providers render unconditionally: swapping either for a Fragment would
+  // remount the whole app subtree.
+  return (
+    <TabActionsContext.Provider value={actions}>
+      <TabContext.Provider value={value}>
+        {children}
+        <UnsavedChangesDialog
+          isOpen={closeGuards.pending !== null}
+          tabTitle={pendingTabTitle}
+          onSave={
+            closeGuards.pendingCanSave ? () => void closeGuards.resolvePending('save') : undefined
+          }
+          onDiscard={() => void closeGuards.resolvePending('discard')}
+          onCancel={() => void closeGuards.resolvePending('cancel')}
+        />
+      </TabContext.Provider>
+    </TabActionsContext.Provider>
+  )
+}
+
+// =============================================================================
+// HOOKS
+// =============================================================================
+
+/**
+ * Main hook to access tab context
+ * Must be used within a TabProvider
+ */
+export const useTabs = (): TabContextType => {
+  const context = useContext(TabContext)
+  if (!context) {
+    throw new Error('useTabs must be used within a TabProvider')
+  }
+  return context
+}
+
+/**
+ * Hook to get a specific tab group
+ */
+export const useTabGroup = (groupId: string): TabGroup | null => {
+  const { state } = useTabs()
+  return state.tabGroups[groupId] ?? null
+}
+
+/**
+ * Hook to get the active tab in a specific group or the active group
+ */
+export const useActiveTab = (groupId?: string): Tab | null => {
+  const { state } = useTabs()
+  const targetGroupId = groupId ?? state.activeGroupId
+  const group = state.tabGroups[targetGroupId]
+
+  if (!group?.activeTabId) return null
+  return group.tabs.find((t) => t.id === group.activeTabId) ?? null
+}
+
+/**
+ * Hook to get the active group
+ */
+export const useActiveGroup = (): TabGroup | null => {
+  const { state } = useTabs()
+  return state.tabGroups[state.activeGroupId] ?? null
+}
+
+/**
+ * Hook to get all tabs in the active group
+ */
+export const useActiveGroupTabs = (): Tab[] => {
+  const group = useActiveGroup()
+  return group?.tabs ?? []
+}
+
+/**
+ * Hook to get tab settings
+ */
+export const useTabSettings = (): TabSettings => {
+  const { state } = useTabs()
+  return state.settings
+}
+
+/**
+ * Hook to check if a specific tab is active
+ */
+export const useIsTabActive = (tabId: string, groupId?: string): boolean => {
+  const { state } = useTabs()
+  const targetGroupId = groupId ?? state.activeGroupId
+  const group = state.tabGroups[targetGroupId]
+
+  return group?.activeTabId === tabId && state.activeGroupId === targetGroupId
+}
+
+/**
+ * Hook to get the layout
+ */
+export const useTabLayout = () => {
+  const { state } = useTabs()
+  return state.layout
+}
+
+/**
+ * Hook for tab counts (useful for badges, etc.)
+ */
+export const useTabCounts = () => {
+  const { state } = useTabs()
+
+  return useMemo(() => {
+    const allTabs = Object.values(state.tabGroups).flatMap((g) => g.tabs)
+    return {
+      total: allTabs.length,
+      pinned: allTabs.filter((t) => t.isPinned).length,
+      modified: allTabs.filter((t) => t.isModified).length,
+      preview: allTabs.filter((t) => t.isPreview).length,
+      groups: Object.keys(state.tabGroups).length
+    }
+  }, [state.tabGroups])
+}
+
+/**
+ * Hook to get only tab actions (stable references that don't change).
+ * Use this when you only need to perform actions like openTab, closeTab, etc.
+ *
+ * Subscribes to `TabActionsContext` alone, so tab state changes never re-render
+ * the caller. The actions still operate on the current state: they read it
+ * through refs the provider keeps in sync, not through a captured closure.
+ */
+export const useTabActions = (): TabActionsContextType => {
+  const context = useContext(TabActionsContext)
+  if (!context) {
+    throw new Error('useTabActions must be used within a TabProvider')
+  }
+  return context
+}
+
+/**
+ * Tab actions when there is a TabProvider, `null` when there is not.
+ *
+ * For shared components that render both inside a tab and standalone (dialogs,
+ * previews, tests): they must degrade rather than throw.
+ */
+export const useTabActionsOptional = (): TabActionsContextType | null => {
+  return useContext(TabActionsContext)
+}

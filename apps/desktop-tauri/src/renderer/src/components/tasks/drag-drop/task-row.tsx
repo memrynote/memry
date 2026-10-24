@@ -1,0 +1,397 @@
+import { useRef, useEffect, useState, memo } from 'react'
+import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
+import { cn } from '@/lib/utils'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { PriorityBars } from '@/components/tasks/task-icons'
+import { StatusIcon } from '@/components/tasks/status-icon'
+import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
+import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
+import { SelectionCheckbox } from '@/components/folder-view/selection-checkbox'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { TaskLinkedNoteIndicator } from '@/components/tasks/task-linked-note-indicator'
+import { TaskRowReminder, TaskRowStartDate } from '@/components/tasks/task-row-schedule'
+import { InsertionIndicator } from './insertion-indicator'
+import type { SectionDragState } from './list-section-drag-state'
+
+import type { Task, Priority } from '@/data/task-model'
+import type { Project, Status } from '@/data/tasks-data'
+import { useT } from '@memry/i18n/renderer'
+import { AddSubtaskButton } from '@/components/tasks/subtask-tree/add-subtask-button'
+import { TaskRowMenu } from '@/components/tasks/subtask-tree/task-row-menu'
+import { useSubtaskTree } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+
+interface TaskRowProps {
+  task: Task
+  project: Project
+  projects: Project[]
+  allTasks?: Task[]
+  isCompleted: boolean
+  isSelected?: boolean
+  showProjectBadge?: boolean
+  onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
+  onNoteClick?: (noteId: string) => void
+  onClick?: (taskId: string) => void
+  className?: string
+  isSelectionMode?: boolean
+  isCheckedForSelection?: boolean
+  onToggleSelect?: (taskId: string) => void
+  onShiftSelect?: (taskId: string) => void
+  accentClass?: string
+  isDragging?: boolean
+  isJustDropped?: boolean
+  // oxlint-disable-next-line typescript/no-explicit-any
+  dragHandleListeners?: Record<string, any>
+  // oxlint-disable-next-line typescript/no-explicit-any
+  dragHandleAttributes?: Record<string, any>
+  droppedPriority?: Priority | null
+  insertionIndicatorPosition?: 'before' | 'after'
+  sectionDragState?: SectionDragState
+  renderMode?: 'live' | 'overlay'
+  dataTestId?: string
+  overlayWidth?: number | null
+}
+
+const EXIT_ANIMATION_DURATION = 200
+
+const arePropsEqual = (prevProps: TaskRowProps, nextProps: TaskRowProps): boolean => {
+  if (prevProps.task.id !== nextProps.task.id) return false
+  if (prevProps.task.title !== nextProps.task.title) return false
+  if (prevProps.task.priority !== nextProps.task.priority) return false
+  if (prevProps.task.statusId !== nextProps.task.statusId) return false
+  if (prevProps.task.isRepeating !== nextProps.task.isRepeating) return false
+  if (prevProps.task.repeatConfig !== nextProps.task.repeatConfig) return false
+  if (prevProps.task.projectId !== nextProps.task.projectId) return false
+  if (prevProps.task.sourceNoteId !== nextProps.task.sourceNoteId) return false
+  if (prevProps.task.linkedNoteIds.join(',') !== nextProps.task.linkedNoteIds.join(',')) {
+    return false
+  }
+  const prevDate = prevProps.task.dueDate?.getTime() ?? null
+  const nextDate = nextProps.task.dueDate?.getTime() ?? null
+  if (prevDate !== nextDate) return false
+  if (prevProps.task.dueTime !== nextProps.task.dueTime) return false
+  if (prevProps.task.startDate?.getTime() !== nextProps.task.startDate?.getTime()) return false
+  if (prevProps.task.fields !== nextProps.task.fields) return false
+  if (prevProps.task.tags !== nextProps.task.tags) return false
+  if (prevProps.isCompleted !== nextProps.isCompleted) return false
+  if (prevProps.isSelected !== nextProps.isSelected) return false
+  if (prevProps.isSelectionMode !== nextProps.isSelectionMode) return false
+  if (prevProps.isCheckedForSelection !== nextProps.isCheckedForSelection) return false
+  if (prevProps.showProjectBadge !== nextProps.showProjectBadge) return false
+  if (prevProps.accentClass !== nextProps.accentClass) return false
+  if (prevProps.project.id !== nextProps.project.id) return false
+  if (prevProps.isDragging !== nextProps.isDragging) return false
+  if (prevProps.isJustDropped !== nextProps.isJustDropped) return false
+  if (prevProps.droppedPriority !== nextProps.droppedPriority) return false
+  if (prevProps.insertionIndicatorPosition !== nextProps.insertionIndicatorPosition) return false
+  if (prevProps.sectionDragState !== nextProps.sectionDragState) return false
+  if (prevProps.renderMode !== nextProps.renderMode) return false
+  return true
+}
+
+const resolveStatus = (
+  task: Task,
+  statuses: Status[]
+): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
+  const status = statuses.find((s) => s.id === task.statusId)
+  return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- status.type is user-extensible StatusType; the icon draws only the three base types, and `|| 'todo'` keeps the fallback
+    type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
+    color: status?.color || 'var(--text-tertiary)'
+  }
+}
+
+const PRIORITY_LABELS: Record<string, string> = {
+  urgent: 'Urgent',
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+  none: 'None'
+}
+
+const TaskRowComponent = ({
+  task,
+  project,
+  projects: _projects,
+  allTasks: _allTasks,
+  isCompleted,
+  isSelected = false,
+  showProjectBadge = false,
+  onToggleComplete,
+  onUpdateTask,
+  onNoteClick,
+  onClick,
+  className,
+  isSelectionMode = false,
+  isCheckedForSelection = false,
+  onToggleSelect,
+  onShiftSelect,
+  accentClass: _accentClass,
+  isDragging = false,
+  isJustDropped = false,
+  dragHandleListeners,
+  dragHandleAttributes,
+  droppedPriority,
+  insertionIndicatorPosition,
+  sectionDragState = 'none',
+  renderMode = 'live',
+  dataTestId,
+  overlayWidth
+}: TaskRowProps): React.JSX.Element => {
+  const { t: tPhaseF } = useT('tasks')
+  const isOverlay = renderMode === 'overlay'
+  const tree = useSubtaskTree()
+  const taskPath = useTaskPath(task)
+  const path = isOverlay ? null : taskPath
+  const rowRef = useRef<HTMLDivElement>(null)
+  const [isExiting, setIsExiting] = useState(false)
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
+
+  useEffect(() => {
+    if (isSelected && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [isSelected])
+
+  const style: React.CSSProperties | undefined = isOverlay
+    ? overlayWidth
+      ? { width: `${overlayWidth}px` }
+      : undefined
+    : isExiting
+      ? {
+          opacity: 0,
+          transform: 'scale(0.98)',
+          transition: 'opacity 200ms ease-out, transform 200ms ease-out',
+          pointerEvents: 'none'
+        }
+      : undefined
+
+  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+  const { type: statusType, color: statusColor } = resolveStatus(task, project.statuses)
+
+  const handleRowClick = (e: React.MouseEvent): void => {
+    if (e.shiftKey && onShiftSelect) {
+      e.preventDefault()
+      onShiftSelect(task.id)
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && onToggleSelect) {
+      e.preventDefault()
+      onToggleSelect(task.id)
+      return
+    }
+    if (isSelectionMode && onToggleSelect) {
+      onToggleSelect(task.id)
+      return
+    }
+    onClick?.(task.id)
+  }
+
+  const handleRowKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.shiftKey && (e.key === 'M' || e.key === 'm') && tree) {
+      e.preventDefault()
+      e.stopPropagation()
+      tree.openMoveUnder(task.id)
+      return
+    }
+    if (e.key === 'Enter' && onClick) {
+      e.preventDefault()
+      onClick(task.id)
+    }
+  }
+
+  const showSelection = !!onToggleSelect
+
+  const compactDateLabel = (() => {
+    if (!task.dueDate) return null
+    const date = formatDateShort(task.dueDate)
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime, clockFormat)}` : date
+  })()
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!compactDateLabel) return null
+    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
+    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
+  })()
+
+  return (
+    <TaskRowMenu task={task} enabled={!isOverlay}>
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children */}
+      <div
+        ref={rowRef}
+        style={style}
+        role={isOverlay ? undefined : 'button'}
+        tabIndex={isOverlay ? undefined : onClick ? 0 : -1}
+        onClick={isOverlay ? undefined : handleRowClick}
+        onKeyDown={isOverlay ? undefined : onClick ? handleRowKeyDown : undefined}
+        {...(isOverlay ? {} : dragHandleAttributes)}
+        {...(isOverlay ? {} : dragHandleListeners)}
+        className={cn(
+          isOverlay
+            ? [
+                'flex w-full items-center gap-2 rounded-md bg-card px-3 py-[7px]',
+                'border-[1.5px] border-[#4C9EFF] cursor-grabbing select-none',
+                '[box-shadow:rgba(0,0,0,0.5)_0px_8px_24px,rgba(76,158,255,0.15)_0px_2px_8px]'
+              ]
+            : [
+                'group group/row group/addable relative flex items-center py-[7px] px-3 gap-3 transition-colors',
+                'rounded-md hover:bg-accent/60',
+                onClick && 'focus-visible:outline-none',
+
+                isDragging &&
+                  'cursor-grabbing opacity-[0.35] border-dashed border-primary/30 bg-primary/[0.03]',
+                !isDragging && !dragHandleListeners && onClick && 'cursor-pointer',
+                isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
+                isSelected &&
+                  !isCheckedForSelection &&
+                  'bg-primary/[0.08] ring-inset ring-primary/30',
+                isExiting && 'select-none',
+                sectionDragState === 'source-dimmed' && 'opacity-50',
+                sectionDragState === 'target-highlighted' && 'bg-primary/[0.04]',
+                insertionIndicatorPosition === 'before' && 'pt-1',
+                insertionIndicatorPosition === 'after' && 'pb-1',
+                !isDragging && isJustDropped && 'animate-row-drop-flash'
+              ],
+          className
+        )}
+        data-section-drag-state={sectionDragState}
+        data-overlay-row-variant={isOverlay ? 'task' : undefined}
+        data-testid={dataTestId}
+        aria-hidden={isOverlay ? true : undefined}
+        aria-label={
+          isOverlay ? undefined : `Task: ${task.title}${isCompleted ? ', completed' : ''}`
+        }
+      >
+        {!isOverlay && insertionIndicatorPosition && (
+          <InsertionIndicator
+            position={insertionIndicatorPosition}
+            className="start-3 end-3"
+            dataTestId="list-drop-indicator"
+          />
+        )}
+
+        {!isOverlay && showSelection && (
+          <div className="flex shrink-0 items-center justify-center">
+            <SelectionCheckbox
+              state={isCheckedForSelection ? 'checked' : 'unchecked'}
+              onToggle={() => onToggleSelect?.(task.id)}
+              alwaysVisible={isSelectionMode}
+              label={`Select ${task.title}`}
+            />
+          </div>
+        )}
+
+        {isOverlay ? (
+          <StatusIcon type={isCompleted ? 'done' : statusType} color={statusColor} size="lg" />
+        ) : (
+          <InlineStatusPopover
+            statusId={task.statusId}
+            statuses={project.statuses}
+            isCompleted={isCompleted}
+            onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+            onToggleComplete={() => {
+              setIsExiting(true)
+              setTimeout(() => onToggleComplete(task.id), EXIT_ANIMATION_DURATION)
+            }}
+            disabled={isDragging}
+          />
+        )}
+
+        {isOverlay ? (
+          <PriorityBars priority={task.priority} />
+        ) : (
+          <InlinePriorityPopover
+            priority={task.priority}
+            onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+            disabled={isDragging}
+          />
+        )}
+
+        <TaskPathTitle task={task} path={path}>
+          <span
+            className={cn(
+              'text-[13px] font-medium grow shrink min-w-0 truncate',
+              isExiting || isCompleted
+                ? isOverlay
+                  ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                  : 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                : isOverlay
+                  ? 'text-foreground/90'
+                  : 'text-foreground/90'
+            )}
+          >
+            {task.title}
+          </span>
+        </TaskPathTitle>
+
+        {task.isRepeating && task.repeatConfig && (
+          <RepeatIndicator config={task.repeatConfig} size="sm" showTooltip={!isOverlay} />
+        )}
+
+        {!isOverlay && task.fields && Object.keys(task.fields).length > 0 && (
+          <TaskRelationChip tags={task.tags} fields={task.fields} />
+        )}
+
+        {showProjectBadge && !path && (
+          <div className="flex items-center shrink-0 gap-[5px]">
+            <div
+              className="rounded-xs shrink-0 size-2"
+              style={{ backgroundColor: project.color }}
+            />
+            <div
+              className={cn('text-[11px] leading-3.5 truncate max-w-[100px]', 'text-text-tertiary')}
+            >
+              {project.name}
+            </div>
+          </div>
+        )}
+
+        {!isOverlay && <TaskRowReminder taskId={task.id} />}
+
+        {!isOverlay && !isCompleted && (
+          <TaskRowStartDate startDate={task.startDate} hasDueDisplay={!!dueDateDisplay} />
+        )}
+
+        {dueDateDisplay && (
+          <div
+            className={cn(
+              'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
+              'colorClass' in dueDateDisplay
+                ? dueDateDisplay.colorClass
+                : isOverlay
+                  ? 'text-text-tertiary'
+                  : null
+            )}
+            style={
+              'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined
+            }
+          >
+            {dueDateDisplay.text}
+          </div>
+        )}
+
+        {!isOverlay && <TaskLinkedNoteIndicator task={task} onNoteClick={onNoteClick} />}
+
+        {!isOverlay && <AddSubtaskButton taskId={task.id} />}
+
+        {!isOverlay && droppedPriority && (
+          <div className="flex items-center shrink-0 gap-1 px-2 py-0.5 bg-primary/10 rounded text-[10px] font-medium text-primary animate-fade-out">
+            {tPhaseF('phaseF.componentsTasksDragDropTaskRow.priority')}
+            {PRIORITY_LABELS[droppedPriority] ?? droppedPriority}
+          </div>
+        )}
+      </div>
+    </TaskRowMenu>
+  )
+}
+
+export const TaskRow = memo(TaskRowComponent, arePropsEqual)
+
+export default TaskRow
+export type { TaskRowProps }

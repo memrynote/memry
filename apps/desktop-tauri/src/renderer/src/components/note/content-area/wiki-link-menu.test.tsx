@@ -1,0 +1,226 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { WikiLinkMenu, type WikiLinkSuggestionItem } from './wiki-link-menu'
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string, values?: { title?: string; name?: string; folder?: string }) => {
+      const messages: Record<string, string> = {
+        'menus.wiki.embed': 'Embed',
+        'menus.wiki.wikiLink': 'Wiki link',
+        'menus.wiki.embedAria': `Embed ${values?.title ?? ''}`.trim(),
+        'menus.wiki.wikiLinkAria': `Wiki link ${values?.title ?? ''}`.trim(),
+        'menus.wiki.noHeadings': `${values?.title ?? ''} has no headings`.trim(),
+        'menus.wiki.noMatchingHeadings': `No headings in ${values?.title ?? ''} match`.trim(),
+        'menus.wiki.displayAs': 'Display as',
+        'menus.wiki.aliasHint': 'Type | to name the link',
+        'names.menuTarget': `→ ${values?.title}`,
+        'names.menuTargetInFolder': `→ ${values?.title} · ${values?.folder}`,
+        'names.addAsNameOf': `Add “${values?.name}” as a name of…`
+      }
+      return messages[key] ?? key
+    }
+  })
+}))
+
+describe('WikiLinkMenu', () => {
+  it('offers embed and wiki link actions on audio suggestions', () => {
+    const onItemClick = vi.fn()
+    const item: WikiLinkSuggestionItem = {
+      id: 'voice-1',
+      title: 'Voice memo',
+      target: 'Voice memo',
+      exists: true,
+      type: 'note',
+      fileType: 'audio',
+      mimeType: 'audio/wav',
+      fileSize: 4096
+    }
+
+    render(
+      <WikiLinkMenu
+        items={[item]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Embed Voice memo' }))
+    expect(onItemClick).toHaveBeenCalledWith({ ...item, insertMode: 'embed' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wiki link Voice memo' }))
+    expect(onItemClick).toHaveBeenCalledWith({ ...item, insertMode: 'wikiLink' })
+  })
+
+  it('renders heading rows that insert a note#heading target', () => {
+    const onItemClick = vi.fn()
+    const heading: WikiLinkSuggestionItem = {
+      id: 'heading:note-1:0',
+      title: 'Kararlar',
+      target: 'Toplantı#Kararlar',
+      alias: '',
+      exists: true,
+      type: 'heading',
+      headingLevel: 2
+    }
+
+    render(
+      <WikiLinkMenu
+        items={[heading]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('option', { name: 'Kararlar' }))
+    expect(onItemClick).toHaveBeenCalledWith({ ...heading, insertMode: 'wikiLink' })
+  })
+
+  it('says the note has no headings, and cannot be picked', () => {
+    const onItemClick = vi.fn()
+    const empty: WikiLinkSuggestionItem = {
+      id: 'headings:note-1',
+      title: 'Toplantı',
+      target: '',
+      exists: true,
+      type: 'headingEmpty',
+      filtered: false
+    }
+
+    const { rerender } = render(
+      <WikiLinkMenu
+        items={[empty]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    expect(screen.getByText('Toplantı has no headings')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('option'))
+    expect(onItemClick).not.toHaveBeenCalled()
+
+    rerender(
+      <WikiLinkMenu
+        items={[{ ...empty, filtered: true }]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+    expect(screen.getByText('No headings in Toplantı match')).toBeInTheDocument()
+  })
+
+  it('commits the display name once both halves are settled', () => {
+    const onItemClick = vi.fn()
+    const item: WikiLinkSuggestionItem = {
+      id: 'alias:Continent#North America',
+      title: 'North of America',
+      target: 'Continent#North America',
+      alias: 'North of America',
+      exists: true,
+      type: 'alias'
+    }
+
+    render(
+      <WikiLinkMenu
+        items={[item]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    expect(screen.getByText('Display as')).toBeInTheDocument()
+    expect(screen.getByText('North of America → Continent#North America')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('option'))
+    expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ alias: 'North of America' }))
+  })
+
+  it('shows a name match as the name over the note it opens, with a folder when shared', () => {
+    const onItemClick = vi.fn()
+    const items: WikiLinkSuggestionItem[] = [
+      {
+        id: 'note-ml-a',
+        title: 'ML',
+        noteTitle: 'Machine learning',
+        target: 'Machine learning',
+        alias: 'ML',
+        exists: true,
+        type: 'noteName',
+        folder: 'A'
+      },
+      {
+        id: 'note-ai',
+        title: 'AI',
+        noteTitle: 'Artificial Intelligence',
+        target: 'Artificial Intelligence',
+        alias: 'AI',
+        exists: true,
+        type: 'noteName'
+      }
+    ]
+
+    render(
+      <WikiLinkMenu
+        items={items}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
+      'ML→ Machine learning · A',
+      'AI→ Artificial Intelligence'
+    ])
+    fireEvent.click(screen.getAllByRole('option')[1])
+    expect(onItemClick).toHaveBeenCalledWith(
+      expect.objectContaining({ target: 'Artificial Intelligence', alias: 'AI' })
+    )
+  })
+
+  it('offers to add the query as a name of another note', () => {
+    const onItemClick = vi.fn()
+    render(
+      <WikiLinkMenu
+        items={[
+          {
+            id: 'add-name:Deep learning',
+            title: 'Deep learning',
+            target: 'Deep learning',
+            exists: false,
+            type: 'addName'
+          }
+        ]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={onItemClick}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('option', { name: 'Add “Deep learning” as a name of…' }))
+    expect(onItemClick).toHaveBeenCalledWith(expect.objectContaining({ type: 'addName' }))
+  })
+
+  // The `|` grammar has always worked; nothing ever said so, which is why every
+  // heading link read `Note#Heading` (#1563 D2).
+  it('teaches the alias grammar in a footer rather than per row', () => {
+    render(
+      <WikiLinkMenu
+        items={[
+          { id: 'n1', title: 'Toplantı', target: 'Toplantı', exists: true, type: 'note' },
+          { id: 'n2', title: 'Roadmap', target: 'Roadmap', exists: true, type: 'note' }
+        ]}
+        loadingState="loaded"
+        selectedIndex={0}
+        onItemClick={vi.fn()}
+      />
+    )
+
+    expect(screen.getAllByText('Type | to name the link')).toHaveLength(1)
+  })
+})

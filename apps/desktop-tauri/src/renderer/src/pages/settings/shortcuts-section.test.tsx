@@ -1,0 +1,437 @@
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ShortcutsSettings } from './shortcuts-section'
+import { useKeyboardSettings } from '@/hooks/use-keyboard-settings'
+import { createMockApi } from '@tests/setup-dom'
+import { toast } from 'sonner'
+import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
+
+vi.mock('@/hooks/use-keyboard-settings', () => ({
+  useKeyboardSettings: vi.fn()
+}))
+
+const folders = vi.hoisted(() => ({ list: [] as Array<{ path: string }> }))
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteFoldersQuery: () => ({ folders: folders.list })
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn()
+  }
+}))
+
+const useKeyboardSettingsMock = vi.mocked(useKeyboardSettings)
+
+function mockGlobalCaptureApi(
+  current: GlobalCaptureResult,
+  onSave: GlobalCaptureResult | Error = { status: 'registered', fallbackRegistered: false }
+): { setGlobalCapture: ReturnType<typeof vi.fn>; setStickyShortcut: ReturnType<typeof vi.fn> } {
+  const api = createMockApi()
+  const setGlobalCapture =
+    onSave instanceof Error ? vi.fn().mockRejectedValue(onSave) : vi.fn().mockResolvedValue(onSave)
+  const setStickyShortcut = vi.fn().mockResolvedValue({ status: 'registered' })
+  Object.assign(api.settings, {
+    registerGlobalCapture: vi.fn().mockResolvedValue(current),
+    setGlobalCapture,
+    registerStickyShortcut: vi.fn().mockResolvedValue({ status: 'unbound' }),
+    setStickyShortcut
+  })
+  window.api = api as typeof window.api
+  return { setGlobalCapture, setStickyShortcut }
+}
+
+function globalCaptureRow(): HTMLElement {
+  const row = screen.getByText('Capture a note from anywhere').closest('.group')
+  expect(row).not.toBeNull()
+  return row as HTMLElement
+}
+
+describe('ShortcutsSettings', () => {
+  const updateSettings = vi.fn()
+  const resetToDefaults = vi.fn()
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    folders.list = [{ path: 'Work' }, { path: 'Work/Meetings' }]
+    updateSettings.mockResolvedValue(true)
+    resetToDefaults.mockResolvedValue(true)
+
+    mockGlobalCaptureApi({ status: 'registered', fallbackRegistered: false })
+
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: {},
+        globalCapture: null
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+  })
+
+  it('shows the loading header while keyboard settings load', () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: { overrides: {}, globalCapture: null },
+      isLoading: true,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+
+    render(<ShortcutsSettings />)
+
+    expect(screen.getByText('Keyboard Shortcuts')).toBeInTheDocument()
+    expect(screen.getByText('Loading settings...')).toBeInTheDocument()
+  })
+
+  it('filters shortcuts and reports an empty result set', async () => {
+    render(<ShortcutsSettings />)
+
+    await userEvent.type(screen.getByPlaceholderText('Search shortcuts...'), 'does not exist')
+
+    expect(screen.getByText('No shortcuts match your search')).toBeInTheDocument()
+  })
+
+  it('rebounds shortcuts, clears global capture, and resets custom overrides', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: {
+          'nav.newNote': {
+            key: 'n',
+            modifiers: { meta: true, shift: true }
+          }
+        },
+        globalCapture: {
+          key: 'space',
+          modifiers: { meta: true }
+        }
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+
+    const { setGlobalCapture } = mockGlobalCaptureApi(
+      { status: 'registered', fallbackRegistered: false },
+      { status: 'unbound', fallbackRegistered: true }
+    )
+
+    render(<ShortcutsSettings />)
+
+    await waitFor(() => expect(screen.getByText('Active')).toBeInTheDocument())
+
+    const newNoteRow = screen.getByText('New Note').closest('.group')
+    expect(newNoteRow).not.toBeNull()
+
+    await userEvent.click(within(newNoteRow as HTMLElement).getByTitle('Click to rebind'))
+    // jsdom is not macOS, so the platform command key is Ctrl.
+    fireEvent.keyDown(window, { key: 'j', ctrlKey: true })
+
+    expect(updateSettings).toHaveBeenCalledWith({
+      overrides: {
+        'nav.newNote': {
+          key: 'j',
+          modifiers: { meta: true, ctrl: undefined, shift: undefined, alt: undefined }
+        }
+      }
+    })
+
+    await userEvent.click(screen.getByTitle('Clear shortcut'))
+    expect(setGlobalCapture).toHaveBeenCalledWith(null)
+
+    await userEvent.click(screen.getByTestId('shortcuts-reset-all'))
+    expect(resetToDefaults).toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('All shortcuts reset to defaults')
+  })
+
+  it('hides reset-all and per-row reset while every binding is the default', () => {
+    render(<ShortcutsSettings />)
+
+    expect(screen.queryByTestId('shortcuts-reset-all')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Reset to default')).not.toBeInTheDocument()
+  })
+
+  it('offers a quiet per-row reset on changed bindings', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: { 'nav.newNote': { key: 'n', modifiers: { meta: true, shift: true } } },
+        globalCapture: null
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+
+    render(<ShortcutsSettings />)
+
+    const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
+    await userEvent.click(within(newNoteRow).getByTitle('Reset to default'))
+    expect(updateSettings).toHaveBeenCalledWith({ overrides: {} })
+  })
+
+  it('tints the recording row and shows a conflict inline without saving', async () => {
+    render(<ShortcutsSettings />)
+
+    const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
+    await userEvent.click(within(newNoteRow).getByTitle('Click to rebind'))
+
+    expect(newNoteRow.className).toContain('bg-tint-light')
+    expect(within(newNoteRow).getByText('Press shortcut…')).toBeInTheDocument()
+
+    fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+
+    expect(within(newNoteRow).getByText('Conflicts with: Search')).toHaveClass('text-destructive')
+    expect(updateSettings).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(newNoteRow.className).not.toContain('bg-tint-light')
+    expect(within(newNoteRow).queryByText('Conflicts with: Search')).not.toBeInTheDocument()
+  })
+
+  it('filters groups by category and keeps system-wide capture under All only', async () => {
+    render(<ShortcutsSettings />)
+
+    expect(screen.getByText('Capture a note from anywhere')).toBeInTheDocument()
+    expect(screen.getByText('New Note')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Editor' }))
+
+    expect(screen.getByText('Bold')).toBeInTheDocument()
+    expect(screen.queryByText('New Note')).not.toBeInTheDocument()
+    expect(screen.queryByText('Capture a note from anywhere')).not.toBeInTheDocument()
+  })
+
+  it('lists the sticky next to Quick Capture and rebinds it on its own', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: {},
+        globalCapture: null,
+        stickyShortcut: { key: 'M', modifiers: { meta: true, shift: true } }
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+    const { setGlobalCapture, setStickyShortcut } = mockGlobalCaptureApi({
+      status: 'unbound',
+      fallbackRegistered: true
+    })
+
+    render(<ShortcutsSettings />)
+
+    const stickyRow = screen
+      .getByText('Open the sticky from any app while memrynote is running')
+      .closest('.group') as HTMLElement
+    expect(within(stickyRow).getByTitle('Click to rebind')).toHaveTextContent('CtrlShiftM')
+
+    await userEvent.click(within(stickyRow).getByTitle('Click to rebind'))
+    fireEvent.keyDown(window, { key: 'y', code: 'KeyY', ctrlKey: true, shiftKey: true })
+
+    expect(setStickyShortcut).toHaveBeenCalledWith({
+      key: 'Y',
+      modifiers: { meta: true, shift: true, alt: undefined }
+    })
+    expect(setGlobalCapture).not.toHaveBeenCalled()
+  })
+
+  it('shows global capture save failures', async () => {
+    const { setGlobalCapture } = mockGlobalCaptureApi(
+      { status: 'unbound', fallbackRegistered: true },
+      new Error('No vault is open')
+    )
+
+    render(<ShortcutsSettings />)
+
+    await userEvent.click(within(globalCaptureRow()).getByText('Click to set'))
+    fireEvent.keyDown(window, { key: 'x', code: 'KeyX', ctrlKey: true })
+
+    expect(setGlobalCapture).toHaveBeenCalledWith({
+      key: 'X',
+      modifiers: { meta: true, shift: undefined, alt: undefined }
+    })
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Failed to save global capture shortcut')
+    )
+  })
+
+  it('shows the conflict on the row and keeps the working binding when another app owns the combo', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: { overrides: {}, globalCapture: { key: 'J', modifiers: { meta: true } } },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+    const { setGlobalCapture } = mockGlobalCaptureApi(
+      { status: 'registered', fallbackRegistered: false },
+      { status: 'in_use', fallbackRegistered: false }
+    )
+
+    render(<ShortcutsSettings />)
+    await waitFor(() => expect(screen.getByText('Active')).toBeInTheDocument())
+
+    await userEvent.click(within(globalCaptureRow()).getByTitle('Click to rebind'))
+    fireEvent.keyDown(window, { key: 'k', code: 'KeyK', ctrlKey: true, altKey: true })
+
+    expect(setGlobalCapture).toHaveBeenCalledWith({
+      key: 'K',
+      modifiers: { meta: true, shift: undefined, alt: true }
+    })
+    expect(
+      await screen.findByText('Ctrl+Alt+K is in use by another app. Pick a different combination.')
+    ).toHaveAttribute('role', 'alert')
+    expect(within(globalCaptureRow()).getByTitle('Click to rebind')).toHaveTextContent('CtrlJ')
+    expect(screen.queryByText('Active')).not.toBeInTheDocument()
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('records the physical key so Option combos and Space become valid accelerators', async () => {
+    const { setGlobalCapture } = mockGlobalCaptureApi({
+      status: 'unbound',
+      fallbackRegistered: true
+    })
+
+    render(<ShortcutsSettings />)
+
+    await userEvent.click(within(globalCaptureRow()).getByText('Click to set'))
+    fireEvent.keyDown(window, { key: '˚', code: 'KeyK', metaKey: true, altKey: true })
+    expect(setGlobalCapture).toHaveBeenLastCalledWith({
+      key: 'K',
+      modifiers: { meta: true, shift: undefined, alt: true }
+    })
+
+    await userEvent.click(within(globalCaptureRow()).getByText('Click to set'))
+    fireEvent.keyDown(window, { key: ' ', code: 'Space', metaKey: true, shiftKey: true })
+    expect(setGlobalCapture).toHaveBeenLastCalledWith({
+      key: 'Space',
+      modifiers: { meta: true, shift: true, alt: undefined }
+    })
+  })
+
+  it('explains a saved binding Electron cannot use', async () => {
+    useKeyboardSettingsMock.mockReturnValue({
+      settings: {
+        overrides: {},
+        globalCapture: { key: '˚', modifiers: { meta: true, alt: true } }
+      },
+      isLoading: false,
+      error: null,
+      updateSettings,
+      resetToDefaults
+    })
+    mockGlobalCaptureApi({ status: 'unsupported', fallbackRegistered: true })
+
+    render(<ShortcutsSettings />)
+
+    expect(
+      await screen.findByText(
+        "Ctrl+Alt+˚ can't be used as a global shortcut. Pick a different combination."
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('shows when another app owns the default shortcut at launch', async () => {
+    mockGlobalCaptureApi({ status: 'unbound', fallbackRegistered: false })
+
+    render(<ShortcutsSettings />)
+
+    expect(
+      await screen.findByText(
+        'The default shortcut Ctrl+Shift+SPACE is in use by another app. Set a different combination to use Global Capture.'
+      )
+    ).toHaveAttribute('role', 'alert')
+  })
+
+  describe('new note in folder', () => {
+    const chord = { key: '9', modifiers: { meta: true, alt: true } }
+
+    function withFolderShortcuts(
+      folderNoteShortcuts: Array<{ folder: string; binding: typeof chord }>
+    ) {
+      useKeyboardSettingsMock.mockReturnValue({
+        settings: { overrides: {}, globalCapture: null, folderNoteShortcuts },
+        isLoading: false,
+        error: null,
+        updateSettings,
+        resetToDefaults
+      })
+    }
+
+    it('adds a shortcut by picking a folder and recording a chord', async () => {
+      withFolderShortcuts([])
+      render(<ShortcutsSettings />)
+
+      await userEvent.click(screen.getByRole('combobox', { name: 'Add folder' }))
+      await userEvent.click(await screen.findByRole('option', { name: /Work\/Meetings/ }))
+
+      const row = screen.getByTestId('folder-note-shortcut-row')
+      expect(within(row).getByText('Press shortcut…')).toBeInTheDocument()
+
+      fireEvent.keyDown(window, { key: '9', ctrlKey: true, altKey: true })
+
+      await waitFor(() =>
+        expect(updateSettings).toHaveBeenCalledWith({
+          folderNoteShortcuts: [{ folder: 'Work/Meetings', binding: chord }]
+        })
+      )
+    })
+
+    it('refuses a chord another shortcut holds, editor keys included', async () => {
+      withFolderShortcuts([])
+      render(<ShortcutsSettings />)
+
+      await userEvent.click(screen.getByRole('combobox', { name: 'Add folder' }))
+      await userEvent.click(await screen.findByRole('option', { name: /^Work$/ }))
+      const row = screen.getByTestId('folder-note-shortcut-row')
+
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true })
+      expect(within(row).getByText('Conflicts with: Search')).toBeInTheDocument()
+
+      fireEvent.keyDown(window, { key: 'b', ctrlKey: true })
+      expect(within(row).getByText(/Conflicts with: .*Bold/)).toBeInTheDocument()
+      expect(updateSettings).not.toHaveBeenCalled()
+
+      fireEvent.keyDown(window, { key: 'Escape' })
+      expect(screen.queryByTestId('folder-note-shortcut-row')).not.toBeInTheDocument()
+    })
+
+    it('flags an app shortcut rebind that a folder shortcut already holds', async () => {
+      withFolderShortcuts([{ folder: 'Work', binding: chord }])
+      render(<ShortcutsSettings />)
+
+      const newNoteRow = screen.getByText('New Note').closest('.group') as HTMLElement
+      await userEvent.click(within(newNoteRow).getByTitle('Click to rebind'))
+      fireEvent.keyDown(window, { key: '9', ctrlKey: true, altKey: true })
+
+      expect(within(newNoteRow).getByText('Conflicts with: New note in Work')).toBeInTheDocument()
+      expect(updateSettings).not.toHaveBeenCalled()
+    })
+
+    it('marks a shortcut whose folder is gone and removes it on request', async () => {
+      withFolderShortcuts([
+        { folder: 'Work', binding: chord },
+        { folder: 'Old', binding: { key: '2', modifiers: { meta: true, alt: true } } }
+      ])
+      render(<ShortcutsSettings />)
+
+      const rows = screen.getAllByTestId('folder-note-shortcut-row')
+      expect(within(rows[0]).getByText('Creates a note in this folder')).toBeInTheDocument()
+      expect(within(rows[1]).getByRole('alert')).toHaveTextContent(
+        'This folder no longer exists. Pick another folder or remove the shortcut.'
+      )
+
+      await userEvent.click(within(rows[1]).getByRole('button', { name: 'Remove shortcut' }))
+
+      expect(updateSettings).toHaveBeenCalledWith({
+        folderNoteShortcuts: [{ folder: 'Work', binding: chord }]
+      })
+    })
+  })
+})

@@ -1,0 +1,182 @@
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
+import { type NewProperty, type Property, type PropertyType } from '@/components/note/info-section'
+import { isFilledValue } from '@/features/tag-fields/build-field-groups'
+import { useProperties } from '@/hooks/use-properties'
+import {
+  getDefaultValueForType,
+  getUniquePropertyName,
+  mapPropertyType
+} from '@/lib/property-utils'
+
+export type PropertySectionAction = 'update' | 'add' | 'remove' | 'rename' | 'reorder'
+
+export interface UsePropertySectionOptions {
+  entityId: string | null
+  canEdit?: () => boolean
+  onBlocked?: (action: PropertySectionAction) => void
+  onError?: (action: PropertySectionAction, error: unknown) => void
+  includeExplicitType?: boolean
+}
+
+export interface UsePropertySectionResult {
+  properties: Property[]
+  newlyAddedPropertyId: string | null
+  handlePropertyChange: (propertyId: string, value: unknown) => void
+  handleAddProperty: (property: NewProperty) => void
+  handleDeleteProperty: (propertyId: string) => void
+  handlePropertyNameChange: (propertyId: string, newName: string) => void
+  handlePropertyOrderChange: (newOrder: string[]) => void
+  handleSetFieldValue: (name: string, value: unknown, type: PropertyType) => void
+  values: Record<string, unknown>
+}
+
+export function usePropertySection({
+  entityId,
+  canEdit,
+  onBlocked,
+  onError,
+  includeExplicitType = false
+}: UsePropertySectionOptions): UsePropertySectionResult {
+  const {
+    properties: backendProperties,
+    propertiesRecord,
+    updateProperty,
+    addProperty,
+    removeProperty,
+    renameProperty,
+    reorderProperties,
+    setPropertyValue
+  } = useProperties(entityId)
+
+  const [newlyAddedPropertyId, setNewlyAddedPropertyId] = useState<string | null>(null)
+  const clearTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Drop the pending "newly added" highlight timer when the section unmounts
+  useEffect(() => () => clearTimeout(clearTimerRef.current), [])
+
+  const properties: Property[] = useMemo(() => {
+    return backendProperties.map((prop) => ({
+      id: prop.name,
+      name: prop.name,
+      type: mapPropertyType(prop.type),
+      value: prop.value,
+      isCustom: true
+    }))
+  }, [backendProperties])
+
+  const canPerformAction = useCallback(
+    (action: PropertySectionAction) => {
+      if (!canEdit) return true
+      if (canEdit()) return true
+      onBlocked?.(action)
+      return false
+    },
+    [canEdit, onBlocked]
+  )
+
+  const handlePropertyChange = useCallback(
+    async (propertyId: string, value: unknown) => {
+      if (!canPerformAction('update')) return
+      try {
+        await updateProperty(propertyId, value)
+      } catch (error) {
+        onError?.('update', error)
+      }
+    },
+    [canPerformAction, updateProperty, onError]
+  )
+
+  const handleAddProperty = useCallback(
+    async (newProp: NewProperty) => {
+      if (!canPerformAction('add')) return
+      const defaultValue = getDefaultValueForType(newProp.type)
+      try {
+        if (
+          newProp.type === 'status' ||
+          newProp.type === 'select' ||
+          newProp.type === 'multiselect'
+        ) {
+          const { notesService } = await import('@/services/notes-service')
+          await notesService.ensurePropertyDefinition(newProp.name, newProp.type)
+        }
+        const existingNames = properties.map((p) => p.name)
+        const uniqueName = getUniquePropertyName(newProp.name, existingNames)
+        clearTimeout(clearTimerRef.current)
+        setNewlyAddedPropertyId(uniqueName)
+        clearTimerRef.current = setTimeout(() => setNewlyAddedPropertyId(null), 2000)
+        await addProperty(
+          newProp.name,
+          defaultValue,
+          includeExplicitType ? newProp.type : undefined
+        )
+      } catch (error) {
+        onError?.('add', error)
+      }
+    },
+    [canPerformAction, properties, addProperty, includeExplicitType, onError]
+  )
+
+  const handleDeleteProperty = useCallback(
+    async (propertyId: string) => {
+      if (!canPerformAction('remove')) return
+      try {
+        await removeProperty(propertyId)
+      } catch (error) {
+        onError?.('remove', error)
+      }
+    },
+    [canPerformAction, removeProperty, onError]
+  )
+
+  const handlePropertyNameChange = useCallback(
+    async (propertyId: string, newName: string) => {
+      if (!canPerformAction('rename')) return
+      try {
+        await renameProperty(propertyId, newName)
+      } catch (error) {
+        onError?.('rename', error)
+      }
+    },
+    [canPerformAction, renameProperty, onError]
+  )
+
+  const handlePropertyOrderChange = useCallback(
+    async (newOrder: string[]) => {
+      if (!canPerformAction('reorder')) return
+      try {
+        await reorderProperties(newOrder)
+      } catch (error) {
+        onError?.('reorder', error)
+      }
+    },
+    [canPerformAction, reorderProperties, onError]
+  )
+
+  const handleSetFieldValue = useCallback(
+    async (name: string, value: unknown, type: PropertyType) => {
+      const exists = Object.prototype.hasOwnProperty.call(propertiesRecord, name)
+      const filled = isFilledValue(value)
+      if (!exists && !filled) return
+      const action: PropertySectionAction = !exists ? 'add' : filled ? 'update' : 'remove'
+      if (!canPerformAction(action)) return
+      try {
+        await setPropertyValue(name, filled ? value : null, type)
+      } catch (error) {
+        onError?.(action, error)
+      }
+    },
+    [propertiesRecord, canPerformAction, setPropertyValue, onError]
+  )
+
+  return {
+    properties,
+    values: propertiesRecord,
+    handleSetFieldValue: (...args) => void handleSetFieldValue(...args),
+    newlyAddedPropertyId,
+    handlePropertyChange: (...args) => void handlePropertyChange(...args),
+    handleAddProperty: (...args) => void handleAddProperty(...args),
+    handleDeleteProperty: (...args) => void handleDeleteProperty(...args),
+    handlePropertyNameChange: (...args) => void handlePropertyNameChange(...args),
+    handlePropertyOrderChange: (...args) => void handlePropertyOrderChange(...args)
+  }
+}

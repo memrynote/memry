@@ -15,6 +15,7 @@ const appRoots = [
   path.resolve(desktopRoot, 'src/main'),
   path.resolve(desktopRoot, 'src/preload'),
   path.resolve(desktopRoot, 'src/renderer'),
+  path.resolve(repoRoot, 'apps/desktop-tauri/src/renderer'),
   legacySharedRoot,
   path.resolve(repoRoot, 'apps/sync-server')
 ]

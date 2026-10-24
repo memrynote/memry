@@ -1,0 +1,125 @@
+import type {
+  AttachmentInfo,
+  AttachmentResult,
+  CreatePropertyDefinitionInput,
+  CreatePropertyDefinitionResponse,
+  DeleteAttachmentResponse,
+  ExportNoteInput,
+  ExportNoteResponse,
+  FileMetadata,
+  FolderConfig,
+  FolderInfo,
+  ImportDialogResponse,
+  ImportFilesResponse,
+  Note,
+  NoteCreatedEvent,
+  NoteCreateInput,
+  NoteCreateResponse,
+  NoteDeletedEvent,
+  NoteExternalChangeEvent,
+  NoteLinksResponse,
+  NoteListItem,
+  NoteListOptions,
+  NoteListResponse,
+  NoteMovedEvent,
+  NotePositionsResponse,
+  NoteRenamedEvent,
+  NotesClientAPI,
+  NoteUpdateInput,
+  NoteUpdateResponse,
+  NoteUpdatedEvent,
+  PropertyDefinition,
+  RestoreVersionResponse,
+  SnapshotDetail,
+  SnapshotListItem,
+  UpdatePropertyDefinitionInput,
+  WikiLinkPreview,
+  WikiLinkResolution
+} from '@memry/rpc/notes'
+import type { NoteLinksChangedEvent } from '@memry/contracts/notes-api'
+import { createWindowApiForwarder } from './window-api-forwarder'
+
+export type {
+  AttachmentInfo,
+  AttachmentResult,
+  CreatePropertyDefinitionInput,
+  CreatePropertyDefinitionResponse,
+  DeleteAttachmentResponse,
+  ExportNoteInput,
+  ExportNoteResponse,
+  FileMetadata,
+  FolderConfig,
+  FolderInfo,
+  ImportDialogResponse,
+  ImportFilesResponse,
+  Note,
+  NoteCreatedEvent,
+  NoteCreateInput,
+  NoteCreateResponse,
+  NoteDeletedEvent,
+  NoteExternalChangeEvent,
+  NoteLinksResponse,
+  NoteListItem,
+  NoteListOptions,
+  NoteListResponse,
+  NoteMovedEvent,
+  NotePositionsResponse,
+  NoteRenamedEvent,
+  NotesClientAPI,
+  NoteUpdateInput,
+  NoteUpdateResponse,
+  NoteUpdatedEvent,
+  PropertyDefinition,
+  RestoreVersionResponse,
+  SnapshotDetail,
+  SnapshotListItem,
+  UpdatePropertyDefinitionInput,
+  WikiLinkPreview,
+  WikiLinkResolution
+}
+
+export const notesService: NotesClientAPI = createWindowApiForwarder(() => window.api.notes)
+
+export function onNoteCreated(callback: (event: NoteCreatedEvent) => void): () => void {
+  return window.api.onNoteCreated(callback)
+}
+
+export function onNoteUpdated(callback: (event: NoteUpdatedEvent) => void): () => void {
+  // `changes` is required by the contract but the wire is untyped, and a main
+  // process from an older install can still send a payload without it. Every
+  // subscriber dereferences `changes`, so normalize once here rather than
+  // guarding at each call site — a throwing listener silently drops the event.
+  return window.api.onNoteUpdated((event) => {
+    callback(event.changes ? event : { ...event, changes: {} })
+  })
+}
+
+export function onNoteDeleted(callback: (event: NoteDeletedEvent) => void): () => void {
+  return window.api.onNoteDeleted(callback)
+}
+
+export function onNoteRenamed(callback: (event: NoteRenamedEvent) => void): () => void {
+  return window.api.onNoteRenamed(callback)
+}
+
+export function onNoteLinksChanged(callback: (event: NoteLinksChangedEvent) => void): () => void {
+  return window.api.onLinksChanged(callback)
+}
+
+export function onNoteMoved(callback: (event: NoteMovedEvent) => void): () => void {
+  return window.api.onNoteMoved(callback)
+}
+
+export function onNoteExternalChange(
+  callback: (event: NoteExternalChangeEvent) => void
+): () => void {
+  return window.api.onNoteExternalChange(callback)
+}
+
+export function onTagsChanged(callback: () => void): () => void {
+  return window.api.onTagsChanged(callback)
+}
+
+export function onFolderConfigUpdated(callback: (event: { path: string }) => void): () => void {
+  return window.api.onFolderConfigUpdated(callback)
+}

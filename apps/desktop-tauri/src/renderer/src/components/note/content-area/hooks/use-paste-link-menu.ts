@@ -1,0 +1,143 @@
+import { useCallback, useLayoutEffect, useState } from 'react'
+import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { readBareUrl } from '../paste-url-link'
+import { isFromWhiteboard } from '../whiteboard-events'
+
+function detectEmbedProvider(url: string): string | null {
+  if (extractYouTubeVideoId(url)) return 'youtube'
+  return null
+}
+
+export type PasteLinkOption = 'mention' | 'embed' | 'bookmark' | 'url'
+
+interface PasteLinkMenuState {
+  isOpen: boolean
+  url: string
+  position: { x: number; y: number }
+  options: PasteLinkOption[]
+  selectedIndex: number
+}
+
+const INITIAL_STATE: PasteLinkMenuState = {
+  isOpen: false,
+  url: '',
+  position: { x: 0, y: 0 },
+  options: [],
+  selectedIndex: 0
+}
+
+interface UsePasteLinkMenuParams {
+  editorContainerRef: React.RefObject<HTMLDivElement | null>
+  onSelect: (option: PasteLinkOption, url: string) => void
+}
+
+export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkMenuParams) {
+  const [state, setState] = useState<PasteLinkMenuState>(INITIAL_STATE)
+
+  const close = useCallback(() => setState(INITIAL_STATE), [])
+
+  const handleSelect = useCallback(
+    (option: PasteLinkOption) => {
+      onSelect(option, state.url)
+      close()
+    },
+    [onSelect, state.url, close]
+  )
+
+  useLayoutEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return undefined
+
+    const handlePaste = (e: ClipboardEvent): void => {
+      // A URL pasted onto a whiteboard goes onto the drawing, not the note.
+      if (state.isOpen || isFromWhiteboard(e)) return
+
+      const text = readBareUrl(e.clipboardData?.getData('text/plain'))
+      if (!text) return
+
+      const options: PasteLinkOption[] = ['mention']
+      if (detectEmbedProvider(text)) {
+        options.push('embed')
+      }
+      options.push('bookmark', 'url')
+
+      requestAnimationFrame(() => {
+        const selection = window.getSelection()
+        const rect = selection?.rangeCount ? selection.getRangeAt(0).getBoundingClientRect() : null
+        const containerRect = container.getBoundingClientRect()
+
+        setState({
+          isOpen: true,
+          url: text,
+          position: {
+            x: rect ? rect.left - containerRect.left : 0,
+            y: rect ? rect.bottom - containerRect.top + 4 : 0
+          },
+          options,
+          selectedIndex: 0
+        })
+      })
+    }
+
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      const s = state
+      if (!s.isOpen) return
+
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        close()
+        return
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: (prev.selectedIndex + 1) % prev.options.length
+        }))
+        return
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        setState((prev) => ({
+          ...prev,
+          selectedIndex: (prev.selectedIndex - 1 + prev.options.length) % prev.options.length
+        }))
+        return
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        handleSelect(s.options[s.selectedIndex])
+        return
+      }
+
+      close()
+    }
+
+    const handleClickAway = (e: MouseEvent): void => {
+      if (!state.isOpen) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
+      const target = e.target as HTMLElement
+      if (target.closest('[data-inline-choice-menu]')) return
+      close()
+    }
+
+    container.addEventListener('paste', handlePaste)
+    container.addEventListener('keydown', handleKeyDown, { capture: true })
+    document.addEventListener('mousedown', handleClickAway)
+
+    return () => {
+      container.removeEventListener('paste', handlePaste)
+      container.removeEventListener('keydown', handleKeyDown, { capture: true })
+      document.removeEventListener('mousedown', handleClickAway)
+    }
+  }, [editorContainerRef, state, handleSelect, close])
+
+  return { state, close, handleSelect }
+}

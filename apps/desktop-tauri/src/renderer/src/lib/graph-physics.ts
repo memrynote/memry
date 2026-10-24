@@ -1,0 +1,543 @@
+import type Graph from 'graphology'
+
+interface PhysicsNode {
+  id: string
+  x: number
+  y: number
+  vx: number
+  vy: number
+  fx: number | null
+  fy: number | null
+  /** Held where the user dropped it: survives release and is saved with the layout. */
+  pinned: boolean
+  radius: number
+  degree: number
+}
+
+/** Graph attribute that marks a node the user pinned; shared with the renderer's pin markers. */
+export const PINNED_ATTRIBUTE = 'pinned'
+
+export interface NodePosition {
+  x: number
+  y: number
+  pinned?: boolean
+}
+
+function createNode(id: string, attrs: Record<string, unknown>): PhysicsNode {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- graphology attributes are an untyped bag; layout writes numeric x/y
+  const x = (attrs.x as number) ?? 0
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- graphology attributes are an untyped bag; layout writes numeric x/y
+  const y = (attrs.y as number) ?? 0
+  const pinned = attrs[PINNED_ATTRIBUTE] === true
+  return {
+    id,
+    x,
+    y,
+    vx: 0,
+    vy: 0,
+    fx: pinned ? x : null,
+    fy: pinned ? y : null,
+    pinned,
+    radius: 0,
+    degree: 0
+  }
+}
+
+interface PhysicsLink {
+  source: PhysicsNode
+  target: PhysicsNode
+  /** How hard this link pulls, damped by the busier of its two endpoints. */
+  strength: number
+  /** Share of the correction applied to the source, so hubs move less than leaves. */
+  bias: number
+}
+
+export interface GraphPhysicsOptions {
+  linkDistance?: number
+  chargeStrength?: number
+  centeringStrength?: number
+  alphaDecay?: number
+  velocityDecay?: number
+  collidePadding?: number
+  /**
+   * Energy the simulation starts with. Lower when nodes already start from a
+   * saved layout, so reopening does not shake an arrangement that was at rest.
+   */
+  initialAlpha?: number
+}
+
+const DEFAULTS: Required<GraphPhysicsOptions> = {
+  linkDistance: 45,
+  chargeStrength: -220,
+  centeringStrength: 0.045,
+  // ~300 ticks from alpha 1 down to alphaMin, matching d3-force's feel.
+  alphaDecay: 0.0228,
+  velocityDecay: 0.38,
+  collidePadding: 3,
+  initialAlpha: 1
+}
+
+/** Start energy for a graph restored from a saved layout: enough to fold in new nodes. */
+export const RESTORED_ALPHA = 0.1
+
+const ALPHA_MIN = 0.001
+
+/** Energy injected when the graph is nudged back to life (filters, focus, reset). */
+export const REHEAT_ALPHA = 0.35
+
+/** Alpha the simulation is held at while a node is being dragged, so neighbours keep reacting. */
+const DRAG_ALPHA_TARGET = 0.3
+
+/**
+ * Repulsion falls off as 1/d², so past a few link-lengths it is noise. Ignoring
+ * those pairs is what keeps the tick O(n) instead of O(n²) on a large vault.
+ */
+const REPULSION_CUTOFF_FACTOR = 6
+
+/** Collision passes per tick — more is stabler, but each one costs a full neighbour sweep. */
+const COLLIDE_ITERATIONS = 1
+
+/**
+ * Grid cells are addressed by one number, so a tick never builds a key string.
+ * `(cellX + OFFSET) * STRIDE + (cellY + OFFSET)` stays exact in a double well
+ * past any coordinate a layout reaches, and two cells can only share a key when
+ * they sit a whole `STRIDE` of rows apart: `key(x, y) === key(x', y')` forces
+ * `y' - y === (x - x') * STRIDE`. Cells inside one 3x3 neighbourhood are at most
+ * two rows apart, so they can never collide — no pair is visited twice or missed
+ * — and anything that does share a bucket is millions of cells away, far outside
+ * the distance cutoff both sweeps already apply.
+ */
+const CELL_KEY_OFFSET = 1 << 20
+const CELL_KEY_STRIDE = 1 << 21
+
+function cellKey(cellX: number, cellY: number): number {
+  return (cellX + CELL_KEY_OFFSET) * CELL_KEY_STRIDE + (cellY + CELL_KEY_OFFSET)
+}
+
+/**
+ * A continuously-running force simulation bound to a graphology graph.
+ *
+ * Unlike a one-shot layout, this never "finishes" on its own terms: it cools
+ * toward rest, can be reheated, and holds a dragged node fixed while the rest of
+ * the graph reacts to it. The caller owns the clock — call `tick()` once per
+ * animation frame and render.
+ *
+ * Deliberately dependency-free: the desktop lockfile is pinned and adding a
+ * force library re-resolves shared transitive deps across the whole workspace.
+ */
+export class GraphPhysics {
+  private readonly graph: Graph
+  private readonly settings: Required<GraphPhysicsOptions>
+  private readonly nodes: PhysicsNode[] = []
+  private readonly nodesById = new Map<string, PhysicsNode>()
+  private readonly links: PhysicsLink[] = []
+  /** Edge keys currently modelled, so `sync` can tell a rewire from a no-op. */
+  private linkKeys = new Set<string>()
+  private readonly cutoff: number
+  /**
+   * Neighbour grid, kept alive between ticks so the hot loop allocates nothing.
+   * `buildGrid` is the only writer and resets both halves before it bins a
+   * single node. Instance state, never module state: the main graph and the
+   * local-graph panel each run their own simulation at the same time.
+   */
+  private readonly grid = new Map<number, PhysicsNode[]>()
+  private readonly cellPool: PhysicsNode[][] = []
+  private alphaValue = 1
+  private alphaTarget = 0
+  private destroyed = false
+
+  constructor(graph: Graph, options: GraphPhysicsOptions = {}) {
+    this.graph = graph
+    this.settings = { ...DEFAULTS, ...options }
+    this.cutoff = this.settings.linkDistance * REPULSION_CUTOFF_FACTOR
+    this.alphaValue = this.settings.initialAlpha
+
+    graph.forEachNode((id, attrs) => {
+      const node = createNode(id, attrs)
+      node.radius = (attrs.size ?? 4) * 1.2 + this.settings.collidePadding
+      this.nodes.push(node)
+      this.nodesById.set(id, node)
+    })
+
+    this.rebuildLinks()
+  }
+
+  get alpha(): number {
+    return this.alphaValue
+  }
+
+  get isSettled(): boolean {
+    if (this.destroyed || this.nodes.length === 0) return true
+    return this.alphaValue < ALPHA_MIN
+  }
+
+  /** Advance one step and publish the new positions to the graph. */
+  tick(): void {
+    if (this.destroyed || this.nodes.length === 0) return
+
+    this.alphaValue += (this.alphaTarget - this.alphaValue) * this.settings.alphaDecay
+
+    this.applyLinks()
+    this.applyRepulsion()
+    this.applyCentering()
+    this.integrate()
+    for (let i = 0; i < COLLIDE_ITERATIONS; i++) this.applyCollision()
+
+    this.syncPositions()
+  }
+
+  /**
+   * Reconcile with a graph that was patched in place: nodes that survived keep
+   * their position and velocity, new ones join where the builder seeded them,
+   * dropped ones are forgotten. Returns whether the node or link set actually
+   * moved — an attribute-only refresh is not a reason to reheat.
+   */
+  sync(): boolean {
+    if (this.destroyed) return false
+
+    let structureChanged = false
+    const surviving: PhysicsNode[] = []
+    const present = new Set<string>()
+
+    this.graph.forEachNode((id, attrs) => {
+      present.add(id)
+      let node = this.nodesById.get(id)
+      if (!node) {
+        node = createNode(id, attrs)
+        this.nodesById.set(id, node)
+        structureChanged = true
+      }
+      node.radius = (attrs.size ?? 4) * 1.2 + this.settings.collidePadding
+      surviving.push(node)
+    })
+
+    for (const id of this.nodesById.keys()) {
+      if (present.has(id)) continue
+      this.nodesById.delete(id)
+      structureChanged = true
+    }
+
+    this.nodes.length = 0
+    for (const node of surviving) this.nodes.push(node)
+
+    const previousLinkKeys = this.linkKeys
+    this.rebuildLinks()
+
+    if (this.linkKeys.size !== previousLinkKeys.size) return true
+    if (structureChanged) return true
+    for (const key of this.linkKeys) {
+      if (!previousLinkKeys.has(key)) return true
+    }
+    return false
+  }
+
+  reheat(alpha: number = REHEAT_ALPHA): void {
+    if (this.destroyed) return
+    if (this.alphaValue < alpha) this.alphaValue = alpha
+  }
+
+  /** Fix a node at its current position and keep the simulation warm while it is held. */
+  grab(nodeId: string): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed) return
+    node.fx = node.x
+    node.fy = node.y
+    this.alphaTarget = DRAG_ALPHA_TARGET
+    this.reheat(DRAG_ALPHA_TARGET)
+  }
+
+  dragTo(nodeId: string, x: number, y: number): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed) return
+    node.fx = x
+    node.fy = y
+  }
+
+  /**
+   * Release a held node. An unpinned node relaxes back into the layout; a pinned
+   * one stays where it is, so a click on a pinned node does not free it.
+   */
+  release(nodeId: string): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed) return
+    if (!node.pinned) {
+      node.fx = null
+      node.fy = null
+    }
+    this.alphaTarget = 0
+  }
+
+  /** End a drag with the node fixed where it was dropped. */
+  pin(nodeId: string): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed) return
+    node.pinned = true
+    node.fx = node.fx ?? node.x
+    node.fy = node.fy ?? node.y
+    node.x = node.fx
+    node.y = node.fy
+    node.vx = 0
+    node.vy = 0
+    this.alphaTarget = 0
+    this.setPinnedAttribute(node.id, true)
+  }
+
+  unpin(nodeId: string): void {
+    const node = this.nodesById.get(nodeId)
+    if (!node || this.destroyed || !node.pinned) return
+    node.pinned = false
+    node.fx = null
+    node.fy = null
+    this.setPinnedAttribute(node.id, false)
+    this.reheat()
+  }
+
+  /** Current positions, for saving. Pinned nodes report their held spot. */
+  snapshot(): Record<string, NodePosition> {
+    const positions: Record<string, NodePosition> = {}
+    for (const node of this.nodes) {
+      if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) continue
+      positions[node.id] = node.pinned
+        ? { x: node.x, y: node.y, pinned: true }
+        : { x: node.x, y: node.y }
+    }
+    return positions
+  }
+
+  isPinned(nodeId: string): boolean {
+    return this.nodesById.get(nodeId)?.pinned ?? false
+  }
+
+  private setPinnedAttribute(nodeId: string, pinned: boolean): void {
+    if (!this.graph.hasNode(nodeId)) return
+    if (pinned) this.graph.setNodeAttribute(nodeId, PINNED_ATTRIBUTE, true)
+    else this.graph.removeNodeAttribute(nodeId, PINNED_ATTRIBUTE)
+  }
+
+  destroy(): void {
+    this.destroyed = true
+    this.nodes.length = 0
+    this.links.length = 0
+    this.linkKeys.clear()
+    this.nodesById.clear()
+    this.grid.clear()
+    this.cellPool.length = 0
+  }
+
+  /**
+   * Bin every node into a uniform grid of `cellSize`.
+   *
+   * The map and the cell arrays outlive the tick, so this is where they are
+   * reset and the only place they are: the map is emptied up front, and the
+   * pool cursor rewinds to zero so each array is truncated the moment it is
+   * handed out again. Nothing from the previous pass can survive into this one.
+   */
+  private buildGrid(cellSize: number): void {
+    this.grid.clear()
+    let pooled = 0
+
+    for (const node of this.nodes) {
+      const key = cellKey(Math.floor(node.x / cellSize), Math.floor(node.y / cellSize))
+      const occupied = this.grid.get(key)
+      if (occupied) {
+        occupied.push(node)
+        continue
+      }
+
+      let cell = this.cellPool[pooled]
+      if (cell) cell.length = 0
+      else {
+        cell = []
+        this.cellPool[pooled] = cell
+      }
+      pooled++
+      cell.push(node)
+      this.grid.set(key, cell)
+    }
+  }
+
+  /** Rederive every spring from the graph's current edges. */
+  private rebuildLinks(): void {
+    this.links.length = 0
+    this.linkKeys = new Set<string>()
+    for (const node of this.nodes) node.degree = 0
+
+    this.graph.forEachEdge((edge) => {
+      const [sourceId, targetId] = this.graph.extremities(edge)
+      // Self-loops collapse to a zero-length spring and blow the solver up.
+      if (sourceId === targetId) return
+      const source = this.nodesById.get(sourceId)
+      const target = this.nodesById.get(targetId)
+      if (!source || !target) return
+      source.degree++
+      target.degree++
+      this.linkKeys.add(edge)
+      this.links.push({ source, target, strength: 0, bias: 0 })
+    })
+
+    for (const link of this.links) {
+      const total = link.source.degree + link.target.degree
+      link.strength = 1 / Math.min(link.source.degree, link.target.degree)
+      link.bias = total === 0 ? 0.5 : link.source.degree / total
+    }
+  }
+
+  /** Springs pulling each linked pair toward `linkDistance`. */
+  private applyLinks(): void {
+    const { linkDistance } = this.settings
+    for (const link of this.links) {
+      const { source, target } = link
+      const dx = target.x + target.vx - source.x - source.vx
+      const dy = target.y + target.vy - source.y - source.vy
+      const distance = Math.hypot(dx, dy) || 1e-6
+      const push = ((distance - linkDistance) / distance) * this.alphaValue * link.strength
+      const fx = dx * push
+      const fy = dy * push
+
+      target.vx -= fx * link.bias
+      target.vy -= fy * link.bias
+      source.vx += fx * (1 - link.bias)
+      source.vy += fy * (1 - link.bias)
+    }
+  }
+
+  /**
+   * Inverse-square repulsion between nearby nodes. A uniform grid sized to the
+   * cutoff keeps each node comparing against a handful of neighbours.
+   */
+  private applyRepulsion(): void {
+    const { chargeStrength } = this.settings
+    const cutoff = this.cutoff
+    const cutoffSquared = cutoff * cutoff
+    this.buildGrid(cutoff)
+
+    for (const node of this.nodes) {
+      const cellX = Math.floor(node.x / cutoff)
+      const cellY = Math.floor(node.y / cutoff)
+
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const cell = this.grid.get(cellKey(cellX + ox, cellY + oy))
+          if (!cell) continue
+
+          for (const other of cell) {
+            if (other === node) continue
+            let dx = other.x - node.x
+            let dy = other.y - node.y
+            let distanceSquared = dx * dx + dy * dy
+            if (distanceSquared > cutoffSquared) continue
+
+            if (distanceSquared === 0) {
+              // Deterministic nudge so coincident nodes still separate.
+              dx = 1e-3
+              dy = 1e-3
+              distanceSquared = dx * dx + dy * dy
+            }
+
+            const push = (chargeStrength * this.alphaValue) / distanceSquared
+            node.vx += dx * push
+            node.vy += dy * push
+          }
+        }
+      }
+    }
+  }
+
+  /** Weak pull toward the origin so the graph stays a graph and not a diaspora. */
+  private applyCentering(): void {
+    const pull = this.settings.centeringStrength * this.alphaValue
+    for (const node of this.nodes) {
+      node.vx -= node.x * pull
+      node.vy -= node.y * pull
+    }
+  }
+
+  private integrate(): void {
+    const friction = 1 - this.settings.velocityDecay
+    for (const node of this.nodes) {
+      if (node.fx !== null) {
+        node.x = node.fx
+        node.vx = 0
+      } else {
+        node.vx *= friction
+        node.x += node.vx
+      }
+
+      if (node.fy !== null) {
+        node.y = node.fy
+        node.vy = 0
+      } else {
+        node.vy *= friction
+        node.y += node.vy
+      }
+    }
+  }
+
+  /** Position-based separation so node discs never overlap — the "cell" packing. */
+  private applyCollision(): void {
+    let maxRadius = 0
+    for (const node of this.nodes) maxRadius = Math.max(maxRadius, node.radius)
+    const cellSize = Math.max(maxRadius * 2, 1)
+    this.buildGrid(cellSize)
+
+    for (const node of this.nodes) {
+      const cellX = Math.floor(node.x / cellSize)
+      const cellY = Math.floor(node.y / cellSize)
+
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const cell = this.grid.get(cellKey(cellX + ox, cellY + oy))
+          if (!cell) continue
+
+          for (const other of cell) {
+            if (other === node || other.id <= node.id) continue
+            const minimum = node.radius + other.radius
+            let dx = other.x - node.x
+            let dy = other.y - node.y
+            let distance = Math.hypot(dx, dy)
+            if (distance >= minimum) continue
+
+            if (distance === 0) {
+              dx = 1e-3
+              dy = 1e-3
+              distance = Math.hypot(dx, dy)
+            }
+
+            const overlap = ((minimum - distance) / distance) * 0.5
+            const shiftX = dx * overlap
+            const shiftY = dy * overlap
+
+            if (other.fx === null) other.x += shiftX
+            if (other.fy === null) other.y += shiftY
+            if (node.fx === null) node.x -= shiftX
+            if (node.fy === null) node.y -= shiftY
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Publish this tick's positions onto the graph, without announcing them.
+   *
+   * `setNodeAttribute` emits a `nodeAttributesUpdated` per axis — two graphology
+   * events per node per frame. Sigma is the only subscriber (`bindGraphHandlers`),
+   * and all its handler does for a moved node is re-run the node reducer and
+   * schedule a partial refresh. Neither is needed here: the caller refreshes
+   * sigma itself immediately after every tick, and sigma's indexation pass reads
+   * x/y straight back off the graph for every node, so the frame is painted from
+   * these exact values either way. Writing into the node's live attribute object
+   * skips the announcement and keeps the value identical to the bit.
+   *
+   * Only nodes this simulation owns are touched, so anything added to the graph
+   * after construction keeps whatever position put it there.
+   */
+  private syncPositions(): void {
+    for (const node of this.nodes) {
+      if (!this.graph.hasNode(node.id)) continue
+      const attributes = this.graph.getNodeAttributes(node.id)
+      attributes.x = node.x
+      attributes.y = node.y
+    }
+  }
+}

@@ -1,0 +1,139 @@
+import { createInstance } from 'i18next'
+import { initReactI18next } from 'react-i18next'
+import { describe, expect, it } from 'vitest'
+import { RESOURCES } from '@memry/i18n/locales'
+
+import { extractErrorMessage, getVaultLockRefusal } from './ipc-error'
+
+describe('extractErrorMessage', () => {
+  it('reads the message of an Error, a string and a Tauri CommandError object', () => {
+    expect(extractErrorMessage(new Error('from error'), 'fallback')).toBe('from error')
+    expect(extractErrorMessage('from string', 'fallback')).toBe('from string')
+    expect(
+      extractErrorMessage({ kind: 'storage', code: 'disk_full', message: 'x' }, 'fallback')
+    ).toBe('x')
+  })
+
+  it('falls back for a value that is none of those', () => {
+    expect(extractErrorMessage(42, 'fallback')).toBe('fallback')
+    expect(extractErrorMessage(null, 'fallback')).toBe('fallback')
+    expect(extractErrorMessage({ kind: 'storage', message: 'no code' }, 'fallback')).toBe(
+      'fallback'
+    )
+  })
+
+  it('applies the lock refusal mapping to a CommandError message', () => {
+    const error = {
+      kind: 'locked',
+      code: 'vault_locked',
+      message: 'The owner made this note read-only.'
+    }
+    expect(getVaultLockRefusal(error)).toBe('The owner made this note read-only.')
+  })
+
+  it('strips ipcMain handler prefixes from Error objects', () => {
+    const error = new Error(
+      "Error occurred in handler for 'sync:link-via-recovery': Error: Incorrect recovery phrase"
+    )
+
+    expect(extractErrorMessage(error, 'Recovery failed')).toBe('Incorrect recovery phrase')
+  })
+
+  it('strips invoke prefixes from string errors', () => {
+    const error = "Error invoking remote method 'sync:auth-verify-otp': Error: Invalid OTP code"
+
+    expect(extractErrorMessage(error, 'Verification failed')).toBe('Invalid OTP code')
+  })
+
+  it('strips nested Error prefixes repeatedly', () => {
+    const error =
+      "Error: Error occurred in handler for 'sync:link-via-recovery': Error: Incorrect recovery phrase"
+
+    expect(extractErrorMessage(error, 'Recovery failed')).toBe('Incorrect recovery phrase')
+  })
+
+  it('falls back when message is empty', () => {
+    expect(extractErrorMessage('', 'Custom fallback')).toBe('Custom fallback')
+    expect(extractErrorMessage({ message: 'not-an-error' }, 'Custom fallback')).toBe(
+      'Custom fallback'
+    )
+  })
+
+  it('passes through plain error messages unchanged', () => {
+    expect(extractErrorMessage(new Error('plain error'), 'fallback')).toBe('plain error')
+  })
+
+  it('resolves errors namespace i18n keys when translated', async () => {
+    const i18n = createInstance()
+    await i18n.use(initReactI18next).init({
+      lng: 'en',
+      fallbackLng: 'en',
+      resources: {
+        en: {
+          errors: {
+            sync: {
+              'network-failed': 'Network failed'
+            }
+          }
+        }
+      }
+    })
+
+    expect(extractErrorMessage(new Error('errors:sync.network-failed'), 'fallback')).toBe(
+      'Network failed'
+    )
+  })
+
+  it('resolves real errors namespace keys from bundled resources', async () => {
+    const i18n = createInstance()
+    await i18n.use(initReactI18next).init({
+      lng: 'en',
+      fallbackLng: 'en',
+      resources: RESOURCES
+    })
+
+    expect(extractErrorMessage(new Error('errors:sync.networkOffline'), 'fallback')).toBe(
+      'You are offline. Changes will sync when you reconnect.'
+    )
+  })
+
+  it('shows the fixed lock refusal in the user language (#2606)', async () => {
+    const i18n = createInstance()
+    await i18n.use(initReactI18next).init({
+      lng: 'tr',
+      fallbackLng: 'en',
+      resources: {
+        tr: {
+          errors: {
+            vaultLock: {
+              noteReadOnly: 'Sahibi bu notu salt okunur yapti.',
+              folderReadOnly: 'Sahibi bu klasoru salt okunur yapti.'
+            }
+          }
+        }
+      }
+    })
+
+    const error = new Error(
+      "Error invoking remote method 'notes:update': Error: The owner made this note read-only."
+    )
+    expect(extractErrorMessage(error, 'fallback')).toBe('Sahibi bu notu salt okunur yapti.')
+    const folderError = new Error(
+      "Error invoking remote method 'notes:create': Error: The owner made this folder read-only."
+    )
+    expect(extractErrorMessage(folderError, 'fallback')).toBe(
+      'Sahibi bu klasoru salt okunur yapti.'
+    )
+  })
+
+  it('keeps the English lock refusal for agent replies in every locale (#2606)', () => {
+    const error = new Error(
+      "Error invoking remote method 'notes:update': Error: The owner made this note read-only."
+    )
+    expect(getVaultLockRefusal(error)).toBe('The owner made this note read-only.')
+    expect(getVaultLockRefusal(new Error('Error: The owner made this folder read-only.'))).toBe(
+      'The owner made this folder read-only.'
+    )
+    expect(getVaultLockRefusal(new Error('disk full'))).toBeNull()
+  })
+})

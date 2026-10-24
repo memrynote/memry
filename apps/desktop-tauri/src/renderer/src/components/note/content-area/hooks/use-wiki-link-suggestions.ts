@@ -1,0 +1,374 @@
+/* oxlint-disable typescript/no-explicit-any */
+
+import { useCallback, useEffect, useRef } from 'react'
+import { extractMarkdownHeadings, type MarkdownHeading } from '@memry/shared/markdown-headings'
+import { isBlockReference } from '@memry/shared/wiki-target'
+import { nameKey } from '@memry/shared/note-names'
+import { fuzzySearch } from '@/lib/fuzzy-search'
+import {
+  folderOf,
+  isExactMatch,
+  linkTargetFor,
+  rankNoteNames,
+  sharedNames,
+  sharedTitles as findSharedTitles
+} from '@/lib/note-name-rank'
+import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { notesService, onNoteLinksChanged } from '@/services/notes-service'
+import { listTitledCanvases } from '@/lib/canvas-lookup'
+import { createWikiLinkInlineContent } from '../wiki-link'
+import { parseWikiLinkQuery, pickAlias } from '../wiki-link-utils'
+import { activeRunWikiLink, replaceActiveRunWithWikiLink } from '../wiki-link-edit-plugin'
+import { consumeAutoClosedBrackets } from '../auto-close-brackets-plugin'
+import type { WikiLinkSuggestionItem } from '../wiki-link-menu'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Hook:WikiLinkSuggestions')
+
+const CACHE_TTL_MS = 5000
+
+type NoteSuggestion = {
+  id: string
+  title: string
+  path: string
+  aliases: string[]
+  emoji?: string | null
+  modified?: Date | string
+  fileType?: 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+  mimeType?: string | null
+  fileSize?: number | null
+}
+
+export function blockHasContent(block: any): boolean {
+  const content = block?.content
+  if (typeof content === 'string') return content.trim().length > 0
+  if (!Array.isArray(content)) return false
+
+  return content.some((item) => {
+    if (typeof item === 'string') return item.trim().length > 0
+    if (item?.type === 'text') return Boolean((item.text ?? '').trim())
+    return Boolean(item)
+  })
+}
+
+/**
+ * The single row the menu becomes once BOTH halves of `[[target|alias]]` are
+ * settled — the target names something exactly and a label was typed after the
+ * `|`. Picking anything else at that point would be picking a target again.
+ */
+function aliasRow(target: string, alias: string): WikiLinkSuggestionItem {
+  return {
+    id: `alias:${target}`,
+    title: alias,
+    target,
+    alias,
+    exists: true,
+    type: 'alias'
+  }
+}
+
+function createAudioFileBlockContent(props: {
+  url: string
+  name: string
+  size: number
+  mimeType: string
+}) {
+  return {
+    type: 'file' as const,
+    props
+  }
+}
+
+export function useWikiLinkSuggestions(editor: any, onAddName?: (name: string) => void) {
+  const notesCacheRef = useRef<{ notes: NoteSuggestion[]; fetchedAt: number } | null>(null)
+
+  useEffect(
+    () =>
+      onNoteLinksChanged(() => {
+        notesCacheRef.current = null
+      }),
+    []
+  )
+  // Headings have no index in either database, so `#` reads the target note's
+  // body on demand. Cached per note, same 5s window as the note list.
+  const headingsCacheRef = useRef(
+    new Map<string, { headings: MarkdownHeading[]; fetchedAt: number }>()
+  )
+
+  const loadHeadings = useCallback(
+    async (note: NoteSuggestion, now: number): Promise<MarkdownHeading[]> => {
+      const cached = headingsCacheRef.current.get(note.id)
+      if (cached && now - cached.fetchedAt <= CACHE_TTL_MS) return cached.headings
+
+      let headings: MarkdownHeading[] = []
+      try {
+        // By path, not by id: `notes:get` counts as opening the note and emits
+        // `note_opened`, and typing `#` in someone else's link is not that.
+        const full = note.path ? await notesService.getByPath(note.path) : null
+        headings = full?.content ? extractMarkdownHeadings(full.content) : []
+      } catch (error) {
+        log.error('Failed to load wiki link heading suggestions', error)
+      }
+
+      headingsCacheRef.current.set(note.id, { headings, fetchedAt: now })
+      return headings
+    },
+    []
+  )
+
+  const getWikiLinkItems = useCallback(
+    async (query: string): Promise<WikiLinkSuggestionItem[]> => {
+      const now = Date.now()
+      const cache = notesCacheRef.current
+      const shouldRefresh = !cache || now - cache.fetchedAt > CACHE_TTL_MS
+      if (shouldRefresh) {
+        try {
+          const result = await notesService.list({ limit: 500, sortBy: 'modified' })
+          notesCacheRef.current = {
+            notes: result.notes.map((note) => ({
+              id: note.id,
+              title: note.title,
+              path: note.path,
+              aliases: note.aliases ?? [],
+              emoji: note.emoji,
+              modified: note.modified,
+              fileType: note.fileType,
+              mimeType: note.mimeType,
+              fileSize: note.fileSize
+            })),
+            fetchedAt: now
+          }
+        } catch (error) {
+          log.error('Failed to load wiki link suggestions', error)
+          notesCacheRef.current = { notes: [], fetchedAt: now }
+        }
+      }
+
+      const notes = notesCacheRef.current?.notes ?? []
+      const sharedTitles = findSharedTitles(notes)
+      const sharedNameKeys = sharedNames(notes)
+      const targetOf = (note: NoteSuggestion): string => linkTargetFor(note, sharedTitles)
+      const { search, note: notePart, heading, alias } = parseWikiLinkQuery(query)
+
+      // `#` is a separator, not a trigger. It switches the menu to the note's
+      // headings only once the note half names a note EXACTLY — `[[Topl#` still
+      // lists notes, `[[Toplantı#` lists Toplantı's headings — which is also what
+      // keeps `[[Sprint #4]]` (a real title) reaching the note list. Backspacing
+      // over the `#` needs no unwinding: the query is re-parsed on every keystroke.
+      // Block references (`#^id`) are not a heading Memry can offer, so they fall
+      // through to the note list rather than showing an empty heading menu.
+      const headingTarget =
+        heading !== null && !isBlockReference(heading)
+          ? (notes.find((note) => targetOf(note).toLowerCase() === notePart.toLowerCase()) ??
+            notes.find((note) => note.title.toLowerCase() === notePart.toLowerCase()))
+          : undefined
+
+      if (headingTarget) {
+        const headings = await loadHeadings(headingTarget, now)
+        const matches = heading ? fuzzySearch(headings, heading, ['text']) : headings
+
+        // Target already settled and a label typed after `|`: there is nothing
+        // left to choose, so the menu becomes the one row that commits it.
+        const exactHeading = heading ? headings.find((item) => item.text === heading) : undefined
+        if (alias && exactHeading) {
+          return [aliasRow(`${targetOf(headingTarget)}#${exactHeading.text}`, alias)]
+        }
+
+        if (matches.length === 0) {
+          return [
+            {
+              id: `headings:${headingTarget.id}`,
+              title: headingTarget.title,
+              target: '',
+              alias,
+              exists: true,
+              type: 'headingEmpty',
+              filtered: headings.length > 0
+            }
+          ]
+        }
+
+        return matches.slice(0, 10).map((match, index) => ({
+          id: `heading:${headingTarget.id}:${index}`,
+          title: match.text,
+          // One raw string, exactly as a hand-typed link would be written.
+          target: `${targetOf(headingTarget)}#${match.text}`,
+          alias,
+          exists: true,
+          type: 'heading',
+          headingLevel: match.level
+        }))
+      }
+
+      const ranked = rankNoteNames(search, notes)
+
+      // Canvases are vault items the same way notes are, and the menu is the
+      // only place a writer discovers one while writing (#1983). Untitled ones
+      // are left out: they have no target a link could carry.
+      const canvases = await listTitledCanvases()
+      const filteredCanvases = search ? fuzzySearch(canvases, search, ['title']) : canvases
+
+      const exactNote = search
+        ? ranked.find((match) => isExactMatch(search, match))?.note
+        : undefined
+      const exactCanvas = search
+        ? filteredCanvases.find((canvas) => canvas.title.toLowerCase() === search.toLowerCase())
+        : undefined
+      if (alias && exactNote) {
+        return [aliasRow(targetOf(exactNote), alias)]
+      }
+      if (alias && exactCanvas) {
+        return [aliasRow(exactCanvas.title, alias)]
+      }
+
+      // Notes keep the top of the list — they are what the grammar has always
+      // been for, and the resolver reads them first too. A few slots are held
+      // back for canvases, so a vault whose notes fill the menu on their own
+      // does not hide every canvas the query matched.
+      const canvasSlots = Math.min(filteredCanvases.length, 3)
+      const sorted = ranked.slice(0, 10 - canvasSlots)
+
+      const suggestions: WikiLinkSuggestionItem[] = sorted.map(({ note, name }) => {
+        const shared =
+          name === null
+            ? sharedTitles.has(note.title.toLowerCase())
+            : sharedNameKeys.has(nameKey(name) ?? '')
+        return {
+          id: note.id,
+          title: name ?? note.title,
+          target: targetOf(note),
+          alias: alias || (name ?? alias),
+          exists: true,
+          ...(name === null
+            ? { type: 'note' as const }
+            : { type: 'noteName' as const, noteTitle: note.title }),
+          ...(shared ? { folder: folderOf(note.path) } : {}),
+          ...(note.emoji ? { emoji: note.emoji } : {}),
+          lastEdited: note.modified instanceof Date ? note.modified.toISOString() : note.modified,
+          ...(note.fileType && note.fileType !== 'markdown' ? { fileType: note.fileType } : {}),
+          ...(note.mimeType ? { mimeType: note.mimeType } : {}),
+          ...(note.fileSize != null ? { fileSize: note.fileSize } : {})
+        }
+      })
+
+      for (const canvas of filteredCanvases.slice(0, Math.max(0, 10 - suggestions.length))) {
+        suggestions.push({
+          id: canvas.id,
+          title: canvas.title,
+          target: canvas.title,
+          alias,
+          exists: true,
+          type: 'canvas'
+        })
+      }
+
+      const hasExactMatch = search ? Boolean(exactNote ?? exactCanvas) : true
+
+      if (search && !hasExactMatch) {
+        // The row names the note that will actually be created, which is the
+        // note half — `resolveWikiLink` never mints a filename carrying a `#`.
+        // A trailing `#` with nothing after it is a half-typed separator rather
+        // than a heading, so it is dropped from the link text too instead of
+        // being written to the file as `[[tokyo tip#]]`.
+        const createTitle = heading !== null ? notePart : search
+        const createTarget = heading ? search : createTitle
+        if (createTitle) {
+          suggestions.push({
+            id: `create:${createTitle}`,
+            title: createTitle,
+            target: createTarget,
+            alias,
+            exists: false,
+            type: 'create'
+          })
+        }
+        if (heading === null && !alias && onAddName) {
+          suggestions.push({
+            id: `add-name:${search}`,
+            title: search.trim(),
+            target: search.trim(),
+            exists: false,
+            type: 'addName'
+          })
+        }
+      }
+
+      return suggestions
+    },
+    [loadHeadings, onAddName]
+  )
+
+  const insertWikiLink = useCallback(
+    (item: WikiLinkSuggestionItem) => {
+      if (!item.target) return
+
+      // The raw run holds the half the query cannot see — an edited chip's own
+      // label, or the text "link this selection" parked there. Read it before
+      // the run is replaced.
+      const content = createWikiLinkInlineContent(
+        item.target,
+        pickAlias(item, activeRunWikiLink(editor))
+      )
+
+      // Editing an existing link: the menu's `clearQuery` removed the query text
+      // but left the `[[` and `]]` around it, so inserting here would produce
+      // `[[<chip>]]`. Replace the whole run instead. Also no trailing space —
+      // that belongs to the from-scratch path, where the user is still writing.
+      if (replaceActiveRunWithWikiLink(editor, content.props)) return
+
+      editor.insertInlineContent([content], { updateSelection: true })
+      editor.insertInlineContent([' '], { updateSelection: true })
+    },
+    [editor]
+  )
+
+  const handleWikiLinkSelect = useCallback(
+    async (item: WikiLinkSuggestionItem) => {
+      if (!item.target) return
+      consumeAutoClosedBrackets(editor)
+      if (item.type === 'addName') {
+        onAddName?.(item.title)
+        return
+      }
+
+      if (
+        (item.type === 'note' || item.type === 'noteName') &&
+        item.insertMode === 'embed' &&
+        item.fileType === 'audio'
+      ) {
+        const anchorBlock = editor.getTextCursorPosition?.().block
+
+        try {
+          const file = await notesService.getFile(item.id)
+          if (file?.fileType === 'audio') {
+            const fileBlock = createAudioFileBlockContent({
+              url: toMemryFileUrl(file.absolutePath),
+              name: file.title || item.title,
+              size: file.fileSize ?? item.fileSize ?? 0,
+              mimeType: file.mimeType ?? item.mimeType ?? 'audio/mpeg'
+            })
+            const liveAnchor = anchorBlock?.id
+              ? (editor.getBlock?.(anchorBlock.id) ?? anchorBlock)
+              : anchorBlock
+
+            if (liveAnchor && !blockHasContent(liveAnchor)) {
+              editor.updateBlock(liveAnchor, fileBlock)
+            } else if (liveAnchor) {
+              editor.insertBlocks([fileBlock], liveAnchor, 'after')
+            } else {
+              insertWikiLink(item)
+            }
+            return
+          }
+        } catch (error) {
+          log.error('Failed to embed audio wiki link', error)
+        }
+      }
+
+      insertWikiLink(item)
+    },
+    [editor, insertWikiLink, onAddName]
+  )
+
+  return { getWikiLinkItems, handleWikiLinkSelect }
+}

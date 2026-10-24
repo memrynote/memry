@@ -1,0 +1,1022 @@
+/**
+ * CanvasCardLayer — the DOM overlay that renders read-only preview cards over
+ * the Excalidraw scene and owns all card behavior (drop-to-create, capture a
+ * new note, ↗ redirect, dblclick redirect).
+ *
+ * Perf model (M2): the layer transform is applied IMPERATIVELY on every
+ * onChange (zero setState during pan); only a change in the set OR geometry of
+ * visible cards triggers a React render, and only cards inside a padded
+ * viewport are mounted (virtualization with hysteresis).
+ */
+
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import {
+  convertToExcalidrawElements,
+  viewportCoordsToSceneCoords,
+  CaptureUpdateAction
+} from '@excalidraw/excalidraw'
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import { useDndMonitor, useDroppable } from '@dnd-kit/core'
+import type { CanvasEntityRef } from '@memry/contracts/canvas-api'
+import { toast } from 'sonner'
+import { getI18n } from 'react-i18next'
+import { Plus } from '@/lib/icons'
+import { useTabActions } from '@/contexts/tabs'
+import { useOptionalDragContext } from '@/contexts/drag-context'
+import { notesService } from '@/services/notes-service'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackTelemetry } from '@/lib/telemetry'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { useT } from '@memry/i18n/renderer'
+import { CanvasCard, CARD_SCROLL_ATTR } from './canvas-card'
+import { CanvasCardActive } from './canvas-card-active'
+import { shouldRenderRich } from './canvas-card-render-mode'
+import { wheelScrollDelta } from './canvas-card-scroll'
+import { hitTestCard, shouldDeactivateForTool, nextActive, withActivePinned } from './canvas-active'
+import { useCanvasEntities, entityKey } from './use-canvas-entities'
+import {
+  cardDefaultSize,
+  computeVisibleCardIds,
+  findFreeCardCenter,
+  getCardRefs,
+  isEditableInPlace,
+  makeCardSkeleton,
+  overlayTransform,
+  readCanvasDragItems,
+  sameMembership,
+  viewportSceneRect,
+  CANVAS_ITEM_DRAG_MIME,
+  type CanvasAppStateView,
+  type CanvasCardRef,
+  type CardElement
+} from './canvas-cards'
+import {
+  CANVAS_DROP_DATA,
+  entitiesFromDrag,
+  entityFromDndData,
+  pointerFromDragEnd
+} from './canvas-drop-entity'
+import { buildMemryHref, tabFromMemryHref } from '@/lib/memry-links'
+import { frameAtPoint, placeInFrame, type FrameSceneElement } from './canvas-frame-binding'
+import { noteCardClaims } from './canvas-note-lock'
+import { useNoteEditLock, lockReasonForCard } from './use-note-edit-lock'
+import { CanvasAddCardDialog } from './canvas-add-card-dialog'
+import { onCanvasKeys, revealScroll } from './canvas-add-card'
+import { useAddCardDialog } from './use-add-card-dialog'
+import { planBatchPlacement, splitNewRefs } from './canvas-bulk-add'
+
+const log = createLogger('SpatialCanvas')
+
+const ENTER_PADDING = 200
+const EXIT_PADDING = 500
+
+/** Stable empty default so the drop handler's deps do not change every render. */
+const EMPTY_DRAGGED_TASKS: readonly { id: string }[] = []
+
+/**
+ * The sidebar tree tags every non-folder row as a note, filed binaries
+ * included, because it cannot tell the two apart without a read. A binary
+ * opens in the file viewer, never the markdown editor (#800), so a dropped one
+ * becomes a file card. A failed read keeps the note card the drag asked for.
+ */
+async function resolveDroppedRef(ref: CanvasEntityRef): Promise<CanvasEntityRef> {
+  if (ref.entityType !== 'note') return ref
+  try {
+    const file = await notesService.getFile(ref.entityId)
+    return file ? { entityType: 'file', entityId: ref.entityId } : ref
+  } catch (err) {
+    log.error('Failed to read dropped canvas item', { entityId: ref.entityId, error: err })
+    return ref
+  }
+}
+
+interface CanvasCardLayerProps {
+  excalidrawAPI: ExcalidrawImperativeAPI
+  /** Wrapper element hosting the canvas — capture-phase drop/dblclick attach here. */
+  wrapperRef: React.RefObject<HTMLDivElement | null>
+  /** Notifies the scene persister after a card is created. */
+  onSceneMutated: () => void
+  /** Further board actions shown beside Add card. */
+  extraActions?: React.ReactNode
+  /** Filled with the function that opens the "Add card" picker, for a command. */
+  openAddCardRef?: React.RefObject<(() => void) | null>
+}
+
+export const CanvasCardLayer = ({
+  excalidrawAPI,
+  wrapperRef,
+  onSceneMutated,
+  extraActions,
+  openAddCardRef
+}: CanvasCardLayerProps): React.JSX.Element => {
+  const { t } = useT('common')
+  const { openTab } = useTabActions()
+  const layerRef = useRef<HTMLDivElement>(null)
+  const clipRef = useRef<HTMLDivElement>(null)
+
+  const [visibleRefs, setVisibleRefs] = useState<CanvasCardRef[]>([])
+  const visibleIdsRef = useRef<Set<string>>(new Set())
+  const signatureRef = useRef('')
+  /** Last measurement of the clip's box; dropped by the ResizeObserver below. */
+  const clipSizeRef = useRef<{ width: number; height: number } | null>(null)
+  /** The coalescing frame, so N Excalidraw commits in one frame cost one pass. */
+  const frameRef = useRef<number | null>(null)
+
+  // Level of detail: cards render their entity at full editor fidelity until
+  // the scene gets too small to read or too crowded to mount (see
+  // canvas-card-render-mode.ts). Mirrored in a ref so the imperative recompute
+  // only calls setState when the mode actually flips.
+  const [rich, setRich] = useState(true)
+  const richRef = useRef(true)
+
+  // Bumped whenever a claim attempt fails (canvasNoteClaims is a module
+  // singleton, not React state, so another pane's successful claim wouldn't
+  // otherwise trigger a re-render here) — included in the `cards` memo deps
+  // so this card re-renders locked immediately instead of only on the next
+  // unrelated geometry/lockCtx change (design spec §3.3: persistent, not a
+  // flash-on-failed-activation badge).
+  const [claimFailedTick, setClaimFailedTick] = useState(0)
+
+  const addDialog = useAddCardDialog(excalidrawAPI, openAddCardRef)
+
+  const [activeCardId, setActiveCardId] = useState<string | null>(null)
+  const activeCardIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    activeCardIdRef.current = activeCardId
+  }, [activeCardId])
+  const dispatchActive = useCallback((action: Parameters<typeof nextActive>[1]) => {
+    setActiveCardId((prev) => nextActive(prev, action))
+  }, [])
+
+  const entities = useCanvasEntities(visibleRefs)
+  // Keep entity state reachable from imperative handlers (dblclick redirect).
+  const entitiesRef = useRef(entities)
+  useEffect(() => {
+    entitiesRef.current = entities
+  }, [entities])
+
+  const lockCtx = useNoteEditLock()
+  // The capture-phase dblclick handler is imperative and is registered once,
+  // so it must read the latest lock inputs through a ref, not a closure.
+  const lockCtxRef = useRef(lockCtx)
+  useEffect(() => {
+    lockCtxRef.current = lockCtx
+  }, [lockCtx])
+
+  const visibleRefsRef = useRef(visibleRefs)
+  useEffect(() => {
+    visibleRefsRef.current = visibleRefs
+  }, [visibleRefs])
+
+  const readScene = useCallback((): {
+    cards: CanvasCardRef[]
+    appState: CanvasAppStateView & { offsetLeft: number; offsetTop: number }
+  } => {
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
+    const elements = excalidrawAPI.getSceneElements() as unknown as CardElement[]
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
+    const appState = excalidrawAPI.getAppState() as unknown as CanvasAppStateView & {
+      offsetLeft: number
+      offsetTop: number
+    }
+    return { cards: getCardRefs(elements), appState }
+  }, [excalidrawAPI])
+
+  /**
+   * Glue the layer onto the scene. Style writes only, no layout read, so this
+   * is what keeps running on every Excalidraw commit while the heavier pass
+   * below is coalesced onto a frame — pan and zoom stay exactly as immediate as
+   * they are today, which is the whole point of the overlay.
+   */
+  const syncViewport = useCallback((): void => {
+    const clip = clipRef.current
+    const layer = layerRef.current
+    if (!clip || !layer) {
+      return
+    }
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
+    const appState = excalidrawAPI.getAppState() as unknown as CanvasAppStateView
+    layer.style.transform = overlayTransform(appState)
+    clip.dataset.scrollX = String(appState.scrollX)
+    clip.dataset.scrollY = String(appState.scrollY)
+    clip.dataset.zoom = String(appState.zoom.value)
+  }, [excalidrawAPI])
+
+  /**
+   * The clip's box, measured at most once per size change. `clientWidth` /
+   * `clientHeight` force a synchronous layout, and the pass that needs them runs
+   * on every Excalidraw commit — including commits that only changed which
+   * element is hovered — so reading them unconditionally put a forced layout in
+   * the critical path of every frame.
+   *
+   * Holding the measurement is only safe because the ResizeObserver below
+   * watches this exact element and CLEARS this cache: a ResizeObserver reports
+   * any box change whatever caused it (window resize, sidebar toggle, split
+   * drag, tab show/hide, a stylesheet landing late), which is the invalidation
+   * a scroll/resize listener could not give. Nothing here stores a size taken
+   * from the observer entry — the next pass re-reads the live element — so a
+   * padding or box-sizing change cannot desync the two.
+   *
+   * A stale measurement can never move the overlay: the layer transform is
+   * derived from appState alone (`syncViewport`). It only feeds virtualization,
+   * so the worst case is one pass deciding membership against the previous
+   * viewport size, inside the 200/500px hysteresis band.
+   */
+  const clipSize = useCallback((clip: HTMLDivElement): { width: number; height: number } => {
+    const cached = clipSizeRef.current
+    if (cached) {
+      return cached
+    }
+    const size = { width: clip.clientWidth, height: clip.clientHeight }
+    clipSizeRef.current = size
+    return size
+  }, [])
+
+  const recompute = useCallback(() => {
+    const { cards, appState } = readScene()
+    const clip = clipRef.current
+    if (!clip || !layerRef.current) {
+      return
+    }
+    // Transform is imperative: no React render during pan/zoom.
+    syncViewport()
+
+    const rect = viewportSceneRect(appState, clipSize(clip))
+    const nextIds = withActivePinned(
+      computeVisibleCardIds(cards, rect, {
+        enterPadding: ENTER_PADDING,
+        exitPadding: EXIT_PADDING,
+        previousVisible: visibleIdsRef.current
+      }),
+      activeCardIdRef.current
+    )
+    // Active card deleted from the scene, or a non-selection tool chosen → idle.
+    const active = activeCardIdRef.current
+    if (active) {
+      const stillPresent = cards.some((c) => c.elementId === active)
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
+      const toolType = (appState as unknown as { activeTool?: { type?: string } }).activeTool?.type
+      if (!stillPresent) {
+        dispatchActive({ type: 'cardGone', id: active })
+      } else if (toolType && shouldDeactivateForTool(toolType)) {
+        dispatchActive({ type: 'deactivate' })
+      }
+    }
+    const visible = cards.filter((card) => nextIds.has(card.elementId))
+    const nextRich = shouldRenderRich({
+      zoom: appState.zoom.value,
+      visibleCount: visible.length
+    })
+    if (nextRich !== richRef.current) {
+      richRef.current = nextRich
+      setRich(nextRich)
+    }
+    // Re-render on membership OR geometry change (a moved card), never on pan.
+    const signature = visible
+      .map(
+        (c) =>
+          `${c.elementId}:${Math.round(c.x)}:${Math.round(c.y)}:${Math.round(c.width)}:${Math.round(c.height)}:${c.angle.toFixed(3)}`
+      )
+      .join('|')
+    const membershipChanged = !sameMembership(nextIds, visibleIdsRef.current)
+    visibleIdsRef.current = nextIds
+    if (membershipChanged || signature !== signatureRef.current) {
+      signatureRef.current = signature
+      setVisibleRefs(visible)
+    }
+  }, [readScene, dispatchActive, syncViewport, clipSize])
+
+  /**
+   * Excalidraw triggers onChange from componentDidUpdate for EVERY committed
+   * state change — a pan tick, a zoom tick, a pointer-move that only changed
+   * the hovered element — and several of those can land in one frame while the
+   * wheel outruns the display. The glue runs on each of them; deciding which
+   * cards are mounted and where is worth doing once per frame, not once per
+   * commit.
+   */
+  const scheduleRecompute = useCallback(() => {
+    syncViewport()
+    if (frameRef.current !== null) {
+      return
+    }
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null
+      recompute()
+    })
+  }, [syncViewport, recompute])
+
+  useEffect(() => {
+    recompute()
+    const unsubscribe = excalidrawAPI.onChange(scheduleRecompute)
+    return () => {
+      unsubscribe()
+      if (frameRef.current !== null) {
+        cancelAnimationFrame(frameRef.current)
+        frameRef.current = null
+      }
+    }
+  }, [excalidrawAPI, recompute, scheduleRecompute])
+
+  // Container resize changes the viewport → recompute membership + let
+  // Excalidraw recalc its canvas offsets so coordinate math stays correct.
+  useEffect(() => {
+    const clip = clipRef.current
+    if (!clip || typeof ResizeObserver === 'undefined') {
+      return undefined
+    }
+    const observer = new ResizeObserver(() => {
+      clipSizeRef.current = null
+      excalidrawAPI.refresh()
+      recompute()
+    })
+    observer.observe(clip)
+    return () => observer.disconnect()
+  }, [excalidrawAPI, recompute])
+
+  const redirect = useCallback(
+    (card: CanvasCardRef): void => {
+      const state = entitiesRef.current.get(entityKey(card.entityType, card.entityId))
+      // Only kinds whose tab is titled after the item read this; the rest name
+      // their own tab ('Tasks', 'Calendar').
+      const title = state?.status === 'ready' ? state.title : undefined
+      const startAt =
+        state?.status === 'ready' && state.kind === 'calendar_event' ? state.startAt : null
+      // A card opens through the same `memry://` grammar as an agent-chat link
+      // or a canvas element link, so all three stay in step as kinds are added.
+      const href = buildMemryHref({
+        kind: card.entityType,
+        id: card.entityId,
+        date: startAt ? startAt.slice(0, 10) : null
+      })
+      const tab = href ? tabFromMemryHref(href, { title, now: Date.now() }) : null
+      if (tab) {
+        openTab(tab)
+      }
+    },
+    [openTab]
+  )
+
+  /**
+   * The rectangle a new card should open at. Notes are measured from their own
+   * body — a note holding "hey" must not open at the full note frame — which
+   * costs one read before the card exists. A failed read falls back to the
+   * compact card rather than blocking the placement.
+   */
+  const resolveCardSize = useCallback(
+    async (
+      entityType: CanvasCardRef['entityType'],
+      entityId: string
+    ): Promise<{ width: number; height: number }> => {
+      if (entityType !== 'note') {
+        return cardDefaultSize(entityType)
+      }
+      try {
+        const note = await notesService.get(entityId)
+        return cardDefaultSize('note', note?.content ?? '')
+      } catch (err) {
+        log.error('Failed to size canvas note card', { entityId, error: err })
+        return cardDefaultSize('note')
+      }
+    },
+    []
+  )
+
+  /**
+   * Inserts cards at the given centres in ONE scene update, so one undo step
+   * takes the whole batch back off the board. With `select`, the new cards
+   * come back selected: a batch the user did not place by hand is one drag
+   * away from wherever they want it.
+   */
+  const insertCards = useCallback(
+    (
+      refs: readonly CanvasEntityRef[],
+      centers: readonly { x: number; y: number }[],
+      sizes: readonly { width: number; height: number }[],
+      select: boolean,
+      joinFrames: boolean
+    ): ReturnType<typeof convertToExcalidrawElements> => {
+      const existing = excalidrawAPI.getSceneElementsIncludingDeleted()
+      const skeletons = refs.map((ref, index) =>
+        makeCardSkeleton({
+          entityType: ref.entityType,
+          entityId: ref.entityId,
+          centerX: centers[index].x,
+          centerY: centers[index].y,
+          width: sizes[index].width,
+          height: sizes[index].height
+        })
+      )
+      const created = convertToExcalidrawElements(
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
+        skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
+      )
+      // A card put down on a frame joins it, as a card dragged there would:
+      // that is what files it under a bound frame's category (#2483).
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
+      let elements = [...existing, ...created] as unknown as FrameSceneElement[]
+      if (joinFrames) {
+        const byFrame = new Map<string, Set<string>>()
+        for (const element of created) {
+          const frameId = frameAtPoint(existing, {
+            x: element.x + element.width / 2,
+            y: element.y + element.height / 2
+          })
+          if (frameId) byFrame.set(frameId, (byFrame.get(frameId) ?? new Set()).add(element.id))
+        }
+        for (const [frameId, childIds] of byFrame) {
+          elements = placeInFrame(elements, childIds, frameId)
+        }
+      }
+      excalidrawAPI.updateScene({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw wants its branded ordered-element type; the scene model is structurally identical but not nominally typed
+        elements: elements as never,
+        ...(select
+          ? {
+              appState: {
+                selectedElementIds: Object.fromEntries(
+                  created.map((element) => [element.id, true as const])
+                )
+              }
+            }
+          : {}),
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      // Every UI placement path (add-card picker, bulk add, dnd drop, HTML5
+      // drop, create-note) funnels through here, so this is the one choke
+      // point for the created → opened → carded funnel.
+      for (const ref of refs) {
+        void trackTelemetry('canvas_card_added', {
+          surface: 'canvas',
+          action: 'added',
+          objectType: ref.entityType,
+          result: 'success'
+        })
+      }
+      onSceneMutated()
+      recompute()
+      return created
+    },
+    [excalidrawAPI, onSceneMutated, recompute]
+  )
+
+  /**
+   * Cards for one or more entities in a single scene update. The first lands
+   * exactly on (centerX, centerY) — the user picked that point by dropping
+   * there — and each further card spirals out to the nearest free cell so a
+   * multi-select drop tiles instead of stacking into one unreadable pile.
+   * Per-ref `sizes` (from resolveCardSize) let a note open sized to its own
+   * body; a ref with no size falls back to its type's default frame, which is
+   * also what non-note refs always get.
+   */
+  const createCardElements = useCallback(
+    (
+      refs: readonly CanvasEntityRef[],
+      centerX: number,
+      centerY: number,
+      sizes?: ReadonlyArray<{ width: number; height: number } | undefined>
+    ): void => {
+      if (refs.length === 0) {
+        return
+      }
+      const existing = excalidrawAPI.getSceneElementsIncludingDeleted()
+      // Occupancy grows as we place, so cards in the same drop avoid each other
+      // and not just the cards that were already on the scene.
+      const occupied = getCardRefs(existing)
+      const resolvedSizes = refs.map(
+        (ref, index) => sizes?.[index] ?? cardDefaultSize(ref.entityType)
+      )
+      const centers = refs.map((ref, index) => {
+        const size = resolvedSizes[index]
+        const center =
+          index === 0
+            ? { x: centerX, y: centerY }
+            : findFreeCardCenter(occupied, {
+                minX: centerX,
+                maxX: centerX,
+                minY: centerY,
+                maxY: centerY
+              })
+        occupied.push({
+          elementId: '',
+          entityType: ref.entityType,
+          entityId: ref.entityId,
+          x: center.x - size.width / 2,
+          y: center.y - size.height / 2,
+          width: size.width,
+          height: size.height,
+          angle: 0
+        })
+        return center
+      })
+      insertCards(refs, centers, resolvedSizes, false, true)
+    },
+    [excalidrawAPI, insertCards]
+  )
+
+  /**
+   * Many entities at once: every item of a tag, folder or saved view, or a
+   * multi-row drag out of one (#2484).
+   *
+   * Entities already on the board are skipped and counted, never duplicated:
+   * a canvas holds one card per entity so arrows never fragment. The rest go
+   * down as one grid in their incoming order, all at the compact card size —
+   * measuring every note body first would cost a read per card and leave a
+   * ragged wall of mixed sizes. `at` is a drop point; without one the grid
+   * takes the free spot nearest the viewport centre and the camera follows it
+   * (zooming out only, never in).
+   */
+  const placeBatch = useCallback(
+    (refs: readonly CanvasEntityRef[], at: { x: number; y: number } | null): void => {
+      const { cards, appState } = readScene()
+      const { fresh, skipped } = splitNewRefs(refs, onCanvasKeys(cards))
+      const tr = getI18n().getFixedT(null, 'common')
+      if (fresh.length === 0) {
+        toast(tr('canvas.card.bulkAllOnCanvas', { count: skipped }))
+        return
+      }
+      const sizes = fresh.map((ref) => cardDefaultSize(ref.entityType))
+      const rect = at
+        ? { minX: at.x, maxX: at.x, minY: at.y, maxY: at.y }
+        : viewportSceneRect(appState, {
+            width: clipRef.current?.clientWidth ?? 0,
+            height: clipRef.current?.clientHeight ?? 0
+          })
+      // A batch dropped onto a frame joins it; one the board placed on its own
+      // must not categorize every item it happens to land near.
+      const created = insertCards(
+        fresh,
+        planBatchPlacement(sizes, cards, rect),
+        sizes,
+        true,
+        at !== null
+      )
+      if (!at) {
+        excalidrawAPI.scrollToContent(created, {
+          fitToContent: true,
+          animate: true,
+          maxZoom: appState.zoom.value
+        })
+      }
+      toast.success(
+        skipped > 0
+          ? tr('canvas.card.bulkAddedSkipped', { count: fresh.length, skipped })
+          : tr('canvas.card.bulkAdded', { count: fresh.length })
+      )
+    },
+    [readScene, insertCards, excalidrawAPI]
+  )
+
+  const createCardElement = useCallback(
+    (
+      entityType: CanvasCardRef['entityType'],
+      entityId: string,
+      centerX: number,
+      centerY: number,
+      size: { width: number; height: number }
+    ): void => {
+      createCardElements([{ entityType, entityId }], centerX, centerY, [size])
+    },
+    [createCardElements]
+  )
+
+  // The dnd-kit drop target, alongside the capture-phase HTML5 one below.
+  // Task rows and calendar chips spread their dnd-kit listeners on the row
+  // root, so they cannot also carry a native `draggable` without two drag
+  // systems racing on one pointerdown — they arrive through dnd-kit instead.
+  // useId keys the target to this mounted layer, so two canvases open in a
+  // split view are two independent drop targets with no central registry.
+  const dropId = useId()
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: dropId, data: CANVAS_DROP_DATA })
+  useEffect(() => {
+    setDropRef(wrapperRef.current)
+    return () => setDropRef(null)
+  }, [setDropRef, wrapperRef])
+
+  // Optional: the canvas renders inside DragProvider in the app, but must not
+  // require it (tests mount the layer alone). Without it, a multi-select drop
+  // degrades to placing the one dragged row.
+  const dragContext = useOptionalDragContext()
+  const draggedTasks = dragContext?.dragState.draggedTasks ?? EMPTY_DRAGGED_TASKS
+  const [dragPlaceable, setDragPlaceable] = useState(false)
+
+  useDndMonitor({
+    onDragStart: (event) => {
+      setDragPlaceable(
+        entityFromDndData(event.active.data.current, String(event.active.id)) !== null
+      )
+    },
+    onDragCancel: () => setDragPlaceable(false),
+    onDragEnd: (event) => {
+      setDragPlaceable(false)
+      if (event.over?.id !== dropId) {
+        return
+      }
+      const refs = entitiesFromDrag(
+        event.active.data.current,
+        String(event.active.id),
+        draggedTasks
+      )
+      if (refs.length === 0) {
+        return
+      }
+      const pointer = pointerFromDragEnd(event.activatorEvent, event.delta)
+      if (refs.length > 1) {
+        placeBatch(
+          refs,
+          pointer ? viewportCoordsToSceneCoords(pointer, excalidrawAPI.getAppState()) : null
+        )
+        return
+      }
+      if (!pointer) {
+        // Keyboard sensor: there is no pointer to drop on, so fall back to the
+        // automatic placement the Add-card picker uses.
+        const { cards, appState } = readScene()
+        const rect = viewportSceneRect(appState, {
+          width: clipRef.current?.clientWidth ?? 0,
+          height: clipRef.current?.clientHeight ?? 0
+        })
+        const { x, y } = findFreeCardCenter(cards, rect)
+        createCardElements(refs, x, y)
+        return
+      }
+      const scene = viewportCoordsToSceneCoords(pointer, excalidrawAPI.getAppState())
+      createCardElements(refs, scene.x, scene.y)
+    }
+  })
+
+  // Capture-phase drop/dragover/dblclick on the wrapper so they run before
+  // Excalidraw's own handlers (mirrors the note editor's capture listeners).
+  useEffect(() => {
+    const wrapper = wrapperRef.current
+    if (!wrapper) {
+      return undefined
+    }
+
+    const onDragOver = (e: DragEvent): void => {
+      if (e.dataTransfer?.types.includes(CANVAS_ITEM_DRAG_MIME)) {
+        e.preventDefault()
+        e.stopPropagation()
+        e.dataTransfer.dropEffect = 'copy'
+      }
+    }
+
+    const onDrop = (e: DragEvent): void => {
+      if (!e.dataTransfer) {
+        return
+      }
+      const items = readCanvasDragItems((type) => e.dataTransfer!.getData(type))
+      if (items.length === 0) {
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
+      const appState = excalidrawAPI.getAppState()
+      const scene = viewportCoordsToSceneCoords(
+        { clientX: e.clientX, clientY: e.clientY },
+        appState
+      )
+      // The reads are async, but the drop point is not — capture it here.
+      if (items.length > 1) {
+        void Promise.all(items.map(resolveDroppedRef)).then((refs) =>
+          placeBatch(refs, { x: scene.x, y: scene.y })
+        )
+        return
+      }
+      void resolveDroppedRef(items[0]).then(async (ref) => {
+        const size = await resolveCardSize(ref.entityType, ref.entityId)
+        createCardElement(ref.entityType, ref.entityId, scene.x, scene.y, size)
+      })
+    }
+
+    // dblclick activates the hit card (↗ redirect stays the only way to open a
+    // tab for an editable card — skip when the dblclick landed on that button,
+    // matrix #20). A card with nothing to edit in place opens its item instead.
+    const onDblClick = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target narrowed to Element for closest(); listeners are only attached to DOM nodes
+      if ((e.target as Element | null)?.closest('[data-canvas-redirect]')) {
+        return
+      }
+      const appState = excalidrawAPI.getAppState()
+      const scene = viewportCoordsToSceneCoords(
+        { clientX: e.clientX, clientY: e.clientY },
+        appState
+      )
+      const cards = getCardRefs(excalidrawAPI.getSceneElements())
+      const hit = hitTestCard(cards, scene)
+      if (hit) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!isEditableInPlace(hit.entityType)) {
+          redirect(hit)
+          return
+        }
+        // No live fragment for this note in this window + the note already live
+        // elsewhere => stay read-only. Not because a second editor would be
+        // non-collaborative — with a fragment it shares the tab's Y.Doc — but
+        // because a binding that failed or has not settled makes every editor on
+        // the note a whole-markdown saver for the life of its mount, and two of
+        // those clobber each other (M6 design §12/6; canvas-note-lock.ts).
+        if (lockReasonForCard(lockCtxRef.current, hit)) {
+          return
+        }
+        // Claim synchronously here, not in the effect below, so two panes racing
+        // on the same note cannot both pass the gate in one tick. The effect
+        // re-claims idempotently and owns the release.
+        if (hit.entityType === 'note' && !noteCardClaims.claim(hit.entityId, hit.elementId)) {
+          setClaimFailedTick((n) => n + 1)
+          return
+        }
+        dispatchActive({ type: 'activate', id: hit.elementId })
+      }
+    }
+
+    // An idle card is pointer-events:none, so it never receives a wheel event of
+    // its own: the layer hit-tests the card under the cursor and scrolls it
+    // imperatively. The event is only consumed when that scroll actually moves
+    // (canvas-card-scroll.ts), so a short card — or one already at its edge —
+    // still zooms the canvas. The active card scrolls natively; Cmd/Ctrl+wheel
+    // is always Excalidraw's zoom.
+    const onWheel = (e: WheelEvent): void => {
+      if (e.ctrlKey || e.metaKey) {
+        return
+      }
+      const appState = excalidrawAPI.getAppState()
+      const scene = viewportCoordsToSceneCoords(
+        { clientX: e.clientX, clientY: e.clientY },
+        appState
+      )
+      const cards = getCardRefs(excalidrawAPI.getSceneElements())
+      const hit = hitTestCard(cards, scene)
+      if (!hit || hit.elementId === activeCardIdRef.current) {
+        return
+      }
+      const scroller = layerRef.current?.querySelector<HTMLElement>(
+        `[${CARD_SCROLL_ATTR}="${hit.elementId}"]`
+      )
+      if (!scroller) {
+        return
+      }
+      const applied = wheelScrollDelta(
+        {
+          scrollTop: scroller.scrollTop,
+          scrollHeight: scroller.scrollHeight,
+          clientHeight: scroller.clientHeight
+        },
+        e.deltaY,
+        appState.zoom.value
+      )
+      if (applied === 0) {
+        return
+      }
+      e.preventDefault()
+      e.stopPropagation()
+      scroller.scrollTop += applied
+    }
+
+    // Click-away deactivates the active card. Never stopPropagation here — the
+    // same pointerdown must still pan/select/draw on the canvas (C4).
+    const onPointerDownAway = (e: PointerEvent): void => {
+      const active = activeCardIdRef.current
+      if (!active) {
+        return
+      }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target narrowed to Element for closest(); listeners are only attached to DOM nodes
+      const target = e.target as Element | null
+      if (!target?.closest(`[data-canvas-active-card="${active}"]`)) {
+        dispatchActive({ type: 'deactivate' })
+      }
+    }
+
+    wrapper.addEventListener('dragover', onDragOver, { capture: true })
+    wrapper.addEventListener('drop', onDrop, { capture: true })
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent -- attaches DOM listeners; state is read from refs at event time
+    wrapper.addEventListener('dblclick', onDblClick, { capture: true })
+    wrapper.addEventListener('pointerdown', onPointerDownAway, { capture: true })
+    // Non-passive: consuming the gesture requires preventDefault().
+    wrapper.addEventListener('wheel', onWheel, { capture: true, passive: false })
+    return () => {
+      wrapper.removeEventListener('dragover', onDragOver, { capture: true })
+      wrapper.removeEventListener('drop', onDrop, { capture: true })
+      wrapper.removeEventListener('dblclick', onDblClick, { capture: true })
+      wrapper.removeEventListener('pointerdown', onPointerDownAway, { capture: true })
+      wrapper.removeEventListener('wheel', onWheel, { capture: true })
+    }
+  }, [
+    wrapperRef,
+    excalidrawAPI,
+    createCardElement,
+    placeBatch,
+    resolveCardSize,
+    dispatchActive,
+    redirect,
+    setClaimFailedTick
+  ])
+
+  // Release the claim when the card deactivates or the layer unmounts. Keyed on
+  // activeCardId only: visibleRefs changes on every geometry tick, and keying on
+  // it would churn claim/release during a drag.
+  useEffect(() => {
+    if (!activeCardId) return undefined
+    const card = visibleRefsRef.current.find((c) => c.elementId === activeCardId)
+    if (card?.entityType !== 'note') return undefined
+    const noteId = card.entityId
+    noteCardClaims.claim(noteId, activeCardId)
+    return () => noteCardClaims.release(noteId, activeCardId)
+  }, [activeCardId])
+
+  // A note tab becoming visible in another pane while a card is active would
+  // reopen the clobber window, so the card yields immediately. EmbeddedNoteEditor
+  // flushes its pending save on unmount (embedded-note-editor.tsx), but that
+  // flush is fire-and-forget (`void flush()`) and races the newly-opened tab's
+  // own fetch — a sub-second window that only loses text if the user types
+  // into the tab before the flush lands. Pre-existing, shared with the ↗
+  // redirect path; not introduced by this guard.
+  // Reacts to an external context change (the note becoming locked elsewhere
+  // via useNoteEditLock), not a user action on this component — there is no
+  // event handler to move this into.
+  /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler */
+  useEffect(() => {
+    const active = activeCardIdRef.current
+    if (!active) return
+    const card = visibleRefsRef.current.find((c) => c.elementId === active)
+    if (card && lockReasonForCard(lockCtx, card)) {
+      dispatchActive({ type: 'deactivate' })
+    }
+  }, [lockCtx, dispatchActive])
+  /* oxlint-enable react-you-might-not-need-an-effect/no-event-handler */
+
+  const placeCard = useCallback(
+    async (entityType: CanvasCardRef['entityType'], entityId: string) => {
+      const size = await resolveCardSize(entityType, entityId)
+      // Read the scene AFTER the size await, so a card added meanwhile counts.
+      const { cards, appState } = readScene()
+      const rect = viewportSceneRect(appState, {
+        width: clipRef.current?.clientWidth ?? 0,
+        height: clipRef.current?.clientHeight ?? 0
+      })
+      // Free cell, not the raw centre: repeated picks would otherwise pile up
+      // on one point and have to be dragged apart (#871). The spiral steps by
+      // the size this card will actually get, so note cards clear each other.
+      const { x, y } = findFreeCardCenter(cards, rect, size)
+      createCardElement(entityType, entityId, x, y, size)
+    },
+    [readScene, createCardElement, resolveCardSize]
+  )
+
+  const handleCreateNote = useCallback(
+    async (title: string) => {
+      try {
+        const result = await notesService.create({ title: title || 'Untitled Note', content: '' })
+        if (!result.success || !result.note) {
+          throw new Error(result.error ?? 'note create failed')
+        }
+        await placeCard('note', result.note.id)
+      } catch (err) {
+        log.error('Failed to create canvas note', err)
+        trackRendererError('canvas_create_note', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'common')('canvas.card.createNoteFailed')
+          )
+        )
+      }
+    },
+    [placeCard]
+  )
+
+  // Picking an entity that already has a card centers that card instead of
+  // adding a second one, so entity refs stay 1:1 and arrows never fragment.
+  const handleReveal = useCallback(
+    (entityType: CanvasCardRef['entityType'], entityId: string) => {
+      const { cards, appState } = readScene()
+      const card = cards.find((c) => c.entityType === entityType && c.entityId === entityId)
+      if (!card) {
+        return
+      }
+      const { scrollX, scrollY } = revealScroll(
+        card,
+        {
+          width: clipRef.current?.clientWidth ?? 0,
+          height: clipRef.current?.clientHeight ?? 0
+        },
+        appState.zoom.value
+      )
+      excalidrawAPI.updateScene({
+        appState: { scrollX, scrollY, selectedElementIds: { [card.elementId]: true } },
+        captureUpdate: CaptureUpdateAction.IMMEDIATELY
+      })
+      recompute()
+    },
+    [readScene, excalidrawAPI, recompute]
+  )
+
+  const cards = useMemo(() => {
+    // Referenced (no-op) purely so this memo re-evaluates after a failed
+    // cross-pane claim — see the claimFailedTick declaration above.
+    void claimFailedTick
+    return visibleRefs.map((card) => {
+      const isActive = card.elementId === activeCardId
+      const locked = isActive ? null : lockReasonForCard(lockCtx, card)
+      return (
+        <div
+          key={card.elementId}
+          className="absolute"
+          style={{
+            left: card.x,
+            top: card.y,
+            width: card.width,
+            height: card.height,
+            transform: card.angle ? `rotate(${card.angle}rad)` : undefined,
+            transformOrigin: 'center',
+            pointerEvents: isActive ? 'auto' : undefined
+          }}
+        >
+          {isActive ? (
+            <CanvasCardActive
+              cardRef={card}
+              state={entities.get(entityKey(card.entityType, card.entityId))}
+              onDeactivate={() => dispatchActive({ type: 'deactivate' })}
+            />
+          ) : (
+            <CanvasCard
+              cardRef={card}
+              state={entities.get(entityKey(card.entityType, card.entityId))}
+              onRedirect={redirect}
+              rich={rich}
+              locked={locked}
+            />
+          )}
+        </div>
+      )
+    })
+  }, [
+    visibleRefs,
+    entities,
+    redirect,
+    activeCardId,
+    dispatchActive,
+    lockCtx,
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
+    claimFailedTick,
+    rich
+  ])
+
+  return (
+    <>
+      {/* Drop affordance: only while a canvas-placeable drag is over this
+          canvas, so hovering it with a task being reordered stays silent. */}
+      {isOver && dragPlaceable ? (
+        <div
+          data-testid="canvas-drop-ring"
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-2 z-[4] rounded-lg border-2 border-dashed border-sidebar-terracotta/60"
+        />
+      ) : null}
+      {/* z-[3] lifts the overlay above Excalidraw's interactive canvas
+          (--zIndex-interactiveCanvas: 2) so card previews cover their
+          rectangles and the ↗ buttons are clickable. .excalidraw has no
+          z-index, so its canvases share this stacking context. The layer is
+          pointer-events:none, so pan/draw still pass through to the canvas;
+          Excalidraw's toolbar/panels (z-index 4+) stay above the overlay. */}
+      <div ref={clipRef} className="pointer-events-none absolute inset-0 z-[3] overflow-hidden">
+        {/* Positioned at the scene origin (0,0) with transform-origin 0 0 —
+            coordinate space, RTL-invariant, so inline (not logical classes). */}
+        <div
+          ref={layerRef}
+          data-canvas-overlay=""
+          className="absolute will-change-transform"
+          style={{ left: 0, top: 0, transformOrigin: '0 0' }}
+        >
+          {cards}
+        </div>
+      </div>
+      <div
+        // Horizontally centered (symmetric in RTL) via inline left/translate.
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+        className="pointer-events-none absolute bottom-4 z-10 flex items-center gap-2"
+      >
+        <button
+          type="button"
+          onClick={addDialog.openDialog}
+          data-testid="canvas-add-card"
+          className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+          {t('canvas.card.addCard')}
+        </button>
+        {extraActions}
+      </div>
+      <CanvasAddCardDialog
+        open={addDialog.open}
+        onOpenChange={addDialog.setOpen}
+        onCanvasKeys={addDialog.keys}
+        onCreateNote={(title) => void handleCreateNote(title)}
+        onPick={(entityType, entityId) => void placeCard(entityType, entityId)}
+        onAddAll={(refs) => placeBatch(refs, null)}
+        onReveal={handleReveal}
+      />
+    </>
+  )
+}

@@ -1,0 +1,348 @@
+/**
+ * Image Viewer Component
+ * Full-page image viewer with zoom, pan, and rotation controls.
+ *
+ * @module components/viewers/image-viewer
+ */
+
+import { useState, useCallback, useLayoutEffect, useRef, useEffect } from 'react'
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Move } from '@/lib/icons'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
+import { mayAutoPositionFor } from '@/hooks/use-tab-auto-position'
+import { useTabEntityViewState } from '@/hooks/use-tab-entity-view-state'
+import {
+  FILE_VIEW_STATE_KEYS,
+  parseNullableScale,
+  parseRotation,
+  parseViewerPosition
+} from '@/pages/file-view-state'
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface ImageViewerProps {
+  /** File path or URL to the image */
+  src: string
+  /** Alt text for the image */
+  alt?: string
+  /** CSS classes */
+  className?: string
+}
+
+interface Position {
+  x: number
+  y: number
+}
+
+/** Stable identity, so the tab-state default does not churn on every render. */
+const ORIGIN: Position = { x: 0, y: 0 }
+
+/** Single source of truth for the image transform, shared by React and the imperative pan writes. */
+function buildTransform(position: Position, scale: number, rotation: number): string {
+  return `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`
+}
+
+/**
+ * Widest float error a zoom round trip can accumulate, and still far narrower than any zoom
+ * level the user can land on. Wheel steps are 0.1 and button steps 0.25, so the closest real
+ * neighbours of 100% are 95% and 105% — a genuine 1.0499999999999998 stays untouched.
+ */
+const SCALE_EPSILON = 1e-9
+
+/**
+ * Snaps a scale that is one float wobble away from 1 back onto exactly 1.
+ *
+ * Mixing the 0.1 wheel steps with the 0.25 button steps does not round-trip in binary
+ * floating point: wheel-down, zoom-in, zoom-out, wheel-up leaves 0.9999999999999999, and
+ * the mirror sequence leaves 1.0000000000000002. Both render as "100%" via
+ * `Math.round(scale * 100)` while every exact read in this component disagrees — the
+ * `scale === 1` recenter never fires, so the image stays visibly offset, and `scale > 1`
+ * can even stay armed at a displayed 100%. Applying this once in `applyScale` — the single
+ * write path for scale — keeps every exact read honest instead of scattering tolerances
+ * across each one.
+ */
+function normalizeScale(next: number): number {
+  return Math.abs(next - 1) < SCALE_EPSILON ? 1 : next
+}
+
+// ============================================================================
+// Image Viewer Component
+// ============================================================================
+
+export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps) {
+  const { t: tPhaseF } = useT('notes')
+  const containerRef = useRef<HTMLDivElement>(null)
+  const imageRef = useRef<HTMLImageElement>(null)
+
+  // `null` is "the user has never zoomed this image", which is what lets
+  // fit-to-container run. See `hooks/use-tab-auto-position.ts`.
+  const [storedScale, setStoredScale] = useTabEntityViewState<number | null>({
+    key: FILE_VIEW_STATE_KEYS.imageScale,
+    defaultValue: null,
+    parse: parseNullableScale
+  })
+  const [scale, setScale] = useState(storedScale ?? 1)
+  const [rotation, setRotation] = useTabEntityViewState<number>({
+    key: FILE_VIEW_STATE_KEYS.imageRotation,
+    defaultValue: 0,
+    parse: parseRotation
+  })
+  const [position, setPosition] = useTabEntityViewState<Position>({
+    key: FILE_VIEW_STATE_KEYS.imagePosition,
+    defaultValue: ORIGIN,
+    parse: parseViewerPosition
+  })
+  const [isDragging, setIsDragging] = useState(false)
+  const storedScaleRef = useRef(storedScale)
+  useLayoutEffect(() => {
+    storedScaleRef.current = storedScale
+  })
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  /** Live pan offset. Leads `position` during a drag; `position` catches up on pointer-up. */
+  const positionRef = useRef<Position>(position)
+  const dragStartRef = useRef<Position>({ x: 0, y: 0 })
+  /** Live scale, so the zoom handlers can compute the next value without a stale closure. */
+  const scaleRef = useRef(scale)
+
+  const commitPosition = useCallback(
+    (next: Position) => {
+      positionRef.current = next
+      setPosition(next)
+    },
+    [setPosition]
+  )
+
+  // Every zoom write goes through here: dropping back to 1x recenters in the same batch as
+  // the scale change. Doing it in the render body instead (`if (scale === 1) setPosition(...)`)
+  // made React throw the render away and run the component a second time on every zoom-out.
+  const applyScale = useCallback(
+    (raw: number, options?: { persist?: boolean }) => {
+      // Normalise before anything reads it, so the exact `=== 1` below and the `scale > 1`
+      // reads downstream cannot disagree with the "100%" the toolbar prints.
+      const next = normalizeScale(raw)
+      scaleRef.current = next
+      setScale(next)
+      // Fit-to-container is auto-positioning, not a choice: persisting its
+      // result would freeze one pane's width into the tab and stop the image
+      // fitting the next time it is opened somewhere narrower.
+      if (options?.persist !== false) setStoredScale(next)
+      if (next === 1 && (positionRef.current.x !== 0 || positionRef.current.y !== 0)) {
+        commitPosition({ x: 0, y: 0 })
+      }
+    },
+    [commitPosition, setStoredScale]
+  )
+
+  // Attach wheel event with passive: false to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return undefined
+
+    const handleWheelEvent = (e: WheelEvent) => {
+      e.preventDefault()
+      const delta = e.deltaY > 0 ? -0.1 : 0.1
+      applyScale(Math.max(0.25, Math.min(5, scaleRef.current + delta)))
+    }
+
+    container.addEventListener('wheel', handleWheelEvent, { passive: false })
+    return () => {
+      container.removeEventListener('wheel', handleWheelEvent)
+    }
+  }, [applyScale])
+
+  const zoomIn = useCallback(() => {
+    applyScale(Math.min(scaleRef.current + 0.25, 5))
+  }, [applyScale])
+
+  const zoomOut = useCallback(() => {
+    applyScale(Math.max(scaleRef.current - 0.25, 0.25))
+  }, [applyScale])
+
+  const resetZoom = useCallback(() => {
+    applyScale(1)
+    commitPosition(ORIGIN)
+  }, [applyScale, commitPosition])
+
+  const rotate = useCallback(() => {
+    setRotation((r) => (r + 90) % 360)
+  }, [setRotation])
+
+  const fitToContainer = useCallback(() => {
+    if (containerRef.current && imageRef.current) {
+      const containerWidth = containerRef.current.clientWidth - 48
+      const containerHeight = containerRef.current.clientHeight - 48
+      const imageWidth = imageRef.current.naturalWidth
+      const imageHeight = imageRef.current.naturalHeight
+
+      const scaleX = containerWidth / imageWidth
+      const scaleY = containerHeight / imageHeight
+      const newScale = Math.min(scaleX, scaleY, 1)
+
+      applyScale(newScale, { persist: false })
+      commitPosition(ORIGIN)
+    }
+  }, [applyScale, commitPosition])
+
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (scale > 1) {
+        dragStartRef.current = {
+          x: e.clientX - positionRef.current.x,
+          y: e.clientY - positionRef.current.y
+        }
+        setIsDragging(true)
+      }
+    },
+    [scale]
+  )
+
+  // Pan writes the transform straight to the DOM so a gesture costs zero React renders.
+  // Listeners live on the window so the drag survives leaving the container and still
+  // ends on mouseup outside it; `position` is reconciled once the gesture finishes.
+  useEffect(() => {
+    if (!isDragging) return undefined
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const next = {
+        x: e.clientX - dragStartRef.current.x,
+        y: e.clientY - dragStartRef.current.y
+      }
+      positionRef.current = next
+      if (imageRef.current) {
+        imageRef.current.style.transform = buildTransform(next, scale, rotation)
+      }
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+      commitPosition(positionRef.current)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, scale, rotation, commitPosition])
+
+  const handleImageLoad = useCallback(() => {
+    setLoaded(true)
+    setError(false)
+    // A zoom this tab already holds beats fitting to the container — one rule,
+    // the same one the calendar's jump to "now" obeys.
+    if (mayAutoPositionFor(storedScaleRef.current)) fitToContainer()
+  }, [fitToContainer])
+
+  const handleImageError = useCallback(() => {
+    setLoaded(false)
+    setError(true)
+  }, [])
+
+  if (error) {
+    return (
+      <div
+        className={cn('flex h-full items-center justify-center bg-muted/30 rounded-md', className)}
+      >
+        <div className="text-center p-8">
+          <p className="text-destructive font-medium mb-2">
+            {tPhaseF('phaseF.componentsViewersImageViewer.failedToLoadImage')}
+          </p>
+          <p className="text-sm text-muted-foreground">
+            {tPhaseF('phaseF.componentsViewersImageViewer.theImageCouldNotBeDisplayed')}
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn('flex h-full flex-col bg-muted/20 min-h-0', className)}>
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-2">
+          {/* Zoom controls */}
+          <Button variant="ghost" size="sm" onClick={zoomOut} className="h-8 w-8 p-0">
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground min-w-[50px] text-center">
+            {Math.round(scale * 100)}%
+          </span>
+          <Button variant="ghost" size="sm" onClick={zoomIn} className="h-8 w-8 p-0">
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetZoom}
+            className="h-8 w-8 p-0"
+            title={tPhaseF('phaseF.componentsViewersImageViewer.resetZoom')}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+
+          <div className="w-px h-5 bg-border" />
+
+          {/* Rotate */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={rotate}
+            className="h-8 w-8 p-0"
+            title={tPhaseF('phaseF.componentsViewersImageViewer.rotate')}
+          >
+            <RotateCw className="h-4 w-4" />
+          </Button>
+
+          {scale > 1 && (
+            <>
+              <div className="w-px h-5 bg-border" />
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Move className="h-3 w-3" />
+                <span>{tPhaseF('phaseF.componentsViewersImageViewer.dragToPan')}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Image container */}
+      {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls */}
+      <div
+        ref={containerRef}
+        className={cn(
+          'flex-1 overflow-hidden flex items-center justify-center bg-[repeating-conic-gradient(#80808015_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]',
+          scale > 1 ? 'cursor-grab' : 'cursor-default',
+          isDragging && 'cursor-grabbing'
+        )}
+        onMouseDown={handleMouseDown}
+      >
+        <img
+          ref={imageRef}
+          src={src}
+          alt={alt}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          className={cn(
+            'max-w-none transition-transform select-none',
+            !loaded && 'opacity-0',
+            isDragging && 'transition-none'
+          )}
+          style={{
+            // Live ref, not `position`: a render triggered mid-drag (e.g. wheel zoom) must not
+            // rewrite the transform with the stale pointer-down offset.
+            // oxlint-disable-next-line react/refs -- live drag offset must be read at render time (see comment above)
+            transform: buildTransform(positionRef.current, scale, rotation)
+          }}
+          draggable={false}
+        />
+      </div>
+    </div>
+  )
+}

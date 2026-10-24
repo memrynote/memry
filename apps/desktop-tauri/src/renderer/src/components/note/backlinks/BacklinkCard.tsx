@@ -1,0 +1,127 @@
+import { useState } from 'react'
+import { cn } from '@/lib/utils'
+import { ChevronDown } from '@/lib/icons'
+import { BacklinkSnippet } from './BacklinkSnippet'
+import type { Backlink, Mention } from './types'
+import { useT } from '@memry/i18n/renderer'
+
+interface BacklinkCardProps {
+  backlink: Backlink
+  defaultExpanded?: boolean
+  onClick: (noteId: string, mention?: Mention) => void
+}
+
+export function BacklinkCard({ backlink, defaultExpanded = false, onClick }: BacklinkCardProps) {
+  const { t } = useT('notes')
+  const { noteId, noteTitle, mentions, via } = backlink
+  const displayLabel =
+    via?.kind === 'property'
+      ? t('backlinks.viaProperty', { property: via.propertyName, title: noteTitle })
+      : noteTitle
+  const canvasLabel =
+    via?.kind === 'canvas'
+      ? t('canvasLinks.connectedOn', {
+          canvas: via.canvasTitle || t('canvasLinks.untitledCanvas')
+        })
+      : null
+  const portalLabel = via?.kind === 'portal' ? t('backlinks.viaPortal') : null
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded)
+  // A property-sourced backlink has no text mentions to reveal, so there is
+  // nothing to expand — rendering the chevron would offer a toggle that does
+  // nothing.
+  const hasMentions = mentions.length > 0
+
+  const titleLink = (
+    <span
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
+      role="link"
+      tabIndex={0}
+      onClick={(e) => {
+        e.stopPropagation()
+        onClick(noteId)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          e.stopPropagation()
+          onClick(noteId)
+        }
+      }}
+      className="text-[13px]/4 font-medium text-text-bright truncate hover:underline"
+    >
+      {displayLabel}
+    </span>
+  )
+  const canvasNote = (canvasLabel ?? portalLabel) && (
+    <span className="flex-shrink-0 truncate text-[11px] text-text-tertiary">
+      {canvasLabel ?? portalLabel}
+    </span>
+  )
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
+    <div role="group" aria-label={t('backlinks.fromAria', { title: displayLabel })}>
+      <div
+        className={cn(
+          'flex items-center gap-1.5 px-1.5 py-1',
+          'rounded cursor-pointer select-none',
+          'hover:bg-surface-active/40',
+          'transition-colors duration-150'
+        )}
+      >
+        {hasMentions ? (
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="flex items-center gap-1.5 flex-1 min-w-0 focus:outline-none focus-visible:ring-1 focus-visible:ring-border rounded"
+            aria-expanded={isExpanded}
+            aria-label={`${isExpanded ? t('backlinks.collapse') : t('backlinks.expand')} ${displayLabel}`}
+          >
+            <ChevronDown
+              className={cn(
+                'h-3 w-3 text-text-tertiary flex-shrink-0 transition-transform duration-150',
+                !isExpanded && '-rotate-90'
+              )}
+              aria-hidden="true"
+            />
+            {titleLink}
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            {titleLink}
+            {canvasNote}
+          </div>
+        )}
+
+        {mentions.length > 1 && (
+          <span className="flex-shrink-0 text-[11px] tabular-nums text-text-tertiary">
+            {mentions.length}
+          </span>
+        )}
+      </div>
+
+      {isExpanded && mentions.length > 0 && (
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role is intentional here and the native tag would change default styling or behavior
+        <div className="ms-5 flex flex-col gap-px" role="list">
+          {mentions.map((mention) => (
+            <button
+              type="button"
+              key={mention.id}
+              onClick={() => onClick(noteId, mention)}
+              className={cn(
+                'block w-full text-start',
+                'rounded px-1.5 py-1',
+                'hover:bg-surface-active/30',
+                'transition-colors duration-150',
+                'cursor-pointer',
+                'focus:outline-none focus-visible:ring-1 focus-visible:ring-border'
+              )}
+            >
+              <BacklinkSnippet mention={mention} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
