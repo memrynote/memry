@@ -89,6 +89,13 @@ test.describe('Project hub E2E', () => {
     }
 
     await page.getByRole('button', { name: projectName }).first().click()
+    // A project opens on its All tab; the Overview tab, with the "View all"
+    // links, is one click away.
+    await expect(page.getByRole('tab', { name: /^all\b/i })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    )
+    await page.getByRole('tab', { name: /overview/i }).click()
     await expect(page.getByRole('tab', { name: /overview/i })).toHaveAttribute(
       'aria-selected',
       'true'
