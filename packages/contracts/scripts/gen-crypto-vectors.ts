@@ -110,11 +110,7 @@ const main = async (): Promise<void> => {
     }
   ]
   for (const c of aeadCases) {
-    const plaintext =
-      'plaintextUtf8' in c && c.plaintextUtf8
-        ? utf8(c.plaintextUtf8)
-        : // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
-          fromHex((c as { plaintextHex: string }).plaintextHex)
+    const plaintext = 'plaintextUtf8' in c ? utf8(c.plaintextUtf8) : fromHex(c.plaintextHex)
     c.ciphertextHex = hex(
       sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
         plaintext,
