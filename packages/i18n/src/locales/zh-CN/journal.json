@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "删除日记",
     "description": "确定要删除“{title}”吗？此操作无法撤销。"
+  },
+  "dayTimeline": {
+    "label": "当天日程",
+    "allDay": "全天事项",
+    "unscheduled": "未安排",
+    "unscheduledEmpty": "没有未安排的任务。将任务块拖到此处可清除其时间。",
+    "range": "{start} – {end}",
+    "openTask": "{title}，{range}",
+    "completeTask": "完成 {title}"
   }
 }

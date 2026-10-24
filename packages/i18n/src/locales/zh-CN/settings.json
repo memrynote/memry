@@ -110,7 +110,8 @@
       "fileCreation": "文件创建",
       "privacy": "隐私",
       "startupWindows": "启动与窗口",
-      "newNotes": "新建笔记"
+      "newNotes": "新建笔记",
+      "sticky": "便签"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "应用的大部分内容会立即更新。部分系统级文本——已显示的通知、Dock 标签、窗口标题栏——会在下次启动后刷新。",
       "changed": "语言已更改为 {nativeName}",
       "failed": "无法更改语言，请重试。"
+    },
+    "ocrLanguages": {
+      "label": "文字识别",
+      "helper": "扫描版 PDF 和图片中可识别的语言，这样搜索就能找到其中的文字。英语已内置，其他语言需从 Memry 服务器下载。",
+      "more": "{names} +{count}",
+      "downloading": "正在下载{language}：{percent}%",
+      "failed": "下载失败。已有的语言仍可使用。",
+      "failedWith": "{language}：{reason}",
+      "retry": "重试",
+      "saveFailed": "无法更改文字识别语言。"
     },
     "clockFormat": {
       "label": "时间格式",
@@ -264,6 +275,22 @@
           "description": "一次性发送一份脱敏的技术日志报告，帮助我们排查你遇到的问题。",
           "button": "发送报告…"
         }
+      }
+    },
+    "sticky": {
+      "description": "便签快捷键（键盘快捷键 → 系统级）会在 Memry 运行时打开便签。未发送的文字会作为草稿留在屏幕边缘。",
+      "error": "无法保存便签设置。",
+      "defaultKind": {
+        "label": "新便签发送为",
+        "last": "上次使用的类型",
+        "note": "笔记",
+        "task": "任务",
+        "journal": "日记"
+      },
+      "tuckEdge": {
+        "label": "收起到",
+        "left": "左边缘",
+        "right": "右边缘"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "布局",
       "toolbar": "工具栏",
       "spelling": "拼写",
-      "checklists": "清单"
+      "checklists": "清单",
+      "attachments": "附件",
+      "calloutTypes": "标注类型"
+    },
+    "calloutTypes": {
+      "description": "你自己的标注，在笔记中写作 > [!name]。其他应用会将其显示为普通引用。",
+      "empty": "还没有自定义标注类型",
+      "add": "添加类型",
+      "edit": "编辑 {name}",
+      "delete": "删除 {name}",
+      "name": "Markdown 中的名称",
+      "namePlaceholder": "mytype",
+      "label": "显示名称",
+      "color": "颜色",
+      "icon": "图标",
+      "nameInvalid": "请使用小写字母、数字、- 或 _，并以字母开头",
+      "nameBuiltIn": "该名称已是内置标注",
+      "nameTaken": "你已有同名的类型",
+      "save": "保存",
+      "cancel": "取消",
+      "error": "无法更新标注类型"
     },
     "width": {
       "label": "编辑器宽度",
@@ -449,7 +496,16 @@
       "toolbarMode": "常驻格式工具栏",
       "spellCheck": "拼写检查",
       "convertChecklists": "将清单项转为任务",
-      "convertAgentChecklists": "将智能体写入的清单项转为任务"
+      "convertAgentChecklists": "将智能体写入的清单项转为任务",
+      "pdfDisplayMode": "新 PDF 显示为"
+    },
+    "pdfDisplayMode": {
+      "description": "添加到笔记中的 PDF 的显示方式。每个 PDF 都可以从其菜单中切换。",
+      "options": {
+        "embed": "嵌入",
+        "link": "文件名"
+      },
+      "error": "无法更新 PDF 显示方式"
     },
     "convertChecklists": {
       "description": "每个新的清单项都会成为任务。关闭后清单保持为普通复选框；右键单击某一项可将其转为任务。",
@@ -561,7 +617,8 @@
       "renameNote": "更改格式会重命名现有的日记文件。新名称已被占用的文件保持不变。",
       "tokensHelp": "日期格式帮助",
       "tokensNote": "其他字符保持不变。星期名称始终为英文。",
-      "tokensTitle": "格式标记"
+      "tokensTitle": "格式标记",
+      "foldersNote": "使用 / 可将条目归入子文件夹：YYYY/MMMM/YYYY-MM-DD 会把每天的条目放在对应的年和月之下。"
     },
     "preview": {
       "label": "预览",
@@ -586,6 +643,10 @@
         "defaultTemplate": "默认模板",
         "location": "位置和格式"
       }
+    },
+    "showInSidebar": {
+      "label": "在侧边栏中显示",
+      "description": "在笔记树中显示日记文件夹及其条目"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "默认值",
+      "subtasks": "子任务",
       "inbox": "收件箱"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "超过此天数的任务将被标记为积压",
       "unit": "天",
       "error": "无法更新收件箱积压阈值"
+    },
+    "nestedSubtasks": {
+      "label": "子任务中的子任务",
+      "description": "子任务可嵌套任意层级。旧版本设备在更新前只会显示第一层。",
+      "error": "无法更新嵌套子任务"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "正在同步…",
         "paused": "已暂停",
         "syncError": "同步错误",
+        "deviceKeysMissing": "同步已暂停：缺少设备密钥",
         "offline": "离线",
         "connecting": "正在连接…",
         "localOnly": "仅本地",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "正在完成激活",
         "description": "你的套餐已生效。我们确认后同步即会开始——通常刷新一下即可。"
+      },
+      "unsent": {
+        "title": "有未发送更改的笔记",
+        "count": "{count, plural, other {# 篇笔记}}",
+        "description": "此设备上有这些笔记的更改，服务器尚未存储。",
+        "waitingSince": "自 {time} 起等待中",
+        "more": "{count, plural, other {另有 # 篇笔记}}",
+        "reasons": {
+          "body": "文本",
+          "record": "详情",
+          "file_not_taken": "文件尚未合并",
+          "rejected": "被服务器拒绝"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "无法刷新账单状态",
         "billingActive": "套餐已生效",
         "activationPending": "正在等待激活",
-        "portalFailed": "无法打开账单管理页面"
+        "portalFailed": "无法打开账单管理页面",
+        "portalNoCustomer": "尚未找到账单账户。如果你刚刚付款，请选择“刷新状态”后再试。"
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "AI 功能已禁用",
       "error": "无法更新设置"
     },
+    "summarizeLongNotes": {
+      "label": "总结长笔记",
+      "description": "使用你已连接的智能体为长笔记生成更简短的版本，让你可以把笔记折叠为要点。在此设备上运行。",
+      "error": "无法更新“总结长笔记”",
+      "failed": "上次运行失败 ·",
+      "retry": "重试",
+      "retryError": "无法重试总结",
+      "agentLabel": "撰写摘要的智能体",
+      "agentAuto": "自动",
+      "agentError": "无法更改摘要智能体",
+      "noAgent": "未找到智能体 ·",
+      "openAgents": "打开智能体"
+    },
+    "imageSearch": {
+      "label": "按内容搜索图片",
+      "description": "按照照片中的内容查找照片。首次为图片建立索引时会下载 109 MB 的图像模型。",
+      "enabled": "图片搜索已启用",
+      "disabled": "图片搜索已停用"
+    },
     "unknownError": "未知错误",
     "groups": {
       "voice": "语音转录",
@@ -1324,6 +1425,9 @@
         "none": "不重命名"
       },
       "namingError": "无法更新语音备忘录命名",
+      "audioSearch": "按声音搜索语音备忘录",
+      "audioSearchDescription": "根据听起来的样子查找没有转写文本的语音备忘录，例如音乐或声音。首次需要建立索引时会下载 189 MB 的音频模型。",
+      "audioSearchError": "无法更新语音备忘录搜索",
       "language": "口述语言",
       "languageDescription": "你在语音备忘录中使用的语言",
       "languageDefault": "默认",
@@ -1459,7 +1563,8 @@
       "csv": "导入 .csv 文件——每行一篇笔记，各列成为属性",
       "raindrop": "导入 Raindrop.io 书签导出文件（.csv）——书签进入收件箱",
       "apple-notes": "从 Apple Notes 数据库导入（NoteStore.sqlite，macOS）",
-      "onenote": "导入 OneNote 笔记本（需要 Microsoft 账户）"
+      "onenote": "导入 OneNote 笔记本（需要 Microsoft 账户）",
+      "readwise": "从 Readwise 导入你的高亮（需要访问令牌）"
     },
     "action": "导入",
     "select": "选择要从中导入的应用…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "警告",
-      "confirm": "导入"
+      "confirm": "导入",
+      "readwise": {
+        "books": "{count, plural, other {# 本书}}",
+        "highlights": "{count, plural, other {# 条高亮}}",
+        "documents": "{count, plural, other {# 篇文档}}"
+      }
     },
     "dialog": {
       "title": "从 {name} 导入",
@@ -1505,7 +1615,18 @@
         "deselectAll": "清除选择",
         "foldersSelected": "{count, plural, other {已选择 # 个文件夹}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, other {# 篇已锁定的备忘录}}",
+          "hint": "输入你的“备忘录”密码即可导入它们。该密码仅用于本次导入，不会被保存。已锁定备忘录中的附件不会被导入。",
+          "label": "“备忘录”密码",
+          "placeholder": "“备忘录”密码",
+          "check": "检查",
+          "wrong": "该密码无法解锁任何已锁定的备忘录。",
+          "unlockedAll": "{count, plural, other {可解锁全部 # 篇已锁定的备忘录。}}",
+          "unlockedSome": "可解锁 {total} 篇已锁定备忘录中的 {unlocked} 篇。其余使用不同的密码，将被跳过。",
+          "checkError": "无法检查密码。"
+        }
       },
       "chooseFolder": "选择 Apple Notes 文件夹…",
       "chooseDirectory": "选择文件夹…",
@@ -1529,12 +1650,206 @@
         "failed": "{count} 个失败"
       },
       "error": "导入失败",
-      "previewError": "预览失败"
+      "previewError": "预览失败",
+      "readwise": {
+        "intro": "粘贴你的 Readwise 访问令牌。Memry 会先通过 Readwise 验证，然后将其保存在此设备的系统钥匙串中。它不会同步。",
+        "tokenLabel": "访问令牌",
+        "tokenPlaceholder": "粘贴你的令牌",
+        "getToken": "获取令牌",
+        "connect": "连接",
+        "connecting": "正在连接…",
+        "connectFailed": "无法连接到 Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise 在 {device} 上同步。",
+          "syncsOnAnother": "Readwise 在另一台设备上同步。",
+          "explain": "只有一台设备从 Readwise 拉取内容，因此同一条高亮不会被写入两次。若要改为从此设备拉取，请再次粘贴你的令牌：令牌不会在设备之间传输。另一台设备会在处理完当前这本书后停止，所有笔记都会保留。",
+          "button": "改为在此处同步",
+          "working": "正在将 Readwise 移到此处…",
+          "failed": "无法将 Readwise 移到此设备"
+        },
+        "groups": {
+          "location": "笔记存放位置",
+          "categories": "导入内容",
+          "reader": "Readwise Reader",
+          "journal": "日记",
+          "sync": "同步"
+        },
+        "journal": {
+          "highlights": {
+            "label": "在日记中列出每天的高亮",
+            "description": "在你添加高亮的当天添加一个 Readwise 部分，并链接到每本书的笔记。仅包含新的高亮，不回填。",
+            "firstImport": "首次导入不会向日记写入任何内容。"
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "同时导入已保存的 Reader 文档",
+            "description": "默认关闭。可能会添加数千篇笔记。"
+          },
+          "fullText": {
+            "label": "包含文章全文",
+            "description": "仅在创建笔记时写入一次"
+          }
+        },
+        "rootFolder": {
+          "label": "文件夹",
+          "description": "新书会放在这里。已有的笔记保持原位。"
+        },
+        "layout": {
+          "label": "文件夹布局",
+          "description": "仅适用于新书。",
+          "options": {
+            "by-category": "按类别",
+            "flat": "单个文件夹"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "书籍",
+            "description": "Kindle、Apple Books 及其他高亮"
+          },
+          "articles": {
+            "label": "文章",
+            "description": "网页文章和新闻通讯"
+          },
+          "tweets": {
+            "label": "推文",
+            "description": "已保存的推文和推文串"
+          },
+          "podcasts": {
+            "label": "播客",
+            "description": "播客单集和片段"
+          },
+          "supplementals": {
+            "label": "补充材料",
+            "description": "Readwise 自行添加、不含你的高亮的书籍"
+          },
+          "other": {
+            "label": "其他",
+            "description": "Readwise 在此版本之后新增的类别"
+          }
+        },
+        "cadence": {
+          "label": "频率",
+          "description": "新高亮的获取频率。",
+          "options": {
+            "manual": "手动",
+            "hourly": "每小时",
+            "daily": "每天"
+          }
+        },
+        "syncNow": {
+          "label": "立即同步",
+          "description": "检查 Readwise 中是否有新的高亮。",
+          "button": "立即同步"
+        },
+        "disconnect": "断开连接",
+        "disconnectHint": "断开连接会从此设备移除令牌。你的笔记会保留。",
+        "deleted": {
+          "heading": "已删除的书籍",
+          "description": "你在 memry 中删除的笔记。在你恢复之前，它们会一直保持删除状态。",
+          "meta": "删除于 {date} · {count, plural, other {# 条高亮}}",
+          "metaDocument": "删除于 {date} · 已保存的文章",
+          "restore": "恢复",
+          "footer": "恢复会重新创建该笔记及其所有高亮。",
+          "empty": "没有已删除的书籍",
+          "syncsOn": "Readwise 在 {device} 上同步。",
+          "syncsOnAnotherDevice": "Readwise 在另一台设备上同步。",
+          "loadFailed": "无法加载已删除的书籍",
+          "restoreFailed": "无法恢复该笔记"
+        },
+        "importNow": "立即导入",
+        "importBooks": "{count, plural, other {导入 # 本书}}",
+        "importNotes": "{count, plural, other {导入 # 篇笔记}}",
+        "importNone": "导入",
+        "preview": {
+          "intro": "共 {books, plural, other {# 本书}}、{highlights, plural, other {# 条高亮}}已就绪。在你确认之前不会写入任何内容。",
+          "introOff": "共 {books, plural, other {# 本书}}、{highlights, plural, other {# 条高亮}}已就绪。已关闭：{off}。将导入 {willImport, plural, other {# 本书}}。在你确认之前不会写入任何内容。",
+          "introReaderOnly": "你的 Readwise 资料库中还没有高亮。{documents, plural, other {# 篇已保存的 Reader 文档}}将作为笔记导入。在你确认之前不会写入任何内容。",
+          "readerLabel": "已保存的 Reader 文档",
+          "empty": "你的 Readwise 资料库中还没有高亮。不会写入任何内容。请导入以完成设置。",
+          "willImport": "将导入",
+          "off": "已关闭",
+          "retry": "重试"
+        },
+        "status": {
+          "connected": "已连接",
+          "synced": "{time}已同步",
+          "syncing": "正在与 Readwise 同步",
+          "reading": "正在读取你的资料库…",
+          "writing": "正在写入书籍，{done}/{total}",
+          "finishing": "即将完成…",
+          "waitingTitle": "正在等待 memry 同步",
+          "waitingDetail": "Memry 会等到你其他设备上的笔记全部到达后再开始，这样不会重复写入任何一本书。Readwise 随后立即开始。",
+          "otherTitle": "在 {device} 上同步",
+          "otherTitleUnknown": "在另一台设备上同步",
+          "otherDetail": "只有一台设备从 Readwise 拉取内容，因此同一条高亮不会被写入两次。",
+          "lastRun": "上次运行：{counts}",
+          "lastRunNothing": "上次运行：没有新内容",
+          "nextRun": "下次同步 {time}",
+          "retryAt": "Memry 将在 {time}重试。",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise 需要新的令牌",
+              "detail": "Readwise 不接受已保存的令牌。请从 readwise.io/access_token 粘贴新的令牌。"
+            },
+            "subscription-expired": {
+              "title": "你的 Readwise 订阅已过期",
+              "detail": "请在 readwise.io 续订，然后重试。"
+            },
+            "rate-limited": {
+              "title": "Readwise 正在限制请求",
+              "detail": "短时间内请求过多。"
+            },
+            "network": {
+              "title": "无法连接到 Readwise",
+              "detail": "请检查网络连接。"
+            },
+            "server": {
+              "title": "Readwise 出现问题",
+              "detail": "Readwise 返回了错误。"
+            },
+            "unexpected": {
+              "title": "同步已停止",
+              "detail": "运行期间出现问题。"
+            }
+          },
+          "counts": {
+            "added": "新增 {count}",
+            "updated": "更新 {count}",
+            "appended": "扩充 {count}",
+            "deferred": "{count} 个等待笔记关闭",
+            "failed": "失败 {count}",
+            "highlights": "{count, plural, other {# 条高亮}}"
+          },
+          "actions": {
+            "cancel": "取消",
+            "retry": "立即重试",
+            "newToken": "粘贴新令牌",
+            "reconnect": "重新连接",
+            "syncHere": "改为在此处同步"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise 需要新的令牌",
+            "description": "在你粘贴新的令牌之前，同步会保持暂停。"
+          },
+          "subscription-expired": {
+            "title": "你的 Readwise 订阅已过期",
+            "description": "在订阅重新生效之前，同步会保持暂停。"
+          },
+          "open": "打开 Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "无法读取文件",
       "appleNotes": {
-        "lockedNote": "{count, plural, other {# 篇已锁定的笔记}}未导入；没有备忘录密码，Memry 无法读取它们。"
+        "lockedNote": "{count, plural, other {# 篇已锁定的笔记}}未导入；没有备忘录密码，Memry 无法读取它们。",
+        "lockedWrongPassword": "{count, plural, other {# 篇已锁定的备忘录}}未导入；{count, plural, other {它们}}使用的密码与你输入的不同。",
+        "lockedUnreadable": "{count, plural, other {# 篇已锁定的备忘录}}无法解密，未导入。",
+        "lockedAttachment": "{count, plural, other {已锁定备忘录中的 # 个附件}}未导入；笔记文本已导入。"
       },
       "csv": {
         "noHeaders": "CSV 文件没有表头",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "未知优先级 {priority} → 无",
         "unparsedDate": "无法解析日期“{date}”",
         "subtaskNoParent": "子任务“{title}”在缩进 {indent} 处没有父任务；已作为顶级任务导入"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise 未连接。",
+        "tokenInvalid": "Readwise 不接受已存储的令牌。请断开连接，然后使用新的令牌重新连接。",
+        "unreachable": "无法连接到 Readwise。请检查网络连接后重试。",
+        "categoryOff": "{count, plural, other {# 本书}}属于你已关闭的类别，未导入。",
+        "unchanged": "{count, plural, other {# 本书}}已是最新。",
+        "sourceDeleted": "{count, plural, other {# 本书}}已在 Readwise 中删除。笔记会保留。",
+        "noteDeleted": "{count, plural, other {# 篇笔记}}已在 Memry 中删除，并将保持删除状态。",
+        "busy": "{count, plural, other {# 篇笔记}}正在编辑器中打开，将在下次运行时写入。"
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "正在导入 Todoist 任务…"
+      },
+      "readwise": {
+        "fetching": "正在读取你的 Readwise 资料库…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, other {显示另外 # 个}}",
       "showLess": "收起",
       "groups": {
+        "reading": "阅读",
         "noteApps": "笔记应用",
         "tasks": "任务、日记和书签",
         "files": "文件"
+      },
+      "readwise": {
+        "notConnected": "未连接",
+        "connected": "已连接",
+        "synced": "{time}已同步",
+        "syncing": "正在同步…",
+        "waiting": "等待同步",
+        "otherDevice": "在 {device} 上同步",
+        "otherDeviceUnknown": "在其他设备上同步",
+        "invalidToken": "需要新的令牌",
+        "subscriptionExpired": "订阅已过期",
+        "rateLimited": "请求受限",
+        "network": "无法连接到 Readwise",
+        "server": "Readwise 出错",
+        "unexpected": "同步失败"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "已将“{oldName}”重命名为“{newName}”",
       "renameFailed": "无法重命名标签",
+      "renaming": "正在重命名 #{oldName}：{done} / {total} 篇笔记",
+      "renamedBodySkipped": "“{newName}”无法作为行内标签输入，因此笔记文本中的 #{oldName} 保持原样",
+      "renamedSomeFailed": "无法更新 {count, plural, other {# 篇笔记}}。请打开{count, plural, other {这些笔记}}并重新添加标签",
       "deleteFailed": "无法删除标签",
       "deleted": "已从 {count, plural, other {# 项}}中删除“{name}”",
       "mergeFailed": "无法合并标签",
@@ -1901,12 +2248,29 @@
       "unsupported": "{shortcut} 无法用作全局快捷键。请选择其他组合键。",
       "fallbackInUse": "默认快捷键 {shortcut} 已被其他应用占用。请设置其他组合键以使用全局快速收集。"
     },
+    "folderNotes": {
+      "title": "在文件夹中新建笔记",
+      "description": "直接在你选择的文件夹中创建笔记",
+      "add": "添加文件夹",
+      "empty": "还没有文件夹快捷键。添加一个文件夹即可为其设置快捷键。",
+      "rowDescription": "在此文件夹中创建笔记",
+      "missing": "此文件夹已不存在。请选择其他文件夹或移除该快捷键。",
+      "changeFolder": "更改文件夹",
+      "searchFolders": "搜索文件夹...",
+      "noFolders": "未找到文件夹",
+      "remove": "移除快捷键",
+      "conflictLabel": "在 {folder} 中新建笔记",
+      "missingToast": "文件夹“{folder}”已不存在",
+      "missingToastAction": "编辑快捷键",
+      "foldersLoadFailed": "无法检查此快捷键对应的文件夹"
+    },
     "toasts": {
       "saveGlobalFailed": "无法保存全局快速收集快捷键",
       "saveFailed": "无法保存快捷键",
       "resetFailed": "无法重置快捷键",
       "resetAllSuccess": "所有快捷键已重置为默认设置",
-      "resetAllFailed": "无法重置快捷键"
+      "resetAllFailed": "无法重置快捷键",
+      "saveStickyFailed": "无法保存便签快捷键"
     },
     "categories": {
       "navigation": "导航",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "搜索",
           "description": "打开全局搜索"
+        },
+        "commands": {
+          "label": "命令面板",
+          "description": "搜索并运行任意命令"
         },
         "settings": {
           "label": "打开设置",
@@ -2042,6 +2410,10 @@
           "label": "显示/隐藏侧边栏",
           "description": "显示或隐藏侧边栏"
         },
+        "toggleDayPanel": {
+          "label": "切换当天面板",
+          "description": "显示或隐藏右侧的当天面板"
+        },
         "shortcuts": {
           "label": "键盘快捷键帮助",
           "description": "显示键盘快捷键参考"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "实际大小",
           "description": "将缩放重置为 100%"
+        },
+        "foldFull": {
+          "label": "折叠：全文",
+          "description": "显示笔记中的每一个字"
+        },
+        "foldBrief": {
+          "label": "折叠：简要",
+          "description": "仅按原文显示关键句"
+        },
+        "foldKey": {
+          "label": "折叠：要点",
+          "description": "显示每个要点及其原因"
+        },
+        "foldTakeaway": {
+          "label": "折叠：结论",
+          "description": "每个段落显示一行"
+        },
+        "foldTopic": {
+          "label": "折叠：主题",
+          "description": "将笔记显示为各部分的结构图"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "全局快速收集",
       "recordingHint": "按下组合键…按 esc 取消",
       "reset": "重置",
-      "resetAll": "全部恢复默认"
+      "resetAll": "全部恢复默认",
+      "sticky": "便签"
+    },
+    "sticky": {
+      "description": "在 memrynote 运行时，从任意应用中打开便签"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "检测到时钟偏移",
       "items": "项",
       "willSyncWhenBackOnline": "恢复联网后将同步",
-      "openSyncSettings": "打开同步设置"
+      "stalled": "更改已有一段时间未同步。请尝试“立即同步”。",
+      "openSyncSettings": "打开同步设置",
+      "repairDeviceKeys": "修复",
+      "signInToRepair": "请重新登录以设置此设备的密钥。尚未同步的笔记、任务和项目会保留。你可能需要使用恢复短语。",
+      "repairFailed": "无法修复此设备的密钥。请重试。",
+      "syncNotStarted": {
+        "vault-binding": "此设备的密钥已恢复，但此保险库尚未设置为与你的账户同步。请从同步菜单中选择同步方式。",
+        "vault-foreign": "此设备的密钥已恢复，但此保险库属于另一个账户。它将仅保留在此设备上。",
+        "entitlement": "此设备的密钥已恢复，但同步需要有效的同步方案。",
+        "unavailable": "此设备的密钥已恢复，但同步无法启动。它会自动重试；如果没有，请重启 Memry。"
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "模型",
         "description": "选择返回的模型，或手动输入一个。"
       },
+      "thinking": {
+        "label": "思考",
+        "description": "关闭后，DeepSeek 类模型会跳过思考，回答更快、成本更低。",
+        "default": "默认",
+        "off": "关闭"
+      },
       "apiKey": {
         "label": "API 密钥",
         "description": "可选凭据，保存在系统钥匙串中。",
@@ -2286,6 +2698,17 @@
       "revoke": "撤销",
       "revokeLabel": "撤销 {tool} 的长期批准",
       "ignoredInPageReview": "已忽略：编辑笔记和日记时始终会询问。"
+    },
+    "memory": {
+      "group": "记忆",
+      "description": "智能体在为此保险库保留的文件夹中运行，该文件夹位于保险库之外，因此它们保存在那里的内容会延续到下一次对话。",
+      "clear": "清除智能体记忆",
+      "clearDescription": "删除智能体保存的关于此保险库的内容。笔记和聊天记录会保留。",
+      "clearAction": "清除",
+      "cleared": "智能体记忆已清除。",
+      "failed": "无法清除智能体记忆。",
+      "confirmTitle": "清除智能体记忆？",
+      "confirmDescription": "智能体将丢失其保存的关于此保险库的内容，包括 Claude Code 为其保存的项目记忆。此操作无法撤销。笔记和聊天记录会保留。"
     },
     "v2": {
       "permissions": {
