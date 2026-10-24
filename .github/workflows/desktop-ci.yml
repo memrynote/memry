@@ -360,6 +360,13 @@ jobs:
           bash apps/desktop/scripts/ensure-native.sh electron
           pnpm --filter @memry/desktop exec electron-vite build
 
+      # The main bundle's require graph is platform-independent, so check it
+      # here, once, before the Linux E2E jobs download the artifact. Windows
+      # runs the same check, but only after its own build.
+      - name: Check main startup set
+        working-directory: apps/desktop
+        run: node scripts/check-main-startup-set.mjs
+
       - name: Pack build output
         # tar rather than a raw multi-path upload: it keeps file modes (the
         # .node binaries), keeps the dot-prefixed stamp/store paths that
