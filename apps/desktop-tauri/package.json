@@ -158,10 +158,11 @@
     "jsdom": "^27.4.0",
     "libsodium-wrappers-sumo": "^0.8.2",
     "tailwindcss": "^4.1.18",
-    "tsx": "4.23.15",
+    "tsx": "^4.21.0",
     "typescript": "^7.0.2",
     "vite": "^7.3.6",
     "vitest": "4.1.10",
-    "webdriverio": "9.32.0"
+    "webdriverio": "9.32.0",
+    "yaml": "2.9.0"
   }
 }
