@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "ลบหน้าบันทึกประจำวัน",
     "description": "ต้องการลบ “{title}” หรือไม่? การกระทำนี้เลิกทำไม่ได้"
+  },
+  "dayTimeline": {
+    "label": "ตารางของวัน",
+    "allDay": "รายการตลอดวัน",
+    "unscheduled": "ยังไม่กำหนดเวลา",
+    "unscheduledEmpty": "ไม่มีงานที่ยังไม่กำหนดเวลา ลากบล็อกมาวางที่นี่เพื่อล้างเวลาของงาน",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "ทำ {title} เสร็จ"
   }
 }

@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {ล้างวันครบกำหนดของงานย่อย # รายการแล้ว}}",
       "prioritySet": "{count, plural, other {ตั้งลำดับความสำคัญให้งานย่อย # รายการแล้ว}}",
       "deleted": "{count, plural, other {ลบงานย่อย # รายการแล้ว}}"
-    }
+    },
+    "completedBranch": "ทำ {title} และงานย่อยที่ยังเปิดอยู่ {count, plural, other {# รายการ}} เสร็จแล้ว",
+    "deletedKeepSubtasks": "ลบ {title} และเก็บงานย่อยไว้แล้ว",
+    "deletedBranch": "ลบ {title} และงานย่อย {count, plural, other {# รายการ}} แล้ว"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "สถานะ",
       "projectIs": "โปรเจกต์:",
       "project": "โปรเจกต์",
+      "locationIs": "ตำแหน่งคือ",
+      "location": "ตำแหน่ง",
+      "unknownNote": "โน้ตที่ไม่รู้จัก",
       "due": "ครบกำหนด",
       "dueDate": "วันครบกำหนด",
       "search": "ค้นหา",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "วันครบกำหนด"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "ตำแหน่ง",
+      "search": "ค้นหาโฟลเดอร์และโน้ต...",
+      "empty": "ไม่มีโฟลเดอร์หรือโน้ตที่มีงาน"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "ลำดับความสำคัญ",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "มุมมองโปรเจกต์",
       "overview": "ภาพรวม",
+      "all": "ทั้งหมด",
       "tasks": "งาน",
       "notes": "โน้ต",
       "files": "ไฟล์",
@@ -951,6 +963,25 @@
       "fileError": "เชื่อมโยง {name} ไม่สำเร็จ",
       "fileErrorGeneric": "นำเข้าไฟล์ไม่สำเร็จ",
       "label": "เพิ่มไปยัง {name}"
+    },
+    "all": {
+      "showDone": "แสดงที่เสร็จแล้ว",
+      "empty": "ไม่มีงานค้างในโปรเจกต์นี้",
+      "expand": "แสดงงานใน {title}",
+      "collapse": "ซ่อนงานใน {title}",
+      "taskSummary": "ค้าง {open}/{total}",
+      "daysLeft": "{count} วัน",
+      "overdue": "เลยกำหนด {count} วัน",
+      "columns": {
+        "title": "ชื่อ",
+        "daysLeft": "เหลืออีก (วัน)"
+      },
+      "status": {
+        "active": "กำลังดำเนินการ",
+        "done": "เสร็จแล้ว",
+        "upcoming": "กำลังจะมาถึง",
+        "past": "ผ่านไปแล้ว"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "สีน้ำเงินคราม",
     "purple": "สีม่วง",
     "pink": "สีชมพู"
+  },
+  "subtaskTree": {
+    "addSubtask": "เพิ่มงานย่อย",
+    "dropInto": "ใส่ใน {title}",
+    "dropOut": "ออกหนึ่งระดับ",
+    "draftPlaceholder": "ชื่องานย่อย",
+    "draftLabel": "งานย่อยใหม่ใน {title}",
+    "draftIn": "ใน {title}",
+    "toggleComplete": "ทำ {title} เสร็จ",
+    "moveUnder": {
+      "title": "ย้ายไปไว้ใต้",
+      "placeholder": "ย้ายไปไว้ใต้…",
+      "empty": "ไม่มีงานที่ตรงกัน",
+      "topLevel": "ระดับบนสุดของ {project}",
+      "thisTask": "งานนี้",
+      "currentParent": "งานหลักปัจจุบัน",
+      "movesOne": "ย้าย {title}",
+      "movesBranch": "ย้าย {title} และงานย่อย {count, plural, other {# รายการ}}",
+      "keys": "↵ ย้ายมาที่นี่ · ⌘↵ ระดับบนสุด · esc ปิด"
+    },
+    "zoom": {
+      "path": "เส้นทางของงาน",
+      "up": "ขึ้นหนึ่งระดับ",
+      "upShortcut": "ขึ้นหนึ่งระดับ (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "ลบ {title} ไหม",
+      "summary": "{direct, plural, other {มีงานย่อย # รายการ}}{deeper, plural, =0 {} other { และอีก # รายการข้างใต้}}{open, plural, =0 {, เสร็จหมดแล้ว} other {, ยังค้างอยู่ #}}",
+      "cancel": "ยกเลิก",
+      "deleteAll": "ลบทั้งหมด",
+      "keepSubtasks": "เก็บงานย่อยไว้"
+    },
+    "menu": {
+      "open": "เปิด",
+      "complete": "ทำเสร็จ",
+      "reopen": "เปิดใหม่",
+      "zoom": "ซูมเข้าไปที่งานย่อย",
+      "moveUnder": "ย้ายไปไว้ใต้…",
+      "indent": "ย้ายไปไว้ใต้ {title}",
+      "outdent": "ย้ายออกหนึ่งระดับ",
+      "topLevel": "ทำให้เป็นงานระดับบนสุด",
+      "delete": "ลบ"
+    },
+    "openPath": "เปิด {path}"
   }
 }
