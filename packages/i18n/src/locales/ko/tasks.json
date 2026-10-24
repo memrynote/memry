@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {하위 작업 #개의 마감일을 지웠습니다}}",
       "prioritySet": "{count, plural, other {하위 작업 #개의 우선순위를 설정했습니다}}",
       "deleted": "{count, plural, other {하위 작업 #개를 삭제했습니다}}"
-    }
+    },
+    "completedBranch": "{title}과(와) {count, plural, other {열린 하위 작업 #개}}를 완료했습니다",
+    "deletedKeepSubtasks": "{title}을(를) 삭제하고 하위 작업은 유지했습니다",
+    "deletedBranch": "{title}과(와) {count, plural, other {하위 작업 #개}}를 삭제했습니다"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "상태",
       "projectIs": "프로젝트:",
       "project": "프로젝트",
+      "locationIs": "위치:",
+      "location": "위치",
+      "unknownNote": "알 수 없는 노트",
       "due": "마감",
       "dueDate": "마감일",
       "search": "검색",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "마감일"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "위치",
+      "search": "폴더 및 노트 검색...",
+      "empty": "작업이 있는 폴더나 노트가 없습니다"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "우선순위",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "프로젝트 보기",
       "overview": "개요",
+      "all": "전체",
       "tasks": "작업",
       "notes": "노트",
       "files": "파일",
@@ -951,6 +963,25 @@
       "fileError": "{name} 파일을 연결하지 못했습니다",
       "fileErrorGeneric": "파일을 가져오지 못했습니다",
       "label": "{name}에 추가"
+    },
+    "all": {
+      "showDone": "완료 항목 표시",
+      "empty": "이 프로젝트에 열린 항목이 없습니다.",
+      "expand": "{title}의 작업 표시",
+      "collapse": "{title}의 작업 숨기기",
+      "taskSummary": "{open}/{total} 진행 중",
+      "daysLeft": "{count}일",
+      "overdue": "{count}일 지남",
+      "columns": {
+        "title": "제목",
+        "daysLeft": "남은 일수"
+      },
+      "status": {
+        "active": "진행 중",
+        "done": "완료",
+        "upcoming": "예정",
+        "past": "지난"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "남색",
     "purple": "보라",
     "pink": "분홍"
+  },
+  "subtaskTree": {
+    "addSubtask": "하위 작업 추가",
+    "dropInto": "{title} 안으로",
+    "dropOut": "한 단계 밖으로",
+    "draftPlaceholder": "하위 작업 제목",
+    "draftLabel": "{title}의 새 하위 작업",
+    "draftIn": "{title} 안",
+    "toggleComplete": "{title} 완료",
+    "moveUnder": {
+      "title": "다음 아래로 이동",
+      "placeholder": "다음 아래로 이동…",
+      "empty": "일치하는 작업이 없습니다",
+      "topLevel": "{project}의 최상위",
+      "thisTask": "이 작업",
+      "currentParent": "현재 상위 작업",
+      "movesOne": "{title} 이동",
+      "movesBranch": "{title}과(와) {count, plural, other {하위 작업 #개}} 이동",
+      "keys": "↵ 여기로 이동 · ⌘↵ 최상위 · esc 닫기"
+    },
+    "zoom": {
+      "path": "작업 경로",
+      "up": "한 단계 위로",
+      "upShortcut": "한 단계 위로 (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "{title}을(를) 삭제하시겠습니까?",
+      "summary": "{direct, plural, other {하위 작업이 #개 있습니다}}{deeper, plural, =0 {} other {. 그 아래에 #개가 더 있습니다}}{open, plural, =0 {. 모두 완료되었습니다.} other {. #개가 아직 진행 중입니다.}}",
+      "cancel": "취소",
+      "deleteAll": "모두 삭제",
+      "keepSubtasks": "하위 작업 유지"
+    },
+    "menu": {
+      "open": "열기",
+      "complete": "완료",
+      "reopen": "다시 열기",
+      "zoom": "하위 작업으로 확대",
+      "moveUnder": "다음 아래로 이동…",
+      "indent": "{title} 아래로 이동",
+      "outdent": "한 단계 밖으로 이동",
+      "topLevel": "최상위 작업으로 만들기",
+      "delete": "삭제"
+    },
+    "openPath": "{path} 열기"
   }
 }

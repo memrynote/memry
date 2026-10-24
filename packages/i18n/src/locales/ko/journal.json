@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "저널 항목 삭제",
     "description": "“{title}”을(를) 삭제하시겠습니까? 되돌릴 수 없습니다."
+  },
+  "dayTimeline": {
+    "label": "하루 일정",
+    "allDay": "종일 항목",
+    "unscheduled": "일정 없음",
+    "unscheduledEmpty": "일정이 지정되지 않은 작업이 없습니다. 블록을 여기로 끌어 놓으면 시간이 지워집니다.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} 완료"
   }
 }

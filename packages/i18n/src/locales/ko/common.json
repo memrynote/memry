@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "포털을 복사하지 못했습니다",
+    "hiddenCount": "{count}개 숨김",
+    "windowFailed": "이 포털을 열 수 없습니다. 대신 원본 노트를 여세요.",
+    "noTarget": "이 포털에는 아직 대상이 없습니다. 정의에 노트를 추가하거나 블록을 제거하세요.",
+    "invalidJson": "이 포털의 정의가 올바른 JSON이 아닙니다. 아래에서 수정하거나 블록을 제거하세요.",
+    "invalidShape": "이 포털의 정의에 노트나 검색이 없습니다. 아래에서 수정하거나 블록을 제거하세요.",
+    "search": {
+      "editQuery": "쿼리 편집",
+      "count": "{count, plural, other {블록 #개}}",
+      "loading": "검색 중…",
+      "empty": "이 쿼리와 일치하는 블록이 없습니다.",
+      "failed": "검색을 실행하지 못했습니다.",
+      "retry": "다시 시도",
+      "truncated": "처음 {count}개 결과를 표시합니다."
+    },
+    "copiedContents": "내용을 복사했습니다",
+    "copiedLink": "링크를 복사했습니다",
+    "actionFailed": "이 포털을 변경하지 못했습니다",
+    "keepsOneBlock": "포털에는 블록이 최소 하나 있어야 합니다. 대신 포털을 제거하세요.",
+    "expandChildren": "하위 항목 표시",
+    "collapseChildren": "하위 항목 숨기기",
+    "toolbar": {
+      "label": "포털",
+      "include": "“{block}” 포함",
+      "locked": "{note}은(는) 잠겨 있음 · 읽기 전용",
+      "more": "더 보기",
+      "openBeside": "{note}을(를) 옆에 열기",
+      "click": "클릭",
+      "copyContents": "내용 복사",
+      "copyLink": "링크 복사",
+      "remove": "포털 제거",
+      "removeHint": "{note}의 모든 블록은 그대로 유지됩니다"
+    },
+    "states": {
+      "missingNote": {
+        "text": "원본 노트가 삭제되었습니다. 참조는 유지됩니다.",
+        "action": "제거"
+      },
+      "missingBlock": {
+        "text": "{source}에서 블록이 삭제되었습니다.",
+        "action": "다른 블록 선택"
+      },
+      "notSynced": {
+        "text": "원본 노트가 동기화되기를 기다리는 중입니다.",
+        "action": "다시 시도"
+      },
+      "cycle": {
+        "text": "이 포털이 자기 자신으로 되돌아옵니다.",
+        "action": "원본 열기"
+      },
+      "tooDeep": {
+        "text": "포털은 {max}단계까지 중첩됩니다. 이 포털은 링크로 열립니다.",
+        "action": "원본 열기"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "기록 입력란에 포커스",
@@ -43,6 +100,50 @@
     "showInFileManager": "파일 관리자에서 보기",
     "openInDefaultApp": "기본 앱에서 열기",
     "revealFailed": "폴더에서 표시하지 못했습니다."
+  },
+  "commands": {
+    "runFailed": "이 명령을 실행하지 못했습니다. 다시 시도하세요."
+  },
+  "commandsPalette": {
+    "title": "명령",
+    "placeholder": "명령 입력…",
+    "groups": {
+      "navigation": "이동",
+      "create": "만들기",
+      "tabs": "탭",
+      "editor": "편집기",
+      "view": "보기",
+      "app": "앱",
+      "note": "노트",
+      "settings": "설정",
+      "sync": "동기화",
+      "help": "도움말",
+      "project": "프로젝트",
+      "tasks": "작업",
+      "canvas": "캔버스",
+      "folder": "폴더",
+      "file": "파일"
+    },
+    "contexts": {
+      "note": "이 노트",
+      "journal": "이 저널",
+      "project": "이 프로젝트",
+      "tasks": "이 작업들",
+      "canvas": "이 캔버스",
+      "folder": "이 폴더",
+      "tag": "이 태그",
+      "file": "이 파일"
+    },
+    "recent": "최근",
+    "empty": "“{query}”와(과) 일치하는 명령이 없습니다",
+    "searchHint": "노트 검색: {shortcut}",
+    "status": {
+      "count": "{count, plural, other {명령 #개}}"
+    },
+    "actions": {
+      "run": "실행",
+      "searchNotes": "노트 검색"
+    }
   },
   "tabs": {
     "pin": "탭 고정",
@@ -131,6 +232,20 @@
     "openInTab": "대화를 탭에서 열기",
     "stop": "중지",
     "thinking": "에이전트가 생각하는 중",
+    "toolsUnavailable": "이 모델에서는 볼트 도구가 꺼져 있습니다. 도구 검사를 통과하지 못해 대화만 할 수 있습니다.",
+    "toolsUnavailableWithDetail": "이 모델에서는 볼트 도구가 꺼져 있습니다. 도구 검사를 통과하지 못해 대화만 할 수 있습니다. {detail}",
+    "toolsOff": {
+      "toolsRejected": "이 모델에서는 볼트 도구가 꺼져 있습니다. 공급자가 도구가 포함된 테스트 요청을 거부하여 모델은 대화만 할 수 있습니다.",
+      "noToolCall": "이 모델에서는 볼트 도구가 꺼져 있습니다. 테스트 요청에 도구를 호출하지 않고 답했으므로 대화만 할 수 있습니다.",
+      "toolResultRejected": "이 모델에서는 볼트 도구가 꺼져 있습니다. 테스트 도구를 호출했지만 결과를 받은 뒤 실패하여 대화만 할 수 있습니다.",
+      "streamingUnsupported": "이 모델에서는 볼트 도구가 꺼져 있습니다. 공급자가 테스트 응답을 스트리밍하지 않아 모델은 대화만 할 수 있습니다.",
+      "providerSaid": "공급자 응답: {detail}",
+      "wroteToolCall": "모델이 도구 호출을 텍스트로 작성했으며 아무것도 실행되지 않았습니다."
+    },
+    "stepLimit": {
+      "notice": "단계 제한에서 중단되었습니다.",
+      "continue": "계속"
+    },
     "enable": {
       "title": "memrynote 에이전트 켜기",
       "description": "memrynote 에이전트는 선택한 로컬 에이전트 CLI를 사용해 볼트에 관해 대화합니다. Claude는 메시지를 Anthropic에, Codex는 OpenAI에 보냅니다.",
@@ -275,6 +390,15 @@
       "addContext": "컨텍스트 추가",
       "addContextWithPermissions": "컨텍스트 추가({permissions})",
       "mentionContext": "노트, 작업 또는 일정 멘션",
+      "files": {
+        "attach": "텍스트 파일 첨부",
+        "refused": {
+          "unsupportedType": "{name}은(는) 지원되는 텍스트 파일이 아닙니다. .txt, .md, .log, .csv, .tsv, .json, .yaml 또는 .yml 파일을 첨부하세요.",
+          "notText": "{name}은(는) UTF-8 텍스트 파일이 아닙니다. 텍스트 파일을 첨부하세요.",
+          "tooLarge": "{name}을(를) 추가하면 이 메시지가 100 KB 제한을 초과합니다. 파일을 제거하거나 더 작은 파일을 첨부하세요.",
+          "readFailed": "{name}을(를) 읽을 수 없습니다. 파일이 아직 있고 열 수 있는지 확인한 뒤 다시 첨부하세요."
+        }
+      },
       "voice": {
         "start": "음성 받아쓰기 시작",
         "stop": "음성 받아쓰기 중지",
@@ -340,6 +464,14 @@
           "extraHigh": "매우 높음"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "기본값",
+          "default": "기본 깊이",
+          "high": "높음",
+          "max": "최대"
+        }
+      },
       "permissionsLabel": "에이전트 권한: {access}, 웹 검색 {webSearch}",
       "permissions": {
         "label": "권한",
@@ -347,6 +479,17 @@
         "tools": "도구"
       },
       "modelSettingsLabel": "에이전트 모델 설정: {model}, {settings}",
+      "queue": {
+        "label": "대기 중인 메시지",
+        "queueMessage": "메시지 대기열에 추가",
+        "edit": "대기 중인 메시지 편집",
+        "editLabel": "대기 중인 메시지 텍스트",
+        "remove": "대기 중인 메시지 제거",
+        "save": "저장",
+        "cancel": "취소",
+        "sending": "보내는 중…",
+        "notSent": "보내지 못했습니다. 편집하여 다시 보내거나 제거하세요."
+      },
       "unavailable": {
         "vaultToolsOnly": "이 모델에서는 볼트 도구만 사용"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "안내 동의 상태를 저장하지 못했습니다.",
       "resolveWindow": "에이전트 소스 창을 확인하지 못했습니다.",
       "detectCli": "에이전트 백엔드를 감지하지 못했습니다.",
-      "loadDisclosure": "안내 동의 상태를 불러오지 못했습니다."
+      "loadDisclosure": "안내 동의 상태를 불러오지 못했습니다.",
+      "turnFailed": "오류로 답변이 중단되었습니다. 메시지는 그대로 남아 있으니 다시 보낼 수 있습니다."
     },
     "actions": {
       "copy": "복사",
@@ -576,6 +720,7 @@
       "newFolder2": "새 폴더",
       "newProject": "새 프로젝트",
       "bookmarks": "북마크",
+      "chart": "차트",
       "tags": "태그",
       "reorderSection": "{section} 순서 변경",
       "dropFilesToImport": "가져올 파일을 여기에 놓으세요",
@@ -863,6 +1008,11 @@
       "cancel": "취소",
       "remove2": "제거",
       "inYourAccount": "계정에 있는 볼트",
+      "trySandbox": "샌드박스 볼트 체험",
+      "sandboxVault": "샌드박스 볼트",
+      "sandboxPreparing": "샌드박스를 준비하는 중…",
+      "sandboxFailed": "샌드박스 볼트를 준비하지 못했습니다",
+      "resetSandbox": "샌드박스 볼트 초기화",
       "itemsCount": "항목 {count}개",
       "untitledVault": "볼트",
       "downloadVaultTitle": "“{name}” 다운로드",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "열어 본 노트가 여기에 표시됩니다",
       "bookmarks": "북마크",
       "tasks": "작업",
+      "chart": "차트",
       "calendar": "캘린더",
       "calendarToday": "오늘",
       "openCalendar": "캘린더 열기",
@@ -978,6 +1129,9 @@
     "edit": "편집",
     "done": "완료",
     "addWidget": "위젯 추가",
+    "cover": {
+      "add": "커버 추가"
+    },
     "empty": {
       "title": "보드가 비어 있습니다",
       "body": "위젯은 노트, 작업, 북마크를 한곳에 차분하게 모아줍니다.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "아이콘 변경…",
     "resetIcon": "아이콘 초기화",
     "iconButton": "{name} 아이콘 변경",
+    "leaveSandbox": "{name}(으)로 돌아가기",
     "iconFailed": "볼트 아이콘을 변경하지 못했습니다"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "유형",
     "filterModified": "수정됨",
     "matches": "일치 항목",
+    "matchesMore": "{count, plural, other {일치 항목 #개 더 있음}}",
+    "matchesHide": "일치 항목 숨기기",
+    "matchOf": "{total}개 중 {index}번째 일치",
     "showMore": "{count}개 더 보기",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "다음 섹션",
       "open": "열기",
       "openNote": "노트 열기",
+      "openAtMatch": "일치 위치에서 열기",
       "openFile": "파일 열기",
       "openJournal": "저널 열기",
       "openTask": "작업 열기",
@@ -1259,6 +1418,7 @@
       "chooseTag": "태그 선택",
       "addTag": "태그 추가",
       "showAll": "모두 보기",
+      "hideMatches": "일치 항목 숨기기",
       "searchEverywhere": "전체에서 검색",
       "clearFilters": "필터 지우기"
     },

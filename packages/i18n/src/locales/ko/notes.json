@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "찾을 수 없음 — 클릭하여 “{title}” 만들기"
   },
+  "wikiLinkMenu": {
+    "aria": "링크 동작",
+    "open": "열기",
+    "openInNewTab": "새 탭에서 열기",
+    "openToTheSide": "옆에 열기",
+    "edit": "링크 편집",
+    "copy": "링크 복사",
+    "unlink": "링크 제거",
+    "displayRow": "표시…",
+    "sizeNone": "없음",
+    "sizeSmall": "작게",
+    "sizeMedium": "보통",
+    "showCover": "커버 표시",
+    "showPreview": "미리보기 표시",
+    "copyFailed": "링크를 복사하지 못했습니다"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Readwise에서 다시 가져오기",
+    "refreshAction": "책 정보 새로 고침",
+    "syncsOn": "Readwise는 {device}에서 동기화됩니다.",
+    "syncsOnAnotherDevice": "Readwise는 다른 기기에서 동기화됩니다.",
+    "takeOverHint": "그 기기에서 동기화하거나 설정 → 가져오기에서 넘겨받으세요.",
+    "reimport": {
+      "title": "Readwise에서 “{title}”을(를) 다시 가져오시겠습니까?",
+      "body": "Readwise 섹션이 처음부터 다시 작성됩니다. 그 안에 직접 쓴 내용은 사라집니다.",
+      "note": "섹션 밖의 텍스트와 노트의 속성은 그대로 유지됩니다.",
+      "cancel": "취소",
+      "confirm": "다시 가져오기"
+    },
+    "commands": {
+      "reimported": "Readwise에서 다시 가져왔습니다",
+      "refreshed": "책 정보를 새로 고쳤습니다",
+      "failed": "Readwise 명령을 완료하지 못했습니다"
+    }
+  },
   "page": {
     "empty": {
       "title": "선택한 노트 없음",
@@ -25,6 +61,7 @@
       "willSync": "노트가 클라우드에 동기화됩니다",
       "renameFailed": "노트 이름을 바꾸지 못했습니다",
       "titleRequired": "노트에는 제목이 필요합니다",
+      "duplicateTitle": "{folder}의 다른 노트도 “{title}”이라는 이름입니다. 이 노트들의 링크에는 폴더가 포함됩니다.",
       "toggleLocalOnlyFailed": "로컬 전용 설정을 변경하지 못했습니다",
       "toggleFullWidthFailed": "전체 너비 설정을 변경하지 못했습니다",
       "pathCopied": "경로를 복사했습니다",
@@ -85,6 +122,10 @@
       "body": "노트를 만들어 시작하세요",
       "newNote": "새 노트"
     },
+    "readwiseSync": {
+      "tooltip": "Readwise 동기화",
+      "failed": "Readwise 동기화 실패"
+    },
     "syncing": {
       "body": "노트를 동기화하는 중 — 도착하는 대로 여기에 표시됩니다"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "옆에서 열기",
       "newNote": "새 노트",
       "newFolder": "새 폴더",
+      "showTasks": "작업 표시",
       "expandSubfolders": "모든 하위 폴더 펼치기",
       "collapseSubfolders": "모든 하위 폴더 접기",
       "rename": "이름 바꾸기",
@@ -138,7 +180,15 @@
       "folderSuffix": "폴더",
       "moreItems": "…외 {count}개",
       "deleting": "삭제 중…",
-      "deleteCount": "{count}개 삭제"
+      "deleteCount": "{count}개 삭제",
+      "journalFolderWarning": "저널 폴더가 포함되어 있습니다. 그 안의 모든 저널 항목이 모든 기기에서 삭제됩니다."
+    },
+    "journalChange": {
+      "leaveTitle": "저널 항목을 노트로 바꾸시겠습니까?",
+      "leaveBody": "저널 폴더 밖으로 옮기거나 날짜 형식에서 벗어나도록 이름을 바꾸면 저널 항목이 일반 노트가 되어 저널에서 빠집니다. 다른 기기에서는 해당 날짜가 저널에서 제거되고 대신 노트가 나타납니다.",
+      "joinTitle": "노트를 저널 항목으로 바꾸시겠습니까?",
+      "joinBody": "저널 폴더 안에서 저널 날짜 형식으로 이름 붙인 파일은 저널 항목이 됩니다. 다른 기기에서는 해당 노트가 저널 항목으로 대체됩니다.",
+      "confirm": "계속"
     },
     "toast": {
       "selectionBookmarked": "항목 {count}개를 북마크했습니다",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "제목",
       "listPlaceholder": "목록 항목",
       "todoPlaceholder": "할 일 항목",
-      "htmlComment": "숨겨진 HTML 주석"
+      "htmlComment": "숨겨진 HTML 주석",
+      "percentComment": "숨겨진 댓글",
+      "readwise": {
+        "noteStart": "Readwise · 자동 동기화",
+        "noteEnd": "Readwise 섹션 끝",
+        "dayStart": "Readwise · 오늘의 하이라이트",
+        "dayEnd": "Readwise 끝",
+        "hint": "이 섹션 안을 편집하면 Readwise가 더 이상 업데이트하지 않습니다."
+      }
     },
     "table": {
       "keyboardMenuAria": "{row}행 {column}열 표 메뉴",
-      "keyboardMenuTitle": "{row}행 · {column}열"
+      "keyboardMenuTitle": "{row}행 · {column}열",
+      "sizePicker": {
+        "aria": "표 크기. 화살표 키로 행과 열을 선택한 뒤 Enter를 누르세요.",
+        "size": "{rows, plural, other {#행}} × {columns, plural, other {#열}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, other {행 #개 삭제}}",
+        "addRowsAbove": "{count, plural, other {위에 행 #개 추가}}",
+        "addRowsBelow": "{count, plural, other {아래에 행 #개 추가}}",
+        "deleteColumns": "{count, plural, other {열 #개 삭제}}",
+        "addColumnsLeft": "{count, plural, other {왼쪽에 열 #개 추가}}",
+        "addColumnsRight": "{count, plural, other {오른쪽에 열 #개 추가}}"
+      }
     },
     "list": {
       "bulleted": "글머리 기호 목록",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "로컬 그래프 숨기기",
       "showLocalGraph": "로컬 그래프 표시",
       "moreActions": "더 보기",
+      "searchActions": "동작 검색...",
+      "noMatchingActions": "일치하는 동작이 없습니다",
       "find": "찾기…",
       "versionHistory": "버전 기록",
       "export": "내보내기",
@@ -215,6 +287,8 @@
       "notSynced": "아직 이 기기에 동기화되지 않음",
       "revealFailed": "파일 위치를 표시하지 못했습니다",
       "openFailed": "파일을 열지 못했습니다",
+      "showAsLink": "링크로 표시",
+      "showAsEmbed": "임베드로 표시",
       "missingTitle": "첨부 파일을 찾을 수 없음",
       "missingExpected": "필요한 파일: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "이름 바꾸기",
       "renamed": "이름을 {name}(으)로 바꿨습니다",
       "failed": "첨부 파일 이름을 바꾸지 못했습니다"
+    },
+    "imageLightbox": {
+      "menuItem": "크게 보기",
+      "title": "이미지 뷰어",
+      "zoomIn": "확대",
+      "zoomOut": "축소",
+      "reset": "확대/축소 초기화"
+    },
+    "imageCrop": {
+      "menuItem": "자르기…",
+      "title": "이미지 자르기",
+      "description": "그림 위로 드래그하여 노트에 표시할 영역을 선택하세요. 원본 파일은 그대로 유지됩니다.",
+      "reset": "전체 이미지 표시",
+      "cancel": "취소",
+      "apply": "자르기",
+      "unavailable": "이미지가 아직 로드되지 않아 자를 수 없습니다"
     },
     "attachmentsDialog": {
       "title": "첨부 파일",
@@ -248,12 +338,24 @@
       "title": "콜아웃",
       "group": "기본 블록",
       "subtext": "중요한 정보 강조",
+      "customSubtext": "사용자 지정 콜아웃 유형",
       "changeType": "콜아웃 유형 변경",
+      "expand": "콜아웃 펼치기",
+      "collapse": "콜아웃 접기",
       "menuLabel": "콜아웃 유형",
       "info": "정보",
       "warning": "경고",
       "error": "오류",
-      "success": "성공"
+      "success": "성공",
+      "note": "노트",
+      "abstract": "요약",
+      "todo": "할 일",
+      "tip": "팁",
+      "important": "중요",
+      "question": "질문",
+      "example": "예시",
+      "quote": "인용",
+      "bug": "버그"
     },
     "columns": {
       "group": "기본 블록",
@@ -332,6 +434,83 @@
       "invalidShape": "이 보기의 정의에 소스가 없습니다. 위에서 선택하거나 아래에서 수정하세요.",
       "definition": "정의"
     },
+    "chart": {
+      "title": "차트",
+      "subtext": "속성을 시간에 따라 표시: 선, 막대 또는 캘린더 히트맵",
+      "layout": "차트",
+      "settings": "차트 설정",
+      "chooseProperty": "표시할 항목 선택",
+      "source": "소스",
+      "headerMeta": "{range} · {type}",
+      "property": "속성",
+      "noProperties": "아직 표시할 항목이 없습니다. 먼저 저널 항목이나 노트에 속성을 추가하세요.",
+      "chartType": "차트",
+      "suggested": "추천",
+      "types": {
+        "line": "선",
+        "bar": "막대",
+        "heatmap": "히트맵"
+      },
+      "range": "범위",
+      "lastDays": "{count, plural, other {최근 #일}}",
+      "sameDay": "같은 날 항목",
+      "aggregates": {
+        "average": "평균",
+        "sum": "합계",
+        "min": "최저",
+        "max": "최고",
+        "count": "개수"
+      },
+      "missingDays": "누락된 날",
+      "missing": {
+        "gap": "공백으로 두기",
+        "zero": "0으로 계산"
+      },
+      "dateFrom": {
+        "label": "날짜 기준",
+        "created": "만든 날짜",
+        "modified": "수정한 날짜"
+      },
+      "propertyTypes": {
+        "text": "텍스트",
+        "number": "숫자",
+        "checkbox": "체크박스",
+        "date": "날짜",
+        "url": "URL",
+        "status": "상태",
+        "select": "선택",
+        "multiselect": "다중 선택",
+        "relation": "관계",
+        "project": "프로젝트",
+        "rating": "평점"
+      },
+      "noEntry": "항목 없음",
+      "done": "완료",
+      "notDone": "미완료",
+      "logged": "기록됨",
+      "valueCount": "{count, plural, other {값 #개}}",
+      "average": "평균",
+      "vsPrevious": "이전 기간 대비",
+      "lowest": "최저",
+      "currentStreak": "현재 연속",
+      "longestStreak": "최장 연속",
+      "dayCount": "{count, plural, other {#일}}",
+      "doneDays": "완료",
+      "loggedDays": "기록됨",
+      "mostCommon": "가장 많은 값",
+      "ofTotal": "{part} / {total}",
+      "aria": "최근 {days}일간의 {property}",
+      "noData": "이 범위에 기록된 내용이 아직 없습니다.",
+      "loadFailed": "이 차트를 불러오지 못했습니다. 항목 자체는 그대로입니다.",
+      "sourceJournal": "저널",
+      "history": {
+        "show": "기록 보기",
+        "title": "{property} 기록",
+        "range": "최근 13주",
+        "insert": "차트 블록으로 복사",
+        "copied": "차트 블록을 복사했습니다. 아무 노트에 붙여넣으세요."
+      }
+    },
     "slashMenu": {
       "aria": "블록 및 명령",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "삽입",
         "open": "열기"
       },
+      "close": "메뉴 닫기",
       "matchesAlias": "일치:",
       "noMatch": "“{query}”와(과) 일치하는 블록이 없습니다",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "표시 방식",
+        "embed": "임베드",
+        "link": "링크"
+      },
       "title": {
         "image": "이미지 추가",
         "media": "미디어 추가",
@@ -525,6 +710,11 @@
       "empty": "새 태그를 만들려면 입력하세요",
       "create": "#{tag} 만들기"
     },
+    "pdfDisplay": {
+      "title": "PDF 표시 방식",
+      "embed": "임베드 뷰어",
+      "link": "파일 이름"
+    },
     "pasteLink": {
       "title": "다음으로 붙여넣기",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "읽는 시간 {count}분",
     "words": "단어 {count}개",
     "created": "만든 날짜",
-    "modified": "수정한 날짜"
+    "modified": "수정한 날짜",
+    "sync": {
+      "label": "동기화",
+      "confirmed": "{time}에 서버에 저장됨",
+      "pending": "{time}부터 대기 중",
+      "sent": "보내는 중",
+      "rejected": "서버가 마지막 변경을 거부했습니다",
+      "notRecorded": "보낼 항목 없음",
+      "localOnly": "로컬 전용",
+      "notSyncing": "동기화 안 함",
+      "waiting": "전송 대기 중"
+    }
   },
   "backlinks": {
     "sortRecent": "최근",
@@ -587,7 +788,18 @@
     "expandSection": "백링크 섹션 펼치기",
     "showMore": "백링크 {count}개 더 보기",
     "more": "{count}개 더 보기",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "포털에 표시됨"
+  },
+  "unlinkedMentions": {
+    "title": "링크되지 않은 언급",
+    "summary": "{count, plural, other {링크되지 않은 언급 #개}}",
+    "sectionAria": "링크되지 않은 언급",
+    "fromAria": "{title}의 링크되지 않은 언급",
+    "link": "링크",
+    "linkAria": "{text} 링크",
+    "gone": "목록을 읽은 이후 해당 언급이 변경되었습니다",
+    "linkFailed": "언급을 링크하지 못했습니다"
   },
   "outgoingLinks": {
     "summary": "{count, plural, other {나가는 링크 #개}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "노트를 캔버스에 추가하지 못했습니다"
   },
   "suggestedTags": {
-    "label": "추천 태그:",
-    "hint": "이 노트와 가장 비슷한 노트에서 함께 쓰인 태그입니다. 선택하기 전에는 아무것도 추가되지 않습니다.",
-    "acceptAria": "{tag} 태그 추가",
-    "support": "{count, plural, other {유사한 노트 #개에서 사용}}",
-    "dismiss": "추천 태그 숨기기"
+    "support": "{count, plural, other {유사한 노트 #개에서 사용}}"
   },
   "comments": {
     "railAria": "댓글",
@@ -663,6 +871,7 @@
     "removeAria": "태그 제거: {tag}",
     "inputPlaceholder": "태그 이름 입력…",
     "recent": "최근",
+    "suggested": "추천",
     "matching": "일치 항목",
     "all": "모든 태그",
     "none": "태그를 찾을 수 없습니다",
@@ -755,6 +964,9 @@
     "repositionHint": "드래그하여 위치 조정",
     "repositionSave": "저장",
     "repositionCancel": "취소",
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "resize": "드래그하여 커버 크기 조절",
     "credit": "사진: Unsplash의 {name}",
     "focusFailed": "커버 이미지 위치를 저장하지 못했습니다",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, other {노트 #개}}"
+    },
+    "noteTasks": {
+      "expand": "{title}의 작업 표시",
+      "collapse": "{title}의 작업 숨기기",
+      "list": "{title}의 작업",
+      "progressOpen": "{open}/{total} 진행 중",
+      "progressDone": "{total}/{total} 완료",
+      "nextDue": "다음 마감",
+      "reminder": "알림 설정됨"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "저장",
     "addToFilterHint": "Ctrl/Cmd를 누른 채 태그를 클릭하면 필터에 추가됩니다"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "대안",
+      "overflow": "보관함",
+      "menu": "글쓰기 도구",
+      "close": "글쓰기 도구 닫기"
+    },
+    "menu": {
+      "aria": "편집기 동작",
+      "cut": "잘라내기",
+      "copy": "복사",
+      "paste": "붙여넣기",
+      "selectAll": "모두 선택",
+      "undo": "실행 취소",
+      "redo": "다시 실행",
+      "comment": "댓글",
+      "addAlternative": "대안 추가",
+      "suggestAlternatives": "대안 제안",
+      "ghost": "고스트",
+      "revive": "되살리기",
+      "stash": "보관함에 넣기",
+      "noSpellingSuggestions": "제안 없음",
+      "addToDictionary": "사전에 추가",
+      "clipboardFailed": "클립보드를 사용하지 못했습니다"
+    },
+    "alternatives": {
+      "railAria": "대안",
+      "hint": "{total}개 중 {position}번째 ↑ ↓",
+      "original": "원본",
+      "byYou": "직접 작성",
+      "byAI": "AI 제안",
+      "showing": "표시 중",
+      "addPlaceholder": "대안 추가…",
+      "removeSuggestions": "제안 제거",
+      "removeVariant": "대안 제거",
+      "empty": "텍스트를 선택하고 대안 추가를 선택하면 다른 표현을 보관할 수 있습니다.",
+      "suggesting": "대안을 제안하는 중…",
+      "suggestFailed": "대안을 제안하지 못했습니다",
+      "noSuggestions": "새로운 대안이 제안되지 않았습니다"
+    },
+    "overflow": {
+      "railAria": "보관함",
+      "addPlaceholder": "보관할 내용을 쓰세요…",
+      "empty": "여기에 넣거나 쓴 줄은 본문 밖에서 이 노트와 함께 유지됩니다.",
+      "dragHint": "노트로 드래그",
+      "copy": "복사",
+      "copied": "복사됨",
+      "delete": "삭제"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "노트 잠금",
+    "unlockNote": "노트 잠금 해제",
+    "lockFolder": "폴더 잠금",
+    "unlockFolder": "폴더 잠금 해제",
+    "toggleFailed": "잠금을 변경하지 못했습니다",
+    "readOnlyIndicator": "잠겨 있습니다. 나와 에이전트 모두 읽기 전용입니다.",
+    "externalEditRestored": "“{title}”이(가) 잠겨 있어 외부 편집을 되돌렸습니다",
+    "externalEditRestoredHint": "편집된 텍스트는 노트의 버전 기록에 저장되어 있습니다."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "사람",
+        "plural": "사람들",
+        "fields": {
+          "company": "회사",
+          "role": "직책",
+          "email": "이메일",
+          "phone": "전화"
+        },
+        "inverse": {
+          "company": "사람들"
+        },
+        "template": {
+          "name": "사람",
+          "context": "배경",
+          "contextHint": "어떻게 만났는지, 무엇에 관심이 있는지",
+          "notes": "노트"
+        }
+      },
+      "company": {
+        "name": "회사",
+        "plural": "회사들",
+        "fields": {
+          "website": "웹사이트",
+          "industry": "업종",
+          "location": "위치"
+        },
+        "template": {
+          "name": "회사",
+          "overview": "개요",
+          "overviewHint": "무엇을 하는 곳인지, 그곳에서 아는 사람",
+          "notes": "노트"
+        }
+      },
+      "meeting": {
+        "name": "회의",
+        "plural": "회의들",
+        "fields": {
+          "date": "날짜",
+          "attendees": "참석자",
+          "company": "회사"
+        },
+        "inverse": {
+          "attendees": "회의들",
+          "company": "회의들"
+        },
+        "template": {
+          "name": "회의",
+          "agenda": "안건",
+          "notes": "노트",
+          "actionItems": "실행 항목"
+        }
+      },
+      "book": {
+        "name": "책",
+        "plural": "책들",
+        "fields": {
+          "author": "저자",
+          "shelf": "책장",
+          "rating": "평점",
+          "finished": "완독"
+        },
+        "shelf": {
+          "toRead": "읽을 책",
+          "reading": "읽는 중",
+          "read": "읽음"
+        },
+        "template": {
+          "name": "책",
+          "highlights": "하이라이트",
+          "thoughts": "생각"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title}은(는) 이제 {tag}입니다. 템플릿을 추가했습니다.",
+      "templateChanged": "템플릿을 추가한 뒤 노트가 변경되어 그대로 유지됩니다.",
+      "undoFailed": "실행 취소하지 못했습니다",
+      "addFailed": "태그를 추가하지 못했습니다",
+      "removeFailed": "태그를 제거하지 못했습니다",
+      "removedKept": "#{tag}을(를) 제거했습니다. 값 {count}개는 유지됩니다.",
+      "removedKeptOne": "#{tag}을(를) 제거했습니다. 값 1개는 유지됩니다."
+    },
+    "picker": {
+      "create": "#{tag} 만들기",
+      "fillsTemplate": "비어 있는 이 노트를 {tag} 템플릿으로 채웁니다"
+    },
+    "hub": {
+      "strip": {
+        "title": "기본 제공 태그",
+        "subtitle": "필드가 함께 제공되는 태그입니다. 태그를 지정하기 전까지 노트는 그대로 유지됩니다.",
+        "notNow": "나중에",
+        "add": "추가",
+        "addFields": "필드 추가",
+        "added": "추가됨",
+        "alreadyOn": "이미 노트 {count}개에 있음",
+        "alreadyOnOne": "이미 노트 1개에 있음"
+      },
+      "dialog": {
+        "title": "#{tag}에 {preset} 필드를 추가하시겠습니까?",
+        "body": "#{tag}은(는) 이미 노트 {count}개에 있습니다. 기존 내용은 모두 유지되며 이 필드가 추가됩니다. 누군가 채우기 전까지는 비어 있습니다.",
+        "bodyOne": "#{tag}은(는) 이미 노트 1개에 있습니다. 기존 내용은 모두 유지되며 이 필드가 추가됩니다. 누군가 채우기 전까지는 비어 있습니다.",
+        "template": "템플릿({sections})은 비어 있는 노트만 채웁니다.",
+        "alsoAddsPrefix": "또한",
+        "alsoAddsSuffix": "{field} 필드용으로 추가합니다.",
+        "useAnotherName": "다른 이름 사용",
+        "nameLabel": "새 태그 이름",
+        "namePlaceholder": "contact",
+        "cancel": "취소",
+        "addFields": "필드 추가"
+      },
+      "toast": {
+        "added": "#{tag}을(를) 추가했습니다",
+        "addedFields": "#{tag}에 {preset} 필드를 추가했습니다"
+      },
+      "hasFields": "필드 있음"
+    },
+    "tasks": {
+      "thisTask": "이 작업",
+      "viaTag": "#{via}을(를) 통한 {name}",
+      "clearValue": "{name} 지우기",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "#{tag} 경유",
+      "groupMenu": "{tag} 옵션",
+      "openTag": "#{tag} 열기",
+      "thisNote": "이 노트"
+    },
+    "offer": {
+      "text": "텍스트 아래에 {tag} 템플릿 추가",
+      "add": "추가",
+      "dismiss": "닫기",
+      "addFailed": "템플릿을 추가하지 못했습니다"
+    },
+    "settings": {
+      "title": "#{tag} 설정",
+      "close": "닫기",
+      "cancel": "취소",
+      "save": "저장",
+      "onCounts": "{notes, plural, other {노트 #개}}와 {tasks, plural, other {작업 #개}}에 있음",
+      "onNotes": "{count, plural, other {노트 #개}}에 있음",
+      "headerFields": "{count, plural, other {필드 #개}}",
+      "editTag": "태그 편집",
+      "syncNote": "변경 사항은 다른 기기에 동기화됩니다",
+      "newerVersion": "더 새로운 버전의 Memry가 이 태그를 변경했습니다. 여기서 편집하려면 Memry를 업데이트하세요.",
+      "sections": {
+        "appearance": "모양",
+        "extends": "상속",
+        "fields": "필드 · {count}",
+        "template": "템플릿"
+      },
+      "appearance": {
+        "icon": "아이콘",
+        "color": "색상",
+        "customColor": "사용자 지정",
+        "category": "카테고리",
+        "noCategory": "카테고리 없음"
+      },
+      "extends": {
+        "nothing": "없음",
+        "hint": "다른 태그의 필드를 가져오고 그 태그의 표에 표시됩니다.",
+        "hintSet": "{tag} 노트는 {parent}의 필드를 가지며 {parent} 표에 표시됩니다."
+      },
+      "types": {
+        "text": "텍스트",
+        "number": "숫자",
+        "date": "날짜",
+        "url": "URL",
+        "status": "상태",
+        "select": "선택",
+        "multiselect": "다중 선택",
+        "checkbox": "체크박스",
+        "relation": "관계"
+      },
+      "fields": {
+        "empty": "아직 필드가 없습니다. 필드를 추가하면 모든 #tag 노트가 같은 속성을 갖게 됩니다.",
+        "fromParent": "#{tag}에서 가져옴 · 그곳에서 편집",
+        "inverseSub": "{target}에 {inverse}(으)로 표시됨",
+        "anyNoteSub": "모든 노트로 링크",
+        "actions": "{field} 작업",
+        "rename": "이름 바꾸기…",
+        "relationSettings": "관계 설정",
+        "remove": "제거…"
+      },
+      "addField": {
+        "button": "필드 추가",
+        "namePlaceholder": "필드 이름",
+        "existing": "기존 속성",
+        "existingSub": "{type} · {count, plural, other {노트 #개}}에 있음 · 재사용",
+        "newType": "새 필드 유형",
+        "relationSub": "태그가 있는 노트로 링크",
+        "submit": "필드 추가",
+        "reserved": "{name}은(는) 예약어이므로 필드로 쓸 수 없습니다.",
+        "taken": "#{tag}에 이미 {name}이(가) 있습니다."
+      },
+      "relation": {
+        "target": "다음 태그가 있는 노트를 가리킴",
+        "pickTag": "태그 선택",
+        "howMany": "개수",
+        "one": "하나",
+        "many": "여러 개",
+        "inverseLabel": "{target} 페이지에서 다음 이름으로 나열",
+        "inverseLabelAny": "링크된 페이지에서 다음 이름으로 나열",
+        "inverseHint": "각 {target}에 읽기 전용 목록이 표시됩니다. {target} 노트에는 아무것도 기록되지 않습니다.",
+        "inverseHintAny": "링크된 각 노트에 읽기 전용 목록이 표시됩니다. 해당 노트에는 아무것도 기록되지 않습니다."
+      },
+      "shared": {
+        "title": "#{tag}의 새 필드",
+        "existsWith": "{name}은(는) 이 볼트에 이미 {options}(으)로 있습니다.",
+        "existsAs": "{name}은(는) 이 볼트에 이미 {type} 속성으로 있습니다.",
+        "shareWith": "#{tag}은(는) 이 필드를 노트 {others}개와 공유합니다.",
+        "shareAny": "#{tag}은(는) 이 필드를 다른 노트와 공유합니다.",
+        "useInstead": "대신 {name} 사용",
+        "share": "{name} 공유"
+      },
+      "template": {
+        "edit": "템플릿 편집",
+        "none": "아직 템플릿이 없습니다. 템플릿은 빈 노트에 태그가 지정될 때 내용을 채웁니다.",
+        "create": "템플릿 만들기",
+        "defaultHeading": "노트",
+        "inherited": "#{tag}에서 가져옴",
+        "autofill": "#{tag}이(가) 지정될 때 빈 노트 채우기"
+      },
+      "remove": {
+        "title": "#{tag}에서 {field}을(를) 제거하시겠습니까?",
+        "body": "{field}은(는) {filled, plural, other {노트 #개}}에 채워져 있습니다. 해당 값은 일반 속성으로 노트에 남으며, {empty, plural, other {빈 칸 #개}}는 사라집니다.",
+        "confirm": "필드 제거"
+      },
+      "rename": {
+        "title": "{from}을(를) {to}(으)로 이름 바꾸기",
+        "titleEmpty": "{from} 이름 바꾸기",
+        "label": "새 이름",
+        "body": "{count, plural, other {노트 #개}}에 {field} 값이 있습니다. Memry가 각 파일과 속성의 키 이름을 바꿉니다. Obsidian에서도 새 이름이 보입니다.",
+        "progress": "노트에서 이름 변경 중",
+        "confirm": "이름 바꾸기",
+        "taken": "이 태그에는 이미 {name}이(가) 있습니다.",
+        "done": "{count, plural, other {항목 #개}}에서 {from}을(를) {to}(으)로 바꿨습니다.",
+        "skipped": "{count, plural, other {항목 #개}}에서 {from}을(를) {to}(으)로 바꿨습니다. {locked, plural, =0 {} other {잠긴 노트 #개는 잠금을 해제하면 마무리됩니다.}} {existing, plural, =0 {} other {노트 #개에는 이미 {to}이(가) 있어 둘 다 유지합니다.}}"
+      },
+      "delete": {
+        "button": "태그 삭제",
+        "title": "#{tag}을(를) 삭제하시겠습니까?",
+        "body": "{notes, plural, other {노트 #개}}에서 #{tag}이(가) 제거되며, 태그는 {fields, plural, other {필드 #개}}와 템플릿과 함께 사라집니다.",
+        "bodyNoTemplate": "{notes, plural, other {노트 #개}}에서 #{tag}이(가) 제거되며, 태그는 {fields, plural, other {필드 #개}}와 함께 사라집니다.",
+        "bodyPlain": "태그에 #{tag}이(가) 있는 모든 노트에서 제거됩니다.",
+        "statNotes": "노트의 텍스트는 유지됨",
+        "statValues": "값은 속성으로 유지됨",
+        "plainText": "텍스트에 #{tag}을(를) 언급한 노트에서는 일반 텍스트로 남습니다.",
+        "confirm": "태그 삭제",
+        "done": "#{tag}을(를) 삭제했습니다."
+      },
+      "errors": {
+        "addField": "필드를 추가하지 못했습니다.",
+        "removeField": "필드를 제거하지 못했습니다.",
+        "renameField": "필드 이름을 바꾸지 못했습니다.",
+        "moveField": "필드를 이동하지 못했습니다.",
+        "relation": "관계를 저장하지 못했습니다.",
+        "extends": "이 태그의 상속 설정을 변경하지 못했습니다.",
+        "template": "템플릿을 업데이트하지 못했습니다.",
+        "deleteTag": "태그를 삭제하지 못했습니다.",
+        "icon": "아이콘을 변경하지 못했습니다.",
+        "color": "색상을 변경하지 못했습니다.",
+        "category": "카테고리를 변경하지 못했습니다."
+      }
+    },
+    "fill": {
+      "action": "노트에서 채우기",
+      "reading": "노트를 읽는 중…",
+      "disclosure": "에이전트 모델({model})이 이 노트를 읽고 값을 제안합니다. 이 노트만 전송됩니다. 수락하기 전에는 아무것도 저장되지 않습니다.",
+      "disclosureLocal": "로컬 모델({model})이 이 기기에서 이 노트를 읽고 값을 제안합니다. 기기 밖으로 나가는 것은 없으며, 수락하기 전에는 아무것도 저장되지 않습니다.",
+      "disclosureMany": "에이전트 모델({model})이 이 노트들을 하나씩 읽고 값을 제안합니다. 해당 노트만 전송됩니다. 수락하기 전에는 아무것도 저장되지 않습니다.",
+      "disclosureLocalMany": "로컬 모델({model})이 이 기기에서 이 노트들을 읽고 값을 제안합니다. 기기 밖으로 나가는 것은 없으며, 수락하기 전에는 아무것도 저장되지 않습니다.",
+      "suggest": "값 제안",
+      "notNow": "나중에",
+      "countOne": "· 제안 {count}개",
+      "count": "· 제안 {count}개",
+      "dismiss": "닫기",
+      "acceptAll": "모두 수락",
+      "accept": "{field} 수락",
+      "reject": "{field} 거부",
+      "notInNote": "노트에 없음",
+      "createHint": "수락하면 새 #{tag}을(를) 만듭니다",
+      "nothingFound": "이 노트에는 빈 필드를 채울 내용이 없습니다",
+      "failed": "값을 제안하지 못했습니다. {message}",
+      "saveFailed": "수락한 값을 저장하지 못했습니다",
+      "bulkAction": "빈 필드 채우기",
+      "bulkTitle": "빈 필드 채우기",
+      "bulkReading": "노트 {total}개 중 {done}개 · 노트를 읽는 중…",
+      "bulkRead": "노트 {total}개 중 {done}개를 읽음",
+      "stop": "중지",
+      "name": "이름",
+      "nothingInRow": "찾은 항목 없음",
+      "found": "{count}개 찾음",
+      "reviewOneByOne": "하나씩 검토",
+      "acceptRow": "{title}의 값 수락",
+      "rejectRow": "{title} 건너뛰기",
+      "bulkSavedOne": "노트 {notes}개의 필드 {count}개를 채웠습니다",
+      "bulkSaved": "노트 {notes}개의 필드 {count}개를 채웠습니다"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "{title}을(를) 다음으로 만들기",
+      "asPrefix": "새로 만들기:",
+      "asSuffix": "· 형식 선택",
+      "failed": "노트를 만들지 못했습니다",
+      "lastUsed": "마지막으로 사용",
+      "noteWord": "노트",
+      "plainNote": "일반 노트",
+      "readyMade": "기본 제공 태그",
+      "row": "“{title}” 만들기",
+      "rowHint": "{types}(으)로"
+    },
+    "hover": {
+      "at": "·",
+      "lastMet": "마지막 만남 · {title}",
+      "lastMetOn": "마지막 만남 {date} · {title}",
+      "mentionedIn": "{count, plural, other {노트 #개에서 언급됨}}",
+      "open": "열기",
+      "tasks": "{count, plural, other {작업 #개 · {field}}}"
+    },
+    "inline": {
+      "aria": "텍스트의 #{tag}",
+      "explain": "텍스트에서 태그는 레이블입니다. 이 노트는 #{tag}의 ‘언급된 곳’에 나열됩니다.",
+      "made": "이 노트의 태그에 #{tag}을(를) 추가했습니다",
+      "make": "이 노트를 {tag}(으)로 지정",
+      "makeFailed": "태그를 추가하지 못했습니다",
+      "makeHint": "헤더에 #{tag}을(를) 추가하고 해당 필드를 표시합니다",
+      "meta": "{count, plural, other {개체 #개}} · {fields, plural, other {필드 #개}}",
+      "metaNamed": "{count, plural, =1 {# {one}} other {# {other}}} · {fields, plural, other {필드 #개}}",
+      "open": "#{tag} 열기",
+      "remove": "텍스트에서 태그 제거"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "{field}(으)로",
+      "due": "마감 {date}",
+      "inTheText": "텍스트 내",
+      "mentionedIn": "언급된 곳",
+      "tasks": "작업",
+      "title": "여기에 연결됨"
+    },
+    "mention": {
+      "notes": "노트"
+    },
+    "picker": {
+      "create": "새 {tag}",
+      "createNamed": "새 {tag} “{title}”",
+      "empty": "일치하는 항목 없음",
+      "search": "{tag} 검색",
+      "untitled": "새 {tag}"
+    },
+    "quickFields": {
+      "add": "{field} 추가",
+      "aria": "{title}의 첫 필드",
+      "done": "완료",
+      "later": "나중에",
+      "newObject": "새 {tag}",
+      "saveFailed": "필드를 저장하지 못했습니다"
+    },
+    "table": {
+      "untitled": "새 {tag}",
+      "newInGroup": "{group}에 새 {tag}",
+      "newInGroupHint": "⌘↵로 새 탭에서 엽니다",
+      "new": "새 {tag}",
+      "includes": "{field} 포함",
+      "removeFilter": "필터 제거",
+      "shown": "{total}개 중 {shown}개",
+      "saveView": "보기 저장",
+      "mentionedMeta": "{count, plural, other {텍스트에 '#'{tag}이(가) 있는 노트 #개}}",
+      "saveFailed": "필드를 저장하지 못했습니다",
+      "created": "{title}을(를) 만들었습니다"
+    },
+    "relationDrop": {
+      "title": "“{title}”에 #{tag}을(를) 추가하시겠습니까?",
+      "body": "이 필드는 #{tag} 태그가 지정된 노트만 링크합니다. Memry가 “{title}”의 헤더에 #{tag}을(를) 추가한 뒤 여기에 링크합니다.",
+      "confirm": "#{tag} 추가 후 링크",
+      "cancel": "취소",
+      "added": "“{title}”이(가) 이제 #{tag}이(며) 링크되었습니다",
+      "notANote": "여기에는 노트만 #{tag}(으)로 링크할 수 있습니다",
+      "failed": "이 노트를 링크하지 못했습니다"
+    }
+  },
   "names": {
     "also": "다른 이름",
     "add": "다른 이름 추가",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "노트 검색",
     "pickerEmpty": "일치하는 노트가 없습니다",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "세부 정보 추가"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "포털",
+        "subtext": "다른 곳의 노트나 블록을 실시간으로 표시"
+      },
+      "searchPortal": {
+        "title": "검색 포털",
+        "subtext": "쿼리와 일치하는 블록의 실시간 목록"
+      }
+    },
+    "picker": {
+      "aria": "포털로 만들 노트나 블록 선택",
+      "notes": "노트",
+      "blocks": "블록",
+      "loading": "검색 중…",
+      "empty": "일치하는 노트나 블록이 없습니다",
+      "hintInsert": "포털 삽입",
+      "hintClose": "닫기",
+      "keyEsc": "Esc",
+      "create": "노트 “{query}” 만들기",
+      "createFailed": "해당 노트를 만들지 못했습니다",
+      "stampFailed": "해당 블록을 포털용으로 준비하지 못했습니다",
+      "retargetFailed": "포털이 해당 블록을 가리키게 하지 못했습니다"
+    },
+    "insert": {
+      "cycle": "포털은 노트 자신을 표시할 수 없습니다."
+    },
+    "copy": {
+      "done": "포털을 복사했습니다. 아무 노트에 붙여넣으세요.",
+      "failed": "이 블록의 포털을 복사하지 못했습니다"
+    },
+    "menu": {
+      "copyAsPortal": "포털로 복사",
+      "hideInPortal": "이 포털에서 숨기기"
+    },
+    "usage": {
+      "chipAria": "{count, plural, other {다른 #곳에서 사용됨}}"
+    },
+    "whereUsed": {
+      "aria": "이 블록이 사용된 곳",
+      "portals": "포털",
+      "links": "링크",
+      "openBeside": "옆에 열기",
+      "loadFailed": "이 블록이 표시되는 곳을 불러오지 못했습니다"
+    },
+    "hiddenBlocks": {
+      "title": "숨긴 블록",
+      "showAll": "모두 표시",
+      "search": "숨긴 블록 검색",
+      "showFailed": "이 블록을 표시하지 못했습니다"
+    },
+    "searchQuery": {
+      "titleNew": "검색 포털",
+      "titleEdit": "쿼리 편집",
+      "text": "포함하는 단어",
+      "textPlaceholder": "블록 안의 단어",
+      "tag": "태그",
+      "tagPlaceholder": "exam",
+      "limit": "제한",
+      "footer": "결과를 {limit}개로 제한합니다.",
+      "create": "만들기",
+      "apply": "적용"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "이 블록을 모든 곳에서 삭제하시겠습니까?",
+        "note": "이 노트를 모든 곳에서 삭제하시겠습니까?"
+      },
+      "description": {
+        "block": "“{title}”은(는) {count, plural, other {다른 노트 #개}}에도 나타납니다.",
+        "note": "“{title}”은(는) {count, plural, other {다른 노트 #개}}에 표시되거나 링크되어 있습니다."
+      },
+      "manyNotes": "노트 {count}개",
+      "source": "{title}(원본)",
+      "removeHere": "대신 여기서 숨기기",
+      "cancel": "취소",
+      "everywhere": "모든 곳에서 삭제",
+      "undoToast": "{count, plural, other {삭제한 블록이 다른 노트 #개에 표시되어 있었습니다.}}",
+      "undo": "실행 취소"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "전체",
+      "brief": "간략",
+      "key": "핵심",
+      "takeaway": "요약",
+      "topic": "주제"
+    },
+    "chrome": {
+      "fold": "노트 접기",
+      "unfold": "{level}(으)로 접힘. 전체 텍스트 표시",
+      "words": "{count, plural, other {#단어}}",
+      "writing": "작성 중…",
+      "writtenBy": "{agent}이(가) 작성",
+      "retry": "마지막 실행 실패 · 다시 시도",
+      "retryAction": "다시 시도",
+      "captionOff": "설정 → AI에서 긴 노트 요약을 켜세요",
+      "captionNoAgent": "연결된 에이전트 없음 · 설정 → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "긴 노트인가요? 훑어보세요.",
+      "body": "핵심 문장만 남기고 접은 뒤 필요한 문단만 여세요.",
+      "dismiss": "확인"
+    },
+    "pill": {
+      "opened": "{count, plural, other {문단 #개 열림}}",
+      "escape": "esc",
+      "copy": "텍스트로 복사",
+      "copied": "복사됨",
+      "aria": "접은 보기",
+      "hintMac": "이 막대에서 핀치, ⌘ 스크롤 또는 스크롤로 확대/축소 · 문단을 클릭하면 열림",
+      "hint": "이 막대에서 핀치, Ctrl 스크롤 또는 스크롤로 확대/축소 · 문단을 클릭하면 열림"
+    },
+    "view": {
+      "aria": "접은 {level} 보기",
+      "paragraphOpen": "전체로 열림 · 다시 클릭하면 접힘",
+      "paragraphFold": "이 문단 접기",
+      "paragraphOpenAction": "이 문단을 전체로 열기",
+      "unfoldSection": "{heading} 섹션 펼치기",
+      "jumpToParagraph": "이 문단을 전체로 표시: {topic}",
+      "untitledSection": "제목 없음",
+      "skipped": {
+        "code": "… {count, plural, other {코드 블록 #개}}",
+        "table": "… {count, plural, other {표 #개}}",
+        "image": "… {count, plural, other {이미지 #개}}",
+        "callout": "… {count, plural, other {콜아웃 #개}}",
+        "embed": "… {count, plural, other {임베드 #개}}",
+        "other": "… {count, plural, other {블록 #개 더}}"
+      }
+    }
   }
 }

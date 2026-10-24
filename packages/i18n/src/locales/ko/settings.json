@@ -110,7 +110,8 @@
       "fileCreation": "파일 생성",
       "privacy": "개인 정보 보호",
       "startupWindows": "시작 및 창",
-      "newNotes": "새 노트"
+      "newNotes": "새 노트",
+      "sticky": "스티키"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "앱 대부분은 즉시 바뀝니다. 이미 표시된 알림, Dock 레이블, 창 제목 표시줄 등 일부 시스템 수준 텍스트는 다음 실행 후에 반영됩니다.",
       "changed": "언어를 {nativeName}(으)로 변경했습니다.",
       "failed": "언어를 변경하지 못했습니다. 다시 시도하세요."
+    },
+    "ocrLanguages": {
+      "label": "텍스트 인식",
+      "helper": "스캔한 PDF와 이미지에서 읽을 언어입니다. 검색에서 해당 단어를 찾을 수 있습니다. 영어는 기본 내장이며, 나머지는 Memry 서버에서 다운로드합니다.",
+      "more": "{names} 외 {count}개",
+      "downloading": "{language} 다운로드 중: {percent}%",
+      "failed": "다운로드하지 못했습니다. 이미 설치된 언어는 계속 작동합니다.",
+      "failedWith": "{language}: {reason}",
+      "retry": "다시 시도",
+      "saveFailed": "텍스트 인식 언어를 변경하지 못했습니다."
     },
     "clockFormat": {
       "label": "시간 형식",
@@ -264,6 +275,22 @@
           "description": "발생한 문제를 해결할 수 있도록 민감한 정보를 가린 기술 로그를 일회성 보고서로 보냅니다.",
           "button": "보고서 보내기…"
         }
+      }
+    },
+    "sticky": {
+      "description": "스티키 단축키(키보드 단축키 → 시스템 전체)는 Memry가 실행 중일 때 스티키를 엽니다. 보내지 않은 텍스트는 화면 가장자리에 초안으로 남습니다.",
+      "error": "스티키 설정을 저장하지 못했습니다.",
+      "defaultKind": {
+        "label": "새 스티키 보내기 형식",
+        "last": "마지막으로 사용한 형식",
+        "note": "노트",
+        "task": "작업",
+        "journal": "저널"
+      },
+      "tuckEdge": {
+        "label": "접어두는 위치",
+        "left": "왼쪽 가장자리",
+        "right": "오른쪽 가장자리"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "레이아웃",
       "toolbar": "도구 모음",
       "spelling": "맞춤법",
-      "checklists": "체크리스트"
+      "checklists": "체크리스트",
+      "attachments": "첨부 파일",
+      "calloutTypes": "콜아웃 유형"
+    },
+    "calloutTypes": {
+      "description": "노트에 > [!name] 형식으로 쓰는 나만의 콜아웃입니다. 다른 앱에서는 일반 인용문으로 표시됩니다.",
+      "empty": "사용자 지정 콜아웃 유형이 아직 없습니다",
+      "add": "유형 추가",
+      "edit": "{name} 편집",
+      "delete": "{name} 삭제",
+      "name": "마크다운 이름",
+      "namePlaceholder": "mytype",
+      "label": "표시 이름",
+      "color": "색상",
+      "icon": "아이콘",
+      "nameInvalid": "소문자, 숫자, - 또는 _를 사용하고 문자로 시작하세요",
+      "nameBuiltIn": "해당 이름은 이미 기본 콜아웃입니다",
+      "nameTaken": "해당 이름의 유형이 이미 있습니다",
+      "save": "저장",
+      "cancel": "취소",
+      "error": "콜아웃 유형을 업데이트하지 못했습니다"
     },
     "width": {
       "label": "편집기 너비",
@@ -449,7 +496,16 @@
       "toolbarMode": "고정 서식 도구 모음",
       "spellCheck": "맞춤법 검사",
       "convertChecklists": "체크리스트 항목을 작업으로 전환",
-      "convertAgentChecklists": "에이전트가 쓴 체크리스트 항목을 작업으로 전환"
+      "convertAgentChecklists": "에이전트가 쓴 체크리스트 항목을 작업으로 전환",
+      "pdfDisplayMode": "새 PDF 표시 방식"
+    },
+    "pdfDisplayMode": {
+      "description": "노트에 추가한 PDF가 표시되는 방식입니다. 각 PDF는 메뉴에서 전환할 수 있습니다.",
+      "options": {
+        "embed": "임베드",
+        "link": "파일 이름"
+      },
+      "error": "PDF 표시 방식을 업데이트하지 못했습니다"
     },
     "convertChecklists": {
       "description": "새 체크리스트 항목은 각각 작업이 됩니다. 끄면 체크리스트는 일반 체크박스로 남으며, 항목을 마우스 오른쪽 버튼으로 클릭해 작업으로 만들 수 있습니다.",
@@ -561,7 +617,8 @@
       "renameNote": "형식을 바꾸면 기존 저널 파일의 이름이 바뀝니다. 새 이름이 이미 사용 중인 파일은 그대로 둡니다.",
       "tokensHelp": "날짜 형식 도움말",
       "tokensNote": "다른 문자는 그대로 유지됩니다. 요일 이름은 항상 영어입니다.",
-      "tokensTitle": "형식 토큰"
+      "tokensTitle": "형식 토큰",
+      "foldersNote": "/를 사용하면 항목을 하위 폴더에 정리합니다. YYYY/MMMM/YYYY-MM-DD는 각 날짜를 연도와 월 아래에 둡니다."
     },
     "preview": {
       "label": "미리보기",
@@ -586,6 +643,10 @@
         "defaultTemplate": "기본 템플릿",
         "location": "위치 및 형식"
       }
+    },
+    "showInSidebar": {
+      "label": "사이드바에 표시",
+      "description": "노트 트리에 저널 폴더와 항목을 표시합니다"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "기본값",
+      "subtasks": "하위 작업",
       "inbox": "수신함"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "이 기간보다 오래된 작업을 오래된 항목으로 강조 표시합니다.",
       "unit": "일",
       "error": "오래된 항목 기준을 업데이트하지 못했습니다."
+    },
+    "nestedSubtasks": {
+      "label": "하위 작업 안의 하위 작업",
+      "description": "하위 작업을 원하는 깊이로 중첩합니다. 이전 버전의 기기는 업데이트하기 전까지 첫 단계만 표시합니다.",
+      "error": "중첩 하위 작업 설정을 업데이트하지 못했습니다"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "동기화 중…",
         "paused": "일시 중지됨",
         "syncError": "동기화 오류",
+        "deviceKeysMissing": "동기화 일시 중지됨: 기기 키 없음",
         "offline": "오프라인",
         "connecting": "연결 중…",
         "localOnly": "로컬 전용",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "활성화 마무리 중",
         "description": "요금제가 활성화되었습니다. 확인되는 즉시 동기화가 시작되며, 보통 새로고침하면 해결됩니다."
+      },
+      "unsent": {
+        "title": "변경 사항이 전송되지 않은 노트",
+        "count": "{count, plural, other {노트 #개}}",
+        "description": "이 기기에는 서버가 아직 저장하지 않은 이 노트들의 변경 사항이 있습니다.",
+        "waitingSince": "{time}부터 대기 중",
+        "more": "{count, plural, other {노트 #개 더 있음}}",
+        "reasons": {
+          "body": "텍스트",
+          "record": "세부 정보",
+          "file_not_taken": "파일이 아직 병합되지 않음",
+          "rejected": "서버가 거부함"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "결제 상태를 새로고침하지 못했습니다.",
         "billingActive": "결제가 활성 상태입니다.",
         "activationPending": "활성화 대기 중",
-        "portalFailed": "결제 포털을 열지 못했습니다."
+        "portalFailed": "결제 포털을 열지 못했습니다.",
+        "portalNoCustomer": "아직 결제 계정을 찾을 수 없습니다. 방금 결제했다면 상태 새로 고침을 선택한 뒤 다시 시도하세요."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "AI 기능을 껐습니다.",
       "error": "설정을 업데이트하지 못했습니다."
     },
+    "summarizeLongNotes": {
+      "label": "긴 노트 요약",
+      "description": "연결된 에이전트로 긴 노트의 요약본을 작성하여 노트를 핵심만 남기고 접을 수 있습니다. 이 기기에서 실행됩니다.",
+      "error": "긴 노트 요약 설정을 업데이트하지 못했습니다",
+      "failed": "마지막 실행 실패 ·",
+      "retry": "다시 시도",
+      "retryError": "요약을 다시 시도하지 못했습니다",
+      "agentLabel": "요약을 작성하는 에이전트",
+      "agentAuto": "자동",
+      "agentError": "요약 에이전트를 변경하지 못했습니다",
+      "noAgent": "에이전트를 찾을 수 없음 ·",
+      "openAgents": "에이전트 열기"
+    },
+    "imageSearch": {
+      "label": "내용으로 이미지 검색",
+      "description": "사진에 담긴 내용으로 사진을 찾습니다. 이미지를 처음 색인할 때 109 MB 이미지 모델을 다운로드합니다.",
+      "enabled": "이미지 검색을 켰습니다",
+      "disabled": "이미지 검색을 껐습니다"
+    },
     "unknownError": "알 수 없는 오류",
     "groups": {
       "voice": "음성 인식",
@@ -1324,6 +1425,9 @@
         "none": "이름 바꾸지 않음"
       },
       "namingError": "음성 메모 이름 지정 설정을 업데이트하지 못했습니다.",
+      "audioSearch": "소리로 음성 메모 검색",
+      "audioSearchDescription": "음악이나 소리처럼 전사본이 없는 음성 메모를 들리는 소리로 찾습니다. 처음 색인이 필요할 때 189 MB 오디오 모델을 다운로드합니다.",
+      "audioSearchError": "음성 메모 검색 설정을 업데이트하지 못했습니다",
       "language": "말하는 언어",
       "languageDescription": "음성 메모에서 사용하는 언어",
       "languageDefault": "기본값",
@@ -1459,7 +1563,8 @@
       "csv": ".csv 파일 가져오기 — 행당 노트 1개, 열이 속성이 됩니다",
       "raindrop": "Raindrop.io 북마크 내보내기(.csv) 가져오기 — 북마크가 수신함에 들어갑니다",
       "apple-notes": "Apple Notes 데이터베이스(NoteStore.sqlite, macOS)에서 가져오기",
-      "onenote": "OneNote 노트북 가져오기(Microsoft 계정 필요)"
+      "onenote": "OneNote 노트북 가져오기(Microsoft 계정 필요)",
+      "readwise": "Readwise에서 하이라이트 가져오기(액세스 토큰 필요)"
     },
     "action": "가져오기",
     "select": "가져올 앱 선택…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "경고",
-      "confirm": "가져오기"
+      "confirm": "가져오기",
+      "readwise": {
+        "books": "{count, plural, other {책 #권}}",
+        "highlights": "{count, plural, other {하이라이트 #개}}",
+        "documents": "{count, plural, other {문서 #개}}"
+      }
     },
     "dialog": {
       "title": "{name}에서 가져오기",
@@ -1505,7 +1615,18 @@
         "deselectAll": "선택 해제",
         "foldersSelected": "{count, plural, other {폴더 #개 선택됨}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count}({total})"
+        "noteCountWithSubfolders": "{count}({total})",
+        "password": {
+          "title": "{count, plural, other {잠긴 노트 #개}}",
+          "hint": "가져오려면 메모 암호를 입력하세요. 이번 가져오기에만 사용되며 저장되지 않습니다. 잠긴 노트 안의 첨부 파일은 가져오지 않습니다.",
+          "label": "메모 암호",
+          "placeholder": "메모 암호",
+          "check": "확인",
+          "wrong": "이 암호로 열 수 있는 잠긴 노트가 없습니다.",
+          "unlockedAll": "{count, plural, other {잠긴 노트 #개를 모두 엽니다.}}",
+          "unlockedSome": "잠긴 노트 {total}개 중 {unlocked}개를 엽니다. 나머지는 다른 암호를 사용하므로 건너뜁니다.",
+          "checkError": "암호를 확인하지 못했습니다."
+        }
       },
       "chooseFolder": "Apple Notes 폴더 선택…",
       "chooseDirectory": "폴더 선택…",
@@ -1529,12 +1650,206 @@
         "failed": "{count}개 실패"
       },
       "error": "가져오기 실패",
-      "previewError": "미리보기에 실패했습니다."
+      "previewError": "미리보기에 실패했습니다.",
+      "readwise": {
+        "intro": "Readwise 액세스 토큰을 붙여넣으세요. Memry가 먼저 Readwise에서 확인한 뒤 이 기기의 시스템 키체인에 보관합니다. 동기화되지 않습니다.",
+        "tokenLabel": "액세스 토큰",
+        "tokenPlaceholder": "토큰 붙여넣기",
+        "getToken": "토큰 받기",
+        "connect": "연결",
+        "connecting": "연결 중…",
+        "connectFailed": "Readwise에 연결하지 못했습니다",
+        "takeOver": {
+          "syncsOn": "Readwise는 {device}에서 동기화됩니다.",
+          "syncsOnAnother": "Readwise는 다른 기기에서 동기화됩니다.",
+          "explain": "Readwise에서는 한 기기만 가져오므로 같은 하이라이트가 두 번 기록되지 않습니다. 이 기기에서 가져오려면 토큰을 다시 붙여넣으세요. 토큰은 기기 간에 전달되지 않습니다. 다른 기기는 다음 책에서 멈추며 모든 노트는 그대로 유지됩니다.",
+          "button": "대신 여기서 동기화",
+          "working": "Readwise를 여기로 옮기는 중…",
+          "failed": "Readwise를 이 기기로 옮기지 못했습니다"
+        },
+        "groups": {
+          "location": "노트 저장 위치",
+          "categories": "가져올 항목",
+          "reader": "Readwise Reader",
+          "journal": "저널",
+          "sync": "동기화"
+        },
+        "journal": {
+          "highlights": {
+            "label": "저널에 그날의 하이라이트 나열",
+            "description": "하이라이트한 날짜에 Readwise 섹션을 추가하고 각 책 노트를 링크합니다. 새 하이라이트만 해당하며 이전 항목은 채우지 않습니다.",
+            "firstImport": "처음 가져올 때는 저널에 아무것도 기록하지 않습니다."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "저장한 Reader 문서도 가져오기",
+            "description": "기본적으로 꺼져 있습니다. 노트가 수천 개 추가될 수 있습니다."
+          },
+          "fullText": {
+            "label": "기사 전체 텍스트 포함",
+            "description": "노트를 만들 때 한 번만 기록됩니다"
+          }
+        },
+        "rootFolder": {
+          "label": "폴더",
+          "description": "새 책이 여기에 저장됩니다. 기존 노트는 그대로 있습니다."
+        },
+        "layout": {
+          "label": "폴더 구성",
+          "description": "새 책에만 적용됩니다.",
+          "options": {
+            "by-category": "카테고리별",
+            "flat": "폴더 하나"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "책",
+            "description": "Kindle, Apple Books 및 기타 하이라이트"
+          },
+          "articles": {
+            "label": "기사",
+            "description": "웹 기사와 뉴스레터"
+          },
+          "tweets": {
+            "label": "트윗",
+            "description": "저장한 트윗과 스레드"
+          },
+          "podcasts": {
+            "label": "팟캐스트",
+            "description": "팟캐스트 에피소드와 스닙"
+          },
+          "supplementals": {
+            "label": "보충 자료",
+            "description": "하이라이트 없이 Readwise가 자체적으로 추가한 책"
+          },
+          "other": {
+            "label": "기타",
+            "description": "이 버전 이후 Readwise가 추가한 카테고리"
+          }
+        },
+        "cadence": {
+          "label": "빈도",
+          "description": "새 하이라이트를 가져오는 주기입니다.",
+          "options": {
+            "manual": "수동",
+            "hourly": "매시간",
+            "daily": "매일"
+          }
+        },
+        "syncNow": {
+          "label": "지금 동기화",
+          "description": "Readwise에서 새 하이라이트를 확인합니다.",
+          "button": "지금 동기화"
+        },
+        "disconnect": "연결 해제",
+        "disconnectHint": "연결을 해제하면 이 기기에서 토큰이 제거됩니다. 노트는 그대로 유지됩니다.",
+        "deleted": {
+          "heading": "삭제된 책",
+          "description": "memry에서 삭제한 노트입니다. 복원하기 전까지 삭제된 상태로 유지됩니다.",
+          "meta": "{date} 삭제됨 · {count, plural, other {하이라이트 #개}}",
+          "metaDocument": "{date} 삭제됨 · 저장한 기사",
+          "restore": "복원",
+          "footer": "복원하면 모든 하이라이트와 함께 노트를 다시 만듭니다.",
+          "empty": "삭제된 책이 없습니다",
+          "syncsOn": "Readwise는 {device}에서 동기화됩니다.",
+          "syncsOnAnotherDevice": "Readwise는 다른 기기에서 동기화됩니다.",
+          "loadFailed": "삭제된 책을 불러오지 못했습니다",
+          "restoreFailed": "노트를 복원하지 못했습니다"
+        },
+        "importNow": "지금 가져오기",
+        "importBooks": "{count, plural, other {책 #권 가져오기}}",
+        "importNotes": "{count, plural, other {노트 #개 가져오기}}",
+        "importNone": "가져오기",
+        "preview": {
+          "intro": "{books, plural, other {책 #권}}에 걸친 {highlights, plural, other {하이라이트 #개}}를 가져올 준비가 되었습니다. 확인하기 전에는 아무것도 기록되지 않습니다.",
+          "introOff": "{books, plural, other {책 #권}}에 걸친 {highlights, plural, other {하이라이트 #개}}를 가져올 준비가 되었습니다. 꺼짐: {off}. {willImport, plural, other {책 #권}}을 가져옵니다. 확인하기 전에는 아무것도 기록되지 않습니다.",
+          "introReaderOnly": "Readwise 라이브러리에 아직 하이라이트가 없습니다. {documents, plural, other {저장한 Reader 문서 #개}}를 노트로 가져옵니다. 확인하기 전에는 아무것도 기록되지 않습니다.",
+          "readerLabel": "저장한 Reader 문서",
+          "empty": "Readwise 라이브러리에 아직 하이라이트가 없습니다. 아무것도 기록되지 않습니다. 가져오기를 눌러 설정을 마치세요.",
+          "willImport": "가져옴",
+          "off": "꺼짐",
+          "retry": "다시 시도"
+        },
+        "status": {
+          "connected": "연결됨",
+          "synced": "{time} 동기화됨",
+          "syncing": "Readwise와 동기화 중",
+          "reading": "라이브러리를 읽는 중…",
+          "writing": "책 기록 중, {total}권 중 {done}권",
+          "finishing": "마무리하는 중…",
+          "waitingTitle": "memry 동기화 대기 중",
+          "waitingDetail": "Memry는 다른 기기의 노트가 도착할 때까지 기다려 같은 책이 두 번 기록되지 않게 합니다. 그 직후 Readwise가 시작됩니다.",
+          "otherTitle": "{device}에서 동기화",
+          "otherTitleUnknown": "다른 기기에서 동기화",
+          "otherDetail": "Readwise에서는 한 기기만 가져오므로 같은 하이라이트가 두 번 기록되지 않습니다.",
+          "lastRun": "마지막 실행: {counts}",
+          "lastRunNothing": "마지막 실행: 새 항목 없음",
+          "nextRun": "다음 동기화 {time}",
+          "retryAt": "Memry가 {time}에 다시 시도합니다.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise에 새 토큰이 필요합니다",
+              "detail": "Readwise가 저장된 토큰을 받아들이지 않았습니다. readwise.io/access_token에서 새 토큰을 붙여넣으세요."
+            },
+            "subscription-expired": {
+              "title": "Readwise 구독이 만료되었습니다",
+              "detail": "readwise.io에서 구독을 갱신한 뒤 다시 시도하세요."
+            },
+            "rate-limited": {
+              "title": "Readwise가 요청을 제한하고 있습니다",
+              "detail": "짧은 시간에 요청이 너무 많았습니다."
+            },
+            "network": {
+              "title": "Readwise에 연결할 수 없습니다",
+              "detail": "연결을 확인하세요."
+            },
+            "server": {
+              "title": "Readwise에 문제가 발생했습니다",
+              "detail": "Readwise가 오류로 응답했습니다."
+            },
+            "unexpected": {
+              "title": "동기화가 중단되었습니다",
+              "detail": "실행 중 문제가 발생했습니다."
+            }
+          },
+          "counts": {
+            "added": "{count}개 추가됨",
+            "updated": "{count}개 업데이트됨",
+            "appended": "{count}개 확장됨",
+            "deferred": "{count}개는 열린 노트를 기다리는 중",
+            "failed": "{count}개 실패",
+            "highlights": "{count, plural, other {하이라이트 #개}}"
+          },
+          "actions": {
+            "cancel": "취소",
+            "retry": "지금 다시 시도",
+            "newToken": "새 토큰 붙여넣기",
+            "reconnect": "다시 연결",
+            "syncHere": "대신 여기서 동기화"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise에 새 토큰이 필요합니다",
+            "description": "새 토큰을 붙여넣을 때까지 동기화가 일시 중지됩니다."
+          },
+          "subscription-expired": {
+            "title": "Readwise 구독이 만료되었습니다",
+            "description": "구독이 다시 활성화될 때까지 동기화가 일시 중지됩니다."
+          },
+          "open": "Readwise 열기"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "파일을 읽지 못했습니다.",
       "appleNotes": {
-        "lockedNote": "{count, plural, other {잠긴 노트 #개}}를 가져오지 않았습니다. Memry는 Apple Notes 암호 없이는 잠긴 노트를 읽을 수 없습니다."
+        "lockedNote": "{count, plural, other {잠긴 노트 #개}}를 가져오지 않았습니다. Memry는 Apple Notes 암호 없이는 잠긴 노트를 읽을 수 없습니다.",
+        "lockedWrongPassword": "{count, plural, other {잠긴 노트 #개}}를 가져오지 못했습니다. 입력한 암호와 다른 암호를 사용합니다.",
+        "lockedUnreadable": "{count, plural, other {잠긴 노트 #개}}의 암호를 해독하지 못해 가져오지 못했습니다.",
+        "lockedAttachment": "{count, plural, other {잠긴 노트의 첨부 파일 #개}}를 가져오지 못했습니다. 노트 텍스트는 가져왔습니다."
       },
       "csv": {
         "noHeaders": "CSV 파일에 헤더가 없습니다.",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "알 수 없는 우선순위 {priority} → 없음",
         "unparsedDate": "“{date}” 날짜를 해석하지 못했습니다.",
         "subtaskNoParent": "“{title}” 하위 작업은 들여쓰기 {indent} 위치에 상위 항목이 없어 최상위로 가져왔습니다."
+      },
+      "readwise": {
+        "tokenMissing": "Readwise가 연결되어 있지 않습니다.",
+        "tokenInvalid": "Readwise가 저장된 토큰을 받아들이지 않았습니다. 연결을 해제한 뒤 새 토큰으로 다시 연결하세요.",
+        "unreachable": "Readwise에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도하세요.",
+        "categoryOff": "{count, plural, other {책 #권}}이 꺼 둔 카테고리에 속해 있어 가져오지 않았습니다.",
+        "unchanged": "{count, plural, other {책 #권}}은 이미 최신 상태입니다.",
+        "sourceDeleted": "{count, plural, other {책 #권}}이 Readwise에서 삭제되었습니다. 노트는 그대로 유지됩니다.",
+        "noteDeleted": "{count, plural, other {노트 #개}}가 Memry에서 삭제되었으며 삭제된 상태로 유지됩니다.",
+        "busy": "{count, plural, other {노트 #개}}가 편집기에서 열려 있어 다음 실행 때 기록됩니다."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Todoist 작업 가져오는 중…"
+      },
+      "readwise": {
+        "fetching": "Readwise 라이브러리를 읽는 중…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, other {#개 더 보기}}",
       "showLess": "간략히 보기",
       "groups": {
+        "reading": "읽기",
         "noteApps": "노트 앱",
         "tasks": "작업, 저널 및 북마크",
         "files": "파일"
+      },
+      "readwise": {
+        "notConnected": "연결되지 않음",
+        "connected": "연결됨",
+        "synced": "{time} 동기화됨",
+        "syncing": "동기화 중…",
+        "waiting": "동기화 대기 중",
+        "otherDevice": "{device}에서 동기화",
+        "otherDeviceUnknown": "다른 곳에서 동기화",
+        "invalidToken": "새 토큰 필요",
+        "subscriptionExpired": "구독 만료됨",
+        "rateLimited": "요청 제한됨",
+        "network": "Readwise에 연결할 수 없음",
+        "server": "Readwise 오류",
+        "unexpected": "동기화 실패"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "“{oldName}”의 이름을 “{newName}”(으)로 바꿨습니다.",
       "renameFailed": "태그 이름을 바꾸지 못했습니다.",
+      "renaming": "#{oldName} 이름 변경 중: 노트 {done} / {total}개",
+      "renamedBodySkipped": "\"{newName}\"은(는) 인라인 태그로 입력할 수 없으므로 노트 텍스트의 #{oldName}은(는) 그대로 유지됩니다",
+      "renamedSomeFailed": "{count, plural, other {노트 #개}}를 업데이트하지 못했습니다. 해당 노트를 열고 태그를 다시 추가하세요",
       "deleteFailed": "태그를 삭제하지 못했습니다.",
       "deleted": "{count, plural, other {항목 #개}}에서 “{name}” 태그를 삭제했습니다.",
       "mergeFailed": "태그를 병합하지 못했습니다.",
@@ -1901,12 +2248,29 @@
       "unsupported": "{shortcut}은(는) 전역 단축키로 사용할 수 없습니다. 다른 조합을 선택하세요.",
       "fallbackInUse": "기본 단축키 {shortcut}은(는) 다른 앱에서 사용 중입니다. 전역 빠른 기록을 사용하려면 다른 조합을 설정하세요."
     },
+    "folderNotes": {
+      "title": "폴더에 새 노트",
+      "description": "선택한 폴더에 바로 노트를 만듭니다",
+      "add": "폴더 추가",
+      "empty": "아직 폴더 단축키가 없습니다. 폴더를 추가해 단축키를 지정하세요.",
+      "rowDescription": "이 폴더에 노트를 만듭니다",
+      "missing": "이 폴더가 더 이상 없습니다. 다른 폴더를 선택하거나 단축키를 제거하세요.",
+      "changeFolder": "폴더 변경",
+      "searchFolders": "폴더 검색...",
+      "noFolders": "폴더를 찾을 수 없습니다",
+      "remove": "단축키 제거",
+      "conflictLabel": "{folder}에 새 노트",
+      "missingToast": "\"{folder}\" 폴더가 더 이상 없습니다",
+      "missingToastAction": "단축키 편집",
+      "foldersLoadFailed": "이 단축키의 폴더를 확인하지 못했습니다"
+    },
     "toasts": {
       "saveGlobalFailed": "전역 빠른 기록 단축키를 저장하지 못했습니다.",
       "saveFailed": "단축키를 저장하지 못했습니다.",
       "resetFailed": "단축키를 재설정하지 못했습니다.",
       "resetAllSuccess": "모든 단축키를 기본값으로 재설정했습니다.",
-      "resetAllFailed": "단축키를 재설정하지 못했습니다."
+      "resetAllFailed": "단축키를 재설정하지 못했습니다.",
+      "saveStickyFailed": "스티키 단축키를 저장하지 못했습니다"
     },
     "categories": {
       "navigation": "탐색",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "검색",
           "description": "전역 검색 열기"
+        },
+        "commands": {
+          "label": "명령 팔레트",
+          "description": "모든 명령을 검색하고 실행합니다"
         },
         "settings": {
           "label": "설정 열기",
@@ -2042,6 +2410,10 @@
           "label": "사이드바 표시/숨기기",
           "description": "사이드바 표시 또는 숨기기"
         },
+        "toggleDayPanel": {
+          "label": "하루 패널 전환",
+          "description": "오른쪽 하루 패널을 표시하거나 숨깁니다"
+        },
         "shortcuts": {
           "label": "키보드 단축키 도움말",
           "description": "키보드 단축키 참조 표시"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "실제 크기",
           "description": "확대/축소를 100%로 재설정"
+        },
+        "foldFull": {
+          "label": "접기: 전체",
+          "description": "노트의 모든 단어를 표시합니다"
+        },
+        "foldBrief": {
+          "label": "접기: 간략",
+          "description": "핵심 문장만 작성된 그대로 표시합니다"
+        },
+        "foldKey": {
+          "label": "접기: 핵심",
+          "description": "각 요점과 그 이유를 표시합니다"
+        },
+        "foldTakeaway": {
+          "label": "접기: 요약",
+          "description": "문단마다 한 줄씩 표시합니다"
+        },
+        "foldTopic": {
+          "label": "접기: 주제",
+          "description": "노트를 섹션 지도로 표시합니다"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "전역 빠른 기록",
       "recordingHint": "키를 누르세요… 취소하려면 esc",
       "reset": "재설정",
-      "resetAll": "모두 기본값으로 재설정"
+      "resetAll": "모두 기본값으로 재설정",
+      "sticky": "스티키"
+    },
+    "sticky": {
+      "description": "memrynote가 실행 중일 때 어떤 앱에서든 스티키를 엽니다"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "시계 오차 감지됨",
       "items": "항목",
       "willSyncWhenBackOnline": "다시 온라인 상태가 되면 동기화됩니다.",
-      "openSyncSettings": "동기화 설정 열기"
+      "stalled": "한동안 변경 사항이 동기화되지 않았습니다. 지금 동기화를 시도해 보세요.",
+      "openSyncSettings": "동기화 설정 열기",
+      "repairDeviceKeys": "복구",
+      "signInToRepair": "다시 로그인하여 이 기기의 키를 설정하세요. 동기화되지 않은 노트, 작업, 프로젝트는 보존됩니다. 복구 문구가 필요할 수 있습니다.",
+      "repairFailed": "이 기기의 키를 복구하지 못했습니다. 다시 시도하세요.",
+      "syncNotStarted": {
+        "vault-binding": "이 기기의 키는 복원되었지만 이 볼트가 아직 계정과 동기화되도록 설정되지 않았습니다. 동기화 메뉴에서 동기화 방법을 선택하세요.",
+        "vault-foreign": "이 기기의 키는 복원되었지만 이 볼트는 다른 계정에 속해 있습니다. 이 기기에서 로컬로만 유지됩니다.",
+        "entitlement": "이 기기의 키는 복원되었지만 동기화에는 활성 Sync 요금제가 필요합니다.",
+        "unavailable": "이 기기의 키는 복원되었지만 동기화를 시작하지 못했습니다. 다시 시도하며, 그래도 안 되면 Memry를 다시 시작하세요."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "모델",
         "description": "불러온 목록에서 모델을 선택하거나 직접 입력하세요."
       },
+      "thinking": {
+        "label": "생각",
+        "description": "끄면 DeepSeek 계열 모델이 생각 과정을 건너뛰어 더 빠르고 저렴하게 답합니다.",
+        "default": "기본값",
+        "off": "끔"
+      },
       "apiKey": {
         "label": "API 키",
         "description": "OS 키체인에 저장되는 선택적 자격 증명입니다.",
@@ -2286,6 +2698,17 @@
       "revoke": "허용 취소",
       "revokeLabel": "{tool}의 항상 허용 취소",
       "ignoredInPageReview": "무시됨: 노트와 저널 편집은 항상 확인을 요청합니다."
+    },
+    "memory": {
+      "group": "메모리",
+      "description": "에이전트는 이 볼트 전용으로 볼트 밖에 마련된 폴더에서 실행되므로, 거기에 저장한 내용이 다음 대화로 이어집니다.",
+      "clear": "에이전트 메모리 지우기",
+      "clearDescription": "에이전트가 이 볼트에 대해 저장한 내용을 삭제합니다. 노트와 채팅 기록은 유지됩니다.",
+      "clearAction": "지우기",
+      "cleared": "에이전트 메모리를 지웠습니다.",
+      "failed": "에이전트 메모리를 지우지 못했습니다.",
+      "confirmTitle": "에이전트 메모리를 지우시겠습니까?",
+      "confirmDescription": "에이전트가 이 볼트에 대해 저장한 내용이 사라지며, Claude Code의 이 볼트용 프로젝트 메모리도 포함됩니다. 되돌릴 수 없습니다. 노트와 채팅 기록은 유지됩니다."
     },
     "v2": {
       "permissions": {
