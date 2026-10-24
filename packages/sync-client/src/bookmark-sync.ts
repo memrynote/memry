@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { bookmarks } from '@memry/db-schema/schema/bookmarks'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 import { nextLocalClock } from './tombstone-clocks'
@@ -33,9 +33,7 @@ export class BookmarkSyncService {
 
   constructor(deps: BookmarkSyncDeps) {
     const load = (bookmarkId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get() as
-        | Record<string, unknown>
-        | undefined
+      deps.db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get()
 
     this.controller = new RecordSyncController({
       type: 'bookmark',
@@ -47,7 +45,7 @@ export class BookmarkSyncService {
           deps.db,
           'bookmark',
           itemId,
-          local.clock as VectorClock | null,
+          clockFromColumn(local.clock),
           deviceId,
           operation
         )

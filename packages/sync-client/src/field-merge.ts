@@ -63,12 +63,10 @@ export function valuesEqual(a: unknown, b: unknown): boolean {
     return a.every((item, index) => valuesEqual(item, b[index]))
   }
 
-  const aRecord = a as Record<string, unknown>
-  const bRecord = b as Record<string, unknown>
-  const aKeys = Object.keys(aRecord).filter((key) => aRecord[key] !== undefined)
-  const bKeys = Object.keys(bRecord).filter((key) => bRecord[key] !== undefined)
-  if (aKeys.length !== bKeys.length) return false
-  return aKeys.every((key) => valuesEqual(aRecord[key], bRecord[key]))
+  const aEntries = Object.entries(a).filter(([, value]) => value !== undefined)
+  const bDefined = new Map(Object.entries(b).filter(([, value]) => value !== undefined))
+  if (aEntries.length !== bDefined.size) return false
+  return aEntries.every(([key, value]) => valuesEqual(value, bDefined.get(key)))
 }
 
 function clockTotal(clock: VectorClock): number {
@@ -101,7 +99,7 @@ export interface MergeResult<T> {
   conflicts: FieldConflict[]
 }
 
-export function mergeFields<T>(
+export function mergeFields<T extends Record<string, unknown>>(
   localData: T,
   remoteData: T,
   localFieldClocks: FieldClocks,
@@ -121,8 +119,8 @@ export function mergeFields<T>(
     const localTotal = clockTotal(localFC)
     const remoteTotal = clockTotal(remoteFC)
 
-    const localVal = (localData as Record<string, unknown>)[field]
-    const remoteVal = (remoteData as Record<string, unknown>)[field]
+    const localVal = localData[field]
+    const remoteVal = remoteData[field]
     const isConcurrent = clockComparison === 'concurrent'
     const valsDiffer = !valuesEqual(localVal, remoteVal)
 
@@ -155,6 +153,7 @@ export function mergeFields<T>(
   }
 
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- merged is filled field by field from string syncable-field names, which a generic T cannot express
     merged: merged as Partial<T>,
     mergedFieldClocks,
     hadConflicts,
@@ -180,3 +179,8 @@ export function mergeProjectFields(
 ): MergeResult<Record<string, unknown>> {
   return mergeFields(local, remote, localFC, remoteFC, PROJECT_SYNCABLE_FIELDS)
 }
+
+/** Narrows the `fieldClocks` JSON column, which only ever holds FieldClocks or null. */
+export const fieldClocksFromColumn = (value: unknown): FieldClocks | null =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON column written only by this app as FieldClocks | null; the row type is erased to unknown, and validating would change behavior on persisted rows
+  value as FieldClocks | null

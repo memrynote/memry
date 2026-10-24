@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { homePages } from '@memry/db-schema/schema/home-pages'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 
@@ -32,9 +32,7 @@ export class HomePageSyncService {
 
   constructor(deps: HomePageSyncDeps) {
     const load = (boardId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(homePages).where(eq(homePages.id, boardId)).get() as
-        | Record<string, unknown>
-        | undefined
+      deps.db.select().from(homePages).where(eq(homePages.id, boardId)).get()
 
     this.controller = new RecordSyncController({
       type: 'home_page',
@@ -42,7 +40,7 @@ export class HomePageSyncService {
       getDeviceId: deps.getDeviceId,
       load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = clockFromColumn(local.clock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
         deps.db.update(homePages).set({ clock: newClock }).where(eq(homePages.id, itemId)).run()

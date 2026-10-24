@@ -1,9 +1,9 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { tagDefinitions } from '@memry/db-schema/schema/tag-definitions'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { readVersionedObject } from '@memry/shared/versioned'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import type { SyncQueueManager } from './queue'
 import { recoverOfflineDocClock } from './offline-clock'
 import { deleteFromLocalRow } from './delete-fallback'
@@ -81,15 +81,13 @@ export class TagDefinitionSyncService {
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
       load: (name) =>
-        deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get() as
-          | Record<string, unknown>
-          | undefined,
+        deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, name)).get(),
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const newClock = nextLocalClock(
           deps.db,
           'tag_definition',
           itemId,
-          local.clock as VectorClock | null,
+          clockFromColumn(local.clock),
           deviceId,
           operation
         )
@@ -106,9 +104,7 @@ export class TagDefinitionSyncService {
       // before the first push (chapter 06 §6.6).
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
-          deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get() as
-            | Record<string, unknown>
-            | undefined,
+          deps.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get(),
           deviceId,
           (clock) =>
             deps.db

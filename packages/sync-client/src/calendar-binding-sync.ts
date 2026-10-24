@@ -1,7 +1,6 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 import { recoverOfflineDocClock } from './offline-clock'
@@ -40,15 +39,13 @@ export class CalendarBindingSyncService {
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
       load: (id) =>
-        deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+        deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, id)).get(),
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const nextClock = nextLocalClock(
           deps.db,
           'calendar_binding',
           itemId,
-          local.clock as VectorClock | null,
+          local.clock,
           deviceId,
           operation
         )
@@ -65,9 +62,7 @@ export class CalendarBindingSyncService {
       // before the first push (chapter 06 §6.6).
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
-          deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get() as
-            | Record<string, unknown>
-            | undefined,
+          deps.db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get(),
           deviceId,
           (clock) =>
             deps.db

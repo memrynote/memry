@@ -41,3 +41,11 @@ export const compare = (a: VectorClock, b: VectorClock): ClockComparison => {
 }
 
 export const getTick = (clock: VectorClock, deviceId: string): number => clock[deviceId] ?? 0
+
+/**
+ * Reads a `clock` JSON column off a row the record-sync controller types as
+ * `Record<string, unknown>` (or a schema column left untyped). The column only
+ * ever holds a VectorClock or null, so this narrows the type and nothing else.
+ */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON column written only by this app as VectorClock | null; the row type is erased to unknown, and validating would change behavior on persisted rows
+export const clockFromColumn = (value: unknown): VectorClock | null => value as VectorClock | null

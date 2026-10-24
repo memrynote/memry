@@ -5,8 +5,7 @@ import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import type {
   CalendarAttendee,
   CalendarConferenceData,
-  CalendarReminders,
-  CalendarVisibility
+  CalendarReminders
 } from '@memry/db-schema/schema/calendar-events'
 import { utcNow } from '@memry/shared/utc'
 import {
@@ -95,7 +94,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
         // An absent sourceId means "unchanged", and the existing parent is
         // already valid — only a supplied one can point somewhere that has not
         // landed yet (an event moved onto a newly added calendar).
-        if (data.sourceId) requireCalendarSource(tx as unknown as DrizzleDb, itemId, data.sourceId)
+        if (data.sourceId) requireCalendarSource(tx, itemId, data.sourceId)
 
         tx.update(calendarExternalEvents)
           .set({
@@ -113,17 +112,19 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
             status: data.status ?? existing.status,
             recurrenceRule: data.recurrenceRule ?? existing.recurrenceRule ?? null,
             attendees: hasKey('attendees')
-              ? ((data.attendees as CalendarAttendee[] | null) ?? null)
+              ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload schema types attendees/reminders loosely; the column type is the shape the sync server round-trips unchanged (shipped format)
+                ((data.attendees as CalendarAttendee[] | null) ?? null)
               : (existing.attendees ?? null),
             reminders: hasKey('reminders')
-              ? ((data.reminders as CalendarReminders | null) ?? null)
+              ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload schema types attendees/reminders loosely; the column type is the shape the sync server round-trips unchanged (shipped format)
+                ((data.reminders as CalendarReminders | null) ?? null)
               : (existing.reminders ?? null),
             visibility: hasKey('visibility')
-              ? ((data.visibility as CalendarVisibility | null) ?? null)
+              ? (data.visibility ?? null)
               : (existing.visibility ?? null),
             colorId: hasKey('colorId') ? (data.colorId ?? null) : (existing.colorId ?? null),
             conferenceData: hasKey('conferenceData')
-              ? ((data.conferenceData as CalendarConferenceData | null) ?? null)
+              ? (data.conferenceData ?? null)
               : (existing.conferenceData ?? null),
             rawPayload: data.rawPayload ?? existing.rawPayload ?? null,
             archivedAt: data.archivedAt ?? existing.archivedAt,
@@ -144,7 +145,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       // orphan repair asks the server, finds nothing, and tombstones the
       // unwritable event instead of the pull silently dropping it on every run.
       const sourceId = data.sourceId ?? ''
-      requireCalendarSource(tx as unknown as DrizzleDb, itemId, sourceId)
+      requireCalendarSource(tx, itemId, sourceId)
 
       tx.insert(calendarExternalEvents)
         .values({
@@ -162,9 +163,11 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
           isAllDay: data.isAllDay ?? false,
           status: data.status ?? 'confirmed',
           recurrenceRule: data.recurrenceRule ?? null,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload schema types attendees/reminders loosely; the column type is the shape the sync server round-trips unchanged (shipped format)
           attendees: (data.attendees as CalendarAttendee[] | null | undefined) ?? null,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload schema types attendees/reminders loosely; the column type is the shape the sync server round-trips unchanged (shipped format)
           reminders: (data.reminders as CalendarReminders | null | undefined) ?? null,
-          visibility: (data.visibility as CalendarVisibility | null | undefined) ?? null,
+          visibility: data.visibility ?? null,
           colorId: data.colorId ?? null,
           conferenceData:
             (data.conferenceData as CalendarConferenceData | null | undefined) ?? null,
@@ -190,7 +193,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
       if (resolution.skip) {
         log.info(
           'Skipping remote calendar external event delete, local is ahead of the tombstone',
@@ -212,7 +215,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       .select()
       .from(calendarExternalEvents)
       .where(eq(calendarExternalEvents.id, itemId))
-      .get() as Record<string, unknown> | undefined
+      .get()
   }
 
   /**
@@ -249,7 +252,7 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
     // the whole batch at request level, that single row blocks all sync until
     // the next full sync. Repairing here drains the stuck queue on the very
     // next push, with no reset and no schema change.
-    const rowClock = (row.clock as VectorClock | null) ?? null
+    const rowClock = row.clock ?? null
     const clock = rowClock ?? (deviceId ? this.stampFirstClock(db, itemId, deviceId) : undefined)
     const payload: CalendarExternalEventSyncPayload = {
       sourceId: row.sourceId,
@@ -265,10 +268,13 @@ class CalendarExternalEventHandler extends BaseItemHandler<CalendarExternalEvent
       isAllDay: row.isAllDay,
       status: row.status,
       recurrenceRule: row.recurrenceRule ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- row column is typed as the stricter Calendar* shape while the sync payload declares plain records; same JSON, no conversion
       attendees: (row.attendees as Array<Record<string, unknown>> | null) ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- row column is typed as the stricter Calendar* shape while the sync payload declares plain records; same JSON, no conversion
       reminders: (row.reminders as Record<string, unknown> | null) ?? null,
       visibility: row.visibility ?? null,
       colorId: row.colorId ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- row column is typed as the stricter Calendar* shape while the sync payload declares plain records; same JSON, no conversion
       conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
       rawPayload: row.rawPayload ?? null,
       archivedAt: row.archivedAt ?? null,
