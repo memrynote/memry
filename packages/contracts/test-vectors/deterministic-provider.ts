@@ -23,7 +23,14 @@
  * material, not part of the contracts surface, and `packages/contracts/src`
  * must stay free of a libsodium dependency.
  */
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  base64_variants,
+  from_base64,
+  from_hex,
+  from_string,
+  to_base64,
+  to_hex
+} from 'libsodium-wrappers-sumo'
 
 // Relative rather than `@memry/sync-client`: that package depends on
 // `@memry/contracts`, so a package.json dependency the other way is a turbo
@@ -57,13 +64,11 @@ export const FIXED = {
   DEVICE_B: 'device-b'
 } as const
 
-export const hex = (bytes: Uint8Array): string => sodium.to_hex(bytes)
-export const fromHex = (value: string): Uint8Array => sodium.from_hex(value)
-export const utf8 = (value: string): Uint8Array => sodium.from_string(value)
-export const b64 = (bytes: Uint8Array): string =>
-  sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
-export const fromB64 = (value: string): Uint8Array =>
-  sodium.from_base64(value, sodium.base64_variants.ORIGINAL)
+export const hex = (bytes: Uint8Array): string => to_hex(bytes)
+export const fromHex = (value: string): Uint8Array => from_hex(value)
+export const utf8 = (value: string): Uint8Array => from_string(value)
+export const b64 = (bytes: Uint8Array): string => to_base64(bytes, base64_variants.ORIGINAL)
+export const fromB64 = (value: string): Uint8Array => from_base64(value, base64_variants.ORIGINAL)
 
 export interface DeterministicOptions {
   /** Hex of the 32-byte file key `generateFileKey` returns. */
@@ -131,8 +136,8 @@ export function deterministicProvider(options: DeterministicOptions = {}): SyncP
     signDetached: (message, secretKey) => sodium.crypto_sign_detached(message, secretKey),
     verifyDetached: (signature, message, publicKey) =>
       sodium.crypto_sign_verify_detached(signature, message, publicKey),
-    fromBase64: (value) => sodium.from_base64(value, sodium.base64_variants.ORIGINAL),
-    toBase64: (bytes) => sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
+    fromBase64: (value) => from_base64(value, base64_variants.ORIGINAL),
+    toBase64: (bytes) => to_base64(bytes, base64_variants.ORIGINAL)
   }
 }
 
@@ -147,6 +152,6 @@ export function signerFromSeed(seedHex: string): {
     publicKey: pair.publicKey,
     secretKey: pair.privateKey,
     // The locally derived device id of chapter 01 §1.5.
-    deviceId: sodium.to_hex(sodium.crypto_generichash(16, pair.publicKey, null))
+    deviceId: to_hex(sodium.crypto_generichash(16, pair.publicKey, null))
   }
 }

@@ -12,7 +12,7 @@
  * `HEADER_LEN + 1` must be rejected, and one of exactly that length must not be
  * rejected for length.
  */
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { ready } from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { encryptCrdtUpdatePacked } from '../../../sync-client/src/push/crdt-encrypt.ts'
@@ -68,7 +68,7 @@ const LAYOUT = vectors.meta.layout
 
 describe('crdt-update vectors', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   it('carries the recorded case count', () => {

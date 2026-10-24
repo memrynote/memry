@@ -18,7 +18,14 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  base64_variants,
+  from_hex,
+  from_string,
+  ready,
+  to_base64,
+  to_hex
+} from 'libsodium-wrappers-sumo'
 
 import { ARGON2_PARAMS, XCHACHA20_PARAMS } from '../src/crypto'
 import {
@@ -33,12 +40,12 @@ import {
   SEED_B
 } from './vector-fixtures'
 
-const hex = (bytes: Uint8Array): string => sodium.to_hex(bytes)
-const fromHex = (value: string): Uint8Array => sodium.from_hex(value)
-const utf8 = (value: string): Uint8Array => sodium.from_string(value)
+const hex = (bytes: Uint8Array): string => to_hex(bytes)
+const fromHex = (value: string): Uint8Array => from_hex(value)
+const utf8 = (value: string): Uint8Array => from_string(value)
 
 const main = async (): Promise<void> => {
-  await sodium.ready
+  await ready
 
   // --- Argon2id (production params + a fast smoke vector) ---
   const argonProd = {
@@ -128,7 +135,7 @@ const main = async (): Promise<void> => {
     messageUtf8: edMessage,
     detachedSignatureHex: hex(sodium.crypto_sign_detached(utf8(edMessage), edSeedPair.privateKey)),
     // deviceId derivation as in desktop keys.ts: hex(generichash(16, publicKey))
-    deviceIdHex: sodium.to_hex(sodium.crypto_generichash(16, edSeedPair.publicKey, null))
+    deviceIdHex: to_hex(sodium.crypto_generichash(16, edSeedPair.publicKey, null))
   }
 
   // --- crypto_kdf_derive_from_key: every production context ---
@@ -149,7 +156,7 @@ const main = async (): Promise<void> => {
       messageHex: hex(edSeedPair.publicKey),
       keyHex: null as string | null,
       outLength: 16,
-      hashHex: sodium.to_hex(sodium.crypto_generichash(16, edSeedPair.publicKey, null))
+      hashHex: to_hex(sodium.crypto_generichash(16, edSeedPair.publicKey, null))
     },
     {
       description: 'keyed, 32-byte output',
@@ -250,7 +257,7 @@ const main = async (): Promise<void> => {
     kdfSaltHex: hex(kdfSalt),
     argon2: { opsLimit: ARGON2_PARAMS.OPS_LIMIT, memLimit: ARGON2_PARAMS.MEMORY_LIMIT },
     masterKeyHex: hex(masterKey),
-    keyVerifierBase64: sodium.to_base64(verifierKey, sodium.base64_variants.ORIGINAL),
+    keyVerifierBase64: to_base64(verifierKey, base64_variants.ORIGINAL),
     vaultKeyHex: hex(vaultKey),
     fileKeyHex: hex(fileKey),
     keyNonceHex: hex(keyNonce),

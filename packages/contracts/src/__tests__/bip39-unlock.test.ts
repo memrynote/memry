@@ -9,7 +9,14 @@
  * path passes for a broken comparison.
  */
 import * as bip39 from 'bip39'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  base64_variants,
+  from_base64,
+  memcmp,
+  ready,
+  to_base64,
+  to_hex
+} from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { ARGON2_PARAMS } from '../crypto'
@@ -22,7 +29,7 @@ const vectors = loadVectorFile<{
 }>('bip39-unlock.json')
 
 const hex = (b: Uint8Array): string => Buffer.from(b).toString('hex')
-const b64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
+const b64 = (b: Uint8Array): string => to_base64(b, base64_variants.ORIGINAL)
 const utf8 = (v: string): Uint8Array => new TextEncoder().encode(v)
 
 const masterKeyOf = (seed: Uint8Array, saltHex: string): Uint8Array =>
@@ -41,7 +48,7 @@ const canonicalise = (phrase: string): string =>
 
 describe('bip39-unlock vectors', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   it('carries the recorded case count', () => {
@@ -154,18 +161,18 @@ describe('bip39-unlock vectors', () => {
   it('the verifier comparison is over the base64 STRINGS, not the decoded bytes', () => {
     const entry = vectors.verifiers[1] as { expectedB64: string }
     const derived = utf8(entry.expectedB64)
-    expect(sodium.memcmp(derived, utf8(entry.expectedB64))).toBe(true)
+    expect(memcmp(derived, utf8(entry.expectedB64))).toBe(true)
 
     // An alternative base64 spelling of the SAME bytes: a byte comparison
     // accepts it, a string comparison rejects it. The production comparison is
     // the string one, so a client that decodes first is more permissive than
     // the reference — which is the failure this case names.
-    const bytes = sodium.from_base64(entry.expectedB64, sodium.base64_variants.ORIGINAL)
-    const urlSafe = sodium.to_base64(bytes, sodium.base64_variants.URLSAFE_NO_PADDING)
+    const bytes = from_base64(entry.expectedB64, base64_variants.ORIGINAL)
+    const urlSafe = to_base64(bytes, base64_variants.URLSAFE_NO_PADDING)
     if (urlSafe !== entry.expectedB64) {
       // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       expect(
-        utf8(urlSafe).length === derived.length && sodium.memcmp(utf8(urlSafe), derived),
+        utf8(urlSafe).length === derived.length && memcmp(utf8(urlSafe), derived),
         'a differently spelled base64 of the same bytes must NOT compare equal'
       ).toBe(false)
     }
@@ -210,9 +217,9 @@ describe('bip39-unlock vectors', () => {
       ed25519PublicKeyHex: string
       expectedDeviceIdHex: string
     }
-    expect(
-      sodium.to_hex(sodium.crypto_generichash(16, fromHex(entry.ed25519PublicKeyHex), null))
-    ).toBe(entry.expectedDeviceIdHex)
+    expect(to_hex(sodium.crypto_generichash(16, fromHex(entry.ed25519PublicKeyHex), null))).toBe(
+      entry.expectedDeviceIdHex
+    )
     expect(entry.expectedDeviceIdHex).toMatch(/^[0-9a-f]{32}$/)
   })
 })

@@ -15,7 +15,7 @@
  * `apps/desktop/src/main/sync/vector-parity.test.ts`; together the two keep the
  * repository's two record writers from drifting.
  */
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { ready } from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { decryptRecordItem } from '../../../sync-client/src/pull/record-decrypt.ts'
@@ -90,7 +90,7 @@ const vectors = loadVectorFile<{
 
 describe('record-envelope vectors', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   it('carries the recorded case count', () => {
