@@ -229,7 +229,7 @@ describe('POST /auth/setup-token/renew against real jose', () => {
 
     // #then
     expect(res.status).toBe(401)
-    expect((await res.json()) as { error?: { code?: string } }).toMatchObject({
+    expect(await res.json()).toMatchObject({
       error: { message: 'Setup token is not renewable' }
     })
   })
@@ -275,7 +275,7 @@ describe('POST /auth/setup-token/renew against real jose', () => {
 
     // #then
     expect(res.status).toBe(401)
-    expect((await res.json()) as { error?: { message?: string } }).toMatchObject({
+    expect(await res.json()).toMatchObject({
       error: { message: 'Setup token already used' }
     })
   })

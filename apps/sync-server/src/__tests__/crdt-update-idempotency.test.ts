@@ -188,6 +188,7 @@ describe('storeUpdates quota on a retry (#2296)', () => {
     ).join('')
     // A concurrent request stores the same bytes after this one's lookup.
     const racing = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...harness.db,
       batch: async (statements: D1PreparedStatement[]) => {
         harness.raw
@@ -214,7 +215,7 @@ describe('migration 0012_crdt_update_hash (#2296)', () => {
   const files = (): string[] =>
     readdirSync(migrationsDir)
       .filter((file) => file.endsWith('.sql'))
-      .sort()
+      .toSorted()
 
   it('applies on a populated database without touching existing update rows', () => {
     const db = new Database(':memory:')

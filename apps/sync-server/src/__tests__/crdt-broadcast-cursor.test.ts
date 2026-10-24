@@ -136,7 +136,7 @@ beforeEach(() => {
       idFromName: (name: string) => name,
       get: () => ({
         fetch: async (request: Request) => {
-          frames.push((await request.json()) as Record<string, unknown>)
+          frames.push(await request.json())
           return Response.json({ sent: 1 })
         }
       })

@@ -762,6 +762,7 @@ describe('the snapshot routes carry the claim (#2299)', () => {
     })
     return {
       status: res.status,
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
       sequenceNum: ((await res.json()) as { sequenceNum: number }).sequenceNum,
       remaining: remainingSequences('note-1'),
       coversThrough: snapshotRow('note-1')?.covers_through

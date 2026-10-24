@@ -177,7 +177,7 @@ export const presignS3Url = async (input: S3PresignInput): Promise<string> => {
   // Canonical query string: sorted by key name, fully URI-encoded values.
   const canonicalQuery = query
     .map(([k, v]) => [uriEncode(k, true), uriEncode(v, true)] as const)
-    .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
+    .toSorted((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
     .map(([k, v]) => `${k}=${v}`)
     .join('&')
 

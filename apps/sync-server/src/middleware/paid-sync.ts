@@ -4,8 +4,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import {
   assertPaidSyncAccess,
   ensureLocalAdminPaidSyncAccessForUser,
-  ensureSyncVaultAllowed,
-  type SyncEntitlement
+  ensureSyncVaultAllowed
 } from '../services/entitlements'
 import type { AppContext } from '../types'
 

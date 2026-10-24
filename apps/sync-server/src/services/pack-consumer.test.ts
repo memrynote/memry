@@ -30,7 +30,7 @@ describe('handlePackQueueMessage', () => {
     // from D1 rows, and a fetched-size mismatch is treated as a hole.
     const bytes = new TextEncoder().encode('{"encryptedData":"x"}')
     const blobKey = `${USER}/vaults/default/crdt/n-1/snapshot`
-    storage.put(blobKey, bytes.slice().buffer)
+    void storage.put(blobKey, bytes.slice().buffer)
     harness.raw
       .prepare(
         `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)

@@ -146,7 +146,7 @@ interface PushBody {
 const push = async (app: App, specs: PushSpec[]): Promise<{ status: number; body: PushBody }> => {
   const items = await Promise.all(specs.map(signedItem))
   const res = await request(app, '/sync/push', { method: 'POST', body: JSON.stringify({ items }) })
-  return { status: res.status, body: (await res.json()) as PushBody }
+  return { status: res.status, body: await res.json() }
 }
 
 interface PullBody {

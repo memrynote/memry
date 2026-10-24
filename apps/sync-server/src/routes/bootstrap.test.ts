@@ -136,6 +136,7 @@ describe('POST /sync/bootstrap', () => {
 
     // #then
     expect(res.status).toBe(501)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_UNAVAILABLE'
     )
@@ -159,6 +160,7 @@ describe('POST /sync/bootstrap', () => {
 
     // #then — the client's silent-fallback signal
     expect(res.status).toBe(409)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_NOT_ELIGIBLE'
     )
@@ -350,6 +352,7 @@ describe('POST /sync/bootstrap/renew + /close', () => {
       'device-2'
     )
     expect(stolenClose.status).toBe(403)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await stolenClose.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_IDENTITY_MISMATCH'
     )
@@ -398,6 +401,7 @@ describe('POST /sync/bootstrap/renew + /close', () => {
     const opened = (await (await openSession()).json()) as Record<string, any>
     const closeRes = await requestWithToken('/sync/bootstrap/close', opened.session.token)
     expect(closeRes.status).toBe(200)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await closeRes.json()) as Record<string, unknown>).success).toBe(true)
 
     // #when — closing again is still 200
@@ -441,6 +445,7 @@ describe('POST /sync/bootstrap/renew + /close', () => {
 
     // #then
     expect(third.status).toBe(429)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await third.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_SESSION_LIMIT'
     )

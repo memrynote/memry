@@ -133,6 +133,7 @@ describe('linking routes', () => {
     const res = await app.request('/linking/initiate', jsonPost({}), env, executionCtx)
 
     expect(res.status).toBe(400)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.VALIDATION_ERROR
     )

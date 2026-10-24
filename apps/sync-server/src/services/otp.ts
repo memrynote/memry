@@ -126,6 +126,7 @@ export const checkEmailRateLimit = async (db: D1Database, email: string): Promis
     db.prepare('SELECT count, window_start FROM rate_limits WHERE key = ?').bind(key)
   ])
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
   const row = result[1].results?.[0] as { count: number; window_start: number } | undefined
   const count = row?.count ?? 0
 

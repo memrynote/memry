@@ -195,7 +195,7 @@ describe('#given a batch with one schema-invalid item', () => {
       rejected: Array<{ id: string; reason: string }>
     }
 
-    expect(body.accepted.sort()).toEqual(['task-ok-1', 'task-ok-2'])
+    expect(body.accepted.toSorted()).toEqual(['task-ok-1', 'task-ok-2'])
     expect(body.rejected).toHaveLength(1)
     expect(body.rejected[0].id).toBe('note-no-clock')
     expect(body.rejected[0].reason).toContain('SYNC_INVALID_ITEM')
@@ -228,7 +228,7 @@ describe('#given a batch where every item is invalid', () => {
     }
 
     expect(body.accepted).toEqual([])
-    expect(body.rejected.map((entry) => entry.id).sort()).toEqual(['note-a', 'note-b'])
+    expect(body.rejected.map((entry) => entry.id).toSorted()).toEqual(['note-a', 'note-b'])
     expect(body.maxCursor).toBe(0)
     expect(body.serverTime).toBeGreaterThan(0)
   })

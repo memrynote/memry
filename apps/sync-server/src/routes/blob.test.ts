@@ -234,6 +234,7 @@ describe('blob routes', () => {
     const res = await app.request('/blob/missing', { method: 'GET' }, env)
 
     expect(res.status).toBe(404)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.STORAGE_BLOB_NOT_FOUND
     )
@@ -271,6 +272,7 @@ describe('blob routes', () => {
     )
 
     expect(res.status).toBe(201)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect((await res.json()) as Record<string, unknown>).toEqual({
       sessionId: expect.any(String),
       expiresAt: expect.any(Number)
@@ -353,6 +355,7 @@ describe('blob routes', () => {
     )
 
     expect(res.status).toBe(413)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.STORAGE_FILE_TOO_LARGE
     )
@@ -478,6 +481,7 @@ describe('blob routes', () => {
     )
 
     expect(res.status).toBe(400)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.UPLOAD_INCOMPLETE
     )
@@ -748,6 +752,7 @@ describe('blob routes', () => {
     const res = await app.request('/attachments/missing/manifest', { method: 'GET' }, env)
 
     expect(res.status).toBe(404)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.ATTACHMENT_NOT_FOUND
     )

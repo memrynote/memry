@@ -112,6 +112,7 @@ describe('device routes', () => {
     const res = await app.request('/devices/device-current', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(400)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.VALIDATION_ERROR
     )
@@ -124,6 +125,7 @@ describe('device routes', () => {
     const res = await app.request('/devices/missing', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(404)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.AUTH_DEVICE_NOT_FOUND
     )
@@ -135,6 +137,7 @@ describe('device routes', () => {
     const res = await app.request('/devices/device-2', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(409)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.AUTH_DEVICE_REVOKED
     )

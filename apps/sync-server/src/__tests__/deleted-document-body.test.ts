@@ -138,6 +138,7 @@ const push = async (app: App, spec: PushSpec): Promise<string[]> => {
       passThroughOnException: () => undefined
     } as unknown as ExecutionContext
   )
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
   return ((await res.json()) as { accepted: string[] }).accepted
 }
 

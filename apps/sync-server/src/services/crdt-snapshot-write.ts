@@ -264,12 +264,14 @@ const writeSnapshots = async (
   ])
   const existingByNote = new Map<string, ExistingRow>()
   for (const result of metaResults.slice(0, existingChunks.length)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     for (const row of (result as D1Result<ExistingRow>).results ?? []) {
       existingByNote.set(row.note_id, row)
     }
   }
   const maxSeqByNote = new Map<string, number>()
   for (const result of metaResults.slice(existingChunks.length)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     for (const row of (result as D1Result<{ note_id: string; max_seq: number | null }>).results ??
       []) {
       maxSeqByNote.set(row.note_id, row.max_seq ?? 0)
@@ -285,6 +287,7 @@ const writeSnapshots = async (
     const covered = await db.batch<{ covered: number }>(
       claimed.map(({ index, watermark }) => {
         const { noteId, claim } = writes[index]
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
         const c = (claim as SnapshotClaim).coversThrough
         return db
           .prepare(COVERED_WATERMARK_SQL)
@@ -443,15 +446,16 @@ const writeSnapshots = async (
           orphanKeys.push(entry.blobKey)
           continue
         }
-        const previous = (
-          (at(slot.previous).results ?? []) as Array<{ blob_key: string; size_bytes: number }>
-        )[0]
+        const previous =
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
+          ((at(slot.previous).results ?? []) as Array<{ blob_key: string; size_bytes: number }>)[0]
         if (previous && previous.blob_key !== entry.blobKey) orphanKeys.push(previous.blob_key)
         storageDelta +=
           entry.snapshotData.byteLength - (previous?.size_bytes ?? 0) - entry.reservedBytes
         if (slot.sum !== undefined && slot.prune !== undefined) {
           const pruned = at(slot.prune).meta.changes ?? 0
           const bytes =
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
             ((at(slot.sum).results ?? []) as Array<{ total_bytes: number }>)[0]?.total_bytes ?? 0
           if (pruned > 0) storageDelta -= bytes
         }

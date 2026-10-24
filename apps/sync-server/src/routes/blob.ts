@@ -180,6 +180,7 @@ blob.get('/blob/:blob_key', blobDownloadLimit, async (c) => {
 
     const body = obj
     const total = obj.size
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     const range = obj.range as R2Range & { offset?: number; length?: number }
     const start = range.offset ?? 0
     const end = start + (range.length ?? total) - 1
@@ -379,7 +380,7 @@ blob.put('/attachments/upload/:session_id/chunk/:chunk_index', chunkUploadLimit,
   }
 
   const uploadedChunks = readSessionChunksOrThrow(session, 'uploadChunk')
-  if (uploadedChunks.some((c) => c.i === chunkIndex)) {
+  if (uploadedChunks.some((chunk) => chunk.i === chunkIndex)) {
     throw new AppError(ErrorCodes.UPLOAD_CHUNK_CONFLICT, 'Chunk already uploaded', 409)
   }
 
@@ -536,6 +537,7 @@ blob.post('/attachments/upload/:session_id/complete', chunkUploadLimit, async (c
 
   if (manifestKey && manifestBytes) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
       await putBlob(c.env.STORAGE, manifestKey, manifestBytes.buffer as ArrayBuffer, userId)
     } catch (error) {
       await refundReservation(c.env.DB, userId, manifestDeltaBytes, {

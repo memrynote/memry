@@ -195,6 +195,7 @@ export const storeUpdatesWithCursor = async (
   let storedBytes = 0
   let cursor: number | undefined
   const sequences = updates.map((update, position) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     const [stored] = writeResults[position * 2 + 1].results as Array<{
       id: string
       sequence_num: number
@@ -274,6 +275,7 @@ const planUpdatePage = async (
 
   let spent = 0
   return sizes.map((result) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     const rows = (result as D1Result<{ sequence_num: number; size: number }>).results ?? []
     let upTo: number | null = null
     let taken = 0
@@ -415,6 +417,7 @@ export const getBatchUpdates = async (
     noteResults[note.noteId] = { updates: [], hasMore: plans[i].hasMore }
   })
   reads.forEach((read, i) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     noteResults[read.noteId].updates = (batchResults[i] as D1Result<CrdtUpdate>).results ?? []
   })
 
@@ -424,6 +427,7 @@ export const getBatchUpdates = async (
   // the bind-parameter split turned it into.
   const metaRows = batchResults
     .slice(reads.length)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     .flatMap((result) => (result as D1Result<CrdtSnapshot>).results ?? [])
   for (const row of metaRows) {
     snapshotMeta[row.note_id] = {
@@ -540,6 +544,7 @@ const toNoteBodyChange = (row: NoteBodyFeedRow): NoteBodyChange => {
     sequenceNum: row.sequence_num,
     // The same token GET /sync/crdt/snapshot and snapshotMeta return.
     revision: coalesceRevision({
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
       id: row.snapshot_id as string,
       created_at: row.created_at,
       size_bytes: row.size,
@@ -572,6 +577,7 @@ export const noteBodyFeedSource =
       )
       .bind(userId, vaultId, after, userId, vaultId, after, fetchLimit),
     parse: (rows) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
       (rows as NoteBodyFeedRow[]).map((row) => ({
         cursor: row.server_cursor,
         value: toNoteBodyChange(row)

@@ -176,6 +176,7 @@ export const verifyBootstrapSession = async (
     const expected = await hmacSha256(secret, encodedPayload)
     if (!constantTimeEqual(expected, base64UrlDecodeBytes(encodedSignature))) return null
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
     const payload = JSON.parse(
       new TextDecoder().decode(base64UrlDecodeBytes(encodedPayload))
     ) as Partial<BootstrapTokenPayload>

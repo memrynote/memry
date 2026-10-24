@@ -163,6 +163,7 @@ interface PushBody {
 const push = async (app: App, specs: PushSpec[]) => {
   const items = await Promise.all(specs.map(signedItem))
   const res = await request(app, '/sync/push', { method: 'POST', body: JSON.stringify({ items }) })
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
   return { status: res.status, body: (await res.json()) as PushBody }
 }
 

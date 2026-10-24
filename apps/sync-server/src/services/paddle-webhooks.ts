@@ -163,6 +163,7 @@ function readCustomData(data: Record<string, unknown>): Record<string, unknown> 
   const value = data.custom_data ?? data.customData
   if (!value || typeof value !== 'object') return {}
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   const customData = value as Record<string, unknown>
   if (customData.app !== 'memry' || customData.entitlement !== 'sync') return {}
   return customData
@@ -185,6 +186,7 @@ function normalizeCadence(value: unknown): SyncCadence | null {
 function cadenceFromBillingCycle(data: Record<string, unknown>): SyncCadence | null {
   const value = data.billing_cycle ?? data.billingCycle
   if (!value || typeof value !== 'object') return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   const interval = (value as Record<string, unknown>).interval
   if (interval === 'year') return 'annual'
   if (interval === 'month') return 'monthly'
@@ -222,6 +224,7 @@ function parseTimestamp(value: unknown): number | null {
 function readBillingPeriodEndsAt(data: Record<string, unknown>): string | null {
   const value = data.current_billing_period ?? data.currentBillingPeriod
   if (!value || typeof value !== 'object') return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   const period = value as Record<string, unknown>
   return asString(period.ends_at ?? period.endsAt)
 }

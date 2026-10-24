@@ -646,6 +646,7 @@ const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
   const vaultId = c.get('vaultId')!
   const itemId = c.req.param('id')
 
+  // oxlint-disable-next-line typescript/no-deprecated -- zod 4 top-level validators accept different inputs than the shipped string validators
   const parseResult = z.string().uuid().safeParse(itemId)
   if (!parseResult.success) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid item ID format', 400)

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { ErrorCodes } from '../lib/errors'
-import type { AppContext } from '../types'
 import type * as R2PresignModule from '../services/r2-presign'
 
 vi.mock('../services/blob', () => ({
@@ -177,7 +176,7 @@ describe('presigned direct transfers (#1836)', () => {
       expect(res.status).toBe(200)
       const body = (await res.json()) as { urls: Record<string, string>; expiresAt: number }
 
-      expect(Object.keys(body.urls).sort()).toEqual([HASH_A, HASH_B].sort())
+      expect(Object.keys(body.urls).toSorted()).toEqual([HASH_A, HASH_B].toSorted())
       for (const url of Object.values(body.urls)) {
         expect(url).toContain('https://test-account.r2.cloudflarestorage.com/test-bucket/')
         expect(url).toContain('X-Amz-Signature=')

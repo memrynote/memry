@@ -78,11 +78,11 @@ function createMemoryBucket(): R2Bucket {
 
   return {
     async put(key: string, value: ArrayBuffer | ArrayBufferView) {
-      const bytes =
+      const copy =
         value instanceof ArrayBuffer
           ? new Uint8Array(value)
           : new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
-      objects.set(key, bytes.slice())
+      objects.set(key, copy.slice())
       // Real R2 resolves to an R2Object; returning null here would look like a
       // failed upload to putBlob.
       return { key, etag: `etag-${objects.size}` } as unknown as R2Object
@@ -91,11 +91,11 @@ function createMemoryBucket(): R2Bucket {
       for (const key of Array.isArray(keys) ? keys : [keys]) objects.delete(key)
     },
     async get(key: string) {
-      const bytes = objects.get(key)
-      if (!bytes) return null
+      const stored = objects.get(key)
+      if (!stored) return null
       return {
         async arrayBuffer() {
-          return bytes.slice().buffer
+          return stored.slice().buffer
         }
       } as unknown as R2ObjectBody
     }

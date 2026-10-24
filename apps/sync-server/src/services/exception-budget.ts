@@ -43,6 +43,7 @@ export const claimExceptionBudget = async (
         .bind(key, requested, now, windowStart, requested, requested, windowStart, now),
       db.prepare('SELECT count FROM rate_limits WHERE key = ?').bind(key)
     ])
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
     const row = result[1].results?.[0] as { count: number } | undefined
     const used = row?.count ?? requested
     // `used` already includes this batch; grant the part of it that still fits.

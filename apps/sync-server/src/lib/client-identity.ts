@@ -59,19 +59,19 @@ export const parseClientIdentity = (raw: string | undefined | null): ClientIdent
   }
 }
 
+const parseTriple = (v: string): [number, number, number] | null => {
+  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v.trim())
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null
+}
+
 /**
  * `-1 | 0 | 1` for `a` against `b`, both `major.minor.patch`. Returns `null`
  * when either side is not a plain triple -- callers treat that as "no usable
  * floor" and allow, rather than guessing an ordering.
  */
 export const compareVersions = (a: string, b: string): -1 | 0 | 1 | null => {
-  const parse = (v: string): [number, number, number] | null => {
-    const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v.trim())
-    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null
-  }
-
-  const left = parse(a)
-  const right = parse(b)
+  const left = parseTriple(a)
+  const right = parseTriple(b)
   if (!left || !right) return null
 
   for (let i = 0; i < 3; i += 1) {

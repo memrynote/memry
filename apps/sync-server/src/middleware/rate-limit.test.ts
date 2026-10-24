@@ -291,7 +291,7 @@ describe('deviceIdentifier', () => {
     // #then — device B is untouched by device A's spending
     expect(next).toHaveBeenCalled()
     expect(c._headers['X-RateLimit-Remaining']).toBe('2')
-    expect([...instances.keys()].sort()).toEqual([
+    expect([...instances.keys()].toSorted()).toEqual([
       'crdt_pull:device:device-a',
       'crdt_pull:device:device-b'
     ])
@@ -321,7 +321,7 @@ describe('deviceIdentifier', () => {
     }
 
     // #then
-    expect([...instances.keys()].sort()).toEqual(['crdt_pull:user-1', 'crdt_pull:user-2'])
+    expect([...instances.keys()].toSorted()).toEqual(['crdt_pull:user-1', 'crdt_pull:user-2'])
   })
 })
 

@@ -34,7 +34,7 @@ const seedVaultWithSnapshots = (
     const noteId = `n-${i}`
     const blobKey = `${userId}/vaults/${vaultId}/crdt/${noteId}/snapshot`
     const bytes = new TextEncoder().encode(JSON.stringify({ n: `${userId}-${i}` }))
-    storage.put(blobKey, bytes.slice().buffer)
+    void storage.put(blobKey, bytes.slice().buffer)
     harness.raw
       .prepare(
         `INSERT INTO crdt_snapshots (id, user_id, vault_id, note_id, blob_key, sequence_num, size_bytes, signer_device_id, created_at, revision)
@@ -104,6 +104,7 @@ describe('runPackBackfill', () => {
             return target.get(key)
           }
         }
+        // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy get trap forwards to the target with the original receiver
         return Reflect.get(target, prop, receiver)
       }
     })

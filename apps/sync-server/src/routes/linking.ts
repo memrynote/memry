@@ -20,6 +20,7 @@ import type { AppContext } from '../types'
 // into one shared bucket. Falls back to userId/IP when the body has no sessionId.
 const sessionIdentifier = async (c: Context<AppContext>): Promise<string | null> => {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
     const body = (await c.req.json()) as { sessionId?: unknown }
     return typeof body?.sessionId === 'string' ? `session:${body.sessionId}` : null
   } catch {
@@ -48,6 +49,7 @@ const InitiateLinkingSchema = z.object({
 })
 
 const ScanLinkingSchema = z.object({
+  // oxlint-disable-next-line typescript/no-deprecated -- zod 4 top-level validators accept different inputs than the shipped string validators
   sessionId: z.string().uuid(),
   newDevicePublicKey: z.string().min(1),
   newDeviceConfirm: z.string().min(1),
@@ -59,6 +61,7 @@ const ScanLinkingSchema = z.object({
 })
 
 const ApproveLinkingSchema = z.object({
+  // oxlint-disable-next-line typescript/no-deprecated -- zod 4 top-level validators accept different inputs than the shipped string validators
   sessionId: z.string().uuid(),
   encryptedMasterKey: z.string().min(1),
   encryptedKeyNonce: z.string().min(1),
@@ -74,6 +77,7 @@ const ApproveLinkingSchema = z.object({
 })
 
 const CompleteLinkingSchema = z.object({
+  // oxlint-disable-next-line typescript/no-deprecated -- zod 4 top-level validators accept different inputs than the shipped string validators
   sessionId: z.string().uuid()
 })
 

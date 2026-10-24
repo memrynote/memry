@@ -41,7 +41,7 @@ describe('securityHeaders', () => {
 
     // #then
     expect(callOrder[0]).toBe('next')
-    expect(callOrder.filter((c) => c === 'header').length).toBeGreaterThanOrEqual(4)
+    expect(callOrder.filter((call) => call === 'header').length).toBeGreaterThanOrEqual(4)
   })
 
   it('should set Strict-Transport-Security header', async () => {

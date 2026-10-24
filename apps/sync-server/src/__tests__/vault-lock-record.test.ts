@@ -157,7 +157,7 @@ const changedIds = async (app: Hono<AppContext>, types?: string): Promise<string
   )
   expect(res.status).toBe(200)
   const body = (await res.json()) as { items: Array<{ id: string; type: string }> }
-  return body.items.map((item) => `${item.type}/${item.id}`).sort()
+  return body.items.map((item) => `${item.type}/${item.id}`).toSorted()
 }
 
 beforeEach(async () => {
@@ -196,7 +196,7 @@ describe('vault_lock records (#2606)', () => {
     ])
 
     expect(body.rejected).toEqual([])
-    expect(body.accepted.sort()).toEqual(['folder:projects/plan', 'note-1', 'note:note-1'])
+    expect(body.accepted.toSorted()).toEqual(['folder:projects/plan', 'note-1', 'note:note-1'])
     expect(
       harness.raw
         .prepare(
@@ -248,6 +248,7 @@ describe('vault_lock records (#2606)', () => {
         headers
       )
       expect(res.status).toBe(200)
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
       return ((await res.json()) as { items: Array<{ id: string; type: string }> }).items
     }
 

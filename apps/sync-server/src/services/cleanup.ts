@@ -392,6 +392,7 @@ export const cleanupOrphanedBlobChunks = async (
 
 const parseUploadedChunkHashes = (value: string): Set<string> => {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
     const parsed = JSON.parse(value) as Array<{ h?: unknown }>
     if (!Array.isArray(parsed)) return new Set()
     const hashes = parsed.flatMap((entry) => (typeof entry.h === 'string' ? [entry.h] : []))

@@ -1004,7 +1004,7 @@ describe('UserSyncState', () => {
       }
 
       // #when
-      doObj.webSocketMessage(brokenWs as never, '{}')
+      void doObj.webSocketMessage(brokenWs as never, '{}')
 
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)

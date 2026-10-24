@@ -115,7 +115,7 @@ const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8
       options.deleted ? nowSec() : null
     )
   // The source object must exist exactly as a push would have left it.
-  storage.put(blobKey, bytes.slice().buffer)
+  void storage.put(blobKey, bytes.slice().buffer)
   return { blobKey, bytes }
 }
 
@@ -142,7 +142,7 @@ const seedSnapshot = (
       createdAt,
       `rev-${noteId}-${sequenceNum}`
     )
-  storage.put(blobKey, bytes.slice().buffer)
+  void storage.put(blobKey, bytes.slice().buffer)
   return bytes
 }
 

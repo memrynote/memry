@@ -306,7 +306,7 @@ describe('GET /sync/changes?inline=1 (#2292)', () => {
     const page = await changes(app, 'cursor=0&limit=500')
 
     expect(page.status).toBe(200)
-    expect(Object.keys(page.body).sort()).toEqual([
+    expect(Object.keys(page.body).toSorted()).toEqual([
       'deleted',
       'hasMore',
       'items',

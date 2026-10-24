@@ -10,7 +10,7 @@ const migrationsDir = resolve(__dirname, '../migrations')
 function migrationFiles(): string[] {
   return readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
-    .sort()
+    .toSorted()
 }
 
 function loadMigrationSql(file: string): string {

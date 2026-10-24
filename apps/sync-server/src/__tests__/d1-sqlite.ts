@@ -15,7 +15,7 @@ const migrationsDir = resolve(__dirname, '../../migrations')
 const loadSchemaSql = (): string =>
   readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
-    .sort()
+    .toSorted()
     .map((file) => readFileSync(join(migrationsDir, file), 'utf8'))
     .join('\n')
 
