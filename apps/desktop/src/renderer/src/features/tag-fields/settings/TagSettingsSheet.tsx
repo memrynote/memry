@@ -33,6 +33,10 @@ interface TagSettingsSheetProps {
   onClose: () => void
 }
 
+const sectionLabel = (text: string): React.JSX.Element => (
+  <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">{text}</h3>
+)
+
 export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React.JSX.Element {
   const { t } = useT('notes')
   const tagKey = keyOf(tag)
@@ -61,9 +65,6 @@ export function TagSettingsSheet({ tag, onClose }: TagSettingsSheetProps): React
   }, [onClose])
 
   const fieldCount = resolved?.effectiveFields.length ?? 0
-  const sectionLabel = (text: string): React.JSX.Element => (
-    <h3 className="text-[11px] font-medium uppercase tracking-wider text-text-tertiary">{text}</h3>
-  )
 
   return (
     <aside

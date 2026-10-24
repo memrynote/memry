@@ -22,8 +22,10 @@ vi.mock('@/lib/logger', () => ({ createLogger: () => mocks.logger }))
 vi.mock('sonner', () => ({ toast: { error: mocks.toastError } }))
 
 // `dayPanel` owns one command and `zoom` three: small owners to stand in for any.
-const dayPanel = (run: () => void, extra: { enabled?: boolean; label?: string } = {}) =>
-  ({ 'view.toggleDayPanel': { run, ...extra } }) as const
+const dayPanel = (
+  run: () => void | Promise<void>,
+  extra: { enabled?: boolean; label?: string } = {}
+) => ({ 'view.toggleDayPanel': { run, ...extra } }) as const
 
 const zoom = (run: () => void) =>
   ({
@@ -37,7 +39,7 @@ function AppOwner({
   enabled,
   label
 }: {
-  run: () => void
+  run: () => void | Promise<void>
   enabled?: boolean
   label?: string
 }): null {

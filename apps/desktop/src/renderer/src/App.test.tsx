@@ -375,9 +375,9 @@ vi.mock('@/components/day-panel', () => ({
 }))
 
 vi.mock('@/components/tasks/drag-drop', () => ({
-  TaskDragOverlay: ({ projects }: { projects: unknown[] }) => {
+  TaskDragOverlay: ({ projects: overlayProjects }: { projects: unknown[] }) => {
     treeRenders.taskDragOverlay += 1
-    return <div data-testid="task-drag-overlay">{projects.length}</div>
+    return <div data-testid="task-drag-overlay">{overlayProjects.length}</div>
   }
 }))
 
@@ -564,7 +564,9 @@ describe('App', () => {
     await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-a-rows' })
     expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
 
-    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
     // A refetch from the still-visible vault A workspace, answered by main
     // after it moved to vault B: cancelled, A's own rows stay for the way back.
     await expect(
@@ -575,7 +577,9 @@ describe('App', () => {
 
     vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
     view.rerender(<App />)
-    act(() => endVaultSwitch(true))
+    act(() => {
+      endVaultSwitch(true)
+    })
     const clientB = createdQueryClients[1]
     expect(clientB).not.toBe(clientA)
 
@@ -596,8 +600,12 @@ describe('App', () => {
 
     // Pager flow: the switch ends while the reveal is held, so App still has
     // vault A as the active path and its workspace keeps running effects.
-    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
-    act(() => endVaultSwitch(true))
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
+    act(() => {
+      endVaultSwitch(true)
+    })
 
     await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
     expect(clientA.getQueryData(rowsKey)).toBeUndefined()
@@ -607,7 +615,9 @@ describe('App', () => {
     render(<App />)
     const [clientA] = createdQueryClients
     const rowsKey = ['rows']
-    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
     // A first read that starts mid-switch has nothing cached to keep: it runs,
     // main answers for vault B, and the fence empties the query.
     let answer = 'vault-b-rows'
@@ -620,7 +630,9 @@ describe('App', () => {
     expect(clientA.getQueryData(rowsKey)).toBeUndefined()
 
     answer = 'vault-a-rows'
-    act(() => endVaultSwitch(false))
+    act(() => {
+      endVaultSwitch(false)
+    })
     await waitFor(() => expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows'))
     unsubscribe()
   })
@@ -768,7 +780,9 @@ describe('App', () => {
     render(<App />)
     const palette = await screen.findByTestId('command-palette')
 
-    act(() => beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next'))
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
 
     // A key is held back by the runtime; the menu and buttons by the owners.
     expect(pressMod('n')).toBe(true)
@@ -784,7 +798,9 @@ describe('App', () => {
     expect(screen.getByTestId('commands-palette')).toHaveTextContent('false')
 
     // A failed switch leaves the vault open, and the commands work again.
-    act(() => endVaultSwitch(false))
+    act(() => {
+      endVaultSwitch(false)
+    })
     pressMod('n')
     await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1))
   })

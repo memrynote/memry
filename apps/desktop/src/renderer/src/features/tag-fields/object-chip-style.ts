@@ -36,6 +36,7 @@ export async function loadChipIcons(icons: ReadonlyArray<string | null>): Promis
   if (wanted.length === 0) return false
   const all = await loadAllIcons()
   for (const name of wanted) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- icon pack entries are untyped lazy-loaded data in [tag, attrs] tuple form
     const data = all[name] as Array<[string, Record<string, string>]> | undefined
     markups.set(name, data ? toMarkup(data) : null)
   }

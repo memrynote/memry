@@ -128,7 +128,7 @@ export function useNoteFieldFill(noteId: string | null, disabled: boolean): Note
   }, [accept, phase])
 
   useEffect(() => {
-    if (!reviewing) return
+    if (!reviewing) return undefined
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey)) return
       event.preventDefault()

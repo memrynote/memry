@@ -417,6 +417,7 @@ export const dueDateFilterLabel = (type: DueDateFilterType): string => {
 export const dueDateFilterOptions: { value: DueDateFilterType; label: string }[] =
   // SAFETY: `dueDateFilterLabels` is declared with exactly the `DueDateFilterType`
   // keys (enforced by its `satisfies`), so its own key list is that union.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- see SAFETY above
   (Object.keys(dueDateFilterLabels) as DueDateFilterType[]).map((value) => ({
     value,
     get label() {

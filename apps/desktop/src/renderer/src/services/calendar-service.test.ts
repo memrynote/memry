@@ -36,7 +36,7 @@ describe('calendar-service', () => {
       },
       onCalendarChanged: vi.fn(() => vi.fn())
     }
-    ;(window as typeof window & { api: unknown }).api = api
+    Object.assign(window, { api })
   })
 
   it('forwards generic calendar API methods through the window bridge', async () => {

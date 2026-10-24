@@ -34,12 +34,12 @@ export type KeyPhase = 'capture' | 'bubble'
 const COMMAND_META: Readonly<Record<CommandId, CommandMeta>> = COMMANDS
 
 /** Commands the app dispatches itself, in table order. Editor-owned keys never appear. */
-const KEYBOARD_COMMANDS: readonly { id: CommandId; spec: AppKeyboardSpec }[] = (
-  Object.keys(COMMANDS) as CommandId[]
-).flatMap((id) => {
-  const keyboard = COMMAND_META[id].keyboard
-  return keyboard?.owner === 'app' ? [{ id, spec: keyboard }] : []
-})
+const KEYBOARD_COMMANDS: readonly { id: CommandId; spec: AppKeyboardSpec }[] =
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- COMMANDS is keyed by CommandId; Object.keys only widens to string
+  (Object.keys(COMMANDS) as CommandId[]).flatMap((id) => {
+    const keyboard = COMMAND_META[id].keyboard
+    return keyboard?.owner === 'app' ? [{ id, spec: keyboard }] : []
+  })
 
 /**
  * Symbols that sit on a shifted key on most layouts. A chord naming one without

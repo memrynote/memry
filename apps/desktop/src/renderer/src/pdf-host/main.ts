@@ -6,6 +6,7 @@
  */
 import { getDocument, GlobalWorkerOptions, PDFDataRangeTransport } from 'pdfjs-dist'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+// oxlint-disable-next-line import/default -- Vite `?url` query import; the default export is synthesized by the bundler
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 GlobalWorkerOptions.workerSrc = pdfjsWorker

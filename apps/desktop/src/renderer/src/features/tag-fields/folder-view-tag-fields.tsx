@@ -57,6 +57,7 @@ export function useFolderViewTagFields(scope: ViewScope) {
       if (row.kind !== 'task' || !fieldTag?.effectiveFields.some((f) => f.name === name)) {
         return false
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- cell edit value is unknown at this seam; the task service validates it
       updateTaskField(row.id, name, value as TaskFieldValue | undefined)
         .then(() => refresh())
         .catch((error: unknown) =>

@@ -74,17 +74,19 @@ async function applyDraw(
   }
 
   const { convertToExcalidrawElements } = await import('@excalidraw/excalidraw')
-  const created = convertToExcalidrawElements(
-    plan.skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0],
-    { regenerateIds: false }
-  ) as unknown as SceneEditElement[]
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- planDraw's skeleton type is structurally narrower than Excalidraw's skeleton union; the bridge is local to this call
+  const skeletons = plan.skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw returns its own element type; SceneEditElement is the subset this editor reads
+  const created = convertToExcalidrawElements(skeletons, {
+    regenerateIds: false
+  }) as unknown as SceneEditElement[]
 
   // The whole binding plan is keyed on ids minted before conversion, which
   // holds only while `regenerateIds: false` is honoured upstream. If that ever
   // changes the shapes still land but arrows come out unbound — a quiet
   // degradation, so say it out loud rather than let it look like a layout bug.
-  const mintedIds = new Set(created.map((element) => element.id))
-  const lost = plan.skeletons.filter((skeleton) => !mintedIds.has(skeleton.id as string))
+  const mintedIds: ReadonlySet<unknown> = new Set(created.map((element) => element.id))
+  const lost = plan.skeletons.filter((skeleton) => !mintedIds.has(skeleton.id))
   if (lost.length > 0) {
     log.warn('Excalidraw regenerated element ids; arrow bindings and frames were skipped', {
       lost: lost.length
@@ -130,7 +132,7 @@ export function useAgentMcpCanvasWriteResponder({
   enabled = true
 }: { enabled?: boolean } = {}): void {
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     return window.api.onMainInvoke(async ({ requestId, channel, payload }) => {
       if (channel !== AgentMcpCanvasWriteChannel) return

@@ -20,6 +20,7 @@ function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => 
     if (!target || typeof target !== 'object') {
       throw new Error(`Desktop API operation is unavailable: ${operation}`)
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- target is a non-null object here; segment is looked up dynamically by design
     target = (target as Record<string, unknown>)[segment]
   }
 
@@ -27,6 +28,7 @@ function resolveDesktopApiOperation(operation: string): (...args: unknown[]) => 
     throw new Error(`Desktop API operation is not callable: ${operation}`)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- typeof check above proves callable; signature is unknown by design
   return target as (...args: unknown[]) => unknown
 }
 
@@ -95,6 +97,7 @@ function objectArg(value: unknown): JsonRecord | null {
     }
   }
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed above to a non-null, non-array object
   return value as JsonRecord
 }
 
@@ -130,7 +133,7 @@ export function useAgentMcpDesktopApiResponder({
   enabled = true
 }: { enabled?: boolean } = {}): void {
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     return window.api.onMainInvoke(async ({ requestId, channel, payload }) => {
       if (channel !== AgentMcpDesktopApiChannel) return

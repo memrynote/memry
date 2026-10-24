@@ -125,7 +125,7 @@ const tab = (overrides: Partial<Tab> = {}): Tab =>
     scrollPosition: 42,
     viewState: { cursor: 'top' },
     ...overrides
-  }) as Tab
+  })
 
 const state = (overrides: Partial<TabSystemState> = {}): TabSystemState =>
   ({
@@ -339,7 +339,7 @@ const startupState = (): TabSystemState =>
     layout: { type: 'leaf', tabGroupId: 'startup-group' },
     settings: state().settings,
     recentlyClosed: []
-  }) as TabSystemState
+  })
 
 /** Mounts the pair exactly the way `TabPersistenceManager` does at app start. */
 function StartupProbe({
@@ -506,12 +506,16 @@ describe('tab persistence hooks', () => {
     expect(mocks.registerPendingSave).toHaveBeenCalledWith('tab-state', expect.any(Function))
     expect(storage.save).not.toHaveBeenCalled()
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
 
     mocks.tabsState = state({ activeGroupId: 'group-1' })
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
-    act(() => window.dispatchEvent(new Event('beforeunload')))
+    act(() => {
+      window.dispatchEvent(new Event('beforeunload'))
+    })
     expect(localStorage.getItem(STORAGE_KEY)).toContain('group-1')
 
     act(() => mocks.pendingSave?.())
@@ -536,7 +540,9 @@ describe('tab persistence hooks', () => {
     expect(mocks.serializeCalls).toBe(0)
     expect(storage.save).not.toHaveBeenCalled()
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
 
     expect(mocks.serializeCalls).toBe(1)
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
@@ -553,7 +559,9 @@ describe('tab persistence hooks', () => {
 
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     expect(vi.mocked(storage.save).mock.calls[0][0].savedAt).toBe(CLOCK_START + 25)
 
@@ -581,7 +589,9 @@ describe('tab persistence hooks', () => {
     mocks.tabsState = changed
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
 
     const written = vi.mocked(storage.save).mock.calls[1][0]
@@ -601,7 +611,9 @@ describe('tab persistence hooks', () => {
 
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
 
     // The rejected save must be handled, not left as an unhandled rejection:
@@ -620,7 +632,9 @@ describe('tab persistence hooks', () => {
     mocks.tabsState = next
     rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
     expect(storage.save).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -645,7 +659,9 @@ describe('tab persistence hooks', () => {
 
     const { rerender } = render(<TabPersistenceProbe storage={storage} debounceMs={25} />)
 
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledTimes(1))
     expect(mocks.toastError.mock.calls[0][1]).toMatchObject({
@@ -653,7 +669,9 @@ describe('tab persistence hooks', () => {
     })
 
     applyStateChanges(() => rerender(<TabPersistenceProbe storage={storage} debounceMs={25} />))
-    act(() => vi.advanceTimersByTime(25))
+    act(() => {
+      vi.advanceTimersByTime(25)
+    })
     await waitFor(() => expect(storage.save).toHaveBeenCalledTimes(2))
 
     // Every debounced save keeps failing, but the user is told once, not once
@@ -679,7 +697,9 @@ describe('tab persistence hooks', () => {
     expect(unloadAdds).toHaveLength(1)
     expect(unloadRemovals).toHaveLength(0)
 
-    act(() => window.dispatchEvent(new Event('beforeunload')))
+    act(() => {
+      window.dispatchEvent(new Event('beforeunload'))
+    })
 
     // The one long-lived handler must still write the newest tab tree, not the
     // tree it closed over when it was registered.
@@ -860,7 +880,7 @@ describe('tab session persistence startup order', () => {
     mocks.dispatch.mockImplementation((action: { type: string; payload?: unknown }) => {
       if (action.type !== 'RESTORE_SESSION') return
       mocks.tabsState = {
-        ...(mocks.tabsState as TabSystemState),
+        ...mocks.tabsState,
         ...(action.payload as Partial<TabSystemState>)
       } as TabSystemState
     })
@@ -890,7 +910,9 @@ describe('tab session persistence startup order', () => {
     // Four debounce windows pass with the flag IPC still unanswered. This gap is
     // the whole bug: auto-save used to fill it with the Home-only default, and
     // the restore then read its own damage back as the user's session.
-    act(() => vi.advanceTimersByTime(100))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')).toEqual(stored)
 
     // Flags land; the restore finally gets its read.
@@ -912,7 +934,9 @@ describe('tab session persistence startup order', () => {
     // Saving resumes once the restore has landed, and what it writes is the
     // restored session rather than the default it started from.
     await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
-    act(() => vi.advanceTimersByTime(100))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
 
     const written = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') as PersistedTabState
     expect(Object.keys(written.tabGroups)).toEqual(['group-1'])
@@ -998,8 +1022,8 @@ describe('tab session persistence is scoped per vault', () => {
   /** Swap the provider's state the way the reducer would once tabs are open. */
   const holdSession = (session: PersistedTabState): void => {
     mocks.tabsState = {
-      ...(mocks.tabsState as TabSystemState),
-      ...(deserializeTabState(session, mocks.flags) as Partial<TabSystemState>)
+      ...mocks.tabsState,
+      ...deserializeTabState(session, mocks.flags)
     } as TabSystemState
   }
 
@@ -1016,7 +1040,7 @@ describe('tab session persistence is scoped per vault', () => {
     mocks.dispatch.mockImplementation((action: { type: string; payload?: unknown }) => {
       if (action.type !== 'RESTORE_SESSION') return
       mocks.tabsState = {
-        ...(mocks.tabsState as TabSystemState),
+        ...mocks.tabsState,
         ...(action.payload as Partial<TabSystemState>)
       } as TabSystemState
     })
@@ -1040,7 +1064,9 @@ describe('tab session persistence is scoped per vault', () => {
     ])
 
     await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
-    act(() => vi.advanceTimersByTime(100))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
 
     // --- Switch to vault B --------------------------------------------------
@@ -1060,7 +1086,9 @@ describe('tab session persistence is scoped per vault', () => {
     // B opens its own tabs and they are written under B's key…
     holdSession(sessionFor('note-b'))
     inVaultB.rerender(probe(VAULT_B))
-    act(() => vi.advanceTimersByTime(100))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(tabIdsAt(keyB)).toEqual(['pin-1', 'note-b'])
 
     // …while A's session is exactly where A left it. This is the assertion the
@@ -1113,13 +1141,17 @@ describe('tab session persistence is scoped per vault', () => {
 
     const inVaultA = render(probe(VAULT_A))
     await waitFor(() => expect(sessionSnapshot?.isRestoring).toBe(false))
-    act(() => vi.advanceTimersByTime(100))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
     expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-a'])
 
     // One more tab, then the switch, inside the debounce window.
     holdSession(sessionFor('note-late'))
     inVaultA.rerender(probe(VAULT_A))
-    act(() => vi.advanceTimersByTime(5))
+    act(() => {
+      vi.advanceTimersByTime(5)
+    })
     inVaultA.unmount()
 
     expect(tabIdsAt(keyA)).toEqual(['pin-1', 'note-late'])
@@ -1133,7 +1165,9 @@ describe('tab session persistence is scoped per vault', () => {
     mocks.flagsLoading = true
 
     const inVaultA = render(probe(VAULT_A))
-    act(() => vi.advanceTimersByTime(100))
+    act(() => {
+      vi.advanceTimersByTime(100)
+    })
 
     // A switch that lands mid-restore takes the Home-only default with it.
     inVaultA.unmount()

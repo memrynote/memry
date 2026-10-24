@@ -5,12 +5,12 @@ import { propertiesService } from '@/services/properties-service'
 import type { Task } from '@/data/task-model'
 import { withAlpha } from '@/components/note/tags-row/tag-colors'
 import { cn } from '@/lib/utils'
-
-type TaskFields = NonNullable<Task['fields']>
 import { buildFieldGroups } from '../build-field-groups'
 import { ObjectAvatar, objectColor } from '../object-avatar'
 import { useObjectIdentity, useTagSchemas } from '../use-tag-schemas'
 import { firstRelationChip } from './task-relation-chip-model'
+
+type TaskFields = NonNullable<Task['fields']>
 
 export function TaskRelationChip({
   tags,

@@ -123,7 +123,7 @@ beforeEach(async () => {
     logout: logoutMock
   } as never)
 
-  const api = (window as unknown as { api: Record<string, unknown> }).api as Record<string, unknown>
+  const api = (window as unknown as { api: Record<string, unknown> }).api
   api.syncOps = mockSyncOps
   api.onSyncStatusChanged = vi.fn((cb: EventCallback) => {
     syncStatusListeners.push(cb)
@@ -347,7 +347,9 @@ describe('SyncProvider', () => {
         'Sync needs you to sign in again on this device.',
         expect.objectContaining({ action: expect.objectContaining({ label: 'Open settings' }) })
       )
-      const { action } = toastMock.error.mock.calls.at(-1)?.[1] as {
+      const lastErrorCall = toastMock.error.mock.calls.at(-1)
+      if (!lastErrorCall) throw new Error('toast.error was never called')
+      const { action } = lastErrorCall[1] as {
         action: { onClick: () => void }
       }
       const opened = vi.fn()

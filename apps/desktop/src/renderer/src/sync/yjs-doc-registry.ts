@@ -93,6 +93,7 @@ export function createYjsDocRegistry<T extends DocEntryHandle>(
       if (slot.sideEffectOwner === consumerId) {
         // Promote any remaining consumer (iteration order = insertion order)
         // and notify ONLY that consumer so its React state can react.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the owner just left and other consumers remain, so the iterator yields a symbol
         const promoted = slot.consumers.values().next().value as symbol
         slot.sideEffectOwner = promoted
         slot.onOwnerChangeCallbacks.get(promoted)?.(true)

@@ -24,6 +24,7 @@ export interface YjsIpcProviderConfig {
   vaultPath?: string | null
 }
 
+// oxlint-disable-next-line typescript/no-deprecated -- lib0 Observable is deprecated for ObservableV2; migrating changes the event typing of every consumer
 export class YjsIpcProvider extends Observable<string> {
   readonly noteId: string
   readonly doc: Y.Doc
@@ -48,6 +49,7 @@ export class YjsIpcProvider extends Observable<string> {
   private readyVaultPath: string | null | undefined = undefined
 
   constructor(config: YjsIpcProviderConfig) {
+    // oxlint-disable-next-line typescript/no-deprecated -- same lib0 Observable base class as above
     super()
     this.noteId = config.noteId
     this.doc = config.doc
@@ -154,6 +156,7 @@ export class YjsIpcProvider extends Observable<string> {
   destroy(): void {
     this.destroyed = true
     this.disconnect()
+    // oxlint-disable-next-line typescript/no-deprecated -- same lib0 Observable base class as above
     super.destroy()
   }
 

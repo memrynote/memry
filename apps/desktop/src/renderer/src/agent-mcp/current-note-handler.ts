@@ -14,7 +14,7 @@ export function useAgentMcpCurrentNoteResponder({
   const activeNoteTitle = activeTab?.type === 'note' ? activeTab.title : undefined
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     return window.api.onMainInvoke(async ({ requestId, channel }) => {
       if (channel !== CURRENT_NOTE_CHANNEL) return

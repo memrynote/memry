@@ -45,6 +45,12 @@ export function quickFieldValues(
   return out
 }
 
+const stringArrayOf = (value: string | string[] | undefined): string[] =>
+  Array.isArray(value) ? value : []
+
+const stringOf = (value: string | string[] | undefined): string =>
+  typeof value === 'string' ? value : ''
+
 export function QuickFieldsCard({
   target,
   onClose
@@ -75,13 +81,14 @@ export function QuickFieldsCard({
   const onKeyDown = (event: React.KeyboardEvent): void => {
     // Keys from the relation picker's portal bubble here through React; the
     // picker owns those.
-    const target = event.target as HTMLElement
-    if (event.defaultPrevented || !event.currentTarget.contains(target)) return
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keydown target may be an SVG element, so an instanceof HTMLElement guard would change behavior
+    const eventTarget = event.target as HTMLElement
+    if (event.defaultPrevented || !event.currentTarget.contains(eventTarget)) return
     if (event.key === 'Escape') {
       event.preventDefault()
       event.stopPropagation()
       onClose()
-    } else if (event.key === 'Enter' && target.tagName !== 'BUTTON') {
+    } else if (event.key === 'Enter' && eventTarget.tagName !== 'BUTTON') {
       event.preventDefault()
       event.stopPropagation()
       void done()
@@ -115,14 +122,14 @@ export function QuickFieldsCard({
           {field.relation?.target ? (
             <RelationField
               field={field}
-              value={(values[field.name] as string[] | undefined) ?? []}
+              value={stringArrayOf(values[field.name])}
               onChange={(next) => setValues((prev) => ({ ...prev, [field.name]: next }))}
               triggerRef={index === 0 ? firstRef : undefined}
             />
           ) : (
             <input
               ref={index === 0 ? (el) => void (firstRef.current = el) : undefined}
-              value={(values[field.name] as string | undefined) ?? ''}
+              value={stringOf(values[field.name])}
               type={field.type === 'number' ? 'number' : 'text'}
               onChange={(event) =>
                 setValues((prev) => ({ ...prev, [field.name]: event.target.value }))

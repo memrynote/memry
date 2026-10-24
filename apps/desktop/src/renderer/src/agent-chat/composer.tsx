@@ -365,18 +365,25 @@ export function Composer({
     persistPreference({ provider: 'local_openai_compatible', localModel: model })
   }
   const selectReasoning = (value: ReasoningValue): void => {
+    // The settings menu offers only the active provider's options, so `value` is that provider's effort.
     if (isLocal) {
-      setLocalReasoning(value as LocalReasoningEffort)
-      persistPreference({ localEffort: value as LocalReasoningEffort })
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu options are per-provider; value is a LocalReasoningEffort here
+      const effort = value as LocalReasoningEffort
+      setLocalReasoning(effort)
+      persistPreference({ localEffort: effort })
       return
     }
     if (selectedProvider === 'codex_cli') {
-      setCodexReasoning(value as CodexReasoningEffort)
-      persistPreference({ codexEffort: value as CodexReasoningEffort })
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu options are per-provider; value is a CodexReasoningEffort here
+      const effort = value as CodexReasoningEffort
+      setCodexReasoning(effort)
+      persistPreference({ codexEffort: effort })
       return
     }
-    setClaudeReasoning(value as ClaudeEffort)
-    persistPreference({ claudeEffort: value as ClaudeEffort })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu options are per-provider; value is a ClaudeEffort here
+    const effort = value as ClaudeEffort
+    setClaudeReasoning(effort)
+    persistPreference({ claudeEffort: effort })
   }
   const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
     if (modelOptions[provider]) return

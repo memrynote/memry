@@ -68,6 +68,7 @@ export function toTaskUpdateInput(taskId: string, updates: Partial<UiTask>): Tas
     tags: updates.tags,
     fields: updates.fields
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; input was built from TaskUpdateInput keys above
   for (const key of Object.keys(input) as (keyof TaskUpdateInput)[]) {
     if (input[key] === undefined) delete input[key]
   }

@@ -70,15 +70,10 @@ describe('MessageStream', () => {
     clearVaultItemIconCache()
     mockGetNote.mockReset()
     mockGetNote.mockResolvedValue(null)
-    ;(
-      window.api as typeof window.api & {
-        agent?: { previewDiff: typeof mockPreviewDiff }
-        notes?: { get: typeof mockGetNote }
-      }
-    ).agent = {
+    window.api.agent = {
       previewDiff: mockPreviewDiff
     }
-    ;(window.api as typeof window.api & { notes?: { get: typeof mockGetNote } }).notes = {
+    window.api.notes = {
       get: mockGetNote
     }
   })

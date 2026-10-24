@@ -80,7 +80,7 @@ function message(input: {
     content: {
       role: input.role as 'user' | 'assistant',
       data: { text: input.text }
-    } as Message['content'],
+    },
     toolCallId: null,
     attachments: [],
     status: input.status,
@@ -801,9 +801,14 @@ describe('agentReducer', () => {
       inFlight: { [conversation.id]: true },
       messagesByConversation: { [conversation.id]: [failedReply] }
     }
-    const turnError = (message: string): AgentAction => ({
+    const turnError = (text: string): AgentAction => ({
       type: 'event',
-      event: { kind: 'turn_error', conversationId: conversation.id, turnId: 'turn-1', message }
+      event: {
+        kind: 'turn_error',
+        conversationId: conversation.id,
+        turnId: 'turn-1',
+        message: text
+      }
     })
 
     expect(agentReducer(state, turnError('model overloaded')).error).toBeNull()
