@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {# 件のサブタスクの期限をクリアしました}}",
       "prioritySet": "{count, plural, other {# 件のサブタスクに優先度を設定しました}}",
       "deleted": "{count, plural, other {# 件のサブタスクを削除しました}}"
-    }
+    },
+    "completedBranch": "{title} と{count, plural, other {未完了のサブタスク # 件}}を完了しました",
+    "deletedKeepSubtasks": "{title} を削除し、サブタスクは残しました",
+    "deletedBranch": "{title} と{count, plural, other {サブタスク # 件}}を削除しました"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "ステータス",
       "projectIs": "プロジェクト：",
       "project": "プロジェクト",
+      "locationIs": "場所が次と一致",
+      "location": "場所",
+      "unknownNote": "不明なノート",
       "due": "期限：",
       "dueDate": "期限",
       "search": "検索",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "期限"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "場所",
+      "search": "フォルダーとノートを検索...",
+      "empty": "タスクのあるフォルダーやノートはありません"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "優先度",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "プロジェクトのビュー",
       "overview": "概要",
+      "all": "すべて",
       "tasks": "タスク",
       "notes": "ノート",
       "files": "ファイル",
@@ -951,6 +963,25 @@
       "fileError": "{name} をリンクできませんでした",
       "fileErrorGeneric": "ファイルをインポートできませんでした",
       "label": "{name} に追加"
+    },
+    "all": {
+      "showDone": "完了を表示",
+      "empty": "このプロジェクトに未完了のものはありません。",
+      "expand": "{title} のタスクを表示",
+      "collapse": "{title} のタスクを非表示",
+      "taskSummary": "{open}/{total} 件未完了",
+      "daysLeft": "{count} 日",
+      "overdue": "{count} 日超過",
+      "columns": {
+        "title": "タイトル",
+        "daysLeft": "残り日数"
+      },
+      "status": {
+        "active": "進行中",
+        "done": "完了",
+        "upcoming": "予定",
+        "past": "過去"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "インディゴ",
     "purple": "紫",
     "pink": "ピンク"
+  },
+  "subtaskTree": {
+    "addSubtask": "サブタスクを追加",
+    "dropInto": "{title} の中へ",
+    "dropOut": "1 階層上へ",
+    "draftPlaceholder": "サブタスクのタイトル",
+    "draftLabel": "{title} の新しいサブタスク",
+    "draftIn": "{title} 内",
+    "toggleComplete": "{title} を完了",
+    "moveUnder": {
+      "title": "移動先を選ぶ",
+      "placeholder": "移動先…",
+      "empty": "一致するタスクはありません",
+      "topLevel": "{project} の最上位",
+      "thisTask": "このタスク",
+      "currentParent": "現在の親",
+      "movesOne": "{title} を移動します",
+      "movesBranch": "{title} と{count, plural, other {サブタスク # 件}}を移動します",
+      "keys": "↵ ここへ移動 · ⌘↵ 最上位 · esc 閉じる"
+    },
+    "zoom": {
+      "path": "タスクのパス",
+      "up": "1 階層上へ",
+      "upShortcut": "1 階層上へ（⌘↑）"
+    },
+    "deleteParent": {
+      "title": "{title} を削除しますか？",
+      "summary": "{direct, plural, other {サブタスクが # 件あります}}{deeper, plural, =0 {} other {。その下にさらに # 件あります}}{open, plural, =0 {。すべて完了しています。} other {。# 件が未完了です。}}",
+      "cancel": "キャンセル",
+      "deleteAll": "すべて削除",
+      "keepSubtasks": "サブタスクを残す"
+    },
+    "menu": {
+      "open": "開く",
+      "complete": "完了",
+      "reopen": "再開",
+      "zoom": "サブタスクにズーム",
+      "moveUnder": "移動先を選ぶ…",
+      "indent": "{title} の下へ移動",
+      "outdent": "1 階層上へ移動",
+      "topLevel": "最上位のタスクにする",
+      "delete": "削除"
+    },
+    "openPath": "{path} を開く"
   }
 }

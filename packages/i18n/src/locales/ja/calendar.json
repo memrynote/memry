@@ -195,6 +195,7 @@
     "complete-task": "{title} を完了にする",
     "task-completed": "タスクを完了しました",
     "could-not-complete": "タスクを完了できませんでした",
+    "could-not-update-status": "タスクのステータスを変更できませんでした",
     "duration-minutes": "{minutes} 分",
     "duration-hours": "{hours} 時間",
     "duration-hours-minutes": "{hours} 時間 {minutes} 分"
@@ -236,6 +237,18 @@
       "could-not-open-note": "ノートを開けませんでした"
     }
   },
+  "eventNotes": {
+    "heading": "ノート",
+    "create": "新規ノート",
+    "link": "ノートをリンク",
+    "untitled": "ミーティングノート",
+    "searchPlaceholder": "ノートを検索",
+    "noResults": "ノートが見つかりません",
+    "createFailed": "このイベントのノートを作成できませんでした。",
+    "linkFailed": "ノートをこのイベントにリンクできませんでした。",
+    "loadFailed": "このイベントにリンクされたノートを読み込めませんでした。",
+    "propertyTaken": "このノートにはリンクではない「{name}」プロパティがすでにあります。"
+  },
   "notePopover": {
     "kind": "ノート",
     "kindDateReminder": "日付リマインダー",
@@ -254,6 +267,10 @@
     "overdue": "期限切れ",
     "untitled": "無題",
     "days": "{count, plural, other {# 日間}}",
+    "subtasks": {
+      "expand": "{title} の{count, plural, other {# 件のサブタスク}}を表示",
+      "collapse": "{title} の{count, plural, other {# 件のサブタスク}}を非表示"
+    },
     "events": "予定",
     "schedule-hint": "クリックで日付を設定、ドラッグで期間を設定",
     "empty-title": "このタイムラインには何もありません",

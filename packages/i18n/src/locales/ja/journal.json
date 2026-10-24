@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "ジャーナルの記録を削除",
     "description": "「{title}」を削除してもよろしいですか？この操作は元に戻すことができません。"
+  },
+  "dayTimeline": {
+    "label": "1 日のスケジュール",
+    "allDay": "終日の項目",
+    "unscheduled": "未スケジュール",
+    "unscheduledEmpty": "未スケジュールのタスクはありません。ブロックをここにドラッグすると時間をクリアできます。",
+    "range": "{start} – {end}",
+    "openTask": "{title}、{range}",
+    "completeTask": "{title} を完了"
   }
 }
