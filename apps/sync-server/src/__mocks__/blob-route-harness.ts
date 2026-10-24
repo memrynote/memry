@@ -48,11 +48,14 @@ const createStatement = (sql: string, state: MockDbState) => {
         const row = Object.values(state.chunksByHash ?? {}).find(
           (chunk) => chunk?.id === stmt.bindings[0]
         )
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double or fixture typed by hand; the real type cannot be constructed here
         if (!row || (row.ref_count as number) <= 0) return null
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double or fixture typed by hand; the real type cannot be constructed here
         row.ref_count = (row.ref_count as number) - 1
         return { ref_count: row.ref_count }
       }
       if (sql.includes('SELECT id, ref_count, size_bytes FROM blob_chunks')) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double or fixture typed by hand; the real type cannot be constructed here
         const hash = stmt.bindings[2] as string | undefined
         return (hash === undefined ? undefined : state.chunksByHash?.[hash]) ?? null
       }
@@ -66,6 +69,7 @@ const createStatement = (sql: string, state: MockDbState) => {
     // foreign vault's or user's hash is simply absent from the map.
     all: vi.fn(async () => {
       if (sql.includes('FROM blob_chunks') && sql.includes('hash IN (')) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double or fixture typed by hand; the real type cannot be constructed here
         const hashes = stmt.bindings.slice(2) as string[]
         const results = hashes
           .map((hash) => state.chunksByHash?.[hash])
@@ -80,6 +84,7 @@ const createStatement = (sql: string, state: MockDbState) => {
 }
 
 export const createDb = (state: MockDbState) =>
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- partial mock cast to the binding type; the real binding cannot be built in a unit test; test double or fixture typed by hand; the real type cannot be constructed here
   ({
     prepare: vi.fn((sql: string) => createStatement(sql, state))
   }) as unknown as D1Database
@@ -96,6 +101,7 @@ export const createR2Object = (overrides: Record<string, unknown> = {}) => ({
 const storageObject = createR2Object()
 
 export const createStorage = () =>
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- partial mock cast to the binding type; the real binding cannot be built in a unit test; test double or fixture typed by hand; the real type cannot be constructed here
   ({
     get: vi.fn().mockResolvedValue(storageObject),
     head: vi.fn().mockResolvedValue({ size: 5 }),
@@ -106,7 +112,9 @@ export const createStorage = () =>
 export const createEnv = (state: MockDbState) => ({
   DB: createDb(state),
   STORAGE: createStorage(),
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double or fixture typed by hand; the real type cannot be constructed here
   USER_SYNC_STATE: {} as DurableObjectNamespace,
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double or fixture typed by hand; the real type cannot be constructed here
   LINKING_SESSION: {} as DurableObjectNamespace,
   ENVIRONMENT: 'development',
   JWT_PUBLIC_KEY: 'pk',

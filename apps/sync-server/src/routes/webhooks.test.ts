@@ -260,7 +260,7 @@ describe('POST /webhooks/google-calendar', () => {
     // #then
     expect(res.status).toBe(200)
     expect(broadcastFetch).toHaveBeenCalledTimes(1)
-    const forwarded = broadcastFetch.mock.calls[0]![0] as Request
+    const forwarded = broadcastFetch.mock.calls[0][0] as Request
     expect(new URL(forwarded.url).pathname).toBe('/broadcast')
     const forwardedBody = (await forwarded.json()) as Record<string, unknown>
     expect(forwardedBody).toMatchObject({

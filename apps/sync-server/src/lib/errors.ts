@@ -182,6 +182,7 @@ export const errorHandler = (err: Error, c: Context<AppContext>): Response => {
       errorCode: err.code,
       handled: true
     })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     return c.json(formatErrorResponse(err), { status: err.statusCode as ContentfulStatusCode })
   }
 

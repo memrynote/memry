@@ -55,6 +55,7 @@ export function tagIn(column: AnyColumn, tags: Iterable<string>): SQL {
 }
 
 // English text of desktop's `errors:tagFields.*` messages.
+// oxlint-disable-next-line typescript/consistent-return -- switch over error codes; an unknown code falls through unchanged
 export function schemaEditFailure(error: SchemaEditError): Error {
   switch (error.code) {
     case 'reserved-name':
@@ -103,13 +104,14 @@ export function matchRank(title: string, query: string): number | null {
 
 export const TEXT_LIKE: ReadonlySet<PropertyType> = new Set(['text', 'url', 'select', 'status'])
 
+const filled = (value: unknown): value is string | number =>
+  (typeof value === 'string' && value.trim() !== '') || typeof value === 'number'
+
 export function subtitleFor(
   values: Record<string, unknown>,
   entry: ResolvedTag | undefined,
   titleOf: (id: string) => string | undefined
 ): string[] {
-  const filled = (value: unknown): value is string | number =>
-    (typeof value === 'string' && value.trim() !== '') || typeof value === 'number'
   const texts: string[] = []
   let relation: string | undefined
   for (const field of entry?.effectiveFields ?? []) {

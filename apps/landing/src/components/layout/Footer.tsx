@@ -32,6 +32,7 @@ function footerHref(href: string, pathname: string): string {
 }
 
 function footerTarget(label: ReactNode) {
+  // oxlint-disable-next-line typescript/no-base-to-string -- every call site passes a plain-text link label
   return `footer:${String(label)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')}`

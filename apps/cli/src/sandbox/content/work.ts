@@ -3,19 +3,19 @@ import type { Clock } from '../clock.ts'
 import type { NoteSpec } from '../specs.ts'
 import { lastMonday, launchDay, reviewDay, workdayFrom } from './dates.ts'
 
+// #meeting fields: Date, Attendees (people) and Company (the studio).
+const meetingFields = (b: Body, day: number, attendees: string[]): Record<string, unknown> => ({
+  Date: b.day(day),
+  Attendees: attendees.map((key) => b.uri.note(key)),
+  Company: [b.uri.note('co-fieldwork')]
+})
+
 export function workNotes(clock: Clock): NoteSpec[] {
   const mon = lastMonday(clock)
   const review = reviewDay(clock)
   const launch = launchDay(clock)
   const aurora = 'Work/Aurora'
   const meetings = 'Work/Aurora/Meetings'
-
-  // #meeting fields: Date, Attendees (people) and Company (the studio).
-  const meetingFields = (b: Body, day: number, attendees: string[]): Record<string, unknown> => ({
-    Date: b.day(day),
-    Attendees: attendees.map((key) => b.uri.note(key)),
-    Company: [b.uri.note('co-fieldwork')]
-  })
 
   const weekly = (
     key: string,

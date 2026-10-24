@@ -35,11 +35,7 @@ export async function runVault(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
       print(
         io,
         parsed.json,
-        await app.vault.updateConfig(
-          parseObjectValue(parsed.positionals[0], 'vault config') as Partial<
-            ReturnType<typeof app.vault.config>
-          >
-        )
+        await app.vault.updateConfig(parseObjectValue(parsed.positionals[0], 'vault config'))
       )
       return
     case 'reindex':
@@ -276,6 +272,7 @@ export async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
               ? false
               : (parseBooleanFlag(parsed.flags, 'include-metadata') ?? true),
             includeTaskMarkers: hasFlag(parsed.flags, 'include-task-markers'),
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
             pageSize: getFlag(parsed.flags, 'page-size') as PdfExportOptions['pageSize']
           }
         )
@@ -297,6 +294,7 @@ export async function runNotes(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
         parsed.json,
         await app.versions.create(
           requireFirst(parsed.positionals, 'note id'),
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
           (getFlag(parsed.flags, 'reason') ?? 'manual') as Parameters<
             typeof app.versions.create
           >[1],
@@ -485,6 +483,7 @@ export async function runFolderView(app: MemryApp, parsed: ParsedCli, io: CliIo)
         parsed.json,
         await app.folderView.setView(
           requireFirst(parsed.positionals, 'folder path'),
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- partial value cast through its boundary type; precise type is not available
           parseObjectValue(parsed.positionals[1], 'folder view') as unknown as Parameters<
             typeof app.folderView.setView
           >[1]

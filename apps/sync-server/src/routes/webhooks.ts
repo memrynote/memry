@@ -74,10 +74,12 @@ webhooks.post('/paddle', async (c) => {
     return c.json({ error: 'Invalid JSON payload' }, 400)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   const result = await applyPaddleWebhook(c.env.DB, payload as never)
 
   if (result.processed && result.userId) {
     const userId = result.userId
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     const paddlePayload = payload as {
       event_type?: string
       eventType?: string
@@ -123,7 +125,7 @@ webhooks.post('/paddle', async (c) => {
 webhooks.post('/app-store', async (c) => {
   let signedPayload: unknown
   try {
-    signedPayload = ((await c.req.json()) as { signedPayload?: unknown }).signedPayload
+    signedPayload = (await c.req.json()).signedPayload
   } catch {
     signedPayload = undefined
   }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { SyntheticEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useReducedMotion } from 'motion/react'
 import { cn } from '@/lib/utils'
 
@@ -130,7 +130,7 @@ export function CliWidget({ className }: CliWidgetProps) {
 
   // The auto-play loop. Tears down on unmount or the moment `live` flips to false.
   useEffect(() => {
-    if (!live) return
+    if (!live) return undefined
     let cancelled = false
 
     // Reduced motion: no typing — settle straight to a finished session (deferred so the
@@ -195,7 +195,7 @@ export function CliWidget({ className }: CliWidgetProps) {
     setDemo('') // drop whatever the demo was half-typing
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
     const cmd = input.trim()
     if (!cmd) return
@@ -206,8 +206,8 @@ export function CliWidget({ className }: CliWidgetProps) {
   }
 
   const focusPrompt = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLElement
-    if (!target.closest('input')) inputRef.current?.focus()
+    const target = event.target
+    if (!(target instanceof Element && target.closest('input'))) inputRef.current?.focus()
   }
 
   const showFakeCursor = !focused

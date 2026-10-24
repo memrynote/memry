@@ -21,7 +21,7 @@ describe('sync api', () => {
       calls.push(url)
       if (
         url.endsWith('/auth/billing') &&
-        (init?.headers as Record<string, string>).Authorization === 'Bearer old'
+        new Headers(init?.headers).get('Authorization') === 'Bearer old'
       ) {
         return new Response('{}', { status: 401 })
       }
@@ -74,7 +74,7 @@ describe('sync api', () => {
     const api = createSyncApi({
       baseUrl: 'https://s',
       storage,
-      fetchImpl: fakeFetch as unknown as typeof fetch,
+      fetchImpl: fakeFetch,
       onSessionCleared: () => {
         cleared += 1
       }
@@ -97,7 +97,7 @@ describe('sync api', () => {
     const api = createSyncApi({
       baseUrl: 'https://s',
       storage,
-      fetchImpl: fakeFetch as unknown as typeof fetch
+      fetchImpl: fakeFetch
     })
 
     await api.authedFetch('/sync/blob/x')

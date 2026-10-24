@@ -46,6 +46,7 @@ function parseClientMessage(
       typeof parsed === 'object' &&
       typeof (parsed as { type?: unknown }).type === 'string'
     ) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
       return parsed as { type: string; payload?: unknown }
     }
   } catch {
@@ -54,10 +55,11 @@ function parseClientMessage(
   return null
 }
 
+const parseDottedVersion = (v: string) => v.split('.').map(Number)
+
 export function isVersionBelow(version: string, minimum: string): boolean {
-  const parse = (v: string) => v.split('.').map(Number)
-  const [aMaj, aMin = 0, aPat = 0] = parse(version)
-  const [bMaj, bMin = 0, bPat = 0] = parse(minimum)
+  const [aMaj, aMin = 0, aPat = 0] = parseDottedVersion(version)
+  const [bMaj, bMin = 0, bPat = 0] = parseDottedVersion(minimum)
   if (aMaj !== bMaj) return aMaj < bMaj
   if (aMin !== bMin) return aMin < bMin
   return aPat < bPat
@@ -229,6 +231,7 @@ export class UserSyncState extends DurableObject<Bindings> {
     const nowSeconds = Math.floor(Date.now() / 1000)
 
     for (const ws of allSockets) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DO WebSocket attachment is untyped storage that only this class writes
       const attachment = ws.deserializeAttachment() as WsAttachment | null
       if (attachment?.deviceId === body.excludeDeviceId) continue
       if (body.vaultId && attachment?.vaultId !== body.vaultId) continue
@@ -334,6 +337,7 @@ export class UserSyncState extends DurableObject<Bindings> {
 
   webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): void | Promise<void> {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DO WebSocket attachment is untyped storage that only this class writes
       const attachment = ws.deserializeAttachment() as WsAttachment | null
       if (!attachment) {
         ws.close(1011, 'Missing attachment')
@@ -365,6 +369,7 @@ export class UserSyncState extends DurableObject<Bindings> {
 
       const parsed = parseClientMessage(message)
       if (parsed?.type === 'auth') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
         const token = (parsed.payload as { token?: unknown } | undefined)?.token
         return this.handleAuthRefresh(ws, attachment, token).catch((error: unknown) =>
           this.captureError('ws_auth_refresh', error)
@@ -456,6 +461,7 @@ export class UserSyncState extends DurableObject<Bindings> {
     const activeSockets: WebSocket[] = []
 
     for (const ws of allSockets) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DO WebSocket attachment is untyped storage that only this class writes
       const attachment = ws.deserializeAttachment() as WsAttachment | null
       if (!attachment) continue
 
@@ -488,6 +494,7 @@ export class UserSyncState extends DurableObject<Bindings> {
       ...new Set(
         activeSockets
           .map((ws) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DO WebSocket attachment is untyped storage that only this class writes
             const att = ws.deserializeAttachment() as WsAttachment | null
             return att?.deviceId
           })
@@ -506,6 +513,7 @@ export class UserSyncState extends DurableObject<Bindings> {
 
         const revokedIds = new Set(results.map((r) => r.id))
         for (const ws of activeSockets) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DO WebSocket attachment is untyped storage that only this class writes
           const att = ws.deserializeAttachment() as WsAttachment | null
           if (att && revokedIds.has(att.deviceId)) {
             try {

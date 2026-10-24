@@ -29,7 +29,7 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
   const reduceMotion = useReducedMotion()
 
   useEffect(() => {
-    if (!trigger) return
+    if (!trigger) return undefined
 
     function scramble() {
       setLines(
@@ -44,7 +44,7 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
 
     scramble()
     // Reduced motion: one static cipher fill, no flicker loop.
-    if (reduceMotion) return
+    if (reduceMotion) return undefined
     intervalRef.current = setInterval(scramble, hovered ? FAST_INTERVAL : SLOW_INTERVAL)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)

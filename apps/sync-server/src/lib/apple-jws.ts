@@ -58,6 +58,7 @@ export async function verifyAppleJws<T extends { signedDate?: number }>(jws: str
   try {
     const leafKey = await importSpki(leaf, 'P-256')
     const verified = await compactVerify(jws, leafKey, { algorithms: ['ES256'] })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
     payload = JSON.parse(new TextDecoder().decode(verified.payload)) as T
   } catch {
     throw new AppleJwsError('JWS signature is invalid')

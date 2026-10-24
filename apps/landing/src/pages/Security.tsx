@@ -99,6 +99,7 @@ const SECURITY_SECTIONS: SecuritySection[] = [
     ]
   },
   {
+    // oxlint-disable-next-line typescript/no-deprecated -- lucide removes brand icons in 1.0; this repo pins ^0.562 and swapping the glyph is a design call
     icon: Github,
     title: 'Open source',
     description:

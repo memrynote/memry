@@ -45,19 +45,19 @@ function defaultStmts(overrides?: {
         status: 'active',
         expires_at: null
       })
-    } as Partial<MockStatement>)
+    })
 
   const categories =
     overrides?.categories ??
     createMockStatement({
       all: vi.fn().mockResolvedValue({ results: [] })
-    } as Partial<MockStatement>)
+    })
 
   const crdt =
     overrides?.crdt ??
     createMockStatement({
       first: vi.fn().mockResolvedValue({ total_bytes: 0 })
-    } as Partial<MockStatement>)
+    })
 
   return createSqlMatchingDb({
     'FROM users': user,
@@ -80,10 +80,10 @@ describe('getStorageBreakdown', () => {
             { item_type: 'project', total_bytes: 200 }
           ]
         })
-      } as Partial<MockStatement>),
+      }),
       crdt: createMockStatement({
         first: vi.fn().mockResolvedValue({ total_bytes: 800 })
-      } as Partial<MockStatement>)
+      })
     })
 
     // #when
@@ -133,7 +133,7 @@ describe('getStorageBreakdown', () => {
     // #given
     const crdt = createMockStatement({
       first: vi.fn().mockResolvedValue({ total_bytes: 4200 })
-    } as Partial<MockStatement>)
+    })
     const db = defaultStmts({
       crdt
     })

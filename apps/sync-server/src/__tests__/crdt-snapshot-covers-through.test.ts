@@ -516,7 +516,7 @@ describe('snapshot objects (#2299)', () => {
     await expect(push('note-1', 'refused', claim(50))).rejects.toMatchObject({
       code: CRDT_SNAPSHOT_NOT_COVERED
     })
-    const refusedKey = put.mock.calls[0][0] as string
+    const refusedKey = put.mock.calls[0][0]
     expect(await objectExists(refusedKey)).toBe(false)
   })
 
@@ -572,32 +572,32 @@ describe('snapshot objects (#2299)', () => {
     const put = vi.spyOn(storage, 'put')
     const batch = harness.db.batch.bind(harness.db)
     let calls = 0
-    harness.db.batch = (async (statements: D1PreparedStatement[]) => {
+    harness.db.batch = async (statements: D1PreparedStatement[]) => {
       calls += 1
       // Stage 1 metadata, then the covered watermark, then the commit.
       if (calls === 3) throw new Error('D1_ERROR: Network connection lost')
       return batch(statements)
-    }) as D1Database['batch']
+    }
 
     await expect(push('note-1', 'lost', claim(10))).rejects.toThrow('Network connection lost')
 
     expect(snapshotRow('note-1')).toBeUndefined()
-    expect(await objectExists(put.mock.calls[0][0] as string)).toBe(false)
+    expect(await objectExists(put.mock.calls[0][0])).toBe(false)
   })
 
   it('deletes nothing when the batch threw and the re-read failed too', async () => {
     const put = vi.spyOn(storage, 'put')
     const batch = harness.db.batch.bind(harness.db)
     let calls = 0
-    harness.db.batch = (async (statements: D1PreparedStatement[]) => {
+    harness.db.batch = async (statements: D1PreparedStatement[]) => {
       calls += 1
       if (calls >= 3) throw new Error('D1_ERROR: Network connection lost')
       return batch(statements)
-    }) as D1Database['batch']
+    }
 
     await expect(push('note-1', 'unknown', claim(10))).rejects.toThrow('Network connection lost')
 
-    expect(await objectExists(put.mock.calls[0][0] as string)).toBe(true)
+    expect(await objectExists(put.mock.calls[0][0])).toBe(true)
   })
 })
 
@@ -607,13 +607,13 @@ describe('a reader racing the replace (#2299 review round 2, A-4, B-L1)', () => 
     const firstKey = snapshotRow('note-1')?.blob_key as string
     const get = storage.get.bind(storage)
     let raced = false
-    storage.get = (async (key: string) => {
+    storage.get = async (key: string) => {
       if (key === firstKey && !raced) {
         raced = true
         await push('note-1', 'second', claim(10, first.revision))
       }
       return get(key)
-    }) as R2Bucket['get']
+    }
 
     const snapshot = await getSnapshot(harness.db, storage, USER_ID, VAULT_ID, 'note-1')
 
@@ -695,15 +695,10 @@ describe('the snapshot routes carry the claim (#2299)', () => {
   }
 
   const request = async (path: string, init: RequestInit): Promise<Response> =>
-    await buildApp().request(
-      path,
-      init,
-      env as unknown as Record<string, unknown>,
-      {
-        waitUntil: () => undefined,
-        passThroughOnException: () => undefined
-      } as unknown as ExecutionContext
-    )
+    await buildApp().request(path, init, env, {
+      waitUntil: () => undefined,
+      passThroughOnException: () => undefined
+    } as unknown as ExecutionContext)
 
   const post = (path: string, body: unknown): Promise<Response> =>
     request(path, {
@@ -767,6 +762,7 @@ describe('the snapshot routes carry the claim (#2299)', () => {
     })
     return {
       status: res.status,
+      // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
       sequenceNum: ((await res.json()) as { sequenceNum: number }).sequenceNum,
       remaining: remainingSequences('note-1'),
       coversThrough: snapshotRow('note-1')?.covers_through

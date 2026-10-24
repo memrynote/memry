@@ -64,6 +64,7 @@ import type { AppContext, Bindings } from '../types'
 const logger = createLogger('Auth')
 
 const OTP_EXPIRY_MINUTES = 10
+// oxlint-disable-next-line no-control-regex -- strips control characters from device names on purpose
 const DEVICE_TEXT_UNSAFE_CHARS = /[\u0000-\u001F\u007F<>"'`&]/g
 const CHECKOUT_TOKEN_TTL_SECONDS = 10 * 60
 
@@ -139,8 +140,11 @@ const validateGoogleIdToken = async (
   }
 
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     email: payload.email as string,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     sub: payload.sub as string,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     name: payload.name as string | undefined
   }
 }
@@ -198,6 +202,7 @@ export const verifyOAuthState = async (
   if (payload.type !== 'oauth_state') {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Invalid OAuth state token type', 401)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   return { redirectUri: payload.redirect_uri as string | undefined }
 }
 
@@ -358,6 +363,7 @@ auth.post('/oauth/:provider/callback', async (c) => {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'Failed to exchange authorization code', 401)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
   const tokenData = (await tokenResponse.json()) as { id_token?: string }
   if (!tokenData.id_token) {
     throw new AppError(ErrorCodes.AUTH_INVALID_TOKEN, 'No ID token in response', 401)
@@ -637,6 +643,7 @@ auth.post('/devices', setupAuthMiddleware, async (c) => {
     )
     .all()
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
   const deviceId = (results[0] as { id: string }).id
 
   const { accessToken, refreshToken } = await issueTokens(
@@ -703,6 +710,7 @@ auth.get('/key-verifier', authMiddleware, async (c) => {
   })
 })
 
+// oxlint-disable-next-line typescript/no-deprecated -- zod 4 top-level validators accept different inputs than the shipped string validators
 const RecoveryQuerySchema = z.object({ email: z.string().email() })
 const BillingReconcileSchema = z.object({
   transactionId: z.string().trim().min(1).optional()
@@ -750,7 +758,9 @@ auth.get('/recovery', recoveryIpRateLimit, async (c) => {
 
   const hasRealRecovery = Boolean(user?.kdf_salt && user?.key_verifier)
   const response = {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     kdfSalt: hasRealRecovery ? (user!.kdf_salt as string) : dummy.kdfSalt,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     keyVerifier: hasRealRecovery ? (user!.key_verifier as string) : dummy.keyVerifier
   }
   return c.json(response)
@@ -921,7 +931,7 @@ auth.post('/refresh', refreshRateLimit, async (c) => {
       issuer: 'memry-sync',
       audience: 'memry-client'
     })
-    claims = result.payload as typeof claims
+    claims = result.payload
   } catch (err) {
     if (isJwtExpiredError(err)) {
       throw new AppError(ErrorCodes.AUTH_TOKEN_EXPIRED, 'Refresh token has expired', 401)

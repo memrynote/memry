@@ -28,12 +28,14 @@ function getRequestBody(req: VercelRequest): CheckoutRequestBody | null {
   if (typeof req.body === 'string') {
     try {
       const parsed: unknown = JSON.parse(req.body)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing a parsed JSON object to a string-keyed record; fields are validated by the caller
       return parsed && typeof parsed === 'object' ? (parsed as CheckoutRequestBody) : null
     } catch {
       return null
     }
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing req.body (typed any by Vercel) to a string-keyed record; fields are validated by the caller
   return req.body && typeof req.body === 'object' ? (req.body as CheckoutRequestBody) : null
 }
 

@@ -610,7 +610,7 @@ describe('UserSyncState', () => {
 
       const ctx = getCtx(doObj)
       const sockets = ctx.getWebSockets('device:device-1')
-      const ws = sockets[0] as unknown as WebSocket
+      const ws = sockets[0]
 
       // #when - send 101 messages (limit is 100)
       for (let i = 0; i <= 100; i++) {
@@ -1004,7 +1004,7 @@ describe('UserSyncState', () => {
       }
 
       // #when
-      doObj.webSocketMessage(brokenWs as never, '{}')
+      void doObj.webSocketMessage(brokenWs as never, '{}')
 
       // #then
       expect(fetchMock).toHaveBeenCalledTimes(1)

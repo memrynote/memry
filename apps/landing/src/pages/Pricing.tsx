@@ -78,7 +78,7 @@ export function PricingPage() {
     const checkoutCadence = getCheckoutCadence(tier, cadence)
     trackLandingEvent('landing_pricing_cta_click', pricingTarget(tier.id, checkoutCadence))
     const params = new URLSearchParams({ plan: tier.checkoutPlanId, cadence: checkoutCadence })
-    navigate(`/checkout?${params.toString()}`)
+    void navigate(`/checkout?${params.toString()}`)
   }
 
   return (

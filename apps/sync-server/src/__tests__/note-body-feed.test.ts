@@ -118,7 +118,7 @@ const servedCursors = (page: ChangesPage): number[] =>
   [
     ...page.items.map((item) => item.serverCursor as number),
     ...(page.noteBodies ?? []).map((body) => body.cursor)
-  ].sort((a, b) => a - b)
+  ].toSorted((a, b) => a - b)
 
 describe('cursor allocation on CRDT writes (#2295)', () => {
   it('gives each stored update the next cursors, in batch order, and keeps sequence_num', async () => {
@@ -201,7 +201,7 @@ describe('/sync/changes negotiation of note bodies (#2295)', () => {
 
     for (const subscription of [RECORDS_ONLY, resolveSyncSubscription(undefined)]) {
       const page = await read(0, subscription)
-      expect(Object.keys(page).sort()).toEqual(['deleted', 'hasMore', 'items', 'nextCursor'])
+      expect(Object.keys(page).toSorted()).toEqual(['deleted', 'hasMore', 'items', 'nextCursor'])
       expect(page.items.map((item) => item.id)).toEqual(['task-1', 'task-2'])
       expect(page.nextCursor).toBe(3)
     }
@@ -425,7 +425,7 @@ describe('page closure across tables (#2295)', () => {
       ).map((row) => row.server_cursor),
       ...cursorsOf('crdt_updates'),
       ...cursorsOf('crdt_snapshots')
-    ].sort((a, b) => a - b)
+    ].toSorted((a, b) => a - b)
 
     for (const limit of [1, 2, 3, 4, 5]) {
       const seen: number[] = []
@@ -439,7 +439,7 @@ describe('page closure across tables (#2295)', () => {
             )
             .all(USER_ID, cursor, page.nextCursor) as Array<{ server_cursor: number }>
         ).map((row) => row.server_cursor)
-        const served = [...servedCursors(page), ...tombstoneCursors].sort((a, b) => a - b)
+        const served = [...servedCursors(page), ...tombstoneCursors].toSorted((a, b) => a - b)
         expect(served.length).toBeLessThanOrEqual(limit)
         expect(page.nextCursor).toBeGreaterThanOrEqual(cursor)
         // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines

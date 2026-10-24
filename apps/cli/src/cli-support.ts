@@ -188,6 +188,7 @@ export function parseObjectValue(
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error(`${label} must be a JSON object`)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   return parsed as Record<string, unknown>
 }
 
@@ -208,6 +209,7 @@ export function parseReminderStatus(value: string | undefined) {
   if (!['pending', 'triggered', 'dismissed', 'snoozed'].includes(value)) {
     throw new Error(`Invalid reminder status: ${value}`)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
   return value as 'pending' | 'triggered' | 'dismissed' | 'snoozed'
 }
 
@@ -215,6 +217,7 @@ export function parseReminderTargetType(value: string | undefined) {
   if (!value || !['note', 'journal', 'highlight', 'task', 'note_date'].includes(value)) {
     throw new Error('Reminder target type must be note, journal, highlight, task, or note_date')
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
   return value as 'note' | 'journal' | 'highlight' | 'task' | 'note_date'
 }
 
@@ -222,6 +225,7 @@ export function parseSearchItemType(value: string | undefined) {
   if (!value || !['note', 'journal', 'task', 'inbox'].includes(value)) {
     throw new Error('Search reason item type must be note, journal, task, or inbox')
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
   return value as 'note' | 'journal' | 'task' | 'inbox'
 }
 

@@ -47,6 +47,7 @@ export const reserveCursors = (
     cursorBinds: (position) => [userId, offsetFromTop(position)],
     batch: (writes) => [...reservation, ...writes],
     cursorAt: (results, position) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
       (results[1].results as Array<{ current_cursor: number }>)[0].current_cursor -
       offsetFromTop(position)
   }

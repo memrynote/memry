@@ -52,10 +52,10 @@ const seed = async (): Promise<void> => {
   ])) as CryptoKeyPair
   signingKey = keyPair.privateKey
   const publicKey = Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       keyPair.publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
   harness.raw
@@ -131,7 +131,7 @@ const request = (app: App, path: string, init: RequestInit = {}) =>
       ...init,
       headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) }
     },
-    env as unknown as Record<string, unknown>,
+    env,
     {
       waitUntil: () => undefined,
       passThroughOnException: () => undefined
@@ -146,7 +146,7 @@ interface PushBody {
 const push = async (app: App, specs: PushSpec[]): Promise<{ status: number; body: PushBody }> => {
   const items = await Promise.all(specs.map(signedItem))
   const res = await request(app, '/sync/push', { method: 'POST', body: JSON.stringify({ items }) })
-  return { status: res.status, body: (await res.json()) as PushBody }
+  return { status: res.status, body: await res.json() }
 }
 
 interface PullBody {

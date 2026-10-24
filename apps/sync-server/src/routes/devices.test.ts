@@ -84,8 +84,8 @@ describe('device routes', () => {
     doStub.fetch.mockResolvedValue(Response.json({ ok: true }))
     app = createApp()
     env = createEnv()
-    vi.mocked(listDevices).mockResolvedValue([makeDevice()] as any)
-    vi.mocked(getDevice).mockResolvedValue(makeDevice() as any)
+    vi.mocked(listDevices).mockResolvedValue([makeDevice()])
+    vi.mocked(getDevice).mockResolvedValue(makeDevice())
   })
 
   it('lists non-revoked devices using the authenticated user id', async () => {
@@ -112,6 +112,7 @@ describe('device routes', () => {
     const res = await app.request('/devices/device-current', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(400)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.VALIDATION_ERROR
     )
@@ -124,17 +125,19 @@ describe('device routes', () => {
     const res = await app.request('/devices/missing', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(404)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.AUTH_DEVICE_NOT_FOUND
     )
   })
 
   it('returns 409 when revoking an already revoked device', async () => {
-    vi.mocked(getDevice).mockResolvedValueOnce(makeDevice({ revoked_at: 123 }) as any)
+    vi.mocked(getDevice).mockResolvedValueOnce(makeDevice({ revoked_at: 123 }))
 
     const res = await app.request('/devices/device-2', { method: 'DELETE' }, env)
 
     expect(res.status).toBe(409)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.AUTH_DEVICE_REVOKED
     )
@@ -186,7 +189,7 @@ describe('device routes', () => {
   })
 
   it('returns 409 when renaming a revoked device', async () => {
-    vi.mocked(getDevice).mockResolvedValueOnce(makeDevice({ revoked_at: 123 }) as any)
+    vi.mocked(getDevice).mockResolvedValueOnce(makeDevice({ revoked_at: 123 }))
 
     const res = await app.request(
       '/devices/device-2',

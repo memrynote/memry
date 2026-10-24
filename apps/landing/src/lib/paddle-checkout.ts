@@ -82,6 +82,7 @@ async function readJsonBody(response: Response) {
   if (!contentType.includes('application/json')) return {}
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: our own checkout API response; every field is optional
     return (await response.json()) as Partial<CheckoutResponse> & { error?: string }
   } catch {
     return {}

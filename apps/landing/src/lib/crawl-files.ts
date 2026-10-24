@@ -42,12 +42,12 @@ export function buildRobotsTxt(): string {
   return `User-agent: *\nAllow: /\n\nSitemap: ${BASE_URL}/sitemap.xml\n`
 }
 
+const page = (path: string, desc?: string) =>
+  desc ? `- [${path}](${BASE_URL}${path}): ${desc}` : `- [${path}](${BASE_URL}${path})`
+
 // AI-search discovery file (llms.txt). Crawlers like Perplexity / ChatGPT / Claude read
 // this to understand the site without reverse-engineering the HTML.
 export function buildLlmsTxt(): string {
-  const page = (path: string, desc?: string) =>
-    desc ? `- [${path}](${BASE_URL}${path}): ${desc}` : `- [${path}](${BASE_URL}${path})`
-
   return [
     '# memrynote',
     '',

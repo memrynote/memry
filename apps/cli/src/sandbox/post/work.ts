@@ -24,6 +24,8 @@ export function backdateTasks({ ctx, data }: PostContext): void {
   }
 }
 
+const json = (value: unknown): string | null => (value === null ? null : JSON.stringify(value))
+
 /**
  * A few activity-log entries, so a finished task shows its story. Desktop's
  * writer is apps/desktop/src/main/tasks/activity-log.ts, which needs the
@@ -38,7 +40,6 @@ export function taskActivity({ ctx, data }: PostContext): void {
   )
   const aurora = ctx.projects.get('aurora')!
   const statusOf = (name: string): string => aurora.statuses[name]
-  const json = (value: unknown): string | null => (value === null ? null : JSON.stringify(value))
   const row = (
     taskKey: string,
     daysAgo: number,

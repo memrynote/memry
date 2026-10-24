@@ -8,7 +8,7 @@ import {
 
 export function SmoothScroll() {
   useEffect(() => {
-    if (prefersReducedLandingMotion()) return
+    if (prefersReducedLandingMotion()) return undefined
 
     let cancelled = false
     let lenis: Lenis | null = null

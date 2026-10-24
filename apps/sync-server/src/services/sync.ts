@@ -253,6 +253,7 @@ const happensAfter = (incoming: VectorClock, existing: VectorClock): boolean => 
 }
 
 const isSupportedRecordSyncItemType = (type: string): type is RecordSyncItemType =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   RECORD_SYNC_ITEM_TYPE_SET.has(type as RecordSyncItemType)
 
 const requiresRecordClock = (type: RecordSyncItemType): boolean =>
@@ -331,7 +332,7 @@ export const computeContentHash = async (payload: {
   encryptedKey: string
   keyNonce: string
 }): Promise<string> => {
-  const canonical = JSON.stringify(payload, Object.keys(payload).sort())
+  const canonical = JSON.stringify(payload, Object.keys(payload).toSorted())
   const bytes = new TextEncoder().encode(canonical)
   const hash = await crypto.subtle.digest('SHA-256', bytes)
   return Array.from(new Uint8Array(hash))
@@ -346,7 +347,7 @@ export const serializePayload = (item: PushItemInput): string => {
     encryptedKey: item.encryptedKey,
     keyNonce: item.keyNonce
   }
-  return JSON.stringify(payload, Object.keys(payload).sort())
+  return JSON.stringify(payload, Object.keys(payload).toSorted())
 }
 
 const parseStoredClock = (itemId: string, clock: string | null): VectorClock | undefined => {
@@ -355,6 +356,7 @@ const parseStoredClock = (itemId: string, clock: string | null): VectorClock | u
   }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
     return JSON.parse(clock) as VectorClock
   } catch {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, `Corrupt clock payload for item ${itemId}`, 500)
@@ -374,6 +376,7 @@ const readEncryptedPayload = async (
 
   try {
     const text = await new Response(blob.body).text()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
     return JSON.parse(text) as EncryptedItemPayload
   } catch {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, `Corrupt blob payload for item ${itemId}`, 500)
@@ -405,6 +408,7 @@ const pullItemFromColumns = (
   return {
     id: columns.id,
     type: columns.type,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     operation: columns.operation as RecordPullItemResponse['operation'],
     cryptoVersion: columns.cryptoVersion,
     signature: columns.signature,
@@ -564,6 +568,7 @@ const buildSocketItems = (rows: CommittedRow[], budget: number): RecordPullItemR
       // The R2 object's exact text, parsed as the pull parses it.
       pullItemFromColumns(
         columns,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
         JSON.parse(new TextDecoder().decode(payloadBytes)) as EncryptedItemPayload
       )
     )
@@ -751,7 +756,8 @@ const processPushWave = async (
       if (existing && !isRecreateOverMarker(item, existing)) {
         const existingClock =
           typeof existing.clock === 'string'
-            ? (JSON.parse(existing.clock) as VectorClock)
+            ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
+              (JSON.parse(existing.clock) as VectorClock)
             : (existing.clock ?? undefined)
         if (shouldRejectRecordReplay(item.type, item.clock, existingClock)) {
           reject(index, ErrorCodes.SYNC_REPLAY_DETECTED)
@@ -862,6 +868,7 @@ const processPushWave = async (
         committedColumns.push({
           id: item.id,
           // Stage 1 rejected every type that is not a record type.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
           type: item.type as RecordSyncItemType,
           operation: item.operation,
           cryptoVersion: CRYPTO_VERSION,
@@ -977,6 +984,7 @@ const processPushWave = async (
   // later cursor.
   const replacedBlobKeys = stored
     .filter((entry) => entry.existing?.blob_key && entry.existing.blob_key !== entry.blobKey)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     .map((entry) => entry.existing?.blob_key as string)
   if (replacedBlobKeys.length > 0) {
     try {
@@ -1092,7 +1100,7 @@ export const processRecordPushBatch = async (
     maxCursor,
     outcomes,
     committedItems: buildSocketItems(
-      committed.sort((a, b) => a.serverCursor - b.serverCursor).map((entry) => entry.row),
+      committed.toSorted((a, b) => a.serverCursor - b.serverCursor).map((entry) => entry.row),
       socketItemsBudget
     ),
     committedAtMs
@@ -1222,6 +1230,7 @@ export const getManifest = async (
     .filter((row) => isSupportedRecordSyncItemType(row.item_type))
     .map((row) => ({
       id: row.item_id,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
       type: row.item_type as RecordSyncItemType,
       version: row.version,
       modifiedAt: row.updated_at,
@@ -1339,6 +1348,7 @@ const recordFeedSource =
       )
       .bind(userId, vaultId, after, ...types, fetchLimit),
     parse: (rows) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- D1 rows are untyped; the shape is fixed by the SELECT in this function
       (rows as ChangesRow[]).map((row) => {
         if (!isSupportedRecordSyncItemType(row.item_type)) {
           return { cursor: row.server_cursor, value: null }
@@ -1645,6 +1655,7 @@ export const pullItems = async (
     if (!lost[index]) return
     result.blobMissing.push({
       id: row.item_id,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
       type: row.item_type as RecordSyncItemType,
       serverCursor: row.server_cursor
     })
@@ -1690,6 +1701,7 @@ export const getItem = async (
 
   return {
     itemId: row.item_id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     type: row.item_type as RecordSyncItemType,
     version: row.version,
     payload,

@@ -479,6 +479,7 @@ async function paddleFetch<T>(
     throw new AppError(ErrorCodes.INTERNAL_ERROR, failureMessage, 502)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
   const payload = (await response.json()) as PaddleResponse<T>
   if (!payload.data) {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, failureMessage, 502)
@@ -525,6 +526,7 @@ export async function listPaddleInvoices(env: Bindings, userId: string): Promise
   if (!response.ok) {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Could not list Paddle invoices', 502)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
   const payload = (await response.json()) as PaddleResponse<PaddleTransactionListItem[]>
   const items = payload.data ?? []
   return items.map((t) => ({
@@ -570,6 +572,7 @@ export async function getPaddleInvoicePdfUrl(
   if (!response.ok) {
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Could not fetch invoice PDF', 502)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
   const payload = (await response.json()) as PaddleResponse<{ url?: string }>
   const url = payload.data?.url
   if (!url) {
@@ -604,6 +607,7 @@ async function fetchPaddleTransaction(
     throw new AppError(ErrorCodes.INTERNAL_ERROR, 'Could not fetch Paddle transaction', 502)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
   const payload = (await response.json()) as PaddleResponse<PaddleTransaction>
   if (!payload.data) {
     throw new AppError(ErrorCodes.NOT_FOUND, 'Paddle transaction not found', 404)

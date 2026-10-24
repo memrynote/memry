@@ -74,7 +74,7 @@ export function BillingSection() {
           <p className="mt-1 text-sm text-muted">Loading…</p>
         )}
         {portalError ? <p className="mt-2 text-sm text-red-500">{portalError}</p> : null}
-        <Button variant="outline" className="mt-4" onClick={openPortal}>
+        <Button variant="outline" className="mt-4" onClick={() => void openPortal()}>
           Manage payment method
         </Button>
       </section>
@@ -97,7 +97,7 @@ export function BillingSection() {
                 <button
                   type="button"
                   className="text-terracotta hover:underline shrink-0"
-                  onClick={() => openInvoice(inv.id)}
+                  onClick={() => void openInvoice(inv.id)}
                 >
                   PDF
                 </button>

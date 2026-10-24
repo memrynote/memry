@@ -6,7 +6,6 @@ import { runSyncExtras } from './commands/sync.ts'
 import {
   type AgentBackend,
   type AgentLocalProviderSettingsInput,
-  type CalendarBindingListOptions,
   type CalendarSourceListOptions,
   type CliIo,
   type ParsedCli,
@@ -30,6 +29,7 @@ export async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): 
       parsed.json,
       await app.calendar.sources.list({
         provider: getFlag(parsed.flags, 'provider'),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
         kind: getFlag(parsed.flags, 'kind') as CalendarSourceListOptions['kind'],
         selectedOnly: hasFlag(parsed.flags, 'selected')
       })
@@ -142,9 +142,7 @@ export async function runCalendar(app: MemryApp, parsed: ParsedCli, io: CliIo): 
           io,
           parsed.json,
           await app.calendar.bindings.list({
-            sourceType: getFlag(parsed.flags, 'source-type') as
-              | CalendarBindingListOptions['sourceType']
-              | undefined,
+            sourceType: getFlag(parsed.flags, 'source-type'),
             sourceId: getFlag(parsed.flags, 'source'),
             provider: getFlag(parsed.flags, 'provider'),
             includeArchived: hasFlag(parsed.flags, 'archived')

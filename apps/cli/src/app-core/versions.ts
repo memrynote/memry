@@ -40,6 +40,7 @@ function toListItem(row: typeof noteSnapshots.$inferSelect): SnapshotListItem {
     noteId: row.noteId,
     title: row.title,
     wordCount: row.wordCount,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
     reason: row.reason as SnapshotReason,
     createdAt: row.createdAt
   }

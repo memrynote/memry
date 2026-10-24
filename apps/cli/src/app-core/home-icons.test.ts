@@ -144,7 +144,7 @@ test('icons add stores svg (sanitized) and png, writes the file, and lists them'
   assert.equal(png.ext, 'png')
 
   const listed = await runOk<IconJson[]>(vaultPath, ['icons', 'list'])
-  assert.deepEqual(listed.map((icon) => icon.id).sort(), [png.id, svg.id].sort())
+  assert.deepEqual(listed.map((icon) => icon.id).toSorted(), [png.id, svg.id].toSorted())
 
   // The row carries the whole payload, so a missing file is rebuilt on list.
   await fs.rm(png.path)

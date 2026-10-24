@@ -10,6 +10,7 @@ import { eq } from 'drizzle-orm'
 import { foldTag } from '@memry/shared/tag-fold'
 import { resolveMigrationsDir } from './migrations-path.ts'
 import { getDataDbPath, getIndexDbPath, getMemryDir } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 export type DataDb = BetterSQLite3Database<typeof dataSchema>
 export type IndexDb = BetterSQLite3Database<typeof indexSchema>
@@ -41,6 +42,7 @@ function configure(sqlite: Database.Database, cacheSize: number): void {
   // database/sqlite-functions.ts); the tag columns are COLLATE NOCASE, which
   // folds ASCII only.
   sqlite.function('tag_fold', { deterministic: true }, (value: unknown) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     typeof value === 'string' ? foldTag(value) : (value as null)
   )
 }
@@ -50,7 +52,7 @@ function sleepSync(ms: number): void {
 }
 
 function isFileMissing(error: unknown): boolean {
-  return (error as NodeJS.ErrnoException).code === 'ENOENT'
+  return errorCode(error) === 'ENOENT'
 }
 
 function tryRemoveStaleInitLock(lockPath: string): void {
@@ -82,7 +84,7 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
       fd = fs.openSync(lockPath, 'wx')
       fs.writeFileSync(fd, `${process.pid}\n${new Date().toISOString()}\n`)
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+      if (errorCode(error) !== 'EEXIST') throw error
       tryRemoveStaleInitLock(lockPath)
       if (Date.now() - start > initLockTimeoutMs) {
         throw new Error('Timed out waiting for vault database initialization lock.', {
@@ -100,6 +102,7 @@ function withDatabaseInitLock<T>(vaultPath: string, fn: () => T): T {
     try {
       fs.unlinkSync(lockPath)
     } catch (error) {
+      // oxlint-disable-next-line no-unsafe-finally -- surfacing a failed lock cleanup is intended; it replaces the result so a stale lock is never ignored
       if (!isFileMissing(error)) throw error
     }
   }

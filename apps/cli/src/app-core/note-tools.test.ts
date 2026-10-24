@@ -175,7 +175,7 @@ test('carried tasks are the task lines a note holds, minus tasks still homed els
       noteIds: [carrier.id, keep.id],
       folderPaths: []
     })
-    assert.deepEqual([...both.taskIds].sort(), [own.id, shared.id].sort())
+    assert.deepEqual([...both.taskIds].toSorted(), [own.id, shared.id].toSorted())
   })
 })
 
@@ -275,12 +275,12 @@ test('attachment rename keeps the prefix and extension and repoints the note bod
     const renamed = await app.attachmentTools.rename(note.id, added.filename, 'Final Spec.pdf')
     assert.match(renamed.storedFilename, /-Final-Spec\.pdf$/)
     assert.equal(renamed.name, 'Final Spec.pdf')
-    assert.equal(renamed.storedFilename.split('-')[0], (added.filename as string).split('-')[0])
+    assert.equal(renamed.storedFilename.split('-')[0], added.filename.split('-')[0])
     const dir = path.join(vaultPath, 'attachments', note.id)
     assert.deepEqual(await fs.readdir(dir), [renamed.storedFilename])
     const body = (await app.notes.get(note.id))?.content ?? ''
     assert.ok(body.includes(renamed.storedFilename))
-    assert.ok(!body.includes(added.filename as string))
+    assert.ok(!body.includes(added.filename))
     assert.match(body, /"name":"Final Spec\.pdf"/)
 
     await assert.rejects(
@@ -313,7 +313,7 @@ test('vault-wide attachment list, --existing and --url', async () => {
       added.filename as string
     )
     assert.equal(shared.ref, `../attachments/${owner.id}/${added.filename}`)
-    assert.ok(((await app.notes.get(borrower.id))?.content ?? '').includes(shared.ref as string))
+    assert.ok(((await app.notes.get(borrower.id))?.content ?? '').includes(shared.ref))
     // Nothing was copied.
     assert.equal((await fs.readdir(path.join(vaultPath, 'attachments', owner.id))).length, 1)
     assert.equal((await app.attachmentTools.listVault()).length, 1)

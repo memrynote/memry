@@ -99,6 +99,7 @@ export const createRateLimiter = (options: RateLimitOptions): MiddlewareHandler<
         body: JSON.stringify({ windowSeconds })
       })
     )
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON body from the request or upstream response; a runtime parser would change which inputs are accepted
     const { count, windowStart } = (await response.json()) as ConsumeResponse
 
     if (count > effectiveMax) {

@@ -115,7 +115,7 @@ const seedRecord = (options: RecordSeedOptions): { blobKey: string; bytes: Uint8
       options.deleted ? nowSec() : null
     )
   // The source object must exist exactly as a push would have left it.
-  storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
+  void storage.put(blobKey, bytes.slice().buffer)
   return { blobKey, bytes }
 }
 
@@ -142,7 +142,7 @@ const seedSnapshot = (
       createdAt,
       `rev-${noteId}-${sequenceNum}`
     )
-  storage.put(blobKey, bytes.slice().buffer as ArrayBuffer)
+  void storage.put(blobKey, bytes.slice().buffer)
   return bytes
 }
 
@@ -439,7 +439,7 @@ describe('pack build', () => {
     const kept = seedSnapshot('note-b', 1001)
     await storage.put(
       `${USER}/vaults/${VAULT}/crdt/note-a/snapshot`,
-      new Uint8Array(25).fill(9).buffer as ArrayBuffer
+      new Uint8Array(25).fill(9).buffer
     )
 
     const result = await compactOneRange(

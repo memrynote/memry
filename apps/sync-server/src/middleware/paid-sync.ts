@@ -4,8 +4,7 @@ import { AppError, ErrorCodes } from '../lib/errors'
 import {
   assertPaidSyncAccess,
   ensureLocalAdminPaidSyncAccessForUser,
-  ensureSyncVaultAllowed,
-  type SyncEntitlement
+  ensureSyncVaultAllowed
 } from '../services/entitlements'
 import type { AppContext } from '../types'
 
@@ -75,7 +74,7 @@ export const paidSyncMiddleware: MiddlewareHandler<AppContext> = async (c, next)
   const entitlement = await assertPaidSyncAccess(c.env.DB, userId)
   await ensureSyncVaultAllowed(c.env.DB, userId, vaultId, entitlement)
   c.set('vaultId', vaultId)
-  c.set('syncEntitlement', entitlement as SyncEntitlement)
+  c.set('syncEntitlement', entitlement)
 
   await next()
 }

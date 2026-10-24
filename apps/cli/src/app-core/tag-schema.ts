@@ -14,17 +14,7 @@
  * inserts a `sync_intents` row in the same transaction; desktop replays the row
  * when its sync runtime starts (`drainPendingSyncIntents`).
  */
-import {
-  and,
-  asc,
-  eq,
-  inArray,
-  isNotNull,
-  isNull,
-  sql,
-  type AnyColumn,
-  type SQL
-} from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import {
   propertyDefinitions,
   syncIntents,
@@ -36,14 +26,11 @@ import { noteTags } from '@memry/db-schema/index-schema'
 import { parseRelationValue } from '@memry/contracts/relation-uri'
 import type { PropertyType } from '@memry/contracts/property-types'
 import type { ResolvedTag } from '@memry/contracts/tag-schema'
-import type { ImpactQuery, ImpactResult, NewFieldSpec } from '@memry/contracts/tag-schema-api'
 import type {
-  GetLinkedHereInput,
   LinkedHereGroup,
   LinkedNoteItem,
   LinkedTaskItem,
-  ObjectMatch,
-  SearchObjectsResponse
+  ObjectMatch
 } from '@memry/contracts/tag-objects-api'
 import {
   applySchemaEdit,
@@ -55,11 +42,10 @@ import {
   serializeSchema,
   type PropertyTypeLookup,
   type SchemaBodyEdit,
-  type SchemaEditError,
   type TagDefinitionInput
 } from '@memry/app-core/tag-schema'
 import type { NoteRecord } from '@memry/app-core/service-types'
-import { tagKey, foldTag } from '@memry/shared/tag-fold'
+import { tagKey } from '@memry/shared/tag-fold'
 import { plainVersionedMap } from '@memry/shared/versioned'
 import { utcNow } from '@memry/shared/utc'
 import { tagCategories } from '@memry/db-schema/schema/tag-categories'
@@ -74,24 +60,51 @@ import {
   parseOptions,
   foldForSearch,
   matchRank,
-  TEXT_LIKE,
   subtitleFor,
   fieldOwner
 } from './tag-schema-support.ts'
 import {
   NEW_FIELD_TYPES,
-  type NewFieldType,
-  type TagCategoryRecord,
   type TagFieldInput,
-  type TagSchemaEdit,
   type TagSchemaEditResult,
-  type TagSchemaOverview,
   type TagSchemaService
 } from './tag-schema-types.ts'
 import type { DataDb, IndexDb } from './database.ts'
 import type { NotesService } from './notes.ts'
 import type { PropertiesService } from './properties.ts'
 import type { TemplatesService } from './templates.ts'
+
+const headerHas = (note: NoteRecord, keys: ReadonlySet<string>): boolean =>
+  note.tags.some((tag) => keys.has(tagKey(tag)))
+
+const family = (tag: string, resolved: Map<string, ResolvedTag>): string[] | null => {
+  const key = tagKey(tag)
+  if (!resolved.get(key)?.hasFields) return null
+  return [key, ...descendantsOf(key, resolved)]
+}
+
+const requireRelation = (
+  relation: { target: string; many: boolean; inverse: string | null } | undefined
+) => {
+  if (!relation?.target.trim()) throw new Error('Choose which tag this relation points to')
+  return {
+    target: tagKey(relation.target),
+    many: relation.many,
+    inverse: relation.inverse?.trim() || null
+  }
+}
+
+const fieldNames = (tag: ResolvedTag | undefined): string[] =>
+  tag?.effectiveFields.map((f) => f.name) ?? []
+
+const byNewest = (a: NoteRecord, b: NoteRecord): number => b.modifiedAt.localeCompare(a.modifiedAt)
+
+const toItem = (note: NoteRecord): LinkedNoteItem => ({
+  noteId: note.id,
+  title: note.title,
+  date: note.journalDate,
+  snippet: note.snippet || null
+})
 
 export function createTagSchemaService({
   dataDb,
@@ -147,6 +160,7 @@ export function createTagSchemaService({
       get(name) {
         const row = byName.get(name)
         if (!row) return undefined
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
         const type = row.type as PropertyType
         const parsed = parseOptions(row.options)
         if (type === 'status' || type === 'project') return { type }
@@ -159,6 +173,7 @@ export function createTagSchemaService({
         }
         return {
           type,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
           options: Array.isArray(parsed) ? (parsed as Array<{ value: string; color: string }>) : []
         }
       }
@@ -180,9 +195,6 @@ export function createTagSchemaService({
 
   const loadNotes = (): Promise<NoteRecord[]> => notes.list({ limit: MAX_NOTES })
 
-  const headerHas = (note: NoteRecord, keys: ReadonlySet<string>): boolean =>
-    note.tags.some((tag) => keys.has(tagKey(tag)))
-
   const taskIdsWithTags = (keys: readonly string[]): string[] =>
     keys.length === 0
       ? []
@@ -200,12 +212,6 @@ export function createTagSchemaService({
       .where(isNotNull(tasks.fields))
       .all()
       .map((row) => ({ id: row.id, fields: plainVersionedMap(row.fields) }))
-
-  const family = (tag: string, resolved: Map<string, ResolvedTag>): string[] | null => {
-    const key = tagKey(tag)
-    if (!resolved.get(key)?.hasFields) return null
-    return [key, ...descendantsOf(key, resolved)]
-  }
 
   const planEdit = (key: string, edit: SchemaBodyEdit) => {
     const row = dataDb
@@ -258,17 +264,6 @@ export function createTagSchemaService({
     queueIntent('property_definition', name, 'update')
   }
 
-  const requireRelation = (
-    relation: { target: string; many: boolean; inverse: string | null } | undefined
-  ) => {
-    if (!relation?.target.trim()) throw new Error('Choose which tag this relation points to')
-    return {
-      target: tagKey(relation.target),
-      many: relation.many,
-      inverse: relation.inverse?.trim() || null
-    }
-  }
-
   const resultFor = (tag: string, changed: boolean): TagSchemaEditResult => ({
     tag: tagKey(tag),
     changed,
@@ -292,6 +287,7 @@ export function createTagSchemaService({
       return resolved
     },
 
+    // oxlint-disable-next-line typescript/consistent-return -- switch over edit kinds; an unknown kind falls through unchanged
     async edit(edit) {
       switch (edit.kind) {
         case 'add-field': {
@@ -345,12 +341,11 @@ export function createTagSchemaService({
       }
     },
 
+    // oxlint-disable-next-line typescript/consistent-return -- switch over edit kinds; an unknown kind falls through unchanged
     async impact(query) {
       const resolved = loadResolved()
       const members = (tag: string): Set<string> =>
         new Set([tagKey(tag), ...descendantsOf(tag, resolved)])
-      const fieldNames = (tag: ResolvedTag | undefined): string[] =>
-        tag?.effectiveFields.map((f) => f.name) ?? []
       const allNotes = await loadNotes()
       const objectsOf = (keys: ReadonlySet<string>) =>
         allNotes.filter((note) => headerHas(note, keys))
@@ -430,7 +425,7 @@ export function createTagSchemaService({
           const rank = matchRank(note.title, query)
           return rank === null ? [] : [{ note, rank }]
         })
-        .sort((a, b) => a.rank - b.rank || b.note.modifiedAt.localeCompare(a.note.modifiedAt))
+        .toSorted((a, b) => a.rank - b.rank || b.note.modifiedAt.localeCompare(a.note.modifiedAt))
         .slice(0, input.limit)
 
       const matches: ObjectMatch[] = ranked.map(({ note }) => {
@@ -455,14 +450,6 @@ export function createTagSchemaService({
       const filter = (field: string): string => `${field} contains "${uri}"`
       const groups: LinkedHereGroup[] = []
       const allNotes = await loadNotes()
-      const byNewest = (a: NoteRecord, b: NoteRecord): number =>
-        b.modifiedAt.localeCompare(a.modifiedAt)
-      const toItem = (note: NoteRecord): LinkedNoteItem => ({
-        noteId: note.id,
-        title: note.title,
-        date: note.journalDate,
-        snippet: note.snippet || null
-      })
 
       const relationGroups = new Map<
         string,
@@ -494,7 +481,7 @@ export function createTagSchemaService({
           field: group.field,
           label: group.label,
           total: group.notes.length,
-          items: group.notes.sort(byNewest).slice(0, input.limitPerGroup).map(toItem),
+          items: group.notes.toSorted(byNewest).slice(0, input.limitPerGroup).map(toItem),
           filter: filter(group.field)
         })
       }
@@ -550,7 +537,7 @@ export function createTagSchemaService({
         }
       }
       for (const group of taskGroups.values()) {
-        const items = group.items.sort(
+        const items = group.items.toSorted(
           (a, b) =>
             Number(a.completed) - Number(b.completed) ||
             (a.dueDate ?? '\uffff').localeCompare(b.dueDate ?? '\uffff')
@@ -570,7 +557,7 @@ export function createTagSchemaService({
       )
       const mentions = allNotes
         .filter((note) => note.id !== input.noteId && backlinkIds.has(note.id))
-        .sort(byNewest)
+        .toSorted(byNewest)
       if (mentions.length > 0) {
         groups.push({
           kind: 'mentions',

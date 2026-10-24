@@ -64,6 +64,7 @@ function buildFieldInput(parsed: ParsedCli, name: string): TagFieldInput {
   const options = getFlag(parsed.flags, 'options')
   return {
     name,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
     type: type as TagFieldInput['type'],
     ...(options && options !== 'true'
       ? {

@@ -125,13 +125,18 @@ describe('POST /sync/bootstrap', () => {
   it('answers 501 with a typed code when the deployment has no signing key', async () => {
     // #given — no BOOTSTRAP_SESSION_HMAC_KEY binding at all
     const app = createApp()
-    const res = await app.request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development'
-    } as never)
+    const res = await app.request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development'
+      }
+    )
 
     // #then
     expect(res.status).toBe(501)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_UNAVAILABLE'
     )
@@ -143,14 +148,19 @@ describe('POST /sync/bootstrap', () => {
     const app = createApp()
 
     // #when
-    const res = await app.request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET
-    } as never)
+    const res = await app.request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
 
     // #then — the client's silent-fallback signal
     expect(res.status).toBe(409)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_NOT_ELIGIBLE'
     )
@@ -163,11 +173,15 @@ describe('POST /sync/bootstrap', () => {
     const app = createApp()
 
     // #when
-    const res = await app.request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET
-    } as never)
+    const res = await app.request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
     const body = (await res.json()) as Record<string, any>
 
     // #then — first manifest page only, tail cursor is MAX(server_cursor),
@@ -199,12 +213,16 @@ describe('POST /sync/bootstrap', () => {
     const app = createApp()
 
     // #when
-    const res = await app.request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
-      ...R2_ENV
-    } as never)
+    const res = await app.request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
+        ...R2_ENV
+      }
+    )
     const body = (await res.json()) as Record<string, any>
 
     // #then — keyset page in hash order, cursor names the last hash served
@@ -217,12 +235,16 @@ describe('POST /sync/bootstrap', () => {
 describe('POST /sync/bootstrap/renew + /close', () => {
   const openSession = async (): Promise<Response> => {
     const app = createApp()
-    return app.request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
-      ...R2_ENV
-    } as never)
+    return app.request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET,
+        ...R2_ENV
+      }
+    )
   }
 
   const requestWithToken = async (
@@ -240,11 +262,15 @@ describe('POST /sync/bootstrap/renew + /close', () => {
         await next()
       })
     }
-    return app.request(path, { method: 'POST', headers: { 'X-Memry-Bootstrap-Token': token } }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET
-    } as never)
+    return app.request(
+      path,
+      { method: 'POST', headers: { 'X-Memry-Bootstrap-Token': token } },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
   }
 
   it('renews before expiry and extends the same ledger row', async () => {
@@ -274,11 +300,15 @@ describe('POST /sync/bootstrap/renew + /close', () => {
     const app = createApp()
 
     // #when / #then
-    const noToken = await app.request('/sync/bootstrap/renew', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET
-    } as never)
+    const noToken = await app.request(
+      '/sync/bootstrap/renew',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
     expect(noToken.status).toBe(401)
 
     const forged = await requestWithToken('/sync/bootstrap/renew', 'aaa.bbb')
@@ -322,6 +352,7 @@ describe('POST /sync/bootstrap/renew + /close', () => {
       'device-2'
     )
     expect(stolenClose.status).toBe(403)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await stolenClose.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_IDENTITY_MISMATCH'
     )
@@ -370,6 +401,7 @@ describe('POST /sync/bootstrap/renew + /close', () => {
     const opened = (await (await openSession()).json()) as Record<string, any>
     const closeRes = await requestWithToken('/sync/bootstrap/close', opened.session.token)
     expect(closeRes.status).toBe(200)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await closeRes.json()) as Record<string, unknown>).success).toBe(true)
 
     // #when — closing again is still 200
@@ -388,23 +420,32 @@ describe('POST /sync/bootstrap/renew + /close', () => {
     seedDevice({ lastCursor: null })
     await openSession()
     seedDevice({ deviceId: 'device-2', lastCursor: null })
-    const second = await createApp().request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET
-    } as never)
+    const second = await createApp().request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
     expect(second.status).toBe(200)
 
     // #when — a third fresh device tries
     seedDevice({ deviceId: 'device-3', lastCursor: null })
-    const third = await createApp().request('/sync/bootstrap', { method: 'POST' }, {
-      DB: harness.db,
-      ENVIRONMENT: 'development',
-      BOOTSTRAP_SESSION_HMAC_KEY: SECRET
-    } as never)
+    const third = await createApp().request(
+      '/sync/bootstrap',
+      { method: 'POST' },
+      {
+        DB: harness.db,
+        ENVIRONMENT: 'development',
+        BOOTSTRAP_SESSION_HMAC_KEY: SECRET
+      }
+    )
 
     // #then
     expect(third.status).toBe(429)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await third.json()) as { error: { code: string } }).error.code).toBe(
       'BOOTSTRAP_SESSION_LIMIT'
     )

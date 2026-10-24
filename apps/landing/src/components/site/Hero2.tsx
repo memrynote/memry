@@ -113,6 +113,11 @@ function HeadlineChip({
   )
 }
 
+// Touch fires pointerenter on tap; there the tap should only open the lightbox.
+const hoverCapable = () =>
+  // oxlint-disable-next-line typescript/prefer-optional-chain -- `typeof window` guards SSR where `window` is an undeclared global; `window?.` would throw
+  typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
+
 export function Hero2() {
   const shot = HERO_SHOT
   const [demoOpen, setDemoOpen] = useState(false)
@@ -139,10 +144,6 @@ export function Hero2() {
     mask.style.setProperty('--ox', `${((event.clientX - rect.left) / rect.width) * 100}%`)
     mask.style.setProperty('--oy', `${((event.clientY - rect.top) / rect.height) * 100}%`)
   }
-
-  // Touch fires pointerenter on tap; there the tap should only open the lightbox.
-  const hoverCapable = () =>
-    typeof window !== 'undefined' && window.matchMedia('(hover: hover)').matches
 
   const openReveal = (event: React.PointerEvent<HTMLElement>) => {
     if (reduceMotion || !hoverCapable()) return

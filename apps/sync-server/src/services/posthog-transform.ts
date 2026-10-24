@@ -361,6 +361,7 @@ const NON_DISCRIMINATING_ERROR_CODES = new Set([
 ])
 
 const isGroupableErrorCode = (errorCode: string | undefined): errorCode is string =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   Boolean(errorCode) && !NON_DISCRIMINATING_ERROR_CODES.has(errorCode as string)
 
 // Error Tracking requires the event name to be exactly `$exception`; a plain

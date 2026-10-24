@@ -15,7 +15,9 @@ function memoryStorage() {
 
 describe('registerWebDevice', () => {
   it('registers a device with a signed challenge and stores the session', async () => {
-    await sodium.ready
+    // oxlint-disable-next-line import/no-named-as-default-member -- the runtime ESM build of libsodium-wrappers-sumo exports only the default; the named exports exist in its types alone
+    const { ready } = sodium
+    await ready
     const storage = createAuthStorage(memoryStorage())
     const setupToken = `h.${Buffer.from(JSON.stringify({ jti: 'jti-1' })).toString('base64url')}.s`
     let body: Record<string, unknown> = {}

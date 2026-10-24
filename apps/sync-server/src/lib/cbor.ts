@@ -30,5 +30,5 @@ export const encodeSignaturePayload = (
   payloadType: CborPayloadType = 'SYNC_ITEM'
 ): Uint8Array => encodeCbor(payload, CBOR_FIELD_ORDER[payloadType])
 
-// oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters, typescript/no-unsafe-type-assertion -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check; narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
 export const decodePayload = <T = unknown>(data: Uint8Array): T => decode(data) as T

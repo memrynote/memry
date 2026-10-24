@@ -106,9 +106,9 @@ const importSources = [
 }))
 
 const noteImportSources = importSources.slice(0, 11)
-const todoistSource = importSources[11]!
-const ticktickSource = importSources[12]!
-const raindropSource = importSources[13]!
+const todoistSource = importSources[11]
+const ticktickSource = importSources[12]
+const raindropSource = importSources[13]
 
 type EmailComponent = {
   (props: BetaUpdateAugustEmailProps): ReactElement

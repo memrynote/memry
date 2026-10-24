@@ -13,7 +13,7 @@ const MIGRATION = '0011_crdt_server_cursor.sql'
 const migrationFiles = (): string[] =>
   readdirSync(migrationsDir)
     .filter((file) => file.endsWith('.sql'))
-    .sort()
+    .toSorted()
 
 const applyFiles = (db: Database.Database, files: string[]): void => {
   for (const file of files) db.exec(readFileSync(join(migrationsDir, file), 'utf8'))

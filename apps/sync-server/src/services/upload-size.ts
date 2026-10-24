@@ -68,6 +68,7 @@ export function readUploadedChunks(value: string): UploadedChunksRead {
     return { ok: false, entries: [], reason: 'malformed-json' }
   }
   if (!Array.isArray(parsed)) return { ok: false, entries: [], reason: 'not-an-array' }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   return { ok: true, entries: parsed as UploadedChunkEntry[] }
 }
 

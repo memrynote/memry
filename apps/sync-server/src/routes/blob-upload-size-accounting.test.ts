@@ -156,6 +156,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     const res = await putChunk(app, env, 0, 1024 + CHUNK_CRYPTO_OVERHEAD + 1)
 
     expect(res.status).toBe(413)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.STORAGE_FILE_TOO_LARGE
     )
@@ -276,6 +277,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     })
 
     expect(res.status).toBe(413)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.STORAGE_FILE_TOO_LARGE
     )
@@ -293,6 +295,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     })
 
     expect(res.status).toBe(402)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.SYNC_PAYMENT_REQUIRED
     )
@@ -309,6 +312,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     })
 
     expect(res.status).toBe(400)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.VALIDATION_ERROR
     )
@@ -347,6 +351,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     )
 
     expect(res.status).toBe(200)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { size: number }).size).toBe(1024)
   })
 
@@ -365,6 +370,7 @@ describe('attachment upload size accounting (plaintext limit, encrypted storage)
     )
 
     expect(res.status).toBe(400)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await res.json()) as { error: { code: string } }).error.code).toBe(
       ErrorCodes.UPLOAD_INCOMPLETE
     )

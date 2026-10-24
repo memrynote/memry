@@ -23,6 +23,7 @@ function lazyPage<K extends string>(
   exportName: K
 ): PageComponent {
   const loader = () => load().then((module) => ({ default: module[exportName] }))
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- lazy() returns a LazyExoticComponent; preload is attached on the next line
   const Component = lazy(loader) as unknown as PageComponent
   Component.preload = loader
   return Component

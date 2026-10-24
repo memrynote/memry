@@ -109,7 +109,7 @@ describe('calendar-channels routes', () => {
       expect(res.status).toBe(201)
       expect(await res.json()).toMatchObject({ channelId: 'ch-1', expiresAt })
       expect(batch).toHaveBeenCalledTimes(1)
-      const bindArgs = insert().statement.bind.mock.calls[0]!
+      const bindArgs = insert().statement.bind.mock.calls[0]
       expect(bindArgs[0]).toBe('ch-1') // channel_id
       expect(bindArgs[1]).toBe('user-1') // user_id (from auth)
       expect(bindArgs[2]).toBe('device-1') // device_id (from auth)
@@ -134,7 +134,7 @@ describe('calendar-channels routes', () => {
 
       // #then the hash is stored as-is
       expect(res.status).toBe(201)
-      expect(insert().statement.bind.mock.calls[0]![4]).toBe('a'.repeat(64))
+      expect(insert().statement.bind.mock.calls[0][4]).toBe('a'.repeat(64))
     })
 
     it('replaces prior channels for the same user, device and source in the same batch', async () => {
@@ -156,7 +156,7 @@ describe('calendar-channels routes', () => {
         'device-1',
         'google-calendar:abc'
       ])
-      expect(batch.mock.calls[0]![0]).toEqual([del().statement, insert().statement])
+      expect(batch.mock.calls[0][0]).toEqual([del().statement, insert().statement])
     })
 
     it.each([
@@ -215,8 +215,8 @@ describe('calendar-channels routes', () => {
 
       // #then
       expect(res.status).toBe(204)
-      expect(prepare.mock.calls[0]![0]).toContain('UPDATE google_calendar_channels')
-      const bindArgs = statement.bind.mock.calls[0]!
+      expect(prepare.mock.calls[0][0]).toContain('UPDATE google_calendar_channels')
+      const bindArgs = statement.bind.mock.calls[0]
       expect(bindArgs[0]).toBe('resource-from-google') // new resource_id
       expect(bindArgs[1]).toBe('ch-1') // channel_id
       expect(bindArgs[2]).toBe('user-1') // scope by user
@@ -256,8 +256,8 @@ describe('calendar-channels routes', () => {
 
       // #then
       expect(res.status).toBe(204)
-      expect(prepare.mock.calls[0]![0]).toContain('DELETE FROM google_calendar_channels')
-      const bindArgs = statement.bind.mock.calls[0]!
+      expect(prepare.mock.calls[0][0]).toContain('DELETE FROM google_calendar_channels')
+      const bindArgs = statement.bind.mock.calls[0]
       expect(bindArgs[0]).toBe('ch-1')
       expect(bindArgs[1]).toBe('user-1')
     })

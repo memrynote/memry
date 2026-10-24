@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router'
 import { ArrowRight, Loader2 } from 'lucide-react'
@@ -25,7 +25,7 @@ export function IosBetaPage() {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault()
     if (!email || status === 'loading') return
 
@@ -83,7 +83,10 @@ export function IosBetaPage() {
               You&rsquo;re on the list. Watch your inbox for the invite.
             </p>
           ) : (
-            <form onSubmit={handleSubmit} className="relative w-full max-w-[420px]">
+            <form
+              onSubmit={(event) => void handleSubmit(event)}
+              className="relative w-full max-w-[420px]"
+            >
               <label className="sr-only" htmlFor="ios-beta-email">
                 Email for your TestFlight invite
               </label>

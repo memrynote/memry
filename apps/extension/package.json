@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.18",
+    "@types/node": "^25.9.5",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.2.2",

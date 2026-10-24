@@ -50,10 +50,10 @@ const seed = async (): Promise<void> => {
   // Workers' `exportKey` overloads do not model raw Ed25519 export, which Node's
   // WebCrypto (what these tests run on) supports.
   const publicKey = Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       keyPair.publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
   harness.raw
@@ -151,20 +151,15 @@ const request = (
   const { clientHeader, ...rest } = init
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...((rest.headers as Record<string, string>) ?? {})
+    ...(rest.headers as Record<string, string>)
   }
   if (clientHeader) headers['x-memry-client'] = clientHeader
   // The push handler fires its broadcast through `executionCtx.waitUntil`, so
   // the request needs one exactly as the Workers runtime supplies.
-  return app.request(
-    path,
-    { ...rest, headers },
-    env as unknown as Record<string, unknown>,
-    {
-      waitUntil: () => undefined,
-      passThroughOnException: () => undefined
-    } as unknown as ExecutionContext
-  )
+  return app.request(path, { ...rest, headers }, env, {
+    waitUntil: () => undefined,
+    passThroughOnException: () => undefined
+  } as unknown as ExecutionContext)
 }
 
 const itemRow = (itemId: string) =>
@@ -256,7 +251,7 @@ describe('legacy (header-less) clients', () => {
 
     expect(res.status).toBe(200)
     const body = (await res.json()) as Record<string, unknown>
-    expect(Object.keys(body).sort()).toEqual(['connected', 'pendingItems', 'serverTime'])
+    expect(Object.keys(body).toSorted()).toEqual(['connected', 'pendingItems', 'serverTime'])
     expect(body).not.toHaveProperty('clientPolicy')
   })
 
@@ -293,7 +288,7 @@ describe('legacy (header-less) clients', () => {
     for (const headers of headerSets) {
       const res = await request(app, '/sync/changes?cursor=0', { headers })
       const body = (await res.json()) as Record<string, unknown>
-      expect(Object.keys(body).sort()).toEqual([
+      expect(Object.keys(body).toSorted()).toEqual([
         'deleted',
         'hasMore',
         'items',
@@ -375,6 +370,7 @@ describe('note_body subscribers (#2295)', () => {
     const bodyOnly = await request(app, '/sync/changes?cursor=1', {
       headers: { 'X-Memry-Sync-Types': 'note_body' }
     })
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await bodyOnly.json()) as RecordChangesResponse).items).toEqual([])
     expect(deviceCursor()).toBe(2)
   })

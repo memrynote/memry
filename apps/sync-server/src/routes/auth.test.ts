@@ -760,7 +760,7 @@ describe('auth routes', () => {
       )
       expect(entitlementCallIndex).toBeGreaterThanOrEqual(0)
 
-      const entitlementStatement = prepareMock.mock.results[entitlementCallIndex]!
+      const entitlementStatement = prepareMock.mock.results[entitlementCallIndex]
         .value as ReturnType<typeof createD1Statement>
       const bindArgs = entitlementStatement.bind.mock.calls[0]
       expect(bindArgs.slice(0, 9)).toEqual([
@@ -1432,9 +1432,7 @@ describe('auth routes', () => {
     })
 
     it('should return 404 when recovery user is missing', async () => {
-      vi.mocked(getUserById).mockResolvedValueOnce(
-        null as unknown as Awaited<ReturnType<typeof getUserById>>
-      )
+      vi.mocked(getUserById).mockResolvedValueOnce(null)
 
       const res = await app.request('/auth/recovery-info', { method: 'GET' }, env)
 
@@ -1468,9 +1466,7 @@ describe('auth routes', () => {
     })
 
     it('should return 404 when the user is missing', async () => {
-      vi.mocked(getUserById).mockResolvedValueOnce(
-        null as unknown as Awaited<ReturnType<typeof getUserById>>
-      )
+      vi.mocked(getUserById).mockResolvedValueOnce(null)
 
       const res = await app.request('/auth/key-verifier', { method: 'GET' }, env)
 
@@ -1499,9 +1495,7 @@ describe('auth routes', () => {
     })
 
     it('should derive dummy recovery data from RECOVERY_DUMMY_SECRET, not JWT_PRIVATE_KEY', async () => {
-      vi.mocked(getUserByEmail).mockResolvedValueOnce(
-        null as unknown as Awaited<ReturnType<typeof getUserByEmail>>
-      )
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
       const envWithJwtA = {
         ...env,
         JWT_PRIVATE_KEY: 'jwt-key-a',
@@ -1515,9 +1509,7 @@ describe('auth routes', () => {
       expect(first.status).toBe(200)
       const firstJson = await first.json()
 
-      vi.mocked(getUserByEmail).mockResolvedValueOnce(
-        null as unknown as Awaited<ReturnType<typeof getUserByEmail>>
-      )
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
       const envWithJwtB = {
         ...env,
         JWT_PRIVATE_KEY: 'jwt-key-b',
@@ -1533,9 +1525,7 @@ describe('auth routes', () => {
 
       expect(secondJson).toEqual(firstJson)
 
-      vi.mocked(getUserByEmail).mockResolvedValueOnce(
-        null as unknown as Awaited<ReturnType<typeof getUserByEmail>>
-      )
+      vi.mocked(getUserByEmail).mockResolvedValueOnce(null)
       const envWithDifferentDummySecret = {
         ...env,
         JWT_PRIVATE_KEY: 'jwt-key-a',
@@ -1618,9 +1608,7 @@ describe('auth routes', () => {
       updateStmt.run.mockResolvedValue({ success: true, meta: { changes: 0 } })
       ;(env.DB.prepare as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce(updateStmt)
 
-      vi.mocked(getUserById).mockResolvedValueOnce(
-        null as unknown as Awaited<ReturnType<typeof getUserById>>
-      )
+      vi.mocked(getUserById).mockResolvedValueOnce(null)
 
       // #when
       const res = await app.request(
@@ -1942,7 +1930,7 @@ describe('auth routes', () => {
     })
 
     it('returns 404 when user is not found', async () => {
-      vi.mocked(getUserById).mockResolvedValueOnce(null as never)
+      vi.mocked(getUserById).mockResolvedValueOnce(null)
 
       const envWithStorage = makeEnvWithStorage()
       const res = await app.request(makeDeleteAuthed({ code: '123456' }), undefined, envWithStorage)

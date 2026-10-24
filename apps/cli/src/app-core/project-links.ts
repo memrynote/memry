@@ -457,6 +457,7 @@ export function createProjectLinksService({
         title: row.title,
         startAt: row.startAt,
         endAt: row.endAt,
+        // oxlint-disable-next-line typescript/no-unnecessary-type-conversion -- SQLite integer 0/1 reaches here at runtime although the column is typed boolean
         isAllDay: Boolean(row.isAllDay)
       }))
       return {

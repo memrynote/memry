@@ -40,5 +40,5 @@ export function parseFieldFlags(
       `Invalid --field: ${parsed.error.issues.map((issue) => issue.message).join('; ')}`
     )
   }
-  return parsed.data as Record<string, JsonValue>
+  return parsed.data
 }

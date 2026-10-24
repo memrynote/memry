@@ -125,6 +125,7 @@ async function verifyCheckoutToken(
   if (!payloadBytes) return null
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload was HMAC-verified above, so it is a token this server minted
     return JSON.parse(new TextDecoder().decode(payloadBytes)) as CheckoutTokenPayload
   } catch {
     return null

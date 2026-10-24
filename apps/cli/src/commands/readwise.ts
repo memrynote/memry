@@ -38,7 +38,7 @@ function parseOptions(parsed: ParsedCli): ReadwiseSetOptionsInput {
       'Nothing to change. Pass --root-folder, --folder-layout, --cadence, --category <name>=on|off, --reader-documents, --reader-full-text, or --journal'
     )
   }
-  return input as ReadwiseSetOptionsInput
+  return input
 }
 
 /** `readwise` commands: the part of the Readwise importer that needs only the vault's databases. */

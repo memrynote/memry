@@ -1,7 +1,3 @@
-export { UserSyncState } from './durable-objects/user-sync-state'
-export { LinkingSession } from './durable-objects/linking-session'
-export { RateLimiter } from './durable-objects/rate-limiter'
-
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 
@@ -40,6 +36,10 @@ import { logCrdtTraffic } from './services/sync-telemetry'
 import { runPackBackfill } from './services/pack-backfill'
 import { handlePackQueueMessage } from './services/pack-consumer'
 import type { Bindings, AppContext } from './types'
+
+export { UserSyncState } from './durable-objects/user-sync-state'
+export { LinkingSession } from './durable-objects/linking-session'
+export { RateLimiter } from './durable-objects/rate-limiter'
 
 const logger = createLogger('Server')
 

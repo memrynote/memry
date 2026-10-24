@@ -22,6 +22,7 @@ export function createAuthStorage(backend: KeyValue) {
   return {
     getSession(): Session | null {
       const raw = backend.getItem(SESSION_KEY)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted JSON written by setSession; validating would sign out users whose stored shape predates a field
       return raw ? (JSON.parse(raw) as Session) : null
     },
     setSession(session: Session): void {
@@ -32,6 +33,7 @@ export function createAuthStorage(backend: KeyValue) {
     },
     getDeviceKeypair(): StoredKeypair | null {
       const raw = backend.getItem(KEYPAIR_KEY)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted JSON written by setDeviceKeypair; validating would drop a stored device key
       return raw ? (JSON.parse(raw) as StoredKeypair) : null
     },
     setDeviceKeypair(kp: StoredKeypair): void {

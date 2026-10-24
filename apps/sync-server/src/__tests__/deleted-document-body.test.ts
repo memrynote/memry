@@ -53,10 +53,10 @@ const seed = async (): Promise<void> => {
   ])) as CryptoKeyPair
   signingKey = keyPair.privateKey
   const publicKey = Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       keyPair.publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
   harness.raw
@@ -132,12 +132,13 @@ const push = async (app: App, spec: PushSpec): Promise<string[]> => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items: [await signedItem(spec)] })
     },
-    env as unknown as Record<string, unknown>,
+    env,
     {
       waitUntil: () => undefined,
       passThroughOnException: () => undefined
     } as unknown as ExecutionContext
   )
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
   return ((await res.json()) as { accepted: string[] }).accepted
 }
 
@@ -152,7 +153,7 @@ const writeSnapshot = (noteId: string, data: ArrayBuffer) =>
   storeSnapshot(harness.db, storage, USER_ID, VAULT_ID, noteId, DEVICE_ID, data)
 const bodyFromZero = async (noteId: string) =>
   (await getUpdates(harness.db, USER_ID, VAULT_ID, noteId, 0)).updates.map((u) => [
-    ...new Uint8Array(u.update_data as ArrayBuffer)
+    ...new Uint8Array(u.update_data)
   ])
 
 const storageUsed = (): number =>
@@ -282,7 +283,7 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
 
     const get = storage.get.bind(storage)
     let raced = false
-    vi.spyOn(storage, 'get').mockImplementation((async (key: string) => {
+    vi.spyOn(storage, 'get').mockImplementation(async (key: string) => {
       const body = await get(key)
       if (key === dayBlob && !raced) {
         raced = true
@@ -290,7 +291,7 @@ describe('a deleted note or journal loses its server body (#2986)', () => {
         expect(await deleteDay(app)).toEqual([DAY_ID])
       }
       return body
-    }) as R2Bucket['get'])
+    })
 
     const scope = { userId: USER_ID, vaultId: VAULT_ID }
     const racing = await compactOneRange(harness.db, storage, scope, 'crdt_snapshot')

@@ -71,6 +71,7 @@ export function resolveSyncSubscription(header: string | undefined | null): Sync
     } else if (entry === PURGED_TOMBSTONES) {
       purgedTombstones = true
     } else if (RECORD_TYPES.has(entry)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
       recordTypes.add(entry as RecordSyncItemType)
     }
   }
