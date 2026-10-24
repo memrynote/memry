@@ -195,6 +195,7 @@
     "complete-task": "Merkitse tehtävä {title} valmiiksi",
     "task-completed": "Tehtävä merkitty valmiiksi",
     "could-not-complete": "Tehtävän merkitseminen valmiiksi epäonnistui",
+    "could-not-update-status": "Tehtävän tilaa ei voitu muuttaa",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Muistiinpanon avaaminen epäonnistui"
     }
   },
+  "eventNotes": {
+    "heading": "Muistiinpanot",
+    "create": "Uusi muistiinpano",
+    "link": "Linkitä muistiinpano",
+    "untitled": "Kokousmuistiinpano",
+    "searchPlaceholder": "Hae muistiinpanoja",
+    "noResults": "Muistiinpanoja ei löytynyt",
+    "createFailed": "Muistiinpanoa ei voitu luoda tälle tapahtumalle.",
+    "linkFailed": "Muistiinpanoa ei voitu linkittää tähän tapahtumaan.",
+    "loadFailed": "Tähän tapahtumaan linkitettyjä muistiinpanoja ei voitu ladata.",
+    "propertyTaken": "Muistiinpanossa on jo ominaisuus ”{name}”, joka ei ole linkki."
+  },
   "notePopover": {
     "kind": "Muistiinpano",
     "kindDateReminder": "Päivämäärämuistutus",
@@ -254,6 +267,10 @@
     "overdue": "myöhässä",
     "untitled": "Nimetön",
     "days": "{count, plural, one {# päivä} other {# päivää}}",
+    "subtasks": {
+      "expand": "Näytä {count, plural, one {# alitehtävä} other {# alitehtävää}} kohteelta {title}",
+      "collapse": "Piilota {count, plural, one {# alitehtävä} other {# alitehtävää}} kohteelta {title}"
+    },
     "events": "Tapahtumat",
     "schedule-hint": "Aseta päivämäärä napsauttamalla, aseta aikaväli vetämällä",
     "empty-title": "Aikajanalla ei ole tässä mitään",

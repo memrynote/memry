@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Eräpäivä tyhjennetty # alitehtävästä} other {Eräpäivä tyhjennetty # alitehtävästä}}",
       "prioritySet": "{count, plural, one {Prioriteetti asetettu # alitehtävälle} other {Prioriteetti asetettu # alitehtävälle}}",
       "deleted": "{count, plural, one {# alitehtävä poistettu} other {# alitehtävää poistettu}}"
-    }
+    },
+    "completedBranch": "Merkittiin valmiiksi {title} ja {count, plural, one {# avoin alitehtävä} other {# avointa alitehtävää}}",
+    "deletedKeepSubtasks": "Poistettiin {title}, alitehtävät säilytettiin",
+    "deletedBranch": "Poistettiin {title} ja {count, plural, one {# alitehtävä} other {# alitehtävää}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "tila",
       "projectIs": "Projekti on",
       "project": "projekti",
+      "locationIs": "Sijainti on",
+      "location": "sijainti",
+      "unknownNote": "Tuntematon muistiinpano",
       "due": "Eräpäivä",
       "dueDate": "eräpäivä",
       "search": "haku",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Eräpäivä"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Sijainti",
+      "search": "Hae kansioita ja muistiinpanoja...",
+      "empty": "Ei kansioita tai muistiinpanoja, joissa on tehtäviä"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioriteetti",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Projektinäkymät",
       "overview": "Yleiskatsaus",
+      "all": "Kaikki",
       "tasks": "Tehtävät",
       "notes": "Muistiinpanot",
       "files": "Tiedostot",
@@ -951,6 +963,25 @@
       "fileError": "Tiedoston {name} linkittäminen epäonnistui",
       "fileErrorGeneric": "Tiedostojen tuominen epäonnistui",
       "label": "Lisää projektiin {name}"
+    },
+    "all": {
+      "showDone": "Näytä valmiit",
+      "empty": "Tässä projektissa ei ole avoimia kohteita.",
+      "expand": "Näytä tehtävät kohteessa {title}",
+      "collapse": "Piilota tehtävät kohteessa {title}",
+      "taskSummary": "{open}/{total} avoinna",
+      "daysLeft": "{count} pv",
+      "overdue": "{count} pv myöhässä",
+      "columns": {
+        "title": "Otsikko",
+        "daysLeft": "Päiviä jäljellä"
+      },
+      "status": {
+        "active": "Aktiivinen",
+        "done": "Valmis",
+        "upcoming": "Tulossa",
+        "past": "Mennyt"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigonsininen",
     "purple": "Violetti",
     "pink": "Vaaleanpunainen"
+  },
+  "subtaskTree": {
+    "addSubtask": "Lisää alitehtävä",
+    "dropInto": "Kohteeseen {title}",
+    "dropOut": "Yksi taso ylös",
+    "draftPlaceholder": "Alitehtävän otsikko",
+    "draftLabel": "Uusi alitehtävä kohteessa {title}",
+    "draftIn": "kohteessa {title}",
+    "toggleComplete": "Merkitse valmiiksi: {title}",
+    "moveUnder": {
+      "title": "Siirrä alle",
+      "placeholder": "Siirrä alle…",
+      "empty": "Ei vastaavaa tehtävää",
+      "topLevel": "Ylin taso: {project}",
+      "thisTask": "Tämä tehtävä",
+      "currentParent": "Nykyinen ylätehtävä",
+      "movesOne": "Siirtää kohteen {title}",
+      "movesBranch": "Siirtää kohteen {title} ja {count, plural, one {# alitehtävän} other {# alitehtävää}}",
+      "keys": "↵ Siirrä tähän · ⌘↵ Ylin taso · esc Sulje"
+    },
+    "zoom": {
+      "path": "Tehtävän polku",
+      "up": "Yksi taso ylös",
+      "upShortcut": "Yksi taso ylös (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Poistetaanko {title}?",
+      "summary": "{direct, plural, one {Siinä on # alitehtävä} other {Siinä on # alitehtävää}}{deeper, plural, =0 {} one { ja # lisää sen alla} other { ja # lisää niiden alla}}{open, plural, =0 {, kaikki valmiita.} other {, # edelleen avoinna.}}",
+      "cancel": "Peruuta",
+      "deleteAll": "Poista kaikki",
+      "keepSubtasks": "Säilytä alitehtävät"
+    },
+    "menu": {
+      "open": "Avaa",
+      "complete": "Merkitse valmiiksi",
+      "reopen": "Avaa uudelleen",
+      "zoom": "Tarkenna alitehtäviin",
+      "moveUnder": "Siirrä alle…",
+      "indent": "Siirrä kohteen {title} alle",
+      "outdent": "Siirrä yksi taso ylös",
+      "topLevel": "Tee ylimmän tason tehtävä",
+      "delete": "Poista"
+    },
+    "openPath": "Avaa {path}"
   }
 }

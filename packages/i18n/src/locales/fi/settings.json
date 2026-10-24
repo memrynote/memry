@@ -110,7 +110,8 @@
       "fileCreation": "Tiedoston luominen",
       "privacy": "Yksityisyys",
       "startupWindows": "Käynnistys ja ikkunat",
-      "newNotes": "Uudet muistiinpanot"
+      "newNotes": "Uudet muistiinpanot",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "Suurin osa sovelluksesta päivittyy heti. Osa järjestelmätason tekstistä – jo näytetyt ilmoitukset, Dockin nimike, ikkunan otsikkopalkki – päivittyy seuraavan käynnistyksen jälkeen.",
       "changed": "Kieli vaihdettu: {nativeName}",
       "failed": "Kielen vaihtaminen epäonnistui. Yritä uudelleen."
+    },
+    "ocrLanguages": {
+      "label": "Tekstintunnistus",
+      "helper": "Skannatuista PDF-tiedostoista ja kuvista luettavat kielet, jotta haku löytää niiden sanat. Englanti on sisäänrakennettu. Muut ladataan Memryn palvelimelta.",
+      "more": "{names} +{count}",
+      "downloading": "Ladataan kieltä {language}: {percent} %",
+      "failed": "Lataus epäonnistui. Jo olemassa olevat kielet toimivat edelleen.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Yritä uudelleen",
+      "saveFailed": "Tekstintunnistuskieliä ei voitu muuttaa."
     },
     "clockFormat": {
       "label": "Kellonajan muoto",
@@ -264,6 +275,22 @@
           "description": "Lähetä kertaluonteinen raportti teknisistä lokeista, joista tunnistetiedot on poistettu, jotta voimme selvittää kohtaamasi ongelman.",
           "button": "Lähetä raportti…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Sticky-pikanäppäin (Pikanäppäimet → Koko järjestelmä) avaa tarran, kun Memry on käynnissä. Lähettämätön teksti jää luonnokseksi näytön reunaan.",
+      "error": "Sticky-asetuksia ei voitu tallentaa.",
+      "defaultKind": {
+        "label": "Uudet tarrat lähetetään muodossa",
+        "last": "Viimeksi käytetty",
+        "note": "Muistiinpano",
+        "task": "Tehtävä",
+        "journal": "Päiväkirja"
+      },
+      "tuckEdge": {
+        "label": "Piilota reunaan",
+        "left": "Vasen reuna",
+        "right": "Oikea reuna"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "Asettelu",
       "toolbar": "Työkalupalkki",
       "spelling": "Oikeinkirjoitus",
-      "checklists": "Tarkistuslistat"
+      "checklists": "Tarkistuslistat",
+      "attachments": "Liitteet",
+      "calloutTypes": "Korostuslaatikoiden tyypit"
+    },
+    "calloutTypes": {
+      "description": "Omat korostuslaatikkosi, kirjoitettuna muodossa > [!nimi] muistiinpanossa. Toinen sovellus näyttää ne tavallisena lainauksena.",
+      "empty": "Ei vielä omia korostuslaatikkotyyppejä",
+      "add": "Lisää tyyppi",
+      "edit": "Muokkaa: {name}",
+      "delete": "Poista: {name}",
+      "name": "Nimi Markdownissa",
+      "namePlaceholder": "omatyyppi",
+      "label": "Näyttönimi",
+      "color": "Väri",
+      "icon": "Kuvake",
+      "nameInvalid": "Käytä pieniä kirjaimia, numeroita, - tai _, ja aloita kirjaimella",
+      "nameBuiltIn": "Tämä nimi on jo sisäänrakennettu korostuslaatikko",
+      "nameTaken": "Sinulla on jo tämännimisen tyyppi",
+      "save": "Tallenna",
+      "cancel": "Peruuta",
+      "error": "Korostuslaatikoiden tyyppien päivitys epäonnistui"
     },
     "width": {
       "label": "Editorin leveys",
@@ -449,7 +496,16 @@
       "toolbarMode": "Kiinnitetty muotoilupalkki",
       "spellCheck": "Tarkista oikeinkirjoitus",
       "convertChecklists": "Muuta tarkistuslistan kohdat tehtäviksi",
-      "convertAgentChecklists": "Muuta agentin kirjoittamat tarkistuslistan kohdat tehtäviksi"
+      "convertAgentChecklists": "Muuta agentin kirjoittamat tarkistuslistan kohdat tehtäviksi",
+      "pdfDisplayMode": "Näytä uudet PDF-tiedostot muodossa"
+    },
+    "pdfDisplayMode": {
+      "description": "Miten muistiinpanoon lisäämäsi PDF näkyy. Jokaisen PDF:n näkymää voi vaihtaa sen valikosta.",
+      "options": {
+        "embed": "Upotettuna",
+        "link": "Tiedostonimenä"
+      },
+      "error": "PDF-näkymän päivitys epäonnistui"
     },
     "convertChecklists": {
       "description": "Jokaisesta uudesta tarkistuslistan kohdasta tulee tehtävä. Pois päältä listat pysyvät tavallisina valintaruutuina; tee kohdasta tehtävä napsauttamalla sitä hiiren oikealla.",
@@ -561,7 +617,8 @@
       "renameNote": "Muodon vaihtaminen nimeää olemassa olevat päiväkirjatiedostot uudelleen. Tiedosto, jonka uusi nimi on jo käytössä, jätetään ennalleen.",
       "tokensHelp": "Päivämäärämuodon ohje",
       "tokensNote": "Muut merkit säilyvät sellaisenaan. Viikonpäivien nimet ovat aina englanniksi.",
-      "tokensTitle": "Muotomerkit"
+      "tokensTitle": "Muotomerkit",
+      "foldersNote": "Käytä merkkiä / lajitellaksesi merkinnät alikansioihin: YYYY/MMMM/YYYY-MM-DD sijoittaa jokaisen päivän vuoden ja kuukauden alle."
     },
     "preview": {
       "label": "Esikatselu",
@@ -586,6 +643,10 @@
         "defaultTemplate": "Oletuspohja",
         "location": "Sijainti ja muoto"
       }
+    },
+    "showInSidebar": {
+      "label": "Näytä sivupalkissa",
+      "description": "Näytä päiväkirjakansio ja sen merkinnät muistiinpanopuussa"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "Oletukset",
+      "subtasks": "Alitehtävät",
       "inbox": "Saapuneet"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "Tätä vanhemmat tehtävät korostetaan vanhentuneiksi",
       "unit": "päivää",
       "error": "Saapuneiden vanhentumisrajan päivittäminen epäonnistui"
+    },
+    "nestedSubtasks": {
+      "label": "Alitehtävät alitehtävien sisällä",
+      "description": "Sisennä alitehtäviä mille tahansa syvyydelle. Vanhempia versioita käyttävillä laitteilla näkyy vain ensimmäinen taso, kunnes ne päivittyvät.",
+      "error": "Sisäkkäisten alitehtävien päivitys epäonnistui"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "Synkronoidaan…",
         "paused": "Keskeytetty",
         "syncError": "Synkronointivirhe",
+        "deviceKeysMissing": "Synkronointi keskeytetty: laitteen avaimet puuttuvat",
         "offline": "Ei yhteyttä",
         "connecting": "Yhdistetään…",
         "localOnly": "Vain paikallinen",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "Viimeistellään aktivointia",
         "description": "Tilauksesi on aktiivinen. Synkronointi alkaa heti, kun vahvistamme sen – päivittäminen yleensä auttaa."
+      },
+      "unsent": {
+        "title": "Muistiinpanot, joissa on lähettämättömiä muutoksia",
+        "count": "{count, plural, one {# muistiinpano} other {# muistiinpanoa}}",
+        "description": "Tällä laitteella on muutoksia näihin muistiinpanoihin, joita palvelin ei ole vielä tallentanut.",
+        "waitingSince": "Odottanut {time} alkaen",
+        "more": "{count, plural, one {Ja # muistiinpano lisää} other {Ja # muistiinpanoa lisää}}",
+        "reasons": {
+          "body": "Teksti",
+          "record": "Tiedot",
+          "file_not_taken": "Tiedostoa ei ole vielä yhdistetty",
+          "rejected": "Palvelin hylkäsi"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "Laskutuksen tilan päivittäminen epäonnistui",
         "billingActive": "Laskutus on aktiivinen",
         "activationPending": "Aktivointi odottaa",
-        "portalFailed": "Laskutusportaalin avaaminen epäonnistui"
+        "portalFailed": "Laskutusportaalin avaaminen epäonnistui",
+        "portalNoCustomer": "Laskutustiliä ei löytynyt vielä. Jos maksoit juuri, valitse Päivitä tila ja yritä uudelleen."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "Tekoälytoiminnot pois käytöstä",
       "error": "Asetuksen päivittäminen epäonnistui"
     },
+    "summarizeLongNotes": {
+      "label": "Tiivistä pitkät muistiinpanot",
+      "description": "Kirjoittaa pitkistä muistiinpanoista lyhyempiä versioita yhdistetyllä agentillasi, jotta voit tiivistää muistiinpanon pääkohtiin. Toimii tällä laitteella.",
+      "error": "Pitkien muistiinpanojen tiivistyksen päivitys epäonnistui",
+      "failed": "Edellinen ajo epäonnistui ·",
+      "retry": "Yritä uudelleen",
+      "retryError": "Tiivistystä ei voitu yrittää uudelleen",
+      "agentLabel": "Tiivistelmät kirjoittava agentti",
+      "agentAuto": "Automaattinen",
+      "agentError": "Tiivistysagentin vaihto epäonnistui",
+      "noAgent": "Agenttia ei löytynyt ·",
+      "openAgents": "Avaa agentit"
+    },
+    "imageSearch": {
+      "label": "Hae kuvia sisällön perusteella",
+      "description": "Etsi valokuvia sen perusteella, mitä niissä näkyy. Lataa 109 Mt:n kuvamallin, kun ensimmäinen kuva indeksoidaan.",
+      "enabled": "Kuvahaku käytössä",
+      "disabled": "Kuvahaku pois käytöstä"
+    },
     "unknownError": "Tuntematon virhe",
     "groups": {
       "voice": "Puheen litterointi",
@@ -1324,6 +1425,9 @@
         "none": "Älä nimeä uudelleen"
       },
       "namingError": "Äänimuistioiden nimeämisasetuksen päivittäminen epäonnistui",
+      "audioSearch": "Hae äänimuistioita äänen perusteella",
+      "audioSearchDescription": "Etsi äänimuistioita, joilla ei ole litteraattia, kuten musiikkia tai ääniä, sen perusteella miltä ne kuulostavat. Lataa 189 Mt:n äänimallin, kun ensimmäinen indeksoitava ilmaantuu.",
+      "audioSearchError": "Äänimuistiohaun päivitys epäonnistui",
       "language": "Puhuttu kieli",
       "languageDescription": "Kieli, jota puhut ääniviesteissä",
       "languageDefault": "Oletus",
@@ -1459,7 +1563,8 @@
       "csv": "Tuo .csv-tiedosto – yksi muistiinpano riviä kohti, sarakkeista tulee ominaisuuksia",
       "raindrop": "Tuo Raindrop.io -kirjanmerkkivienti (.csv) – kirjanmerkit päätyvät Saapuneisiin",
       "apple-notes": "Tuo Apple Notes -tietokannasta (NoteStore.sqlite, macOS)",
-      "onenote": "Tuo OneNote-muistikirjoja (vaatii Microsoft-tilin)"
+      "onenote": "Tuo OneNote-muistikirjoja (vaatii Microsoft-tilin)",
+      "readwise": "Tuo korostuksesi Readwisesta (vaatii käyttöoikeustunnuksen)"
     },
     "action": "Tuo",
     "select": "Valitse sovellus, josta tuodaan…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Varoitukset",
-      "confirm": "Tuo"
+      "confirm": "Tuo",
+      "readwise": {
+        "books": "{count, plural, one {# kirja} other {# kirjaa}}",
+        "highlights": "{count, plural, one {# korostus} other {# korostusta}}",
+        "documents": "{count, plural, one {# dokumentti} other {# dokumenttia}}"
+      }
     },
     "dialog": {
       "title": "Tuo sovelluksesta {name}",
@@ -1505,7 +1615,18 @@
         "deselectAll": "Tyhjennä valinta",
         "foldersSelected": "{count, plural, one {# kansio valittu} other {# kansiota valittu}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# lukittu muistiinpano} other {# lukittua muistiinpanoa}}",
+          "hint": "Anna Notes-salasanasi tuodaksesi ne. Sitä käytetään vain tähän tuontiin, eikä sitä tallenneta. Lukittujen muistiinpanojen liitteitä ei tuoda.",
+          "label": "Notes-salasana",
+          "placeholder": "Notes-salasana",
+          "check": "Tarkista",
+          "wrong": "Tämä salasana ei avaa yhtään lukittua muistiinpanoa.",
+          "unlockedAll": "{count, plural, one {Avaa lukitun muistiinpanon.} other {Avaa kaikki # lukittua muistiinpanoa.}}",
+          "unlockedSome": "Avaa {unlocked} lukitusta {total} muistiinpanosta. Loput käyttävät eri salasanaa ja ohitetaan.",
+          "checkError": "Salasanaa ei voitu tarkistaa."
+        }
       },
       "chooseFolder": "Valitse Apple Notes -kansio…",
       "chooseDirectory": "Valitse kansio…",
@@ -1529,12 +1650,206 @@
         "failed": "{count} epäonnistui"
       },
       "error": "Tuonti epäonnistui",
-      "previewError": "Esikatselu epäonnistui"
+      "previewError": "Esikatselu epäonnistui",
+      "readwise": {
+        "intro": "Liitä Readwise-käyttöoikeustunnuksesi. Memry tarkistaa sen ensin Readwisesta ja tallentaa sen sitten tämän laitteen järjestelmän avainnippuun. Sitä ei koskaan synkronoida.",
+        "tokenLabel": "Käyttöoikeustunnus",
+        "tokenPlaceholder": "Liitä tunnuksesi",
+        "getToken": "Hae tunnuksesi",
+        "connect": "Yhdistä",
+        "connecting": "Yhdistetään…",
+        "connectFailed": "Readwiseen ei voitu yhdistää",
+        "takeOver": {
+          "syncsOn": "Readwise synkronoidaan laitteella {device}.",
+          "syncsOnAnother": "Readwise synkronoidaan toisella laitteella.",
+          "explain": "Vain yksi laite hakee tietoja Readwisesta, jotta sama korostus ei kirjoitu kahdesti. Hakeaksesi tältä laitteelta liitä tunnuksesi uudelleen: se ei koskaan siirry laitteiden välillä. Toinen laite pysähtyy seuraavan kirjan kohdalla, ja kaikki muistiinpanot säilyvät.",
+          "button": "Synkronoi tässä sen sijaan",
+          "working": "Siirretään Readwisea tänne…",
+          "failed": "Readwisea ei voitu siirtää tälle laitteelle"
+        },
+        "groups": {
+          "location": "Minne muistiinpanot menevät",
+          "categories": "Mitä tuodaan",
+          "reader": "Readwise Reader",
+          "journal": "Päiväkirja",
+          "sync": "Synkronointi"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Listaa päivän korostukset päiväkirjassa",
+            "description": "Lisää Readwise-osion päivään, jona korostit, ja linkittää jokaisen kirjamuistiinpanon. Vain uudet korostukset, ei täydennystä taaksepäin.",
+            "firstImport": "Ensimmäinen tuonti ei kirjoita mitään päiväkirjaan."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Tuo myös tallennetut Reader-dokumentit",
+            "description": "Oletuksena pois. Voi lisätä tuhansia muistiinpanoja."
+          },
+          "fullText": {
+            "label": "Sisällytä artikkelin koko teksti",
+            "description": "Kirjoitetaan kerran, kun muistiinpano luodaan"
+          }
+        },
+        "rootFolder": {
+          "label": "Kansio",
+          "description": "Uudet kirjat tulevat tänne. Olemassa olevat muistiinpanot pysyvät paikoillaan."
+        },
+        "layout": {
+          "label": "Kansiorakenne",
+          "description": "Koskee vain uusia kirjoja.",
+          "options": {
+            "by-category": "Luokittain",
+            "flat": "Yksi kansio"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Kirjat",
+            "description": "Kindle-, Apple Books- ja muut korostukset"
+          },
+          "articles": {
+            "label": "Artikkelit",
+            "description": "Verkkoartikkelit ja uutiskirjeet"
+          },
+          "tweets": {
+            "label": "Twiitit",
+            "description": "Tallennetut twiitit ja ketjut"
+          },
+          "podcasts": {
+            "label": "Podcastit",
+            "description": "Podcast-jaksot ja katkelmat"
+          },
+          "supplementals": {
+            "label": "Lisämateriaalit",
+            "description": "Kirjat, jotka Readwise lisää itse ilman korostuksiasi"
+          },
+          "other": {
+            "label": "Muut",
+            "description": "Luokat, jotka Readwise lisäsi tämän version jälkeen"
+          }
+        },
+        "cadence": {
+          "label": "Tiheys",
+          "description": "Kuinka usein uudet korostukset saapuvat.",
+          "options": {
+            "manual": "Manuaalinen",
+            "hourly": "Tunneittain",
+            "daily": "Päivittäin"
+          }
+        },
+        "syncNow": {
+          "label": "Synkronoi nyt",
+          "description": "Tarkista Readwisesta uudet korostukset.",
+          "button": "Synkronoi nyt"
+        },
+        "disconnect": "Katkaise yhteys",
+        "disconnectHint": "Yhteyden katkaiseminen poistaa tunnuksen tältä laitteelta. Muistiinpanosi säilyvät.",
+        "deleted": {
+          "heading": "Poistetut kirjat",
+          "description": "Memryssä poistamasi muistiinpanot. Ne pysyvät poistettuina, kunnes palautat ne.",
+          "meta": "Poistettu {date} · {count, plural, one {# korostus} other {# korostusta}}",
+          "metaDocument": "Poistettu {date} · tallennettu artikkeli",
+          "restore": "Palauta",
+          "footer": "Palauttaminen luo muistiinpanon uudelleen kaikkine korostuksineen.",
+          "empty": "Ei poistettuja kirjoja",
+          "syncsOn": "Readwise synkronoidaan laitteella {device}.",
+          "syncsOnAnotherDevice": "Readwise synkronoidaan toisella laitteella.",
+          "loadFailed": "Poistettuja kirjoja ei voitu ladata",
+          "restoreFailed": "Muistiinpanoa ei voitu palauttaa"
+        },
+        "importNow": "Tuo nyt",
+        "importBooks": "{count, plural, one {Tuo # kirja} other {Tuo # kirjaa}}",
+        "importNotes": "{count, plural, one {Tuo # muistiinpano} other {Tuo # muistiinpanoa}}",
+        "importNone": "Tuo",
+        "preview": {
+          "intro": "{highlights, plural, one {# korostus} other {# korostusta}} {books, plural, one {# kirjasta} other {# kirjasta}} on valmiina. Mitään ei kirjoiteta ennen kuin vahvistat.",
+          "introOff": "{highlights, plural, one {# korostus} other {# korostusta}} {books, plural, one {# kirjasta} other {# kirjasta}} on valmiina. Pois: {off}. {willImport, plural, one {# kirja tuodaan} other {# kirjaa tuodaan}}. Mitään ei kirjoiteta ennen kuin vahvistat.",
+          "introReaderOnly": "Readwise-kirjastossasi ei ole vielä korostuksia. {documents, plural, one {# tallennettu Reader-dokumentti tuodaan} other {# tallennettua Reader-dokumenttia tuodaan}} muistiinpanoina. Mitään ei kirjoiteta ennen kuin vahvistat.",
+          "readerLabel": "Tallennetut Reader-dokumentit",
+          "empty": "Readwise-kirjastossasi ei ole vielä korostuksia. Mitään ei kirjoiteta. Viimeistele asennus tuomalla.",
+          "willImport": "tuodaan",
+          "off": "pois",
+          "retry": "Yritä uudelleen"
+        },
+        "status": {
+          "connected": "Yhdistetty",
+          "synced": "Synkronoitu {time}",
+          "syncing": "Synkronoidaan Readwisen kanssa",
+          "reading": "Luetaan kirjastoasi…",
+          "writing": "Kirjoitetaan kirjoja, {done}/{total}",
+          "finishing": "Viimeistellään…",
+          "waitingTitle": "Odotetaan memry-synkronointia",
+          "waitingDetail": "Memry odottaa, että muiden laitteidesi muistiinpanot ovat saapuneet, jotta mitään kirjaa ei kirjoiteta kahdesti. Readwise käynnistyy heti sen jälkeen.",
+          "otherTitle": "Synkronoidaan laitteella {device}",
+          "otherTitleUnknown": "Synkronoidaan toisella laitteella",
+          "otherDetail": "Vain yksi laite hakee tietoja Readwisesta, jotta sama korostus ei kirjoitu kahdesti.",
+          "lastRun": "Edellinen ajo: {counts}",
+          "lastRunNothing": "Edellinen ajo: ei mitään uutta",
+          "nextRun": "Seuraava synkronointi {time}",
+          "retryAt": "Memry yrittää uudelleen {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise tarvitsee uuden tunnuksen",
+              "detail": "Readwise ei hyväksynyt tallennettua tunnusta. Liitä uusi osoitteesta readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Readwise-tilauksesi on päättynyt",
+              "detail": "Uusi tilauksesi osoitteessa readwise.io ja yritä sitten uudelleen."
+            },
+            "rate-limited": {
+              "title": "Readwise rajoittaa pyyntöjä",
+              "detail": "Liian monta pyyntöä lyhyessä ajassa."
+            },
+            "network": {
+              "title": "Readwiseen ei saada yhteyttä",
+              "detail": "Tarkista yhteytesi."
+            },
+            "server": {
+              "title": "Readwisessa oli ongelma",
+              "detail": "Readwise vastasi virheellä."
+            },
+            "unexpected": {
+              "title": "Synkronointi pysähtyi",
+              "detail": "Ajon aikana tapahtui virhe."
+            }
+          },
+          "counts": {
+            "added": "{count} lisätty",
+            "updated": "{count} päivitetty",
+            "appended": "{count} laajennettu",
+            "deferred": "{count} odottaa avointa muistiinpanoa",
+            "failed": "{count} epäonnistui",
+            "highlights": "{count, plural, one {# korostus} other {# korostusta}}"
+          },
+          "actions": {
+            "cancel": "Peruuta",
+            "retry": "Yritä nyt uudelleen",
+            "newToken": "Liitä uusi tunnus",
+            "reconnect": "Yhdistä uudelleen",
+            "syncHere": "Synkronoi tässä sen sijaan"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise tarvitsee uuden tunnuksen",
+            "description": "Synkronointi on keskeytetty, kunnes liität uuden."
+          },
+          "subscription-expired": {
+            "title": "Readwise-tilauksesi on päättynyt",
+            "description": "Synkronointi on keskeytetty, kunnes tilaus on taas aktiivinen."
+          },
+          "open": "Avaa Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Tiedoston lukeminen epäonnistui",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# lukittu muistiinpano jäi tuomatta} other {# lukittua muistiinpanoa jäi tuomatta}}; Memry ei voi lukea niitä ilman Apple Notes -salasanaasi."
+        "lockedNote": "{count, plural, one {# lukittu muistiinpano jäi tuomatta} other {# lukittua muistiinpanoa jäi tuomatta}}; Memry ei voi lukea niitä ilman Apple Notes -salasanaasi.",
+        "lockedWrongPassword": "{count, plural, one {# lukittua muistiinpanoa ei tuotu; se käyttää} other {# lukittua muistiinpanoa ei tuotu; ne käyttävät}} eri salasanaa kuin antamasi.",
+        "lockedUnreadable": "{count, plural, one {# lukittua muistiinpanoa ei voitu purkaa, eikä sitä tuotu} other {# lukittua muistiinpanoa ei voitu purkaa, eikä niitä tuotu}}.",
+        "lockedAttachment": "{count, plural, one {# lukitun muistiinpanon liitettä ei tuotu} other {# lukittujen muistiinpanojen liitettä ei tuotu}}; muistiinpanon teksti tuotiin."
       },
       "csv": {
         "noHeaders": "CSV-tiedostossa ei ole otsikkoriviä",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "Tuntematon prioriteetti {priority} → ei mitään",
         "unparsedDate": "Päivämäärän ”{date}” tulkitseminen epäonnistui",
         "subtaskNoParent": "Alitehtävällä ”{title}” ei ole ylätehtävää sisennystasolla {indent}; tuotiin ylimmälle tasolle"
+      },
+      "readwise": {
+        "tokenMissing": "Readwisea ei ole yhdistetty.",
+        "tokenInvalid": "Readwise ei hyväksynyt tallennettua tunnusta. Katkaise yhteys ja yhdistä uudelleen uudella tunnuksella.",
+        "unreachable": "Readwiseen ei saatu yhteyttä. Tarkista yhteytesi ja yritä uudelleen.",
+        "categoryOff": "{count, plural, one {# kirja kuuluu} other {# kirjaa kuuluu}} luokkaan, jonka poistit käytöstä, eikä {count, plural, one {sitä} other {niitä}} tuotu.",
+        "unchanged": "{count, plural, one {# kirja oli} other {# kirjaa oli}} jo ajan tasalla.",
+        "sourceDeleted": "{count, plural, one {# kirja poistettiin} other {# kirjaa poistettiin}} Readwisessa. Muistiinpanot säilyvät.",
+        "noteDeleted": "{count, plural, one {# muistiinpano poistettiin} other {# muistiinpanoa poistettiin}} Memryssä, ja {count, plural, one {se pysyy} other {ne pysyvät}} poistettuina.",
+        "busy": "{count, plural, one {# muistiinpano on auki} other {# muistiinpanoa on auki}} editorissa, ja {count, plural, one {se kirjoitetaan} other {ne kirjoitetaan}} seuraavalla ajolla."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Tuodaan Todoist-tehtäviä…"
+      },
+      "readwise": {
+        "fetching": "Luetaan Readwise-kirjastoasi…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, one {Näytä # lisää} other {Näytä # lisää}}",
       "showLess": "Näytä vähemmän",
       "groups": {
+        "reading": "Lukeminen",
         "noteApps": "Muistiinpanosovellukset",
         "tasks": "Tehtävät, päiväkirja ja kirjanmerkit",
         "files": "Tiedostot"
+      },
+      "readwise": {
+        "notConnected": "Ei yhdistetty",
+        "connected": "Yhdistetty",
+        "synced": "Synkronoitu {time}",
+        "syncing": "Synkronoidaan…",
+        "waiting": "Odotetaan synkronointia",
+        "otherDevice": "Synkronoidaan laitteella {device}",
+        "otherDeviceUnknown": "Synkronoidaan muualla",
+        "invalidToken": "Tarvitsee uuden tunnuksen",
+        "subscriptionExpired": "Tilaus päättynyt",
+        "rateLimited": "Pyyntöjä rajoitettu",
+        "network": "Readwiseen ei saada yhteyttä",
+        "server": "Readwise-virhe",
+        "unexpected": "Synkronointi epäonnistui"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "Nimetty uudelleen: ”{oldName}” → ”{newName}”",
       "renameFailed": "Tunnisteen uudelleennimeäminen epäonnistui",
+      "renaming": "Nimetään uudelleen #{oldName}: {done} / {total} muistiinpanoa",
+      "renamedBodySkipped": "Nimeä ”{newName}” ei voi kirjoittaa tekstin sisäiseksi tunnisteeksi, joten #{oldName} muistiinpanojen tekstissä säilyy sellaisenaan",
+      "renamedSomeFailed": "{count, plural, one {# muistiinpanoa} other {# muistiinpanoa}} ei voitu päivittää. Avaa {count, plural, one {se} other {ne}} ja lisää tunniste uudelleen",
       "deleteFailed": "Tunnisteen poistaminen epäonnistui",
       "deleted": "Tunniste ”{name}” poistettu {count, plural, one {# kohteesta} other {# kohteesta}}",
       "mergeFailed": "Tunnisteiden yhdistäminen epäonnistui",
@@ -1901,12 +2248,29 @@
       "unsupported": "Yhdistelmää {shortcut} ei voi käyttää yleisenä pikanäppäimenä. Valitse toinen yhdistelmä.",
       "fallbackInUse": "Oletuspikanäppäin {shortcut} on toisen sovelluksen käytössä. Aseta toinen yhdistelmä, jotta voit käyttää yleistä pikakirjausta."
     },
+    "folderNotes": {
+      "title": "Uusi muistiinpano kansioon",
+      "description": "Luo muistiinpano suoraan valitsemaasi kansioon",
+      "add": "Lisää kansio",
+      "empty": "Ei vielä kansiopikanäppäimiä. Lisää kansio antaaksesi sille yhden.",
+      "rowDescription": "Luo muistiinpanon tähän kansioon",
+      "missing": "Tätä kansiota ei ole enää. Valitse toinen kansio tai poista pikanäppäin.",
+      "changeFolder": "Vaihda kansiota",
+      "searchFolders": "Hae kansioita...",
+      "noFolders": "Kansioita ei löytynyt",
+      "remove": "Poista pikanäppäin",
+      "conflictLabel": "Uusi muistiinpano kansioon {folder}",
+      "missingToast": "Kansiota ”{folder}” ei ole enää",
+      "missingToastAction": "Muokkaa pikanäppäintä",
+      "foldersLoadFailed": "Tämän pikanäppäimen kansiota ei voitu tarkistaa"
+    },
     "toasts": {
       "saveGlobalFailed": "Yleisen pikakirjauksen pikanäppäimen tallentaminen epäonnistui",
       "saveFailed": "Pikanäppäimen tallentaminen epäonnistui",
       "resetFailed": "Pikanäppäimen nollaaminen epäonnistui",
       "resetAllSuccess": "Kaikki pikanäppäimet palautettu oletuksiin",
-      "resetAllFailed": "Pikanäppäinten nollaaminen epäonnistui"
+      "resetAllFailed": "Pikanäppäinten nollaaminen epäonnistui",
+      "saveStickyFailed": "Sticky-pikanäppäimen tallennus epäonnistui"
     },
     "categories": {
       "navigation": "Navigointi",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "Hae",
           "description": "Avaa yleinen haku"
+        },
+        "commands": {
+          "label": "Komentopaletti",
+          "description": "Hae ja suorita mikä tahansa komento"
         },
         "settings": {
           "label": "Avaa asetukset",
@@ -2042,6 +2410,10 @@
           "label": "Näytä/piilota sivupalkki",
           "description": "Näytä tai piilota sivupalkki"
         },
+        "toggleDayPanel": {
+          "label": "Näytä/piilota päiväpaneeli",
+          "description": "Näytä tai piilota päiväpaneeli oikealla"
+        },
         "shortcuts": {
           "label": "Pikanäppäinten ohje",
           "description": "Näytä pikanäppäimet"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "Todellinen koko",
           "description": "Palauta zoomaus 100 %:iin"
+        },
+        "foldFull": {
+          "label": "Tiivistys: Täysi",
+          "description": "Näytä muistiinpanon jokainen sana"
+        },
+        "foldBrief": {
+          "label": "Tiivistys: Lyhyt",
+          "description": "Näytä vain avainlauseet sellaisinaan"
+        },
+        "foldKey": {
+          "label": "Tiivistys: Avainkohdat",
+          "description": "Näytä jokainen kohta ja sen peruste"
+        },
+        "foldTakeaway": {
+          "label": "Tiivistys: Oppi",
+          "description": "Näytä yksi rivi kappaletta kohti"
+        },
+        "foldTopic": {
+          "label": "Tiivistys: Aihe",
+          "description": "Näytä muistiinpano osioidensa karttana"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "Yleinen pikakirjaus",
       "recordingHint": "Paina näppäimiä… esc peruuttaa",
       "reset": "Nollaa",
-      "resetAll": "Palauta kaikki oletuksiin"
+      "resetAll": "Palauta kaikki oletuksiin",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Avaa tarra mistä tahansa sovelluksesta memrynoten ollessa käynnissä"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "Kellon aikaero havaittu",
       "items": "kohdetta",
       "willSyncWhenBackOnline": "Synkronoidaan, kun verkkoyhteys palaa",
-      "openSyncSettings": "Avaa synkronointiasetukset"
+      "stalled": "Muutokset eivät ole synkronoituneet vähään aikaan. Kokeile Synkronoi nyt.",
+      "openSyncSettings": "Avaa synkronointiasetukset",
+      "repairDeviceKeys": "Korjaa",
+      "signInToRepair": "Kirjaudu uudelleen asettaaksesi tämän laitteen avaimet. Synkronoimattomat muistiinpanot, tehtävät ja projektit säilyvät. Saatat tarvita palautuslauseesi.",
+      "repairFailed": "Tämän laitteen avaimia ei voitu korjata. Yritä uudelleen.",
+      "syncNotStarted": {
+        "vault-binding": "Tämän laitteen avaimet on palautettu, mutta tätä holvia ei ole vielä asetettu synkronoitumaan tilisi kanssa. Valitse synkronointitapa synkronointivalikosta.",
+        "vault-foreign": "Tämän laitteen avaimet on palautettu, mutta tämä holvi kuuluu toiselle tilille. Se pysyy paikallisena tällä laitteella.",
+        "entitlement": "Tämän laitteen avaimet on palautettu, mutta synkronointi vaatii aktiivisen Sync-tilauksen.",
+        "unavailable": "Tämän laitteen avaimet on palautettu, mutta synkronointia ei voitu käynnistää. Se yrittää uudelleen; käynnistä Memry uudelleen, jos se ei onnistu."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "Malli",
         "description": "Valitse malli luettelosta tai anna se manuaalisesti."
       },
+      "thinking": {
+        "label": "Ajattelu",
+        "description": "Pois päältä pyytää DeepSeek-tyylisiä malleja ohittamaan ajattelun nopeampien ja halvempien vastausten saamiseksi.",
+        "default": "Oletus",
+        "off": "Pois"
+      },
       "apiKey": {
         "label": "API-avain",
         "description": "Valinnainen tunnistetieto, joka tallennetaan käyttöjärjestelmän avainnippuun.",
@@ -2286,6 +2698,17 @@
       "revoke": "Peru",
       "revokeLabel": "Peru työkalun {tool} pysyvä hyväksyntä",
       "ignoredInPageReview": "Ohitetaan: muistiinpanojen ja päiväkirjan muokkauksista kysytään aina."
+    },
+    "memory": {
+      "group": "Muisti",
+      "description": "Agentit toimivat tätä holvia varten ylläpidetyssä kansiossa holvin ulkopuolella, joten niiden sinne tallentamat tiedot siirtyvät seuraavaan keskusteluun.",
+      "clear": "Tyhjennä agentin muisti",
+      "clearDescription": "Poistaa agenttien tästä holvista tallentamat tiedot. Muistiinpanot ja keskusteluhistoria säilyvät.",
+      "clearAction": "Tyhjennä",
+      "cleared": "Agentin muisti tyhjennetty.",
+      "failed": "Agentin muistia ei voitu tyhjentää.",
+      "confirmTitle": "Tyhjennetäänkö agentin muisti?",
+      "confirmDescription": "Agentit menettävät tästä holvista tallentamansa tiedot, mukaan lukien Claude Coden projektimuistin. Tätä ei voi kumota. Muistiinpanot ja keskusteluhistoria säilyvät."
     },
     "v2": {
       "permissions": {
