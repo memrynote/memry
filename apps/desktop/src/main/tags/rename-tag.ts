@@ -81,7 +81,7 @@ function renamePairs(indexDb: IndexDb, dataDb: DataDb, oldName: string, newName:
       byKey.set(nameKey, { from: trimmed, to: newTrim + suffixBelow(trimmed, oldTrim) })
     }
   }
-  return [...byKey.values()].sort((a, b) => b.from.split('/').length - a.from.split('/').length)
+  return [...byKey.values()].toSorted((a, b) => b.from.split('/').length - a.from.split('/').length)
 }
 
 function moveDefinition(dataDb: DataDb, { from, to }: TagRename): void {
@@ -188,6 +188,7 @@ function readJob(dataDb: DataDb): TagRenameJob | null {
   if (raw === null) return null
   let job: Partial<TagRenameJob> = {}
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     job = JSON.parse(raw) as Partial<TagRenameJob>
   } catch (err) {
     log.warn('Rename job setting is not JSON', { err })

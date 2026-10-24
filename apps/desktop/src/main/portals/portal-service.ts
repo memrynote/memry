@@ -88,7 +88,7 @@ export async function stampAnchor(
   blockId: string
 ): Promise<PortalStampAnchorResult> {
   const note = getNoteCacheById(getIndexDatabase(), noteId)
-  if (!note || note.fileType !== 'markdown') return { success: false, reason: 'missing-note' }
+  if (note?.fileType !== 'markdown') return { success: false, reason: 'missing-note' }
   if (isNoteLocked(noteId, note.path)) return { success: false, reason: 'locked' }
 
   return withDoc(noteId, async (doc, openedHere) => {
@@ -142,7 +142,7 @@ export async function searchPortalBlocks(input: PortalSearchInput): Promise<Port
   for (const noteId of candidates.slice(0, PORTAL_SEARCH_CANDIDATE_CAP)) {
     if (results.length > input.limit) break
     const note = getNoteCacheById(indexDb, noteId)
-    if (!note || note.fileType !== 'markdown' || isNoteLocked(noteId, note.path)) continue
+    if (note?.fileType !== 'markdown' || isNoteLocked(noteId, note.path)) continue
 
     try {
       const matches = await withDoc(noteId, (doc) => {

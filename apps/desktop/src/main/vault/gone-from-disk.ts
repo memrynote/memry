@@ -19,6 +19,7 @@ async function presence(absolutePath: string): Promise<Presence> {
     await fs.stat(absolutePath)
     return 'present'
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     const code = (error as NodeJS.ErrnoException).code
     return code === 'ENOENT' || code === 'ENOTDIR' ? 'gone' : 'unreadable'
   }

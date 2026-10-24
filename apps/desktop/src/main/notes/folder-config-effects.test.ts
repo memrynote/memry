@@ -77,7 +77,7 @@ describe('syncFolderConfigDelete', () => {
 
     expect(paths()).toEqual(['Projects other'])
     const deleted = mocks.enqueueLocalSyncDelete.mock.calls.map((c) => c[1])
-    expect(deleted.sort()).toEqual(['Projects', 'Projects/2026'])
+    expect(deleted.toSorted((a, b) => a.localeCompare(b))).toEqual(['Projects', 'Projects/2026'])
   })
 })
 
@@ -88,7 +88,7 @@ describe('syncFolderConfigRename', () => {
 
     syncFolderConfigRename('Projects', 'Work')
 
-    expect(paths().sort()).toEqual(['Work', 'Work/2026/Q1'])
+    expect(paths().toSorted()).toEqual(['Work', 'Work/2026/Q1'])
   })
 
   it('keeps the icon when the watcher already recorded the moved folder', () => {
@@ -111,7 +111,7 @@ describe('backfillFolderConfigs', () => {
     ]
 
     expect(await backfillFolderConfigs()).toBe(2)
-    expect(paths().sort()).toEqual(['Projects', 'Projects/2026'])
+    expect(paths().toSorted()).toEqual(['Projects', 'Projects/2026'])
 
     mocks.enqueueLocalSyncCreate.mockClear()
     expect(await backfillFolderConfigs()).toBe(0)

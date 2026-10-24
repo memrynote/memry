@@ -173,7 +173,7 @@ describe('sidebar order across the note lifecycle (#1646)', () => {
     expect(
       getAllNotePositions(db)
         .map((r) => r.path)
-        .sort()
+        .toSorted()
     ).toEqual(['Projects', 'Projects/a.md'])
   })
 
@@ -194,7 +194,7 @@ describe('renameFolder when the rename fails (#2531)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     testDb = createTestDataDb()
-    mocks.getDatabase.mockReturnValue(testDb.db as unknown as DataDb)
+    mocks.getDatabase.mockReturnValue(testDb.db)
   })
 
   afterEach(() => {

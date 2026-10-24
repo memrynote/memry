@@ -34,6 +34,7 @@ function markerPath(): string {
 function readGeneratedVersion(): string | null {
   try {
     const parsed: unknown = JSON.parse(fs.readFileSync(markerPath(), 'utf-8'))
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const version = (parsed as { appVersion?: unknown } | null)?.appVersion
     return typeof version === 'string' ? version : null
   } catch {

@@ -122,10 +122,7 @@ async function noteWith(title: string, properties: Record<string, unknown>) {
 }
 
 const frontmatter = (notePath: string): Record<string, unknown> =>
-  parseNote(fs.readFileSync(path.join(vault.path, notePath), 'utf-8')).frontmatter as Record<
-    string,
-    unknown
-  >
+  parseNote(fs.readFileSync(path.join(vault.path, notePath), 'utf-8')).frontmatter
 
 async function taskWithPhone(value: string): Promise<string> {
   data.db
@@ -148,7 +145,7 @@ describe('renaming a field everywhere', () => {
   it('survives a crash after the first note and finishes on the next run without duplicates', async () => {
     await runTagSchemaCommand(
       db(),
-      index.db as never,
+      index.db,
       { kind: 'add-field', tag: 'person', field: { name: 'Phone', type: 'text' } },
       () => {}
     )
@@ -203,7 +200,7 @@ describe('renaming a field everywhere', () => {
   async function personWithPhone(): Promise<void> {
     await runTagSchemaCommand(
       db(),
-      index.db as never,
+      index.db,
       { kind: 'add-field', tag: 'person', field: { name: 'Phone', type: 'text' } },
       () => {}
     )
@@ -213,7 +210,7 @@ describe('renaming a field everywhere', () => {
     await personWithPhone()
     await runTagSchemaCommand(
       db(),
-      index.db as never,
+      index.db,
       { kind: 'add-field', tag: 'person', field: { name: 'Mobile', type: 'text' } },
       () => {}
     )

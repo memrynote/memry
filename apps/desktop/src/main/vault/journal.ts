@@ -136,7 +136,7 @@ export function parseJournalEntry(rawContent: string, date: string): ParsedJourn
   }
 
   return {
-    frontmatter: data as JournalFrontmatter,
+    frontmatter: data,
     content: content.trim(),
     hadFrontmatter,
     id: generateJournalId(date),
@@ -353,6 +353,7 @@ export function buildJournalEntryWrite(
   try {
     previousFile = readJournalTextSync(date)
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
   const existing =

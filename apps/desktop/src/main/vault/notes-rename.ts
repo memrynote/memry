@@ -94,6 +94,7 @@ export async function renameNote(id: string, newTitle: string): Promise<Note> {
       id,
       path: newRelativePath,
       title: newTitle,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
       mimeType: cached?.mimeType ?? null,
       fileSize: cached?.fileSize ?? 0,
@@ -206,6 +207,7 @@ export async function moveNote(id: string, newFolder: string): Promise<Note> {
       id,
       path: newRelativePath,
       title: existing.title,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
       fileType: cached?.fileType as Exclude<FileType, 'markdown'>,
       mimeType: cached?.mimeType ?? null,
       fileSize: cached?.fileSize ?? 0,

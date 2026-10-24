@@ -104,7 +104,7 @@ describe('sticky window', () => {
     showStickyWindow(null)
     const closing = getStickyWindow()!
     // A real close finishes later; until then the window is not destroyed.
-    vi.mocked(closing.close as () => void).mockImplementationOnce(() => {})
+    vi.mocked(closing.close).mockImplementationOnce(() => {})
 
     tuckStickyWindow()
     showStickyWindow()

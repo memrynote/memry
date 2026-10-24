@@ -391,7 +391,7 @@ describe('vault activity log', () => {
       expect(
         listActivity()
           .map((entry) => `${entry.kind}:${entry.path ?? ''}`)
-          .sort()
+          .toSorted()
       ).toEqual(['added:notes/new.md', 'failed:notes/broken.md', 'skipped:notes/sheet.xlsx'])
     })
 

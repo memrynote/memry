@@ -196,7 +196,7 @@ describe('resolveVaultEmbed', () => {
       isIndexing: false,
       indexProgress: 0,
       error: null
-    } as unknown as VaultStatus)
+    })
     expect(resolver.resolveVaultEmbed('Images/photo.png')).toBeNull()
   })
 
@@ -232,7 +232,7 @@ describe('resolveVaultEmbed', () => {
       'missing-two.png'
     ])
 
-    expect(Object.keys(resolved).sort()).toEqual(['Images/photo.png', 'found.png'])
+    expect(Object.keys(resolved).toSorted()).toEqual(['Images/photo.png', 'found.png'])
     expect.soft(readConfig).toHaveBeenCalledTimes(1)
     expect.soft(openIndex).toHaveBeenCalledTimes(1)
   })

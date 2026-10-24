@@ -210,7 +210,7 @@ describe('runFileSearch', () => {
     // reading a worker failure out of a user's log actually needs
     const logged = mocks.warned.at(-1) as { err?: unknown } | undefined
     expect(logged?.err).toBeInstanceOf(Error)
-    expect((logged?.err as Error).message).toContain('ENOMEM')
-    expect((logged?.err as Error).cause).toBe('ENOMEM')
+    expect((logged!.err as Error).message).toContain('ENOMEM')
+    expect((logged!.err as Error).cause).toBe('ENOMEM')
   })
 })

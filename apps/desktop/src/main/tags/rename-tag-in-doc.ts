@@ -35,6 +35,7 @@ function renameTagsInText(text: Y.XmlText, renames: readonly TagRename[]): boole
   const at: number[] = []
   const attrsAt: Array<Record<string, unknown>> = []
   let offset = 0
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Y.Text.toDelta() returns any-shaped ops; fields are checked before use
   for (const op of text.toDelta() as TextOp[]) {
     if (typeof op.insert !== 'string') {
       joined += '\uFFFC'

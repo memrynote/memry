@@ -59,7 +59,7 @@ async function writeNoteTaskIds(input: NoteTaskIdsReindexInput): Promise<number 
     if (shouldStop()) return null
 
     const before = getNoteCacheById(indexDb, noteId)
-    if (!before || before.fileType !== 'markdown' || before.taskIds !== null) continue
+    if (before?.fileType !== 'markdown' || before.taskIds !== null) continue
 
     let raw: string | null
     try {

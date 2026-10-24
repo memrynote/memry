@@ -69,15 +69,18 @@ function parseFolderConfig(content: string): FolderConfig {
     views: Array.isArray(data.views) ? data.views : undefined,
     formulas:
       data.formulas && typeof data.formulas === 'object'
-        ? (data.formulas as Record<string, string>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
+          (data.formulas as Record<string, string>)
         : undefined,
     properties:
       data.properties && typeof data.properties === 'object'
-        ? (data.properties as FolderConfig['properties'])
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
+          (data.properties as FolderConfig['properties'])
         : undefined,
     summaries:
       data.summaries && typeof data.summaries === 'object'
-        ? (data.summaries as FolderConfig['summaries'])
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
+          (data.summaries as FolderConfig['summaries'])
         : undefined
   }
 }
@@ -295,6 +298,7 @@ interface FolderTreeScan {
 }
 
 function isNotFound(error: unknown): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
   return (error as NodeJS.ErrnoException | null)?.code === 'ENOENT'
 }
 
@@ -355,6 +359,7 @@ export async function removeFolderIfEmpty(folderPath: string): Promise<RemoveEmp
   try {
     scan = await scanFolderTree(absDir)
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     const code = (error as NodeJS.ErrnoException | null)?.code
     if (code === 'ENOENT' || code === 'ENOTDIR') return { removed: false, reason: 'missing' }
     throw error

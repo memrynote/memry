@@ -60,7 +60,7 @@ describe('a note header status written from the tasks in its body', () => {
     mocks.content = ids.map((id) => `- [ ] ${id} {task:${id}}`).join('\n')
   }
   const storeStatus = (value: unknown = 'Not started', name = 'status', type = 'status'): void =>
-    setNoteProperties(index.db as never, 'n1', { [name]: value }, () => type as never)
+    setNoteProperties(index.db, 'n1', { [name]: value }, () => type)
   const written = (): unknown => mocks.merge.mock.calls[0]?.[1]
 
   beforeEach(() => {

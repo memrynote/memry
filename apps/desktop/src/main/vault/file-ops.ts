@@ -360,10 +360,10 @@ export async function listDirectories(dirPath: string, relativeTo?: string): Pro
 
         if (entry.isDirectory()) {
           const fullPath = path.join(currentPath, entry.name)
-          const dirPath = relativeTo
+          const entryDirPath = relativeTo
             ? normalizeRelativePath(path.relative(relativeTo, fullPath))
             : fullPath
-          dirs.push(dirPath)
+          dirs.push(entryDirPath)
           await scanDir(fullPath)
         }
       }

@@ -24,12 +24,12 @@ let data: TestDatabaseResult
 let index: TestDatabaseResult
 
 const impact = (query: Parameters<typeof previewTagImpact>[2]) =>
-  previewTagImpact(asClientDb(data.db), index.db as never, query)
+  previewTagImpact(asClientDb(data.db), index.db, query)
 
 function defineTag(
   db: TestDb,
   name: string,
-  schema: object | null,
+  schema: Record<string, unknown> | null,
   template?: { id: string; name: string }
 ): void {
   if (template) {
@@ -66,7 +66,12 @@ function insertNote(db: TestDb, note: NoteFixture): void {
   }
 }
 
-function insertTask(db: TestDb, id: string, tags: string[], fields: object | null): void {
+function insertTask(
+  db: TestDb,
+  id: string,
+  tags: string[],
+  fields: Record<string, unknown> | null
+): void {
   db.run(sql`INSERT INTO projects (id, name, is_inbox, position) VALUES ('inbox', 'Inbox', 1, 0)
              ON CONFLICT DO NOTHING`)
   db.run(sql`
@@ -143,7 +148,7 @@ describe('previewing a schema change', () => {
     const result = await impact({ kind: 'rename-field', name: 'Role' })
 
     expect(result).toMatchObject({ kind: 'rename-field', notes: 4, tasks: 2 })
-    expect(result.kind === 'rename-field' && [...result.tags].sort()).toEqual([
+    expect(result.kind === 'rename-field' && [...result.tags].toSorted()).toEqual([
       'candidate',
       'person'
     ])

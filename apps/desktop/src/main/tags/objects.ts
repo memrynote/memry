@@ -201,13 +201,14 @@ function matchRank(title: string, query: string): number | null {
 
 const TEXT_LIKE: ReadonlySet<PropertyType> = new Set(['text', 'url', 'select', 'status'])
 
+const filled = (value: unknown): value is string | number =>
+  (typeof value === 'string' && value.trim() !== '') || typeof value === 'number'
+
 function subtitleFor(
   values: Record<string, unknown>,
   entry: ResolvedTag | undefined,
   titleOf: (id: string) => string | undefined
 ): string[] {
-  const filled = (value: unknown): value is string | number =>
-    (typeof value === 'string' && value.trim() !== '') || typeof value === 'number'
   const texts: string[] = []
   let relation: string | undefined
   for (const field of entry?.effectiveFields ?? []) {
@@ -238,7 +239,7 @@ export function searchObjects(
       const rank = matchRank(note.title, query)
       return rank === null ? [] : [{ note, rank }]
     })
-    .sort((a, b) => a.rank - b.rank || b.note.modified.localeCompare(a.note.modified))
+    .toSorted((a, b) => a.rank - b.rank || b.note.modified.localeCompare(a.note.modified))
     .slice(0, input.limit)
 
   const values = getPropertiesForNotes(
@@ -351,7 +352,7 @@ export function getLinkedHere(
       field: group.field,
       label: group.label,
       total: group.notes.length,
-      items: group.notes.sort(byNewest).slice(0, input.limitPerGroup).map(toLinkedNote),
+      items: group.notes.toSorted(byNewest).slice(0, input.limitPerGroup).map(toLinkedNote),
       filter: filter(group.field)
     })
   }
@@ -382,7 +383,7 @@ export function getLinkedHere(
     }
   }
   for (const group of taskGroups.values()) {
-    const items = group.items.sort(
+    const items = group.items.toSorted(
       (a, b) =>
         Number(a.completed) - Number(b.completed) ||
         (a.dueDate ?? '\uffff').localeCompare(b.dueDate ?? '\uffff')
@@ -400,7 +401,7 @@ export function getLinkedHere(
   const mentions = listNoteSummaries(
     indexDb,
     listLinkSourceIds(indexDb, input.noteId).filter((id) => id !== input.noteId)
-  ).sort(byNewest)
+  ).toSorted(byNewest)
   if (mentions.length > 0) {
     groups.push({
       kind: 'mentions',

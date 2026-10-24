@@ -76,6 +76,7 @@ export function learnCanonicalPropertyType(
   const type = resolvePropertyType(
     name,
     value,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     existing?.type as PropertyType | undefined,
     inferPropertyType
   )

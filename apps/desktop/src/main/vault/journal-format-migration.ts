@@ -104,7 +104,7 @@ export function planJournalRenames(
   const present = new Set(fileNames.map((name) => name.toLowerCase()))
   const claimed = new Set<string>()
 
-  for (const name of [...fileNames].sort()) {
+  for (const name of [...fileNames].toSorted()) {
     if (!name.endsWith('.md')) continue
     const date = parseJournalDate(name.slice(0, -3), oldFormat)
     if (!date) continue
@@ -153,6 +153,7 @@ async function listFilesRecursive(dir: string): Promise<string[] | null> {
     await walk('')
     return files
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
     throw error
   }

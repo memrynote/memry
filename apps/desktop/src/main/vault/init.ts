@@ -122,6 +122,7 @@ export function initVault(vaultPath: string): void {
       flag: 'wx'
     })
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
       throw error
     }
@@ -204,6 +205,7 @@ export function readVaultConfig(vaultPath: string): typeof DEFAULT_CONFIG {
 
   try {
     const content = fs.readFileSync(configPath, 'utf-8')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     const parsed = JSON.parse(content) as Partial<typeof DEFAULT_CONFIG>
     const config = { ...DEFAULT_CONFIG, ...parsed }
     if (stat) {
@@ -218,6 +220,7 @@ export function readVaultConfig(vaultPath: string): typeof DEFAULT_CONFIG {
   } catch (error) {
     // A missing config is a normal fresh-vault state; a corrupt/unreadable one
     // silently reverts journal/exclude settings to defaults, so surface it.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT' && !warnedConfigPaths.has(configPath)) {
       warnedConfigPaths.add(configPath)
       logger.warn('Vault config unreadable, falling back to defaults:', error)
@@ -241,6 +244,7 @@ export function writeVaultConfig(
   try {
     fs.writeFileSync(configPath, JSON.stringify(newConfig, null, 2), 'utf-8')
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     const code = (error as NodeJS.ErrnoException).code
     if (code !== 'EACCES' && code !== 'EPERM') throw error
     logger.warn('Vault config is not writable', error)

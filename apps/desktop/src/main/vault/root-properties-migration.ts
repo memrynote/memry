@@ -137,5 +137,5 @@ async function findMarkdownFiles(dirPath: string, excludePatterns: string[]): Pr
     }
   }
 
-  return files.sort()
+  return files.toSorted()
 }

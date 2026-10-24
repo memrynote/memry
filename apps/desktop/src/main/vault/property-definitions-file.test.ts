@@ -75,7 +75,7 @@ describe('properties.md with one bad entry', () => {
     await service.upsert({ name: 'Area', type: 'select', options: [] })
 
     const written = matter(await fs.readFile(filePath, 'utf-8')).data.properties
-    expect(Object.keys(written).sort()).toEqual(['Area', 'Broken', 'Due', 'Rating', 'Stage'])
+    expect(Object.keys(written).toSorted()).toEqual(['Area', 'Broken', 'Due', 'Rating', 'Stage'])
     expect(written.Broken).toEqual({ type: 'select', options: 'not-a-list' })
     expect(written.Rating).toEqual({ type: 'stars', max: 5 })
   })

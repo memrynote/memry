@@ -810,7 +810,7 @@ describe('PropertyDefinitionsService', () => {
       service
         .getAll()
         .map((def) => def.name)
-        .sort()
+        .toSorted()
     ).toEqual(['Priority', 'Stage'])
     expect(DEFAULT_STATUS_DEFINITION.type).toBe('status')
   })
@@ -869,7 +869,7 @@ describe('PropertyDefinitionsService — showOnCalendar', () => {
     const svc = PropertyDefinitionsService.init('/vault')
     await svc.setShowOnCalendar('Deadline', true)
     await svc.setShowOnCalendar('Published', true)
-    expect(svc.listCalendarEnabledNames().sort()).toEqual(['Deadline', 'Published'])
+    expect(svc.listCalendarEnabledNames().toSorted()).toEqual(['Deadline', 'Published'])
 
     await svc.setShowOnCalendar('Deadline', false)
     expect(svc.listCalendarEnabledNames()).toEqual(['Published'])

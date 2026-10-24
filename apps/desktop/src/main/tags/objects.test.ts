@@ -71,14 +71,19 @@ function insertNote(db: TestDb, note: NoteFixture): void {
   }
 }
 
-function defineTag(db: TestDb, name: string, schema: object | null): void {
+function defineTag(db: TestDb, name: string, schema: Record<string, unknown> | null): void {
   db.run(sql`
     INSERT INTO tag_definitions (name, color, schema)
     VALUES (${name}, 'blue', ${schema === null ? null : JSON.stringify({ t: 1, ...schema })})
   `)
 }
 
-function insertTask(db: TestDb, id: string, tags: string[], fields: object | null = null): void {
+function insertTask(
+  db: TestDb,
+  id: string,
+  tags: string[],
+  fields: Record<string, unknown> | null = null
+): void {
   db.run(sql`INSERT INTO projects (id, name, is_inbox, position) VALUES ('inbox', 'Inbox', 1, 0)
              ON CONFLICT DO NOTHING`)
   db.run(sql`
@@ -147,14 +152,21 @@ describe('object reads for tags with fields', () => {
     const mentions = await listRows('person', 'mentions')
 
     expect(objects.complete).toBe(true)
-    expect(objects.notes.map((row) => [row.id, row.viaTag ?? null, row.properties]).sort()).toEqual(
-      [
-        ['ahmet', null, { Role: '123' }],
-        ['call', null, { Role: 'Lead' }],
-        ['eng', 'employee', {}]
-      ]
-    )
-    expect(mentions.notes.map((row) => row.id).sort()).toEqual(['inline', 'journal', 'scan', 'vip'])
+    expect(
+      objects.notes
+        .toSorted((a, b) => a.id.localeCompare(b.id))
+        .map((row) => [row.id, row.viaTag ?? null, row.properties])
+    ).toEqual([
+      ['ahmet', null, { Role: '123' }],
+      ['call', null, { Role: 'Lead' }],
+      ['eng', 'employee', {}]
+    ])
+    expect(mentions.notes.map((row) => row.id).toSorted()).toEqual([
+      'inline',
+      'journal',
+      'scan',
+      'vip'
+    ])
   })
 
   it('never counts a row without a header flag and reports the read incomplete', async () => {
@@ -180,7 +192,7 @@ describe('object reads for tags with fields', () => {
     const result = await listRows('plain', 'mentions')
 
     expect(result.complete).toBeUndefined()
-    expect(result.notes.map((row) => row.id).sort()).toEqual(['a', 'b', 'c', 'j'])
+    expect(result.notes.map((row) => row.id).toSorted()).toEqual(['a', 'b', 'c', 'j'])
     expect(result.notes.every((row) => row.viaTag === undefined)).toBe(true)
     expect(result.notes.find((row) => row.id === 'a')?.properties).toEqual({ n: '123' })
   })
