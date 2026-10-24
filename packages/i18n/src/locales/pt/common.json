@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Não foi possível copiar o portal",
+    "hiddenCount": "{count} oculto(s)",
+    "windowFailed": "Não foi possível abrir este portal. Abra a nota de origem.",
+    "noTarget": "Este portal ainda não tem destino. Adicione uma nota à definição ou remova o bloco.",
+    "invalidJson": "A definição deste portal não é um JSON válido. Corrija abaixo ou remova o bloco.",
+    "invalidShape": "A definição deste portal não tem nota nem pesquisa. Corrija abaixo ou remova o bloco.",
+    "search": {
+      "editQuery": "Editar consulta",
+      "count": "{count, plural, one {# bloco} other {# blocos}}",
+      "loading": "Pesquisando…",
+      "empty": "Nenhum bloco corresponde a esta consulta.",
+      "failed": "Não foi possível executar a pesquisa.",
+      "retry": "Tentar novamente",
+      "truncated": "Mostrando as primeiras {count} correspondências."
+    },
+    "copiedContents": "Conteúdo copiado",
+    "copiedLink": "Link copiado",
+    "actionFailed": "Não foi possível alterar este portal",
+    "keepsOneBlock": "Um portal mantém pelo menos um bloco. Remova o portal em vez disso.",
+    "expandChildren": "Mostrar filhos",
+    "collapseChildren": "Ocultar filhos",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Incluir “{block}”",
+      "locked": "{note} está bloqueada · somente leitura",
+      "more": "Mais",
+      "openBeside": "Abrir {note} ao lado",
+      "click": "Clique",
+      "copyContents": "Copiar conteúdo",
+      "copyLink": "Copiar link",
+      "remove": "Remover portal",
+      "removeHint": "{note} mantém todos os blocos"
+    },
+    "states": {
+      "missingNote": {
+        "text": "A nota de origem foi excluída. A referência foi mantida.",
+        "action": "Remover"
+      },
+      "missingBlock": {
+        "text": "O bloco foi excluído em {source}.",
+        "action": "Escolher outro"
+      },
+      "notSynced": {
+        "text": "Aguardando a sincronização da nota de origem.",
+        "action": "Tentar novamente"
+      },
+      "cycle": {
+        "text": "Este portal leva de volta a ele mesmo.",
+        "action": "Abrir origem"
+      },
+      "tooDeep": {
+        "text": "Portais podem ter {max} níveis de aninhamento. Este abre como link.",
+        "action": "Abrir origem"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Focar campo de captura",
@@ -43,6 +100,50 @@
     "showInFileManager": "Mostrar no gerenciador de arquivos",
     "openInDefaultApp": "Abrir no aplicativo padrão",
     "revealFailed": "Não foi possível mostrar na pasta"
+  },
+  "commands": {
+    "runFailed": "Não foi possível executar o comando. Tente novamente."
+  },
+  "commandsPalette": {
+    "title": "Comandos",
+    "placeholder": "Digite um comando…",
+    "groups": {
+      "navigation": "Navegação",
+      "create": "Criar",
+      "tabs": "Abas",
+      "editor": "Editor",
+      "view": "Visualização",
+      "app": "App",
+      "note": "Nota",
+      "settings": "Configurações",
+      "sync": "Sincronização",
+      "help": "Ajuda",
+      "project": "Projeto",
+      "tasks": "Tarefas",
+      "canvas": "Canvas",
+      "folder": "Pasta",
+      "file": "Arquivo"
+    },
+    "contexts": {
+      "note": "Esta nota",
+      "journal": "Este diário",
+      "project": "Este projeto",
+      "tasks": "Estas tarefas",
+      "canvas": "Este canvas",
+      "folder": "Esta pasta",
+      "tag": "Esta tag",
+      "file": "Este arquivo"
+    },
+    "recent": "Recentes",
+    "empty": "Nenhum comando corresponde a “{query}”",
+    "searchHint": "Pesquisar notas: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# comando} other {# comandos}}"
+    },
+    "actions": {
+      "run": "Executar",
+      "searchNotes": "Pesquisar notas"
+    }
   },
   "tabs": {
     "pin": "Fixar aba",
@@ -131,6 +232,20 @@
     "openInTab": "Abrir conversa em aba",
     "stop": "Parar",
     "thinking": "O agente está pensando",
+    "toolsUnavailable": "As ferramentas do cofre estão desativadas para este modelo. Ele falhou na verificação de ferramentas, então só pode conversar.",
+    "toolsUnavailableWithDetail": "As ferramentas do cofre estão desativadas para este modelo. Ele falhou na verificação de ferramentas, então só pode conversar. {detail}",
+    "toolsOff": {
+      "toolsRejected": "As ferramentas do cofre estão desativadas para este modelo. O provedor recusou uma solicitação de teste que incluía ferramentas, então o modelo só pode conversar.",
+      "noToolCall": "As ferramentas do cofre estão desativadas para este modelo. Ele respondeu a uma solicitação de teste sem chamar a ferramenta, então só pode conversar.",
+      "toolResultRejected": "As ferramentas do cofre estão desativadas para este modelo. Ele chamou uma ferramenta de teste, mas falhou ao receber o resultado, então só pode conversar.",
+      "streamingUnsupported": "As ferramentas do cofre estão desativadas para este modelo. O provedor não transmitiu uma resposta de teste, então o modelo só pode conversar.",
+      "providerSaid": "O provedor disse: {detail}",
+      "wroteToolCall": "O modelo escreveu uma chamada de ferramenta como texto, e nada foi executado."
+    },
+    "stepLimit": {
+      "notice": "Parou no limite de etapas.",
+      "continue": "Continuar"
+    },
     "enable": {
       "title": "Ativar o Agente do memrynote",
       "description": "O Agente do memrynote usa a CLI de agente local selecionada para conversar sobre seu cofre. O Claude envia as mensagens para a Anthropic; o Codex envia as mensagens para a OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Adicionar contexto",
       "addContextWithPermissions": "Adicionar contexto ({permissions})",
       "mentionContext": "Mencionar uma nota, tarefa ou evento",
+      "files": {
+        "attach": "Anexar um arquivo de texto",
+        "refused": {
+          "unsupportedType": "{name} não é um arquivo de texto compatível. Anexe um arquivo .txt, .md, .log, .csv, .tsv, .json, .yaml ou .yml.",
+          "notText": "{name} não é um arquivo de texto UTF-8. Anexe um arquivo de texto.",
+          "tooLarge": "{name} deixaria esta mensagem acima do limite de 100 KB. Remova um arquivo ou anexe um menor.",
+          "readFailed": "Não foi possível ler {name}. Verifique se o arquivo ainda existe e se você pode abri-lo, depois anexe-o novamente."
+        }
+      },
       "voice": {
         "start": "Iniciar ditado por voz",
         "stop": "Parar ditado por voz",
@@ -340,6 +464,14 @@
           "extraHigh": "Muito alto"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Padrão",
+          "default": "Profundidade padrão",
+          "high": "Alta",
+          "max": "Máxima"
+        }
+      },
       "permissionsLabel": "Permissões do agente: {access}, pesquisa na web {webSearch}",
       "permissions": {
         "label": "Permissões",
@@ -347,6 +479,17 @@
         "tools": "Ferramentas"
       },
       "modelSettingsLabel": "Configurações do modelo do agente: {model}, {settings}",
+      "queue": {
+        "label": "Mensagens na fila",
+        "queueMessage": "Enfileirar mensagem",
+        "edit": "Editar mensagem na fila",
+        "editLabel": "Texto da mensagem na fila",
+        "remove": "Remover mensagem da fila",
+        "save": "Salvar",
+        "cancel": "Cancelar",
+        "sending": "Enviando…",
+        "notSent": "Não enviada. Edite para enviar novamente ou remova."
+      },
       "unavailable": {
         "vaultToolsOnly": "Apenas ferramentas do cofre com este modelo"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Não foi possível salvar a confirmação do aviso",
       "resolveWindow": "Não foi possível identificar a janela de origem do agente",
       "detectCli": "Não foi possível detectar back-ends do agente",
-      "loadDisclosure": "Não foi possível carregar a confirmação do aviso"
+      "loadDisclosure": "Não foi possível carregar a confirmação do aviso",
+      "turnFailed": "A resposta foi interrompida por um erro. Sua mensagem foi mantida, então você pode enviá-la novamente."
     },
     "actions": {
       "copy": "Copiar",
@@ -576,6 +720,7 @@
       "newFolder2": "Nova pasta",
       "newProject": "Novo projeto",
       "bookmarks": "Favoritos",
+      "chart": "Gráfico",
       "tags": "Tags",
       "reorderSection": "Reordenar {section}",
       "dropFilesToImport": "Solte arquivos para importar",
@@ -863,6 +1008,11 @@
       "cancel": "Cancelar",
       "remove2": "Remover",
       "inYourAccount": "Na sua conta",
+      "trySandbox": "Experimentar o cofre de teste",
+      "sandboxVault": "Cofre de teste",
+      "sandboxPreparing": "Preparando o ambiente de teste…",
+      "sandboxFailed": "Não foi possível preparar o cofre de teste",
+      "resetSandbox": "Redefinir o cofre de teste",
       "itemsCount": "{count} itens",
       "untitledVault": "Cofre",
       "downloadVaultTitle": "Baixar “{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "As notas que você abrir aparecem aqui",
       "bookmarks": "Favoritos",
       "tasks": "Tarefas",
+      "chart": "Gráfico",
       "calendar": "Calendário",
       "calendarToday": "Hoje",
       "openCalendar": "Abrir calendário",
@@ -978,6 +1129,9 @@
     "edit": "Editar",
     "done": "Concluído",
     "addWidget": "Adicionar widget",
+    "cover": {
+      "add": "Adicionar capa"
+    },
     "empty": {
       "title": "Seu quadro está vazio",
       "body": "Os widgets reúnem suas notas, tarefas e favoritos em um só lugar tranquilo.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Alterar ícone…",
     "resetIcon": "Redefinir ícone",
     "iconButton": "Alterar o ícone de {name}",
+    "leaveSandbox": "Voltar para {name}",
     "iconFailed": "Não foi possível alterar o ícone do cofre"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Tipo",
     "filterModified": "Modificado",
     "matches": "Correspondências",
+    "matchesMore": "{count, plural, one {# correspondência a mais} other {# correspondências a mais}}",
+    "matchesHide": "Ocultar correspondências",
+    "matchOf": "Correspondência {index} de {total}",
     "showMore": "Mostrar mais {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Próxima seção",
       "open": "Abrir",
       "openNote": "Abrir nota",
+      "openAtMatch": "Abrir na correspondência",
       "openFile": "Abrir arquivo",
       "openJournal": "Abrir diário",
       "openTask": "Abrir tarefa",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Escolher tag",
       "addTag": "Adicionar tag",
       "showAll": "Mostrar tudo",
+      "hideMatches": "Ocultar correspondências",
       "searchEverywhere": "Pesquisar em tudo",
       "clearFilters": "Limpar filtros"
     },

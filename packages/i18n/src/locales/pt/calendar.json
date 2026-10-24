@@ -195,6 +195,7 @@
     "complete-task": "Concluir {title}",
     "task-completed": "Tarefa concluída",
     "could-not-complete": "Não foi possível concluir a tarefa",
+    "could-not-update-status": "Não foi possível alterar o status da tarefa",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Não foi possível abrir a nota"
     }
   },
+  "eventNotes": {
+    "heading": "Notas",
+    "create": "Nova nota",
+    "link": "Vincular nota",
+    "untitled": "Nota de reunião",
+    "searchPlaceholder": "Pesquisar notas",
+    "noResults": "Nenhuma nota encontrada",
+    "createFailed": "Não foi possível criar uma nota para este evento.",
+    "linkFailed": "Não foi possível vincular a nota a este evento.",
+    "loadFailed": "Não foi possível carregar as notas vinculadas a este evento.",
+    "propertyTaken": "Esta nota já tem uma propriedade \"{name}\" que não é um link."
+  },
   "notePopover": {
     "kind": "Nota",
     "kindDateReminder": "Lembrete de data",
@@ -254,6 +267,10 @@
     "overdue": "em atraso",
     "untitled": "Sem título",
     "days": "{count, plural, one {# dia} other {# dias}}",
+    "subtasks": {
+      "expand": "Mostrar {count, plural, one {# subtarefa} other {# subtarefas}} de {title}",
+      "collapse": "Ocultar {count, plural, one {# subtarefa} other {# subtarefas}} de {title}"
+    },
     "events": "Eventos",
     "schedule-hint": "Clique para definir uma data, arraste para definir um intervalo",
     "empty-title": "Nada na linha do tempo aqui",

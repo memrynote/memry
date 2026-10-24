@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Excluir entrada do diário",
     "description": "Tem certeza de que deseja excluir “{title}”? Esta ação não pode ser desfeita."
+  },
+  "dayTimeline": {
+    "label": "Agenda do dia",
+    "allDay": "Itens de dia inteiro",
+    "unscheduled": "Sem horário",
+    "unscheduledEmpty": "Nenhuma tarefa sem horário. Arraste um bloco para cá para limpar o horário dele.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Concluir {title}"
   }
 }

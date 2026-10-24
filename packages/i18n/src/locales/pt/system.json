@@ -29,6 +29,23 @@
       "buttonRestartNow": "Reiniciar agora",
       "releaseNotesLabel": "Notas de lançamento:"
     },
+    "dataDbRecovery": {
+      "title": "Reparar banco de dados do cofre",
+      "message": "O banco de dados do Memry para este cofre está danificado.",
+      "detail": "Seus arquivos de notas e diário não são afetados. O reparo mantém o banco de dados danificado como backup em {path}, cria um novo, reconstrói o que for possível a partir dos arquivos do cofre e restaura os itens sincronizados na próxima sincronização. Alterações que ainda não tinham sido sincronizadas são recuperadas sempre que possível.",
+      "buttonRecover": "Reparar",
+      "buttonLater": "Agora não"
+    },
+    "obsidianVault": {
+      "title": "Abrir cofre do Obsidian",
+      "message": "Abrir uma cópia deste cofre do Obsidian?",
+      "detail": "Abrir um cofre do Obsidian no memrynote pode causar perda de dados dos quais seus plugins do Obsidian dependem. Quando o memrynote transforma a linha de tarefa de um plugin em uma tarefa, ele reescreve a linha. Campos como as datas de prazo do plugin Tasks saem do arquivo, e o Obsidian deixa de vê-los.\n\nO memrynote pode copiar “{name}” para “{copyName}” ao lado e abrir a cópia. “{name}” permanece exatamente como está.",
+      "detailExistingCopy": "Abrir um cofre do Obsidian no memrynote pode causar perda de dados dos quais seus plugins do Obsidian dependem. Quando o memrynote transforma a linha de tarefa de um plugin em uma tarefa, ele reescreve a linha. Campos como as datas de prazo do plugin Tasks saem do arquivo, e o Obsidian deixa de vê-los.\n\nUma cópia do memrynote, “{copyName}”, já está ao lado. O memrynote pode abrir essa cópia. “{name}” permanece exatamente como está.",
+      "buttonCopy": "Criar cópia",
+      "buttonOpenCopy": "Abrir cópia",
+      "buttonOpenOriginal": "Abrir original",
+      "buttonCancel": "Cancelar"
+    },
     "pair": {
       "title": "Parear extensão do navegador",
       "message": "Permitir que a extensão de navegador do Memry envie capturas para este app?",

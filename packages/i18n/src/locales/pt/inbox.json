@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# item adiado} other {# itens adiados}}",
     "notificationBody": "{count, plural, one {Seu item adiado está pronto para revisão} other {Seus itens adiados estão prontos}}",
     "toast": "{count, plural, =1 {“{itemTitle}” está de volta} one {# item adiado está de volta} other {# itens adiados estão de volta}}"
+  },
+  "sticky": {
+    "kindLabel": "Enviar como",
+    "kinds": {
+      "note": "Nota",
+      "task": "Tarefa",
+      "journal": "Diário"
+    },
+    "placeholders": {
+      "note": "Anote aqui…",
+      "task": "Ligar para Ana @amanhã #casa !alta",
+      "journal": "Adicionar ao diário de hoje…"
+    },
+    "saving": "Salvando…",
+    "saved": "Salvo",
+    "saveFailed": "Não salvo",
+    "tuck": "Guardar",
+    "send": "Enviar",
+    "hints": "Esc guardar · {mod}⌫ excluir",
+    "sendAndCloseHint": "⌥{mod}↵ envia e fecha",
+    "deleted": "Rascunho excluído",
+    "open": "Abrir",
+    "undo": "Desfazer",
+    "sent": {
+      "note": "Salvo na pasta Sticky",
+      "task": "Tarefa adicionada",
+      "journal": "Adicionado ao diário de hoje"
+    },
+    "tab": {
+      "label": "{count, plural, one {# rascunho sticky} other {# rascunhos sticky}}",
+      "newSticky": "Novo sticky"
+    },
+    "errors": {
+      "empty": "Escreva algo primeiro.",
+      "taskFailed": "Não foi possível criar a tarefa.",
+      "tasksOff": "As tarefas estão desativadas em Configurações.",
+      "journalOff": "O diário está desativado em Configurações.",
+      "sendFailed": "Não foi possível enviar o sticky.",
+      "undoExpired": "É tarde demais para desfazer.",
+      "undoFailed": "Não foi possível desfazer o envio."
+    },
+    "inputLabel": "Texto do sticky",
+    "dismissError": "Dispensar"
   }
 }
