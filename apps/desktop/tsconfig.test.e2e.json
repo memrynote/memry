@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.node.json",
+  // Type coverage for the Playwright e2e specs and their utils/fixtures. Specs run page.evaluate
+  // callbacks in the renderer, so this project adds the DOM lib to the node base.
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "types": ["node"]
+  },
+  "include": ["tests/e2e/**/*.ts"],
+  "exclude": ["tests/e2e/fixtures/test-vault/**", "tests/e2e/fixtures/claude/**", "tests/e2e/fixtures/codex/**"]
+}
