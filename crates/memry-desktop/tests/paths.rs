@@ -45,14 +45,27 @@ fn identifier_with_device_appends_it() {
 }
 
 // Golden values come from `sha256(path.normalize(dir)).slice(0, 8)`, the rule of
-// `resolveDeviceId` in apps/desktop/src/main/index.ts.
+// `resolveDeviceId` in apps/desktop/src/main/index.ts. Node normalizes with the separators of its
+// platform, so Windows hashes the backslash form (`path.win32.normalize`).
+#[cfg(not(windows))]
+const CHECKOUTS: [(&str, &str); 2] = [
+    ("/Users/dev/checkout-a/apps/desktop", "d460368c"),
+    ("/Users/dev/checkout-b/apps/desktop", "6247bf17"),
+];
+#[cfg(windows)]
+const CHECKOUTS: [(&str, &str); 2] = [
+    ("C:/Users/dev/checkout-a/apps/desktop", "5c28a53b"),
+    ("C:/Users/dev/checkout-b/apps/desktop", "faa538ba"),
+];
+
 #[test]
 fn unpackaged_dev_device_hashes_the_checkout() {
     let env = env(&[("MEMRY_DEVICE", "dev")]);
-    let a = profile_identifier(BASE, &env, false, "/Users/dev/checkout-a/apps/desktop");
-    let b = profile_identifier(BASE, &env, false, "/Users/dev/checkout-b/apps/desktop");
-    assert_eq!(a, "com.memrynote.memry.dev-d460368c");
-    assert_eq!(b, "com.memrynote.memry.dev-6247bf17");
+    let [(dir_a, hash_a), (dir_b, hash_b)] = CHECKOUTS;
+    let a = profile_identifier(BASE, &env, false, dir_a);
+    let b = profile_identifier(BASE, &env, false, dir_b);
+    assert_eq!(a, format!("com.memrynote.memry.dev-{hash_a}"));
+    assert_eq!(b, format!("com.memrynote.memry.dev-{hash_b}"));
     assert_ne!(a, b);
 }
 
