@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# odložená položka} few {# odložené položky} other {# odložených položek}}",
     "notificationBody": "{count, plural, one {Vaše odložená položka je připravena ke kontrole} few {Vaše odložené položky jsou připraveny} other {Vaše odložené položky jsou připraveny}}",
     "toast": "{count, plural, =1 {Položka „{itemTitle}“ se vrátila z odložení} one {# odložená položka se vrátila} few {# odložené položky se vrátily} other {# odložených položek se vrátilo}}"
+  },
+  "sticky": {
+    "kindLabel": "Odeslat jako",
+    "kinds": {
+      "note": "Poznámka",
+      "task": "Úkol",
+      "journal": "Deník"
+    },
+    "placeholders": {
+      "note": "Rychle si to zapište…",
+      "task": "Zavolat Anně @zítra #domov !vysoká",
+      "journal": "Přidat do dnešního deníku…"
+    },
+    "saving": "Ukládání…",
+    "saved": "Uloženo",
+    "saveFailed": "Neuloženo",
+    "tuck": "Schovat",
+    "send": "Odeslat",
+    "hints": "Esc schovat · {mod}⌫ smazat",
+    "sendAndCloseHint": "⌥{mod}↵ odešle a zavře",
+    "deleted": "Koncept smazán",
+    "open": "Otevřít",
+    "undo": "Vrátit zpět",
+    "sent": {
+      "note": "Uloženo do složky Sticky",
+      "task": "Úkol přidán",
+      "journal": "Přidáno do dnešního deníku"
+    },
+    "tab": {
+      "label": "{count, plural, one {# koncept lístku} few {# koncepty lístků} many {# konceptu lístků} other {# konceptů lístků}}",
+      "newSticky": "Nový lístek"
+    },
+    "errors": {
+      "empty": "Nejdřív něco napište.",
+      "taskFailed": "Úkol se nepodařilo vytvořit.",
+      "tasksOff": "Úkoly jsou vypnuté v Nastavení.",
+      "journalOff": "Deník je vypnutý v Nastavení.",
+      "sendFailed": "Lístek se nepodařilo odeslat.",
+      "undoExpired": "Vrátit to zpět už je pozdě.",
+      "undoFailed": "Odeslání se nepodařilo vrátit zpět."
+    },
+    "inputLabel": "Text lístku",
+    "dismissError": "Zavřít"
   }
 }

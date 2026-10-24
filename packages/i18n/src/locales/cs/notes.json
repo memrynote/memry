@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Nenalezeno – kliknutím vytvoříte „{title}“"
   },
+  "wikiLinkMenu": {
+    "aria": "Akce odkazu",
+    "open": "Otevřít",
+    "openInNewTab": "Otevřít na nové kartě",
+    "openToTheSide": "Otevřít vedle",
+    "edit": "Upravit odkaz",
+    "copy": "Kopírovat odkaz",
+    "unlink": "Odebrat odkaz",
+    "displayRow": "Zobrazení…",
+    "sizeNone": "Žádná",
+    "sizeSmall": "Malá",
+    "sizeMedium": "Střední",
+    "showCover": "Zobrazit obálku",
+    "showPreview": "Zobrazit náhled",
+    "copyFailed": "Odkaz se nepodařilo zkopírovat"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Znovu importovat z Readwise",
+    "refreshAction": "Obnovit informace o knize",
+    "syncsOn": "Readwise se synchronizuje na zařízení {device}.",
+    "syncsOnAnotherDevice": "Readwise se synchronizuje na jiném zařízení.",
+    "takeOverHint": "Synchronizujte na tomto zařízení, nebo to převezměte v Nastavení → Import.",
+    "reimport": {
+      "title": "Znovu importovat „{title}“ z Readwise?",
+      "body": "Sekce Readwise se přepíše od začátku. Vše, co jste do ní napsali, se ztratí.",
+      "note": "Text mimo sekci a vlastnosti poznámky zůstanou beze změny.",
+      "cancel": "Zrušit",
+      "confirm": "Znovu importovat"
+    },
+    "commands": {
+      "reimported": "Znovu importováno z Readwise",
+      "refreshed": "Informace o knize obnoveny",
+      "failed": "Příkaz Readwise se nepodařilo dokončit"
+    }
+  },
   "page": {
     "empty": {
       "title": "Není vybrána žádná poznámka",
@@ -25,6 +61,7 @@
       "willSync": "Poznámka se bude synchronizovat do cloudu",
       "renameFailed": "Poznámku se nepodařilo přejmenovat",
       "titleRequired": "Poznámka musí mít název",
+      "duplicateTitle": "Ve složce {folder} je i jiná poznámka s názvem „{title}“. Odkazy na tyto poznámky budou obsahovat i složku.",
       "toggleLocalOnlyFailed": "Nastavení „pouze místní“ se nepodařilo změnit",
       "toggleFullWidthFailed": "Nastavení plné šířky se nepodařilo změnit",
       "pathCopied": "Cesta zkopírována",
@@ -85,6 +122,10 @@
       "body": "Začněte vytvořením poznámky",
       "newNote": "Nová poznámka"
     },
+    "readwiseSync": {
+      "tooltip": "Synchronizace Readwise",
+      "failed": "Synchronizace Readwise selhala"
+    },
     "syncing": {
       "body": "Synchronizace poznámek – zobrazí se zde, jakmile dorazí"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "Otevřít vedle",
       "newNote": "Nová poznámka",
       "newFolder": "Nová složka",
+      "showTasks": "Zobrazit úkoly",
       "expandSubfolders": "Rozbalit všechny podsložky",
       "collapseSubfolders": "Sbalit všechny podsložky",
       "rename": "Přejmenovat",
@@ -138,7 +180,15 @@
       "folderSuffix": "složka",
       "moreItems": "{count, plural, one {…a # další} few {…a # další} other {…a # dalších}}",
       "deleting": "Mazání…",
-      "deleteCount": "Smazat {count}"
+      "deleteCount": "Smazat {count}",
+      "journalFolderWarning": "Zahrnuje i složku deníku. Všechny zápisy v ní se smažou na všech vašich zařízeních."
+    },
+    "journalChange": {
+      "leaveTitle": "Změnit zápisy deníku na poznámky?",
+      "leaveBody": "Zápisy deníku přesunuté ze složky deníku nebo přejmenované mimo formát data se stanou běžnými poznámkami a zmizí z vašeho deníku. Na vašich dalších zařízeních se tyto dny z deníku odeberou a objeví se místo nich poznámky.",
+      "joinTitle": "Změnit poznámky na zápisy deníku?",
+      "joinBody": "Soubory pojmenované podle formátu data deníku uvnitř složky deníku se stanou zápisy deníku. Na vašich dalších zařízeních se tyto poznámky nahradí zápisy deníku.",
+      "confirm": "Pokračovat"
     },
     "toast": {
       "selectionBookmarked": "Položky přidány do záložek: {count}",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "Nadpis",
       "listPlaceholder": "Položka seznamu",
       "todoPlaceholder": "Úkol",
-      "htmlComment": "Skrytý komentář HTML"
+      "htmlComment": "Skrytý komentář HTML",
+      "percentComment": "Skrytý komentář",
+      "readwise": {
+        "noteStart": "Readwise · synchronizuje se automaticky",
+        "noteEnd": "Konec sekce Readwise",
+        "dayStart": "Readwise · dnešní zvýraznění",
+        "dayEnd": "Konec Readwise",
+        "hint": "Pokud upravíte tuto sekci, Readwise ji přestane aktualizovat."
+      }
     },
     "table": {
       "keyboardMenuAria": "Akce tabulky pro řádek {row}, sloupec {column}",
-      "keyboardMenuTitle": "Řádek {row} · Sloupec {column}"
+      "keyboardMenuTitle": "Řádek {row} · Sloupec {column}",
+      "sizePicker": {
+        "aria": "Velikost tabulky. Šipkami vyberte řádky a sloupce a stiskněte Enter.",
+        "size": "{rows, plural, one {# řádek} few {# řádky} many {# řádku} other {# řádků}} × {columns, plural, one {# sloupec} few {# sloupce} many {# sloupce} other {# sloupců}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Smazat řádek} few {Smazat # řádky} many {Smazat # řádku} other {Smazat # řádků}}",
+        "addRowsAbove": "{count, plural, one {Přidat řádek nad} few {Přidat # řádky nad} many {Přidat # řádku nad} other {Přidat # řádků nad}}",
+        "addRowsBelow": "{count, plural, one {Přidat řádek pod} few {Přidat # řádky pod} many {Přidat # řádku pod} other {Přidat # řádků pod}}",
+        "deleteColumns": "{count, plural, one {Smazat sloupec} few {Smazat # sloupce} many {Smazat # sloupce} other {Smazat # sloupců}}",
+        "addColumnsLeft": "{count, plural, one {Přidat sloupec vlevo} few {Přidat # sloupce vlevo} many {Přidat # sloupce vlevo} other {Přidat # sloupců vlevo}}",
+        "addColumnsRight": "{count, plural, one {Přidat sloupec vpravo} few {Přidat # sloupce vpravo} many {Přidat # sloupce vpravo} other {Přidat # sloupců vpravo}}"
+      }
     },
     "list": {
       "bulleted": "Seznam s odrážkami",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "Skrýt místní graf",
       "showLocalGraph": "Zobrazit místní graf",
       "moreActions": "Další akce",
+      "searchActions": "Hledat akce...",
+      "noMatchingActions": "Žádné odpovídající akce",
       "find": "Najít…",
       "versionHistory": "Historie verzí",
       "export": "Exportovat",
@@ -215,6 +287,8 @@
       "notSynced": "Do tohoto zařízení zatím nesynchronizováno",
       "revealFailed": "Soubor se nepodařilo zobrazit",
       "openFailed": "Soubor se nepodařilo otevřít",
+      "showAsLink": "Zobrazit jako odkaz",
+      "showAsEmbed": "Zobrazit vložené",
       "missingTitle": "Soubor přílohy chybí",
       "missingExpected": "Očekávaný soubor: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "Přejmenovat",
       "renamed": "Přejmenováno na {name}",
       "failed": "Přílohu se nepodařilo přejmenovat"
+    },
+    "imageLightbox": {
+      "menuItem": "Zobrazit větší",
+      "title": "Prohlížeč obrázků",
+      "zoomIn": "Přiblížit",
+      "zoomOut": "Oddálit",
+      "reset": "Obnovit zvětšení"
+    },
+    "imageCrop": {
+      "menuItem": "Oříznout…",
+      "title": "Oříznout obrázek",
+      "description": "Přetažením přes obrázek vyberte, co poznámka zobrazí. Původní soubor zůstane beze změny.",
+      "reset": "Zobrazit celý obrázek",
+      "cancel": "Zrušit",
+      "apply": "Oříznout",
+      "unavailable": "Obrázek se ještě nenačetl, proto ho nelze oříznout"
     },
     "attachmentsDialog": {
       "title": "Přílohy",
@@ -248,12 +338,24 @@
       "title": "Popisek",
       "group": "Základní bloky",
       "subtext": "Zvýrazněte důležité informace",
+      "customSubtext": "Váš vlastní typ upozornění",
       "changeType": "Změnit typ popisku",
+      "expand": "Rozbalit upozornění",
+      "collapse": "Sbalit upozornění",
       "menuLabel": "Typ popisku",
       "info": "Informace",
       "warning": "Varování",
       "error": "Chyba",
-      "success": "Úspěch"
+      "success": "Úspěch",
+      "note": "Poznámka",
+      "abstract": "Shrnutí",
+      "todo": "Úkol",
+      "tip": "Tip",
+      "important": "Důležité",
+      "question": "Otázka",
+      "example": "Příklad",
+      "quote": "Citace",
+      "bug": "Chyba"
     },
     "columns": {
       "group": "Základní bloky",
@@ -332,6 +434,83 @@
       "invalidShape": "Definice tohoto zobrazení nemá zdroj. Vyberte ho výše, nebo definici opravte níže.",
       "definition": "Definice"
     },
+    "chart": {
+      "title": "Graf",
+      "subtext": "Zobrazte vlastnost v čase: čáru, sloupce nebo kalendářní teplotní mapu",
+      "layout": "Graf",
+      "settings": "Nastavení grafu",
+      "chooseProperty": "Vyberte, co zobrazit",
+      "source": "Zdroj",
+      "headerMeta": "{range} · {type}",
+      "property": "Vlastnost",
+      "noProperties": "Zatím není co zobrazit. Nejprve přidejte vlastnost k zápisu deníku nebo poznámce.",
+      "chartType": "Graf",
+      "suggested": "Navrženo",
+      "types": {
+        "line": "Čárový",
+        "bar": "Sloupcový",
+        "heatmap": "Teplotní mapa"
+      },
+      "range": "Rozsah",
+      "lastDays": "{count, plural, one {Poslední den} few {Poslední # dny} many {Posledních # dne} other {Posledních # dní}}",
+      "sameDay": "Zápisy ze stejného dne",
+      "aggregates": {
+        "average": "Průměr",
+        "sum": "Součet",
+        "min": "Nejnižší",
+        "max": "Nejvyšší",
+        "count": "Počet"
+      },
+      "missingDays": "Chybějící dny",
+      "missing": {
+        "gap": "Nechat mezeru",
+        "zero": "Počítat jako nulu"
+      },
+      "dateFrom": {
+        "label": "Datum podle",
+        "created": "Vytvoření",
+        "modified": "Úpravy"
+      },
+      "propertyTypes": {
+        "text": "Text",
+        "number": "Číslo",
+        "checkbox": "Zaškrtávací pole",
+        "date": "Datum",
+        "url": "URL",
+        "status": "Stav",
+        "select": "Výběr",
+        "multiselect": "Vícenásobný výběr",
+        "relation": "Vztah",
+        "project": "Projekt",
+        "rating": "Hodnocení"
+      },
+      "noEntry": "Žádný zápis",
+      "done": "Hotovo",
+      "notDone": "Nehotovo",
+      "logged": "Zaznamenáno",
+      "valueCount": "{count, plural, one {# hodnota} few {# hodnoty} many {# hodnoty} other {# hodnot}}",
+      "average": "Průměr",
+      "vsPrevious": "oproti předchozímu období",
+      "lowest": "Nejnižší",
+      "currentStreak": "Aktuální série",
+      "longestStreak": "Nejdelší série",
+      "dayCount": "{count, plural, one {# den} few {# dny} many {# dne} other {# dní}}",
+      "doneDays": "Hotovo",
+      "loggedDays": "Zaznamenáno",
+      "mostCommon": "Nejčastější",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} za posledních {days} dní",
+      "noData": "V tomto rozsahu zatím nic není zaznamenáno.",
+      "loadFailed": "Tento graf se nepodařilo načíst. Samotné zápisy zůstaly beze změny.",
+      "sourceJournal": "Deník",
+      "history": {
+        "show": "Zobrazit historii",
+        "title": "Historie: {property}",
+        "range": "Posledních 13 týdnů",
+        "insert": "Kopírovat jako blok grafu",
+        "copied": "Blok grafu zkopírován. Vložte ho do libovolné poznámky."
+      }
+    },
     "slashMenu": {
       "aria": "Bloky a akce",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "Vložit",
         "open": "Otevřít"
       },
+      "close": "Zavřít nabídku",
       "matchesAlias": "odpovídá",
       "noMatch": "Dotazu „{query}“ neodpovídají žádné bloky",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Zobrazit jako",
+        "embed": "Vložené",
+        "link": "Odkaz"
+      },
       "title": {
         "image": "Přidat obrázek",
         "media": "Přidat média",
@@ -525,6 +710,11 @@
       "empty": "Začněte psát a vytvořte nový štítek",
       "create": "Vytvořit #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Zobrazit PDF jako",
+      "embed": "Vložený prohlížeč",
+      "link": "Název souboru"
+    },
     "pasteLink": {
       "title": "Vložit jako",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} min čtení",
     "words": "{count, plural, one {# slovo} few {# slova} other {# slov}}",
     "created": "Vytvořeno",
-    "modified": "Upraveno"
+    "modified": "Upraveno",
+    "sync": {
+      "label": "Synchronizace",
+      "confirmed": "Na serveru {time}",
+      "pending": "Čeká od {time}",
+      "sent": "Odesílá se",
+      "rejected": "Server poslední změnu odmítl",
+      "notRecorded": "Nic nečeká na odeslání",
+      "localOnly": "Pouze místní",
+      "notSyncing": "Nesynchronizuje se",
+      "waiting": "Čeká na odeslání"
+    }
   },
   "backlinks": {
     "sortRecent": "Nedávné",
@@ -587,7 +788,18 @@
     "expandSection": "Rozbalit sekci zpětných odkazů",
     "showMore": "{count, plural, one {Zobrazit # další zpětný odkaz} few {Zobrazit # další zpětné odkazy} other {Zobrazit # dalších zpětných odkazů}}",
     "more": "{count, plural, one {# další} few {# další} other {# dalších}}",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Zobrazeno v portálu"
+  },
+  "unlinkedMentions": {
+    "title": "Nepropojené zmínky",
+    "summary": "{count, plural, one {# nepropojená zmínka} few {# nepropojené zmínky} many {# nepropojené zmínky} other {# nepropojených zmínek}}",
+    "sectionAria": "Nepropojené zmínky",
+    "fromAria": "Nepropojené zmínky v poznámce {title}",
+    "link": "Propojit",
+    "linkAria": "Propojit {text}",
+    "gone": "Tato zmínka se od načtení seznamu změnila",
+    "linkFailed": "Zmínku se nepodařilo propojit"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# odchozí odkaz} few {# odchozí odkazy} other {# odchozích odkazů}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "Poznámku se nepodařilo přidat na plátno"
   },
   "suggestedTags": {
-    "label": "Navrhované štítky:",
-    "hint": "Štítky z poznámek, které se této nejvíce podobají. Nic se nepřidá, dokud některý nevyberete.",
-    "acceptAria": "Přidat štítek {tag}",
-    "support": "{count, plural, one {Použito u # podobné poznámky} few {Použito u # podobných poznámek} other {Použito u # podobných poznámek}}",
-    "dismiss": "Skrýt navrhované štítky"
+    "support": "{count, plural, one {Použito u # podobné poznámky} few {Použito u # podobných poznámek} other {Použito u # podobných poznámek}}"
   },
   "comments": {
     "railAria": "Komentáře",
@@ -663,6 +871,7 @@
     "removeAria": "Odebrat štítek: {tag}",
     "inputPlaceholder": "Zadejte název štítku…",
     "recent": "Nedávné",
+    "suggested": "Navrženo",
     "matching": "Odpovídající",
     "all": "Všechny štítky",
     "none": "Nebyly nalezeny žádné štítky",
@@ -755,6 +964,9 @@
     "repositionHint": "Přetažením upravte pozici",
     "repositionSave": "uložit",
     "repositionCancel": "zrušit",
+    "zoomIn": "Přiblížit",
+    "zoomOut": "Oddálit",
+    "resize": "Přetažením změníte velikost obálky",
     "credit": "Foto: {name}, Unsplash",
     "focusFailed": "Pozici obálky se nepodařilo uložit",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# poznámka} few {# poznámky} many {# poznámky} other {# poznámek}}"
+    },
+    "noteTasks": {
+      "expand": "Zobrazit úkoly poznámky {title}",
+      "collapse": "Skrýt úkoly poznámky {title}",
+      "list": "Úkoly v poznámce {title}",
+      "progressOpen": "{open}/{total} otevřeno",
+      "progressDone": "{total}/{total} hotovo",
+      "nextDue": "Nejbližší termín",
+      "reminder": "Připomenutí nastaveno"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "Uložit",
     "addToFilterHint": "Kliknutím se stisknutou klávesou Ctrl/Cmd přidáte štítek do filtru"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternativy",
+      "overflow": "Odkladiště",
+      "menu": "Nástroje psaní",
+      "close": "Zavřít nástroje psaní"
+    },
+    "menu": {
+      "aria": "Akce editoru",
+      "cut": "Vyjmout",
+      "copy": "Kopírovat",
+      "paste": "Vložit",
+      "selectAll": "Vybrat vše",
+      "undo": "Zpět",
+      "redo": "Znovu",
+      "comment": "Komentář",
+      "addAlternative": "Přidat alternativu",
+      "suggestAlternatives": "Navrhnout alternativy",
+      "ghost": "Duch",
+      "revive": "Obnovit",
+      "stash": "Odložit do odkladiště",
+      "noSpellingSuggestions": "Žádné návrhy",
+      "addToDictionary": "Přidat do slovníku",
+      "clipboardFailed": "Schránku se nepodařilo použít"
+    },
+    "alternatives": {
+      "railAria": "Alternativy",
+      "hint": "{position} z {total} ↑ ↓",
+      "original": "Originál",
+      "byYou": "Napsali jste",
+      "byAI": "Navrženo AI",
+      "showing": "Zobrazeno",
+      "addPlaceholder": "Přidat alternativu…",
+      "removeSuggestions": "Odebrat návrhy",
+      "removeVariant": "Odebrat alternativu",
+      "empty": "Vyberte text a zvolte Přidat alternativu, abyste si uchovali jiné způsoby, jak to říct.",
+      "suggesting": "Navrhují se alternativy…",
+      "suggestFailed": "Alternativy se nepodařilo navrhnout",
+      "noSuggestions": "Nebyly navrženy žádné nové alternativy"
+    },
+    "overflow": {
+      "railAria": "Odkladiště",
+      "addPlaceholder": "Napište něco k uchování…",
+      "empty": "Řádky, které sem odložíte nebo napíšete, zůstanou u této poznámky mimo její text.",
+      "dragHint": "Přetáhněte do poznámky",
+      "copy": "Kopírovat",
+      "copied": "Zkopírováno",
+      "delete": "Smazat"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Zamknout poznámku",
+    "unlockNote": "Odemknout poznámku",
+    "lockFolder": "Zamknout složku",
+    "unlockFolder": "Odemknout složku",
+    "toggleFailed": "Zámek se nepodařilo změnit",
+    "readOnlyIndicator": "Zamčeno. Jen pro čtení, pro vás i pro agenty.",
+    "externalEditRestored": "Poznámka „{title}“ je zamčená, proto byla její úprava zvenčí vrácena",
+    "externalEditRestoredHint": "Upravený text je uložen v historii verzí poznámky."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Osoba",
+        "plural": "Lidé",
+        "fields": {
+          "company": "Společnost",
+          "role": "Role",
+          "email": "E-mail",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Lidé"
+        },
+        "template": {
+          "name": "Osoba",
+          "context": "Kontext",
+          "contextHint": "Jak jsme se poznali, na čem jim záleží",
+          "notes": "Poznámky"
+        }
+      },
+      "company": {
+        "name": "Společnost",
+        "plural": "Společnosti",
+        "fields": {
+          "website": "Web",
+          "industry": "Odvětví",
+          "location": "Místo"
+        },
+        "template": {
+          "name": "Společnost",
+          "overview": "Přehled",
+          "overviewHint": "Čím se zabývají, koho tam známe",
+          "notes": "Poznámky"
+        }
+      },
+      "meeting": {
+        "name": "Schůzka",
+        "plural": "Schůzky",
+        "fields": {
+          "date": "Datum",
+          "attendees": "Účastníci",
+          "company": "Společnost"
+        },
+        "inverse": {
+          "attendees": "Schůzky",
+          "company": "Schůzky"
+        },
+        "template": {
+          "name": "Schůzka",
+          "agenda": "Program",
+          "notes": "Poznámky",
+          "actionItems": "Akční body"
+        }
+      },
+      "book": {
+        "name": "Kniha",
+        "plural": "Knihy",
+        "fields": {
+          "author": "Autor",
+          "shelf": "Police",
+          "rating": "Hodnocení",
+          "finished": "Dočteno"
+        },
+        "shelf": {
+          "toRead": "K přečtení",
+          "reading": "Čtu",
+          "read": "Přečteno"
+        },
+        "template": {
+          "name": "Kniha",
+          "highlights": "Zvýraznění",
+          "thoughts": "Myšlenky"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} je nyní {tag}. Šablona přidána.",
+      "templateChanged": "Poznámka se po přidání šablony změnila, proto zůstává.",
+      "undoFailed": "Vrácení se nepodařilo",
+      "addFailed": "Štítek se nepodařilo přidat",
+      "removeFailed": "Štítek se nepodařilo odebrat",
+      "removedKept": "Štítek #{tag} odebrán. Zachováno hodnot: {count}.",
+      "removedKeptOne": "Štítek #{tag} odebrán. Zachována 1 hodnota."
+    },
+    "picker": {
+      "create": "Vytvořit #{tag}",
+      "fillsTemplate": "Vyplní tuto prázdnou poznámku šablonou {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Hotové štítky",
+        "subtitle": "Štítky, které přicházejí s poli. Poznámky zůstanou beze změny, dokud je neoznačíte.",
+        "notNow": "Teď ne",
+        "add": "Přidat",
+        "addFields": "Přidat pole",
+        "added": "Přidáno",
+        "alreadyOn": "Již použito u poznámek: {count}",
+        "alreadyOnOne": "Již použito u 1 poznámky"
+      },
+      "dialog": {
+        "title": "Přidat pole {preset} ke štítku #{tag}?",
+        "body": "Štítek #{tag} je již u poznámek: {count}. Ponechají si vše, co mají, a získají tato pole, prázdná, dokud je někdo nevyplní.",
+        "bodyOne": "Štítek #{tag} je již u 1 poznámky. Ponechá si vše, co má, a získá tato pole, prázdná, dokud je někdo nevyplní.",
+        "template": "Šablona ({sections}) vyplní jen prázdné poznámky.",
+        "alsoAddsPrefix": "Také přidá",
+        "alsoAddsSuffix": "pro pole {field}.",
+        "useAnotherName": "Použít jiný název",
+        "nameLabel": "Název nového štítku",
+        "namePlaceholder": "kontakt",
+        "cancel": "Zrušit",
+        "addFields": "Přidat pole"
+      },
+      "toast": {
+        "added": "Přidán štítek #{tag}",
+        "addedFields": "Pole {preset} přidána ke štítku #{tag}"
+      },
+      "hasFields": "Má pole"
+    },
+    "tasks": {
+      "thisTask": "Tento úkol",
+      "viaTag": "{name} přes #{via}",
+      "clearValue": "Vymazat {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "přes #{tag}",
+      "groupMenu": "Možnosti pro {tag}",
+      "openTag": "Otevřít #{tag}",
+      "thisNote": "Tato poznámka"
+    },
+    "offer": {
+      "text": "Přidat šablonu {tag} pod váš text",
+      "add": "Přidat",
+      "dismiss": "Zavřít",
+      "addFailed": "Šablonu se nepodařilo přidat"
+    },
+    "settings": {
+      "title": "Nastavení pro #{tag}",
+      "close": "Zavřít",
+      "cancel": "Zrušit",
+      "save": "Uložit",
+      "onCounts": "V {notes, plural, one {# poznámce} few {# poznámkách} many {# poznámky} other {# poznámkách}} a {tasks, plural, one {# úkolu} few {# úkolech} many {# úkolu} other {# úkolech}}",
+      "onNotes": "V {count, plural, one {# poznámce} few {# poznámkách} many {# poznámky} other {# poznámkách}}",
+      "headerFields": "{count, plural, one {# pole} few {# pole} many {# pole} other {# polí}}",
+      "editTag": "Upravit štítek",
+      "syncNote": "Změny se synchronizují do vašich dalších zařízení",
+      "newerVersion": "Novější verze Memry tento štítek změnila. Pokud ho chcete upravit zde, aktualizujte Memry.",
+      "sections": {
+        "appearance": "Vzhled",
+        "extends": "Rozšiřuje",
+        "fields": "Pole · {count}",
+        "template": "Šablona"
+      },
+      "appearance": {
+        "icon": "Ikona",
+        "color": "Barva",
+        "customColor": "Vlastní",
+        "category": "Kategorie",
+        "noCategory": "Bez kategorie"
+      },
+      "extends": {
+        "nothing": "Nic",
+        "hint": "Převezme pole jiného štítku a zobrazí se v jeho tabulce.",
+        "hintSet": "Poznámky se štítkem {tag} získají pole štítku {parent} a zobrazí se v tabulce {parent}."
+      },
+      "types": {
+        "text": "Text",
+        "number": "Číslo",
+        "date": "Datum",
+        "url": "URL",
+        "status": "Stav",
+        "select": "Výběr",
+        "multiselect": "Vícenásobný výběr",
+        "checkbox": "Zaškrtávací pole",
+        "relation": "Vztah"
+      },
+      "fields": {
+        "empty": "Zatím žádná pole. Přidejte pole, aby měla každá poznámka se štítkem #tag stejné vlastnosti.",
+        "fromParent": "Ze štítku #{tag} · upravte tam",
+        "inverseSub": "Zobrazeno u položky {target} jako {inverse}",
+        "anyNoteSub": "Odkazuje na libovolnou poznámku",
+        "actions": "Akce pro {field}",
+        "rename": "Přejmenovat…",
+        "relationSettings": "Nastavení vztahu",
+        "remove": "Odebrat…"
+      },
+      "addField": {
+        "button": "Přidat pole",
+        "namePlaceholder": "Název pole",
+        "existing": "Existující vlastnosti",
+        "existingSub": "{type} · v {count, plural, one {# poznámce} few {# poznámkách} many {# poznámky} other {# poznámkách}} · znovu použít",
+        "newType": "Typ nového pole",
+        "relationSub": "Odkaz na poznámky se štítkem",
+        "submit": "Přidat pole",
+        "reserved": "{name} je vyhrazený název a nelze ho použít jako pole.",
+        "taken": "Štítek #{tag} už pole {name} má."
+      },
+      "relation": {
+        "target": "Odkazuje na poznámky se štítkem",
+        "pickTag": "Vyberte štítek",
+        "howMany": "Kolik",
+        "one": "Jedna",
+        "many": "Více",
+        "inverseLabel": "Na stránce {target} je zobrazit jako",
+        "inverseLabelAny": "Na propojené stránce je zobrazit jako",
+        "inverseHint": "Seznam jen pro čtení u každé položky {target}. Do poznámek {target} se nic nezapisuje.",
+        "inverseHintAny": "Seznam jen pro čtení u každé propojené poznámky. Do těchto poznámek se nic nezapisuje."
+      },
+      "shared": {
+        "title": "Nové pole u #{tag}",
+        "existsWith": "{name} už v tomto trezoru existuje s hodnotami {options}.",
+        "existsAs": "{name} už v tomto trezoru existuje jako vlastnost typu {type}.",
+        "shareWith": "Štítek #{tag} ho bude sdílet s vašimi poznámkami: {others}.",
+        "shareAny": "Štítek #{tag} ho bude sdílet s vašimi dalšími poznámkami.",
+        "useInstead": "Použít místo toho {name}",
+        "share": "Sdílet {name}"
+      },
+      "template": {
+        "edit": "Upravit šablonu",
+        "none": "Zatím žádná šablona. Šablona vyplní prázdné poznámky, když získají štítek.",
+        "create": "Vytvořit šablonu",
+        "defaultHeading": "Poznámky",
+        "inherited": "Ze štítku #{tag}",
+        "autofill": "Vyplnit prázdné poznámky, když získají #{tag}"
+      },
+      "remove": {
+        "title": "Odebrat {field} ze štítku #{tag}?",
+        "body": "Pole {field} je vyplněno v {filled, plural, one {# poznámce} few {# poznámkách} many {# poznámky} other {# poznámkách}}. Tyto hodnoty zůstanou v poznámkách jako běžná vlastnost; {empty, plural, one {# prázdné místo zmizí} few {# prázdná místa zmizí} many {# prázdného místa zmizí} other {# prázdných míst zmizí}}.",
+        "confirm": "Odebrat pole"
+      },
+      "rename": {
+        "title": "Přejmenovat {from} na {to}",
+        "titleEmpty": "Přejmenovat {from}",
+        "label": "Nový název",
+        "body": "{count, plural, one {# poznámka má hodnotu} few {# poznámky mají hodnotu} many {# poznámky má hodnotu} other {# poznámek má hodnotu}} pole {field}. Memry přejmenuje klíč v každém souboru i ve vlastnostech; Obsidian uvidí nový název také.",
+        "progress": "Přejmenování v poznámkách",
+        "confirm": "Přejmenovat",
+        "taken": "Tento štítek už pole {name} má.",
+        "done": "Pole {from} přejmenováno na {to} v {count, plural, one {# položce} few {# položkách} many {# položky} other {# položkách}}.",
+        "skipped": "Pole {from} přejmenováno na {to} v {count, plural, one {# položce} few {# položkách} many {# položky} other {# položkách}}. {locked, plural, =0 {} one {# zamčená poznámka se dokončí po odemknutí.} few {# zamčené poznámky se dokončí po odemknutí.} many {# zamčené poznámky se dokončí po odemknutí.} other {# zamčených poznámek se dokončí po odemknutí.}} {existing, plural, =0 {} one {# poznámka už pole {to} měla a ponechá obě.} few {# poznámky už pole {to} měly a ponechají obě.} many {# poznámky už pole {to} mělo a ponechá obě.} other {# poznámek už pole {to} mělo a ponechá obě.}}"
+      },
+      "delete": {
+        "button": "Smazat štítek",
+        "title": "Smazat #{tag}?",
+        "body": "Štítek #{tag} bude odebrán z {notes, plural, one {# poznámky} few {# poznámek} many {# poznámky} other {# poznámek}} a zmizí spolu se svými poli ({fields, plural, one {# pole} few {# pole} many {# pole} other {# polí}}) a šablonou.",
+        "bodyNoTemplate": "Štítek #{tag} bude odebrán z {notes, plural, one {# poznámky} few {# poznámek} many {# poznámky} other {# poznámek}} a zmizí spolu se svými poli ({fields, plural, one {# pole} few {# pole} many {# pole} other {# polí}}).",
+        "bodyPlain": "Štítek #{tag} bude odebrán ze všech poznámek, které ho mají ve svých štítcích.",
+        "statNotes": "poznámky si ponechají text",
+        "statValues": "hodnoty zůstanou jako vlastnosti",
+        "plainText": "Poznámky, které #{tag} zmiňují v textu, si ho ponechají jako prostý text.",
+        "confirm": "Smazat štítek",
+        "done": "Štítek #{tag} smazán."
+      },
+      "errors": {
+        "addField": "Pole se nepodařilo přidat.",
+        "removeField": "Pole se nepodařilo odebrat.",
+        "renameField": "Pole se nepodařilo přejmenovat.",
+        "moveField": "Pole se nepodařilo přesunout.",
+        "relation": "Vztah se nepodařilo uložit.",
+        "extends": "Rozšiřování tohoto štítku se nepodařilo změnit.",
+        "template": "Šablonu se nepodařilo aktualizovat.",
+        "deleteTag": "Štítek se nepodařilo smazat.",
+        "icon": "Ikonu se nepodařilo změnit.",
+        "color": "Barvu se nepodařilo změnit.",
+        "category": "Kategorii se nepodařilo změnit."
+      }
+    },
+    "fill": {
+      "action": "Vyplnit z poznámky",
+      "reading": "Čtení poznámky…",
+      "disclosure": "Model vašeho agenta ({model}) přečte tuto poznámku a navrhne hodnoty. Odešle se pouze tato poznámka. Nic se neuloží, dokud to nepřijmete.",
+      "disclosureLocal": "Váš místní model ({model}) přečte tuto poznámku v tomto zařízení a navrhne hodnoty. Nic neopustí zařízení a nic se neuloží, dokud to nepřijmete.",
+      "disclosureMany": "Model vašeho agenta ({model}) přečte tyto poznámky jednu po druhé a navrhne hodnoty. Odešlou se pouze tyto poznámky. Nic se neuloží, dokud to nepřijmete.",
+      "disclosureLocalMany": "Váš místní model ({model}) přečte tyto poznámky v tomto zařízení a navrhne hodnoty. Nic neopustí zařízení a nic se neuloží, dokud to nepřijmete.",
+      "suggest": "Navrhnout hodnoty",
+      "notNow": "Teď ne",
+      "countOne": "· {count} návrh",
+      "count": "· návrhů: {count}",
+      "dismiss": "Zavřít",
+      "acceptAll": "Přijmout vše",
+      "accept": "Přijmout {field}",
+      "reject": "Odmítnout {field}",
+      "notInNote": "Není v poznámce",
+      "createHint": "Po přijetí vytvoří nový štítek #{tag}",
+      "nothingFound": "V této poznámce není nic, čím by se daly vyplnit prázdná pole",
+      "failed": "Hodnoty se nepodařilo navrhnout. {message}",
+      "saveFailed": "Přijaté hodnoty se nepodařilo uložit",
+      "bulkAction": "Vyplnit prázdná pole",
+      "bulkTitle": "Vyplnit prázdná pole",
+      "bulkReading": "{done} z {total} poznámek · čtení poznámek…",
+      "bulkRead": "Přečteno {done} z {total} poznámek",
+      "stop": "Zastavit",
+      "name": "Název",
+      "nothingInRow": "Nic nenalezeno",
+      "found": "Nalezeno: {count}",
+      "reviewOneByOne": "Projít jednu po druhé",
+      "acceptRow": "Přijmout hodnoty pro {title}",
+      "rejectRow": "Přeskočit {title}",
+      "bulkSavedOne": "Vyplněno pole: {count} v poznámkách: {notes}",
+      "bulkSaved": "Vyplněno polí: {count} v poznámkách: {notes}"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Vytvořit {title} jako",
+      "asPrefix": "Vytvořit",
+      "asSuffix": "jako",
+      "failed": "Poznámku se nepodařilo vytvořit",
+      "lastUsed": "Naposledy použité",
+      "noteWord": "poznámka",
+      "plainNote": "Prostá poznámka",
+      "readyMade": "Hotový štítek",
+      "row": "Vytvořit „{title}“",
+      "rowHint": "Jako {types}"
+    },
+    "hover": {
+      "at": "v",
+      "lastMet": "Naposledy setkání · {title}",
+      "lastMetOn": "Naposledy setkání {date} · {title}",
+      "mentionedIn": "{count, plural, one {Zmíněno v # poznámce} few {Zmíněno v # poznámkách} many {Zmíněno v # poznámky} other {Zmíněno v # poznámkách}}",
+      "open": "Otevřít",
+      "tasks": "{count, plural, one {# úkol · {field}} few {# úkoly · {field}} many {# úkolu · {field}} other {# úkolů · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} v textu",
+      "explain": "V textu je štítek jen popisek. Tato poznámka je uvedena v části Zmíněno v u štítku #{tag}.",
+      "made": "Štítek #{tag} přidán do štítků této poznámky",
+      "make": "Změnit tuto poznámku na {tag}",
+      "makeFailed": "Štítek se nepodařilo přidat",
+      "makeHint": "Přidá #{tag} do záhlaví a zobrazí jeho pole",
+      "meta": "{count, plural, one {# objekt} few {# objekty} many {# objektu} other {# objektů}} · {fields, plural, one {# pole} few {# pole} many {# pole} other {# polí}}",
+      "metaNamed": "{count, plural, one {# {one}} few {# {other}} many {# {other}} other {# {other}}} · {fields, plural, one {# pole} few {# pole} many {# pole} other {# polí}}",
+      "open": "Otevřít #{tag}",
+      "remove": "Odebrat štítek z textu"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "jako {field}",
+      "due": "Termín {date}",
+      "inTheText": "v textu",
+      "mentionedIn": "Zmíněno v",
+      "tasks": "Úkoly",
+      "title": "Propojeno zde"
+    },
+    "mention": {
+      "notes": "Poznámky"
+    },
+    "picker": {
+      "create": "Nový {tag}",
+      "createNamed": "Nový {tag} „{title}“",
+      "empty": "Žádné shody",
+      "search": "Hledat {tag}",
+      "untitled": "Nový {tag}"
+    },
+    "quickFields": {
+      "add": "Přidat {field}",
+      "aria": "První pole položky {title}",
+      "done": "Hotovo",
+      "later": "Později",
+      "newObject": "Nový {tag}",
+      "saveFailed": "Pole se nepodařilo uložit"
+    },
+    "table": {
+      "untitled": "Nový {tag}",
+      "newInGroup": "Nový {tag} ve skupině {group}",
+      "newInGroupHint": "⌘↵ ho otevře na nové kartě",
+      "new": "Nový {tag}",
+      "includes": "{field} obsahuje",
+      "removeFilter": "Odebrat filtr",
+      "shown": "{shown} z {total}",
+      "saveView": "Uložit zobrazení",
+      "mentionedMeta": "{count, plural, one {# poznámka s '#'{tag} v textu} few {# poznámky s '#'{tag} v textu} many {# poznámky s '#'{tag} v textu} other {# poznámek s '#'{tag} v textu}}",
+      "saveFailed": "Pole se nepodařilo uložit",
+      "created": "Vytvořeno: {title}"
+    },
+    "relationDrop": {
+      "title": "Přidat #{tag} k „{title}“?",
+      "body": "Toto pole propojuje jen poznámky se štítkem #{tag}. Memry přidá #{tag} do záhlaví „{title}“ a poté ji sem propojí.",
+      "confirm": "Přidat #{tag} a propojit",
+      "cancel": "Zrušit",
+      "added": "„{title}“ je nyní #{tag} a je propojena",
+      "notANote": "Jako #{tag} lze zde propojit jen poznámky",
+      "failed": "Tuto poznámku se nepodařilo propojit"
+    }
+  },
   "names": {
     "also": "také",
     "add": "Přidat další název",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "Hledat poznámky",
     "pickerEmpty": "Žádné odpovídající poznámky",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Přidat podrobnosti"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portál",
+        "subtext": "Zobrazit poznámku nebo blok živě odjinud"
+      },
+      "searchPortal": {
+        "title": "Vyhledávací portál",
+        "subtext": "Živý seznam bloků odpovídajících dotazu"
+      }
+    },
+    "picker": {
+      "aria": "Vyberte poznámku nebo blok pro portál",
+      "notes": "Poznámky",
+      "blocks": "Bloky",
+      "loading": "Hledání…",
+      "empty": "Žádné odpovídající poznámky ani bloky",
+      "hintInsert": "Vložit portál",
+      "hintClose": "Zavřít",
+      "keyEsc": "Esc",
+      "create": "Vytvořit poznámku „{query}“",
+      "createFailed": "Tuto poznámku se nepodařilo vytvořit",
+      "stampFailed": "Tento blok se nepodařilo připravit pro portál",
+      "retargetFailed": "Portál se nepodařilo přesměrovat na tento blok"
+    },
+    "insert": {
+      "cycle": "Portál nemůže zobrazit poznámku sám v sobě."
+    },
+    "copy": {
+      "done": "Portál zkopírován. Vložte ho do libovolné poznámky.",
+      "failed": "Portál na tento blok se nepodařilo zkopírovat"
+    },
+    "menu": {
+      "copyAsPortal": "Kopírovat jako portál",
+      "hideInPortal": "Skrýt v tomto portálu"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Použito na # dalším místě} few {Použito na # dalších místech} many {Použito na # dalšího místa} other {Použito na # dalších místech}}"
+    },
+    "whereUsed": {
+      "aria": "Kde se tento blok používá",
+      "portals": "Portály",
+      "links": "Odkazy",
+      "openBeside": "Otevřít vedle",
+      "loadFailed": "Nepodařilo se načíst, kde je tento blok zobrazen"
+    },
+    "hiddenBlocks": {
+      "title": "Skryté bloky",
+      "showAll": "Zobrazit vše",
+      "search": "Hledat ve skrytých blocích",
+      "showFailed": "Tento blok se nepodařilo zobrazit"
+    },
+    "searchQuery": {
+      "titleNew": "Vyhledávací portál",
+      "titleEdit": "Upravit dotaz",
+      "text": "Obsahuje slova",
+      "textPlaceholder": "Slova v bloku",
+      "tag": "Štítek",
+      "tagPlaceholder": "zkouška",
+      "limit": "Limit",
+      "footer": "Omezit na {limit} výsledků.",
+      "create": "Vytvořit",
+      "apply": "Použít"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Smazat tento blok všude?",
+        "note": "Smazat tuto poznámku všude?"
+      },
+      "description": {
+        "block": "„{title}“ se objevuje také v {count, plural, one {# další poznámce} few {# dalších poznámkách} many {# další poznámky} other {# dalších poznámkách}}.",
+        "note": "„{title}“ je zobrazena nebo propojena v {count, plural, one {# další poznámce} few {# dalších poznámkách} many {# další poznámky} other {# dalších poznámkách}}."
+      },
+      "manyNotes": "Poznámky: {count}",
+      "source": "{title} (zdroj)",
+      "removeHere": "Místo toho skrýt zde",
+      "cancel": "Zrušit",
+      "everywhere": "Smazat všude",
+      "undoToast": "{count, plural, one {Smazaný blok byl zobrazen v # další poznámce.} few {Smazaný blok byl zobrazen v # dalších poznámkách.} many {Smazaný blok byl zobrazen v # další poznámky.} other {Smazaný blok byl zobrazen v # dalších poznámkách.}}",
+      "undo": "Zpět"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Plný",
+      "brief": "Stručný",
+      "key": "Klíčový",
+      "takeaway": "Shrnutí",
+      "topic": "Téma"
+    },
+    "chrome": {
+      "fold": "Sbalit poznámku",
+      "unfold": "Sbaleno na úroveň {level}. Zobrazit celý text",
+      "words": "{count, plural, one {# slovo} few {# slova} many {# slova} other {# slov}}",
+      "writing": "Psaní…",
+      "writtenBy": "Napsal {agent}",
+      "retry": "Poslední běh selhal · Zkusit znovu",
+      "retryAction": "Zkusit znovu",
+      "captionOff": "Zapněte Shrnovat dlouhé poznámky v Nastavení → AI",
+      "captionNoAgent": "Není připojen žádný agent · Nastavení → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Dlouhá poznámka? Prolistujte ji.",
+      "body": "Sbalte ji na klíčové věty a poté otevřete jen odstavec, který potřebujete.",
+      "dismiss": "Rozumím"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# odstavec otevřen} few {# odstavce otevřeny} many {# odstavce otevřeno} other {# odstavců otevřeno}}",
+      "escape": "esc",
+      "copy": "Kopírovat jako text",
+      "copied": "Zkopírováno",
+      "aria": "Sbalené zobrazení",
+      "hintMac": "Přiblížení provedete štípnutím, posouváním s ⌘ nebo posouváním na tomto pruhu · odstavec otevřete kliknutím",
+      "hint": "Přiblížení provedete štípnutím, posouváním s Ctrl nebo posouváním na tomto pruhu · odstavec otevřete kliknutím"
+    },
+    "view": {
+      "aria": "Sbalené zobrazení úrovně {level}",
+      "paragraphOpen": "Otevřeno na úroveň Plný · kliknutím znovu sbalíte",
+      "paragraphFold": "Sbalit tento odstavec",
+      "paragraphOpenAction": "Otevřít tento odstavec celý",
+      "unfoldSection": "Rozbalit sekci {heading}",
+      "jumpToParagraph": "Zobrazit tento odstavec celý: {topic}",
+      "untitledSection": "Bez názvu",
+      "skipped": {
+        "code": "… {count, plural, one {# blok kódu} few {# bloky kódu} many {# bloku kódu} other {# bloků kódu}}",
+        "table": "… {count, plural, one {# tabulka} few {# tabulky} many {# tabulky} other {# tabulek}}",
+        "image": "… {count, plural, one {# obrázek} few {# obrázky} many {# obrázku} other {# obrázků}}",
+        "callout": "… {count, plural, one {# upozornění} few {# upozornění} many {# upozornění} other {# upozornění}}",
+        "embed": "… {count, plural, one {# vložený obsah} few {# vložené obsahy} many {# vloženého obsahu} other {# vložených obsahů}}",
+        "other": "… {count, plural, one {# další blok} few {# další bloky} many {# dalšího bloku} other {# dalších bloků}}"
+      }
+    }
   }
 }

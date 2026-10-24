@@ -195,6 +195,7 @@
     "complete-task": "Dokončit úkol {title}",
     "task-completed": "Úkol dokončen",
     "could-not-complete": "Úkol se nepodařilo dokončit",
+    "could-not-update-status": "Stav úkolu se nepodařilo změnit",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Poznámku se nepodařilo otevřít"
     }
   },
+  "eventNotes": {
+    "heading": "Poznámky",
+    "create": "Nová poznámka",
+    "link": "Propojit poznámku",
+    "untitled": "Poznámka ze schůzky",
+    "searchPlaceholder": "Hledat poznámky",
+    "noResults": "Nenalezeny žádné poznámky",
+    "createFailed": "Poznámku k této události se nepodařilo vytvořit.",
+    "linkFailed": "Poznámku se nepodařilo propojit s touto událostí.",
+    "loadFailed": "Poznámky propojené s touto událostí se nepodařilo načíst.",
+    "propertyTaken": "Tato poznámka už má vlastnost „{name}“, která není odkazem."
+  },
   "notePopover": {
     "kind": "Poznámka",
     "kindDateReminder": "Připomenutí data",
@@ -254,6 +267,10 @@
     "overdue": "po termínu",
     "untitled": "Bez názvu",
     "days": "{count, plural, one {# den} few {# dny} other {# dní}}",
+    "subtasks": {
+      "expand": "Zobrazit {count, plural, one {# dílčí úkol} few {# dílčí úkoly} many {# dílčího úkolu} other {# dílčích úkolů}} u úkolu {title}",
+      "collapse": "Skrýt {count, plural, one {# dílčí úkol} few {# dílčí úkoly} many {# dílčího úkolu} other {# dílčích úkolů}} u úkolu {title}"
+    },
     "events": "Události",
     "schedule-hint": "Kliknutím nastavíte datum, přetažením rozsah",
     "empty-title": "Na časové ose tu nic není",

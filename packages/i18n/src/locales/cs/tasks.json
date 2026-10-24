@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Termín vymazán u # dílčího úkolu} few {Termín vymazán u # dílčích úkolů} other {Termín vymazán u # dílčích úkolů}}",
       "prioritySet": "{count, plural, one {Priorita nastavena u # dílčího úkolu} few {Priorita nastavena u # dílčích úkolů} many {Priorita nastavena u # dílčího úkolu} other {Priorita nastavena u # dílčích úkolů}}",
       "deleted": "{count, plural, one {# dílčí úkol smazán} few {# dílčí úkoly smazány} many {# dílčího úkolu smazáno} other {# dílčích úkolů smazáno}}"
-    }
+    },
+    "completedBranch": "Dokončeno: {title} a {count, plural, one {# otevřený dílčí úkol} few {# otevřené dílčí úkoly} many {# otevřeného dílčího úkolu} other {# otevřených dílčích úkolů}}",
+    "deletedKeepSubtasks": "Smazáno: {title}, dílčí úkoly zůstaly zachovány",
+    "deletedBranch": "Smazáno: {title} a {count, plural, one {# dílčí úkol} few {# dílčí úkoly} many {# dílčího úkolu} other {# dílčích úkolů}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "stav",
       "projectIs": "Projekt je",
       "project": "projekt",
+      "locationIs": "Umístění je",
+      "location": "umístění",
+      "unknownNote": "Neznámá poznámka",
       "due": "Termín",
       "dueDate": "termín",
       "search": "hledání",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Termín"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Umístění",
+      "search": "Hledat složky a poznámky...",
+      "empty": "Žádné složky ani poznámky s úkoly"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorita",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Zobrazení projektu",
       "overview": "Přehled",
+      "all": "Vše",
       "tasks": "Úkoly",
       "notes": "Poznámky",
       "files": "Soubory",
@@ -951,6 +963,25 @@
       "fileError": "Soubor {name} se nepodařilo propojit",
       "fileErrorGeneric": "Soubory se nepodařilo importovat",
       "label": "Přidat do projektu {name}"
+    },
+    "all": {
+      "showDone": "Zobrazit hotové",
+      "empty": "V tomto projektu není nic otevřeného.",
+      "expand": "Zobrazit úkoly v {title}",
+      "collapse": "Skrýt úkoly v {title}",
+      "taskSummary": "Otevřeno: {open}/{total}",
+      "daysLeft": "{count} d",
+      "overdue": "po termínu {count} d",
+      "columns": {
+        "title": "Název",
+        "daysLeft": "Zbývá dní"
+      },
+      "status": {
+        "active": "Aktivní",
+        "done": "Hotovo",
+        "upcoming": "Nadcházející",
+        "past": "Minulé"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigová",
     "purple": "Fialová",
     "pink": "Růžová"
+  },
+  "subtaskTree": {
+    "addSubtask": "Přidat dílčí úkol",
+    "dropInto": "Do {title}",
+    "dropOut": "O úroveň výš",
+    "draftPlaceholder": "Název dílčího úkolu",
+    "draftLabel": "Nový dílčí úkol v {title}",
+    "draftIn": "v {title}",
+    "toggleComplete": "Dokončit {title}",
+    "moveUnder": {
+      "title": "Přesunout pod",
+      "placeholder": "Přesunout pod…",
+      "empty": "Žádný odpovídající úkol",
+      "topLevel": "Nejvyšší úroveň v {project}",
+      "thisTask": "Tento úkol",
+      "currentParent": "Aktuální nadřazený úkol",
+      "movesOne": "Přesune {title}",
+      "movesBranch": "Přesune {title} a {count, plural, one {# dílčí úkol} few {# dílčí úkoly} many {# dílčího úkolu} other {# dílčích úkolů}}",
+      "keys": "↵ Přesunout sem · ⌘↵ Nejvyšší úroveň · esc Zavřít"
+    },
+    "zoom": {
+      "path": "Cesta úkolu",
+      "up": "O úroveň výš",
+      "upShortcut": "O úroveň výš (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Smazat {title}?",
+      "summary": "{direct, plural, one {Má # dílčí úkol} few {Má # dílčí úkoly} many {Má # dílčího úkolu} other {Má # dílčích úkolů}}{deeper, plural, =0 {} one { a # další pod ním} few { a # další pod nimi} many { a # dalšího pod nimi} other { a # dalších pod nimi}}{open, plural, =0 {, všechny hotové.} one {, # je stále otevřený.} few {, # jsou stále otevřené.} many {, # je stále otevřeného.} other {, # je stále otevřených.}}",
+      "cancel": "Zrušit",
+      "deleteAll": "Smazat vše",
+      "keepSubtasks": "Ponechat dílčí úkoly"
+    },
+    "menu": {
+      "open": "Otevřít",
+      "complete": "Dokončit",
+      "reopen": "Znovu otevřít",
+      "zoom": "Přiblížit dílčí úkoly",
+      "moveUnder": "Přesunout pod…",
+      "indent": "Přesunout pod {title}",
+      "outdent": "Přesunout o úroveň výš",
+      "topLevel": "Změnit na úkol nejvyšší úrovně",
+      "delete": "Smazat"
+    },
+    "openPath": "Otevřít {path}"
   }
 }
