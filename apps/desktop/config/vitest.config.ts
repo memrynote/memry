@@ -90,6 +90,22 @@ export default defineConfig({
         }
       },
       {
+        // Runs the Electron markdown converter in place as the conformance oracle
+        // (scripts/markdown-oracle). Inert unless MEMRY_ORACLE_IN/OUT name a batch.
+        extends: true,
+        test: {
+          name: 'markdown-oracle',
+          root: appRoot,
+          environment: 'node',
+          include: ['scripts/markdown-oracle/**/*.oracle.ts'],
+          setupFiles: ['tests/setup.ts'],
+          testTimeout: 600000,
+          hookTimeout: 60000,
+          pool: 'forks',
+          isolate: true
+        }
+      },
+      {
         extends: true,
         test: {
           name: 'preload',
