@@ -33,6 +33,9 @@ allowBuilds:
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
   tar: '>=7.5.21'
+  # One yaml for every vite peer variant; @wdio/native-utils needs ^2.9.1 (#3520).
+  yaml: '>=2.9.1'
+  tsx: '4.21.0'
   proxy-addr: '>=2.0.8'
   tinypool: '>=2.1.2'
   rollup: '>=4.59.0'
