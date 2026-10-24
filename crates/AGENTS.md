@@ -1,14 +1,21 @@
 # Rust core guide
 
-This directory owns the Rust workspace. `memry-core` is the shared core under the iOS app. `memry-cli` builds `memry`, a headless client that drives the core against a real sync server. `uniffi-bindgen-swift` generates the Swift bindings. `.specify/memory/constitution.md` states the full principles for the core and the native shells; read it before changing what the core owns or exposes.
+This directory owns the Rust workspace. `memry-core` is the shared core under the iOS and desktop apps; `memry-desktop` holds desktop-only services and has no tauri dependency; `memry-ml` holds the native ML libraries (ONNX Runtime, whisper, Tesseract, images, pdfium; OCR and pdfium run in its `memry-ml-worker` sidecar process, so a hung native call is killed without taking the app down); `memrynote-cli` builds the user-facing `memrynote` binary; `memry-cli` builds `memry`, the dev tool; `uniffi-bindgen-swift` generates the Swift bindings. The Tauri bin crate `memry-tauri` lives in `apps/desktop-tauri/src-tauri` and is a member of this workspace. Crates that Steps 02 (#3519), 23 (#3540) and 35 (#3552) create are named here before they exist so the guide is true when they land.
 
 ## Ownership
 
 - Everything that is not UI lives once, in `memry-core`: sync, crypto, CRDT through yrs, SQLite storage, auth, and domain rules. When a shell needs a decision the core does not expose, the core gains an API and the shell gains no logic.
 - `memry-core/src/api/` is the UniFFI API the shells call. `memry-core/src/seams/` defines the traits each shell implements for platform capabilities, such as transport, secure store, reachability, notifications, background work, and code capture. A new seam needs a written reason.
 - The core implements `docs/protocol/`, and `packages/contracts` is the schema source of truth. A Rust type that drifts from a contract is a bug in the Rust.
-- The core never serialises a note body to markdown. It parses markdown only in `memry-core/src/crdt/markdown_seed/`, for the two writes in section 12.1.0 of `docs/protocol/12-note-body-format.md`, and carries markdown verbatim everywhere else. Desktop owns the conversion.
-- Desktop stays TypeScript, so the protocol has two implementations. They agree through conformance vectors, never by reading each other's code.
+- The core owns markdown conversion in both directions, in `memry-core/src/markdown/`. Desktop and iOS carry markdown verbatim until they call the core. Until Step 05 (#3522) of the Tauri epic merges, the TypeScript converter in `apps/desktop/src/main/sync/blocknote-converter.ts` is the production converter and the oracle that generates the conversion vectors; after it merges, the Rust converter is the owner and the vectors keep it equal to the frozen TypeScript.
+- Desktop is Rust on this core. The Electron app's TypeScript implementation stays as the vector oracle until the cutover step deletes it. The two implementations agree through conformance vectors, never by reading each other's code.
+
+## Desktop crates
+
+- `memry-desktop` and `memry-ml` never depend on `tauri`.
+- `memry-tauri` adapters parse arguments, call one service method and map the error, with no domain decision inside a command.
+- A blocking core call runs inside `spawn_blocking`.
+- Desktop never uses `memry_core::api::runtime`.
 
 ## Conformance
 
@@ -35,10 +42,12 @@ Run these from `crates/`, where `rust-toolchain.toml` pins the toolchain CI uses
 
 ```bash
 cargo fmt --all --check
-cargo clippy --all-targets -- -D warnings
-cargo test -p memry-core
-node ../scripts/check-line-ceilings.mjs   # 600 lines per Rust source file
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test -p <touched crates>   # CI runs the full workspace
+node ../scripts/check-line-ceilings.mjs
 ```
+
+- 600 lines per Rust source file in every crate, `apps/desktop-tauri/src-tauri` included. The repo-wide oxlint `max-lines` limit of 800 applies to `apps/desktop-tauri/src`.
 
 - A file at its ceiling is split along an existing module boundary before it gains behavior.
 - `memry` defaults to staging. Never point it at production, which holds only real users' vaults.

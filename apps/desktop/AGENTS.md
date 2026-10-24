@@ -1,6 +1,8 @@
 # Desktop guide
 
-This directory owns the Electron app (`@memry/desktop`), the reference implementation the other apps follow. Most shared packages in `packages/` run their tests here too, so read this guide before changing them.
+This directory owns the Electron app (`@memry/desktop`), the reference implementation until the cutover. Most shared packages in `packages/` run their tests here too, so read this guide before changing them.
+
+**Frozen.** This app is being replaced by `apps/desktop-tauri` (see [docs/adr/0001-desktop-on-tauri-v2.md](../../docs/adr/0001-desktop-on-tauri-v2.md)). Only critical bug fixes land here. A critical fix that touches the renderer lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths, until the cutover step deletes this app. A new feature, refactor or dependency bump goes to the Tauri app or to a shared package, not here.
 
 ## Ownership
 

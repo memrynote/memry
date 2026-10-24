@@ -26,6 +26,8 @@ a reader has to trust:
 
 Keywords MUST, MUST NOT, SHOULD, MAY are used in the RFC 2119 sense.
 
+> **Implementation ownership.** The Rust core in `crates/memry-core` and the desktop crates are the implementation this specification describes; the TypeScript clients named in citations are frozen and remain the oracle for the vectors until the cutover step of the Tauri epic deletes them. After the cutover every normative citation points at the Rust implementation (`docs/adr/0001-desktop-on-tauri-v2.md`).
+
 Chapters:
 
 | #   | File                                  | Subject                                       |
