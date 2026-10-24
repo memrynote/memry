@@ -195,6 +195,7 @@
     "complete-task": "Выполнить «{title}»",
     "task-completed": "Задача выполнена",
     "could-not-complete": "Не удалось отметить задачу как выполненную",
+    "could-not-update-status": "Не удалось изменить статус задачи",
     "duration-minutes": "{minutes} мин",
     "duration-hours": "{hours} ч",
     "duration-hours-minutes": "{hours} ч {minutes} мин"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Не удалось открыть заметку"
     }
   },
+  "eventNotes": {
+    "heading": "Заметки",
+    "create": "Новая заметка",
+    "link": "Привязать заметку",
+    "untitled": "Заметка о встрече",
+    "searchPlaceholder": "Поиск заметок",
+    "noResults": "Заметки не найдены",
+    "createFailed": "Не удалось создать заметку для этого события.",
+    "linkFailed": "Не удалось привязать заметку к этому событию.",
+    "loadFailed": "Не удалось загрузить заметки, привязанные к этому событию.",
+    "propertyTaken": "У этой заметки уже есть свойство «{name}», не являющееся ссылкой."
+  },
   "notePopover": {
     "kind": "Заметка",
     "kindDateReminder": "Напоминание о дате",
@@ -254,6 +267,10 @@
     "overdue": "просрочено",
     "untitled": "Без названия",
     "days": "{count, plural, one {# день} few {# дня} many {# дней} other {# дня}}",
+    "subtasks": {
+      "expand": "Показать {count, plural, one {# подзадачу} few {# подзадачи} many {# подзадач} other {# подзадачи}} задачи «{title}»",
+      "collapse": "Скрыть {count, plural, one {# подзадачу} few {# подзадачи} many {# подзадач} other {# подзадачи}} задачи «{title}»"
+    },
     "events": "События",
     "schedule-hint": "Нажмите, чтобы указать дату, или перетащите, чтобы задать период",
     "empty-title": "На хронологии здесь ничего нет",

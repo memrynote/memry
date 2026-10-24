@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Удалить запись журнала",
     "description": "Удалить запись «{title}»? Это действие нельзя отменить."
+  },
+  "dayTimeline": {
+    "label": "Расписание дня",
+    "allDay": "События на весь день",
+    "unscheduled": "Без времени",
+    "unscheduledEmpty": "Нет задач без времени. Перетащите сюда блок, чтобы убрать его время.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Выполнить: {title}"
   }
 }
