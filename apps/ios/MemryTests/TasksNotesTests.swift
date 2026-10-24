@@ -239,4 +239,5 @@ private struct TaskSearchFake: VaultSearching {
 
     func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
     func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
+    func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention] { [] }
 }

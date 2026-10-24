@@ -20,6 +20,7 @@ struct VaultSearchTests {
         /// claim links this vault does not hold.
         func backlinks(noteId: String, order: BacklinkOrder) async throws -> [Backlink] { [] }
         func linksTo(targetId: String, order: BacklinkOrder) async throws -> [BacklinkRow] { [] }
+        func unlinkedMentions(targetId: String) async throws -> [UnlinkedMention] { [] }
         /// TP056. No task hits: the task half of a query is asserted in
         /// `TasksNotesTests` against a real index.
         func tasks(query: String, limit: UInt32) async throws -> [SearchResult] { [] }

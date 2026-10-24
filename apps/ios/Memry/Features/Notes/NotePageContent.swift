@@ -20,6 +20,10 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
     let metadataModel: NoteMetadataViewModel
     let composer: NoteAttachmentComposer
     let backlinks: BacklinksViewModel
+    /// Plain-text mentions of this note, with a Link action. `nil` on a page
+    /// that cannot edit other notes (the journal day, whose editor is bound to
+    /// its own date).
+    var unlinkedMentions: UnlinkedMentionsViewModel?
     let linkedTasks: LinkedTasksViewModel
     let taskBridge: NoteTaskBridge
     /// Pushes another note. `nil` leaves links drawn but inert.
@@ -207,6 +211,11 @@ struct NotePageContent<EmptyBody: View, AfterBacklinks: View>: View {
         // after finishing the note (N800).
         if let open {
             BacklinksSection(model: backlinks, open: open)
+            if let unlinkedMentions {
+                UnlinkedMentionsSection(
+                    model: unlinkedMentions, targetTitle: detail.summary.title, open: open
+                )
+            }
         }
         afterBacklinks()
         LinkedTasksSection(model: linkedTasks, open: taskBridge.open)
