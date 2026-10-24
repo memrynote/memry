@@ -132,10 +132,10 @@ export class RecordSyncController<
       return
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TRecovered defaults to the row type and is unconstrained; the recovered row is serialized as-is
+    const asRecord = recovered as Record<string, unknown>
     const payload = JSON.stringify(
-      this.deps.serializeRecovered
-        ? this.deps.serializeRecovered(recovered)
-        : (recovered as Record<string, unknown>)
+      this.deps.serializeRecovered ? this.deps.serializeRecovered(recovered) : asRecord
     )
 
     this.deps.queue.enqueue({
@@ -206,6 +206,7 @@ export class RecordSyncController<
   }
 
   private getFallbackArgs(): TArgs {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- an empty tuple cannot be proven assignable to the generic TArgs; callers whose TArgs needs members always pass them (see enqueueRecoveredUpdate)
     return [] as unknown as TArgs
   }
 }
@@ -256,6 +257,6 @@ export function incrementClock(
 ): VectorClock {
   return {
     ...existingClock,
-    [deviceId]: ((existingClock ?? {})[deviceId] ?? 0) + 1
+    [deviceId]: (existingClock?.[deviceId] ?? 0) + 1
   }
 }

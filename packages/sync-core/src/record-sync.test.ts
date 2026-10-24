@@ -17,7 +17,7 @@ describe('RecordSyncController', () => {
       applyLocalChange: ({ itemId, local, deviceId }) => {
         const next = {
           ...local,
-          clock: { ...local.clock, [deviceId]: ((local.clock ?? {})[deviceId] ?? 0) + 1 }
+          clock: { ...local.clock, [deviceId]: (local.clock?.[deviceId] ?? 0) + 1 }
         }
         state.set(itemId, next)
         return next
