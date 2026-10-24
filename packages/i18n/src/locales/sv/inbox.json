@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# uppskjutet objekt} other {# uppskjutna objekt}}",
     "notificationBody": "{count, plural, one {Ditt uppskjutna objekt är redo att gås igenom} other {Dina uppskjutna objekt är redo}}",
     "toast": "{count, plural, =1 {”{itemTitle}” är tillbaka} one {# uppskjutet objekt är tillbaka} other {# uppskjutna objekt är tillbaka}}"
+  },
+  "sticky": {
+    "kindLabel": "Skicka som",
+    "kinds": {
+      "note": "Anteckning",
+      "task": "Uppgift",
+      "journal": "Dagbok"
+    },
+    "placeholders": {
+      "note": "Skriv ner det…",
+      "task": "Ring Ana @imorgon #hem !hög",
+      "journal": "Lägg till i dagens dagbok…"
+    },
+    "saving": "Sparar…",
+    "saved": "Sparad",
+    "saveFailed": "Inte sparad",
+    "tuck": "Stoppa undan",
+    "send": "Skicka",
+    "hints": "Esc stoppa undan · {mod}⌫ radera",
+    "sendAndCloseHint": "⌥{mod}↵ skickar och stänger",
+    "deleted": "Utkastet raderades",
+    "open": "Öppna",
+    "undo": "Ångra",
+    "sent": {
+      "note": "Sparad i mappen Sticky",
+      "task": "Uppgift tillagd",
+      "journal": "Tillagd i dagens dagbok"
+    },
+    "tab": {
+      "label": "{count, plural, one {# stickyutkast} other {# stickyutkast}}",
+      "newSticky": "Ny sticky"
+    },
+    "errors": {
+      "empty": "Skriv något först.",
+      "taskFailed": "Det gick inte att skapa uppgiften.",
+      "tasksOff": "Uppgifter är avstängda i Inställningar.",
+      "journalOff": "Dagbok är avstängd i Inställningar.",
+      "sendFailed": "Det gick inte att skicka stickyn.",
+      "undoExpired": "Det är för sent att ångra.",
+      "undoFailed": "Det gick inte att ångra skickandet."
+    },
+    "inputLabel": "Sticky-text",
+    "dismissError": "Stäng"
   }
 }

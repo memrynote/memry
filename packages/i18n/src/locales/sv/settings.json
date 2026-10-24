@@ -110,7 +110,8 @@
       "fileCreation": "Filskapande",
       "privacy": "Sekretess",
       "startupWindows": "Start och fönster",
-      "newNotes": "Nya anteckningar"
+      "newNotes": "Nya anteckningar",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "Det mesta i appen uppdateras direkt. Viss text på systemnivå – redan visade aviseringar, Dock-etiketten, fönstrets namnlist – uppdateras vid nästa start.",
       "changed": "Språk ändrat till {nativeName}",
       "failed": "Det gick inte att ändra språk. Försök igen."
+    },
+    "ocrLanguages": {
+      "label": "Textigenkänning",
+      "helper": "Språk som läses i skannade PDF-filer och bilder, så att sökningen hittar orden i dem. Engelska är inbyggt. Övriga laddas ned från Memrys server.",
+      "more": "{names} +{count}",
+      "downloading": "Laddar ned {language}: {percent} %",
+      "failed": "Nedladdningen misslyckades. Språken som redan finns här fortsätter fungera.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Försök igen",
+      "saveFailed": "Det gick inte att ändra språken för textigenkänning."
     },
     "clockFormat": {
       "label": "Tidsformat",
@@ -264,6 +275,22 @@
           "description": "Skicka en engångsrapport med maskerade tekniska loggar så att vi kan felsöka problemet du stötte på.",
           "button": "Skicka rapport…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Kortkommandot för Sticky (Kortkommandon → Systemövergripande) öppnar stickyn medan Memry körs. Text som inte skickats ligger kvar som utkast vid skärmkanten.",
+      "error": "Det gick inte att spara sticky-inställningarna.",
+      "defaultKind": {
+        "label": "Nya stickies skickas som",
+        "last": "Senast använd",
+        "note": "Anteckning",
+        "task": "Uppgift",
+        "journal": "Dagbok"
+      },
+      "tuckEdge": {
+        "label": "Stoppa undan vid",
+        "left": "Vänster kant",
+        "right": "Höger kant"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "Layout",
       "toolbar": "Verktygsfält",
       "spelling": "Stavning",
-      "checklists": "Checklistor"
+      "checklists": "Checklistor",
+      "attachments": "Bilagor",
+      "calloutTypes": "Callout-typer"
+    },
+    "calloutTypes": {
+      "description": "Dina egna callouts, skrivna som > [!name] i anteckningen. I en annan app visas de som ett vanligt citat.",
+      "empty": "Inga egna callout-typer ännu",
+      "add": "Lägg till typ",
+      "edit": "Redigera {name}",
+      "delete": "Radera {name}",
+      "name": "Namn i markdown",
+      "namePlaceholder": "mintyp",
+      "label": "Visningsnamn",
+      "color": "Färg",
+      "icon": "Ikon",
+      "nameInvalid": "Använd små bokstäver, siffror, - eller _, och börja med en bokstav",
+      "nameBuiltIn": "Det namnet är redan en inbyggd callout",
+      "nameTaken": "Du har redan en typ med det namnet",
+      "save": "Spara",
+      "cancel": "Avbryt",
+      "error": "Det gick inte att uppdatera callout-typerna"
     },
     "width": {
       "label": "Redigerarens bredd",
@@ -449,7 +496,16 @@
       "toolbarMode": "Fast formateringsverktygsfält",
       "spellCheck": "Kontrollera stavning",
       "convertChecklists": "Gör checklistpunkter till uppgifter",
-      "convertAgentChecklists": "Gör checklistpunkter från agenter till uppgifter"
+      "convertAgentChecklists": "Gör checklistpunkter från agenter till uppgifter",
+      "pdfDisplayMode": "Visa nya PDF-filer som"
+    },
+    "pdfDisplayMode": {
+      "description": "Hur en PDF som du lägger till i en anteckning visas. Varje PDF kan ändras från sin meny.",
+      "options": {
+        "embed": "Inbäddad",
+        "link": "Filnamn"
+      },
+      "error": "Det gick inte att uppdatera PDF-visningen"
     },
     "convertChecklists": {
       "description": "Varje ny checklistpunkt blir en uppgift. Avstängt förblir checklistor vanliga kryssrutor; högerklicka på en för att göra den till en uppgift.",
@@ -561,7 +617,8 @@
       "renameNote": "Om du ändrar formatet byts namn på befintliga dagboksfiler. En fil vars nya namn redan är upptaget lämnas som den är.",
       "tokensHelp": "Hjälp för datumformat",
       "tokensNote": "Övriga tecken behålls som de är. Veckodagarnas namn är alltid på engelska.",
-      "tokensTitle": "Formatkoder"
+      "tokensTitle": "Formatkoder",
+      "foldersNote": "Använd / för att lägga inlägg i undermappar: YYYY/MMMM/YYYY-MM-DD lägger varje dag under sitt år och sin månad."
     },
     "preview": {
       "label": "Förhandsvisning",
@@ -586,6 +643,10 @@
         "defaultTemplate": "Standardmall",
         "location": "Plats och format"
       }
+    },
+    "showInSidebar": {
+      "label": "Visa i sidofältet",
+      "description": "Visa dagboksmappen och dess inlägg i anteckningsträdet"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "Standardvärden",
+      "subtasks": "Deluppgifter",
       "inbox": "Inkorg"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "Uppgifter som är äldre än så framhävs som inaktuella",
       "unit": "dagar",
       "error": "Det gick inte att uppdatera gränsen för inaktuella uppgifter"
+    },
+    "nestedSubtasks": {
+      "label": "Deluppgifter i deluppgifter",
+      "description": "Nästla deluppgifter på valfritt djup. Enheter med äldre versioner visar bara första nivån tills de uppdateras.",
+      "error": "Det gick inte att uppdatera nästlade deluppgifter"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "Synkroniserar…",
         "paused": "Pausad",
         "syncError": "Synkfel",
+        "deviceKeysMissing": "Synk pausad: enhetsnycklar saknas",
         "offline": "Offline",
         "connecting": "Ansluter…",
         "localOnly": "Endast lokalt",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "Aktiveringen slutförs",
         "description": "Din plan är aktiv. Synkroniseringen startar så snart vi har bekräftat den – det brukar räcka att uppdatera."
+      },
+      "unsent": {
+        "title": "Anteckningar med ej skickade ändringar",
+        "count": "{count, plural, one {# anteckning} other {# anteckningar}}",
+        "description": "Den här enheten har ändringar i de här anteckningarna som servern ännu inte har lagrat.",
+        "waitingSince": "Väntar sedan {time}",
+        "more": "{count, plural, one {Och # anteckning till} other {Och # anteckningar till}}",
+        "reasons": {
+          "body": "Text",
+          "record": "Detaljer",
+          "file_not_taken": "Filen är inte sammanfogad ännu",
+          "rejected": "Avvisad av servern"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "Det gick inte att uppdatera faktureringsstatus",
         "billingActive": "Fakturering är aktiv",
         "activationPending": "Aktivering väntar",
-        "portalFailed": "Det gick inte att öppna faktureringsportalen"
+        "portalFailed": "Det gick inte att öppna faktureringsportalen",
+        "portalNoCustomer": "Inget faktureringskonto hittades ännu. Om du precis har betalat väljer du Uppdatera status och försöker igen."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "AI-funktioner inaktiverade",
       "error": "Det gick inte att uppdatera inställningen"
     },
+    "summarizeLongNotes": {
+      "label": "Sammanfatta långa anteckningar",
+      "description": "Skriver kortare versioner av långa anteckningar med din anslutna agent, så att du kan fälla ihop en anteckning till huvudpunkterna. Körs på den här enheten.",
+      "error": "Det gick inte att uppdatera inställningen för att sammanfatta långa anteckningar",
+      "failed": "Senaste körningen misslyckades ·",
+      "retry": "Försök igen",
+      "retryError": "Det gick inte att försöka sammanfatta igen",
+      "agentLabel": "Agent som skriver sammanfattningar",
+      "agentAuto": "Automatiskt",
+      "agentError": "Det gick inte att byta sammanfattningsagent",
+      "noAgent": "Ingen agent hittades ·",
+      "openAgents": "Öppna Agenter"
+    },
+    "imageSearch": {
+      "label": "Sök bilder efter innehåll",
+      "description": "Hitta foton utifrån vad de visar. Laddar ned en bildmodell på 109 MB första gången en bild indexeras.",
+      "enabled": "Bildsökning aktiverad",
+      "disabled": "Bildsökning inaktiverad"
+    },
     "unknownError": "Okänt fel",
     "groups": {
       "voice": "Rösttranskribering",
@@ -1324,6 +1425,9 @@
         "none": "Byt inte namn"
       },
       "namingError": "Det gick inte att uppdatera namngivningen av röstmemon",
+      "audioSearch": "Sök röstmemon efter ljud",
+      "audioSearchDescription": "Hitta röstmemon utan transkription, till exempel musik eller ljud, utifrån hur de låter. Laddar ned en ljudmodell på 189 MB första gången ett memo behöver indexeras.",
+      "audioSearchError": "Det gick inte att uppdatera sökningen i röstmemon",
       "language": "Talat språk",
       "languageDescription": "Språket du talar i röstmemon",
       "languageDefault": "Standard",
@@ -1459,7 +1563,8 @@
       "csv": "Importera en .csv-fil – en anteckning per rad, kolumner blir egenskaper",
       "raindrop": "Importera en bokmärkesexport från Raindrop.io (.csv) – bokmärken hamnar i inkorgen",
       "apple-notes": "Importera från Apple Notes-databasen (NoteStore.sqlite, macOS)",
-      "onenote": "Importera OneNote-anteckningsböcker (kräver ett Microsoft-konto)"
+      "onenote": "Importera OneNote-anteckningsböcker (kräver ett Microsoft-konto)",
+      "readwise": "Importera dina markeringar från Readwise (kräver en åtkomsttoken)"
     },
     "action": "Importera",
     "select": "Välj en app att importera från…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Varningar",
-      "confirm": "Importera"
+      "confirm": "Importera",
+      "readwise": {
+        "books": "{count, plural, one {# bok} other {# böcker}}",
+        "highlights": "{count, plural, one {# markering} other {# markeringar}}",
+        "documents": "{count, plural, one {# dokument} other {# dokument}}"
+      }
     },
     "dialog": {
       "title": "Importera från {name}",
@@ -1505,7 +1615,18 @@
         "deselectAll": "Rensa markering",
         "foldersSelected": "{count, plural, one {# mapp markerad} other {# mappar markerade}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# låst anteckning} other {# låsta anteckningar}}",
+          "hint": "Ange ditt lösenord för Notes för att importera dem. Det används bara för den här importen och sparas aldrig. Bilagor i låsta anteckningar importeras inte.",
+          "label": "Lösenord för Notes",
+          "placeholder": "Lösenord för Notes",
+          "check": "Kontrollera",
+          "wrong": "Det lösenordet låser inte upp någon låst anteckning.",
+          "unlockedAll": "{count, plural, one {Låser upp den låsta anteckningen.} other {Låser upp alla # låsta anteckningar.}}",
+          "unlockedSome": "Låser upp {unlocked} av {total} låsta anteckningar. Resten använder ett annat lösenord och hoppas över.",
+          "checkError": "Det gick inte att kontrollera lösenordet."
+        }
       },
       "chooseFolder": "Välj Apple Notes-mapp…",
       "chooseDirectory": "Välj mapp…",
@@ -1529,12 +1650,206 @@
         "failed": "{count} misslyckades"
       },
       "error": "Importen misslyckades",
-      "previewError": "Förhandsgranskningen misslyckades"
+      "previewError": "Förhandsgranskningen misslyckades",
+      "readwise": {
+        "intro": "Klistra in din Readwise-åtkomsttoken. Memry kontrollerar den först med Readwise och sparar den sedan i systemets nyckelring på den här enheten. Den synkas aldrig.",
+        "tokenLabel": "Åtkomsttoken",
+        "tokenPlaceholder": "Klistra in din token",
+        "getToken": "Hämta din token",
+        "connect": "Anslut",
+        "connecting": "Ansluter…",
+        "connectFailed": "Det gick inte att ansluta till Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise synkroniseras på {device}.",
+          "syncsOnAnother": "Readwise synkroniseras på en annan enhet.",
+          "explain": "Bara en enhet hämtar från Readwise, så att samma markering aldrig skrivs två gånger. Om du vill hämta från den här enheten i stället klistrar du in din token igen: den färdas aldrig mellan enheter. Den andra enheten stannar vid sin nästa bok, och alla anteckningar finns kvar.",
+          "button": "Synkronisera här i stället",
+          "working": "Flyttar Readwise hit…",
+          "failed": "Det gick inte att flytta Readwise till den här enheten"
+        },
+        "groups": {
+          "location": "Var anteckningarna hamnar",
+          "categories": "Vad som ska hämtas",
+          "reader": "Readwise Reader",
+          "journal": "Dagbok",
+          "sync": "Synk"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Lista varje dags markeringar i dagboken",
+            "description": "Lägger till ett Readwise-avsnitt på dagen du markerade, med länk till varje boksanteckning. Endast nya markeringar, ingen komplettering bakåt.",
+            "firstImport": "Den första importen skriver inget i dagboken."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Importera även sparade Reader-dokument",
+            "description": "Av som standard. Kan lägga till tusentals anteckningar."
+          },
+          "fullText": {
+            "label": "Ta med artikelns fulltext",
+            "description": "Skrivs en gång, när anteckningen skapas"
+          }
+        },
+        "rootFolder": {
+          "label": "Mapp",
+          "description": "Nya böcker hamnar här. Befintliga anteckningar stannar där de är."
+        },
+        "layout": {
+          "label": "Mappstruktur",
+          "description": "Gäller bara nya böcker.",
+          "options": {
+            "by-category": "Efter kategori",
+            "flat": "En mapp"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Böcker",
+            "description": "Kindle, Apple Books och andra markeringar"
+          },
+          "articles": {
+            "label": "Artiklar",
+            "description": "Webbartiklar och nyhetsbrev"
+          },
+          "tweets": {
+            "label": "Tweets",
+            "description": "Sparade tweets och trådar"
+          },
+          "podcasts": {
+            "label": "Poddar",
+            "description": "Poddavsnitt och snippar"
+          },
+          "supplementals": {
+            "label": "Tillägg",
+            "description": "Böcker som Readwise lägger till själv, utan dina markeringar"
+          },
+          "other": {
+            "label": "Övrigt",
+            "description": "Kategorier som Readwise har lagt till efter den här versionen"
+          }
+        },
+        "cadence": {
+          "label": "Frekvens",
+          "description": "Hur ofta nya markeringar kommer in.",
+          "options": {
+            "manual": "Manuellt",
+            "hourly": "Varje timme",
+            "daily": "Varje dag"
+          }
+        },
+        "syncNow": {
+          "label": "Synkronisera nu",
+          "description": "Sök efter nya markeringar i Readwise.",
+          "button": "Synkronisera nu"
+        },
+        "disconnect": "Koppla från",
+        "disconnectHint": "Frånkoppling tar bort token från den här enheten. Dina anteckningar finns kvar.",
+        "deleted": {
+          "heading": "Raderade böcker",
+          "description": "Anteckningar som du raderade i memry. De förblir raderade tills du återställer dem.",
+          "meta": "Raderad {date} · {count, plural, one {# markering} other {# markeringar}}",
+          "metaDocument": "Raderad {date} · sparad artikel",
+          "restore": "Återställ",
+          "footer": "Återställning återskapar anteckningen med alla dess markeringar.",
+          "empty": "Inga raderade böcker",
+          "syncsOn": "Readwise synkroniseras på {device}.",
+          "syncsOnAnotherDevice": "Readwise synkroniseras på en annan enhet.",
+          "loadFailed": "Det gick inte att läsa in de raderade böckerna",
+          "restoreFailed": "Det gick inte att återställa anteckningen"
+        },
+        "importNow": "Importera nu",
+        "importBooks": "{count, plural, one {Importera # bok} other {Importera # böcker}}",
+        "importNotes": "{count, plural, one {Importera # anteckning} other {Importera # anteckningar}}",
+        "importNone": "Importera",
+        "preview": {
+          "intro": "{highlights, plural, one {# markering} other {# markeringar}} i {books, plural, one {# bok} other {# böcker}} är redo. Inget skrivs förrän du bekräftar.",
+          "introOff": "{highlights, plural, one {# markering} other {# markeringar}} i {books, plural, one {# bok} other {# böcker}} är redo. Av: {off}. {willImport, plural, one {# bok} other {# böcker}} importeras. Inget skrivs förrän du bekräftar.",
+          "introReaderOnly": "Ditt Readwise-bibliotek har inga markeringar ännu. {documents, plural, one {# sparat Reader-dokument} other {# sparade Reader-dokument}} importeras som anteckningar. Inget skrivs förrän du bekräftar.",
+          "readerLabel": "Sparade Reader-dokument",
+          "empty": "Ditt Readwise-bibliotek har inga markeringar ännu. Inget skrivs. Importera för att slutföra konfigurationen.",
+          "willImport": "importeras",
+          "off": "av",
+          "retry": "Försök igen"
+        },
+        "status": {
+          "connected": "Ansluten",
+          "synced": "Synkad {time}",
+          "syncing": "Synkroniserar med Readwise",
+          "reading": "Läser ditt bibliotek…",
+          "writing": "Skriver böcker, {done} av {total}",
+          "finishing": "Avslutar…",
+          "waitingTitle": "Väntar på memry-synk",
+          "waitingDetail": "Memry väntar tills anteckningarna från dina andra enheter har kommit fram, så att ingen bok skrivs två gånger. Readwise startar direkt därefter.",
+          "otherTitle": "Synkroniseras på {device}",
+          "otherTitleUnknown": "Synkroniseras på en annan enhet",
+          "otherDetail": "Bara en enhet hämtar från Readwise, så att samma markering aldrig skrivs två gånger.",
+          "lastRun": "Senaste körning: {counts}",
+          "lastRunNothing": "Senaste körning: inget nytt",
+          "nextRun": "Nästa synk {time}",
+          "retryAt": "Memry försöker igen {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise behöver en ny token",
+              "detail": "Readwise godtog inte den sparade token. Klistra in en ny från readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Din Readwise-prenumeration har gått ut",
+              "detail": "Förnya din prenumeration på readwise.io och försök sedan igen."
+            },
+            "rate-limited": {
+              "title": "Readwise begränsar förfrågningar",
+              "detail": "För många förfrågningar på kort tid."
+            },
+            "network": {
+              "title": "Det går inte att nå Readwise",
+              "detail": "Kontrollera din anslutning."
+            },
+            "server": {
+              "title": "Readwise hade ett problem",
+              "detail": "Readwise svarade med ett fel."
+            },
+            "unexpected": {
+              "title": "Synkroniseringen stoppades",
+              "detail": "Något gick fel under körningen."
+            }
+          },
+          "counts": {
+            "added": "{count} tillagda",
+            "updated": "{count} uppdaterade",
+            "appended": "{count} utökade",
+            "deferred": "{count} väntar på en öppen anteckning",
+            "failed": "{count} misslyckades",
+            "highlights": "{count, plural, one {# markering} other {# markeringar}}"
+          },
+          "actions": {
+            "cancel": "Avbryt",
+            "retry": "Försök igen nu",
+            "newToken": "Klistra in en ny token",
+            "reconnect": "Anslut igen",
+            "syncHere": "Synkronisera här i stället"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise behöver en ny token",
+            "description": "Synkroniseringen är pausad tills du klistrar in en ny."
+          },
+          "subscription-expired": {
+            "title": "Din Readwise-prenumeration har gått ut",
+            "description": "Synkroniseringen är pausad tills prenumerationen är aktiv igen."
+          },
+          "open": "Öppna Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Det gick inte att läsa filen",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# låst anteckning importerades inte} other {# låsta anteckningar importerades inte}}; Memry kan inte läsa dem utan ditt lösenord för Anteckningar."
+        "lockedNote": "{count, plural, one {# låst anteckning importerades inte} other {# låsta anteckningar importerades inte}}; Memry kan inte läsa dem utan ditt lösenord för Anteckningar.",
+        "lockedWrongPassword": "{count, plural, one {# låst anteckning importerades inte; den använder} other {# låsta anteckningar importerades inte; de använder}} ett annat lösenord än det du angav.",
+        "lockedUnreadable": "{count, plural, one {# låst anteckning kunde inte dekrypteras och importerades inte.} other {# låsta anteckningar kunde inte dekrypteras och importerades inte.}}",
+        "lockedAttachment": "{count, plural, one {# bilaga i en låst anteckning importerades inte; anteckningstexten gjorde det.} other {# bilagor i låsta anteckningar importerades inte; anteckningstexten gjorde det.}}"
       },
       "csv": {
         "noHeaders": "CSV-filen saknar rubriker",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "Okänd prioritet {priority} → ingen",
         "unparsedDate": "Det gick inte att tolka datumet ”{date}”",
         "subtaskNoParent": "Deluppgiften ”{title}” saknar överordnad uppgift på indrag {indent}; importerad på översta nivån"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise är inte anslutet.",
+        "tokenInvalid": "Readwise godtog inte den sparade token. Koppla från och anslut igen med en ny.",
+        "unreachable": "Det gick inte att nå Readwise. Kontrollera anslutningen och försök igen.",
+        "categoryOff": "{count, plural, one {# bok ligger i en kategori som du har stängt av och importerades inte.} other {# böcker ligger i en kategori som du har stängt av och importerades inte.}}",
+        "unchanged": "{count, plural, one {# bok var} other {# böcker var}} redan uppdaterade.",
+        "sourceDeleted": "{count, plural, one {# bok raderades} other {# böcker raderades}} i Readwise. Anteckningarna finns kvar.",
+        "noteDeleted": "{count, plural, one {# anteckning raderades} other {# anteckningar raderades}} i Memry och förblir raderade.",
+        "busy": "{count, plural, one {# anteckning är öppen} other {# anteckningar är öppna}} i en redigerare och skrivs vid nästa körning."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Importerar Todoist-uppgifter…"
+      },
+      "readwise": {
+        "fetching": "Läser ditt Readwise-bibliotek…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, one {Visa # till} other {Visa # till}}",
       "showLess": "Visa mindre",
       "groups": {
+        "reading": "Läsning",
         "noteApps": "Anteckningsappar",
         "tasks": "Uppgifter, dagbok och bokmärken",
         "files": "Filer"
+      },
+      "readwise": {
+        "notConnected": "Inte ansluten",
+        "connected": "Ansluten",
+        "synced": "Synkad {time}",
+        "syncing": "Synkroniserar…",
+        "waiting": "Väntar på synk",
+        "otherDevice": "Synkroniseras på {device}",
+        "otherDeviceUnknown": "Synkroniseras någon annanstans",
+        "invalidToken": "Behöver en ny token",
+        "subscriptionExpired": "Prenumerationen har gått ut",
+        "rateLimited": "Begränsad",
+        "network": "Det går inte att nå Readwise",
+        "server": "Readwise-fel",
+        "unexpected": "Synkroniseringen misslyckades"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "”{oldName}” har döpts om till ”{newName}”",
       "renameFailed": "Det gick inte att byta namn på taggen",
+      "renaming": "Byter namn på #{oldName}: {done} / {total} anteckningar",
+      "renamedBodySkipped": "”{newName}” kan inte skrivas som en inline-tagg, så #{oldName} i anteckningstexten förblir som den är skriven",
+      "renamedSomeFailed": "Det gick inte att uppdatera {count, plural, one {# anteckning} other {# anteckningar}}. Öppna {count, plural, one {den} other {dem}} och lägg till taggen igen",
       "deleteFailed": "Det gick inte att radera taggen",
       "deleted": "”{name}” togs bort från {count, plural, one {# objekt} other {# objekt}}",
       "mergeFailed": "Det gick inte att sammanfoga taggarna",
@@ -1901,12 +2248,29 @@
       "unsupported": "{shortcut} kan inte användas som globalt kortkommando. Välj en annan kombination.",
       "fallbackInUse": "Standardkortkommandot {shortcut} används av en annan app. Ange en annan kombination för att använda Fånga var som helst."
     },
+    "folderNotes": {
+      "title": "Ny anteckning i mapp",
+      "description": "Skapa en anteckning direkt i en mapp som du väljer",
+      "add": "Lägg till mapp",
+      "empty": "Inga mappgenvägar ännu. Lägg till en mapp för att ge den en.",
+      "rowDescription": "Skapar en anteckning i den här mappen",
+      "missing": "Den här mappen finns inte längre. Välj en annan mapp eller ta bort genvägen.",
+      "changeFolder": "Byt mapp",
+      "searchFolders": "Sök mappar...",
+      "noFolders": "Inga mappar hittades",
+      "remove": "Ta bort genväg",
+      "conflictLabel": "Ny anteckning i {folder}",
+      "missingToast": "Mappen ”{folder}” finns inte längre",
+      "missingToastAction": "Redigera genväg",
+      "foldersLoadFailed": "Det gick inte att kontrollera mappen för den här genvägen"
+    },
     "toasts": {
       "saveGlobalFailed": "Det gick inte att spara kortkommandot för Fånga var som helst",
       "saveFailed": "Det gick inte att spara kortkommandot",
       "resetFailed": "Det gick inte att återställa kortkommandot",
       "resetAllSuccess": "Alla kortkommandon har återställts till standard",
-      "resetAllFailed": "Det gick inte att återställa kortkommandona"
+      "resetAllFailed": "Det gick inte att återställa kortkommandona",
+      "saveStickyFailed": "Det gick inte att spara sticky-genvägen"
     },
     "categories": {
       "navigation": "Navigering",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "Sök",
           "description": "Öppna global sökning"
+        },
+        "commands": {
+          "label": "Kommandopalett",
+          "description": "Sök efter och kör valfritt kommando"
         },
         "settings": {
           "label": "Öppna inställningar",
@@ -2042,6 +2410,10 @@
           "label": "Visa/dölj sidofält",
           "description": "Visa eller dölj sidofältet"
         },
+        "toggleDayPanel": {
+          "label": "Växla dagpanel",
+          "description": "Visa eller dölj dagpanelen till höger"
+        },
         "shortcuts": {
           "label": "Hjälp för kortkommandon",
           "description": "Visa en översikt över kortkommandon"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "Faktisk storlek",
           "description": "Återställ zoom till 100 %"
+        },
+        "foldFull": {
+          "label": "Vikning: Full",
+          "description": "Visa varje ord i anteckningen"
+        },
+        "foldBrief": {
+          "label": "Vikning: Kort",
+          "description": "Visa bara nyckelmeningarna, som de är skrivna"
+        },
+        "foldKey": {
+          "label": "Vikning: Nyckel",
+          "description": "Visa varje punkt och dess skäl"
+        },
+        "foldTakeaway": {
+          "label": "Vikning: Sammanfattning",
+          "description": "Visa en rad per stycke"
+        },
+        "foldTopic": {
+          "label": "Vikning: Ämne",
+          "description": "Visa anteckningen som en karta över dess avsnitt"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "Fånga var som helst",
       "recordingHint": "Tryck på tangenter… esc för att avbryta",
       "reset": "Återställ",
-      "resetAll": "Återställ alla till standard"
+      "resetAll": "Återställ alla till standard",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Öppna stickyn från vilken app som helst medan memrynote körs"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "Klockskillnad upptäckt",
       "items": "objekt",
       "willSyncWhenBackOnline": "Synkroniseras när du är online igen",
-      "openSyncSettings": "Öppna synkroniseringsinställningar"
+      "stalled": "Ändringar har inte synkats på ett tag. Prova Synkronisera nu.",
+      "openSyncSettings": "Öppna synkroniseringsinställningar",
+      "repairDeviceKeys": "Reparera",
+      "signInToRepair": "Logga in igen för att konfigurera den här enhetens nycklar. Osynkade anteckningar, uppgifter och projekt behålls. Du kan behöva din återställningsfras.",
+      "repairFailed": "Det gick inte att reparera den här enhetens nycklar. Försök igen.",
+      "syncNotStarted": {
+        "vault-binding": "Den här enhetens nycklar är återställda, men det här valvet är inte inställt på att synkas med ditt konto ännu. Välj hur det ska synkas i synkmenyn.",
+        "vault-foreign": "Den här enhetens nycklar är återställda, men det här valvet tillhör ett annat konto. Det förblir lokalt på den här enheten.",
+        "entitlement": "Den här enhetens nycklar är återställda, men synk kräver en aktiv Sync-plan.",
+        "unavailable": "Den här enhetens nycklar är återställda, men synken kunde inte starta. Den försöker igen; starta om Memry om den inte gör det."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "Modell",
         "description": "Välj en modell från listan eller ange en manuellt."
       },
+      "thinking": {
+        "label": "Tänkande",
+        "description": "Av ber modeller i DeepSeek-stil hoppa över tänkandet för snabbare och billigare svar.",
+        "default": "Standard",
+        "off": "Av"
+      },
       "apiKey": {
         "label": "API-nyckel",
         "description": "Valfri autentiseringsuppgift som lagras i operativsystemets nyckelring.",
@@ -2286,6 +2698,17 @@
       "revoke": "Återkalla",
       "revokeLabel": "Återkalla det permanenta godkännandet för {tool}",
       "ignoredInPageReview": "Ignoreras: ändringar i anteckningar och dagboksinlägg kräver alltid godkännande."
+    },
+    "memory": {
+      "group": "Minne",
+      "description": "Agenter körs i en mapp som sparas för det här valvet, utanför valvet, så att det de sparar där följer med till nästa konversation.",
+      "clear": "Rensa agentminne",
+      "clearDescription": "Raderar det agenter har sparat om det här valvet. Anteckningar och chatthistorik finns kvar.",
+      "clearAction": "Rensa",
+      "cleared": "Agentminnet rensades.",
+      "failed": "Det gick inte att rensa agentminnet.",
+      "confirmTitle": "Rensa agentminnet?",
+      "confirmDescription": "Agenter förlorar det de har sparat om det här valvet, inklusive Claude Codes projektminne för det. Det går inte att ångra. Anteckningar och chatthistorik finns kvar."
     },
     "v2": {
       "permissions": {
