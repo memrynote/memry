@@ -195,6 +195,7 @@
     "complete-task": "Finalizează {title}",
     "task-completed": "Sarcină finalizată",
     "could-not-complete": "Nu s-a putut finaliza sarcina",
+    "could-not-update-status": "Nu s-a putut schimba starea sarcinii",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Nu s-a putut deschide notița"
     }
   },
+  "eventNotes": {
+    "heading": "Notițe",
+    "create": "Notiță nouă",
+    "link": "Leagă o notiță",
+    "untitled": "Notiță de întâlnire",
+    "searchPlaceholder": "Caută notițe",
+    "noResults": "Nu s-a găsit nicio notiță",
+    "createFailed": "Nu s-a putut crea o notiță pentru acest eveniment.",
+    "linkFailed": "Nu s-a putut lega notița de acest eveniment.",
+    "loadFailed": "Nu s-au putut încărca notițele legate de acest eveniment.",
+    "propertyTaken": "Această notiță are deja o proprietate „{name}” care nu este o legătură."
+  },
   "notePopover": {
     "kind": "Notiță",
     "kindDateReminder": "Memento de dată",
@@ -254,6 +267,10 @@
     "overdue": "restantă",
     "untitled": "Fără titlu",
     "days": "{count, plural, one {# zi} few {# zile} other {# de zile}}",
+    "subtasks": {
+      "expand": "Arată {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din {title}",
+      "collapse": "Ascunde {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} din {title}"
+    },
     "events": "Evenimente",
     "schedule-hint": "Faceți clic pentru a seta o dată, trageți pentru a seta un interval",
     "empty-title": "Nimic pe cronologie",

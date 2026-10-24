@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Termen eliminat pentru # subsarcină} few {Termen eliminat pentru # subsarcini} other {Termen eliminat pentru # de subsarcini}}",
       "prioritySet": "{count, plural, one {Prioritate setată pentru # subsarcină} few {Prioritate setată pentru # subsarcini} other {Prioritate setată pentru # de subsarcini}}",
       "deleted": "{count, plural, one {# subsarcină ștearsă} few {# subsarcini șterse} other {# de subsarcini șterse}}"
-    }
+    },
+    "completedBranch": "{title} și {count, plural, one {# subsarcină deschisă} few {# subsarcini deschise} other {# de subsarcini deschise}} au fost finalizate",
+    "deletedKeepSubtasks": "{title} a fost ștearsă, iar subsarcinile au fost păstrate",
+    "deletedBranch": "{title} și {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}} au fost șterse"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "stare",
       "projectIs": "Proiectul este",
       "project": "proiect",
+      "locationIs": "Locația este",
+      "location": "locație",
+      "unknownNote": "Notiță necunoscută",
       "due": "Termen",
       "dueDate": "termen",
       "search": "căutare",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Termen"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Locație",
+      "search": "Caută dosare și notițe...",
+      "empty": "Niciun dosar sau notiță cu sarcini"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritate",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Vizualizările proiectului",
       "overview": "Prezentare generală",
+      "all": "Toate",
       "tasks": "Sarcini",
       "notes": "Notițe",
       "files": "Fișiere",
@@ -951,6 +963,25 @@
       "fileError": "Nu s-a putut lega {name}",
       "fileErrorGeneric": "Nu s-au putut importa fișierele",
       "label": "Adaugă la {name}"
+    },
+    "all": {
+      "showDone": "Arată finalizatele",
+      "empty": "Nimic deschis în acest proiect.",
+      "expand": "Arată sarcinile din {title}",
+      "collapse": "Ascunde sarcinile din {title}",
+      "taskSummary": "{open}/{total} deschise",
+      "daysLeft": "{count}z",
+      "overdue": "{count}z întârziere",
+      "columns": {
+        "title": "Titlu",
+        "daysLeft": "Zile rămase"
+      },
+      "status": {
+        "active": "Activ",
+        "done": "Finalizat",
+        "upcoming": "Viitor",
+        "past": "Trecut"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Violet",
     "pink": "Roz"
+  },
+  "subtaskTree": {
+    "addSubtask": "Adaugă subsarcină",
+    "dropInto": "În {title}",
+    "dropOut": "Cu un nivel mai sus",
+    "draftPlaceholder": "Titlul subsarcinii",
+    "draftLabel": "Subsarcină nouă în {title}",
+    "draftIn": "în {title}",
+    "toggleComplete": "Finalizează {title}",
+    "moveUnder": {
+      "title": "Mută sub",
+      "placeholder": "Mută sub…",
+      "empty": "Nicio sarcină potrivită",
+      "topLevel": "Nivelul superior din {project}",
+      "thisTask": "Această sarcină",
+      "currentParent": "Părintele curent",
+      "movesOne": "Mută {title}",
+      "movesBranch": "Mută {title} și {count, plural, one {# subsarcină} few {# subsarcini} other {# de subsarcini}}",
+      "keys": "↵ Mută aici · ⌘↵ Nivel superior · esc Închide"
+    },
+    "zoom": {
+      "path": "Calea sarcinii",
+      "up": "Cu un nivel mai sus",
+      "upShortcut": "Cu un nivel mai sus (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Ștergi {title}?",
+      "summary": "{direct, plural, one {Are # subsarcină} few {Are # subsarcini} other {Are # de subsarcini}}{deeper, plural, =0 {} one { și încă # sub ea} few { și încă # sub ele} other { și încă # de sub ele}}{open, plural, =0 {, toate finalizate.} one {, # încă deschisă.} few {, # încă deschise.} other {, # de încă deschise.}}",
+      "cancel": "Anulează",
+      "deleteAll": "Șterge tot",
+      "keepSubtasks": "Păstrează subsarcinile"
+    },
+    "menu": {
+      "open": "Deschide",
+      "complete": "Finalizează",
+      "reopen": "Redeschide",
+      "zoom": "Mărește subsarcinile",
+      "moveUnder": "Mută sub…",
+      "indent": "Mută sub {title}",
+      "outdent": "Mută cu un nivel mai sus",
+      "topLevel": "Fă sarcină de nivel superior",
+      "delete": "Șterge"
+    },
+    "openPath": "Deschide {path}"
   }
 }

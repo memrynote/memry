@@ -110,7 +110,8 @@
       "fileCreation": "Crearea fișierelor",
       "privacy": "Confidențialitate",
       "startupWindows": "Pornire și ferestre",
-      "newNotes": "Notițe noi"
+      "newNotes": "Notițe noi",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
@@ -176,6 +177,16 @@
       "helper": "Cea mai mare parte a aplicației se actualizează imediat. Unele texte de sistem – notificările deja afișate, eticheta din Dock, bara de titlu a ferestrei – se reîmprospătează după următoarea lansare.",
       "changed": "Limba a fost schimbată în {nativeName}",
       "failed": "Nu s-a putut schimba limba. Vă rugăm să încercați din nou."
+    },
+    "ocrLanguages": {
+      "label": "Recunoaștere de text",
+      "helper": "Limbile citite în PDF-urile și imaginile scanate, pentru ca și căutarea să găsească cuvintele lor. Engleza este inclusă. Celelalte se descarcă de pe serverul Memry.",
+      "more": "{names} +{count}",
+      "downloading": "Se descarcă {language}: {percent}%",
+      "failed": "Descărcarea a eșuat. Limbile deja prezente continuă să funcționeze.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Reîncearcă",
+      "saveFailed": "Limbile de recunoaștere a textului nu au putut fi modificate."
     },
     "clockFormat": {
       "label": "Format oră",
@@ -264,6 +275,22 @@
           "description": "Trimiteți o singură dată un raport cu jurnale tehnice anonimizate, pentru a ne ajuta să depanăm o problemă întâlnită.",
           "button": "Trimite raportul…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Comanda rapidă Sticky (Comenzi rapide de la tastatură → La nivel de sistem) deschide sticky-ul cât timp rulează Memry. Textul netrimis rămâne ca ciornă pe marginea ecranului.",
+      "error": "Setările sticky nu au putut fi salvate.",
+      "defaultKind": {
+        "label": "Sticky-urile noi se trimit ca",
+        "last": "Ultima folosită",
+        "note": "Notiță",
+        "task": "Sarcină",
+        "journal": "Jurnal"
+      },
+      "tuckEdge": {
+        "label": "Ascunde la",
+        "left": "Marginea stângă",
+        "right": "Marginea dreaptă"
       }
     }
   },
@@ -423,7 +450,27 @@
       "layout": "Aspect",
       "toolbar": "Bara de instrumente",
       "spelling": "Ortografie",
-      "checklists": "Liste de verificare"
+      "checklists": "Liste de verificare",
+      "attachments": "Atașamente",
+      "calloutTypes": "Tipuri de casete explicative"
+    },
+    "calloutTypes": {
+      "description": "Casetele tale explicative, scrise ca > [!nume] în notiță. O altă aplicație le afișează ca un citat simplu.",
+      "empty": "Încă nu există tipuri personalizate de casete explicative",
+      "add": "Adaugă un tip",
+      "edit": "Editează {name}",
+      "delete": "Șterge {name}",
+      "name": "Nume în markdown",
+      "namePlaceholder": "tipulmeu",
+      "label": "Nume afișat",
+      "color": "Culoare",
+      "icon": "Pictogramă",
+      "nameInvalid": "Folosește litere mici, cifre, - sau _, începând cu o literă",
+      "nameBuiltIn": "Acest nume este deja o casetă explicativă integrată",
+      "nameTaken": "Ai deja un tip cu acest nume",
+      "save": "Salvează",
+      "cancel": "Anulează",
+      "error": "Tipurile de casete explicative nu au putut fi actualizate"
     },
     "width": {
       "label": "Lățimea editorului",
@@ -449,7 +496,16 @@
       "toolbarMode": "Bară de formatare fixă",
       "spellCheck": "Verifică ortografia",
       "convertChecklists": "Transformă elementele listei în sarcini",
-      "convertAgentChecklists": "Transformă în sarcini elementele listei scrise de un agent"
+      "convertAgentChecklists": "Transformă în sarcini elementele listei scrise de un agent",
+      "pdfDisplayMode": "Afișează PDF-urile noi ca"
+    },
+    "pdfDisplayMode": {
+      "description": "Cum apare un PDF adăugat într-o notiță. Fiecare PDF poate fi schimbat din meniul său.",
+      "options": {
+        "embed": "Încorporat",
+        "link": "Nume de fișier"
+      },
+      "error": "Afișarea PDF-urilor nu a putut fi actualizată"
     },
     "convertChecklists": {
       "description": "Fiecare element nou din listă devine o sarcină. Dezactivat, listele rămân casete de bifat simple; faceți clic dreapta pe unul pentru a-l transforma în sarcină.",
@@ -561,7 +617,8 @@
       "renameNote": "Schimbarea formatului redenumește fișierele de jurnal existente. Un fișier al cărui nume nou este deja folosit rămâne neschimbat.",
       "tokensHelp": "Ajutor pentru formatul datei",
       "tokensNote": "Celelalte caractere rămân neschimbate. Numele zilelor săptămânii sunt întotdeauna în engleză.",
-      "tokensTitle": "Simboluri de format"
+      "tokensTitle": "Simboluri de format",
+      "foldersNote": "Folosește / pentru a clasa intrările în subdosare: YYYY/MMMM/YYYY-MM-DD plasează fiecare zi sub anul și luna ei."
     },
     "preview": {
       "label": "Previzualizare",
@@ -586,6 +643,10 @@
         "defaultTemplate": "Șablon implicit",
         "location": "Locație și format"
       }
+    },
+    "showInSidebar": {
+      "label": "Afișează în bara laterală",
+      "description": "Afișează dosarul jurnalului și intrările sale în arborele de notițe"
     }
   },
   "tasks": {
@@ -596,6 +657,7 @@
     },
     "groups": {
       "defaults": "Valori implicite",
+      "subtasks": "Subsarcini",
       "inbox": "Inbox"
     },
     "defaultProject": {
@@ -632,6 +694,11 @@
       "description": "Sarcinile mai vechi de atât sunt evidențiate ca învechite",
       "unit": "zile",
       "error": "Nu s-a putut actualiza pragul de vechime pentru inbox"
+    },
+    "nestedSubtasks": {
+      "label": "Subsarcini în subsarcini",
+      "description": "Imbrică subsarcinile la orice adâncime. Dispozitivele cu versiuni mai vechi afișează doar primul nivel până se actualizează.",
+      "error": "Subsarcinile imbricate nu au putut fi actualizate"
     }
   },
   "inbox": {
@@ -981,6 +1048,7 @@
         "syncing": "Se sincronizează…",
         "paused": "Întrerupt",
         "syncError": "Eroare de sincronizare",
+        "deviceKeysMissing": "Sincronizare întreruptă: lipsesc cheile dispozitivului",
         "offline": "Offline",
         "connecting": "Se conectează…",
         "localOnly": "Doar local",
@@ -1004,6 +1072,19 @@
       "activating": {
         "title": "Se finalizează activarea",
         "description": "Planul este activ. Sincronizarea pornește imediat ce îl confirmăm – de obicei, o reîmprospătare rezolvă problema."
+      },
+      "unsent": {
+        "title": "Notițe cu modificări netrimise",
+        "count": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+        "description": "Acest dispozitiv are modificări ale acestor notițe pe care serverul nu le-a stocat încă.",
+        "waitingSince": "În așteptare din {time}",
+        "more": "{count, plural, one {Și încă # notiță} few {Și încă # notițe} other {Și încă # de notițe}}",
+        "reasons": {
+          "body": "Text",
+          "record": "Detalii",
+          "file_not_taken": "Fișier încă neîmbinat",
+          "rejected": "Refuzat de server"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1137,8 @@
         "refreshFailed": "Nu s-a putut reîmprospăta starea facturării",
         "billingActive": "Facturarea este activă",
         "activationPending": "Activare în așteptare",
-        "portalFailed": "Nu s-a putut deschide portalul de facturare"
+        "portalFailed": "Nu s-a putut deschide portalul de facturare",
+        "portalNoCustomer": "Încă nu s-a găsit niciun cont de facturare. Dacă tocmai ai plătit, alege Reîmprospătează starea și încearcă din nou."
       }
     },
     "storage": {
@@ -1302,6 +1384,25 @@
       "disabled": "Funcțiile AI sunt dezactivate",
       "error": "Nu s-a putut actualiza setarea"
     },
+    "summarizeLongNotes": {
+      "label": "Rezumă notițele lungi",
+      "description": "Scrie versiuni mai scurte ale notițelor lungi cu agentul tău conectat, pentru a putea restrânge o notiță la punctele cheie. Rulează pe acest dispozitiv.",
+      "error": "Rezumarea notițelor lungi nu a putut fi actualizată",
+      "failed": "Ultima rulare a eșuat ·",
+      "retry": "Reîncearcă",
+      "retryError": "Rezumarea nu a putut fi reîncercată",
+      "agentLabel": "Agentul care scrie rezumatele",
+      "agentAuto": "Automat",
+      "agentError": "Agentul de rezumare nu a putut fi schimbat",
+      "noAgent": "Nu s-a găsit niciun agent ·",
+      "openAgents": "Deschide Agenți"
+    },
+    "imageSearch": {
+      "label": "Caută imagini după conținut",
+      "description": "Găsește fotografii după ce arată. Descarcă un model de imagini de 109 MB prima dată când se indexează o imagine.",
+      "enabled": "Căutarea de imagini este activată",
+      "disabled": "Căutarea de imagini este dezactivată"
+    },
     "unknownError": "Eroare necunoscută",
     "groups": {
       "voice": "Transcrierea vocii",
@@ -1324,6 +1425,9 @@
         "none": "Nu redenumi"
       },
       "namingError": "Nu s-a putut actualiza denumirea memourilor vocale",
+      "audioSearch": "Caută memo-uri vocale după sunet",
+      "audioSearchDescription": "Găsește memo-urile vocale fără transcriere, cum ar fi muzica sau sunetele, după cum sună. Descarcă un model audio de 189 MB prima dată când unul trebuie indexat.",
+      "audioSearchError": "Căutarea memo-urilor vocale nu a putut fi actualizată",
       "language": "Limba vorbită",
       "languageDescription": "Limba în care vorbești în notele vocale",
       "languageDefault": "Implicit",
@@ -1459,7 +1563,8 @@
       "csv": "Importă un fișier .csv – o notiță pe rând, coloanele devin proprietăți",
       "raindrop": "Importă un export de marcaje Raindrop.io (.csv) – marcajele ajung în inbox",
       "apple-notes": "Importă din baza de date Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Importă blocnotesuri OneNote (necesită un cont Microsoft)"
+      "onenote": "Importă blocnotesuri OneNote (necesită un cont Microsoft)",
+      "readwise": "Importă-ți evidențierile din Readwise (necesită un token de acces)"
     },
     "action": "Importă",
     "select": "Selectează o aplicație pentru import…",
@@ -1477,7 +1582,12 @@
     },
     "preview": {
       "warnings": "Avertismente",
-      "confirm": "Importă"
+      "confirm": "Importă",
+      "readwise": {
+        "books": "{count, plural, one {# carte} few {# cărți} other {# de cărți}}",
+        "highlights": "{count, plural, one {# evidențiere} few {# evidențieri} other {# de evidențieri}}",
+        "documents": "{count, plural, one {# document} few {# documente} other {# de documente}}"
+      }
     },
     "dialog": {
       "title": "Importă din {name}",
@@ -1505,7 +1615,18 @@
         "deselectAll": "Anulează selecția",
         "foldersSelected": "{count, plural, one {# dosar selectat} few {# dosare selectate} other {# de dosare selectate}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# notiță blocată} few {# notițe blocate} other {# de notițe blocate}}",
+          "hint": "Introdu parola Notes pentru a le importa. Este folosită doar pentru această importare și nu este niciodată salvată. Atașamentele din notițele blocate nu sunt importate.",
+          "label": "Parola Notes",
+          "placeholder": "Parola Notes",
+          "check": "Verifică",
+          "wrong": "Această parolă nu deblochează nicio notiță blocată.",
+          "unlockedAll": "{count, plural, one {Deblochează notița blocată.} few {Deblochează toate cele # notițe blocate.} other {Deblochează toate cele # de notițe blocate.}}",
+          "unlockedSome": "Deblochează {unlocked} din {total} notițe blocate. Celelalte folosesc o altă parolă și vor fi omise.",
+          "checkError": "Parola nu a putut fi verificată."
+        }
       },
       "chooseFolder": "Selectează dosarul Apple Notes…",
       "chooseDirectory": "Alege dosarul…",
@@ -1529,12 +1650,206 @@
         "failed": "{count} eșuate"
       },
       "error": "Importul a eșuat",
-      "previewError": "Previzualizarea a eșuat"
+      "previewError": "Previzualizarea a eșuat",
+      "readwise": {
+        "intro": "Lipește tokenul tău de acces Readwise. Memry îl verifică mai întâi cu Readwise, apoi îl păstrează în portcheiul sistemului de pe acest dispozitiv. Nu se sincronizează niciodată.",
+        "tokenLabel": "Token de acces",
+        "tokenPlaceholder": "Lipește tokenul",
+        "getToken": "Obține tokenul",
+        "connect": "Conectează",
+        "connecting": "Se conectează…",
+        "connectFailed": "Nu s-a putut face conectarea la Readwise",
+        "takeOver": {
+          "syncsOn": "Readwise se sincronizează pe {device}.",
+          "syncsOnAnother": "Readwise se sincronizează pe alt dispozitiv.",
+          "explain": "Doar un dispozitiv preia date din Readwise, astfel încât aceeași evidențiere nu este scrisă niciodată de două ori. Pentru a prelua de pe acest dispozitiv, lipește din nou tokenul: nu călătorește niciodată între dispozitive. Celălalt dispozitiv se oprește la următoarea carte, iar toate notițele rămân.",
+          "button": "Sincronizează aici în schimb",
+          "working": "Se mută Readwise aici…",
+          "failed": "Nu s-a putut muta Readwise pe acest dispozitiv"
+        },
+        "groups": {
+          "location": "Unde ajung notițele",
+          "categories": "Ce se aduce",
+          "reader": "Readwise Reader",
+          "journal": "Jurnal",
+          "sync": "Sincronizare"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Listează în jurnal evidențierile fiecărei zile",
+            "description": "Adaugă o secțiune Readwise în ziua în care ai evidențiat, cu legături către fiecare notiță de carte. Doar evidențieri noi, fără completare retroactivă.",
+            "firstImport": "Prima importare nu scrie nimic în jurnal."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Importă și documentele salvate din Reader",
+            "description": "Dezactivat implicit. Poate adăuga mii de notițe."
+          },
+          "fullText": {
+            "label": "Include textul complet al articolului",
+            "description": "Scris o singură dată, când se creează notița"
+          }
+        },
+        "rootFolder": {
+          "label": "Dosar",
+          "description": "Cărțile noi ajung aici. Notițele existente rămân unde sunt."
+        },
+        "layout": {
+          "label": "Structura dosarelor",
+          "description": "Se aplică doar cărților noi.",
+          "options": {
+            "by-category": "După categorie",
+            "flat": "Un singur dosar"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Cărți",
+            "description": "Evidențieri din Kindle, Apple Books și altele"
+          },
+          "articles": {
+            "label": "Articole",
+            "description": "Articole web și newslettere"
+          },
+          "tweets": {
+            "label": "Tweeturi",
+            "description": "Tweeturi și fire salvate"
+          },
+          "podcasts": {
+            "label": "Podcasturi",
+            "description": "Episoade de podcast și fragmente"
+          },
+          "supplementals": {
+            "label": "Suplimentare",
+            "description": "Cărți pe care Readwise le adaugă singur, fără evidențierile tale"
+          },
+          "other": {
+            "label": "Altele",
+            "description": "Categorii adăugate de Readwise după această versiune"
+          }
+        },
+        "cadence": {
+          "label": "Frecvență",
+          "description": "Cât de des sosesc evidențierile noi.",
+          "options": {
+            "manual": "Manual",
+            "hourly": "La fiecare oră",
+            "daily": "Zilnic"
+          }
+        },
+        "syncNow": {
+          "label": "Sincronizează acum",
+          "description": "Verifică în Readwise dacă există evidențieri noi.",
+          "button": "Sincronizează acum"
+        },
+        "disconnect": "Deconectează",
+        "disconnectHint": "Deconectarea elimină tokenul de pe acest dispozitiv. Notițele rămân.",
+        "deleted": {
+          "heading": "Cărți șterse",
+          "description": "Notițe pe care le-ai șters în memry. Rămân șterse până le restaurezi.",
+          "meta": "Șters {date} · {count, plural, one {# evidențiere} few {# evidențieri} other {# de evidențieri}}",
+          "metaDocument": "Șters {date} · articol salvat",
+          "restore": "Restaurează",
+          "footer": "Restaurarea recreează notița cu toate evidențierile ei.",
+          "empty": "Nicio carte ștearsă",
+          "syncsOn": "Readwise se sincronizează pe {device}.",
+          "syncsOnAnotherDevice": "Readwise se sincronizează pe alt dispozitiv.",
+          "loadFailed": "Cărțile șterse nu au putut fi încărcate",
+          "restoreFailed": "Notița nu a putut fi restaurată"
+        },
+        "importNow": "Importă acum",
+        "importBooks": "{count, plural, one {Importă # carte} few {Importă # cărți} other {Importă # de cărți}}",
+        "importNotes": "{count, plural, one {Importă # notiță} few {Importă # notițe} other {Importă # de notițe}}",
+        "importNone": "Importă",
+        "preview": {
+          "intro": "{highlights, plural, one {# evidențiere} few {# evidențieri} other {# de evidențieri}} din {books, plural, one {# carte} few {# cărți} other {# de cărți}} sunt gata. Nu se scrie nimic până nu confirmi.",
+          "introOff": "{highlights, plural, one {# evidențiere} few {# evidențieri} other {# de evidențieri}} din {books, plural, one {# carte} few {# cărți} other {# de cărți}} sunt gata. Dezactivate: {off}. {willImport, plural, one {# carte va fi importată} few {# cărți vor fi importate} other {# de cărți vor fi importate}}. Nu se scrie nimic până nu confirmi.",
+          "introReaderOnly": "Biblioteca ta Readwise nu are încă evidențieri. {documents, plural, one {# document Reader salvat va fi importat} few {# documente Reader salvate vor fi importate} other {# de documente Reader salvate vor fi importate}} ca notițe. Nu se scrie nimic până nu confirmi.",
+          "readerLabel": "Documente Reader salvate",
+          "empty": "Biblioteca ta Readwise nu are încă evidențieri. Nu se scrie nimic. Importă pentru a termina configurarea.",
+          "willImport": "vor fi importate",
+          "off": "dezactivate",
+          "retry": "Încearcă din nou"
+        },
+        "status": {
+          "connected": "Conectat",
+          "synced": "Sincronizat {time}",
+          "syncing": "Se sincronizează cu Readwise",
+          "reading": "Se citește biblioteca ta…",
+          "writing": "Se scriu cărțile, {done} din {total}",
+          "finishing": "Se finalizează…",
+          "waitingTitle": "Se așteaptă sincronizarea memry",
+          "waitingDetail": "Memry așteaptă să sosească notițele de pe celelalte dispozitive, astfel încât nicio carte să nu fie scrisă de două ori. Readwise pornește imediat după.",
+          "otherTitle": "Se sincronizează pe {device}",
+          "otherTitleUnknown": "Se sincronizează pe alt dispozitiv",
+          "otherDetail": "Doar un dispozitiv preia date din Readwise, astfel încât aceeași evidențiere nu este scrisă niciodată de două ori.",
+          "lastRun": "Ultima rulare: {counts}",
+          "lastRunNothing": "Ultima rulare: nimic nou",
+          "nextRun": "Următoarea sincronizare {time}",
+          "retryAt": "Memry reîncearcă {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise are nevoie de un token nou",
+              "detail": "Readwise nu a acceptat tokenul salvat. Lipește unul nou de la readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Abonamentul tău Readwise a expirat",
+              "detail": "Reînnoiește abonamentul pe readwise.io, apoi încearcă din nou."
+            },
+            "rate-limited": {
+              "title": "Readwise limitează cererile",
+              "detail": "Prea multe cereri într-un timp scurt."
+            },
+            "network": {
+              "title": "Nu se poate contacta Readwise",
+              "detail": "Verifică conexiunea."
+            },
+            "server": {
+              "title": "Readwise a avut o problemă",
+              "detail": "Readwise a răspuns cu o eroare."
+            },
+            "unexpected": {
+              "title": "Sincronizarea s-a oprit",
+              "detail": "Ceva nu a mers bine în timpul rulării."
+            }
+          },
+          "counts": {
+            "added": "{count} adăugate",
+            "updated": "{count} actualizate",
+            "appended": "{count} extinse",
+            "deferred": "{count} în așteptarea unei notițe deschise",
+            "failed": "{count} eșuate",
+            "highlights": "{count, plural, one {# evidențiere} few {# evidențieri} other {# de evidențieri}}"
+          },
+          "actions": {
+            "cancel": "Anulează",
+            "retry": "Reîncearcă acum",
+            "newToken": "Lipește un token nou",
+            "reconnect": "Reconectează",
+            "syncHere": "Sincronizează aici în schimb"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise are nevoie de un token nou",
+            "description": "Sincronizarea este întreruptă până lipești unul nou."
+          },
+          "subscription-expired": {
+            "title": "Abonamentul tău Readwise a expirat",
+            "description": "Sincronizarea este întreruptă până când abonamentul devine din nou activ."
+          },
+          "open": "Deschide Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Nu s-a putut citi fișierul",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# notiță blocată nu a fost importată} few {# notițe blocate nu au fost importate} other {# de notițe blocate nu au fost importate}}; Memry nu le poate citi fără parola pentru Notițe."
+        "lockedNote": "{count, plural, one {# notiță blocată nu a fost importată} few {# notițe blocate nu au fost importate} other {# de notițe blocate nu au fost importate}}; Memry nu le poate citi fără parola pentru Notițe.",
+        "lockedWrongPassword": "{count, plural, one {# notiță blocată nu a fost importată; folosește} few {# notițe blocate nu au fost importate; folosesc} other {# de notițe blocate nu au fost importate; folosesc}} o altă parolă decât cea introdusă.",
+        "lockedUnreadable": "{count, plural, one {# notiță blocată nu a putut fi decriptată și nu a fost importată} few {# notițe blocate nu au putut fi decriptate și nu au fost importate} other {# de notițe blocate nu au putut fi decriptate și nu au fost importate}}.",
+        "lockedAttachment": "{count, plural, one {# atașament dintr-o notiță blocată nu a fost importat; textul notiței a fost importat} few {# atașamente din notițe blocate nu au fost importate; textul notițelor a fost importat} other {# de atașamente din notițe blocate nu au fost importate; textul notițelor a fost importat}}."
       },
       "csv": {
         "noHeaders": "Fișierul CSV nu are rând de antet",
@@ -1563,6 +1878,16 @@
         "unknownPriority": "Prioritate necunoscută {priority} → niciuna",
         "unparsedDate": "Data „{date}” nu a putut fi interpretată",
         "subtaskNoParent": "Subsarcina „{title}” nu are părinte la indentarea {indent}; a fost importată la nivelul principal"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise nu este conectat.",
+        "tokenInvalid": "Readwise nu a acceptat tokenul stocat. Deconectează-te și conectează-te din nou cu unul nou.",
+        "unreachable": "Nu s-a putut contacta Readwise. Verifică conexiunea și încearcă din nou.",
+        "categoryOff": "{count, plural, one {# carte este într-o categorie dezactivată de tine și nu a fost importată} few {# cărți sunt într-o categorie dezactivată de tine și nu au fost importate} other {# de cărți sunt într-o categorie dezactivată de tine și nu au fost importate}}.",
+        "unchanged": "{count, plural, one {# carte era} few {# cărți erau} other {# de cărți erau}} deja actualizate.",
+        "sourceDeleted": "{count, plural, one {# carte a fost ștearsă} few {# cărți au fost șterse} other {# de cărți au fost șterse}} în Readwise. Notițele rămân.",
+        "noteDeleted": "{count, plural, one {# notiță a fost ștearsă} few {# notițe au fost șterse} other {# de notițe au fost șterse}} în Memry și rămân șterse.",
+        "busy": "{count, plural, one {# notiță este deschisă} few {# notițe sunt deschise} other {# de notițe sunt deschise}} într-un editor și vor fi scrise la următoarea rulare."
       }
     },
     "status": {
@@ -1603,6 +1928,9 @@
       },
       "todoist": {
         "importing": "Se importă sarcinile Todoist…"
+      },
+      "readwise": {
+        "fetching": "Se citește biblioteca ta Readwise…"
       }
     },
     "v2": {
@@ -1612,9 +1940,25 @@
       "showMore": "{count, plural, one {Afișează încă #} few {Afișează încă #} other {Afișează încă #}}",
       "showLess": "Afișează mai puțin",
       "groups": {
+        "reading": "Lectură",
         "noteApps": "Aplicații de notițe",
         "tasks": "Sarcini, jurnal și marcaje",
         "files": "Fișiere"
+      },
+      "readwise": {
+        "notConnected": "Neconectat",
+        "connected": "Conectat",
+        "synced": "Sincronizat {time}",
+        "syncing": "Se sincronizează…",
+        "waiting": "Se așteaptă sincronizarea",
+        "otherDevice": "Se sincronizează pe {device}",
+        "otherDeviceUnknown": "Se sincronizează în altă parte",
+        "invalidToken": "Are nevoie de un token nou",
+        "subscriptionExpired": "Abonament expirat",
+        "rateLimited": "Limită de cereri atinsă",
+        "network": "Nu se poate contacta Readwise",
+        "server": "Eroare Readwise",
+        "unexpected": "Sincronizare eșuată"
       }
     }
   },
@@ -1783,6 +2127,9 @@
     "toasts": {
       "renamed": "Redenumit „{oldName}” în „{newName}”",
       "renameFailed": "Nu s-a putut redenumi eticheta",
+      "renaming": "Se redenumește #{oldName}: {done} / {total} notițe",
+      "renamedBodySkipped": "„{newName}” nu poate fi scris ca etichetă în text, deci #{oldName} din textul notițelor rămâne cum a fost scris",
+      "renamedSomeFailed": "{count, plural, one {# notiță nu a putut fi actualizată. Deschide-o și adaugă din nou eticheta} few {# notițe nu au putut fi actualizate. Deschide-le și adaugă din nou eticheta} other {# de notițe nu au putut fi actualizate. Deschide-le și adaugă din nou eticheta}}",
       "deleteFailed": "Nu s-a putut șterge eticheta",
       "deleted": "S-a șters „{name}” din {count, plural, one {# element} few {# elemente} other {# de elemente}}",
       "mergeFailed": "Nu s-au putut combina etichetele",
@@ -1901,12 +2248,29 @@
       "unsupported": "{shortcut} nu poate fi folosită ca comandă rapidă globală. Alegeți o altă combinație.",
       "fallbackInUse": "Comanda rapidă implicită {shortcut} este folosită de altă aplicație. Setați o altă combinație pentru a folosi Captura globală."
     },
+    "folderNotes": {
+      "title": "Notiță nouă în dosar",
+      "description": "Creează o notiță direct într-un dosar la alegere",
+      "add": "Adaugă un dosar",
+      "empty": "Încă nu există comenzi rapide pentru dosare. Adaugă un dosar pentru a-i da una.",
+      "rowDescription": "Creează o notiță în acest dosar",
+      "missing": "Acest dosar nu mai există. Alege alt dosar sau elimină comanda rapidă.",
+      "changeFolder": "Schimbă dosarul",
+      "searchFolders": "Caută dosare...",
+      "noFolders": "Nu s-a găsit niciun dosar",
+      "remove": "Elimină comanda rapidă",
+      "conflictLabel": "Notiță nouă în {folder}",
+      "missingToast": "Dosarul „{folder}” nu mai există",
+      "missingToastAction": "Editează comanda rapidă",
+      "foldersLoadFailed": "Dosarul pentru această comandă rapidă nu a putut fi verificat"
+    },
     "toasts": {
       "saveGlobalFailed": "Nu s-a putut salva comanda rapidă pentru captura globală",
       "saveFailed": "Nu s-a putut salva comanda rapidă",
       "resetFailed": "Nu s-a putut reseta comanda rapidă",
       "resetAllSuccess": "Toate comenzile rapide au fost resetate la valorile implicite",
-      "resetAllFailed": "Nu s-au putut reseta comenzile rapide"
+      "resetAllFailed": "Nu s-au putut reseta comenzile rapide",
+      "saveStickyFailed": "Comanda rapidă sticky nu a putut fi salvată"
     },
     "categories": {
       "navigation": "Navigare",
@@ -1939,6 +2303,10 @@
         "search": {
           "label": "Caută",
           "description": "Deschide căutarea globală"
+        },
+        "commands": {
+          "label": "Paleta de comenzi",
+          "description": "Caută și rulează orice comandă"
         },
         "settings": {
           "label": "Deschide Setări",
@@ -2042,6 +2410,10 @@
           "label": "Afișează/ascunde bara laterală",
           "description": "Afișează sau ascunde bara laterală"
         },
+        "toggleDayPanel": {
+          "label": "Afișează/ascunde panoul zilei",
+          "description": "Afișează sau ascunde panoul zilei din dreapta"
+        },
         "shortcuts": {
           "label": "Ajutor pentru comenzi rapide de la tastatură",
           "description": "Afișează lista comenzilor rapide de la tastatură"
@@ -2057,6 +2429,26 @@
         "actualSize": {
           "label": "Dimensiune reală",
           "description": "Resetează zoomul la 100%"
+        },
+        "foldFull": {
+          "label": "Restrângere: completă",
+          "description": "Afișează fiecare cuvânt din notiță"
+        },
+        "foldBrief": {
+          "label": "Restrângere: scurtă",
+          "description": "Afișează doar propozițiile cheie, așa cum au fost scrise"
+        },
+        "foldKey": {
+          "label": "Restrângere: esențială",
+          "description": "Afișează fiecare punct și motivul lui"
+        },
+        "foldTakeaway": {
+          "label": "Restrângere: concluzie",
+          "description": "Afișează o linie pe paragraf"
+        },
+        "foldTopic": {
+          "label": "Restrângere: subiect",
+          "description": "Afișează notița ca pe o hartă a secțiunilor sale"
         }
       }
     },
@@ -2067,7 +2459,11 @@
       "globalCapture": "Captură globală",
       "recordingHint": "Apăsați tastele… esc pentru a anula",
       "reset": "Resetează",
-      "resetAll": "Resetează tot la valorile implicite"
+      "resetAll": "Resetează tot la valorile implicite",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Deschide sticky-ul din orice aplicație cât timp rulează memrynote"
     }
   },
   "phaseF": {
@@ -2112,7 +2508,17 @@
       "clockSkewDetected": "S-a detectat o desincronizare a ceasului",
       "items": "elemente",
       "willSyncWhenBackOnline": "Se va sincroniza când revine online",
-      "openSyncSettings": "Deschide setările de sincronizare"
+      "stalled": "Modificările nu s-au sincronizat de ceva vreme. Încearcă Sincronizează acum.",
+      "openSyncSettings": "Deschide setările de sincronizare",
+      "repairDeviceKeys": "Repară",
+      "signInToRepair": "Autentifică-te din nou pentru a configura cheile acestui dispozitiv. Notițele, sarcinile și proiectele nesincronizate sunt păstrate. S-ar putea să ai nevoie de fraza de recuperare.",
+      "repairFailed": "Cheile acestui dispozitiv nu au putut fi reparate. Încearcă din nou.",
+      "syncNotStarted": {
+        "vault-binding": "Cheile acestui dispozitiv au fost restaurate, dar acest seif nu este încă setat să se sincronizeze cu contul tău. Alege cum să-l sincronizezi din meniul de sincronizare.",
+        "vault-foreign": "Cheile acestui dispozitiv au fost restaurate, dar acest seif aparține altui cont. Rămâne local pe acest dispozitiv.",
+        "entitlement": "Cheile acestui dispozitiv au fost restaurate, dar sincronizarea necesită un plan Sync activ.",
+        "unavailable": "Cheile acestui dispozitiv au fost restaurate, dar sincronizarea nu a putut porni. Va reîncerca; repornește Memry dacă nu reușește."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2259,6 +2665,12 @@
         "label": "Model",
         "description": "Alegeți un model returnat sau introduceți unul manual."
       },
+      "thinking": {
+        "label": "Gândire",
+        "description": "Dezactivată cere modelelor de tip DeepSeek să sară peste gândire pentru răspunsuri mai rapide și mai ieftine.",
+        "default": "Implicit",
+        "off": "Dezactivată"
+      },
       "apiKey": {
         "label": "Cheie API",
         "description": "Credențială opțională stocată în depozitul de chei al sistemului.",
@@ -2286,6 +2698,17 @@
       "revoke": "Revocă",
       "revokeLabel": "Revocă aprobarea permanentă pentru {tool}",
       "ignoredInPageReview": "Ignorat: modificările notițelor și ale jurnalului cer întotdeauna confirmare."
+    },
+    "memory": {
+      "group": "Memorie",
+      "description": "Agenții rulează într-un dosar păstrat pentru acest seif, în afara seifului, astfel încât ce salvează acolo se transmite în următoarea conversație.",
+      "clear": "Șterge memoria agenților",
+      "clearDescription": "Șterge ce au salvat agenții despre acest seif. Notițele și istoricul conversațiilor rămân.",
+      "clearAction": "Șterge",
+      "cleared": "Memoria agenților a fost ștearsă.",
+      "failed": "Memoria agenților nu a putut fi ștearsă.",
+      "confirmTitle": "Ștergi memoria agenților?",
+      "confirmDescription": "Agenții pierd ce au salvat despre acest seif, inclusiv memoria de proiect a Claude Code pentru el. Acțiunea nu poate fi anulată. Notițele și istoricul conversațiilor rămân."
     },
     "v2": {
       "permissions": {

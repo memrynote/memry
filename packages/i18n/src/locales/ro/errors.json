@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Planul dvs. sincronizează mai puține seifuri decât are acest cont, așa că acest seif rămâne pe acest dispozitiv. Eliminați un seif din cont în Setări → Cont sau treceți la un plan superior.",
     "certificatePinFailed": "Conexiunea securizată a eșuat. Verificați conexiunea la rețea.",
     "deviceKeyMismatch": "Cheia de securitate a acestui dispozitiv nu mai corespunde celei înregistrate pentru cont, așa că serverul îi respinge modificările. Conectați-vă din nou pe acest dispozitiv pentru a-l reînregistra.",
+    "deviceKeysMissing": "Modificările de pe acest dispozitiv nu se încarcă deoarece îi lipsesc cheile. Alege Repară pentru a le restaura. Dacă acest dispozitiv nu își mai are cheile, te vei autentifica din nou și s-ar putea să ai nevoie de fraza de recuperare. Notițele, sarcinile și proiectele nesincronizate sunt păstrate.",
     "keychainUnavailable": "Sincronizarea este întreruptă deoarece Memry nu poate citi momentan cheile de sincronizare din portcheiul sistemului. Deblocați portcheiul și sincronizarea se reia automat; dacă nu, reporniți Memry. Nu s-a șters nimic.",
     "unknown": "A apărut o eroare de sincronizare neașteptată. Se va reîncerca automat.",
     "statusFetchFailed": "Nu s-a putut prelua starea de sincronizare",
@@ -106,6 +107,10 @@
     "triggerFailed": "Sincronizarea a eșuat",
     "pauseFailed": "Nu s-a putut întrerupe sincronizarea",
     "resumeFailed": "Nu s-a putut relua sincronizarea",
+    "syncNowSignedOut": "Sincronizarea cere să te autentifici din nou pe acest dispozitiv.",
+    "syncNowBusy": "Sincronizarea rulează deja. Încearcă din nou într-un moment.",
+    "syncNowPaused": "Sincronizarea a fost întreruptă în timpul rulării. Reia-o din meniul de sincronizare.",
+    "openAccountSettings": "Deschide setările",
     "settingsNotInitialized": "Sincronizarea setărilor nu a fost inițializată",
     "securityQuarantinePermanent": "Un element de sincronizare nu a putut fi verificat și a fost pus în carantină pentru securitate.",
     "securityQuarantineRetry": "Verificarea semnăturii unui element de sincronizare a eșuat. Se va reîncerca.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "Editarea AI în linie este dezactivată",
-    "listOllamaModelsFailed": "Nu s-au putut lista modelele Ollama"
+    "listOllamaModelsFailed": "Nu s-au putut lista modelele Ollama",
+    "writingAssistInvalid": "Cererea nu a putut fi trimisă către modelul AI.",
+    "apiKeyMissing": "Adaugă cheia API {provider} în Setări → AI pentru a folosi instrumentele de scriere.",
+    "apiKeyInvalid": "Cheia API {provider} a fost respinsă. Verifică-o în Setări → AI.",
+    "ollamaUnreachable": "Ollama nu rulează. Pornește-l cu „ollama serve” sau alege alt furnizor în Setări → AI.",
+    "providerUnreachable": "Nu s-a putut contacta {provider}. Verifică conexiunea la internet și încearcă din nou."
   },
   "auth": {
     "notAuthenticated": "Neautentificat",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "Nu s-a putut promova evenimentul extern din calendar",
     "onlyCalendarSourcesRetryable": "Doar sursele de calendar pot fi reîncercate",
     "invalidProviderSettings": "Setări nevalide pentru furnizorul de calendar",
-    "getExternalEventFailed": "Nu s-a putut încărca acest eveniment. Este în continuare în calendar; încercați să-l deschideți din nou."
+    "getExternalEventFailed": "Nu s-a putut încărca acest eveniment. Este în continuare în calendar; încercați să-l deschideți din nou.",
+    "listLinkedNotesFailed": "Nu s-au putut încărca notițele legate de acest eveniment."
   },
   "canvasFolder": {
     "exists": "Aici există deja un dosar de canvasuri cu acest nume.",
@@ -209,10 +220,35 @@
     "previewFailed": "Previzualizarea a eșuat",
     "listFailed": "Nu s-au putut lista instrumentele de import",
     "appleNotesFoldersFailed": "Nu s-au putut citi dosarele din Apple Notes",
+    "appleNotesPasswordFailed": "Nu s-a putut verifica parola Notes.",
     "onenoteStatusFailed": "Nu s-a putut citi starea conexiunii OneNote",
     "onenoteConnectFailed": "Conectarea la Microsoft a eșuat",
     "onenoteDisconnectFailed": "Nu s-a putut deconecta contul Microsoft",
-    "onenoteNotebooksFailed": "Nu s-au putut încărca blocnotesurile OneNote"
+    "onenoteNotebooksFailed": "Nu s-au putut încărca blocnotesurile OneNote",
+    "readwiseStatusFailed": "Nu s-a putut citi starea conexiunii Readwise",
+    "readwiseConnectFailed": "Nu s-a putut face conectarea la Readwise",
+    "readwiseInvalidToken": "Readwise nu a acceptat acest token. Copiază-l din nou de la readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise limitează acum cererile. Încearcă din nou peste un minut.",
+    "readwiseUnreachable": "Nu s-a putut contacta Readwise. Verifică conexiunea și încearcă din nou.",
+    "readwiseDisconnectFailed": "Nu s-a putut deconecta Readwise",
+    "readwiseSyncFailed": "Nu s-a putut porni sincronizarea Readwise",
+    "readwiseRunUnavailable": "Readwise nu se sincronizează pe acest dispozitiv.",
+    "readwiseRunInProgress": "O importare Readwise rulează deja. Încearcă din nou când se termină.",
+    "readwiseOptionsFailed": "Nu s-au putut salva setările Readwise",
+    "readwiseNotConnected": "Readwise nu este conectat. Lipește mai întâi tokenul de acces.",
+    "readwiseSyncsElsewhere": "Readwise se sincronizează pe alt dispozitiv. Rulează comanda acolo.",
+    "readwiseBookCommandFailed": "Nu s-a putut finaliza comanda Readwise",
+    "readwiseBookGone": "Această carte nu mai este în biblioteca ta Readwise.",
+    "readwiseNotLinked": "Această notiță nu este legată de o carte Readwise.",
+    "readwiseNotDeleted": "Această carte nu se află în lista celor șterse.",
+    "readwiseBookBusy": "Notița s-a schimbat cât timp rula comanda. Încearcă din nou.",
+    "readwiseSyncsOnDevice": "Readwise se sincronizează pe {device}. Folosește „Sincronizează aici în schimb” pentru a-l muta aici.",
+    "readwiseAnotherDevice": "alt dispozitiv",
+    "readwiseNotReady": "Memry nu a terminat încă sincronizarea cu celelalte dispozitive. Încearcă din nou într-un moment.",
+    "readwiseNeedsSync": "Activează sincronizarea pentru a muta Readwise între dispozitive.",
+    "readwiseClaimNotDelivered": "Celelalte dispozitive nu au putut fi anunțate încă. Verifică conexiunea și încearcă din nou.",
+    "readwiseTakeOverFailed": "Nu s-a putut muta Readwise pe acest dispozitiv",
+    "readwiseCancelFailed": "Nu s-a putut anula sincronizarea Readwise"
   },
   "project": {
     "createFailed": "Nu s-a putut crea proiectul",
@@ -236,7 +272,8 @@
     "renameFailed": "Nu s-a putut redenumi proprietatea",
     "createDefinitionFailed": "Nu s-a putut crea definiția proprietății",
     "updateDefinitionFailed": "Nu s-a putut actualiza definiția proprietății",
-    "setCalendarVisibilityFailed": "Nu s-a putut seta vizibilitatea proprietății în calendar"
+    "setCalendarVisibilityFailed": "Nu s-a putut seta vizibilitatea proprietății în calendar",
+    "definitionsFileUnreadable": "Modificările proprietăților nu pot fi salvate deoarece .memry/properties.md nu poate fi citit. Repară sau elimină acel fișier, apoi încearcă din nou."
   },
   "reminder": {
     "notFound": "Mementoul nu a fost găsit",
@@ -262,6 +299,7 @@
     "shortcutInUse": "Comanda rapidă {shortcut} este deja utilizată"
   },
   "tag": {
+    "renameInProgress": "Redenumirea #{from} în #{to} încă rulează. Încearcă din nou când se termină.",
     "mergeSameTag": "Eticheta sursă și cea țintă sunt identice",
     "categoryNameRequired": "Numele categoriei este obligatoriu",
     "pinNoteFailed": "Nu s-a putut fixa notița",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "Nu s-au putut șterge sarcinile",
     "moveManyFailed": "Nu s-au putut muta sarcinile",
     "archiveManyFailed": "Nu s-au putut arhiva sarcinile",
-    "projectMissing": "Proiectul nu mai există"
+    "projectMissing": "Proiectul nu mai există",
+    "invalidParent": "O sarcină nu poate fi mutată acolo"
   },
   "taskStatus": {
     "createFailed": "Nu s-a putut crea starea",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "Proprietarul a făcut această notă doar pentru citire.",
     "folderReadOnly": "Proprietarul a făcut acest dosar doar pentru citire."
+  },
+  "ocrLanguages": {
+    "unreachable": "Serverul Memry nu a putut fi contactat. Limbile deja prezente continuă să funcționeze, iar Memry reîncearcă la următoarea pornire.",
+    "unavailable": "Serverul Memry nu oferă încă această limbă. Limbile deja prezente continuă să funcționeze.",
+    "corrupt": "Datele descărcate nu corespundeau cu ce așteaptă Memry, deci nu au fost folosite. Reîncearcă pentru a le descărca din nou.",
+    "saveFailed": "Datele limbii nu au putut fi salvate pe acest computer. Verifică spațiul liber pe disc, apoi reîncearcă."
+  },
+  "tagFields": {
+    "reservedName": "„{name}” este rezervat și nu poate fi nume de câmp",
+    "duplicateField": "#{definedBy} are deja un câmp numit „{name}”",
+    "unknownField": "Această etichetă nu are un câmp numit „{name}”",
+    "inheritedField": "„{name}” provine din #{definedBy}. Editează-l acolo",
+    "cycle": "#{parent} își preia deja câmpurile de la această etichetă",
+    "unreadableSchema": "O versiune mai nouă a Memry a modificat această etichetă. Actualizează Memry pentru a o edita",
+    "relationTargetRequired": "Alege spre ce etichetă trimite această relație",
+    "editFailed": "Nu s-au putut modifica câmpurile etichetei",
+    "previewFailed": "Nu s-a putut număra ce afectează această modificare",
+    "snapshotFailed": "Nu s-au putut încărca câmpurile etichetei",
+    "renameRunning": "O altă redenumire de câmp încă se finalizează ({from} în {to}). Încearcă din nou când se termină."
   }
 }
