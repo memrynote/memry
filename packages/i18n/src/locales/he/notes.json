@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "לא נמצא — יש ללחוץ כדי ליצור את \"{title}\""
   },
+  "wikiLinkMenu": {
+    "aria": "פעולות קישור",
+    "open": "פתיחה",
+    "openInNewTab": "פתיחה בכרטיסייה חדשה",
+    "openToTheSide": "פתיחה בצד",
+    "edit": "עריכת הקישור",
+    "copy": "העתקת הקישור",
+    "unlink": "הסרת הקישור",
+    "displayRow": "תצוגה…",
+    "sizeNone": "ללא",
+    "sizeSmall": "קטן",
+    "sizeMedium": "בינוני",
+    "showCover": "הצגת עטיפה",
+    "showPreview": "הצגת תצוגה מקדימה",
+    "copyFailed": "לא ניתן להעתיק את הקישור"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "ייבוא מחדש מ-Readwise",
+    "refreshAction": "רענון פרטי הספר",
+    "syncsOn": "Readwise מסתנכרן ב-{device}.",
+    "syncsOnAnotherDevice": "Readwise מסתנכרן במכשיר אחר.",
+    "takeOverHint": "אפשר לסנכרן במכשיר ההוא, או להעביר את הסנכרון בהגדרות ← ייבוא.",
+    "reimport": {
+      "title": "לייבא מחדש את “{title}” מ-Readwise?",
+      "body": "מקטע Readwise נכתב מחדש מאפס. כל מה שכתבתם בתוכו יאבד.",
+      "note": "הטקסט מחוץ למקטע והמאפיינים של הפתק נשארים כפי שהם.",
+      "cancel": "ביטול",
+      "confirm": "ייבוא מחדש"
+    },
+    "commands": {
+      "reimported": "יובא מחדש מ-Readwise",
+      "refreshed": "פרטי הספר רועננו",
+      "failed": "לא ניתן להשלים את הפקודה של Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "לא נבחר פתק",
@@ -25,6 +61,7 @@
       "willSync": "הפתק יסונכרן לענן",
       "renameFailed": "שינוי שם הפתק נכשל",
       "titleRequired": "לפתק חייבת להיות כותרת",
+      "duplicateTitle": "פתק אחר ב-{folder} נקרא גם הוא “{title}”. קישורים לפתקים האלה יכללו את התיקייה שלהם.",
       "toggleLocalOnlyFailed": "שינוי מצב מקומי בלבד נכשל",
       "toggleFullWidthFailed": "שינוי מצב רוחב מלא נכשל",
       "pathCopied": "הנתיב הועתק",
@@ -85,6 +122,10 @@
       "body": "כדי להתחיל, אפשר ליצור פתק",
       "newNote": "פתק חדש"
     },
+    "readwiseSync": {
+      "tooltip": "סנכרון Readwise",
+      "failed": "סנכרון Readwise נכשל"
+    },
     "syncing": {
       "body": "מסנכרן את הפתקים שלך — הם יופיעו כאן כשיגיעו"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "פתיחה בצד",
       "newNote": "פתק חדש",
       "newFolder": "תיקייה חדשה",
+      "showTasks": "הצגת משימות",
       "expandSubfolders": "הרחבת כל תת-התיקיות",
       "collapseSubfolders": "כיווץ כל תת-התיקיות",
       "rename": "שינוי שם",
@@ -138,7 +180,15 @@
       "folderSuffix": "תיקייה",
       "moreItems": "…ועוד {count}",
       "deleting": "מוחק…",
-      "deleteCount": "מחיקת {count}"
+      "deleteCount": "מחיקת {count}",
+      "journalFolderWarning": "זה כולל את תיקיית היומן שלך. כל רשומות היומן שבה יימחקו, בכל המכשירים שלך."
+    },
+    "journalChange": {
+      "leaveTitle": "להפוך רשומות יומן לפתקים?",
+      "leaveBody": "כשרשומות יומן מועברות אל מחוץ לתיקיית היומן, או שהשם שלהן משתנה ואינו תואם עוד את תבנית התאריך, הן הופכות לפתקים רגילים ועוזבות את היומן. במכשירים האחרים שלך הימים האלה יוסרו מהיומן והפתקים יופיעו במקומם.",
+      "joinTitle": "להפוך פתקים לרשומות יומן?",
+      "joinBody": "קבצים ששמם תואם את תבנית תאריך היומן בתוך תיקיית היומן הופכים לרשומות יומן. במכשירים האחרים שלך הפתקים האלה יוחלפו ברשומות יומן.",
+      "confirm": "המשך"
     },
     "toast": {
       "selectionBookmarked": "{count} פריטים נוספו לסימניות",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "כותרת",
       "listPlaceholder": "פריט רשימה",
       "todoPlaceholder": "פריט לביצוע",
-      "htmlComment": "הערת HTML מוסתרת"
+      "htmlComment": "הערת HTML מוסתרת",
+      "percentComment": "הערה מוסתרת",
+      "readwise": {
+        "noteStart": "Readwise · מסתנכרן אוטומטית",
+        "noteEnd": "סוף מקטע Readwise",
+        "dayStart": "Readwise · ההדגשות של היום",
+        "dayEnd": "סוף Readwise",
+        "hint": "אם תערכו בתוך המקטע הזה, Readwise יפסיק לעדכן אותו."
+      }
     },
     "table": {
       "keyboardMenuAria": "פעולות טבלה לשורה {row}, עמודה {column}",
-      "keyboardMenuTitle": "שורה {row} · עמודה {column}"
+      "keyboardMenuTitle": "שורה {row} · עמודה {column}",
+      "sizePicker": {
+        "aria": "גודל הטבלה. אפשר להשתמש בחצים כדי לבחור שורות ועמודות, ואז ללחוץ על Enter.",
+        "size": "{rows, plural, one {שורה אחת} other {# שורות}} × {columns, plural, one {עמודה אחת} other {# עמודות}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {מחיקת שורה} other {מחיקת # שורות}}",
+        "addRowsAbove": "{count, plural, one {הוספת שורה למעלה} other {הוספת # שורות למעלה}}",
+        "addRowsBelow": "{count, plural, one {הוספת שורה למטה} other {הוספת # שורות למטה}}",
+        "deleteColumns": "{count, plural, one {מחיקת עמודה} other {מחיקת # עמודות}}",
+        "addColumnsLeft": "{count, plural, one {הוספת עמודה משמאל} other {הוספת # עמודות משמאל}}",
+        "addColumnsRight": "{count, plural, one {הוספת עמודה מימין} other {הוספת # עמודות מימין}}"
+      }
     },
     "list": {
       "bulleted": "רשימת תבליטים",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "הסתרת הגרף המקומי",
       "showLocalGraph": "הצגת גרף מקומי",
       "moreActions": "פעולות נוספות",
+      "searchActions": "חיפוש פעולות...",
+      "noMatchingActions": "אין פעולות תואמות",
       "find": "חיפוש…",
       "versionHistory": "היסטוריית גרסאות",
       "export": "ייצוא",
@@ -215,6 +287,8 @@
       "notSynced": "עדיין לא סונכרן למכשיר הזה",
       "revealFailed": "הצגת הקובץ נכשלה",
       "openFailed": "פתיחת הקובץ נכשלה",
+      "showAsLink": "הצגה כקישור",
+      "showAsEmbed": "הצגה משובצת",
       "missingTitle": "הקובץ המצורף חסר",
       "missingExpected": "הקובץ הצפוי: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "שינוי שם",
       "renamed": "השם שונה ל-{name}",
       "failed": "שינוי שם הקובץ המצורף נכשל"
+    },
+    "imageLightbox": {
+      "menuItem": "הצגה בגדול",
+      "title": "מציג תמונות",
+      "zoomIn": "הגדלה",
+      "zoomOut": "הקטנה",
+      "reset": "איפוס הזום"
+    },
+    "imageCrop": {
+      "menuItem": "חיתוך…",
+      "title": "חיתוך התמונה",
+      "description": "אפשר לגרור על התמונה כדי לבחור מה הפתק יציג. קובץ המקור נשמר כפי שהוא.",
+      "reset": "הצגת התמונה כולה",
+      "cancel": "ביטול",
+      "apply": "חיתוך",
+      "unavailable": "התמונה עדיין לא נטענה, ולכן אי אפשר לחתוך אותה"
     },
     "attachmentsDialog": {
       "title": "קבצים מצורפים",
@@ -248,12 +338,24 @@
       "title": "תיבת הדגשה",
       "group": "בלוקים בסיסיים",
       "subtext": "הבלטת מידע חשוב",
+      "customSubtext": "סוג ההדגשה המותאם אישית שלך",
       "changeType": "שינוי סוג תיבת ההדגשה",
+      "expand": "הרחבת ההדגשה",
+      "collapse": "כיווץ ההדגשה",
       "menuLabel": "סוג תיבת ההדגשה",
       "info": "מידע",
       "warning": "אזהרה",
       "error": "שגיאה",
-      "success": "הצלחה"
+      "success": "הצלחה",
+      "note": "הערה",
+      "abstract": "תקציר",
+      "todo": "לביצוע",
+      "tip": "טיפ",
+      "important": "חשוב",
+      "question": "שאלה",
+      "example": "דוגמה",
+      "quote": "ציטוט",
+      "bug": "באג"
     },
     "columns": {
       "group": "בלוקים בסיסיים",
@@ -332,6 +434,83 @@
       "invalidShape": "בהגדרה של התצוגה הזו אין מקור. אפשר לבחור מקור למעלה, או לתקן את ההגדרה למטה.",
       "definition": "הגדרה"
     },
+    "chart": {
+      "title": "תרשים",
+      "subtext": "הצגת מאפיין לאורך זמן: קו, עמודות או מפת חום של לוח שנה",
+      "layout": "תרשים",
+      "settings": "הגדרות התרשים",
+      "chooseProperty": "בחירת מה להציג",
+      "source": "מקור",
+      "headerMeta": "{range} · {type}",
+      "property": "מאפיין",
+      "noProperties": "עדיין אין מה להציג. קודם יש להוסיף מאפיין לרשומת יומן או לפתק.",
+      "chartType": "תרשים",
+      "suggested": "מומלץ",
+      "types": {
+        "line": "קו",
+        "bar": "עמודות",
+        "heatmap": "מפת חום"
+      },
+      "range": "טווח",
+      "lastDays": "{count, plural, one {היום האחרון} other {# הימים האחרונים}}",
+      "sameDay": "רשומות מאותו יום",
+      "aggregates": {
+        "average": "ממוצע",
+        "sum": "סכום",
+        "min": "הנמוך ביותר",
+        "max": "הגבוה ביותר",
+        "count": "כמות"
+      },
+      "missingDays": "ימים חסרים",
+      "missing": {
+        "gap": "השארת רווח",
+        "zero": "ספירה כאפס"
+      },
+      "dateFrom": {
+        "label": "תאריך לפי",
+        "created": "יצירה",
+        "modified": "שינוי"
+      },
+      "propertyTypes": {
+        "text": "טקסט",
+        "number": "מספר",
+        "checkbox": "תיבת סימון",
+        "date": "תאריך",
+        "url": "URL",
+        "status": "סטטוס",
+        "select": "בחירה",
+        "multiselect": "בחירה מרובה",
+        "relation": "קשר",
+        "project": "פרויקט",
+        "rating": "דירוג"
+      },
+      "noEntry": "אין רשומה",
+      "done": "הושלם",
+      "notDone": "לא הושלם",
+      "logged": "נרשם",
+      "valueCount": "{count, plural, one {ערך אחד} other {# ערכים}}",
+      "average": "ממוצע",
+      "vsPrevious": "לעומת התקופה הקודמת",
+      "lowest": "הנמוך ביותר",
+      "currentStreak": "רצף נוכחי",
+      "longestStreak": "הרצף הארוך ביותר",
+      "dayCount": "{count, plural, one {יום אחד} other {# ימים}}",
+      "doneDays": "הושלם",
+      "loggedDays": "נרשם",
+      "mostCommon": "הנפוץ ביותר",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} ב-{days} הימים האחרונים",
+      "noData": "עדיין לא נרשם דבר בטווח הזה.",
+      "loadFailed": "לא ניתן לטעון את התרשים הזה. הרשומות עצמן לא נפגעו.",
+      "sourceJournal": "יומן",
+      "history": {
+        "show": "הצגת ההיסטוריה",
+        "title": "ההיסטוריה של {property}",
+        "range": "13 השבועות האחרונים",
+        "insert": "העתקה כבלוק תרשים",
+        "copied": "בלוק התרשים הועתק. אפשר להדביק אותו בכל פתק."
+      }
+    },
     "slashMenu": {
       "aria": "בלוקים ופעולות",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "הוספה",
         "open": "פתיחה"
       },
+      "close": "סגירת התפריט",
       "matchesAlias": "תואם",
       "noMatch": "אין בלוקים תואמים עבור \"{query}\"",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "הצגה כ",
+        "embed": "משובץ",
+        "link": "קישור"
+      },
       "title": {
         "image": "הוספת תמונה",
         "media": "הוספת מדיה",
@@ -525,6 +710,11 @@
       "empty": "אפשר להקליד כדי ליצור תגית חדשה",
       "create": "יצירת #{tag}"
     },
+    "pdfDisplay": {
+      "title": "הצגת ה-PDF כ",
+      "embed": "מציג משובץ",
+      "link": "שם הקובץ"
+    },
     "pasteLink": {
       "title": "הדבקה בתור",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "{count} דקות קריאה",
     "words": "{count} מילים",
     "created": "נוצר",
-    "modified": "שונה"
+    "modified": "שונה",
+    "sync": {
+      "label": "סנכרון",
+      "confirmed": "בשרת {time}",
+      "pending": "ממתין מאז {time}",
+      "sent": "שולח",
+      "rejected": "השרת דחה את השינוי האחרון",
+      "notRecorded": "אין דבר שממתין לשליחה",
+      "localOnly": "מקומי בלבד",
+      "notSyncing": "לא מסתנכרן",
+      "waiting": "ממתין לשליחה"
+    }
   },
   "backlinks": {
     "sortRecent": "אחרונים",
@@ -587,7 +788,18 @@
     "expandSection": "הרחבת אזור הקישורים הנכנסים",
     "showMore": "הצגת {count} קישורים נכנסים נוספים",
     "more": "עוד {count}",
-    "viaProperty": "{property} ← {title}"
+    "viaProperty": "{property} ← {title}",
+    "viaPortal": "מוצג בפורטל"
+  },
+  "unlinkedMentions": {
+    "title": "אזכורים ללא קישור",
+    "summary": "{count, plural, one {אזכור אחד ללא קישור} other {# אזכורים ללא קישור}}",
+    "sectionAria": "אזכורים ללא קישור",
+    "fromAria": "אזכורים ללא קישור ב-{title}",
+    "link": "קישור",
+    "linkAria": "קישור {text}",
+    "gone": "האזכור הזה השתנה מאז שהרשימה נקראה",
+    "linkFailed": "לא ניתן לקשר את האזכור"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {קישור יוצא אחד} other {# קישורים יוצאים}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "הוספת הפתק לקנבס נכשלה"
   },
   "suggestedTags": {
-    "label": "תגיות מוצעות:",
-    "hint": "תגיות שמשותפות לפתקים הדומים ביותר לפתק הזה. שום תגית לא מתווספת עד שבוחרים אחת.",
-    "acceptAria": "הוספת התגית {tag}",
-    "support": "{count, plural, one {בשימוש בפתק דומה אחד} other {בשימוש ב-# פתקים דומים}}",
-    "dismiss": "הסתרת התגיות המוצעות"
+    "support": "{count, plural, one {בשימוש בפתק דומה אחד} other {בשימוש ב-# פתקים דומים}}"
   },
   "comments": {
     "railAria": "הערות",
@@ -663,6 +871,7 @@
     "removeAria": "הסרת התגית: {tag}",
     "inputPlaceholder": "הקלדת שם תגית…",
     "recent": "אחרונות",
+    "suggested": "מוצעות",
     "matching": "תואמות",
     "all": "כל התגיות",
     "none": "לא נמצאו תגיות",
@@ -755,6 +964,9 @@
     "repositionHint": "אפשר לגרור כדי למקם מחדש",
     "repositionSave": "שמירה",
     "repositionCancel": "ביטול",
+    "zoomIn": "הגדלה",
+    "zoomOut": "הקטנה",
+    "resize": "גרירה לשינוי גודל העטיפה",
     "credit": "צילום מאת {name} ב-Unsplash",
     "focusFailed": "לא ניתן היה לשמור את מיקום תמונת השער",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {פתק אחד} other {# פתקים}}"
+    },
+    "noteTasks": {
+      "expand": "הצגת המשימות של {title}",
+      "collapse": "הסתרת המשימות של {title}",
+      "list": "משימות ב-{title}",
+      "progressOpen": "{open}/{total} פתוחות",
+      "progressDone": "{total}/{total} הושלמו",
+      "nextDue": "התאריך הקרוב",
+      "reminder": "הוגדרה תזכורת"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "שמירה",
     "addToFilterHint": "כדי להוסיף תגית למסנן, אפשר ללחוץ עליה עם Ctrl/Cmd"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "חלופות",
+      "overflow": "גלישה",
+      "menu": "כלי כתיבה",
+      "close": "סגירת כלי הכתיבה"
+    },
+    "menu": {
+      "aria": "פעולות עורך",
+      "cut": "גזירה",
+      "copy": "העתקה",
+      "paste": "הדבקה",
+      "selectAll": "בחירת הכול",
+      "undo": "ביטול",
+      "redo": "ביצוע חוזר",
+      "comment": "הערה",
+      "addAlternative": "הוספת חלופה",
+      "suggestAlternatives": "הצעת חלופות",
+      "ghost": "רפאים",
+      "revive": "החייאה",
+      "stash": "הסתרה בגלישה",
+      "noSpellingSuggestions": "אין הצעות",
+      "addToDictionary": "הוספה למילון",
+      "clipboardFailed": "לא ניתן להשתמש בלוח ההעתקה"
+    },
+    "alternatives": {
+      "railAria": "חלופות",
+      "hint": "{position} מתוך {total} ↑ ↓",
+      "original": "מקור",
+      "byYou": "נכתב על ידיך",
+      "byAI": "הוצע על ידי AI",
+      "showing": "מוצג",
+      "addPlaceholder": "הוספת חלופה…",
+      "removeSuggestions": "הסרת ההצעות",
+      "removeVariant": "הסרת החלופה",
+      "empty": "אפשר לבחור טקסט וללחוץ על הוספת חלופה כדי לשמור דרכים אחרות לומר אותו.",
+      "suggesting": "מציע חלופות…",
+      "suggestFailed": "לא ניתן להציע חלופות",
+      "noSuggestions": "לא הוצעו חלופות חדשות"
+    },
+    "overflow": {
+      "railAria": "גלישה",
+      "addPlaceholder": "כותבים משהו לשמירה…",
+      "empty": "שורות שהסתרתם או כתבתם כאן נשארות עם הפתק הזה, מחוץ לטקסט.",
+      "dragHint": "גרירה אל הפתק",
+      "copy": "העתקה",
+      "copied": "הועתק",
+      "delete": "מחיקה"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "נעילת הפתק",
+    "unlockNote": "שחרור הפתק",
+    "lockFolder": "נעילת התיקייה",
+    "unlockFolder": "שחרור התיקייה",
+    "toggleFailed": "לא ניתן לשנות את הנעילה",
+    "readOnlyIndicator": "נעול. לקריאה בלבד עבורך ועבור סוכנים.",
+    "externalEditRestored": "“{title}” נעול, ולכן העריכה החיצונית שלו בוטלה",
+    "externalEditRestoredHint": "הטקסט הערוך נשמר בהיסטוריית הגרסאות של הפתק."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "אדם",
+        "plural": "אנשים",
+        "fields": {
+          "company": "חברה",
+          "role": "תפקיד",
+          "email": "אימייל",
+          "phone": "טלפון"
+        },
+        "inverse": {
+          "company": "אנשים"
+        },
+        "template": {
+          "name": "אדם",
+          "context": "הקשר",
+          "contextHint": "איך הכרנו, מה חשוב לו",
+          "notes": "הערות"
+        }
+      },
+      "company": {
+        "name": "חברה",
+        "plural": "חברות",
+        "fields": {
+          "website": "אתר",
+          "industry": "תחום",
+          "location": "מיקום"
+        },
+        "template": {
+          "name": "חברה",
+          "overview": "סקירה",
+          "overviewHint": "מה הם עושים, את מי אנחנו מכירים שם",
+          "notes": "הערות"
+        }
+      },
+      "meeting": {
+        "name": "פגישה",
+        "plural": "פגישות",
+        "fields": {
+          "date": "תאריך",
+          "attendees": "משתתפים",
+          "company": "חברה"
+        },
+        "inverse": {
+          "attendees": "פגישות",
+          "company": "פגישות"
+        },
+        "template": {
+          "name": "פגישה",
+          "agenda": "סדר יום",
+          "notes": "הערות",
+          "actionItems": "משימות לביצוע"
+        }
+      },
+      "book": {
+        "name": "ספר",
+        "plural": "ספרים",
+        "fields": {
+          "author": "מחבר",
+          "shelf": "מדף",
+          "rating": "דירוג",
+          "finished": "סיום"
+        },
+        "shelf": {
+          "toRead": "לקריאה",
+          "reading": "בקריאה",
+          "read": "נקרא"
+        },
+        "template": {
+          "name": "ספר",
+          "highlights": "הדגשות",
+          "thoughts": "מחשבות"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} הוא עכשיו {tag}. התבנית נוספה.",
+      "templateChanged": "הפתק השתנה אחרי שהתבנית נוספה, ולכן הוא נשאר כפי שהוא.",
+      "undoFailed": "לא ניתן לבטל",
+      "addFailed": "לא ניתן להוסיף את התגית",
+      "removeFailed": "לא ניתן להסיר את התגית",
+      "removedKept": "#{tag} הוסרה. {count} ערכים נשמרו.",
+      "removedKeptOne": "#{tag} הוסרה. ערך אחד נשמר."
+    },
+    "picker": {
+      "create": "יצירת #{tag}",
+      "fillsTemplate": "ממלא את הפתק הריק הזה בתבנית {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "תגיות מוכנות",
+        "subtitle": "תגיות שמגיעות עם שדות. הפתקים נשארים כפי שהם עד שתתייגו אותם.",
+        "notNow": "לא עכשיו",
+        "add": "הוספה",
+        "addFields": "הוספת שדות",
+        "added": "נוספה",
+        "alreadyOn": "כבר על {count} פתקים",
+        "alreadyOnOne": "כבר על פתק אחד"
+      },
+      "dialog": {
+        "title": "להוסיף שדות {preset} ל-#{tag}?",
+        "body": "#{tag} כבר נמצאת על {count} פתקים. הם שומרים על כל מה שיש בהם ומקבלים את השדות האלה, ריקים עד שמישהו ימלא אותם.",
+        "bodyOne": "#{tag} כבר נמצאת על פתק אחד. הוא שומר על כל מה שיש בו ומקבל את השדות האלה, ריקים עד שמישהו ימלא אותם.",
+        "template": "התבנית ({sections}) ממלאת רק פתקים ריקים.",
+        "alsoAddsPrefix": "מוסיף גם",
+        "alsoAddsSuffix": "עבור השדה {field}.",
+        "useAnotherName": "שימוש בשם אחר",
+        "nameLabel": "שם התגית החדשה",
+        "namePlaceholder": "contact",
+        "cancel": "ביטול",
+        "addFields": "הוספת שדות"
+      },
+      "toast": {
+        "added": "#{tag} נוספה",
+        "addedFields": "שדות {preset} נוספו ל-#{tag}"
+      },
+      "hasFields": "יש שדות"
+    },
+    "tasks": {
+      "thisTask": "המשימה הזו",
+      "viaTag": "{name} דרך #{via}",
+      "clearValue": "ניקוי {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "דרך #{tag}",
+      "groupMenu": "אפשרויות {tag}",
+      "openTag": "פתיחת #{tag}",
+      "thisNote": "הפתק הזה"
+    },
+    "offer": {
+      "text": "הוספת תבנית {tag} מתחת לטקסט שלך",
+      "add": "הוספה",
+      "dismiss": "סגירה",
+      "addFailed": "לא ניתן להוסיף את התבנית"
+    },
+    "settings": {
+      "title": "הגדרות של #{tag}",
+      "close": "סגירה",
+      "cancel": "ביטול",
+      "save": "שמירה",
+      "onCounts": "על {notes, plural, one {פתק אחד} other {# פתקים}} ו-{tasks, plural, one {משימה אחת} other {# משימות}}",
+      "onNotes": "על {count, plural, one {פתק אחד} other {# פתקים}}",
+      "headerFields": "{count, plural, one {שדה אחד} other {# שדות}}",
+      "editTag": "עריכת התגית",
+      "syncNote": "השינויים מסונכרנים למכשירים האחרים שלך",
+      "newerVersion": "גרסה חדשה יותר של Memry שינתה את התגית הזו. יש לעדכן את Memry כדי לערוך אותה כאן.",
+      "sections": {
+        "appearance": "מראה",
+        "extends": "מרחיבה",
+        "fields": "שדות · {count}",
+        "template": "תבנית"
+      },
+      "appearance": {
+        "icon": "סמל",
+        "color": "צבע",
+        "customColor": "מותאם אישית",
+        "category": "קטגוריה",
+        "noCategory": "ללא קטגוריה"
+      },
+      "extends": {
+        "nothing": "כלום",
+        "hint": "לקיחת השדות של תגית אחרת והופעה בטבלה שלה.",
+        "hintSet": "פתקי {tag} מקבלים את השדות של {parent} ומופיעים בטבלה של {parent}."
+      },
+      "types": {
+        "text": "טקסט",
+        "number": "מספר",
+        "date": "תאריך",
+        "url": "URL",
+        "status": "סטטוס",
+        "select": "בחירה",
+        "multiselect": "בחירה מרובה",
+        "checkbox": "תיבת סימון",
+        "relation": "קשר"
+      },
+      "fields": {
+        "empty": "עדיין אין שדות. אפשר להוסיף שדה כדי לתת לכל פתק עם התגית אותם מאפיינים.",
+        "fromParent": "מ-#{tag} · עריכה שם",
+        "inverseSub": "מוצג ב-{target} בתור {inverse}",
+        "anyNoteSub": "מקשר לכל פתק",
+        "actions": "פעולות עבור {field}",
+        "rename": "שינוי שם…",
+        "relationSettings": "הגדרות הקשר",
+        "remove": "הסרה…"
+      },
+      "addField": {
+        "button": "הוספת שדה",
+        "namePlaceholder": "שם השדה",
+        "existing": "מאפיינים קיימים",
+        "existingSub": "{type} · על {count, plural, one {פתק אחד} other {# פתקים}} · שימוש חוזר",
+        "newType": "סוג שדה חדש",
+        "relationSub": "קישור לפתקים עם תגית",
+        "submit": "הוספת שדה",
+        "reserved": "{name} שמור ואינו יכול לשמש שדה.",
+        "taken": "ל-#{tag} כבר יש {name}."
+      },
+      "relation": {
+        "target": "מצביע לפתקים עם התגית",
+        "pickTag": "בחירת תגית",
+        "howMany": "כמה",
+        "one": "אחד",
+        "many": "רבים",
+        "inverseLabel": "בדף של {target}, להציג אותם בשם",
+        "inverseLabelAny": "בדף המקושר, להציג אותם בשם",
+        "inverseHint": "רשימה לקריאה בלבד בכל {target}. דבר לא נכתב לפתקי {target}.",
+        "inverseHintAny": "רשימה לקריאה בלבד בכל פתק מקושר. דבר לא נכתב לפתקים האלה."
+      },
+      "shared": {
+        "title": "שדה חדש ב-#{tag}",
+        "existsWith": "{name} כבר קיים בכספת הזו עם {options}.",
+        "existsAs": "{name} כבר קיים בכספת הזו כמאפיין מסוג {type}.",
+        "shareWith": "#{tag} תשתף אותו עם {others} הפתקים שלך.",
+        "shareAny": "#{tag} תשתף אותו עם הפתקים האחרים שלך.",
+        "useInstead": "שימוש ב-{name} במקום",
+        "share": "שיתוף {name}"
+      },
+      "template": {
+        "edit": "עריכת התבנית",
+        "none": "עדיין אין תבנית. תבנית ממלאת פתקים ריקים כשהם מקבלים את התגית.",
+        "create": "יצירת תבנית",
+        "defaultHeading": "הערות",
+        "inherited": "מ-#{tag}",
+        "autofill": "מילוי פתקים ריקים כשהם מקבלים את #{tag}"
+      },
+      "remove": {
+        "title": "להסיר את {field} מ-#{tag}?",
+        "body": "{field} מלא ב-{filled, plural, one {פתק אחד} other {# פתקים}}. הערכים האלה נשארים בפתקים כמאפיין רגיל; {empty, plural, one {מקום ריק אחד נעלם} other {# מקומות ריקים נעלמים}}.",
+        "confirm": "הסרת השדה"
+      },
+      "rename": {
+        "title": "שינוי השם של {from} ל-{to}",
+        "titleEmpty": "שינוי השם של {from}",
+        "label": "שם חדש",
+        "body": "ב-{count, plural, one {פתק אחד יש} other {# פתקים יש}} ערך {field}. Memry משנה את המפתח בכל קובץ ובמאפיינים שלהם; גם Obsidian רואה את השם החדש.",
+        "progress": "משנה שם בפתקים",
+        "confirm": "שינוי שם",
+        "taken": "לתגית הזו כבר יש {name}.",
+        "done": "השם של {from} שונה ל-{to} ב-{count, plural, one {פריט אחד} other {# פריטים}}.",
+        "skipped": "השם של {from} שונה ל-{to} ב-{count, plural, one {פריט אחד} other {# פריטים}}. {locked, plural, =0 {} one {פתק נעול אחד יושלם כשישוחרר.} other {# פתקים נעולים יושלמו כשישוחררו.}} {existing, plural, =0 {} one {בפתק אחד כבר היה {to} והוא שומר את שניהם.} other {ב-# פתקים כבר היה {to} והם שומרים את שניהם.}}"
+      },
+      "delete": {
+        "button": "מחיקת התגית",
+        "title": "למחוק את #{tag}?",
+        "body": "#{tag} תוסר מ-{notes, plural, one {פתק אחד} other {# פתקים}} והתגית תיעלם יחד עם {fields, plural, one {השדה האחד} other {# השדות}} והתבנית שלה.",
+        "bodyNoTemplate": "#{tag} תוסר מ-{notes, plural, one {פתק אחד} other {# פתקים}} והתגית תיעלם יחד עם {fields, plural, one {השדה האחד} other {# השדות}} שלה.",
+        "bodyPlain": "#{tag} תוסר מכל פתק שיש לו אותה בתגיות.",
+        "statNotes": "הפתקים שומרים על הטקסט שלהם",
+        "statValues": "הערכים נשארים כמאפיינים",
+        "plainText": "פתקים שמזכירים את #{tag} בטקסט שלהם שומרים אותה כטקסט רגיל.",
+        "confirm": "מחיקת התגית",
+        "done": "#{tag} נמחקה."
+      },
+      "errors": {
+        "addField": "לא ניתן להוסיף את השדה.",
+        "removeField": "לא ניתן להסיר את השדה.",
+        "renameField": "לא ניתן לשנות את שם השדה.",
+        "moveField": "לא ניתן להעביר את השדה.",
+        "relation": "לא ניתן לשמור את הקשר.",
+        "extends": "לא ניתן לשנות את מה שהתגית הזו מרחיבה.",
+        "template": "לא ניתן לעדכן את התבנית.",
+        "deleteTag": "לא ניתן למחוק את התגית.",
+        "icon": "לא ניתן לשנות את הסמל.",
+        "color": "לא ניתן לשנות את הצבע.",
+        "category": "לא ניתן לשנות את הקטגוריה."
+      }
+    },
+    "fill": {
+      "action": "מילוי מהפתק",
+      "reading": "קורא את הפתק…",
+      "disclosure": "מודל הסוכן שלך ({model}) קורא את הפתק הזה כדי להציע ערכים. רק הפתק הזה נשלח. דבר לא נשמר עד שתאשרו.",
+      "disclosureLocal": "המודל המקומי שלך ({model}) קורא את הפתק הזה במכשיר הזה כדי להציע ערכים. דבר לא יוצא מהמכשיר, ודבר לא נשמר עד שתאשרו.",
+      "disclosureMany": "מודל הסוכן שלך ({model}) קורא את הפתקים האלה אחד אחד כדי להציע ערכים. רק הפתקים האלה נשלחים. דבר לא נשמר עד שתאשרו.",
+      "disclosureLocalMany": "המודל המקומי שלך ({model}) קורא את הפתקים האלה במכשיר הזה כדי להציע ערכים. דבר לא יוצא מהמכשיר, ודבר לא נשמר עד שתאשרו.",
+      "suggest": "הצעת ערכים",
+      "notNow": "לא עכשיו",
+      "countOne": "· {count} הצעה",
+      "count": "· {count} הצעות",
+      "dismiss": "סגירה",
+      "acceptAll": "אישור הכול",
+      "accept": "אישור {field}",
+      "reject": "דחיית {field}",
+      "notInNote": "לא בפתק",
+      "createHint": "יוצר #{tag} חדשה באישור",
+      "nothingFound": "אין בפתק הזה דבר שממלא את השדות הריקים",
+      "failed": "לא ניתן להציע ערכים. {message}",
+      "saveFailed": "לא ניתן לשמור את הערכים שאושרו",
+      "bulkAction": "מילוי שדות ריקים",
+      "bulkTitle": "מילוי שדות ריקים",
+      "bulkReading": "{done} מתוך {total} פתקים · קורא פתקים…",
+      "bulkRead": "{done} מתוך {total} פתקים נקראו",
+      "stop": "עצירה",
+      "name": "שם",
+      "nothingInRow": "לא נמצא דבר",
+      "found": "{count} נמצאו",
+      "reviewOneByOne": "סקירה אחד אחד",
+      "acceptRow": "אישור הערכים של {title}",
+      "rejectRow": "דילוג על {title}",
+      "bulkSavedOne": "{count} שדה מולא ב-{notes} פתקים",
+      "bulkSaved": "{count} שדות מולאו ב-{notes} פתקים"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "יצירת {title} בתור",
+      "asPrefix": "יצירת",
+      "asSuffix": "בתור",
+      "failed": "לא ניתן ליצור את הפתק",
+      "lastUsed": "האחרון שנעשה בו שימוש",
+      "noteWord": "פתק",
+      "plainNote": "פתק רגיל",
+      "readyMade": "תגית מוכנה",
+      "row": "יצירת “{title}”",
+      "rowHint": "בתור {types}"
+    },
+    "hover": {
+      "at": "ב-",
+      "lastMet": "נפגשנו לאחרונה · {title}",
+      "lastMetOn": "נפגשנו לאחרונה {date} · {title}",
+      "mentionedIn": "{count, plural, one {מוזכר בפתק אחד} other {מוזכר ב-# פתקים}}",
+      "open": "פתיחה",
+      "tasks": "{count, plural, one {משימה אחת · {field}} other {# משימות · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} בטקסט",
+      "explain": "בטקסט, תגית היא תווית. הפתק הזה מופיע תחת ״מוזכר ב״ בדף של #{tag}.",
+      "made": "#{tag} נוספה לתגיות של הפתק הזה",
+      "make": "הפיכת הפתק הזה ל-{tag}",
+      "makeFailed": "לא ניתן להוסיף את התגית",
+      "makeHint": "מוסיף את #{tag} לכותרת ומציג את השדות שלה",
+      "meta": "{count, plural, one {אובייקט אחד} other {# אובייקטים}} · {fields, plural, one {שדה אחד} other {# שדות}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {שדה אחד} other {# שדות}}",
+      "open": "פתיחת #{tag}",
+      "remove": "הסרת התגית מהטקסט"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "בתור {field}",
+      "due": "תאריך יעד {date}",
+      "inTheText": "בטקסט",
+      "mentionedIn": "מוזכר ב",
+      "tasks": "משימות",
+      "title": "מקושר לכאן"
+    },
+    "mention": {
+      "notes": "פתקים"
+    },
+    "picker": {
+      "create": "{tag} חדש",
+      "createNamed": "{tag} חדש “{title}”",
+      "empty": "אין התאמות",
+      "search": "חיפוש {tag}",
+      "untitled": "{tag} חדש"
+    },
+    "quickFields": {
+      "add": "הוספת {field}",
+      "aria": "השדות הראשונים של {title}",
+      "done": "סיום",
+      "later": "מאוחר יותר",
+      "newObject": "{tag} חדש",
+      "saveFailed": "לא ניתן לשמור את השדות"
+    },
+    "table": {
+      "untitled": "{tag} חדש",
+      "newInGroup": "{tag} חדש ב-{group}",
+      "newInGroupHint": "⌘↵ פותח אותו בכרטיסייה חדשה",
+      "new": "{tag} חדש",
+      "includes": "{field} כולל",
+      "removeFilter": "הסרת המסנן",
+      "shown": "{shown} מתוך {total}",
+      "saveView": "שמירת התצוגה",
+      "mentionedMeta": "{count, plural, one {פתק אחד עם '#'{tag} בטקסט שלו} other {# פתקים עם '#'{tag} בטקסט שלהם}}",
+      "saveFailed": "לא ניתן לשמור את השדה",
+      "created": "{title} נוצר"
+    },
+    "relationDrop": {
+      "title": "להוסיף #{tag} ל-“{title}”?",
+      "body": "השדה הזה מקשר רק פתקים עם התגית #{tag}. Memry מוסיף את #{tag} לכותרת של “{title}” ואז מקשר אותו לכאן.",
+      "confirm": "הוספת #{tag} וקישור",
+      "cancel": "ביטול",
+      "added": "“{title}” הוא עכשיו #{tag} ומקושר",
+      "notANote": "רק פתקים אפשר לקשר לכאן בתור #{tag}",
+      "failed": "לא ניתן לקשר את הפתק הזה"
+    }
+  },
   "names": {
     "also": "גם",
     "add": "הוספת שם נוסף",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "חיפוש פתקים",
     "pickerEmpty": "אין פתקים תואמים",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "הוספת פרטים"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "פורטל",
+        "subtext": "הצגה חיה של פתק או בלוק ממקום אחר"
+      },
+      "searchPortal": {
+        "title": "פורטל חיפוש",
+        "subtext": "רשימה חיה של בלוקים שתואמים לשאילתה"
+      }
+    },
+    "picker": {
+      "aria": "בחירת פתק או בלוק לפורטל",
+      "notes": "פתקים",
+      "blocks": "בלוקים",
+      "loading": "מחפש…",
+      "empty": "אין פתקים או בלוקים תואמים",
+      "hintInsert": "הוספת פורטל",
+      "hintClose": "סגירה",
+      "keyEsc": "Esc",
+      "create": "יצירת הפתק “{query}”",
+      "createFailed": "לא ניתן ליצור את הפתק הזה",
+      "stampFailed": "לא ניתן להכין את הבלוק הזה לפורטל",
+      "retargetFailed": "לא ניתן להפנות את הפורטל לבלוק הזה"
+    },
+    "insert": {
+      "cycle": "פורטל לא יכול להציג פתק בתוך עצמו."
+    },
+    "copy": {
+      "done": "הפורטל הועתק. אפשר להדביק אותו בכל פתק.",
+      "failed": "לא ניתן להעתיק פורטל לבלוק הזה"
+    },
+    "menu": {
+      "copyAsPortal": "העתקה כפורטל",
+      "hideInPortal": "הסתרה בפורטל הזה"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {בשימוש במקום אחד נוסף} other {בשימוש ב-# מקומות נוספים}}"
+    },
+    "whereUsed": {
+      "aria": "איפה הבלוק הזה בשימוש",
+      "portals": "פורטלים",
+      "links": "קישורים",
+      "openBeside": "פתיחה בצד",
+      "loadFailed": "לא ניתן לטעון איפה הבלוק הזה מוצג"
+    },
+    "hiddenBlocks": {
+      "title": "בלוקים מוסתרים",
+      "showAll": "הצגת הכול",
+      "search": "חיפוש בבלוקים מוסתרים",
+      "showFailed": "לא ניתן להציג את הבלוק הזה"
+    },
+    "searchQuery": {
+      "titleNew": "פורטל חיפוש",
+      "titleEdit": "עריכת השאילתה",
+      "text": "מכיל את המילים",
+      "textPlaceholder": "מילים בבלוק",
+      "tag": "תגית",
+      "tagPlaceholder": "exam",
+      "limit": "מגבלה",
+      "footer": "הגבלה ל-{limit} תוצאות.",
+      "create": "יצירה",
+      "apply": "החלה"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "למחוק את הבלוק הזה בכל מקום?",
+        "note": "למחוק את הפתק הזה בכל מקום?"
+      },
+      "description": {
+        "block": "“{title}” מופיע גם ב-{count, plural, one {פתק נוסף אחד} other {# פתקים נוספים}}.",
+        "note": "“{title}” מוצג או מקושר ב-{count, plural, one {פתק נוסף אחד} other {# פתקים נוספים}}."
+      },
+      "manyNotes": "{count} פתקים",
+      "source": "{title} (מקור)",
+      "removeHere": "הסתרה כאן במקום",
+      "cancel": "ביטול",
+      "everywhere": "מחיקה בכל מקום",
+      "undoToast": "{count, plural, one {הבלוק שנמחק הוצג בפתק נוסף אחד.} other {הבלוק שנמחק הוצג ב-# פתקים נוספים.}}",
+      "undo": "ביטול"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "מלא",
+      "brief": "תמציתי",
+      "key": "עיקרי",
+      "takeaway": "מסקנה",
+      "topic": "נושא"
+    },
+    "chrome": {
+      "fold": "קיפול הפתק",
+      "unfold": "מקופל לרמה {level}. הצגת הטקסט המלא",
+      "words": "{count, plural, one {מילה אחת} other {# מילים}}",
+      "writing": "כותב…",
+      "writtenBy": "נכתב על ידי {agent}",
+      "retry": "ההרצה האחרונה נכשלה · ניסיון חוזר",
+      "retryAction": "ניסיון חוזר",
+      "captionOff": "יש להפעיל את סיכום פתקים ארוכים בהגדרות ← AI",
+      "captionNoAgent": "לא מחובר סוכן · הגדרות ← AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "פתק ארוך? אפשר לרפרף.",
+      "body": "אפשר לקפל אותו למשפטי המפתח שלו, ואז לפתוח רק את הפסקה שצריך.",
+      "dismiss": "הבנתי"
+    },
+    "pill": {
+      "opened": "{count, plural, one {פסקה אחת פתוחה} other {# פסקאות פתוחות}}",
+      "escape": "esc",
+      "copy": "העתקה כטקסט",
+      "copied": "הועתק",
+      "aria": "תצוגה מקופלת",
+      "hintMac": "צביטה, גלילה עם ⌘, או גלילה על הסרגל הזה לזום · לחיצה על פסקה פותחת אותה",
+      "hint": "צביטה, גלילה עם Ctrl, או גלילה על הסרגל הזה לזום · לחיצה על פסקה פותחת אותה"
+    },
+    "view": {
+      "aria": "תצוגה מקופלת ברמה {level}",
+      "paragraphOpen": "נפתח במלואו · לחיצה נוספת מקפלת",
+      "paragraphFold": "קיפול הפסקה הזו",
+      "paragraphOpenAction": "פתיחת הפסקה הזו במלואה",
+      "unfoldSection": "פתיחת המקטע {heading}",
+      "jumpToParagraph": "הצגת הפסקה הזו במלואה: {topic}",
+      "untitledSection": "ללא כותרת",
+      "skipped": {
+        "code": "… {count, plural, one {בלוק קוד אחד} other {# בלוקי קוד}}",
+        "table": "… {count, plural, one {טבלה אחת} other {# טבלאות}}",
+        "image": "… {count, plural, one {תמונה אחת} other {# תמונות}}",
+        "callout": "… {count, plural, one {הדגשה אחת} other {# הדגשות}}",
+        "embed": "… {count, plural, one {הטמעה אחת} other {# הטמעות}}",
+        "other": "… {count, plural, one {בלוק נוסף אחד} other {# בלוקים נוספים}}"
+      }
+    }
   }
 }

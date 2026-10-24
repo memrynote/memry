@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {פריט מושהה אחד} other {# פריטים מושהים}}",
     "notificationBody": "{count, plural, one {הפריט המושהה מוכן לטיפול} other {הפריטים המושהים מוכנים לטיפול}}",
     "toast": "{count, plural, =1 {\"{itemTitle}\" חזר מההשהיה} one {\"{itemTitle}\" חזר מההשהיה} other {# פריטים מושהים חזרו}}"
+  },
+  "sticky": {
+    "kindLabel": "שליחה כ",
+    "kinds": {
+      "note": "פתק",
+      "task": "משימה",
+      "journal": "יומן"
+    },
+    "placeholders": {
+      "note": "רושמים כאן…",
+      "task": "להתקשר לאנה @מחר #בית !גבוה",
+      "journal": "הוספה ליומן של היום…"
+    },
+    "saving": "שומר…",
+    "saved": "נשמר",
+    "saveFailed": "לא נשמר",
+    "tuck": "הסתרה",
+    "send": "שליחה",
+    "hints": "Esc הסתרה · {mod}⌫ מחיקה",
+    "sendAndCloseHint": "⌥{mod}↵ שולח וסוגר",
+    "deleted": "הטיוטה נמחקה",
+    "open": "פתיחה",
+    "undo": "ביטול",
+    "sent": {
+      "note": "נשמר בתיקיית Sticky",
+      "task": "המשימה נוספה",
+      "journal": "נוסף ליומן של היום"
+    },
+    "tab": {
+      "label": "{count, plural, one {טיוטת פתק דביק אחת} other {# טיוטות פתק דביק}}",
+      "newSticky": "פתק דביק חדש"
+    },
+    "errors": {
+      "empty": "צריך לכתוב משהו קודם.",
+      "taskFailed": "לא ניתן ליצור את המשימה.",
+      "tasksOff": "המשימות כבויות בהגדרות.",
+      "journalOff": "היומן כבוי בהגדרות.",
+      "sendFailed": "לא ניתן לשלוח את הפתק הדביק.",
+      "undoExpired": "מאוחר מדי לבטל את זה.",
+      "undoFailed": "לא ניתן לבטל את השליחה."
+    },
+    "inputLabel": "טקסט הפתק הדביק",
+    "dismissError": "סגירה"
   }
 }

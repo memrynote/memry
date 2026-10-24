@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "לא ניתן להעתיק את הפורטל",
+    "hiddenCount": "{count} מוסתרים",
+    "windowFailed": "לא ניתן לפתוח את הפורטל הזה. אפשר לפתוח את פתק המקור במקום.",
+    "noTarget": "לפורטל הזה אין עדיין יעד. אפשר להוסיף פתק להגדרה, או להסיר את הבלוק.",
+    "invalidJson": "ההגדרה של הפורטל הזה אינה JSON תקין. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
+    "invalidShape": "בהגדרה של הפורטל הזה אין פתק או חיפוש. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
+    "search": {
+      "editQuery": "עריכת השאילתה",
+      "count": "{count, plural, one {בלוק אחד} other {# בלוקים}}",
+      "loading": "מחפש…",
+      "empty": "אין בלוקים שמתאימים לשאילתה הזו.",
+      "failed": "לא ניתן להריץ את החיפוש.",
+      "retry": "ניסיון חוזר",
+      "truncated": "מוצגות {count} ההתאמות הראשונות."
+    },
+    "copiedContents": "התוכן הועתק",
+    "copiedLink": "הקישור הועתק",
+    "actionFailed": "לא ניתן לשנות את הפורטל הזה",
+    "keepsOneBlock": "פורטל חייב להכיל לפחות בלוק אחד. אפשר להסיר את הפורטל במקום.",
+    "expandChildren": "הצגת הצאצאים",
+    "collapseChildren": "הסתרת הצאצאים",
+    "toolbar": {
+      "label": "פורטל",
+      "include": "הכללת “{block}”",
+      "locked": "{note} נעול · לקריאה בלבד",
+      "more": "עוד",
+      "openBeside": "פתיחת {note} בצד",
+      "click": "לחיצה",
+      "copyContents": "העתקת התוכן",
+      "copyLink": "העתקת הקישור",
+      "remove": "הסרת הפורטל",
+      "removeHint": "{note} שומר על כל הבלוקים"
+    },
+    "states": {
+      "missingNote": {
+        "text": "פתק המקור נמחק. ההפניה נשמרה.",
+        "action": "הסרה"
+      },
+      "missingBlock": {
+        "text": "הבלוק נמחק ב-{source}.",
+        "action": "בחירת בלוק אחר"
+      },
+      "notSynced": {
+        "text": "ממתין לסנכרון של פתק המקור.",
+        "action": "ניסיון חוזר"
+      },
+      "cycle": {
+        "text": "הפורטל הזה מוביל חזרה לעצמו.",
+        "action": "פתיחת המקור"
+      },
+      "tooDeep": {
+        "text": "פורטלים מקוננים עד עומק {max}. הפורטל הזה נפתח כקישור.",
+        "action": "פתיחת המקור"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "מיקוד בשדה הלכידה",
@@ -43,6 +100,50 @@
     "showInFileManager": "הצגה במנהל הקבצים",
     "openInDefaultApp": "פתיחה באפליקציית ברירת המחדל",
     "revealFailed": "לא ניתן להציג בתיקייה"
+  },
+  "commands": {
+    "runFailed": "לא ניתן להריץ את הפקודה. כדאי לנסות שוב."
+  },
+  "commandsPalette": {
+    "title": "פקודות",
+    "placeholder": "הקלדת פקודה…",
+    "groups": {
+      "navigation": "ניווט",
+      "create": "יצירה",
+      "tabs": "כרטיסיות",
+      "editor": "עורך",
+      "view": "תצוגה",
+      "app": "אפליקציה",
+      "note": "פתק",
+      "settings": "הגדרות",
+      "sync": "סנכרון",
+      "help": "עזרה",
+      "project": "פרויקט",
+      "tasks": "משימות",
+      "canvas": "קנבס",
+      "folder": "תיקייה",
+      "file": "קובץ"
+    },
+    "contexts": {
+      "note": "הפתק הזה",
+      "journal": "היומן הזה",
+      "project": "הפרויקט הזה",
+      "tasks": "המשימות האלה",
+      "canvas": "הקנבס הזה",
+      "folder": "התיקייה הזו",
+      "tag": "התגית הזו",
+      "file": "הקובץ הזה"
+    },
+    "recent": "אחרונות",
+    "empty": "אין פקודות שמתאימות ל-“{query}”",
+    "searchHint": "חיפוש בפתקים: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {פקודה אחת} other {# פקודות}}"
+    },
+    "actions": {
+      "run": "הרצה",
+      "searchNotes": "חיפוש בפתקים"
+    }
   },
   "tabs": {
     "pin": "הצמדת הכרטיסייה",
@@ -131,6 +232,20 @@
     "openInTab": "פתיחת השיחה בכרטיסייה",
     "stop": "עצירה",
     "thinking": "הסוכן חושב",
+    "toolsUnavailable": "כלי הכספת כבויים עבור המודל הזה. הוא נכשל בבדיקת הכלים, ולכן אפשר רק לשוחח איתו.",
+    "toolsUnavailableWithDetail": "כלי הכספת כבויים עבור המודל הזה. הוא נכשל בבדיקת הכלים, ולכן אפשר רק לשוחח איתו. {detail}",
+    "toolsOff": {
+      "toolsRejected": "כלי הכספת כבויים עבור המודל הזה. הספק דחה בקשת בדיקה שכללה כלים, ולכן אפשר רק לשוחח עם המודל.",
+      "noToolCall": "כלי הכספת כבויים עבור המודל הזה. הוא השיב לבקשת בדיקה בלי להפעיל את הכלי, ולכן אפשר רק לשוחח איתו.",
+      "toolResultRejected": "כלי הכספת כבויים עבור המודל הזה. הוא הפעיל כלי בדיקה אך נכשל לאחר קבלת התוצאה, ולכן אפשר רק לשוחח איתו.",
+      "streamingUnsupported": "כלי הכספת כבויים עבור המודל הזה. הספק לא שידר תשובת בדיקה בהזרמה, ולכן אפשר רק לשוחח עם המודל.",
+      "providerSaid": "הספק הודיע: {detail}",
+      "wroteToolCall": "המודל כתב קריאה לכלי כטקסט, ולא הופעל דבר."
+    },
+    "stepLimit": {
+      "notice": "נעצר במגבלת השלבים.",
+      "continue": "המשך"
+    },
     "enable": {
       "title": "הפעלת הסוכן של memrynote",
       "description": "הסוכן של memrynote משתמש בכלי ה-CLI של הסוכן המקומי שבחרת כדי לשוחח על הכספת שלך. Claude שולח את ההודעות ל-Anthropic; Codex שולח את ההודעות ל-OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "הוספת הקשר",
       "addContextWithPermissions": "הוספת הקשר ({permissions})",
       "mentionContext": "אזכור פתק, משימה או אירוע",
+      "files": {
+        "attach": "צירוף קובץ טקסט",
+        "refused": {
+          "unsupportedType": "{name} אינו קובץ טקסט נתמך. אפשר לצרף קובץ .txt, .md, .log, .csv, .tsv, .json, .yaml או .yml.",
+          "notText": "{name} אינו קובץ טקסט בקידוד UTF-8. אפשר לצרף קובץ טקסט במקום.",
+          "tooLarge": "עם {name} ההודעה תחרוג ממגבלת 100 KB. אפשר להסיר קובץ או לצרף קובץ קטן יותר.",
+          "readFailed": "לא ניתן לקרוא את {name}. כדאי לוודא שהקובץ עדיין קיים ושאפשר לפתוח אותו, ואז לצרף אותו שוב."
+        }
+      },
       "voice": {
         "start": "התחלת הכתבה קולית",
         "stop": "הפסקת ההכתבה הקולית",
@@ -340,6 +464,14 @@
           "extraHigh": "גבוה במיוחד"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "ברירת מחדל",
+          "default": "עומק ברירת מחדל",
+          "high": "גבוה",
+          "max": "מרבי"
+        }
+      },
       "permissionsLabel": "הרשאות הסוכן: {access}, חיפוש באינטרנט {webSearch}",
       "permissions": {
         "label": "הרשאות",
@@ -347,6 +479,17 @@
         "tools": "כלים"
       },
       "modelSettingsLabel": "הגדרות המודל של הסוכן: {model}, {settings}",
+      "queue": {
+        "label": "הודעות בתור",
+        "queueMessage": "הוספת ההודעה לתור",
+        "edit": "עריכת הודעה בתור",
+        "editLabel": "טקסט ההודעה בתור",
+        "remove": "הסרת הודעה מהתור",
+        "save": "שמירה",
+        "cancel": "ביטול",
+        "sending": "שולח…",
+        "notSent": "לא נשלחה. אפשר לערוך כדי לשלוח שוב, או להסיר אותה."
+      },
       "unavailable": {
         "vaultToolsOnly": "רק כלי הכספת עם מודל זה"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "לא ניתן לשמור את מצב ההסכמה",
       "resolveWindow": "לא ניתן לזהות את חלון המקור של הסוכן",
       "detectCli": "לא ניתן לזהות את מנועי הסוכן הזמינים",
-      "loadDisclosure": "לא ניתן לטעון את מצב ההסכמה"
+      "loadDisclosure": "לא ניתן לטעון את מצב ההסכמה",
+      "turnFailed": "התשובה נעצרה בשגיאה. ההודעה שלך נשמרה, ואפשר לשלוח אותה שוב."
     },
     "actions": {
       "copy": "העתקה",
@@ -576,6 +720,7 @@
       "newFolder2": "תיקייה חדשה",
       "newProject": "פרויקט חדש",
       "bookmarks": "סימניות",
+      "chart": "תרשים",
       "tags": "תגיות",
       "reorderSection": "שינוי הסדר של {section}",
       "dropFilesToImport": "שחרור קבצים לייבוא",
@@ -863,6 +1008,11 @@
       "cancel": "ביטול",
       "remove2": "הסרה",
       "inYourAccount": "בחשבון שלך",
+      "trySandbox": "נסו את כספת ארגז החול",
+      "sandboxVault": "כספת ארגז חול",
+      "sandboxPreparing": "מכין את ארגז החול…",
+      "sandboxFailed": "לא ניתן להכין את כספת ארגז החול",
+      "resetSandbox": "איפוס כספת ארגז החול",
       "itemsCount": "{count} פריטים",
       "untitledVault": "כספת",
       "downloadVaultTitle": "הורדת \"{name}\"",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "פתקים שנפתחו יופיעו כאן",
       "bookmarks": "סימניות",
       "tasks": "משימות",
+      "chart": "תרשים",
       "calendar": "לוח שנה",
       "calendarToday": "היום",
       "openCalendar": "פתיחת לוח השנה",
@@ -978,6 +1129,9 @@
     "edit": "עריכה",
     "done": "סיום",
     "addWidget": "הוספת וידג׳ט",
+    "cover": {
+      "add": "הוספת עטיפה"
+    },
     "empty": {
       "title": "הלוח שלך ריק",
       "body": "וידג׳טים מאחדים את הפתקים, המשימות והסימניות שלך במקום רגוע אחד.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "שינוי סמל…",
     "resetIcon": "איפוס הסמל",
     "iconButton": "שינוי הסמל של {name}",
+    "leaveSandbox": "חזרה אל {name}",
     "iconFailed": "לא ניתן לשנות את סמל הכספת"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "סוג",
     "filterModified": "שונה",
     "matches": "התאמות",
+    "matchesMore": "{count, plural, one {התאמה נוספת אחת} other {# התאמות נוספות}}",
+    "matchesHide": "הסתרת ההתאמות",
+    "matchOf": "התאמה {index} מתוך {total}",
     "showMore": "הצגת {count} נוספים",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "המקטע הבא",
       "open": "פתיחה",
       "openNote": "פתיחת הפתק",
+      "openAtMatch": "פתיחה בהתאמה",
       "openFile": "פתיחת הקובץ",
       "openJournal": "פתיחת היומן",
       "openTask": "פתיחת המשימה",
@@ -1259,6 +1418,7 @@
       "chooseTag": "בחירת תגית",
       "addTag": "הוספת תגית",
       "showAll": "הצגת הכול",
+      "hideMatches": "הסתרת ההתאמות",
       "searchEverywhere": "חיפוש בכל מקום",
       "clearFilters": "ניקוי מסננים"
     },
