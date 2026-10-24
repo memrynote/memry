@@ -183,6 +183,7 @@ export function EditorContextMenu({
         // Focus goes back to the editor, not to the invisible anchor.
         onCloseAutoFocus={(event) => event.preventDefault()}
       >
+        {/* oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants */}
         {entries.map((entry) => {
           switch (entry.kind) {
             case 'separator':

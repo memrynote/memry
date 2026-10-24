@@ -71,6 +71,7 @@ export function NoteSimilarNotes({
 
   const handleLink = useCallback(
     (similar: SimilarNoteItem) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the registered editor is a BlockNote editor; AppendableEditor is the subset this component calls
       const editor = getEditor() as AppendableEditor | null
       if (editor && appendWikiLink(editor, similar.title)) {
         toast.success(t('similarNotes.linked', { title: similar.title }))

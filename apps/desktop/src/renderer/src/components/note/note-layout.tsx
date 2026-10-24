@@ -151,10 +151,14 @@ export function NoteLayout({
         maxWidth: fullWidth ? '100%' : contentWidth ? `calc(${contentWidth} + 12rem)` : '64rem'
       }
 
+  const rootStyle: CSSProperties & Record<'--note-chrome-height', string> = {
+    '--note-chrome-height': hasChrome ? '2.25rem' : '0px'
+  }
+
   return (
     <div
       className={cn('h-full w-full overflow-hidden flex flex-col relative', className)}
-      style={{ '--note-chrome-height': hasChrome ? '2.25rem' : '0px' } as CSSProperties}
+      style={rootStyle}
     >
       {hasChrome && (
         <div

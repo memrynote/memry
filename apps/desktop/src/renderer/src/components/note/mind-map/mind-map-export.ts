@@ -40,6 +40,7 @@ export type MindMapSceneSource = Pick<ExcalidrawImperativeAPI, 'getSceneElements
  * happens at the boundary — here and in `mind-map-canvas.tsx`.
  */
 export const toSkeleton = (elements: readonly MindMapElement[]): ExcalidrawElementSkeleton[] =>
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- the assertion bridges two unrelated structural types; the unknown hop is deliberate; boundary cast: the runtime shape is fixed by the producer named at this call, which has no exported type
   elements as unknown as ExcalidrawElementSkeleton[]
 
 /**

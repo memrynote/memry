@@ -149,6 +149,7 @@ function sameMarks(
   return first.length === second.length && first.every((mark, index) => mark === second[index])
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
 export function iconForMention(mention: CriticMarkupCommentMentionRef): MentionIconSpec {
   switch (mention.kind) {
     case 'note':

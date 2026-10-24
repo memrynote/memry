@@ -376,9 +376,9 @@ describe('buildMindMap — expansion', () => {
 /** Wide AND deep: within every per-parent cap, far past the total. */
 const sprawl: MindMapSourceBlock[] = Array.from({ length: MIND_MAP_MAX_CHILDREN }, (_, top) => [
   heading(`h1-${top}`, 1, `Section ${top + 1}`),
-  ...Array.from({ length: MIND_MAP_MAX_CHILDREN }, (_, mid) => [
+  ...Array.from({ length: MIND_MAP_MAX_CHILDREN }, (_midSlot, mid) => [
     heading(`h2-${top}-${mid}`, 2, `Part ${top + 1}.${mid + 1}`),
-    ...Array.from({ length: MIND_MAP_MAX_CHILDREN }, (_, leaf) =>
+    ...Array.from({ length: MIND_MAP_MAX_CHILDREN }, (_leafSlot, leaf) =>
       bullet(`b-${top}-${mid}-${leaf}`, `Item ${top + 1}.${mid + 1}.${leaf + 1}`)
     )
   ]).flat()

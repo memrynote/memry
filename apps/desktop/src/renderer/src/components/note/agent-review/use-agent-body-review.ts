@@ -127,14 +127,14 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
   }, [toolCallId])
 
   useEffect(() => {
-    if (!target) return
+    if (!target) return undefined
     return registerReviewHost(target)
   }, [target])
 
   // The note changing under the review, from sync, another window or the file
   // on disk, re-reads the preview so the diff is always against what is there.
   useEffect(() => {
-    if (!toolCallId || !target) return
+    if (!toolCallId || !target) return undefined
     let timer: ReturnType<typeof setTimeout> | null = null
     const bump = (): void => {
       if (timer) clearTimeout(timer)
@@ -163,7 +163,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
 
   const conversationId = pending?.conversationId ?? null
   useEffect(() => {
-    if (!toolCallId || !conversationId) return
+    if (!toolCallId || !conversationId) return undefined
     let cancelled = false
 
     void (async () => {
@@ -193,7 +193,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
       } catch (err) {
         if (cancelled) return
         setState((prev) =>
-          prev && prev.toolCallId === toolCallId && !prev.submitting
+          prev?.toolCallId === toolCallId && !prev.submitting
             ? { ...prev, error: extractErrorMessage(err, t('agentChat.diff.previewError')) }
             : prev
         )
@@ -208,6 +208,7 @@ export function useAgentBodyReview(target: AgentReviewTarget | null): AgentBodyR
 
   const update = useCallback(
     (patch: Partial<ReviewState>) => {
+      // oxlint-disable-next-line typescript/prefer-optional-chain -- toolCallId is string | null here, so `prev?.toolCallId === toolCallId` would also match null === undefined and spread a null state
       setState((prev) => (prev && prev.toolCallId === toolCallId ? { ...prev, ...patch } : prev))
     },
     [toolCallId]

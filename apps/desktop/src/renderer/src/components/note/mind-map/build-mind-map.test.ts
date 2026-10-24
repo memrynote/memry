@@ -265,12 +265,12 @@ describe('buildMindMap — layout', () => {
     // One x per depth.
     for (const xs of columns.values()) expect(new Set(xs).size).toBe(1)
     // Columns advance with depth.
-    const xByDepth = [...columns.entries()].sort((l, r) => l[0] - r[0]).map(([, xs]) => xs[0])
+    const xByDepth = [...columns.entries()].toSorted((l, r) => l[0] - r[0]).map(([, xs]) => xs[0])
     for (let i = 1; i < xByDepth.length; i += 1)
       expect(xByDepth[i]).toBeGreaterThan(xByDepth[i - 1])
 
     for (const [, xs] of columns) {
-      const inColumn = map.nodes.filter((node) => node.x === xs[0]).sort((l, r) => l.y - r.y)
+      const inColumn = map.nodes.filter((node) => node.x === xs[0]).toSorted((l, r) => l.y - r.y)
       for (let i = 1; i < inColumn.length; i += 1) {
         expect(inColumn[i].y).toBeGreaterThanOrEqual(inColumn[i - 1].y + inColumn[i - 1].height)
       }
@@ -791,7 +791,7 @@ describe('buildMindMap — completed items', () => {
     const open = boxOf('Still to do')
     const strikes = map.elements.filter((element) => element.id.includes('-strike-'))
 
-    expect(strikes.map((strike) => strike.id).sort()).toEqual([
+    expect(strikes.map((strike) => strike.id).toSorted()).toEqual([
       'mm-done-strike-1',
       'mm-ticked-strike-1'
     ])

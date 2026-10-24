@@ -126,7 +126,7 @@ function briefTokens(paragraph: FoldParagraph, joiner: string): MorphToken[] | n
   if (srcTokens.length === 0) return null
   const picked = [...new Set(paragraph.briefIdx)]
     .filter((index) => index < sentences.length)
-    .sort((a, b) => a - b)
+    .toSorted((a, b) => a - b)
   if (picked.length === 0 || starts.length !== sentences.length) {
     return sourceTokens(paragraph, 0, srcTokens.length)
   }

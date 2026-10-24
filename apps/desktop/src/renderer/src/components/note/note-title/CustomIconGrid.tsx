@@ -17,9 +17,7 @@ const ACCEPT = CUSTOM_ICON_INPUT_EXTENSIONS.map((ext) => `.${ext}`).join(',')
 
 function extensionOf(fileName: string): CustomIconInputExtension | null {
   const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
-  return (CUSTOM_ICON_INPUT_EXTENSIONS as readonly string[]).includes(ext)
-    ? (ext as CustomIconInputExtension)
-    : null
+  return CUSTOM_ICON_INPUT_EXTENSIONS.find((known) => known === ext) ?? null
 }
 
 function defaultNameFor(fileName: string): string {
@@ -34,17 +32,17 @@ function defaultNameFor(fileName: string): string {
 function readAsBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
+    reader.addEventListener('load', () => {
       const result = reader.result
       if (typeof result !== 'string') {
         reject(new Error('Failed to read file as data URL'))
         return
       }
       resolve(result.slice(result.indexOf(',') + 1))
-    }
-    reader.onerror = () => {
+    })
+    reader.addEventListener('error', () => {
       reject(reader.error ?? new Error('Failed to read file'))
-    }
+    })
     reader.readAsDataURL(file)
   })
 }

@@ -135,7 +135,7 @@ export function nodeFromMindMapLink(
   noteId: string
 ): MindMapPositionedNode | null {
   const parsed = parseMemryHref(href)
-  if (!parsed || parsed.kind !== 'note' || parsed.id !== noteId) return null
+  if (parsed?.kind !== 'note' || parsed.id !== noteId) return null
 
   const anchor = parsed.anchor
   if (!anchor) return nodes.find((node) => node.kind === 'root') ?? null

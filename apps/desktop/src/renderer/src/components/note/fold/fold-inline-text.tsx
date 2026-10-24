@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { parseInline, type InlineNode } from './fold-inline'
 
 function renderNodes(nodes: readonly InlineNode[]): ReactNode[] {
+  // oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
   return nodes.map((node, index) => {
     switch (node.type) {
       case 'text':

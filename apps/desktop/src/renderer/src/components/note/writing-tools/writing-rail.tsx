@@ -98,6 +98,7 @@ function WritingRailTabs({
   )
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default, so the compiler flags new variants
 function WritingRailBody({ mode, session, snapshot }: WritingRailProps) {
   switch (mode) {
     case 'alternatives':

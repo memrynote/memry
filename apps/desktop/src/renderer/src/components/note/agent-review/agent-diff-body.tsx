@@ -36,7 +36,7 @@ async function parseBody(
 ): Promise<DiffableBlock[]> {
   const source = normalizeMarkdownHardBreaks(markdown)
   const parsed = await parseMarkdownPreservingBlanks(editor, source, notePath)
-  return sanitizeBlockIds(normalizeNoteBlocks(parsed, source)) as unknown as DiffableBlock[]
+  return sanitizeBlockIds(normalizeNoteBlocks(parsed, source))
 }
 
 export const AgentDiffBody = memo(function AgentDiffBody({
@@ -69,6 +69,7 @@ export const AgentDiffBody = memo(function AgentDiffBody({
         const { blocks } = buildBlockDiff(before, after)
         editor.replaceBlocks(
           editor.document,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the preview editor's block parameter type is the default schema; the diff blocks are valid members
           (blocks.length > 0 ? blocks : [{ type: 'paragraph' }]) as Parameters<
             typeof editor.replaceBlocks
           >[1]

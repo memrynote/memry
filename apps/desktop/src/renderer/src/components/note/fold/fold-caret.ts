@@ -81,6 +81,7 @@ export function insertTypedText(root: HTMLElement, block: HTMLElement, text: str
     return true
   }
   // No registered editor to ask (read-only, or not mounted through a tab): the DOM path.
+  // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to insert text into the focused editable when no editor is registered
   const inserted = document.execCommand('insertText', false, text)
   if (!inserted) log.warn('Typed character could not be inserted after unfolding', { blockId })
   return inserted

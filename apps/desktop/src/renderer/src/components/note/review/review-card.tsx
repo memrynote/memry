@@ -63,12 +63,13 @@ export function ReviewCard({
       style={style}
       onPointerOver={() => setHoveredMark(mark.id)}
       onPointerOut={(event) => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
         if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
         setHoveredMark(null)
       }}
       onFocus={() => setHoveredMark(mark.id)}
       onBlur={(event) => {
-        if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+        if (event.currentTarget.contains(event.relatedTarget)) return
         setHoveredMark(null)
       }}
     >

@@ -120,6 +120,7 @@ function PropertyValueEditor({
     case 'number':
       return (
         <NumberEditor
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- PropertyRow dispatches on property.type; a number-typed property stores a number or null in the untyped value slot
           value={property.value as number | null}
           onChange={onValueChange}
           onBlur={onEndEdit}
@@ -229,6 +230,7 @@ function SelectPropertyRenderer({
   if (property.type === 'status' && categories) {
     return (
       <StatusEditor
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- PropertyRow dispatches on property.type; this editor's type stores a string in the untyped value slot
         value={(property.value as string) ?? null}
         categories={categories}
         defaultOpen={autoOpen}
@@ -242,7 +244,8 @@ function SelectPropertyRenderer({
   if (property.type === 'multiselect') {
     // A value written while the property was a select is one bare name.
     const val = Array.isArray(property.value)
-      ? (property.value as string[])
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- PropertyRow dispatches on property.type; this editor's type stores a string list in the untyped value slot
+        (property.value as string[])
       : typeof property.value === 'string' && property.value
         ? [property.value]
         : []
@@ -260,6 +263,7 @@ function SelectPropertyRenderer({
 
   return (
     <SelectEditor
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- PropertyRow dispatches on property.type; this editor's type stores a string in the untyped value slot
       value={(property.value as string) ?? null}
       options={options}
       defaultOpen={autoOpen}
@@ -284,6 +288,7 @@ function PropertyValueRenderer({
   }
 
   if (property.type === 'project') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- PropertyRow dispatches on property.type; this editor's type stores a string list in the untyped value slot
     const names = Array.isArray(property.value) ? (property.value as string[]) : []
     return <ProjectEditor value={names} defaultOpen={autoOpen} onChange={onValueChange} />
   }
@@ -299,6 +304,7 @@ function PropertyValueRenderer({
   }
 
   if (property.type === 'relation') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- PropertyRow dispatches on property.type; this editor's type stores a string list in the untyped value slot
     const val = Array.isArray(property.value) ? (property.value as string[]) : []
     return (
       <RelationEditor
@@ -313,6 +319,7 @@ function PropertyValueRenderer({
   if (property.type === 'date') {
     // An unparseable stored value yields an Invalid Date (still truthy); pass null
     // so the editor and calendar never receive one and read it as empty.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- date properties persist an ISO string, a timestamp or a Date in the untyped value slot; all feed new Date()
     const rawDate = property.value ? new Date(property.value as string | number | Date) : null
     const dateValue = rawDate && isValid(rawDate) ? rawDate : null
     return (

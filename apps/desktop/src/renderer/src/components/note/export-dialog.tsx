@@ -81,7 +81,7 @@ export function ExportDialog({
    * Handle Escape key to close dialog
    */
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !isExporting) {
@@ -212,6 +212,7 @@ export function ExportDialog({
             <Label className="text-sm font-medium">{t('exportDialog.format')}</Label>
             <RadioGroup
               value={format}
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Select values come from this component's own option list
               onValueChange={(value) => setFormat(value as ExportFormat)}
               className="grid grid-cols-2 gap-3"
               disabled={isExporting}
@@ -278,6 +279,7 @@ export function ExportDialog({
               </Label>
               <Select
                 value={pageSize}
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Select values come from this component's own option list
                 onValueChange={(value) => setPageSize(value as PageSize)}
                 disabled={isExporting}
               >

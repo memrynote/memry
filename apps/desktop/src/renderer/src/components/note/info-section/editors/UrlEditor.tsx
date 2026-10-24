@@ -16,10 +16,12 @@ const isValidUrl = (input: string): boolean => {
   if (!input) return true // Empty is valid
   try {
     if (!input.includes('.')) return false // Must have at least one dot
+    // oxlint-disable-next-line no-new -- the constructor throws on an unparseable URL; the catch below is the validation
     new URL(input)
     return true
   } catch {
     try {
+      // oxlint-disable-next-line no-new -- same: the throw is the validation
       new URL(`https://${input}`)
       return true
     } catch {

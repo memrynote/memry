@@ -51,13 +51,16 @@ export function TagChip({
     isFocused && !isSelected && 'ring-2 ring-offset-1 ring-offset-popover'
   )
 
+  const ringStyle: React.CSSProperties & Record<'--tw-ring-color', string> = {
+    '--tw-ring-color': colors.text
+  }
   const pillStyle = {
     backgroundColor: withAlpha(colors.text, 0.12),
     color: colors.text,
-    ...(isFocused && !isSelected ? ({ '--tw-ring-color': colors.text } as React.CSSProperties) : {})
+    ...(isFocused && !isSelected ? ringStyle : {})
   }
 
-  const handleRemove = (e: React.MouseEvent) => {
+  const handleRemove = (e: React.SyntheticEvent) => {
     e.stopPropagation()
     onRemove?.(tag.id)
   }
@@ -84,7 +87,7 @@ export function TagChip({
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault()
-              handleRemove(e as unknown as React.MouseEvent)
+              handleRemove(e)
             }
           }}
           aria-label={t('tagsRow.removeAria', { tag: tag.name })}

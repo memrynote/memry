@@ -14,6 +14,15 @@ interface HugeIconGridProps {
   onSelect: (iconName: string) => void
 }
 
+const GRID_VARS: React.CSSProperties &
+  Record<'--padding' | '--sidebar-width' | '--font-size' | '--duration' | '--easing', string> = {
+  '--padding': '12px',
+  '--sidebar-width': '16px',
+  '--font-size': '15px',
+  '--duration': '225ms',
+  '--easing': 'cubic-bezier(.4, 0, .2, 1)'
+}
+
 export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element {
   const { t } = useT('notes')
   const { icons, search, setSearch, isLoading } = useHugeIconPicker()
@@ -45,18 +54,7 @@ export function HugeIconGrid({ onSelect }: HugeIconGridProps): React.JSX.Element
   }, [setSearch])
 
   return (
-    <div
-      className="flex flex-col w-full h-full relative"
-      style={
-        {
-          '--padding': '12px',
-          '--sidebar-width': '16px',
-          '--font-size': '15px',
-          '--duration': '225ms',
-          '--easing': 'cubic-bezier(.4, 0, .2, 1)'
-        } as React.CSSProperties
-      }
-    >
+    <div className="flex flex-col w-full h-full relative" style={GRID_VARS}>
       {/* Search — mirrors emoji-mart: .padding-lr > div > .spacer + .flex.flex-middle > .search.relative.flex-grow */}
       <div className="shrink-0 px-[var(--padding)]">
         <div>

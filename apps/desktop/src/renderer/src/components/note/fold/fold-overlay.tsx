@@ -231,7 +231,7 @@ export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispa
   useLayoutEffect(() => {
     const incoming = incomingRef.current
     const leaving = outgoingRef.current
-    if (!outgoing || !incoming || !leaving) return
+    if (!outgoing || !incoming || !leaving) return undefined
     const animations = [
       incoming.animate(
         [
