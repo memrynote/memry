@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Termín vymazaný pre # podúlohu} few {Termín vymazaný pre # podúlohy} many {Termín vymazaný pre # podúlohy} other {Termín vymazaný pre # podúloh}}",
       "prioritySet": "{count, plural, one {Priorita nastavená pre # podúlohu} few {Priorita nastavená pre # podúlohy} many {Priorita nastavená pre # podúlohy} other {Priorita nastavená pre # podúloh}}",
       "deleted": "{count, plural, one {# podúloha odstránená} few {# podúlohy odstránené} many {# podúlohy odstránené} other {# podúloh odstránených}}"
-    }
+    },
+    "completedBranch": "Dokončené: {title} a {count, plural, one {# otvorená podúloha} few {# otvorené podúlohy} other {# otvorených podúloh}}",
+    "deletedKeepSubtasks": "Úloha {title} bola odstránená, podúlohy sa zachovali",
+    "deletedBranch": "Odstránené: {title} a {count, plural, one {# podúloha} few {# podúlohy} other {# podúloh}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "stav",
       "projectIs": "Projekt je",
       "project": "projekt",
+      "locationIs": "Umiestnenie je",
+      "location": "umiestnenie",
+      "unknownNote": "Neznáma poznámka",
       "due": "Termín",
       "dueDate": "termín",
       "search": "vyhľadávanie",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Termín"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Umiestnenie",
+      "search": "Hľadať priečinky a poznámky...",
+      "empty": "Žiadne priečinky ani poznámky s úlohami"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorita",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Zobrazenia projektu",
       "overview": "Prehľad",
+      "all": "Všetko",
       "tasks": "Úlohy",
       "notes": "Poznámky",
       "files": "Súbory",
@@ -951,6 +963,25 @@
       "fileError": "Súbor {name} sa nepodarilo prepojiť",
       "fileErrorGeneric": "Súbory sa nepodarilo importovať",
       "label": "Pridať do projektu {name}"
+    },
+    "all": {
+      "showDone": "Zobraziť hotové",
+      "empty": "V tomto projekte nie je nič otvorené.",
+      "expand": "Zobraziť úlohy v {title}",
+      "collapse": "Skryť úlohy v {title}",
+      "taskSummary": "{open}/{total} otvorených",
+      "daysLeft": "{count} d",
+      "overdue": "{count} d po termíne",
+      "columns": {
+        "title": "Názov",
+        "daysLeft": "Zostáva dní"
+      },
+      "status": {
+        "active": "Aktívne",
+        "done": "Hotové",
+        "upcoming": "Nadchádzajúce",
+        "past": "Minulé"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigová",
     "purple": "Fialová",
     "pink": "Ružová"
+  },
+  "subtaskTree": {
+    "addSubtask": "Pridať podúlohu",
+    "dropInto": "Do {title}",
+    "dropOut": "O úroveň vyššie",
+    "draftPlaceholder": "Názov podúlohy",
+    "draftLabel": "Nová podúloha v {title}",
+    "draftIn": "v {title}",
+    "toggleComplete": "Dokončiť {title}",
+    "moveUnder": {
+      "title": "Presunúť pod",
+      "placeholder": "Presunúť pod…",
+      "empty": "Žiadna zodpovedajúca úloha",
+      "topLevel": "Najvyššia úroveň v projekte {project}",
+      "thisTask": "Táto úloha",
+      "currentParent": "Aktuálna nadradená úloha",
+      "movesOne": "Presunie {title}",
+      "movesBranch": "Presunie {title} a {count, plural, one {# podúlohu} few {# podúlohy} other {# podúloh}}",
+      "keys": "↵ Presunúť sem · ⌘↵ Najvyššia úroveň · esc Zavrieť"
+    },
+    "zoom": {
+      "path": "Cesta úlohy",
+      "up": "O úroveň vyššie",
+      "upShortcut": "O úroveň vyššie (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Odstrániť {title}?",
+      "summary": "{direct, plural, one {Má # podúlohu} few {Má # podúlohy} other {Má # podúloh}}{deeper, plural, =0 {} one { a # ďalšiu pod nimi} few { a # ďalšie pod nimi} other { a # ďalších pod nimi}}{open, plural, =0 {, všetky sú hotové.} one {, # je stále otvorená.} few {, # sú stále otvorené.} other {, # je stále otvorených.}}",
+      "cancel": "Zrušiť",
+      "deleteAll": "Odstrániť všetko",
+      "keepSubtasks": "Zachovať podúlohy"
+    },
+    "menu": {
+      "open": "Otvoriť",
+      "complete": "Dokončiť",
+      "reopen": "Znova otvoriť",
+      "zoom": "Priblížiť podúlohy",
+      "moveUnder": "Presunúť pod…",
+      "indent": "Presunúť pod {title}",
+      "outdent": "Presunúť o úroveň vyššie",
+      "topLevel": "Urobiť z toho úlohu najvyššej úrovne",
+      "delete": "Odstrániť"
+    },
+    "openPath": "Otvoriť {path}"
   }
 }
