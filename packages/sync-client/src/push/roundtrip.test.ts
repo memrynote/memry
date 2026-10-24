@@ -59,7 +59,9 @@ const provider = (): SyncPushCryptoProvider => ({
   signDetached: (message, secretKey) => sodium.crypto_sign_detached(message, secretKey),
   verifyDetached: (signature, message, publicKey) =>
     sodium.crypto_sign_verify_detached(signature, message, publicKey),
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium fills its exports only after `ready`; reading members off the default export at call time keeps them defined
   fromBase64: (value) => sodium.from_base64(value, sodium.base64_variants.ORIGINAL),
+  // oxlint-disable-next-line import/no-named-as-default-member -- same: members exist only after `ready`
   toBase64: (bytes) => sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
 })
 
@@ -68,6 +70,7 @@ let vaultKey: Uint8Array
 let signing: { publicKey: Uint8Array; privateKey: Uint8Array }
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- `ready` is the promise that populates the default export's members
   await sodium.ready
   crypto = provider()
   vaultKey = sodium.randombytes_buf(32)

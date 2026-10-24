@@ -119,8 +119,9 @@ export async function decryptAttachmentManifest(
     fileKey
   )
 
+  const manifest: AttachmentManifest = JSON.parse(new TextDecoder().decode(manifestBytes))
   return {
-    manifest: JSON.parse(new TextDecoder().decode(manifestBytes)) as AttachmentManifest,
+    manifest,
     fileKey
   }
 }

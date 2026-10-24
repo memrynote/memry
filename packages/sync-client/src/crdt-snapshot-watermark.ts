@@ -73,11 +73,10 @@ export interface WatermarkMetaStore {
  */
 export function decodeSnapshotWatermark(raw: unknown): CrdtSnapshotWatermark | null {
   if (typeof raw !== 'object' || raw === null) return null
-  const record = raw as Record<string, unknown>
-  const appliedSequence = record.appliedSequence
+  const appliedSequence = 'appliedSequence' in raw ? raw.appliedSequence : undefined
   if (typeof appliedSequence !== 'number' || !Number.isFinite(appliedSequence)) return null
   if (appliedSequence < 0) return null
-  const snapshotRevision = record.snapshotRevision
+  const snapshotRevision = 'snapshotRevision' in raw ? raw.snapshotRevision : undefined
   if (snapshotRevision !== undefined && typeof snapshotRevision !== 'string') return null
   return snapshotRevision ? { appliedSequence, snapshotRevision } : { appliedSequence }
 }

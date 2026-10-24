@@ -3,8 +3,8 @@ import type { VectorClock, SyncItemType } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
 import { compare, merge } from '@memry/sync-client/vector-clock'
 
-export type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
+export type { DrizzleDb }
 export type EmitToWindows = (channel: string, data: unknown) => void
 export type ApplyResult = 'applied' | 'skipped' | 'conflict' | 'parse_error'
 
