@@ -37,6 +37,10 @@ const ENTITY_LABEL_KEYS = {
   orphan: { one: 'entity.orphan', other: 'entity.orphans' }
 } as const
 
+function isEntityLabelKey(key: string): key is keyof typeof ENTITY_LABEL_KEYS {
+  return key in ENTITY_LABEL_KEYS
+}
+
 export function GraphPage({ onClose }: { onClose?: () => void } = {}): React.JSX.Element {
   const [webglAvailable] = useState(() => hasWebGLSupport())
 
@@ -252,7 +256,7 @@ function GraphWorkspace({
     })
     return Object.entries(counts)
       .map(([type, count]) => {
-        const labelKeys = ENTITY_LABEL_KEYS[type as keyof typeof ENTITY_LABEL_KEYS]
+        const labelKeys = isEntityLabelKey(type) ? ENTITY_LABEL_KEYS[type] : undefined
         const label = labelKeys
           ? t(count === 1 ? labelKeys.one : labelKeys.other)
           : count === 1

@@ -193,7 +193,7 @@ describe('fold engine', () => {
       expect(mapped.map((t) => t.text)).toEqual(['quick', 'fox', 'jumps', 'over', 'dog'])
       for (const t of mapped) expect(p.srcTokens[t.src!].toLowerCase()).toBe(t.text.toLowerCase())
       const srcs = mapped.map((t) => t.src!)
-      expect(srcs).toEqual([...srcs].sort((a, b) => a - b))
+      expect(srcs).toEqual([...srcs].toSorted((a, b) => a - b))
       expect(line.find((t) => t.text === ' ')!.src).toBeNull()
       // 'foxes' matches the source's 'Foxes' (case and plural folded)
       expect(p.morph.keyReason!.find((t) => t.text === 'foxes')?.src).not.toBeNull()

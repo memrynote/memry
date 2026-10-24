@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { stickyDrafts } from '@memry/db-schema/schema/sticky-drafts'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 
@@ -32,9 +32,7 @@ export class StickyDraftSyncService {
 
   constructor(deps: StickyDraftSyncDeps) {
     const load = (draftId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(stickyDrafts).where(eq(stickyDrafts.id, draftId)).get() as
-        | Record<string, unknown>
-        | undefined
+      deps.db.select().from(stickyDrafts).where(eq(stickyDrafts.id, draftId)).get()
 
     this.controller = new RecordSyncController({
       type: 'sticky_draft',
@@ -42,7 +40,7 @@ export class StickyDraftSyncService {
       getDeviceId: deps.getDeviceId,
       load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = clockFromColumn(local.clock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
         deps.db

@@ -23,12 +23,13 @@ export function getStartupThemeSync(): StartupTheme {
   // and validate. Treating the object as a string here would propagate
   // `[object Object]` into next-themes' localStorage and crash the renderer.
   try {
-    const raw = ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME) as
-      | StartupTheme
-      | { theme?: StartupTheme }
-      | null
-      | undefined
-    const value = typeof raw === 'string' ? raw : raw?.theme
+    const raw: unknown = ipcRenderer.sendSync(SettingsChannels.sync.GET_STARTUP_THEME)
+    const value =
+      typeof raw === 'string'
+        ? raw
+        : typeof raw === 'object' && raw !== null && 'theme' in raw
+          ? raw.theme
+          : undefined
     if (isStartupTheme(value)) return value
   } catch {
     // fall through

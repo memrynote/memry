@@ -29,7 +29,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
 
   it('forwards a minimal event with an auto-generated UUID and ISO timestamp', async () => {
     // #given the renderer wrapper
-    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+    const trackFn = vi.mocked(window.api.telemetry.track)
 
     // #when tracking a known event with safe enums
     await trackTelemetry('app_started', { surface: 'app', action: 'started' })
@@ -45,7 +45,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
   })
 
   it('passes optional safe fields through to the main process', async () => {
-    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+    const trackFn = vi.mocked(window.api.telemetry.track)
 
     await trackTelemetry('inbox_filed', {
       surface: 'inbox',
@@ -66,7 +66,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
   })
 
   it('does not throw if the main-process IPC rejects', async () => {
-    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+    const trackFn = vi.mocked(window.api.telemetry.track)
     trackFn.mockRejectedValueOnce(new Error('ipc unavailable'))
 
     await expect(
@@ -83,7 +83,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
   })
 
   it('drops dimension values that look like emails, urls, or paths', async () => {
-    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+    const trackFn = vi.mocked(window.api.telemetry.track)
 
     await trackTelemetry('search_performed', {
       surface: 'search',
@@ -101,7 +101,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
   })
 
   it('drops a dimension key that is not on the allowlist, however safe it looks', async () => {
-    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+    const trackFn = vi.mocked(window.api.telemetry.track)
 
     // Scraped page metadata clears every safe-value rule — short, no @, no ://,
     // no slash — so only a closed key namespace can keep it off the wire (#1142).
@@ -116,7 +116,7 @@ describe('trackTelemetry (renderer wrapper)', () => {
   })
 
   it('drops unsafe dimension keys and UUID-shaped values', async () => {
-    const trackFn = window.api.telemetry!.track as ReturnType<typeof vi.fn>
+    const trackFn = vi.mocked(window.api.telemetry.track)
 
     await trackTelemetry('search_performed', {
       surface: 'search',

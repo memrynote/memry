@@ -99,7 +99,7 @@ export function CalendarProviderRow({
 
   const registry = useContext(CalendarConnectRegistryContext)
   useEffect(() => {
-    if (!registry) return
+    if (!registry) return undefined
     return registry.register(providerId, () => {
       setOpenOverride(true)
       rowRef.current?.scrollIntoView?.({ block: 'nearest' })

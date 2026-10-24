@@ -25,11 +25,13 @@ async function readVersion(binaryPath: string): Promise<string | null> {
   return match ? match[1] : null
 }
 
+function semverParts(version: string): number[] {
+  return version.split('.').map((part) => Number.parseInt(part, 10) || 0)
+}
+
 function compareSemver(a: string, b: string): number {
-  const parts = (version: string): number[] =>
-    version.split('.').map((part) => Number.parseInt(part, 10) || 0)
-  const [majorA, minorA, patchA] = parts(a)
-  const [majorB, minorB, patchB] = parts(b)
+  const [majorA, minorA, patchA] = semverParts(a)
+  const [majorB, minorB, patchB] = semverParts(b)
 
   if (majorA !== majorB) {
     return majorA - majorB

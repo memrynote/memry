@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Ολοκλήρωση της εργασίας «{title}»",
     "task-completed": "Η εργασία ολοκληρώθηκε",
-    "could-not-complete": "Δεν ήταν δυνατή η ολοκλήρωση της εργασίας",
+    "could-not-update-status": "Δεν ήταν δυνατή η αλλαγή της κατάστασης της εργασίας",
     "duration-minutes": "{minutes}λ",
     "duration-hours": "{hours}ώ",
     "duration-hours-minutes": "{hours}ώ {minutes}λ"
@@ -214,12 +213,9 @@
     "next-week": "Επόμενη εβδομάδα",
     "open-task": "Άνοιγμα εργασίας",
     "source-note": "Σημείωση προέλευσης",
-    "reschedule": "Επαναπρογραμματισμός",
     "mark-done": "Ολοκλήρωση",
     "mark-not-done": "Σήμανση ως μη ολοκληρωμένης",
-    "later-today": "Αργότερα σήμερα",
     "tomorrow": "Αύριο",
-    "next-week-mon": "Επόμενη εβδομάδα · Δευ",
     "pick-date-time": "Επιλογή ημερομηνίας και ώρας…",
     "remove-due-date": "Κατάργηση ημερομηνίας λήξης",
     "subtasks-prefix": "Υποεργασίες",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Δεν ήταν δυνατή η κατάργηση της ημερομηνίας λήξης",
       "could-not-open-note": "Δεν ήταν δυνατό το άνοιγμα της σημείωσης"
     }
+  },
+  "eventNotes": {
+    "heading": "Σημειώσεις",
+    "create": "Νέα σημείωση",
+    "link": "Σύνδεση σημείωσης",
+    "untitled": "Σημείωση σύσκεψης",
+    "searchPlaceholder": "Αναζήτηση σημειώσεων",
+    "noResults": "Δεν βρέθηκαν σημειώσεις",
+    "createFailed": "Δεν ήταν δυνατή η δημιουργία σημείωσης για αυτό το συμβάν.",
+    "linkFailed": "Δεν ήταν δυνατή η σύνδεση της σημείωσης με αυτό το συμβάν.",
+    "loadFailed": "Δεν ήταν δυνατή η φόρτωση των σημειώσεων που συνδέονται με αυτό το συμβάν.",
+    "propertyTaken": "Αυτή η σημείωση έχει ήδη μια ιδιότητα «{name}» που δεν είναι σύνδεσμος."
   },
   "notePopover": {
     "kind": "Σημείωση",
@@ -254,6 +262,10 @@
     "overdue": "εκπρόθεσμη",
     "untitled": "Χωρίς τίτλο",
     "days": "{count, plural, one {# ημέρα} other {# ημέρες}}",
+    "subtasks": {
+      "expand": "Εμφάνιση {count, plural, one {# υποεργασίας} other {# υποεργασιών}} του «{title}»",
+      "collapse": "Απόκρυψη {count, plural, one {# υποεργασίας} other {# υποεργασιών}} του «{title}»"
+    },
     "events": "Συμβάντα",
     "schedule-hint": "Κάντε κλικ για να ορίσετε ημερομηνία, σύρετε για να ορίσετε εύρος",
     "empty-title": "Δεν υπάρχει τίποτα στο χρονολόγιο εδώ",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Ημερολόγια με συνδρομή"
     },
     "caldav": {
       "name": "CalDAV"

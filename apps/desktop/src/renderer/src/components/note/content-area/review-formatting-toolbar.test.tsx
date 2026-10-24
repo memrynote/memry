@@ -304,7 +304,7 @@ describe('ReviewFormattingToolbar', () => {
     render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
     const sticky = screen.getAllByRole('button').map((button) => button.textContent)
 
-    expect([...sticky].sort()).toEqual([...floating].sort())
+    expect(sticky.toSorted()).toEqual(floating.toSorted())
     expect(screen.getByText('more')).toHaveAttribute('data-pinned', 'true')
   })
 

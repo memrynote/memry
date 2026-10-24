@@ -15,10 +15,14 @@ test.describe('Templates E2E', () => {
     const copyName = `${templateName} Copy`
 
     const result = await page.evaluate(
-      async ({ templateName, updatedName, copyName }) => {
+      async ({
+        templateName: templateNameArg,
+        updatedName: updatedNameArg,
+        copyName: copyNameArg
+      }) => {
         const api = window.api
         const created = await api.templates.create({
-          name: templateName,
+          name: templateNameArg,
           description: 'Template coverage from Electron E2E',
           icon: 'T',
           tags: ['e2e-template'],
@@ -38,7 +42,7 @@ test.describe('Templates E2E', () => {
 
         const updated = await api.templates.update({
           id: created.template.id,
-          name: updatedName,
+          name: updatedNameArg,
           tags: ['e2e-template', 'updated'],
           content: '# Updated heading\n\nUpdated body from E2E'
         })
@@ -46,7 +50,7 @@ test.describe('Templates E2E', () => {
           throw new Error(updated.error ?? 'template update failed')
         }
 
-        const duplicate = await api.templates.duplicate(created.template.id, copyName)
+        const duplicate = await api.templates.duplicate(created.template.id, copyNameArg)
         if (!duplicate.success || !duplicate.template) {
           throw new Error(duplicate.error ?? 'template duplicate failed')
         }

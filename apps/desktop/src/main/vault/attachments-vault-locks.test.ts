@@ -54,7 +54,7 @@ function attachmentPath(noteId: string, filename = STORED): string {
 }
 
 function filesOf(noteId: string): string[] {
-  return fs.readdirSync(path.join(vaultPath, 'attachments', noteId)).sort()
+  return fs.readdirSync(path.join(vaultPath, 'attachments', noteId)).toSorted()
 }
 
 describe('attachment writes of a locked note are refused (#2606)', () => {

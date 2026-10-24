@@ -1,5 +1,8 @@
 import pako from 'pako'
 
+// oxlint-disable-next-line import/no-named-as-default-member -- pako is CommonJS; its default import is the one form that resolves under node, vitest and the desktop bundle alike, and desktop tests mock sibling modules, not pako
+const { deflate, inflate } = pako
+
 const FLAG_RAW = 0x00
 const FLAG_DEFLATE = 0x01
 
@@ -8,7 +11,7 @@ export function compressPayload(data: Uint8Array): Uint8Array {
     return prependFlag(FLAG_RAW, data)
   }
 
-  const compressed = pako.deflate(data)
+  const compressed = deflate(data)
   if (compressed.byteLength >= data.byteLength) {
     return prependFlag(FLAG_RAW, data)
   }
@@ -37,7 +40,7 @@ export function decompressPayload(data: Uint8Array): Uint8Array {
     // empty Uint8Array when there is no output, never undefined). So every
     // payload that decompresses today still decompresses; only the streams that
     // already produced no usable bytes now surface as a failure.
-    const inflated = pako.inflate(payload) as Uint8Array | undefined
+    const inflated = inflate(payload) as Uint8Array | undefined
     if (inflated === undefined) {
       throw new Error('Failed to decompress payload: incomplete deflate stream')
     }

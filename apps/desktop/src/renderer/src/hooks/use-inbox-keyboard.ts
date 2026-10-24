@@ -83,7 +83,7 @@ export function useInboxKeyboard(options: UseInboxKeyboardOptions): void {
   })
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     const listener = (e: KeyboardEvent): void => handleGlobalKeyDownRef.current(e)
 

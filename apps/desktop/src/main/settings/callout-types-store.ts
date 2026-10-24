@@ -3,7 +3,7 @@ import {
   sanitizeCalloutTypeDefinitions,
   setCalloutTypeDefinitions,
   type CalloutTypeDefinition
-} from '@memry/editor-schema/blocks'
+} from '@memry/editor-schema/callout-types'
 import type { DataDb } from '../database/types'
 import { getSetting, setSetting } from '../database/queries/settings'
 import { syncSettingsMapEntryUpdates } from './runtime-effects'

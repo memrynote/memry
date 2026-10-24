@@ -3,7 +3,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import Database from 'better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import * as schema from '@memry/db-schema/data-schema'
@@ -69,6 +69,9 @@ import {
   setLocalProviderApiKey
 } from '../agent/backends/local-provider-keychain'
 import { getOrInitializeLocalVaultKey } from '../crypto/vault-key-state'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const MASTER = KEYCHAIN_ENTRIES.MASTER_KEY
 const SIGNING = KEYCHAIN_ENTRIES.DEVICE_SIGNING_KEY

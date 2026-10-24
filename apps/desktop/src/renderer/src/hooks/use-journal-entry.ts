@@ -223,7 +223,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
   })
 
   useEffect(() => {
-    if (isLoading || queryError || entry !== null) return
+    if (isLoading || queryError || entry !== null) return undefined
 
     let cancelled = false
 
@@ -511,6 +511,7 @@ export function useJournalEntry(date: string): UseJournalEntryResult {
     })
 
     const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- journal event payload carries an optional source tag outside the declared event type
       const isExternal = (event as { source?: string }).source === 'external'
 
       if (!isExternal && isSavingRef.current) return

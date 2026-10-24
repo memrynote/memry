@@ -111,6 +111,7 @@ function buildSignedManifest(opts: {
   /** Override the whole-file checksum to force an integrity failure after the chunk decrypts. */
   checksum?: string
 }): { encManifest: Record<string, string>; encryptedChunk: Uint8Array } {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
   const fileKey = generateFileKey()
 
@@ -126,6 +127,7 @@ function buildSignedManifest(opts: {
   encryptedChunk.set(chunkNonce, 0)
   encryptedChunk.set(chunkCiphertext, chunkNonce.length)
 
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   const plaintextHash = sodium.to_hex(sodium.crypto_hash_sha256(opts.plaintext))
   const manifest = {
     id: opts.attachmentId,
@@ -137,6 +139,7 @@ function buildSignedManifest(opts: {
       {
         index: 0,
         hash: plaintextHash,
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         encryptedHash: sodium.to_hex(sodium.crypto_hash_sha256(encryptedChunk)),
         size: opts.plaintext.length
       }
@@ -162,7 +165,7 @@ function buildSignedManifest(opts: {
     opts.vaultKey
   )
 
-  const signaturePayload: Record<string, unknown> = {
+  const signaturePayload: Record<string, string> = {
     encryptedManifest: toB64(manifestCiphertext),
     manifestNonce: toB64(manifestNonce),
     encryptedFileKey: toB64(wrappedKey),
@@ -176,7 +179,7 @@ function buildSignedManifest(opts: {
 
   return {
     encManifest: {
-      ...(signaturePayload as Record<string, string>),
+      ...signaturePayload,
       manifestSignature: toB64(manifestSignature),
       signerDeviceId: 'device-1'
     },
@@ -197,6 +200,7 @@ function createDownloadDeps(
 }
 
 beforeEach(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   await sodium.ready
   tmpDir = await mkdtemp(path.join(os.tmpdir(), 'memry-attach-test-'))
   fsMockState.failWritesAfter = Number.POSITIVE_INFINITY
@@ -472,6 +476,7 @@ describe('AttachmentSyncService', () => {
       const fileKey = generateFileKey()
 
       const plaintext = Buffer.alloc(256, 'C')
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const plaintextHash = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
       const wholeFileHash = plaintextHash
 
@@ -487,6 +492,7 @@ describe('AttachmentSyncService', () => {
       encryptedWithNonce.set(nonce, 0)
       encryptedWithNonce.set(ciphertext, nonce.length)
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const encryptedHash = sodium.to_hex(sodium.crypto_hash_sha256(encryptedWithNonce))
 
       const manifest = {
@@ -500,6 +506,7 @@ describe('AttachmentSyncService', () => {
         createdAt: Date.now()
       }
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const toB64 = (b: Uint8Array) => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
 
       const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest))
@@ -585,6 +592,7 @@ describe('AttachmentSyncService', () => {
       const fileKey = generateFileKey()
 
       const plaintext = Buffer.alloc(256, 'D')
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const plaintextHash = sodium.to_hex(sodium.crypto_hash_sha256(plaintext))
 
       const nonce = sodium.randombytes_buf(24)
@@ -598,6 +606,7 @@ describe('AttachmentSyncService', () => {
       const encryptedWithNonce = new Uint8Array(nonce.length + ciphertext.length)
       encryptedWithNonce.set(nonce, 0)
       encryptedWithNonce.set(ciphertext, nonce.length)
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const encryptedHash = sodium.to_hex(sodium.crypto_hash_sha256(encryptedWithNonce))
 
       const manifest = {
@@ -611,6 +620,7 @@ describe('AttachmentSyncService', () => {
         createdAt: Date.now()
       }
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
       const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
       const manifestBytes = new TextEncoder().encode(JSON.stringify(manifest))
       const manifestNonce = sodium.randombytes_buf(24)
@@ -1426,6 +1436,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     signerPublicKey: Uint8Array
     vaultKey: Uint8Array
   } {
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
     const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
     const vaultKey = generateFileKey()
     const fileKey = generateFileKey()
@@ -1455,7 +1466,9 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
       encryptedWithNonce.set(ciphertext, nonce.length)
       chunks.push({
         index,
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         encryptedHash: sodium.to_hex(sodium.crypto_hash_sha256(encryptedWithNonce)),
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         hash: sodium.to_hex(sodium.crypto_hash_sha256(plaintext)),
         size: 256,
         encryptedWithNonce
@@ -1463,6 +1476,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     })
 
     const wholeFile = Buffer.concat(plaintexts)
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
     const wholeFileChecksum = sodium.to_hex(sodium.crypto_hash_sha256(wholeFile))
 
     const manifest = {
@@ -1498,7 +1512,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
       vaultKey
     )
     const signingKeypair = sodium.crypto_sign_keypair()
-    const signaturePayload: Record<string, unknown> = {
+    const signaturePayload: Record<string, string> = {
       encryptedManifest: toB64(manifestCiphertext),
       manifestNonce: toB64(manifestNonce),
       encryptedFileKey: toB64(wrappedKey),
@@ -1512,7 +1526,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
 
     return {
       encManifest: {
-        ...(signaturePayload as Record<string, string>),
+        ...signaturePayload,
         manifestSignature: toB64(manifestSignature),
         signerDeviceId: 'device-1'
       },
@@ -1571,6 +1585,7 @@ describe('AttachmentSyncService — streaming downloads with resume', () => {
     let failChunkOne = true
     const fetchFn = makeResumableFetchFn(fixture)
     const inner = fetchFn.getMockImplementation()!
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     fetchFn.mockImplementation(async (url: string | URL | Request) => {
       const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.toString() : url.url
       if (failChunkOne && urlStr.includes('/chunks/')) {

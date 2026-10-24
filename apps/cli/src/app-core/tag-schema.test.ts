@@ -99,7 +99,7 @@ test('add-field stores the schema desktop reads, defines the property and queues
   const company = definitions.find((d) => d.name === 'Company')
   assert.equal(company?.type, 'select')
   assert.deepEqual(
-    (JSON.parse(company!.options) as Array<{ value: string }>).map((o) => o.value),
+    (JSON.parse(company.options) as Array<{ value: string }>).map((o) => o.value),
     ['Acme', 'Globex']
   )
 

@@ -37,15 +37,15 @@ export function useNoteNames(
     (delta: AliasDelta) => {
       if (!noteId) return
       const before = namesRef.current
-      const edit = ++latestEdit.current
+      const editId = ++latestEdit.current
       setNames(applyAliasDelta(title, before, delta))
       notesService
         .editAliases({ id: noteId, add: [...delta.add], remove: [...delta.remove] })
         .then((result) => {
-          if (edit === latestEdit.current) setNames(result.aliases)
+          if (editId === latestEdit.current) setNames(result.aliases)
         })
         .catch((error: unknown) => {
-          if (edit === latestEdit.current) setNames(before)
+          if (editId === latestEdit.current) setNames(before)
           toast.error(extractErrorMessage(error, t('names.saveFailed')))
         })
     },

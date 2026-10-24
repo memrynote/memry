@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { XCHACHA20_PARAMS } from '@memry/contracts/crypto'
 
@@ -18,6 +18,9 @@ import {
   ONE_MIB_PLUS_ONE,
   buildPatternedPayload
 } from './__fixtures__/encryption-extras'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready

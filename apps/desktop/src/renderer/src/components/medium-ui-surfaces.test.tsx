@@ -141,6 +141,7 @@ beforeEach(() => {
   toastMock.error.mockReset()
   clipboardWriteMock.mockReset().mockResolvedValue(undefined)
   vi.stubGlobal('navigator', {
+    // oxlint-disable-next-line typescript/no-misused-spread -- test stub: copy navigator's own props, then override clipboard
     ...navigator,
     clipboard: { writeText: clipboardWriteMock }
   })

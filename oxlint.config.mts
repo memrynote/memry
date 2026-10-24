@@ -84,6 +84,9 @@ export default defineConfig({
     'apps/desktop/src/renderer/public/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
+    // Golden inputs for the i18n scanner and codemod tests: untranslated JSX and unresolved
+    // components on purpose, compared byte for byte.
+    'apps/desktop/scripts/i18n/fixtures/**',
     // Agent tooling and per-user scratch directories, not product code.
     '.agent/**',
     '.agents/**',

@@ -6,7 +6,7 @@
  */
 import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { ready } from 'libsodium-wrappers-sumo'
 import { calendarBindings } from '@memry/db-schema/schema/calendar-bindings'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
@@ -47,7 +47,7 @@ describe('foreign-provider calendar rows through the shared sync handlers (#1396
   let db: DrizzleDb
 
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   beforeEach(() => {

@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "ทำเครื่องหมายว่า “{title}” เสร็จแล้ว",
     "task-completed": "งานเสร็จแล้ว",
-    "could-not-complete": "ทำเครื่องหมายว่างานเสร็จแล้วไม่สำเร็จ",
+    "could-not-update-status": "เปลี่ยนสถานะงานไม่สำเร็จ",
     "duration-minutes": "{minutes} นาที",
     "duration-hours": "{hours} ชม.",
     "duration-hours-minutes": "{hours} ชม. {minutes} นาที"
@@ -214,12 +213,9 @@
     "next-week": "สัปดาห์หน้า",
     "open-task": "เปิดงาน",
     "source-note": "โน้ตต้นทาง",
-    "reschedule": "เปลี่ยนกำหนด",
     "mark-done": "ทำเครื่องหมายว่าเสร็จแล้ว",
     "mark-not-done": "ทำเครื่องหมายว่ายังไม่เสร็จ",
-    "later-today": "ภายหลังวันนี้",
     "tomorrow": "พรุ่งนี้",
-    "next-week-mon": "สัปดาห์หน้า · จันทร์",
     "pick-date-time": "เลือกวันที่และเวลา…",
     "remove-due-date": "ลบวันครบกำหนด",
     "subtasks-prefix": "งานย่อย",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "ลบวันครบกำหนดไม่สำเร็จ",
       "could-not-open-note": "เปิดโน้ตไม่สำเร็จ"
     }
+  },
+  "eventNotes": {
+    "heading": "โน้ต",
+    "create": "โน้ตใหม่",
+    "link": "ลิงก์โน้ต",
+    "untitled": "โน้ตการประชุม",
+    "searchPlaceholder": "ค้นหาโน้ต",
+    "noResults": "ไม่พบโน้ต",
+    "createFailed": "สร้างโน้ตสำหรับกิจกรรมนี้ไม่สำเร็จ",
+    "linkFailed": "ลิงก์โน้ตกับกิจกรรมนี้ไม่สำเร็จ",
+    "loadFailed": "โหลดโน้ตที่ลิงก์กับกิจกรรมนี้ไม่สำเร็จ",
+    "propertyTaken": "โน้ตนี้มีพร็อพเพอร์ตี \"{name}\" อยู่แล้วและไม่ใช่ลิงก์"
   },
   "notePopover": {
     "kind": "โน้ต",
@@ -254,6 +262,10 @@
     "overdue": "เลยกำหนด",
     "untitled": "ไม่มีชื่อ",
     "days": "{count, plural, other {# วัน}}",
+    "subtasks": {
+      "expand": "แสดงงานย่อย {count, plural, other {# รายการ}} ของ {title}",
+      "collapse": "ซ่อนงานย่อย {count, plural, other {# รายการ}} ของ {title}"
+    },
     "events": "กิจกรรม",
     "schedule-hint": "คลิกเพื่อตั้งวันที่ ลากเพื่อตั้งช่วงวันที่",
     "empty-title": "ไม่มีรายการบนไทม์ไลน์ในช่วงนี้",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "ปฏิทินที่สมัครรับ"
     },
     "caldav": {
       "name": "CalDAV"

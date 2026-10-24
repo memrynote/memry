@@ -59,6 +59,7 @@ export async function moveIndexedNotesWithFolder(
         id: cached.id,
         path: newRelativePath,
         title: cached.title,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
         fileType: cached.fileType as Exclude<typeof cached.fileType, 'markdown'>,
         mimeType: cached.mimeType ?? null,
         fileSize: cached.fileSize ?? 0,

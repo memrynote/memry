@@ -109,6 +109,7 @@ function commentsInMarks(items: InlineItem[]): InlineItem[] {
       if (Object.keys(marks).length > 0) {
         next = {
           type: 'text',
+          // oxlint-disable-next-line typescript/no-base-to-string -- props is typed Styles (booleans) but an htmlComment's source is a string at runtime; String() keeps the exact prior coercion
           text: encodeHtmlCommentToken(String(item.props?.source ?? '')),
           styles: marks
         }
@@ -129,13 +130,15 @@ type Inline = (items: InlineItem[], blockType?: string) => InlineItem[]
 // A table cell is a bare inline array in the legacy shape and `{ content }` in BlockNote 0.47+.
 function mapCell(cell: unknown, inline: Inline): unknown {
   if (Array.isArray(cell)) return inline(cell)
-  const content = (cell as { content?: unknown } | null)?.content
-  return Array.isArray(content) ? { ...(cell as object), content: inline(content) } : cell
+  if (typeof cell !== 'object' || cell === null) return cell
+  const content = 'content' in cell ? cell.content : undefined
+  return Array.isArray(content) ? { ...cell, content: inline(content) } : cell
 }
 
 function mapInline(blocks: BlockItem[], inline: Inline): BlockItem[] {
   return blocks.map((block) => {
     const next = { ...block }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- content is `unknown`; the `tableContent` type check below gates every use
     const table = block.content as { type?: string; rows: Array<{ cells: unknown[] }> } | undefined
     if (Array.isArray(block.content)) next.content = inline(block.content, block.type)
     else if (table?.type === 'tableContent') {
@@ -167,6 +170,7 @@ export function writeHtmlCommentTokens<B>(
   const marks: Span[] = []
   // SAFETY: only `content` and `children` are read and replaced, with values of
   // the same shape, so every other field of `B` passes through as it was.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- B is the caller's block type; only content and children are touched (see SAFETY above)
   const marked = mapInline(blocks as BlockItem[], (items, blockType) =>
     tokenizeEmphasisRuns(
       commentsInMarks(LIST_ITEMS.has(blockType ?? '') ? listLinkBreakTokens(items, marks) : items),

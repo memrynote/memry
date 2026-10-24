@@ -178,7 +178,7 @@ export function registerJournalHandlers(): void {
       return data.map((d) => ({
         date: d.date,
         characterCount: d.characterCount,
-        level: d.level as 0 | 1 | 2 | 3 | 4
+        level: d.level
       }))
     })
   )

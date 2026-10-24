@@ -68,7 +68,7 @@ const signChallenge = async (
     )
   )
 
-const decodeJti = (token: string): string => JSON.parse(atob(token.split('.')[1]!)).jti as string
+const decodeJti = (token: string): string => JSON.parse(atob(token.split('.')[1])).jti as string
 
 /** Records every consumed_setup_tokens insert so single-use can be asserted. */
 const createEnv = (
@@ -229,7 +229,7 @@ describe('POST /auth/setup-token/renew against real jose', () => {
 
     // #then
     expect(res.status).toBe(401)
-    expect((await res.json()) as { error?: { code?: string } }).toMatchObject({
+    expect(await res.json()).toMatchObject({
       error: { message: 'Setup token is not renewable' }
     })
   })
@@ -275,7 +275,7 @@ describe('POST /auth/setup-token/renew against real jose', () => {
 
     // #then
     expect(res.status).toBe(401)
-    expect((await res.json()) as { error?: { message?: string } }).toMatchObject({
+    expect(await res.json()).toMatchObject({
       error: { message: 'Setup token already used' }
     })
   })

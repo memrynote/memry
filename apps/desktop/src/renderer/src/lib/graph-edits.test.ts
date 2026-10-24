@@ -1,3 +1,4 @@
+// oxlint-disable-next-line import/no-named-as-default -- graphology's typings declare only the default export; `{ Graph }` fails typecheck (TS2614)
 import Graph from 'graphology'
 import { describe, expect, it } from 'vitest'
 import {

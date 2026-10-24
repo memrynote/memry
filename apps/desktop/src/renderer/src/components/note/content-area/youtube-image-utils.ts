@@ -20,6 +20,7 @@ export function normalizeYoutubeImages(blocks: Block[]): { blocks: Block[]; didC
   let didChange = false
   const next = blocks.map((block) => {
     if ((block.type as string) !== 'image' || block.children?.length) return block
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- image props are declared by the schema as url/name/caption strings
     const props = block.props as { url?: string; name?: string; caption?: string }
     if (!props.url || props.caption) return block
     const embed = parseYoutubeEmbedLine(serializeYoutubeEmbed(props.url, props.name ?? ''))
@@ -27,6 +28,7 @@ export function normalizeYoutubeImages(blocks: Block[]): { blocks: Block[]; didC
     didChange = true
     // SAFETY: `youtubeEmbed`'s declared props, all strings; the id is kept so
     // y-prosemirror replaces the block in place.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- see SAFETY above
     return { id: block.id, type: 'youtubeEmbed', props: embed, children: [] } as unknown as Block
   })
   return { blocks: didChange ? next : blocks, didChange }

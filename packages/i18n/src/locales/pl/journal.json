@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Połączenia AI",
     "todaysNotes": "Dzisiejsze notatki",
-    "todaysSchedule": "Dzisiejszy harmonogram",
-    "todaysTasks": "Dzisiejsze zadania",
     "tasks": "Zadania",
     "technicalDetails": "Szczegóły techniczne"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Dzień dobry",
       "evening": "Dobry wieczór",
       "night": "Dobranoc"
-    },
-    "allDay": "Cały dzień"
+    }
   },
   "nav": {
     "previousDay": "Poprzedni dzień",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Więcej opcji",
     "documentStatistics": "Statystyki dokumentu",
-    "dayContext": "Kontekst dnia: zadania i harmonogram",
-    "scheduleEvents": "Zaplanowane wydarzenia",
-    "tasks": "Zadania",
     "notesCreatedToday": "Notatki utworzone dzisiaj: {count}"
   },
   "empty": {
     "noEntry": "Brak wpisu",
     "noDaysInMonth": "Brak dni w tym miesiącu",
-    "noEventsScheduled": "Brak zaplanowanych wydarzeń",
-    "noEventsScheduledToday": "Na dzisiaj nie zaplanowano żadnych wydarzeń",
-    "noEventsWereScheduled": "Nie zaplanowano żadnych wydarzeń",
-    "noTasksDue": "Brak zadań z terminem",
-    "noTasksDueToday": "Brak zadań z terminem na dzisiaj",
-    "noTasksWereDue": "Tego dnia nie było zadań z terminem",
     "noNotesToday": "Dzisiaj nie utworzono żadnych notatek",
     "startDocumenting": "Zacznij dokumentować swoje przemyślenia i pomysły"
   },
@@ -155,9 +143,7 @@
     "day": "dzień",
     "days": "dni",
     "event": "wydarzenie",
-    "events": "wydarzenia",
     "task": "zadanie",
-    "todo": "do zrobienia",
     "moreConnections": "+ jeszcze {count} połączenie",
     "moreConnections_plural": "{count, plural, one {+ jeszcze # połączenie} few {+ jeszcze # połączenia} many {+ jeszcze # połączeń} other {+ jeszcze # połączenia}}",
     "moreNotes": "+ jeszcze {count} notatka",
@@ -166,7 +152,6 @@
     "charactersWritten": "zapisane znaki",
     "words": "{count, plural, one {# słowo} few {# słowa} many {# słów} other {# słowa}}",
     "characters": "{count, plural, one {# znak} few {# znaki} many {# znaków} other {# znaku}}",
-    "completed": "ukończone: {count}",
     "overdue": "Zaległe: {count}"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Zmodyfikowano {date}"
   },
   "task": {
-    "completed": "Ukończone",
-    "notCompleted": "Nieukończone",
-    "priority": "Priorytet {priority}",
-    "overdue": "zaległe",
-    "markComplete": "Oznacz „{title}” jako ukończone",
-    "markNotComplete": "Oznacz „{title}” jako nieukończone"
+    "priority": "Priorytet {priority}"
   },
   "template": {
     "using": "Użyto szablonu „{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Twoja treść jest nadal w pamięci. Kliknij, aby spróbować ponownie zapisać.",
-    "noteNotFound": "Nie znaleziono notatki „{target}”",
     "createLinkedFailed": "Nie udało się utworzyć połączonej notatki",
     "fileNotFound": "Nie znaleziono pliku: {target}",
     "openLinkedItemFailed": "Nie udało się otworzyć połączonego elementu",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Usuń wpis w dzienniku",
     "description": "Czy na pewno chcesz usunąć „{title}”? Tej operacji nie można cofnąć."
+  },
+  "dayTimeline": {
+    "label": "Plan dnia",
+    "allDay": "Elementy całodniowe",
+    "unscheduled": "Bez terminu",
+    "unscheduledEmpty": "Brak zadań bez terminu. Przeciągnij tutaj blok, aby usunąć jego godzinę.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Ukończ {title}"
   }
 }

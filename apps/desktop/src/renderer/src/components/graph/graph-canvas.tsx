@@ -48,6 +48,7 @@ import { GraphEvents, type LinkDragState } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
 import { GraphContextMenu, type ContextMenuState } from './graph-context-menu'
 import { GraphRenderUnavailable } from './graph-render-unavailable'
+import { readEdgeAttrs, readNodeAttrs } from './graph-node-attrs'
 
 const ENTITY_TYPE_VISIBILITY: Record<string, keyof GraphFilterState> = {
   note: 'showNotes',
@@ -236,7 +237,9 @@ export function GraphCanvas({
     // Same rule the builder folds by: the first collapsed group sharing a tag.
     const ownTag = tagOfTagNode(focus)
     const tags = ownTag !== null ? [ownTag] : (data.nodes.find((n) => n.id === focus)?.tags ?? [])
-    const group = collapsedGroups.find((candidate) => candidate.tags.some((t) => tags.includes(t)))
+    const group = collapsedGroups.find((candidate) =>
+      candidate.tags.some((tag) => tags.includes(tag))
+    )
     return group && graph.hasNode(groupNodeId(group.id)) ? groupNodeId(group.id) : null
     // oxlint-disable-next-line react/exhaustive-deps
   }, [graph, revision, filterState.focusNodeId, data, collapsedGroups])
@@ -264,10 +267,7 @@ export function GraphCanvas({
 
   const nodeReducer = useCallback(
     (node: string, attrs: Record<string, unknown>): Partial<NodeDisplayData> => {
-      const nodeType = attrs.nodeType as string
-      const tags = attrs.tags as string[]
-      const isOrphan = attrs.isOrphan as boolean
-      const label = attrs.label as string
+      const { nodeType, tags, isOrphan, label } = readNodeAttrs(attrs)
       const base = (
         colorBy === 'tag-category' && nodeType !== 'group' && !attrs.isUnresolved
           ? { ...attrs, color: categoryColorOf(node, tags) }
@@ -284,7 +284,7 @@ export function GraphCanvas({
       }
 
       if (filterState.selectedTags.length > 0) {
-        const hasMatchingTag = filterState.selectedTags.some((t) => tags.includes(t))
+        const hasMatchingTag = filterState.selectedTags.some((tag) => tags.includes(tag))
         if (!hasMatchingTag) {
           return { ...base, hidden: true }
         }
@@ -327,10 +327,10 @@ export function GraphCanvas({
         return base
       }
 
-      const originalColor = (base.color as string) || '#999'
+      const originalColor = base.color || '#999'
       return {
         ...base,
-        label: fade > 0.5 ? '' : (attrs.label as string),
+        label: fade > 0.5 ? '' : label,
         color: lerpColor(originalColor, dimmedColor, fade),
         zIndex: 0
       }
@@ -340,7 +340,7 @@ export function GraphCanvas({
 
   const edgeReducer = useCallback(
     (edge: string, attrs: Record<string, unknown>): Partial<EdgeDisplayData> => {
-      if (!graph.hasEdge(edge)) return attrs as Partial<EdgeDisplayData>
+      if (!graph.hasEdge(edge)) return attrs
 
       if (attrs.edgeType === 'canvas' && !filterState.showCanvasEdges) {
         return { ...(attrs as Partial<EdgeDisplayData>), hidden: true }
@@ -348,10 +348,8 @@ export function GraphCanvas({
 
       const [source, target] = graph.extremities(edge)
 
-      const sourceAttrs = graph.getNodeAttributes(source)
-      const targetAttrs = graph.getNodeAttributes(target)
-      const sourceType = sourceAttrs.nodeType as string
-      const targetType = targetAttrs.nodeType as string
+      const sourceType = readNodeAttrs(graph.getNodeAttributes(source)).nodeType
+      const targetType = readNodeAttrs(graph.getNodeAttributes(target)).nodeType
 
       const sourceVisKey = ENTITY_TYPE_VISIBILITY[sourceType]
       const targetVisKey = ENTITY_TYPE_VISIBILITY[targetType]
@@ -372,17 +370,17 @@ export function GraphCanvas({
       if (!activeHover || fade === 0 || !graph.hasNode(activeHover)) {
         return {
           ...(attrs as Partial<EdgeDisplayData>),
-          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
+          color: keepsOwnEdgeColor(attrs) ? readEdgeAttrs(attrs).color : softEdgeColor,
           size: 1
         }
       }
 
       const connected = source === activeHover || target === activeHover
       if (connected) {
-        const targetSize = ((attrs.size as number) ?? 1) + 2
+        const targetSize = (readEdgeAttrs(attrs).size ?? 1) + 2
         return {
           ...(attrs as Partial<EdgeDisplayData>),
-          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
+          color: keepsOwnEdgeColor(attrs) ? readEdgeAttrs(attrs).color : softEdgeColor,
           size: 1 + (targetSize - 1) * fade
         }
       }
@@ -575,7 +573,7 @@ function graphNodeIds(data: GraphDataResponse): Set<string> {
 
 function nodeLabel(graph: Graph, nodeId: string, fallback: string): string {
   if (!graph.hasNode(nodeId)) return fallback
-  return (graph.getNodeAttribute(nodeId, 'label') as string) || fallback
+  return readNodeAttrs(graph.getNodeAttributes(nodeId)).label || fallback
 }
 
 function ContextMenuWithTabAction({
@@ -606,9 +604,9 @@ function ContextMenuWithTabAction({
   const handleOpenInTab = useCallback(
     (nodeId: string) => {
       if (!graph.hasNode(nodeId)) return
-      const attrs = graph.getNodeAttributes(nodeId)
-      const nodeType = attrs.nodeType as string
-      const tabTypeMap: Record<string, string> = {
+      const attrs = readNodeAttrs(graph.getNodeAttributes(nodeId))
+      const nodeType = attrs.nodeType
+      const tabTypeMap: Record<string, 'note' | 'journal' | 'tasks' | 'project'> = {
         note: 'note',
         journal: 'journal',
         task: 'tasks',
@@ -617,8 +615,8 @@ function ContextMenuWithTabAction({
       const tabType = tabTypeMap[nodeType]
       if (!tabType) return
       openTab({
-        type: tabType as 'note' | 'journal' | 'tasks' | 'project',
-        title: (attrs.label as string) || t('context-menu.untitled'),
+        type: tabType,
+        title: attrs.label || t('context-menu.untitled'),
         icon:
           tabType === 'note'
             ? 'file-text'
@@ -663,15 +661,15 @@ function ContextMenuWithTabAction({
   // "Collapse <category>".
   const categoryAction = useMemo(() => {
     if (!onToggleCategory || !graph.hasNode(menu.nodeId)) return null
-    const attrs = graph.getNodeAttributes(menu.nodeId)
+    const attrs = readNodeAttrs(graph.getNodeAttributes(menu.nodeId))
     if (attrs.nodeType === 'group') {
       return {
-        categoryId: attrs.categoryId as string,
-        label: attrs.groupLabel as string,
+        categoryId: attrs.categoryId,
+        label: attrs.groupLabel,
         collapsed: true
       }
     }
-    const rank = categoryRankOf(menu.nodeId, attrs.tags as string[], categoryIndex.rankByTag)
+    const rank = categoryRankOf(menu.nodeId, attrs.tags, categoryIndex.rankByTag)
     const category = rank === undefined ? undefined : categoryIndex.categories[rank]
     if (!category || collapsedIds?.includes(category.id)) return null
     return { categoryId: category.id, label: category.label, collapsed: false }
@@ -711,8 +709,8 @@ function HoverFadeAnimator({
   hoverTargetRef
 }: {
   hoveredNode: string | null
-  fadeRef: React.MutableRefObject<number>
-  hoverTargetRef: React.MutableRefObject<string | null>
+  fadeRef: React.RefObject<number>
+  hoverTargetRef: React.RefObject<string | null>
 }): null {
   const sigma = useSigma()
   const animRef = useRef<number | null>(null)
@@ -727,7 +725,7 @@ function HoverFadeAnimator({
 
     if (startFade === goal) {
       refreshSigmaIfMeasurable(sigma)
-      return
+      return undefined
     }
 
     const startTime = performance.now()
@@ -823,7 +821,7 @@ function LayoutManager({
   animate: boolean
   graph: Graph
   revision: number
-  physicsHandleRef: React.MutableRefObject<PhysicsHandle | null>
+  physicsHandleRef: React.RefObject<PhysicsHandle | null>
   physicsOptions: GraphPhysicsOptions | undefined
   onLayoutChange: LayoutChangeHandler | undefined
 }): React.JSX.Element | null {

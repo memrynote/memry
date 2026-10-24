@@ -63,7 +63,9 @@ export async function runTasks(app: MemryApp, parsed: ParsedCli, io: CliIo): Pro
           dueAfter: getFlag(parsed.flags, 'due-after'),
           tags: getFlagList(parsed.flags, 'tag'),
           search: getFlag(parsed.flags, 'search'),
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
           sortBy: getFlag(parsed.flags, 'sort-by') as TaskListOptions['sortBy'],
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
           sortOrder: getFlag(parsed.flags, 'sort-order') as TaskListOptions['sortOrder'],
           limit: parsed.flags.has('limit')
             ? parseNumber(getFlag(parsed.flags, 'limit'), 100)

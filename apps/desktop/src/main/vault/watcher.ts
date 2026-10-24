@@ -10,7 +10,7 @@
 import path from 'path'
 import fs from 'fs/promises'
 import { existsSync, type Stats } from 'fs'
-import chokidar from 'chokidar'
+import { watch as chokidarWatch } from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { getConfig } from './status'
@@ -258,7 +258,7 @@ export class VaultWatcher {
     const attachmentsRoot = path.join(vaultPath, ATTACHMENTS_DIR)
 
     // Create watcher with chokidar
-    this.watcher = chokidar.watch(watchPaths, {
+    this.watcher = chokidarWatch(watchPaths, {
       persistent: true,
 
       // Ignore hidden files, excluded patterns, unsupported file types

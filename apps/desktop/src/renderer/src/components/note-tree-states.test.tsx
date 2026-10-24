@@ -5,7 +5,7 @@ import { NotesTreeSyncing, NotesTreeTruncationNotice } from './note-tree-states'
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, values?: Record<string, unknown>) =>
+    t: (key: string, values?: Record<string, string | number>) =>
       values?.count === undefined ? key : `${key}:${values.count}`
   })
 }))

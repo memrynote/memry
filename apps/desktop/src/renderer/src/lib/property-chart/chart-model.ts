@@ -337,7 +337,7 @@ export function countCategories(
   }
   return [...daysByValue.entries()]
     .map(([value, set]) => ({ value, count: set.size }))
-    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value))
+    .toSorted((a, b) => b.count - a.count || a.value.localeCompare(b.value))
 }
 
 export interface LoggedSummary {

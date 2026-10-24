@@ -119,7 +119,10 @@ describe('buildDayDots', () => {
     // #when
     const result = buildDayDots(items)
     // #then
-    expect(Object.keys(result).sort()).toEqual(['2026-04-20', '2026-04-22'])
+    expect(Object.keys(result).toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))).toEqual([
+      '2026-04-20',
+      '2026-04-22'
+    ])
     expect(result['2026-04-20']).toEqual([color('event')])
     expect(result['2026-04-22']).toEqual([color('task')])
   })

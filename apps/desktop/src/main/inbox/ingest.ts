@@ -49,7 +49,8 @@ export async function ingestArticleCapture(
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, input.itemId)).get()
     const existingMetadata =
       item?.metadata && typeof item.metadata === 'object'
-        ? (item.metadata as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inbox metadata is a JSON column typed unknown by drizzle; every read below is optional-chained
+          (item.metadata as Record<string, unknown>)
         : {}
     const thumbnailPath = await downloadHero(input.itemId, input.heroImage)
     const now = new Date().toISOString()
@@ -111,7 +112,7 @@ export async function ingestArticleCapture(
   let pdfMetadata: Record<string, unknown> = {}
   if (input.pdfDataUrl) {
     const parsed = parseDataUrl(input.pdfDataUrl)
-    if (!parsed || parsed.mime !== 'application/pdf') {
+    if (parsed?.mime !== 'application/pdf') {
       log.warn('pdf capture had a non-pdf data url', { itemId: id, mime: parsed?.mime })
     } else {
       const filename = input.pdfFilename ?? 'document.pdf'

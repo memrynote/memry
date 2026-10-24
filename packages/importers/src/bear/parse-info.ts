@@ -16,18 +16,19 @@ function toBool(value: unknown): boolean {
   return false
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
 export function parseInfo(raw: unknown): BearInfo {
-  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) {
+  if (!isRecord(raw)) {
     return { archived: false, trashed: false }
   }
 
   // Real Bear exports nest note metadata under the `net.shinyfrog.bear` key.
-  const outer = raw as Record<string, unknown>
+  const outer = raw
   const inner = outer['net.shinyfrog.bear']
-  const obj =
-    inner !== null && typeof inner === 'object' && !Array.isArray(inner)
-      ? (inner as Record<string, unknown>)
-      : outer
+  const obj = isRecord(inner) ? inner : outer
 
   return {
     uniqueIdentifier:

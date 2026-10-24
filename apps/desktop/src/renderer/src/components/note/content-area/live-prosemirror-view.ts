@@ -1,4 +1,3 @@
-import type { BlockNoteEditor } from '@blocknote/core'
 import type { EditorView } from '@tiptap/pm/view'
 
 type TiptapLike = { view?: EditorView; editorView?: EditorView }
@@ -33,9 +32,10 @@ export function getLiveProseMirrorView(
   // Any editor, whatever its schema: only the two view fields are read, and an
   // editor typed against Memry's custom schema is not assignable to the
   // default-schema `BlockNoteEditor`.
-  editor: BlockNoteEditor | object | null | undefined
+  editor: unknown
 ): EditorView | undefined {
-  const host = editor as unknown as TiptapHost | null | undefined
+  const host: TiptapHost | undefined =
+    typeof editor === 'object' && editor !== null ? editor : undefined
   const tiptap = host?._tiptapEditor
   if (tiptap) return getLiveTiptapView(tiptap)
   return host?.prosemirrorView

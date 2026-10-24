@@ -64,6 +64,7 @@ export function PortalFlowsLayer({
   const { t } = useT('notes')
   const { openSidebarItem } = useSidebarNavigation()
   const removeFromPortal = useContext(PortalRemoveFromContext)
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- useBlockNoteEditor() is typed with default schemas; the app editor is the memry schema
   const editor = useBlockNoteEditor() as unknown as Editor
   const hoveredBlockId = useExtensionState(SideMenuExtension, {
     editor,
@@ -112,7 +113,7 @@ export function PortalFlowsLayer({
   // Inside a portal window the block menu and Cmd+Shift+H hide a block from
   // the portal (the portal rewrites its fence); the portal refuses the only root.
   useEffect(() => {
-    if (!removeFromPortal) return
+    if (!removeFromPortal) return undefined
     const unregister = registerHideInPortal(editor, {
       canHide: () => true,
       hide: (blockId) => removeFromPortal([blockId])
@@ -165,7 +166,7 @@ export function PortalFlowsLayer({
   // oxlint-disable-next-line react/refs -- latest-value ref written during render so stable callbacks read current props; an effect would leave a stale window
   copyRef.current = copyPortalToBlock
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     return registerPortalFlowsApi(editor, {
       noteId,
       requestBlockRemoval: (ids) => requestRef.current(ids),

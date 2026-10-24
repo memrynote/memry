@@ -19,21 +19,18 @@ const UNSPLASH_IMAGE_HOSTS = ['images.unsplash.com', 'plus.unsplash.com'] as con
 const UNSPLASH_WEB_HOSTS = ['unsplash.com', 'www.unsplash.com'] as const
 
 function httpsUrlOnHost(hosts: readonly string[], label: string) {
-  return z
-    .string()
-    .url()
-    .refine(
-      (value) => {
-        let parsed: URL
-        try {
-          parsed = new URL(value)
-        } catch {
-          return false
-        }
-        return parsed.protocol === 'https:' && hosts.includes(parsed.hostname)
-      },
-      `Expected an https ${label} URL on ${hosts.join(' or ')}`
-    )
+  return z.url().refine(
+    (value) => {
+      let parsed: URL
+      try {
+        parsed = new URL(value)
+      } catch {
+        return false
+      }
+      return parsed.protocol === 'https:' && hosts.includes(parsed.hostname)
+    },
+    `Expected an https ${label} URL on ${hosts.join(' or ')}`
+  )
 }
 
 export const UnsplashPhotoSchema = z.object({

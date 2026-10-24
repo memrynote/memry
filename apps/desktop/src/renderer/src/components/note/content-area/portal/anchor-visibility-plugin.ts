@@ -464,7 +464,7 @@ export function createAnchorVisibilityPlugin(): Plugin<AnchorScan> {
         const heal = findHeal(before, after)
         if (heal) return healTransaction(newState, heal)
         const rangeEmptied = emptiedByRangeDelete(trs, oldState, before, after)
-        const edits = anchorFixes(before, after, rangeEmptied).sort((a, b) => b.from - a.from)
+        const edits = anchorFixes(before, after, rangeEmptied).toSorted((a, b) => b.from - a.from)
         if (edits.length > 0) {
           tr = newState.tr.setMeta(anchorVisibilityKey, 'repair')
           for (const edit of edits) {

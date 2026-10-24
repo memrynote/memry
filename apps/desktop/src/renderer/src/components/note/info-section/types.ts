@@ -63,4 +63,5 @@ export const PROPERTY_TYPE_CONFIG: Record<PropertyType, PropertyTypeConfig> = {
   project: { label: 'Project', icon: FolderKanban }
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; the keys are this config's own closed union
 export const PROPERTY_TYPES = Object.keys(PROPERTY_TYPE_CONFIG) as PropertyType[]

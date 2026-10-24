@@ -264,7 +264,7 @@ export async function transcribeAudioData(
       response_format: 'text'
     })
 
-    return { transcription: response as unknown as string }
+    return { transcription: response }
   } catch (error) {
     const normalized = normalizeTranscriptionError(error)
     log.error(`Transcription error for ${logContext}:`, normalized)

@@ -53,8 +53,7 @@
       "high": "Korkea",
       "urgent": "Kiireellinen"
     },
-    "unarchive": "Palauta tehtävä arkistosta",
-    "archivedOn": "Arkistoitu {date}"
+    "unarchive": "Palauta tehtävä arkistosta"
   },
   "reminders": {
     "summary": "Muistutus: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Lisää alitehtävä",
     "subIssuePlaceholder": "Lisää alitehtävä…",
     "noSubIssues": "Ei vielä alitehtäviä",
-    "linkedNotes": "Aiheeseen liittyvät",
-    "linkNote": "Lisää liittyvä kohde",
     "loading": "Ladataan…",
-    "searchNotes": "Hae liittyviä…",
-    "noMatchingNotes": "Ei vastaavia kohteita",
-    "noNotesAvailable": "Ei kohteita saatavilla",
-    "noLinkedNotes": "Ei vielä liittyviä kohteita",
-    "removeLinkTo": "Poista liittyvä kohde {title}",
-    "removeLinkFallback": "kohde",
     "related": "Aiheeseen liittyvät",
     "addRelatedItem": "Lisää liittyvä kohde",
     "searchRelated": "Hae liittyviä…",
     "noMatchingRelated": "Ei vastaavia kohteita",
     "noRelatedAvailable": "Ei kohteita saatavilla",
-    "noRelatedItems": "Ei vielä liittyviä kohteita",
     "removeRelatedItem": "Poista liittyvä kohde {title}",
     "relatedItemFallback": "kohde",
     "relatedItemMissing": "Tämä liittyvä kohde ei ole enää tässä holvissa.",
@@ -251,7 +241,6 @@
     "deleted": "Tehtävä poistettu",
     "deletedSeries": "Sarja valmis!",
     "completed": "Tehtävä valmis!",
-    "archived": "Tehtävä arkistoitu",
     "undoNotAvailableForDelete": "Poistoa ei voi kumota",
     "alreadyAllComplete": "Kaikki valitut tehtävät ovat jo valmiita",
     "noCompletedSelected": "Valmiita tehtäviä ei ole valittu",
@@ -305,7 +294,10 @@
       "dueDateCleared": "{count, plural, one {Eräpäivä tyhjennetty # alitehtävästä} other {Eräpäivä tyhjennetty # alitehtävästä}}",
       "prioritySet": "{count, plural, one {Prioriteetti asetettu # alitehtävälle} other {Prioriteetti asetettu # alitehtävälle}}",
       "deleted": "{count, plural, one {# alitehtävä poistettu} other {# alitehtävää poistettu}}"
-    }
+    },
+    "completedBranch": "Merkittiin valmiiksi {title} ja {count, plural, one {# avoin alitehtävä} other {# avointa alitehtävää}}",
+    "deletedKeepSubtasks": "Poistettiin {title}, alitehtävät säilytettiin",
+    "deletedBranch": "Poistettiin {title} ja {count, plural, one {# alitehtävä} other {# alitehtävää}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -328,7 +320,6 @@
       "archive": "Arkistoi",
       "delete": "Poista",
       "cancelSelection": "Peruuta valinta",
-      "cancel": "Peruuta",
       "unarchive": "Palauta arkistosta"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -400,9 +391,6 @@
       "delete": "Poistetaanko \"",
       "thisProjectHas": "Tällä projektilla on ",
       "task": "tehtävä",
-      "whatWouldYouLikeToDoWithThem": "Mitä haluat tehdä niille?",
-      "moveTasksToPersonalProject": "Siirrä tehtävät henkilökohtaiseen projektiin",
-      "deleteAllTasksPermanently": "Poista kaikki tehtävät pysyvästi",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tällä projektilla ei ole tehtäviä, ja se poistetaan pysyvästi.",
       "notesEventsAndFilesStayNotice": "Tämän projektin tehtävät poistetaan. Muistiinpanosi, tapahtumasi ja tiedostosi säilyvät holvissasi.",
       "thisActionCannotBeUndone": "Tätä ei voi kumota.",
@@ -423,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Aseta eräpäivä kaikille alitehtäville",
-      "setDueDateFor": "Aseta eräpäivä ",
-      "alsoApplyToCompletedSubtasks": "Koskee myös valmiita alitehtäviä (",
       "clearDate": "Tyhjennä päivämäärä",
       "cancel": "Peruuta",
       "apply": "Käytä",
@@ -433,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Aseta prioriteetti kaikille alitehtäville",
-      "setPriorityFor": "Aseta prioriteetti ",
-      "alsoApplyToCompletedSubtasks": "Koskee myös valmiita alitehtäviä (",
       "cancel": "Peruuta",
       "apply": "Käytä",
       "setPriorityForSubtasksIn": "Aseta prioriteetti {count, plural, one {# alitehtävälle} other {# alitehtävälle}} tehtävässä ”{title}”",
@@ -461,36 +445,13 @@
       "deleteAll": "Poista kaikki",
       "deleteSubtasksConfirmation": "Tämä poistaa tehtävästä ”{title}” {count, plural, one {# alitehtävän} other {# alitehtävää}}."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Poistetaanko tehtävä alitehtävineen?",
-      "has": "sisältää ",
-      "subtask": "alitehtävän",
-      "whatWouldYouLikeToDo": "Mitä haluaisit tehdä?",
-      "deleteTaskAndAllSubtasks": "Poista tehtävä ja kaikki alitehtävät",
-      "permanentlyRemovesEverything": "Poistaa pysyvästi kaiken",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Poista tehtävä, säilytä alitehtävät itsenäisinä tehtävinä",
-      "subtasksBecomeTopLevelTasks": "Alitehtävistä tulee itsenäisiä tehtäviä",
-      "cancel": "Peruuta",
-      "delete": "Poista"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Monista tehtävä",
-      "createACopyOf": "Luo kopio tehtävästä ”",
-      "alsoDuplicateSubtasks": "Monista myös alitehtävät (",
       "cancel": "Peruuta",
-      "duplicate": "Monista ",
       "createACopyOfTitle": "Luo kopio tehtävästä ”{title}”",
       "alsoDuplicateSubtasksCount": "Monista myös alitehtävät ({count})",
       "duplicateWithItems": "Monista ({count, plural, one {# kohde} other {# kohdetta}})",
       "duplicateTaskOnly": "Monista tehtävä"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Tee alitehtäväksi…",
-      "selectATaskToMake": "Valitse tehtävä, jonka alitehtäväksi \"",
-      "aSubtaskOf": "siirretään.",
-      "searchTasks": "Hae tehtäviä…",
-      "sameProject": "Sama projekti",
-      "otherProjects": "Muut projektit"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Pudota ja ajoita: "
@@ -564,16 +525,13 @@
       "status": "tila",
       "projectIs": "Projekti on",
       "project": "projekti",
+      "locationIs": "Sijainti on",
+      "location": "sijainti",
+      "unknownNote": "Tuntematon muistiinpano",
       "due": "Eräpäivä",
       "dueDate": "eräpäivä",
       "search": "haku",
       "clearAll": "Tyhjennä kaikki"
-    },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Suodata eräpäivän mukaan",
-      "customRange": "Mukautettu aikaväli",
-      "clear": "Tyhjennä",
-      "apply": "Käytä"
     },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Suodata…"
@@ -584,6 +542,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Eräpäivä"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Sijainti",
+      "search": "Hae kansioita ja muistiinpanoja...",
+      "empty": "Ei kansioita tai muistiinpanoja, joissa on tehtäviä"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioriteetti",
@@ -608,23 +571,9 @@
       "search": "Hae…",
       "selected": "valittu"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Lisää suodattimia",
-      "more": "Lisää",
-      "status": "Tila",
-      "hasTimeSet": "Aika on asetettu",
-      "recurringOnly": "Vain toistuvat",
-      "status2": "Tila"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Suodata prioriteetin mukaan",
       "priority": "Prioriteetti"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Suodata projektin mukaan",
-      "project": "Projekti",
-      "allProjects": "Kaikki projektit",
-      "clear": "Tyhjennä"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Pikasuodattimet:"
@@ -648,13 +597,6 @@
       "summaryTimeWith": "Aika: Kellonaika asetettu",
       "summaryTimeWithout": "Aika: Ilman kellonaikaa",
       "nameRequired": "Anna tälle suodattimelle nimi"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Tallennetut suodattimet",
-      "saved": "Tallennetut",
-      "noSavedFiltersYet": "Ei vielä tallennettuja suodattimia",
-      "saveCurrentFilters": "Tallenna nykyiset suodattimet",
-      "saveCurrentFilters2": "Tallenna nykyiset suodattimet"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Suodattimen nimi",
@@ -704,8 +646,7 @@
       "openTasksOnThisProject": "Tehtävät avautuu tähän projektiin"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Valitse projekti",
-      "selectProject2": "Valitse projekti"
+      "selectProject": "Valitse projekti"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Muokkaa projektia",
@@ -714,11 +655,6 @@
       "selectProject": "Valitse projekti",
       "noProjectsYet": "Ei vielä projekteja",
       "createProject": "Luo projekti"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Projektia ei ole valittu",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Valitse projekti avattavasta valikosta tai luo uusi",
-      "createYourFirstProject": "Luo ensimmäinen projektisi"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Pikalisäyksen merkintöjen ohje",
@@ -804,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Valitse aika",
-      "selectTime2": "Valitse aika",
       "clearTime": "Tyhjennä kellonaika"
     },
     "componentsTasksTodayEmptyState": {
@@ -869,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Projektia ei ole valittu",
     "emptyBody": "Avaa projektisivu valitsemalla projekti sivupalkista.",
-    "loadError": "Projektin tietojen lataaminen epäonnistui",
     "overview": {
       "sectionTitle": "Yleiskatsaus",
       "create": "Luo yleiskatsaus",
@@ -897,6 +831,7 @@
     "tabs": {
       "label": "Projektinäkymät",
       "overview": "Yleiskatsaus",
+      "all": "Kaikki",
       "tasks": "Tehtävät",
       "notes": "Muistiinpanot",
       "files": "Tiedostot",
@@ -951,6 +886,18 @@
       "fileError": "Tiedoston {name} linkittäminen epäonnistui",
       "fileErrorGeneric": "Tiedostojen tuominen epäonnistui",
       "label": "Lisää projektiin {name}"
+    },
+    "all": {
+      "showDone": "Näytä valmiit",
+      "empty": "Tässä projektissa ei ole avoimia kohteita.",
+      "expand": "Näytä tehtävät kohteessa {title}",
+      "collapse": "Piilota tehtävät kohteessa {title}",
+      "daysLeft": "{count} pv",
+      "overdue": "{count} pv myöhässä",
+      "columns": {
+        "title": "Otsikko",
+        "daysLeft": "Päiviä jäljellä"
+      }
     }
   },
   "project": {
@@ -1001,5 +948,49 @@
     "indigo": "Indigonsininen",
     "purple": "Violetti",
     "pink": "Vaaleanpunainen"
+  },
+  "subtaskTree": {
+    "addSubtask": "Lisää alitehtävä",
+    "dropInto": "Kohteeseen {title}",
+    "dropOut": "Yksi taso ylös",
+    "draftPlaceholder": "Alitehtävän otsikko",
+    "draftLabel": "Uusi alitehtävä kohteessa {title}",
+    "draftIn": "kohteessa {title}",
+    "toggleComplete": "Merkitse valmiiksi: {title}",
+    "moveUnder": {
+      "title": "Siirrä alle",
+      "placeholder": "Siirrä alle…",
+      "empty": "Ei vastaavaa tehtävää",
+      "topLevel": "Ylin taso: {project}",
+      "thisTask": "Tämä tehtävä",
+      "currentParent": "Nykyinen ylätehtävä",
+      "movesOne": "Siirtää kohteen {title}",
+      "movesBranch": "Siirtää kohteen {title} ja {count, plural, one {# alitehtävän} other {# alitehtävää}}",
+      "keys": "↵ Siirrä tähän · ⌘↵ Ylin taso · esc Sulje"
+    },
+    "zoom": {
+      "path": "Tehtävän polku",
+      "up": "Yksi taso ylös",
+      "upShortcut": "Yksi taso ylös (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Poistetaanko {title}?",
+      "summary": "{direct, plural, one {Siinä on # alitehtävä} other {Siinä on # alitehtävää}}{deeper, plural, =0 {} one { ja # lisää sen alla} other { ja # lisää niiden alla}}{open, plural, =0 {, kaikki valmiita.} other {, # edelleen avoinna.}}",
+      "cancel": "Peruuta",
+      "deleteAll": "Poista kaikki",
+      "keepSubtasks": "Säilytä alitehtävät"
+    },
+    "menu": {
+      "open": "Avaa",
+      "complete": "Merkitse valmiiksi",
+      "reopen": "Avaa uudelleen",
+      "zoom": "Tarkenna alitehtäviin",
+      "moveUnder": "Siirrä alle…",
+      "indent": "Siirrä kohteen {title} alle",
+      "outdent": "Siirrä yksi taso ylös",
+      "topLevel": "Tee ylimmän tason tehtävä",
+      "delete": "Poista"
+    },
+    "openPath": "Avaa {path}"
   }
 }

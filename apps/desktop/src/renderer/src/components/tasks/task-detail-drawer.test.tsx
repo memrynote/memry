@@ -165,7 +165,7 @@ const createTask = (overrides: Partial<Task> = {}): Task => ({
   description: '',
   projectId: 'project-1',
   statusId: 'todo',
-  priority: 'medium' as Priority,
+  priority: 'medium',
   dueDate: new Date('2026-04-15'),
   dueTime: null,
   isRepeating: false,

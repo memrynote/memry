@@ -62,7 +62,7 @@ export function useRelatedItemSearch(
   const [canvases, setCanvases] = useState<RelatedCanvasItem[]>([])
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
 
     let cancelled = false
     const trimmed = query.trim()
@@ -83,7 +83,7 @@ export function useRelatedItemSearch(
                   id: note.id,
                   title: note.title,
                   emoji: note.emoji ?? null,
-                  fileType: (note.fileType ?? 'markdown') as FileType
+                  fileType: note.fileType ?? 'markdown'
                 }))
               )
           : searchService
@@ -108,7 +108,7 @@ export function useRelatedItemSearch(
                       id: result.id,
                       title: result.title,
                       emoji: metadata?.emoji ?? null,
-                      fileType: (metadata?.fileType ?? 'markdown') as FileType
+                      fileType: metadata?.fileType ?? 'markdown'
                     }
                   })
               )

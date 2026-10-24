@@ -117,6 +117,7 @@ export const checks = [
         `SELECT s.name FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.title = '${CARD}'`
       )
       if (t?.name !== 'Design') return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -126,6 +127,7 @@ export const checks = [
         `SELECT s.name FROM statuses s JOIN projects p ON p.id = s.project_id WHERE p.name = 'Website Redesign' ORDER BY s.position`
       ).map((s) => s.name)
       if (names.join() !== `Backlog,Design,${RENAMED},Done`) return JSON.stringify(names)
+      return undefined
     }
   ]
 ]

@@ -1,4 +1,4 @@
-import i18next, { type i18n as I18nInstance } from 'i18next'
+import { createInstance, type i18n as I18nInstance } from 'i18next'
 import { IcuFormatter } from '../shared/icu-formatter'
 import {
   type Locale,
@@ -21,7 +21,7 @@ interface CreateMainI18nOptions {
  * resolves, so menu construction still sees a fully initialized instance.
  */
 export async function createMainI18n(options: CreateMainI18nOptions): Promise<I18nInstance> {
-  const instance = i18next.createInstance()
+  const instance = createInstance()
   await instance
     .use(IcuFormatter)
     .use(createLocaleBackend())
@@ -50,7 +50,7 @@ export async function createMainI18n(options: CreateMainI18nOptions): Promise<I1
  * Resources are inlined (no backend, no await) precisely so it cannot fail.
  */
 export function createEnglishFallbackI18n(): I18nInstance {
-  const instance = i18next.createInstance()
+  const instance = createInstance()
   void instance.use(IcuFormatter).init({
     lng: FALLBACK_LOCALE,
     fallbackLng: FALLBACK_LOCALE,

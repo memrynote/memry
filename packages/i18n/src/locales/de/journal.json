@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "KI-Verbindungen",
     "todaysNotes": "Heutige Notizen",
-    "todaysSchedule": "Heutiger Zeitplan",
-    "todaysTasks": "Heutige Aufgaben",
     "tasks": "Aufgaben",
     "technicalDetails": "Technische Details"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Guten Tag",
       "evening": "Guten Abend",
       "night": "Gute Nacht"
-    },
-    "allDay": "Ganztägig"
+    }
   },
   "nav": {
     "previousDay": "Vorheriger Tag",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Weitere Optionen",
     "documentStatistics": "Dokumentstatistiken",
-    "dayContext": "Tageskontext: Aufgaben und Zeitplan",
-    "scheduleEvents": "Termine im Zeitplan",
-    "tasks": "Aufgaben",
     "notesCreatedToday": "Heute {count} Notizen erstellt"
   },
   "empty": {
     "noEntry": "Kein Eintrag",
     "noDaysInMonth": "Keine Tage in diesem Monat",
-    "noEventsScheduled": "Keine Termine geplant",
-    "noEventsScheduledToday": "Heute sind keine Termine geplant",
-    "noEventsWereScheduled": "Es waren keine Termine geplant",
-    "noTasksDue": "Keine Aufgaben fällig",
-    "noTasksDueToday": "Heute sind keine Aufgaben fällig",
-    "noTasksWereDue": "Es waren keine Aufgaben fällig",
     "noNotesToday": "Heute wurden keine Notizen erstellt",
     "startDocumenting": "Halte deine Gedanken und Ideen fest"
   },
@@ -155,9 +143,7 @@
     "day": "Tag",
     "days": "Tage",
     "event": "Termin",
-    "events": "Termine",
     "task": "Aufgabe",
-    "todo": "zu erledigen",
     "moreConnections": "+ {count} weitere Verbindung",
     "moreConnections_plural": "+ {count} weitere Verbindungen",
     "moreNotes": "+ {count} weitere Notiz",
@@ -166,7 +152,6 @@
     "charactersWritten": "Zeichen geschrieben",
     "words": "{count} Wörter",
     "characters": "{count} Zeichen",
-    "completed": "{count} erledigt",
     "overdue": "{count} überfällig"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Geändert {date}"
   },
   "task": {
-    "completed": "Erledigt",
-    "notCompleted": "Nicht erledigt",
-    "priority": "Priorität: {priority}",
-    "overdue": "überfällig",
-    "markComplete": "„{title}“ als erledigt markieren",
-    "markNotComplete": "„{title}“ als nicht erledigt markieren"
+    "priority": "Priorität: {priority}"
   },
   "template": {
     "using": "Mit Vorlage „{templateName}“"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Dein Inhalt ist noch im Arbeitsspeicher. Klicke, um das Speichern erneut zu versuchen.",
-    "noteNotFound": "Notiz „{target}“ nicht gefunden",
     "createLinkedFailed": "Verlinkte Notiz konnte nicht erstellt werden",
     "fileNotFound": "Datei nicht gefunden: {target}",
     "openLinkedItemFailed": "Verlinktes Element konnte nicht geöffnet werden",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Journaleintrag löschen",
     "description": "Möchtest du „{title}“ wirklich löschen? Das lässt sich nicht rückgängig machen."
+  },
+  "dayTimeline": {
+    "label": "Tagesplan",
+    "allDay": "Ganztägige Einträge",
+    "unscheduled": "Nicht eingeplant",
+    "unscheduledEmpty": "Keine nicht eingeplanten Aufgaben. Ziehe einen Block hierher, um seine Zeit zu entfernen.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} abschließen"
   }
 }

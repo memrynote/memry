@@ -44,11 +44,11 @@ describe('Agent MCP server late errors', () => {
     // can emit on it the way Node's accept path does.
     const created: http.Server[] = []
     const realCreateServer = http.createServer
-    const spy = vi.spyOn(http, 'createServer').mockImplementation(((...args: unknown[]) => {
+    const spy = vi.spyOn(http, 'createServer').mockImplementation((...args: unknown[]) => {
       const instance = (realCreateServer as (...a: unknown[]) => http.Server)(...args)
       created.push(instance)
       return instance
-    }) as typeof http.createServer)
+    })
     try {
       handle = await startAgentMcpServer({ toolRegistrations: [] })
     } finally {

@@ -20,8 +20,7 @@ vi.mock('../database', () => ({
 }))
 
 vi.mock('@main/database/queries/notes', () => ({
-  getNoteCacheById: (_db: unknown, id: string) =>
-    mocks.cache && mocks.cache.id === id ? mocks.cache : undefined
+  getNoteCacheById: (_db: unknown, id: string) => (mocks.cache?.id === id ? mocks.cache : undefined)
 }))
 
 vi.mock('./notes-io', () => ({

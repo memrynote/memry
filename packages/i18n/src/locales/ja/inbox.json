@@ -15,19 +15,13 @@
       "showWithCount": "スヌーズ中の項目を表示（{count}）",
       "hide": "スヌーズ中の項目を非表示"
     },
-    "density": {
-      "toComfortable": "ゆったり表示",
-      "toCompact": "コンパクト表示"
-    },
     "filter": {
-      "button": "フィルター",
       "byType": "種類で絞り込み",
       "active": "{count, plural, other {# 種類で絞り込み中}}",
       "clearAll": "すべてクリア"
     },
     "jobs": {
-      "running": "{count, plural, other {# 件のバックグラウンドジョブを実行中}}",
-      "failed": "{count} 件失敗"
+      "running": "{count, plural, other {# 件のバックグラウンドジョブを実行中}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "「{name}」を作成",
     "addTags": "タグを追加…",
     "linkToNote": "ノートにリンク",
-    "linkANote": "ノートをリンク",
-    "suggestedCount": "{count} 件のおすすめ",
-    "linkNotesPlaceholder": "ノートをリンク…",
     "linkOrCreateNotePlaceholder": "ノートを検索または作成…",
     "createNote": "「{title}」を作成",
     "pendingNote": "新規ノート",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "リマインダーのデータを利用できません。",
     "triggered": "リマインダーを通知しました",
-    "noteLabel": "リマインダーメモ",
     "source": "ソース",
     "journalTitle": "ジャーナル — {date}",
     "noteFallback": "ノート",
@@ -514,9 +504,7 @@
       "settings": "設定",
       "processing": "処理中…",
       "cancelRecording": "録音をキャンセル",
-      "cancel": "キャンセル",
       "stopRecording": "録音を停止",
-      "stop": "停止",
       "recordingError": "録音中にエラーが発生しました",
       "microphoneAccessDenied": "マイクへのアクセスが拒否されました",
       "noMicrophoneFound": "マイクが見つかりません",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, other {スヌーズ中の項目 # 件}}",
     "notificationBody": "{count, plural, other {スヌーズした項目を確認できます}}",
     "toast": "{count, plural, =1 {「{itemTitle}」のスヌーズが終了しました} other {# 件の項目のスヌーズが終了しました}}"
+  },
+  "sticky": {
+    "kindLabel": "送信先の種類",
+    "kinds": {
+      "note": "ノート",
+      "task": "タスク",
+      "journal": "ジャーナル"
+    },
+    "placeholders": {
+      "note": "さっとメモ…",
+      "task": "Ana に電話 @tomorrow #home !high",
+      "journal": "今日のジャーナルに追加…"
+    },
+    "saving": "保存中…",
+    "saved": "保存しました",
+    "saveFailed": "保存されていません",
+    "tuck": "しまう",
+    "send": "送信",
+    "hints": "Esc でしまう · {mod}⌫ で削除",
+    "sendAndCloseHint": "⌥{mod}↵ で送信して閉じる",
+    "deleted": "下書きを削除しました",
+    "open": "開く",
+    "undo": "元に戻す",
+    "sent": {
+      "note": "Sticky フォルダに保存しました",
+      "task": "タスクを追加しました",
+      "journal": "今日のジャーナルに追加しました"
+    },
+    "tab": {
+      "label": "{count, plural, other {# 件の付箋の下書き}}",
+      "newSticky": "新しい付箋"
+    },
+    "errors": {
+      "empty": "まず何か書いてください。",
+      "taskFailed": "タスクを作成できませんでした。",
+      "tasksOff": "タスクは設定でオフになっています。",
+      "journalOff": "ジャーナルは設定でオフになっています。",
+      "sendFailed": "付箋を送信できませんでした。",
+      "undoExpired": "元に戻せる時間を過ぎました。",
+      "undoFailed": "送信を元に戻せませんでした。"
+    },
+    "inputLabel": "付箋のテキスト",
+    "dismissError": "閉じる"
   }
 }

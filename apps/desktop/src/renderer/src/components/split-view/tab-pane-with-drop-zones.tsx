@@ -68,6 +68,7 @@ export const TabPaneWithDropZones = ({
       if (active.data.current?.type === 'tab') {
         setIsDraggingTab(true)
         setDraggedTabInfo({
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tab draggables are registered with the tab id string
           tabId: active.id as string,
           fromGroupId: active.data.current.groupId
         })
@@ -76,7 +77,9 @@ export const TabPaneWithDropZones = ({
     onDragOver: (event) => {
       const { over } = event
       if (over?.data.current?.type === 'split-zone') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
         const zone = over.data.current.zone as DropZonePosition
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
         const targetGroupId = over.data.current.groupId as string
         if (targetGroupId === groupId) {
           setHoveredZone(zone)
@@ -94,6 +97,7 @@ export const TabPaneWithDropZones = ({
         draggedTabInfo &&
         over.data.current.groupId === groupId
       ) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
         const zone = over.data.current.zone as DropZonePosition
         handleZoneDrop(zone, draggedTabInfo.tabId, draggedTabInfo.fromGroupId)
       }

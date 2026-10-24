@@ -52,6 +52,7 @@ export function getVersionHistory(noteId: string, limit = 50): SnapshotListItem[
     noteId: s.noteId,
     title: s.title,
     wordCount: s.wordCount,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     reason: s.reason as SnapshotReason,
     createdAt: s.createdAt
   }))
@@ -71,6 +72,7 @@ export function getVersion(snapshotId: string): SnapshotDetail | null {
     title: snapshot.title,
     fileContent: snapshot.fileContent,
     wordCount: snapshot.wordCount,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     reason: snapshot.reason as SnapshotReason,
     createdAt: snapshot.createdAt
   }

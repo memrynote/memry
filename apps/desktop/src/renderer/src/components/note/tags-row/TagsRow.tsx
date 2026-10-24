@@ -38,7 +38,7 @@ export const TagsRow = memo(function TagsRow({
   noteId
 }: TagsRowProps) {
   const { t } = useT('notes')
-  const currentTagIds = tags.map((t) => t.id)
+  const currentTagIds = tags.map((tag) => tag.id)
 
   if (hideWhenEmpty && tags.length === 0) return null
 

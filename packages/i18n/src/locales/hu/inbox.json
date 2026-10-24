@@ -15,19 +15,13 @@
       "showWithCount": "Elhalasztott elemek megjelenítése ({count})",
       "hide": "Elhalasztott elemek elrejtése"
     },
-    "density": {
-      "toComfortable": "Kényelmes nézet",
-      "toCompact": "Kompakt nézet"
-    },
     "filter": {
-      "button": "Szűrés",
       "byType": "Szűrés típus szerint",
       "active": "{count, plural, one {Szűrés # típus szerint} other {Szűrés # típus szerint}}",
       "clearAll": "Minden törlése"
     },
     "jobs": {
-      "running": "{count, plural, one {# háttérfeladat fut} other {# háttérfeladat fut}}",
-      "failed": "{count} sikertelen"
+      "running": "{count, plural, one {# háttérfeladat fut} other {# háttérfeladat fut}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "„{name}” létrehozása",
     "addTags": "Címkék hozzáadása…",
     "linkToNote": "Hozzákapcsolás jegyzethez",
-    "linkANote": "Jegyzet hozzákapcsolása",
-    "suggestedCount": "{count} javasolt",
-    "linkNotesPlaceholder": "Jegyzetek hozzákapcsolása…",
     "linkOrCreateNotePlaceholder": "Jegyzet keresése vagy létrehozása…",
     "createNote": "„{title}” létrehozása",
     "pendingNote": "Új jegyzet",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Az emlékeztető adatai nem érhetők el.",
     "triggered": "Emlékeztető aktiválva",
-    "noteLabel": "Emlékeztető megjegyzés",
     "source": "Forrás",
     "journalTitle": "Napló – {date}",
     "noteFallback": "Jegyzet",
@@ -514,9 +504,7 @@
       "settings": "Beállítások",
       "processing": "Feldolgozás…",
       "cancelRecording": "Felvétel megszakítása",
-      "cancel": "Mégse",
       "stopRecording": "Felvétel leállítása",
-      "stop": "Leállítás",
       "recordingError": "Hiba történt a felvétel közben",
       "microphoneAccessDenied": "Mikrofonhozzáférés megtagadva",
       "noMicrophoneFound": "Nem található mikrofon",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# elhalasztott elem} other {# elhalasztott elem}}",
     "notificationBody": "{count, plural, one {Az elhalasztott elem készen áll az átnézésre} other {Az elhalasztott elemek készen állnak}}",
     "toast": "{count, plural, =1 {„{itemTitle}” elhalasztása lejárt} one {# elem elhalasztása lejárt} other {# elem elhalasztása lejárt}}"
+  },
+  "sticky": {
+    "kindLabel": "Küldés mint",
+    "kinds": {
+      "note": "Jegyzet",
+      "task": "Feladat",
+      "journal": "Napló"
+    },
+    "placeholders": {
+      "note": "Jegyezze fel…",
+      "task": "Hívd fel Anát @holnap #otthon !magas",
+      "journal": "Hozzáadás a mai naplóhoz…"
+    },
+    "saving": "Mentés…",
+    "saved": "Mentve",
+    "saveFailed": "Nincs mentve",
+    "tuck": "Elrejtés",
+    "send": "Küldés",
+    "hints": "Esc elrejtés · {mod}⌫ törlés",
+    "sendAndCloseHint": "⌥{mod}↵ elküldi és bezárja",
+    "deleted": "Piszkozat törölve",
+    "open": "Megnyitás",
+    "undo": "Visszavonás",
+    "sent": {
+      "note": "Mentve a Sticky mappába",
+      "task": "Feladat hozzáadva",
+      "journal": "Hozzáadva a mai naplóhoz"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky piszkozat} other {# sticky piszkozat}}",
+      "newSticky": "Új sticky"
+    },
+    "errors": {
+      "empty": "Előbb írjon valamit.",
+      "taskFailed": "Nem sikerült létrehozni a feladatot.",
+      "tasksOff": "A feladatok ki vannak kapcsolva a Beállításokban.",
+      "journalOff": "A napló ki van kapcsolva a Beállításokban.",
+      "sendFailed": "Nem sikerült elküldeni a stickyt.",
+      "undoExpired": "Már késő visszavonni.",
+      "undoFailed": "Nem sikerült visszavonni a küldést."
+    },
+    "inputLabel": "Sticky szövege",
+    "dismissError": "Elvetés"
   }
 }

@@ -1,5 +1,5 @@
 import type { BlockNoteEditor } from '@blocknote/core'
-import type { EditorState } from '@tiptap/pm/state'
+import type { EditorState, Selection } from '@tiptap/pm/state'
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react'
 import {
   BasicTextStyleButton,
@@ -62,10 +62,10 @@ export function ReviewFormattingToolbar({
   // selections — otherwise the comment/suggest tooltip pops over the block.
   const isNodeSelection = useEditorState({
     editor,
-    selector: ({ editor }) => {
-      const state = getProseMirrorState(editor as BlockNoteEditor)
+    selector: ({ editor: stateEditor }) => {
+      const state = getProseMirrorState(stateEditor)
       const selection = state?.selection
-      return Boolean(selection && !selection.empty && (selection as { node?: unknown }).node)
+      return Boolean(selection && !selection.empty && selectionNode(selection))
     }
   })
 
@@ -168,7 +168,7 @@ function useContextMenuOpen(editor: BlockNoteEditor): boolean {
       setIsOpen(true)
     }
     const closeOnPointer = (event: Event): void => {
-      if ((event as { button?: number }).button === 2) return
+      if ('button' in event && event.button === 2) return
       setIsOpen(false)
     }
     const closeOnKey = (): void => setIsOpen(false)
@@ -207,16 +207,13 @@ function LinkToNoteButton() {
 
   const hasSelection = useEditorState({
     editor,
-    selector: ({ editor }) => {
-      const selection = getProseMirrorState(editor as BlockNoteEditor)?.selection
-      if (!selection || selection.empty || (selection as { node?: unknown }).node) return false
+    selector: ({ editor: stateEditor }) => {
+      const selection = getProseMirrorState(stateEditor)?.selection
+      if (!selection || selection.empty || selectionNode(selection)) return false
       // Read the resolved positions defensively, like everything else that
       // reaches into the editor from this file: this selector runs on every
       // editor state, including ones from before the view is mounted.
-      const { $from, $to } = selection as {
-        $from?: { parent?: unknown }
-        $to?: { parent?: unknown }
-      }
+      const { $from, $to }: { $from?: { parent?: unknown }; $to?: { parent?: unknown } } = selection
       return Boolean($from?.parent) && $from?.parent === $to?.parent
     }
   })
@@ -229,7 +226,7 @@ function LinkToNoteButton() {
     event.preventDefault()
     if (handledRef.current) return
 
-    const opened = openWikiLinkForSelection(editor as never, {
+    const opened = openWikiLinkForSelection(editor, {
       openMenu: () =>
         editor.getExtension(SuggestionMenu)?.openSuggestionMenu('[[', {
           // The `[[` is already in the document — this button wrote it.
@@ -273,11 +270,11 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
   const lastSelectionRef = useRef<ReviewSelection | null>(null)
   const selectionState = useEditorState({
     editor,
-    selector: ({ editor }) => {
-      const state = getProseMirrorState(editor as BlockNoteEditor)
+    selector: ({ editor: stateEditor }) => {
+      const state = getProseMirrorState(stateEditor)
       const selection = state.selection
       if (selection.empty) {
-        const domSelection = getDomEditorSelection(editor as BlockNoteEditor)
+        const domSelection = getDomEditorSelection(stateEditor)
         return {
           hasSelection: Boolean(domSelection),
           isMultiBlock: (domSelection?.text ?? '').includes('\n'),
@@ -285,9 +282,9 @@ function ReviewToolbarButton({ onSelect }: { onSelect?: (selection: ReviewSelect
         }
       }
       const text = state.doc.textBetween(selection.from, selection.to, '\n')
-      const reviewSelection = getEditorSelectionFromState(editor as BlockNoteEditor, state)
+      const reviewSelection = getEditorSelectionFromState(stateEditor, state)
       const selectedText = reviewSelection.text.length > 0 ? reviewSelection.text : text.trim()
-      const domSelection = getDomEditorSelection(editor as BlockNoteEditor)
+      const domSelection = getDomEditorSelection(stateEditor)
       const activeSelection =
         selectedText.length > 0 && !selectedText.includes('\n')
           ? reviewSelection
@@ -467,8 +464,14 @@ type TiptapHost = {
   prosemirrorState?: EditorState
 }
 
+/** `node` is set only on a NodeSelection; other selections carry no such field. */
+function selectionNode(selection: Selection): unknown {
+  return 'node' in selection ? selection.node : undefined
+}
+
 export function getProseMirrorState(editor: BlockNoteEditor): EditorState {
-  const host = editor as unknown as TiptapHost
+  const host: TiptapHost = editor
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- both fields are optional on a host that may not be mounted yet; callers (and the selectors above) already guard for the undefined case this type hides
   return (host._tiptapEditor?.state ?? host.prosemirrorState) as EditorState
 }
 

@@ -46,11 +46,12 @@ export interface FakeDeepSeek {
 // (#2708). Thinking is on unless the request disables it.
 function rejectReason(body: ChatRequest, options: Required<FakeDeepSeekOptions>): string | null {
   const thinking = body.thinking?.type !== 'disabled'
-  if (
-    body.reasoning_effort !== undefined &&
-    !options.efforts.includes(String(body.reasoning_effort))
-  ) {
-    return `reasoning_effort ${String(body.reasoning_effort)} is not supported`
+  if (body.reasoning_effort !== undefined) {
+    const effort =
+      typeof body.reasoning_effort === 'string'
+        ? body.reasoning_effort
+        : JSON.stringify(body.reasoning_effort)
+    if (!options.efforts.includes(effort)) return `reasoning_effort ${effort} is not supported`
   }
   if (body.tools && options.tools === 'reject')
     return 'this model does not support function calling'

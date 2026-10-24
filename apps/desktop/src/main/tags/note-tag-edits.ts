@@ -31,7 +31,7 @@ export function keepLockedNoteTags(indexDb: IndexDb, tag: string): () => void {
 
 export function writableTagCarrier(indexDb: IndexDb, noteId: string): boolean {
   const cached = getNoteCacheById(indexDb, noteId)
-  if (!cached || cached.fileType !== 'markdown') return false
+  if (cached?.fileType !== 'markdown') return false
   if (isNoteLocked(noteId, cached.path)) {
     log.info('Left the tags of a locked note unchanged', { noteId })
     return false

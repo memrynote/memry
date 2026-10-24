@@ -65,6 +65,7 @@ const markerPath = (): string => path.join(app.getPath('userData'), CRASH_MARKER
 
 const parseMarker = (raw: string): SessionMarker | null => {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the session marker file; each field is type-checked after parsing
     const parsed = JSON.parse(raw) as SessionMarker
     return parsed && typeof parsed === 'object' ? parsed : null
   } catch {

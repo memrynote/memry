@@ -133,11 +133,11 @@ async function listBoards(page) {
  */
 async function setWidgetHeightById(page, widgetId, h) {
   await page.evaluate(
-    async ({ widgetId, h }) => {
+    async ({ widgetId: widgetIdArg, h: hArg }) => {
       const boards = await window.api.homePages.list()
-      const board = boards.find((b) => b.widgets.some((w) => w.id === widgetId))
-      if (!board) throw new Error(`no board with widget ${widgetId}`)
-      const widgets = board.widgets.map((w) => (w.id === widgetId ? { ...w, h } : w))
+      const board = boards.find((b) => b.widgets.some((w) => w.id === widgetIdArg))
+      if (!board) throw new Error(`no board with widget ${widgetIdArg}`)
+      const widgets = board.widgets.map((w) => (w.id === widgetIdArg ? { ...w, h: hArg } : w))
       await window.api.homePages.update({ id: board.id, widgets })
     },
     { widgetId, h }
@@ -147,11 +147,13 @@ async function setWidgetHeightById(page, widgetId, h) {
 /** Move a widget to a new top-left cell via the homePages API. Caller reloads. */
 async function setWidgetPositionById(page, widgetId, x, y) {
   await page.evaluate(
-    async ({ widgetId, x, y }) => {
+    async ({ widgetId: widgetIdArg, x: xArg, y: yArg }) => {
       const boards = await window.api.homePages.list()
-      const board = boards.find((b) => b.widgets.some((w) => w.id === widgetId))
-      if (!board) throw new Error(`no board with widget ${widgetId}`)
-      const widgets = board.widgets.map((w) => (w.id === widgetId ? { ...w, x, y } : w))
+      const board = boards.find((b) => b.widgets.some((w) => w.id === widgetIdArg))
+      if (!board) throw new Error(`no board with widget ${widgetIdArg}`)
+      const widgets = board.widgets.map((w) =>
+        w.id === widgetIdArg ? { ...w, x: xArg, y: yArg } : w
+      )
       await window.api.homePages.update({ id: board.id, widgets })
     },
     { widgetId, x, y }
@@ -160,9 +162,9 @@ async function setWidgetPositionById(page, widgetId, x, y) {
 
 /** Map of widget id → {x,y} from the active board's persisted model. */
 async function widgetCoords(page, boardId) {
-  return page.evaluate(async (boardId) => {
+  return page.evaluate(async (boardIdArg) => {
     const boards = await window.api.homePages.list()
-    const board = boards.find((b) => b.id === boardId)
+    const board = boards.find((b) => b.id === boardIdArg)
     const out = {}
     for (const w of board?.widgets ?? []) out[w.id] = { x: w.x, y: w.y }
     return out
@@ -222,7 +224,7 @@ async function closeBoardManager(page) {
 /** Board ids ordered by their persisted position. */
 async function boardIdsInOrder(page) {
   const boards = await listBoards(page)
-  return [...boards].sort((a, b) => a.position - b.position).map((b) => b.id)
+  return boards.toSorted((a, b) => a.position - b.position).map((b) => b.id)
 }
 
 /** The id of the currently active board, read from the data DB + localStorage. */
@@ -305,7 +307,7 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
     await expect.poll(async () => (await listBoards(page)).length, { timeout: 20000 }).toBe(2)
 
     const boards = await listBoards(page)
-    const ordered = [...boards].sort((a, b) => a.position - b.position)
+    const ordered = boards.toSorted((a, b) => a.position - b.position)
     await openSwitcher(page)
     await expect(boardItems(page)).toHaveCount(2, { timeout: 20000 })
     const itemIds = await boardItems(page).evaluateAll((nodes) =>
@@ -404,7 +406,7 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
     await ready(page)
 
     // Fallback resolves to boards[0] (position 0) — the seeded "Home" board.
-    const first = [...(await listBoards(page))].sort((a, b) => a.position - b.position)[0]
+    const first = (await listBoards(page)).toSorted((a, b) => a.position - b.position)[0]
     await expect(page.locator(SEL.switcher)).toContainText(first.name, { timeout: 20000 })
   })
 
@@ -461,8 +463,8 @@ test.describe('Home Dashboard — B: board switcher & multi-board', () => {
       .locator(`${SEL.managerRow}[data-board-id="${before[1]}"] ${SEL.managerDrag}`)
       .first()
     const target = page.locator(`${SEL.managerRow}[data-board-id="${before[0]}"]`).first()
-    const from = await handle.boundingBox()
-    const to = await target.boundingBox()
+    const from = (await handle.boundingBox())!
+    const to = (await target.boundingBox())!
 
     // dnd-kit needs a pointer press, movement past its 6px activation distance, and
     // intermediate moves before the drop lands.
@@ -645,7 +647,7 @@ test.describe('Home Dashboard — D: widget frame controls', () => {
     await ready(page)
     await expect(cards).toHaveCount(2, { timeout: 20000 })
     await expect
-      .poll(async () => (await widgetCoords(page, boardId))[movedId]?.x, { timeout: 20000 })
+      .poll(async () => (await widgetCoords(page, boardId))[movedId!]?.x, { timeout: 20000 })
       .toBe(4)
   })
 })
@@ -808,12 +810,12 @@ test.describe('Home Dashboard — H: edge cases', () => {
     // WidgetInstanceSchema now requires integer x/y/w/h (no size field); the board
     // renders a graceful "unknown" placeholder card for the unregistered type.
     await page.evaluate(
-      ({ id, known }) =>
+      ({ id, known: knownArg }) =>
         window.api.homePages.update({
           id,
           widgets: [
             { id: 'broken-1', type: 'does-not-exist', x: 0, y: 0, w: 4, h: 4, config: {} },
-            known
+            knownArg
           ]
         }),
       { id: board.id, known }

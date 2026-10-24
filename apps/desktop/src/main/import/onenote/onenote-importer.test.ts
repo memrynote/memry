@@ -271,7 +271,7 @@ describe('onenoteImporter (integration)', () => {
     const state = JSON.parse(
       fs.readFileSync(path.join(tempVault.path, '.memry', 'import', 'onenote.json'), 'utf8')
     )
-    expect(Object.keys(state.importedPageIds).sort()).toEqual(['p1', 'p1a', 'p2'])
+    expect(Object.keys(state.importedPageIds).toSorted()).toEqual(['p1', 'p1a', 'p2'])
   })
 
   it('skips previously imported pages on a second run (and can be told not to)', async () => {

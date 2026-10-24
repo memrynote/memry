@@ -333,7 +333,7 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
     repeatFrom: 'due'
   })
   assert.equal(task.title, 'CLI task')
-  assert.deepEqual(task.linkedNoteIds.sort(), [linkedNote.id, note.id].sort())
+  assert.deepEqual(task.linkedNoteIds.toSorted(), [linkedNote.id, note.id].toSorted())
   assert.deepEqual(task.repeatConfig, repeatConfig)
   assert.equal(task.sourceNoteId, note.id)
   const taskProject = await app.tasks.projects.create({
@@ -342,13 +342,13 @@ test('opens a standalone vault and exposes core note, journal, task, inbox, and 
   })
   assert.deepEqual(
     (await app.tasks.projects.statuses('inbox'))
-      .sort((a, b) => a.position - b.position)
+      .toSorted((a, b) => a.position - b.position)
       .map((status) => status.name),
     ['To Do', 'In Progress', 'Done']
   )
   assert.deepEqual(
     (await app.tasks.projects.statuses(taskProject.id))
-      .sort((a, b) => a.position - b.position)
+      .toSorted((a, b) => a.position - b.position)
       .map((status) => status.name),
     ['To Do', 'In Progress', 'Done']
   )
@@ -945,7 +945,7 @@ test('setting a tag colour marks it user-authored, like the desktop colour picke
       })
       .from(tagDefinitions)
       .all()
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .toSorted((a, b) => a.name.localeCompare(b.name))
     assert.deepEqual(rows, [
       { name: 'fresh', color: '#123456', authored: true },
       { name: 'minted', color: '#654321', authored: true }

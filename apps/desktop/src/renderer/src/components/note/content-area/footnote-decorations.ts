@@ -132,9 +132,10 @@ export function createFootnotePlugin(onHover?: (hover: FootnoteHover | null) => 
       },
       handleDOMEvents: {
         mouseover(view, event) {
-          const target = (event.target as HTMLElement | null)?.closest?.<HTMLElement>(
-            '.footnote-ref:not(.footnote-ref-editing)'
-          )
+          const target =
+            event.target instanceof Element
+              ? event.target.closest<HTMLElement>('.footnote-ref:not(.footnote-ref-editing)')
+              : undefined
           const key = target?.dataset.footnoteLabel
           const definition = key
             ? FOOTNOTE_PLUGIN_KEY.getState(view.state)?.definitions.get(key)
@@ -156,7 +157,8 @@ export function createFootnotePlugin(onHover?: (hover: FootnoteHover | null) => 
           return false
         },
         mouseout(_view, event) {
-          if ((event.target as HTMLElement | null)?.closest?.('.footnote-ref')) onHover?.(null)
+          if (event.target instanceof Element && event.target.closest('.footnote-ref'))
+            onHover?.(null)
           return false
         }
       }

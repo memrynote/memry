@@ -15,19 +15,13 @@
       "showWithCount": "Zurückgestellte Elemente anzeigen ({count})",
       "hide": "Zurückgestellte Elemente ausblenden"
     },
-    "density": {
-      "toComfortable": "Komfortable Ansicht",
-      "toCompact": "Kompakte Ansicht"
-    },
     "filter": {
-      "button": "Filtern",
       "byType": "Nach Typ filtern",
       "active": "{count, plural, one {Gefiltert nach # Typ} other {Gefiltert nach # Typen}}",
       "clearAll": "Alle entfernen"
     },
     "jobs": {
-      "running": "{count, plural, one {# Hintergrundvorgang läuft} other {# Hintergrundvorgänge laufen}}",
-      "failed": "{count} fehlgeschlagen"
+      "running": "{count, plural, one {# Hintergrundvorgang läuft} other {# Hintergrundvorgänge laufen}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "„{name}“ erstellen",
     "addTags": "Tags hinzufügen…",
     "linkToNote": "Mit Notiz verlinken",
-    "linkANote": "Notiz verlinken",
-    "suggestedCount": "{count} vorgeschlagen",
-    "linkNotesPlaceholder": "Notizen verlinken…",
     "linkOrCreateNotePlaceholder": "Notiz suchen oder erstellen…",
     "createNote": "„{title}“ erstellen",
     "pendingNote": "Neue Notiz",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Erinnerungsdaten nicht verfügbar.",
     "triggered": "Erinnerung ausgelöst",
-    "noteLabel": "Erinnerungsnotiz",
     "source": "Quelle",
     "journalTitle": "Journal – {date}",
     "noteFallback": "Notiz",
@@ -514,9 +504,7 @@
       "settings": "Einstellungen",
       "processing": "Wird verarbeitet…",
       "cancelRecording": "Aufnahme abbrechen",
-      "cancel": "Abbrechen",
       "stopRecording": "Aufnahme beenden",
-      "stop": "Stopp",
       "recordingError": "Bei der Aufnahme ist ein Fehler aufgetreten",
       "microphoneAccessDenied": "Mikrofonzugriff verweigert",
       "noMicrophoneFound": "Kein Mikrofon gefunden",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# zurückgestelltes Element} other {# zurückgestellte Elemente}}",
     "notificationBody": "{count, plural, one {Dein zurückgestelltes Element ist bereit zur Durchsicht} other {Deine zurückgestellten Elemente sind bereit}}",
     "toast": "{count, plural, =1 {„{itemTitle}“ ist wieder da} one {# zurückgestelltes Element ist wieder da} other {# zurückgestellte Elemente sind wieder da}}"
+  },
+  "sticky": {
+    "kindLabel": "Senden als",
+    "kinds": {
+      "note": "Notiz",
+      "task": "Aufgabe",
+      "journal": "Journal"
+    },
+    "placeholders": {
+      "note": "Kurz festhalten…",
+      "task": "Ana anrufen @morgen #zuhause !hoch",
+      "journal": "Zum heutigen Journal hinzufügen…"
+    },
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert",
+    "saveFailed": "Nicht gespeichert",
+    "tuck": "Wegstecken",
+    "send": "Senden",
+    "hints": "Esc wegstecken · {mod}⌫ löschen",
+    "sendAndCloseHint": "⌥{mod}↵ sendet und schließt",
+    "deleted": "Entwurf gelöscht",
+    "open": "Öffnen",
+    "undo": "Rückgängig",
+    "sent": {
+      "note": "Im Ordner „Sticky“ gespeichert",
+      "task": "Aufgabe hinzugefügt",
+      "journal": "Zum heutigen Journal hinzugefügt"
+    },
+    "tab": {
+      "label": "{count, plural, one {# Sticky-Entwurf} other {# Sticky-Entwürfe}}",
+      "newSticky": "Neuer Sticky"
+    },
+    "errors": {
+      "empty": "Schreib zuerst etwas.",
+      "taskFailed": "Die Aufgabe konnte nicht erstellt werden.",
+      "tasksOff": "Aufgaben sind in den Einstellungen deaktiviert.",
+      "journalOff": "Das Journal ist in den Einstellungen deaktiviert.",
+      "sendFailed": "Der Sticky konnte nicht gesendet werden.",
+      "undoExpired": "Zum Rückgängigmachen ist es zu spät.",
+      "undoFailed": "Das Senden konnte nicht rückgängig gemacht werden."
+    },
+    "inputLabel": "Sticky-Text",
+    "dismissError": "Ausblenden"
   }
 }

@@ -430,9 +430,9 @@ describe('worker', () => {
       }
       expect(result.results).toHaveLength(0)
       expect(result.failures).toHaveLength(2)
-      expect(result.failures[0]!.error).toBe('could not decrypt payload')
-      expect(result.failures[0]!.isSignatureError).toBe(false)
-      expect(result.failures[0]!.index).toBe(0)
+      expect(result.failures[0].error).toBe('could not decrypt payload')
+      expect(result.failures[0].isSignatureError).toBe(false)
+      expect(result.failures[0].index).toBe(0)
     })
 
     it('#then flags signature failures for the caller', async () => {
@@ -453,7 +453,7 @@ describe('worker', () => {
       if (result.type !== 'decrypt-crdt-batch-result') {
         throw new Error(`unexpected reply ${result.type}`)
       }
-      expect(result.failures[0]!.isSignatureError).toBe(true)
+      expect(result.failures[0].isSignatureError).toBe(true)
     })
 
     it('#then reports a failure when the signer key is missing', async () => {
@@ -470,8 +470,8 @@ describe('worker', () => {
         throw new Error(`unexpected reply ${result.type}`)
       }
       expect(result.results).toHaveLength(0)
-      expect(result.failures[0]!.error).toContain('No public key')
-      expect(result.failures[0]!.noteId).toBe('n6')
+      expect(result.failures[0].error).toContain('No public key')
+      expect(result.failures[0].noteId).toBe('n6')
     })
 
     it('#then cleans up the vault key', async () => {
@@ -494,7 +494,7 @@ describe('worker', () => {
   // directions, so both are pinned.
   describe('#given worker ready #when an unknown message kind is received', () => {
     const emitUnknown = (msg: unknown): void => {
-      mockPort.emit('message', msg as MainToWorkerMessage)
+      mockPort.emit('message', msg)
     }
 
     it('#then replies with a typed error for a request-shaped message', async () => {

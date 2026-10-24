@@ -79,6 +79,7 @@ const resolveStatus = (
 ): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
   const status = statuses.find((s) => s.id === task.statusId)
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- status.type is user-extensible StatusType; the icon draws only the three base types, and `|| 'todo'` keeps the fallback
     type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
     color: status?.color || 'var(--text-tertiary)'
   }
@@ -144,6 +145,7 @@ export const ParentTaskRow = ({
   }, [isSelected])
 
   const handleRowClick = (e: React.MouseEvent): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mouse/keyboard event target is a DOM element in this handler; only closest()/tagName are read
     if ((e.target as HTMLElement).closest('[data-expand-button]')) return
 
     if (e.shiftKey && onShiftSelect) {

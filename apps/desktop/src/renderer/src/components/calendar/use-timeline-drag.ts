@@ -74,6 +74,7 @@ export function useTimelineDrag({
 
   const dayFromPointer = useCallback(
     (event: React.PointerEvent): string | null => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- React currentTarget is the bound track element
       const track = (event.currentTarget as HTMLElement).closest<HTMLElement>(
         '[data-timeline-track]'
       )
@@ -190,6 +191,7 @@ export function useTimelineDrag({
   const startSchedule = useCallback(
     (event: React.PointerEvent, task: Task): void => {
       if (event.button !== 0) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- React currentTarget is the bound track element
       const track = (event.currentTarget as HTMLElement).closest<HTMLElement>(
         '[data-timeline-track]'
       )

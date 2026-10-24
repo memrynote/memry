@@ -82,6 +82,7 @@ function inIdBatches<T>(ids: readonly string[], query: (batch: string[]) => T[])
 /** Every filed PDF and image in the index, or the ones among `ids`. */
 export function listFiledTextFiles(db: IndexDb, ids?: readonly string[]): FiledTextFile[] {
   const query = (batch?: string[]) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
     db
       .select({ noteId: noteCache.id, path: noteCache.path, fileType: noteCache.fileType })
       .from(noteCache)

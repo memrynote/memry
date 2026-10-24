@@ -47,8 +47,10 @@ export function AddPropertyPopup({
         return
       }
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the Select option values are the PROPERTY_TYPE_CONFIG keys
       const config = PROPERTY_TYPE_CONFIG[type as PropertyType]
       const baseName = propertyName.trim() || config.label
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the Select option values are the PROPERTY_TYPE_CONFIG keys
       onAdd({ name: baseName, type: type as PropertyType })
       setPropertyName('')
     },
@@ -68,7 +70,7 @@ export function AddPropertyPopup({
     if (e.key === 'Enter') {
       e.preventDefault()
       const list = e.currentTarget.closest('[data-slot="picker-content"]')
-      const firstItem = list?.querySelector('[data-slot="picker-item"]') as HTMLButtonElement
+      const firstItem = list?.querySelector<HTMLButtonElement>('[data-slot="picker-item"]')
       firstItem?.focus()
     }
   }, [])

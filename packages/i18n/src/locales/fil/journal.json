@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Mga koneksyon mula sa AI",
     "todaysNotes": "Mga tala ngayong araw",
-    "todaysSchedule": "Iskedyul ngayong araw",
-    "todaysTasks": "Mga gawain ngayong araw",
     "tasks": "Mga gawain",
     "technicalDetails": "Mga teknikal na detalye"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Magandang hapon",
       "evening": "Magandang gabi",
       "night": "Magandang gabi"
-    },
-    "allDay": "Buong araw"
+    }
   },
   "nav": {
     "previousDay": "Nakaraang araw",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Higit pang mga pagpipilian",
     "documentStatistics": "Mga istatistika ng dokumento",
-    "dayContext": "Konteksto ng araw: mga gawain at iskedyul",
-    "scheduleEvents": "Mga kaganapan sa iskedyul",
-    "tasks": "Mga gawain",
     "notesCreatedToday": "{count} tala ang ginawa ngayong araw"
   },
   "empty": {
     "noEntry": "Walang entry",
     "noDaysInMonth": "Walang araw sa buwang ito",
-    "noEventsScheduled": "Walang nakaiskedyul na mga kaganapan",
-    "noEventsScheduledToday": "Walang nakaiskedyul na mga kaganapan ngayong araw",
-    "noEventsWereScheduled": "Walang nakaiskedyul na mga kaganapan",
-    "noTasksDue": "Walang gawaing may takda",
-    "noTasksDueToday": "Walang gawaing may takda ngayong araw",
-    "noTasksWereDue": "Walang nakatakdang gawain",
     "noNotesToday": "Walang ginawang tala ngayong araw",
     "startDocumenting": "Simulan ang pagdodokumento ng iyong mga saloobin at ideya"
   },
@@ -155,9 +143,7 @@
     "day": "araw",
     "days": "araw",
     "event": "kaganapan",
-    "events": "kaganapan",
     "task": "gawain",
-    "todo": "gagawin",
     "moreConnections": "+ {count} pang koneksyon",
     "moreConnections_plural": "+ {count} pang koneksyon",
     "moreNotes": "+ {count} pang tala",
@@ -166,7 +152,6 @@
     "charactersWritten": "karakter na naisulat",
     "words": "{count} salita",
     "characters": "{count} karakter",
-    "completed": "{count} ang tapos na",
     "overdue": "{count} ang lampas na"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Binago noong {date}"
   },
   "task": {
-    "completed": "Tapos na",
-    "notCompleted": "Hindi pa tapos",
-    "priority": "Priyoridad: {priority}",
-    "overdue": "lampas na",
-    "markComplete": "Markahang tapos na ang “{title}”",
-    "markNotComplete": "Markahang hindi pa tapos ang “{title}”"
+    "priority": "Priyoridad: {priority}"
   },
   "template": {
     "using": "Gamit ang “{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Nasa memorya pa rin ang nilalaman mo. I-click para subukan ulit ang pag-save.",
-    "noteNotFound": "Hindi nahanap ang tala na “{target}”",
     "createLinkedFailed": "Hindi magawa ang naka-link na tala",
     "fileNotFound": "Hindi nahanap ang file: {target}",
     "openLinkedItemFailed": "Hindi mabuksan ang naka-link na item",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Tanggalin ang entry sa talaarawan",
     "description": "Sigurado ka bang gusto mong tanggalin ang “{title}”? Hindi na ito maibabalik."
+  },
+  "dayTimeline": {
+    "label": "Iskedyul ng araw",
+    "allDay": "Mga item sa buong araw",
+    "unscheduled": "Walang iskedyul",
+    "unscheduledEmpty": "Walang gawaing walang iskedyul. I-drag ang isang block dito para alisin ang oras nito.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Tapusin ang {title}"
   }
 }

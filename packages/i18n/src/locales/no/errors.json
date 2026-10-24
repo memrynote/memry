@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Abonnementet ditt synkroniserer færre hvelv enn denne kontoen har, så dette hvelvet blir liggende på denne enheten. Fjern et hvelv fra kontoen din i Innstillinger → Konto, eller oppgrader abonnementet.",
     "certificatePinFailed": "Sikker tilkobling mislyktes. Sjekk nettverkstilkoblingen.",
     "deviceKeyMismatch": "Sikkerhetsnøkkelen til denne enheten samsvarer ikke lenger med den som er registrert for kontoen din, så serveren avviser endringene fra den. Logg på igjen på denne enheten for å registrere den på nytt.",
+    "deviceKeysMissing": "Endringer på denne enheten lastes ikke opp fordi enhetsnøklene mangler. Velg Reparer for å gjenopprette dem. Hvis denne enheten ikke lenger har nøklene sine, må du logge inn på nytt og kanskje oppgi gjenopprettingsfrasen. Notater, oppgaver og prosjekter som ikke er synkronisert, beholdes.",
     "keychainUnavailable": "Synkroniseringen er satt på pause fordi Memry ikke får lest synkroniseringsnøklene fra nøkkelringen i systemet akkurat nå. Lås opp nøkkelringen, så fortsetter synkroniseringen av seg selv. Hvis ikke, start Memry på nytt. Ingenting ble slettet.",
     "unknown": "Det oppsto en uventet synkroniseringsfeil. Prøver igjen automatisk.",
     "statusFetchFailed": "Kunne ikke hente synkroniseringsstatus",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synkronisering mislyktes",
     "pauseFailed": "Kunne ikke sette synkroniseringen på pause",
     "resumeFailed": "Kunne ikke gjenoppta synkroniseringen",
+    "syncNowSignedOut": "Synkronisering krever at du logger inn på nytt på denne enheten.",
+    "syncNowBusy": "Synkroniseringen kjører allerede. Prøv igjen om et øyeblikk.",
+    "syncNowPaused": "Synkroniseringen ble satt på pause mens den kjørte. Gjenoppta den fra synkroniseringsmenyen.",
+    "openAccountSettings": "Åpne innstillinger",
     "settingsNotInitialized": "Innstillingssynkronisering er ikke initialisert",
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekreftes og har blitt satt i karantene for sikkerhets skyld.",
     "securityQuarantineRetry": "Et synkroniseringselement besto ikke signaturkontrollen og blir forsøkt på nytt.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "KI-redigering i teksten er slått av",
-    "listOllamaModelsFailed": "Kunne ikke liste Ollama-modeller"
+    "listOllamaModelsFailed": "Kunne ikke liste Ollama-modeller",
+    "writingAssistInvalid": "Forespørselen kunne ikke sendes til AI-modellen.",
+    "apiKeyMissing": "Legg til API-nøkkelen din for {provider} i Innstillinger → AI for å bruke skriveverktøyene.",
+    "apiKeyInvalid": "API-nøkkelen din for {provider} ble avvist. Sjekk den i Innstillinger → AI.",
+    "ollamaUnreachable": "Ollama kjører ikke. Start den med «ollama serve», eller velg en annen leverandør i Innstillinger → AI.",
+    "providerUnreachable": "Kunne ikke nå {provider}. Sjekk internettforbindelsen og prøv igjen."
   },
   "auth": {
     "notAuthenticated": "Ikke pålogget",
-    "sessionExpired": "Økten er utløpt. Logg på igjen.",
     "setupSessionExpired": "Påloggingen din ble tidsavbrutt før dette ble fullført. Logg på igjen, og skriv deretter inn gjenopprettingsfrasen.",
     "setupSessionExpiredLinking": "Påloggingen din ble tidsavbrutt før denne enheten var ferdig tilkoblet. Logg på igjen, og skann koden en gang til.",
     "invalidRecoveryPhraseFormat": "Ugyldig format på gjenopprettingsfrasen",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Kunne ikke gjøre den eksterne kalenderhendelsen redigerbar",
     "onlyCalendarSourcesRetryable": "Bare kalenderkilder kan forsøkes på nytt",
     "invalidProviderSettings": "Ugyldige innstillinger for kalenderleverandøren",
-    "getExternalEventFailed": "Kunne ikke laste inn denne hendelsen. Den ligger fortsatt i kalenderen din – prøv å åpne den igjen."
+    "getExternalEventFailed": "Kunne ikke laste inn denne hendelsen. Den ligger fortsatt i kalenderen din – prøv å åpne den igjen.",
+    "listLinkedNotesFailed": "Kunne ikke laste inn notatene som er lenket til denne hendelsen."
   },
   "canvasFolder": {
     "exists": "Det finnes allerede en lerretsmappe med det navnet her.",
@@ -209,10 +219,35 @@
     "previewFailed": "Forhåndsvisning mislyktes",
     "listFailed": "Kunne ikke hente listen over importverktøy",
     "appleNotesFoldersFailed": "Kunne ikke lese Apple Notes-mappene dine",
+    "appleNotesPasswordFailed": "Kunne ikke kontrollere passordet til Notes.",
     "onenoteStatusFailed": "Kunne ikke lese tilkoblingsstatusen for OneNote",
     "onenoteConnectFailed": "Microsoft-pålogging mislyktes",
     "onenoteDisconnectFailed": "Kunne ikke koble fra Microsoft-kontoen",
-    "onenoteNotebooksFailed": "Kunne ikke laste inn OneNote-notatbøker"
+    "onenoteNotebooksFailed": "Kunne ikke laste inn OneNote-notatbøker",
+    "readwiseStatusFailed": "Kunne ikke lese tilkoblingsstatusen til Readwise",
+    "readwiseConnectFailed": "Kunne ikke koble til Readwise",
+    "readwiseInvalidToken": "Readwise godtok ikke dette tokenet. Kopier det på nytt fra readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise begrenser forespørsler akkurat nå. Prøv igjen om et minutt.",
+    "readwiseUnreachable": "Kunne ikke nå Readwise. Sjekk tilkoblingen og prøv igjen.",
+    "readwiseDisconnectFailed": "Kunne ikke koble fra Readwise",
+    "readwiseSyncFailed": "Kunne ikke starte Readwise-synkroniseringen",
+    "readwiseRunUnavailable": "Readwise synkroniseres ikke på denne enheten.",
+    "readwiseRunInProgress": "Et Readwise-import kjører allerede. Prøv igjen når det er ferdig.",
+    "readwiseOptionsFailed": "Kunne ikke lagre Readwise-innstillingene",
+    "readwiseNotConnected": "Readwise er ikke tilkoblet. Lim inn tilgangstokenet ditt først.",
+    "readwiseSyncsElsewhere": "Readwise synkroniseres på en annen enhet. Kjør denne kommandoen der.",
+    "readwiseBookCommandFailed": "Kunne ikke fullføre Readwise-kommandoen",
+    "readwiseBookGone": "Denne boken finnes ikke lenger i Readwise-biblioteket ditt.",
+    "readwiseNotLinked": "Dette notatet er ikke lenket til en Readwise-bok.",
+    "readwiseNotDeleted": "Denne boken er ikke i listen over slettede.",
+    "readwiseBookBusy": "Notatet ble endret mens kommandoen kjørte. Prøv igjen.",
+    "readwiseSyncsOnDevice": "Readwise synkroniseres på {device}. Bruk «Synkroniser her i stedet» for å flytte det hit.",
+    "readwiseAnotherDevice": "en annen enhet",
+    "readwiseNotReady": "Memry er ikke ferdig med å synkronisere med de andre enhetene dine ennå. Prøv igjen om et øyeblikk.",
+    "readwiseNeedsSync": "Slå på synkronisering for å flytte Readwise mellom enheter.",
+    "readwiseClaimNotDelivered": "Kunne ikke varsle de andre enhetene dine ennå. Sjekk tilkoblingen og prøv igjen.",
+    "readwiseTakeOverFailed": "Kunne ikke flytte Readwise til denne enheten",
+    "readwiseCancelFailed": "Kunne ikke avbryte Readwise-synkroniseringen"
   },
   "project": {
     "createFailed": "Kunne ikke opprette prosjektet",
@@ -236,7 +271,8 @@
     "renameFailed": "Kunne ikke gi egenskapen nytt navn",
     "createDefinitionFailed": "Kunne ikke opprette egenskapsdefinisjonen",
     "updateDefinitionFailed": "Kunne ikke oppdatere egenskapsdefinisjonen",
-    "setCalendarVisibilityFailed": "Kunne ikke angi synlighet for kalenderegenskapen"
+    "setCalendarVisibilityFailed": "Kunne ikke angi synlighet for kalenderegenskapen",
+    "definitionsFileUnreadable": "Kan ikke lagre egenskapsendringer fordi .memry/properties.md ikke kan leses. Fiks eller fjern filen, og prøv igjen."
   },
   "reminder": {
     "notFound": "Finner ikke påminnelsen",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Kunne ikke laste inn modellen",
     "voiceModelDownloadFailed": "Kunne ikke laste ned talemodellen",
     "terminalCommandInstallFailed": "Kunne ikke installere terminalkommandoen",
-    "terminalCommandUninstallFailed": "Kunne ikke avinstallere terminalkommandoen",
-    "shortcutInUse": "Hurtigtasten {shortcut} er allerede i bruk"
+    "terminalCommandUninstallFailed": "Kunne ikke avinstallere terminalkommandoen"
   },
   "tag": {
+    "renameInProgress": "Et navnebytte fra #{from} til #{to} pågår fortsatt. Prøv igjen når det er ferdig.",
     "mergeSameTag": "Kilde- og måltaggen er den samme",
     "categoryNameRequired": "Kategorinavn er påkrevd",
     "pinNoteFailed": "Kunne ikke feste notatet",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Kunne ikke slette oppgavene",
     "moveManyFailed": "Kunne ikke flytte oppgavene",
     "archiveManyFailed": "Kunne ikke arkivere oppgavene",
-    "projectMissing": "Det prosjektet finnes ikke lenger"
+    "projectMissing": "Det prosjektet finnes ikke lenger",
+    "invalidParent": "En oppgave kan ikke legges dit"
   },
   "taskStatus": {
     "createFailed": "Kunne ikke opprette statusen",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Eieren har gjort dette notatet skrivebeskyttet.",
     "folderReadOnly": "Eieren har gjort denne mappen skrivebeskyttet."
+  },
+  "ocrLanguages": {
+    "unreachable": "Kunne ikke nå Memry-serveren. Språkene som allerede er her, fungerer fortsatt, og Memry prøver igjen ved neste oppstart.",
+    "unavailable": "Memry-serveren tilbyr ikke dette språket ennå. Språkene som allerede er her, fungerer fortsatt.",
+    "corrupt": "De nedlastede dataene samsvarte ikke med det Memry forventer, så de ble ikke brukt. Prøv på nytt for å laste dem ned igjen.",
+    "saveFailed": "Språkdataene kunne ikke lagres på denne datamaskinen. Sjekk ledig diskplass og prøv på nytt."
+  },
+  "tagFields": {
+    "reservedName": "«{name}» er reservert og kan ikke brukes som feltnavn",
+    "duplicateField": "#{definedBy} har allerede et felt kalt «{name}»",
+    "unknownField": "Denne taggen har ikke et felt kalt «{name}»",
+    "inheritedField": "«{name}» kommer fra #{definedBy}. Rediger det der",
+    "cycle": "#{parent} henter allerede feltene sine fra denne taggen",
+    "unreadableSchema": "En nyere versjon av Memry har endret denne taggen. Oppdater Memry for å redigere den",
+    "relationTargetRequired": "Velg hvilken tagg denne relasjonen peker til",
+    "renameRunning": "Et annet feltnavnbytte avsluttes fortsatt ({from} til {to}). Prøv igjen når det er ferdig."
   }
 }

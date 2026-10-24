@@ -11,17 +11,17 @@ import { test as base, expect } from './sync-auth-fixtures'
 import { startSyncProxy, type SyncProxy } from '../utils/sync-proxy'
 
 export const test = base.extend<{ syncProxy: SyncProxy }>({
-  syncProxy: async ({ syncBootstrap }, use) => {
+  syncProxy: async ({ syncBootstrap }, provide) => {
     const proxy = await startSyncProxy(syncBootstrap.serverUrl)
     try {
-      await use(proxy)
+      await provide(proxy)
     } finally {
       await proxy.close()
     }
   },
 
-  syncServerUrl: async ({ syncProxy }, use) => {
-    await use(syncProxy.url)
+  syncServerUrl: async ({ syncProxy }, provide) => {
+    await provide(syncProxy.url)
   }
 })
 

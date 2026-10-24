@@ -210,6 +210,7 @@ async function exchangeRefreshTokenForAccess(creds: GoogleTestCredentials): Prom
     throw new Error(`Google token exchange failed (${res.status}): ${detail || 'no body'}`)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fetch JSON body is untyped; shape is fixed by the endpoint this call targets
   const json = (await res.json()) as { access_token?: string }
   if (!json.access_token) {
     throw new Error('Google token response missing access_token')
@@ -239,6 +240,7 @@ async function fetchGooglePrimaryCalendar(accessToken: string): Promise<PrimaryC
     throw new Error(`Google calendars/primary failed (${res.status}): ${detail || 'no body'}`)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fetch JSON body is untyped; shape is fixed by the endpoint this call targets
   const json = (await res.json()) as PrimaryCalendarShape
   if (!json.id) {
     throw new Error('Google calendars/primary response missing id')
@@ -264,14 +266,14 @@ declare global {
   var __memryTestHooks: MemryTestHooks | undefined
 }
 
+const toLocalIso = (day: string, hours: number, minutes: number): string => {
+  const [year, month, date] = day.split('-').map(Number)
+  return new Date(year, month - 1, date, hours, minutes, 0, 0).toISOString()
+}
+
 export function registerTestHooks(): void {
   if (process.env.NODE_ENV !== 'test') {
     return
-  }
-
-  const toLocalIso = (day: string, hours: number, minutes: number): string => {
-    const [year, month, date] = day.split('-').map(Number)
-    return new Date(year, month - 1, date, hours, minutes, 0, 0).toISOString()
   }
 
   globalThis.__memryTestHooks = {
@@ -727,6 +729,7 @@ export function registerTestHooks(): void {
         throw new Error(`Google events.insert failed (${res.status}): ${detail || 'no body'}`)
       }
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fetch JSON body is untyped; shape is fixed by the endpoint this call targets
       const json = (await res.json()) as { id?: string }
       if (!json.id) {
         throw new Error('Google events.insert response missing event id')
@@ -837,6 +840,7 @@ export function registerTestHooks(): void {
         throw new Error(`Google events.get failed (${res.status}): ${detail || 'no body'}`)
       }
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fetch JSON body is untyped; shape is fixed by the endpoint this call targets
       const json = (await res.json()) as {
         id?: string
         summary?: string | null

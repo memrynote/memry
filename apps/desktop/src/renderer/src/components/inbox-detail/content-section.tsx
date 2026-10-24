@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { TweetCard } from './tweet-card'
+import { metadataAs } from './item-metadata'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import {
@@ -181,7 +182,7 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
   if ('duration' in item && typeof item.duration === 'number') {
     duration = item.duration
   } else if ('metadata' in item) {
-    const metadata = item.metadata as Record<string, unknown> | null
+    const metadata = metadataAs<Record<string, unknown> | null>(item.metadata)
     if (typeof metadata?.duration === 'number') {
       duration = metadata.duration
     }
@@ -189,7 +190,9 @@ export const ContentMetadata = ({ item }: ContentMetadataProps): React.JSX.Eleme
 
   // Get link metadata
   const linkMetadata =
-    item.type === 'link' && 'metadata' in item ? (item.metadata as LinkMetadata | null) : null
+    item.type === 'link' && 'metadata' in item
+      ? metadataAs<LinkMetadata | null>(item.metadata)
+      : null
   const capturedDate = formatDateParts(item.createdAt, clockFormat)
   const capturedAt =
     capturedDate.kind === 'today'
@@ -261,7 +264,7 @@ interface ImagePreviewProps {
 const ImagePreview = ({ item }: ImagePreviewProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('inbox')
   const { t } = useT('inbox')
-  const metadata = 'metadata' in item ? (item.metadata as ImageMetadata | null) : null
+  const metadata = 'metadata' in item ? metadataAs<ImageMetadata | null>(item.metadata) : null
   const imageUrl = ('attachmentUrl' in item && item.attachmentUrl) || item.thumbnailUrl
 
   return (
@@ -347,6 +350,8 @@ const VoicePreview = ({
   const [duration, setDuration] = useState(0)
   const [copied, setCopied] = useState(false)
   const [audioError, setAudioError] = useState<string | null>(null)
+  // Inline (not metadataAs): a helper call result is opaque to the React compiler and breaks the handleWaveformClick memoization.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- voice items store VoiceMetadata; the metadata union has no discriminant to narrow on
   const metadata = 'metadata' in item ? (item.metadata as VoiceMetadata | null) : null
 
   // Stored recording envelope renders instantly (no flat-bar flash); items
@@ -369,9 +374,9 @@ const VoicePreview = ({
     duration || metadata?.duration || ('duration' in item ? item.duration : 0) || 0
 
   useEffect(() => {
-    if (!audioUrl) return
+    if (!audioUrl) return undefined
     // Envelope already persisted at capture time — skip the fetch + decode.
-    if (storedWaveform && storedWaveform.length > 0) return
+    if (storedWaveform && storedWaveform.length > 0) return undefined
 
     let cancelled = false
     let activeContext: AudioContext | null = null
@@ -664,7 +669,7 @@ interface PdfPreviewProps {
 
 const PdfPreview = ({ item }: PdfPreviewProps): React.JSX.Element => {
   const { t } = useT('inbox')
-  const metadata = 'metadata' in item ? (item.metadata as PdfMetadata | null) : null
+  const metadata = 'metadata' in item ? metadataAs<PdfMetadata | null>(item.metadata) : null
 
   const metaParts: string[] = []
   if (metadata?.pageCount) metaParts.push(t('list.pageCount', { count: metadata.pageCount }))
@@ -704,7 +709,8 @@ interface VideoPreviewProps {
 const VideoPreview = ({ item }: VideoPreviewProps): React.JSX.Element => {
   const { t } = useT('inbox')
   const videoUrl = 'attachmentUrl' in item ? item.attachmentUrl : null
-  const metadata = 'metadata' in item ? (item.metadata as Record<string, unknown> | null) : null
+  const metadata =
+    'metadata' in item ? metadataAs<Record<string, unknown> | null>(item.metadata) : null
 
   return (
     <div className="space-y-4">
@@ -832,6 +838,7 @@ export const ContentSection = ({
     case 'video':
       return <VideoPreview item={item} />
     case 'social':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- social items store SocialMetadata, which TweetCard's looser item shape accepts; TS cannot relate the metadata union to it
       return <TweetCard item={item as Parameters<typeof TweetCard>[0]['item']} />
     case 'reminder':
       return <ReminderDetail item={item} />

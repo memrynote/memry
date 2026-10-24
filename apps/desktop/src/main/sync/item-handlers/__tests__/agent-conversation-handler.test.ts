@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { ready } from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { createConversationStore } from '../../../agent/storage/conversation-store'
@@ -35,7 +35,7 @@ describe('AgentConversationHandler', () => {
   let vaultKey: Uint8Array
 
   beforeAll(async () => {
-    await sodium.ready
+    await ready
     vaultKey = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_KEYBYTES)
   })
 

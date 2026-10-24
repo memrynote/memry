@@ -21,6 +21,10 @@ export type ParsedSchemaColumn =
   | { kind: 'ok'; schema: TagSchemaStored }
   | { kind: 'unreadable'; raw: Record<string, unknown> }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export function parseSchemaColumn(text: string | null): ParsedSchemaColumn {
   if (text === null) return { kind: 'none' }
   let value: unknown
@@ -31,10 +35,7 @@ export function parseSchemaColumn(text: string | null): ParsedSchemaColumn {
   }
   const parsed = TagSchemaWire.safeParse(value)
   if (parsed.success) return { kind: 'ok', schema: parsed.data }
-  const raw =
-    typeof value === 'object' && value !== null && !Array.isArray(value)
-      ? (value as Record<string, unknown>)
-      : {}
+  const raw = isRecord(value) ? value : {}
   return { kind: 'unreadable', raw }
 }
 
@@ -269,7 +270,8 @@ export function applySchemaEdit(
   if (edit.kind === 'rewrite-reference') {
     const next = rewriteSchemaReference(base, edit.from, edit.to)
     return next
-      ? { ok: true, next: next as TagSchemaStored, changed: true }
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- rewriteSchemaReference returns the stored schema with one reference changed
+        { ok: true, next: next as TagSchemaStored, changed: true }
       : { ok: true, next: base, changed: false }
   }
 
@@ -379,6 +381,8 @@ export function applySchemaEdit(
   if (current === null && canonicalJson(body) === canonicalJson(base)) {
     return { ok: true, next: base, changed: false }
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the schema is stored as a versioned JSON object; body and stamped are that same object seen through the generic VersionedObject type
   const stamped = stampVersionedValue(current, body as VersionedObject)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- stampVersionedValue returns the body it was given with `t` bumped
   return { ok: true, next: stamped as TagSchemaStored, changed: stamped !== current }
 }

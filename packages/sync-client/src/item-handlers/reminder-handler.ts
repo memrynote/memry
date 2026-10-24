@@ -184,9 +184,7 @@ class ReminderHandler extends BaseItemHandler<ReminderSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(reminders).where(eq(reminders.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(reminders).where(eq(reminders.id, itemId)).get()
   }
 
   buildPushPayload(

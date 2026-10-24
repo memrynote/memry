@@ -141,7 +141,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   // Attach wheel event with passive: false to allow preventDefault
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handleWheelEvent = (e: WheelEvent) => {
       e.preventDefault()
@@ -205,7 +205,7 @@ export function ImageViewer({ src, alt = 'Image', className }: ImageViewerProps)
   // Listeners live on the window so the drag survives leaving the container and still
   // ends on mouseup outside it; `position` is reconciled once the gesture finishes.
   useEffect(() => {
-    if (!isDragging) return
+    if (!isDragging) return undefined
 
     const handleMouseMove = (e: MouseEvent) => {
       const next = {

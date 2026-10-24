@@ -68,7 +68,7 @@ export function SidebarBookmarkList({
         position: bookmark.position,
         created: Date.parse(bookmark.createdAt)
       }))
-      .sort(compareListItems(sortMode))
+      .toSorted(compareListItems(sortMode))
       .map((entry) => entry.bookmark)
   }, [bookmarks, sortMode])
 

@@ -127,7 +127,7 @@ export function useTimelineDrag({
   })
 
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
     const onMove = (event: PointerEvent): void => {
       pointer.current = { x: event.clientX, y: event.clientY }
     }

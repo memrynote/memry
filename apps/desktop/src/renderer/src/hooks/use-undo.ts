@@ -269,6 +269,7 @@ export const useUndoKeyboardShortcut = (): void => {
 
       if (modifier && e.key.toLowerCase() === 'z' && !e.shiftKey) {
         // Don't intercept if in an input field (let native undo work)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keydown event target from the DOM is an EventTarget; only read for tagName/isContentEditable
         const target = e.target as HTMLElement
         const isInputField =
           target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable

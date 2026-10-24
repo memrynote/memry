@@ -145,6 +145,7 @@ test.describe('Agent chat create-task flow', () => {
 })
 
 async function startFakeLocalOpenAiServer(): Promise<{ server: http.Server; baseUrl: string }> {
+  // oxlint-disable-next-line typescript/no-misused-promises -- the async handler catches its own errors and always answers the response
   const server = http.createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://127.0.0.1')
@@ -175,7 +176,7 @@ async function startFakeLocalOpenAiServer(): Promise<{ server: http.Server; base
 
 async function readJson(request: http.IncomingMessage): Promise<Record<string, any>> {
   let body = ''
-  for await (const chunk of request) body += chunk
+  for await (const chunkArg of request) body += chunkArg
   return body ? JSON.parse(body) : {}
 }
 

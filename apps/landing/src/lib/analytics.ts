@@ -144,7 +144,7 @@ function asSearchableText(value: unknown): string {
 export function isSafeLinksScannerException(
   event: { event?: string; properties?: Record<string, unknown> } | null | undefined
 ): boolean {
-  if (!event || event.event !== '$exception') return false
+  if (event?.event !== '$exception') return false
   const properties = event.properties
   if (!properties) return false
 
@@ -182,7 +182,7 @@ const EXCEPTION_SOURCE_KEYS = ['$exception_sources', '$exception_list', '$except
 export function isReplayRecorderException(
   event: { event?: string; properties?: Record<string, unknown> } | null | undefined
 ): boolean {
-  if (!event || event.event !== '$exception') return false
+  if (event?.event !== '$exception') return false
   const properties = event.properties
   if (!properties) return false
 

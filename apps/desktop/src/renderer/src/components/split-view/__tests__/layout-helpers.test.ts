@@ -110,8 +110,7 @@ describe('layout-helpers', () => {
       const result = removeGroupFromLayout(layout, 'g2')
 
       expect(result).not.toBeNull()
-      if (!(result && result.type === 'split'))
-        throw new Error('expected: result && result.type === "split"')
+      if (result?.type !== 'split') throw new Error('expected: result && result.type === "split"')
       expect(result.first).toEqual({ type: 'leaf', tabGroupId: 'g1' })
       expect(result.second).toEqual({ type: 'leaf', tabGroupId: 'g3' })
     })

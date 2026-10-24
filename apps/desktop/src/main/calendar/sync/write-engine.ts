@@ -83,6 +83,7 @@ export function findProviderBinding(
 }
 
 /** Whether a Memry item should currently have a remote event at all. */
+// oxlint-disable-next-line typescript/consistent-return -- switch is exhaustive over sourceType; a source type persisted by a newer build still falls through to undefined as before
 export function shouldSourceBeOnCalendar(db: DataDb, target: CalendarSyncTarget): boolean {
   switch (target.sourceType) {
     case 'event': {

@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Das Portal konnte nicht kopiert werden",
+    "hiddenCount": "{count} ausgeblendet",
+    "windowFailed": "Dieses Portal konnte nicht geöffnet werden. Öffne stattdessen die Quellnotiz.",
+    "noTarget": "Dieses Portal hat noch kein Ziel. Füge der Definition eine Notiz hinzu oder entferne den Block.",
+    "invalidJson": "Die Definition dieses Portals ist kein gültiges JSON. Korrigiere sie unten oder entferne den Block.",
+    "invalidShape": "Die Definition dieses Portals enthält weder eine Notiz noch eine Suche. Korrigiere sie unten oder entferne den Block.",
+    "search": {
+      "editQuery": "Abfrage bearbeiten",
+      "count": "{count, plural, one {# Block} other {# Blöcke}}",
+      "loading": "Suche läuft…",
+      "empty": "Keine Blöcke passen zu dieser Abfrage.",
+      "failed": "Die Suche konnte nicht ausgeführt werden.",
+      "retry": "Erneut versuchen",
+      "truncated": "Die ersten {count} Treffer werden angezeigt."
+    },
+    "copiedContents": "Inhalt kopiert",
+    "copiedLink": "Link kopiert",
+    "actionFailed": "Dieses Portal konnte nicht geändert werden",
+    "keepsOneBlock": "Ein Portal behält mindestens einen Block. Entferne stattdessen das Portal.",
+    "expandChildren": "Unterelemente anzeigen",
+    "collapseChildren": "Unterelemente ausblenden",
+    "toolbar": {
+      "label": "Portal",
+      "include": "„{block}“ einbinden",
+      "locked": "{note} ist gesperrt · schreibgeschützt",
+      "more": "Mehr",
+      "openBeside": "{note} daneben öffnen",
+      "click": "Klick",
+      "copyContents": "Inhalt kopieren",
+      "copyLink": "Link kopieren",
+      "remove": "Portal entfernen",
+      "removeHint": "{note} behält alle Blöcke"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Die Quellnotiz wurde gelöscht. Der Verweis bleibt erhalten.",
+        "action": "Entfernen"
+      },
+      "missingBlock": {
+        "text": "Der Block wurde in {source} gelöscht.",
+        "action": "Anderen wählen"
+      },
+      "notSynced": {
+        "text": "Warten auf die Synchronisierung der Quellnotiz.",
+        "action": "Erneut versuchen"
+      },
+      "cycle": {
+        "text": "Dieses Portal führt zu sich selbst zurück.",
+        "action": "Quelle öffnen"
+      },
+      "tooDeep": {
+        "text": "Portale lassen sich {max} Ebenen tief verschachteln. Dieses öffnet sich als Link.",
+        "action": "Quelle öffnen"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Erfassungsfeld fokussieren",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "In der Standard-App öffnen",
     "revealFailed": "Element konnte nicht im Ordner angezeigt werden"
   },
+  "commands": {
+    "runFailed": "Dieser Befehl konnte nicht ausgeführt werden. Versuche es erneut."
+  },
+  "commandsPalette": {
+    "title": "Befehle",
+    "placeholder": "Befehl eingeben…",
+    "groups": {
+      "navigation": "Navigation",
+      "create": "Erstellen",
+      "tabs": "Tabs",
+      "editor": "Editor",
+      "view": "Ansicht",
+      "app": "App",
+      "note": "Notiz",
+      "settings": "Einstellungen",
+      "sync": "Synchronisierung",
+      "help": "Hilfe",
+      "project": "Projekt",
+      "tasks": "Aufgaben",
+      "canvas": "Canvas",
+      "folder": "Ordner",
+      "file": "Datei"
+    },
+    "contexts": {
+      "note": "Diese Notiz",
+      "journal": "Dieses Journal",
+      "project": "Dieses Projekt",
+      "tasks": "Diese Aufgaben",
+      "canvas": "Dieser Canvas",
+      "folder": "Dieser Ordner",
+      "tag": "Dieser Tag",
+      "file": "Diese Datei"
+    },
+    "recent": "Zuletzt verwendet",
+    "empty": "Keine Befehle passen zu „{query}“",
+    "searchHint": "Notizen durchsuchen: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# Befehl} other {# Befehle}}"
+    },
+    "actions": {
+      "run": "Ausführen",
+      "searchNotes": "Notizen durchsuchen"
+    }
+  },
   "tabs": {
     "pin": "Tab anheften",
     "unpin": "Tab lösen",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Aktion fehlgeschlagen",
-    "nothingToUndo": "Nichts rückgängig zu machen",
     "undone": "Rückgängig gemacht: {description}",
     "undoFailed": "Aktion konnte nicht rückgängig gemacht werden",
     "filesImported": "{count, plural, one {# Datei importiert} other {# Dateien importiert}}",
@@ -131,6 +231,20 @@
     "openInTab": "Unterhaltung in Tab öffnen",
     "stop": "Stoppen",
     "thinking": "Agent denkt nach",
+    "toolsUnavailable": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat die Werkzeugprüfung nicht bestanden und kann nur chatten.",
+    "toolsUnavailableWithDetail": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat die Werkzeugprüfung nicht bestanden und kann nur chatten. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Der Anbieter hat eine Testanfrage mit Werkzeugen abgelehnt, daher kann das Modell nur chatten.",
+      "noToolCall": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat eine Testanfrage beantwortet, ohne das Werkzeug aufzurufen, und kann daher nur chatten.",
+      "toolResultRejected": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Es hat ein Testwerkzeug aufgerufen, ist aber nach dem Erhalt des Ergebnisses gescheitert, und kann daher nur chatten.",
+      "streamingUnsupported": "Tresor-Werkzeuge sind für dieses Modell deaktiviert. Der Anbieter hat keine Testantwort gestreamt, daher kann das Modell nur chatten.",
+      "providerSaid": "Der Anbieter meldete: {detail}",
+      "wroteToolCall": "Das Modell hat einen Werkzeugaufruf als Text geschrieben, und nichts wurde ausgeführt."
+    },
+    "stepLimit": {
+      "notice": "Am Schrittlimit angehalten.",
+      "continue": "Fortsetzen"
+    },
     "enable": {
       "title": "memrynote-Agent aktivieren",
       "description": "Der memrynote-Agent nutzt die von dir ausgewählte lokale Agent-CLI, um mit dir über deinen Tresor zu chatten. Claude sendet Anfragen an Anthropic, Codex an OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Der Agent möchte {title} erstellen. Prüfe die Änderung, bevor du sie anwendest.",
       "descriptionDelete": "Der Agent möchte {title} löschen. Prüfe die Änderung, bevor du sie anwendest.",
       "fallbackTitle": "dieses Element",
-      "current": "Aktuell",
       "candidate": "Vorschlag",
       "loading": "Wird geladen…",
       "apply": "Anwenden",
@@ -268,13 +381,18 @@
       "removeAttachment": "{label} entfernen",
       "placeholder": "Alles mit memrynote erledigen… @ zum Erwähnen von Notizen, Aufgaben und Terminen",
       "send": "Senden",
-      "providerLabel": "Agent-Anbieter: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Verbundene Tools",
       "connectTool": "{tool} verbinden",
-      "addContext": "Kontext hinzufügen",
-      "addContextWithPermissions": "Kontext hinzufügen ({permissions})",
       "mentionContext": "Notiz, Aufgabe oder Termin erwähnen",
+      "files": {
+        "attach": "Textdatei anhängen",
+        "refused": {
+          "unsupportedType": "{name} ist keine unterstützte Textdatei. Hänge eine .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- oder .yml-Datei an.",
+          "notText": "{name} ist keine UTF-8-Textdatei. Hänge stattdessen eine Textdatei an.",
+          "tooLarge": "Mit {name} würde diese Nachricht das Limit von 100 KB überschreiten. Entferne eine Datei oder hänge eine kleinere an.",
+          "readFailed": "{name} konnte nicht gelesen werden. Prüfe, ob die Datei noch existiert und du sie öffnen kannst, und hänge sie dann erneut an."
+        }
+      },
       "voice": {
         "start": "Spracheingabe starten",
         "stop": "Spracheingabe beenden",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Spracheingabe konnte nicht transkribiert werden"
         }
       },
-      "modelLabel": "Agent-Modell: {provider} {model}",
-      "reasoningLabel": "Denkaufwand des Agenten: {reasoning}",
       "providers": {
-        "label": "Anbieter",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Computerzugriff"
       },
       "webSearch": {
-        "on": "Ein",
-        "off": "Aus",
         "label": "Websuche"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agent nicht verfügbar – Einstellungen öffnen…"
       },
       "settings": {
-        "reasoning": "Denkaufwand",
         "effort": "Aufwand"
       },
       "includeCurrentNote": "Aktuelle Notiz einbeziehen",
@@ -340,13 +452,29 @@
           "extraHigh": "Sehr hoch"
         }
       },
-      "permissionsLabel": "Agent-Berechtigungen: {access}, Websuche {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Standard",
+          "default": "Standardtiefe",
+          "high": "Hoch",
+          "max": "Maximal"
+        }
+      },
       "permissions": {
-        "label": "Berechtigungen",
-        "access": "Zugriff",
-        "tools": "Tools"
+        "access": "Zugriff"
       },
       "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}",
+      "queue": {
+        "label": "Nachrichten in der Warteschlange",
+        "queueMessage": "Nachricht einreihen",
+        "edit": "Nachricht in der Warteschlange bearbeiten",
+        "editLabel": "Text der Nachricht in der Warteschlange",
+        "remove": "Nachricht aus der Warteschlange entfernen",
+        "save": "Speichern",
+        "cancel": "Abbrechen",
+        "sending": "Wird gesendet…",
+        "notSent": "Nicht gesendet. Bearbeite sie, um sie erneut zu senden, oder entferne sie."
+      },
       "unavailable": {
         "vaultToolsOnly": "Mit diesem Modell nur Tresor-Werkzeuge"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Zustimmungsstatus konnte nicht gespeichert werden",
       "resolveWindow": "Quellfenster des Agenten konnte nicht ermittelt werden",
       "detectCli": "Agent-Backends konnten nicht erkannt werden",
-      "loadDisclosure": "Zustimmungsstatus konnte nicht geladen werden"
+      "loadDisclosure": "Zustimmungsstatus konnte nicht geladen werden",
+      "turnFailed": "Die Antwort wurde mit einem Fehler abgebrochen. Deine Nachricht bleibt erhalten, du kannst sie erneut senden."
     },
     "actions": {
       "copy": "Kopieren",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Dateien hier ablegen, um sie zu importieren",
       "dropFilesIntoVaultRoot": "Stammordner des Tresors",
       "newNoteN": "Neue Notiz (⌘N)",
-      "new": "Neu",
       "newItemMenu": "Neu erstellen…",
       "feedbackButton": "Feedback senden",
       "feedbackTitle": "Feedback senden",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Suchen, ersetzen, fragen…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Einführung überspringen",
-      "welcomeToMemry": "Willkommen bei memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Deine persönliche Wissensbasis. In 2 Minuten bist du startklar.",
-      "getStarted": "Los geht’s ",
-      "createYourFirstNote": "Erstelle deine erste Notiz",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-basiert, lokal als einfache Dateien gespeichert.",
-      "eGMeetingNotesIdeasAnything": "z. B. Besprechungsnotizen, Ideen, alles…",
-      "skip": "Überspringen",
-      "createNote": "Notiz erstellen ",
-      "addYourFirstTask": "Füge deine erste Aufgabe hinzu",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Aufgaben verlinken auf deine Notizen und haben Prioritäten und Fälligkeitsdaten.",
-      "eGReviewProjectProposal": "z. B. Projektvorschlag prüfen…",
-      "skip2": "Überspringen",
-      "createTask": "Aufgabe erstellen ",
-      "syncAcrossDevices": "Geräteübergreifend synchronisieren",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Halte deine Notizen und Aufgaben auf allen deinen Geräten synchron. Du kannst das jederzeit später einrichten.",
-      "skipForNow": "Vorerst überspringen",
-      "doneLetSGo": "Fertig – los geht’s! "
+      "skip": "Überspringen"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Ordnersymbol festlegen",
@@ -707,8 +818,7 @@
       "unknownTabType": "Unbekannter Tab-Typ: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "nicht gespeicherte Änderungen",
-      "preview": "Vorschau"
+      "unsavedChanges": "nicht gespeicherte Änderungen"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Neuer Tab",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Zum Ändern der Größe ziehen · Zum Zurücksetzen doppelklicken"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Willkommen bei memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Dein persönliches Wissensmanagementsystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Wähle einen Ordner, in dem deine Notizen und Aufgaben gespeichert werden.",
       "opening": "Wird geöffnet…",
-      "selectVaultFolder": "Tresorordner auswählen",
-      "plainMarkdown": "Reines Markdown",
-      "yourNotesStayPortable": "Deine Notizen bleiben portabel",
-      "syncAnywhere": "Überall synchronisieren",
-      "useDropboxIcloudGit": "Nutze Dropbox, iCloud, Git",
       "recentVaults": "Zuletzt verwendete Tresore",
-      "notesLastOpened": "Notizen · Zuletzt geöffnet",
-      "preRelease": "Beta",
       "createNewVault": "Neuen Tresor erstellen",
-      "createNewVaultDesc": "Lege einen neuen Tresor in einem Ordner deiner Wahl an.",
-      "openExistingVault": "Vorhandenen Tresor öffnen",
-      "openExistingVaultDesc": "Wähle einen Ordner mit Markdown-Dateien, die du bereits nutzt.",
-      "signInToSync": "Zum Synchronisieren anmelden",
-      "signInToSyncDesc": "Ende-zu-Ende-verschlüsselte Tresore auf all deinen Geräten.",
-      "create": "Erstellen",
       "open": "Öffnen",
-      "signIn": "Anmelden",
       "helpAndDocs": "Hilfe & Dokumentation",
-      "signInRequiresVault": "Öffne oder erstelle zuerst einen Tresor, um die Synchronisierung einzurichten.",
       "addVault": "Tresor hinzufügen",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Noch keine Tresore",
       "openVault": "Tresor öffnen",
       "settings": "Einstellungen",
-      "logOut": "Abmelden",
-      "signInToSync": "Zum Synchronisieren anmelden",
       "remove": "Entfernen „",
       "removeVaultTitle": "„{name}“ aus der Liste entfernen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dieser Tresor wird aus der App entfernt, deine Dateien bleiben aber auf dem Datenträger. Du kannst ihn jederzeit wieder hinzufügen.",
       "cancel": "Abbrechen",
       "remove2": "Entfernen",
       "inYourAccount": "In deinem Konto",
+      "trySandbox": "Sandbox-Tresor ausprobieren",
+      "sandboxVault": "Sandbox-Tresor",
+      "sandboxPreparing": "Sandbox wird vorbereitet…",
+      "sandboxFailed": "Der Sandbox-Tresor konnte nicht vorbereitet werden",
+      "resetSandbox": "Sandbox-Tresor zurücksetzen",
       "itemsCount": "{count} Elemente",
       "untitledVault": "Tresor",
       "downloadVaultTitle": "„{name}“ herunterladen",
@@ -870,7 +965,6 @@
       "changeLocation": "Ändern…",
       "download": "Herunterladen",
       "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden",
-      "deleteFromAccount": "Aus Konto löschen",
       "deleteVaultTitle": "„{name}“ aus deinem Konto löschen?",
       "deleteVaultBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
       "deleteVaultConfirm": "Aus Konto löschen",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Widget entfernen",
       "dragAria": "Widget ziehen",
-      "configAria": "Widget konfigurieren",
-      "resizeAria": "Auf {size} anpassen",
       "menuAria": "Widget-Optionen",
-      "resize": "Größe",
       "remove": "Entfernen",
       "filter": {
         "all": "Alle",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Notizen, die du öffnest, erscheinen hier",
       "bookmarks": "Lesezeichen",
       "tasks": "Aufgaben",
+      "chart": "Diagramm",
       "calendar": "Kalender",
       "calendarToday": "Heute",
       "openCalendar": "Kalender öffnen",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Ordner auswählen",
       "folderEmpty": "Noch keine Ordner",
       "folderNoSelection": "Kein Ordner ausgewählt",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galerie",
       "folderViewSelect": "Ansicht",
       "project": "Projekt",
       "projectNoSelection": "Kein Projekt ausgewählt",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Start-Layout",
       "deleteAria": "Layout löschen",
-      "newAria": "Neues Board",
       "newName": "Neues Board",
       "defaultName": "Start",
       "manage": "Boards verwalten",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# Aufgabe heute fällig} other {# Aufgaben heute fällig}}",
       "events": "{count, plural, one {# Termin} other {# Termine}}"
     },
-    "edit": "Bearbeiten",
-    "done": "Fertig",
     "addWidget": "Widget hinzufügen",
+    "cover": {
+      "add": "Cover hinzufügen"
+    },
     "empty": {
       "title": "Dein Board ist leer",
       "body": "Widgets bringen deine Notizen, Aufgaben und Lesezeichen an einem ruhigen Ort zusammen.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Einführung abgeschlossen",
-      "body": "Gib uns bitte einen Stern auf GitHub – so finden andere Menschen MemryNote leichter.",
-      "action": "Stern auf GitHub geben"
+      "body": "Gib uns bitte einen Stern auf GitHub – so finden andere Menschen MemryNote leichter."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Update bereit",
     "failed": "Update fehlgeschlagen",
     "downloadAction": "Herunterladen",
-    "restartAction": "Neu starten",
     "detailsAction": "Details",
     "popover": {
       "readyTitle": "MemryNote {version} ist bereit",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Tresore",
     "position": "{name}, Tresor {index} von {count}",
-    "openList": "{position}. Tresorliste öffnen",
     "switchTo": "Zu {name} wechseln",
     "switchingTo": "Wechsel zu {name}",
     "changeIcon": "Symbol ändern…",
     "resetIcon": "Symbol zurücksetzen",
     "iconButton": "Symbol von {name} ändern",
+    "leaveSandbox": "Zurück zu {name}",
     "iconFailed": "Tresorsymbol konnte nicht geändert werden"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Typ",
     "filterModified": "Geändert",
     "matches": "Treffer",
+    "matchesMore": "{count, plural, one {# weiterer Treffer} other {# weitere Treffer}}",
+    "matchesHide": "Treffer ausblenden",
+    "matchOf": "Treffer {index} von {total}",
     "showMore": "{count} weitere anzeigen",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Nächster Abschnitt",
       "open": "Öffnen",
       "openNote": "Notiz öffnen",
+      "openAtMatch": "Beim Treffer öffnen",
       "openFile": "Datei öffnen",
       "openJournal": "Journal öffnen",
       "openTask": "Aufgabe öffnen",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Tag auswählen",
       "addTag": "Tag hinzufügen",
       "showAll": "Alle anzeigen",
+      "hideMatches": "Treffer ausblenden",
       "searchEverywhere": "Überall suchen",
       "clearFilters": "Filter zurücksetzen"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "Auf {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# Tresor gefunden} other {# Tresore gefunden}}",
-      "notion": "Notion",
       "otherApps": "Andere Apps und Dateien",
       "otherAppsHint": "und {count} weitere",
       "detectedFootnote": "Gefunden, indem geprüft wird, welche Apps installiert sind. Alles bleibt auf {device}.",

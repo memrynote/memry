@@ -32,7 +32,7 @@ export const scenes = {
     let b
     for (let i = 0; i < (await all.count()); i++) {
       const x = await all.nth(i).boundingBox()
-      if (x && x.width && x.y > 0 && x.y < 900) b = x
+      if (x?.width && x.y > 0 && x.y < 900) b = x
     }
     zoom(b.x + 60, b.y - 40, 1.9)
     await rec.glide(b.x + b.width / 2, b.y + b.height / 2, 900)

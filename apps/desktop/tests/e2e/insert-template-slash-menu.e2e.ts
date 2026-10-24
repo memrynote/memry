@@ -11,17 +11,17 @@ async function focusEditor(page: Page): Promise<void> {
 
 async function seedDocument(page: Page, paragraphs: string[], caretIndex: number): Promise<void> {
   await page.evaluate(
-    ({ paragraphs, caretIndex }) => {
+    ({ paragraphs: paragraphsArg, caretIndex: caretIndexArg }) => {
       const editor = (window as any).__memryActiveEditor
       if (!editor) throw new Error('window.__memryActiveEditor not exposed')
       editor.replaceBlocks(
         editor.document,
-        paragraphs.map((text) => ({
+        paragraphsArg.map((text) => ({
           type: 'paragraph',
           content: text ? [{ type: 'text', text, styles: {} }] : ''
         }))
       )
-      editor.setTextCursorPosition(editor.document[caretIndex].id, 'end')
+      editor.setTextCursorPosition(editor.document[caretIndexArg].id, 'end')
     },
     { paragraphs, caretIndex }
   )

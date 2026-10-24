@@ -38,6 +38,7 @@ export async function verifyAccessToken(token: string, publicKeyPem: string): Pr
   }
 
   const userId = payload.sub
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
   const deviceId = payload.device_id as string | undefined
 
   if (!userId || !deviceId) {

@@ -164,7 +164,7 @@ function DropdownIcon({ item, className }: { item: LandingDropdownItem; classNam
     return <Mascot src={item.icon} className={className} />
   }
 
-  const Icon = item.icon as LucideIcon
+  const Icon = item.icon
   return <Icon className={className} strokeWidth={2.4} aria-hidden />
 }
 
@@ -417,7 +417,7 @@ export function Header() {
 
     e.preventDefault()
     if (location.hash) {
-      navigate('/')
+      void navigate('/')
     }
     scrollToLandingTarget('top', { offset: 0 })
     closeMobileMenu()

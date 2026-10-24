@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Nu s-a putut copia portalul",
+    "hiddenCount": "{count} ascunse",
+    "windowFailed": "Acest portal nu a putut fi deschis. Deschide în schimb notița sursă.",
+    "noTarget": "Acest portal nu are încă o țintă. Adaugă o notiță în definiție sau elimină blocul.",
+    "invalidJson": "Definiția acestui portal nu este JSON valid. Corectează-o mai jos sau elimină blocul.",
+    "invalidShape": "Definiția acestui portal nu conține nicio notiță sau căutare. Corectează-o mai jos sau elimină blocul.",
+    "search": {
+      "editQuery": "Editează interogarea",
+      "count": "{count, plural, one {# bloc} few {# blocuri} other {# de blocuri}}",
+      "loading": "Se caută…",
+      "empty": "Niciun bloc nu corespunde acestei interogări.",
+      "failed": "Căutarea nu a putut rula.",
+      "retry": "Încearcă din nou",
+      "truncated": "Se afișează primele {count} rezultate."
+    },
+    "copiedContents": "Conținut copiat",
+    "copiedLink": "Legătură copiată",
+    "actionFailed": "Nu s-a putut modifica acest portal",
+    "keepsOneBlock": "Un portal păstrează cel puțin un bloc. Elimină în schimb portalul.",
+    "expandChildren": "Arată elementele copil",
+    "collapseChildren": "Ascunde elementele copil",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Include „{block}”",
+      "locked": "{note} este blocată · doar citire",
+      "more": "Mai multe",
+      "openBeside": "Deschide {note} alături",
+      "click": "Clic",
+      "copyContents": "Copiază conținutul",
+      "copyLink": "Copiază legătura",
+      "remove": "Elimină portalul",
+      "removeHint": "{note} păstrează toate blocurile"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Notița sursă a fost ștearsă. Referința este păstrată.",
+        "action": "Elimină"
+      },
+      "missingBlock": {
+        "text": "Blocul a fost șters din {source}.",
+        "action": "Alege altul"
+      },
+      "notSynced": {
+        "text": "Se așteaptă sincronizarea notiței sursă.",
+        "action": "Reîncearcă"
+      },
+      "cycle": {
+        "text": "Acest portal duce înapoi la sine.",
+        "action": "Deschide sursa"
+      },
+      "tooDeep": {
+        "text": "Portalurile se pot imbrica pe {max} niveluri. Acesta se deschide ca legătură.",
+        "action": "Deschide sursa"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Focalizează câmpul de captură",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Deschide în aplicația implicită",
     "revealFailed": "Nu s-a putut afișa în dosar"
   },
+  "commands": {
+    "runFailed": "Comanda nu a putut rula. Încearcă din nou."
+  },
+  "commandsPalette": {
+    "title": "Comenzi",
+    "placeholder": "Scrie o comandă…",
+    "groups": {
+      "navigation": "Navigare",
+      "create": "Creare",
+      "tabs": "File",
+      "editor": "Editor",
+      "view": "Vizualizare",
+      "app": "Aplicație",
+      "note": "Notiță",
+      "settings": "Setări",
+      "sync": "Sincronizare",
+      "help": "Ajutor",
+      "project": "Proiect",
+      "tasks": "Sarcini",
+      "canvas": "Canvas",
+      "folder": "Dosar",
+      "file": "Fișier"
+    },
+    "contexts": {
+      "note": "Această notiță",
+      "journal": "Acest jurnal",
+      "project": "Acest proiect",
+      "tasks": "Aceste sarcini",
+      "canvas": "Acest canvas",
+      "folder": "Acest dosar",
+      "tag": "Această etichetă",
+      "file": "Acest fișier"
+    },
+    "recent": "Recente",
+    "empty": "Nicio comandă nu corespunde „{query}”",
+    "searchHint": "Caută notițe: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# comandă} few {# comenzi} other {# de comenzi}}"
+    },
+    "actions": {
+      "run": "Rulează",
+      "searchNotes": "Caută notițe"
+    }
+  },
   "tabs": {
     "pin": "Fixează fila",
     "unpin": "Anulează fixarea filei",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Acțiunea a eșuat",
-    "nothingToUndo": "Nimic de anulat",
     "undone": "Anulat: {description}",
     "undoFailed": "Nu s-a putut anula acțiunea",
     "filesImported": "{count, plural, one {# fișier importat} few {# fișiere importate} other {# de fișiere importate}}",
@@ -131,6 +231,20 @@
     "openInTab": "Deschide conversația într-o filă",
     "stop": "Oprește",
     "thinking": "Agentul se gândește",
+    "toolsUnavailable": "Instrumentele seifului sunt dezactivate pentru acest model. A eșuat la verificarea instrumentelor, deci poate doar să converseze.",
+    "toolsUnavailableWithDetail": "Instrumentele seifului sunt dezactivate pentru acest model. A eșuat la verificarea instrumentelor, deci poate doar să converseze. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Instrumentele seifului sunt dezactivate pentru acest model. Furnizorul a refuzat o cerere de test care includea instrumente, deci modelul poate doar să converseze.",
+      "noToolCall": "Instrumentele seifului sunt dezactivate pentru acest model. A răspuns la o cerere de test fără a apela instrumentul, deci poate doar să converseze.",
+      "toolResultRejected": "Instrumentele seifului sunt dezactivate pentru acest model. A apelat un instrument de test, dar a eșuat după ce a primit rezultatul, deci poate doar să converseze.",
+      "streamingUnsupported": "Instrumentele seifului sunt dezactivate pentru acest model. Furnizorul nu a transmis în flux un răspuns de test, deci modelul poate doar să converseze.",
+      "providerSaid": "Furnizorul a spus: {detail}",
+      "wroteToolCall": "Modelul a scris un apel de instrument ca text și nu a rulat nimic."
+    },
+    "stepLimit": {
+      "notice": "Oprit la limita de pași.",
+      "continue": "Continuă"
+    },
     "enable": {
       "title": "Activează agentul memrynote",
       "description": "Agentul memrynote folosește CLI-ul de agent local selectat pentru a discuta despre seif. Claude trimite mesajele către Anthropic; Codex le trimite către OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Agentul dorește să creeze {title}. Examinați modificarea înainte de a o aplica.",
       "descriptionDelete": "Agentul dorește să șteargă {title}. Examinați modificarea înainte de a o aplica.",
       "fallbackTitle": "acest element",
-      "current": "Actual",
       "candidate": "Propus",
       "loading": "Se încarcă…",
       "apply": "Aplică",
@@ -268,13 +381,18 @@
       "removeAttachment": "Elimină {label}",
       "placeholder": "Fă orice cu memrynote… @ pentru a menționa notițe, sarcini și evenimente",
       "send": "Trimite",
-      "providerLabel": "Furnizorul agentului: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Instrumente conectate",
       "connectTool": "Conectează {tool}",
-      "addContext": "Adaugă context",
-      "addContextWithPermissions": "Adaugă context ({permissions})",
       "mentionContext": "Menționează o notiță, o sarcină sau un eveniment",
+      "files": {
+        "attach": "Atașează un fișier text",
+        "refused": {
+          "unsupportedType": "{name} nu este un fișier text acceptat. Atașează un fișier .txt, .md, .log, .csv, .tsv, .json, .yaml sau .yml.",
+          "notText": "{name} nu este un fișier text UTF-8. Atașează în schimb un fișier text.",
+          "tooLarge": "{name} ar depăși limita de 100 KB a mesajului. Elimină un fișier sau atașează unul mai mic.",
+          "readFailed": "{name} nu a putut fi citit. Verifică dacă fișierul există încă și dacă îl poți deschide, apoi atașează-l din nou."
+        }
+      },
       "voice": {
         "start": "Pornește dictarea vocală",
         "stop": "Oprește dictarea vocală",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Nu s-a putut transcrie intrarea vocală"
         }
       },
-      "modelLabel": "Modelul agentului: {provider} {model}",
-      "reasoningLabel": "Raționamentul agentului: {reasoning}",
       "providers": {
-        "label": "Furnizor",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Acces la computer"
       },
       "webSearch": {
-        "on": "Activat",
-        "off": "Dezactivat",
         "label": "Căutare web"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agent indisponibil – deschide Setările…"
       },
       "settings": {
-        "reasoning": "Raționament",
         "effort": "Efort"
       },
       "includeCurrentNote": "Include notița curentă",
@@ -340,13 +452,29 @@
           "extraHigh": "Foarte ridicat"
         }
       },
-      "permissionsLabel": "Permisiunile agentului: {access}, căutare web: {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Implicit",
+          "default": "Profunzime implicită",
+          "high": "Ridicată",
+          "max": "Maximă"
+        }
+      },
       "permissions": {
-        "label": "Permisiuni",
-        "access": "Acces",
-        "tools": "Instrumente"
+        "access": "Acces"
       },
       "modelSettingsLabel": "Setările modelului agentului: {model}, {settings}",
+      "queue": {
+        "label": "Mesaje în coadă",
+        "queueMessage": "Pune mesajul în coadă",
+        "edit": "Editează mesajul din coadă",
+        "editLabel": "Textul mesajului din coadă",
+        "remove": "Elimină mesajul din coadă",
+        "save": "Salvează",
+        "cancel": "Anulează",
+        "sending": "Se trimite…",
+        "notSent": "Netrimis. Editează pentru a trimite din nou sau elimină-l."
+      },
       "unavailable": {
         "vaultToolsOnly": "Doar instrumentele seifului cu acest model"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Nu s-a putut salva acordul",
       "resolveWindow": "Nu s-a putut identifica fereastra sursă a agentului",
       "detectCli": "Nu s-au putut detecta backend-urile agentului",
-      "loadDisclosure": "Nu s-a putut încărca starea acordului"
+      "loadDisclosure": "Nu s-a putut încărca starea acordului",
+      "turnFailed": "Răspunsul s-a oprit cu o eroare. Mesajul tău este păstrat, deci îl poți trimite din nou."
     },
     "actions": {
       "copy": "Copiază",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Plasați fișierele pentru a le importa",
       "dropFilesIntoVaultRoot": "Rădăcina seifului",
       "newNoteN": "Notiță nouă (⌘N)",
-      "new": "Nou",
       "newItemMenu": "Creează nou…",
       "feedbackButton": "Trimite feedback",
       "feedbackTitle": "Trimite feedback",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Caută, înlocuiește, întreabă…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Omite introducerea",
-      "welcomeToMemry": "Bun venit la memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Baza dvs. personală de cunoștințe. Vă ajutăm să începeți în 2 minute.",
-      "getStarted": "Începe ",
-      "createYourFirstNote": "Creați prima notiță",
-      "markdownBasedStoredLocallyAsPlainFiles": "Bazate pe Markdown, stocate local ca fișiere simple.",
-      "eGMeetingNotesIdeasAnything": "de ex. notițe de la ședințe, idei, orice…",
-      "skip": "Omite",
-      "createNote": "Creează notița ",
-      "addYourFirstTask": "Adăugați prima sarcină",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Sarcinile se leagă de notițe și au priorități și termene-limită.",
-      "eGReviewProjectProposal": "de ex. Revizuiește propunerea de proiect…",
-      "skip2": "Omite",
-      "createTask": "Creează sarcina ",
-      "syncAcrossDevices": "Sincronizare între dispozitive",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Păstrați notițele și sarcinile sincronizate pe toate dispozitivele. Puteți configura acest lucru oricând mai târziu.",
-      "skipForNow": "Omite deocamdată",
-      "doneLetSGo": "Gata – să începem! "
+      "skip": "Omite"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Setează pictograma dosarului",
@@ -707,8 +818,7 @@
       "unknownTabType": "Tip de filă necunoscut: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "modificări nesalvate",
-      "preview": "previzualizare"
+      "unsavedChanges": "modificări nesalvate"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Filă nouă",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Trageți pentru a redimensiona · Faceți dublu clic pentru a reseta"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bun venit la memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Sistemul dvs. personal de management al cunoștințelor.",
-      "selectAFolderToStoreYourNotesAndTasks": "Selectați un dosar în care să stocați notițele și sarcinile.",
       "opening": "Se deschide…",
-      "selectVaultFolder": "Selectează dosarul seifului",
-      "plainMarkdown": "Markdown simplu",
-      "yourNotesStayPortable": "Notițele rămân portabile",
-      "syncAnywhere": "Sincronizare oriunde",
-      "useDropboxIcloudGit": "Utilizați Dropbox, iCloud, Git",
       "recentVaults": "Seifuri recente",
-      "notesLastOpened": "notițe · Ultima deschidere",
-      "preRelease": "Beta",
       "createNewVault": "Creează un seif nou",
-      "createNewVaultDesc": "Creați un seif nou într-un dosar la alegere.",
-      "openExistingVault": "Deschide un seif existent",
-      "openExistingVaultDesc": "Alegeți un dosar cu fișiere Markdown pe care le aveți deja.",
-      "signInToSync": "Conectați-vă pentru sincronizare",
-      "signInToSyncDesc": "Seifuri criptate integral pe toate dispozitivele.",
-      "create": "Creează",
       "open": "Deschide",
-      "signIn": "Conectare",
       "helpAndDocs": "Ajutor și documentație",
-      "signInRequiresVault": "Deschideți sau creați mai întâi un seif pentru a configura sincronizarea.",
       "addVault": "Adaugă seif",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Nu există încă seifuri",
       "openVault": "Deschide seiful",
       "settings": "Setări",
-      "logOut": "Deconectare",
-      "signInToSync": "Conectare pentru sincronizare",
       "remove": "Elimină „",
       "removeVaultTitle": "Eliminați „{name}” din listă?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Acest seif va fi eliminat din aplicație, dar fișierele vor rămâne pe disc. Îl puteți adăuga din nou oricând.",
       "cancel": "Anulează",
       "remove2": "Elimină",
       "inYourAccount": "În contul dvs.",
+      "trySandbox": "Încearcă seiful sandbox",
+      "sandboxVault": "Seif sandbox",
+      "sandboxPreparing": "Se pregătește sandboxul…",
+      "sandboxFailed": "Nu s-a putut pregăti seiful sandbox",
+      "resetSandbox": "Resetează seiful sandbox",
       "itemsCount": "{count, plural, one {# element} few {# elemente} other {# de elemente}}",
       "untitledVault": "Seif",
       "downloadVaultTitle": "Descarcă „{name}”",
@@ -870,7 +965,6 @@
       "changeLocation": "Schimbă…",
       "download": "Descarcă",
       "downloadFailed": "Nu s-a putut descărca seiful",
-      "deleteFromAccount": "Șterge din cont",
       "deleteVaultTitle": "Ștergeți „{name}” din cont?",
       "deleteVaultBody": "Această acțiune elimină definitiv toate datele sincronizate ale acestui seif de pe serverele Memry și nu poate fi anulată. Fișierele de pe disc nu sunt șterse.",
       "deleteVaultConfirm": "Șterge din cont",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Elimină widgetul",
       "dragAria": "Trage widgetul",
-      "configAria": "Configurează widgetul",
-      "resizeAria": "Redimensionează la {size}",
       "menuAria": "Opțiuni widget",
-      "resize": "Dimensiune",
       "remove": "Elimină",
       "filter": {
         "all": "Toate",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Notițele pe care le deschideți apar aici",
       "bookmarks": "Marcaje",
       "tasks": "Sarcini",
+      "chart": "Grafic",
       "calendar": "Calendar",
       "calendarToday": "Astăzi",
       "openCalendar": "Deschide calendarul",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Alege un dosar",
       "folderEmpty": "Niciun dosar încă",
       "folderNoSelection": "Niciun dosar selectat",
-      "folderView_list": "Listă",
-      "folderView_gallery": "Galerie",
       "folderViewSelect": "Vizualizare",
       "project": "Proiect",
       "projectNoSelection": "Niciun proiect selectat",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Aspectul paginii Acasă",
       "deleteAria": "Șterge aspectul",
-      "newAria": "Tablă nouă",
       "newName": "Tablă nouă",
       "defaultName": "Acasă",
       "manage": "Gestionează tablele",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# sarcină cu termen astăzi} few {# sarcini cu termen astăzi} other {# de sarcini cu termen astăzi}}",
       "events": "{count, plural, one {# eveniment} few {# evenimente} other {# de evenimente}}"
     },
-    "edit": "Editează",
-    "done": "Gata",
     "addWidget": "Adaugă widget",
+    "cover": {
+      "add": "Adaugă copertă"
+    },
     "empty": {
       "title": "Tabla este goală",
       "body": "Widgeturile adună notițele, sarcinile și marcajele într-un singur loc liniștit.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introducere finalizată",
-      "body": "Vă rugăm să ne dați o stea pe GitHub – îi ajută pe alții să descopere MemryNote.",
-      "action": "Marchează cu stea pe GitHub"
+      "body": "Vă rugăm să ne dați o stea pe GitHub – îi ajută pe alții să descopere MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Actualizare pregătită",
     "failed": "Actualizarea a eșuat",
     "downloadAction": "Descarcă",
-    "restartAction": "Repornește",
     "detailsAction": "Detalii",
     "popover": {
       "readyTitle": "MemryNote {version} este pregătit",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Seifuri",
     "position": "{name}, seiful {index} din {count}",
-    "openList": "{position}. Deschide lista de seifuri",
     "switchTo": "Treci la {name}",
     "switchingTo": "Se trece la {name}",
     "changeIcon": "Schimbă pictograma…",
     "resetIcon": "Resetează pictograma",
     "iconButton": "Schimbă pictograma pentru {name}",
+    "leaveSandbox": "Înapoi la {name}",
     "iconFailed": "Nu s-a putut schimba pictograma seifului"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Tip",
     "filterModified": "Modificat",
     "matches": "Potriviri",
+    "matchesMore": "{count, plural, one {încă # rezultat} few {încă # rezultate} other {încă # de rezultate}}",
+    "matchesHide": "Ascunde rezultatele",
+    "matchOf": "Rezultatul {index} din {total}",
     "showMore": "Arată încă {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Secțiunea următoare",
       "open": "Deschide",
       "openNote": "Deschide notița",
+      "openAtMatch": "Deschide la rezultat",
       "openFile": "Deschide fișierul",
       "openJournal": "Deschide jurnalul",
       "openTask": "Deschide sarcina",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Alege eticheta",
       "addTag": "Adaugă eticheta",
       "showAll": "Arată tot",
+      "hideMatches": "Ascunde rezultatele",
       "searchEverywhere": "Caută peste tot",
       "clearFilters": "Șterge filtrele"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "Pe {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# seif găsit} few {# seifuri găsite} other {# de seifuri găsite}}",
-      "notion": "Notion",
       "otherApps": "Alte aplicații și fișiere",
       "otherAppsHint": "și încă {count}",
       "detectedFootnote": "Găsite verificând ce aplicații sunt instalate. Nimic nu părăsește {device}.",

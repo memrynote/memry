@@ -13,6 +13,8 @@
 
 export type FileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
 
+const FILE_TYPES: readonly FileType[] = ['markdown', 'pdf', 'image', 'audio', 'video']
+
 export const SUPPORTED_EXTENSIONS: Record<FileType, readonly string[]> = {
   markdown: ['md'],
   pdf: ['pdf'],
@@ -82,9 +84,9 @@ export function isSupported(extension: string): boolean {
 export function getFileType(extension: string): FileType | null {
   const ext = extension.toLowerCase().replace(/^\./, '')
 
-  for (const [fileType, extensions] of Object.entries(SUPPORTED_EXTENSIONS)) {
-    if (extensions.includes(ext)) {
-      return fileType as FileType
+  for (const fileType of FILE_TYPES) {
+    if (SUPPORTED_EXTENSIONS[fileType].includes(ext)) {
+      return fileType
     }
   }
 

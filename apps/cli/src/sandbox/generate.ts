@@ -65,6 +65,7 @@ function countEntities(vaultPath: string): SandboxCounts {
     return Object.fromEntries(
       COUNTS.map(([name, db, sql]) => [
         name,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
         (db === 'data' ? data : index).prepare(sql).pluck().get() as number
       ])
     )

@@ -21,7 +21,7 @@ function emitTaskEvent(channel: string, data: unknown): void {
 
 // Field NAMES only (dueDate, priority, statusId, ...) — never values.
 function changedFieldsDimension(changedFields: string[] | undefined): string {
-  return toSafeToken([...(changedFields ?? [])].sort().join('_'), 'unknown')
+  return toSafeToken([...(changedFields ?? [])].toSorted().join('_'), 'unknown')
 }
 
 // Task tags share the global tag list (see getTagsWithCounts). The tag hooks

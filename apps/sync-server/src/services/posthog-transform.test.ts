@@ -380,7 +380,7 @@ describe('productEvent trusted-key collisions', () => {
     // The sweep below adapts on its own; this is the reviewed record of what
     // productEvent is allowed to own, so adding or dropping a trusted key has to
     // be a deliberate, visible change rather than a silent one.
-    expect([...TRUSTED_KEYS].sort()).toEqual(
+    expect([...TRUSTED_KEYS].toSorted()).toEqual(
       [
         'surface',
         'action',
@@ -409,7 +409,7 @@ describe('productEvent trusted-key collisions', () => {
         'http_status',
         'server_code',
         'retryable'
-      ].sort()
+      ].toSorted()
     )
   })
 
@@ -750,11 +750,12 @@ describe('exceptionEvent', () => {
       }),
       ctx
     )
-    const frames = (
-      result?.properties.$exception_list as {
-        stacktrace: { frames: { function: string; filename: string; in_app: boolean }[] }
-      }[]
-    )[0].stacktrace.frames
+    const exceptionList = result?.properties.$exception_list as
+      | {
+          stacktrace: { frames: { function: string; filename: string; in_app: boolean }[] }
+        }[]
+      | undefined
+    const frames = exceptionList![0].stacktrace.frames
 
     // innermost-last after the reverse: `rename` is where it actually threw
     expect(frames.at(-1)).toMatchObject({

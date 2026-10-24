@@ -471,6 +471,7 @@ export function createHookWrapper(options: WrapperOptions = {}) {
   const originalWindow = globalThis.window
   Object.defineProperty(globalThis, 'window', {
     value: {
+      // oxlint-disable-next-line typescript/no-misused-spread -- the stub window must carry the jsdom window's own enumerable props; tests read them off it
       ...originalWindow,
       api: mockAPI
     },

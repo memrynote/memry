@@ -69,11 +69,11 @@ async function readFirstTaskBlockTitle(page: Page): Promise<string | null> {
 }
 
 async function countTaskBlocksInDoc(page: Page): Promise<number> {
-  return (await page.evaluate(() => {
+  return page.evaluate(() => {
     const editor = (window as any).__memryActiveEditor
     if (!editor) return 0
     return (editor.document as any[]).filter((b: any) => b.type === 'taskBlock').length
-  })) as number
+  })
 }
 
 test.describe('Task block — empty title CRUD', () => {

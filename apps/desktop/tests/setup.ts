@@ -52,7 +52,7 @@ log.transports.file.resolvePathFn = (variables) =>
 if (typeof globalThis.crypto === 'undefined') {
   Object.defineProperty(globalThis, 'crypto', {
     value: {
-      randomUUID: () => 'test-uuid-' + Math.random().toString(36).substr(2, 9),
+      randomUUID: () => 'test-uuid-' + Math.random().toString(36).slice(2, 11),
       getRandomValues: (arr: Uint8Array) => {
         for (let i = 0; i < arr.length; i++) {
           arr[i] = Math.floor(Math.random() * 256)
@@ -108,4 +108,4 @@ export function createDeferred<T>() {
  * Generate a test ID with optional prefix.
  */
 export const testId = (prefix = 'test'): string =>
-  `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`

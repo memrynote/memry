@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "تعذّر نسخ البوابة",
+    "hiddenCount": "{count} مخفية",
+    "windowFailed": "تعذّر فتح هذه البوابة. افتح الملاحظة المصدر بدلًا من ذلك.",
+    "noTarget": "ليس لهذه البوابة هدف بعد. أضف ملاحظة إلى التعريف، أو أزل الكتلة.",
+    "invalidJson": "تعريف هذه البوابة ليس JSON صالحًا. أصلحه أدناه، أو أزل الكتلة.",
+    "invalidShape": "لا يحتوي تعريف هذه البوابة على ملاحظة أو بحث. أصلحه أدناه، أو أزل الكتلة.",
+    "search": {
+      "editQuery": "تحرير الاستعلام",
+      "count": "{count, plural, zero {# كتلة} one {كتلة واحدة} two {كتلتان} few {# كتل} many {# كتلة} other {# كتلة}}",
+      "loading": "جارٍ البحث…",
+      "empty": "لا توجد كتل تطابق هذا الاستعلام.",
+      "failed": "تعذّر تنفيذ البحث.",
+      "retry": "حاول مرة أخرى",
+      "truncated": "عرض أول {count} نتيجة مطابقة."
+    },
+    "copiedContents": "تم نسخ المحتوى",
+    "copiedLink": "تم نسخ الرابط",
+    "actionFailed": "تعذّر تغيير هذه البوابة",
+    "keepsOneBlock": "تحتفظ البوابة بكتلة واحدة على الأقل. أزل البوابة بدلًا من ذلك.",
+    "expandChildren": "عرض العناصر الفرعية",
+    "collapseChildren": "إخفاء العناصر الفرعية",
+    "toolbar": {
+      "label": "بوابة",
+      "include": "تضمين “{block}”",
+      "locked": "{note} مقفلة · للقراءة فقط",
+      "more": "المزيد",
+      "openBeside": "فتح {note} بجانبها",
+      "click": "انقر",
+      "copyContents": "نسخ المحتوى",
+      "copyLink": "نسخ الرابط",
+      "remove": "إزالة البوابة",
+      "removeHint": "تحتفظ {note} بكل كتلها"
+    },
+    "states": {
+      "missingNote": {
+        "text": "تم حذف الملاحظة المصدر. المرجع محفوظ.",
+        "action": "إزالة"
+      },
+      "missingBlock": {
+        "text": "تم حذف الكتلة في {source}.",
+        "action": "اختيار كتلة أخرى"
+      },
+      "notSynced": {
+        "text": "في انتظار مزامنة الملاحظة المصدر.",
+        "action": "إعادة المحاولة"
+      },
+      "cycle": {
+        "text": "تعود هذه البوابة إلى نفسها.",
+        "action": "فتح المصدر"
+      },
+      "tooDeep": {
+        "text": "تتداخل البوابات حتى {max} مستويات. تُفتح هذه كرابط.",
+        "action": "فتح المصدر"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "التركيز على حقل الالتقاط",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "فتح في التطبيق الافتراضي",
     "revealFailed": "تعذّر الإظهار في المجلد"
   },
+  "commands": {
+    "runFailed": "تعذّر تشغيل هذا الأمر. حاول مرة أخرى."
+  },
+  "commandsPalette": {
+    "title": "الأوامر",
+    "placeholder": "اكتب أمرًا…",
+    "groups": {
+      "navigation": "التنقل",
+      "create": "إنشاء",
+      "tabs": "علامات التبويب",
+      "editor": "المحرر",
+      "view": "العرض",
+      "app": "التطبيق",
+      "note": "ملاحظة",
+      "settings": "الإعدادات",
+      "sync": "المزامنة",
+      "help": "المساعدة",
+      "project": "المشروع",
+      "tasks": "المهام",
+      "canvas": "اللوحة",
+      "folder": "المجلد",
+      "file": "الملف"
+    },
+    "contexts": {
+      "note": "هذه الملاحظة",
+      "journal": "هذه اليوميات",
+      "project": "هذا المشروع",
+      "tasks": "هذه المهام",
+      "canvas": "هذه اللوحة",
+      "folder": "هذا المجلد",
+      "tag": "هذا الوسم",
+      "file": "هذا الملف"
+    },
+    "recent": "الأحدث",
+    "empty": "لا توجد أوامر تطابق “{query}”",
+    "searchHint": "البحث في الملاحظات: {shortcut}",
+    "status": {
+      "count": "{count, plural, zero {# أمر} one {أمر واحد} two {أمران} few {# أوامر} many {# أمرًا} other {# أمر}}"
+    },
+    "actions": {
+      "run": "تشغيل",
+      "searchNotes": "البحث في الملاحظات"
+    }
+  },
   "tabs": {
     "pin": "تثبيت علامة التبويب",
     "unpin": "إلغاء تثبيت علامة التبويب",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "فشل الإجراء",
-    "nothingToUndo": "لا يوجد شيء للتراجع عنه",
     "undone": "تم التراجع: {description}",
     "undoFailed": "تعذّر التراجع عن الإجراء",
     "filesImported": "{count, plural, zero {تم استيراد # ملف} one {تم استيراد ملف واحد} two {تم استيراد ملفين} few {تم استيراد # ملفات} many {تم استيراد # ملفًا} other {تم استيراد # ملف}}",
@@ -131,6 +231,20 @@
     "openInTab": "فتح المحادثة في علامة تبويب",
     "stop": "إيقاف",
     "thinking": "الوكيل يفكّر",
+    "toolsUnavailable": "أدوات الخزنة متوقفة لهذا النموذج. فقد فشل في فحص الأدوات، لذا يمكنه المحادثة فقط.",
+    "toolsUnavailableWithDetail": "أدوات الخزنة متوقفة لهذا النموذج. فقد فشل في فحص الأدوات، لذا يمكنه المحادثة فقط. {detail}",
+    "toolsOff": {
+      "toolsRejected": "أدوات الخزنة متوقفة لهذا النموذج. رفض المزوّد طلب اختبار يتضمن أدوات، لذا يمكن للنموذج المحادثة فقط.",
+      "noToolCall": "أدوات الخزنة متوقفة لهذا النموذج. فقد أجاب عن طلب اختبار دون استدعاء الأداة، لذا يمكنه المحادثة فقط.",
+      "toolResultRejected": "أدوات الخزنة متوقفة لهذا النموذج. فقد استدعى أداة اختبار لكنه فشل بعد استلام النتيجة، لذا يمكنه المحادثة فقط.",
+      "streamingUnsupported": "أدوات الخزنة متوقفة لهذا النموذج. لم يبثّ المزوّد ردًا تجريبيًا، لذا يمكن للنموذج المحادثة فقط.",
+      "providerSaid": "قال المزوّد: {detail}",
+      "wroteToolCall": "كتب النموذج استدعاء أداة كنص، ولم يُنفَّذ شيء."
+    },
+    "stepLimit": {
+      "notice": "توقف عند حدّ الخطوات.",
+      "continue": "متابعة"
+    },
     "enable": {
       "title": "تفعيل وكيل memrynote",
       "description": "يستخدم وكيل memrynote أداة CLI للوكيل المحلي الذي اخترته للدردشة حول خزنتك. يرسل Claude رسائل المحادثة إلى Anthropic، ويرسلها Codex إلى OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "يريد الوكيل إنشاء {title}. راجع التغيير قبل تطبيقه.",
       "descriptionDelete": "يريد الوكيل حذف {title}. راجع التغيير قبل تطبيقه.",
       "fallbackTitle": "هذا العنصر",
-      "current": "الحالي",
       "candidate": "المقترح",
       "loading": "جارٍ التحميل…",
       "apply": "تطبيق",
@@ -268,13 +381,18 @@
       "removeAttachment": "إزالة {label}",
       "placeholder": "اطلب أي شيء من memrynote… @ للإشارة إلى الملاحظات والمهام والأحداث",
       "send": "إرسال",
-      "providerLabel": "مزوّد الوكيل: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "الأدوات المتصلة",
       "connectTool": "توصيل {tool}",
-      "addContext": "إضافة سياق",
-      "addContextWithPermissions": "إضافة سياق ({permissions})",
       "mentionContext": "الإشارة إلى ملاحظة أو مهمة أو حدث",
+      "files": {
+        "attach": "إرفاق ملف نصي",
+        "refused": {
+          "unsupportedType": "{name} ليس ملفًا نصيًا مدعومًا. أرفق ملف .txt أو .md أو .log أو .csv أو .tsv أو .json أو .yaml أو .yml.",
+          "notText": "{name} ليس ملف نص بترميز UTF-8. أرفق ملفًا نصيًا بدلًا منه.",
+          "tooLarge": "سيجعل {name} هذه الرسالة تتجاوز حدّ 100 KB. أزل ملفًا أو أرفق ملفًا أصغر.",
+          "readFailed": "تعذّرت قراءة {name}. تأكد من أن الملف لا يزال موجودًا وأنه يمكنك فتحه، ثم أرفقه مرة أخرى."
+        }
+      },
       "voice": {
         "start": "بدء الإملاء الصوتي",
         "stop": "إيقاف الإملاء الصوتي",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "تعذّر تحويل الإدخال الصوتي إلى نص"
         }
       },
-      "modelLabel": "نموذج الوكيل: {provider} {model}",
-      "reasoningLabel": "استدلال الوكيل: {reasoning}",
       "providers": {
-        "label": "المزوّد",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "الوصول إلى الكمبيوتر"
       },
       "webSearch": {
-        "on": "تشغيل",
-        "off": "إيقاف",
         "label": "البحث في الويب"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "الوكيل غير متاح — فتح الإعدادات…"
       },
       "settings": {
-        "reasoning": "الاستدلال",
         "effort": "الجهد"
       },
       "includeCurrentNote": "تضمين الملاحظة الحالية",
@@ -340,13 +452,29 @@
           "extraHigh": "عالٍ جدًا"
         }
       },
-      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب: {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "افتراضي",
+          "default": "العمق الافتراضي",
+          "high": "مرتفع",
+          "max": "أقصى"
+        }
+      },
       "permissions": {
-        "label": "الأذونات",
-        "access": "الوصول",
-        "tools": "الأدوات"
+        "access": "الوصول"
       },
       "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}",
+      "queue": {
+        "label": "الرسائل في قائمة الانتظار",
+        "queueMessage": "وضع الرسالة في قائمة الانتظار",
+        "edit": "تحرير الرسالة في قائمة الانتظار",
+        "editLabel": "نص الرسالة في قائمة الانتظار",
+        "remove": "إزالة الرسالة من قائمة الانتظار",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "sending": "جارٍ الإرسال…",
+        "notSent": "لم تُرسل. حرّرها لإرسالها مرة أخرى، أو أزلها."
+      },
       "unavailable": {
         "vaultToolsOnly": "أدوات الخزنة فقط مع هذا النموذج"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "تعذّر حفظ حالة الإفصاح",
       "resolveWindow": "تعذّر تحديد نافذة مصدر الوكيل",
       "detectCli": "تعذّر اكتشاف الواجهات الخلفية للوكيل",
-      "loadDisclosure": "تعذّر تحميل حالة الإفصاح"
+      "loadDisclosure": "تعذّر تحميل حالة الإفصاح",
+      "turnFailed": "توقف الرد بسبب خطأ. رسالتك محفوظة، يمكنك إرسالها مرة أخرى."
     },
     "actions": {
       "copy": "نسخ",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "أفلِت الملفات لاستيرادها",
       "dropFilesIntoVaultRoot": "جذر الخزنة",
       "newNoteN": "ملاحظة جديدة (⌘N)",
-      "new": "جديد",
       "newItemMenu": "إنشاء جديد…",
       "feedbackButton": "إرسال رأيك",
       "feedbackTitle": "إرسال رأيك",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "بحث، استبدال، طرح سؤال…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "تخطي الجولة التعريفية",
-      "welcomeToMemry": "مرحبًا بك في memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
-      "getStarted": "لنبدأ ",
-      "createYourFirstNote": "أنشئ ملاحظتك الأولى",
-      "markdownBasedStoredLocallyAsPlainFiles": "تعتمد الملاحظات على Markdown وتُخزَّن محليًا كملفات عادية.",
-      "eGMeetingNotesIdeasAnything": "مثال: ملاحظات اجتماع، أفكار، أي شيء…",
-      "skip": "تخطي",
-      "createNote": "إنشاء ملاحظة ",
-      "addYourFirstTask": "أضف مهمتك الأولى",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "ترتبط المهام بملاحظاتك، مع الأولويات وتواريخ الاستحقاق.",
-      "eGReviewProjectProposal": "مثال: مراجعة مقترح المشروع…",
-      "skip2": "تخطي",
-      "createTask": "إنشاء مهمة ",
-      "syncAcrossDevices": "المزامنة عبر الأجهزة",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "حافظ على مزامنة ملاحظاتك ومهامك عبر جميع أجهزتك. يمكنك دائمًا إعداد هذا لاحقًا.",
-      "skipForNow": "تخطي حاليًا",
-      "doneLetSGo": "تم — لننطلق! "
+      "skip": "تخطي"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "تعيين أيقونة المجلد",
@@ -707,8 +818,7 @@
       "unknownTabType": "نوع علامة التبويب غير معروف: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "التغييرات غير المحفوظة",
-      "preview": "معاينة"
+      "unsavedChanges": "التغييرات غير المحفوظة"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "علامة تبويب جديدة",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "مرحبًا بك في memrynote",
-      "yourPersonalKnowledgeManagementSystem": "نظام إدارة المعرفة الشخصية الخاص بك.",
-      "selectAFolderToStoreYourNotesAndTasks": "حدد مجلدًا لتخزين ملاحظاتك ومهامك.",
       "opening": "جارٍ الفتح…",
-      "selectVaultFolder": "اختيار مجلد الخزنة",
-      "plainMarkdown": "Markdown عادي",
-      "yourNotesStayPortable": "تبقى ملاحظاتك قابلة للنقل",
-      "syncAnywhere": "مزامنة في أي مكان",
-      "useDropboxIcloudGit": "استخدم Dropbox، iCloud، Git",
       "recentVaults": "الخزائن الأخيرة",
-      "notesLastOpened": "ملاحظات · آخر فتح",
-      "preRelease": "تجريبي",
       "createNewVault": "إنشاء خزنة جديدة",
-      "createNewVaultDesc": "أنشئ خزنة جديدة في مجلد من اختيارك.",
-      "openExistingVault": "فتح خزنة موجودة",
-      "openExistingVaultDesc": "اختر مجلدًا يضم ملفات Markdown التي تحتفظ بها بالفعل.",
-      "signInToSync": "تسجيل الدخول للمزامنة",
-      "signInToSyncDesc": "خزائن مشفرة من طرف إلى طرف عبر أجهزتك.",
-      "create": "إنشاء",
       "open": "فتح",
-      "signIn": "تسجيل الدخول",
       "helpAndDocs": "المساعدة والوثائق",
-      "signInRequiresVault": "افتح خزنة أو أنشئها أولًا لإعداد المزامنة.",
       "addVault": "إضافة خزنة",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "لا توجد خزائن بعد",
       "openVault": "فتح خزنة",
       "settings": "الإعدادات",
-      "logOut": "تسجيل الخروج",
-      "signInToSync": "تسجيل الدخول للمزامنة",
       "remove": "إزالة «",
       "removeVaultTitle": "هل تريد إزالة «{name}» من القائمة؟",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذه الخزنة من التطبيق، لكن ملفاتك ستبقى على القرص. يمكنك دائمًا إعادة إضافتها لاحقًا.",
       "cancel": "إلغاء",
       "remove2": "إزالة",
       "inYourAccount": "في حسابك",
+      "trySandbox": "جرّب الخزنة التجريبية",
+      "sandboxVault": "الخزنة التجريبية",
+      "sandboxPreparing": "جارٍ تجهيز البيئة التجريبية…",
+      "sandboxFailed": "تعذّر تجهيز الخزنة التجريبية",
+      "resetSandbox": "إعادة ضبط الخزنة التجريبية",
       "itemsCount": "العناصر: {count}",
       "untitledVault": "خزنة",
       "downloadVaultTitle": "تنزيل «{name}»",
@@ -870,7 +965,6 @@
       "changeLocation": "تغيير…",
       "download": "تنزيل",
       "downloadFailed": "تعذّر تنزيل الخزنة",
-      "deleteFromAccount": "حذف من الحساب",
       "deleteVaultTitle": "هل تريد حذف «{name}» من حسابك؟",
       "deleteVaultBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
       "deleteVaultConfirm": "حذف من الحساب",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "إزالة الأداة",
       "dragAria": "سحب الأداة",
-      "configAria": "تكوين الأداة",
-      "resizeAria": "تغيير الحجم إلى {size}",
       "menuAria": "خيارات الأداة",
-      "resize": "الحجم",
       "remove": "إزالة",
       "filter": {
         "all": "الكل",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "تظهر هنا الملاحظات التي تفتحها",
       "bookmarks": "الإشارات المرجعية",
       "tasks": "المهام",
+      "chart": "مخطط",
       "calendar": "التقويم",
       "calendarToday": "اليوم",
       "openCalendar": "فتح التقويم",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "اختر مجلدًا",
       "folderEmpty": "لا توجد مجلدات بعد",
       "folderNoSelection": "لم يتم تحديد مجلد",
-      "folderView_list": "قائمة",
-      "folderView_gallery": "معرض",
       "folderViewSelect": "عرض",
       "project": "مشروع",
       "projectNoSelection": "لم يتم تحديد مشروع",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "تخطيط الرئيسية",
       "deleteAria": "حذف التخطيط",
-      "newAria": "لوحة معلومات جديدة",
       "newName": "لوحة معلومات جديدة",
       "defaultName": "الرئيسية",
       "manage": "إدارة لوحات المعلومات",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, zero {لا توجد مهام مستحقة اليوم} one {مهمة واحدة مستحقة اليوم} two {مهمتان مستحقتان اليوم} few {# مهام مستحقة اليوم} many {# مهمة مستحقة اليوم} other {# مهمة مستحقة اليوم}}",
       "events": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثًا} other {# حدث}}"
     },
-    "edit": "تحرير",
-    "done": "تم",
     "addWidget": "إضافة أداة",
+    "cover": {
+      "add": "إضافة غلاف"
+    },
     "empty": {
       "title": "لوحة معلوماتك فارغة",
       "body": "تجمع الأدوات ملاحظاتك ومهامك وإشاراتك المرجعية في مكان هادئ واحد.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "اكتملت الجولة التعريفية",
-      "body": "امنحنا نجمة على GitHub — فهذا يساعد الآخرين على العثور على MemryNote.",
-      "action": "منح نجمة على GitHub"
+      "body": "امنحنا نجمة على GitHub — فهذا يساعد الآخرين على العثور على MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "التحديث جاهز",
     "failed": "فشل التحديث",
     "downloadAction": "تنزيل",
-    "restartAction": "إعادة التشغيل",
     "detailsAction": "التفاصيل",
     "popover": {
       "readyTitle": "MemryNote {version} جاهز",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "الخزائن",
     "position": "{name}، الخزنة {index} من {count}",
-    "openList": "{position}. فتح قائمة الخزائن",
     "switchTo": "التبديل إلى {name}",
     "switchingTo": "جارٍ التبديل إلى {name}",
     "changeIcon": "تغيير الأيقونة…",
     "resetIcon": "إعادة تعيين الأيقونة",
     "iconButton": "تغيير أيقونة {name}",
+    "leaveSandbox": "العودة إلى {name}",
     "iconFailed": "تعذّر تغيير أيقونة الخزنة"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "النوع",
     "filterModified": "تاريخ التعديل",
     "matches": "التطابقات",
+    "matchesMore": "{count, plural, zero {# تطابق آخر} one {تطابق واحد آخر} two {تطابقان آخران} few {# تطابقات أخرى} many {# تطابقًا آخر} other {# تطابق آخر}}",
+    "matchesHide": "إخفاء التطابقات",
+    "matchOf": "التطابق {index} من {total}",
     "showMore": "عرض {count} إضافية",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "القسم التالي",
       "open": "فتح",
       "openNote": "فتح الملاحظة",
+      "openAtMatch": "فتح عند التطابق",
       "openFile": "فتح الملف",
       "openJournal": "فتح اليوميات",
       "openTask": "فتح المهمة",
@@ -1259,6 +1350,7 @@
       "chooseTag": "اختيار وسم",
       "addTag": "إضافة الوسم",
       "showAll": "عرض الكل",
+      "hideMatches": "إخفاء التطابقات",
       "searchEverywhere": "البحث في كل مكان",
       "clearFilters": "مسح عوامل التصفية"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "على {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, zero {لم يُعثر على خزائن} one {عُثر على خزنة} two {عُثر على خزنتين} few {عُثر على # خزائن} many {عُثر على # خزنة} other {عُثر على # خزنة}}",
-      "notion": "Notion",
       "otherApps": "تطبيقات وملفات أخرى",
       "otherAppsHint": "و{count} أخرى",
       "detectedFootnote": "عُثر عليها بفحص التطبيقات المثبّتة. لا شيء يغادر {device}.",

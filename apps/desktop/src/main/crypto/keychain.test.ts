@@ -1,11 +1,14 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import keytar from 'keytar'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import type { KeychainEntry } from '@memry/contracts/crypto'
 
 import { deleteKey, retrieveKey, storeKey } from './keychain'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 vi.mock('keytar', () => ({
   default: {

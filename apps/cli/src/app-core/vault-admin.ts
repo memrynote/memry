@@ -8,6 +8,7 @@ import type { VaultActivityEntry, VaultActivityFilter } from '@memry/contracts/v
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
 import type { DataDb } from './database.ts'
 import { getConfigPath, getMemryDir } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 export interface ActivityListOptions {
   limit?: number
@@ -37,10 +38,11 @@ function isValidVaultIcon(value: string): boolean {
     : !value.startsWith('custom:') && value.length <= 32 && !/[\s\p{Cc}]/u.test(value)
 }
 
-const activityFilters: readonly VaultActivityFilter[] = ['all', 'problems']
+const activityFilters: ReadonlySet<VaultActivityFilter> = new Set(['all', 'problems'])
 
 function isActivityEntry(value: unknown): value is VaultActivityEntry {
   if (!value || typeof value !== 'object') return false
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const entry = value as Record<string, unknown>
   return (
     entry.v === 1 &&
@@ -98,12 +100,16 @@ export function createVaultAdminService({
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
           throw new Error('not an object')
         }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
         existing = parsed as Record<string, unknown>
       } catch (error) {
         // Rewriting an unreadable config would lose the user's settings.
         const reason = error instanceof Error ? error.message : String(error)
-        throw new Error(`Cannot read ${configPath} (${reason}); vault icon not changed`)
+        throw new Error(`Cannot read ${configPath} (${reason}); vault icon not changed`, {
+          cause: error
+        })
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       const previous = existing.vaultIcon as { updatedAt?: unknown } | undefined
       const previousAt = typeof previous?.updatedAt === 'number' ? previous.updatedAt : 0
       const updatedAt = Math.max(Date.now(), previousAt + 1)
@@ -116,12 +122,12 @@ export function createVaultAdminService({
 
     // Newest first; a line this build cannot parse is dropped, as desktop's reader does.
     async listActivity({ limit = DEFAULT_ACTIVITY_LIMIT, filter = 'all' } = {}) {
-      if (!activityFilters.includes(filter)) throw new Error(`Invalid activity filter: ${filter}`)
+      if (!activityFilters.has(filter)) throw new Error(`Invalid activity filter: ${filter}`)
       let content: string
       try {
         content = await fs.readFile(activityPath, 'utf-8')
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code === 'ENOENT') return []
+        if (errorCode(error) === 'ENOENT') return []
         throw error
       }
       const entries: VaultActivityEntry[] = []

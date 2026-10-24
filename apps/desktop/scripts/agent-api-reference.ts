@@ -32,6 +32,10 @@ import {
 
 type JsonNode = Record<string, unknown>
 
+function isJsonNode(value: unknown): value is JsonNode {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export interface ToolExample {
   arguments: JsonNode
   reply?: unknown
@@ -79,6 +83,7 @@ function operationArgsSchema(description: DesktopOperationDescription): JsonNode
 }
 
 function describeOperation(operation: AgentMcpDesktopOperation): DesktopOperationDescription {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- describeDesktopOperation returns the broad description; DesktopOperationDescription is the shape this generator reads
   return describeDesktopOperation(operation) as DesktopOperationDescription
 }
 
@@ -159,7 +164,13 @@ function constraintsOf(node: JsonNode): string[] {
     ['pattern', 'pattern']
   ]
   for (const [key, label] of keys) {
-    if (node[key] !== undefined) out.push(`${label} ${code(String(node[key]))}`)
+    const value = node[key]
+    if (value === undefined) continue
+    const text =
+      typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean'
+        ? String(value)
+        : JSON.stringify(value)
+    out.push(`${label} ${code(text)}`)
   }
   return out
 }
@@ -173,7 +184,8 @@ function literalsOf(node: JsonNode): unknown[] | null {
 /** The object members of a node: itself, or the object branches of its union. */
 function objectBranch(node: JsonNode): JsonNode | null {
   if (node.type === 'object' && node.properties) return node
-  const options = (node.anyOf ?? node.oneOf) as JsonNode[] | undefined
+  const union = node.anyOf ?? node.oneOf
+  const options: JsonNode[] | undefined = Array.isArray(union) ? union : undefined
   if (!options) return null
   const objects = options.filter((option) => option.type === 'object' && option.properties)
   const rest = options.filter((option) => !(option.type === 'object' && option.properties))
@@ -183,7 +195,10 @@ function objectBranch(node: JsonNode): JsonNode | null {
 function resolve(node: JsonNode, root: JsonNode): JsonNode {
   if (typeof node.$ref !== 'string') return node
   const name = node.$ref.replace(/^#\/\$defs\//, '')
-  return ((root.$defs as Record<string, JsonNode> | undefined)?.[name] ?? node) as JsonNode
+  const defs = root.$defs
+  if (!isJsonNode(defs)) return node
+  const target = defs[name]
+  return isJsonNode(target) ? target : node
 }
 
 function rowsFor(
@@ -200,7 +215,8 @@ function rowsFor(
   if (literals && literals.length > 0) {
     values.push(literals.map((value) => code(JSON.stringify(value))).join(', '))
   } else {
-    const options = (resolved.anyOf ?? resolved.oneOf) as JsonNode[] | undefined
+    const union = resolved.anyOf ?? resolved.oneOf
+    const options: JsonNode[] | undefined = Array.isArray(union) ? union : undefined
     const optionLiterals = options?.flatMap((option) => literalsOf(option) ?? [])
     if (optionLiterals && optionLiterals.length > 0) {
       values.push(optionLiterals.map((value) => code(JSON.stringify(value))).join(', '))
@@ -212,8 +228,8 @@ function rowsFor(
 
   const branch = depth < ROW_MAX_DEPTH ? objectBranch(resolved) : null
   const arrayItems =
-    depth < ROW_MAX_DEPTH && resolved.type === 'array' && resolved.items
-      ? objectBranch(resolve(resolved.items as JsonNode, root))
+    depth < ROW_MAX_DEPTH && resolved.type === 'array' && isJsonNode(resolved.items)
+      ? objectBranch(resolve(resolved.items, root))
       : null
   rows.push({
     name,
@@ -231,18 +247,20 @@ function rowsFor(
   const nested = branch ?? arrayItems
   if (!nested) return
   const prefix = arrayItems ? `${name}[]` : name
-  const nestedRequired = new Set((nested.required as string[] | undefined) ?? [])
-  for (const [key, child] of Object.entries(nested.properties as Record<string, JsonNode>)) {
+  const nestedRequired = new Set(Array.isArray(nested.required) ? nested.required : [])
+  const nestedProperties = isJsonNode(nested.properties) ? nested.properties : {}
+  for (const [key, child] of Object.entries(nestedProperties)) {
+    if (!isJsonNode(child)) continue
     rowsFor(`${prefix}.${key}`, child, nestedRequired.has(key), root, depth + 1, rows)
   }
 }
 
 function toolRows(schema: JsonNode): ParamRow[] {
   const rows: ParamRow[] = []
-  const required = new Set((schema.required as string[] | undefined) ?? [])
-  for (const [key, child] of Object.entries(
-    (schema.properties as Record<string, JsonNode>) ?? {}
-  )) {
+  const required = new Set(Array.isArray(schema.required) ? schema.required : [])
+  const properties = isJsonNode(schema.properties) ? schema.properties : {}
+  for (const [key, child] of Object.entries(properties)) {
+    if (!isJsonNode(child)) continue
     rowsFor(key, child, required.has(key), schema, 0, rows)
   }
   return rows
@@ -438,12 +456,14 @@ argument it does not take.
 // ---------------------------------------------------------------------------
 
 export function readExamples(): AgentApiExamples {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- agent-api-examples.json is committed and checked by agent-api-reference.test.ts
   return JSON.parse(readFileSync(REFERENCE_PATHS.examples, 'utf8')) as AgentApiExamples
 }
 
 export function committedAppVersion(): string | null {
   try {
-    const schema = JSON.parse(readFileSync(REFERENCE_PATHS.schema, 'utf8')) as JsonNode
+    const schema: unknown = JSON.parse(readFileSync(REFERENCE_PATHS.schema, 'utf8'))
+    if (!isJsonNode(schema)) return null
     const version = schema['x-memry-app-version']
     return typeof version === 'string' ? version : null
   } catch {
@@ -463,14 +483,14 @@ export function nextAppVersion(explicit: string | undefined, committed: string |
  * repeat the root .oxfmtrc.jsonc, which the Node API does not read.
  */
 async function formatLikeCommit(file: string, content: string): Promise<string> {
-  const { code, errors } = await format(file, content, {
+  const { code: formatted, errors } = await format(file, content, {
     singleQuote: true,
     semi: false,
     printWidth: 100,
     trailingComma: 'none'
   })
   if (errors.length > 0) throw new Error(`oxfmt failed on ${file}: ${errors[0].message}`)
-  return code
+  return formatted
 }
 
 export async function renderReference(appVersion: string, examples = readExamples()) {

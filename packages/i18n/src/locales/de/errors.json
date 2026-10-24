@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Dein Tarif synchronisiert weniger Tresore, als dieses Konto hat, daher bleibt dieser Tresor auf diesem Gerät. Entferne unter Einstellungen → Konto einen Tresor aus deinem Konto oder wechsle zu einem höheren Tarif.",
     "certificatePinFailed": "Die sichere Verbindung ist fehlgeschlagen. Prüfe deine Netzwerkverbindung.",
     "deviceKeyMismatch": "Der Sicherheitsschlüssel dieses Geräts stimmt nicht mehr mit dem für dein Konto registrierten überein, daher lehnt der Server seine Änderungen ab. Melde dich auf diesem Gerät erneut an, um es neu zu registrieren.",
+    "deviceKeysMissing": "Änderungen auf diesem Gerät werden nicht hochgeladen, weil die Geräteschlüssel fehlen. Wähle „Reparieren“, um sie wiederherzustellen. Wenn dieses Gerät seine Schlüssel nicht mehr hat, meldest du dich erneut an und brauchst eventuell deine Wiederherstellungsphrase. Nicht synchronisierte Notizen, Aufgaben und Projekte bleiben erhalten.",
     "keychainUnavailable": "Die Synchronisierung ist pausiert, weil Memry seine Sync-Schlüssel gerade nicht aus dem Schlüsselbund deines Systems lesen kann. Entsperre deinen Schlüsselbund, dann wird die Synchronisierung automatisch fortgesetzt. Falls nicht, starte Memry neu. Es wurde nichts gelöscht.",
     "unknown": "Es ist ein unerwarteter Sync-Fehler aufgetreten. Es wird automatisch erneut versucht.",
     "statusFetchFailed": "Der Sync-Status konnte nicht abgerufen werden",
@@ -106,6 +107,10 @@
     "triggerFailed": "Die Synchronisierung ist fehlgeschlagen",
     "pauseFailed": "Die Synchronisierung konnte nicht angehalten werden",
     "resumeFailed": "Die Synchronisierung konnte nicht fortgesetzt werden",
+    "syncNowSignedOut": "Für die Synchronisierung musst du dich auf diesem Gerät erneut anmelden.",
+    "syncNowBusy": "Die Synchronisierung läuft bereits. Versuche es gleich noch einmal.",
+    "syncNowPaused": "Die Synchronisierung wurde während des Laufs pausiert. Setze sie im Synchronisierungsmenü fort.",
+    "openAccountSettings": "Einstellungen öffnen",
     "settingsNotInitialized": "Die Synchronisierung der Einstellungen wurde nicht initialisiert",
     "securityQuarantinePermanent": "Ein Sync-Element konnte nicht überprüft werden und wurde aus Sicherheitsgründen unter Quarantäne gestellt.",
     "securityQuarantineRetry": "Die Signaturprüfung eines Sync-Elements ist fehlgeschlagen. Es wird erneut versucht.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Die KI-Inline-Bearbeitung ist deaktiviert",
-    "listOllamaModelsFailed": "Die Ollama-Modelle konnten nicht aufgelistet werden"
+    "listOllamaModelsFailed": "Die Ollama-Modelle konnten nicht aufgelistet werden",
+    "writingAssistInvalid": "Diese Anfrage konnte nicht an das KI-Modell gesendet werden.",
+    "apiKeyMissing": "Füge deinen {provider}-API-Schlüssel unter Einstellungen → KI hinzu, um Schreibwerkzeuge zu nutzen.",
+    "apiKeyInvalid": "Dein {provider}-API-Schlüssel wurde abgelehnt. Prüfe ihn unter Einstellungen → KI.",
+    "ollamaUnreachable": "Ollama läuft nicht. Starte es mit „ollama serve“ oder wähle unter Einstellungen → KI einen anderen Anbieter.",
+    "providerUnreachable": "{provider} ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut."
   },
   "auth": {
     "notAuthenticated": "Nicht angemeldet",
-    "sessionExpired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
     "setupSessionExpired": "Deine Anmeldung ist abgelaufen, bevor der Vorgang abgeschlossen war. Melde dich erneut an und gib dann deine Wiederherstellungsphrase ein.",
     "setupSessionExpiredLinking": "Deine Anmeldung ist abgelaufen, bevor die Kopplung dieses Geräts abgeschlossen war. Melde dich erneut an und scanne den Code dann noch einmal.",
     "invalidRecoveryPhraseFormat": "Ungültiges Format der Wiederherstellungsphrase",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Der externe Kalendertermin konnte nicht übernommen werden",
     "onlyCalendarSourcesRetryable": "Nur bei Kalenderquellen ist ein erneuter Versuch möglich",
     "invalidProviderSettings": "Ungültige Einstellungen des Kalenderanbieters",
-    "getExternalEventFailed": "Dieser Termin konnte nicht geladen werden. Er ist weiterhin in deinem Kalender – versuch, ihn erneut zu öffnen."
+    "getExternalEventFailed": "Dieser Termin konnte nicht geladen werden. Er ist weiterhin in deinem Kalender – versuch, ihn erneut zu öffnen.",
+    "listLinkedNotesFailed": "Die mit diesem Termin verknüpften Notizen konnten nicht geladen werden."
   },
   "canvasFolder": {
     "exists": "Hier gibt es bereits einen Canvas-Ordner mit diesem Namen.",
@@ -209,10 +219,35 @@
     "previewFailed": "Vorschau fehlgeschlagen",
     "listFailed": "Die Importer konnten nicht aufgelistet werden",
     "appleNotesFoldersFailed": "Deine Apple-Notes-Ordner konnten nicht gelesen werden",
+    "appleNotesPasswordFailed": "Das Notizen-Passwort konnte nicht geprüft werden.",
     "onenoteStatusFailed": "Der Verbindungsstatus von OneNote konnte nicht gelesen werden",
     "onenoteConnectFailed": "Microsoft-Anmeldung fehlgeschlagen",
     "onenoteDisconnectFailed": "Das Microsoft-Konto konnte nicht getrennt werden",
-    "onenoteNotebooksFailed": "OneNote-Notizbücher konnten nicht geladen werden"
+    "onenoteNotebooksFailed": "OneNote-Notizbücher konnten nicht geladen werden",
+    "readwiseStatusFailed": "Der Readwise-Verbindungsstatus konnte nicht gelesen werden",
+    "readwiseConnectFailed": "Verbindung zu Readwise fehlgeschlagen",
+    "readwiseInvalidToken": "Readwise hat dieses Token nicht akzeptiert. Kopiere es erneut von readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise begrenzt gerade die Anfragen. Versuche es in einer Minute erneut.",
+    "readwiseUnreachable": "Readwise ist nicht erreichbar. Prüfe deine Verbindung und versuche es erneut.",
+    "readwiseDisconnectFailed": "Die Verbindung zu Readwise konnte nicht getrennt werden",
+    "readwiseSyncFailed": "Die Readwise-Synchronisierung konnte nicht gestartet werden",
+    "readwiseRunUnavailable": "Readwise wird auf diesem Gerät nicht synchronisiert.",
+    "readwiseRunInProgress": "Ein Readwise-Import läuft bereits. Versuche es erneut, wenn er fertig ist.",
+    "readwiseOptionsFailed": "Die Readwise-Einstellungen konnten nicht gespeichert werden",
+    "readwiseNotConnected": "Readwise ist nicht verbunden. Füge zuerst dein Zugriffstoken ein.",
+    "readwiseSyncsElsewhere": "Readwise synchronisiert auf einem anderen Gerät. Führe diesen Befehl dort aus.",
+    "readwiseBookCommandFailed": "Der Readwise-Befehl konnte nicht abgeschlossen werden",
+    "readwiseBookGone": "Dieses Buch ist nicht mehr in deiner Readwise-Bibliothek.",
+    "readwiseNotLinked": "Diese Notiz ist nicht mit einem Readwise-Buch verknüpft.",
+    "readwiseNotDeleted": "Dieses Buch steht nicht in der Liste der gelöschten Bücher.",
+    "readwiseBookBusy": "Die Notiz hat sich während des Befehls geändert. Versuche es erneut.",
+    "readwiseSyncsOnDevice": "Readwise synchronisiert auf {device}. Mit „Stattdessen hier synchronisieren“ verschiebst du es hierher.",
+    "readwiseAnotherDevice": "einem anderen Gerät",
+    "readwiseNotReady": "Memry hat die Synchronisierung mit deinen anderen Geräten noch nicht abgeschlossen. Versuche es gleich noch einmal.",
+    "readwiseNeedsSync": "Aktiviere die Synchronisierung, um Readwise zwischen Geräten zu verschieben.",
+    "readwiseClaimNotDelivered": "Deine anderen Geräte konnten noch nicht benachrichtigt werden. Prüfe deine Verbindung und versuche es erneut.",
+    "readwiseTakeOverFailed": "Readwise konnte nicht auf dieses Gerät verschoben werden",
+    "readwiseCancelFailed": "Die Readwise-Synchronisierung konnte nicht abgebrochen werden"
   },
   "project": {
     "createFailed": "Das Projekt konnte nicht erstellt werden",
@@ -236,7 +271,8 @@
     "renameFailed": "Die Eigenschaft konnte nicht umbenannt werden",
     "createDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht erstellt werden",
     "updateDefinitionFailed": "Die Eigenschaftsdefinition konnte nicht aktualisiert werden",
-    "setCalendarVisibilityFailed": "Die Kalendersichtbarkeit der Eigenschaft konnte nicht festgelegt werden"
+    "setCalendarVisibilityFailed": "Die Kalendersichtbarkeit der Eigenschaft konnte nicht festgelegt werden",
+    "definitionsFileUnreadable": "Eigenschaftsänderungen können nicht gespeichert werden, weil .memry/properties.md nicht gelesen werden kann. Repariere oder entferne die Datei und versuche es dann erneut."
   },
   "reminder": {
     "notFound": "Erinnerung nicht gefunden",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Das Modell konnte nicht geladen werden",
     "voiceModelDownloadFailed": "Das Sprachmodell konnte nicht heruntergeladen werden",
     "terminalCommandInstallFailed": "Der Terminalbefehl konnte nicht installiert werden",
-    "terminalCommandUninstallFailed": "Der Terminalbefehl konnte nicht deinstalliert werden",
-    "shortcutInUse": "Das Tastenkürzel {shortcut} wird bereits verwendet"
+    "terminalCommandUninstallFailed": "Der Terminalbefehl konnte nicht deinstalliert werden"
   },
   "tag": {
+    "renameInProgress": "Die Umbenennung von #{from} in #{to} läuft noch. Versuche es erneut, wenn sie fertig ist.",
     "mergeSameTag": "Quell- und Ziel-Tag sind identisch",
     "categoryNameRequired": "Ein Kategoriename ist erforderlich",
     "pinNoteFailed": "Die Notiz konnte nicht angeheftet werden",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Die Aufgaben konnten nicht gelöscht werden",
     "moveManyFailed": "Die Aufgaben konnten nicht verschoben werden",
     "archiveManyFailed": "Die Aufgaben konnten nicht archiviert werden",
-    "projectMissing": "Dieses Projekt existiert nicht mehr"
+    "projectMissing": "Dieses Projekt existiert nicht mehr",
+    "invalidParent": "Eine Aufgabe kann dort nicht abgelegt werden"
   },
   "taskStatus": {
     "createFailed": "Der Status konnte nicht erstellt werden",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Der Eigentümer hat diese Notiz schreibgeschützt.",
     "folderReadOnly": "Der Eigentümer hat diesen Ordner schreibgeschützt."
+  },
+  "ocrLanguages": {
+    "unreachable": "Der Server von Memry war nicht erreichbar. Die bereits vorhandenen Sprachen funktionieren weiter, und Memry versucht es beim nächsten Start erneut.",
+    "unavailable": "Der Server von Memry bietet diese Sprache noch nicht an. Die bereits vorhandenen Sprachen funktionieren weiter.",
+    "corrupt": "Die heruntergeladenen Daten entsprachen nicht den Erwartungen von Memry und wurden nicht verwendet. Versuche es erneut, um sie neu herunterzuladen.",
+    "saveFailed": "Die Sprachdaten konnten nicht auf diesem Computer gespeichert werden. Prüfe den freien Speicherplatz und versuche es erneut."
+  },
+  "tagFields": {
+    "reservedName": "„{name}“ ist reserviert und kann nicht als Feldname verwendet werden",
+    "duplicateField": "#{definedBy} hat bereits ein Feld namens „{name}“",
+    "unknownField": "Dieser Tag hat kein Feld namens „{name}“",
+    "inheritedField": "„{name}“ stammt von #{definedBy}. Bearbeite es dort",
+    "cycle": "#{parent} übernimmt seine Felder bereits von diesem Tag",
+    "unreadableSchema": "Eine neuere Version von Memry hat diesen Tag geändert. Aktualisiere Memry, um ihn zu bearbeiten",
+    "relationTargetRequired": "Wähle, auf welchen Tag diese Relation verweist",
+    "renameRunning": "Eine andere Feldumbenennung wird noch abgeschlossen ({from} in {to}). Versuche es erneut, wenn sie fertig ist."
   }
 }

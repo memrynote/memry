@@ -54,6 +54,7 @@ export function StickySettingsGroup(): React.JSX.Element {
         <Select
           value={settings.defaultKind}
           onValueChange={(value) =>
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
             void update({ defaultKind: value as StickySettings['defaultKind'] })
           }
         >
@@ -79,6 +80,7 @@ export function StickySettingsGroup(): React.JSX.Element {
           type="single"
           value={settings.tuckEdge}
           onValueChange={(value) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
             if (value) void update({ tuckEdge: value as StickySettings['tuckEdge'] })
           }}
           aria-label={t('general.sticky.tuckEdge.label')}

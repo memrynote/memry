@@ -184,7 +184,7 @@ export function usePages() {
     (query: string): Page[] => {
       if (!query || query.trim() === '') {
         // Return all pages sorted by most recently edited
-        return [...pages].sort(
+        return pages.toSorted(
           (a, b) => new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime()
         )
       }
@@ -199,8 +199,8 @@ export function usePages() {
    */
   const getRecentPages = useCallback(
     (limit: number = 5): Page[] => {
-      return [...pages]
-        .sort((a, b) => new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime())
+      return pages
+        .toSorted((a, b) => new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime())
         .slice(0, limit)
     },
     [pages]

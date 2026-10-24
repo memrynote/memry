@@ -84,7 +84,7 @@ export function relativeLuminance(hex: string): number {
 }
 
 export function contrastRatio(a: string, b: string): number {
-  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].sort((x, y) => y - x)
+  const [lighter, darker] = [relativeLuminance(a), relativeLuminance(b)].toSorted((x, y) => y - x)
   return (lighter + 0.05) / (darker + 0.05)
 }
 

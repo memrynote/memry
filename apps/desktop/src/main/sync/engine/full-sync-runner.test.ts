@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { EVENT_CHANNELS } from '@memry/contracts/ipc-events'
 import {
   BOOTSTRAP_DRAIN_BLOCKED_DWELL_MS,
@@ -186,7 +186,7 @@ interface Harness {
   ctx: SyncContext
   calls: string[]
   actions: {
-    pull: ReturnType<typeof vi.fn>
+    pull: Mock<() => Promise<SyncRunOutcome>>
     push: ReturnType<typeof vi.fn>
     scheduleSync: ReturnType<typeof vi.fn>
   }

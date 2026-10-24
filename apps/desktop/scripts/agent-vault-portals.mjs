@@ -16,7 +16,7 @@
 /* oxlint-disable no-undef -- `window` exists in the renderer this function is sent to. */
 async function seedPortalExamples() {
   const deadline = Date.now() + 30000
-  while (!(window.api && window.api.notes && document.querySelector('[data-testid], #root'))) {
+  while (!(window.api?.notes && document.querySelector('[data-testid], #root'))) {
     if (Date.now() > deadline) throw new Error('The app did not expose its notes API in time')
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
@@ -27,12 +27,15 @@ async function seedPortalExamples() {
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
 
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- seedPortalExamples is serialized into the renderer, so its helpers must stay inside it
   const fence = (target) => '```memry-portal\n' + JSON.stringify(target, null, 2) + '\n```'
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- seedPortalExamples is serialized into the renderer, so its helpers must stay inside it
   const create = async (title, content) => {
     const result = await window.api.notes.create({ title, content })
     if (!result.success) throw new Error(`Could not create ${title}: ${result.error}`)
     return result.note.id
   }
+  // oxlint-disable-next-line unicorn/consistent-function-scoping -- seedPortalExamples is serialized into the renderer, so its helpers must stay inside it
   const blocks = (note, roots, open) => ({ v: 1, note, blocks: roots, ...(open ? { open } : {}) })
 
   const lecture1 = await create(

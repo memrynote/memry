@@ -7,12 +7,12 @@ import type { RemoteDeviceForCompat, WriterCompatDeps } from './writer-compat'
 
 function parseDevices(raw: unknown): RemoteDeviceForCompat[] | null {
   if (!raw || typeof raw !== 'object') return null
-  const list = (raw as { devices?: unknown }).devices
+  const list = 'devices' in raw ? raw.devices : undefined
   if (!Array.isArray(list)) return null
   const devices: RemoteDeviceForCompat[] = []
   for (const entry of list) {
     if (!entry || typeof entry !== 'object') return null
-    const row = entry as Record<string, unknown>
+    const row: Record<string, unknown> = entry
     if (typeof row.id !== 'string' || typeof row.name !== 'string') return null
     devices.push({
       id: row.id,

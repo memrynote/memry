@@ -276,7 +276,7 @@ export function getJournalPropertyRows(
       type: definedTypes.get(name) ?? type,
       count: total
     }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .toSorted((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 
   return { rows, properties }
 }

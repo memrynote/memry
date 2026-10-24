@@ -263,6 +263,7 @@ const BASE = {
  * item to open; where inside it to land is the page's own business, and the
  * caller that wants it reads `parseMemryHref(...).anchor`.
  */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; every case returns, the implicit end is unreachable and must keep returning undefined for unknown runtime values
 export function tabFromMemryHref(
   href: string,
   options: TabFromHrefOptions = {}

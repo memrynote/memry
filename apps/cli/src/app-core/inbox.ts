@@ -1,4 +1,12 @@
 import type { InboxRecord, InboxBulkResponse, InboxService } from '@memry/app-core/service-types'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { and, asc, eq } from 'drizzle-orm'
+import { inboxItems, inboxItemTags, settings as settingsTable } from '@memry/db-schema/data-schema'
+import type { DataDb } from './database.ts'
+import { createId } from '@memry/app-core/ids'
+import type { NotesService } from './notes.ts'
+import type { TasksService } from '@memry/app-core/tasks-types'
 export type {
   InboxRecord,
   CaptureTextInput,
@@ -11,14 +19,6 @@ export type {
   InboxCapturePattern,
   InboxService
 } from '@memry/app-core/service-types'
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { and, asc, eq } from 'drizzle-orm'
-import { inboxItems, inboxItemTags, settings as settingsTable } from '@memry/db-schema/data-schema'
-import type { DataDb } from './database.ts'
-import { createId } from '@memry/app-core/ids'
-import type { NotesService } from './notes.ts'
-import type { TasksService } from '@memry/app-core/tasks-types'
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -336,7 +336,7 @@ export function createInboxService({
       }
       return Array.from(counts.entries())
         .map(([tag, count]) => ({ tag, count }))
-        .sort((left, right) => right.count - left.count || left.tag.localeCompare(right.tag))
+        .toSorted((left, right) => right.count - left.count || left.tag.localeCompare(right.tag))
     },
 
     async stats() {
@@ -368,7 +368,7 @@ export function createInboxService({
           if (!search) return true
           return `${row.title} ${row.content ?? ''}`.toLowerCase().includes(search)
         })
-        .sort((left, right) => (right.archivedAt ?? '').localeCompare(left.archivedAt ?? ''))
+        .toSorted((left, right) => (right.archivedAt ?? '').localeCompare(left.archivedAt ?? ''))
       const items = rows.slice(offset, offset + limit).map((item) => toInboxRecord(dataDb, item))
       return {
         items,
@@ -384,7 +384,7 @@ export function createInboxService({
         .from(inboxItems)
         .all()
         .filter((row) => row.filedAt)
-        .sort((left, right) => (right.filedAt ?? '').localeCompare(left.filedAt ?? ''))
+        .toSorted((left, right) => (right.filedAt ?? '').localeCompare(left.filedAt ?? ''))
         .slice(0, limit)
         .map((row) => ({
           id: row.id,
@@ -435,7 +435,7 @@ export function createInboxService({
 
       const total = rows.length
       const typeDistribution = [...typeCounts.entries()]
-        .sort((left, right) => right[1] - left[1])
+        .toSorted((left, right) => right[1] - left[1])
         .map(([type, count]) => ({
           type,
           count,
@@ -452,11 +452,11 @@ export function createInboxService({
         timeHeatmap,
         typeDistribution,
         topDomains: [...domainCounts.entries()]
-          .sort((left, right) => right[1] - left[1])
+          .toSorted((left, right) => right[1] - left[1])
           .slice(0, 10)
           .map(([domain, count]) => ({ domain, count })),
         topTags: [...tagCounts.entries()]
-          .sort((left, right) => right[1] - left[1])
+          .toSorted((left, right) => right[1] - left[1])
           .slice(0, 10)
           .map(([tag, count]) => ({ tag, count }))
       }

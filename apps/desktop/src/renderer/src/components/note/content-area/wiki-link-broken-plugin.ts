@@ -102,7 +102,7 @@ export function createWikiLinkBrokenPlugin(): Plugin {
       }),
 
       apply(tr, value, _oldState, newState) {
-        const next = tr.getMeta(SET_BROKEN_TARGETS_META) as WikiLinkDecorationTargets | undefined
+        const next: WikiLinkDecorationTargets | undefined = tr.getMeta(SET_BROKEN_TARGETS_META)
         if (next) return { ...next, decorations: buildDecorations(newState.doc, next) }
         if (tr.docChanged) return { ...value, decorations: buildDecorations(newState.doc, value) }
         return value

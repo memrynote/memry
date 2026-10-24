@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  ready as sodiumReady,
+  to_base64 as sodiumToBase64,
+  base64_variants as sodiumBase64Variants
+} from 'libsodium-wrappers-sumo'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { deleteAttestationPayload } from '@memry/contracts/delete-attestation'
 import { signPayload } from '../../crypto/signatures'
@@ -22,14 +26,14 @@ vi.mock('../../lib/logger', () => {
 
 const db = {} as DrizzleDb
 
-await sodium.ready
+await sodiumReady
 const keys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(3))
 const resolveKey = vi.fn(async (deviceId: string) =>
   deviceId === 'device-a' ? keys.publicKey : null
 )
 /** device-a's #2408 attestation over task-t's served claim. */
 const attestation = (id = 'task-t') =>
-  sodium.to_base64(
+  sodiumToBase64(
     signPayload(
       deleteAttestationPayload({
         id,
@@ -40,7 +44,7 @@ const attestation = (id = 'task-t') =>
       CBOR_FIELD_ORDER.DELETE_ATTESTATION,
       keys.privateKey
     ),
-    sodium.base64_variants.ORIGINAL
+    sodiumBase64Variants.ORIGINAL
   )
 
 const item = (id: string) => ({

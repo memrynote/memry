@@ -17,6 +17,7 @@ import type { NewPropertyDefinition, PropertyDefinition } from '@memry/db-schema
 import type { DataDb } from './database.ts'
 import type { NotesService } from './notes.ts'
 import { getMemryDir } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 export interface PropertyDefinitionInput {
   name: string
@@ -99,7 +100,7 @@ function propertiesFileEntry(definition: PropertyDefinition): unknown {
     const parsed = parseJson(definition.options)
     const categories =
       parsed && typeof parsed === 'object' && !Array.isArray(parsed) && 'categories' in parsed
-        ? (parsed as { categories: unknown }).categories
+        ? parsed.categories
         : defaultStatusCategories()
     return {
       type: 'status',
@@ -136,7 +137,7 @@ async function readFileProperties(filePath: string): Promise<Record<string, unkn
   try {
     raw = await fs.readFile(filePath, 'utf8')
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    if (errorCode(err) === 'ENOENT') return {}
     throw err
   }
   let parsed: ReturnType<typeof parsePropertyDefinitionEntries>
@@ -171,7 +172,9 @@ async function persistPortableDefinitions(
   if (removed !== undefined) delete properties[removed]
   for (const definition of definitions) {
     if (!portableDefinitionTypes.has(definition.type)) continue
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     const existing = properties[definition.name] as { type?: unknown } | undefined
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     const entry = propertiesFileEntry(definition) as { type: string }
     // Keep fields desktop writes that the CLI's rows do not carry, such as a
     // date's `showOnCalendar`, as long as the type is unchanged.

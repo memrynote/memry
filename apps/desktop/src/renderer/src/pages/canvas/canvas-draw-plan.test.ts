@@ -134,11 +134,7 @@ describe('planDraw', () => {
   })
 
   it('never lets an agent mint an entity card', () => {
-    const plan = planDraw(
-      [],
-      [{ type: 'rectangle', x: 0, y: 0 } as CanvasDrawElement & { customData?: unknown }],
-      options()
-    )
+    const plan = planDraw([], [{ type: 'rectangle', x: 0, y: 0 }], options())
     expect(plan.skeletons[0].customData).toBeUndefined()
   })
 })

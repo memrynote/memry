@@ -37,9 +37,9 @@ async function seedNoteWithTag(page, tag: string): Promise<void> {
 
 async function setTagIcon(page, tag: string, icon: string): Promise<void> {
   const ok = await page.evaluate(
-    async ({ tag, icon }) => {
+    async ({ tag: tagArg, icon: iconArg }) => {
       const api = (window as unknown as { api: Record<string, any> }).api
-      const res = await api.tags.updateTagIcon({ tag, icon })
+      const res = await api.tags.updateTagIcon({ tag: tagArg, icon: iconArg })
       return !!res?.success
     },
     { tag, icon }

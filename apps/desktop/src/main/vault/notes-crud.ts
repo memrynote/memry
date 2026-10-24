@@ -328,7 +328,7 @@ export async function createNote(input: NoteCreateInput): Promise<Note> {
     Object.assign(frontmatter, writePropertiesToRoot(frontmatter, properties))
   }
 
-  const body = input.content && input.content.trim() ? input.content : templateContent
+  const body = input.content?.trim() ? input.content : templateContent
   const content = input.plainChecklists ? markAddedChecklistLinesPlain(body) : body
   // Icon is Memry sidecar state (index DB), never frontmatter — same as updateNote.
   const emoji = input.emoji === undefined ? templateIcon : input.emoji
@@ -591,6 +591,7 @@ export async function getFileById(id: string): Promise<FileMetadata | null> {
     modified: new Date(cached.modifiedAt),
     transcription: filedVoice?.transcription ?? null,
     transcriptionStatus:
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       (filedVoice?.transcriptionStatus as FileMetadata['transcriptionStatus'] | undefined) ?? null
   }
 }
@@ -901,6 +902,7 @@ export async function renameFolder(oldPath: string, newPath: string): Promise<Fo
     // user, but it is a stale view, not a defect (#2531). ENOENT with the source
     // still present means the destination's parent is missing: keep that an error.
     if (
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
       (error as NodeJS.ErrnoException | null)?.code === 'ENOENT' &&
       !(await fs.access(oldAbsPath).then(
         () => true,

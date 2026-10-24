@@ -74,7 +74,7 @@ describe('generateOtp', () => {
     // #given
     vi.spyOn(crypto, 'getRandomValues').mockImplementation((arr) => {
       ;(arr as Uint32Array)[0] = 42
-      return arr as Uint32Array
+      return arr
     })
 
     // #when
@@ -90,7 +90,7 @@ describe('generateOtp', () => {
     // #given
     vi.spyOn(crypto, 'getRandomValues').mockImplementation((arr) => {
       ;(arr as Uint32Array)[0] = 1_000_001
-      return arr as Uint32Array
+      return arr
     })
 
     // #when
@@ -106,7 +106,7 @@ describe('generateOtp', () => {
     // #given
     vi.spyOn(crypto, 'getRandomValues').mockImplementation((arr) => {
       ;(arr as Uint32Array)[0] = 0
-      return arr as Uint32Array
+      return arr
     })
 
     // #when

@@ -320,7 +320,7 @@ describe('POST /telemetry/batch → PostHog', () => {
     expect(response.status).toBe(202)
     const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
     expect(captureCall).toBeDefined()
-    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    const body = JSON.parse((captureCall?.[1] as RequestInit | undefined)?.body as string)
     expect(body.batch.map((e: { event: string }) => e.event)).toContain('note_created')
   })
 
@@ -361,11 +361,12 @@ describe('POST /telemetry/batch → PostHog', () => {
 
     // #then the 202 still reports the raw count so old clients keep flushing
     expect(response.status).toBe(202)
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
     expect(((await response.json()) as { accepted: number }).accepted).toBe(2)
     // #then the capture batch has the real event but no tripwire, no $exception
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled())
     const captureCall = fetchSpy.mock.calls.find(([url]) => String(url).endsWith('/batch/'))
-    const body = JSON.parse((captureCall?.[1] as RequestInit).body as string)
+    const body = JSON.parse((captureCall?.[1] as RequestInit | undefined)?.body as string)
     const names = body.batch.map((e: { event: string }) => e.event)
     expect(names).toContain('app_started')
     expect(names).not.toContain('app_log_recorded')

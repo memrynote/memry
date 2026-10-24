@@ -1,10 +1,13 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 
 import { encodeCbor } from './cbor'
 import { signPayload, verifySignature } from './signatures'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready

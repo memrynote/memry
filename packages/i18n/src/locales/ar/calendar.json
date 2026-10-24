@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "إكمال {title}",
     "task-completed": "اكتملت المهمة",
-    "could-not-complete": "تعذّر إكمال المهمة",
+    "could-not-update-status": "تعذّر تغيير حالة المهمة",
     "duration-minutes": "{minutes} د",
     "duration-hours": "{hours} س",
     "duration-hours-minutes": "{hours} س {minutes} د"
@@ -214,12 +213,9 @@
     "next-week": "الأسبوع القادم",
     "open-task": "فتح المهمة",
     "source-note": "الملاحظة المصدر",
-    "reschedule": "إعادة جدولة",
     "mark-done": "تحديد كمكتملة",
     "mark-not-done": "تحديد كغير مكتملة",
-    "later-today": "في وقت لاحق اليوم",
     "tomorrow": "غدًا",
-    "next-week-mon": "الأسبوع القادم · الاثنين",
     "pick-date-time": "اختيار التاريخ والوقت…",
     "remove-due-date": "إزالة تاريخ الاستحقاق",
     "subtasks-prefix": "المهام الفرعية",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "تعذّر إزالة تاريخ الاستحقاق",
       "could-not-open-note": "تعذّر فتح الملاحظة"
     }
+  },
+  "eventNotes": {
+    "heading": "الملاحظات",
+    "create": "ملاحظة جديدة",
+    "link": "ربط ملاحظة",
+    "untitled": "ملاحظة اجتماع",
+    "searchPlaceholder": "البحث في الملاحظات",
+    "noResults": "لم يتم العثور على ملاحظات",
+    "createFailed": "تعذّر إنشاء ملاحظة لهذا الحدث.",
+    "linkFailed": "تعذّر ربط الملاحظة بهذا الحدث.",
+    "loadFailed": "تعذّر تحميل الملاحظات المرتبطة بهذا الحدث.",
+    "propertyTaken": "تحتوي هذه الملاحظة بالفعل على خاصية \"{name}\" ليست رابطًا."
   },
   "notePopover": {
     "kind": "ملاحظة",
@@ -254,6 +262,10 @@
     "overdue": "متأخرة",
     "untitled": "بدون عنوان",
     "days": "{count, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}",
+    "subtasks": {
+      "expand": "عرض {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}} من {title}",
+      "collapse": "إخفاء {count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}} من {title}"
+    },
     "events": "الأحداث",
     "schedule-hint": "انقر لتحديد تاريخ، واسحب لتحديد نطاق",
     "empty-title": "لا شيء على المخطط الزمني هنا",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "التقويمات المشترك فيها"
     },
     "caldav": {
       "name": "CalDAV"

@@ -1430,7 +1430,7 @@ describe('settings-handlers', () => {
         applyGlobalCaptureShortcut()
         applyStickyShortcut()
 
-        expect([...held.keys()].sort()).toEqual(['Control+J', 'Control+L'])
+        expect([...held.keys()].toSorted()).toEqual(['Control+J', 'Control+L'])
         held.get('Control+J')?.()
         held.get('Control+L')?.()
         expect(quickCaptureOpens).toBe(1)

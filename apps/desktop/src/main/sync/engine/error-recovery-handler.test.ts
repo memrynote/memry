@@ -190,7 +190,7 @@ describe('ErrorRecoveryHandler', () => {
 
     it('#given no refreshAccessToken dep #when auth_expired #then sets error state directly', async () => {
       ctx = createCtx({
-        deps: { ...ctx.deps, refreshAccessToken: undefined } as SyncContext['deps']
+        deps: { ...ctx.deps, refreshAccessToken: undefined }
       })
       handler = new ErrorRecoveryHandler(ctx, stateManager, onFullSync)
 

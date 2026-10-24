@@ -1,12 +1,12 @@
 import * as AccordionPrimitive from '@radix-ui/react-accordion'
 import { ChevronDown } from 'lucide-react'
-import { forwardRef, type ComponentPropsWithoutRef, type ElementRef } from 'react'
+import { forwardRef, type ComponentPropsWithoutRef, type ComponentRef } from 'react'
 import { cn } from '@/lib/utils'
 
 const Accordion = AccordionPrimitive.Root
 
 const AccordionItem = forwardRef<
-  ElementRef<typeof AccordionPrimitive.Item>,
+  ComponentRef<typeof AccordionPrimitive.Item>,
   ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
 >(({ className, ...props }, ref) => (
   <AccordionPrimitive.Item
@@ -18,7 +18,7 @@ const AccordionItem = forwardRef<
 AccordionItem.displayName = 'AccordionItem'
 
 const AccordionTrigger = forwardRef<
-  ElementRef<typeof AccordionPrimitive.Trigger>,
+  ComponentRef<typeof AccordionPrimitive.Trigger>,
   ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Header className="flex">
@@ -38,7 +38,7 @@ const AccordionTrigger = forwardRef<
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
 const AccordionContent = forwardRef<
-  ElementRef<typeof AccordionPrimitive.Content>,
+  ComponentRef<typeof AccordionPrimitive.Content>,
   ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Content

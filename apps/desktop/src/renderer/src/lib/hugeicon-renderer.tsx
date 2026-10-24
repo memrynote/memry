@@ -25,11 +25,12 @@ export function HugeIconByName({
   const icon = cached ?? (loaded?.name === name ? loaded.icon : null)
 
   useEffect(() => {
-    if (cached) return
+    if (cached) return undefined
 
     let cancelled = false
     void loadAllIcons().then((mod) => {
       if (cancelled) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `name` is a runtime icon-name string; a missing export yields undefined, handled below
       const resolved = mod[name] as IconSvgElement | undefined
       if (resolved) {
         iconCache.set(name, resolved)

@@ -1214,9 +1214,9 @@ describe('calendar-handlers', () => {
       )
     `)
 
-    mockSyncGoogleCalendarSource.mockImplementation(async (db, sourceId) => {
+    mockSyncGoogleCalendarSource.mockImplementation(async (syncDb, sourceId) => {
       // Simulate a successful sync clearing the error.
-      db.run(sql`
+      syncDb.run(sql`
         UPDATE calendar_sources
         SET sync_status = ${'ok'}, last_error = NULL, last_synced_at = ${'2026-04-19T10:00:00.000Z'}
         WHERE id = ${sourceId}

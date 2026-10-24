@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Canvas management — the sidebar folder tree, end to end.
  *
@@ -19,7 +20,7 @@
  * rather than through row text: the folder of a canvas is the thing under test,
  * and the API is where it is actually stored.
  */
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 import { setOpenPagesInNewTab } from './utils/electron-helpers'
 
@@ -191,7 +192,7 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await rowAction(page, canvasKey, 'Duplicate')
     await expect.poll(async () => (await listCanvases(page)).length).toBe(2)
 
-    const duplicate = (await listCanvases(page)).find((c) => c.id !== created.id)
+    const duplicate = (await listCanvases(page)).find((c) => c.id !== created.id)!
     expect(duplicate).toBeTruthy()
     // A duplicate lands beside its original, not at the root.
     expect(duplicate.folder).toBe('Studio')
@@ -203,7 +204,7 @@ test.describe('Canvas management — folders, placement and row actions', () => 
       .poll(async () => (await listCanvases(page)).find((c) => c.id === created.id)?.folder ?? null)
       .toBeNull()
     // The one that did not move stayed put.
-    expect((await listCanvases(page)).find((c) => c.id === duplicate.id).folder).toBe('Studio')
+    expect((await listCanvases(page)).find((c) => c.id === duplicate.id)!.folder).toBe('Studio')
 
     // ---------------------------------------------------------------- delete
     await rowAction(page, canvasKey, 'Delete')
@@ -285,7 +286,7 @@ test.describe('Canvas management — folders, placement and row actions', () => 
     await rowAction(page, 'folder:Boards', 'New canvas here')
     await expect(page.locator('[data-canvas-editor]')).toBeVisible({ timeout: 30_000 })
     await expect.poll(async () => (await listCanvases(page)).length).toBe(2)
-    const beta = (await listCanvases(page)).find((c) => c.id !== alpha.id)
+    const beta = (await listCanvases(page)).find((c) => c.id !== alpha.id)!
 
     await expect(tabs).toHaveCount(tabsBefore + 2)
 

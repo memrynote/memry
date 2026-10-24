@@ -11,12 +11,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/ipc-error'
 
-const log = createLogger('Hook:PropertyDefinitions')
 import {
   notesService,
   type PropertyDefinition,
   type CreatePropertyDefinitionInput
 } from '@/services/notes-service'
+
+const log = createLogger('Hook:PropertyDefinitions')
 
 export interface UsePropertyDefinitionsReturn {
   /** All property definitions */

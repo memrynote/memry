@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Selesaikan {title}",
     "task-completed": "Tugas selesai",
-    "could-not-complete": "Tidak dapat menyelesaikan tugas",
+    "could-not-update-status": "Tidak dapat menukar status tugas",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} j",
     "duration-hours-minutes": "{hours} j {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Minggu depan",
     "open-task": "Buka tugas",
     "source-note": "Nota sumber",
-    "reschedule": "Jadualkan semula",
     "mark-done": "Tandakan selesai",
     "mark-not-done": "Tandakan belum selesai",
-    "later-today": "Kemudian hari ini",
     "tomorrow": "Esok",
-    "next-week-mon": "Minggu depan · Isn",
     "pick-date-time": "Pilih tarikh & masa…",
     "remove-due-date": "Alih keluar tarikh akhir",
     "subtasks-prefix": "Subtugas",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Tidak dapat mengalih keluar tarikh akhir",
       "could-not-open-note": "Tidak dapat membuka nota"
     }
+  },
+  "eventNotes": {
+    "heading": "Nota",
+    "create": "Nota baharu",
+    "link": "Pautkan nota",
+    "untitled": "Nota mesyuarat",
+    "searchPlaceholder": "Cari nota",
+    "noResults": "Tiada nota ditemui",
+    "createFailed": "Tidak dapat membuat nota untuk acara ini.",
+    "linkFailed": "Tidak dapat memautkan nota ke acara ini.",
+    "loadFailed": "Tidak dapat memuatkan nota yang dipautkan ke acara ini.",
+    "propertyTaken": "Nota ini sudah mempunyai sifat \"{name}\" yang bukan pautan."
   },
   "notePopover": {
     "kind": "Nota",
@@ -254,6 +262,10 @@
     "overdue": "lewat tempoh",
     "untitled": "Tanpa tajuk",
     "days": "{count, plural, other {# hari}}",
+    "subtasks": {
+      "expand": "Tunjukkan {count, plural, other {# subtugas}} bagi {title}",
+      "collapse": "Sembunyikan {count, plural, other {# subtugas}} bagi {title}"
+    },
     "events": "Acara",
     "schedule-hint": "Klik untuk menetapkan tarikh, seret untuk menetapkan julat",
     "empty-title": "Tiada apa-apa pada garis masa di sini",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Kalendar yang dilanggan"
     },
     "caldav": {
       "name": "CalDAV"

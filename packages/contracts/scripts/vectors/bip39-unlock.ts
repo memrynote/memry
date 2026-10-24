@@ -24,7 +24,7 @@
  * Chapter: docs/protocol/01-identity-and-keys.md.
  */
 import * as bip39 from 'bip39'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { to_hex } from 'libsodium-wrappers-sumo'
 
 import { ARGON2_PARAMS } from '../../src/crypto'
 import { b64, fromHex, hex, utf8 } from '../../test-vectors/deterministic-provider'
@@ -172,7 +172,7 @@ export function buildBip39Unlock(): Record<string, unknown> {
     {
       name: 'deviceId — the locally derived form',
       ed25519PublicKeyHex: hex(ed25519.publicKey),
-      expectedDeviceIdHex: sodium.to_hex(sodium.crypto_generichash(16, ed25519.publicKey, null)),
+      expectedDeviceIdHex: to_hex(sodium.crypto_generichash(16, ed25519.publicKey, null)),
       construction: 'hex(crypto_generichash(16, ed25519PublicKey, key = null))',
       pins: '32 lowercase hex characters. The WIRE identity is the server-assigned id, not this one (chapter 01 §1.5)'
     }

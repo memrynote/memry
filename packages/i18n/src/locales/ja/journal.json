@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI によるつながり",
     "todaysNotes": "今日のノート",
-    "todaysSchedule": "今日のスケジュール",
-    "todaysTasks": "今日のタスク",
     "tasks": "タスク",
     "technicalDetails": "技術的な詳細"
   },
@@ -102,8 +100,7 @@
       "afternoon": "こんにちは",
       "evening": "こんばんは",
       "night": "こんばんは"
-    },
-    "allDay": "終日"
+    }
   },
   "nav": {
     "previousDay": "前日",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "その他のオプション",
     "documentStatistics": "文書統計",
-    "dayContext": "この日の状況：タスクと予定",
-    "scheduleEvents": "予定一覧",
-    "tasks": "タスク",
     "notesCreatedToday": "今日作成したノート {count} 件"
   },
   "empty": {
     "noEntry": "記録なし",
     "noDaysInMonth": "この月には表示する日がありません",
-    "noEventsScheduled": "予定はありません",
-    "noEventsScheduledToday": "今日の予定はありません",
-    "noEventsWereScheduled": "予定はありませんでした",
-    "noTasksDue": "期限を迎えるタスクはありません",
-    "noTasksDueToday": "今日が期限のタスクはありません",
-    "noTasksWereDue": "この日が期限のタスクはありませんでした",
     "noNotesToday": "今日作成したノートはありません",
     "startDocumenting": "考えやアイデアを書き留めてみましょう"
   },
@@ -155,9 +143,7 @@
     "day": "日",
     "days": "日",
     "event": "予定",
-    "events": "予定",
     "task": "タスク",
-    "todo": "未完了",
     "moreConnections": "+ {count} 件のつながり",
     "moreConnections_plural": "+ {count} 件のつながり",
     "moreNotes": "+ {count} 件のノート",
@@ -166,7 +152,6 @@
     "charactersWritten": "書いた文字数",
     "words": "{count} 語",
     "characters": "{count} 文字",
-    "completed": "{count} 件完了",
     "overdue": "期限切れ {count} 件"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "更新：{date}"
   },
   "task": {
-    "completed": "完了",
-    "notCompleted": "未完了",
-    "priority": "優先度：{priority}",
-    "overdue": "期限切れ",
-    "markComplete": "「{title}」を完了にする",
-    "markNotComplete": "「{title}」を未完了に戻す"
+    "priority": "優先度：{priority}"
   },
   "template": {
     "using": "「{templateName}」を使用中"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "内容はまだメモリー上に残っています。クリックして保存を再試行してください。",
-    "noteNotFound": "ノート「{target}」が見つかりません",
     "createLinkedFailed": "リンク先のノートを作成できませんでした",
     "fileNotFound": "ファイルが見つかりません：{target}",
     "openLinkedItemFailed": "リンク先の項目を開けませんでした",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "ジャーナルの記録を削除",
     "description": "「{title}」を削除してもよろしいですか？この操作は元に戻すことができません。"
+  },
+  "dayTimeline": {
+    "label": "1 日のスケジュール",
+    "allDay": "終日の項目",
+    "unscheduled": "未スケジュール",
+    "unscheduledEmpty": "未スケジュールのタスクはありません。ブロックをここにドラッグすると時間をクリアできます。",
+    "range": "{start} – {end}",
+    "openTask": "{title}、{range}",
+    "completeTask": "{title} を完了"
   }
 }

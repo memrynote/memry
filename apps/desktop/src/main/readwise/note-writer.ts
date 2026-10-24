@@ -211,7 +211,7 @@ export async function findNoteByReadwiseUrl(readwiseUrl: unknown): Promise<Note 
         ? 'readwiseBookId' in identity && identity.readwiseBookId === wanted.readwiseBookId
         : 'readerDocumentId' in identity && identity.readerDocumentId === wanted.readerDocumentId
     })
-    .sort((a, b) => (a.noteId < b.noteId ? -1 : 1))
+    .toSorted((a, b) => (a.noteId < b.noteId ? -1 : 1))
   for (const row of rows) {
     const note = await getNoteById(row.noteId)
     if (note) return note
@@ -270,6 +270,7 @@ async function createNote(
     title: plan.title,
     folder: plan.folder,
     properties,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; element type is the one stored by writers of this field
     tags: Array.isArray(tags) ? (tags as string[]) : undefined,
     content: plan.section,
     plainChecklists: true

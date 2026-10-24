@@ -65,8 +65,11 @@ const contentAreaMocks = vi.hoisted(() => ({
   useSyncState: { status: 'error' },
   editorChanges: [] as unknown[],
   yjsState: {
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
     fragment: undefined as unknown,
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
     doc: null as unknown,
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
     provider: null as unknown,
     isReady: true,
     isRemoteUpdateRef: { current: false }
@@ -78,6 +81,7 @@ const contentAreaMocks = vi.hoisted(() => ({
   },
   wikiHover: {
     isVisible: false,
+    // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
     preview: null as unknown,
     position: null as null | { x: number; y: number },
     handleCardMouseEnter: vi.fn(),
@@ -749,6 +753,7 @@ describe('ContentArea', () => {
     const key = (target: EventTarget, type: string, listener: unknown, options: unknown): string =>
       `${(target as { tagName?: string }).tagName ?? target.constructor.name}:${type}:${
         (listener as { name?: string })?.name ?? 'anon'
+        // oxlint-disable-next-line typescript/no-base-to-string -- test key only: the non-object branch holds booleans, undefined or strings
       }:${typeof options === 'object' ? JSON.stringify(options) : String(options)}`
 
     // React 19 installs its delegated root listeners on the test container and
@@ -1254,7 +1259,7 @@ describe('ContentArea', () => {
       expect(message).toBe('Checkbox turned into a task')
 
       // Its action is the undo, from a button.
-      act(() => options.action.onClick())
+      void act(() => options.action.onClick())
       const block = contentAreaMocks.blocks.get('sub-check')
       expect(block.type).toBe('checkListItem')
       expect(block.props.plain).toBe(true)
@@ -1786,7 +1791,7 @@ describe('ContentArea', () => {
     const [tableItem] = await slashController.getItems('table')
 
     // #when the row is picked
-    act(() => tableItem.onItemClick())
+    void act(() => tableItem.onItemClick())
 
     // #then the grid is up and nothing is inserted yet
     const grid = await screen.findByRole('application', { name: /table size/i })
@@ -1830,7 +1835,7 @@ describe('ContentArea', () => {
       (controller) => controller.triggerCharacter === '/'
     )
     const [tableItem] = await slashController.getItems('table')
-    act(() => tableItem.onItemClick())
+    void act(() => tableItem.onItemClick())
     const grid = await screen.findByRole('application', { name: /table size/i })
 
     fireEvent.keyDown(grid, { key: 'Escape' })

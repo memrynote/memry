@@ -18,15 +18,6 @@ import {
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
 import { getActiveRuntime, setActiveRuntime } from './runtime-state'
-
-// The runtime handle lives in runtime-state.ts; importers outside the
-// asset/attachment path keep reading it through here.
-export {
-  getNetworkMonitor,
-  getNoteBodyOutbox,
-  getSyncEngine,
-  getSyncWebSocket
-} from './runtime-state'
 import { handleDeviceKeyMismatch } from './device-key-mismatch'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
@@ -166,6 +157,15 @@ import { store } from '../store'
 import { recordSyncStatusActivity } from './sync-activity'
 import { pauseForKeychain } from './keychain-retry'
 
+// The runtime handle lives in runtime-state.ts; importers outside the
+// asset/attachment path keep reading it through here.
+export {
+  getNetworkMonitor,
+  getNoteBodyOutbox,
+  getSyncEngine,
+  getSyncWebSocket
+} from './runtime-state'
+
 const log = createLogger('SyncRuntime')
 
 const crdtAuthRetryDeps: AuthRetryDeps = {
@@ -192,6 +192,15 @@ function getVerifiedVaultKey(db: DataDb): Promise<Uint8Array> {
 
 function emitVaultRecoveryNeeded(event: VaultRecoveryNeededEvent): void {
   broadcastToAllWindows(EVENT_CHANNELS.VAULT_RECOVERY_NEEDED, event)
+}
+
+function getStateVector(id: string): Uint8Array | null {
+  return getCrdtProvider().getStateVector(id)
+}
+
+function emitFn(channel: string, data: unknown): void {
+  if (channel === EVENT_CHANNELS.STATUS_CHANGED) recordSyncStatusActivity(data)
+  broadcastToAllWindows(channel, data)
 }
 
 function emitSyncStatus(event: SyncStatusChangedEvent): void {
@@ -481,7 +490,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // Both halves widened to the same DrizzleDb during the sync-client
       // extraction, so the old intersection is a single type now.
       type RuntimeSyncDb = SyncEngineDeps['db']
-      const runtimeSyncDb = db as unknown as RuntimeSyncDb
+      const runtimeSyncDb: RuntimeSyncDb = db
 
       const getDeviceId = (): string | null => getCurrentDeviceId(db)
 
@@ -505,7 +514,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       const canvasFolderSync = initCanvasFolderSyncService(recordSyncDeps)
       const projectSync = initProjectSyncService(recordSyncDeps)
       const settingsSync = initSettingsSync(recordSyncDeps)
-      const getStateVector = (id: string): Uint8Array | null => getCrdtProvider().getStateVector(id)
       const noteSync = initNoteSyncService({ queue, getDeviceId, getStateVector })
       const journalSync = initJournalSyncService({ queue, getDeviceId, getStateVector })
       const tagDefinitionSync = initTagDefinitionSyncService(recordSyncDeps)
@@ -520,6 +528,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // One line per record type: the crdt entries below still spell themselves
       // out, but the record ones are all the same shape and the file sits on the
       // 800-line lint ceiling.
+      // oxlint-disable-next-line unicorn/consistent-function-scoping -- type-only dependency on the enclosing function runtimeSyncDb, so it cannot move to module scope
       const recordAdapter = (
         type: SyncItemType,
         local: RecordLocalSyncAdapter
@@ -757,11 +766,6 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
       // it, while this runtime's flush can still be in flight.
       const runtimeAbort = (runtimeAbortController = new AbortController())
 
-      const emitFn = (channel: string, data: unknown): void => {
-        if (channel === EVENT_CHANNELS.STATUS_CHANGED) recordSyncStatusActivity(data)
-        broadcastToAllWindows(channel, data)
-      }
-
       const workerBridge = new SyncWorkerBridge()
       try {
         await workerBridge.start()
@@ -833,6 +837,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
             .get()
 
           if (device?.signingPublicKey) {
+            // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
             const derivedB64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
             if (device.signingPublicKey !== derivedB64) {
               // The local row is written from the keypair the device was

@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Mas kaunting vault ang sini-sync ng plano mo kaysa sa mayroon ang account na ito, kaya mananatili ang vault na ito sa device na ito. Mag-alis ng vault sa account mo sa Mga setting → Account, o i-upgrade ang plano mo.",
     "certificatePinFailed": "Nabigo ang secure na koneksyon. Suriin ang iyong koneksyon sa network.",
     "deviceKeyMismatch": "Hindi na tugma ang security key ng device na ito sa naka-register para sa account mo, kaya tinatanggihan ng server ang mga pagbabago nito. Mag-sign in ulit sa device na ito para ma-register itong muli.",
+    "deviceKeysMissing": "Hindi nag-a-upload ang mga pagbabago sa device na ito dahil nawawala ang mga device key nito. Piliin ang Ayusin para maibalik ang mga ito. Kung wala na sa device na ito ang mga key, magsa-sign in ka ulit at maaaring kailanganin mo ang iyong recovery phrase. Nananatili ang mga tala, gawain at proyektong hindi pa na-sync.",
     "keychainUnavailable": "Naka-pause ang pag-sync dahil hindi mabasa ng Memry ang mga sync key nito mula sa system keychain mo sa ngayon. I-unlock ang keyring mo at kusang magpapatuloy ang pag-sync; kung hindi, i-restart ang Memry. Walang natanggal.",
     "unknown": "May naganap na hindi inaasahang error sa pag-sync. Awtomatikong susubukan muli.",
     "statusFetchFailed": "Hindi makuha ang katayuan ng pag-sync",
@@ -106,6 +107,10 @@
     "triggerFailed": "Nabigo ang pag-sync",
     "pauseFailed": "Hindi ma-pause ang pag-sync",
     "resumeFailed": "Hindi maipagpatuloy ang pag-sync",
+    "syncNowSignedOut": "Kailangan mong mag-sign in ulit sa device na ito para makapag-sync.",
+    "syncNowBusy": "Tumatakbo na ang pag-sync. Subukan ulit sa ilang sandali.",
+    "syncNowPaused": "Na-pause ang pag-sync habang tumatakbo ito. Ituloy ito mula sa sync menu.",
+    "openAccountSettings": "Buksan ang mga setting",
     "settingsNotInitialized": "Hindi nasimulan ang pag-sync ng mga setting",
     "securityQuarantinePermanent": "Hindi ma-verify ang isang item sa pag-sync at na-quarantine para sa seguridad.",
     "securityQuarantineRetry": "Hindi pumasa sa pag-verify ng lagda ang isang item sa pag-sync at susubukan ito ulit.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Naka-off ang inline na pag-edit gamit ang AI",
-    "listOllamaModelsFailed": "Hindi mailista ang mga modelo ng Ollama"
+    "listOllamaModelsFailed": "Hindi mailista ang mga modelo ng Ollama",
+    "writingAssistInvalid": "Hindi maipadala ang request na iyon sa AI model.",
+    "apiKeyMissing": "Idagdag ang iyong {provider} API key sa Mga setting → AI para magamit ang mga tool sa pagsusulat.",
+    "apiKeyInvalid": "Tinanggihan ang iyong {provider} API key. Tingnan ito sa Mga setting → AI.",
+    "ollamaUnreachable": "Hindi tumatakbo ang Ollama. Simulan ito gamit ang \"ollama serve\", o pumili ng ibang provider sa Mga setting → AI.",
+    "providerUnreachable": "Hindi maabot ang {provider}. Tingnan ang iyong koneksyon sa internet at subukan ulit."
   },
   "auth": {
     "notAuthenticated": "Hindi naka-authenticate",
-    "sessionExpired": "Nag-expire na ang session. Mag-sign in muli.",
     "setupSessionExpired": "Nag-time out ang pag-sign in mo bago ito natapos. Mag-sign in ulit, pagkatapos ay ilagay ang recovery phrase mo.",
     "setupSessionExpiredLinking": "Nag-time out ang pag-sign in mo bago natapos ang pag-link ng device na ito. Mag-sign in ulit, pagkatapos ay i-scan ulit ang code.",
     "invalidRecoveryPhraseFormat": "Hindi wastong format ng recovery phrase",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Hindi ma-promote ang external na kaganapan sa kalendaryo",
     "onlyCalendarSourcesRetryable": "Mga source ng kalendaryo lang ang puwedeng subukan ulit",
     "invalidProviderSettings": "Hindi wasto ang mga setting ng provider ng kalendaryo",
-    "getExternalEventFailed": "Hindi ma-load ang kaganapang ito. Nasa kalendaryo mo pa rin ito; subukan itong buksan ulit."
+    "getExternalEventFailed": "Hindi ma-load ang kaganapang ito. Nasa kalendaryo mo pa rin ito; subukan itong buksan ulit.",
+    "listLinkedNotesFailed": "Hindi ma-load ang mga talang naka-link sa kaganapang ito."
   },
   "canvasFolder": {
     "exists": "May folder ng canvas na rito na may ganyang pangalan.",
@@ -209,10 +219,35 @@
     "previewFailed": "Nabigo ang preview",
     "listFailed": "Hindi mailista ang mga importer",
     "appleNotesFoldersFailed": "Hindi mabasa ang mga folder mo sa Apple Notes",
+    "appleNotesPasswordFailed": "Hindi masuri ang password ng Notes.",
     "onenoteStatusFailed": "Hindi mabasa ang katayuan ng koneksyon sa OneNote",
     "onenoteConnectFailed": "Nabigo ang pag-sign in sa Microsoft",
     "onenoteDisconnectFailed": "Hindi maidiskonekta ang Microsoft account",
-    "onenoteNotebooksFailed": "Hindi ma-load ang mga notebook sa OneNote"
+    "onenoteNotebooksFailed": "Hindi ma-load ang mga notebook sa OneNote",
+    "readwiseStatusFailed": "Hindi mabasa ang estado ng koneksyon sa Readwise",
+    "readwiseConnectFailed": "Hindi makakonekta sa Readwise",
+    "readwiseInvalidToken": "Hindi tinanggap ng Readwise ang token na ito. Kopyahin ulit ito mula sa readwise.io/access_token.",
+    "readwiseRateLimited": "Nililimitahan ng Readwise ang mga request ngayon. Subukan ulit sa isang minuto.",
+    "readwiseUnreachable": "Hindi maabot ang Readwise. Tingnan ang iyong koneksyon at subukan ulit.",
+    "readwiseDisconnectFailed": "Hindi madiskonekta ang Readwise",
+    "readwiseSyncFailed": "Hindi masimulan ang pag-sync ng Readwise",
+    "readwiseRunUnavailable": "Hindi nagsi-sync ang Readwise sa device na ito.",
+    "readwiseRunInProgress": "Tumatakbo na ang isang pag-import ng Readwise. Subukan ulit kapag natapos ito.",
+    "readwiseOptionsFailed": "Hindi ma-save ang mga setting ng Readwise",
+    "readwiseNotConnected": "Hindi nakakonekta ang Readwise. I-paste muna ang iyong access token.",
+    "readwiseSyncsElsewhere": "Nagsi-sync ang Readwise sa ibang device. Patakbuhin ang command na ito roon.",
+    "readwiseBookCommandFailed": "Hindi makumpleto ang command ng Readwise",
+    "readwiseBookGone": "Wala na ang aklat na ito sa iyong Readwise library.",
+    "readwiseNotLinked": "Hindi naka-link ang talang ito sa isang aklat ng Readwise.",
+    "readwiseNotDeleted": "Wala ang aklat na ito sa listahan ng mga natanggal.",
+    "readwiseBookBusy": "Nagbago ang tala habang tumatakbo ang command. Subukan ulit.",
+    "readwiseSyncsOnDevice": "Nagsi-sync ang Readwise sa {device}. Gamitin ang “Sync here instead” para ilipat ito rito.",
+    "readwiseAnotherDevice": "ibang device",
+    "readwiseNotReady": "Hindi pa tapos mag-sync ang Memry sa iyong iba pang device. Subukan ulit sa ilang sandali.",
+    "readwiseNeedsSync": "I-on ang sync para mailipat ang Readwise sa pagitan ng mga device.",
+    "readwiseClaimNotDelivered": "Hindi pa maabisuhan ang iyong iba pang device. Tingnan ang iyong koneksyon at subukan ulit.",
+    "readwiseTakeOverFailed": "Hindi mailipat ang Readwise sa device na ito",
+    "readwiseCancelFailed": "Hindi makansela ang pag-sync ng Readwise"
   },
   "project": {
     "createFailed": "Hindi makagawa ng proyekto",
@@ -236,7 +271,8 @@
     "renameFailed": "Hindi mapalitan ang pangalan ng property",
     "createDefinitionFailed": "Hindi makagawa ng depinisyon ng property",
     "updateDefinitionFailed": "Hindi ma-update ang depinisyon ng property",
-    "setCalendarVisibilityFailed": "Hindi maitakda ang pagpapakita ng property sa kalendaryo"
+    "setCalendarVisibilityFailed": "Hindi maitakda ang pagpapakita ng property sa kalendaryo",
+    "definitionsFileUnreadable": "Hindi ma-save ang mga pagbabago sa property dahil hindi mabasa ang .memry/properties.md. Ayusin o alisin ang file na iyon, tapos subukan ulit."
   },
   "reminder": {
     "notFound": "Hindi nahanap ang paalala",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Hindi ma-load ang modelo",
     "voiceModelDownloadFailed": "Hindi ma-download ang modelo ng boses",
     "terminalCommandInstallFailed": "Hindi ma-install ang terminal command",
-    "terminalCommandUninstallFailed": "Hindi ma-uninstall ang terminal command",
-    "shortcutInUse": "Ginagamit na ang shortcut na {shortcut}"
+    "terminalCommandUninstallFailed": "Hindi ma-uninstall ang terminal command"
   },
   "tag": {
+    "renameInProgress": "Tumatakbo pa ang pagpapalit ng pangalan ng #{from} sa #{to}. Subukan ulit kapag natapos ito.",
     "mergeSameTag": "Pareho ang source at target na tag",
     "categoryNameRequired": "Kailangan ang pangalan ng kategorya",
     "pinNoteFailed": "Hindi ma-pin ang tala",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Hindi matanggal ang mga gawain",
     "moveManyFailed": "Hindi mailipat ang mga gawain",
     "archiveManyFailed": "Hindi ma-archive ang mga gawain",
-    "projectMissing": "Wala na ang proyektong iyon"
+    "projectMissing": "Wala na ang proyektong iyon",
+    "invalidParent": "Hindi puwedeng ilagay ang gawain doon"
   },
   "taskStatus": {
     "createFailed": "Hindi makagawa ng katayuan",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Ginawang read-only ng may-ari ang tala na ito.",
     "folderReadOnly": "Ginawang read-only ng may-ari ang folder na ito."
+  },
+  "ocrLanguages": {
+    "unreachable": "Hindi maabot ang server ng Memry. Patuloy na gagana ang mga wikang nandito na, at susubukan ulit ng Memry sa susunod na pagsisimula.",
+    "unavailable": "Hindi pa nag-aalok ng wikang ito ang server ng Memry. Patuloy na gagana ang mga wikang nandito na.",
+    "corrupt": "Hindi tumugma sa inaasahan ng Memry ang na-download na data, kaya hindi ito ginamit. Subukan ulit para i-download itong muli.",
+    "saveFailed": "Hindi ma-save ang data ng wika sa computer na ito. Tingnan ang libreng espasyo sa disk, tapos subukan ulit."
+  },
+  "tagFields": {
+    "reservedName": "Nakareserba ang \"{name}\" at hindi puwedeng maging pangalan ng field",
+    "duplicateField": "May field na ang #{definedBy} na pinangalanang \"{name}\"",
+    "unknownField": "Walang field na pinangalanang \"{name}\" ang tag na ito",
+    "inheritedField": "Galing sa #{definedBy} ang \"{name}\". I-edit ito roon",
+    "cycle": "Kinukuha na ng #{parent} ang mga field nito mula sa tag na ito",
+    "unreadableSchema": "Binago ng mas bagong bersyon ng Memry ang tag na ito. I-update ang Memry para ma-edit ito",
+    "relationTargetRequired": "Piliin kung aling tag ang tinuturo ng relation na ito",
+    "renameRunning": "Tinatapos pa ang isa pang pagpapalit ng pangalan ng field ({from} sa {to}). Subukan ulit kapag tapos na ito."
   }
 }

@@ -13,8 +13,8 @@ import { AgentMcpDesktopOperations } from './agent-mcp-channels'
 
 describe('agent desktop API argument schemas', () => {
   it('cover every allowlisted operation and nothing else', () => {
-    expect(Object.keys(AGENT_DESKTOP_OPERATION_PARAMS).sort()).toEqual(
-      [...AgentMcpDesktopOperations].sort()
+    expect(Object.keys(AGENT_DESKTOP_OPERATION_PARAMS).toSorted()).toEqual(
+      [...AgentMcpDesktopOperations].toSorted()
     )
   })
 

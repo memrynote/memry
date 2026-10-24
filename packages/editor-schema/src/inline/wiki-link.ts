@@ -184,6 +184,7 @@ export type WikiLinkRender = (inlineContent: { props: unknown }) => {
 }
 
 export const renderWikiLink: WikiLinkRender = (inlineContent) => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inlineContent.props is the generic prop record; WikiLinkProps is its declared shape
   const props = inlineContent.props as WikiLinkProps
   const dom = document.createElement('span')
   dom.className = 'wiki-link'

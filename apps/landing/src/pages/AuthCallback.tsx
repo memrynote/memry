@@ -22,7 +22,7 @@ export function AuthCallbackPage() {
   useEffect(() => {
     if (missingParams || ran.current) return
     ran.current = true
-    ;(async () => {
+    void (async () => {
       try {
         const res = await api.publicJson<{ setupToken: string }>('/auth/oauth/google/callback', {
           method: 'POST',
@@ -33,7 +33,7 @@ export function AuthCallbackPage() {
         trackLandingEvent('landing_account_signin', 'auth:google')
         const stored = sessionStorage.getItem(OAUTH_NEXT_STORAGE_KEY)
         sessionStorage.removeItem(OAUTH_NEXT_STORAGE_KEY)
-        navigate(safeNextPath(stored), { replace: true })
+        void navigate(safeNextPath(stored), { replace: true })
       } catch (e) {
         setCallbackError(authErrorMessage(e, 'Sign-in failed'))
       }

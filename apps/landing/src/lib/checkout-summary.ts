@@ -69,6 +69,7 @@ export function readCheckoutTokenClaims(token: string | null): CheckoutTokenClai
     const payload: unknown = JSON.parse(json)
     if (!payload || typeof payload !== 'object') return null
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing a non-null object to a string-keyed record; each field is type-checked below
     const claims = payload as Record<string, unknown>
     return {
       userId: typeof claims.userId === 'string' ? claims.userId : null,

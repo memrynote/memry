@@ -41,7 +41,7 @@ const createClient = (
     async () => new Response(JSON.stringify({ accepted: 1 }), { status: 202 })
   )
   const deps: TelemetryClientDeps = {
-    fetch: fetchMock as unknown as TelemetryClientDeps['fetch'],
+    fetch: fetchMock,
     endpoint: 'https://example.test/telemetry/batch',
     context: {
       installId: '550e8400-e29b-41d4-a716-446655440000',

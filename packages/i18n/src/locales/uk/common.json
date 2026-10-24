@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Не вдалося скопіювати портал",
+    "hiddenCount": "Прихованих: {count}",
+    "windowFailed": "Не вдалося відкрити цей портал. Натомість відкрийте вихідну нотатку.",
+    "noTarget": "У цього порталу ще немає цілі. Додайте нотатку до визначення або видаліть блок.",
+    "invalidJson": "Визначення цього порталу не є коректним JSON. Виправте його нижче або видаліть блок.",
+    "invalidShape": "У визначенні цього порталу немає нотатки чи пошуку. Виправте його нижче або видаліть блок.",
+    "search": {
+      "editQuery": "Редагувати запит",
+      "count": "{count, plural, one {# блок} few {# блоки} many {# блоків} other {# блока}}",
+      "loading": "Пошук…",
+      "empty": "Жоден блок не відповідає цьому запиту.",
+      "failed": "Не вдалося виконати пошук.",
+      "retry": "Спробувати ще раз",
+      "truncated": "Показано перші збіги: {count}."
+    },
+    "copiedContents": "Вміст скопійовано",
+    "copiedLink": "Посилання скопійовано",
+    "actionFailed": "Не вдалося змінити цей портал",
+    "keepsOneBlock": "Портал зберігає щонайменше один блок. Натомість видаліть портал.",
+    "expandChildren": "Показати вкладені",
+    "collapseChildren": "Сховати вкладені",
+    "toolbar": {
+      "label": "Портал",
+      "include": "Додати «{block}»",
+      "locked": "{note} заблокована · лише читання",
+      "more": "Більше",
+      "openBeside": "Відкрити {note} поруч",
+      "click": "Клік",
+      "copyContents": "Копіювати вміст",
+      "copyLink": "Копіювати посилання",
+      "remove": "Видалити портал",
+      "removeHint": "{note} зберігає всі блоки"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Вихідну нотатку видалено. Посилання збережено.",
+        "action": "Видалити"
+      },
+      "missingBlock": {
+        "text": "Блок видалено в {source}.",
+        "action": "Вибрати інший"
+      },
+      "notSynced": {
+        "text": "Очікуємо синхронізації вихідної нотатки.",
+        "action": "Повторити"
+      },
+      "cycle": {
+        "text": "Цей портал веде назад до самого себе.",
+        "action": "Відкрити джерело"
+      },
+      "tooDeep": {
+        "text": "Портали вкладаються максимум на {max} рівнів. Цей відкриється як посилання.",
+        "action": "Відкрити джерело"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Перейти до поля швидкого запису",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Відкрити в застосунку за замовчуванням",
     "revealFailed": "Не вдалося показати в папці"
   },
+  "commands": {
+    "runFailed": "Не вдалося виконати цю команду. Спробуйте ще раз."
+  },
+  "commandsPalette": {
+    "title": "Команди",
+    "placeholder": "Введіть команду…",
+    "groups": {
+      "navigation": "Навігація",
+      "create": "Створити",
+      "tabs": "Вкладки",
+      "editor": "Редактор",
+      "view": "Вигляд",
+      "app": "Застосунок",
+      "note": "Нотатка",
+      "settings": "Налаштування",
+      "sync": "Синхронізація",
+      "help": "Довідка",
+      "project": "Проєкт",
+      "tasks": "Завдання",
+      "canvas": "Полотно",
+      "folder": "Тека",
+      "file": "Файл"
+    },
+    "contexts": {
+      "note": "Ця нотатка",
+      "journal": "Цей журнал",
+      "project": "Цей проєкт",
+      "tasks": "Ці завдання",
+      "canvas": "Це полотно",
+      "folder": "Ця тека",
+      "tag": "Цей тег",
+      "file": "Цей файл"
+    },
+    "recent": "Нещодавні",
+    "empty": "Немає команд за запитом «{query}»",
+    "searchHint": "Пошук нотаток: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# команда} few {# команди} many {# команд} other {# команди}}"
+    },
+    "actions": {
+      "run": "Виконати",
+      "searchNotes": "Шукати нотатки"
+    }
+  },
   "tabs": {
     "pin": "Закріпити вкладку",
     "unpin": "Відкріпити вкладку",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Не вдалося виконати дію",
-    "nothingToUndo": "Нічого скасовувати",
     "undone": "Скасовано: {description}",
     "undoFailed": "Не вдалося скасувати дію",
     "filesImported": "{count, plural, one {Імпортовано # файл} few {Імпортовано # файли} many {Імпортовано # файлів} other {Імпортовано # файлу}}",
@@ -131,6 +231,20 @@
     "openInTab": "Відкрити розмову у вкладці",
     "stop": "Зупинити",
     "thinking": "Агент думає",
+    "toolsUnavailable": "Інструменти сховища вимкнено для цієї моделі. Вона не пройшла перевірку інструментів, тож може лише спілкуватися в чаті.",
+    "toolsUnavailableWithDetail": "Інструменти сховища вимкнено для цієї моделі. Вона не пройшла перевірку інструментів, тож може лише спілкуватися в чаті. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Інструменти сховища вимкнено для цієї моделі. Провайдер відхилив тестовий запит з інструментами, тож модель може лише спілкуватися в чаті.",
+      "noToolCall": "Інструменти сховища вимкнено для цієї моделі. Вона відповіла на тестовий запит, не викликавши інструмент, тож може лише спілкуватися в чаті.",
+      "toolResultRejected": "Інструменти сховища вимкнено для цієї моделі. Вона викликала тестовий інструмент, але зазнала збою після отримання результату, тож може лише спілкуватися в чаті.",
+      "streamingUnsupported": "Інструменти сховища вимкнено для цієї моделі. Провайдер не передав тестову відповідь потоком, тож модель може лише спілкуватися в чаті.",
+      "providerSaid": "Провайдер повідомив: {detail}",
+      "wroteToolCall": "Модель записала виклик інструмента як текст, і нічого не виконалося."
+    },
+    "stepLimit": {
+      "notice": "Зупинено на ліміті кроків.",
+      "continue": "Продовжити"
+    },
     "enable": {
       "title": "Увімкнути агента memrynote",
       "description": "Агент memrynote використовує вибраний вами локальний CLI агента, щоб спілкуватися про ваше сховище. Claude надсилає повідомлення до Anthropic, а Codex — до OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Агент хоче створити {title}. Перегляньте зміну, перш ніж застосувати її.",
       "descriptionDelete": "Агент хоче видалити {title}. Перегляньте зміну, перш ніж застосувати її.",
       "fallbackTitle": "цей елемент",
-      "current": "Поточний",
       "candidate": "Запропонований",
       "loading": "Завантаження…",
       "apply": "Застосувати",
@@ -268,13 +381,18 @@
       "removeAttachment": "Прибрати {label}",
       "placeholder": "Робіть що завгодно з memrynote… @, щоб згадати нотатки, завдання й події",
       "send": "Надіслати",
-      "providerLabel": "Постачальник агента: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Підключені інструменти",
       "connectTool": "Підключити {tool}",
-      "addContext": "Додати контекст",
-      "addContextWithPermissions": "Додати контекст ({permissions})",
       "mentionContext": "Згадати нотатку, завдання чи подію",
+      "files": {
+        "attach": "Додати текстовий файл",
+        "refused": {
+          "unsupportedType": "{name} не є підтримуваним текстовим файлом. Додайте файл .txt, .md, .log, .csv, .tsv, .json, .yaml або .yml.",
+          "notText": "{name} не є текстовим файлом UTF-8. Натомість додайте текстовий файл.",
+          "tooLarge": "Через {name} це повідомлення перевищить ліміт 100 КБ. Видаліть файл або додайте менший.",
+          "readFailed": "Не вдалося прочитати {name}. Переконайтеся, що файл усе ще існує і ви можете його відкрити, а потім додайте його знову."
+        }
+      },
       "voice": {
         "start": "Почати диктування",
         "stop": "Зупинити диктування",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Не вдалося розпізнати мовлення"
         }
       },
-      "modelLabel": "Модель агента: {provider} {model}",
-      "reasoningLabel": "Міркування агента: {reasoning}",
       "providers": {
-        "label": "Постачальник",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Доступ до комп’ютера"
       },
       "webSearch": {
-        "on": "Увімкнено",
-        "off": "Вимкнено",
         "label": "Пошук в інтернеті"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Агент недоступний — відкрийте налаштування…"
       },
       "settings": {
-        "reasoning": "Міркування",
         "effort": "Зусилля"
       },
       "includeCurrentNote": "Додати поточну нотатку",
@@ -340,13 +452,29 @@
           "extraHigh": "Надвисокий"
         }
       },
-      "permissionsLabel": "Дозволи агента: {access}, пошук в інтернеті: {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Типово",
+          "default": "Типова глибина",
+          "high": "Висока",
+          "max": "Максимальна"
+        }
+      },
       "permissions": {
-        "label": "Дозволи",
-        "access": "Доступ",
-        "tools": "Інструменти"
+        "access": "Доступ"
       },
       "modelSettingsLabel": "Налаштування моделі агента: {model}, {settings}",
+      "queue": {
+        "label": "Повідомлення в черзі",
+        "queueMessage": "Поставити повідомлення в чергу",
+        "edit": "Редагувати повідомлення в черзі",
+        "editLabel": "Текст повідомлення в черзі",
+        "remove": "Видалити повідомлення з черги",
+        "save": "Зберегти",
+        "cancel": "Скасувати",
+        "sending": "Надсилання…",
+        "notSent": "Не надіслано. Відредагуйте, щоб надіслати знову, або видаліть."
+      },
       "unavailable": {
         "vaultToolsOnly": "З цією моделлю лише інструменти сховища"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Не вдалося зберегти стан розгортання",
       "resolveWindow": "Не вдалося визначити вікно-джерело агента",
       "detectCli": "Не вдалося виявити доступних агентів",
-      "loadDisclosure": "Не вдалося завантажити стан розгортання"
+      "loadDisclosure": "Не вдалося завантажити стан розгортання",
+      "turnFailed": "Відповідь зупинилася з помилкою. Ваше повідомлення збережено, тож його можна надіслати знову."
     },
     "actions": {
       "copy": "Копіювати",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Перетягніть файли для імпорту",
       "dropFilesIntoVaultRoot": "Корінь сховища",
       "newNoteN": "Нова нотатка (⌘N)",
-      "new": "Новий",
       "newItemMenu": "Створити нове…",
       "feedbackButton": "Надіслати відгук",
       "feedbackTitle": "Надіслати відгук",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Знайти, замінити, запитати…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Пропустити знайомство",
-      "welcomeToMemry": "Ласкаво просимо до memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша особиста база знань. Налаштуймо все за 2 хвилини.",
-      "getStarted": "Почати ",
-      "createYourFirstNote": "Створіть першу нотатку",
-      "markdownBasedStoredLocallyAsPlainFiles": "Нотатки у форматі Markdown зберігаються локально як звичайні файли.",
-      "eGMeetingNotesIdeasAnything": "Напр., нотатки з наради, ідеї, будь-що…",
-      "skip": "Пропустити",
-      "createNote": "Створити нотатку ",
-      "addYourFirstTask": "Додайте перше завдання",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Завдання пов’язані з нотатками й мають пріоритети та терміни.",
-      "eGReviewProjectProposal": "Напр., переглянути пропозицію щодо проєкту…",
-      "skip2": "Пропустити",
-      "createTask": "Створити завдання ",
-      "syncAcrossDevices": "Синхронізація на всіх пристроях",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Синхронізуйте нотатки й завдання на всіх своїх пристроях. Налаштувати це можна будь-коли пізніше.",
-      "skipForNow": "Поки що пропустити",
-      "doneLetSGo": "Готово — почнімо! "
+      "skip": "Пропустити"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Встановити значок папки",
@@ -707,8 +818,7 @@
       "unknownTabType": "Невідомий тип вкладки: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "незбережені зміни",
-      "preview": "попередній перегляд"
+      "unsavedChanges": "незбережені зміни"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Нова вкладка",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Перетягніть, щоб змінити розмір · Двічі клацніть, щоб скинути"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Ласкаво просимо до memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ваша персональна система керування знаннями.",
-      "selectAFolderToStoreYourNotesAndTasks": "Виберіть папку для збереження нотаток і завдань.",
       "opening": "Відкриття…",
-      "selectVaultFolder": "Вибрати папку сховища",
-      "plainMarkdown": "Звичайний Markdown",
-      "yourNotesStayPortable": "Нотатки легко перенести куди завгодно",
-      "syncAnywhere": "Синхронізація будь-де",
-      "useDropboxIcloudGit": "Використовуйте Dropbox, iCloud, Git",
       "recentVaults": "Останні сховища",
-      "notesLastOpened": "нотатки · востаннє відкриті",
-      "preRelease": "Бета",
       "createNewVault": "Створити нове сховище",
-      "createNewVaultDesc": "Створіть нове сховище у вибраній папці.",
-      "openExistingVault": "Відкрити наявне сховище",
-      "openExistingVaultDesc": "Виберіть папку з Markdown-файлами, які вже зберігаєте.",
-      "signInToSync": "Увійти для синхронізації",
-      "signInToSyncDesc": "Сховища з наскрізним шифруванням на всіх ваших пристроях.",
-      "create": "Створити",
       "open": "Відкрити",
-      "signIn": "Увійти",
       "helpAndDocs": "Довідка та документація",
-      "signInRequiresVault": "Спочатку відкрийте або створіть сховище, щоб налаштувати синхронізацію.",
       "addVault": "Додати сховище",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Ще немає сховищ",
       "openVault": "Відкрити сховище",
       "settings": "Налаштування",
-      "logOut": "Вийти",
-      "signInToSync": "Увійти для синхронізації",
       "remove": "Прибрати «",
       "removeVaultTitle": "Прибрати «{name}» зі списку?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Сховище буде прибрано із застосунку, але файли залишаться на диску. Його можна будь-коли додати знову.",
       "cancel": "Скасувати",
       "remove2": "Прибрати",
       "inYourAccount": "У вашому обліковому записі",
+      "trySandbox": "Спробувати пісочницю",
+      "sandboxVault": "Сховище-пісочниця",
+      "sandboxPreparing": "Готуємо пісочницю…",
+      "sandboxFailed": "Не вдалося підготувати сховище-пісочницю",
+      "resetSandbox": "Скинути сховище-пісочницю",
       "itemsCount": "Елементів: {count}",
       "untitledVault": "Сховище",
       "downloadVaultTitle": "Завантажити «{name}»",
@@ -870,7 +965,6 @@
       "changeLocation": "Змінити…",
       "download": "Завантажити",
       "downloadFailed": "Не вдалося завантажити сховище",
-      "deleteFromAccount": "Видалити з облікового запису",
       "deleteVaultTitle": "Видалити «{name}» з вашого облікового запису?",
       "deleteVaultBody": "Це назавжди видалить усі синхронізовані дані цього сховища із серверів Memry, і цю дію неможливо скасувати. Ваші файли на диску не видаляються.",
       "deleteVaultConfirm": "Видалити з облікового запису",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Прибрати віджет",
       "dragAria": "Перетягнути віджет",
-      "configAria": "Налаштувати віджет",
-      "resizeAria": "Змінити розмір до {size}",
       "menuAria": "Параметри віджета",
-      "resize": "Розмір",
       "remove": "Прибрати",
       "filter": {
         "all": "Усі",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Тут з’являтимуться нотатки, які ви відкриваєте",
       "bookmarks": "Закладки",
       "tasks": "Завдання",
+      "chart": "Діаграма",
       "calendar": "Календар",
       "calendarToday": "Сьогодні",
       "openCalendar": "Відкрити календар",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Виберіть папку",
       "folderEmpty": "Ще немає папок",
       "folderNoSelection": "Папку не вибрано",
-      "folderView_list": "Список",
-      "folderView_gallery": "Галерея",
       "folderViewSelect": "Вигляд",
       "project": "Проєкт",
       "projectNoSelection": "Проєкт не вибрано",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Макет головної",
       "deleteAria": "Видалити макет",
-      "newAria": "Нова дошка",
       "newName": "Нова дошка",
       "defaultName": "Головна",
       "manage": "Керувати дошками",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# завдання на сьогодні} few {# завдання на сьогодні} many {# завдань на сьогодні} other {# завдання на сьогодні}}",
       "events": "{count, plural, one {# подія} few {# події} many {# подій} other {# події}}"
     },
-    "edit": "Редагувати",
-    "done": "Готово",
     "addWidget": "Додати віджет",
+    "cover": {
+      "add": "Додати обкладинку"
+    },
     "empty": {
       "title": "Ваша дошка порожня",
       "body": "Віджети збирають ваші нотатки, завдання й закладки в одному спокійному місці.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Знайомство завершено",
-      "body": "Поставте нам зірку на GitHub — так іншим людям буде легше знайти MemryNote.",
-      "action": "Поставити зірку на GitHub"
+      "body": "Поставте нам зірку на GitHub — так іншим людям буде легше знайти MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Оновлення готове",
     "failed": "Не вдалося оновити",
     "downloadAction": "Завантажити",
-    "restartAction": "Перезапустити",
     "detailsAction": "Докладніше",
     "popover": {
       "readyTitle": "Версія MemryNote {version} готова до встановлення",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Сховища",
     "position": "{name}, сховище {index} з {count}",
-    "openList": "{position}. Відкрити список сховищ",
     "switchTo": "Перемкнутися на {name}",
     "switchingTo": "Перемикання на {name}",
     "changeIcon": "Змінити значок…",
     "resetIcon": "Скинути значок",
     "iconButton": "Змінити значок сховища {name}",
+    "leaveSandbox": "Назад до {name}",
     "iconFailed": "Не вдалося змінити значок сховища"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Тип",
     "filterModified": "Змінено",
     "matches": "Збіги",
+    "matchesMore": "{count, plural, one {Ще # збіг} few {Ще # збіги} many {Ще # збігів} other {Ще # збігу}}",
+    "matchesHide": "Сховати збіги",
+    "matchOf": "Збіг {index} з {total}",
     "showMore": "Ще {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Наступний розділ",
       "open": "Відкрити",
       "openNote": "Відкрити нотатку",
+      "openAtMatch": "Відкрити на збігу",
       "openFile": "Відкрити файл",
       "openJournal": "Відкрити щоденник",
       "openTask": "Відкрити завдання",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Обрати тег",
       "addTag": "Додати тег",
       "showAll": "Показати все",
+      "hideMatches": "Сховати збіги",
       "searchEverywhere": "Шукати всюди",
       "clearFilters": "Скинути фільтри"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "На {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Знайдено # сховище} few {Знайдено # сховища} many {Знайдено # сховищ} other {Знайдено # сховища}}",
-      "notion": "Notion",
       "otherApps": "Інші застосунки та файли",
       "otherAppsHint": "і ще {count}",
       "detectedFootnote": "Знайдено за списком установлених застосунків. Ніщо не залишає пристрій: усе лишається на {device}.",

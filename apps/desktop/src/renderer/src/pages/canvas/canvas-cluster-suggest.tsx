@@ -66,6 +66,7 @@ function noteCardsInScope(api: ExcalidrawImperativeAPI): {
   byNote: Map<string, string>
   scope: 'selection' | 'board'
 } {
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
   const cards = getCardRefs(api.getSceneElements() as unknown as CardElement[]).filter(
     (card) => card.entityType === 'note'
   )
@@ -142,6 +143,7 @@ export function CanvasClusterSuggest({
       // have changed while the dialog was open, and a card deleted since then
       // must not be framed.
       const options = await drawOptions()
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
       const scene = api.getSceneElementsIncludingDeleted() as unknown as SceneEditElement[]
       const cardByNote = new Map<string, string>()
       for (const card of getCardRefs(scene.filter((el) => !el.isDeleted))) {
@@ -168,7 +170,9 @@ export function CanvasClusterSuggest({
 
       const moved = applyElementEdits(scene, layout.moves, options).elements
       const plan = planDraw(moved, layout.frames, options)
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
       const created = convertToExcalidrawElements(
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
         plan.skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0],
         { regenerateIds: false }
       ) as unknown as SceneEditElement[]
@@ -177,6 +181,7 @@ export function CanvasClusterSuggest({
       // One update, captured immediately: one undo step takes the moves and
       // the frames back together.
       api.updateScene({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw wants its branded ordered-element type; the scene model is structurally identical but not nominally typed
         elements: next as never,
         captureUpdate: CaptureUpdateAction.IMMEDIATELY
       })

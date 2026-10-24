@@ -77,6 +77,7 @@ function useSyncedIdOrder(source: OrderSource): UseSidebarSectionOrderResult {
     try {
       const unsubscribe = window.api?.onSettingsChanged?.((event) => {
         if (event.key !== source.key) return
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed IPC event value is untyped; guarded by Array.isArray
         if (Array.isArray(event.value)) setOrderState(event.value as string[])
       })
       return typeof unsubscribe === 'function' ? unsubscribe : undefined

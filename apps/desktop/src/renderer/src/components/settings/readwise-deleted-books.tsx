@@ -71,7 +71,8 @@ export function ReadwiseDeletedBooks({
           await window.api.import.readwise.restoreBook(
             book.readwiseBookId !== null
               ? { readwiseBookId: book.readwiseBookId }
-              : { readerDocumentId: book.readerDocumentId as string }
+              : // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the other branch of this ternary handles a missing readerDocumentId, so it is set here
+                { readerDocumentId: book.readerDocumentId as string }
           ),
           t('import.dialog.readwise.deleted.restoreFailed')
         )

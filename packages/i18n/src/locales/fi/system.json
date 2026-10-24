@@ -17,17 +17,22 @@
       "filterAll": "Kaikki tiedostot"
     },
     "exportCancelled": "Vienti peruttu",
-    "update": {
-      "availableTitle": "Päivitys saatavilla",
-      "availableMessage": "memrynote {version} on saatavilla.",
-      "availableDetailFallback": "Ladataanko päivitys nyt?",
-      "buttonDownload": "Lataa",
-      "buttonLater": "Myöhemmin",
-      "readyTitle": "Päivitys valmis",
-      "readyMessage": "memrynote {version} on ladattu.",
-      "readyDetailFallback": "Viimeistele päivityksen asennus käynnistämällä memrynote uudelleen.",
-      "buttonRestartNow": "Käynnistä nyt uudelleen",
-      "releaseNotesLabel": "Julkaisutiedot:"
+    "dataDbRecovery": {
+      "title": "Korjaa holvin tietokanta",
+      "message": "Memryn tämän holvin tietokanta on vioittunut.",
+      "detail": "Muistiinpano- ja päiväkirjatiedostosi eivät ole vaarassa. Korjaus säilyttää vioittuneen tietokannan varmuuskopiona sijainnissa {path}, luo uuden tietokannan, rakentaa mahdollisimman paljon uudelleen holvin tiedostoista ja palauttaa synkronoidut kohteet seuraavassa synkronoinnissa. Muutokset, joita ei ollut vielä synkronoitu, palautetaan mahdollisuuksien mukaan.",
+      "buttonRecover": "Korjaa",
+      "buttonLater": "Ei nyt"
+    },
+    "obsidianVault": {
+      "title": "Avaa Obsidian-holvi",
+      "message": "Avataanko kopio tästä Obsidian-holvista?",
+      "detail": "Obsidian-holvin avaaminen memrynotessa voi hävittää tietoja, joita Obsidian-lisäosasi käyttävät. Kun memrynote muuttaa lisäosan tehtävärivin tehtäväksi, se kirjoittaa rivin uudelleen. Kentät, kuten Tasks-lisäosan eräpäivät, poistuvat tiedostosta, eikä Obsidian enää näe niitä.\n\nmemrynote voi kopioida holvin ”{name}” viereen nimellä ”{copyName}” ja avata kopion. Holvi ”{name}” pysyy täsmälleen ennallaan.",
+      "detailExistingCopy": "Obsidian-holvin avaaminen memrynotessa voi hävittää tietoja, joita Obsidian-lisäosasi käyttävät. Kun memrynote muuttaa lisäosan tehtävärivin tehtäväksi, se kirjoittaa rivin uudelleen. Kentät, kuten Tasks-lisäosan eräpäivät, poistuvat tiedostosta, eikä Obsidian enää näe niitä.\n\nmemrynote-kopio ”{copyName}” on jo sen vieressä. memrynote voi avata sen kopion. Holvi ”{name}” pysyy täsmälleen ennallaan.",
+      "buttonCopy": "Luo kopio",
+      "buttonOpenCopy": "Avaa kopio",
+      "buttonOpenOriginal": "Avaa alkuperäinen",
+      "buttonCancel": "Peruuta"
     },
     "pair": {
       "title": "Muodosta pari selainlaajennuksen kanssa",

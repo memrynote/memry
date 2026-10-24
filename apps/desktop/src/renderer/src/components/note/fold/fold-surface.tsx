@@ -71,7 +71,7 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
   // ⌘/Ctrl + scroll and trackpad pinch step levels inside the note area only.
   useEffect(() => {
     const root = rootRef.current
-    if (!root || !foldable) return
+    if (!root || !foldable) return undefined
     const stepper = createWheelStepper()
     const onWheel = (event: WheelEvent): void => {
       if (!event.ctrlKey && !event.metaKey) return
@@ -85,7 +85,7 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
 
   // Esc closes opened paragraphs first, then returns to Full.
   useEffect(() => {
-    if (!folded) return
+    if (!folded) return undefined
     const onKeyDown = (event: globalThis.KeyboardEvent): void => {
       if (event.key !== 'Escape' || event.defaultPrevented) return
       const target = event.target instanceof Element ? event.target : null
@@ -102,7 +102,7 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
   // ⌘C over a fold with nothing selected copies what the reader sees, as Markdown the
   // editor parses back into blocks. A real selection copies normally.
   useEffect(() => {
-    if (!folded || !view) return
+    if (!folded || !view) return undefined
     const onCopy = (event: ClipboardEvent): void => {
       const target = event.target instanceof Node ? event.target : null
       const overFold = target === document.body || overlayRef.current?.contains(target)

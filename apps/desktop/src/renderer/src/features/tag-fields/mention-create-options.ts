@@ -15,7 +15,7 @@ export function buildCreateOptions(
 ): CreateOption[] {
   const tags = Object.values(snapshot?.tags ?? {})
     .filter((tag) => tag.hasFields)
-    .sort(
+    .toSorted(
       (a, b) =>
         Number(b.key === lastTag) - Number(a.key === lastTag) ||
         presetRank(a.ownPreset) - presetRank(b.ownPreset) ||

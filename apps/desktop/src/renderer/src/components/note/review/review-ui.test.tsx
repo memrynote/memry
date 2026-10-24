@@ -76,7 +76,7 @@ function createReview(
 }
 
 function nextFrame(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()))
+  return new Promise((done) => requestAnimationFrame(() => done()))
 }
 
 describe('review UI', () => {
@@ -428,7 +428,7 @@ describe('review UI', () => {
           x: 0,
           y: top,
           toJSON: () => ({})
-        } as DOMRect
+        }
       })
     const zone = document.createElement('div')
     zone.className = 'marquee-zone'

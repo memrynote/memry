@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 import { and, asc, eq, inArray } from 'drizzle-orm'
-import type { CalendarService } from '@memry/app-core/calendar'
-import type { CalendarSourceRecord } from '@memry/app-core/calendar-types'
+import type { CalendarService, CalendarSourceRecord } from '@memry/app-core/calendar-types'
 import type { IcsFeedErrorCode } from '@memry/contracts/calendar-api'
 import { calendarColorHex, CalendarEventColorSchema } from '@memry/contracts/calendar-colors'
 import { encodeExternalEventRelationId } from '@memry/contracts/relation-uri'
@@ -217,6 +216,13 @@ function nowIso(): string {
   return new Date().toISOString()
 }
 
+function byStart(order: 'asc' | 'desc') {
+  return (left: { startAt: string }, right: { startAt: string }) =>
+    order === 'asc'
+      ? left.startAt.localeCompare(right.startAt)
+      : right.startAt.localeCompare(left.startAt)
+}
+
 export function createCalendarExtrasService({
   dataDb,
   indexDb,
@@ -286,17 +292,11 @@ export function createCalendarExtrasService({
         return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : Math.abs(parsed - nowMs)
       }
       const nearest = <T extends { startAt: string }>(rows: T[]): T[] => {
-        const upcoming = rows.filter((row) => row.startAt >= now).sort(byStart('asc'))
-        const past = rows.filter((row) => row.startAt < now).sort(byStart('desc'))
+        const upcoming = rows.filter((row) => row.startAt >= now).toSorted(byStart('asc'))
+        const past = rows.filter((row) => row.startAt < now).toSorted(byStart('desc'))
         return [...upcoming.slice(0, cap), ...past.slice(0, cap)]
-          .sort((left, right) => distance(left.startAt) - distance(right.startAt))
+          .toSorted((left, right) => distance(left.startAt) - distance(right.startAt))
           .slice(0, cap)
-      }
-      function byStart(order: 'asc' | 'desc') {
-        return (left: { startAt: string }, right: { startAt: string }) =>
-          order === 'asc'
-            ? left.startAt.localeCompare(right.startAt)
-            : right.startAt.localeCompare(left.startAt)
       }
 
       const native = nearest(
@@ -332,7 +332,7 @@ export function createCalendarExtrasService({
       }))
       return {
         events: [...native, ...external]
-          .sort((left, right) => distance(left.startAt) - distance(right.startAt))
+          .toSorted((left, right) => distance(left.startAt) - distance(right.startAt))
           .slice(0, cap)
       }
     },

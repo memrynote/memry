@@ -47,7 +47,7 @@ export function MoveBlockDialog({
   const listRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     void (async () => {
       try {

@@ -73,6 +73,7 @@ function decryptV1(input: DecryptItemInput, version: number): DecryptItemResult 
     signaturePayload.metadata = input.metadata
   }
 
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const signatureBytes = sodium.from_base64(input.signature, sodium.base64_variants.ORIGINAL)
 
   const verified = verifySignature(
@@ -86,9 +87,13 @@ function decryptV1(input: DecryptItemInput, version: number): DecryptItemResult 
     throw new SignatureVerificationError(input.id, input.signerDeviceId)
   }
 
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const wrappedKey = sodium.from_base64(input.encryptedKey, sodium.base64_variants.ORIGINAL)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const keyNonce = sodium.from_base64(input.keyNonce, sodium.base64_variants.ORIGINAL)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const encryptedData = sodium.from_base64(input.encryptedData, sodium.base64_variants.ORIGINAL)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const dataNonce = sodium.from_base64(input.dataNonce, sodium.base64_variants.ORIGINAL)
 
   const fileKey = unwrapFileKey(wrappedKey, keyNonce, input.vaultKey)

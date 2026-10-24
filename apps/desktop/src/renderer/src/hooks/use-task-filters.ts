@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { createLogger } from '@/lib/logger'
 
-import type { Task, Priority } from '@/data/task-model'
+import type { Task } from '@/data/task-model'
 
-const log = createLogger('Hook:TaskFilters')
 import type { TaskFilters, TaskSort, SavedFilter, Project, DueDateFilter } from '@/data/tasks-data'
 import { defaultFilters, defaultSort } from '@/data/tasks-data'
 import { applyFiltersAndSortWithContext, hasActiveFilters } from '@/lib/task-utils'
@@ -16,6 +15,8 @@ import {
   type SavedFilter as DbSavedFilter,
   type SavedFilterConfig
 } from '@/services/saved-filters-service'
+
+const log = createLogger('Hook:TaskFilters')
 
 // ============================================================================
 // DEBOUNCE HOOK
@@ -349,7 +350,7 @@ export function dbToFrontendFilter(dbFilter: DbSavedFilter): SavedFilter {
     filters: {
       search: config.filters.search,
       projectIds: config.filters.projectIds,
-      priorities: config.filters.priorities as Priority[],
+      priorities: config.filters.priorities,
       // Old saved-filter rows predate the `tags` field. The read path (main
       // process) casts the JSON column instead of parsing it through
       // TaskFiltersSchema, so no default is applied — backfill it here,

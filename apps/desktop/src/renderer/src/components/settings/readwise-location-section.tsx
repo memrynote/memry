@@ -78,6 +78,7 @@ export function ReadwiseLocationSection({
             type="single"
             value={options.folderLayout}
             onValueChange={(value) => {
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
               if (value) onChange({ folderLayout: value as ReadwiseFolderLayout })
             }}
             aria-label={t('import.dialog.readwise.layout.label')}

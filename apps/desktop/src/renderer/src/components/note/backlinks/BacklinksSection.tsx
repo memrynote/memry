@@ -182,6 +182,7 @@ export function BacklinksSection({
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-[140px]">
+              {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys is string[]; the keys are sortLabels' own closed union */}
               {(Object.keys(sortLabels) as BacklinkSortOption[]).map((option) => (
                 <DropdownMenuItem
                   key={option}

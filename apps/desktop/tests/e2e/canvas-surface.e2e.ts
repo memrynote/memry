@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Spatial canvas M1 — canvas surface (local-only).
  *
@@ -7,7 +8,7 @@
  * returned by window.api.canvas.get (element count/type), per the design
  * spec (§18 B4).
  */
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 /**

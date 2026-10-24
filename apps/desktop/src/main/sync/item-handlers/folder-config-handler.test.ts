@@ -5,7 +5,7 @@ import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
 import type { FolderConfigSyncPayload } from '@memry/contracts/sync-payloads'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
-import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import type * as FoldersModule from '../../vault/folders'
 
 type MockQueue = Pick<SyncQueueManager, 'enqueue'> & { enqueue: ReturnType<typeof vi.fn> }
@@ -72,7 +72,7 @@ const mockFolderExists = vi.mocked(folderExists)
 
 function makeCtx(testDb: TestDatabaseResult): ApplyContext {
   return {
-    db: testDb.db as unknown as DrizzleDb,
+    db: testDb.db,
     emit: vi.fn()
   }
 }
@@ -481,17 +481,14 @@ describe('folderConfigHandler', () => {
         })
         .run()
 
-      const result = folderConfigHandler.fetchLocal(testDb.db as unknown as DrizzleDb, 'docs')
+      const result = folderConfigHandler.fetchLocal(testDb.db, 'docs')
 
       expect(result).toBeDefined()
       expect(result!.icon).toBe('📄')
     })
 
     it('#given no row #when fetched #then returns undefined', () => {
-      const result = folderConfigHandler.fetchLocal(
-        testDb.db as unknown as DrizzleDb,
-        'nonexistent'
-      )
+      const result = folderConfigHandler.fetchLocal(testDb.db, 'nonexistent')
       expect(result).toBeUndefined()
     })
   })
@@ -509,12 +506,7 @@ describe('folderConfigHandler', () => {
         })
         .run()
 
-      const payload = folderConfigHandler.buildPushPayload!(
-        testDb.db as unknown as DrizzleDb,
-        'docs',
-        'device-A',
-        'update'
-      )
+      const payload = folderConfigHandler.buildPushPayload(testDb.db, 'docs', 'device-A', 'update')
 
       expect(payload).not.toBeNull()
       const parsed = JSON.parse(payload!)
@@ -524,8 +516,8 @@ describe('folderConfigHandler', () => {
     })
 
     it('#given no row #when building payload #then returns null', () => {
-      const payload = folderConfigHandler.buildPushPayload!(
-        testDb.db as unknown as DrizzleDb,
+      const payload = folderConfigHandler.buildPushPayload(
+        testDb.db,
         'nonexistent',
         'device-A',
         'update'
@@ -556,11 +548,7 @@ describe('folderConfigHandler', () => {
 
       const { mock: mockQueue, queue } = makeMockQueue()
 
-      const count = folderConfigHandler.seedUnclocked(
-        testDb.db as unknown as DrizzleDb,
-        'device-A',
-        queue
-      )
+      const count = folderConfigHandler.seedUnclocked(testDb.db, 'device-A', queue)
 
       expect(count).toBe(2)
 
@@ -595,11 +583,7 @@ describe('folderConfigHandler', () => {
 
       const { mock: mockQueue, queue } = makeMockQueue()
 
-      const count = folderConfigHandler.seedUnclocked(
-        testDb.db as unknown as DrizzleDb,
-        'device-A',
-        queue
-      )
+      const count = folderConfigHandler.seedUnclocked(testDb.db, 'device-A', queue)
 
       expect(count).toBe(0)
       expect(mockQueue.enqueue).not.toHaveBeenCalled()

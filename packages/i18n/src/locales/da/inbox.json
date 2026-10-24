@@ -15,19 +15,13 @@
       "showWithCount": "Vis udsatte elementer ({count})",
       "hide": "Skjul udsatte elementer"
     },
-    "density": {
-      "toComfortable": "Komfortabel visning",
-      "toCompact": "Kompakt visning"
-    },
     "filter": {
-      "button": "Filtrér",
       "byType": "Filtrér efter type",
       "active": "{count, plural, one {Filtrerer efter # type} other {Filtrerer efter # typer}}",
       "clearAll": "Ryd alle"
     },
     "jobs": {
-      "running": "{count, plural, one {# baggrundsjob kører} other {# baggrundsjob kører}}",
-      "failed": "{count} mislykkedes"
+      "running": "{count, plural, one {# baggrundsjob kører} other {# baggrundsjob kører}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Opret »{name}«",
     "addTags": "Tilføj tags…",
     "linkToNote": "Link til note",
-    "linkANote": "Link en note",
-    "suggestedCount": "{count} foreslået",
-    "linkNotesPlaceholder": "Link noter…",
     "linkOrCreateNotePlaceholder": "Find eller opret en note…",
     "createNote": "Opret »{title}«",
     "pendingNote": "Ny note",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Påmindelsesdata er ikke tilgængelige.",
     "triggered": "Påmindelse udløst",
-    "noteLabel": "Påmindelsesnote",
     "source": "Kilde",
     "journalTitle": "Dagbog – {date}",
     "noteFallback": "Note",
@@ -514,9 +504,7 @@
       "settings": "Indstillinger",
       "processing": "Behandler…",
       "cancelRecording": "Annullér optagelsen",
-      "cancel": "Annullér",
       "stopRecording": "Stop optagelsen",
-      "stop": "Stop",
       "recordingError": "Der opstod en fejl under optagelsen",
       "microphoneAccessDenied": "Adgang til mikrofonen blev nægtet",
       "noMicrophoneFound": "Ingen mikrofon fundet",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# udsat element} other {# udsatte elementer}}",
     "notificationBody": "{count, plural, one {Dit udsatte element er klar til gennemgang} other {Dine udsatte elementer er klar}}",
     "toast": "{count, plural, =1 {»{itemTitle}« er ikke længere udsat} one {# udsat element er tilbage} other {# udsatte elementer er tilbage}}"
+  },
+  "sticky": {
+    "kindLabel": "Send som",
+    "kinds": {
+      "note": "Note",
+      "task": "Opgave",
+      "journal": "Dagbog"
+    },
+    "placeholders": {
+      "note": "Skriv det ned…",
+      "task": "Ring til Ana @imorgen #hjem !høj",
+      "journal": "Føj til dagens dagbog…"
+    },
+    "saving": "Gemmer…",
+    "saved": "Gemt",
+    "saveFailed": "Ikke gemt",
+    "tuck": "Skjul",
+    "send": "Send",
+    "hints": "Esc skjul · {mod}⌫ slet",
+    "sendAndCloseHint": "⌥{mod}↵ sender og lukker",
+    "deleted": "Kladde slettet",
+    "open": "Åbn",
+    "undo": "Fortryd",
+    "sent": {
+      "note": "Gemt i mappen Sticky",
+      "task": "Opgave tilføjet",
+      "journal": "Føjet til dagens dagbog"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky-kladde} other {# sticky-kladder}}",
+      "newSticky": "Ny sticky"
+    },
+    "errors": {
+      "empty": "Skriv noget først.",
+      "taskFailed": "Kunne ikke oprette opgaven.",
+      "tasksOff": "Opgaver er slået fra i Indstillinger.",
+      "journalOff": "Dagbogen er slået fra i Indstillinger.",
+      "sendFailed": "Kunne ikke sende stickyen.",
+      "undoExpired": "Det er for sent at fortryde.",
+      "undoFailed": "Kunne ikke fortryde afsendelsen."
+    },
+    "inputLabel": "Sticky-tekst",
+    "dismissError": "Luk"
   }
 }

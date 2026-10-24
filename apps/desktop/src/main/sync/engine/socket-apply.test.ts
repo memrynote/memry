@@ -306,7 +306,11 @@ describe('createSocketApplier', () => {
   // body exactly as the pull's queueBodyPull does (a durable `record` debt and
   // the unmerged flag that withholds a snapshot claim). The frame lands no body.
   it('owes the whole body of every note or journal record it changes, and nothing else', async () => {
-    const note = (id: string, content: object, operation = 'update'): DecryptedPullItem => ({
+    const note = (
+      id: string,
+      content: Record<string, unknown>,
+      operation = 'update'
+    ): DecryptedPullItem => ({
       ...decrypted(id, 'note'),
       operation,
       content: JSON.stringify(content)
@@ -346,7 +350,7 @@ describe('createSocketApplier', () => {
       vi
         .mocked(deps.oweRecordBody)
         .mock.calls.map(([id]) => id)
-        .sort()
+        .toSorted()
     ).toEqual(['j-conflict', 'n-applied'])
   })
 

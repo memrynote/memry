@@ -19,11 +19,13 @@ const NOTE = {
 }
 
 async function seal(payload) {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   await sodium.ready
   const key = sodium.crypto_aead_xchacha20poly1305_ietf_keygen()
   const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
   const sealed = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(payload, null, null, nonce, key)
   const bytes = new Uint8Array([...nonce, ...sealed])
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   return { bytes: bytes.length, b64: sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL) }
 }
 
@@ -48,9 +50,9 @@ export async function setup({ page }) {
     device: `${randomUUID().slice(0, 8)}…`
   }
   focus = await page.evaluate(
-    ([slow, data]) => {
+    ([slow, noteData]) => {
       window.SLOW = slow
-      window.ss.init(data)
+      window.ss.init(noteData)
       return Object.fromEntries(
         ['payload', 'top', 'middle', 'note'].map((n) => [n, window.ss.focus(n)])
       )
@@ -74,7 +76,7 @@ const steps = {
     zoom(...focus.top, 1.6)
     await at(0.6)
     for (const f of ['id', 'type', 'size', 'changed', 'device']) {
-      await page.evaluate((f) => window.ss.reveal(f), f)
+      await page.evaluate((field) => window.ss.reveal(field), f)
     }
   },
   async never({ page, at, unzoom }) {

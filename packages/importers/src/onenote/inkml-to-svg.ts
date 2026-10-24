@@ -64,13 +64,17 @@ function sanitizeColor(value: string): string {
  */
 function cleanInkmlContent(inkmlContent: string): string {
   const closingTagMatch = inkmlContent.match(/<\/(?:[\w-]+:)?ink>/)
-  if (closingTagMatch && closingTagMatch.index !== undefined) {
+  if (closingTagMatch?.index !== undefined) {
     return inkmlContent.substring(0, closingTagMatch.index + closingTagMatch[0].length)
   }
   return inkmlContent
 }
 
 type ParsedNode = Record<string, unknown>
+
+function isParsedNode(value: unknown): value is ParsedNode {
+  return value !== null && typeof value === 'object'
+}
 
 /** Depth-first collect of every value under a given tag name. */
 function collectByTag(node: unknown, tag: string, out: unknown[]): void {
@@ -79,7 +83,7 @@ function collectByTag(node: unknown, tag: string, out: unknown[]): void {
     return
   }
   if (node === null || typeof node !== 'object') return
-  for (const [key, value] of Object.entries(node as ParsedNode)) {
+  for (const [key, value] of Object.entries(node)) {
     if (key === tag) {
       if (Array.isArray(value)) out.push(...value)
       else out.push(value)
@@ -104,8 +108,8 @@ function parseBrushes(root: unknown): Map<string, BrushProperties> {
   collectByTag(root, 'brush', brushNodes)
 
   for (const rawBrush of brushNodes) {
-    if (rawBrush === null || typeof rawBrush !== 'object') continue
-    const brushNode = rawBrush as ParsedNode
+    if (!isParsedNode(rawBrush)) continue
+    const brushNode = rawBrush
     const brushId = attr(brushNode, 'id')
     if (!brushId) continue
 
@@ -113,8 +117,8 @@ function parseBrushes(root: unknown): Map<string, BrushProperties> {
     const props: unknown[] = []
     collectByTag(brushNode, 'brushProperty', props)
     for (const rawProp of props) {
-      if (rawProp === null || typeof rawProp !== 'object') continue
-      const propNode = rawProp as ParsedNode
+      if (!isParsedNode(rawProp)) continue
+      const propNode = rawProp
       const name = attr(propNode, 'name')
       const value = attr(propNode, 'value')
       if (!name || value === null) continue
@@ -141,8 +145,8 @@ function parseBrushes(root: unknown): Map<string, BrushProperties> {
 
 function traceText(rawTrace: unknown): string {
   if (typeof rawTrace === 'string' || typeof rawTrace === 'number') return String(rawTrace)
-  if (rawTrace === null || typeof rawTrace !== 'object') return ''
-  const text = (rawTrace as ParsedNode)['#text']
+  if (!isParsedNode(rawTrace)) return ''
+  const text = rawTrace['#text']
   if (typeof text === 'string' || typeof text === 'number') return String(text)
   return ''
 }
@@ -179,8 +183,8 @@ function getTraces(root: unknown, brushMap: Map<string, BrushProperties>): Trace
     if (coords.length === 0) continue
 
     let brush = DEFAULT_BRUSH
-    if (rawTrace !== null && typeof rawTrace === 'object') {
-      let brushRef = attr(rawTrace as ParsedNode, 'brushRef') ?? ''
+    if (isParsedNode(rawTrace)) {
+      let brushRef = attr(rawTrace, 'brushRef') ?? ''
       if (brushRef.startsWith('#')) brushRef = brushRef.substring(1)
       brush = brushMap.get(brushRef) ?? DEFAULT_BRUSH
     }

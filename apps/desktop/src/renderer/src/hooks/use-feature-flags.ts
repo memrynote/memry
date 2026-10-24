@@ -45,6 +45,7 @@ export function useFeatureFlags(): UseFeatureFlagsReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'features') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings:changed event.value is unknown; the patch shape is fixed by the settings key this listener filtered on
         const value = event.value as Partial<FeaturesSettings>
         overridesRef.current = { ...overridesRef.current, ...value }
         setFlags((prev) => mergeSettingsPatch(prev, value))

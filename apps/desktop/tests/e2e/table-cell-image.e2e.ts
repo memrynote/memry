@@ -85,11 +85,11 @@ async function retriggerSave(page: Page): Promise<void> {
  */
 async function pasteImageAtCaret(page: Page, base64: string, name: string): Promise<void> {
   await page.evaluate(
-    ({ base64, name }) => {
-      const binary = atob(base64)
+    ({ base64: base64Arg, name: nameArg }) => {
+      const binary = atob(base64Arg)
       const bytes = new Uint8Array(binary.length)
       for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
-      const file = new File([bytes], name, { type: 'image/png' })
+      const file = new File([bytes], nameArg, { type: 'image/png' })
       const data = new DataTransfer()
       data.items.add(file)
       const target = document.querySelector(
@@ -112,9 +112,9 @@ async function pasteImageAtCaret(page: Page, base64: string, name: string): Prom
  * and watched ProseMirror drop it because a cell holds inline content only.
  */
 async function pasteHtmlAtCaret(page: Page, html: string): Promise<void> {
-  await page.evaluate((html) => {
+  await page.evaluate((htmlArg) => {
     const data = new DataTransfer()
-    data.setData('text/html', html)
+    data.setData('text/html', htmlArg)
     const target = document.querySelector(
       '[aria-label="Rich text editor"] [contenteditable="true"]'
     )

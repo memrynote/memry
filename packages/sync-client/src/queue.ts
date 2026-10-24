@@ -203,13 +203,13 @@ export class SyncQueueManager {
       .all()
   }
 
-  peek(count = 10): Array<typeof syncQueue.$inferSelect> {
+  peek(limit = 10): Array<typeof syncQueue.$inferSelect> {
     return this.db
       .select()
       .from(syncQueue)
       .where(isRecordRow)
       .orderBy(desc(syncQueue.priority), asc(syncQueue.createdAt))
-      .limit(count)
+      .limit(limit)
       .all()
   }
 
@@ -284,7 +284,7 @@ export class SyncQueueManager {
       .from(syncQueue)
       .where(eq(syncQueue.id, id))
       .get()
-    if (row && row.attempts === DEFAULT_MAX_ATTEMPTS) {
+    if (row?.attempts === DEFAULT_MAX_ATTEMPTS) {
       log.error('markFailed: retry budget exhausted — item dead-lettered', {
         id: id.slice(0, 8),
         type: row.type,

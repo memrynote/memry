@@ -147,6 +147,7 @@ type DigestSource = Parameters<typeof crypto.subtle.digest>[1]
 
 export const packSha256 = async (bytes: Uint8Array): Promise<Uint8Array> => {
   // SAFETY: a Uint8Array is a valid digest source by construction.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pack writer output / Uint8Array is a valid digest source; behavior must stay as shipped
   return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as DigestSource))
 }
 
@@ -260,6 +261,7 @@ export const decodePackIndex = (indexBytes: Uint8Array, entryCount: number): Pac
     if (metaJson !== '') {
       // SAFETY: metaJson was written by the pack writer via JSON.stringify.
       // A malformed value throws here and the caller discards the pack.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- pack writer output / Uint8Array is a valid digest source; behavior must stay as shipped
       entry.meta = JSON.parse(metaJson) as PackEntryMeta
     }
     entries.push(entry)

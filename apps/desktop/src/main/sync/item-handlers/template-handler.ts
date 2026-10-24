@@ -74,7 +74,7 @@ class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
             description: data.description !== undefined ? data.description : existing.description,
             icon: data.icon !== undefined ? data.icon : existing.icon,
             tags: data.tags ?? existing.tags,
-            properties: (data.properties as unknown[]) ?? existing.properties,
+            properties: data.properties ?? existing.properties,
             content: data.content ?? existing.content,
             clock: resolution.mergedClock,
             syncedAt: now,
@@ -107,6 +107,7 @@ class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
           description: data.description ?? null,
           icon: data.icon ?? null,
           tags: data.tags ?? [],
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload schema types properties loosely; the column stores a JSON array, no runtime validation exists to narrow with
           properties: (data.properties as unknown[]) ?? [],
           content: data.content ?? '',
           clock: remoteClock,
@@ -143,9 +144,7 @@ class TemplateHandler extends BaseItemHandler<TemplateSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(templates).where(eq(templates.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(templates).where(eq(templates.id, itemId)).get()
   }
 
   buildPushPayload(

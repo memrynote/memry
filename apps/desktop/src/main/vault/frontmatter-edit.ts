@@ -50,11 +50,11 @@ function segment(lines: string[]): Segment[] | null {
       if (startsEntry(line)) break
       if (continuesEntry(line)) end = next + 1
     }
-    const entryLines = lines.slice(start, end)
-    const data = readYaml(entryLines) ?? {}
+    const segmentLines = lines.slice(start, end)
+    const data = readYaml(segmentLines) ?? {}
     const keys = Object.keys(data)
     if (keys.length !== 1) return null
-    segments.push({ key: keys[0], value: data[keys[0]], lines: entryLines })
+    segments.push({ key: keys[0], value: data[keys[0]], lines: segmentLines })
     start = end
   }
   return segments

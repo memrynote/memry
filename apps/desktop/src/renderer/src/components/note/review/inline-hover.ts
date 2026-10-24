@@ -9,6 +9,7 @@ export function syncInlineHoverClass(id: string | null): void {
     })
 
   const styleId = 'critic-mark-hover-style'
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
   let style = document.getElementById(styleId) as HTMLStyleElement | null
   if (!style) {
     style = document.createElement('style')

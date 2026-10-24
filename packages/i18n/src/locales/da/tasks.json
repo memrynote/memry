@@ -53,8 +53,7 @@
       "high": "Høj",
       "urgent": "Haster"
     },
-    "unarchive": "Tag opgave ud af arkiv",
-    "archivedOn": "Arkiveret {date}"
+    "unarchive": "Tag opgave ud af arkiv"
   },
   "reminders": {
     "summary": "Påmindelse: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Tilføj delopgave",
     "subIssuePlaceholder": "Tilføj delopgave…",
     "noSubIssues": "Ingen delopgaver endnu",
-    "linkedNotes": "Relateret",
-    "linkNote": "Tilføj relateret element",
     "loading": "Indlæser…",
-    "searchNotes": "Søg efter elementer…",
-    "noMatchingNotes": "Ingen matchende elementer",
-    "noNotesAvailable": "Ingen tilgængelige elementer",
-    "noLinkedNotes": "Ingen relaterede elementer endnu",
-    "removeLinkTo": "Fjern relateret element {title}",
-    "removeLinkFallback": "element",
     "related": "Relateret",
     "addRelatedItem": "Tilføj relateret element",
     "searchRelated": "Søg efter elementer…",
     "noMatchingRelated": "Ingen matchende elementer",
     "noRelatedAvailable": "Ingen elementer tilgængelige",
-    "noRelatedItems": "Ingen relaterede elementer endnu",
     "removeRelatedItem": "Fjern relateret element {title}",
     "relatedItemFallback": "element",
     "relatedItemMissing": "Det relaterede element findes ikke længere i denne boks.",
@@ -251,7 +241,6 @@
     "deleted": "Opgave slettet",
     "deletedSeries": "Serie fuldført!",
     "completed": "Opgave fuldført!",
-    "archived": "Opgave arkiveret",
     "undoNotAvailableForDelete": "Sletning kan ikke fortrydes",
     "alreadyAllComplete": "Alle valgte opgaver er allerede fuldført",
     "noCompletedSelected": "Ingen fuldførte opgaver er valgt",
@@ -305,7 +294,10 @@
       "dueDateCleared": "{count, plural, one {Forfaldsdato ryddet for # delopgave} other {Forfaldsdato ryddet for # delopgaver}}",
       "prioritySet": "{count, plural, one {Prioritet angivet for # delopgave} other {Prioritet angivet for # delopgaver}}",
       "deleted": "{count, plural, one {# delopgave slettet} other {# delopgaver slettet}}"
-    }
+    },
+    "completedBranch": "Fuldførte {title} og {count, plural, one {# åben underopgave} other {# åbne underopgaver}}",
+    "deletedKeepSubtasks": "Slettede {title} og beholdt underopgaverne",
+    "deletedBranch": "Slettede {title} og {count, plural, one {# underopgave} other {# underopgaver}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -328,7 +320,6 @@
       "archive": "Arkivér",
       "delete": "Slet",
       "cancelSelection": "Annullér valg",
-      "cancel": "Annullér",
       "unarchive": "Tag ud af arkiv"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -400,9 +391,6 @@
       "delete": "Vil du slette \"",
       "thisProjectHas": "Dette projekt har ",
       "task": "opgave",
-      "whatWouldYouLikeToDoWithThem": "Hvad vil du gøre med dem?",
-      "moveTasksToPersonalProject": "Flyt opgaverne til projektet Personligt",
-      "deleteAllTasksPermanently": "Slet alle opgaver permanent",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dette projekt har ingen opgaver og vil blive slettet permanent.",
       "notesEventsAndFilesStayNotice": "Opgaverne i dette projekt slettes. Dine noter, begivenheder og filer bliver i din boks.",
       "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
@@ -423,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Angiv forfaldsdato for alle delopgaver",
-      "setDueDateFor": "Angiv forfaldsdato for ",
-      "alsoApplyToCompletedSubtasks": "Anvend også på fuldførte delopgaver (",
       "clearDate": "Ryd dato",
       "cancel": "Annullér",
       "apply": "Anvend",
@@ -433,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Angiv prioritet for alle delopgaver",
-      "setPriorityFor": "Angiv prioritet for ",
-      "alsoApplyToCompletedSubtasks": "Anvend også på fuldførte delopgaver (",
       "cancel": "Annullér",
       "apply": "Anvend",
       "setPriorityForSubtasksIn": "Angiv prioritet for {count, plural, one {# delopgave} other {# delopgaver}} i »{title}«",
@@ -461,36 +445,13 @@
       "deleteAll": "Slet alle",
       "deleteSubtasksConfirmation": "Dette sletter {count, plural, one {# delopgave} other {# delopgaver}} fra »{title}«."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Vil du slette opgaven med delopgaver?",
-      "has": "har ",
-      "subtask": "delopgave",
-      "whatWouldYouLikeToDo": "Hvad vil du gøre?",
-      "deleteTaskAndAllSubtasks": "Slet opgave og alle delopgaver",
-      "permanentlyRemovesEverything": "Fjerner alt permanent",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Slet opgave, behold delopgaver som selvstændige opgaver",
-      "subtasksBecomeTopLevelTasks": "Delopgaver bliver til opgaver på øverste niveau",
-      "cancel": "Annullér",
-      "delete": "Slet"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplikér opgave",
-      "createACopyOf": "Opret en kopi af »",
-      "alsoDuplicateSubtasks": "Duplikér også delopgaver (",
       "cancel": "Annullér",
-      "duplicate": "Duplikér ",
       "createACopyOfTitle": "Opret en kopi af »{title}«",
       "alsoDuplicateSubtasksCount": "Duplikér også delopgaverne ({count})",
       "duplicateWithItems": "Duplikér ({count, plural, one {# element} other {# elementer}})",
       "duplicateTaskOnly": "Duplikér opgave"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Gør til delopgave af…",
-      "selectATaskToMake": "Vælg den opgave, som \"",
-      "aSubtaskOf": "skal være en delopgave af.",
-      "searchTasks": "Søg i opgaver…",
-      "sameProject": "Samme projekt",
-      "otherProjects": "Andre projekter"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Slip for at omplanlægge til "
@@ -564,16 +525,13 @@
       "status": "status",
       "projectIs": "Projekt er",
       "project": "projekt",
+      "locationIs": "Placeringen er",
+      "location": "placering",
+      "unknownNote": "Ukendt note",
       "due": "Forfalder",
       "dueDate": "forfaldsdato",
       "search": "søgning",
       "clearAll": "Ryd alle"
-    },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filtrér efter forfaldsdato",
-      "customRange": "Brugerdefineret interval",
-      "clear": "Ryd",
-      "apply": "Anvend"
     },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filtrér efter…"
@@ -584,6 +542,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Forfaldsdato"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Placering",
+      "search": "Søg i mapper og noter...",
+      "empty": "Ingen mapper eller noter med opgaver"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Prioritet",
@@ -608,23 +571,9 @@
       "search": "Søg…",
       "selected": "valgt"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Flere filtre",
-      "more": "Mere",
-      "status": "Status",
-      "hasTimeSet": "Med klokkeslæt",
-      "recurringOnly": "Kun tilbagevendende",
-      "status2": "Status"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Filtrér efter prioritet",
       "priority": "Prioritet"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filtrér efter projekt",
-      "project": "Projekt",
-      "allProjects": "Alle projekter",
-      "clear": "Ryd"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Hurtige filtre:"
@@ -648,13 +597,6 @@
       "summaryTimeWith": "Tid: Med klokkeslæt",
       "summaryTimeWithout": "Tid: Uden klokkeslæt",
       "nameRequired": "Indtast et navn til dette filter"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Gemte filtre",
-      "saved": "Gemt",
-      "noSavedFiltersYet": "Ingen gemte filtre endnu",
-      "saveCurrentFilters": "Gem aktuelle filtre",
-      "saveCurrentFilters2": "Gem aktuelle filtre"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Filternavn",
@@ -704,8 +646,7 @@
       "openTasksOnThisProject": "Opgaver åbner i dette projekt"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Vælg projekt",
-      "selectProject2": "Vælg projekt"
+      "selectProject": "Vælg projekt"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Redigér projekt",
@@ -714,11 +655,6 @@
       "selectProject": "Vælg projekt",
       "noProjectsYet": "Ingen projekter endnu",
       "createProject": "Opret projekt"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Intet projekt valgt",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Vælg et projekt fra rullemenuen, eller opret et nyt",
-      "createYourFirstProject": "Opret dit første projekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Hjælp til hurtig tilføjelse",
@@ -804,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Vælg klokkeslæt",
-      "selectTime2": "Vælg klokkeslæt",
       "clearTime": "Ryd klokkeslæt"
     },
     "componentsTasksTodayEmptyState": {
@@ -869,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Intet projekt valgt",
     "emptyBody": "Vælg et projekt i sidebjælken for at åbne projektsiden.",
-    "loadError": "Kunne ikke indlæse projektoplysningerne",
     "overview": {
       "sectionTitle": "Oversigt",
       "create": "Opret oversigtsnote",
@@ -897,6 +831,7 @@
     "tabs": {
       "label": "Projektvisninger",
       "overview": "Oversigt",
+      "all": "Alle",
       "tasks": "Opgaver",
       "notes": "Noter",
       "files": "Filer",
@@ -951,6 +886,18 @@
       "fileError": "Kunne ikke linke {name}",
       "fileErrorGeneric": "Kunne ikke importere filerne",
       "label": "Føj til {name}"
+    },
+    "all": {
+      "showDone": "Vis færdige",
+      "empty": "Intet åbent i dette projekt.",
+      "expand": "Vis opgaver i {title}",
+      "collapse": "Skjul opgaver i {title}",
+      "daysLeft": "{count} d.",
+      "overdue": "{count} d. forsinket",
+      "columns": {
+        "title": "Titel",
+        "daysLeft": "Dage tilbage"
+      }
     }
   },
   "project": {
@@ -1001,5 +948,49 @@
     "indigo": "Indigo",
     "purple": "Lilla",
     "pink": "Pink"
+  },
+  "subtaskTree": {
+    "addSubtask": "Tilføj underopgave",
+    "dropInto": "Ind i {title}",
+    "dropOut": "Ét niveau ud",
+    "draftPlaceholder": "Underopgavens titel",
+    "draftLabel": "Ny underopgave i {title}",
+    "draftIn": "i {title}",
+    "toggleComplete": "Fuldfør {title}",
+    "moveUnder": {
+      "title": "Flyt under",
+      "placeholder": "Flyt under…",
+      "empty": "Ingen matchende opgave",
+      "topLevel": "Øverste niveau i {project}",
+      "thisTask": "Denne opgave",
+      "currentParent": "Nuværende overordnede",
+      "movesOne": "Flytter {title}",
+      "movesBranch": "Flytter {title} og {count, plural, one {# underopgave} other {# underopgaver}}",
+      "keys": "↵ Flyt hertil · ⌘↵ Øverste niveau · esc Luk"
+    },
+    "zoom": {
+      "path": "Opgavesti",
+      "up": "Ét niveau op",
+      "upShortcut": "Ét niveau op (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Slet {title}?",
+      "summary": "{direct, plural, one {Den har # underopgave} other {Den har # underopgaver}}{deeper, plural, =0 {} one { og # mere under den} other { og # mere under dem}}{open, plural, =0 {, alle færdige.} other {, # stadig åbne.}}",
+      "cancel": "Annullér",
+      "deleteAll": "Slet alle",
+      "keepSubtasks": "Behold underopgaver"
+    },
+    "menu": {
+      "open": "Åbn",
+      "complete": "Fuldfør",
+      "reopen": "Genåbn",
+      "zoom": "Zoom ind på underopgaver",
+      "moveUnder": "Flyt under…",
+      "indent": "Flyt under {title}",
+      "outdent": "Flyt ét niveau ud",
+      "topLevel": "Gør til opgave på øverste niveau",
+      "delete": "Slet"
+    },
+    "openPath": "Åbn {path}"
   }
 }

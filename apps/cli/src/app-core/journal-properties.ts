@@ -62,7 +62,7 @@ export async function journalPropertyRows(
 
   const entries = (await notes.list({ journalOnly: true, limit: 100000 }))
     .filter((entry) => entry.journalDate !== null)
-    .sort((a, b) => a.journalDate!.localeCompare(b.journalDate!))
+    .toSorted((a, b) => a.journalDate!.localeCompare(b.journalDate!))
   const rows = entries
     .filter((entry) => entry.journalDate! >= from && entry.journalDate! <= to)
     .map((entry) => ({
@@ -88,10 +88,10 @@ export async function journalPropertyRows(
   const summary = [...byName.entries()]
     .map(([name, { total, types }]) => ({
       name,
-      type: definedTypes.get(name) ?? [...types.entries()].sort((a, b) => b[1] - a[1])[0][0],
+      type: definedTypes.get(name) ?? [...types.entries()].toSorted((a, b) => b[1] - a[1])[0][0],
       count: total
     }))
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .toSorted((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 
   return { rows, properties: summary }
 }

@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Не знайдено — натисніть, щоб створити «{title}»"
   },
+  "wikiLinkMenu": {
+    "aria": "Дії з посиланням",
+    "open": "Відкрити",
+    "openInNewTab": "Відкрити в новій вкладці",
+    "openToTheSide": "Відкрити збоку",
+    "edit": "Редагувати посилання",
+    "copy": "Копіювати посилання",
+    "unlink": "Видалити посилання",
+    "displayRow": "Відображення…",
+    "sizeNone": "Немає",
+    "sizeSmall": "Малий",
+    "sizeMedium": "Середній",
+    "showCover": "Показувати обкладинку",
+    "showPreview": "Показувати попередній перегляд",
+    "copyFailed": "Не вдалося скопіювати посилання"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Імпортувати з Readwise повторно",
+    "refreshAction": "Оновити відомості про книгу",
+    "syncsOn": "Readwise синхронізується на пристрої {device}.",
+    "syncsOnAnotherDevice": "Readwise синхронізується на іншому пристрої.",
+    "takeOverHint": "Синхронізуйте на тому пристрої або перейміть керування в Налаштування → Імпорт.",
+    "reimport": {
+      "title": "Імпортувати «{title}» з Readwise повторно?",
+      "body": "Розділ Readwise буде переписано з нуля. Усе, що ви написали в ньому, буде втрачено.",
+      "note": "Текст поза цим розділом і властивості нотатки залишаться без змін.",
+      "cancel": "Скасувати",
+      "confirm": "Імпортувати повторно"
+    },
+    "commands": {
+      "reimported": "Повторно імпортовано з Readwise",
+      "refreshed": "Відомості про книгу оновлено",
+      "failed": "Не вдалося виконати команду Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Нотатку не вибрано",
@@ -25,6 +61,7 @@
       "willSync": "Нотатка синхронізується з хмарою",
       "renameFailed": "Не вдалося перейменувати нотатку",
       "titleRequired": "Нотатка повинна мати назву",
+      "duplicateTitle": "Інша нотатка в {folder} теж має назву «{title}». Посилання на ці нотатки міститимуть назву папки.",
       "toggleLocalOnlyFailed": "Не вдалося перемкнути локальний режим",
       "toggleFullWidthFailed": "Не вдалося перемкнути повну ширину",
       "pathCopied": "Шлях скопійовано",
@@ -98,6 +135,7 @@
       "openToTheSide": "Відкрити збоку",
       "newNote": "Нова нотатка",
       "newFolder": "Нова папка",
+      "showTasks": "Показати завдання",
       "expandSubfolders": "Розгорнути всі підпапки",
       "collapseSubfolders": "Згорнути всі підпапки",
       "rename": "Перейменувати",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "Прибрати із закладок",
       "journalSettings": "Налаштування щоденника…"
     },
-    "nav": {
-      "label": "Навігація",
-      "ariaExpanded": "Розділ навігації, розгорнуто",
-      "ariaCollapsed": "Розділ навігації, згорнуто",
-      "saveFailed": "Не вдалося зберегти стан розділу навігації"
-    },
     "viewOptions": {
       "label": "Параметри вигляду",
       "notesFirst": "Нотатки перед папками",
@@ -138,7 +170,15 @@
       "folderSuffix": "папка",
       "moreItems": "…і ще {count}",
       "deleting": "Видалення…",
-      "deleteCount": "Видалити {count}"
+      "deleteCount": "Видалити {count}",
+      "journalFolderWarning": "Сюди входить папка вашого щоденника. Усі записи щоденника в ній буде видалено на всіх ваших пристроях."
+    },
+    "journalChange": {
+      "leaveTitle": "Перетворити записи щоденника на нотатки?",
+      "leaveBody": "Записи щоденника, які перенесено з папки щоденника або формат дати в назві яких змінено, стають звичайними нотатками й зникають зі Щоденника. На інших ваших пристроях ці дні буде вилучено зі Щоденника, а натомість з’являться нотатки.",
+      "joinTitle": "Перетворити нотатки на записи щоденника?",
+      "joinBody": "Файли з назвами у форматі дати щоденника в папці щоденника стають записами щоденника. На інших ваших пристроях ці нотатки буде замінено записами щоденника.",
+      "confirm": "Продовжити"
     },
     "toast": {
       "selectionBookmarked": "Додано до закладок: {count}",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "Заголовок",
       "listPlaceholder": "Елемент списку",
       "todoPlaceholder": "Пункт списку справ",
-      "htmlComment": "Прихований HTML-коментар"
+      "htmlComment": "Прихований HTML-коментар",
+      "percentComment": "Прихований коментар",
+      "readwise": {
+        "noteStart": "Readwise · синхронізується автоматично",
+        "noteEnd": "Кінець розділу Readwise",
+        "dayStart": "Readwise · виділення за сьогодні",
+        "dayEnd": "Кінець Readwise",
+        "hint": "Якщо редагувати в цьому розділі, Readwise більше не оновлюватиме його."
+      }
     },
     "table": {
       "keyboardMenuAria": "Дії з таблицею для рядка {row}, стовпця {column}",
-      "keyboardMenuTitle": "Рядок {row} · Стовпець {column}"
+      "keyboardMenuTitle": "Рядок {row} · Стовпець {column}",
+      "sizePicker": {
+        "aria": "Розмір таблиці. Стрілками виберіть кількість рядків і стовпців, потім натисніть Enter.",
+        "size": "{rows, plural, one {# рядок} few {# рядки} many {# рядків} other {# рядка}} × {columns, plural, one {# стовпець} few {# стовпці} many {# стовпців} other {# стовпця}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Видалити рядок} few {Видалити # рядки} many {Видалити # рядків} other {Видалити # рядка}}",
+        "addRowsAbove": "{count, plural, one {Додати рядок вище} few {Додати # рядки вище} many {Додати # рядків вище} other {Додати # рядка вище}}",
+        "addRowsBelow": "{count, plural, one {Додати рядок нижче} few {Додати # рядки нижче} many {Додати # рядків нижче} other {Додати # рядка нижче}}",
+        "deleteColumns": "{count, plural, one {Видалити стовпець} few {Видалити # стовпці} many {Видалити # стовпців} other {Видалити # стовпця}}",
+        "addColumnsLeft": "{count, plural, one {Додати стовпець ліворуч} few {Додати # стовпці ліворуч} many {Додати # стовпців ліворуч} other {Додати # стовпця ліворуч}}",
+        "addColumnsRight": "{count, plural, one {Додати стовпець праворуч} few {Додати # стовпці праворуч} many {Додати # стовпців праворуч} other {Додати # стовпця праворуч}}"
+      }
     },
     "list": {
       "bulleted": "Маркований список",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "Сховати локальний граф",
       "showLocalGraph": "Показати локальний граф",
       "moreActions": "Більше дій",
+      "searchActions": "Пошук дій...",
+      "noMatchingActions": "Відповідних дій немає",
       "find": "Знайти…",
       "versionHistory": "Історія версій",
       "export": "Експорт",
@@ -215,6 +277,8 @@
       "notSynced": "Ще не синхронізовано на цей пристрій",
       "revealFailed": "Не вдалося показати файл",
       "openFailed": "Не вдалося відкрити файл",
+      "showAsLink": "Показати як посилання",
+      "showAsEmbed": "Показати вбудованим",
       "missingTitle": "Файл вкладення відсутній",
       "missingExpected": "Очікуваний файл: {name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "Перейменувати",
       "renamed": "Перейменовано на {name}",
       "failed": "Не вдалося перейменувати вкладення"
+    },
+    "imageLightbox": {
+      "menuItem": "Переглянути збільшеним",
+      "title": "Перегляд зображення",
+      "zoomIn": "Збільшити",
+      "zoomOut": "Зменшити",
+      "reset": "Скинути масштаб"
+    },
+    "imageCrop": {
+      "menuItem": "Обрізати…",
+      "title": "Обрізати зображення",
+      "description": "Проведіть по зображенню, щоб вибрати, що показуватиме нотатка. Оригінальний файл залишається без змін.",
+      "reset": "Показати все зображення",
+      "cancel": "Скасувати",
+      "apply": "Обрізати",
+      "unavailable": "Зображення ще не завантажилося, тому його не можна обрізати"
     },
     "attachmentsDialog": {
       "title": "Вкладення",
@@ -248,12 +328,24 @@
       "title": "Виноска",
       "group": "Основні блоки",
       "subtext": "Виділити важливу інформацію",
+      "customSubtext": "Ваш власний тип виноски",
       "changeType": "Змінити тип виноски",
+      "expand": "Розгорнути виноску",
+      "collapse": "Згорнути виноску",
       "menuLabel": "Тип виноски",
       "info": "Інформація",
       "warning": "Попередження",
       "error": "Помилка",
-      "success": "Успіх"
+      "success": "Успіх",
+      "note": "Примітка",
+      "abstract": "Резюме",
+      "todo": "Зробити",
+      "tip": "Порада",
+      "important": "Важливо",
+      "question": "Питання",
+      "example": "Приклад",
+      "quote": "Цитата",
+      "bug": "Помилка"
     },
     "columns": {
       "group": "Основні блоки",
@@ -332,6 +424,83 @@
       "invalidShape": "У визначенні цього вигляду немає джерела. Виберіть його вище або виправте визначення нижче.",
       "definition": "Визначення"
     },
+    "chart": {
+      "title": "Діаграма",
+      "subtext": "Покажіть властивість у часі: лінія, стовпці або календарна теплова карта",
+      "layout": "Діаграма",
+      "settings": "Налаштування діаграми",
+      "chooseProperty": "Виберіть, що показувати",
+      "source": "Джерело",
+      "headerMeta": "{range} · {type}",
+      "property": "Властивість",
+      "noProperties": "Поки що нічого показувати. Спершу додайте властивість до запису щоденника або нотатки.",
+      "chartType": "Діаграма",
+      "suggested": "Пропонується",
+      "types": {
+        "line": "Лінія",
+        "bar": "Стовпці",
+        "heatmap": "Теплова карта"
+      },
+      "range": "Період",
+      "lastDays": "{count, plural, one {Останній день} few {Останні # дні} many {Останні # днів} other {Останні # дня}}",
+      "sameDay": "Записи за один день",
+      "aggregates": {
+        "average": "Середнє",
+        "sum": "Сума",
+        "min": "Найменше",
+        "max": "Найбільше",
+        "count": "Кількість"
+      },
+      "missingDays": "Пропущені дні",
+      "missing": {
+        "gap": "Залишити прогалину",
+        "zero": "Вважати нулем"
+      },
+      "dateFrom": {
+        "label": "Дата з",
+        "created": "Створено",
+        "modified": "Змінено"
+      },
+      "propertyTypes": {
+        "text": "Текст",
+        "number": "Число",
+        "checkbox": "Прапорець",
+        "date": "Дата",
+        "url": "URL",
+        "status": "Статус",
+        "select": "Вибір",
+        "multiselect": "Множинний вибір",
+        "relation": "Зв’язок",
+        "project": "Проєкт",
+        "rating": "Оцінка"
+      },
+      "noEntry": "Немає запису",
+      "done": "Виконано",
+      "notDone": "Не виконано",
+      "logged": "Записано",
+      "valueCount": "{count, plural, one {# значення} few {# значення} many {# значень} other {# значення}}",
+      "average": "Середнє",
+      "vsPrevious": "порівняно з попереднім періодом",
+      "lowest": "Найменше",
+      "currentStreak": "Поточна серія",
+      "longestStreak": "Найдовша серія",
+      "dayCount": "{count, plural, one {# день} few {# дні} many {# днів} other {# дня}}",
+      "doneDays": "Виконано",
+      "loggedDays": "Записано",
+      "mostCommon": "Найчастіше",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property}: останні {days} дн.",
+      "noData": "У цьому періоді поки нічого не записано.",
+      "loadFailed": "Не вдалося завантажити цю діаграму. Самі записи не змінено.",
+      "sourceJournal": "Щоденник",
+      "history": {
+        "show": "Показати історію",
+        "title": "Історія: {property}",
+        "range": "Останні 13 тижнів",
+        "insert": "Копіювати як блок діаграми",
+        "copied": "Блок діаграми скопійовано. Вставте його в будь-яку нотатку."
+      }
+    },
     "slashMenu": {
       "aria": "Блоки й дії",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "ШІ"
       },
       "secondary": {
-        "asToggleHeading": "Як згортуваний",
         "asLinkedTask": "Як пов’язане завдання",
         "asReminder": "Як нагадування"
       },
-      "actions": {
-        "insert": "Вставити",
-        "open": "Відкрити"
-      },
+      "close": "Закрити меню",
       "matchesAlias": "збігається з",
       "noMatch": "Немає блоків, що відповідають «{query}»",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "Перемістити блок до нотатки",
         "searchPlaceholder": "Шукати нотатки…",
         "noResults": "Немає відповідних нотаток",
-        "moved": "Блок переміщено до «{title}»",
         "failed": "Не вдалося перемістити блок"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Показати як",
+        "embed": "Вбудоване",
+        "link": "Посилання"
+      },
       "title": {
         "image": "Додати зображення",
         "media": "Додати медіа",
@@ -525,6 +694,11 @@
       "empty": "Почніть вводити, щоб створити новий тег",
       "create": "Створити #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Показати PDF як",
+      "embed": "Вбудований переглядач",
+      "link": "Назва файлу"
+    },
     "pasteLink": {
       "title": "Вставити як",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "Структура",
     "aria": "Структура документа",
-    "emptyYet": "Заголовків ще немає",
     "readTime": "{count} хв читання",
     "words": "Слів: {count}",
     "created": "Створено",
-    "modified": "Змінено"
+    "modified": "Змінено",
+    "sync": {
+      "label": "Синхронізація",
+      "confirmed": "На сервері {time}",
+      "pending": "Очікує з {time}",
+      "sent": "Надсилання",
+      "rejected": "Сервер відхилив останню зміну",
+      "notRecorded": "Немає чого надсилати",
+      "localOnly": "Лише локально",
+      "notSyncing": "Не синхронізується",
+      "waiting": "Очікує надсилання"
+    }
   },
   "backlinks": {
     "sortRecent": "Недавні",
@@ -587,7 +771,18 @@
     "expandSection": "Розгорнути розділ зворотних посилань",
     "showMore": "Показати ще зворотні посилання ({count})",
     "more": "Ще {count}",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Показано в порталі"
+  },
+  "unlinkedMentions": {
+    "title": "Незв’язані згадки",
+    "summary": "{count, plural, one {# незв’язана згадка} few {# незв’язані згадки} many {# незв’язаних згадок} other {# незв’язаної згадки}}",
+    "sectionAria": "Незв’язані згадки",
+    "fromAria": "Незв’язані згадки в «{title}»",
+    "link": "Пов’язати",
+    "linkAria": "Пов’язати {text}",
+    "gone": "Згадка змінилася після завантаження списку",
+    "linkFailed": "Не вдалося пов’язати згадку"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# вихідне посилання} few {# вихідні посилання} many {# вихідних посилань} other {# вихідного посилання}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "Не вдалося додати нотатку на полотно"
   },
   "suggestedTags": {
-    "label": "Запропоновані теги:",
-    "hint": "Теги нотаток, найсхожіших на цю. Нічого не буде додано, доки ви не виберете тег.",
-    "acceptAria": "Додати тег {tag}",
-    "support": "{count, plural, one {Використовується в # схожій нотатці} few {Використовується в # схожих нотатках} many {Використовується в # схожих нотатках} other {Використовується в # схожих нотатках}}",
-    "dismiss": "Сховати запропоновані теги"
+    "support": "{count, plural, one {Використовується в # схожій нотатці} few {Використовується в # схожих нотатках} many {Використовується в # схожих нотатках} other {Використовується в # схожих нотатках}}"
   },
   "comments": {
     "railAria": "Коментарі",
@@ -631,11 +822,9 @@
     "toolbarComment": "Коментувати",
     "commentPlaceholder": "Додати коментар…",
     "createdTooltip": "Створено {date} о {time}",
-    "cancel": "Скасувати",
     "resolve": "Вирішити",
     "edit": "Редагувати коментар",
     "delete": "Видалити коментар",
-    "replyPlaceholder": "Відповісти…",
     "attachAria": "Прикріпити файл",
     "mentionAria": "Згадати особу, сторінку або дату",
     "sendAria": "Надіслати коментар",
@@ -648,13 +837,7 @@
       "code": "Код"
     },
     "openImageAria": "Відкрити зображення {name}",
-    "openAttachmentAria": "Відкрити вкладення {name}",
-    "kind": {
-      "comment": "Коментар",
-      "addition": "Доповнення",
-      "deletion": "Видалення",
-      "substitution": "Заміна"
-    }
+    "openAttachmentAria": "Відкрити вкладення {name}"
   },
   "tagsRow": {
     "aria": "Теги",
@@ -663,6 +846,7 @@
     "removeAria": "Прибрати тег: {tag}",
     "inputPlaceholder": "Введіть назву тегу…",
     "recent": "Недавні",
+    "suggested": "Пропозиції",
     "matching": "Відповідні",
     "all": "Усі теги",
     "none": "Тегів не знайдено",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "Властивості",
     "noteAria": "Властивості нотатки",
-    "workspaceAria": "Властивості робочого простору",
     "listAria": "Список властивостей",
     "add": "Додати властивість",
     "addDescription": "Додати нову властивість до цієї нотатки",
@@ -723,7 +906,6 @@
       "inProgress": "У роботі",
       "done": "Виконано"
     },
-    "projectAlreadySet": "Ця нотатка вже має властивість проєкту",
     "projectPlaceholder": "Без проєкту",
     "projectSearch": "Шукати проєкти",
     "projectEmpty": "Немає проєктів",
@@ -755,6 +937,9 @@
     "repositionHint": "Перетягніть, щоб перемістити",
     "repositionSave": "зберегти",
     "repositionCancel": "скасувати",
+    "zoomIn": "Збільшити",
+    "zoomOut": "Зменшити",
+    "resize": "Перетягніть, щоб змінити розмір обкладинки",
     "credit": "Фото: {name} на Unsplash",
     "focusFailed": "Не вдалося зберегти положення обкладинки",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фільтр",
-      "filters": "Фільтри",
-      "clearAll": "Очистити все",
-      "noFiltersApplied": "Фільтри не застосовано",
-      "addFiltersToNarrowDownYourNotes": "Додайте фільтри, щоб звузити коло нотаток",
       "match": "Умови",
-      "allAnd": "Усі (І)",
-      "anyOr": "Будь-яка (АБО)",
-      "ofTheFollowing": "з наступних:",
       "match2": "Умови",
       "all": "Усі",
       "any": "Будь-яка",
-      "of": "з:",
       "addCondition": "Додати умову",
       "addFilter": "Додати фільтр",
       "addGroup": "Додати групу",
@@ -995,7 +1172,6 @@
       "available": "Доступні: ",
       "preview": "Попередній перегляд",
       "fixExpressionErrorsToSeePreview": "Виправте помилки у виразі, щоб побачити попередній перегляд",
-      "usingNote": "Використовується нотатка: «",
       "cancel": "Скасувати",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "Завантаження папок…",
       "suggested": "Пропоновані",
       "bestMatch": "Найкращий збіг",
-      "current": "поточна)",
       "allFolders": "Усі папки",
-      "noFoldersMatch": "Немає папок, що відповідають \"",
-      "create": "Створити \"",
       "cancel": "Скасувати",
       "currentFolderBadge": "(поточна)",
       "noFoldersMatchQuery": "Немає папок, що відповідають «{query}»",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "за замовчуванням",
       "viewActions": "Дії з виглядом",
-      "rename": "Перейменувати",
       "duplicate": "Дублювати",
       "setAsDefault": "Встановити за замовчуванням",
       "delete": "Видалити",
-      "createNewView": "Створити новий вигляд",
-      "createNewView2": "Створити новий вигляд",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Створіть новий вигляд із власними стовпцями, фільтрами й сортуванням.",
-      "viewName": "Назва вигляду",
       "myCustomView": "Мій вигляд",
-      "baseConfiguration": "Базова конфігурація",
-      "copyFromCurrentView": "Скопіювати з поточного вигляду",
-      "startFreshDefaultColumns": "Почати з нуля (стовпці за замовчуванням)",
       "cancel": "Скасувати",
-      "renameView": "Перейменувати вигляд",
-      "enterANewNameForThisView": "Введіть нову назву для цього вигляду.",
-      "viewName2": "Назва вигляду",
-      "viewName3": "Назва вигляду",
-      "cancel2": "Скасувати",
       "deleteView": "Видалити вигляд",
       "areYouSureYouWantToDelete": "Ви впевнені, що хочете видалити вигляд \"",
       "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
@@ -1077,22 +1237,17 @@
       "layout": "Макет",
       "table": "Таблиця",
       "list": "Список",
-      "gallery": "Галерея",
-      "createView": "Створити вигляд",
-      "save": "Зберегти"
+      "gallery": "Галерея"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Не вдалося завантажити PDF: ",
-      "download": "Завантажити",
       "download2": "Завантажити",
       "noFileAttached": "Файл не прикріплено",
       "resizePdf": "Змінити розмір PDF",
       "resizeHtml": "Змінити розмір вбудованого HTML",
       "alignLeft": "Вирівняти ліворуч",
       "alignCenter": "Вирівняти по центру",
-      "alignRight": "Вирівняти праворуч",
-      "previousPage": "Попередня сторінка",
-      "nextPage": "Наступна сторінка"
+      "alignRight": "Вирівняти праворуч"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Відкрити в панелі завдань",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 дюймів)",
       "legal85X14In": "Legal (8,5 x 14 дюймів)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "дд.мм.рррр"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Синхронізовано"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Слова",
       "characters": "Символи",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "Поки що немає закладок",
       "moreOptions": "Інші параметри",
       "remove": "Прибрати"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Відкрити",
-      "openToTheSide": "Відкрити збоку",
-      "pinToTabs": "Закріпити у вкладках",
-      "edit": "Редагувати",
-      "delete": "Видалити",
-      "copyLink": "Скопіювати посилання"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Завантаження тегів…",
@@ -1168,26 +1309,9 @@
       "cancel": "Скасувати"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Назад",
-      "notes": "нотатки",
-      "loadingNotes": "Завантаження нотаток…",
-      "noNotesWithThisTag": "Немає нотаток з цим тегом",
-      "addThisTagToANoteToSeeItHere": "Додайте цей тег до нотатки, щоб побачити її тут",
-      "pinned": "Закріплені",
-      "allNotes": "Усі нотатки",
-      "allNotesArePinned": "Усі нотатки закріплені",
-      "tasks": "Завдання",
-      "unpinFromTag": "Відкріпити від тегу",
-      "unpin": "Відкріпити",
-      "pinToTag": "Закріпити за тегом",
-      "pin": "Закріпити",
       "tagActions": "Дії з тегом",
-      "editTagName": "Редагувати назву тегу",
       "changeColor": "Змінити колір",
-      "deleteTag": "Видалити тег",
-      "recent": "Недавні",
-      "created": "Створено",
-      "alphabetical": "За алфавітом"
+      "deleteTag": "Видалити тег"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Перейменувати тег",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Створити нову нотатку",
-      "viewSettings": "Налаштування вигляду",
-      "displayDensity": "Щільність відображення",
-      "comfortable": "Комфортна",
-      "compact": "Компактна",
-      "showSummaries": "Показувати підсумки",
       "cancel": "Скасувати"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "Відкрити сторінку тегів"
   },
   "tagView": {
-    "moreActions": "Більше дій",
     "pin": {
       "action": "Закріпити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}} за тегом",
       "success": "Закріплено {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}} за тегом",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# нотатка} few {# нотатки} many {# нотаток} other {# нотатки}}"
+    },
+    "noteTasks": {
+      "expand": "Показати завдання «{title}»",
+      "collapse": "Сховати завдання «{title}»",
+      "list": "Завдання в «{title}»",
+      "progressOpen": "{open}/{total} відкрито",
+      "progressDone": "{total}/{total} виконано",
+      "nextDue": "Найближчий термін",
+      "reminder": "Нагадування встановлено"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "Назвіть цей пошук",
     "saveDialogPlaceholder": "Напр., робочі зустрічі",
     "cancel": "Скасувати",
-    "save": "Зберегти",
-    "addToFilterHint": "Утримуючи Ctrl/Cmd, клацніть тег, щоб додати його до фільтра"
+    "save": "Зберегти"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Варіанти",
+      "overflow": "Запасник",
+      "menu": "Інструменти письма",
+      "close": "Закрити інструменти письма"
+    },
+    "menu": {
+      "aria": "Дії редактора",
+      "cut": "Вирізати",
+      "copy": "Копіювати",
+      "paste": "Вставити",
+      "selectAll": "Вибрати все",
+      "undo": "Скасувати",
+      "redo": "Повторити",
+      "comment": "Коментувати",
+      "addAlternative": "Додати варіант",
+      "suggestAlternatives": "Запропонувати варіанти",
+      "ghost": "Приглушити",
+      "revive": "Відновити",
+      "stash": "Покласти в запасник",
+      "noSpellingSuggestions": "Немає пропозицій",
+      "addToDictionary": "Додати до словника",
+      "clipboardFailed": "Не вдалося використати буфер обміну"
+    },
+    "alternatives": {
+      "railAria": "Варіанти",
+      "hint": "{position} з {total} ↑ ↓",
+      "original": "Оригінал",
+      "byYou": "Написано вами",
+      "byAI": "Запропоновано ШІ",
+      "showing": "Показано",
+      "addPlaceholder": "Додати варіант…",
+      "removeSuggestions": "Вилучити пропозиції",
+      "removeVariant": "Вилучити варіант",
+      "empty": "Виділіть текст і виберіть «Додати варіант», щоб зберегти інші способи сказати те саме.",
+      "suggesting": "Підбираємо варіанти…",
+      "suggestFailed": "Не вдалося запропонувати варіанти",
+      "noSuggestions": "Нових варіантів не запропоновано"
+    },
+    "overflow": {
+      "railAria": "Запасник",
+      "addPlaceholder": "Напишіть, що зберегти…",
+      "empty": "Рядки, які ви відкладете або напишете тут, залишаться з цією нотаткою, поза текстом.",
+      "dragHint": "Перетягніть у нотатку",
+      "copy": "Копіювати",
+      "copied": "Скопійовано",
+      "delete": "Видалити"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Заблокувати нотатку",
+    "unlockNote": "Розблокувати нотатку",
+    "lockFolder": "Заблокувати папку",
+    "unlockFolder": "Розблокувати папку",
+    "toggleFailed": "Не вдалося змінити блокування",
+    "readOnlyIndicator": "Заблоковано. Лише для читання — для вас і для агентів.",
+    "externalEditRestored": "«{title}» заблоковано, тому зовнішню правку скасовано",
+    "externalEditRestoredHint": "Відредагований текст збережено в історії версій нотатки."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Особа",
+        "plural": "Люди",
+        "fields": {
+          "company": "Компанія",
+          "role": "Посада",
+          "email": "Електронна пошта",
+          "phone": "Телефон"
+        },
+        "inverse": {
+          "company": "Люди"
+        },
+        "template": {
+          "name": "Особа",
+          "context": "Контекст",
+          "contextHint": "Як ми познайомилися, що їх цікавить",
+          "notes": "Нотатки"
+        }
+      },
+      "company": {
+        "name": "Компанія",
+        "plural": "Компанії",
+        "fields": {
+          "website": "Вебсайт",
+          "industry": "Галузь",
+          "location": "Розташування"
+        },
+        "template": {
+          "name": "Компанія",
+          "overview": "Огляд",
+          "overviewHint": "Чим займаються, кого ми там знаємо",
+          "notes": "Нотатки"
+        }
+      },
+      "meeting": {
+        "name": "Зустріч",
+        "plural": "Зустрічі",
+        "fields": {
+          "date": "Дата",
+          "attendees": "Учасники",
+          "company": "Компанія"
+        },
+        "inverse": {
+          "attendees": "Зустрічі",
+          "company": "Зустрічі"
+        },
+        "template": {
+          "name": "Зустріч",
+          "agenda": "Порядок денний",
+          "notes": "Нотатки",
+          "actionItems": "Дії"
+        }
+      },
+      "book": {
+        "name": "Книга",
+        "plural": "Книги",
+        "fields": {
+          "author": "Автор",
+          "shelf": "Полиця",
+          "rating": "Оцінка",
+          "finished": "Завершено"
+        },
+        "shelf": {
+          "toRead": "Прочитати",
+          "reading": "Читаю",
+          "read": "Прочитано"
+        },
+        "template": {
+          "name": "Книга",
+          "highlights": "Виділене",
+          "thoughts": "Думки"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} тепер має тег {tag}. Шаблон додано.",
+      "templateChanged": "Нотатку змінили після додавання шаблону, тому її залишено без змін.",
+      "undoFailed": "Не вдалося скасувати",
+      "addFailed": "Не вдалося додати тег",
+      "removeFailed": "Не вдалося вилучити тег",
+      "removedKept": "Вилучено #{tag}. Збережено значень: {count}.",
+      "removedKeptOne": "Вилучено #{tag}. Збережено 1 значення."
+    },
+    "picker": {
+      "create": "Створити #{tag}",
+      "fillsTemplate": "Заповнює цю порожню нотатку шаблоном {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Готові теги",
+        "subtitle": "Теги з готовими полями. Нотатки не змінюються, доки ви їх не позначите.",
+        "notNow": "Не зараз",
+        "add": "Додати",
+        "addFields": "Додати поля",
+        "added": "Додано",
+        "alreadyOn": "Уже в нотатках: {count}",
+        "alreadyOnOne": "Уже в 1 нотатці"
+      },
+      "dialog": {
+        "title": "Додати поля {preset} до #{tag}?",
+        "body": "#{tag} уже є в нотатках: {count}. Вони зберігають увесь вміст і отримують ці поля — порожні, доки хтось їх не заповнить.",
+        "bodyOne": "#{tag} уже є в 1 нотатці. Вона зберігає увесь вміст і отримує ці поля — порожні, доки хтось їх не заповнить.",
+        "template": "Шаблон ({sections}) заповнює лише порожні нотатки.",
+        "alsoAddsPrefix": "Також додає",
+        "alsoAddsSuffix": "для поля {field}.",
+        "useAnotherName": "Використати іншу назву",
+        "nameLabel": "Назва нового тегу",
+        "namePlaceholder": "контакт",
+        "cancel": "Скасувати",
+        "addFields": "Додати поля"
+      },
+      "toast": {
+        "added": "Додано #{tag}",
+        "addedFields": "Додано поля {preset} до #{tag}"
+      },
+      "hasFields": "Має поля"
+    },
+    "tasks": {
+      "thisTask": "Це завдання",
+      "viaTag": "{name} через #{via}",
+      "clearValue": "Очистити {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "через #{tag}",
+      "groupMenu": "Параметри {tag}",
+      "openTag": "Відкрити #{tag}",
+      "thisNote": "Ця нотатка"
+    },
+    "offer": {
+      "text": "Додати шаблон {tag} під вашим текстом",
+      "add": "Додати",
+      "dismiss": "Відхилити",
+      "addFailed": "Не вдалося додати шаблон"
+    },
+    "settings": {
+      "title": "Налаштування для #{tag}",
+      "close": "Закрити",
+      "cancel": "Скасувати",
+      "save": "Зберегти",
+      "onCounts": "Використано в: {notes, plural, one {# нотатці} few {# нотатках} many {# нотатках} other {# нотатках}} і {tasks, plural, one {# завданні} few {# завданнях} many {# завданнях} other {# завданнях}}",
+      "onNotes": "Використано в: {count, plural, one {# нотатці} few {# нотатках} many {# нотатках} other {# нотатках}}",
+      "headerFields": "{count, plural, one {# поле} few {# поля} many {# полів} other {# поля}}",
+      "editTag": "Редагувати тег",
+      "syncNote": "Зміни синхронізуються з вашими іншими пристроями",
+      "newerVersion": "Новіша версія Memry змінила цей тег. Оновіть Memry, щоб редагувати його тут.",
+      "sections": {
+        "appearance": "Вигляд",
+        "extends": "Розширює",
+        "fields": "Поля · {count}",
+        "template": "Шаблон"
+      },
+      "appearance": {
+        "icon": "Значок",
+        "color": "Колір",
+        "customColor": "Власний",
+        "category": "Категорія",
+        "noCategory": "Без категорії"
+      },
+      "extends": {
+        "nothing": "Нічого",
+        "hint": "Перейняти поля іншого тегу та з’явитися в його таблиці.",
+        "hintSet": "Нотатки з тегом {tag} отримують поля {parent} і з’являються в таблиці {parent}."
+      },
+      "types": {
+        "text": "Текст",
+        "number": "Число",
+        "date": "Дата",
+        "url": "URL",
+        "status": "Статус",
+        "select": "Вибір",
+        "multiselect": "Множинний вибір",
+        "checkbox": "Прапорець",
+        "relation": "Зв’язок"
+      },
+      "fields": {
+        "empty": "Полів ще немає. Додайте поле, щоб усі нотатки з тегом #tag мали однакові властивості.",
+        "fromParent": "З #{tag} · редагуйте там",
+        "inverseSub": "Показано в «{target}» як «{inverse}»",
+        "anyNoteSub": "Посилається на будь-яку нотатку",
+        "actions": "Дії для {field}",
+        "rename": "Перейменувати…",
+        "relationSettings": "Налаштування зв’язку",
+        "remove": "Вилучити…"
+      },
+      "addField": {
+        "button": "Додати поле",
+        "namePlaceholder": "Назва поля",
+        "existing": "Наявні властивості",
+        "existingSub": "{type} · у {count, plural, one {# нотатці} few {# нотатках} many {# нотатках} other {# нотатках}} · повторне використання",
+        "newType": "Тип нового поля",
+        "relationSub": "Посилання на нотатки з тегом",
+        "submit": "Додати поле",
+        "reserved": "{name} зарезервовано, його не можна використати як поле.",
+        "taken": "У #{tag} уже є {name}."
+      },
+      "relation": {
+        "target": "Вказує на нотатки з тегом",
+        "pickTag": "Виберіть тег",
+        "howMany": "Кількість",
+        "one": "Одна",
+        "many": "Багато",
+        "inverseLabel": "На сторінці «{target}» показувати їх як",
+        "inverseLabelAny": "На пов’язаній сторінці показувати їх як",
+        "inverseHint": "Список лише для читання в кожній нотатці «{target}». У нотатки «{target}» нічого не записується.",
+        "inverseHintAny": "Список лише для читання в кожній пов’язаній нотатці. У ці нотатки нічого не записується."
+      },
+      "shared": {
+        "title": "Нове поле в #{tag}",
+        "existsWith": "{name} уже існує в цьому сховищі з варіантами: {options}.",
+        "existsAs": "{name} уже існує в цьому сховищі як властивість типу «{type}».",
+        "shareWith": "#{tag} поділиться ним із вашими нотатками ({others}).",
+        "shareAny": "#{tag} поділиться ним із вашими іншими нотатками.",
+        "useInstead": "Натомість використати {name}",
+        "share": "Поділитися {name}"
+      },
+      "template": {
+        "edit": "Редагувати шаблон",
+        "none": "Шаблону ще немає. Шаблон заповнює порожні нотатки, коли вони отримують тег.",
+        "create": "Створити шаблон",
+        "defaultHeading": "Нотатки",
+        "inherited": "З #{tag}",
+        "autofill": "Заповнювати порожні нотатки, коли вони отримують #{tag}"
+      },
+      "remove": {
+        "title": "Вилучити {field} з #{tag}?",
+        "body": "{field} заповнено в {filled, plural, one {# нотатці} few {# нотатках} many {# нотатках} other {# нотатках}}. Ці значення залишаться в нотатках як звичайна властивість; {empty, plural, one {# порожній слот зникне} few {# порожні слоти зникнуть} many {# порожніх слотів зникне} other {# порожнього слота зникне}}.",
+        "confirm": "Вилучити поле"
+      },
+      "rename": {
+        "title": "Перейменувати {from} на {to}",
+        "titleEmpty": "Перейменувати {from}",
+        "label": "Нова назва",
+        "body": "{count, plural, one {У # нотатки є} few {У # нотаток є} many {У # нотаток є} other {У # нотатки є}} значення {field}. Memry перейменовує ключ у кожному файлі та у їхніх властивостях; Obsidian також побачить нову назву.",
+        "progress": "Перейменування в нотатках",
+        "confirm": "Перейменувати",
+        "taken": "У цьому тегу вже є {name}.",
+        "done": "Перейменовано {from} на {to} у {count, plural, one {# елементі} few {# елементах} many {# елементах} other {# елементах}}.",
+        "skipped": "Перейменовано {from} на {to} у {count, plural, one {# елементі} few {# елементах} many {# елементах} other {# елементах}}. {locked, plural, =0 {} one {# заблокована нотатка завершиться після розблокування.} few {# заблоковані нотатки завершаться після розблокування.} many {# заблокованих нотаток завершаться після розблокування.} other {# заблокованої нотатки завершаться після розблокування.}} {existing, plural, =0 {} one {# нотатка вже мала {to} і зберігає обидва.} few {# нотатки вже мали {to} і зберігають обидва.} many {# нотаток уже мали {to} і зберігають обидва.} other {# нотатки вже мали {to} і зберігають обидва.}}"
+      },
+      "delete": {
+        "button": "Видалити тег",
+        "title": "Видалити #{tag}?",
+        "body": "#{tag} буде вилучено з {notes, plural, one {# нотатки} few {# нотаток} many {# нотаток} other {# нотатки}}, а тег зникне разом із {fields, plural, one {# полем} few {# полями} many {# полями} other {# поля}} і шаблоном.",
+        "bodyNoTemplate": "#{tag} буде вилучено з {notes, plural, one {# нотатки} few {# нотаток} many {# нотаток} other {# нотатки}}, а тег зникне разом із {fields, plural, one {# полем} few {# полями} many {# полями} other {# поля}}.",
+        "bodyPlain": "#{tag} буде вилучено з кожної нотатки, яка має його серед тегів.",
+        "statNotes": "нотатки зберігають текст",
+        "statValues": "значення лишаються як властивості",
+        "plainText": "Нотатки, що згадують #{tag} у тексті, збережуть його як звичайний текст.",
+        "confirm": "Видалити тег",
+        "done": "#{tag} видалено."
+      },
+      "errors": {
+        "addField": "Не вдалося додати поле.",
+        "removeField": "Не вдалося вилучити поле.",
+        "renameField": "Не вдалося перейменувати поле.",
+        "moveField": "Не вдалося перемістити поле.",
+        "relation": "Не вдалося зберегти зв’язок.",
+        "extends": "Не вдалося змінити, що розширює цей тег.",
+        "template": "Не вдалося оновити шаблон.",
+        "deleteTag": "Не вдалося видалити тег.",
+        "icon": "Не вдалося змінити значок.",
+        "color": "Не вдалося змінити колір.",
+        "category": "Не вдалося змінити категорію."
+      }
+    },
+    "fill": {
+      "action": "Заповнити з нотатки",
+      "reading": "Читання нотатки…",
+      "disclosure": "Модель вашого агента ({model}) читає цю нотатку, щоб запропонувати значення. Надсилається лише ця нотатка. Нічого не зберігається, доки ви не приймете.",
+      "disclosureLocal": "Ваша локальна модель ({model}) читає цю нотатку на цьому пристрої, щоб запропонувати значення. Нічого не залишає пристрій, і нічого не зберігається, доки ви не приймете.",
+      "disclosureMany": "Модель вашого агента ({model}) читає ці нотатки по одній, щоб запропонувати значення. Надсилаються лише ці нотатки. Нічого не зберігається, доки ви не приймете.",
+      "disclosureLocalMany": "Ваша локальна модель ({model}) читає ці нотатки на цьому пристрої, щоб запропонувати значення. Нічого не залишає пристрій, і нічого не зберігається, доки ви не приймете.",
+      "suggest": "Запропонувати значення",
+      "notNow": "Не зараз",
+      "countOne": "· {count} пропозиція",
+      "count": "· Пропозицій: {count}",
+      "dismiss": "Відхилити",
+      "acceptAll": "Прийняти все",
+      "accept": "Прийняти {field}",
+      "reject": "Відхилити {field}",
+      "notInNote": "Немає в нотатці",
+      "createHint": "Після прийняття створить новий #{tag}",
+      "nothingFound": "У цій нотатці немає нічого для порожніх полів",
+      "failed": "Не вдалося запропонувати значення. {message}",
+      "saveFailed": "Не вдалося зберегти прийняті значення",
+      "bulkAction": "Заповнити порожні поля",
+      "bulkTitle": "Заповнити порожні поля",
+      "bulkReading": "{done} із {total} нотаток · читання нотаток…",
+      "bulkRead": "Прочитано {done} із {total} нотаток",
+      "stop": "Зупинити",
+      "name": "Назва",
+      "nothingInRow": "Нічого не знайдено",
+      "found": "Знайдено: {count}",
+      "reviewOneByOne": "Переглянути по одному",
+      "acceptRow": "Прийняти значення для {title}",
+      "rejectRow": "Пропустити {title}",
+      "bulkSavedOne": "Заповнено {count} поле в нотатках: {notes}",
+      "bulkSaved": "Заповнено полів: {count}, у нотатках: {notes}"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Створити {title} як",
+      "asPrefix": "Створити",
+      "asSuffix": "як",
+      "failed": "Не вдалося створити нотатку",
+      "lastUsed": "Останнє використане",
+      "noteWord": "нотатка",
+      "plainNote": "Звичайна нотатка",
+      "readyMade": "Готовий тег",
+      "row": "Створити «{title}»",
+      "rowHint": "Як {types}"
+    },
+    "hover": {
+      "at": "о",
+      "lastMet": "Остання зустріч · {title}",
+      "lastMetOn": "Остання зустріч {date} · {title}",
+      "mentionedIn": "{count, plural, one {Згадується в # нотатці} few {Згадується в # нотатках} many {Згадується в # нотатках} other {Згадується в # нотатках}}",
+      "open": "Відкрити",
+      "tasks": "{count, plural, one {# завдання · {field}} few {# завдання · {field}} many {# завдань · {field}} other {# завдання · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} у тексті",
+      "explain": "У тексті тег — це мітка. Цю нотатку наведено в розділі «Згадується в» на #{tag}.",
+      "made": "Додано #{tag} до тегів цієї нотатки",
+      "make": "Зробити цю нотатку типу {tag}",
+      "makeFailed": "Не вдалося додати тег",
+      "makeHint": "Додає #{tag} до заголовка й показує його поля",
+      "meta": "{count, plural, one {# об’єкт} few {# об’єкти} many {# об’єктів} other {# об’єктів}} · {fields, plural, one {# поле} few {# поля} many {# полів} other {# полів}}",
+      "metaNamed": "{count, plural, one {# {one}} few {# {other}} many {# {other}} other {# {other}}} · {fields, plural, one {# поле} few {# поля} many {# полів} other {# полів}}",
+      "open": "Відкрити #{tag}",
+      "remove": "Видалити тег із тексту"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "як {field}",
+      "due": "Термін {date}",
+      "inTheText": "у тексті",
+      "mentionedIn": "Згадується в",
+      "tasks": "Завдання",
+      "title": "Пов’язано тут"
+    },
+    "mention": {
+      "notes": "Нотатки"
+    },
+    "picker": {
+      "create": "Новий {tag}",
+      "createNamed": "Новий {tag} «{title}»",
+      "empty": "Збігів немає",
+      "search": "Шукати: {tag}",
+      "untitled": "Новий {tag}"
+    },
+    "quickFields": {
+      "add": "Додати {field}",
+      "aria": "Перші поля: {title}",
+      "done": "Готово",
+      "later": "Пізніше",
+      "newObject": "Новий {tag}",
+      "saveFailed": "Не вдалося зберегти поля"
+    },
+    "table": {
+      "untitled": "Новий {tag}",
+      "newInGroup": "Новий {tag} у групі {group}",
+      "newInGroupHint": "⌘↵ відкриває в новій вкладці",
+      "new": "Новий {tag}",
+      "includes": "{field} містить",
+      "removeFilter": "Видалити фільтр",
+      "shown": "{shown} із {total}",
+      "saveView": "Зберегти подання",
+      "mentionedMeta": "{count, plural, one {# нотатка з '#'{tag} у тексті} few {# нотатки з '#'{tag} у тексті} many {# нотаток з '#'{tag} у тексті} other {# нотаток з '#'{tag} у тексті}}",
+      "saveFailed": "Не вдалося зберегти поле",
+      "created": "Створено {title}"
+    },
+    "relationDrop": {
+      "title": "Додати #{tag} до «{title}»?",
+      "body": "Це поле пов’язує лише нотатки з тегом #{tag}. Memry додасть #{tag} до заголовка «{title}», а потім зв’яже її тут.",
+      "confirm": "Додати #{tag} і зв’язати",
+      "cancel": "Скасувати",
+      "added": "«{title}» тепер має тег #{tag} і пов’язана",
+      "notANote": "Тут як #{tag} можна пов’язати лише нотатки",
+      "failed": "Не вдалося зв’язати цю нотатку"
+    }
   },
   "names": {
     "also": "також",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "Шукати нотатки",
     "pickerEmpty": "Немає відповідних нотаток",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Додати подробиці"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Портал",
+        "subtext": "Показувати нотатку або блок наживо з іншого місця"
+      },
+      "searchPortal": {
+        "title": "Пошуковий портал",
+        "subtext": "Живий список блоків, що відповідають запиту"
+      }
+    },
+    "picker": {
+      "aria": "Виберіть нотатку або блок для порталу",
+      "notes": "Нотатки",
+      "blocks": "Блоки",
+      "loading": "Пошук…",
+      "empty": "Нотаток або блоків не знайдено",
+      "hintInsert": "Вставити портал",
+      "hintClose": "Закрити",
+      "keyEsc": "Esc",
+      "create": "Створити нотатку «{query}»",
+      "createFailed": "Не вдалося створити цю нотатку",
+      "stampFailed": "Не вдалося підготувати цей блок для порталу",
+      "retargetFailed": "Не вдалося спрямувати портал на цей блок"
+    },
+    "insert": {
+      "cycle": "Портал не може показувати нотатку всередині неї самої."
+    },
+    "copy": {
+      "done": "Портал скопійовано. Вставте його в будь-яку нотатку.",
+      "failed": "Не вдалося скопіювати портал для цього блока"
+    },
+    "menu": {
+      "copyAsPortal": "Копіювати як портал",
+      "hideInPortal": "Приховати в цьому порталі"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Використовується ще в # місці} few {Використовується ще в # місцях} many {Використовується ще в # місцях} other {Використовується ще в # місцях}}"
+    },
+    "whereUsed": {
+      "aria": "Де використовується цей блок",
+      "portals": "Портали",
+      "links": "Посилання",
+      "openBeside": "Відкрити поруч",
+      "loadFailed": "Не вдалося завантажити, де показано цей блок"
+    },
+    "hiddenBlocks": {
+      "title": "Приховані блоки",
+      "showAll": "Показати всі",
+      "search": "Шукати в прихованих блоках",
+      "showFailed": "Не вдалося показати цей блок"
+    },
+    "searchQuery": {
+      "titleNew": "Пошуковий портал",
+      "titleEdit": "Редагувати запит",
+      "text": "Містить слова",
+      "textPlaceholder": "Слова в блоці",
+      "tag": "Тег",
+      "tagPlaceholder": "іспит",
+      "limit": "Ліміт",
+      "footer": "Обмеження результатів: {limit}.",
+      "create": "Створити",
+      "apply": "Застосувати"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Видалити цей блок скрізь?",
+        "note": "Видалити цю нотатку скрізь?"
+      },
+      "description": {
+        "block": "«{title}» також з’являється в {count, plural, one {# іншій нотатці} few {# інших нотатках} many {# інших нотатках} other {# інших нотатках}}.",
+        "note": "«{title}» показано або пов’язано в {count, plural, one {# іншій нотатці} few {# інших нотатках} many {# інших нотатках} other {# інших нотатках}}."
+      },
+      "manyNotes": "Нотаток: {count}",
+      "source": "{title} (джерело)",
+      "removeHere": "Натомість приховати тут",
+      "cancel": "Скасувати",
+      "everywhere": "Видалити скрізь",
+      "undoToast": "{count, plural, one {Видалений блок було показано в # іншій нотатці.} few {Видалений блок було показано в # інших нотатках.} many {Видалений блок було показано в # інших нотатках.} other {Видалений блок було показано в # інших нотатках.}}",
+      "undo": "Скасувати дію"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Повний",
+      "brief": "Стислий",
+      "key": "Ключовий",
+      "takeaway": "Підсумок",
+      "topic": "Тема"
+    },
+    "chrome": {
+      "fold": "Згорнути нотатку",
+      "unfold": "Згорнуто до рівня: {level}. Показати повний текст",
+      "words": "{count, plural, one {# слово} few {# слова} many {# слів} other {# слів}}",
+      "writing": "Пишу…",
+      "writtenBy": "Автор: {agent}",
+      "retry": "Останній запуск не вдався · Повторити",
+      "captionOff": "Увімкніть «Стисле викладення довгих нотаток» у Налаштування → ШІ",
+      "captionNoAgent": "Агента не підключено · Налаштування → ШІ",
+      "unknownAgent": "ШІ"
+    },
+    "hint": {
+      "title": "Довга нотатка? Перегляньте побіжно.",
+      "body": "Згорніть її до ключових речень, а потім відкрийте лише потрібний абзац.",
+      "dismiss": "Зрозуміло"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# абзац відкрито} few {# абзаци відкрито} many {# абзаців відкрито} other {# абзаців відкрито}}",
+      "escape": "esc",
+      "copy": "Копіювати як текст",
+      "copied": "Скопійовано",
+      "aria": "Згорнутий вигляд",
+      "hintMac": "Щоб змінити масштаб, зведіть пальці, прокрутіть із ⌘ або прокрутіть на цій смузі · клацніть абзац, щоб відкрити його",
+      "hint": "Щоб змінити масштаб, зведіть пальці, прокрутіть із Ctrl або прокрутіть на цій смузі · клацніть абзац, щоб відкрити його"
+    },
+    "view": {
+      "aria": "Згорнутий вигляд: {level}",
+      "paragraphOpen": "Відкрито повністю · клацніть ще раз, щоб згорнути",
+      "paragraphFold": "Згорнути цей абзац",
+      "paragraphOpenAction": "Відкрити цей абзац повністю",
+      "unfoldSection": "Розгорнути розділ «{heading}»",
+      "jumpToParagraph": "Показати цей абзац повністю: {topic}",
+      "untitledSection": "Без назви",
+      "skipped": {
+        "code": "… {count, plural, one {# блок коду} few {# блоки коду} many {# блоків коду} other {# блоків коду}}",
+        "table": "… {count, plural, one {# таблиця} few {# таблиці} many {# таблиць} other {# таблиць}}",
+        "image": "… {count, plural, one {# зображення} few {# зображення} many {# зображень} other {# зображень}}",
+        "callout": "… {count, plural, one {# виноска} few {# виноски} many {# виносок} other {# виносок}}",
+        "embed": "… {count, plural, one {# вбудовування} few {# вбудовування} many {# вбудовувань} other {# вбудовувань}}",
+        "other": "… {count, plural, one {# ще один блок} few {# ще блоки} many {# ще блоків} other {# ще блоків}}"
+      }
+    }
   }
 }

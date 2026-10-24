@@ -107,7 +107,7 @@ export function getTimelineWindow(
         addLocalDays(addLocalMonths(monthStart, 4), -1)
       )
     }
-    case 'quarters': {
+    default: {
       const quarterStart = startOfQuarter(anchor)
       return makeWindow(
         addLocalMonths(quarterStart, -6),
@@ -124,7 +124,7 @@ export function stepTimelineAnchor(anchor: string, zoom: TimelineZoom, direction
       return addLocalDays(anchor, 7 * direction)
     case 'months':
       return addLocalMonths(anchor, direction)
-    case 'quarters':
+    default:
       return addLocalMonths(anchor, 3 * direction)
   }
 }
@@ -140,7 +140,7 @@ export function timelinePeriodStart(
       return getStartOfWeek(anchor, weekStartsOn)
     case 'months':
       return startOfMonth(anchor)
-    case 'quarters':
+    default:
       return startOfQuarter(anchor)
   }
 }
@@ -255,7 +255,7 @@ export function shapeBounds(shape: TimelineShape): { first: string; last: string
       return { first: shape.date, last: shape.date }
     case 'start':
       return { first: shape.date, last: addLocalDays(shape.date, OPEN_ENDED_DAYS - 1) }
-    case 'none':
+    default:
       return null
   }
 }
@@ -488,7 +488,7 @@ export function buildEventRows(
       }
       return [row]
     })
-    .sort((a, b) =>
+    .toSorted((a, b) =>
       a.start !== b.start ? (a.start < b.start ? -1 : 1) : a.item.title.localeCompare(b.item.title)
     )
 }
@@ -601,7 +601,7 @@ export function shapeToDates(shape: TimelineShape): TimelineDates {
       return { startDate: null, dueDate: shape.date }
     case 'start':
       return { startDate: shape.date, dueDate: null }
-    case 'none':
+    default:
       return { startDate: null, dueDate: null }
   }
 }

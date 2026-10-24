@@ -48,6 +48,15 @@ export interface InboxQueryHandlers {
   handleGetPatterns: () => Promise<CapturePattern>
 }
 
+async function handleGetStaleThreshold(): Promise<number> {
+  return getStaleThresholdDays()
+}
+
+async function handleSetStaleThreshold(days: number): Promise<{ success: boolean }> {
+  setStaleThresholdDays(days)
+  return { success: true }
+}
+
 export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQueryHandlers {
   async function handleList(input: unknown): Promise<InboxListResponse> {
     const options = InboxListSchema.parse(input || {})
@@ -70,6 +79,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
     let query = db.select().from(inboxItems)
 
     if (conditions.length > 0) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle dynamic-query builders change the builder generic on each call; the cast keeps the original select type
       query = query.where(and(...conditions)) as typeof query
     }
 
@@ -80,6 +90,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
           ? inboxItems.title
           : inboxItems.createdAt
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle dynamic-query builders change the builder generic on each call; the cast keeps the original select type
     query = query.orderBy(
       options.sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn)
     ) as typeof query
@@ -91,6 +102,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
       .get()
     const total = countResult?.count || 0
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle dynamic-query builders change the builder generic on each call; the cast keeps the original select type
     query = query.limit(options.limit).offset(options.offset) as typeof query
 
     const rows = query.all()
@@ -144,7 +156,9 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
     const jobs: InboxJob[] = rows.map((row) => ({
       id: row.id,
       itemId: row.itemId,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
       type: row.type as InboxJob['type'],
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
       status: row.status as InboxJob['status'],
       runAt: new Date(row.runAt),
       attempts: row.attempts,
@@ -220,7 +234,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
     return {
       totalItems: totalResult?.count || 0,
-      itemsByType: itemsByType as InboxStats['itemsByType'],
+      itemsByType,
       staleCount,
       snoozedCount: snoozedResult?.count || 0,
       processedToday,
@@ -233,15 +247,6 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
       oldestItemDays: health.oldestItemDays,
       currentStreak: health.currentStreak
     }
-  }
-
-  async function handleGetStaleThreshold(): Promise<number> {
-    return getStaleThresholdDays()
-  }
-
-  async function handleSetStaleThreshold(days: number): Promise<{ success: boolean }> {
-    setStaleThresholdDays(days)
-    return { success: true }
   }
 
   async function handleListArchived(input: unknown): Promise<ArchivedListResponse> {
@@ -302,9 +307,11 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
       return {
         id: row.id,
         itemId: row.id,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
         itemType: row.type as FilingHistoryEntry['itemType'],
         itemTitle: row.title,
         filedTo: row.filedTo || '',
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
         filedAction: (row.filedAction || 'folder') as FilingHistoryEntry['filedAction'],
         filedAt: new Date(row.filedAt!),
         tags
@@ -372,6 +379,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
 
       const totalForTypes = typeRows.reduce((sum, row) => sum + row.count, 0)
       const typeDistribution = typeRows.map((row) => ({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
         type: row.type as InboxItemType,
         count: row.count,
         percentage: totalForTypes > 0 ? Math.round((row.count / totalForTypes) * 100) : 0,
@@ -412,7 +420,7 @@ export function createInboxQueryHandlers(deps: InboxQueryHandlerDeps): InboxQuer
       }
 
       const topDomains = [...domainCounts.entries()]
-        .sort((a, b) => b[1] - a[1])
+        .toSorted((a, b) => b[1] - a[1])
         .slice(0, 10)
         .map(([domain, count]) => ({ domain, count }))
 

@@ -23,12 +23,12 @@ function callHook<K extends keyof CursorSkipHooks>(
   ...args: Parameters<CursorSkipHooks[K]>
 ): Promise<Awaited<ReturnType<CursorSkipHooks[K]>>> {
   return app.evaluate(
-    async (_context, { name, args }) => {
+    async (_context, { name: nameArg, args: argsArg }) => {
       const hooks = (globalThis as typeof globalThis & { __memryTestHooks?: CursorSkipHooks })
         .__memryTestHooks
       if (!hooks) throw new Error('Memry test hooks are not registered')
-      const hook = hooks[name] as (...a: unknown[]) => Promise<unknown>
-      return hook(...args)
+      const hook = hooks[nameArg] as (...a: unknown[]) => Promise<unknown>
+      return hook(...argsArg)
     },
     { name, args }
   ) as Promise<Awaited<ReturnType<CursorSkipHooks[K]>>>
@@ -36,8 +36,8 @@ function callHook<K extends keyof CursorSkipHooks>(
 
 async function createTask(page: Page, projectId: string, title: string): Promise<string> {
   return page.evaluate(
-    async ({ projectId, title }) => {
-      const result = await window.api.tasks.create({ projectId, title })
+    async ({ projectId: projectIdArg, title: titleArg }) => {
+      const result = await window.api.tasks.create({ projectId: projectIdArg, title: titleArg })
       if (!result.success || !result.task) throw new Error(result.error ?? 'task create failed')
       return result.task.id
     },
@@ -117,6 +117,6 @@ test.describe('Sync cursor skip (#2283)', () => {
         `tasks on A=${onA.length}/${PEER_TASKS + 1} on B=${onB.length}/${PEER_TASKS + 1}`
     )
 
-    expect(onA.sort()).toEqual([...peerIds, ownId].sort())
+    expect(onA.toSorted()).toEqual([...peerIds, ownId].toSorted())
   })
 })

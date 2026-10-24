@@ -89,6 +89,7 @@ export function applyEditorAction(editor: EditorHandle, action: EditorAction): b
 export function runHistoryCommand(action: 'undo' | 'redo'): void {
   const active = document.activeElement
   if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to trigger native undo/redo in inputs; no standard replacement
     document.execCommand(action)
     return
   }
@@ -101,6 +102,7 @@ export function runHistoryCommand(action: 'undo' | 'redo'): void {
   }
 
   if (active instanceof HTMLElement && active.isContentEditable) {
+    // oxlint-disable-next-line typescript/no-deprecated -- document.execCommand is the only way to trigger native undo/redo in inputs; no standard replacement
     document.execCommand(action)
   }
 }
@@ -135,6 +137,7 @@ export function useEditorCommands(): void {
   // The keys come from `EDITOR_ACTIONS`, which is exhaustive over the ids this
   // owner is not handling by hand, so `OwnerImpls` is satisfied.
   useAppCommands('editor', {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries widens keys to string; see the exhaustiveness note above
     ...(impls as Omit<OwnerImpls<'editor'>, HistoryCommandId>),
     'editor.undo': {
       run: () => runHistoryCommand('undo')

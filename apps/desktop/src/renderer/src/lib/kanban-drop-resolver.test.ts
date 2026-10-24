@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import type { Project, Status, StatusType } from '@/data/tasks-data'
+import type { Project, Status } from '@/data/tasks-data'
 import { resolveColumnDrop, dueBucketToDate } from './kanban-drop-resolver'
 
 const createStatus = (overrides: Partial<Status> = {}): Status => ({
   id: 'status-todo',
   name: 'To Do',
   color: '#6b7280',
-  type: 'todo' as StatusType,
+  type: 'todo',
   order: 0,
   ...overrides
 })

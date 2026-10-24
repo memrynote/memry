@@ -45,7 +45,7 @@ function newest(values: Array<string | null | undefined>): string | null {
   return (
     values
       .filter((value): value is string => !!value)
-      .sort()
+      .toSorted()
       .at(-1) ?? null
   )
 }
@@ -54,6 +54,7 @@ function toSearchReason(row: typeof searchReasons.$inferSelect): SearchReasonRec
   return {
     id: row.id,
     itemId: row.itemId,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- text column; rejecting a type a newer build wrote would drop the reason from search
     itemType: row.itemType as SearchReasonItemType,
     itemTitle: row.itemTitle,
     itemIcon: row.itemIcon,
@@ -175,6 +176,6 @@ export function createSearchTagsService({
     for (const template of await templates.list()) {
       for (const tag of template.tags) values.add(tag)
     }
-    return [...values].sort()
+    return [...values].toSorted()
   }
 }

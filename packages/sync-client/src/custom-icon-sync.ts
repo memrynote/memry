@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { customIcons } from '@memry/db-schema/schema/custom-icons'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 
@@ -32,9 +32,7 @@ export class CustomIconSyncService {
 
   constructor(deps: CustomIconSyncDeps) {
     const load = (iconId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(customIcons).where(eq(customIcons.id, iconId)).get() as
-        | Record<string, unknown>
-        | undefined
+      deps.db.select().from(customIcons).where(eq(customIcons.id, iconId)).get()
 
     this.controller = new RecordSyncController({
       type: 'custom_icon',
@@ -42,7 +40,7 @@ export class CustomIconSyncService {
       getDeviceId: deps.getDeviceId,
       load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = clockFromColumn(local.clock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
         deps.db.update(customIcons).set({ clock: newClock }).where(eq(customIcons.id, itemId)).run()

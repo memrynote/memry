@@ -71,13 +71,14 @@ export function nextHeaderTags(
   return tags
 }
 
+const holds = (list: readonly string[], tag: string): boolean =>
+  list.some((held) => key(held) === key(tag))
+
 export function compareHeaderTags(
   before: readonly string[],
   after: readonly string[]
 ): HeaderTagChange {
   if (after.length === before.length && after.every((tag, i) => tag === before[i])) return null
-  const holds = (list: readonly string[], tag: string): boolean =>
-    list.some((held) => key(held) === key(tag))
   return {
     added: after.filter((tag) => !holds(before, tag)),
     removed: before.filter((tag) => !holds(after, tag))

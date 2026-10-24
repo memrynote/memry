@@ -3,18 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MAX_STALL_REPORTS, STALL_TICK_MS, startMainThreadStallMonitor } from './main-thread-stall'
 
 const { scopedLogger, powerListeners, powerMonitor, latestLaunchPhaseMock } = vi.hoisted(() => {
-  const powerListeners = new Map<string, Set<() => void>>()
+  const listeners = new Map<string, Set<() => void>>()
   return {
     scopedLogger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
-    powerListeners,
+    powerListeners: listeners,
     powerMonitor: {
       on: (event: string, listener: () => void): void => {
-        const set = powerListeners.get(event) ?? new Set<() => void>()
+        const set = listeners.get(event) ?? new Set<() => void>()
         set.add(listener)
-        powerListeners.set(event, set)
+        listeners.set(event, set)
       },
       removeListener: (event: string, listener: () => void): void => {
-        powerListeners.get(event)?.delete(listener)
+        listeners.get(event)?.delete(listener)
       }
     },
     latestLaunchPhaseMock: vi.fn<() => string | null>(() => null)

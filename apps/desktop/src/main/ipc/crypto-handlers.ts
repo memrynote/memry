@@ -76,9 +76,11 @@ function buildSignaturePayload(fields: SignatureFields): Record<string, unknown>
   return payload
 }
 
+// oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
 const BASE64_VARIANT = sodium.base64_variants.ORIGINAL
 
 async function ensureSodiumReady(): Promise<void> {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
   await sodium.ready
 }
 
@@ -89,6 +91,7 @@ async function getVerifiedVaultKey(): Promise<Uint8Array> {
 
 function decodeBase64(value: string): Uint8Array | null {
   try {
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     return sodium.from_base64(value, BASE64_VARIANT)
   } catch {
     return null
@@ -113,9 +116,13 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
     const wrapped = wrapFileKey(fileKey, vaultKey)
     const { ciphertext, nonce: dataNonce } = encrypt(plaintext, fileKey)
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const encData = sodium.to_base64(ciphertext, BASE64_VARIANT)
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const dNonce = sodium.to_base64(dataNonce, BASE64_VARIANT)
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const encKey = sodium.to_base64(wrapped.wrappedKey, BASE64_VARIANT)
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const kNonce = sodium.to_base64(wrapped.nonce, BASE64_VARIANT)
 
     const signaturePayload = buildSignaturePayload({
@@ -137,6 +144,7 @@ async function handleEncryptItem(input: EncryptItemInput): Promise<EncryptItemRe
       dataNonce: dNonce,
       encryptedKey: encKey,
       keyNonce: kNonce,
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
       signature: sodium.to_base64(signature, BASE64_VARIANT)
     }
   } finally {
@@ -189,17 +197,21 @@ async function handleDecryptItem(input: DecryptItemInput): Promise<DecryptItemRe
   }
 
   try {
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const encryptedKey = sodium.from_base64(input.encryptedKey, BASE64_VARIANT)
     if (encryptedKey.length === 0) {
       return { success: false, error: 'Invalid encrypted key length' }
     }
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const keyNonce = sodium.from_base64(input.keyNonce, BASE64_VARIANT)
     if (keyNonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
       return { success: false, error: 'Invalid key nonce length' }
     }
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const encryptedData = sodium.from_base64(input.encryptedData, BASE64_VARIANT)
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const dataNonce = sodium.from_base64(input.dataNonce, BASE64_VARIANT)
     if (dataNonce.length !== XCHACHA20_PARAMS.NONCE_LENGTH) {
       return { success: false, error: 'Invalid data nonce length' }

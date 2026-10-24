@@ -271,7 +271,7 @@ describe('CRDT sweep: conditional snapshot baseline', () => {
     expect(
       probeRequests()[0]
         .notes.map((n) => n.noteId)
-        .sort()
+        .toSorted()
     ).toEqual(['note-1', 'note-2', 'note-3'])
     // Cheap: only the changed note costs anything beyond the probe, and even it
     // does not re-download its unchanged baseline.

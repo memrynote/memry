@@ -8,7 +8,7 @@ import {
   type CriticMarkupCommentFormatRange
 } from '@memry/shared'
 import { Node, mergeAttributes, type Editor, type JSONContent } from '@tiptap/core'
-import Placeholder from '@tiptap/extension-placeholder'
+import { Placeholder } from '@tiptap/extension-placeholder'
 import {
   EditorContent,
   NodeViewWrapper,
@@ -16,7 +16,7 @@ import {
   useEditor,
   type ReactNodeViewProps
 } from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
+import { StarterKit } from '@tiptap/starter-kit'
 
 import {
   MentionIcon,
@@ -81,7 +81,7 @@ interface AgentPromptEditorProps {
   onValueChange: (value: AgentPromptValue) => void
 }
 
-const attachmentKinds = new Set<AttachmentInput['kind']>([
+const attachmentKinds: ReadonlySet<string> = new Set([
   'note',
   'folder',
   'task',
@@ -93,13 +93,14 @@ const attachmentKinds = new Set<AttachmentInput['kind']>([
 ])
 
 function isAttachmentKind(kind: unknown): kind is AttachmentInput['kind'] {
-  return typeof kind === 'string' && attachmentKinds.has(kind as AttachmentInput['kind'])
+  return typeof kind === 'string' && attachmentKinds.has(kind)
 }
 
 function attachmentKindFrom(kind: unknown): AttachmentInput['kind'] {
   return isAttachmentKind(kind) ? kind : 'note'
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- switch is exhaustive over AttachmentInput['kind'] (checked by tsc); an unreachable fallback would invent a value
 function mentionIconFromAttrs(attrs: Record<string, unknown>): MentionIconSpec {
   const kind = attachmentKindFrom(attrs.kind)
   switch (kind) {
@@ -117,6 +118,7 @@ function mentionIconFromAttrs(attrs: Record<string, unknown>): MentionIconSpec {
     case 'inbox':
       return {
         kind: 'inbox',
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- itemType comes from persisted editor attrs; the icon switch tolerates unknown strings
         itemType: typeof attrs.itemType === 'string' ? (attrs.itemType as InboxItemType) : null
       }
     case 'calendar_event':
@@ -343,7 +345,7 @@ function promptRunsToValue(runs: PromptTextRun[]): {
     // Only coalesce with an immediately adjacent run, so a range never spans
     // the newline between two blocks.
     const previous = formatRanges.at(-1)
-    if (previous && previous.end === start && sameMarkList(previous.marks, run.marks)) {
+    if (previous?.end === start && sameMarkList(previous.marks, run.marks)) {
       previous.end = text.length
       continue
     }

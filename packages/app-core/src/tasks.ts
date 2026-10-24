@@ -10,10 +10,11 @@ import {
 import type { DrizzleDb as DataDb } from '@memry/db-schema/drizzle-db'
 import { plainVersionedMap, stampVersionedMapPatch, type JsonValue } from '@memry/shared/versioned'
 import { createId } from './ids.ts'
-import { deleteTaskBranches, type DeleteTaskOptions } from './task-delete.ts'
+import { deleteTaskBranches } from './task-delete.ts'
 import type { TaskRecord, ProjectRecord, StatusRecord, TasksService } from './tasks-types.ts'
 
 export type { DeleteTaskOptions } from './task-delete.ts'
+export type { TaskRecord, TasksService }
 
 function nowIso(): string {
   return new Date().toISOString()
@@ -243,7 +244,7 @@ export function createTasksService(dataDb: DataDb): TasksService {
             task.title.toLowerCase().includes(search) ||
             (task.description?.toLowerCase().includes(search) ?? false)
         )
-        .sort((left, right) => {
+        .toSorted((left, right) => {
           const sortBy = options.sortBy ?? 'position'
           const direction = options.sortOrder === 'desc' ? -1 : 1
           const leftValue =
@@ -461,7 +462,7 @@ export function createTasksService(dataDb: DataDb): TasksService {
       }
       return [...counts.entries()]
         .map(([tag, count]) => ({ tag, count }))
-        .sort((left, right) => left.tag.localeCompare(right.tag))
+        .toSorted((left, right) => left.tag.localeCompare(right.tag))
     },
 
     async convertToSubtask(taskId, parentId) {

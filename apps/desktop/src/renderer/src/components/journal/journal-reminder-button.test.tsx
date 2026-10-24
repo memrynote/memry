@@ -50,6 +50,7 @@ function reminderApi(): Record<string, ReturnType<typeof vi.fn>> {
  * to both queries would list it twice and make the remove button ambiguous.
  */
 function seedActiveReminder(targetType: 'journal' | 'note', targetId: string): void {
+  // oxlint-disable-next-line typescript/no-misused-promises -- vi.fn() mock is typed as a void-returning function but the real API returns a promise
   reminderApi().getForTarget.mockImplementation((input: { targetType: string }) =>
     Promise.resolve(
       input.targetType === targetType

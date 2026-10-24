@@ -42,8 +42,8 @@ function cardRef(element: SceneElementLike): CanvasEntityRef | null {
   if (element.type !== 'rectangle' || element.isDeleted === true) return null
   const data = element.customData
   if (!data || typeof data !== 'object') return null
-  const entityType = (data as Record<string, unknown>).entityType
-  const entityId = (data as Record<string, unknown>).entityId
+  const entityType = 'entityType' in data ? data.entityType : undefined
+  const entityId = 'entityId' in data ? data.entityId : undefined
   if (!isEntityType(entityType) || typeof entityId !== 'string' || entityId.length === 0) {
     return null
   }
@@ -53,8 +53,11 @@ function cardRef(element: SceneElementLike): CanvasEntityRef | null {
 function sceneElements(scene: string): SceneElementLike[] {
   if (!scene) return []
   try {
-    const elements = (JSON.parse(scene) as { elements?: unknown }).elements
-    return Array.isArray(elements) ? (elements as SceneElementLike[]) : []
+    const parsed: { elements?: unknown } = JSON.parse(scene)
+    const elements: SceneElementLike[] | undefined = Array.isArray(parsed.elements)
+      ? parsed.elements
+      : undefined
+    return elements ?? []
   } catch {
     return []
   }

@@ -26,7 +26,11 @@ import { ConversationList } from './conversation-list'
 export type RightSidebarTab = 'day' | 'agent'
 
 export const RIGHT_SIDEBAR_TAB_KEY = ['right', 'sidebar', 'tab'].join('-')
-const RIGHT_SIDEBAR_TABS: ReadonlySet<RightSidebarTab> = new Set(['day', 'agent'])
+const RIGHT_SIDEBAR_TABS: ReadonlySet<string> = new Set(['day', 'agent'])
+
+function isRightSidebarTab(value: string | null): value is RightSidebarTab {
+  return value !== null && RIGHT_SIDEBAR_TABS.has(value)
+}
 
 interface SidebarTabsProps {
   children: { day: ReactNode; agent: ReactNode }
@@ -39,7 +43,7 @@ interface SidebarTabsProps {
 function readInitialTab(defaultTab: RightSidebarTab): RightSidebarTab {
   try {
     const stored = localStorage.getItem(RIGHT_SIDEBAR_TAB_KEY)
-    if (RIGHT_SIDEBAR_TABS.has(stored as RightSidebarTab)) return stored as RightSidebarTab
+    if (isRightSidebarTab(stored)) return stored
   } catch {
     // localStorage may be unavailable in tests or restricted renderer contexts.
   }
@@ -212,7 +216,7 @@ function useOpenActiveConversationInTab(agent: AgentState | null): (() => void) 
 }
 
 function sortedConversations(agent: AgentState): Conversation[] {
-  return Object.values(agent.state.conversations).sort((left, right) => {
+  return Object.values(agent.state.conversations).toSorted((left, right) => {
     return right.updatedAt - left.updatedAt
   })
 }
@@ -223,7 +227,7 @@ function AgentActionsMenu(): React.JSX.Element | null {
   const agent = useAgentOptional()
   const openActiveConversationInTab = useOpenActiveConversationInTab(agent)
 
-  if (!agent || agent.state.disclosureAccepted !== true) return null
+  if (agent?.state.disclosureAccepted !== true) return null
 
   const moreLabel = t('agentChat.sidebar.moreActions')
   const conversations = sortedConversations(agent)
@@ -286,7 +290,7 @@ function AgentConversationActions(): React.JSX.Element | null {
   const agent = useAgentOptional()
   const openActiveConversationInTab = useOpenActiveConversationInTab(agent)
 
-  if (!agent || agent.state.disclosureAccepted !== true) return null
+  if (agent?.state.disclosureAccepted !== true) return null
 
   const currentAgent = agent
   const newConversationLabel = t('agentChat.newConversation')
@@ -341,7 +345,7 @@ function AgentHistoryMenu(): React.JSX.Element | null {
   const { t } = useT('common')
   const agent = useAgentOptional()
 
-  if (!agent || agent.state.disclosureAccepted !== true) return null
+  if (agent?.state.disclosureAccepted !== true) return null
 
   const conversations = sortedConversations(agent)
   const historyLabel = t('agentChat.history')

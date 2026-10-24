@@ -167,7 +167,7 @@ export function extractRedditReleaseSections(body = '') {
     throw new Error('Release body has no humanized release notes for Reddit')
   }
 
-  return populatedSections.sort((a, b) => sectionRank(a.heading) - sectionRank(b.heading))
+  return populatedSections.toSorted((a, b) => sectionRank(a.heading) - sectionRank(b.heading))
 }
 
 // Features first, then improvements, then fixes; anything else keeps to the end.

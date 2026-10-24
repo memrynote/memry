@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "完成「{title}」",
     "task-completed": "任務已完成",
-    "could-not-complete": "無法完成任務",
+    "could-not-update-status": "無法變更任務狀態",
     "duration-minutes": "{minutes} 分鐘",
     "duration-hours": "{hours} 小時",
     "duration-hours-minutes": "{hours} 小時 {minutes} 分"
@@ -214,12 +213,9 @@
     "next-week": "下週",
     "open-task": "開啟任務",
     "source-note": "來源筆記",
-    "reschedule": "重新排程",
     "mark-done": "標記為已完成",
     "mark-not-done": "標記為未完成",
-    "later-today": "今天稍晚",
     "tomorrow": "明天",
-    "next-week-mon": "下週 · 星期一",
     "pick-date-time": "選擇日期和時間…",
     "remove-due-date": "移除到期日",
     "subtasks-prefix": "子任務",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "無法移除到期日",
       "could-not-open-note": "無法開啟筆記"
     }
+  },
+  "eventNotes": {
+    "heading": "筆記",
+    "create": "新增筆記",
+    "link": "連結筆記",
+    "untitled": "會議筆記",
+    "searchPlaceholder": "搜尋筆記",
+    "noResults": "找不到筆記",
+    "createFailed": "無法為此事件建立筆記。",
+    "linkFailed": "無法將筆記連結到此事件。",
+    "loadFailed": "無法載入連結到此事件的筆記。",
+    "propertyTaken": "此筆記已有一個不是連結的「{name}」屬性。"
   },
   "notePopover": {
     "kind": "筆記",
@@ -254,6 +262,10 @@
     "overdue": "已逾期",
     "untitled": "未命名",
     "days": "{count, plural, other {# 天}}",
+    "subtasks": {
+      "expand": "顯示 {title} 的 {count, plural, other {# 項子任務}}",
+      "collapse": "隱藏 {title} 的 {count, plural, other {# 項子任務}}"
+    },
     "events": "活動",
     "schedule-hint": "按一下以設定日期，拖曳以設定範圍",
     "empty-title": "這段時間軸上沒有任何項目",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "已訂閱的行事曆"
     },
     "caldav": {
       "name": "CalDAV"

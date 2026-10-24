@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { ensureDayPanelOpen, waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
@@ -33,7 +34,7 @@ function getSeededCalendarData(): SeededCalendarData {
   }
 }
 
-async function openCalendarWorkspace(page: Parameters<typeof test>[0]['page']): Promise<void> {
+async function openCalendarWorkspace(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Calendar' }).click()
   await expect(page.getByTestId('calendar-page')).toBeVisible()
 }

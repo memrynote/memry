@@ -317,6 +317,7 @@ export class PropertyDefinitionsService {
 
     if (def.type === 'status' && def.categories) {
       const categories = { ...def.categories }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys yields string[]; keys come from this typed object
       for (const key of Object.keys(categories) as (keyof StatusCategories)[]) {
         categories[key] = {
           ...categories[key],
@@ -344,6 +345,7 @@ export class PropertyDefinitionsService {
 
     if (def.type === 'status' && def.categories) {
       const categories = { ...def.categories }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys yields string[]; keys come from this typed object
       for (const key of Object.keys(categories) as (keyof StatusCategories)[]) {
         categories[key] = {
           ...categories[key],
@@ -373,6 +375,7 @@ export class PropertyDefinitionsService {
     // none persisted, so materialize what the user is looking at instead of
     // dropping the write.
     const categories = def?.categories ?? DEFAULT_STATUS_CATEGORIES
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     const category = categories[categoryKey as keyof StatusCategories]
     if (!category) {
       throw new Error(`Unknown status category "${categoryKey}"`)
@@ -578,6 +581,7 @@ function definitionFromRow(row: {
   defaultValue: string | null
   color: string | null
 }): PropertyDefinition | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
   const type = row.type as PropertyDefinition['type']
   if (!isPersistableDefinitionType(type)) return null
   let parsed: unknown = null
@@ -591,6 +595,7 @@ function definitionFromRow(row: {
 
   const shared = sharedFields(row)
   if (type === 'status') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     const categories = (parsed as { categories?: StatusCategories } | null)?.categories
     return { name: row.name, type, categories: categories ?? DEFAULT_STATUS_CATEGORIES, ...shared }
   }
@@ -600,6 +605,7 @@ function definitionFromRow(row: {
   return {
     name: row.name,
     type,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; element type is the one stored by writers of this field
     options: Array.isArray(parsed) ? (parsed as SelectOption[]) : [],
     ...shared
   }
@@ -623,6 +629,7 @@ function renameOptionInDefinition(
 ): PropertyDefinition {
   if (def.type === 'status' && def.categories) {
     const categories = { ...def.categories }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys yields string[]; keys come from this typed object
     for (const key of Object.keys(categories) as (keyof StatusCategories)[]) {
       categories[key] = {
         ...categories[key],

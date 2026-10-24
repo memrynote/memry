@@ -79,7 +79,7 @@ describe('useYjsCollaboration', () => {
     const closeCleanup = vi.fn()
     mockOnCrdtStateChanged.mockReturnValueOnce(closeCleanup)
     const { result, rerender, unmount } = renderHook((props) => useYjsCollaboration(props), {
-      initialProps: { noteId: 'note-1' as string | undefined }
+      initialProps: { noteId: 'note-1' }
     })
 
     await waitFor(() => expect(result.current.isReady).toBe(true))

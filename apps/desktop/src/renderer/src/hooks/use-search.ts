@@ -91,7 +91,7 @@ export function useSearch(): UseSearchReturn {
         loading: false,
         error: null
       }))
-      return
+      return undefined
     }
 
     setState((prev) => ({ ...prev, loading: true }))

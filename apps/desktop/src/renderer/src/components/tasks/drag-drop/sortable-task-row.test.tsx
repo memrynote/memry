@@ -231,7 +231,7 @@ describe('SortableTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-task-row') as HTMLDivElement).style.transform).toBe('')
+    expect(screen.getByTestId('sortable-task-row').style.transform).toBe('')
   })
 
   it('suppresses source and intermediate-section transforms during cross-section list drags', () => {
@@ -277,7 +277,7 @@ describe('SortableTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-task-row') as HTMLDivElement).style.transform).toBe('')
+    expect(screen.getByTestId('sortable-task-row').style.transform).toBe('')
 
     useSortableMock.mockReturnValue({
       attributes: { role: 'button' },
@@ -301,7 +301,7 @@ describe('SortableTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-task-row') as HTMLDivElement).style.transform).toBe('')
+    expect(screen.getByTestId('sortable-task-row').style.transform).toBe('')
   })
 
   it('keeps sortable transforms enabled for same-section reorder drags', () => {
@@ -347,7 +347,7 @@ describe('SortableTaskRow', () => {
       />
     )
 
-    expect((screen.getByTestId('sortable-task-row') as HTMLDivElement).style.transform).toBe(
+    expect(screen.getByTestId('sortable-task-row').style.transform).toBe(
       'translate3d(0px, 48px, 0)'
     )
   })

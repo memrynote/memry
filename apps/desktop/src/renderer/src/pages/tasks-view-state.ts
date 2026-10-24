@@ -56,12 +56,10 @@ const INTERNAL_TABS: TasksInternalTab[] = ['today', 'tomorrow', 'next7', 'all']
 export const DEFAULT_COLLAPSED_GROUPS: string[] = ['done']
 
 export const parseViewMode = (raw: unknown): ViewMode | undefined =>
-  typeof raw === 'string' && (VIEW_MODES as string[]).includes(raw) ? (raw as ViewMode) : undefined
+  typeof raw === 'string' ? VIEW_MODES.find((mode) => mode === raw) : undefined
 
 export const parseInternalTab = (raw: unknown): TasksInternalTab | undefined =>
-  typeof raw === 'string' && (INTERNAL_TABS as string[]).includes(raw)
-    ? (raw as TasksInternalTab)
-    : undefined
+  typeof raw === 'string' ? INTERNAL_TABS.find((tab) => tab === raw) : undefined
 
 /**
  * `null` is a value — "no project" / "no task open" — and must be told apart

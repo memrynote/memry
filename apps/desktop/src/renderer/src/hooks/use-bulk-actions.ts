@@ -5,13 +5,13 @@ import { extractErrorMessage } from '@/lib/ipc-error'
 import { useT } from '@memry/i18n/renderer'
 import { getI18n } from 'react-i18next'
 
-const log = createLogger('Hook:BulkActions')
-
 import type { Task, Priority } from '@/data/task-model'
 import type { Project } from '@/data/tasks-data'
 import { getDefaultTodoStatus, getDefaultDoneStatus } from '@/lib/task-utils'
 import { tasksService } from '@/services/tasks-service'
 import { useVault } from '@/hooks/use-vault'
+
+const log = createLogger('Hook:BulkActions')
 
 // ============================================================================
 // TYPES
@@ -72,8 +72,8 @@ export const useBulkActions = ({
     const tasksToComplete = selectedTasks.filter((task) => {
       const project = projects.find((p) => p.id === task.projectId)
       if (!project) return false
-      const status = project.statuses.find((s) => s.id === task.statusId)
-      return status?.type !== 'done'
+      const taskStatus = project.statuses.find((s) => s.id === task.statusId)
+      return taskStatus?.type !== 'done'
     })
 
     if (tasksToComplete.length === 0) {
@@ -87,7 +87,7 @@ export const useBulkActions = ({
       completedAt: task.completedAt
     }))
 
-    const taskIds = tasksToComplete.map((t) => t.id)
+    const taskIds = tasksToComplete.map((candidate) => candidate.id)
 
     if (isVaultOpen) {
       try {
@@ -152,8 +152,8 @@ export const useBulkActions = ({
     const tasksToUncomplete = selectedTasks.filter((task) => {
       const project = projects.find((p) => p.id === task.projectId)
       if (!project) return false
-      const status = project.statuses.find((s) => s.id === task.statusId)
-      return status?.type === 'done'
+      const taskStatus = project.statuses.find((s) => s.id === task.statusId)
+      return taskStatus?.type === 'done'
     })
 
     if (tasksToUncomplete.length === 0) {
@@ -203,8 +203,8 @@ export const useBulkActions = ({
       if (count === 0) return
 
       const originalPriorities = selectedIds.map((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
-        return { id: taskId, priority: task?.priority ?? ('none' as Priority) }
+        const task = tasks.find((candidate) => candidate.id === taskId)
+        return { id: taskId, priority: task?.priority ?? 'none' }
       })
 
       selectedIds.forEach((taskId) => {
@@ -236,7 +236,7 @@ export const useBulkActions = ({
       if (count === 0) return
 
       const originalDates = selectedIds.map((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
+        const task = tasks.find((candidate) => candidate.id === taskId)
         return { id: taskId, dueDate: task?.dueDate ?? null }
       })
 
@@ -274,7 +274,7 @@ export const useBulkActions = ({
       }
 
       const originalMoveStates = selectedIds.map((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
+        const task = tasks.find((candidate) => candidate.id === taskId)
         return {
           id: taskId,
           projectId: task?.projectId ?? '',
@@ -299,7 +299,7 @@ export const useBulkActions = ({
         const defaultStatus = getDefaultTodoStatus(targetProject)
 
         selectedIds.forEach((taskId) => {
-          const task = tasks.find((t) => t.id === taskId)
+          const task = tasks.find((candidate) => candidate.id === taskId)
           if (!task) return
 
           const currentProject = projects.find((p) => p.id === task.projectId)
@@ -353,16 +353,16 @@ export const useBulkActions = ({
       let statusType: 'todo' | 'in_progress' | 'done' = 'todo'
 
       for (const project of projects) {
-        const status = project.statuses.find((s) => s.id === statusId)
-        if (status) {
-          statusName = status.name
-          statusType = status.type
+        const foundStatus = project.statuses.find((s) => s.id === statusId)
+        if (foundStatus) {
+          statusName = foundStatus.name
+          statusType = foundStatus.type
           break
         }
       }
 
       const originalStatusStates = selectedIds.map((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
+        const task = tasks.find((candidate) => candidate.id === taskId)
         return {
           id: taskId,
           statusId: task?.statusId ?? '',
@@ -371,7 +371,7 @@ export const useBulkActions = ({
       })
 
       selectedIds.forEach((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
+        const task = tasks.find((candidate) => candidate.id === taskId)
         if (!task) return
 
         const updates: Partial<Task> = { statusId }
@@ -511,9 +511,10 @@ export const useBulkActions = ({
     const count = selectedIds.length
     if (count === 0) return
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- filter(Boolean) drops the null misses, which the type cannot express
     const deletedSnapshots = selectedIds
       .map((taskId) => {
-        const task = tasks.find((t) => t.id === taskId)
+        const task = tasks.find((candidate) => candidate.id === taskId)
         return task ? { ...task } : null
       })
       .filter(Boolean) as Task[]

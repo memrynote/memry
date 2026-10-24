@@ -39,7 +39,7 @@ export function scheduleDeletedFolderPrune(
         log.warn('Skipped removing a folder deleted on another device, sync files still pending', {
           folderPath
         })
-        return
+        return undefined
       }
       return pruneDeletedFolders(db, folderPath, options.folderConfigDeleted === true)
     })

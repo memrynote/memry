@@ -52,7 +52,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     expect(result.current.isVisible).toBe(false)
 
     await act(async () => {
@@ -65,7 +65,7 @@ describe('useWikiLinkHover', () => {
     expect(result.current.position).toEqual({ top: 64, left: 20, placement: 'below' })
     expect(result.current.isVisible).toBe(true)
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
     })
@@ -78,13 +78,13 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
 
     act(() => result.current.handleCardMouseEnter())
-    act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
     })
@@ -110,17 +110,17 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
     expect(result.current.position?.placement).toBe('above')
     expect(api.notes.previewByTitle).toHaveBeenCalledTimes(1)
 
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     expect(result.current.isVisible).toBe(false)
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -141,7 +141,7 @@ describe('useWikiLinkHover', () => {
     const baseline = renders
     // One act() per event so React cannot batch them into a single render.
     for (let i = 0; i < 5; i++) {
-      act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+      void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     }
 
     expect(renders).toBe(baseline)
@@ -156,22 +156,22 @@ describe('useWikiLinkHover', () => {
       return useWikiLinkHover(ref)
     })
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
     expect(result.current.isVisible).toBe(true)
 
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     expect(result.current.isVisible).toBe(false)
 
     // One more scroll to absorb React's render-phase bailout: right after a real
     // update it re-renders this component once before it can compare eagerly.
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     const settled = renders
 
     for (let i = 0; i < 5; i++) {
-      act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+      void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     }
 
     expect(renders).toBe(settled)
@@ -192,13 +192,13 @@ describe('useWikiLinkHover', () => {
       return useWikiLinkHover(ref)
     })
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(150)
     })
 
     const baseline = renders
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500)
     })
@@ -218,7 +218,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -226,7 +226,7 @@ describe('useWikiLinkHover', () => {
 
     link.setAttribute('data-target', 'Broken')
     api.notes.previewByTitle.mockRejectedValueOnce(new Error('ipc failed'))
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -246,7 +246,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -271,7 +271,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -294,7 +294,7 @@ describe('useWikiLinkHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useWikiLinkHover(ref))
 
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
@@ -306,8 +306,8 @@ describe('useWikiLinkHover', () => {
     const createdCallbacks = api.onNoteCreated.mock.calls.map((call) => call[0] as () => void)
     act(() => createdCallbacks.forEach((callback) => callback()))
 
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
-    act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    void act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    void act(() => link.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })

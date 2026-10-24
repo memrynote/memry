@@ -20,7 +20,7 @@ export function useNameConflict(noteId: string | null, draft: string): NameConfl
   const name = draft.trim()
 
   useEffect(() => {
-    if (!noteId || nameKey(name) === null) return
+    if (!noteId || nameKey(name) === null) return undefined
     let cancelled = false
     const timer = setTimeout(() => {
       notesService

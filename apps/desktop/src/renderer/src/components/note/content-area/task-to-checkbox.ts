@@ -23,7 +23,7 @@ interface CheckboxEditor {
  */
 export async function turnTaskIntoCheckbox(editor: CheckboxEditor, blockId: string): Promise<void> {
   const block = editor.getBlock(blockId)
-  if (!block || block.type !== 'taskBlock' || block.children?.length) return
+  if (block?.type !== 'taskBlock' || block.children?.length) return
 
   const title = typeof block.props?.title === 'string' ? block.props.title : ''
   const checked = block.props?.checked === true
@@ -37,6 +37,6 @@ export async function turnTaskIntoCheckbox(editor: CheckboxEditor, blockId: stri
 
   // Re-read after the parse: the block may have changed under the await.
   const live = editor.getBlock(blockId)
-  if (!live || live.type !== 'taskBlock') return
+  if (live?.type !== 'taskBlock') return
   editor.updateBlock(live, { type: 'checkListItem', props: { checked, plain: true }, content })
 }

@@ -359,7 +359,7 @@ describe('0036_canvas_assets migration', () => {
     }[]
     const byName = Object.fromEntries(columns.map((c) => [c.name, c]))
 
-    expect(Object.keys(byName).sort()).toEqual(
+    expect(Object.keys(byName).toSorted()).toEqual(
       [
         'vault_id',
         'canvas_id',
@@ -371,7 +371,7 @@ describe('0036_canvas_assets migration', () => {
         'size_bytes',
         'chunk_hashes',
         'created_at'
-      ].sort()
+      ].toSorted()
     )
     for (const name of Object.keys(byName)) {
       expect(byName[name].notnull, `${name} should be NOT NULL`).toBe(1)
@@ -1313,7 +1313,7 @@ describe('data DB migration journal', () => {
     // Shipped with a `when` older than 0022's. Released history cannot be
     // rewritten, so it is the one pinned exception; nothing may join it.
     const shippedOutOfOrder = new Set(['0023_folder_configs'])
-    const entries = [...journal.entries].sort((a, b) => a.idx - b.idx)
+    const entries = [...journal.entries].toSorted((a, b) => a.idx - b.idx)
     let newest = { tag: '', when: -Infinity }
     for (const entry of entries) {
       if (shippedOutOfOrder.has(entry.tag)) continue

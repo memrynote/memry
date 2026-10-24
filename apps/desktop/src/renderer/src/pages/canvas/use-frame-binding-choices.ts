@@ -34,7 +34,7 @@ export function useFrameBindingChoices(open: boolean): FrameBindingChoices {
   const [loaded, setLoaded] = useState<Omit<FrameBindingChoices, 'loading'> | null>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     void (async () => {
       const [tags, definitions] = await Promise.all([

@@ -53,8 +53,7 @@
       "high": "גבוהה",
       "urgent": "דחופה"
     },
-    "unarchive": "הוצאת המשימה מהארכיון",
-    "archivedOn": "הועברה לארכיון ב-{date}"
+    "unarchive": "הוצאת המשימה מהארכיון"
   },
   "reminders": {
     "summary": "תזכורת: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "הוספת תת-משימה",
     "subIssuePlaceholder": "הוספת תת-משימה…",
     "noSubIssues": "אין עדיין תת-משימות",
-    "linkedNotes": "פריטים קשורים",
-    "linkNote": "הוספת פריט קשור",
     "loading": "טוען…",
-    "searchNotes": "חיפוש פריטים קשורים…",
-    "noMatchingNotes": "אין פריטים תואמים",
-    "noNotesAvailable": "אין פריטים זמינים",
-    "noLinkedNotes": "אין עדיין פריטים קשורים",
-    "removeLinkTo": "הסרת הפריט הקשור {title}",
-    "removeLinkFallback": "פריט",
     "related": "פריטים קשורים",
     "addRelatedItem": "הוספת פריט קשור",
     "searchRelated": "חיפוש פריטים קשורים…",
     "noMatchingRelated": "אין פריטים תואמים",
     "noRelatedAvailable": "אין פריטים זמינים",
-    "noRelatedItems": "אין עדיין פריטים קשורים",
     "removeRelatedItem": "הסרת הפריט הקשור {title}",
     "relatedItemFallback": "פריט",
     "relatedItemMissing": "הפריט הקשור הזה כבר לא נמצא בכספת.",
@@ -251,7 +241,6 @@
     "deleted": "המשימה נמחקה",
     "deletedSeries": "הסדרה הושלמה!",
     "completed": "המשימה הושלמה!",
-    "archived": "המשימה הועברה לארכיון",
     "undoNotAvailableForDelete": "אי אפשר לבטל מחיקה",
     "alreadyAllComplete": "כל המשימות שנבחרו כבר הושלמו",
     "noCompletedSelected": "לא נבחרו משימות שהושלמו",
@@ -305,7 +294,10 @@
       "dueDateCleared": "{count, plural, one {תאריך היעד הוסר מתת-משימה אחת} other {תאריך היעד הוסר מ-# תת-משימות}}",
       "prioritySet": "{count, plural, one {העדיפות נקבעה עבור תת-משימה אחת} other {העדיפות נקבעה עבור # תת-משימות}}",
       "deleted": "{count, plural, one {תת-משימה אחת נמחקה} other {# תת-משימות נמחקו}}"
-    }
+    },
+    "completedBranch": "{title} הושלמה, וגם {count, plural, one {תת-משימה פתוחה אחת} other {# תת-משימות פתוחות}}",
+    "deletedKeepSubtasks": "{title} נמחקה, ותת-המשימות שלה נשמרו",
+    "deletedBranch": "{title} נמחקה, וגם {count, plural, one {תת-משימה אחת} other {# תת-משימות}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -328,7 +320,6 @@
       "archive": "העברה לארכיון",
       "delete": "מחיקה",
       "cancelSelection": "ביטול הבחירה",
-      "cancel": "ביטול",
       "unarchive": "הוצאה מהארכיון"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -400,9 +391,6 @@
       "delete": "למחוק את \"",
       "thisProjectHas": "לפרויקט הזה יש ",
       "task": "משימה",
-      "whatWouldYouLikeToDoWithThem": "מה לעשות עם המשימות?",
-      "moveTasksToPersonalProject": "העברת המשימות לפרויקט האישי",
-      "deleteAllTasksPermanently": "מחיקת כל המשימות לצמיתות",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "לפרויקט זה אין משימות והוא יימחק לצמיתות.",
       "notesEventsAndFilesStayNotice": "המשימות בפרויקט הזה יימחקו. הפתקים, האירועים והקבצים שלך נשארים בכספת.",
       "thisActionCannotBeUndone": "לא ניתן לבטל פעולה זו.",
@@ -423,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "הגדרת תאריך יעד לכל תת-המשימות",
-      "setDueDateFor": "הגדרת תאריך יעד עבור ",
-      "alsoApplyToCompletedSubtasks": "להחיל גם על תת-משימות שהושלמו (",
       "clearDate": "ניקוי התאריך",
       "cancel": "ביטול",
       "apply": "החלה",
@@ -433,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "הגדרת עדיפות לכל תת-המשימות",
-      "setPriorityFor": "הגדרת עדיפות עבור ",
-      "alsoApplyToCompletedSubtasks": "להחיל גם על תת-משימות שהושלמו (",
       "cancel": "ביטול",
       "apply": "החלה",
       "setPriorityForSubtasksIn": "הגדרת עדיפות עבור {count, plural, one {תת-משימה אחת} other {# תת-משימות}} במשימה \"{title}\"",
@@ -461,36 +445,13 @@
       "deleteAll": "מחיקת הכול",
       "deleteSubtasksConfirmation": "פעולה זו תמחק {count, plural, one {תת-משימה אחת} two {# תת-משימות} other {# תת-משימות}} מהמשימה \"{title}\"."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "למחוק משימה עם תת-משימות?",
-      "has": "כוללת ",
-      "subtask": "תת-משימה",
-      "whatWouldYouLikeToDo": "מה היית רוצה לעשות?",
-      "deleteTaskAndAllSubtasks": "מחיקת המשימה וכל תת-המשימות",
-      "permanentlyRemovesEverything": "הכול יימחק לצמיתות",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "מחיקת המשימה ושמירת תת-המשימות כמשימות עצמאיות",
-      "subtasksBecomeTopLevelTasks": "תת-המשימות יהפכו למשימות עצמאיות",
-      "cancel": "ביטול",
-      "delete": "מחיקה"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "שכפול משימה",
-      "createACopyOf": "יצירת עותק של \"",
-      "alsoDuplicateSubtasks": "לשכפל גם את תת-המשימות (",
       "cancel": "ביטול",
-      "duplicate": "שכפול ",
       "createACopyOfTitle": "יצירת עותק של \"{title}\"",
       "alsoDuplicateSubtasksCount": "לשכפל גם את תת-המשימות ({count})",
       "duplicateWithItems": "שכפול ({count, plural, one {פריט אחד} other {# פריטים}})",
       "duplicateTaskOnly": "שכפול המשימה"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "הפיכה לתת-משימה של…",
-      "selectATaskToMake": "יש לבחור משימה ש-\"",
-      "aSubtaskOf": "תהפוך לתת-משימה שלה.",
-      "searchTasks": "חיפוש משימות…",
-      "sameProject": "אותו פרויקט",
-      "otherProjects": "פרויקטים אחרים"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "שחרור לתזמון מחדש: "
@@ -564,16 +525,13 @@
       "status": "סטטוס",
       "projectIs": "פרויקט:",
       "project": "פרויקט",
+      "locationIs": "המיקום הוא",
+      "location": "מיקום",
+      "unknownNote": "פתק לא מוכר",
       "due": "יעד",
       "dueDate": "תאריך יעד",
       "search": "חיפוש",
       "clearAll": "ניקוי הכול"
-    },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "סינון לפי תאריך יעד",
-      "customRange": "טווח מותאם אישית",
-      "clear": "ניקוי",
-      "apply": "החלה"
     },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "סינון לפי…"
@@ -584,6 +542,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "תאריך יעד"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "מיקום",
+      "search": "חיפוש בתיקיות ובפתקים...",
+      "empty": "אין תיקיות או פתקים עם משימות"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "עדיפות",
@@ -608,23 +571,9 @@
       "search": "חיפוש…",
       "selected": "נבחרו"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "מסננים נוספים",
-      "more": "עוד",
-      "status": "סטטוס",
-      "hasTimeSet": "עם שעה מוגדרת",
-      "recurringOnly": "חוזרות בלבד",
-      "status2": "סטטוס"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "סינון לפי עדיפות",
       "priority": "עדיפות"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "סינון לפי פרויקט",
-      "project": "פרויקט",
-      "allProjects": "כל הפרויקטים",
-      "clear": "ניקוי"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "מסננים מהירים:"
@@ -648,13 +597,6 @@
       "summaryTimeWith": "שעה: עם שעה",
       "summaryTimeWithout": "שעה: ללא שעה",
       "nameRequired": "יש להזין שם למסנן"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "מסננים שמורים",
-      "saved": "שמורים",
-      "noSavedFiltersYet": "אין עדיין מסננים שמורים",
-      "saveCurrentFilters": "שמירת המסננים הנוכחיים",
-      "saveCurrentFilters2": "שמירת המסננים הנוכחיים"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "שם מסנן",
@@ -704,8 +646,7 @@
       "openTasksOnThisProject": "דף המשימות ייפתח בפרויקט הזה"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "בחירת פרויקט",
-      "selectProject2": "בחירת פרויקט"
+      "selectProject": "בחירת פרויקט"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "עריכת פרויקט",
@@ -714,11 +655,6 @@
       "selectProject": "בחירת פרויקט",
       "noProjectsYet": "עדיין אין פרויקטים",
       "createProject": "יצירת פרויקט"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "לא נבחר פרויקט",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "אפשר לבחור פרויקט מהתפריט הנפתח או ליצור פרויקט חדש",
-      "createYourFirstProject": "יצירת הפרויקט הראשון"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "עזרה לקיצורי ההוספה המהירה",
@@ -804,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "בחירת שעה",
-      "selectTime2": "בחירת שעה",
       "clearTime": "ניקוי השעה"
     },
     "componentsTasksTodayEmptyState": {
@@ -869,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "לא נבחר פרויקט",
     "emptyBody": "אפשר לבחור פרויקט בסרגל הצד כדי לפתוח את דף הבית שלו.",
-    "loadError": "לא ניתן היה לטעון את פרטי הפרויקט",
     "overview": {
       "sectionTitle": "סקירה",
       "create": "יצירת פתק סקירה",
@@ -897,6 +831,7 @@
     "tabs": {
       "label": "תצוגות פרויקט",
       "overview": "סקירה",
+      "all": "הכול",
       "tasks": "משימות",
       "notes": "פתקים",
       "files": "קבצים",
@@ -951,6 +886,18 @@
       "fileError": "לא ניתן היה לקשר את {name}",
       "fileErrorGeneric": "לא ניתן היה לייבא את הקבצים",
       "label": "הוספה ל-{name}"
+    },
+    "all": {
+      "showDone": "הצגת משימות שהושלמו",
+      "empty": "אין דבר פתוח בפרויקט הזה.",
+      "expand": "הצגת המשימות ב-{title}",
+      "collapse": "הסתרת המשימות ב-{title}",
+      "daysLeft": "{count} ימים",
+      "overdue": "באיחור של {count} ימים",
+      "columns": {
+        "title": "כותרת",
+        "daysLeft": "ימים שנותרו"
+      }
     }
   },
   "project": {
@@ -1001,5 +948,49 @@
     "indigo": "אינדיגו",
     "purple": "סגול",
     "pink": "ורוד"
+  },
+  "subtaskTree": {
+    "addSubtask": "הוספת תת-משימה",
+    "dropInto": "לתוך {title}",
+    "dropOut": "החוצה ברמה אחת",
+    "draftPlaceholder": "כותרת תת-המשימה",
+    "draftLabel": "תת-משימה חדשה ב-{title}",
+    "draftIn": "ב-{title}",
+    "toggleComplete": "השלמת {title}",
+    "moveUnder": {
+      "title": "העברה לתחת",
+      "placeholder": "העברה לתחת…",
+      "empty": "אין משימה תואמת",
+      "topLevel": "הרמה העליונה של {project}",
+      "thisTask": "המשימה הזו",
+      "currentParent": "האב הנוכחי",
+      "movesOne": "מעביר את {title}",
+      "movesBranch": "מעביר את {title} וגם {count, plural, one {תת-משימה אחת} other {# תת-משימות}}",
+      "keys": "↵ העברה לכאן · ⌘↵ רמה עליונה · esc סגירה"
+    },
+    "zoom": {
+      "path": "נתיב המשימה",
+      "up": "רמה אחת למעלה",
+      "upShortcut": "רמה אחת למעלה (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "למחוק את {title}?",
+      "summary": "{direct, plural, one {יש בה תת-משימה אחת} other {יש בה # תת-משימות}}{deeper, plural, =0 {} one { ועוד אחת מתחתיהן} other { ועוד # מתחתיהן}}{open, plural, =0 {, וכולן הושלמו.} other {, ו-# עדיין פתוחות.}}",
+      "cancel": "ביטול",
+      "deleteAll": "מחיקת הכול",
+      "keepSubtasks": "שמירת תת-המשימות"
+    },
+    "menu": {
+      "open": "פתיחה",
+      "complete": "השלמה",
+      "reopen": "פתיחה מחדש",
+      "zoom": "התמקדות בתת-המשימות",
+      "moveUnder": "העברה לתחת…",
+      "indent": "העברה לתחת {title}",
+      "outdent": "העברה החוצה ברמה אחת",
+      "topLevel": "הפיכה למשימה ברמה העליונה",
+      "delete": "מחיקה"
+    },
+    "openPath": "פתיחת {path}"
   }
 }

@@ -120,18 +120,22 @@ function normalizeConfig(value: Record<string, unknown>, folderPath: string): Fo
     icon: typeof value.icon === 'string' ? value.icon : undefined,
     template: typeof value.template === 'string' ? value.template : undefined,
     inherit: value.inherit === undefined ? undefined : value.inherit !== false,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     views: Array.isArray(value.views) ? (value.views as FolderViewRecord[]) : undefined,
     formulas:
       value.formulas && typeof value.formulas === 'object'
-        ? (value.formulas as Record<string, string>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (value.formulas as Record<string, string>)
         : undefined,
     properties:
       value.properties && typeof value.properties === 'object'
-        ? (value.properties as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (value.properties as Record<string, unknown>)
         : undefined,
     summaries:
       value.summaries && typeof value.summaries === 'object'
-        ? (value.summaries as Record<string, unknown>)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
+          (value.summaries as Record<string, unknown>)
         : undefined
   }
 }
@@ -172,10 +176,10 @@ async function writeConfig(
 function relativeFolder(note: NoteRecord, folderPath: string): string {
   const folder = normalizePath(folderPath)
   const withoutRoot = note.path.replace(/^notes\/?/, '')
-  const noteFolder = path.posix.dirname(withoutRoot)
-  if (!folder) return noteFolder ? `/${noteFolder}` : '/'
-  if (noteFolder === folder) return '/'
-  return noteFolder.startsWith(`${folder}/`) ? `/${noteFolder.slice(folder.length + 1)}` : '/'
+  const dir = path.posix.dirname(withoutRoot)
+  if (!folder) return dir ? `/${dir}` : '/'
+  if (dir === folder) return '/'
+  return dir.startsWith(`${folder}/`) ? `/${dir.slice(folder.length + 1)}` : '/'
 }
 
 // The vault-relative folder a note currently sits in ('' = vault root).
@@ -289,7 +293,7 @@ export function createFolderViewService({
         builtIn: BUILT_IN,
         properties: [...counts.entries()]
           .map(([name, value]) => ({ name, ...value }))
-          .sort((a, b) => b.usageCount - a.usageCount),
+          .toSorted((a, b) => b.usageCount - a.usageCount),
         formulas: Object.entries(existing?.formulas ?? {}).map(([id, expression]) => ({
           id,
           expression
@@ -319,7 +323,7 @@ export function createFolderViewService({
 
       return {
         suggestions: suggestions
-          .sort((left, right) => {
+          .toSorted((left, right) => {
             if (right.confidence !== left.confidence) return right.confidence - left.confidence
             return left.path.localeCompare(right.path)
           })

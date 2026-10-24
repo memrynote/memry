@@ -2,7 +2,6 @@ import { and, eq, ne } from 'drizzle-orm'
 import {
   OFFLINE_CLOCK_DEVICE_ID,
   RECREATABLE_AFTER_PURGE_ITEM_TYPES,
-  type SyncItemType,
   type VectorClock
 } from '@memry/contracts/sync-api'
 import { syncDevices } from '@memry/db-schema/schema/sync-devices'
@@ -51,6 +50,7 @@ const toClock = (value: unknown): VectorClock | null => {
       return null
     }
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- object checked above; clock entries are read defensively by the guard
   return value && typeof value === 'object' ? (value as VectorClock) : null
 }
 
@@ -84,7 +84,7 @@ export function localTombstoneRefusal(
   tombstone: PurgedTombstone,
   knownDevices: ReadonlySet<string> | null
 ): LocalTombstoneRefusal | null {
-  const local = getHandler(tombstone.type as SyncItemType)?.fetchLocal(db, tombstone.id)
+  const local = getHandler(tombstone.type)?.fetchLocal(db, tombstone.id)
   if (!local) return null
 
   const localClock = toClock(local.clock)

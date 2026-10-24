@@ -15,6 +15,9 @@ import { createLogger } from '@/lib/logger'
 
 const log = createLogger('Component:TaskDescriptionPreview')
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-unnecessary-type-parameters -- marked's Tokens.Generic has `type: string`, which defeats discriminated-union narrowing on `token.type`
+const narrow = <T extends Token>(token: Token): T => token as T
+
 function openLink(e: React.MouseEvent, href: string): void {
   e.preventDefault()
   e.stopPropagation()
@@ -27,21 +30,21 @@ function renderInline(tokens: Token[] | undefined, keyPrefix: string): ReactNode
     const key = `${keyPrefix}-${i}`
     switch (token.type) {
       case 'strong':
-        return <strong key={key}>{renderInline((token as Tokens.Strong).tokens, key)}</strong>
+        return <strong key={key}>{renderInline(narrow<Tokens.Strong>(token).tokens, key)}</strong>
       case 'em':
-        return <em key={key}>{renderInline((token as Tokens.Em).tokens, key)}</em>
+        return <em key={key}>{renderInline(narrow<Tokens.Em>(token).tokens, key)}</em>
       case 'del':
-        return <del key={key}>{renderInline((token as Tokens.Del).tokens, key)}</del>
+        return <del key={key}>{renderInline(narrow<Tokens.Del>(token).tokens, key)}</del>
       case 'codespan':
         return (
           <code key={key} className="rounded bg-muted px-1 py-0.5 text-[0.9em]">
-            {(token as Tokens.Codespan).text}
+            {narrow<Tokens.Codespan>(token).text}
           </code>
         )
       case 'br':
         return <br key={key} />
       case 'link': {
-        const link = token as Tokens.Link
+        const link = narrow<Tokens.Link>(token)
         return (
           <a
             key={key}
@@ -54,7 +57,7 @@ function renderInline(tokens: Token[] | undefined, keyPrefix: string): ReactNode
         )
       }
       case 'text': {
-        const t = token as Tokens.Text
+        const t = narrow<Tokens.Text>(token)
         return t.tokens && t.tokens.length > 0 ? (
           <span key={key}>{renderInline(t.tokens, key)}</span>
         ) : (
@@ -62,7 +65,7 @@ function renderInline(tokens: Token[] | undefined, keyPrefix: string): ReactNode
         )
       }
       case 'escape':
-        return (token as Tokens.Escape).text
+        return narrow<Tokens.Escape>(token).text
       default:
         return 'raw' in token ? token.raw : ''
     }
@@ -76,10 +79,10 @@ function renderBlocks(tokens: Token[], keyPrefix: string): ReactNode[] {
     switch (token.type) {
       case 'heading':
       case 'paragraph':
-        out.push(<span key={key}>{renderInline((token as Tokens.Paragraph).tokens, key)}</span>)
+        out.push(<span key={key}>{renderInline(narrow<Tokens.Paragraph>(token).tokens, key)}</span>)
         break
       case 'text': {
-        const t = token as Tokens.Text
+        const t = narrow<Tokens.Text>(token)
         out.push(
           <span key={key}>
             {t.tokens && t.tokens.length > 0 ? renderInline(t.tokens, key) : t.text}
@@ -88,10 +91,10 @@ function renderBlocks(tokens: Token[], keyPrefix: string): ReactNode[] {
         break
       }
       case 'blockquote':
-        out.push(...renderBlocks((token as Tokens.Blockquote).tokens, key))
+        out.push(...renderBlocks(narrow<Tokens.Blockquote>(token).tokens, key))
         break
       case 'list':
-        ;(token as Tokens.List).items.forEach((item, j) => {
+        narrow<Tokens.List>(token).items.forEach((item, j) => {
           const itemKey = `${key}-${j}`
           out.push(
             <span key={itemKey}>
@@ -104,7 +107,7 @@ function renderBlocks(tokens: Token[], keyPrefix: string): ReactNode[] {
       case 'code':
         out.push(
           <code key={key} className="rounded bg-muted px-1 py-0.5 text-[0.9em]">
-            {(token as Tokens.Code).text}
+            {narrow<Tokens.Code>(token).text}
           </code>
         )
         break

@@ -71,12 +71,12 @@ async function seedLinkList(page: Page): Promise<SeededLinkNote> {
   const body = ['Everything to read:', '', ...targets.map((t) => `- [[${t}]]`), ''].join('\n')
 
   await page.evaluate(
-    async ({ sourceTitle, targets, body }) => {
-      for (const title of targets) {
+    async ({ sourceTitle: sourceTitleArg, targets: targetsArg, body: bodyArg }) => {
+      for (const title of targetsArg) {
         const created = await window.api.notes.create({ title, content: 'A target.\n' })
         if (!created.success) throw new Error(`failed to seed target "${title}"`)
       }
-      const source = await window.api.notes.create({ title: sourceTitle, content: body })
+      const source = await window.api.notes.create({ title: sourceTitleArg, content: bodyArg })
       if (!source.success) throw new Error('failed to seed the link list')
     },
     { sourceTitle, targets, body }
@@ -267,9 +267,12 @@ test.describe('Wiki links on open', () => {
     const title = uniqueLabel('External Edit')
     const target = uniqueLabel('External Target')
     await page.evaluate(
-      async ({ title, target }) => {
-        const seeded = await window.api.notes.create({ title, content: 'Nothing here yet.\n' })
-        const linked = await window.api.notes.create({ title: target, content: 'A target.\n' })
+      async ({ title: titleArg, target: targetArg }) => {
+        const seeded = await window.api.notes.create({
+          title: titleArg,
+          content: 'Nothing here yet.\n'
+        })
+        const linked = await window.api.notes.create({ title: targetArg, content: 'A target.\n' })
         if (!seeded.success || !linked.success) throw new Error('failed to seed the external case')
       },
       { title, target }

@@ -8,16 +8,15 @@ export interface InlineTagEdit {
 }
 
 export function mergeInlineTagEdits(earlier: InlineTagEdit, later: InlineTagEdit): InlineTagEdit {
-  const key = (tag: string): string => foldTag(tag)
-  const add = new Map(earlier.add.map((tag) => [key(tag), tag]))
-  const remove = new Map(earlier.remove.map((tag) => [key(tag), tag]))
+  const add = new Map(earlier.add.map((tag) => [foldTag(tag), tag]))
+  const remove = new Map(earlier.remove.map((tag) => [foldTag(tag), tag]))
   for (const tag of later.add) {
-    remove.delete(key(tag))
-    add.set(key(tag), tag)
+    remove.delete(foldTag(tag))
+    add.set(foldTag(tag), tag)
   }
   for (const tag of later.remove) {
-    add.delete(key(tag))
-    remove.set(key(tag), tag)
+    add.delete(foldTag(tag))
+    remove.set(foldTag(tag), tag)
   }
   return { add: [...add.values()], remove: [...remove.values()] }
 }

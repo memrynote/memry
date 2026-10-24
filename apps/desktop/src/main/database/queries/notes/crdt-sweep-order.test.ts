@@ -72,7 +72,7 @@ describe('getAllCrdtNoteIds — sweep priority order', () => {
     createNote('b', { modifiedAt: '2026-01-12T00:00:00.000Z' })
     createNote('c', { modifiedAt: '2026-01-12T00:00:00.000Z' })
 
-    expect(getAllCrdtNoteIds(db).sort()).toEqual(['a', 'b', 'c'])
+    expect(getAllCrdtNoteIds(db).toSorted()).toEqual(['a', 'b', 'c'])
   })
 
   it('leaves non-markdown files out, as before', () => {

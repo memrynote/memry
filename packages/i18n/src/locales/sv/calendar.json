@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Markera ”{title}” som klar",
     "task-completed": "Uppgift slutförd",
-    "could-not-complete": "Det gick inte att slutföra uppgiften",
+    "could-not-update-status": "Det gick inte att ändra uppgiftens status",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Nästa vecka",
     "open-task": "Öppna uppgift",
     "source-note": "Källanteckning",
-    "reschedule": "Planera om",
     "mark-done": "Markera som klar",
     "mark-not-done": "Markera som inte klar",
-    "later-today": "Senare idag",
     "tomorrow": "Imorgon",
-    "next-week-mon": "Nästa vecka · mån",
     "pick-date-time": "Välj datum & tid…",
     "remove-due-date": "Ta bort förfallodatum",
     "subtasks-prefix": "Deluppgifter",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Det gick inte att ta bort förfallodatumet",
       "could-not-open-note": "Det gick inte att öppna anteckningen"
     }
+  },
+  "eventNotes": {
+    "heading": "Anteckningar",
+    "create": "Ny anteckning",
+    "link": "Länka anteckning",
+    "untitled": "Mötesanteckning",
+    "searchPlaceholder": "Sök anteckningar",
+    "noResults": "Inga anteckningar hittades",
+    "createFailed": "Det gick inte att skapa en anteckning för den här händelsen.",
+    "linkFailed": "Det gick inte att länka anteckningen till den här händelsen.",
+    "loadFailed": "Det gick inte att läsa in anteckningarna som är länkade till den här händelsen.",
+    "propertyTaken": "Den här anteckningen har redan en egenskap ”{name}” som inte är en länk."
   },
   "notePopover": {
     "kind": "Anteckning",
@@ -254,6 +262,10 @@
     "overdue": "försenad",
     "untitled": "Namnlös",
     "days": "{count, plural, one {# dag} other {# dagar}}",
+    "subtasks": {
+      "expand": "Visa {count, plural, one {# deluppgift} other {# deluppgifter}} för {title}",
+      "collapse": "Dölj {count, plural, one {# deluppgift} other {# deluppgifter}} för {title}"
+    },
     "events": "Händelser",
     "schedule-hint": "Klicka för att ange ett datum, dra för att ange ett intervall",
     "empty-title": "Inget på tidslinjen här",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Prenumererade kalendrar"
     },
     "caldav": {
       "name": "CalDAV"

@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 
@@ -21,6 +21,9 @@ import type { Conversation } from '../../storage/types'
 import { persistToolActivity, summarizeToolArgs } from '../tool-activity'
 import { runTurn } from '../turn'
 import { broadcastAgentEvent } from '../event-bus'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 // The persisted transcript is the only copy of a tool row once the renderer has
 // dropped it, so these run against the real encrypted store rather than a stub.

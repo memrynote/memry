@@ -314,7 +314,7 @@ async function prepare(
   return {
     title: heading ?? fallbackTitle,
     markdown: converted.markdown,
-    tags: [...new Set([...declaredTags, ...parseTags(body)])].sort(),
+    tags: [...new Set([...declaredTags, ...parseTags(body)])].toSorted(),
     properties,
     tasks: converted.tasks
   }

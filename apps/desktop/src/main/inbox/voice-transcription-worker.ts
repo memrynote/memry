@@ -216,6 +216,7 @@ function normalizeTranscriptionResult(result: unknown): string {
   }
 
   if (typeof result === 'object' && result !== null && 'text' in result) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- 'text' in result was checked on the previous line; the pipeline's text field is a string
     const { text } = result as { text?: string }
     if (typeof text === 'string') {
       return text.trim()
@@ -274,6 +275,7 @@ async function handleTranscription(
 }
 
 parentPort.on('message', (event) => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- worker postMessage payloads are untyped; the main side only posts this union
   const message = event.data as VoiceModelMainToWorkerMessage
 
   switch (message.type) {

@@ -126,7 +126,7 @@ describe('resolveAttachment', () => {
   })
 
   it('rejects a mobile root-relative ref that escapes the vault', () => {
-    expect(() => resolveAttachment(NOTE_ID, 'attachments/n1/../../../etc/passwd')).toThrowError(
+    expect(() => resolveAttachment(NOTE_ID, 'attachments/n1/../../../etc/passwd')).toThrow(
       expect.objectContaining({ code: NoteErrorCode.INVALID_PATH })
     )
   })
@@ -170,21 +170,21 @@ describe('resolveAttachment', () => {
   })
 
   it('rejects a ref that escapes the vault', () => {
-    expect(() => resolveAttachment(NOTE_ID, '../../../../etc/passwd')).toThrowError(
+    expect(() => resolveAttachment(NOTE_ID, '../../../../etc/passwd')).toThrow(
       expect.objectContaining({ code: NoteErrorCode.INVALID_PATH })
     )
   })
 
   it('rejects non-vault urls (http, absolute filesystem paths)', () => {
     for (const url of ['https://example.com/x.pdf', '/etc/passwd', '\\\\server\\share\\x.pdf']) {
-      expect(() => resolveAttachment(NOTE_ID, url)).toThrowError(
+      expect(() => resolveAttachment(NOTE_ID, url)).toThrow(
         expect.objectContaining({ code: NoteErrorCode.INVALID_PATH })
       )
     }
   })
 
   it('throws NOT_FOUND for an unknown note id', () => {
-    expect(() => resolveAttachment('missing', '../attachments/n1/f.pdf')).toThrowError(NoteError)
+    expect(() => resolveAttachment('missing', '../attachments/n1/f.pdf')).toThrow(NoteError)
     let err: unknown
     try {
       resolveAttachment('missing', '../attachments/n1/f.pdf')
@@ -226,7 +226,7 @@ describe('resolveAttachment', () => {
   it('rejects a legacy url whose attachments tail traverses upward', () => {
     const url = 'memry-file://local/Users/other/vault/attachments/../../../etc/passwd'
 
-    expect(() => resolveAttachment(NOTE_ID, url)).toThrowError(
+    expect(() => resolveAttachment(NOTE_ID, url)).toThrow(
       expect.objectContaining({ code: NoteErrorCode.INVALID_PATH })
     )
   })
@@ -242,9 +242,9 @@ describe('revealAttachmentInFinder', () => {
   })
 
   it('throws instead of revealing a file that is not on disk', () => {
-    expect(() =>
-      revealAttachmentInFinder(NOTE_ID, '../attachments/n1/k3f9x2-late.pdf')
-    ).toThrowError(expect.objectContaining({ code: NoteErrorCode.NOT_FOUND }))
+    expect(() => revealAttachmentInFinder(NOTE_ID, '../attachments/n1/k3f9x2-late.pdf')).toThrow(
+      expect.objectContaining({ code: NoteErrorCode.NOT_FOUND })
+    )
     expect(showItemInFolder).not.toHaveBeenCalled()
   })
 })
@@ -261,7 +261,7 @@ describe('openAttachmentExternal', () => {
   it('throws instead of opening a file that is not on disk', async () => {
     await expect(
       openAttachmentExternal(NOTE_ID, '../attachments/n1/k3f9x2-late.pdf')
-    ).rejects.toThrowError(expect.objectContaining({ code: NoteErrorCode.NOT_FOUND }))
+    ).rejects.toThrow(expect.objectContaining({ code: NoteErrorCode.NOT_FOUND }))
     expect(openPath).not.toHaveBeenCalled()
   })
 })

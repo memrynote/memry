@@ -128,6 +128,7 @@ async function boot(): Promise<void> {
   // (settings, onboarding, sync from another device) is covered.
   setActiveLocale(startupLocale)
   i18n.on('languageChanged', (locale) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every changeLanguage caller passes a supported Locale; i18next only types it as string
     setActiveLocale(locale as Locale)
   })
 

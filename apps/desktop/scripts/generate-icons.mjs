@@ -390,7 +390,7 @@ async function main() {
   console.log('Done.')
 }
 
-main().catch((err) => {
+main().catch((/** @type {unknown} */ err) => {
   console.error('Icon generation failed:', err)
   process.exit(1)
 })

@@ -114,6 +114,7 @@ export function listProjects(db: DataDb, includeArchived: boolean = false): Proj
   let query = db.select().from(projects)
 
   if (!includeArchived) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle where() narrows the builder type; assertion restores the dynamic-query type
     query = query.where(isNull(projects.archivedAt)) as typeof query
   }
 

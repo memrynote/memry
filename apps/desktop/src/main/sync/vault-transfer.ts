@@ -29,9 +29,11 @@ export interface EncryptedVaultTransfer {
 }
 
 const encodeBase64 = (input: Uint8Array): string =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   sodium.to_base64(input, sodium.base64_variants.ORIGINAL)
 
 const decodeBase64 = (input: string): Uint8Array =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   sodium.from_base64(input, sodium.base64_variants.ORIGINAL)
 
 const buildAad = (sessionId: string): Uint8Array =>

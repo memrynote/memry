@@ -118,6 +118,7 @@ export function createCommandRepository(
     getUpcomingTasks: vi.fn(() => []),
     getOverdueTasks: vi.fn(() => []),
     getTasksLinkedToNote: vi.fn(() => []),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vi.fn infers `t` as any; the fake echoes the insert payload as a Task
     createTask: vi.fn((t) => t as Task),
     updateTask: vi.fn(() => undefined),
     patchTaskFields: vi.fn(() => undefined),

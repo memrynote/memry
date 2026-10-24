@@ -1,4 +1,4 @@
-import i18next from 'i18next'
+import { createInstance } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { describe, expect, it } from 'vitest'
 import { RESOURCES } from '@memry/i18n/locales'
@@ -39,7 +39,7 @@ describe('extractErrorMessage', () => {
   })
 
   it('resolves errors namespace i18n keys when translated', async () => {
-    const i18n = i18next.createInstance()
+    const i18n = createInstance()
     await i18n.use(initReactI18next).init({
       lng: 'en',
       fallbackLng: 'en',
@@ -60,7 +60,7 @@ describe('extractErrorMessage', () => {
   })
 
   it('resolves real errors namespace keys from bundled resources', async () => {
-    const i18n = i18next.createInstance()
+    const i18n = createInstance()
     await i18n.use(initReactI18next).init({
       lng: 'en',
       fallbackLng: 'en',
@@ -73,7 +73,7 @@ describe('extractErrorMessage', () => {
   })
 
   it('shows the fixed lock refusal in the user language (#2606)', async () => {
-    const i18n = i18next.createInstance()
+    const i18n = createInstance()
     await i18n.use(initReactI18next).init({
       lng: 'tr',
       fallbackLng: 'en',

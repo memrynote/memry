@@ -19,15 +19,16 @@ function isDefuddleNoise(args: unknown[]): boolean {
   return typeof first === 'string' && (first === 'Defuddle' || first.includes(URL_PARSE_NOISE))
 }
 
+const filter =
+  (orig: (...args: unknown[]) => void) =>
+  (...args: unknown[]): void => {
+    if (isDefuddleNoise(args)) return
+    orig(...args)
+  }
+
 export async function quietDefuddleUrlNoise<T>(run: () => Promise<T>): Promise<T> {
   const origError = console.error
   const origWarn = console.warn
-  const filter =
-    (orig: (...args: unknown[]) => void) =>
-    (...args: unknown[]): void => {
-      if (isDefuddleNoise(args)) return
-      orig(...args)
-    }
   console.error = filter(origError)
   console.warn = filter(origWarn)
   try {

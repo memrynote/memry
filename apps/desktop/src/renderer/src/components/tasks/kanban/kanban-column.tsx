@@ -142,6 +142,7 @@ export const KanbanColumn = ({
           column.id === 'priority-urgent' ? (
             <PriorityStar color={priorityConfig.urgent.color!} />
           ) : (
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- priority columns are built with id `priority-<Priority>`, so the suffix is a Priority
             <PriorityBars priority={column.id.replace('priority-', '') as Priority} />
           )
         ) : column.statusType === 'custom' ? (

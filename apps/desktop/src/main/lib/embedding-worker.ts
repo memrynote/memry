@@ -156,6 +156,7 @@ async function loadEmbeddingPipeline(
     // pipeline() also matters: pipeline() probes the encoder files for its progress totals even
     // when they are never used.
     const config = await AutoConfig.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback })
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- foreign runtime object with no published type for this member; shape checked at use
     const configSections = config as unknown as Record<string, unknown>
     if (!withVision) configSections.vision_config = null
     if (!withAudio) configSections.audio_config = null
@@ -173,10 +174,17 @@ async function loadEmbeddingPipeline(
         ? AutoProcessor.from_pretrained(EMBEDDING_MODEL_REPO, { progress_callback })
         : null
     ])
-    if (processor && withVision) {
-      ;(
-        processor as unknown as { image_processor: { max_soft_tokens: number } }
-      ).image_processor.max_soft_tokens = EMBEDDING_IMAGE_SOFT_TOKENS
+    // transformers.js types the processor as an opaque object; it is a callable that also
+    // carries image_processor.
+    type ProcessorView = ((
+      text: string | null,
+      image: unknown,
+      audio?: Float32Array
+    ) => Promise<Record<string, unknown>>) & { image_processor: { max_soft_tokens: number } }
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- see ProcessorView above
+    const processorView = processor as unknown as ProcessorView | null
+    if (processorView && withVision) {
+      processorView.image_processor.max_soft_tokens = EMBEDDING_IMAGE_SOFT_TOKENS
     }
 
     // `sentence_embedding` is the model's own mean-pooled, projected and
@@ -198,46 +206,37 @@ async function loadEmbeddingPipeline(
         track(
           (async () => {
             const inputs = tokenizer([text], { padding: true, truncation: true })
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- transformers.js model call returns an untyped output; shape is fixed by the loaded model
             const output = (await model(inputs)) as ModelOutput
             return truncateEmbedding(output.sentence_embedding.data)
           })()
         ),
-      ...(processor && withAudio
+      ...(processorView && withAudio
         ? {
             embedAudio: (audio: Float32Array): Promise<Float32Array> =>
               track(
                 (async () => {
-                  const inputs = await (
-                    processor as unknown as (
-                      text: null,
-                      image: null,
-                      audio: Float32Array
-                    ) => Promise<Record<string, unknown>>
-                  )(null, null, audio)
+                  const inputs = await processorView(null, null, audio)
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- transformers.js model call returns an untyped output; shape is fixed by the loaded model
                   const output = (await model(inputs)) as ModelOutput
                   return truncateEmbedding(output.sentence_embedding.data)
                 })()
               )
           }
         : {}),
-      ...(processor && withVision
+      ...(processorView && withVision
         ? {
             embedImage: (image: Uint8Array, options?: ImageEmbedOptions): Promise<Float32Array> =>
               track(
                 (async () => {
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
                   const raw = await RawImage.fromBlob(new Blob([image as BlobPart]))
                   // Callers embed one image at a time, so setting the budget here
                   // cannot race another image's preprocessing.
-                  ;(
-                    processor as unknown as { image_processor: { max_soft_tokens: number } }
-                  ).image_processor.max_soft_tokens =
+                  processorView.image_processor.max_soft_tokens =
                     options?.softTokens ?? EMBEDDING_IMAGE_SOFT_TOKENS
-                  const inputs = await (
-                    processor as unknown as (
-                      text: string | null,
-                      image: unknown
-                    ) => Promise<Record<string, unknown>>
-                  )(options?.text ?? null, raw)
+                  const inputs = await processorView(options?.text ?? null, raw)
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- transformers.js model call returns an untyped output; shape is fixed by the loaded model
                   const output = (await model(inputs)) as ModelOutput
                   return truncateEmbedding(output.sentence_embedding.data)
                 })()
@@ -447,6 +446,7 @@ async function handleShutdown(): Promise<void> {
 }
 
 function onMessage(event: { data: unknown }): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- worker message payload is untyped; sender in this module posts only this union
   const message = event.data as EmbeddingMainToWorkerMessage
 
   switch (message.type) {

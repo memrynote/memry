@@ -1,5 +1,6 @@
-import type { SyncItemType, VectorClock } from '@memry/contracts/sync-api'
+import type { SyncItemType } from '@memry/contracts/sync-api'
 import { incrementClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { createLogger } from './logging'
 
 const log = createLogger('DeleteFallback')
@@ -21,7 +22,7 @@ export function deleteFromLocalRow(
   deviceId: string,
   body: (row: Row) => Row = (row) => row
 ): string | null {
-  const clock = local?.clock as VectorClock | null | undefined
+  const clock = clockFromColumn(local?.clock)
   if (!local || !clock || Object.keys(clock).length === 0) {
     log.warn('Delete not pushed: no snapshot and no clocked local row', { type, itemId })
     return null

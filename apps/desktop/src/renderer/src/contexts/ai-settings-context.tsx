@@ -73,11 +73,12 @@ export function AISettingsProvider({ children }: { children: React.ReactNode }):
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.api?.onSettingsChanged !== 'function') {
-      return
+      return undefined
     }
 
     return window.api.onSettingsChanged((event) => {
       if (event.key !== 'ai') return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings event payload is unknown; a null value must keep throwing as before
       const value = event.value as Partial<{ enabled: boolean }>
       if (typeof value.enabled === 'boolean') {
         setEnabled(value.enabled)

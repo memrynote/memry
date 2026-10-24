@@ -87,7 +87,7 @@ for (const r of rows) {
   groups.get(r.seam).push(r)
 }
 const out = []
-for (const [seam, list] of [...groups].sort((a, b) => b[1].length - a[1].length)) {
+for (const [seam, list] of [...groups].toSorted((a, b) => b[1].length - a[1].length)) {
   out.push(`\n### ${seam} — ${list.length} file${list.length === 1 ? '' : 's'}\n`)
   out.push('| File | LOC | Platform imports |')
   out.push('| --- | ---: | --- |')

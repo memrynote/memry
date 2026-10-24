@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "การเชื่อมโยงจาก AI",
     "todaysNotes": "โน้ตวันนี้",
-    "todaysSchedule": "กำหนดการวันนี้",
-    "todaysTasks": "งานวันนี้",
     "tasks": "งาน",
     "technicalDetails": "รายละเอียดทางเทคนิค"
   },
@@ -102,8 +100,7 @@
       "afternoon": "สวัสดีตอนบ่าย",
       "evening": "สวัสดีตอนเย็น",
       "night": "ราตรีสวัสดิ์"
-    },
-    "allDay": "ทั้งวัน"
+    }
   },
   "nav": {
     "previousDay": "วันก่อนหน้า",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "ตัวเลือกเพิ่มเติม",
     "documentStatistics": "สถิติเอกสาร",
-    "dayContext": "บริบทของวัน: งานและกำหนดการ",
-    "scheduleEvents": "กิจกรรมในกำหนดการ",
-    "tasks": "งาน",
     "notesCreatedToday": "โน้ตที่สร้างวันนี้ {count} รายการ"
   },
   "empty": {
     "noEntry": "ไม่มีบันทึก",
     "noDaysInMonth": "ไม่มีวันในเดือนนี้",
-    "noEventsScheduled": "ไม่มีกิจกรรมที่กำหนดไว้",
-    "noEventsScheduledToday": "วันนี้ไม่มีกิจกรรมที่กำหนดไว้",
-    "noEventsWereScheduled": "ไม่มีกิจกรรมที่กำหนดไว้",
-    "noTasksDue": "ไม่มีงานที่ครบกำหนด",
-    "noTasksDueToday": "ไม่มีงานที่ครบกำหนดวันนี้",
-    "noTasksWereDue": "ไม่มีงานที่ครบกำหนด",
     "noNotesToday": "ไม่มีโน้ตที่สร้างวันนี้",
     "startDocumenting": "เริ่มบันทึกความคิดและไอเดีย"
   },
@@ -155,9 +143,7 @@
     "day": "วัน",
     "days": "วัน",
     "event": "กิจกรรม",
-    "events": "กิจกรรม",
     "task": "งาน",
-    "todo": "ต้องทำ",
     "moreConnections": "+ การเชื่อมโยงอีก {count} รายการ",
     "moreConnections_plural": "+ การเชื่อมโยงอีก {count} รายการ",
     "moreNotes": "+ โน้ตอีก {count} รายการ",
@@ -166,7 +152,6 @@
     "charactersWritten": "ตัวอักษรที่เขียน",
     "words": "{count} คำ",
     "characters": "ตัวอักษร {count}",
-    "completed": "เสร็จแล้ว {count} รายการ",
     "overdue": "เลยกำหนด {count} รายการ"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "แก้ไขเมื่อ {date}"
   },
   "task": {
-    "completed": "เสร็จแล้ว",
-    "notCompleted": "ยังไม่เสร็จ",
-    "priority": "ความสำคัญ {priority}",
-    "overdue": "เลยกำหนด",
-    "markComplete": "ทำเครื่องหมาย “{title}” ว่าเสร็จแล้ว",
-    "markNotComplete": "ทำเครื่องหมาย “{title}” ว่ายังไม่เสร็จ"
+    "priority": "ความสำคัญ {priority}"
   },
   "template": {
     "using": "กำลังใช้ “{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "เนื้อหายังอยู่ในหน่วยความจำ คลิกเพื่อลองบันทึกอีกครั้ง",
-    "noteNotFound": "ไม่พบโน้ต “{target}”",
     "createLinkedFailed": "สร้างโน้ตที่ลิงก์ไม่สำเร็จ",
     "fileNotFound": "ไม่พบไฟล์: {target}",
     "openLinkedItemFailed": "เปิดรายการที่ลิงก์ไม่สำเร็จ",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "ลบหน้าบันทึกประจำวัน",
     "description": "ต้องการลบ “{title}” หรือไม่? การกระทำนี้เลิกทำไม่ได้"
+  },
+  "dayTimeline": {
+    "label": "ตารางของวัน",
+    "allDay": "รายการตลอดวัน",
+    "unscheduled": "ยังไม่กำหนดเวลา",
+    "unscheduledEmpty": "ไม่มีงานที่ยังไม่กำหนดเวลา ลากบล็อกมาวางที่นี่เพื่อล้างเวลาของงาน",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "ทำ {title} เสร็จ"
   }
 }

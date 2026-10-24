@@ -1,11 +1,11 @@
 import { z } from 'zod'
 
 export const RequestOtpRequestSchema = z.object({
-  email: z.string().email()
+  email: z.email()
 })
 
 export const VerifyOtpRequestSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   code: z.string().regex(/^\d{6}$/),
   sessionNonce: z.string().min(1).optional(),
   // Ed25519 public key of the device that will redeem the setup token. Binds
@@ -16,7 +16,7 @@ export const VerifyOtpRequestSchema = z.object({
 })
 
 export const ResendOtpRequestSchema = z.object({
-  email: z.string().email()
+  email: z.email()
 })
 
 export const DeviceRegisterRequestSchema = z.object({
@@ -123,11 +123,11 @@ export const RefreshTokenResponseSchema = z.object({
 })
 
 export const EmailChangeRequestSchema = z.object({
-  newEmail: z.string().email()
+  newEmail: z.email()
 })
 
 export const EmailChangeVerifySchema = z.object({
-  newEmail: z.string().email(),
+  newEmail: z.email(),
   code: z.string().regex(/^\d{6}$/)
 })
 

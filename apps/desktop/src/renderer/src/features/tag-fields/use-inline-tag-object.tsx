@@ -104,7 +104,7 @@ export function useInlineTagObject(
 
   const isOpen = state !== null
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
       const current = stateRef.current
       if (!current) return
@@ -127,6 +127,7 @@ export function useInlineTagObject(
       }
     }
     const onMouseDown = (event: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event.target may be null or a non-HTMLElement node; optional chaining covers both, an instanceof guard would change behavior
       if ((event.target as HTMLElement | null)?.closest('[data-inline-tag-object]')) return
       update(null)
     }

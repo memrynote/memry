@@ -32,10 +32,10 @@ test.describe('Shared attachment references', () => {
 
     // Note A uploads the PDF; note B is created empty and opened.
     const seeded = await page.evaluate(
-      async ({ ownerTitle, borrowerTitle, fileName, bytes }) => {
+      async ({ ownerTitle: ownerTitleArg, borrowerTitle: borrowerTitleArg, fileName, bytes }) => {
         const api = window.api
 
-        const owner = await api.notes.create({ title: ownerTitle, content: 'owns the pdf' })
+        const owner = await api.notes.create({ title: ownerTitleArg, content: 'owns the pdf' })
         if (!owner.success || !owner.note) throw new Error(owner.error ?? 'owner create failed')
 
         const file = new File([new Uint8Array(bytes)], fileName, { type: 'application/pdf' })
@@ -46,7 +46,7 @@ test.describe('Shared attachment references', () => {
         const storedFilename = attachments[0]?.filename
         if (!storedFilename) throw new Error('uploaded attachment not listed')
 
-        const borrower = await api.notes.create({ title: borrowerTitle, content: '' })
+        const borrower = await api.notes.create({ title: borrowerTitleArg, content: '' })
         if (!borrower.success || !borrower.note) {
           throw new Error(borrower.error ?? 'borrower create failed')
         }
@@ -150,7 +150,7 @@ async function restoreSingleNoteTab(
   title: string
 ): Promise<void> {
   await page.addInitScript(
-    ({ noteId, t, storageKey }) => {
+    ({ noteId: noteIdArg, t, storageKey }) => {
       localStorage.setItem(
         storageKey,
         JSON.stringify({
@@ -165,8 +165,8 @@ async function restoreSingleNoteTab(
                   type: 'note',
                   title: t,
                   icon: 'file',
-                  path: `/notes/${noteId}`,
-                  entityId: noteId,
+                  path: `/notes/${noteIdArg}`,
+                  entityId: noteIdArg,
                   isPinned: false
                 }
               ]

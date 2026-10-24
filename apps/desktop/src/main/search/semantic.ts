@@ -63,6 +63,7 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
     if (!vector) return []
     const rawDb = getRawIndexDatabase()
     const nearest = (table: 'vec_notes' | 'vec_note_chunks', idColumn: string) =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
       rawDb
         .prepare(
           `SELECT ${idColumn} AS id, distance FROM ${table}
@@ -103,7 +104,7 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
     }
     const notes = [...best]
       .map(([id, cosine]) => ({ id, cosine }))
-      .sort((a, b) => b.cosine - a.cosine)
+      .toSorted((a, b) => b.cosine - a.cosine)
       .slice(0, NEIGHBOURS)
     // Memos answer for themselves. An audio-embedded memo has the stricter audio
     // floor, shifted down by the gap like images so the merge scores every kind
@@ -122,7 +123,7 @@ export async function semanticNoteHits(text: string): Promise<SemanticHit[]> {
       // The voice leg must not take the note hits down with it.
       logger.warn('Voice memo search failed, answering from note vectors', error)
     }
-    return [...notes, ...voice].sort((a, b) => b.cosine - a.cosine)
+    return [...notes, ...voice].toSorted((a, b) => b.cosine - a.cosine)
   } catch (error) {
     logger.warn('Semantic search failed, falling back to FTS', error)
     return []

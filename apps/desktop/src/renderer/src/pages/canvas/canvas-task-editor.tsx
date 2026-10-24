@@ -41,7 +41,7 @@ export const CanvasTaskEditor = ({
   const { updateTask } = useTaskWorkspaceMutations()
 
   const task = useMemo<UiTask | null>(
-    () => tasks.find((t) => t.id === taskId) ?? null,
+    () => tasks.find((candidate) => candidate.id === taskId) ?? null,
     [tasks, taskId]
   )
   const project = useMemo(
@@ -70,7 +70,7 @@ export const CanvasTaskEditor = ({
   // app:request-flush handshake during the debounce window doesn't drop the
   // last <500ms of a description edit — mirrors embedded-note-editor.tsx.
   useEffect(() => {
-    if (!interactive) return
+    if (!interactive) return undefined
     const registryKey = `canvas-task:${taskId}`
     registerPendingSave(registryKey, flushDescription)
     return () => {

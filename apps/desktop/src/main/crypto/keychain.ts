@@ -1,4 +1,4 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { KEYCHAIN_ENTRIES } from '@memry/contracts/crypto'
 import type { KeychainEntry } from '@memry/contracts/crypto'
@@ -13,6 +13,9 @@ import {
   writeLegacySecret
 } from '../secrets/secret-storage'
 import { normalizeDeviceSuffix, resolveKeychainAccount } from './keychain-account'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 function resolveAccount(entry: KeychainEntry): string {
   return resolveKeychainAccount(entry, process.env.MEMRY_DEVICE)

@@ -374,7 +374,7 @@ describe('DownloadQueue', () => {
         )
       })
     })
-    const q = new DownloadQueue(fn as unknown as ConstructorParameters<typeof DownloadQueue>[0])
+    const q = new DownloadQueue(fn)
 
     const canvas = q.enqueue({
       ownerId: 'att-x',

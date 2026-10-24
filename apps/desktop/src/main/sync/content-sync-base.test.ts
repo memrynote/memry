@@ -36,7 +36,7 @@ vi.mock('@memry/sync-client/tombstone-clocks', () => ({
     _itemId: string,
     current: Record<string, number> | null | undefined,
     deviceId: string
-  ) => ({ ...current, [deviceId]: ((current ?? {})[deviceId] ?? 0) + 1 })
+  ) => ({ ...current, [deviceId]: (current?.[deviceId] ?? 0) + 1 })
 }))
 
 vi.mock('@memry/storage-data', () => ({
@@ -187,7 +187,7 @@ describe('ContentSyncService', () => {
       // Dropping a peer entry makes the merge look like a fresh write and
       // silently wins conflicts it should lose.
       const { service, queue } = makeService()
-      mocks.local = makeNote({ clock: { 'dev-a': 2, 'dev-b': 7 } as never })
+      mocks.local = makeNote({ clock: { 'dev-a': 2, 'dev-b': 7 } })
 
       service.enqueueUpdate('note-1')
 
@@ -205,7 +205,7 @@ describe('ContentSyncService', () => {
 
     it('#then the snapshot builder receives the persisted row and the new clock', () => {
       const { service } = makeService()
-      mocks.local = makeNote({ clock: { 'dev-a': 5 } as never })
+      mocks.local = makeNote({ clock: { 'dev-a': 5 } })
 
       service.enqueueUpdate('note-1')
 
@@ -220,7 +220,7 @@ describe('ContentSyncService', () => {
       // (concurrent delete). The push must still go out with the advanced
       // clock rather than being dropped.
       const { service, queue } = makeService()
-      mocks.local = makeNote({ clock: { 'dev-a': 1 } as never })
+      mocks.local = makeNote({ clock: { 'dev-a': 1 } })
       mocks.updateNoteMetadata.mockReturnValue(undefined)
 
       service.enqueueUpdate('note-1')
@@ -328,7 +328,7 @@ describe('ContentSyncService', () => {
   describe('#given a delete #when enqueueDelete', () => {
     it('#then a tombstone is queued with an advanced clock and serialized once', () => {
       const { service, queue } = makeService()
-      mocks.local = makeNote({ clock: { 'dev-a': 4 } as never })
+      mocks.local = makeNote({ clock: { 'dev-a': 4 } })
 
       service.enqueueDelete('note-1')
 
@@ -384,7 +384,7 @@ describe('ContentSyncService', () => {
       // widens the gap with the server instead of closing it. The server
       // replay-detects an in-step item and just marks it synced.
       const { service, queue } = makeService()
-      mocks.local = makeNote({ clock: { 'dev-a': 9, 'dev-b': 2 } as never })
+      mocks.local = makeNote({ clock: { 'dev-a': 9, 'dev-b': 2 } })
 
       service.enqueueRecoveredUpdate('note-1')
 

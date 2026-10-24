@@ -263,7 +263,7 @@ export const tagMarker = (tag: string): string | null => {
 
 /** Sorted, non-overlapping — an earlier span wins a contested stretch. */
 const dropOverlaps = (spans: QuickAddSpan[]): QuickAddSpan[] => {
-  const sorted = [...spans].sort((a, b) => a.start - b.start)
+  const sorted = spans.toSorted((a, b) => a.start - b.start)
   const kept: QuickAddSpan[] = []
   for (const span of sorted) {
     if (kept.length > 0 && span.start < kept[kept.length - 1].end) continue

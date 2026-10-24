@@ -245,7 +245,7 @@ function decodeCrdtPayload(base64: string, endpoint: string, tooLargeMessage: st
     if (bytes.byteLength > MAX_UPDATE_BYTES) {
       throw new AppError(ErrorCodes.VALIDATION_ERROR, tooLargeMessage, 413)
     }
-    return bytes.slice().buffer as ArrayBuffer
+    return bytes.slice().buffer
   } catch (error) {
     if (error instanceof AppError) {
       logSyncValidationFailure({
@@ -646,6 +646,7 @@ const handleRecordItem = async (c: Context<AppContext>): Promise<Response> => {
   const vaultId = c.get('vaultId')!
   const itemId = c.req.param('id')
 
+  // oxlint-disable-next-line typescript/no-deprecated -- zod 4 top-level validators accept different inputs than the shipped string validators
   const parseResult = z.string().uuid().safeParse(itemId)
   if (!parseResult.success) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 'Invalid item ID format', 400)
@@ -955,7 +956,7 @@ const handleCrdtUpdatePull = async (c: Context<AppContext>): Promise<Response> =
 
   const encoded = result.updates.map((u) => ({
     sequenceNum: u.sequence_num,
-    data: safeBase64Encode(u.update_data as ArrayBuffer),
+    data: safeBase64Encode(u.update_data),
     signerDeviceId: u.signer_device_id,
     createdAt: u.created_at
   }))
@@ -991,7 +992,7 @@ const handleCrdtBatchPull = async (c: Context<AppContext>): Promise<Response> =>
     response[noteId] = {
       updates: result.updates.map((update) => ({
         sequenceNum: update.sequence_num,
-        data: safeBase64Encode(update.update_data as ArrayBuffer),
+        data: safeBase64Encode(update.update_data),
         signerDeviceId: update.signer_device_id,
         createdAt: update.created_at
       })),

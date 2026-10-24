@@ -142,6 +142,7 @@ function isInsideTableCell(element: HTMLElement): boolean {
 export const inlineCheckboxSerialization = {
   parse: (element: HTMLElement) => {
     if (element.tagName !== 'INPUT') return undefined
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tagName was just checked to be INPUT; instanceof would fail across jsdom and window realms
     const input = element as HTMLInputElement
     if (input.type !== 'checkbox' || !isInsideTableCell(element)) return undefined
     return { checked: input.checked }

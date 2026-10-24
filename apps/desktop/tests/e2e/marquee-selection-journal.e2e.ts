@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Marquee Block Selection — Journal E2E Tests
  *
@@ -8,7 +9,7 @@
  * Companion to marquee-selection.e2e.ts (note page).
  */
 
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady, navigateTo } from './utils/electron-helpers'
 import { marqueeGutterX } from './utils/marquee-helpers'
 

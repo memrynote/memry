@@ -22,6 +22,7 @@ export function upsertCalendarSource(db: DataDb, source: NewCalendarSource): Cal
     db.insert(calendarSources).values(source).run()
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- get() on the row this function just wrote cannot be undefined
   return db
     .select()
     .from(calendarSources)
@@ -70,6 +71,7 @@ export function upsertCalendarBinding(db: DataDb, binding: NewCalendarBinding): 
     db.insert(calendarBindings).values(binding).run()
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- get() on the row this function just wrote cannot be undefined
   return db
     .select()
     .from(calendarBindings)

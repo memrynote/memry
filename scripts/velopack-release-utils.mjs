@@ -195,7 +195,7 @@ export function resolveUnpackedDir(archivePaths, { mainExe = 'Memrynote.exe' } =
   const dirs = matches.filter((entry) => entryDepth(entry) === shallowest).map(dirname)
 
   if (dirs.length > 1) {
-    const listed = [...dirs].sort().join(', ')
+    const listed = [...dirs].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(', ')
     throw new Error(
       `Archive contains ${dirs.length} ${mainExe} entries at the same depth: ${listed}`
     )
@@ -339,7 +339,7 @@ export function selectPreviousFullNupkgAsset(assetNames) {
 export function selectPreviousPublishedRelease(releases, { excludeTag } = {}) {
   const published = releases
     .filter((release) => !release.isDraft && release.tagName !== excludeTag)
-    .sort((left, right) => createdAtTime(right) - createdAtTime(left))
+    .toSorted((left, right) => createdAtTime(right) - createdAtTime(left))
 
   return published[0]?.tagName ?? null
 }

@@ -132,7 +132,7 @@ describe('scanLineIndex', () => {
     // #then — progress arrives more than once, rises monotonically, and ends at
     // the whole file. Without this the viewer has nothing to show for the wait.
     expect(seen.length).toBeGreaterThan(1)
-    expect(seen).toEqual([...seen].sort((a, b) => a - b))
+    expect(seen).toEqual([...seen].toSorted((a, b) => a - b))
     expect(seen.at(-1)).toBe(index.fileBytes)
   })
 
@@ -209,7 +209,7 @@ describe('readLines', () => {
 
   it('truncates a single line that would itself be an unbounded string', async () => {
     // #given the minified-JSON shape: one line holding the whole file
-    const body = 'y'.repeat(5000) + '\n' + 'short\n'
+    const body = `${'y'.repeat(5000)}\nshort\n`
     const index = await indexOf(body, { fileBytes: 0 })
 
     // #when

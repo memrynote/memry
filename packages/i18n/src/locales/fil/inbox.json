@@ -15,19 +15,13 @@
       "showWithCount": "Ipakita ang mga naka-snooze na item ({count})",
       "hide": "Itago ang mga naka-snooze na item"
     },
-    "density": {
-      "toComfortable": "Komportableng view",
-      "toCompact": "Compact na view"
-    },
     "filter": {
-      "button": "I-filter",
       "byType": "I-filter ayon sa uri",
       "active": "{count, plural, one {Naka-filter ayon sa # uri} other {Naka-filter ayon sa # uri}}",
       "clearAll": "I-clear lahat"
     },
     "jobs": {
-      "running": "{count, plural, one {# background job ang tumatakbo} other {# background job ang tumatakbo}}",
-      "failed": "Nabigo ang {count}"
+      "running": "{count, plural, one {# background job ang tumatakbo} other {# background job ang tumatakbo}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Gumawa ng “{name}”",
     "addTags": "Magdagdag ng mga tag…",
     "linkToNote": "I-link sa tala",
-    "linkANote": "Mag-link ng tala",
-    "suggestedCount": "{count} iminungkahi",
-    "linkNotesPlaceholder": "Mag-link ng mga tala…",
     "linkOrCreateNotePlaceholder": "Maghanap o gumawa ng tala…",
     "createNote": "Gumawa ng “{title}”",
     "pendingNote": "Bagong tala",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Hindi available ang data ng paalala.",
     "triggered": "Na-trigger ang paalala",
-    "noteLabel": "Tala ng paalala",
     "source": "Pinagmulan",
     "journalTitle": "Talaarawan — {date}",
     "noteFallback": "Tala",
@@ -514,9 +504,7 @@
       "settings": "Mga setting",
       "processing": "Pinoproseso…",
       "cancelRecording": "Kanselahin ang pagre-record",
-      "cancel": "Kanselahin",
       "stopRecording": "Itigil ang pagre-record",
-      "stop": "Itigil",
       "recordingError": "Nagkaroon ng error sa pag-record",
       "microphoneAccessDenied": "Tinanggihan ang access sa mikropono",
       "noMicrophoneFound": "Walang nakitang mikropono",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# naka-snooze na item} other {# naka-snooze na item}}",
     "notificationBody": "{count, plural, =1 {Handa nang suriin ang naka-snooze mong item} one {Handa na ang mga naka-snooze mong item} other {Handa na ang mga naka-snooze mong item}}",
     "toast": "{count, plural, =1 {Bumalik na mula sa snooze ang “{itemTitle}”} one {Bumalik na ang # naka-snooze na item} other {Bumalik na ang # naka-snooze na item}}"
+  },
+  "sticky": {
+    "kindLabel": "Ipadala bilang",
+    "kinds": {
+      "note": "Tala",
+      "task": "Gawain",
+      "journal": "Talaarawan"
+    },
+    "placeholders": {
+      "note": "Isulat mo na…",
+      "task": "Tawagan si Ana @bukas #bahay !high",
+      "journal": "Idagdag sa talaarawan ngayong araw…"
+    },
+    "saving": "Sine-save…",
+    "saved": "Na-save",
+    "saveFailed": "Hindi na-save",
+    "tuck": "Itabi",
+    "send": "Ipadala",
+    "hints": "Esc itabi · {mod}⌫ tanggalin",
+    "sendAndCloseHint": "⌥{mod}↵ nagpapadala at nagsasara",
+    "deleted": "Natanggal ang draft",
+    "open": "Buksan",
+    "undo": "I-undo",
+    "sent": {
+      "note": "Na-save sa folder na Sticky",
+      "task": "Naidagdag ang gawain",
+      "journal": "Naidagdag sa talaarawan ngayong araw"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky draft} other {# sticky draft}}",
+      "newSticky": "Bagong sticky"
+    },
+    "errors": {
+      "empty": "Magsulat muna ng kahit ano.",
+      "taskFailed": "Hindi nagawa ang gawain.",
+      "tasksOff": "Naka-off ang Mga gawain sa Mga setting.",
+      "journalOff": "Naka-off ang Talaarawan sa Mga setting.",
+      "sendFailed": "Hindi naipadala ang sticky.",
+      "undoExpired": "Huli na para i-undo ito.",
+      "undoFailed": "Hindi na-undo ang pagpapadala."
+    },
+    "inputLabel": "Teksto ng sticky",
+    "dismissError": "Isara"
   }
 }

@@ -156,6 +156,7 @@ async function serveFromHandle(
     })
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   const body = Readable.toWeb(handle.createReadStream()) as ReadableStream<Uint8Array>
   return new Response(body, {
     status: 200,

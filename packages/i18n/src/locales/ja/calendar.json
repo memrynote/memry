@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "{title} を完了にする",
     "task-completed": "タスクを完了しました",
-    "could-not-complete": "タスクを完了できませんでした",
+    "could-not-update-status": "タスクのステータスを変更できませんでした",
     "duration-minutes": "{minutes} 分",
     "duration-hours": "{hours} 時間",
     "duration-hours-minutes": "{hours} 時間 {minutes} 分"
@@ -214,12 +213,9 @@
     "next-week": "来週",
     "open-task": "タスクを開く",
     "source-note": "元のノート",
-    "reschedule": "日程を変更",
     "mark-done": "完了にする",
     "mark-not-done": "未完了にする",
-    "later-today": "今日の後ほど",
     "tomorrow": "明日",
-    "next-week-mon": "来週（月）",
     "pick-date-time": "日時を選択…",
     "remove-due-date": "期限を削除",
     "subtasks-prefix": "サブタスク",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "期限を削除できませんでした",
       "could-not-open-note": "ノートを開けませんでした"
     }
+  },
+  "eventNotes": {
+    "heading": "ノート",
+    "create": "新規ノート",
+    "link": "ノートをリンク",
+    "untitled": "ミーティングノート",
+    "searchPlaceholder": "ノートを検索",
+    "noResults": "ノートが見つかりません",
+    "createFailed": "このイベントのノートを作成できませんでした。",
+    "linkFailed": "ノートをこのイベントにリンクできませんでした。",
+    "loadFailed": "このイベントにリンクされたノートを読み込めませんでした。",
+    "propertyTaken": "このノートにはリンクではない「{name}」プロパティがすでにあります。"
   },
   "notePopover": {
     "kind": "ノート",
@@ -254,6 +262,10 @@
     "overdue": "期限切れ",
     "untitled": "無題",
     "days": "{count, plural, other {# 日間}}",
+    "subtasks": {
+      "expand": "{title} の{count, plural, other {# 件のサブタスク}}を表示",
+      "collapse": "{title} の{count, plural, other {# 件のサブタスク}}を非表示"
+    },
     "events": "予定",
     "schedule-hint": "クリックで日付を設定、ドラッグで期間を設定",
     "empty-title": "このタイムラインには何もありません",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "購読カレンダー"
     },
     "caldav": {
       "name": "CalDAV"

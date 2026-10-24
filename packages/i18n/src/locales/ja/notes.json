@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "見つかりません。クリックして「{title}」を作成"
   },
+  "wikiLinkMenu": {
+    "aria": "リンクの操作",
+    "open": "開く",
+    "openInNewTab": "新しいタブで開く",
+    "openToTheSide": "横に並べて開く",
+    "edit": "リンクを編集",
+    "copy": "リンクをコピー",
+    "unlink": "リンクを削除",
+    "displayRow": "表示…",
+    "sizeNone": "なし",
+    "sizeSmall": "小",
+    "sizeMedium": "中",
+    "showCover": "カバーを表示",
+    "showPreview": "プレビューを表示",
+    "copyFailed": "リンクをコピーできませんでした"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Readwise から再インポート",
+    "refreshAction": "本の情報を更新",
+    "syncsOn": "Readwise は {device} で同期されます。",
+    "syncsOnAnotherDevice": "Readwise は別のデバイスで同期されます。",
+    "takeOverHint": "そのデバイスで同期するか、設定 → インポートで引き継いでください。",
+    "reimport": {
+      "title": "「{title}」を Readwise から再インポートしますか？",
+      "body": "Readwise セクションは最初から書き直されます。その中に書いた内容は失われます。",
+      "note": "セクション外のテキストとノートのプロパティはそのまま残ります。",
+      "cancel": "キャンセル",
+      "confirm": "再インポート"
+    },
+    "commands": {
+      "reimported": "Readwise から再インポートしました",
+      "refreshed": "本の情報を更新しました",
+      "failed": "Readwise のコマンドを完了できませんでした"
+    }
+  },
   "page": {
     "empty": {
       "title": "ノートが選択されていません",
@@ -25,6 +61,7 @@
       "willSync": "ノートをクラウドに同期します",
       "renameFailed": "ノートの名前を変更できませんでした",
       "titleRequired": "ノートにはタイトルが必要です",
+      "duplicateTitle": "{folder} 内の別のノートも「{title}」という名前です。これらのノートへのリンクにはフォルダーが含まれます。",
       "toggleLocalOnlyFailed": "ローカルのみの設定を切り替えられませんでした",
       "toggleFullWidthFailed": "全幅表示を切り替えられませんでした",
       "pathCopied": "パスをコピーしました",
@@ -98,6 +135,7 @@
       "openToTheSide": "横に並べて開く",
       "newNote": "新規ノート",
       "newFolder": "新しいフォルダー",
+      "showTasks": "タスクを表示",
       "expandSubfolders": "すべてのサブフォルダーを展開",
       "collapseSubfolders": "すべてのサブフォルダーを折りたたむ",
       "rename": "名前を変更",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "ブックマークを解除",
       "journalSettings": "ジャーナルの設定…"
     },
-    "nav": {
-      "label": "ナビゲーション",
-      "ariaExpanded": "ナビゲーションセクション（展開）",
-      "ariaCollapsed": "ナビゲーションセクション（折りたたみ）",
-      "saveFailed": "ナビゲーションセクションの状態を保存できませんでした"
-    },
     "viewOptions": {
       "label": "表示オプション",
       "notesFirst": "ノートをフォルダーより前に表示",
@@ -138,7 +170,15 @@
       "folderSuffix": "フォルダー",
       "moreItems": "…ほか {count} 件",
       "deleting": "削除中…",
-      "deleteCount": "{count} 件を削除"
+      "deleteCount": "{count} 件を削除",
+      "journalFolderWarning": "ジャーナルフォルダーが含まれています。その中のジャーナルエントリーはすべて、すべてのデバイスで削除されます。"
+    },
+    "journalChange": {
+      "leaveTitle": "ジャーナルエントリーをノートにしますか？",
+      "leaveBody": "ジャーナルフォルダーの外に移動したり、日付形式から名前を変更したりすると、ジャーナルエントリーは通常のノートになり、ジャーナルから外れます。他のデバイスでは、それらの日がジャーナルから削除され、代わりにノートが表示されます。",
+      "joinTitle": "ノートをジャーナルエントリーにしますか？",
+      "joinBody": "ジャーナルフォルダー内で、ジャーナルの日付形式で名前が付いたファイルはジャーナルエントリーになります。他のデバイスでは、それらのノートがジャーナルエントリーに置き換わります。",
+      "confirm": "続ける"
     },
     "toast": {
       "selectionBookmarked": "{count} 件をブックマークしました",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "見出し",
       "listPlaceholder": "リスト項目",
       "todoPlaceholder": "ToDo",
-      "htmlComment": "非表示の HTML コメント"
+      "htmlComment": "非表示の HTML コメント",
+      "percentComment": "非表示のコメント",
+      "readwise": {
+        "noteStart": "Readwise · 自動で同期",
+        "noteEnd": "Readwise セクションの終わり",
+        "dayStart": "Readwise · 今日のハイライト",
+        "dayEnd": "Readwise の終わり",
+        "hint": "このセクション内を編集すると、Readwise は更新しなくなります。"
+      }
     },
     "table": {
       "keyboardMenuAria": "{row} 行目、{column} 列目の表の操作",
-      "keyboardMenuTitle": "{row} 行目 · {column} 列目"
+      "keyboardMenuTitle": "{row} 行目 · {column} 列目",
+      "sizePicker": {
+        "aria": "表のサイズ。矢印キーで行と列を選び、Enter を押します。",
+        "size": "{rows, plural, other {# 行}} × {columns, plural, other {# 列}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, other {# 行を削除}}",
+        "addRowsAbove": "{count, plural, other {上に # 行を追加}}",
+        "addRowsBelow": "{count, plural, other {下に # 行を追加}}",
+        "deleteColumns": "{count, plural, other {# 列を削除}}",
+        "addColumnsLeft": "{count, plural, other {左に # 列を追加}}",
+        "addColumnsRight": "{count, plural, other {右に # 列を追加}}"
+      }
     },
     "list": {
       "bulleted": "箇条書きリスト",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "ローカルグラフを非表示",
       "showLocalGraph": "ローカルグラフを表示",
       "moreActions": "その他の操作",
+      "searchActions": "操作を検索...",
+      "noMatchingActions": "一致する操作はありません",
       "find": "検索…",
       "versionHistory": "バージョン履歴",
       "export": "エクスポート",
@@ -215,6 +277,8 @@
       "notSynced": "このデバイスにはまだ同期されていません",
       "revealFailed": "ファイルの場所を表示できませんでした",
       "openFailed": "ファイルを開けませんでした",
+      "showAsLink": "リンクとして表示",
+      "showAsEmbed": "埋め込みで表示",
       "missingTitle": "添付ファイルが見つかりません",
       "missingExpected": "想定されるファイル：{name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "名前を変更",
       "renamed": "名前を {name} に変更しました",
       "failed": "添付ファイルの名前を変更できませんでした"
+    },
+    "imageLightbox": {
+      "menuItem": "拡大して表示",
+      "title": "画像ビューアー",
+      "zoomIn": "拡大",
+      "zoomOut": "縮小",
+      "reset": "ズームをリセット"
+    },
+    "imageCrop": {
+      "menuItem": "トリミング…",
+      "title": "画像をトリミング",
+      "description": "画像上をドラッグして、ノートに表示する範囲を選びます。元のファイルはそのまま残ります。",
+      "reset": "画像全体を表示",
+      "cancel": "キャンセル",
+      "apply": "トリミング",
+      "unavailable": "画像がまだ読み込まれていないため、トリミングできません"
     },
     "attachmentsDialog": {
       "title": "添付ファイル",
@@ -248,12 +328,24 @@
       "title": "コールアウト",
       "group": "基本ブロック",
       "subtext": "重要な情報を強調表示",
+      "customSubtext": "カスタムのコールアウトの種類",
       "changeType": "コールアウトの種類を変更",
+      "expand": "コールアウトを展開",
+      "collapse": "コールアウトを折りたたむ",
       "menuLabel": "コールアウトの種類",
       "info": "情報",
       "warning": "警告",
       "error": "エラー",
-      "success": "成功"
+      "success": "成功",
+      "note": "ノート",
+      "abstract": "概要",
+      "todo": "ToDo",
+      "tip": "ヒント",
+      "important": "重要",
+      "question": "質問",
+      "example": "例",
+      "quote": "引用",
+      "bug": "バグ"
     },
     "columns": {
       "group": "基本ブロック",
@@ -332,6 +424,83 @@
       "invalidShape": "このビューの定義には表示対象がありません。上で選択するか、下で修正してください。",
       "definition": "定義"
     },
+    "chart": {
+      "title": "チャート",
+      "subtext": "プロパティを時系列で表示：折れ線、棒、カレンダーヒートマップ",
+      "layout": "チャート",
+      "settings": "チャートの設定",
+      "chooseProperty": "表示するものを選択",
+      "source": "ソース",
+      "headerMeta": "{range} · {type}",
+      "property": "プロパティ",
+      "noProperties": "表示できるものがまだありません。先にジャーナルエントリーかノートにプロパティを追加してください。",
+      "chartType": "チャート",
+      "suggested": "おすすめ",
+      "types": {
+        "line": "折れ線",
+        "bar": "棒",
+        "heatmap": "ヒートマップ"
+      },
+      "range": "期間",
+      "lastDays": "{count, plural, other {過去 # 日間}}",
+      "sameDay": "同じ日のエントリー",
+      "aggregates": {
+        "average": "平均",
+        "sum": "合計",
+        "min": "最小",
+        "max": "最大",
+        "count": "件数"
+      },
+      "missingDays": "記録のない日",
+      "missing": {
+        "gap": "空白にする",
+        "zero": "0 として数える"
+      },
+      "dateFrom": {
+        "label": "日付の基準",
+        "created": "作成日",
+        "modified": "更新日"
+      },
+      "propertyTypes": {
+        "text": "テキスト",
+        "number": "数値",
+        "checkbox": "チェックボックス",
+        "date": "日付",
+        "url": "URL",
+        "status": "ステータス",
+        "select": "選択",
+        "multiselect": "複数選択",
+        "relation": "リレーション",
+        "project": "プロジェクト",
+        "rating": "評価"
+      },
+      "noEntry": "エントリーなし",
+      "done": "完了",
+      "notDone": "未完了",
+      "logged": "記録あり",
+      "valueCount": "{count, plural, other {# 個の値}}",
+      "average": "平均",
+      "vsPrevious": "前の期間との比較",
+      "lowest": "最小",
+      "currentStreak": "現在の連続記録",
+      "longestStreak": "最長の連続記録",
+      "dayCount": "{count, plural, other {# 日}}",
+      "doneDays": "完了",
+      "loggedDays": "記録あり",
+      "mostCommon": "最頻値",
+      "ofTotal": "{part} / {total}",
+      "aria": "過去 {days} 日間の {property}",
+      "noData": "この期間にはまだ記録がありません。",
+      "loadFailed": "このチャートを読み込めませんでした。エントリー自体には影響ありません。",
+      "sourceJournal": "ジャーナル",
+      "history": {
+        "show": "履歴を表示",
+        "title": "{property} の履歴",
+        "range": "過去 13 週間",
+        "insert": "チャートブロックとしてコピー",
+        "copied": "チャートブロックをコピーしました。任意のノートに貼り付けてください。"
+      }
+    },
     "slashMenu": {
       "aria": "ブロックと操作",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "トグルとして",
         "asLinkedTask": "リンクされたタスクとして",
         "asReminder": "リマインダーとして"
       },
-      "actions": {
-        "insert": "挿入",
-        "open": "開く"
-      },
+      "close": "メニューを閉じる",
       "matchesAlias": "一致：",
       "noMatch": "「{query}」に一致するブロックはありません",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "ブロックをノートに移動",
         "searchPlaceholder": "ノートを検索…",
         "noResults": "一致するノートはありません",
-        "moved": "ブロックを「{title}」に移動しました",
         "failed": "ブロックを移動できませんでした"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "表示方法",
+        "embed": "埋め込み",
+        "link": "リンク"
+      },
       "title": {
         "image": "画像を追加",
         "media": "メディアを追加",
@@ -525,6 +694,11 @@
       "empty": "入力すると新しいタグを作成できます",
       "create": "#{tag} を作成"
     },
+    "pdfDisplay": {
+      "title": "PDF の表示方法",
+      "embed": "埋め込みビューアー",
+      "link": "ファイル名"
+    },
     "pasteLink": {
       "title": "貼り付け形式",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "アウトライン",
     "aria": "ドキュメントのアウトライン",
-    "emptyYet": "まだ見出しがありません",
     "readTime": "{count} 分で読めます",
     "words": "{count} 語",
     "created": "作成日",
-    "modified": "更新日"
+    "modified": "更新日",
+    "sync": {
+      "label": "同期",
+      "confirmed": "{time} にサーバーへ保存",
+      "pending": "{time} から待機中",
+      "sent": "送信中",
+      "rejected": "サーバーが直前の変更を拒否しました",
+      "notRecorded": "送信待ちのものはありません",
+      "localOnly": "ローカルのみ",
+      "notSyncing": "同期していません",
+      "waiting": "送信待ち"
+    }
   },
   "backlinks": {
     "sortRecent": "新しい順",
@@ -587,7 +771,18 @@
     "expandSection": "バックリンクセクションを展開",
     "showMore": "さらにバックリンクを {count} 件表示",
     "more": "ほか {count} 件",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "ポータルに表示"
+  },
+  "unlinkedMentions": {
+    "title": "リンクされていない言及",
+    "summary": "{count, plural, other {リンクされていない言及 # 件}}",
+    "sectionAria": "リンクされていない言及",
+    "fromAria": "{title} 内のリンクされていない言及",
+    "link": "リンク",
+    "linkAria": "{text} をリンク",
+    "gone": "リストを読み込んだ後にその言及が変更されました",
+    "linkFailed": "言及をリンクできませんでした"
   },
   "outgoingLinks": {
     "summary": "{count, plural, other {発リンク # 件}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "ノートをキャンバスに追加できませんでした"
   },
   "suggestedTags": {
-    "label": "おすすめのタグ：",
-    "hint": "このノートに最も似ているノートで使われているタグです。選択するまで何も追加されません。",
-    "acceptAria": "タグ {tag} を追加",
-    "support": "{count, plural, other {類似ノート # 件で使用}}",
-    "dismiss": "おすすめのタグを非表示"
+    "support": "{count, plural, other {類似ノート # 件で使用}}"
   },
   "comments": {
     "railAria": "コメント",
@@ -631,11 +822,9 @@
     "toolbarComment": "コメント",
     "commentPlaceholder": "コメントを追加…",
     "createdTooltip": "{date} {time} に作成",
-    "cancel": "キャンセル",
     "resolve": "解決",
     "edit": "コメントを編集",
     "delete": "コメントを削除",
-    "replyPlaceholder": "返信…",
     "attachAria": "ファイルを添付",
     "mentionAria": "人物、ページ、日付をメンション",
     "sendAria": "コメントを送信",
@@ -648,13 +837,7 @@
       "code": "コード"
     },
     "openImageAria": "画像 {name} を開く",
-    "openAttachmentAria": "添付ファイル {name} を開く",
-    "kind": {
-      "comment": "コメント",
-      "addition": "追加",
-      "deletion": "削除",
-      "substitution": "置き換え"
-    }
+    "openAttachmentAria": "添付ファイル {name} を開く"
   },
   "tagsRow": {
     "aria": "タグ",
@@ -663,6 +846,7 @@
     "removeAria": "タグを削除：{tag}",
     "inputPlaceholder": "タグ名を入力…",
     "recent": "最近使用",
+    "suggested": "おすすめ",
     "matching": "一致するタグ",
     "all": "すべてのタグ",
     "none": "タグが見つかりませんでした",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "プロパティ",
     "noteAria": "ノートのプロパティ",
-    "workspaceAria": "ワークスペースのプロパティ",
     "listAria": "プロパティリスト",
     "add": "プロパティの追加",
     "addDescription": "このノートに新しいプロパティを追加",
@@ -723,7 +906,6 @@
       "inProgress": "進行中",
       "done": "完了"
     },
-    "projectAlreadySet": "このノートにはすでにプロジェクトプロパティがあります",
     "projectPlaceholder": "プロジェクトなし",
     "projectSearch": "プロジェクトを検索",
     "projectEmpty": "プロジェクトはありません",
@@ -755,6 +937,9 @@
     "repositionHint": "ドラッグして位置を調整",
     "repositionSave": "保存",
     "repositionCancel": "キャンセル",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "resize": "ドラッグしてカバーをリサイズ",
     "credit": "{name} さんによる写真（Unsplash）",
     "focusFailed": "カバー画像の位置を保存できませんでした",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "フィルター",
-      "filters": "フィルター",
-      "clearAll": "すべてクリア",
-      "noFiltersApplied": "フィルターは適用されていません",
-      "addFiltersToNarrowDownYourNotes": "フィルターを追加してノートを絞り込めます",
       "match": "条件",
-      "allAnd": "すべて（AND）",
-      "anyOr": "いずれか（OR）",
-      "ofTheFollowing": "次の条件：",
       "match2": "条件",
       "all": "すべてに一致",
       "any": "いずれかに一致",
-      "of": "条件：",
       "addCondition": "条件の追加",
       "addFilter": "フィルターを追加",
       "addGroup": "グループを追加",
@@ -995,7 +1172,6 @@
       "available": "利用可能: ",
       "preview": "プレビュー",
       "fixExpressionErrorsToSeePreview": "プレビューを表示するには式のエラーを修正してください",
-      "usingNote": "使用するノート：「",
       "cancel": "キャンセル",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "フォルダーを読み込み中…",
       "suggested": "提案",
       "bestMatch": "ベストマッチ",
-      "current": "現在）",
       "allFolders": "すべてのフォルダー",
-      "noFoldersMatch": "一致するフォルダーはありません：\"",
-      "create": "作成：\"",
       "cancel": "キャンセル",
       "currentFolderBadge": "（現在）",
       "noFoldersMatchQuery": "「{query}」に一致するフォルダーはありません",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "デフォルト",
       "viewActions": "ビューの操作",
-      "rename": "名前を変更",
       "duplicate": "複製",
       "setAsDefault": "デフォルトとして設定",
       "delete": "削除",
-      "createNewView": "新しいビューの作成",
-      "createNewView2": "新しいビューの作成",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "カスタム列、フィルター、並べ替えを使用して新しいビューを作成します。",
-      "viewName": "ビュー名",
       "myCustomView": "カスタムビュー",
-      "baseConfiguration": "ベースとなる設定",
-      "copyFromCurrentView": "現在のビューからコピー",
-      "startFreshDefaultColumns": "最初から作成（デフォルトの列）",
       "cancel": "キャンセル",
-      "renameView": "ビューの名前を変更",
-      "enterANewNameForThisView": "このビューの新しい名前を入力してください。",
-      "viewName2": "ビュー名",
-      "viewName3": "ビュー名",
-      "cancel2": "キャンセル",
       "deleteView": "ビューの削除",
       "areYouSureYouWantToDelete": "このビューを削除してもよろしいですか？\"",
       "thisActionCannotBeUndone": "この操作は元に戻すことができません。",
@@ -1077,22 +1237,17 @@
       "layout": "レイアウト",
       "table": "テーブル",
       "list": "リスト",
-      "gallery": "ギャラリー",
-      "createView": "ビューを作成",
-      "save": "保存"
+      "gallery": "ギャラリー"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF を読み込めませんでした： ",
-      "download": "ダウンロード",
       "download2": "ダウンロード",
       "noFileAttached": "ファイルが添付されていません",
       "resizePdf": "PDF のサイズを変更",
       "resizeHtml": "HTML 埋め込みのサイズを変更",
       "alignLeft": "左揃え",
       "alignCenter": "中央揃え",
-      "alignRight": "右揃え",
-      "previousPage": "前のページ",
-      "nextPage": "次のページ"
+      "alignRight": "右揃え"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "タスクパネルで開く",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "レター（8.5 × 11 インチ）",
       "legal85X14In": "リーガル（8.5 × 14 インチ）"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "同期済み"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "単語数",
       "characters": "文字数",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "まだブックマークはありません",
       "moreOptions": "その他のオプション",
       "remove": "ブックマークを解除"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "開く",
-      "openToTheSide": "横に並べて開く",
-      "pinToTabs": "タブにピン留め",
-      "edit": "編集",
-      "delete": "削除",
-      "copyLink": "リンクをコピー"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "タグを読み込み中…",
@@ -1168,26 +1309,9 @@
       "cancel": "キャンセル"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "戻る",
-      "notes": "ノート",
-      "loadingNotes": "ノートを読み込み中…",
-      "noNotesWithThisTag": "このタグが付いたノートはありません",
-      "addThisTagToANoteToSeeItHere": "ノートにこのタグを追加すると、ここに表示されます",
-      "pinned": "ピン留め",
-      "allNotes": "すべてのノート",
-      "allNotesArePinned": "すべてのノートがピン留めされています",
-      "tasks": "タスク",
-      "unpinFromTag": "タグのピン留めを解除",
-      "unpin": "ピン留めを解除",
-      "pinToTag": "タグにピン留め",
-      "pin": "ピン留め",
       "tagActions": "タグの操作",
-      "editTagName": "タグ名の編集",
       "changeColor": "色を変更",
-      "deleteTag": "タグの削除",
-      "recent": "最近更新した順",
-      "created": "作成日順",
-      "alphabetical": "アルファベット順"
+      "deleteTag": "タグの削除"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "タグ名の変更",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "新規ノートを作成",
-      "viewSettings": "ビューの設定",
-      "displayDensity": "表示密度",
-      "comfortable": "ゆったり",
-      "compact": "コンパクト",
-      "showSummaries": "サマリーを表示",
       "cancel": "キャンセル"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "タグハブを開く"
   },
   "tagView": {
-    "moreActions": "その他の操作",
     "pin": {
       "action": "{count, plural, other {ノート # 件をタグにピン留め}}",
       "success": "{count, plural, other {ノート # 件をタグにピン留めしました}}",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, other {ノート # 件}}"
+    },
+    "noteTasks": {
+      "expand": "{title} のタスクを表示",
+      "collapse": "{title} のタスクを非表示",
+      "list": "{title} のタスク",
+      "progressOpen": "{open}/{total} 件未完了",
+      "progressDone": "{total}/{total} 件完了",
+      "nextDue": "次の期限",
+      "reminder": "リマインダー設定済み"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "検索に名前を付ける",
     "saveDialogPlaceholder": "例：仕事の会議",
     "cancel": "キャンセル",
-    "save": "保存",
-    "addToFilterHint": "Ctrl/Cmd を押しながらタグをクリックするとフィルターに追加されます"
+    "save": "保存"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "代替案",
+      "overflow": "オーバーフロー",
+      "menu": "執筆ツール",
+      "close": "執筆ツールを閉じる"
+    },
+    "menu": {
+      "aria": "エディターの操作",
+      "cut": "切り取り",
+      "copy": "コピー",
+      "paste": "貼り付け",
+      "selectAll": "すべてを選択",
+      "undo": "元に戻す",
+      "redo": "やり直す",
+      "comment": "コメント",
+      "addAlternative": "代替案を追加",
+      "suggestAlternatives": "代替案を提案",
+      "ghost": "ゴースト",
+      "revive": "復活",
+      "stash": "オーバーフローに退避",
+      "noSpellingSuggestions": "候補はありません",
+      "addToDictionary": "辞書に追加",
+      "clipboardFailed": "クリップボードを使用できませんでした"
+    },
+    "alternatives": {
+      "railAria": "代替案",
+      "hint": "{total} 件中 {position} 件目 ↑ ↓",
+      "original": "オリジナル",
+      "byYou": "自分で作成",
+      "byAI": "AI の提案",
+      "showing": "表示中",
+      "addPlaceholder": "代替案を追加…",
+      "removeSuggestions": "提案を削除",
+      "removeVariant": "代替案を削除",
+      "empty": "テキストを選択して「代替案を追加」を選ぶと、別の言い回しを残せます。",
+      "suggesting": "代替案を提案中…",
+      "suggestFailed": "代替案を提案できませんでした",
+      "noSuggestions": "新しい代替案は提案されませんでした"
+    },
+    "overflow": {
+      "railAria": "オーバーフロー",
+      "addPlaceholder": "残しておきたいことを書く…",
+      "empty": "ここに退避した行や書いた行は、本文の外でこのノートに残ります。",
+      "dragHint": "ノートへドラッグ",
+      "copy": "コピー",
+      "copied": "コピーしました",
+      "delete": "削除"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "ノートをロック",
+    "unlockNote": "ノートのロックを解除",
+    "lockFolder": "フォルダーをロック",
+    "unlockFolder": "フォルダーのロックを解除",
+    "toggleFailed": "ロックを変更できませんでした",
+    "readOnlyIndicator": "ロック中。自分とエージェントには読み取り専用です。",
+    "externalEditRestored": "「{title}」はロックされているため、外部での編集は取り消されました",
+    "externalEditRestoredHint": "編集されたテキストは、ノートのバージョン履歴に保存されています。"
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "人物",
+        "plural": "人物",
+        "fields": {
+          "company": "会社",
+          "role": "役職",
+          "email": "メール",
+          "phone": "電話"
+        },
+        "inverse": {
+          "company": "人物"
+        },
+        "template": {
+          "name": "人物",
+          "context": "経緯",
+          "contextHint": "出会ったきっかけ、関心のあること",
+          "notes": "メモ"
+        }
+      },
+      "company": {
+        "name": "会社",
+        "plural": "会社",
+        "fields": {
+          "website": "Web サイト",
+          "industry": "業種",
+          "location": "所在地"
+        },
+        "template": {
+          "name": "会社",
+          "overview": "概要",
+          "overviewHint": "事業内容、知り合い",
+          "notes": "メモ"
+        }
+      },
+      "meeting": {
+        "name": "ミーティング",
+        "plural": "ミーティング",
+        "fields": {
+          "date": "日付",
+          "attendees": "参加者",
+          "company": "会社"
+        },
+        "inverse": {
+          "attendees": "ミーティング",
+          "company": "ミーティング"
+        },
+        "template": {
+          "name": "ミーティング",
+          "agenda": "アジェンダ",
+          "notes": "メモ",
+          "actionItems": "アクションアイテム"
+        }
+      },
+      "book": {
+        "name": "本",
+        "plural": "本",
+        "fields": {
+          "author": "著者",
+          "shelf": "本棚",
+          "rating": "評価",
+          "finished": "読了日"
+        },
+        "shelf": {
+          "toRead": "読みたい",
+          "reading": "読書中",
+          "read": "読了"
+        },
+        "template": {
+          "name": "本",
+          "highlights": "ハイライト",
+          "thoughts": "感想"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} が {tag} になりました。テンプレートを追加しました。",
+      "templateChanged": "テンプレートの追加後にノートが変更されたため、そのまま残します。",
+      "undoFailed": "元に戻せませんでした",
+      "addFailed": "タグを追加できませんでした",
+      "removeFailed": "タグを削除できませんでした",
+      "removedKept": "#{tag} を削除しました。{count} 個の値は保持されます。",
+      "removedKeptOne": "#{tag} を削除しました。1 個の値は保持されます。"
+    },
+    "picker": {
+      "create": "#{tag} を作成",
+      "fillsTemplate": "この空のノートに {tag} のテンプレートを入力します"
+    },
+    "hub": {
+      "strip": {
+        "title": "すぐ使えるタグ",
+        "subtitle": "フィールド付きのタグです。タグを付けるまで、ノートは変わりません。",
+        "notNow": "今はしない",
+        "add": "追加",
+        "addFields": "フィールドを追加",
+        "added": "追加済み",
+        "alreadyOn": "すでに {count} 件のノートに付いています",
+        "alreadyOnOne": "すでに 1 件のノートに付いています"
+      },
+      "dialog": {
+        "title": "#{tag} に {preset} のフィールドを追加しますか？",
+        "body": "#{tag} はすでに {count} 件のノートに付いています。それらのノートは現在の内容をすべて保持し、これらのフィールドが追加されます。入力されるまでは空です。",
+        "bodyOne": "#{tag} はすでに 1 件のノートに付いています。そのノートは現在の内容をすべて保持し、これらのフィールドが追加されます。入力されるまでは空です。",
+        "template": "テンプレート（{sections}）は、空のノートにのみ入力されます。",
+        "alsoAddsPrefix": "さらに",
+        "alsoAddsSuffix": "を {field} フィールド用に追加します。",
+        "useAnotherName": "別の名前を使う",
+        "nameLabel": "新しいタグ名",
+        "namePlaceholder": "contact",
+        "cancel": "キャンセル",
+        "addFields": "フィールドを追加"
+      },
+      "toast": {
+        "added": "#{tag} を追加しました",
+        "addedFields": "#{tag} に {preset} のフィールドを追加しました"
+      },
+      "hasFields": "フィールドあり"
+    },
+    "tasks": {
+      "thisTask": "このタスク",
+      "viaTag": "{name}（#{via} 経由）",
+      "clearValue": "{name} をクリア",
+      "chipAria": "{field}：{title}"
+    },
+    "panel": {
+      "via": "#{tag} 経由",
+      "groupMenu": "{tag} のオプション",
+      "openTag": "#{tag} を開く",
+      "thisNote": "このノート"
+    },
+    "offer": {
+      "text": "テキストの下に {tag} のテンプレートを追加",
+      "add": "追加",
+      "dismiss": "閉じる",
+      "addFailed": "テンプレートを追加できませんでした"
+    },
+    "settings": {
+      "title": "#{tag} の設定",
+      "close": "閉じる",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "onCounts": "{notes, plural, other {# 件のノート}}と{tasks, plural, other {# 件のタスク}}に付与",
+      "onNotes": "{count, plural, other {# 件のノート}}に付与",
+      "headerFields": "{count, plural, other {# 個のフィールド}}",
+      "editTag": "タグを編集",
+      "syncNote": "変更は他のデバイスに同期されます",
+      "newerVersion": "新しいバージョンの Memry がこのタグを変更しました。ここで編集するには Memry をアップデートしてください。",
+      "sections": {
+        "appearance": "外観",
+        "extends": "継承",
+        "fields": "フィールド · {count}",
+        "template": "テンプレート"
+      },
+      "appearance": {
+        "icon": "アイコン",
+        "color": "色",
+        "customColor": "カスタム",
+        "category": "カテゴリ",
+        "noCategory": "カテゴリなし"
+      },
+      "extends": {
+        "nothing": "なし",
+        "hint": "別のタグのフィールドを引き継ぎ、そのテーブルに表示されます。",
+        "hintSet": "{tag} のノートは {parent} のフィールドを引き継ぎ、{parent} のテーブルに表示されます。"
+      },
+      "types": {
+        "text": "テキスト",
+        "number": "数値",
+        "date": "日付",
+        "url": "URL",
+        "status": "ステータス",
+        "select": "選択",
+        "multiselect": "複数選択",
+        "checkbox": "チェックボックス",
+        "relation": "リレーション"
+      },
+      "fields": {
+        "empty": "フィールドはまだありません。追加すると、すべての #tag ノートに同じプロパティが付きます。",
+        "fromParent": "#{tag} から · そちらで編集",
+        "inverseSub": "{target} に {inverse} として表示",
+        "anyNoteSub": "任意のノートにリンク",
+        "actions": "{field} の操作",
+        "rename": "名前を変更…",
+        "relationSettings": "リレーションの設定",
+        "remove": "削除…"
+      },
+      "addField": {
+        "button": "フィールドを追加",
+        "namePlaceholder": "フィールド名",
+        "existing": "既存のプロパティ",
+        "existingSub": "{type} · {count, plural, other {# 件のノート}}に付与 · 再利用",
+        "newType": "新しいフィールドの種類",
+        "relationSub": "タグ付きのノートにリンク",
+        "submit": "フィールドを追加",
+        "reserved": "{name} は予約されているため、フィールドにできません。",
+        "taken": "#{tag} にはすでに {name} があります。"
+      },
+      "relation": {
+        "target": "次のタグが付いたノートを指す",
+        "pickTag": "タグを選択",
+        "howMany": "個数",
+        "one": "1 つ",
+        "many": "複数",
+        "inverseLabel": "{target} のページで、次の名前で一覧表示",
+        "inverseLabelAny": "リンク先のページで、次の名前で一覧表示",
+        "inverseHint": "各 {target} に表示される読み取り専用のリストです。{target} のノートには何も書き込まれません。",
+        "inverseHintAny": "リンクされた各ノートに表示される読み取り専用のリストです。それらのノートには何も書き込まれません。"
+      },
+      "shared": {
+        "title": "#{tag} の新しいフィールド",
+        "existsWith": "{name} はこの Vault にすでに存在します（{options}）。",
+        "existsAs": "{name} はこの Vault に {type} プロパティとしてすでに存在します。",
+        "shareWith": "#{tag} は {others} 件のノートとこれを共有します。",
+        "shareAny": "#{tag} は他のノートとこれを共有します。",
+        "useInstead": "代わりに {name} を使う",
+        "share": "{name} を共有"
+      },
+      "template": {
+        "edit": "テンプレートを編集",
+        "none": "テンプレートはまだありません。テンプレートは、空のノートにタグが付いたときに内容を入力します。",
+        "create": "テンプレートを作成",
+        "defaultHeading": "メモ",
+        "inherited": "#{tag} から",
+        "autofill": "空のノートに #{tag} が付いたときに入力する"
+      },
+      "remove": {
+        "title": "#{tag} から {field} を削除しますか？",
+        "body": "{field} は{filled, plural, other {# 件のノート}}に入力されています。それらの値は通常のプロパティとしてノートに残り、{empty, plural, other {空の # 個のスロットは消えます}}。",
+        "confirm": "フィールドを削除"
+      },
+      "rename": {
+        "title": "{from} を {to} に名前変更",
+        "titleEmpty": "{from} の名前を変更",
+        "label": "新しい名前",
+        "body": "{count, plural, other {# 件のノート}}に {field} の値があります。Memry は各ファイルとそのプロパティ内のキーの名前を変更します。Obsidian でも新しい名前が表示されます。",
+        "progress": "ノート内の名前を変更中",
+        "confirm": "名前を変更",
+        "taken": "このタグにはすでに {name} があります。",
+        "done": "{count, plural, other {# 件}}の項目で {from} を {to} に名前変更しました。",
+        "skipped": "{count, plural, other {# 件}}の項目で {from} を {to} に名前変更しました。{locked, plural, =0 {} other {ロックされた # 件のノートは、ロック解除時に完了します。}}{existing, plural, =0 {} other {# 件のノートはすでに {to} があったため、両方を保持します。}}"
+      },
+      "delete": {
+        "button": "タグを削除",
+        "title": "#{tag} を削除しますか？",
+        "body": "#{tag} は{notes, plural, other {# 件のノート}}から削除され、タグは{fields, plural, other {# 個のフィールド}}とテンプレートとともになくなります。",
+        "bodyNoTemplate": "#{tag} は{notes, plural, other {# 件のノート}}から削除され、タグは{fields, plural, other {# 個のフィールド}}とともになくなります。",
+        "bodyPlain": "#{tag} は、タグに含むすべてのノートから削除されます。",
+        "statNotes": "ノートのテキストは残ります",
+        "statValues": "値はプロパティとして残ります",
+        "plainText": "テキスト内で #{tag} に言及しているノートでは、プレーンテキストとして残ります。",
+        "confirm": "タグを削除",
+        "done": "#{tag} を削除しました。"
+      },
+      "errors": {
+        "addField": "フィールドを追加できませんでした。",
+        "removeField": "フィールドを削除できませんでした。",
+        "renameField": "フィールドの名前を変更できませんでした。",
+        "moveField": "フィールドを移動できませんでした。",
+        "relation": "リレーションを保存できませんでした。",
+        "extends": "このタグの継承元を変更できませんでした。",
+        "template": "テンプレートを更新できませんでした。",
+        "deleteTag": "タグを削除できませんでした。",
+        "icon": "アイコンを変更できませんでした。",
+        "color": "色を変更できませんでした。",
+        "category": "カテゴリを変更できませんでした。"
+      }
+    },
+    "fill": {
+      "action": "ノートから入力",
+      "reading": "ノートを読み込み中…",
+      "disclosure": "エージェントモデル（{model}）がこのノートを読み取り、値を提案します。送信されるのはこのノートだけです。承認するまで何も保存されません。",
+      "disclosureLocal": "ローカルモデル（{model}）がこのデバイス上でこのノートを読み取り、値を提案します。データはデバイスの外に出ず、承認するまで何も保存されません。",
+      "disclosureMany": "エージェントモデル（{model}）がこれらのノートを 1 件ずつ読み取り、値を提案します。送信されるのはそれらのノートだけです。承認するまで何も保存されません。",
+      "disclosureLocalMany": "ローカルモデル（{model}）がこのデバイス上でこれらのノートを読み取り、値を提案します。データはデバイスの外に出ず、承認するまで何も保存されません。",
+      "suggest": "値を提案",
+      "notNow": "今はしない",
+      "countOne": "· {count} 件の提案",
+      "count": "· {count} 件の提案",
+      "dismiss": "閉じる",
+      "acceptAll": "すべて承認",
+      "accept": "{field} を承認",
+      "reject": "{field} を却下",
+      "notInNote": "ノートに記載なし",
+      "createHint": "承認すると新しい #{tag} を作成します",
+      "nothingFound": "このノートには、空のフィールドに入力できる内容がありません",
+      "failed": "値を提案できませんでした。{message}",
+      "saveFailed": "承認した値を保存できませんでした",
+      "bulkAction": "空のフィールドを入力",
+      "bulkTitle": "空のフィールドを入力",
+      "bulkReading": "{total} 件中 {done} 件のノート · ノートを読み込み中…",
+      "bulkRead": "{total} 件中 {done} 件のノートを読み込み済み",
+      "stop": "停止",
+      "name": "名前",
+      "nothingInRow": "見つかりませんでした",
+      "found": "{count} 件見つかりました",
+      "reviewOneByOne": "1 件ずつ確認",
+      "acceptRow": "{title} の値を承認",
+      "rejectRow": "{title} をスキップ",
+      "bulkSavedOne": "{notes} 件のノートで {count} 個のフィールドを入力しました",
+      "bulkSaved": "{notes} 件のノートで {count} 個のフィールドを入力しました"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "{title} を次として作成",
+      "asPrefix": "作成",
+      "asSuffix": "として",
+      "failed": "ノートを作成できませんでした",
+      "lastUsed": "前回使ったもの",
+      "noteWord": "ノート",
+      "plainNote": "通常のノート",
+      "readyMade": "すぐ使えるタグ",
+      "row": "「{title}」を作成",
+      "rowHint": "{types} として"
+    },
+    "hover": {
+      "at": "所属",
+      "lastMet": "最後に会った日 · {title}",
+      "lastMetOn": "{date} に最後に会った · {title}",
+      "mentionedIn": "{count, plural, other {# 件のノートで言及}}",
+      "open": "開く",
+      "tasks": "{count, plural, other {# 件のタスク · {field}}}"
+    },
+    "inline": {
+      "aria": "テキスト内の #{tag}",
+      "explain": "テキスト内では、タグはラベルです。このノートは #{tag} の「言及されたノート」に表示されます。",
+      "made": "このノートのタグに #{tag} を追加しました",
+      "make": "このノートを {tag} にする",
+      "makeFailed": "タグを追加できませんでした",
+      "makeHint": "ヘッダーに #{tag} を追加し、そのフィールドを表示します",
+      "meta": "{count, plural, other {# 個のオブジェクト}} · {fields, plural, other {# 個のフィールド}}",
+      "metaNamed": "{count, plural, =1 {# {one}} other {# {other}}} · {fields, plural, other {# 個のフィールド}}",
+      "open": "#{tag} を開く",
+      "remove": "テキストからタグを削除"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "{field} として",
+      "due": "期限 {date}",
+      "inTheText": "テキスト内",
+      "mentionedIn": "言及元",
+      "tasks": "タスク",
+      "title": "ここにリンク"
+    },
+    "mention": {
+      "notes": "ノート"
+    },
+    "picker": {
+      "create": "新しい {tag}",
+      "createNamed": "新しい {tag}「{title}」",
+      "empty": "一致するものはありません",
+      "search": "{tag} を検索",
+      "untitled": "新しい {tag}"
+    },
+    "quickFields": {
+      "add": "{field} を追加",
+      "aria": "{title} の最初のフィールド",
+      "done": "完了",
+      "later": "後で",
+      "newObject": "新しい {tag}",
+      "saveFailed": "フィールドを保存できませんでした"
+    },
+    "table": {
+      "untitled": "新しい {tag}",
+      "newInGroup": "{group} に新しい {tag}",
+      "newInGroupHint": "⌘↵ で新しいタブで開く",
+      "new": "新しい {tag}",
+      "includes": "{field} に含む",
+      "removeFilter": "フィルターを削除",
+      "shown": "{total} 件中 {shown} 件",
+      "saveView": "ビューを保存",
+      "mentionedMeta": "{count, plural, other {本文に '#'{tag} を含むノート # 件}}",
+      "saveFailed": "フィールドを保存できませんでした",
+      "created": "{title} を作成しました"
+    },
+    "relationDrop": {
+      "title": "「{title}」に #{tag} を追加しますか？",
+      "body": "このフィールドは #{tag} が付いたノートのみリンクできます。Memry は「{title}」のヘッダーに #{tag} を追加してから、ここにリンクします。",
+      "confirm": "#{tag} を追加してリンク",
+      "cancel": "キャンセル",
+      "added": "「{title}」が #{tag} になり、リンクされました",
+      "notANote": "#{tag} としてここにリンクできるのはノートだけです",
+      "failed": "このノートをリンクできませんでした"
+    }
   },
   "names": {
     "also": "別名",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "ノートを検索",
     "pickerEmpty": "一致するノートはありません",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "詳細を追加"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "ポータル",
+        "subtext": "別の場所のノートやブロックをライブ表示"
+      },
+      "searchPortal": {
+        "title": "検索ポータル",
+        "subtext": "クエリに一致するブロックのライブリスト"
+      }
+    },
+    "picker": {
+      "aria": "ポータルにするノートまたはブロックを選択",
+      "notes": "ノート",
+      "blocks": "ブロック",
+      "loading": "検索中…",
+      "empty": "一致するノートやブロックはありません",
+      "hintInsert": "ポータルを挿入",
+      "hintClose": "閉じる",
+      "keyEsc": "Esc",
+      "create": "ノート「{query}」を作成",
+      "createFailed": "そのノートを作成できませんでした",
+      "stampFailed": "そのブロックをポータル用に準備できませんでした",
+      "retargetFailed": "ポータルをそのブロックに向けられませんでした"
+    },
+    "insert": {
+      "cycle": "ポータルは、ノート自身を表示できません。"
+    },
+    "copy": {
+      "done": "ポータルをコピーしました。任意のノートに貼り付けてください。",
+      "failed": "このブロックのポータルをコピーできませんでした"
+    },
+    "menu": {
+      "copyAsPortal": "ポータルとしてコピー",
+      "hideInPortal": "このポータルで非表示"
+    },
+    "usage": {
+      "chipAria": "{count, plural, other {他の # か所で使用中}}"
+    },
+    "whereUsed": {
+      "aria": "このブロックの使用箇所",
+      "portals": "ポータル",
+      "links": "リンク",
+      "openBeside": "横に開く",
+      "loadFailed": "このブロックの表示箇所を読み込めませんでした"
+    },
+    "hiddenBlocks": {
+      "title": "非表示のブロック",
+      "showAll": "すべて表示",
+      "search": "非表示のブロックを検索",
+      "showFailed": "このブロックを表示できませんでした"
+    },
+    "searchQuery": {
+      "titleNew": "検索ポータル",
+      "titleEdit": "クエリを編集",
+      "text": "含む語句",
+      "textPlaceholder": "ブロック内の語句",
+      "tag": "タグ",
+      "tagPlaceholder": "exam",
+      "limit": "上限",
+      "footer": "結果は {limit} 件までです。",
+      "create": "作成",
+      "apply": "適用"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "このブロックをすべての場所から削除しますか？",
+        "note": "このノートをすべての場所から削除しますか？"
+      },
+      "description": {
+        "block": "「{title}」は、他の{count, plural, other {# 件のノート}}にも表示されています。",
+        "note": "「{title}」は、他の{count, plural, other {# 件のノート}}で表示またはリンクされています。"
+      },
+      "manyNotes": "{count} 件のノート",
+      "source": "{title}（元）",
+      "removeHere": "代わりにここで非表示",
+      "cancel": "キャンセル",
+      "everywhere": "すべての場所から削除",
+      "undoToast": "{count, plural, other {削除したブロックは、他の # 件のノートに表示されていました。}}",
+      "undo": "元に戻す"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "全文",
+      "brief": "要約",
+      "key": "要点",
+      "takeaway": "要旨",
+      "topic": "トピック"
+    },
+    "chrome": {
+      "fold": "ノートを折りたたむ",
+      "unfold": "{level} に折りたたみ中。全文を表示",
+      "words": "{count, plural, other {# 語}}",
+      "writing": "作成中…",
+      "writtenBy": "{agent} が作成",
+      "retry": "前回の実行に失敗しました · 再試行",
+      "captionOff": "設定 → AI で「長いノートを要約」をオンにしてください",
+      "captionNoAgent": "エージェント未接続 · 設定 → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "長いノートですか？ざっと目を通しましょう。",
+      "body": "重要な文まで折りたたみ、必要な段落だけを開けます。",
+      "dismiss": "了解"
+    },
+    "pill": {
+      "opened": "{count, plural, other {# 個の段落を展開中}}",
+      "escape": "esc",
+      "copy": "テキストとしてコピー",
+      "copied": "コピーしました",
+      "aria": "折りたたみビュー",
+      "hintMac": "ピンチ、⌘ を押しながらスクロール、またはこのバー上でスクロールしてズーム · 段落をクリックして開く",
+      "hint": "ピンチ、Ctrl を押しながらスクロール、またはこのバー上でスクロールしてズーム · 段落をクリックして開く"
+    },
+    "view": {
+      "aria": "折りたたみ（{level}）ビュー",
+      "paragraphOpen": "全文に展開済み · もう一度クリックして折りたたむ",
+      "paragraphFold": "この段落を折りたたむ",
+      "paragraphOpenAction": "この段落を全文表示",
+      "unfoldSection": "セクション {heading} を展開",
+      "jumpToParagraph": "この段落を全文表示：{topic}",
+      "untitledSection": "無題",
+      "skipped": {
+        "code": "… {count, plural, other {コードブロック # 件}}",
+        "table": "… {count, plural, other {表 # 件}}",
+        "image": "… {count, plural, other {画像 # 件}}",
+        "callout": "… {count, plural, other {コールアウト # 件}}",
+        "embed": "… {count, plural, other {埋め込み # 件}}",
+        "other": "… {count, plural, other {他のブロック # 件}}"
+      }
+    }
   }
 }

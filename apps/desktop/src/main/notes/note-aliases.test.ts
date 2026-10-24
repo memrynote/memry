@@ -124,6 +124,6 @@ describe('editNoteAliasesCommand', () => {
     ])
 
     const aliases = parseNote(fs.readFileSync(file, 'utf8')).frontmatter.aliases ?? []
-    expect([...aliases].sort()).toEqual(['B', 'C'])
+    expect([...aliases].toSorted()).toEqual(['B', 'C'])
   })
 })

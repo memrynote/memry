@@ -119,7 +119,7 @@ export function relationLinksOf(graph: Graph, nodeId: string): GraphRelationLink
       sourceId: source,
       targetId: target,
       otherId,
-      otherLabel: (graph.getNodeAttribute(otherId, 'label') as string) ?? ''
+      otherLabel: graph.getNodeAttribute(otherId, 'label') ?? ''
     })
   })
   return links

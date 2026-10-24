@@ -67,7 +67,7 @@ describe('discoverGoogleCalendarSources', () => {
       .from(calendarSources)
       .where(eq(calendarSources.kind, 'calendar'))
       .all()
-      .sort((left, right) => left.remoteId.localeCompare(right.remoteId))
+      .toSorted((left, right) => left.remoteId.localeCompare(right.remoteId))
 
     expect(rows.map((row) => row.remoteId)).toEqual([
       'holidays@group.v.calendar.google.com',

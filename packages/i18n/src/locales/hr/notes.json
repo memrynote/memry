@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Nije pronađeno – kliknite da biste stvorili „{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "Radnje poveznice",
+    "open": "Otvori",
+    "openInNewTab": "Otvori u novoj kartici",
+    "openToTheSide": "Otvori sa strane",
+    "edit": "Uredi poveznicu",
+    "copy": "Kopiraj poveznicu",
+    "unlink": "Ukloni poveznicu",
+    "displayRow": "Prikaz…",
+    "sizeNone": "Nema",
+    "sizeSmall": "Mala",
+    "sizeMedium": "Srednja",
+    "showCover": "Prikaži naslovnicu",
+    "showPreview": "Prikaži pregled",
+    "copyFailed": "Nije moguće kopirati poveznicu"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Ponovno uvezi iz Readwisea",
+    "refreshAction": "Osvježi podatke o knjizi",
+    "syncsOn": "Readwise se sinkronizira na uređaju {device}.",
+    "syncsOnAnotherDevice": "Readwise se sinkronizira na drugom uređaju.",
+    "takeOverHint": "Sinkronizirajte na tom uređaju ili preuzmite u Postavke → Uvoz.",
+    "reimport": {
+      "title": "Ponovno uvesti „{title}” iz Readwisea?",
+      "body": "Odjeljak Readwise prepisuje se od nule. Sve što ste u njemu napisali bit će izgubljeno.",
+      "note": "Tekst izvan odjeljka i svojstva bilješke ostaju kakvi jesu.",
+      "cancel": "Odustani",
+      "confirm": "Ponovno uvezi"
+    },
+    "commands": {
+      "reimported": "Ponovno uvezeno iz Readwisea",
+      "refreshed": "Podaci o knjizi su osvježeni",
+      "failed": "Nije moguće dovršiti naredbu za Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Nije odabrana nijedna bilješka",
@@ -25,6 +61,7 @@
       "willSync": "Bilješka će se sinkronizirati s oblakom",
       "renameFailed": "Preimenovanje bilješke nije uspjelo",
       "titleRequired": "Bilješka mora imati naslov",
+      "duplicateTitle": "Još jedna bilješka u mapi {folder} također se zove „{title}”. Poveznice na te bilješke sadržavat će njihovu mapu.",
       "toggleLocalOnlyFailed": "Promjena postavke „Samo lokalno” nije uspjela",
       "toggleFullWidthFailed": "Promjena pune širine nije uspjela",
       "pathCopied": "Putanja kopirana",
@@ -98,6 +135,7 @@
       "openToTheSide": "Otvori sa strane",
       "newNote": "Nova bilješka",
       "newFolder": "Nova mapa",
+      "showTasks": "Prikaži zadatke",
       "expandSubfolders": "Proširi sve podmape",
       "collapseSubfolders": "Sažmi sve podmape",
       "rename": "Preimenuj",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "Ukloni iz favorita",
       "journalSettings": "Postavke dnevnika…"
     },
-    "nav": {
-      "label": "Navigacija",
-      "ariaExpanded": "Odjeljak navigacije, proširen",
-      "ariaCollapsed": "Odjeljak navigacije, sažet",
-      "saveFailed": "Nije moguće spremiti stanje odjeljka navigacije"
-    },
     "viewOptions": {
       "label": "Mogućnosti prikaza",
       "notesFirst": "Bilješke prije mapa",
@@ -138,7 +170,15 @@
       "folderSuffix": "mapa",
       "moreItems": "…i još {count}",
       "deleting": "Brisanje…",
-      "deleteCount": "Izbriši {count}"
+      "deleteCount": "Izbriši {count}",
+      "journalFolderWarning": "To uključuje mapu vašeg dnevnika. Svaki zapis dnevnika u njoj briše se na svim vašim uređajima."
+    },
+    "journalChange": {
+      "leaveTitle": "Pretvoriti zapise dnevnika u bilješke?",
+      "leaveBody": "Ako se premjeste iz mape dnevnika ili im se naziv promijeni izvan formata datuma, zapisi dnevnika postaju obične bilješke i napuštaju vaš Dnevnik. Na vašim drugim uređajima ti se dani uklanjaju iz Dnevnika, a umjesto njih pojavljuju se bilješke.",
+      "joinTitle": "Pretvoriti bilješke u zapise dnevnika?",
+      "joinBody": "Datoteke nazvane prema formatu datuma dnevnika unutar mape dnevnika postaju zapisi dnevnika. Na vašim drugim uređajima te se bilješke zamjenjuju zapisima dnevnika.",
+      "confirm": "Nastavi"
     },
     "toast": {
       "selectionBookmarked": "Stavke dodane u oznake: {count}",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "Naslov",
       "listPlaceholder": "Stavka popisa",
       "todoPlaceholder": "Stavka popisa zadataka",
-      "htmlComment": "Skriveni HTML komentar"
+      "htmlComment": "Skriveni HTML komentar",
+      "percentComment": "Skriveni komentar",
+      "readwise": {
+        "noteStart": "Readwise · sinkronizira se automatski",
+        "noteEnd": "Kraj odjeljka Readwise",
+        "dayStart": "Readwise · današnja istaknuta mjesta",
+        "dayEnd": "Kraj Readwisea",
+        "hint": "Uredite unutar ovog odjeljka i Readwise ga prestaje ažurirati."
+      }
     },
     "table": {
       "keyboardMenuAria": "Radnje tablice za redak {row}, stupac {column}",
-      "keyboardMenuTitle": "Redak {row} · Stupac {column}"
+      "keyboardMenuTitle": "Redak {row} · Stupac {column}",
+      "sizePicker": {
+        "aria": "Veličina tablice. Strelicama odaberite retke i stupce, zatim pritisnite Enter.",
+        "size": "{rows, plural, one {# redak} few {# retka} other {# redaka}} × {columns, plural, one {# stupac} few {# stupca} other {# stupaca}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Izbriši redak} few {Izbriši # retka} other {Izbriši # redaka}}",
+        "addRowsAbove": "{count, plural, one {Dodaj redak iznad} few {Dodaj # retka iznad} other {Dodaj # redaka iznad}}",
+        "addRowsBelow": "{count, plural, one {Dodaj redak ispod} few {Dodaj # retka ispod} other {Dodaj # redaka ispod}}",
+        "deleteColumns": "{count, plural, one {Izbriši stupac} few {Izbriši # stupca} other {Izbriši # stupaca}}",
+        "addColumnsLeft": "{count, plural, one {Dodaj stupac lijevo} few {Dodaj # stupca lijevo} other {Dodaj # stupaca lijevo}}",
+        "addColumnsRight": "{count, plural, one {Dodaj stupac desno} few {Dodaj # stupca desno} other {Dodaj # stupaca desno}}"
+      }
     },
     "list": {
       "bulleted": "Popis s grafičkim oznakama",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "Sakrij lokalni graf",
       "showLocalGraph": "Prikaži lokalni graf",
       "moreActions": "Više radnji",
+      "searchActions": "Pretraži radnje...",
+      "noMatchingActions": "Nema odgovarajućih radnji",
       "find": "Pronađi…",
       "versionHistory": "Povijest verzija",
       "export": "Izvezi",
@@ -215,6 +277,8 @@
       "notSynced": "Još nije sinkronizirano na ovaj uređaj",
       "revealFailed": "Prikazivanje datoteke nije uspjelo",
       "openFailed": "Otvaranje datoteke nije uspjelo",
+      "showAsLink": "Prikaži kao poveznicu",
+      "showAsEmbed": "Prikaži ugrađeno",
       "missingTitle": "Datoteka privitka nedostaje",
       "missingExpected": "Očekivana datoteka: {name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "Preimenuj",
       "renamed": "Preimenovano u {name}",
       "failed": "Preimenovanje privitka nije uspjelo"
+    },
+    "imageLightbox": {
+      "menuItem": "Prikaži veće",
+      "title": "Preglednik slika",
+      "zoomIn": "Povećaj",
+      "zoomOut": "Smanji",
+      "reset": "Vrati zumiranje"
+    },
+    "imageCrop": {
+      "menuItem": "Obreži…",
+      "title": "Obreži sliku",
+      "description": "Povucite preko slike da odaberete što bilješka prikazuje. Izvorna datoteka ostaje kakva jest.",
+      "reset": "Prikaži cijelu sliku",
+      "cancel": "Odustani",
+      "apply": "Obreži",
+      "unavailable": "Slika se još nije učitala pa je nije moguće obrezati"
     },
     "attachmentsDialog": {
       "title": "Privici",
@@ -248,12 +328,24 @@
       "title": "Oblačić",
       "group": "Osnovni blokovi",
       "subtext": "Istaknite važne informacije",
+      "customSubtext": "Vaša prilagođena vrsta isticanja",
       "changeType": "Promijeni vrstu oblačića",
+      "expand": "Proširi isticanje",
+      "collapse": "Sažmi isticanje",
       "menuLabel": "Vrsta oblačića",
       "info": "Informacija",
       "warning": "Upozorenje",
       "error": "Greška",
-      "success": "Uspjeh"
+      "success": "Uspjeh",
+      "note": "Bilješka",
+      "abstract": "Sažetak",
+      "todo": "Za napraviti",
+      "tip": "Savjet",
+      "important": "Važno",
+      "question": "Pitanje",
+      "example": "Primjer",
+      "quote": "Citat",
+      "bug": "Greška"
     },
     "columns": {
       "group": "Osnovni blokovi",
@@ -332,6 +424,83 @@
       "invalidShape": "Definicija ovog prikaza nema izvor. Odaberite ga gore ili ispravite definiciju u nastavku.",
       "definition": "Definicija"
     },
+    "chart": {
+      "title": "Grafikon",
+      "subtext": "Prikažite svojstvo kroz vrijeme: crta, stupci ili kalendarska toplinska karta",
+      "layout": "Grafikon",
+      "settings": "Postavke grafikona",
+      "chooseProperty": "Odaberite što prikazati",
+      "source": "Izvor",
+      "headerMeta": "{range} · {type}",
+      "property": "Svojstvo",
+      "noProperties": "Još nema ničega za prikaz. Najprije dodajte svojstvo zapisu dnevnika ili bilješci.",
+      "chartType": "Grafikon",
+      "suggested": "Predloženo",
+      "types": {
+        "line": "Crta",
+        "bar": "Stupci",
+        "heatmap": "Toplinska karta"
+      },
+      "range": "Raspon",
+      "lastDays": "{count, plural, =1 {Zadnji dan} one {Zadnjih # dan} few {Zadnja # dana} other {Zadnjih # dana}}",
+      "sameDay": "Zapisi istog dana",
+      "aggregates": {
+        "average": "Prosjek",
+        "sum": "Zbroj",
+        "min": "Najniže",
+        "max": "Najviše",
+        "count": "Broj"
+      },
+      "missingDays": "Dani koji nedostaju",
+      "missing": {
+        "gap": "Ostavi prazninu",
+        "zero": "Računaj kao nulu"
+      },
+      "dateFrom": {
+        "label": "Datum prema",
+        "created": "Stvoreno",
+        "modified": "Izmijenjeno"
+      },
+      "propertyTypes": {
+        "text": "Tekst",
+        "number": "Broj",
+        "checkbox": "Potvrdni okvir",
+        "date": "Datum",
+        "url": "URL",
+        "status": "Status",
+        "select": "Odabir",
+        "multiselect": "Višestruki odabir",
+        "relation": "Relacija",
+        "project": "Projekt",
+        "rating": "Ocjena"
+      },
+      "noEntry": "Nema zapisa",
+      "done": "Dovršeno",
+      "notDone": "Nije dovršeno",
+      "logged": "Zabilježeno",
+      "valueCount": "{count, plural, one {# vrijednost} few {# vrijednosti} other {# vrijednosti}}",
+      "average": "Prosjek",
+      "vsPrevious": "u odnosu na prethodno razdoblje",
+      "lowest": "Najniže",
+      "currentStreak": "Trenutačni niz",
+      "longestStreak": "Najdulji niz",
+      "dayCount": "{count, plural, one {# dan} few {# dana} other {# dana}}",
+      "doneDays": "Dovršeno",
+      "loggedDays": "Zabilježeno",
+      "mostCommon": "Najčešće",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} u zadnjih {days} dana",
+      "noData": "U ovom rasponu još ništa nije zabilježeno.",
+      "loadFailed": "Nije moguće učitati ovaj grafikon. Sami zapisi nisu dirnuti.",
+      "sourceJournal": "Dnevnik",
+      "history": {
+        "show": "Prikaži povijest",
+        "title": "Povijest: {property}",
+        "range": "Zadnjih 13 tjedana",
+        "insert": "Kopiraj kao blok grafikona",
+        "copied": "Blok grafikona je kopiran. Zalijepite ga u bilo koju bilješku."
+      }
+    },
     "slashMenu": {
       "aria": "Blokovi i radnje",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Kao sklopivi naslov",
         "asLinkedTask": "Kao povezani zadatak",
         "asReminder": "Kao podsjetnik"
       },
-      "actions": {
-        "insert": "Umetni",
-        "open": "Otvori"
-      },
+      "close": "Zatvori izbornik",
       "matchesAlias": "odgovara",
       "noMatch": "Nijedan blok ne odgovara upitu „{query}”",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "Premjesti blok u bilješku",
         "searchPlaceholder": "Pretraži bilješke…",
         "noResults": "Nema odgovarajućih bilješki",
-        "moved": "Blok premješten u „{title}”",
         "failed": "Nije moguće premjestiti blok"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Prikaži kao",
+        "embed": "Ugrađeno",
+        "link": "Poveznica"
+      },
       "title": {
         "image": "Dodaj sliku",
         "media": "Dodaj medije",
@@ -525,6 +694,11 @@
       "empty": "Upišite naziv da biste stvorili novu oznaku",
       "create": "Stvori #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Prikaži PDF kao",
+      "embed": "Ugrađeni preglednik",
+      "link": "Naziv datoteke"
+    },
     "pasteLink": {
       "title": "Zalijepi kao",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "Struktura",
     "aria": "Struktura dokumenta",
-    "emptyYet": "Još nema naslova",
     "readTime": "{count} min čitanja",
     "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
     "created": "Stvoreno",
-    "modified": "Izmijenjeno"
+    "modified": "Izmijenjeno",
+    "sync": {
+      "label": "Sinkronizacija",
+      "confirmed": "Na poslužitelju {time}",
+      "pending": "Čeka od {time}",
+      "sent": "Slanje",
+      "rejected": "Poslužitelj je odbio zadnju promjenu",
+      "notRecorded": "Nema ničega za slanje",
+      "localOnly": "Samo lokalno",
+      "notSyncing": "Ne sinkronizira se",
+      "waiting": "Čeka slanje"
+    }
   },
   "backlinks": {
     "sortRecent": "Nedavno",
@@ -587,7 +771,18 @@
     "expandSection": "Proširi odjeljak povratnih poveznica",
     "showMore": "{count, plural, one {Prikaži još # povratnu poveznicu} few {Prikaži još # povratne poveznice} other {Prikaži još # povratnih poveznica}}",
     "more": "Još {count}",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Prikazano u portalu"
+  },
+  "unlinkedMentions": {
+    "title": "Nepovezana spominjanja",
+    "summary": "{count, plural, one {# nepovezano spominjanje} few {# nepovezana spominjanja} other {# nepovezanih spominjanja}}",
+    "sectionAria": "Nepovezana spominjanja",
+    "fromAria": "Nepovezana spominjanja u: {title}",
+    "link": "Poveži",
+    "linkAria": "Poveži {text}",
+    "gone": "To se spominjanje promijenilo otkako je popis pročitan",
+    "linkFailed": "Nije moguće povezati spominjanje"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# odlazna poveznica} few {# odlazne poveznice} other {# odlaznih poveznica}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "Nije moguće dodati bilješku na platno"
   },
   "suggestedTags": {
-    "label": "Predložene oznake:",
-    "hint": "Oznake koje dijele bilješke najsličnije ovoj. Ništa se ne dodaje dok ne odaberete oznaku.",
-    "acceptAria": "Dodaj oznaku {tag}",
-    "support": "{count, plural, one {Ima je # slična bilješka} few {Imaju je # slične bilješke} other {Ima je # sličnih bilješki}}",
-    "dismiss": "Sakrij predložene oznake"
+    "support": "{count, plural, one {Ima je # slična bilješka} few {Imaju je # slične bilješke} other {Ima je # sličnih bilješki}}"
   },
   "comments": {
     "railAria": "Komentari",
@@ -631,11 +822,9 @@
     "toolbarComment": "Komentiraj",
     "commentPlaceholder": "Dodaj komentar…",
     "createdTooltip": "Stvoreno {date} u {time}",
-    "cancel": "Odustani",
     "resolve": "Razriješi",
     "edit": "Uredi komentar",
     "delete": "Izbriši komentar",
-    "replyPlaceholder": "Odgovori…",
     "attachAria": "Priloži datoteku",
     "mentionAria": "Spomeni osobu, stranicu ili datum",
     "sendAria": "Pošalji komentar",
@@ -648,13 +837,7 @@
       "code": "Kôd"
     },
     "openImageAria": "Otvori sliku {name}",
-    "openAttachmentAria": "Otvori privitak {name}",
-    "kind": {
-      "comment": "Komentar",
-      "addition": "Dodavanje",
-      "deletion": "Brisanje",
-      "substitution": "Zamjena"
-    }
+    "openAttachmentAria": "Otvori privitak {name}"
   },
   "tagsRow": {
     "aria": "Oznake",
@@ -663,6 +846,7 @@
     "removeAria": "Ukloni oznaku: {tag}",
     "inputPlaceholder": "Upišite naziv oznake…",
     "recent": "Nedavno",
+    "suggested": "Predloženo",
     "matching": "Odgovarajuće",
     "all": "Sve oznake",
     "none": "Nema pronađenih oznaka",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "Svojstva",
     "noteAria": "Svojstva bilješke",
-    "workspaceAria": "Svojstva radnog prostora",
     "listAria": "Popis svojstava",
     "add": "Dodaj svojstvo",
     "addDescription": "Dodajte novo svojstvo ovoj bilješci",
@@ -723,7 +906,6 @@
       "inProgress": "U tijeku",
       "done": "Dovršeno"
     },
-    "projectAlreadySet": "Ova bilješka već ima svojstvo projekta",
     "projectPlaceholder": "Bez projekta",
     "projectSearch": "Pretraži projekte",
     "projectEmpty": "Nema projekata",
@@ -755,6 +937,9 @@
     "repositionHint": "Povucite za promjenu položaja",
     "repositionSave": "spremi",
     "repositionCancel": "odustani",
+    "zoomIn": "Povećaj",
+    "zoomOut": "Smanji",
+    "resize": "Povucite za promjenu veličine naslovnice",
     "credit": "Fotografija: {name} na Unsplashu",
     "focusFailed": "Nije moguće spremiti položaj naslovne slike",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtar",
-      "filters": "Filtri",
-      "clearAll": "Očisti sve",
-      "noFiltersApplied": "Nema primijenjenih filtara",
-      "addFiltersToNarrowDownYourNotes": "Dodajte filtre da biste suzili popis bilješki",
       "match": "Zadovolji",
-      "allAnd": "Svi (I)",
-      "anyOr": "Bilo koji (ILI)",
-      "ofTheFollowing": "od sljedećeg:",
       "match2": "Zadovolji",
       "all": "sve",
       "any": "bilo koji",
-      "of": "od:",
       "addCondition": "Dodaj uvjet",
       "addFilter": "Dodaj filtar",
       "addGroup": "Dodaj grupu",
@@ -995,7 +1172,6 @@
       "available": "Dostupno: ",
       "preview": "Pretpregled",
       "fixExpressionErrorsToSeePreview": "Ispravite pogreške u izrazu da biste vidjeli pretpregled",
-      "usingNote": "Koristi se bilješka: „",
       "cancel": "Odustani",
       "namePlaceholder": "dana_do_roka",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "Učitavanje mapa…",
       "suggested": "PREDLOŽENO",
       "bestMatch": "Najbolje podudaranje",
-      "current": "trenutna)",
       "allFolders": "SVE MAPE",
-      "noFoldersMatch": "Nijedna mapa ne odgovara \"",
-      "create": "Stvori \"",
       "cancel": "Odustani",
       "currentFolderBadge": "(trenutna)",
       "noFoldersMatchQuery": "Nijedna mapa ne odgovara upitu „{query}”",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "zadani",
       "viewActions": "Radnje prikaza",
-      "rename": "Preimenuj",
       "duplicate": "Dupliciraj",
       "setAsDefault": "Postavi kao zadano",
       "delete": "Izbriši",
-      "createNewView": "Stvori novi prikaz",
-      "createNewView2": "Stvori novi prikaz",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Stvorite novi prikaz s prilagođenim stupcima, filtrima i sortiranjem.",
-      "viewName": "Naziv prikaza",
       "myCustomView": "Moj prilagođeni prikaz",
-      "baseConfiguration": "Osnovna konfiguracija",
-      "copyFromCurrentView": "Kopiraj iz trenutnog prikaza",
-      "startFreshDefaultColumns": "Počni ispočetka (zadani stupci)",
       "cancel": "Odustani",
-      "renameView": "Preimenuj prikaz",
-      "enterANewNameForThisView": "Unesite novi naziv za ovaj prikaz.",
-      "viewName2": "Naziv prikaza",
-      "viewName3": "Naziv prikaza",
-      "cancel2": "Odustani",
       "deleteView": "Izbriši prikaz",
       "areYouSureYouWantToDelete": "Jeste li sigurni da želite izbrisati \"",
       "thisActionCannotBeUndone": "Ova se radnja ne može poništiti.",
@@ -1077,22 +1237,17 @@
       "layout": "Raspored",
       "table": "Tablica",
       "list": "Popis",
-      "gallery": "Galerija",
-      "createView": "Stvori prikaz",
-      "save": "Spremi"
+      "gallery": "Galerija"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Učitavanje PDF-a nije uspjelo: ",
-      "download": "Preuzmi",
       "download2": "Preuzmi",
       "noFileAttached": "Nema priložene datoteke",
       "resizePdf": "Promijeni veličinu PDF-a",
       "resizeHtml": "Promijeni veličinu ugrađenog HTML-a",
       "alignLeft": "Poravnaj lijevo",
       "alignCenter": "Poravnaj po sredini",
-      "alignRight": "Poravnaj desno",
-      "previousPage": "Prethodna stranica",
-      "nextPage": "Sljedeća stranica"
+      "alignRight": "Poravnaj desno"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Otvori u panelu zadatka",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 in)",
       "legal85X14In": "Legal (8,5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.gggg"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Sinkronizirano"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Riječi",
       "characters": "Znakovi",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "Još nema favorita",
       "moreOptions": "Više mogućnosti",
       "remove": "Ukloni"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Otvori",
-      "openToTheSide": "Otvori sa strane",
-      "pinToTabs": "Prikvači na kartice",
-      "edit": "Uredi",
-      "delete": "Izbriši",
-      "copyLink": "Kopiraj poveznicu"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Učitavanje oznaka…",
@@ -1168,26 +1309,9 @@
       "cancel": "Odustani"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Idi natrag",
-      "notes": "bilješke",
-      "loadingNotes": "Učitavanje bilješki…",
-      "noNotesWithThisTag": "Nema bilješki s ovom oznakom",
-      "addThisTagToANoteToSeeItHere": "Dodajte ovu oznaku bilješci da biste je vidjeli ovdje",
-      "pinned": "PRIKVAČENO",
-      "allNotes": "SVE BILJEŠKE",
-      "allNotesArePinned": "Sve bilješke su prikvačene",
-      "tasks": "ZADACI",
-      "unpinFromTag": "Otkvači s oznake",
-      "unpin": "Otkvači",
-      "pinToTag": "Prikvači uz oznaku",
-      "pin": "Prikvači",
       "tagActions": "Radnje s oznakom",
-      "editTagName": "Uredi naziv oznake",
       "changeColor": "Promijeni boju",
-      "deleteTag": "Izbriši oznaku",
-      "recent": "Nedavno",
-      "created": "Stvoreno",
-      "alphabetical": "Abecedno"
+      "deleteTag": "Izbriši oznaku"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Preimenuj oznaku",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Stvori novu bilješku",
-      "viewSettings": "Postavke prikaza",
-      "displayDensity": "Gustoća prikaza",
-      "comfortable": "Udoban",
-      "compact": "Kompaktan",
-      "showSummaries": "Prikaži sažetke",
       "cancel": "Odustani"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "Otvori stranicu oznaka"
   },
   "tagView": {
-    "moreActions": "Više radnji",
     "pin": {
       "action": "Prikvači {count, plural, one {# bilješku} few {# bilješke} other {# bilješki}} uz oznaku",
       "success": "{count, plural, one {# bilješka prikvačena uz oznaku} few {# bilješke prikvačene uz oznaku} other {# bilješki prikvačeno uz oznaku}}",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# bilješka} few {# bilješke} other {# bilješki}}"
+    },
+    "noteTasks": {
+      "expand": "Prikaži zadatke bilješke {title}",
+      "collapse": "Sakrij zadatke bilješke {title}",
+      "list": "Zadaci u: {title}",
+      "progressOpen": "Otvoreno: {open}/{total}",
+      "progressDone": "Dovršeno: {total}/{total}",
+      "nextDue": "Sljedeći rok",
+      "reminder": "Podsjetnik je postavljen"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "Imenujte ovo pretraživanje",
     "saveDialogPlaceholder": "npr. Poslovni sastanci",
     "cancel": "Odustani",
-    "save": "Spremi",
-    "addToFilterHint": "Ctrl/Cmd + klik na oznaku dodaje je u filtar"
+    "save": "Spremi"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternative",
+      "overflow": "Preljev",
+      "menu": "Alati za pisanje",
+      "close": "Zatvori alate za pisanje"
+    },
+    "menu": {
+      "aria": "Radnje uređivača",
+      "cut": "Izreži",
+      "copy": "Kopiraj",
+      "paste": "Zalijepi",
+      "selectAll": "Odaberi sve",
+      "undo": "Poništi",
+      "redo": "Ponovi",
+      "comment": "Komentiraj",
+      "addAlternative": "Dodaj alternativu",
+      "suggestAlternatives": "Predloži alternative",
+      "ghost": "Zasjeni",
+      "revive": "Oživi",
+      "stash": "Odloži u preljev",
+      "noSpellingSuggestions": "Nema prijedloga",
+      "addToDictionary": "Dodaj u rječnik",
+      "clipboardFailed": "Nije moguće koristiti međuspremnik"
+    },
+    "alternatives": {
+      "railAria": "Alternative",
+      "hint": "{position} od {total} ↑ ↓",
+      "original": "Izvornik",
+      "byYou": "Napisali ste vi",
+      "byAI": "Predložio AI",
+      "showing": "Prikazano",
+      "addPlaceholder": "Dodaj alternativu…",
+      "removeSuggestions": "Ukloni prijedloge",
+      "removeVariant": "Ukloni alternativu",
+      "empty": "Odaberite tekst i odaberite Dodaj alternativu da sačuvate druge načine izražavanja.",
+      "suggesting": "Predlaganje alternativa…",
+      "suggestFailed": "Nije moguće predložiti alternative",
+      "noSuggestions": "Nisu predložene nove alternative"
+    },
+    "overflow": {
+      "railAria": "Preljev",
+      "addPlaceholder": "Napišite nešto što želite zadržati…",
+      "empty": "Retci koje odložite ili napišete ovdje ostaju uz ovu bilješku, izvan teksta.",
+      "dragHint": "Povucite u bilješku",
+      "copy": "Kopiraj",
+      "copied": "Kopirano",
+      "delete": "Izbriši"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Zaključaj bilješku",
+    "unlockNote": "Otključaj bilješku",
+    "lockFolder": "Zaključaj mapu",
+    "unlockFolder": "Otključaj mapu",
+    "toggleFailed": "Nije moguće promijeniti zaključavanje",
+    "readOnlyIndicator": "Zaključano. Samo za čitanje za vas i za agente.",
+    "externalEditRestored": "„{title}” je zaključana pa je vanjska izmjena poništena",
+    "externalEditRestoredHint": "Uređeni tekst spremljen je u povijesti verzija bilješke."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Osoba",
+        "plural": "Osobe",
+        "fields": {
+          "company": "Tvrtka",
+          "role": "Uloga",
+          "email": "E-pošta",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Osobe"
+        },
+        "template": {
+          "name": "Osoba",
+          "context": "Kontekst",
+          "contextHint": "Kako smo se upoznali, što ih zanima",
+          "notes": "Bilješke"
+        }
+      },
+      "company": {
+        "name": "Tvrtka",
+        "plural": "Tvrtke",
+        "fields": {
+          "website": "Web-mjesto",
+          "industry": "Djelatnost",
+          "location": "Lokacija"
+        },
+        "template": {
+          "name": "Tvrtka",
+          "overview": "Pregled",
+          "overviewHint": "Čime se bave, koga tamo poznajemo",
+          "notes": "Bilješke"
+        }
+      },
+      "meeting": {
+        "name": "Sastanak",
+        "plural": "Sastanci",
+        "fields": {
+          "date": "Datum",
+          "attendees": "Sudionici",
+          "company": "Tvrtka"
+        },
+        "inverse": {
+          "attendees": "Sastanci",
+          "company": "Sastanci"
+        },
+        "template": {
+          "name": "Sastanak",
+          "agenda": "Dnevni red",
+          "notes": "Bilješke",
+          "actionItems": "Zadaci za provedbu"
+        }
+      },
+      "book": {
+        "name": "Knjiga",
+        "plural": "Knjige",
+        "fields": {
+          "author": "Autor",
+          "shelf": "Polica",
+          "rating": "Ocjena",
+          "finished": "Završeno"
+        },
+        "shelf": {
+          "toRead": "Za čitanje",
+          "reading": "U čitanju",
+          "read": "Pročitano"
+        },
+        "template": {
+          "name": "Knjiga",
+          "highlights": "Istaknuta mjesta",
+          "thoughts": "Misli"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} je sada {tag}. Predložak je dodan.",
+      "templateChanged": "Bilješka se promijenila nakon dodavanja predloška pa on ostaje.",
+      "undoFailed": "Nije moguće poništiti",
+      "addFailed": "Nije moguće dodati oznaku",
+      "removeFailed": "Nije moguće ukloniti oznaku",
+      "removedKept": "Uklonjeno #{tag}. Zadržano vrijednosti: {count}.",
+      "removedKeptOne": "Uklonjeno #{tag}. Zadržana je 1 vrijednost."
+    },
+    "picker": {
+      "create": "Stvori #{tag}",
+      "fillsTemplate": "Popunjava ovu praznu bilješku predloškom {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Gotove oznake",
+        "subtitle": "Oznake koje dolaze s poljima. Bilješke ostaju kakve jesu dok ih ne označite.",
+        "notNow": "Ne sada",
+        "add": "Dodaj",
+        "addFields": "Dodaj polja",
+        "added": "Dodano",
+        "alreadyOn": "Već na bilješkama: {count}",
+        "alreadyOnOne": "Već na 1 bilješci"
+      },
+      "dialog": {
+        "title": "Dodati polja {preset} oznaci #{tag}?",
+        "body": "#{tag} je već na bilješkama ({count}). One zadržavaju sve što imaju i dobivaju ova polja, prazna dok ih netko ne popuni.",
+        "bodyOne": "#{tag} je već na 1 bilješci. Ona zadržava sve što ima i dobiva ova polja, prazna dok ih netko ne popuni.",
+        "template": "Predložak ({sections}) popunjava samo prazne bilješke.",
+        "alsoAddsPrefix": "Također dodaje",
+        "alsoAddsSuffix": "za polje {field}.",
+        "useAnotherName": "Upotrijebi drugi naziv",
+        "nameLabel": "Naziv nove oznake",
+        "namePlaceholder": "kontakt",
+        "cancel": "Odustani",
+        "addFields": "Dodaj polja"
+      },
+      "toast": {
+        "added": "Dodano #{tag}",
+        "addedFields": "Polja {preset} dodana su oznaci #{tag}"
+      },
+      "hasFields": "Ima polja"
+    },
+    "tasks": {
+      "thisTask": "Ovaj zadatak",
+      "viaTag": "{name} putem #{via}",
+      "clearValue": "Očisti {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "putem #{tag}",
+      "groupMenu": "Opcije: {tag}",
+      "openTag": "Otvori #{tag}",
+      "thisNote": "Ova bilješka"
+    },
+    "offer": {
+      "text": "Dodajte predložak {tag} ispod svog teksta",
+      "add": "Dodaj",
+      "dismiss": "Odbaci",
+      "addFailed": "Nije moguće dodati predložak"
+    },
+    "settings": {
+      "title": "Postavke za #{tag}",
+      "close": "Zatvori",
+      "cancel": "Odustani",
+      "save": "Spremi",
+      "onCounts": "Na {notes, plural, one {# bilješci} few {# bilješke} other {# bilješki}} i {tasks, plural, one {# zadatku} few {# zadatka} other {# zadataka}}",
+      "onNotes": "Na {count, plural, one {# bilješci} few {# bilješke} other {# bilješki}}",
+      "headerFields": "{count, plural, one {# polje} few {# polja} other {# polja}}",
+      "editTag": "Uredi oznaku",
+      "syncNote": "Promjene se sinkroniziraju na vaše druge uređaje",
+      "newerVersion": "Novija verzija Memryja promijenila je ovu oznaku. Ažurirajte Memry da biste je ovdje uređivali.",
+      "sections": {
+        "appearance": "Izgled",
+        "extends": "Proširuje",
+        "fields": "Polja · {count}",
+        "template": "Predložak"
+      },
+      "appearance": {
+        "icon": "Ikona",
+        "color": "Boja",
+        "customColor": "Prilagođena",
+        "category": "Kategorija",
+        "noCategory": "Bez kategorije"
+      },
+      "extends": {
+        "nothing": "Ništa",
+        "hint": "Preuzmite polja druge oznake i pojavite se u njezinoj tablici.",
+        "hintSet": "Bilješke oznake {tag} dobivaju polja oznake {parent} i pojavljuju se u tablici {parent}."
+      },
+      "types": {
+        "text": "Tekst",
+        "number": "Broj",
+        "date": "Datum",
+        "url": "URL",
+        "status": "Status",
+        "select": "Odabir",
+        "multiselect": "Višestruki odabir",
+        "checkbox": "Potvrdni okvir",
+        "relation": "Relacija"
+      },
+      "fields": {
+        "empty": "Još nema polja. Dodajte jedno da bi svaka bilješka s #oznakom imala ista svojstva.",
+        "fromParent": "Iz #{tag} · uredite tamo",
+        "inverseSub": "Prikazuje se na: {target} kao {inverse}",
+        "anyNoteSub": "Povezuje na bilo koju bilješku",
+        "actions": "Radnje za {field}",
+        "rename": "Preimenuj…",
+        "relationSettings": "Postavke relacije",
+        "remove": "Ukloni…"
+      },
+      "addField": {
+        "button": "Dodaj polje",
+        "namePlaceholder": "Naziv polja",
+        "existing": "Postojeća svojstva",
+        "existingSub": "{type} · na {count, plural, one {# bilješci} few {# bilješke} other {# bilješki}} · ponovna upotreba",
+        "newType": "Vrsta novog polja",
+        "relationSub": "Poveži s bilješkama s oznakom",
+        "submit": "Dodaj polje",
+        "reserved": "{name} je rezervirano i ne može biti polje.",
+        "taken": "#{tag} već ima {name}."
+      },
+      "relation": {
+        "target": "Upućuje na bilješke s oznakom",
+        "pickTag": "Odaberite oznaku",
+        "howMany": "Koliko",
+        "one": "Jedna",
+        "many": "Više",
+        "inverseLabel": "Na stranici {target} navedi ih kao",
+        "inverseLabelAny": "Na povezanoj stranici navedi ih kao",
+        "inverseHint": "Popis samo za čitanje na svakoj stranici {target}. Ništa se ne zapisuje u bilješke {target}.",
+        "inverseHintAny": "Popis samo za čitanje na svakoj povezanoj bilješci. Ništa se ne zapisuje u te bilješke."
+      },
+      "shared": {
+        "title": "Novo polje na #{tag}",
+        "existsWith": "{name} već postoji u ovom trezoru s opcijama: {options}.",
+        "existsAs": "{name} već postoji u ovom trezoru kao svojstvo vrste: {type}.",
+        "shareWith": "#{tag} će ga dijeliti s vašim bilješkama oznaka {others}.",
+        "shareAny": "#{tag} će ga dijeliti s vašim ostalim bilješkama.",
+        "useInstead": "Umjesto toga upotrijebi {name}",
+        "share": "Dijeli {name}"
+      },
+      "template": {
+        "edit": "Uredi predložak",
+        "none": "Još nema predloška. Predložak popunjava prazne bilješke kad dobiju oznaku.",
+        "create": "Stvori predložak",
+        "defaultHeading": "Bilješke",
+        "inherited": "Iz #{tag}",
+        "autofill": "Popuni prazne bilješke kad dobiju #{tag}"
+      },
+      "remove": {
+        "title": "Ukloniti {field} iz #{tag}?",
+        "body": "{field} je popunjeno na {filled, plural, one {# bilješci} few {# bilješke} other {# bilješki}}. Te vrijednosti ostaju na bilješkama kao obično svojstvo; {empty, plural, one {# prazno mjesto nestaje} few {# prazna mjesta nestaju} other {# praznih mjesta nestaje}}.",
+        "confirm": "Ukloni polje"
+      },
+      "rename": {
+        "title": "Preimenuj {from} u {to}",
+        "titleEmpty": "Preimenuj {from}",
+        "label": "Novi naziv",
+        "body": "{count, plural, one {# bilješka ima} few {# bilješke imaju} other {# bilješki ima}} vrijednost za {field}. Memry preimenuje ključ u svakoj datoteci i u njihovim svojstvima; Obsidian također vidi novi naziv.",
+        "progress": "Preimenovanje u bilješkama",
+        "confirm": "Preimenuj",
+        "taken": "Ova oznaka već ima {name}.",
+        "done": "Preimenovano {from} u {to} u: {count, plural, one {# stavci} few {# stavke} other {# stavki}}.",
+        "skipped": "Preimenovano {from} u {to} u: {count, plural, one {# stavci} few {# stavke} other {# stavki}}. {locked, plural, =0 {} one {# zaključana bilješka dovršava se nakon otključavanja.} few {# zaključane bilješke dovršavaju se nakon otključavanja.} other {# zaključanih bilješki dovršava se nakon otključavanja.}} {existing, plural, =0 {} one {# bilješka već je imala {to} i zadržava oba.} few {# bilješke već su imale {to} i zadržavaju oba.} other {# bilješki već je imalo {to} i zadržava oba.}}"
+      },
+      "delete": {
+        "button": "Izbriši oznaku",
+        "title": "Izbrisati #{tag}?",
+        "body": "#{tag} bit će uklonjena iz {notes, plural, one {# bilješke} few {# bilješke} other {# bilješki}}, a oznaka nestaje zajedno s poljima ({fields, plural, one {# polje} few {# polja} other {# polja}}) i predloškom.",
+        "bodyNoTemplate": "#{tag} bit će uklonjena iz {notes, plural, one {# bilješke} few {# bilješke} other {# bilješki}}, a oznaka nestaje zajedno s poljima ({fields, plural, one {# polje} few {# polja} other {# polja}}).",
+        "bodyPlain": "#{tag} bit će uklonjena iz svake bilješke koja je ima među oznakama.",
+        "statNotes": "bilješke zadržavaju svoj tekst",
+        "statValues": "vrijednosti ostaju kao svojstva",
+        "plainText": "Bilješke koje spominju #{tag} u tekstu zadržavaju je kao običan tekst.",
+        "confirm": "Izbriši oznaku",
+        "done": "Izbrisano #{tag}."
+      },
+      "errors": {
+        "addField": "Nije moguće dodati polje.",
+        "removeField": "Nije moguće ukloniti polje.",
+        "renameField": "Nije moguće preimenovati polje.",
+        "moveField": "Nije moguće premjestiti polje.",
+        "relation": "Nije moguće spremiti relaciju.",
+        "extends": "Nije moguće promijeniti što ova oznaka proširuje.",
+        "template": "Nije moguće ažurirati predložak.",
+        "deleteTag": "Nije moguće izbrisati oznaku.",
+        "icon": "Nije moguće promijeniti ikonu.",
+        "color": "Nije moguće promijeniti boju.",
+        "category": "Nije moguće promijeniti kategoriju."
+      }
+    },
+    "fill": {
+      "action": "Popuni iz bilješke",
+      "reading": "Čitanje bilješke…",
+      "disclosure": "Vaš model agenta ({model}) čita ovu bilješku kako bi predložio vrijednosti. Šalje se samo ova bilješka. Ništa se ne sprema dok ne prihvatite.",
+      "disclosureLocal": "Vaš lokalni model ({model}) čita ovu bilješku na ovom uređaju kako bi predložio vrijednosti. Ništa ne napušta uređaj i ništa se ne sprema dok ne prihvatite.",
+      "disclosureMany": "Vaš model agenta ({model}) čita ove bilješke jednu po jednu kako bi predložio vrijednosti. Šalju se samo te bilješke. Ništa se ne sprema dok ne prihvatite.",
+      "disclosureLocalMany": "Vaš lokalni model ({model}) čita ove bilješke na ovom uređaju kako bi predložio vrijednosti. Ništa ne napušta uređaj i ništa se ne sprema dok ne prihvatite.",
+      "suggest": "Predloži vrijednosti",
+      "notNow": "Ne sada",
+      "countOne": "· {count} prijedlog",
+      "count": "· prijedloga: {count}",
+      "dismiss": "Odbaci",
+      "acceptAll": "Prihvati sve",
+      "accept": "Prihvati: {field}",
+      "reject": "Odbij: {field}",
+      "notInNote": "Nije u bilješci",
+      "createHint": "Pri prihvaćanju stvara novu #{tag}",
+      "nothingFound": "Ništa u ovoj bilješci ne popunjava prazna polja",
+      "failed": "Nije moguće predložiti vrijednosti. {message}",
+      "saveFailed": "Nije moguće spremiti prihvaćene vrijednosti",
+      "bulkAction": "Popuni prazna polja",
+      "bulkTitle": "Popuni prazna polja",
+      "bulkReading": "{done} od {total} bilješki · čitanje bilješki…",
+      "bulkRead": "{done} od {total} bilješki pročitano",
+      "stop": "Zaustavi",
+      "name": "Naziv",
+      "nothingInRow": "Ništa nije pronađeno",
+      "found": "Pronađeno: {count}",
+      "reviewOneByOne": "Pregledaj jedno po jedno",
+      "acceptRow": "Prihvati vrijednosti za {title}",
+      "rejectRow": "Preskoči {title}",
+      "bulkSavedOne": "Popunjeno polje: {count}, bilješki: {notes}",
+      "bulkSaved": "Popunjeno polja: {count}, bilješki: {notes}"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Stvori {title} kao",
+      "asPrefix": "Stvori",
+      "asSuffix": "kao",
+      "failed": "Nije moguće stvoriti bilješku",
+      "lastUsed": "Zadnje korišteno",
+      "noteWord": "bilješka",
+      "plainNote": "Obična bilješka",
+      "readyMade": "Gotova oznaka",
+      "row": "Stvori „{title}”",
+      "rowHint": "Kao: {types}"
+    },
+    "hover": {
+      "at": "u",
+      "lastMet": "Zadnji susret · {title}",
+      "lastMetOn": "Zadnji susret {date} · {title}",
+      "mentionedIn": "{count, plural, one {Spomenuto u # bilješci} few {Spomenuto u # bilješke} other {Spomenuto u # bilješki}}",
+      "open": "Otvori",
+      "tasks": "{count, plural, one {# zadatak · {field}} few {# zadatka · {field}} other {# zadataka · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} u tekstu",
+      "explain": "U tekstu je oznaka samo naljepnica. Ova bilješka navedena je pod Spomenuto u na #{tag}.",
+      "made": "#{tag} dodana je oznakama ove bilješke",
+      "make": "Pretvori ovu bilješku u: {tag}",
+      "makeFailed": "Nije moguće dodati oznaku",
+      "makeHint": "Dodaje #{tag} u zaglavlje i prikazuje njezina polja",
+      "meta": "{count, plural, one {# objekt} few {# objekta} other {# objekata}} · {fields, plural, one {# polje} few {# polja} other {# polja}}",
+      "metaNamed": "{count, plural, one {# {one}} few {# {other}} other {# {other}}} · {fields, plural, one {# polje} few {# polja} other {# polja}}",
+      "open": "Otvori #{tag}",
+      "remove": "Ukloni oznaku iz teksta"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "kao {field}",
+      "due": "Rok {date}",
+      "inTheText": "u tekstu",
+      "mentionedIn": "Spomenuto u",
+      "tasks": "Zadaci",
+      "title": "Povezano ovdje"
+    },
+    "mention": {
+      "notes": "Bilješke"
+    },
+    "picker": {
+      "create": "Novi: {tag}",
+      "createNamed": "Novi {tag} „{title}”",
+      "empty": "Nema podudaranja",
+      "search": "Pretraži: {tag}",
+      "untitled": "Novi: {tag}"
+    },
+    "quickFields": {
+      "add": "Dodaj {field}",
+      "aria": "Prva polja: {title}",
+      "done": "Gotovo",
+      "later": "Kasnije",
+      "newObject": "Novi: {tag}",
+      "saveFailed": "Nije moguće spremiti polja"
+    },
+    "table": {
+      "untitled": "Novi: {tag}",
+      "newInGroup": "Novi {tag} u: {group}",
+      "newInGroupHint": "⌘↵ otvara ga u novoj kartici",
+      "new": "Novi: {tag}",
+      "includes": "{field} uključuje",
+      "removeFilter": "Ukloni filtar",
+      "shown": "{shown} od {total}",
+      "saveView": "Spremi prikaz",
+      "mentionedMeta": "{count, plural, one {# bilješka s '#'{tag} u tekstu} few {# bilješke s '#'{tag} u tekstu} other {# bilješki s '#'{tag} u tekstu}}",
+      "saveFailed": "Nije moguće spremiti polje",
+      "created": "Stvoreno: {title}"
+    },
+    "relationDrop": {
+      "title": "Dodati #{tag} u „{title}”?",
+      "body": "Ovo polje povezuje samo bilješke s oznakom #{tag}. Memry dodaje #{tag} u zaglavlje bilješke „{title}”, a zatim je ovdje povezuje.",
+      "confirm": "Dodaj #{tag} i poveži",
+      "cancel": "Odustani",
+      "added": "„{title}” je sada #{tag} i povezana",
+      "notANote": "Ovdje se kao #{tag} mogu povezati samo bilješke",
+      "failed": "Nije moguće povezati ovu bilješku"
+    }
   },
   "names": {
     "also": "također",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "Pretraži bilješke",
     "pickerEmpty": "Nema odgovarajućih bilješki",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Dodaj pojedinosti"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Prikaži bilješku ili blok uživo s drugog mjesta"
+      },
+      "searchPortal": {
+        "title": "Portal pretraživanja",
+        "subtext": "Popis blokova koji odgovaraju upitu, uživo"
+      }
+    },
+    "picker": {
+      "aria": "Odaberite bilješku ili blok za portal",
+      "notes": "Bilješke",
+      "blocks": "Blokovi",
+      "loading": "Pretraživanje…",
+      "empty": "Nijedna bilješka ni blok ne odgovara",
+      "hintInsert": "Umetni portal",
+      "hintClose": "Zatvori",
+      "keyEsc": "Esc",
+      "create": "Stvori bilješku „{query}”",
+      "createFailed": "Nije moguće stvoriti tu bilješku",
+      "stampFailed": "Nije moguće pripremiti taj blok za portal",
+      "retargetFailed": "Nije moguće usmjeriti portal na taj blok"
+    },
+    "insert": {
+      "cycle": "Portal ne može prikazivati bilješku unutar nje same."
+    },
+    "copy": {
+      "done": "Portal je kopiran. Zalijepite ga u bilo koju bilješku.",
+      "failed": "Nije moguće kopirati portal na ovaj blok"
+    },
+    "menu": {
+      "copyAsPortal": "Kopiraj kao portal",
+      "hideInPortal": "Sakrij u ovom portalu"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Upotrijebljeno na # drugom mjestu} few {Upotrijebljeno na # druga mjesta} other {Upotrijebljeno na # drugih mjesta}}"
+    },
+    "whereUsed": {
+      "aria": "Gdje se ovaj blok koristi",
+      "portals": "Portali",
+      "links": "Poveznice",
+      "openBeside": "Otvori pored",
+      "loadFailed": "Nije moguće učitati gdje se ovaj blok prikazuje"
+    },
+    "hiddenBlocks": {
+      "title": "Skriveni blokovi",
+      "showAll": "Prikaži sve",
+      "search": "Pretraži skrivene blokove",
+      "showFailed": "Nije moguće prikazati ovaj blok"
+    },
+    "searchQuery": {
+      "titleNew": "Portal pretraživanja",
+      "titleEdit": "Uredi upit",
+      "text": "Sadrži riječi",
+      "textPlaceholder": "Riječi u bloku",
+      "tag": "Oznaka",
+      "tagPlaceholder": "ispit",
+      "limit": "Ograničenje",
+      "footer": "Ograničenje rezultata: {limit}.",
+      "create": "Stvori",
+      "apply": "Primijeni"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Izbrisati ovaj blok svugdje?",
+        "note": "Izbrisati ovu bilješku svugdje?"
+      },
+      "description": {
+        "block": "„{title}” se pojavljuje i u {count, plural, one {# drugoj bilješci} few {# druge bilješke} other {# drugih bilješki}}.",
+        "note": "„{title}” je prikazana ili povezana u {count, plural, one {# drugoj bilješci} few {# druge bilješke} other {# drugih bilješki}}."
+      },
+      "manyNotes": "Bilješke: {count}",
+      "source": "{title} (izvor)",
+      "removeHere": "Umjesto toga sakrij ovdje",
+      "cancel": "Odustani",
+      "everywhere": "Izbriši svugdje",
+      "undoToast": "{count, plural, one {Izbrisani blok bio je prikazan u # drugoj bilješci.} few {Izbrisani blok bio je prikazan u # druge bilješke.} other {Izbrisani blok bio je prikazan u # drugih bilješki.}}",
+      "undo": "Poništi"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Potpuno",
+      "brief": "Kratko",
+      "key": "Ključno",
+      "takeaway": "Zaključak",
+      "topic": "Tema"
+    },
+    "chrome": {
+      "fold": "Sažmi bilješku",
+      "unfold": "Sažeto na: {level}. Prikaži puni tekst",
+      "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
+      "writing": "Pisanje…",
+      "writtenBy": "Napisao: {agent}",
+      "retry": "Zadnje pokretanje nije uspjelo · Pokušaj ponovno",
+      "captionOff": "Uključite Sažimanje dugih bilješki u Postavke → AI",
+      "captionNoAgent": "Nijedan agent nije povezan · Postavke → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Duga bilješka? Prelistajte je.",
+      "body": "Sažmite je na ključne rečenice, pa otvorite samo odlomak koji trebate.",
+      "dismiss": "Razumijem"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# odlomak otvoren} few {# odlomka otvorena} other {# odlomaka otvoreno}}",
+      "escape": "esc",
+      "copy": "Kopiraj kao tekst",
+      "copied": "Kopirano",
+      "aria": "Sažeti prikaz",
+      "hintMac": "Stisnite prstima, ⌘-pomaknite ili pomičite na ovoj traci za zumiranje · kliknite odlomak da ga otvorite",
+      "hint": "Stisnite prstima, Ctrl-pomaknite ili pomičite na ovoj traci za zumiranje · kliknite odlomak da ga otvorite"
+    },
+    "view": {
+      "aria": "Sažeti prikaz: {level}",
+      "paragraphOpen": "Otvoreno na Potpuno · kliknite ponovno za sažimanje",
+      "paragraphFold": "Sažmi ovaj odlomak",
+      "paragraphOpenAction": "Otvori ovaj odlomak u cijelosti",
+      "unfoldSection": "Razvij odjeljak {heading}",
+      "jumpToParagraph": "Prikaži ovaj odlomak u cijelosti: {topic}",
+      "untitledSection": "Bez naslova",
+      "skipped": {
+        "code": "… {count, plural, one {# blok koda} few {# bloka koda} other {# blokova koda}}",
+        "table": "… {count, plural, one {# tablica} few {# tablice} other {# tablica}}",
+        "image": "… {count, plural, one {# slika} few {# slike} other {# slika}}",
+        "callout": "… {count, plural, one {# isticanje} few {# isticanja} other {# isticanja}}",
+        "embed": "… {count, plural, one {# ugrađeni element} few {# ugrađena elementa} other {# ugrađenih elemenata}}",
+        "other": "… {count, plural, one {# blok više} few {# bloka više} other {# blokova više}}"
+      }
+    }
   }
 }

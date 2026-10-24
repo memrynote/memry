@@ -154,6 +154,7 @@ const timedItem = {
   source: { provider: null }
 } as any
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- `any` keeps this loosely-typed fixture assignable to the component props
 const allDayItem = {
   ...timedItem,
   projectionId: 'external:all-day',
@@ -300,6 +301,7 @@ describe('CalendarWeekView drop target wiring', () => {
       (call) => call.data.type === 'date' && call.data.timeBehavior === 'slot'
     )
 
+    // oxlint-disable-next-line unicorn/no-array-sort, typescript/require-array-sort-compare -- ISO date keys in default order; both sides sort identically
     expect(timedCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
     for (const call of timedCalls) {
       expect(call.data.hourHeight).toBe(48)
@@ -323,6 +325,7 @@ describe('CalendarWeekView drop target wiring', () => {
       (call) => call.data.type === 'date' && 'dueTime' in call.data
     )
 
+    // oxlint-disable-next-line unicorn/no-array-sort, typescript/require-array-sort-compare -- ISO date keys in default order; both sides sort identically
     expect(allDayCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
     const may10 = allDayCalls.find((call) => call.data.dateKey === '2026-05-10')
     expect(may10).toBeDefined()
@@ -370,6 +373,7 @@ describe('CalendarWeekView all-day strip reveal during task drag', () => {
       '2026-05-15',
       '2026-05-16'
     ]
+    // oxlint-disable-next-line unicorn/no-array-sort, typescript/require-array-sort-compare -- ISO date keys in default order; both sides sort identically
     expect(allDayCalls.map((call) => call.data.dateKey).sort()).toEqual([...expectedDates].sort())
   })
 })

@@ -92,7 +92,7 @@ describe('removeCardElements', () => {
 
     const result = removeCardElements(elements, { entityType: 'note', entityId: 'n1' })
 
-    expect([...result.removedIds].sort()).toEqual(['a', 'b'])
+    expect([...result.removedIds].toSorted()).toEqual(['a', 'b'])
     expect(result.elements.map((e) => e.id)).toEqual(['c'])
   })
 

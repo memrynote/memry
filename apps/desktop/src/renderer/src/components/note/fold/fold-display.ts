@@ -112,7 +112,7 @@ const joinerFor = (language: string): string => (isCjk(language) ? '' : ' ')
 function briefLine(paragraph: FoldParagraph, language: string): FoldLine {
   const indices = [...new Set(paragraph.briefIdx)]
     .filter((index) => index < paragraph.sentences.length)
-    .sort((a, b) => a - b)
+    .toSorted((a, b) => a - b)
   const joiner = joinerFor(language)
   if (indices.length === 0) {
     return { text: paragraph.text, md: null, source: 'author' }
@@ -155,6 +155,7 @@ export function chipLabel(paragraph: FoldParagraph, language: string): string {
   if (paragraph.topic) return paragraph.topic
   const text = paragraph.text.trim()
   if (isCjk(language)) {
+    // oxlint-disable-next-line typescript/no-misused-spread -- spreads a string into code points on purpose, so surrogate pairs are not split
     const chars = [...text]
     return chars.length > CHIP_CJK_CHARS ? `${chars.slice(0, CHIP_CJK_CHARS).join('')}…` : text
   }

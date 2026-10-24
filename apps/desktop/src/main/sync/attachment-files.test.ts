@@ -208,7 +208,7 @@ describe('placeDownloadedFile', () => {
       recordAttachmentFile(db, vaultPath, 'note-a', landed, 'att-1')
 
       const rows = db.select({ path: attachmentFiles.path }).from(attachmentFiles).all()
-      expect(rows.map((row) => row.path).sort()).toEqual(['attachments/note-a/x.txt'])
+      expect(rows.map((row) => row.path).toSorted()).toEqual(['attachments/note-a/x.txt'])
     })
   })
 
@@ -275,7 +275,7 @@ describe('placeDownloadedFile', () => {
     expect(
       listPendingUploads(db)
         .map((row) => `${row.noteId} ${path.basename(row.diskPath)}`)
-        .sort()
+        .toSorted()
     ).toEqual(['old old.png', 'scan scan.pdf', 'trip data.txt'])
   })
 

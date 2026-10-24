@@ -100,6 +100,7 @@ function toRemoteSyncAdapter(handler: SyncItemHandler): DesktopRemoteSyncAdapter
     fetchLocal: handler.fetchLocal ? (db, itemId) => handler.fetchLocal?.(db, itemId) : undefined,
     seedUnclocked: handler.seedUnclocked
       ? (db, deviceId, queue) =>
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the registry callback types the queue narrower than the handler's SyncQueueManager; the sync engine always passes the real queue
           handler.seedUnclocked?.(db, deviceId, queue as SyncQueueManager) ?? 0
       : undefined,
     buildPushPayload: handler.buildPushPayload

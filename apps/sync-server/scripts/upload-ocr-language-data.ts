@@ -37,7 +37,6 @@ const BUCKETS = {
   production: 'memry-encrypted-blobs-production'
 } as const
 
-type Env = keyof typeof BUCKETS
 interface ManifestEntry {
   lang: string
   bytes: number
@@ -66,7 +65,7 @@ if (values['persist-to'] && env !== 'local') {
   process.exit(1)
 }
 
-const bucket = BUCKETS[env as Env]
+const bucket = BUCKETS[env]
 const dataDir = resolve(values.dir)
 const target =
   env === 'local'
@@ -86,6 +85,7 @@ async function readOrDownload(file: string, lang: OcrLanguage): Promise<Buffer> 
   try {
     return readFileSync(file)
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing cast at a trust boundary; the type cannot express the runtime value without a behavior-changing parser
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
   const url = `https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/${TESSDATA_FAST_COMMIT}/${lang}.traineddata`
@@ -107,6 +107,7 @@ function readRemoteManifest(): Map<string, ManifestEntry> {
     if (/specified key does not exist/i.test(result.stderr + result.stdout)) return new Map()
     throw new Error(`Reading ${OCR_MANIFEST_KEY} failed:\n${result.stderr}`)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse result at the wire/storage boundary; a runtime parser would change which payloads are accepted
   const entries = JSON.parse(result.stdout) as ManifestEntry[]
   return new Map(entries.map((entry) => [entry.lang, entry]))
 }

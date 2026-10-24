@@ -34,6 +34,7 @@ export function backfillAgentChatRows(deps: BackfillDeps): void {
           .all()
       : []
   const terminalMessages = messages.filter((message) =>
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column typed string in the schema; only this store writes these enum values
     TERMINAL_STATUSES.has(message.status as MessageStatus)
   )
 
@@ -50,6 +51,7 @@ export function backfillAgentChatRows(deps: BackfillDeps): void {
   }
 
   for (const message of terminalMessages) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column typed string in the schema; only this store writes these enum values
     deps.enqueue({ type: 'agent_message', id: message.id, status: message.status as MessageStatus })
     report()
   }

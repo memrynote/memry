@@ -14,7 +14,7 @@ function rect(top: number, bottom: number): DOMRect {
     x: 0,
     y: top,
     toJSON: () => ({})
-  } as DOMRect
+  }
 }
 
 function createBlock(id: string | null, top: number, bottom: number): HTMLElement {

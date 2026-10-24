@@ -45,7 +45,7 @@ export function useVaultProperties(enabled: boolean): VaultProperty[] {
       }
       return [...byName.values()]
         .filter((property) => !isReservedFieldName(property.name))
-        .sort((a, b) => b.usage - a.usage)
+        .toSorted((a, b) => b.usage - a.usage)
     }
   })
   useEffect(() => {
@@ -58,6 +58,7 @@ const EMPTY: VaultProperty[] = []
 
 /** `rating` is a legacy definition type with no field type; it reads as a number. */
 function toFieldType(type: string): FieldType {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- definition types are persisted strings; unknown ones are passed through as before
   return type === 'rating' ? 'number' : (type as FieldType)
 }
 
@@ -70,8 +71,8 @@ function parseOptions(raw: string | null): SelectOption[] {
     return parsed.flatMap((item: unknown): SelectOption[] => {
       if (typeof item === 'string') return [{ value: item, color: 'stone' }]
       if (typeof item === 'object' && item !== null && 'value' in item) {
-        const value = (item as { value: unknown }).value
-        const color = (item as { color?: unknown }).color
+        const value = item.value
+        const color = 'color' in item ? item.color : undefined
         return typeof value === 'string'
           ? [{ value, color: typeof color === 'string' ? color : 'stone' }]
           : []

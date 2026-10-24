@@ -63,6 +63,7 @@ function prependTagIcon(dom: HTMLElement, iconValue: string, colorHex: string): 
     const holder = prependIconHolder(dom)
     const name = parseIconName(iconValue)
     void loadAllIcons().then((mod) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- hugeicons module exports are untyped icon arrays keyed by name
       const data = mod[name] as Array<[string, Record<string, string>]> | undefined
       if (data) holder.appendChild(buildHugeIconSvg(data, colorHex))
     })
@@ -293,6 +294,7 @@ export function normalizeHashTags(
       (typeof block.content === 'string' || Array.isArray(block.content))
     ) {
       const normalized = normalizeInlineContentHashTags(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         block.content as any,
         noteTags,
         tagColorMap,
@@ -301,12 +303,14 @@ export function normalizeHashTags(
       )
       if (normalized.didChange) {
         blockChanged = true
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         nextBlock = { ...nextBlock, content: normalized.content as any }
       }
     }
 
     if (block.children?.length) {
       const normalizedChildren = normalizeHashTags(
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
         block.children as Block[],
         noteTags,
         tagColorMap,
@@ -346,12 +350,15 @@ export function extractInlineTags(blocks: Block[]): string[] {
   function walkBlock(block: Block): void {
     // A code block's own text is literal; blocks nested under it are not code.
     if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       for (const item of block.content as any[]) {
         if (item?.type === 'hashTag' && item.props?.tag) {
           // A chip saves as `#tag`; read it as the indexer reads that text, so
           // an older chip the grammar rejects stays visible but is not a tag.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inline-content items are any-typed; hashTag props.tag and text items' text are strings by schema
           extractFromText(`#${item.props.tag as string}`)
         } else if (item?.type === 'text' && item.text) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inline-content items are any-typed; hashTag props.tag and text items' text are strings by schema
           extractFromText(item.text as string)
         } else if (typeof item === 'string') {
           extractFromText(item)
@@ -360,6 +367,7 @@ export function extractInlineTags(blocks: Block[]): string[] {
     }
     if (block.children) {
       for (const child of block.children) {
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
         walkBlock(child as Block)
       }
     }

@@ -32,7 +32,10 @@ function provider(
   let resultCalls = 0
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     if (String(url).endsWith('/models')) return json({ data: [{ id: MODEL }] })
-    const body = JSON.parse(String(init?.body)) as { stream?: boolean; tools?: unknown }
+    const body = JSON.parse(typeof init?.body === 'string' ? init.body : '') as {
+      stream?: boolean
+      tools?: unknown
+    }
     if (body.stream) return new Response('data: {"choices":[]}\n\n')
     const step = body.tools
       ? (input.toolStep?.(toolCalls++) ?? 'ok')

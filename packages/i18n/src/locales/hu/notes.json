@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Nem található – kattintson a(z) „{title}” jegyzet létrehozásához"
   },
+  "wikiLinkMenu": {
+    "aria": "Hivatkozásműveletek",
+    "open": "Megnyitás",
+    "openInNewTab": "Megnyitás új lapon",
+    "openToTheSide": "Megnyitás oldalt",
+    "edit": "Hivatkozás szerkesztése",
+    "copy": "Hivatkozás másolása",
+    "unlink": "Hivatkozás eltávolítása",
+    "displayRow": "Megjelenítés…",
+    "sizeNone": "Nincs",
+    "sizeSmall": "Kicsi",
+    "sizeMedium": "Közepes",
+    "showCover": "Borító megjelenítése",
+    "showPreview": "Előnézet megjelenítése",
+    "copyFailed": "Nem sikerült átmásolni a hivatkozást"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Újraimportálás a Readwise-ból",
+    "refreshAction": "Könyvadatok frissítése",
+    "syncsOn": "A Readwise itt szinkronizál: {device}.",
+    "syncsOnAnotherDevice": "A Readwise egy másik eszközön szinkronizál.",
+    "takeOverHint": "Szinkronizáljon azon az eszközön, vagy vegye át a Beállítások → Importálás részben.",
+    "reimport": {
+      "title": "Újraimportálja a(z) „{title}” jegyzetet a Readwise-ból?",
+      "body": "A Readwise-szakasz teljesen újraíródik. Minden, amit abba beleírt, elvész.",
+      "note": "A szakaszon kívüli szöveg és a jegyzet tulajdonságai változatlanok maradnak.",
+      "cancel": "Mégse",
+      "confirm": "Újraimportálás"
+    },
+    "commands": {
+      "reimported": "Újraimportálva a Readwise-ból",
+      "refreshed": "Könyvadatok frissítve",
+      "failed": "Nem sikerült végrehajtani a Readwise-parancsot"
+    }
+  },
   "page": {
     "empty": {
       "title": "Nincs kiválasztva jegyzet",
@@ -25,6 +61,7 @@
       "willSync": "A jegyzet szinkronizálódik a felhőbe",
       "renameFailed": "Nem sikerült átnevezni a jegyzetet",
       "titleRequired": "A jegyzetnek címre van szüksége",
+      "duplicateTitle": "A(z) {folder} mappában egy másik jegyzet neve is „{title}”. Az ezekre a jegyzetekre mutató hivatkozások tartalmazzák a mappát is.",
       "toggleLocalOnlyFailed": "Nem sikerült módosítani a csak helyi módot",
       "toggleFullWidthFailed": "Nem sikerült átkapcsolni a teljes szélességet",
       "pathCopied": "Útvonal másolva",
@@ -98,6 +135,7 @@
       "openToTheSide": "Megnyitás oldalt",
       "newNote": "Új jegyzet",
       "newFolder": "Új mappa",
+      "showTasks": "Feladatok megjelenítése",
       "expandSubfolders": "Összes almappa kibontása",
       "collapseSubfolders": "Összes almappa összecsukása",
       "rename": "Átnevezés",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "Eltávolítás a könyvjelzők közül",
       "journalSettings": "Napló beállításai…"
     },
-    "nav": {
-      "label": "Navigáció",
-      "ariaExpanded": "Navigációs szakasz, kibontva",
-      "ariaCollapsed": "Navigációs szakasz, összecsukva",
-      "saveFailed": "Nem sikerült menteni a navigációs szakasz állapotát"
-    },
     "viewOptions": {
       "label": "Nézetbeállítások",
       "notesFirst": "Jegyzetek a mappák előtt",
@@ -138,7 +170,15 @@
       "folderSuffix": "mappa",
       "moreItems": "…és még {count}",
       "deleting": "Törlés…",
-      "deleteCount": "{count} törlése"
+      "deleteCount": "{count} törlése",
+      "journalFolderWarning": "Ez magában foglalja a naplómappát is. Minden benne lévő naplóbejegyzés törlődik, az összes eszközén."
+    },
+    "journalChange": {
+      "leaveTitle": "Jegyzetekké alakítja a naplóbejegyzéseket?",
+      "leaveBody": "Ha kimozgatja a naplómappából, vagy átnevezi a dátumformátumtól eltérően, a naplóbejegyzések egyszerű jegyzetekké válnak, és kikerülnek a Naplóból. A többi eszközén ezek a napok eltűnnek a Naplóból, helyettük a jegyzetek jelennek meg.",
+      "joinTitle": "Naplóbejegyzésekké alakítja a jegyzeteket?",
+      "joinBody": "A naplómappában lévő, a napló dátumformátuma szerint elnevezett fájlok naplóbejegyzésekké válnak. A többi eszközén ezeket a jegyzeteket naplóbejegyzések váltják fel.",
+      "confirm": "Folytatás"
     },
     "toast": {
       "selectionBookmarked": "{count} elem könyvjelzőzve",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "Címsor",
       "listPlaceholder": "Listaelem",
       "todoPlaceholder": "Teendő",
-      "htmlComment": "Rejtett HTML-megjegyzés"
+      "htmlComment": "Rejtett HTML-megjegyzés",
+      "percentComment": "Rejtett megjegyzés",
+      "readwise": {
+        "noteStart": "Readwise · automatikusan szinkronizál",
+        "noteEnd": "A Readwise-szakasz vége",
+        "dayStart": "Readwise · a mai kiemelések",
+        "dayEnd": "A Readwise vége",
+        "hint": "Ha ebben a szakaszban szerkeszt, a Readwise nem frissíti tovább."
+      }
     },
     "table": {
       "keyboardMenuAria": "Táblázatműveletek, sor: {row}, oszlop: {column}",
-      "keyboardMenuTitle": "{row}. sor · {column}. oszlop"
+      "keyboardMenuTitle": "{row}. sor · {column}. oszlop",
+      "sizePicker": {
+        "aria": "Táblázatméret. A nyílbillentyűkkel válassza ki a sorokat és oszlopokat, majd nyomja meg az Entert.",
+        "size": "{rows, plural, one {# sor} other {# sor}} × {columns, plural, one {# oszlop} other {# oszlop}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Sor törlése} other {# sor törlése}}",
+        "addRowsAbove": "{count, plural, one {Sor beszúrása fölé} other {# sor beszúrása fölé}}",
+        "addRowsBelow": "{count, plural, one {Sor beszúrása alá} other {# sor beszúrása alá}}",
+        "deleteColumns": "{count, plural, one {Oszlop törlése} other {# oszlop törlése}}",
+        "addColumnsLeft": "{count, plural, one {Oszlop beszúrása balra} other {# oszlop beszúrása balra}}",
+        "addColumnsRight": "{count, plural, one {Oszlop beszúrása jobbra} other {# oszlop beszúrása jobbra}}"
+      }
     },
     "list": {
       "bulleted": "Felsorolásos lista",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "Helyi gráf elrejtése",
       "showLocalGraph": "Helyi gráf megjelenítése",
       "moreActions": "További műveletek",
+      "searchActions": "Műveletek keresése...",
+      "noMatchingActions": "Nincs egyező művelet",
       "find": "Keresés…",
       "versionHistory": "Verzióelőzmények",
       "export": "Exportálás",
@@ -215,6 +277,8 @@
       "notSynced": "Még nincs szinkronizálva erre az eszközre",
       "revealFailed": "Nem sikerült megjeleníteni a fájlt",
       "openFailed": "Nem sikerült megnyitni a fájlt",
+      "showAsLink": "Megjelenítés hivatkozásként",
+      "showAsEmbed": "Megjelenítés beágyazva",
       "missingTitle": "A mellékletfájl hiányzik",
       "missingExpected": "Várt fájl: {name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "Átnevezés",
       "renamed": "Átnevezve erre: {name}",
       "failed": "Nem sikerült átnevezni a mellékletet"
+    },
+    "imageLightbox": {
+      "menuItem": "Megtekintés nagyban",
+      "title": "Képmegjelenítő",
+      "zoomIn": "Nagyítás",
+      "zoomOut": "Kicsinyítés",
+      "reset": "Nagyítás visszaállítása"
+    },
+    "imageCrop": {
+      "menuItem": "Vágás…",
+      "title": "Kép vágása",
+      "description": "Húzással jelölje ki a képen, mit mutasson a jegyzet. Az eredeti fájl változatlan marad.",
+      "reset": "Teljes kép megjelenítése",
+      "cancel": "Mégse",
+      "apply": "Vágás",
+      "unavailable": "A kép még nem töltődött be, ezért nem vágható"
     },
     "attachmentsDialog": {
       "title": "Mellékletek",
@@ -248,12 +328,24 @@
       "title": "Kiemelő blokk",
       "group": "Alapblokkok",
       "subtext": "Fontos információk kiemelése",
+      "customSubtext": "Az Ön egyéni kiemelőtípusa",
       "changeType": "Kiemelő blokk típusának módosítása",
+      "expand": "Kiemelő kibontása",
+      "collapse": "Kiemelő összecsukása",
       "menuLabel": "Kiemelő blokk típusa",
       "info": "Infó",
       "warning": "Figyelmeztetés",
       "error": "Hiba",
-      "success": "Siker"
+      "success": "Siker",
+      "note": "Jegyzet",
+      "abstract": "Összefoglaló",
+      "todo": "Teendő",
+      "tip": "Tipp",
+      "important": "Fontos",
+      "question": "Kérdés",
+      "example": "Példa",
+      "quote": "Idézet",
+      "bug": "Hiba"
     },
     "columns": {
       "group": "Alapblokkok",
@@ -332,6 +424,83 @@
       "invalidShape": "A nézet definíciójában nincs forrás. Válasszon egyet fent, vagy javítsa ki lent.",
       "definition": "Definíció"
     },
+    "chart": {
+      "title": "Diagram",
+      "subtext": "Egy tulajdonság ábrázolása az idő függvényében: vonal, oszlopok vagy naptári hőtérkép",
+      "layout": "Diagram",
+      "settings": "Diagram beállításai",
+      "chooseProperty": "Válassza ki, mit ábrázoljon",
+      "source": "Forrás",
+      "headerMeta": "{range} · {type}",
+      "property": "Tulajdonság",
+      "noProperties": "Még nincs mit ábrázolni. Előbb adjon egy tulajdonságot egy naplóbejegyzéshez vagy jegyzethez.",
+      "chartType": "Diagram",
+      "suggested": "Javasolt",
+      "types": {
+        "line": "Vonal",
+        "bar": "Oszlop",
+        "heatmap": "Hőtérkép"
+      },
+      "range": "Tartomány",
+      "lastDays": "{count, plural, one {Utolsó nap} other {Utolsó # nap}}",
+      "sameDay": "Azonos napi bejegyzések",
+      "aggregates": {
+        "average": "Átlag",
+        "sum": "Összeg",
+        "min": "Legalacsonyabb",
+        "max": "Legmagasabb",
+        "count": "Darabszám"
+      },
+      "missingDays": "Hiányzó napok",
+      "missing": {
+        "gap": "Hézag hagyása",
+        "zero": "Számítson nullának"
+      },
+      "dateFrom": {
+        "label": "Dátum forrása",
+        "created": "Létrehozva",
+        "modified": "Módosítva"
+      },
+      "propertyTypes": {
+        "text": "Szöveg",
+        "number": "Szám",
+        "checkbox": "Jelölőnégyzet",
+        "date": "Dátum",
+        "url": "URL",
+        "status": "Állapot",
+        "select": "Választó",
+        "multiselect": "Többes választó",
+        "relation": "Kapcsolat",
+        "project": "Projekt",
+        "rating": "Értékelés"
+      },
+      "noEntry": "Nincs bejegyzés",
+      "done": "Kész",
+      "notDone": "Nincs kész",
+      "logged": "Rögzítve",
+      "valueCount": "{count, plural, one {# érték} other {# érték}}",
+      "average": "Átlag",
+      "vsPrevious": "az előző időszakhoz képest",
+      "lowest": "Legalacsonyabb",
+      "currentStreak": "Jelenlegi sorozat",
+      "longestStreak": "Leghosszabb sorozat",
+      "dayCount": "{count, plural, one {# nap} other {# nap}}",
+      "doneDays": "Kész",
+      "loggedDays": "Rögzítve",
+      "mostCommon": "Leggyakoribb",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} az elmúlt {days} napban",
+      "noData": "Ebben a tartományban még nincs rögzített adat.",
+      "loadFailed": "Nem sikerült betölteni ezt a diagramot. Maguk a bejegyzések érintetlenek.",
+      "sourceJournal": "Napló",
+      "history": {
+        "show": "Előzmények megjelenítése",
+        "title": "{property} előzményei",
+        "range": "Utolsó 13 hét",
+        "insert": "Másolás diagramblokkként",
+        "copied": "A diagramblokk átmásolva. Illessze be bármelyik jegyzetbe."
+      }
+    },
     "slashMenu": {
       "aria": "Blokkok és műveletek",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "MI"
       },
       "secondary": {
-        "asToggleHeading": "Összecsukhatóként",
         "asLinkedTask": "Kapcsolt feladatként",
         "asReminder": "Emlékeztetőként"
       },
-      "actions": {
-        "insert": "Beszúrás",
-        "open": "Megnyitás"
-      },
+      "close": "Menü bezárása",
       "matchesAlias": "egyezés:",
       "noMatch": "Nincs a(z) „{query}” keresésnek megfelelő blokk",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "Blokk áthelyezése jegyzetbe",
         "searchPlaceholder": "Jegyzetek keresése…",
         "noResults": "Nincs egyező jegyzet",
-        "moved": "Blokk áthelyezve ide: „{title}”",
         "failed": "Nem sikerült áthelyezni a blokkot"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Megjelenítés",
+        "embed": "Beágyazva",
+        "link": "Hivatkozás"
+      },
       "title": {
         "image": "Kép hozzáadása",
         "media": "Média hozzáadása",
@@ -525,6 +694,11 @@
       "empty": "Új címke létrehozásához kezdjen el gépelni",
       "create": "#{tag} létrehozása"
     },
+    "pdfDisplay": {
+      "title": "PDF megjelenítése",
+      "embed": "Beágyazott megjelenítő",
+      "link": "Fájlnév"
+    },
     "pasteLink": {
       "title": "Beillesztés így",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "Vázlat",
     "aria": "Dokumentumvázlat",
-    "emptyYet": "Még nincsenek címsorok",
     "readTime": "{count} perc olvasás",
     "words": "{count} szó",
     "created": "Létrehozva",
-    "modified": "Módosítva"
+    "modified": "Módosítva",
+    "sync": {
+      "label": "Szinkronizálás",
+      "confirmed": "A szerveren: {time}",
+      "pending": "Várakozás ennyi ideje: {time}",
+      "sent": "Küldés",
+      "rejected": "A szerver elutasította az utolsó módosítást",
+      "notRecorded": "Nincs küldésre váró elem",
+      "localOnly": "Csak helyi",
+      "notSyncing": "Nincs szinkronizálva",
+      "waiting": "Küldésre vár"
+    }
   },
   "backlinks": {
     "sortRecent": "Legutóbbi",
@@ -587,7 +771,18 @@
     "expandSection": "Visszahivatkozások szakasz kibontása",
     "showMore": "További {count} visszahivatkozás megjelenítése",
     "more": "{count} további",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Portálban megjelenítve"
+  },
+  "unlinkedMentions": {
+    "title": "Nem hivatkozott említések",
+    "summary": "{count, plural, one {# nem hivatkozott említés} other {# nem hivatkozott említés}}",
+    "sectionAria": "Nem hivatkozott említések",
+    "fromAria": "Nem hivatkozott említések itt: {title}",
+    "link": "Hivatkozás",
+    "linkAria": "{text} hivatkozássá alakítása",
+    "gone": "Az említés megváltozott a lista beolvasása óta",
+    "linkFailed": "Nem sikerült hivatkozássá alakítani az említést"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# kimenő hivatkozás} other {# kimenő hivatkozás}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "Nem sikerült hozzáadni a jegyzetet a vászonhoz"
   },
   "suggestedTags": {
-    "label": "Javasolt címkék:",
-    "hint": "Az ehhez leginkább hasonló jegyzetek közös címkéi. Semmi sem kerül a jegyzetbe, amíg nem választ egyet.",
-    "acceptAria": "Címke hozzáadása: {tag}",
-    "support": "{count, plural, one {# hasonló jegyzetben szerepel} other {# hasonló jegyzetben szerepel}}",
-    "dismiss": "Javasolt címkék elrejtése"
+    "support": "{count, plural, one {# hasonló jegyzetben szerepel} other {# hasonló jegyzetben szerepel}}"
   },
   "comments": {
     "railAria": "Megjegyzések",
@@ -631,11 +822,9 @@
     "toolbarComment": "Megjegyzés",
     "commentPlaceholder": "Megjegyzés hozzáadása…",
     "createdTooltip": "Létrehozva: {date} {time}",
-    "cancel": "Mégse",
     "resolve": "Megjelölés megoldottként",
     "edit": "Megjegyzés szerkesztése",
     "delete": "Megjegyzés törlése",
-    "replyPlaceholder": "Válasz…",
     "attachAria": "Fájl csatolása",
     "mentionAria": "Személy, oldal vagy dátum említése",
     "sendAria": "Megjegyzés küldése",
@@ -648,13 +837,7 @@
       "code": "Kód"
     },
     "openImageAria": "{name} kép megnyitása",
-    "openAttachmentAria": "{name} melléklet megnyitása",
-    "kind": {
-      "comment": "Megjegyzés",
-      "addition": "Hozzáadás",
-      "deletion": "Törlés",
-      "substitution": "Csere"
-    }
+    "openAttachmentAria": "{name} melléklet megnyitása"
   },
   "tagsRow": {
     "aria": "Címkék",
@@ -663,6 +846,7 @@
     "removeAria": "Címke eltávolítása: {tag}",
     "inputPlaceholder": "Írja be a címke nevét…",
     "recent": "Legutóbbiak",
+    "suggested": "Javasolt",
     "matching": "Egyező címkék",
     "all": "Minden címke",
     "none": "Nem találhatók címkék",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "Tulajdonságok",
     "noteAria": "Jegyzet tulajdonságai",
-    "workspaceAria": "Munkaterület tulajdonságai",
     "listAria": "Tulajdonságok listája",
     "add": "Tulajdonság hozzáadása",
     "addDescription": "Új tulajdonság hozzáadása ehhez a jegyzethez",
@@ -723,7 +906,6 @@
       "inProgress": "Folyamatban",
       "done": "Kész"
     },
-    "projectAlreadySet": "Ennek a jegyzetnek már van projekt típusú tulajdonsága",
     "projectPlaceholder": "Nincs projekt",
     "projectSearch": "Projektek keresése",
     "projectEmpty": "Nincsenek projektek",
@@ -755,6 +937,9 @@
     "repositionHint": "Húzza el a kép igazításához",
     "repositionSave": "mentés",
     "repositionCancel": "mégse",
+    "zoomIn": "Nagyítás",
+    "zoomOut": "Kicsinyítés",
+    "resize": "Húzással átméretezheti a borítót",
     "credit": "Fotó: {name} az Unsplash oldalon",
     "focusFailed": "Nem sikerült menteni a borítókép pozícióját",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Szűrés",
-      "filters": "Szűrők",
-      "clearAll": "Összes törlése",
-      "noFiltersApplied": "Nincsenek szűrők",
-      "addFiltersToNarrowDownYourNotes": "Adjon hozzá szűrőket a jegyzetek szűkítéséhez",
       "match": "Egyezés",
-      "allAnd": "Mind (ÉS)",
-      "anyOr": "Bármelyik (VAGY)",
-      "ofTheFollowing": "az alábbiak közül:",
       "match2": "Egyezés",
       "all": "Mind",
       "any": "Bármelyik",
-      "of": "közül:",
       "addCondition": "Feltétel hozzáadása",
       "addFilter": "Szűrő hozzáadása",
       "addGroup": "Csoport hozzáadása",
@@ -995,7 +1172,6 @@
       "available": "Elérhető: ",
       "preview": "Előnézet",
       "fixExpressionErrorsToSeePreview": "Az előnézet megtekintéséhez javítsa ki a kifejezés hibáit",
-      "usingNote": "Használt jegyzet: „",
       "cancel": "Mégse",
       "namePlaceholder": "napok_hataridoig",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "Mappák betöltése…",
       "suggested": "JAVASOLT",
       "bestMatch": "Legjobb találat",
-      "current": "jelenlegi)",
       "allFolders": "MINDEN MAPPA",
-      "noFoldersMatch": "Egyetlen mappa sem egyezik ezzel: „",
-      "create": "Létrehozás: „",
       "cancel": "Mégse",
       "currentFolderBadge": "(jelenlegi)",
       "noFoldersMatchQuery": "Egyetlen mappa sem egyezik ezzel: „{query}”",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "alapértelmezett",
       "viewActions": "Nézetműveletek",
-      "rename": "Átnevezés",
       "duplicate": "Megkettőzés",
       "setAsDefault": "Beállítás alapértelmezettként",
       "delete": "Törlés",
-      "createNewView": "Új nézet létrehozása",
-      "createNewView2": "Új nézet létrehozása",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Hozzon létre egy új nézetet egyéni oszlopokkal, szűrőkkel és rendezéssel.",
-      "viewName": "Nézet neve",
       "myCustomView": "Saját nézet",
-      "baseConfiguration": "Alapkonfiguráció",
-      "copyFromCurrentView": "Másolás az aktuális nézetből",
-      "startFreshDefaultColumns": "Kezdés elölről (alapértelmezett oszlopok)",
       "cancel": "Mégse",
-      "renameView": "Nézet átnevezése",
-      "enterANewNameForThisView": "Adjon meg egy új nevet ennek a nézetnek.",
-      "viewName2": "Nézet neve",
-      "viewName3": "Nézet neve",
-      "cancel2": "Mégse",
       "deleteView": "Nézet törlése",
       "areYouSureYouWantToDelete": "Biztosan törli ezt a nézetet: \"",
       "thisActionCannotBeUndone": "Ez a művelet nem vonható vissza.",
@@ -1077,22 +1237,17 @@
       "layout": "Elrendezés",
       "table": "Táblázat",
       "list": "Lista",
-      "gallery": "Galéria",
-      "createView": "Nézet létrehozása",
-      "save": "Mentés"
+      "gallery": "Galéria"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nem sikerült betölteni a PDF-et: ",
-      "download": "Letöltés",
       "download2": "Letöltés",
       "noFileAttached": "Nincs fájl csatolva",
       "resizePdf": "PDF átméretezése",
       "resizeHtml": "HTML-beágyazás átméretezése",
       "alignLeft": "Balra igazítás",
       "alignCenter": "Középre igazítás",
-      "alignRight": "Jobbra igazítás",
-      "previousPage": "Előző oldal",
-      "nextPage": "Következő oldal"
+      "alignRight": "Jobbra igazítás"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Megnyitás a feladatpanelen",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 hüvelyk)",
       "legal85X14In": "Legal (8,5 x 14 hüvelyk)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "nn.hh.éééé"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Szinkronizálva"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Szavak",
       "characters": "Karakterek",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "Még nincsenek könyvjelzők",
       "moreOptions": "További lehetőségek",
       "remove": "Eltávolítás"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Megnyitás",
-      "openToTheSide": "Megnyitás oldalt",
-      "pinToTabs": "Kitűzés lapként",
-      "edit": "Szerkesztés",
-      "delete": "Törlés",
-      "copyLink": "Hivatkozás másolása"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Címkék betöltése…",
@@ -1168,26 +1309,9 @@
       "cancel": "Mégse"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Vissza",
-      "notes": "jegyzet",
-      "loadingNotes": "Jegyzetek betöltése…",
-      "noNotesWithThisTag": "Nincsenek jegyzetek ezzel a címkével",
-      "addThisTagToANoteToSeeItHere": "Adja hozzá ezt a címkét egy jegyzethez, hogy itt megtekinthesse",
-      "pinned": "KITŰZÖTT",
-      "allNotes": "ÖSSZES JEGYZET",
-      "allNotesArePinned": "Minden jegyzet ki van tűzve",
-      "tasks": "FELADATOK",
-      "unpinFromTag": "Kitűzés megszüntetése a címkénél",
-      "unpin": "Kitűzés megszüntetése",
-      "pinToTag": "Kitűzés a címkénél",
-      "pin": "Kitűzés",
       "tagActions": "Címkeműveletek",
-      "editTagName": "Címke nevének szerkesztése",
       "changeColor": "Szín módosítása",
-      "deleteTag": "Címke törlése",
-      "recent": "Legutóbbi",
-      "created": "Létrehozva",
-      "alphabetical": "Betűrendben"
+      "deleteTag": "Címke törlése"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Címke átnevezése",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Új jegyzet létrehozása",
-      "viewSettings": "Nézetbeállítások",
-      "displayDensity": "Megjelenítési sűrűség",
-      "comfortable": "Kényelmes",
-      "compact": "Kompakt",
-      "showSummaries": "Összesítések megjelenítése",
       "cancel": "Mégse"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "Címkeközpont megnyitása"
   },
   "tagView": {
-    "moreActions": "További műveletek",
     "pin": {
       "action": "{count, plural, one {# jegyzet kitűzése a címkénél} other {# jegyzet kitűzése a címkénél}}",
       "success": "{count, plural, one {# jegyzet kitűzve a címkénél} other {# jegyzet kitűzve a címkénél}}",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# jegyzet} other {# jegyzet}}"
+    },
+    "noteTasks": {
+      "expand": "{title} feladatainak megjelenítése",
+      "collapse": "{title} feladatainak elrejtése",
+      "list": "Feladatok itt: {title}",
+      "progressOpen": "{open}/{total} nyitott",
+      "progressDone": "{total}/{total} kész",
+      "nextDue": "Következő határidő",
+      "reminder": "Emlékeztető beállítva"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "Keresés elnevezése",
     "saveDialogPlaceholder": "pl. Munkahelyi megbeszélések",
     "cancel": "Mégse",
-    "save": "Mentés",
-    "addToFilterHint": "Ctrl/Cmd + kattintással adhat hozzá egy címkét a szűrőhöz"
+    "save": "Mentés"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternatívák",
+      "overflow": "Túlcsordulás",
+      "menu": "Íróeszközök",
+      "close": "Íróeszközök bezárása"
+    },
+    "menu": {
+      "aria": "Szerkesztőműveletek",
+      "cut": "Kivágás",
+      "copy": "Másolás",
+      "paste": "Beillesztés",
+      "selectAll": "Összes kijelölése",
+      "undo": "Visszavonás",
+      "redo": "Ismétlés",
+      "comment": "Megjegyzés",
+      "addAlternative": "Alternatíva hozzáadása",
+      "suggestAlternatives": "Alternatívák javasolása",
+      "ghost": "Halványítás",
+      "revive": "Visszaélesztés",
+      "stash": "Félretétel a túlcsordulásba",
+      "noSpellingSuggestions": "Nincs javaslat",
+      "addToDictionary": "Hozzáadás a szótárhoz",
+      "clipboardFailed": "Nem sikerült használni a vágólapot"
+    },
+    "alternatives": {
+      "railAria": "Alternatívák",
+      "hint": "{position} / {total} ↑ ↓",
+      "original": "Eredeti",
+      "byYou": "Ön írta",
+      "byAI": "MI javasolta",
+      "showing": "Megjelenítve",
+      "addPlaceholder": "Alternatíva hozzáadása…",
+      "removeSuggestions": "Javaslatok eltávolítása",
+      "removeVariant": "Alternatíva eltávolítása",
+      "empty": "Jelöljön ki szöveget, és válassza az Alternatíva hozzáadása lehetőséget, hogy megőrizze a más megfogalmazásokat.",
+      "suggesting": "Alternatívák javasolása…",
+      "suggestFailed": "Nem sikerült alternatívákat javasolni",
+      "noSuggestions": "Nem érkezett új alternatíva"
+    },
+    "overflow": {
+      "railAria": "Túlcsordulás",
+      "addPlaceholder": "Írjon valamit, amit megőriz…",
+      "empty": "Az itt félretett vagy írt sorok a jegyzettel maradnak, a szövegen kívül.",
+      "dragHint": "Húzza a jegyzetbe",
+      "copy": "Másolás",
+      "copied": "Átmásolva",
+      "delete": "Törlés"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Jegyzet zárolása",
+    "unlockNote": "Jegyzet feloldása",
+    "lockFolder": "Mappa zárolása",
+    "unlockFolder": "Mappa feloldása",
+    "toggleFailed": "Nem sikerült módosítani a zárolást",
+    "readOnlyIndicator": "Zárolva. Csak olvasható Ön és az ügynökök számára.",
+    "externalEditRestored": "A(z) „{title}” zárolva van, ezért a külső szerkesztését visszavontuk",
+    "externalEditRestoredHint": "A szerkesztett szöveg a jegyzet verzióelőzményeiben van elmentve."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Személy",
+        "plural": "Személyek",
+        "fields": {
+          "company": "Cég",
+          "role": "Beosztás",
+          "email": "E-mail",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Személyek"
+        },
+        "template": {
+          "name": "Személy",
+          "context": "Háttér",
+          "contextHint": "Hogyan ismerkedtünk meg, mi érdekli",
+          "notes": "Jegyzetek"
+        }
+      },
+      "company": {
+        "name": "Cég",
+        "plural": "Cégek",
+        "fields": {
+          "website": "Weboldal",
+          "industry": "Iparág",
+          "location": "Hely"
+        },
+        "template": {
+          "name": "Cég",
+          "overview": "Áttekintés",
+          "overviewHint": "Mivel foglalkoznak, kit ismerünk ott",
+          "notes": "Jegyzetek"
+        }
+      },
+      "meeting": {
+        "name": "Megbeszélés",
+        "plural": "Megbeszélések",
+        "fields": {
+          "date": "Dátum",
+          "attendees": "Résztvevők",
+          "company": "Cég"
+        },
+        "inverse": {
+          "attendees": "Megbeszélések",
+          "company": "Megbeszélések"
+        },
+        "template": {
+          "name": "Megbeszélés",
+          "agenda": "Napirend",
+          "notes": "Jegyzetek",
+          "actionItems": "Teendők"
+        }
+      },
+      "book": {
+        "name": "Könyv",
+        "plural": "Könyvek",
+        "fields": {
+          "author": "Szerző",
+          "shelf": "Polc",
+          "rating": "Értékelés",
+          "finished": "Befejezve"
+        },
+        "shelf": {
+          "toRead": "Olvasandó",
+          "reading": "Olvasás alatt",
+          "read": "Elolvasva"
+        },
+        "template": {
+          "name": "Könyv",
+          "highlights": "Kiemelések",
+          "thoughts": "Gondolatok"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "A(z) {title} mostantól {tag}. Sablon hozzáadva.",
+      "templateChanged": "A jegyzet a sablon hozzáadása után megváltozott, ezért megmarad.",
+      "undoFailed": "Nem sikerült visszavonni",
+      "addFailed": "Nem sikerült hozzáadni a címkét",
+      "removeFailed": "Nem sikerült eltávolítani a címkét",
+      "removedKept": "A(z) #{tag} eltávolítva. {count} érték megmaradt.",
+      "removedKeptOne": "A(z) #{tag} eltávolítva. 1 érték megmaradt."
+    },
+    "picker": {
+      "create": "#{tag} létrehozása",
+      "fillsTemplate": "Kitölti ezt az üres jegyzetet a(z) {tag} sablonnal"
+    },
+    "hub": {
+      "strip": {
+        "title": "Kész címkék",
+        "subtitle": "Mezőkkel érkező címkék. A jegyzetek változatlanok maradnak, amíg nem címkézi őket.",
+        "notNow": "Most nem",
+        "add": "Hozzáadás",
+        "addFields": "Mezők hozzáadása",
+        "added": "Hozzáadva",
+        "alreadyOn": "Már {count} jegyzeten rajta van",
+        "alreadyOnOne": "Már 1 jegyzeten rajta van"
+      },
+      "dialog": {
+        "title": "Hozzáadja a(z) {preset} mezőit a(z) #{tag} címkéhez?",
+        "body": "A(z) #{tag} már {count} jegyzeten rajta van. Ezek megtartanak mindent, ami rajtuk van, és megkapják ezeket a mezőket, üresen, amíg valaki ki nem tölti őket.",
+        "bodyOne": "A(z) #{tag} már 1 jegyzeten rajta van. Az megtart mindent, ami rajta van, és megkapja ezeket a mezőket, üresen, amíg valaki ki nem tölti őket.",
+        "template": "A sablon ({sections}) csak az üres jegyzeteket tölti ki.",
+        "alsoAddsPrefix": "Hozzáadja még:",
+        "alsoAddsSuffix": "a(z) {field} mezőhöz.",
+        "useAnotherName": "Másik név használata",
+        "nameLabel": "Az új címke neve",
+        "namePlaceholder": "kapcsolat",
+        "cancel": "Mégse",
+        "addFields": "Mezők hozzáadása"
+      },
+      "toast": {
+        "added": "A(z) #{tag} hozzáadva",
+        "addedFields": "A(z) {preset} mezői hozzáadva a(z) #{tag} címkéhez"
+      },
+      "hasFields": "Vannak mezői"
+    },
+    "tasks": {
+      "thisTask": "Ez a feladat",
+      "viaTag": "{name} a(z) #{via} címkén keresztül",
+      "clearValue": "{name} törlése",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "a(z) #{tag} címkén keresztül",
+      "groupMenu": "{tag} beállításai",
+      "openTag": "#{tag} megnyitása",
+      "thisNote": "Ez a jegyzet"
+    },
+    "offer": {
+      "text": "A(z) {tag} sablon hozzáadása a szövege alá",
+      "add": "Hozzáadás",
+      "dismiss": "Elvetés",
+      "addFailed": "Nem sikerült hozzáadni a sablont"
+    },
+    "settings": {
+      "title": "A(z) #{tag} beállításai",
+      "close": "Bezárás",
+      "cancel": "Mégse",
+      "save": "Mentés",
+      "onCounts": "{notes, plural, one {# jegyzeten} other {# jegyzeten}} és {tasks, plural, one {# feladaton} other {# feladaton}}",
+      "onNotes": "{count, plural, one {# jegyzeten} other {# jegyzeten}}",
+      "headerFields": "{count, plural, one {# mező} other {# mező}}",
+      "editTag": "Címke szerkesztése",
+      "syncNote": "A módosítások szinkronizálódnak a többi eszközére",
+      "newerVersion": "A Memry egy újabb verziója módosította ezt a címkét. Az itteni szerkesztéséhez frissítse a Memryt.",
+      "sections": {
+        "appearance": "Megjelenés",
+        "extends": "Kiterjeszti",
+        "fields": "Mezők · {count}",
+        "template": "Sablon"
+      },
+      "appearance": {
+        "icon": "Ikon",
+        "color": "Szín",
+        "customColor": "Egyéni",
+        "category": "Kategória",
+        "noCategory": "Nincs kategória"
+      },
+      "extends": {
+        "nothing": "Semmit",
+        "hint": "Egy másik címke mezőinek átvétele, és megjelenés annak táblázatában.",
+        "hintSet": "A(z) {tag} jegyzetei megkapják a(z) {parent} mezőit, és megjelennek a(z) {parent} táblázatában."
+      },
+      "types": {
+        "text": "Szöveg",
+        "number": "Szám",
+        "date": "Dátum",
+        "url": "URL",
+        "status": "Állapot",
+        "select": "Választó",
+        "multiselect": "Többes választó",
+        "checkbox": "Jelölőnégyzet",
+        "relation": "Kapcsolat"
+      },
+      "fields": {
+        "empty": "Még nincsenek mezők. Adjon hozzá egyet, hogy minden #címkés jegyzet ugyanazokkal a tulajdonságokkal rendelkezzen.",
+        "fromParent": "Innen: #{tag} · ott szerkessze",
+        "inverseSub": "Megjelenik a(z) {target} oldalán mint {inverse}",
+        "anyNoteSub": "Bármely jegyzetre hivatkozhat",
+        "actions": "{field} műveletei",
+        "rename": "Átnevezés…",
+        "relationSettings": "Kapcsolat beállításai",
+        "remove": "Eltávolítás…"
+      },
+      "addField": {
+        "button": "Mező hozzáadása",
+        "namePlaceholder": "Mező neve",
+        "existing": "Meglévő tulajdonságok",
+        "existingSub": "{type} · {count, plural, one {# jegyzeten} other {# jegyzeten}} · újrafelhasználás",
+        "newType": "Új mező típusa",
+        "relationSub": "Hivatkozás címkével ellátott jegyzetekre",
+        "submit": "Mező hozzáadása",
+        "reserved": "A(z) {name} foglalt, ezért nem lehet mező.",
+        "taken": "A(z) #{tag} címkének már van {name} mezője."
+      },
+      "relation": {
+        "target": "Erre a címkére mutat:",
+        "pickTag": "Válasszon egy címkét",
+        "howMany": "Mennyi",
+        "one": "Egy",
+        "many": "Több",
+        "inverseLabel": "A(z) {target} oldalán sorolja fel őket így:",
+        "inverseLabelAny": "A hivatkozott oldalon sorolja fel őket így:",
+        "inverseHint": "Csak olvasható lista minden {target} oldalán. A(z) {target} jegyzetekbe nem íródik semmi.",
+        "inverseHintAny": "Csak olvasható lista minden hivatkozott jegyzeten. Ezekbe a jegyzetekbe nem íródik semmi."
+      },
+      "shared": {
+        "title": "Új mező a(z) #{tag} címkén",
+        "existsWith": "A(z) {name} már létezik ebben a széfben ezekkel: {options}.",
+        "existsAs": "A(z) {name} már létezik ebben a széfben {type} tulajdonságként.",
+        "shareWith": "A(z) #{tag} megosztja a(z) {others} jegyzetével.",
+        "shareAny": "A(z) #{tag} megosztja a többi jegyzetével.",
+        "useInstead": "Inkább a(z) {name} használata",
+        "share": "A(z) {name} megosztása"
+      },
+      "template": {
+        "edit": "Sablon szerkesztése",
+        "none": "Még nincs sablon. A sablon kitölti az üres jegyzeteket, amikor megkapják a címkét.",
+        "create": "Sablon létrehozása",
+        "defaultHeading": "Jegyzetek",
+        "inherited": "Innen: #{tag}",
+        "autofill": "Az üres jegyzetek kitöltése, amikor megkapják a(z) #{tag} címkét"
+      },
+      "remove": {
+        "title": "Eltávolítja a(z) {field} mezőt a(z) #{tag} címkéből?",
+        "body": "A(z) {field} {filled, plural, one {# jegyzeten} other {# jegyzeten}} ki van töltve. Ezek az értékek rendes tulajdonságként a jegyzeteken maradnak; {empty, plural, one {# üres hely eltűnik} other {# üres hely eltűnik}}.",
+        "confirm": "Mező eltávolítása"
+      },
+      "rename": {
+        "title": "{from} átnevezése erre: {to}",
+        "titleEmpty": "{from} átnevezése",
+        "label": "Új név",
+        "body": "{count, plural, one {# jegyzetnek van} other {# jegyzetnek van}} {field} értéke. A Memry minden fájlban és a tulajdonságaikban átnevezi a kulcsot; az Obsidian is az új nevet látja.",
+        "progress": "Átnevezés a jegyzetekben",
+        "confirm": "Átnevezés",
+        "taken": "Ennek a címkének már van {name} mezője.",
+        "done": "{from} átnevezve erre: {to}, {count, plural, one {# elemben} other {# elemben}}.",
+        "skipped": "{from} átnevezve erre: {to}, {count, plural, one {# elemben} other {# elemben}}. {locked, plural, =0 {} one {# zárolt jegyzet a feloldásakor fejeződik be.} other {# zárolt jegyzet a feloldásakor fejeződik be.}} {existing, plural, =0 {} one {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartja.} other {# jegyzetnek már volt {to} mezője, ezért mindkettőt megtartják.}}"
+      },
+      "delete": {
+        "button": "Címke törlése",
+        "title": "Törli a(z) #{tag} címkét?",
+        "body": "A(z) #{tag} eltávolításra kerül {notes, plural, one {# jegyzetről} other {# jegyzetről}}, és a címke eltűnik {fields, plural, one {# mezőjével} other {# mezőjével}} és sablonjával együtt.",
+        "bodyNoTemplate": "A(z) #{tag} eltávolításra kerül {notes, plural, one {# jegyzetről} other {# jegyzetről}}, és a címke eltűnik {fields, plural, one {# mezőjével} other {# mezőjével}} együtt.",
+        "bodyPlain": "A(z) #{tag} eltávolításra kerül minden jegyzetről, amelynek a címkéi között szerepel.",
+        "statNotes": "jegyzet megtartja a szövegét",
+        "statValues": "érték tulajdonságként megmarad",
+        "plainText": "Azok a jegyzetek, amelyek a szövegükben megemlítik a(z) #{tag} címkét, egyszerű szövegként megtartják.",
+        "confirm": "Címke törlése",
+        "done": "A(z) #{tag} törölve."
+      },
+      "errors": {
+        "addField": "Nem sikerült hozzáadni a mezőt.",
+        "removeField": "Nem sikerült eltávolítani a mezőt.",
+        "renameField": "Nem sikerült átnevezni a mezőt.",
+        "moveField": "Nem sikerült áthelyezni a mezőt.",
+        "relation": "Nem sikerült menteni a kapcsolatot.",
+        "extends": "Nem sikerült módosítani, mit terjeszt ki ez a címke.",
+        "template": "Nem sikerült frissíteni a sablont.",
+        "deleteTag": "Nem sikerült törölni a címkét.",
+        "icon": "Nem sikerült módosítani az ikont.",
+        "color": "Nem sikerült módosítani a színt.",
+        "category": "Nem sikerült módosítani a kategóriát."
+      }
+    },
+    "fill": {
+      "action": "Kitöltés a jegyzetből",
+      "reading": "Jegyzet olvasása…",
+      "disclosure": "Az ügynökmodellje ({model}) elolvassa ezt a jegyzetet, hogy értékeket javasoljon. Csak ez a jegyzet kerül elküldésre. Semmi sem mentődik, amíg el nem fogadja.",
+      "disclosureLocal": "A helyi modellje ({model}) ezen az eszközön olvassa el ezt a jegyzetet, hogy értékeket javasoljon. Semmi sem hagyja el az eszközt, és semmi sem mentődik, amíg el nem fogadja.",
+      "disclosureMany": "Az ügynökmodellje ({model}) egyenként olvassa el ezeket a jegyzeteket, hogy értékeket javasoljon. Csak ezek a jegyzetek kerülnek elküldésre. Semmi sem mentődik, amíg el nem fogadja.",
+      "disclosureLocalMany": "A helyi modellje ({model}) ezen az eszközön olvassa el ezeket a jegyzeteket, hogy értékeket javasoljon. Semmi sem hagyja el az eszközt, és semmi sem mentődik, amíg el nem fogadja.",
+      "suggest": "Értékek javasolása",
+      "notNow": "Most nem",
+      "countOne": "· {count} javaslat",
+      "count": "· {count} javaslat",
+      "dismiss": "Elvetés",
+      "acceptAll": "Összes elfogadása",
+      "accept": "{field} elfogadása",
+      "reject": "{field} elutasítása",
+      "notInNote": "Nincs a jegyzetben",
+      "createHint": "Elfogadáskor új #{tag} jön létre",
+      "nothingFound": "Ebben a jegyzetben semmi sem tölti ki az üres mezőket",
+      "failed": "Nem sikerült értékeket javasolni. {message}",
+      "saveFailed": "Nem sikerült menteni az elfogadott értékeket",
+      "bulkAction": "Üres mezők kitöltése",
+      "bulkTitle": "Üres mezők kitöltése",
+      "bulkReading": "{done} / {total} jegyzet · jegyzetek olvasása…",
+      "bulkRead": "{done} / {total} jegyzet elolvasva",
+      "stop": "Leállítás",
+      "name": "Név",
+      "nothingInRow": "Nem található semmi",
+      "found": "{count} található",
+      "reviewOneByOne": "Áttekintés egyenként",
+      "acceptRow": "{title} értékeinek elfogadása",
+      "rejectRow": "{title} kihagyása",
+      "bulkSavedOne": "{count} mező kitöltve {notes} jegyzeten",
+      "bulkSaved": "{count} mező kitöltve {notes} jegyzeten"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "{title} létrehozása mint",
+      "asPrefix": "Létrehozás",
+      "asSuffix": "mint",
+      "failed": "Nem sikerült létrehozni a jegyzetet",
+      "lastUsed": "Legutóbb használt",
+      "noteWord": "jegyzet",
+      "plainNote": "Egyszerű jegyzet",
+      "readyMade": "Kész címke",
+      "row": "„{title}” létrehozása",
+      "rowHint": "Mint {types}"
+    },
+    "hover": {
+      "at": "itt:",
+      "lastMet": "Utolsó találkozás · {title}",
+      "lastMetOn": "Utolsó találkozás: {date} · {title}",
+      "mentionedIn": "{count, plural, one {Megemlítve # jegyzetben} other {Megemlítve # jegyzetben}}",
+      "open": "Megnyitás",
+      "tasks": "{count, plural, one {# feladat · {field}} other {# feladat · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} a szövegben",
+      "explain": "A szövegben a címke egy felirat. Ez a jegyzet a(z) #{tag} oldalán a Megemlítve itt alatt szerepel.",
+      "made": "A(z) #{tag} hozzáadva ennek a jegyzetnek a címkéihez",
+      "make": "Ez a jegyzet legyen {tag}",
+      "makeFailed": "Nem sikerült hozzáadni a címkét",
+      "makeHint": "Hozzáadja a(z) #{tag} címkét a fejléchez, és megjeleníti a mezőit",
+      "meta": "{count, plural, one {# objektum} other {# objektum}} · {fields, plural, one {# mező} other {# mező}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, one {# mező} other {# mező}}",
+      "open": "#{tag} megnyitása",
+      "remove": "Címke eltávolítása a szövegből"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "mint {field}",
+      "due": "Határidő: {date}",
+      "inTheText": "a szövegben",
+      "mentionedIn": "Megemlítve itt:",
+      "tasks": "Feladatok",
+      "title": "Ide kapcsolva"
+    },
+    "mention": {
+      "notes": "Jegyzetek"
+    },
+    "picker": {
+      "create": "Új {tag}",
+      "createNamed": "Új {tag}: „{title}”",
+      "empty": "Nincs találat",
+      "search": "{tag} keresése",
+      "untitled": "Új {tag}"
+    },
+    "quickFields": {
+      "add": "{field} hozzáadása",
+      "aria": "{title} első mezői",
+      "done": "Kész",
+      "later": "Később",
+      "newObject": "Új {tag}",
+      "saveFailed": "Nem sikerült menteni a mezőket"
+    },
+    "table": {
+      "untitled": "Új {tag}",
+      "newInGroup": "Új {tag} itt: {group}",
+      "newInGroupHint": "A ⌘↵ új lapon nyitja meg",
+      "new": "Új {tag}",
+      "includes": "{field} tartalmazza",
+      "removeFilter": "Szűrő eltávolítása",
+      "shown": "{shown} / {total}",
+      "saveView": "Nézet mentése",
+      "mentionedMeta": "{count, plural, one {# jegyzet, amelynek szövegében szerepel a '#'{tag}} other {# jegyzet, amelyek szövegében szerepel a '#'{tag}}}",
+      "saveFailed": "Nem sikerült menteni a mezőt",
+      "created": "{title} létrehozva"
+    },
+    "relationDrop": {
+      "title": "Hozzáadja a(z) #{tag} címkét ehhez: „{title}”?",
+      "body": "Ez a mező csak #{tag} címkével ellátott jegyzeteket kapcsol össze. A Memry hozzáadja a(z) #{tag} címkét a(z) „{title}” fejlécéhez, majd itt hivatkozik rá.",
+      "confirm": "#{tag} hozzáadása és hivatkozás",
+      "cancel": "Mégse",
+      "added": "A(z) „{title}” mostantól #{tag}, és hivatkozva van",
+      "notANote": "Itt csak jegyzetek hivatkozhatók #{tag}-ként",
+      "failed": "Nem sikerült hivatkozni erre a jegyzetre"
+    }
   },
   "names": {
     "also": "más néven",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "Jegyzetek keresése",
     "pickerEmpty": "Nincs egyező jegyzet",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Részletek hozzáadása"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portál",
+        "subtext": "Egy jegyzet vagy blokk élő megjelenítése máshonnan"
+      },
+      "searchPortal": {
+        "title": "Keresőportál",
+        "subtext": "Egy lekérdezésnek megfelelő blokkok élő listája"
+      }
+    },
+    "picker": {
+      "aria": "Válasszon egy jegyzetet vagy blokkot a portálhoz",
+      "notes": "Jegyzetek",
+      "blocks": "Blokkok",
+      "loading": "Keresés…",
+      "empty": "Nincs egyező jegyzet vagy blokk",
+      "hintInsert": "Portál beszúrása",
+      "hintClose": "Bezárás",
+      "keyEsc": "Esc",
+      "create": "„{query}” jegyzet létrehozása",
+      "createFailed": "Nem sikerült létrehozni a jegyzetet",
+      "stampFailed": "Nem sikerült előkészíteni a blokkot a portálhoz",
+      "retargetFailed": "Nem sikerült a portált erre a blokkra irányítani"
+    },
+    "insert": {
+      "cycle": "A portál nem jeleníthet meg egy jegyzetet önmagában."
+    },
+    "copy": {
+      "done": "Portál átmásolva. Illessze be bármelyik jegyzetbe.",
+      "failed": "Nem sikerült portált másolni erre a blokkra"
+    },
+    "menu": {
+      "copyAsPortal": "Másolás portálként",
+      "hideInPortal": "Elrejtés ebben a portálban"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {# másik helyen használva} other {# másik helyen használva}}"
+    },
+    "whereUsed": {
+      "aria": "Hol használják ezt a blokkot",
+      "portals": "Portálok",
+      "links": "Hivatkozások",
+      "openBeside": "Megnyitás mellette",
+      "loadFailed": "Nem sikerült betölteni, hol jelenik meg ez a blokk"
+    },
+    "hiddenBlocks": {
+      "title": "Rejtett blokkok",
+      "showAll": "Összes megjelenítése",
+      "search": "Rejtett blokkok keresése",
+      "showFailed": "Nem sikerült megjeleníteni ezt a blokkot"
+    },
+    "searchQuery": {
+      "titleNew": "Keresőportál",
+      "titleEdit": "Lekérdezés szerkesztése",
+      "text": "Szavakat tartalmaz",
+      "textPlaceholder": "A blokkban lévő szavak",
+      "tag": "Címke",
+      "tagPlaceholder": "vizsga",
+      "limit": "Korlát",
+      "footer": "Legfeljebb {limit} találat.",
+      "create": "Létrehozás",
+      "apply": "Alkalmazás"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Mindenhol törli ezt a blokkot?",
+        "note": "Mindenhol törli ezt a jegyzetet?"
+      },
+      "description": {
+        "block": "A(z) „{title}” {count, plural, one {# másik jegyzetben} other {# másik jegyzetben}} is megjelenik.",
+        "note": "A(z) „{title}” {count, plural, one {# másik jegyzetben} other {# másik jegyzetben}} látható vagy hivatkoznak rá."
+      },
+      "manyNotes": "{count} jegyzet",
+      "source": "{title} (forrás)",
+      "removeHere": "Inkább elrejtés itt",
+      "cancel": "Mégse",
+      "everywhere": "Törlés mindenhol",
+      "undoToast": "{count, plural, one {A törölt blokk # másik jegyzetben jelent meg.} other {A törölt blokk # másik jegyzetben jelent meg.}}",
+      "undo": "Visszavonás"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Teljes",
+      "brief": "Rövid",
+      "key": "Lényeg",
+      "takeaway": "Tanulság",
+      "topic": "Téma"
+    },
+    "chrome": {
+      "fold": "Jegyzet összehajtása",
+      "unfold": "Összehajtva: {level}. Teljes szöveg megjelenítése",
+      "words": "{count, plural, one {# szó} other {# szó}}",
+      "writing": "Írás…",
+      "writtenBy": "Írta: {agent}",
+      "retry": "Az utolsó futás sikertelen · Újrapróbálkozás",
+      "captionOff": "Kapcsolja be a Hosszú jegyzetek összefoglalását a Beállítások → MI részben",
+      "captionNoAgent": "Nincs csatlakoztatott ügynök · Beállítások → MI",
+      "unknownAgent": "MI"
+    },
+    "hint": {
+      "title": "Hosszú jegyzet? Fussa át.",
+      "body": "Hajtsa össze a kulcsmondataira, majd nyissa ki csak azt a bekezdést, amelyre szüksége van.",
+      "dismiss": "Értem"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# bekezdés nyitva} other {# bekezdés nyitva}}",
+      "escape": "esc",
+      "copy": "Másolás szövegként",
+      "copied": "Átmásolva",
+      "aria": "Összehajtott nézet",
+      "hintMac": "Csippentéssel, ⌘-görgetéssel vagy ezen a soron görgetve nagyíthat · kattintson egy bekezdésre a megnyitásához",
+      "hint": "Csippentéssel, Ctrl-görgetéssel vagy ezen a soron görgetve nagyíthat · kattintson egy bekezdésre a megnyitásához"
+    },
+    "view": {
+      "aria": "Összehajtott nézet: {level}",
+      "paragraphOpen": "Teljes nézetben megnyitva · kattintson újra az összehajtáshoz",
+      "paragraphFold": "Bekezdés összehajtása",
+      "paragraphOpenAction": "Bekezdés megnyitása teljes terjedelmében",
+      "unfoldSection": "{heading} szakasz kibontása",
+      "jumpToParagraph": "Bekezdés megjelenítése teljes terjedelmében: {topic}",
+      "untitledSection": "Cím nélküli",
+      "skipped": {
+        "code": "… {count, plural, one {# kódblokk} other {# kódblokk}}",
+        "table": "… {count, plural, one {# táblázat} other {# táblázat}}",
+        "image": "… {count, plural, one {# kép} other {# kép}}",
+        "callout": "… {count, plural, one {# kiemelő} other {# kiemelő}}",
+        "embed": "… {count, plural, one {# beágyazás} other {# beágyazás}}",
+        "other": "… {count, plural, one {# további blokk} other {# további blokk}}"
+      }
+    }
   }
 }

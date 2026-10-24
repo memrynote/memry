@@ -8,6 +8,7 @@
     ".": "./src/index.ts",
     "./inline": "./src/inline/index.ts",
     "./blocks": "./src/blocks/index.ts",
+    "./callout-types": "./src/blocks/callout-types.ts",
     "./code-block": "./src/code-block.ts",
     "./conformance": "./src/conformance.ts",
     "./conformance-ydoc": "./src/conformance-ydoc.ts",

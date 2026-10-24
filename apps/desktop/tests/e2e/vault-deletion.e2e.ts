@@ -55,22 +55,24 @@ const test = base.extend<{
   electronApp: ElectronApplication
   page: Page
 }>({
-  testVaultPath: async ({}, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures must destructure their first argument to detect dependencies
+  testVaultPath: async ({}, provide) => {
     const vaultPath = createTestVault('memry-e2e-vault-deletion-')
-    await use(vaultPath)
+    await provide(vaultPath)
     fs.rmSync(vaultPath, { recursive: true, force: true })
   },
 
-  syncBootstrap: async ({}, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures must destructure their first argument to detect dependencies
+  syncBootstrap: async ({}, provide) => {
     const bootstrap = await startSharedSyncBootstrap()
     try {
-      await use(bootstrap)
+      await provide(bootstrap)
     } finally {
       await bootstrap.server.stop()
     }
   },
 
-  electronApp: async ({ testVaultPath, syncBootstrap }, use) => {
+  electronApp: async ({ testVaultPath, syncBootstrap }, provide) => {
     const launched = await launchElectronWithWindow({
       testVaultPath,
       // A unique per-run device id namespaces the OS keychain account keytar
@@ -81,13 +83,13 @@ const test = base.extend<{
       syncServerUrl: syncBootstrap.serverUrl
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
-    await use(launched.app)
+    await provide(launched.app)
     await destroyLaunchedElectron(launched)
   },
 
   // Signs the single launched instance into the shared test account so
   // vault.deleteFromAccount has a real, authenticated session to act against.
-  page: async ({ electronApp, syncBootstrap, testVaultPath }, use) => {
+  page: async ({ electronApp, syncBootstrap, testVaultPath }, provide) => {
     const launched = (electronApp as unknown as { __launched?: LaunchedElectron }).__launched
     const page = launched?.page ?? (await electronApp.firstWindow({ timeout: 45_000 }))
     await waitForAppReady(page)
@@ -120,7 +122,7 @@ const test = base.extend<{
       .poll(() => page.evaluate(() => window.api.syncDevices.getDevices()), { timeout: 30_000 })
       .toMatchObject({ email: syncBootstrap.email, devices: [expect.anything()] })
 
-    await use(page)
+    await provide(page)
   }
 })
 

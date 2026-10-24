@@ -18,6 +18,7 @@ interface LayoutPickerProps {
 /**
  * Get icon for layout preset
  */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; the implicit fallthrough is unreachable for typed input
 const getPresetIcon = (id: LayoutPreset): React.ReactNode => {
   switch (id) {
     case 'single':

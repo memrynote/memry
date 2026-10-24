@@ -170,7 +170,7 @@ function groupByDay(
           : dayFormatter.format(date)
 
     const last = groups[groups.length - 1]
-    if (last && last.label === label) last.entries.push(entry)
+    if (last?.label === label) last.entries.push(entry)
     else groups.push({ label, entries: [entry] })
   }
   return groups

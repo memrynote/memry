@@ -30,9 +30,10 @@ export interface ReconcileTaskCheckboxesDeps {
   uncomplete: (db: DataDb, id: string) => Promise<unknown>
 }
 
+const domain = (db: DataDb) => createDesktopTasksDomain(db, createTasksPublisher(), generateId)
+
 function defaultDeps(): ReconcileTaskCheckboxesDeps | null {
   if (!isDatabaseInitialized()) return null
-  const domain = (db: DataDb) => createDesktopTasksDomain(db, createTasksPublisher(), generateId)
   return {
     db: getDatabase(),
     getTask: getTaskById,

@@ -21,7 +21,8 @@ const truncate = (value: string, limit: number): string =>
   value.length > limit ? `${value.slice(0, limit)}…` : value
 
 /** electron-updater / node errno codes are strings; HTTP-ish libs sometimes use numbers. */
-const codeOf = (error: object): string | undefined => {
+const codeOf = (error: unknown): string | undefined => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught value is unknown; only .code is read and undefined is handled
   const { code } = error as { code?: unknown }
   if (typeof code === 'string' && code) return code
   if (typeof code === 'number' && Number.isFinite(code)) return String(code)

@@ -9,17 +9,18 @@
 
 import { z } from 'zod'
 
-// Import and re-export channels from the contract-local surface.
 import { ReminderChannels } from './ipc-channels'
-export { ReminderChannels }
-
-// Re-export canonical reminder types.
 import {
   reminderTargetType,
   reminderStatus,
   type ReminderTargetType,
   type ReminderStatus
 } from './reminder-types'
+
+// Re-export channels from the contract-local surface.
+export { ReminderChannels }
+
+// Re-export canonical reminder types.
 export { reminderTargetType, reminderStatus, type ReminderTargetType, type ReminderStatus }
 
 // ============================================================================
@@ -36,14 +37,14 @@ export const CreateReminderSchema = z.discriminatedUnion('targetType', [
   z.object({
     targetType: z.literal('note'),
     targetId: z.string().min(1),
-    remindAt: z.string().datetime(),
+    remindAt: z.iso.datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()
   }),
   z.object({
     targetType: z.literal('journal'),
     targetId: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-    remindAt: z.string().datetime(),
+    remindAt: z.iso.datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()
   }),
@@ -53,14 +54,14 @@ export const CreateReminderSchema = z.discriminatedUnion('targetType', [
     highlightText: z.string().min(1).max(5000),
     highlightStart: z.number().int().min(0),
     highlightEnd: z.number().int().min(0),
-    remindAt: z.string().datetime(),
+    remindAt: z.iso.datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()
   }),
   z.object({
     targetType: z.literal('task'),
     targetId: z.string().min(1),
-    remindAt: z.string().datetime(),
+    remindAt: z.iso.datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()
   }),
@@ -68,7 +69,7 @@ export const CreateReminderSchema = z.discriminatedUnion('targetType', [
     targetType: z.literal('note_date'),
     targetId: z.string().min(1),
     anchorId: z.string().min(1),
-    remindAt: z.string().datetime(),
+    remindAt: z.iso.datetime(),
     title: z.string().max(200).optional(),
     note: z.string().max(1000).optional()
   })
@@ -79,7 +80,7 @@ export const CreateReminderSchema = z.discriminatedUnion('targetType', [
  */
 export const UpdateReminderSchema = z.object({
   id: z.string().min(1),
-  remindAt: z.string().datetime().optional(),
+  remindAt: z.iso.datetime().optional(),
   title: z.string().max(200).optional().nullable(),
   note: z.string().max(1000).optional().nullable()
 })
@@ -89,7 +90,7 @@ export const UpdateReminderSchema = z.object({
  */
 export const SnoozeReminderSchema = z.object({
   id: z.string().min(1),
-  snoozeUntil: z.string().datetime()
+  snoozeUntil: z.iso.datetime()
 })
 
 /**
@@ -99,8 +100,8 @@ export const ListRemindersSchema = z.object({
   targetType: ReminderTargetTypeSchema.optional(),
   targetId: z.string().optional(),
   status: z.union([ReminderStatusSchema, z.array(ReminderStatusSchema)]).optional(),
-  fromDate: z.string().datetime().optional(),
-  toDate: z.string().datetime().optional(),
+  fromDate: z.iso.datetime().optional(),
+  toDate: z.iso.datetime().optional(),
   limit: z.number().int().min(1).max(200).default(50),
   offset: z.number().int().min(0).default(0)
 })

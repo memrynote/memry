@@ -1,10 +1,13 @@
 import { decode as cborDecode } from 'cborg'
 import { beforeAll, describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { CBOR_FIELD_ORDER as CONTRACT_CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 
 import { CBOR_FIELD_ORDER, encodeCbor } from './cbor'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready
@@ -109,7 +112,7 @@ describe('encodeCbor', () => {
 
     // #when encoded
     const encoded = encodeCbor(sparse, CBOR_FIELD_ORDER.SYNC_ITEM)
-    const decoded = decode(encoded) as Map<string, unknown>
+    const decoded = decode(encoded)
 
     // #then only defined fields appear
     expect(Array.from(decoded.keys())).toEqual(['id', 'operation'])
@@ -141,7 +144,7 @@ describe('encodeCbor', () => {
 
     // #when encoded — undefined-valued unknown keys are filtered out first
     const encoded = encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM)
-    const decoded = decode(encoded) as Map<string, unknown>
+    const decoded = decode(encoded)
 
     // #then encoding succeeds and only `id` survives
     expect(Array.from(decoded.keys())).toEqual(['id'])
@@ -159,7 +162,7 @@ describe('encodeCbor', () => {
     }
 
     // #when round-tripped through cborg decode
-    const decoded = decode(encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM)) as Map<string, unknown>
+    const decoded = decode(encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM))
 
     // #then every primitive survives intact
     expect(decoded.get('id')).toBe('note-prim')
@@ -178,7 +181,7 @@ describe('encodeCbor', () => {
     }
 
     // #when round-tripped
-    const decoded = decode(encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM)) as Map<string, unknown>
+    const decoded = decode(encodeCbor(payload, CBOR_FIELD_ORDER.SYNC_ITEM))
 
     // #then bool + nested object preserved
     const meta = decoded.get('metadata') as Map<string, unknown>
@@ -194,7 +197,7 @@ describe('encodeCbor', () => {
 
     // #when encoded
     const encoded = encodeCbor(empty, CBOR_FIELD_ORDER.SYNC_ITEM)
-    const decoded = decode(encoded) as Map<string, unknown>
+    const decoded = decode(encoded)
 
     // #then result is an empty Map (no fields, no extras)
     expect(decoded.size).toBe(0)

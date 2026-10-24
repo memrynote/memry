@@ -21,7 +21,7 @@ export const StatusSelect = ({
   compact = false
 }: StatusSelectProps): React.JSX.Element => {
   const { t: tPhaseF } = useT('tasks')
-  const sortedStatuses = useMemo(() => [...statuses].sort((a, b) => a.order - b.order), [statuses])
+  const sortedStatuses = useMemo(() => statuses.toSorted((a, b) => a.order - b.order), [statuses])
   const currentStatus = sortedStatuses.find((s) => s.id === value)
 
   return (

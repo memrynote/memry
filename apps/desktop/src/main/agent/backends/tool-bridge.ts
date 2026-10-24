@@ -66,6 +66,7 @@ export function createAiSdkToolSet(
           name,
           args
         }),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- AI SDK passes the tool's output untyped; the bridge is the only producer
       toModelOutput: ({ output }) => toolModelOutput(output as AgentToolCallResult)
     }
   }
@@ -77,6 +78,7 @@ export function createAiSdkToolSet(
  * the JSON text; toolImageMiddleware then decides how they reach the provider.
  */
 function toolModelOutput(output: AgentToolCallResult): ToolModelOutput {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tool results are plain JSON-serialisable data
   if (!output.ok || !output.images?.length) return { type: 'json', value: output as JSONValue }
   const { images, ...rest } = output
   return {
@@ -130,6 +132,7 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
     const images = imageContent(result.content)
     return {
       ok: true,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
       data: extractMcpResult(result as { structuredContent?: unknown; content?: unknown }),
       ...(images.length > 0 ? { images } : {})
     }
@@ -149,6 +152,7 @@ async function callVaultMcpTool(input: AgentToolCallInput): Promise<AgentToolCal
 
 function toRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     return value as Record<string, unknown>
   }
   return {}
@@ -175,6 +179,7 @@ function parseMcpError(content: unknown): { code: string; message: string } {
   const text = firstTextContent(content)
   if (!text) return { code: 'MCP_TOOL_ERROR', message: 'Tool call failed.' }
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the text of an MCP tool error; fields are optional and read defensively
     const parsed = JSON.parse(text) as (McpErrorPayload & { error?: McpErrorPayload }) | null
     const payload = parsed?.error ?? parsed
     if (payload && typeof payload.message === 'string' && payload.message) {
@@ -193,6 +198,7 @@ function imageContent(content: unknown): AgentToolImage[] {
   if (!Array.isArray(content)) return []
   return content.flatMap((item: unknown) => {
     if (!item || typeof item !== 'object') return []
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     const part = item as Record<string, unknown>
     return part.type === 'image' &&
       typeof part.data === 'string' &&

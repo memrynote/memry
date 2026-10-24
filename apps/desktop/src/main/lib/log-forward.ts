@@ -53,9 +53,11 @@ const sanitizeArgs = (data: unknown[]): unknown[] => {
 }
 
 export const installWorkerLogForwarding = (workerName: string): void => {
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- foreign runtime object with no published type for this member; shape checked at use
   const port = (process as unknown as { parentPort?: ParentPortLike }).parentPort
   if (!port) return
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   const forward = ((message: WorkerLogTransportMessage) => {
     if ((LEVEL_ORDER[message.level] ?? -1) < LEVEL_ORDER.warn) return
     try {
@@ -72,5 +74,6 @@ export const installWorkerLogForwarding = (workerName: string): void => {
     }
   }) as ForwardTransport
   forward.level = 'warn'
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- foreign runtime object with no published type for this member; shape checked at use
   ;(log.transports as unknown as Record<string, ForwardTransport | null>).forwardToMain = forward
 }

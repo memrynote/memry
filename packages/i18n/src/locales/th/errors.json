@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "แผนปัจจุบันซิงค์คลังข้อมูลได้น้อยกว่าจำนวนที่มีในบัญชีนี้ คลังข้อมูลนี้จึงอยู่ในอุปกรณ์นี้เท่านั้น นำคลังข้อมูลออกจากบัญชีใน การตั้งค่า → บัญชี หรืออัปเกรดแผน",
     "certificatePinFailed": "เชื่อมต่อแบบปลอดภัยไม่สำเร็จ ตรวจสอบการเชื่อมต่อเครือข่าย",
     "deviceKeyMismatch": "คีย์ความปลอดภัยของอุปกรณ์นี้ไม่ตรงกับคีย์ที่ลงทะเบียนไว้กับบัญชีแล้ว เซิร์ฟเวอร์จึงปฏิเสธการเปลี่ยนแปลงจากอุปกรณ์นี้ ลงชื่อเข้าใช้อีกครั้งในอุปกรณ์นี้เพื่อลงทะเบียนใหม่",
+    "deviceKeysMissing": "การเปลี่ยนแปลงบนอุปกรณ์นี้ไม่ได้อัปโหลดเพราะคีย์ของอุปกรณ์หายไป เลือกซ่อมแซมเพื่อกู้คืน หากอุปกรณ์นี้ไม่มีคีย์แล้ว คุณจะต้องลงชื่อเข้าใช้อีกครั้งและอาจต้องใช้วลีกู้คืน โน้ต งาน และโปรเจกต์ที่ยังไม่ซิงค์จะถูกเก็บไว้",
     "keychainUnavailable": "การซิงค์หยุดชั่วคราวเนื่องจากขณะนี้ Memry อ่านคีย์ซิงค์จากพวงกุญแจของระบบไม่ได้ ปลดล็อกพวงกุญแจแล้วการซิงค์จะกลับมาทำงานเอง หากไม่กลับมา ให้เริ่ม Memry ใหม่ ไม่ได้ลบข้อมูลใด ๆ",
     "unknown": "เกิดข้อผิดพลาดในการซิงค์ที่ไม่คาดคิด จะลองอีกครั้งโดยอัตโนมัติ",
     "statusFetchFailed": "ดึงสถานะการซิงค์ไม่สำเร็จ",
@@ -106,6 +107,10 @@
     "triggerFailed": "ซิงค์ไม่สำเร็จ",
     "pauseFailed": "หยุดการซิงค์ชั่วคราวไม่สำเร็จ",
     "resumeFailed": "ซิงค์ต่อไม่สำเร็จ",
+    "syncNowSignedOut": "การซิงค์ต้องให้คุณลงชื่อเข้าใช้อีกครั้งบนอุปกรณ์นี้",
+    "syncNowBusy": "กำลังซิงค์อยู่แล้ว ลองอีกครั้งในอีกสักครู่",
+    "syncNowPaused": "การซิงค์ถูกหยุดชั่วคราวระหว่างทำงาน ดำเนินการต่อได้จากเมนูซิงค์",
+    "openAccountSettings": "เปิดการตั้งค่า",
     "settingsNotInitialized": "การซิงค์การตั้งค่ายังไม่เริ่มทำงาน",
     "securityQuarantinePermanent": "ตรวจสอบรายการซิงค์ไม่ผ่าน จึงกักกันไว้เพื่อความปลอดภัย",
     "securityQuarantineRetry": "รายการซิงค์ไม่ผ่านการตรวจสอบลายเซ็น จะลองอีกครั้ง",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "การแก้ไขในบรรทัดด้วย AI ปิดอยู่",
-    "listOllamaModelsFailed": "แสดงรายการโมเดล Ollama ไม่สำเร็จ"
+    "listOllamaModelsFailed": "แสดงรายการโมเดล Ollama ไม่สำเร็จ",
+    "writingAssistInvalid": "ส่งคำขอนั้นไปยังโมเดล AI ไม่ได้",
+    "apiKeyMissing": "เพิ่มคีย์ API ของ {provider} ในการตั้งค่า → AI เพื่อใช้เครื่องมือช่วยเขียน",
+    "apiKeyInvalid": "คีย์ API ของ {provider} ถูกปฏิเสธ ตรวจสอบในการตั้งค่า → AI",
+    "ollamaUnreachable": "Ollama ไม่ได้ทำงานอยู่ เริ่มด้วย \"ollama serve\" หรือเลือกผู้ให้บริการอื่นในการตั้งค่า → AI",
+    "providerUnreachable": "เชื่อมต่อ {provider} ไม่ได้ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง"
   },
   "auth": {
     "notAuthenticated": "ยังไม่ได้ลงชื่อเข้าใช้",
-    "sessionExpired": "เซสชันหมดอายุแล้ว โปรดลงชื่อเข้าใช้อีกครั้ง",
     "setupSessionExpired": "การลงชื่อเข้าใช้หมดเวลาก่อนดำเนินการเสร็จ ลงชื่อเข้าใช้อีกครั้ง แล้วป้อนวลีกู้คืน",
     "setupSessionExpiredLinking": "การลงชื่อเข้าใช้หมดเวลาก่อนที่อุปกรณ์นี้จะเชื่อมโยงเสร็จ ลงชื่อเข้าใช้อีกครั้ง แล้วสแกนรหัสอีกครั้ง",
     "invalidRecoveryPhraseFormat": "รูปแบบวลีกู้คืนไม่ถูกต้อง",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "แปลงกิจกรรมจากปฏิทินภายนอกไม่สำเร็จ",
     "onlyCalendarSourcesRetryable": "ลองใหม่ได้เฉพาะแหล่งปฏิทินเท่านั้น",
     "invalidProviderSettings": "การตั้งค่าผู้ให้บริการปฏิทินไม่ถูกต้อง",
-    "getExternalEventFailed": "โหลดกิจกรรมนี้ไม่สำเร็จ กิจกรรมยังอยู่ในปฏิทิน ลองเปิดอีกครั้ง"
+    "getExternalEventFailed": "โหลดกิจกรรมนี้ไม่สำเร็จ กิจกรรมยังอยู่ในปฏิทิน ลองเปิดอีกครั้ง",
+    "listLinkedNotesFailed": "โหลดโน้ตที่ลิงก์กับกิจกรรมนี้ไม่สำเร็จ"
   },
   "canvasFolder": {
     "exists": "มีโฟลเดอร์แคนวาสชื่อนี้อยู่ที่นี่แล้ว",
@@ -209,10 +219,35 @@
     "previewFailed": "แสดงตัวอย่างไม่สำเร็จ",
     "listFailed": "แสดงรายการตัวนำเข้าไม่สำเร็จ",
     "appleNotesFoldersFailed": "อ่านโฟลเดอร์ Apple Notes ไม่สำเร็จ",
+    "appleNotesPasswordFailed": "ตรวจสอบรหัสผ่านของ Notes ไม่สำเร็จ",
     "onenoteStatusFailed": "อ่านสถานะการเชื่อมต่อ OneNote ไม่สำเร็จ",
     "onenoteConnectFailed": "ลงชื่อเข้าใช้ Microsoft ไม่สำเร็จ",
     "onenoteDisconnectFailed": "ยกเลิกการเชื่อมต่อบัญชี Microsoft ไม่สำเร็จ",
-    "onenoteNotebooksFailed": "โหลดสมุดบันทึก OneNote ไม่สำเร็จ"
+    "onenoteNotebooksFailed": "โหลดสมุดบันทึก OneNote ไม่สำเร็จ",
+    "readwiseStatusFailed": "อ่านสถานะการเชื่อมต่อ Readwise ไม่สำเร็จ",
+    "readwiseConnectFailed": "เชื่อมต่อ Readwise ไม่สำเร็จ",
+    "readwiseInvalidToken": "Readwise ไม่ยอมรับโทเค็นนี้ คัดลอกใหม่จาก readwise.io/access_token",
+    "readwiseRateLimited": "Readwise กำลังจำกัดคำขอ ลองอีกครั้งในอีกหนึ่งนาที",
+    "readwiseUnreachable": "เชื่อมต่อ Readwise ไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+    "readwiseDisconnectFailed": "ยกเลิกการเชื่อมต่อ Readwise ไม่สำเร็จ",
+    "readwiseSyncFailed": "เริ่มการซิงค์ Readwise ไม่สำเร็จ",
+    "readwiseRunUnavailable": "Readwise ไม่ซิงค์บนอุปกรณ์นี้",
+    "readwiseRunInProgress": "กำลังนำเข้า Readwise อยู่แล้ว ลองอีกครั้งเมื่อเสร็จ",
+    "readwiseOptionsFailed": "บันทึกการตั้งค่า Readwise ไม่สำเร็จ",
+    "readwiseNotConnected": "ยังไม่ได้เชื่อมต่อ Readwise วางโทเค็นเข้าถึงของคุณก่อน",
+    "readwiseSyncsElsewhere": "Readwise ซิงค์บนอุปกรณ์อื่น ให้รันคำสั่งนี้บนอุปกรณ์นั้น",
+    "readwiseBookCommandFailed": "ทำคำสั่ง Readwise ไม่สำเร็จ",
+    "readwiseBookGone": "หนังสือเล่มนี้ไม่อยู่ในคลัง Readwise ของคุณแล้ว",
+    "readwiseNotLinked": "โน้ตนี้ไม่ได้ลิงก์กับหนังสือใน Readwise",
+    "readwiseNotDeleted": "หนังสือเล่มนี้ไม่ได้อยู่ในรายการที่ลบ",
+    "readwiseBookBusy": "โน้ตเปลี่ยนไประหว่างที่คำสั่งทำงาน ลองอีกครั้ง",
+    "readwiseSyncsOnDevice": "Readwise ซิงค์บน {device} ใช้ “ซิงค์ที่นี่แทน” เพื่อย้ายมาที่นี่",
+    "readwiseAnotherDevice": "อุปกรณ์อื่น",
+    "readwiseNotReady": "Memry ยังซิงค์กับอุปกรณ์อื่นของคุณไม่เสร็จ ลองอีกครั้งในอีกสักครู่",
+    "readwiseNeedsSync": "เปิดการซิงค์เพื่อย้าย Readwise ระหว่างอุปกรณ์",
+    "readwiseClaimNotDelivered": "ยังแจ้งอุปกรณ์อื่นของคุณไม่ได้ ตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
+    "readwiseTakeOverFailed": "ย้าย Readwise มาที่อุปกรณ์นี้ไม่สำเร็จ",
+    "readwiseCancelFailed": "ยกเลิกการซิงค์ Readwise ไม่สำเร็จ"
   },
   "project": {
     "createFailed": "สร้างโปรเจกต์ไม่สำเร็จ",
@@ -236,7 +271,8 @@
     "renameFailed": "เปลี่ยนชื่อคุณสมบัติไม่สำเร็จ",
     "createDefinitionFailed": "สร้างคำจำกัดความคุณสมบัติไม่สำเร็จ",
     "updateDefinitionFailed": "อัปเดตคำจำกัดความคุณสมบัติไม่สำเร็จ",
-    "setCalendarVisibilityFailed": "ตั้งค่าการแสดงคุณสมบัติในปฏิทินไม่สำเร็จ"
+    "setCalendarVisibilityFailed": "ตั้งค่าการแสดงคุณสมบัติในปฏิทินไม่สำเร็จ",
+    "definitionsFileUnreadable": "บันทึกการเปลี่ยนแปลงพร็อพเพอร์ตีไม่ได้เพราะอ่าน .memry/properties.md ไม่ได้ แก้ไขหรือลบไฟล์นั้น แล้วลองอีกครั้ง"
   },
   "reminder": {
     "notFound": "ไม่พบการเตือน",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "โหลดโมเดลไม่สำเร็จ",
     "voiceModelDownloadFailed": "ดาวน์โหลดโมเดลเสียงไม่สำเร็จ",
     "terminalCommandInstallFailed": "ติดตั้งคำสั่งเทอร์มินัลไม่สำเร็จ",
-    "terminalCommandUninstallFailed": "ถอนการติดตั้งคำสั่งเทอร์มินัลไม่สำเร็จ",
-    "shortcutInUse": "แป้นพิมพ์ลัด {shortcut} ถูกใช้งานอยู่แล้ว"
+    "terminalCommandUninstallFailed": "ถอนการติดตั้งคำสั่งเทอร์มินัลไม่สำเร็จ"
   },
   "tag": {
+    "renameInProgress": "การเปลี่ยนชื่อ #{from} เป็น #{to} ยังทำงานอยู่ ลองอีกครั้งเมื่อเสร็จ",
     "mergeSameTag": "แท็กต้นทางและแท็กปลายทางเป็นแท็กเดียวกัน",
     "categoryNameRequired": "ต้องระบุชื่อหมวดหมู่",
     "pinNoteFailed": "ปักหมุดโน้ตไม่สำเร็จ",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "ลบงานหลายรายการไม่สำเร็จ",
     "moveManyFailed": "ย้ายงานหลายรายการไม่สำเร็จ",
     "archiveManyFailed": "เก็บถาวรงานหลายรายการไม่สำเร็จ",
-    "projectMissing": "โปรเจกต์นั้นไม่มีอยู่แล้ว"
+    "projectMissing": "โปรเจกต์นั้นไม่มีอยู่แล้ว",
+    "invalidParent": "งานไม่สามารถไปอยู่ตรงนั้นได้"
   },
   "taskStatus": {
     "createFailed": "สร้างสถานะไม่สำเร็จ",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "เจ้าของตั้งค่าโน้ตนี้เป็นแบบอ่านอย่างเดียว",
     "folderReadOnly": "เจ้าของตั้งค่าโฟลเดอร์นี้เป็นแบบอ่านอย่างเดียว"
+  },
+  "ocrLanguages": {
+    "unreachable": "เชื่อมต่อเซิร์ฟเวอร์ของ Memry ไม่ได้ ภาษาที่มีอยู่แล้วยังใช้งานได้ และ Memry จะลองอีกครั้งตอนเริ่มครั้งถัดไป",
+    "unavailable": "เซิร์ฟเวอร์ของ Memry ยังไม่มีภาษานี้ ภาษาที่มีอยู่แล้วยังใช้งานได้",
+    "corrupt": "ข้อมูลที่ดาวน์โหลดไม่ตรงกับที่ Memry คาดไว้ จึงไม่ได้ใช้ ลองใหม่เพื่อดาวน์โหลดอีกครั้ง",
+    "saveFailed": "บันทึกข้อมูลภาษาลงในคอมพิวเตอร์เครื่องนี้ไม่ได้ ตรวจสอบพื้นที่ดิสก์ว่าง แล้วลองใหม่"
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" เป็นชื่อที่สงวนไว้ ใช้เป็นชื่อฟิลด์ไม่ได้",
+    "duplicateField": "#{definedBy} มีฟิลด์ชื่อ \"{name}\" อยู่แล้ว",
+    "unknownField": "แท็กนี้ไม่มีฟิลด์ชื่อ \"{name}\"",
+    "inheritedField": "\"{name}\" มาจาก #{definedBy} ให้แก้ไขที่นั่น",
+    "cycle": "#{parent} รับฟิลด์มาจากแท็กนี้อยู่แล้ว",
+    "unreadableSchema": "Memry เวอร์ชันใหม่กว่าได้เปลี่ยนแท็กนี้ อัปเดต Memry เพื่อแก้ไข",
+    "relationTargetRequired": "เลือกแท็กที่ความสัมพันธ์นี้ชี้ไป",
+    "renameRunning": "การเปลี่ยนชื่อฟิลด์อื่นยังทำงานอยู่ ({from} เป็น {to}) ลองอีกครั้งเมื่อเสร็จ"
   }
 }

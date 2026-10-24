@@ -20,7 +20,7 @@ function useRegistration(owner: CommandOwner, scopeKey: string | null, impls: Im
   })
 
   useEffect(() => {
-    if (scopeKey === null) return
+    if (scopeKey === null) return undefined
     return registerCommands(owner, scopeKey, () => implsRef.current)
   }, [owner, scopeKey])
 }

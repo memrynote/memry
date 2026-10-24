@@ -72,7 +72,7 @@ describe('POST /diagnostics/report', () => {
 
     // #then it 202s with the incidentId and eventually pushes to PostHog Logs
     expect(response.status).toBe(202)
-    expect((await response.json()) as { incidentId: string }).toEqual({
+    expect(await response.json()).toEqual({
       incidentId: 'MEMRY-AB12CD34'
     })
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())

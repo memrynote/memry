@@ -191,7 +191,7 @@ const MemryFilePlayer = forwardRef<HTMLVideoElement, MemryFilePlayerProps>(
 MemryFilePlayer.displayName = 'MemryFilePlayer'
 
 // Static method to determine if this player can handle the URL
-// oxlint-disable-next-line typescript/no-explicit-any
+// oxlint-disable-next-line typescript/no-explicit-any, typescript/no-unsafe-type-assertion -- react-player's custom-player contract reads a static `canPlay` that the component type does not declare
 ;(MemryFilePlayer as any).canPlay = (src: string) => {
   return src?.startsWith('memry-file://')
 }
@@ -201,6 +201,7 @@ MemryFilePlayer.displayName = 'MemryFilePlayer'
 let customPlayerRegistered = false
 function ensureCustomPlayerRegistered(): void {
   if (!customPlayerRegistered) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- addCustomPlayer's parameter type is `never` in react-player's typings
     ReactPlayer.addCustomPlayer?.(MemryFilePlayer as never)
     customPlayerRegistered = true
   }
@@ -245,12 +246,14 @@ export function VideoPlayer({ src, className }: VideoPlayerProps) {
     }
 
     const handleLoadedMetadata = (event: Event): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the listener is attached to this exact element type, so event.target is that element
       const video = event.target as HTMLVideoElement
       if (shouldResumePlayback(storedPositionRef.current, video.duration)) {
         video.currentTime = storedPositionRef.current
       }
     }
     const handleTimeUpdate = (event: Event): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the listener is attached to this exact element type, so event.target is that element
       livePositionRef.current = (event.target as HTMLVideoElement).currentTime
     }
 

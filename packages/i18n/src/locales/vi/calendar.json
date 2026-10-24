@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Hoàn thành {title}",
     "task-completed": "Đã hoàn thành công việc",
-    "could-not-complete": "Không thể hoàn thành công việc",
+    "could-not-update-status": "Không thể đổi trạng thái công việc",
     "duration-minutes": "{minutes} phút",
     "duration-hours": "{hours} giờ",
     "duration-hours-minutes": "{hours} giờ {minutes} phút"
@@ -214,12 +213,9 @@
     "next-week": "Tuần tới",
     "open-task": "Mở công việc",
     "source-note": "Ghi chú nguồn",
-    "reschedule": "Lên lịch lại",
     "mark-done": "Đánh dấu đã xong",
     "mark-not-done": "Đánh dấu chưa xong",
-    "later-today": "Cuối ngày hôm nay",
     "tomorrow": "Ngày mai",
-    "next-week-mon": "Tuần tới · Thứ Hai",
     "pick-date-time": "Chọn ngày & giờ…",
     "remove-due-date": "Gỡ ngày đến hạn",
     "subtasks-prefix": "Công việc con",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Không thể gỡ ngày đến hạn",
       "could-not-open-note": "Không thể mở ghi chú"
     }
+  },
+  "eventNotes": {
+    "heading": "Ghi chú",
+    "create": "Ghi chú mới",
+    "link": "Liên kết ghi chú",
+    "untitled": "Ghi chú cuộc họp",
+    "searchPlaceholder": "Tìm ghi chú",
+    "noResults": "Không tìm thấy ghi chú nào",
+    "createFailed": "Không thể tạo ghi chú cho sự kiện này.",
+    "linkFailed": "Không thể liên kết ghi chú với sự kiện này.",
+    "loadFailed": "Không thể tải các ghi chú được liên kết với sự kiện này.",
+    "propertyTaken": "Ghi chú này đã có thuộc tính \"{name}\" không phải là liên kết."
   },
   "notePopover": {
     "kind": "Ghi chú",
@@ -254,6 +262,10 @@
     "overdue": "quá hạn",
     "untitled": "Không có tiêu đề",
     "days": "{count, plural, other {# ngày}}",
+    "subtasks": {
+      "expand": "Hiện {count, plural, other {# công việc con}} của {title}",
+      "collapse": "Ẩn {count, plural, other {# công việc con}} của {title}"
+    },
     "events": "Sự kiện",
     "schedule-hint": "Nhấp để đặt ngày, kéo để đặt khoảng thời gian",
     "empty-title": "Không có gì trên dòng thời gian ở đây",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Lịch đã đăng ký"
     },
     "caldav": {
       "name": "CalDAV"

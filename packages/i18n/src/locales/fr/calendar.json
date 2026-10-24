@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Terminer « {title} »",
     "task-completed": "Tâche terminée",
-    "could-not-complete": "Impossible de terminer la tâche",
+    "could-not-update-status": "Impossible de modifier le statut de la tâche",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Semaine prochaine",
     "open-task": "Ouvrir la tâche",
     "source-note": "Note source",
-    "reschedule": "Replanifier",
     "mark-done": "Marquer comme terminée",
     "mark-not-done": "Marquer comme non terminée",
-    "later-today": "Plus tard aujourd'hui",
     "tomorrow": "Demain",
-    "next-week-mon": "La semaine prochaine · lundi",
     "pick-date-time": "Choisir la date et l'heure…",
     "remove-due-date": "Supprimer la date d'échéance",
     "subtasks-prefix": "Sous-tâches",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Impossible de supprimer la date d'échéance",
       "could-not-open-note": "Impossible d'ouvrir la note"
     }
+  },
+  "eventNotes": {
+    "heading": "Notes",
+    "create": "Nouvelle note",
+    "link": "Lier une note",
+    "untitled": "Note de réunion",
+    "searchPlaceholder": "Rechercher des notes",
+    "noResults": "Aucune note trouvée",
+    "createFailed": "Impossible de créer une note pour cet événement.",
+    "linkFailed": "Impossible de lier la note à cet événement.",
+    "loadFailed": "Impossible de charger les notes liées à cet événement.",
+    "propertyTaken": "Cette note a déjà une propriété « {name} » qui n'est pas un lien."
   },
   "notePopover": {
     "kind": "Note",
@@ -254,6 +262,10 @@
     "overdue": "en retard",
     "untitled": "Sans titre",
     "days": "{count, plural, one {# jour} other {# jours}}",
+    "subtasks": {
+      "expand": "Afficher {count, plural, one {# sous-tâche} other {# sous-tâches}} de {title}",
+      "collapse": "Masquer {count, plural, one {# sous-tâche} other {# sous-tâches}} de {title}"
+    },
     "events": "Événements",
     "schedule-hint": "Cliquez pour définir une date, faites glisser pour définir une période",
     "empty-title": "Rien sur la chronologie ici",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Calendriers par abonnement"
     },
     "caldav": {
       "name": "CalDAV"

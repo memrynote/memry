@@ -419,6 +419,7 @@ export const checks = [
       const body = fs.readFileSync(path.join(vaultPath(), n.path), 'utf8')
       if (!body.includes('[[Design Principles]]')) return `no link in: ${body}`
       if (!/^## Agenda/m.test(body)) return `no h2 in: ${body}`
+      return undefined
     }
   ],
   [
@@ -426,13 +427,15 @@ export const checks = [
     (q) => {
       const [i] = q(`SELECT title FROM inbox_items WHERE title = '${CAPTURE}'`)
       if (!i) return 'capture missing'
+      return undefined
     }
   ],
   [
     'Task parsed its date and priority',
     (q) => {
       const [t] = q(`SELECT due_date, priority FROM tasks WHERE title = '${TASK}'`)
-      if (!t || t.priority !== 3 || !t.due_date) return JSON.stringify(t)
+      if (t?.priority !== 3 || !t.due_date) return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -440,6 +443,7 @@ export const checks = [
     (q) => {
       const [t] = q(`SELECT due_date, due_time FROM tasks WHERE title = '${JOURNAL_TASK}'`)
       if (!t?.due_time) return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -447,6 +451,7 @@ export const checks = [
     (q) => {
       const [f] = q(`SELECT path FROM note_metadata WHERE file_type = 'pdf'`)
       if (!f) return 'no PDF note'
+      return undefined
     }
   ],
   [
@@ -454,6 +459,7 @@ export const checks = [
     () => {
       const all = readAll(path.join(vaultPath(), 'journal')).join('\n')
       if (!all.includes(JOURNAL_LINE)) return 'journal line missing'
+      return undefined
     }
   ]
 ]

@@ -14,7 +14,7 @@ import { CBOR_FIELD_ORDER } from './cbor-ordering'
 
 describe('CBOR_FIELD_ORDER', () => {
   it('exposes all expected payload categories', () => {
-    const keys = Object.keys(CBOR_FIELD_ORDER).sort()
+    const keys = Object.keys(CBOR_FIELD_ORDER).toSorted()
     expect(keys).toEqual(
       [
         'SYNC_ITEM',
@@ -26,7 +26,7 @@ describe('CBOR_FIELD_ORDER', () => {
         'VAULT_TRANSFER_CONFIRM',
         'ATTACHMENT_MANIFEST',
         'DELETE_ATTESTATION'
-      ].sort()
+      ].toSorted()
     )
   })
 

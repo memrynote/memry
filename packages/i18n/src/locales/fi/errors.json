@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Tilauksesi sallii vähemmän synkronoitavia holveja kuin tililläsi on, joten tämä holvi pysyy tällä laitteella. Poista holvi tililtäsi kohdassa Asetukset → Tili tai päivitä tilauksesi.",
     "certificatePinFailed": "Suojattu yhteys epäonnistui. Tarkista verkkoyhteytesi.",
     "deviceKeyMismatch": "Tämän laitteen suojausavain ei enää vastaa tilillesi rekisteröityä avainta, joten palvelin hylkää laitteen muutokset. Kirjaudu uudelleen sisään tällä laitteella rekisteröidäksesi sen uudelleen.",
+    "deviceKeysMissing": "Tämän laitteen muutokset eivät lataudu, koska laitteen avaimet puuttuvat. Palauta ne valitsemalla Korjaa. Jos laitteella ei enää ole avaimiaan, kirjaudut uudelleen ja tarvitset ehkä palautuslauseesi. Synkronoimattomat muistiinpanot, tehtävät ja projektit säilyvät.",
     "keychainUnavailable": "Synkronointi on keskeytetty, koska Memry ei juuri nyt pysty lukemaan synkronointiavaimiaan järjestelmän avainnipusta. Avaa avainnipun lukitus, niin synkronointi jatkuu itsestään; jos ei, käynnistä Memry uudelleen. Mitään ei poistettu.",
     "unknown": "Tapahtui odottamaton synkronointivirhe. Yritetään automaattisesti uudelleen.",
     "statusFetchFailed": "Synkronoinnin tilan hakeminen epäonnistui",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synkronointi epäonnistui",
     "pauseFailed": "Synkronoinnin keskeyttäminen epäonnistui",
     "resumeFailed": "Synkronoinnin jatkaminen epäonnistui",
+    "syncNowSignedOut": "Synkronointi vaatii kirjautumisen uudelleen tällä laitteella.",
+    "syncNowBusy": "Synkronointi on jo käynnissä. Yritä hetken kuluttua uudelleen.",
+    "syncNowPaused": "Synkronointi keskeytettiin sen ollessa käynnissä. Jatka sitä synkronointivalikosta.",
+    "openAccountSettings": "Avaa asetukset",
     "settingsNotInitialized": "Asetusten synkronointia ei ole alustettu",
     "securityQuarantinePermanent": "Synkronointikohteen vahvistaminen epäonnistui, joten se on asetettu karanteeniin turvallisuussyistä.",
     "securityQuarantineRetry": "Synkronointikohteen allekirjoituksen vahvistaminen epäonnistui, ja sitä yritetään uudelleen.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Tekoälyn tekstinsisäinen muokkaus on poistettu käytöstä",
-    "listOllamaModelsFailed": "Ollama-mallien luetteloiminen epäonnistui"
+    "listOllamaModelsFailed": "Ollama-mallien luetteloiminen epäonnistui",
+    "writingAssistInvalid": "Pyyntöä ei voitu lähettää tekoälymallille.",
+    "apiKeyMissing": "Lisää {provider}-API-avaimesi kohdassa Asetukset → Tekoäly käyttääksesi kirjoitustyökaluja.",
+    "apiKeyInvalid": "{provider}-API-avaimesi hylättiin. Tarkista se kohdassa Asetukset → Tekoäly.",
+    "ollamaUnreachable": "Ollama ei ole käynnissä. Käynnistä se komennolla ”ollama serve” tai valitse toinen tarjoaja kohdassa Asetukset → Tekoäly.",
+    "providerUnreachable": "Palveluun {provider} ei saatu yhteyttä. Tarkista internetyhteytesi ja yritä uudelleen."
   },
   "auth": {
     "notAuthenticated": "Et ole kirjautunut sisään",
-    "sessionExpired": "Istunto on vanhentunut. Kirjaudu uudelleen sisään.",
     "setupSessionExpired": "Kirjautumisesi aikakatkaistiin ennen kuin tämä valmistui. Kirjaudu uudelleen sisään ja anna sitten palautuslauseesi.",
     "setupSessionExpiredLinking": "Kirjautumisesi aikakatkaistiin ennen kuin tämän laitteen linkitys valmistui. Kirjaudu uudelleen sisään ja skannaa koodi uudelleen.",
     "invalidRecoveryPhraseFormat": "Palautuslauseen muoto on virheellinen",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Ulkoisen kalenteritapahtuman muuntaminen epäonnistui",
     "onlyCalendarSourcesRetryable": "Vain kalenterilähteitä voi yrittää uudelleen",
     "invalidProviderSettings": "Virheelliset kalenteripalvelun asetukset",
-    "getExternalEventFailed": "Tämän tapahtuman lataaminen epäonnistui. Se on yhä kalenterissasi; yritä avata se uudelleen."
+    "getExternalEventFailed": "Tämän tapahtuman lataaminen epäonnistui. Se on yhä kalenterissasi; yritä avata se uudelleen.",
+    "listLinkedNotesFailed": "Tähän tapahtumaan linkitettyjä muistiinpanoja ei voitu ladata."
   },
   "canvasFolder": {
     "exists": "Tässä sijainnissa on jo samanniminen taulukansio.",
@@ -209,10 +219,35 @@
     "previewFailed": "Esikatselu epäonnistui",
     "listFailed": "Tuontityökalujen luetteloiminen epäonnistui",
     "appleNotesFoldersFailed": "Apple Notes -kansioidesi lukeminen epäonnistui",
+    "appleNotesPasswordFailed": "Notes-salasanaa ei voitu tarkistaa.",
     "onenoteStatusFailed": "OneNote-yhteyden tilan lukeminen epäonnistui",
     "onenoteConnectFailed": "Microsoft-kirjautuminen epäonnistui",
     "onenoteDisconnectFailed": "Microsoft-tilin yhteyden katkaiseminen epäonnistui",
-    "onenoteNotebooksFailed": "OneNote-muistikirjojen lataaminen epäonnistui"
+    "onenoteNotebooksFailed": "OneNote-muistikirjojen lataaminen epäonnistui",
+    "readwiseStatusFailed": "Readwise-yhteyden tilaa ei voitu lukea",
+    "readwiseConnectFailed": "Readwiseen ei voitu yhdistää",
+    "readwiseInvalidToken": "Readwise ei hyväksynyt tätä tunnusta. Kopioi se uudelleen osoitteesta readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise rajoittaa pyyntöjä juuri nyt. Yritä minuutin kuluttua uudelleen.",
+    "readwiseUnreachable": "Readwiseen ei saatu yhteyttä. Tarkista yhteytesi ja yritä uudelleen.",
+    "readwiseDisconnectFailed": "Readwisen yhteyttä ei voitu katkaista",
+    "readwiseSyncFailed": "Readwise-synkronointia ei voitu käynnistää",
+    "readwiseRunUnavailable": "Readwise ei synkronoidu tällä laitteella.",
+    "readwiseRunInProgress": "Readwise-tuonti on jo käynnissä. Yritä uudelleen, kun se on valmis.",
+    "readwiseOptionsFailed": "Readwise-asetuksia ei voitu tallentaa",
+    "readwiseNotConnected": "Readwisea ei ole yhdistetty. Liitä ensin käyttöoikeustunnuksesi.",
+    "readwiseSyncsElsewhere": "Readwise synkronoidaan toisella laitteella. Suorita tämä komento siellä.",
+    "readwiseBookCommandFailed": "Readwise-komentoa ei voitu suorittaa loppuun",
+    "readwiseBookGone": "Tämä kirja ei ole enää Readwise-kirjastossasi.",
+    "readwiseNotLinked": "Tätä muistiinpanoa ei ole linkitetty Readwise-kirjaan.",
+    "readwiseNotDeleted": "Tämä kirja ei ole poistettujen luettelossa.",
+    "readwiseBookBusy": "Muistiinpano muuttui komennon suorituksen aikana. Yritä uudelleen.",
+    "readwiseSyncsOnDevice": "Readwise synkronoidaan laitteella {device}. Siirrä se tänne valitsemalla ”Synkronoi tässä sen sijaan”.",
+    "readwiseAnotherDevice": "toinen laite",
+    "readwiseNotReady": "Memry ei ole vielä saanut synkronointia valmiiksi muiden laitteidesi kanssa. Yritä hetken kuluttua uudelleen.",
+    "readwiseNeedsSync": "Ota synkronointi käyttöön siirtääksesi Readwisen laitteiden välillä.",
+    "readwiseClaimNotDelivered": "Muille laitteillesi ei voitu vielä ilmoittaa. Tarkista yhteytesi ja yritä uudelleen.",
+    "readwiseTakeOverFailed": "Readwisea ei voitu siirtää tälle laitteelle",
+    "readwiseCancelFailed": "Readwise-synkronointia ei voitu peruuttaa"
   },
   "project": {
     "createFailed": "Projektin luominen epäonnistui",
@@ -236,7 +271,8 @@
     "renameFailed": "Ominaisuuden uudelleennimeäminen epäonnistui",
     "createDefinitionFailed": "Ominaisuuden määrityksen luominen epäonnistui",
     "updateDefinitionFailed": "Ominaisuuden määrityksen päivittäminen epäonnistui",
-    "setCalendarVisibilityFailed": "Kalenteriominaisuuden näkyvyyden asettaminen epäonnistui"
+    "setCalendarVisibilityFailed": "Kalenteriominaisuuden näkyvyyden asettaminen epäonnistui",
+    "definitionsFileUnreadable": "Ominaisuuksien muutoksia ei voi tallentaa, koska tiedostoa .memry/properties.md ei voi lukea. Korjaa tai poista tiedosto ja yritä uudelleen."
   },
   "reminder": {
     "notFound": "Muistutusta ei löytynyt",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Mallin ottaminen käyttöön epäonnistui",
     "voiceModelDownloadFailed": "Puhemallin lataaminen epäonnistui",
     "terminalCommandInstallFailed": "Terminaalikomennon asentaminen epäonnistui",
-    "terminalCommandUninstallFailed": "Terminaalikomennon asennuksen poistaminen epäonnistui",
-    "shortcutInUse": "Pikanäppäin {shortcut} on jo käytössä"
+    "terminalCommandUninstallFailed": "Terminaalikomennon asennuksen poistaminen epäonnistui"
   },
   "tag": {
+    "renameInProgress": "Tunnisteen #{from} uudelleennimeäminen muotoon #{to} on vielä käynnissä. Yritä uudelleen, kun se on valmis.",
     "mergeSameTag": "Lähde- ja kohdetunniste ovat samat",
     "categoryNameRequired": "Kategorian nimi vaaditaan",
     "pinNoteFailed": "Muistiinpanon kiinnittäminen epäonnistui",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Tehtävien poistaminen epäonnistui",
     "moveManyFailed": "Tehtävien siirtäminen epäonnistui",
     "archiveManyFailed": "Tehtävien arkistoiminen epäonnistui",
-    "projectMissing": "Projektia ei ole enää olemassa"
+    "projectMissing": "Projektia ei ole enää olemassa",
+    "invalidParent": "Tehtävää ei voi siirtää sinne"
   },
   "taskStatus": {
     "createFailed": "Tilan luominen epäonnistui",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Omistaja on asettanut tämän muistiinpanon vain luku -tilaan.",
     "folderReadOnly": "Omistaja on asettanut tämän kansion vain luku -tilaan."
+  },
+  "ocrLanguages": {
+    "unreachable": "Memryn palvelimeen ei saatu yhteyttä. Jo olemassa olevat kielet toimivat edelleen, ja Memry yrittää uudelleen seuraavalla käynnistyksellä.",
+    "unavailable": "Memryn palvelin ei vielä tarjoa tätä kieltä. Jo olemassa olevat kielet toimivat edelleen.",
+    "corrupt": "Ladattu data ei vastannut Memryn odottamaa, joten sitä ei käytetty. Lataa se uudelleen yrittämällä uudestaan.",
+    "saveFailed": "Kielidataa ei voitu tallentaa tälle tietokoneelle. Tarkista vapaa levytila ja yritä uudelleen."
+  },
+  "tagFields": {
+    "reservedName": "”{name}” on varattu eikä voi olla kentän nimi",
+    "duplicateField": "Tunnisteella #{definedBy} on jo kenttä nimeltä ”{name}”",
+    "unknownField": "Tällä tunnisteella ei ole kenttää nimeltä ”{name}”",
+    "inheritedField": "”{name}” tulee tunnisteelta #{definedBy}. Muokkaa sitä siellä",
+    "cycle": "Tunniste #{parent} perii jo kenttänsä tältä tunnisteelta",
+    "unreadableSchema": "Memryn uudempi versio muutti tätä tunnistetta. Päivitä Memry muokataksesi sitä",
+    "relationTargetRequired": "Valitse, mihin tunnisteeseen tämä relaatio viittaa",
+    "renameRunning": "Toisen kentän uudelleennimeäminen on vielä kesken ({from} → {to}). Yritä uudelleen, kun se on valmis."
   }
 }

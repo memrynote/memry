@@ -167,10 +167,7 @@ export const useTaskSelection = (
     (updater: SelectionState | ((prev: SelectionState) => SelectionState)): void => {
       let nextSelectedIds: Set<string> | null = null
       setInternalSelectionState((prev) => {
-        const nextSelection =
-          typeof updater === 'function'
-            ? (updater as (prev: SelectionState) => SelectionState)(prev)
-            : updater
+        const nextSelection = typeof updater === 'function' ? updater(prev) : updater
 
         nextSelectedIds = nextSelection.selectedIds
         return nextSelection

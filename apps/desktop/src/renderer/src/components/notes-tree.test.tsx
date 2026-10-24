@@ -283,7 +283,7 @@ describe('T521: NotesTree - folder tree display', () => {
     ].map((note) => {
       const { snippet: _snippet, ...rest } = note as NoteListItem & { snippet?: string }
       void _snippet
-      return rest as NoteListItem
+      return rest
     })
 
     setupMocks(treeShaped, [])

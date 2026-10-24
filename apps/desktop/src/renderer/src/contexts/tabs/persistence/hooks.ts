@@ -70,7 +70,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
   // Register with flush registry so Cmd+Q saves tab state before exit
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     registerPendingSave(FLUSH_REGISTRY_KEY, () => {
       const serialized = serializeTabState(stateRef.current)
@@ -90,7 +90,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
   // Debounced save
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current)
@@ -157,7 +157,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
 
   // Save immediately on page unload (fallback)
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     const handleBeforeUnload = (): void => {
       const serialized = serializeTabState(stateRef.current)
@@ -184,7 +184,7 @@ export const useTabPersistence = (options: UseTabPersistenceOptions = {}): void 
   // cannot write the provider's default Home tab over the session the restore
   // had not read yet.
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     return () => {
       // The next key starts from a clean slate: the fingerprint that just
@@ -257,6 +257,7 @@ export const useSessionRestore = (
           const restored = deserializeTabState(persisted, flags)
           dispatch({
             type: 'RESTORE_SESSION',
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deserializeTabState yields Partial<TabSystemState>; RESTORE_SESSION reducer fills the rest
             payload: restored as TabSystemState
           })
         } else {
@@ -322,7 +323,7 @@ export const useSessionRestore = (
   }>(() => ({ pending: autoRestore, error: null }))
 
   useEffect(() => {
-    if (!autoRestore || flagsLoading) return
+    if (!autoRestore || flagsLoading) return undefined
 
     let cancelled = false
 
@@ -440,6 +441,7 @@ export const useManualPersistence = (storage: TabStorage = getDefaultStorage()) 
       const restored = deserializeTabState(persisted)
       dispatch({
         type: 'RESTORE_SESSION',
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- deserializeTabState yields Partial<TabSystemState>; RESTORE_SESSION reducer fills the rest
         payload: restored as TabSystemState
       })
       return true

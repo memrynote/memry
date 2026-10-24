@@ -22,8 +22,8 @@ describe('0040_tag_categories migration', () => {
   it('creates tag_categories with the expected columns', () => {
     const db = migratedDb()
     const cols = db.prepare('PRAGMA table_info(tag_categories)').all() as { name: string }[]
-    expect(cols.map((c) => c.name).sort()).toEqual(
-      ['clock', 'created_at', 'deleted_at', 'id', 'name', 'sort_order', 'updated_at'].sort()
+    expect(cols.map((c) => c.name).toSorted()).toEqual(
+      ['clock', 'created_at', 'deleted_at', 'id', 'name', 'sort_order', 'updated_at'].toSorted()
     )
   })
 

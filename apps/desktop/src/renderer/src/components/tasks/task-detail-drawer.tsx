@@ -134,7 +134,7 @@ export const TaskDetailDrawer = memo(function TaskDetailDrawer({
   const noteSearchInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return undefined
     const onKey = (e: KeyboardEvent): void => {
       if (e.key === 'Escape') {
         if (isLinkingNote) {

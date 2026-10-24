@@ -17,17 +17,22 @@
       "filterAll": "Všechny soubory"
     },
     "exportCancelled": "Export zrušen",
-    "update": {
-      "availableTitle": "Aktualizace k dispozici",
-      "availableMessage": "Je k dispozici verze memrynote {version}.",
-      "availableDetailFallback": "Stáhnout aktualizaci nyní?",
-      "buttonDownload": "Stáhnout",
-      "buttonLater": "Později",
-      "readyTitle": "Aktualizace připravena",
-      "readyMessage": "Verze memrynote {version} byla stažena.",
-      "readyDetailFallback": "Chcete-li dokončit instalaci aktualizace, restartujte aplikaci memrynote.",
-      "buttonRestartNow": "Restartovat nyní",
-      "releaseNotesLabel": "Poznámky k vydání:"
+    "dataDbRecovery": {
+      "title": "Oprava databáze trezoru",
+      "message": "Databáze aplikace Memry pro tento trezor je poškozená.",
+      "detail": "Vaše poznámky a soubory deníku nejsou dotčeny. Oprava ponechá poškozenou databázi jako zálohu v umístění {path}, vytvoří novou, obnoví z vašich souborů trezoru, co půjde, a synchronizované položky obnoví při další synchronizaci. Změny, které se ještě nestihly synchronizovat, se pokud možno obnoví.",
+      "buttonRecover": "Opravit",
+      "buttonLater": "Teď ne"
+    },
+    "obsidianVault": {
+      "title": "Otevřít trezor Obsidian",
+      "message": "Otevřít kopii tohoto trezoru Obsidian?",
+      "detail": "Otevření trezoru Obsidian v memrynote může způsobit ztrátu dat, na která se spoléhají vaše pluginy Obsidianu. Když memrynote promění řádek úkolu z pluginu v úkol, řádek přepíše. Pole, jako jsou termíny z pluginu Tasks, ze souboru zmizí a Obsidian je už neuvidí.\n\nmemrynote může zkopírovat „{name}“ do „{copyName}“ vedle originálu a otevřít kopii. „{name}“ zůstane přesně tak, jak je.",
+      "detailExistingCopy": "Otevření trezoru Obsidian v memrynote může způsobit ztrátu dat, na která se spoléhají vaše pluginy Obsidianu. Když memrynote promění řádek úkolu z pluginu v úkol, řádek přepíše. Pole, jako jsou termíny z pluginu Tasks, ze souboru zmizí a Obsidian je už neuvidí.\n\nKopie memrynote „{copyName}“ už vedle originálu existuje. memrynote může tuto kopii otevřít. „{name}“ zůstane přesně tak, jak je.",
+      "buttonCopy": "Vytvořit kopii",
+      "buttonOpenCopy": "Otevřít kopii",
+      "buttonOpenOriginal": "Otevřít originál",
+      "buttonCancel": "Zrušit"
     },
     "pair": {
       "title": "Spárovat rozšíření prohlížeče",

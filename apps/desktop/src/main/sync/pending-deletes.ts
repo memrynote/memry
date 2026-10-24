@@ -97,15 +97,18 @@ export function recordPendingDelete(
 }
 
 export function listPendingDeletes(db: DrizzleDb): PendingDelete[] {
-  return db
-    .select({
-      type: syncPendingDeletes.type,
-      itemId: syncPendingDeletes.itemId,
-      payload: syncPendingDeletes.payload
-    })
-    .from(syncPendingDeletes)
-    .all()
-    .map((row) => ({ ...row, type: row.type as SyncItemType }))
+  return (
+    db
+      .select({
+        type: syncPendingDeletes.type,
+        itemId: syncPendingDeletes.itemId,
+        payload: syncPendingDeletes.payload
+      })
+      .from(syncPendingDeletes)
+      .all()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- syncPendingDeletes.type is a text column; validating rows would change which pending deletes are replayed
+      .map((row) => ({ ...row, type: row.type as SyncItemType }))
+  )
 }
 
 /**

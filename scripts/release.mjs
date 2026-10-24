@@ -256,8 +256,8 @@ async function prepareDraft({ draftTag, options, releases }) {
 }
 
 async function ensureWorkflowRun({ draftTag, options, state, workDir }) {
-  const run = state.runId ? readWorkflowRun(state.runId) : null
-  const decision = decideWorkflowAction({ state, run })
+  const existingRun = state.runId ? readWorkflowRun(state.runId) : null
+  const decision = decideWorkflowAction({ state, run: existingRun })
   console.log(`Workflow: ${decision.reason}`)
 
   if (decision.action === 'reuse') {
@@ -914,9 +914,9 @@ async function findDispatchedRun(dispatchedAfter) {
       '--json',
       'databaseId,url,status,event,createdAt'
     ])
-    const run = selectDispatchedWorkflowRun(runs, dispatchedAfter)
-    if (run) {
-      return String(run.databaseId)
+    const dispatchedRun = selectDispatchedWorkflowRun(runs, dispatchedAfter)
+    if (dispatchedRun) {
+      return String(dispatchedRun.databaseId)
     }
   }
 
@@ -941,13 +941,13 @@ function repoSlug() {
 }
 
 function readGhJson(args) {
-  const output = runGh(args, { encoding: 'utf8' })
+  const ghOutput = runGh(args, { encoding: 'utf8' })
 
   try {
-    return JSON.parse(output)
+    return JSON.parse(ghOutput)
   } catch (error) {
     throw new Error(
-      `gh ${args.join(' ')} did not return JSON: ${error.message}\n${output.slice(0, 500)}`,
+      `gh ${args.join(' ')} did not return JSON: ${error.message}\n${ghOutput.slice(0, 500)}`,
       { cause: error }
     )
   }
@@ -1082,7 +1082,7 @@ Progress is saved under .release-state/<draft-tag>/. Re-running resumes it.
 `)
 }
 
-runCli().catch((error) => {
+runCli().catch((/** @type {unknown} */ error) => {
   console.error(errorMessage(error))
   process.exit(1)
 })

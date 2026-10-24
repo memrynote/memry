@@ -138,7 +138,7 @@ export const savedFiltersService = {
 export function onSavedFilterCreated(
   callback: (event: { savedFilter: SavedFilter }) => void
 ): () => void {
-  return window.api.onSavedFilterCreated(callback as (event: { savedFilter: unknown }) => void)
+  return window.api.onSavedFilterCreated(callback)
 }
 
 /**
@@ -147,9 +147,7 @@ export function onSavedFilterCreated(
 export function onSavedFilterUpdated(
   callback: (event: { id: string; savedFilter: SavedFilter }) => void
 ): () => void {
-  return window.api.onSavedFilterUpdated(
-    callback as (event: { id: string; savedFilter: unknown }) => void
-  )
+  return window.api.onSavedFilterUpdated(callback)
 }
 
 /**

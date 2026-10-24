@@ -19,16 +19,19 @@ export interface BlockSelection {
   clear: () => void
 }
 
-const registry = new WeakMap<object, BlockSelection>()
+/** The BlockNote editor instance (or any object identity) the entry is keyed by. */
+type EditorOwner = WeakKey
 
-export function registerBlockSelection(editor: object, selection: BlockSelection): () => void {
+const registry = new WeakMap<EditorOwner, BlockSelection>()
+
+export function registerBlockSelection(editor: EditorOwner, selection: BlockSelection): () => void {
   registry.set(editor, selection)
   return () => {
     if (registry.get(editor) === selection) registry.delete(editor)
   }
 }
 
-export function getBlockSelection(editor: object): BlockSelection | undefined {
+export function getBlockSelection(editor: EditorOwner): BlockSelection | undefined {
   return registry.get(editor)
 }
 

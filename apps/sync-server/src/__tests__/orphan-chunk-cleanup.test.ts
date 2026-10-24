@@ -68,6 +68,7 @@ describe('cleanupOrphanedBlobChunks (#2414)', () => {
     // the sweep read its candidates and before it deletes anything.
     const prepare = d1.db.prepare.bind(d1.db)
     const racing = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...d1.db,
       prepare: (sql: string) => {
         if (/^\s*DELETE FROM blob_chunks/i.test(sql)) {
@@ -96,6 +97,7 @@ describe('cleanupOrphanedBlobChunks (#2414)', () => {
     const prepare = d1.db.prepare.bind(d1.db)
     let recreated = false
     const racing = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...d1.db,
       prepare: (sql: string) => {
         if (!recreated && /^\s*SELECT r2_key FROM blob_chunks/i.test(sql)) {
@@ -118,6 +120,7 @@ describe('cleanupOrphanedBlobChunks (#2414)', () => {
     const key = insertChunk('c1', 0)
     await storage.put(key, new ArrayBuffer(10))
     const failing = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...storage,
       delete: async () => {
         throw new Error('r2 down')

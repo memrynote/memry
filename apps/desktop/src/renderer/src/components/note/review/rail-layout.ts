@@ -16,7 +16,7 @@ export function layoutRailItems(
   heights: Record<string, number>,
   gap = RAIL_ITEM_GAP
 ): Record<string, number> {
-  const sorted = [...items].sort((a, b) => a.desiredTop - b.desiredTop || a.order - b.order)
+  const sorted = items.toSorted((a, b) => a.desiredTop - b.desiredTop || a.order - b.order)
   const positions: Record<string, number> = {}
   let previousBottom = 0
   sorted.forEach((item, index) => {

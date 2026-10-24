@@ -354,12 +354,12 @@ describe('useSubtaskManagement', () => {
     act(() => result.current.handleCompleteSubtask('child'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { completedAt: expect.any(Date) })
 
-    act(() => vi.advanceTimersByTime(200))
+    void act(() => vi.advanceTimersByTime(200))
     expect(onUpdateTask).toHaveBeenCalledWith('parent', { completedAt: expect.any(Date) })
 
     act(() => result.current.handleCompleteAllSubtasks('parent'))
     expect(onUpdateTask).toHaveBeenCalledWith('child', { completedAt: expect.any(Date) })
-    act(() => vi.advanceTimersByTime(1500))
+    void act(() => vi.advanceTimersByTime(1500))
     expect(onUpdateTask).toHaveBeenCalledWith('parent', { completedAt: expect.any(Date) })
 
     act(() => result.current.handleMarkAllSubtasksIncomplete('parent'))
@@ -368,7 +368,7 @@ describe('useSubtaskManagement', () => {
     mocks.autoCompleteParent = false
     rerender()
     act(() => result.current.handleCompleteSubtask('child'))
-    act(() => vi.advanceTimersByTime(1000))
+    void act(() => vi.advanceTimersByTime(1000))
     expect(result.current.allSubtasksCompleteDialogOpen).toBe(true)
 
     act(() => result.current.keepParentOpen())
@@ -410,7 +410,7 @@ describe('useSubtaskManagement', () => {
     )
 
     act(() => result.current.handleCompleteSubtask('child'))
-    act(() => vi.advanceTimersByTime(200))
+    void act(() => vi.advanceTimersByTime(200))
     expect(onUpdateTask).toHaveBeenCalledWith('parent', {
       completedAt: expect.any(Date),
       statusId: 'done-status'
@@ -432,7 +432,7 @@ describe('useSubtaskManagement', () => {
       // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
       tasks.map((task) => (task.id === 'child' ? { ...task, completedAt: expect.any(Date) } : task))
     )
-    act(() => vi.advanceTimersByTime(200))
+    void act(() => vi.advanceTimersByTime(200))
     expect(mocks.completeParentTask).toHaveBeenCalledWith('parent', expect.any(Array))
     expect(onTasksChange).toHaveBeenCalledWith(updatedTasks)
 
@@ -456,7 +456,7 @@ describe('useSubtaskManagement', () => {
 
     const autoSetup = setup({ onUpdateTask })
     act(() => autoSetup.result.current.handleCompleteSubtask('child'))
-    act(() => vi.advanceTimersByTime(200))
+    void act(() => vi.advanceTimersByTime(200))
     const successCall = vi
       .mocked(toast.success)
       .mock.calls.find(
@@ -467,14 +467,14 @@ describe('useSubtaskManagement', () => {
       duration: 10000,
       action: { label: 'action.undo', onClick: expect.any(Function) }
     })
-    act(() => successCall?.[1]?.action.onClick())
+    void act(() => successCall?.[1]?.action.onClick())
     expect(onUpdateTask).toHaveBeenCalledWith('parent', { completedAt: null })
 
     const dialogSetup = setup({ onTasksChange })
     mocks.autoCompleteParent = false
     dialogSetup.rerender()
     act(() => dialogSetup.result.current.handleCompleteSubtask('child'))
-    act(() => vi.advanceTimersByTime(1000))
+    void act(() => vi.advanceTimersByTime(1000))
     act(() => dialogSetup.result.current.autoCompleteParent())
     expect(mocks.completeParentTask).toHaveBeenCalledWith('parent', tasks)
 

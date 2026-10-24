@@ -18,7 +18,7 @@ vi.mock('@/hooks/use-open-target', () => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, params?: Record<string, unknown>) =>
+    t: (key: string, params?: Record<string, string | number>) =>
       String(params?.count ?? key.split('.').at(-1) ?? key)
   })
 }))

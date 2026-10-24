@@ -17,17 +17,22 @@
       "filterAll": "Toate fișierele"
     },
     "exportCancelled": "Export anulat",
-    "update": {
-      "availableTitle": "Actualizare disponibilă",
-      "availableMessage": "memrynote {version} este disponibil.",
-      "availableDetailFallback": "Descărcați actualizarea acum?",
-      "buttonDownload": "Descarcă",
-      "buttonLater": "Mai târziu",
-      "readyTitle": "Actualizare pregătită",
-      "readyMessage": "memrynote {version} a fost descărcat.",
-      "readyDetailFallback": "Reporniți memrynote pentru a finaliza instalarea actualizării.",
-      "buttonRestartNow": "Repornește acum",
-      "releaseNotesLabel": "Note de lansare:"
+    "dataDbRecovery": {
+      "title": "Repară baza de date a seifului",
+      "message": "Baza de date Memry a acestui seif este deteriorată.",
+      "detail": "Fișierele cu notițe și jurnal nu sunt afectate. Repararea păstrează baza de date deteriorată ca rezervă la {path}, creează una nouă, reconstruiește ce se poate din fișierele seifului și restaurează elementele sincronizate la următoarea sincronizare. Modificările care nu fuseseră încă sincronizate sunt recuperate acolo unde este posibil.",
+      "buttonRecover": "Repară",
+      "buttonLater": "Nu acum"
+    },
+    "obsidianVault": {
+      "title": "Deschide seiful Obsidian",
+      "message": "Deschizi o copie a acestui seif Obsidian?",
+      "detail": "Deschiderea unui seif Obsidian în memrynote poate pierde date de care depind pluginurile Obsidian. Când memrynote transformă o linie de sarcină a unui plugin într-o sarcină, rescrie linia. Câmpuri precum termenele din pluginul Tasks părăsesc fișierul, iar Obsidian nu le mai vede.\n\nmemrynote poate copia „{name}” ca „{copyName}” alături de original și poate deschide copia. „{name}” rămâne exact așa cum este.",
+      "detailExistingCopy": "Deschiderea unui seif Obsidian în memrynote poate pierde date de care depind pluginurile Obsidian. Când memrynote transformă o linie de sarcină a unui plugin într-o sarcină, rescrie linia. Câmpuri precum termenele din pluginul Tasks părăsesc fișierul, iar Obsidian nu le mai vede.\n\nO copie memrynote, „{copyName}”, există deja alături. memrynote poate deschide acea copie. „{name}” rămâne exact așa cum este.",
+      "buttonCopy": "Creează copia",
+      "buttonOpenCopy": "Deschide copia",
+      "buttonOpenOriginal": "Deschide originalul",
+      "buttonCancel": "Anulează"
     },
     "pair": {
       "title": "Asociază extensia de browser",

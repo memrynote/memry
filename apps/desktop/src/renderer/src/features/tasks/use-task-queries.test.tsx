@@ -98,9 +98,8 @@ describe('useTaskWorkspaceData', () => {
       return mocks.unsubscribe
     }) as typeof window.api.onSyncStatusChanged
     window.api.onItemSynced = vi.fn((callback) => {
-      mocks.listeners.itemSyncedTask = () => callback({ type: 'task', id: 'task-1' } as never)
-      mocks.listeners.itemSyncedProject = () =>
-        callback({ type: 'project', id: 'project-1' } as never)
+      mocks.listeners.itemSyncedTask = () => callback({ type: 'task', id: 'task-1' })
+      mocks.listeners.itemSyncedProject = () => callback({ type: 'project', id: 'project-1' })
       return mocks.unsubscribe
     })
     vi.mocked(tasksService.listProjects).mockResolvedValue({
@@ -117,7 +116,7 @@ describe('useTaskWorkspaceData', () => {
           taskCount: 2
         }
       ]
-    } as never)
+    })
     vi.mocked(tasksService.listStatuses).mockResolvedValue([
       { id: 'todo', name: 'Todo', color: '#aaa', position: 0, isDefault: true, isDone: false },
       { id: 'doing', name: 'Doing', color: '#bbb', position: 1, isDefault: true, isDone: false },
@@ -151,7 +150,7 @@ describe('useTaskWorkspaceData', () => {
           createdAt: '2026-05-02T00:00:00.000Z'
         })
       ]
-    } as never)
+    })
   })
 
   it('loads tasks/projects, maps DB shapes, attaches sorted subtasks, and registers invalidators', async () => {
@@ -276,16 +275,16 @@ describe('useTaskWorkspaceData', () => {
 describe('useTaskWorkspaceMutations', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(tasksService.create).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.update).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.complete).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.uncomplete).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.archive).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.unarchive).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.delete).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.createProject).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.updateProject).mockResolvedValue({ success: true } as never)
-    vi.mocked(tasksService.deleteProject).mockResolvedValue({ success: true } as never)
+    vi.mocked(tasksService.create).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.update).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.complete).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.uncomplete).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.archive).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.unarchive).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.delete).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.createProject).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.updateProject).mockResolvedValue({ success: true })
+    vi.mocked(tasksService.deleteProject).mockResolvedValue({ success: true })
   })
 
   it('optimistically mutates tasks and forwards service payloads', async () => {

@@ -299,7 +299,7 @@ describe('markdownImporter (integration)', () => {
         expect(summary.failed).toEqual([])
 
         const rows = listTaskRows()
-        expect(rows.map((row) => row.title).sort()).toEqual([
+        expect(rows.map((row) => row.title).toSorted()).toEqual([
           'Book hotel',
           'Charger',
           'Pack bags',
@@ -377,7 +377,7 @@ describe('markdownImporter (integration)', () => {
         expect(summary.failed).toEqual([])
 
         const rows = listTaskRows()
-        expect(rows.map((row) => row.title).sort()).toEqual([
+        expect(rows.map((row) => row.title).toSorted()).toEqual([
           'Book hotel',
           'Charger',
           'Pack bags',

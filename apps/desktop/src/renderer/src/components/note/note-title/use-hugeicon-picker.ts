@@ -36,6 +36,7 @@ export function useHugeIconPicker(): {
       const entries: IconEntry[] = []
       for (const key of Object.keys(mod)) {
         if (key.endsWith('Icon') && key[0] === key[0].toUpperCase()) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- hugeicons module exports are untyped icon arrays keyed by name; the filter above keeps the icon exports
           entries.push({ name: key, data: mod[key] as IconSvgElement })
         }
       }

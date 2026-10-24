@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Portaalia ei voitu kopioida",
+    "hiddenCount": "{count} piilotettu",
+    "windowFailed": "Tätä portaalia ei voitu avata. Avaa sen sijaan lähdemuistiinpano.",
+    "noTarget": "Tällä portaalilla ei ole vielä kohdetta. Lisää määritykseen muistiinpano tai poista lohko.",
+    "invalidJson": "Tämän portaalin määritys ei ole kelvollista JSONia. Korjaa se alla tai poista lohko.",
+    "invalidShape": "Tämän portaalin määrityksessä ei ole muistiinpanoa tai hakua. Korjaa se alla tai poista lohko.",
+    "search": {
+      "editQuery": "Muokkaa hakua",
+      "count": "{count, plural, one {# lohko} other {# lohkoa}}",
+      "loading": "Haetaan…",
+      "empty": "Mikään lohko ei vastaa tätä hakua.",
+      "failed": "Hakua ei voitu suorittaa.",
+      "retry": "Yritä uudelleen",
+      "truncated": "Näytetään {count} ensimmäistä osumaa."
+    },
+    "copiedContents": "Sisältö kopioitu",
+    "copiedLink": "Linkki kopioitu",
+    "actionFailed": "Tätä portaalia ei voitu muuttaa",
+    "keepsOneBlock": "Portaalissa on oltava vähintään yksi lohko. Poista sen sijaan koko portaali.",
+    "expandChildren": "Näytä alikohteet",
+    "collapseChildren": "Piilota alikohteet",
+    "toolbar": {
+      "label": "Portaali",
+      "include": "Sisällytä ”{block}”",
+      "locked": "{note} on lukittu · vain luku",
+      "more": "Lisää",
+      "openBeside": "Avaa {note} viereen",
+      "click": "Napsauta",
+      "copyContents": "Kopioi sisältö",
+      "copyLink": "Kopioi linkki",
+      "remove": "Poista portaali",
+      "removeHint": "{note} säilyttää kaikki lohkot"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Lähdemuistiinpano poistettiin. Viittaus säilytetään.",
+        "action": "Poista"
+      },
+      "missingBlock": {
+        "text": "Lohko poistettiin kohteessa {source}.",
+        "action": "Valitse toinen"
+      },
+      "notSynced": {
+        "text": "Odotetaan lähdemuistiinpanon synkronointia.",
+        "action": "Yritä uudelleen"
+      },
+      "cycle": {
+        "text": "Tämä portaali johtaa takaisin itseensä.",
+        "action": "Avaa lähde"
+      },
+      "tooDeep": {
+        "text": "Portaaleja voi sisentää {max} tasoa. Tämä avautuu linkkinä.",
+        "action": "Avaa lähde"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Siirry pikakirjauskenttään",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Avaa oletussovelluksessa",
     "revealFailed": "Näyttäminen kansiossa epäonnistui"
   },
+  "commands": {
+    "runFailed": "Komentoa ei voitu suorittaa. Yritä uudelleen."
+  },
+  "commandsPalette": {
+    "title": "Komennot",
+    "placeholder": "Kirjoita komento…",
+    "groups": {
+      "navigation": "Siirtyminen",
+      "create": "Luo",
+      "tabs": "Välilehdet",
+      "editor": "Editori",
+      "view": "Näkymä",
+      "app": "Sovellus",
+      "note": "Muistiinpano",
+      "settings": "Asetukset",
+      "sync": "Synkronointi",
+      "help": "Ohje",
+      "project": "Projekti",
+      "tasks": "Tehtävät",
+      "canvas": "Canvas",
+      "folder": "Kansio",
+      "file": "Tiedosto"
+    },
+    "contexts": {
+      "note": "Tämä muistiinpano",
+      "journal": "Tämä päiväkirja",
+      "project": "Tämä projekti",
+      "tasks": "Nämä tehtävät",
+      "canvas": "Tämä canvas",
+      "folder": "Tämä kansio",
+      "tag": "Tämä tunniste",
+      "file": "Tämä tiedosto"
+    },
+    "recent": "Viimeaikaiset",
+    "empty": "Mikään komento ei vastaa hakua ”{query}”",
+    "searchHint": "Hae muistiinpanoja: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# komento} other {# komentoa}}"
+    },
+    "actions": {
+      "run": "Suorita",
+      "searchNotes": "Hae muistiinpanoja"
+    }
+  },
   "tabs": {
     "pin": "Kiinnitä välilehti",
     "unpin": "Irrota välilehti",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Toiminto epäonnistui",
-    "nothingToUndo": "Ei kumottavaa",
     "undone": "Kumottu: {description}",
     "undoFailed": "Toiminnon kumoaminen epäonnistui",
     "filesImported": "{count, plural, one {# tiedosto tuotu} other {# tiedostoa tuotu}}",
@@ -131,6 +231,20 @@
     "openInTab": "Avaa keskustelu välilehdessä",
     "stop": "Pysäytä",
     "thinking": "Agentti miettii",
+    "toolsUnavailable": "Holvin työkalut eivät ole käytössä tälle mallille. Se ei läpäissyt työkalutarkistusta, joten sen kanssa voi vain keskustella.",
+    "toolsUnavailableWithDetail": "Holvin työkalut eivät ole käytössä tälle mallille. Se ei läpäissyt työkalutarkistusta, joten sen kanssa voi vain keskustella. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Holvin työkalut eivät ole käytössä tälle mallille. Tarjoaja hylkäsi työkaluja sisältäneen testipyynnön, joten mallin kanssa voi vain keskustella.",
+      "noToolCall": "Holvin työkalut eivät ole käytössä tälle mallille. Se vastasi testipyyntöön kutsumatta työkalua, joten sen kanssa voi vain keskustella.",
+      "toolResultRejected": "Holvin työkalut eivät ole käytössä tälle mallille. Se kutsui testityökalua mutta epäonnistui saatuaan tuloksen takaisin, joten sen kanssa voi vain keskustella.",
+      "streamingUnsupported": "Holvin työkalut eivät ole käytössä tälle mallille. Tarjoaja ei striimannut testivastausta, joten mallin kanssa voi vain keskustella.",
+      "providerSaid": "Tarjoaja ilmoitti: {detail}",
+      "wroteToolCall": "Malli kirjoitti työkalukutsun tekstinä, eikä mitään suoritettu."
+    },
+    "stepLimit": {
+      "notice": "Pysähtyi vaihemäärän rajaan.",
+      "continue": "Jatka"
+    },
     "enable": {
       "title": "Ota memrynote-agentti käyttöön",
       "description": "memrynote-agentti keskustelee holvistasi valitsemasi paikallisen agentti-CLI:n avulla. Claude lähettää vuorot Anthropicille; Codex lähettää vuorot OpenAI:lle.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Agentti haluaa luoda: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
       "descriptionDelete": "Agentti haluaa poistaa: {title}. Tarkista muutos ennen kuin otat sen käyttöön.",
       "fallbackTitle": "tämä kohde",
-      "current": "Nykyinen",
       "candidate": "Ehdotettu versio",
       "loading": "Ladataan…",
       "apply": "Käytä",
@@ -268,13 +381,18 @@
       "removeAttachment": "Poista {label}",
       "placeholder": "Tee mitä tahansa memrynotessa… Mainitse muistiinpanoja, tehtäviä ja tapahtumia @-merkillä",
       "send": "Lähetä",
-      "providerLabel": "Agenttipalvelu: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Yhdistetyt työkalut",
       "connectTool": "Yhdistä {tool}",
-      "addContext": "Lisää kontekstia",
-      "addContextWithPermissions": "Lisää kontekstia ({permissions})",
       "mentionContext": "Mainitse muistiinpano, tehtävä tai tapahtuma",
+      "files": {
+        "attach": "Liitä tekstitiedosto",
+        "refused": {
+          "unsupportedType": "{name} ei ole tuettu tekstitiedosto. Liitä .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- tai .yml-tiedosto.",
+          "notText": "{name} ei ole UTF-8-tekstitiedosto. Liitä sen sijaan tekstitiedosto.",
+          "tooLarge": "{name} ylittäisi viestin 100 kt:n rajan. Poista tiedosto tai liitä pienempi.",
+          "readFailed": "Tiedostoa {name} ei voitu lukea. Tarkista, että tiedosto on yhä olemassa ja voit avata sen, ja liitä se uudelleen."
+        }
+      },
       "voice": {
         "start": "Aloita sanelu",
         "stop": "Lopeta sanelu",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Sanelun litteroiminen epäonnistui"
         }
       },
-      "modelLabel": "Agentin malli: {provider} {model}",
-      "reasoningLabel": "Agentin päättely: {reasoning}",
       "providers": {
-        "label": "Palveluntarjoaja",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Tietokoneen käyttö"
       },
       "webSearch": {
-        "on": "Päällä",
-        "off": "Pois",
         "label": "Verkkohaku"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agentti ei ole käytettävissä – avaa asetukset…"
       },
       "settings": {
-        "reasoning": "Päättely",
         "effort": "Panostus"
       },
       "includeCurrentNote": "Sisällytä nykyinen muistiinpano",
@@ -340,13 +452,29 @@
           "extraHigh": "Erittäin korkea"
         }
       },
-      "permissionsLabel": "Agentin käyttöoikeudet: {access}, verkkohaku {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Oletus",
+          "default": "Oletussyvyys",
+          "high": "Korkea",
+          "max": "Maksimi"
+        }
+      },
       "permissions": {
-        "label": "Käyttöoikeudet",
-        "access": "Käyttöoikeus",
-        "tools": "Työkalut"
+        "access": "Käyttöoikeus"
       },
       "modelSettingsLabel": "Agentin malliasetukset: {model}, {settings}",
+      "queue": {
+        "label": "Jonossa olevat viestit",
+        "queueMessage": "Lisää viesti jonoon",
+        "edit": "Muokkaa jonossa olevaa viestiä",
+        "editLabel": "Jonossa olevan viestin teksti",
+        "remove": "Poista jonossa oleva viesti",
+        "save": "Tallenna",
+        "cancel": "Peruuta",
+        "sending": "Lähetetään…",
+        "notSent": "Ei lähetetty. Muokkaa lähettääksesi uudelleen tai poista se."
+      },
       "unavailable": {
         "vaultToolsOnly": "Tällä mallilla vain holvin työkalut"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Ilmoituksen hyväksynnän tallentaminen epäonnistui",
       "resolveWindow": "Agentin lähdeikkunan selvittäminen epäonnistui",
       "detectCli": "Agenttien taustapalveluiden havaitseminen epäonnistui",
-      "loadDisclosure": "Ilmoituksen tilan lataaminen epäonnistui"
+      "loadDisclosure": "Ilmoituksen tilan lataaminen epäonnistui",
+      "turnFailed": "Vastaus keskeytyi virheeseen. Viestisi säilyy, joten voit lähettää sen uudelleen."
     },
     "actions": {
       "copy": "Kopioi",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Pudota tuotavat tiedostot",
       "dropFilesIntoVaultRoot": "Holvin juurikansio",
       "newNoteN": "Uusi muistiinpano (⌘N)",
-      "new": "Uusi",
       "newItemMenu": "Luo uusi…",
       "feedbackButton": "Lähetä palautetta",
       "feedbackTitle": "Lähetä palautetta",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Etsi, korvaa, kysy…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Ohita esittely",
-      "welcomeToMemry": "Tervetuloa memrynoteen",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Henkilökohtainen tietopankkisi. Pääset alkuun kahdessa minuutissa.",
-      "getStarted": "Aloita ",
-      "createYourFirstNote": "Luo ensimmäinen muistiinpanosi",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-pohjainen, tallennettu paikallisesti tavallisina tiedostoina.",
-      "eGMeetingNotesIdeasAnything": "esim. kokousmuistiinpanot, ideat, mitä tahansa…",
-      "skip": "Ohita",
-      "createNote": "Luo muistiinpano ",
-      "addYourFirstTask": "Lisää ensimmäinen tehtäväsi",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tehtävät linkittyvät muistiinpanoihisi, ja niillä on prioriteetit ja eräpäivät.",
-      "eGReviewProjectProposal": "esim. tarkista projektiehdotus…",
-      "skip2": "Ohita",
-      "createTask": "Luo tehtävä ",
-      "syncAcrossDevices": "Synkronoi laitteiden välillä",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pidä muistiinpanosi ja tehtäväsi synkronoituina kaikilla laitteillasi. Voit määrittää tämän myös myöhemmin.",
-      "skipForNow": "Ohita toistaiseksi",
-      "doneLetSGo": "Valmis – mennään! "
+      "skip": "Ohita"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Aseta kansiokuvake",
@@ -707,8 +818,7 @@
       "unknownTabType": "Tuntematon välilehtityyppi: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "tallentamattomat muutokset",
-      "preview": "esikatselu"
+      "unsavedChanges": "tallentamattomat muutokset"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Uusi välilehti",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Muuta kokoa vetämällä · Nollaa kaksoisnapsauttamalla"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Tervetuloa memrynoteen",
-      "yourPersonalKnowledgeManagementSystem": "Henkilökohtainen tiedonhallintajärjestelmäsi.",
-      "selectAFolderToStoreYourNotesAndTasks": "Valitse kansio muistiinpanojen ja tehtävien tallentamiseen.",
       "opening": "Avataan…",
-      "selectVaultFolder": "Valitse holvikansio",
-      "plainMarkdown": "Pelkkä Markdown",
-      "yourNotesStayPortable": "Muistiinpanosi pysyvät siirrettävinä",
-      "syncAnywhere": "Synkronoi missä tahansa",
-      "useDropboxIcloudGit": "Käytä Dropboxia, iCloudia, Gitiä",
       "recentVaults": "Viimeaikaiset holvit",
-      "notesLastOpened": "muistiinpanoa · Viimeksi avattu",
-      "preRelease": "Beta",
       "createNewVault": "Luo uusi holvi",
-      "createNewVaultDesc": "Aloita uusi holvi valitsemaasi kansioon.",
-      "openExistingVault": "Avaa olemassa oleva holvi",
-      "openExistingVaultDesc": "Valitse kansio, jossa sinulla on jo Markdown-tiedostoja.",
-      "signInToSync": "Kirjaudu sisään synkronointia varten",
-      "signInToSyncDesc": "Päästä päähän salatut holvit laitteidesi välillä.",
-      "create": "Luo",
       "open": "Avaa",
-      "signIn": "Kirjaudu sisään",
       "helpAndDocs": "Ohjeet ja dokumentaatio",
-      "signInRequiresVault": "Avaa tai luo ensin holvi, jotta voit määrittää synkronoinnin.",
       "addVault": "Lisää holvi",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Ei vielä holveja",
       "openVault": "Avaa holvi",
       "settings": "Asetukset",
-      "logOut": "Kirjaudu ulos",
-      "signInToSync": "Kirjaudu sisään synkronoidaksesi",
       "remove": "Poista ”",
       "removeVaultTitle": "Poistetaanko ”{name}” listalta?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tämä holvi poistetaan sovelluksesta, mutta tiedostosi säilyvät levyllä. Voit aina lisätä sen myöhemmin uudelleen.",
       "cancel": "Peruuta",
       "remove2": "Poista",
       "inYourAccount": "Tililläsi",
+      "trySandbox": "Kokeile hiekkalaatikkoholvia",
+      "sandboxVault": "Hiekkalaatikkoholvi",
+      "sandboxPreparing": "Valmistellaan hiekkalaatikkoa…",
+      "sandboxFailed": "Hiekkalaatikkoholvia ei voitu valmistella",
+      "resetSandbox": "Nollaa hiekkalaatikkoholvi",
       "itemsCount": "Kohteita: {count}",
       "untitledVault": "Holvi",
       "downloadVaultTitle": "Lataa ”{name}”",
@@ -870,7 +965,6 @@
       "changeLocation": "Muuta…",
       "download": "Lataa",
       "downloadFailed": "Holvin lataaminen epäonnistui",
-      "deleteFromAccount": "Poista tililtä",
       "deleteVaultTitle": "Poistetaanko ”{name}” tililtäsi?",
       "deleteVaultBody": "Tämä poistaa pysyvästi kaikki tämän holvin synkronoidut tiedot Memryn palvelimilta, eikä sitä voi kumota. Levyllä olevia tiedostojasi ei poisteta.",
       "deleteVaultConfirm": "Poista tililtä",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Poista widget",
       "dragAria": "Vedä widgetiä",
-      "configAria": "Määritä widget",
-      "resizeAria": "Muuta kooksi {size}",
       "menuAria": "Widgetin asetukset",
-      "resize": "Koko",
       "remove": "Poista",
       "filter": {
         "all": "Kaikki",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Avaamasi muistiinpanot näkyvät tässä",
       "bookmarks": "Kirjanmerkit",
       "tasks": "Tehtävät",
+      "chart": "Kuvaaja",
       "calendar": "Kalenteri",
       "calendarToday": "Tänään",
       "openCalendar": "Avaa kalenteri",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Valitse kansio",
       "folderEmpty": "Ei vielä kansioita",
       "folderNoSelection": "Ei valittua kansiota",
-      "folderView_list": "Luettelo",
-      "folderView_gallery": "Galleria",
       "folderViewSelect": "Näkymä",
       "project": "Projekti",
       "projectNoSelection": "Ei valittua projektia",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Etusivun asettelu",
       "deleteAria": "Poista asettelu",
-      "newAria": "Uusi taulu",
       "newName": "Uusi taulu",
       "defaultName": "Etusivu",
       "manage": "Hallitse tauluja",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# tehtävä erääntyy tänään} other {# tehtävää erääntyy tänään}}",
       "events": "{count, plural, one {# tapahtuma} other {# tapahtumaa}}"
     },
-    "edit": "Muokkaa",
-    "done": "Valmis",
     "addWidget": "Lisää widget",
+    "cover": {
+      "add": "Lisää kansikuva"
+    },
     "empty": {
       "title": "Taulusi on tyhjä",
       "body": "Widgetit tuovat muistiinpanosi, tehtäväsi ja kirjanmerkkisi yhteen rauhalliseen paikkaan.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Esittely valmis",
-      "body": "Anna meille tähti GitHubissa – se auttaa muita löytämään MemryNoten.",
-      "action": "Anna tähti GitHubissa"
+      "body": "Anna meille tähti GitHubissa – se auttaa muita löytämään MemryNoten."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Päivitys valmis",
     "failed": "Päivitys epäonnistui",
     "downloadAction": "Lataa",
-    "restartAction": "Käynnistä uudelleen",
     "detailsAction": "Lisätiedot",
     "popover": {
       "readyTitle": "MemryNote {version} on valmis",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Holvit",
     "position": "{name}, holvi {index}, yhteensä {count}",
-    "openList": "{position}. Avaa holviluettelo",
     "switchTo": "Vaihda holviin {name}",
     "switchingTo": "Vaihdetaan holviin {name}",
     "changeIcon": "Vaihda kuvake…",
     "resetIcon": "Palauta oletuskuvake",
     "iconButton": "Vaihda holvin {name} kuvake",
+    "leaveSandbox": "Takaisin holviin {name}",
     "iconFailed": "Holvin kuvakkeen vaihtaminen epäonnistui"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Tyyppi",
     "filterModified": "Muokattu",
     "matches": "Osumat",
+    "matchesMore": "{count, plural, one {# osuma lisää} other {# osumaa lisää}}",
+    "matchesHide": "Piilota osumat",
+    "matchOf": "Osuma {index}/{total}",
     "showMore": "Näytä {count} lisää",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Seuraava osio",
       "open": "Avaa",
       "openNote": "Avaa muistiinpano",
+      "openAtMatch": "Avaa osumakohdassa",
       "openFile": "Avaa tiedosto",
       "openJournal": "Avaa päiväkirja",
       "openTask": "Avaa tehtävä",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Valitse tunniste",
       "addTag": "Lisää tunniste",
       "showAll": "Näytä kaikki",
+      "hideMatches": "Piilota osumat",
       "searchEverywhere": "Hae kaikkialta",
       "clearFilters": "Tyhjennä suodattimet"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "Löytyy {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# holvi löytyi} other {# holvia löytyi}}",
-      "notion": "Notion",
       "otherApps": "Muut sovellukset ja tiedostot",
       "otherAppsHint": "ja {count} muuta",
       "detectedFootnote": "Löydetty tarkistamalla, mitkä sovellukset on asennettu. Mikään ei poistu täältä: kaikki pysyy {device}.",

@@ -1,3 +1,4 @@
+// oxlint-disable-next-line import/no-named-as-default -- graphology's typings declare only the default export; `{ Graph }` fails typecheck (TS2614)
 import Graph from 'graphology'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
 import { PINNED_ATTRIBUTE, type NodePosition } from './graph-physics'
@@ -231,6 +232,7 @@ function collapseGroups(spec: GraphSpec, groups: CollapsedGraphGroup[]): GraphSp
   const groupMembers = new Map<string, string[]>()
   for (const [id, attributes] of spec.nodes) {
     const tagOfNode = tagOfTagNode(id)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node attribute bag is untyped; tags is written as string[] by the builder
     const tags = tagOfNode !== null ? [tagOfNode] : ((attributes.tags as string[]) ?? [])
     let index: number | undefined
     for (const tag of tags) {
@@ -263,7 +265,9 @@ function collapseGroups(spec: GraphSpec, groups: CollapsedGraphGroup[]): GraphSp
     let y = 0
     for (const member of members) {
       const attributes = spec.nodes.get(member)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node attribute bag is untyped; layout writes numeric x/y
       x += (attributes?.x as number) ?? 0
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node attribute bag is untyped; layout writes numeric x/y
       y += (attributes?.y as number) ?? 0
     }
     nodes.set(id, {
@@ -299,6 +303,7 @@ function collapseGroups(spec: GraphSpec, groups: CollapsedGraphGroup[]): GraphSp
     const groupEdgeKey = `${GROUP_NODE_PREFIX}edge:${a}|${b}`
     const existing = edges.get(groupEdgeKey)
     if (existing) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- group edge weight is set to a number when the edge is created
       const weight = (existing.attributes.weight as number) + 1
       existing.attributes.weight = weight
       existing.attributes.size = Math.min(4, 1 + Math.log2(weight))
@@ -374,8 +379,8 @@ function placeNearNeighbours(
     let count = 0
     graph.forEachNeighbor(id, (neighbour, attrs) => {
       if (!isAnchor(neighbour)) return
-      sumX += attrs.x as number
-      sumY += attrs.y as number
+      sumX += attrs.x
+      sumY += attrs.y
       count++
     })
     if (count === 0) continue
@@ -498,8 +503,8 @@ export function createGraphPositionCache(): GraphPositionCache {
 
 function readPosition(graph: Graph, id: string): GraphPosition {
   return {
-    x: graph.getNodeAttribute(id, 'x') as number,
-    y: graph.getNodeAttribute(id, 'y') as number
+    x: graph.getNodeAttribute(id, 'x'),
+    y: graph.getNodeAttribute(id, 'y')
   }
 }
 

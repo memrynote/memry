@@ -9,7 +9,7 @@
 
 import fs from 'fs'
 import path from 'path'
-import chokidar from 'chokidar'
+import { watch as chokidarWatch } from 'chokidar'
 import { createLogger } from '../lib/logger'
 import { protectLockedFile } from './files'
 
@@ -22,6 +22,8 @@ interface AttachmentWatch {
 
 let active: AttachmentWatch | null = null
 
+const protect = (filePath: string): void => void protectLockedFile(filePath)
+
 /**
  * chokidar never reports a root created after the watch starts, so the root is
  * created first. Not recursive: a vault folder that went away is not recreated.
@@ -32,18 +34,17 @@ function startWatch(root: string): AttachmentWatch {
   try {
     fs.mkdirSync(root)
   } catch (error) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
       log.warn('Could not create the attachments folder to watch', { error })
     }
   }
-  const protect = (filePath: string): void => void protectLockedFile(filePath)
-  const watcher = chokidar
-    .watch(root, {
-      depth: 1,
-      followSymlinks: false,
-      ignored: (filePath) => path.basename(filePath).startsWith('.'),
-      awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 }
-    })
+  const watcher = chokidarWatch(root, {
+    depth: 1,
+    followSymlinks: false,
+    ignored: (filePath) => path.basename(filePath).startsWith('.'),
+    awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 50 }
+  })
     .on('add', protect)
     .on('change', protect)
     .on('error', (error) => log.warn('Watching locked attachments failed', { error }))

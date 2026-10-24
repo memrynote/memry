@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Váš plán umožňuje synchronizovat méně trezorů, než má tento účet, takže tento trezor zůstane jen v tomto zařízení. Odeberte trezor ze svého účtu v Nastavení → Účet, nebo přejděte na vyšší plán.",
     "certificatePinFailed": "Zabezpečené připojení se nezdařilo. Zkontrolujte připojení k síti.",
     "deviceKeyMismatch": "Bezpečnostní klíč tohoto zařízení už neodpovídá klíči registrovanému pro váš účet, proto server jeho změny odmítá. Přihlaste se v tomto zařízení znovu, aby se znovu zaregistrovalo.",
+    "deviceKeysMissing": "Změny v tomto zařízení se nenahrávají, protože chybí jeho klíče zařízení. Zvolte Opravit a obnovte je. Pokud toto zařízení už své klíče nemá, přihlásíte se znovu a možná budete potřebovat obnovovací frázi. Nesynchronizované poznámky, úkoly a projekty zůstanou zachovány.",
     "keychainUnavailable": "Synchronizace je pozastavena, protože aplikace Memry teď nemůže načíst své synchronizační klíče z úložiště klíčů systému. Odemkněte úložiště klíčů a synchronizace se obnoví sama; pokud ne, restartujte aplikaci Memry. Nic nebylo smazáno.",
     "unknown": "Došlo k neočekávané chybě synchronizace. Pokus se automaticky zopakuje.",
     "statusFetchFailed": "Nepodařilo se načíst stav synchronizace",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synchronizace se nezdařila",
     "pauseFailed": "Pozastavení synchronizace se nezdařilo",
     "resumeFailed": "Synchronizaci se nepodařilo obnovit",
+    "syncNowSignedOut": "Synchronizace vyžaduje, abyste se v tomto zařízení znovu přihlásili.",
+    "syncNowBusy": "Synchronizace už běží. Zkuste to za chvíli znovu.",
+    "syncNowPaused": "Synchronizace byla během běhu pozastavena. Obnovte ji z nabídky synchronizace.",
+    "openAccountSettings": "Otevřít nastavení",
     "settingsNotInitialized": "Synchronizace nastavení není inicializována",
     "securityQuarantinePermanent": "Položku synchronizace nebylo možné ověřit a byla kvůli bezpečnosti umístěna do karantény.",
     "securityQuarantineRetry": "U položky synchronizace se nezdařilo ověření podpisu a pokus bude zopakován.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Úpravy pomocí AI přímo v textu jsou vypnuté",
-    "listOllamaModelsFailed": "Nepodařilo se načíst seznam modelů Ollama"
+    "listOllamaModelsFailed": "Nepodařilo se načíst seznam modelů Ollama",
+    "writingAssistInvalid": "Tento požadavek se nepodařilo odeslat modelu AI.",
+    "apiKeyMissing": "Pro nástroje psaní přidejte svůj klíč API {provider} v Nastavení → AI.",
+    "apiKeyInvalid": "Váš klíč API {provider} byl odmítnut. Zkontrolujte jej v Nastavení → AI.",
+    "ollamaUnreachable": "Ollama neběží. Spusťte ji příkazem „ollama serve“ nebo v Nastavení → AI zvolte jiného poskytovatele.",
+    "providerUnreachable": "Poskytovatele {provider} se nepodařilo kontaktovat. Zkontrolujte připojení k internetu a zkuste to znovu."
   },
   "auth": {
     "notAuthenticated": "Nejste přihlášeni",
-    "sessionExpired": "Vaše relace vypršela. Přihlaste se prosím znovu.",
     "setupSessionExpired": "Přihlášení vypršelo dříve, než se tento krok dokončil. Přihlaste se znovu a pak zadejte frázi pro obnovení.",
     "setupSessionExpiredLinking": "Přihlášení vypršelo dříve, než se toto zařízení stihlo propojit. Přihlaste se znovu a pak kód naskenujte ještě jednou.",
     "invalidRecoveryPhraseFormat": "Neplatný formát fráze pro obnovení",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Propojenou kopii externí události se nepodařilo vytvořit",
     "onlyCalendarSourcesRetryable": "Zopakovat lze pouze zdroje kalendáře",
     "invalidProviderSettings": "Neplatné nastavení poskytovatele kalendáře",
-    "getExternalEventFailed": "Tuto událost se nepodařilo načíst. V kalendáři stále je – zkuste ji otevřít znovu."
+    "getExternalEventFailed": "Tuto událost se nepodařilo načíst. V kalendáři stále je – zkuste ji otevřít znovu.",
+    "listLinkedNotesFailed": "Poznámky propojené s touto událostí se nepodařilo načíst."
   },
   "canvasFolder": {
     "exists": "Složka pláten s tímto názvem tu už existuje.",
@@ -209,10 +219,35 @@
     "previewFailed": "Náhled se nezdařil",
     "listFailed": "Nepodařilo se načíst seznam importérů",
     "appleNotesFoldersFailed": "Složky Apple Notes se nepodařilo načíst",
+    "appleNotesPasswordFailed": "Heslo k aplikaci Poznámky se nepodařilo ověřit.",
     "onenoteStatusFailed": "Stav připojení k OneNote se nepodařilo načíst",
     "onenoteConnectFailed": "Přihlášení k účtu Microsoft se nezdařilo",
     "onenoteDisconnectFailed": "Účet Microsoft se nepodařilo odpojit",
-    "onenoteNotebooksFailed": "Poznámkové bloky OneNote se nepodařilo načíst"
+    "onenoteNotebooksFailed": "Poznámkové bloky OneNote se nepodařilo načíst",
+    "readwiseStatusFailed": "Stav připojení k Readwise se nepodařilo zjistit",
+    "readwiseConnectFailed": "K Readwise se nepodařilo připojit",
+    "readwiseInvalidToken": "Readwise tento token nepřijal. Zkopírujte jej znovu z readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise právě omezuje počet požadavků. Zkuste to za minutu.",
+    "readwiseUnreachable": "Readwise se nepodařilo kontaktovat. Zkontrolujte připojení a zkuste to znovu.",
+    "readwiseDisconnectFailed": "Readwise se nepodařilo odpojit",
+    "readwiseSyncFailed": "Synchronizaci s Readwise se nepodařilo spustit",
+    "readwiseRunUnavailable": "Readwise se v tomto zařízení nesynchronizuje.",
+    "readwiseRunInProgress": "Import z Readwise už běží. Zkuste to znovu po jeho dokončení.",
+    "readwiseOptionsFailed": "Nastavení Readwise se nepodařilo uložit",
+    "readwiseNotConnected": "Readwise není připojen. Nejprve vložte svůj přístupový token.",
+    "readwiseSyncsElsewhere": "Readwise se synchronizuje v jiném zařízení. Spusťte tento příkaz tam.",
+    "readwiseBookCommandFailed": "Příkaz Readwise se nepodařilo dokončit",
+    "readwiseBookGone": "Tato kniha už není ve vaší knihovně Readwise.",
+    "readwiseNotLinked": "Tato poznámka není propojena s knihou z Readwise.",
+    "readwiseNotDeleted": "Tato kniha není v seznamu smazaných.",
+    "readwiseBookBusy": "Poznámka se během provádění příkazu změnila. Zkuste to znovu.",
+    "readwiseSyncsOnDevice": "Readwise se synchronizuje v zařízení {device}. Pomocí možnosti „Synchronizovat raději zde“ ho přesunete sem.",
+    "readwiseAnotherDevice": "jiném zařízení",
+    "readwiseNotReady": "Memry se zatím nedokončila synchronizaci s vašimi dalšími zařízeními. Zkuste to za chvíli znovu.",
+    "readwiseNeedsSync": "Chcete-li přesouvat Readwise mezi zařízeními, zapněte synchronizaci.",
+    "readwiseClaimNotDelivered": "Vaše další zařízení se zatím nepodařilo informovat. Zkontrolujte připojení a zkuste to znovu.",
+    "readwiseTakeOverFailed": "Readwise se nepodařilo přesunout do tohoto zařízení",
+    "readwiseCancelFailed": "Synchronizaci s Readwise se nepodařilo zrušit"
   },
   "project": {
     "createFailed": "Nepodařilo se vytvořit projekt",
@@ -236,7 +271,8 @@
     "renameFailed": "Nepodařilo se přejmenovat vlastnost",
     "createDefinitionFailed": "Nepodařilo se vytvořit definici vlastnosti",
     "updateDefinitionFailed": "Nepodařilo se aktualizovat definici vlastnosti",
-    "setCalendarVisibilityFailed": "Nepodařilo se nastavit viditelnost vlastnosti v kalendáři"
+    "setCalendarVisibilityFailed": "Nepodařilo se nastavit viditelnost vlastnosti v kalendáři",
+    "definitionsFileUnreadable": "Změny vlastností nelze uložit, protože soubor .memry/properties.md nelze přečíst. Opravte nebo odeberte tento soubor a zkuste to znovu."
   },
   "reminder": {
     "notFound": "Připomenutí nenalezeno",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Nepodařilo se načíst model",
     "voiceModelDownloadFailed": "Nepodařilo se stáhnout hlasový model",
     "terminalCommandInstallFailed": "Nepodařilo se nainstalovat příkaz terminálu",
-    "terminalCommandUninstallFailed": "Nepodařilo se odinstalovat příkaz terminálu",
-    "shortcutInUse": "Zkratka {shortcut} se už používá"
+    "terminalCommandUninstallFailed": "Nepodařilo se odinstalovat příkaz terminálu"
   },
   "tag": {
+    "renameInProgress": "Přejmenování #{from} na #{to} stále probíhá. Zkuste to znovu po jeho dokončení.",
     "mergeSameTag": "Zdrojový a cílový štítek jsou stejné",
     "categoryNameRequired": "Název kategorie je povinný",
     "pinNoteFailed": "Nepodařilo se připnout poznámku",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Nepodařilo se smazat úkoly",
     "moveManyFailed": "Nepodařilo se přesunout úkoly",
     "archiveManyFailed": "Nepodařilo se archivovat úkoly",
-    "projectMissing": "Tento projekt už neexistuje"
+    "projectMissing": "Tento projekt už neexistuje",
+    "invalidParent": "Úkol nelze přesunout sem"
   },
   "taskStatus": {
     "createFailed": "Nepodařilo se vytvořit stav",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Vlastník nastavil tuto poznámku jen pro čtení.",
     "folderReadOnly": "Vlastník nastavil tuto složku jen pro čtení."
+  },
+  "ocrLanguages": {
+    "unreachable": "Server aplikace Memry se nepodařilo kontaktovat. Již stažené jazyky budou dál fungovat a Memry to zkusí znovu při příštím spuštění.",
+    "unavailable": "Server aplikace Memry tento jazyk zatím nenabízí. Již stažené jazyky budou dál fungovat.",
+    "corrupt": "Stažená data neodpovídala očekávání aplikace Memry, a proto nebyla použita. Zkuste je stáhnout znovu.",
+    "saveFailed": "Jazyková data se nepodařilo uložit v tomto počítači. Zkontrolujte volné místo na disku a zkuste to znovu."
+  },
+  "tagFields": {
+    "reservedName": "„{name}“ je vyhrazený název a nelze jej použít jako název pole",
+    "duplicateField": "#{definedBy} už má pole s názvem „{name}“",
+    "unknownField": "Tento štítek nemá pole s názvem „{name}“",
+    "inheritedField": "„{name}“ pochází ze štítku #{definedBy}. Upravte je tam",
+    "cycle": "#{parent} už přebírá svá pole z tohoto štítku",
+    "unreadableSchema": "Novější verze aplikace Memry tento štítek změnila. Chcete-li jej upravit, aktualizujte Memry",
+    "relationTargetRequired": "Vyberte, na který štítek tento vztah odkazuje",
+    "renameRunning": "Jiné přejmenování pole se stále dokončuje ({from} na {to}). Zkuste to znovu po jeho dokončení."
   }
 }

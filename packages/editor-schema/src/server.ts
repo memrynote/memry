@@ -16,11 +16,6 @@
  * link, losing the token and its metadata from disk.
  */
 
-// Re-exported so a consumer (the markdown-seed vector generator) builds its
-// editor on this package's `@blocknote/core` instance rather than reaching
-// into this package's node_modules by path.
-export { ServerBlockNoteEditor } from '@blocknote/server-util'
-
 import {
   createHashTagSpec,
   createDateMentionSpec,
@@ -37,6 +32,10 @@ import {
   type MemryInlineSpecs
 } from './inline'
 
+// Re-exported so a consumer (the markdown-seed vector generator) builds its
+// editor on this package's `@blocknote/core` instance rather than reaching
+// into this package's node_modules by path.
+export { ServerBlockNoteEditor } from '@blocknote/server-util'
 export { blockExternalHTML, createServerBlockSpecs, diagramParsing } from './blocks/server-specs'
 
 export function createServerInlineSpecs(): MemryInlineSpecs {

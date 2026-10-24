@@ -51,7 +51,7 @@ function legacyUpsert(messages: Message[], nextMessage: Message): Message[] {
     existing === -1
       ? [...messages, nextMessage]
       : messages.map((candidate, index) => (index === existing ? nextMessage : candidate))
-  return [...next].sort((left, right) => left.createdAt - right.createdAt)
+  return next.toSorted((left, right) => left.createdAt - right.createdAt)
 }
 
 function upsertEvent(nextMessage: Message): AgentEvent {

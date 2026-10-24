@@ -22,7 +22,7 @@ function searchRow(overrides: Partial<SearchResultItem>): SearchResultItem {
     modifiedAt: '2026-08-17T00:00:00.000Z',
     metadata: { type: 'note', path: 'Work/Title.md', tags: [] },
     ...overrides
-  } as SearchResultItem
+  }
 }
 
 describe('candidatesFromSearch', () => {

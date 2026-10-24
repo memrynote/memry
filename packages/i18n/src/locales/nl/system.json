@@ -17,17 +17,22 @@
       "filterAll": "Alle bestanden"
     },
     "exportCancelled": "Exporteren geannuleerd",
-    "update": {
-      "availableTitle": "Update beschikbaar",
-      "availableMessage": "memrynote {version} is beschikbaar.",
-      "availableDetailFallback": "De update nu downloaden?",
-      "buttonDownload": "Downloaden",
-      "buttonLater": "Later",
-      "readyTitle": "Update gereed",
-      "readyMessage": "memrynote {version} is gedownload.",
-      "readyDetailFallback": "Start memrynote opnieuw om de installatie van de update te voltooien.",
-      "buttonRestartNow": "Nu opnieuw starten",
-      "releaseNotesLabel": "Releaseopmerkingen:"
+    "dataDbRecovery": {
+      "title": "Kluisdatabase herstellen",
+      "message": "De database van Memry voor deze kluis is beschadigd.",
+      "detail": "Je notities en dagboekbestanden worden niet geraakt. Herstellen bewaart de beschadigde database als back-up op {path}, start een nieuwe, bouwt wat mogelijk is opnieuw op uit je kluisbestanden en zet gesynchroniseerde items terug bij de volgende synchronisatie. Wijzigingen die nog niet waren gesynchroniseerd worden waar mogelijk hersteld.",
+      "buttonRecover": "Herstellen",
+      "buttonLater": "Niet nu"
+    },
+    "obsidianVault": {
+      "title": "Obsidian-kluis openen",
+      "message": "Een kopie van deze Obsidian-kluis openen?",
+      "detail": "Een Obsidian-kluis openen in memrynote kan gegevens kwijtraken waarvan je Obsidian-plug-ins afhankelijk zijn. Wanneer memrynote de taakregel van een plug-in omzet in een taak, wordt die regel herschreven. Velden zoals de vervaldatums van de Tasks-plug-in verdwijnen uit het bestand en Obsidian ziet ze niet meer.\n\nmemrynote kan “{name}” kopiëren naar “{copyName}” ernaast en de kopie openen. “{name}” blijft precies zoals het is.",
+      "detailExistingCopy": "Een Obsidian-kluis openen in memrynote kan gegevens kwijtraken waarvan je Obsidian-plug-ins afhankelijk zijn. Wanneer memrynote de taakregel van een plug-in omzet in een taak, wordt die regel herschreven. Velden zoals de vervaldatums van de Tasks-plug-in verdwijnen uit het bestand en Obsidian ziet ze niet meer.\n\nEr staat al een memrynote-kopie, “{copyName}”, ernaast. memrynote kan die kopie openen. “{name}” blijft precies zoals het is.",
+      "buttonCopy": "Kopie maken",
+      "buttonOpenCopy": "Kopie openen",
+      "buttonOpenOriginal": "Origineel openen",
+      "buttonCancel": "Annuleren"
     },
     "pair": {
       "title": "Browserextensie koppelen",

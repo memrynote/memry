@@ -52,9 +52,9 @@ function toHexColor(cssColor: string, ctx: CanvasRenderingContext2D): string | n
  */
 export function useTitleBarSymbolColorSync(): void {
   useEffect(() => {
-    if (!getOverlay()) return
+    if (!getOverlay()) return undefined
     const ctx = document.createElement('canvas').getContext('2d', { willReadFrequently: true })
-    if (!ctx) return
+    if (!ctx) return undefined
     const root = document.documentElement
     let lastSent: string | null = null
 

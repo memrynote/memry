@@ -9,6 +9,7 @@ const workspaceRoot = resolve(appRoot, '../..')
 // Single source of truth for the coverage ratchet floors, shared with
 // scripts/check-coverage-thresholds.mjs so the CI "Coverage thresholds" job
 // enforces the exact same numbers vitest does locally.
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- coverage-thresholds.json is a committed file whose shape scripts/check-coverage-thresholds.mjs enforces
 const coverageThresholds = JSON.parse(
   readFileSync(resolve(__dirname, 'coverage-thresholds.json'), 'utf8')
 ) as Record<string, number>

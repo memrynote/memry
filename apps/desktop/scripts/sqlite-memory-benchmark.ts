@@ -22,7 +22,8 @@ import {
 import { EMBEDDING_DIMENSION } from '../src/main/lib/embeddings-constants'
 import type { DataDb, IndexDb } from '../src/main/database/types'
 
-type TempStore = 'DEFAULT' | 'FILE' | 'MEMORY'
+const TEMP_STORES = ['DEFAULT', 'FILE', 'MEMORY'] as const
+type TempStore = (typeof TEMP_STORES)[number]
 
 interface Options {
   notes: number
@@ -55,7 +56,7 @@ const defaultOptions: Options = {
   iterations: 40,
   dataCacheKiB: SQLITE_DATA_CACHE_KIB,
   indexCacheKiB: SQLITE_INDEX_CACHE_KIB,
-  tempStore: SQLITE_TEMP_STORE as TempStore,
+  tempStore: SQLITE_TEMP_STORE,
   keep: false
 }
 
@@ -109,10 +110,11 @@ function parseArgs(argv: string[]): Options {
         break
       case '--temp-store':
         if (!next) throw new Error('--temp-store requires a value')
-        if (!['DEFAULT', 'FILE', 'MEMORY'].includes(next)) {
-          throw new Error('--temp-store must be DEFAULT, FILE, or MEMORY')
+        {
+          const tempStore = TEMP_STORES.find((candidate) => candidate === next)
+          if (!tempStore) throw new Error('--temp-store must be DEFAULT, FILE, or MEMORY')
+          options.tempStore = tempStore
         }
-        options.tempStore = next as TempStore
         i += 1
         break
       case '--keep':
@@ -155,7 +157,7 @@ function measureMemoryMiB(): number {
 }
 
 function summarize(values: number[]): TimingSummary {
-  const sorted = [...values].sort((a, b) => a - b)
+  const sorted = [...values].toSorted((a, b) => a - b)
   const percentile = (p: number): number =>
     sorted[Math.min(sorted.length - 1, Math.floor(p * (sorted.length - 1)))]
   const avg = sorted.reduce((sum, value) => sum + value, 0) / sorted.length

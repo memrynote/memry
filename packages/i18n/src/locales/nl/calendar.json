@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "“{title}” afvinken",
     "task-completed": "Taak voltooid",
-    "could-not-complete": "Kan taak niet voltooien",
+    "could-not-update-status": "Kan taakstatus niet wijzigen",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} u",
     "duration-hours-minutes": "{hours} u {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Volgende week",
     "open-task": "Taak openen",
     "source-note": "Bronnotitie",
-    "reschedule": "Opnieuw plannen",
     "mark-done": "Als voltooid markeren",
     "mark-not-done": "Als niet voltooid markeren",
-    "later-today": "Later vandaag",
     "tomorrow": "Morgen",
-    "next-week-mon": "Volgende week · ma",
     "pick-date-time": "Datum en tijd kiezen…",
     "remove-due-date": "Vervaldatum verwijderen",
     "subtasks-prefix": "Subtaken",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Kan de vervaldatum niet verwijderen",
       "could-not-open-note": "Kan notitie niet openen"
     }
+  },
+  "eventNotes": {
+    "heading": "Notities",
+    "create": "Nieuwe notitie",
+    "link": "Notitie koppelen",
+    "untitled": "Vergadernotitie",
+    "searchPlaceholder": "Notities zoeken",
+    "noResults": "Geen notities gevonden",
+    "createFailed": "Kan geen notitie voor deze afspraak maken.",
+    "linkFailed": "Kan de notitie niet aan deze afspraak koppelen.",
+    "loadFailed": "Kan de aan deze afspraak gekoppelde notities niet laden.",
+    "propertyTaken": "Deze notitie heeft al een eigenschap “{name}” die geen link is."
   },
   "notePopover": {
     "kind": "Notitie",
@@ -254,6 +262,10 @@
     "overdue": "te laat",
     "untitled": "Zonder titel",
     "days": "{count, plural, one {# dag} other {# dagen}}",
+    "subtasks": {
+      "expand": "{count, plural, one {# subtaak} other {# subtaken}} van {title} tonen",
+      "collapse": "{count, plural, one {# subtaak} other {# subtaken}} van {title} verbergen"
+    },
     "events": "Afspraken",
     "schedule-hint": "Klik om een datum in te stellen, sleep om een periode in te stellen",
     "empty-title": "Hier staat niets op de tijdlijn",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Geabonneerde agenda’s"
     },
     "caldav": {
       "name": "CalDAV"

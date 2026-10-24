@@ -121,20 +121,25 @@ function normalizeColor(value: unknown): string | null {
   return match ? `#${match[1].toLowerCase()}` : null
 }
 
+/** One property of an unknown XML node, or undefined when the node is not an object carrying it. */
+function prop(node: unknown, key: string): unknown {
+  return typeof node === 'object' && node !== null && key in node ? node[key] : undefined
+}
+
 function componentNames(comp: unknown): string[] {
   const list = Array.isArray(comp) ? comp : comp ? [comp] : []
   return list
-    .map((entry) => (entry as { _attributes?: { name?: unknown } })?._attributes?.name)
+    .map((entry) => prop(prop(entry, '_attributes'), 'name'))
     .filter((name): name is string => typeof name === 'string')
     .map((name) => name.toUpperCase())
 }
 
 function reportNames(value: unknown): string[] {
-  const supported = (value as { supportedReport?: unknown } | undefined)?.supportedReport
+  const supported = prop(value, 'supportedReport')
   const list = Array.isArray(supported) ? supported : supported ? [supported] : []
   return list.flatMap((entry) => {
-    const report = (entry as { report?: Record<string, unknown> })?.report
-    return report ? Object.keys(report) : []
+    const report = prop(entry, 'report')
+    return typeof report === 'object' && report ? Object.keys(report) : []
   })
 }
 
@@ -185,11 +190,12 @@ export async function discoverCaldavAccount(
   const calendars: CaldavCalendarInfo[] = []
   for (const response of responses) {
     const props = (response.props ?? {}) as Record<string, unknown>
-    const resourceTypes = Object.keys((props.resourcetype as Record<string, unknown>) ?? {})
-    if (!resourceTypes.includes('calendar') || !response.href) continue
-    const components = componentNames(
-      (props.supportedCalendarComponentSet as { comp?: unknown } | undefined)?.comp
+    const resourceType: unknown = props.resourcetype
+    const resourceTypes = Object.keys(
+      typeof resourceType === 'object' && resourceType ? resourceType : {}
     )
+    if (!resourceTypes.includes('calendar') || !response.href) continue
+    const components = componentNames(prop(props.supportedCalendarComponentSet, 'comp'))
     if (components.length > 0 && !components.includes('VEVENT')) continue
     const url = resolveHref(response.href, account.homeUrl)
     const reports = reportNames(props.supportedReportSet)
@@ -243,6 +249,12 @@ function objectsFrom(responses: DAVResponse[], collectionUrl: string): CaldavObj
   return objects
 }
 
+const toCaldavTime = (iso: string): string =>
+  `${iso
+    .replace(/[-:]/g, '')
+    .replace(/\.\d{3}/, '')
+    .slice(0, 15)}Z`
+
 /**
  * The collection's objects whose events touch `window`, with data. Used for
  * the first pull: `sync-collection` has no time-range filter, so starting from
@@ -253,11 +265,6 @@ export async function queryObjectsInWindow(
   window: { startAt: string; endAt: string },
   transport: CaldavTransport
 ): Promise<CaldavObject[]> {
-  const toCaldavTime = (iso: string): string =>
-    `${iso
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}/, '')
-      .slice(0, 15)}Z`
   const responses = await calendarQuery({
     url: collectionUrl,
     props: { 'd:getetag': {}, 'c:calendar-data': {} },
@@ -313,12 +320,16 @@ export async function listObjectEtags(
     fetch: transport.fetch
   })
   ensureOk(responses, 'Object listing')
-  return responses
-    .filter((response) => response.href && isObjectHref(response.href, collectionUrl))
-    .map((response) => ({
-      href: resolveHref(response.href as string, collectionUrl),
-      etag: textOf((response.props as Record<string, unknown> | undefined)?.getetag)
-    }))
+  return responses.flatMap((response) =>
+    response.href && isObjectHref(response.href, collectionUrl)
+      ? [
+          {
+            href: resolveHref(response.href, collectionUrl),
+            etag: textOf(response.props?.getetag)
+          }
+        ]
+      : []
+  )
 }
 
 /** The collection's current ctag, or null when the server does not publish one. */
@@ -389,8 +400,7 @@ export async function syncCollectionChanges(
     throw new Error(`sync-collection failed: ${first.status}`)
   }
 
-  const multistatus = (first?.raw as { multistatus?: { syncToken?: unknown } } | undefined)
-    ?.multistatus
+  const nextSyncToken = prop(prop(first?.raw, 'multistatus'), 'syncToken')
   const changed: CaldavObjectEtag[] = []
   const deleted: string[] = []
   for (const response of responses) {
@@ -401,11 +411,11 @@ export async function syncCollectionChanges(
     } else if (response.ok) {
       changed.push({
         href,
-        etag: textOf((response.props as Record<string, unknown> | undefined)?.getetag)
+        etag: textOf(response.props?.getetag)
       })
     }
   }
-  return { changed, deleted, syncToken: textOf(multistatus?.syncToken) }
+  return { changed, deleted, syncToken: textOf(nextSyncToken) }
 }
 
 /** GET one object with its ETag. */

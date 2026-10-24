@@ -14,7 +14,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import os from 'node:os'
 import path from 'node:path'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { base64_variants, ready, to_base64 } from 'libsodium-wrappers-sumo'
 
 vi.mock('electron', () => ({
   // Real HTTP against the miniflare listener.
@@ -62,9 +62,9 @@ let dbPath: string
 const savedUrl = process.env.SYNC_SERVER_URL
 
 beforeAll(async () => {
-  await sodium.ready
+  await ready
   const mod = await import('@memry/sync-harness/simulated-server')
-  server = new mod.SimulatedServer() as Harness
+  server = new mod.SimulatedServer()
   await server.start()
   process.env.SYNC_SERVER_URL = (await server.getDirectUrl()).origin
 }, 180_000)
@@ -110,7 +110,7 @@ async function seedAccount(publicKey: Uint8Array): Promise<{ deviceId: string; t
       `INSERT INTO devices (id, user_id, name, platform, app_version, auth_public_key, vault_id, created_at, updated_at)
        VALUES (?, ?, 'test-device', 'test', '99.0.0', ?, 'default', ?, ?)`
     )
-    .bind(deviceId, userId, sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL), now, now)
+    .bind(deviceId, userId, to_base64(publicKey, base64_variants.ORIGINAL), now, now)
     .run()
   await db
     .prepare('INSERT INTO server_cursor_sequence (user_id, current_cursor) VALUES (?, 0)')
@@ -179,7 +179,7 @@ describe('data.db recovery followed by a real sync round trip', () => {
         appVersion: '99.0.0',
         linkedAt: new Date(),
         isCurrentDevice: true,
-        signingPublicKey: sodium.to_base64(signing.publicKey)
+        signingPublicKey: to_base64(signing.publicKey)
       } as never)
       .run()
     const vaultUuid = getOrCreateVaultUuid(getDatabase())
@@ -206,7 +206,7 @@ describe('data.db recovery followed by a real sync round trip', () => {
         .from(tagDefinitions)
         .all()
         .map((row) => row.name)
-        .sort()
+        .toSorted()
     expect(names()).toEqual(['synced-a', 'synced-b'])
 
     // The replayed row carries its own payload; the tag row itself is gone

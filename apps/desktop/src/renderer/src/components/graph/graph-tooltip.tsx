@@ -2,6 +2,7 @@ import type Graph from 'graphology'
 import { NoteIconDisplay } from '@/lib/render-note-icon'
 import { ProjectIcon } from '@/components/tasks/project-icon'
 import { useT } from '@memry/i18n/renderer'
+import { readNodeAttrs } from './graph-node-attrs'
 
 const TYPE_COLORS: Record<string, string> = {
   note: 'bg-accent-cyan/15 text-accent-cyan',
@@ -21,6 +22,10 @@ const TYPE_LABEL_KEYS = {
   group: 'entity.category'
 } as const
 
+function isTypeLabelKey(key: string): key is keyof typeof TYPE_LABEL_KEYS {
+  return key in TYPE_LABEL_KEYS
+}
+
 interface GraphTooltipProps {
   nodeId: string
   graph: Graph
@@ -33,18 +38,15 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
 
   if (!graph.hasNode(nodeId)) return null
 
-  const attrs = graph.getNodeAttributes(nodeId)
-  const label = attrs.label as string
-  const nodeType = attrs.nodeType as string
-  const tags = (attrs.tags as string[]) ?? []
-  const connectionCount = (attrs.connectionCount as number) ?? 0
-  const emoji = attrs.emoji as string | null
-  const isUnresolved = attrs.isUnresolved as boolean
+  const attrs = readNodeAttrs(graph.getNodeAttributes(nodeId))
+  const { label, nodeType, emoji, isUnresolved } = attrs
+  const tags = attrs.tags ?? []
+  const connectionCount = attrs.connectionCount ?? 0
   const isGroup = nodeType === 'group'
   const nodeTypeLabel = isUnresolved
     ? t('entity.unresolved')
-    : TYPE_LABEL_KEYS[nodeType as keyof typeof TYPE_LABEL_KEYS]
-      ? t(TYPE_LABEL_KEYS[nodeType as keyof typeof TYPE_LABEL_KEYS])
+    : isTypeLabelKey(nodeType) && TYPE_LABEL_KEYS[nodeType]
+      ? t(TYPE_LABEL_KEYS[nodeType])
       : nodeType
 
   return (
@@ -76,7 +78,7 @@ export function GraphTooltip({ nodeId, graph, x, y }: GraphTooltipProps): React.
         </span>
         <span className="text-[10px] text-muted-foreground">
           {isGroup
-            ? t('tooltip.member-count', { count: (attrs.memberCount as number) ?? 0 })
+            ? t('tooltip.member-count', { count: attrs.memberCount ?? 0 })
             : t('tooltip.connection-count', { count: connectionCount })}
         </span>
       </div>

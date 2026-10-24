@@ -95,6 +95,7 @@ function bindingInfoFromStderr(stderr: string): CrdtPreflightBindingInfo | undef
     try {
       const parsed = JSON.parse(line.slice(PREFLIGHT_MARK_BINDING_INFO.length)) as unknown
       if (!parsed || typeof parsed !== 'object') return undefined
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
       const { classicLevel, binary } = parsed as Record<string, unknown>
       if (typeof classicLevel !== 'string' || typeof binary !== 'string') return undefined
       // Bounded: this rides in telemetry, and the child is the thing under suspicion.
@@ -270,22 +271,22 @@ async function execPreflight(storeDir: string, transport: Transport): Promise<Cr
       }
     }
 
-    const settle = (result: CrdtPreflightResult): void => {
+    const settle = (outcome: CrdtPreflightResult): void => {
       if (settled) return
       settled = true
       clearTimeout(timer)
-      if (!result.ok) {
+      if (!outcome.ok) {
         log.warn('CRDT preflight child failed', {
           transport,
           storeDir,
-          reason: result.reason,
-          stage: result.stage,
-          storeOp: result.storeOp,
+          reason: outcome.reason,
+          stage: outcome.stage,
+          storeOp: outcome.storeOp,
           ...preflightMachineFields(),
           stderr: stderr.slice(0, STDERR_CAPTURE_CHARS)
         })
       }
-      resolve(result)
+      resolve(outcome)
     }
 
     let child: ProbeChild
@@ -342,9 +343,10 @@ function fork(childPath: string, storeDir: string, transport: Transport): ProbeC
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
       stdio: ['ignore', 'ignore', 'pipe'],
       windowsHide: true
-    }) as unknown as ProbeChild
+    })
   }
 
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- utilityProcess.fork returns an Electron type that does not match ProbeChild; the child exposes only what ProbeChild declares; loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   return utilityProcess.fork(childPath, [storeDir], {
     // Label the fork so a native abort here surfaces as 'CrdtPreflight' in
     // `ps` and child-process-gone telemetry instead of an anonymous

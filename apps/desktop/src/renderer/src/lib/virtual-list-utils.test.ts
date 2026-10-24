@@ -412,7 +412,7 @@ describe('virtual-list-utils', () => {
       )
 
       // #then
-      const groupHeaders = result.filter((i) => i.type === 'group-header') as GroupHeaderItem[]
+      const groupHeaders = result.filter((i) => i.type === 'group-header')
       expect(groupHeaders).toHaveLength(2)
       expect(groupHeaders[0].label).toBe('Urgent')
       expect(groupHeaders[0].count).toBe(1)
@@ -478,10 +478,10 @@ describe('virtual-list-utils', () => {
       )
 
       // #then
-      const ascHeaders = asc.filter((i) => i.type === 'group-header') as GroupHeaderItem[]
-      const descHeaders = desc.filter((i) => i.type === 'group-header') as GroupHeaderItem[]
-      expect(ascHeaders[0].label).toBe('Urgent')
-      expect(descHeaders[0].label).toBe('Low')
+      const ascHeader = asc.find((i) => i.type === 'group-header')
+      const descHeader = desc.find((i) => i.type === 'group-header')
+      expect(ascHeader?.label).toBe('Urgent')
+      expect(descHeader?.label).toBe('Low')
     })
 
     it('should not create separate group for subtask with different priority than parent', () => {
@@ -499,7 +499,7 @@ describe('virtual-list-utils', () => {
       )
 
       // #then — only one group ("High") with the parent; no "Medium" ghost group
-      const groupHeaders = result.filter((i) => i.type === 'group-header') as GroupHeaderItem[]
+      const groupHeaders = result.filter((i) => i.type === 'group-header')
       expect(groupHeaders).toHaveLength(1)
       expect(groupHeaders[0].label).toBe('High')
       expect(result).toHaveLength(2) // group-header + parent-task
@@ -670,7 +670,7 @@ describe('virtual-list-utils', () => {
       )
 
       // #then — tasks within the group are reversed
-      const taskItems = result.filter((i) => i.type === 'task') as TaskItem[]
+      const taskItems = result.filter((i) => i.type === 'task')
       expect(taskItems[0].task.id).toBe('u2')
       expect(taskItems[1].task.id).toBe('u1')
       expect(capturedSections).toContain('urgent')
@@ -723,7 +723,7 @@ describe('virtual-list-utils', () => {
       )
 
       // #then
-      const taskItems = result.filter((i) => i.type === 'task') as TaskItem[]
+      const taskItems = result.filter((i) => i.type === 'task')
       expect(taskItems[0].task.id).toBe('t2')
       expect(taskItems[1].task.id).toBe('t1')
       expect(capturedSections).toContain('status-todo')

@@ -152,9 +152,9 @@ async function grabScreenshot(): Promise<ScreenshotResponse> {
   const tabId = tab.id
   const windowId = tab.windowId
   try {
-    const metrics = (await browser.tabs.sendMessage(tabId, {
+    const metrics: PageMetrics | undefined = await browser.tabs.sendMessage(tabId, {
       type: 'GET_PAGE_METRICS'
-    })) as PageMetrics | undefined
+    })
     if (!metrics) return { ok: false, error: 'no-metrics' }
     const plan = planStitch({ ...metrics, maxHeight: MAX_SHOT_HEIGHT })
     const canvas = new OffscreenCanvas(plan.width, plan.height)
@@ -221,7 +221,8 @@ let flushing: Promise<FlushResult> | null = null
 async function readQueue(): Promise<QueuedCapture[]> {
   const r = await browser.storage.local.get(QUEUE_KEY)
   const v = r[QUEUE_KEY]
-  return Array.isArray(v) ? (v as QueuedCapture[]) : []
+  const queue: QueuedCapture[] = Array.isArray(v) ? v : []
+  return queue
 }
 
 async function writeQueue(queue: QueuedCapture[]): Promise<void> {
@@ -337,6 +338,7 @@ async function flushForPopup(): Promise<FlushResponse> {
 }
 
 export default defineBackground(() => {
+  // oxlint-disable-next-line typescript/no-misused-promises -- listener returns a Promise as the async sendResponse
   browser.runtime.onMessage.addListener((message: PopupMessage) => {
     switch (message.type) {
       case 'GET_STATUS':
@@ -381,6 +383,7 @@ export default defineBackground(() => {
     if (alarm.name === FLUSH_ALARM) void flushQueue()
   })
 
+  // oxlint-disable-next-line typescript/no-misused-promises -- async handler; browser ignores the returned promise
   browser.commands.onCommand.addListener(async (command) => {
     if (command !== 'capture-page') return
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true })

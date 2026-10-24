@@ -17,17 +17,22 @@
       "filterAll": "Minden fájl"
     },
     "exportCancelled": "Exportálás megszakítva",
-    "update": {
-      "availableTitle": "Frissítés elérhető",
-      "availableMessage": "A memrynote {version} elérhető.",
-      "availableDetailFallback": "Letölti most a frissítést?",
-      "buttonDownload": "Letöltés",
-      "buttonLater": "Később",
-      "readyTitle": "Frissítés telepítésre kész",
-      "readyMessage": "A memrynote {version} letöltődött.",
-      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra a memrynote-ot.",
-      "buttonRestartNow": "Újraindítás most",
-      "releaseNotesLabel": "Kiadási megjegyzések:"
+    "dataDbRecovery": {
+      "title": "Széf-adatbázis javítása",
+      "message": "A Memry ehhez a széfhez tartozó adatbázisa sérült.",
+      "detail": "A jegyzet- és naplófájljait ez nem érinti. A javítás biztonsági másolatként megtartja a sérült adatbázist itt: {path}, újat hoz létre, újraépíti belőle a széffájlokból helyreállítható részeket, a szinkronizált elemeket pedig a következő szinkronizáláskor állítja vissza. A még nem szinkronizált módosításokat lehetőség szerint helyreállítja.",
+      "buttonRecover": "Javítás",
+      "buttonLater": "Most nem"
+    },
+    "obsidianVault": {
+      "title": "Obsidian-széf megnyitása",
+      "message": "Megnyitja ennek az Obsidian-széfnek egy másolatát?",
+      "detail": "Egy Obsidian-széf megnyitása a memrynote-ban adatvesztéssel járhat az Obsidian-bővítményei számára. Amikor a memrynote egy bővítmény feladatsorából feladatot készít, átírja a sort. Az olyan mezők, mint a Tasks bővítmény határidői, kikerülnek a fájlból, és az Obsidian már nem látja őket.\n\nA memrynote lemásolhatja a(z) „{name}” széfet „{copyName}” néven mellé, és megnyithatja a másolatot. A(z) „{name}” változatlan marad.",
+      "detailExistingCopy": "Egy Obsidian-széf megnyitása a memrynote-ban adatvesztéssel járhat az Obsidian-bővítményei számára. Amikor a memrynote egy bővítmény feladatsorából feladatot készít, átírja a sort. Az olyan mezők, mint a Tasks bővítmény határidői, kikerülnek a fájlból, és az Obsidian már nem látja őket.\n\nEgy memrynote-másolat, „{copyName}”, már ott van mellette. A memrynote megnyithatja ezt a másolatot. A(z) „{name}” változatlan marad.",
+      "buttonCopy": "Másolat létrehozása",
+      "buttonOpenCopy": "Másolat megnyitása",
+      "buttonOpenOriginal": "Eredeti megnyitása",
+      "buttonCancel": "Mégse"
     },
     "pair": {
       "title": "Böngészőbővítmény párosítása",

@@ -8,7 +8,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { mockApp } from '@tests/utils/mock-electron'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import { TelemetryBatchSchema, type TelemetryEvent } from '@memry/contracts/telemetry-api'
@@ -32,6 +32,12 @@ import { ReadwiseScheduler } from './runtime-effects'
 import { setReadwiseToken } from './secrets'
 import { setCursor } from './sync-state'
 import type { ReadwiseSyncService, RunResult } from './sync-service'
+
+// oxlint-disable-next-line typescript/no-base-to-string -- these fakes only ever receive string bodies; String() keeps the old "undefined" text for a missing body
+const bodyText = (init?: RequestInit): string => String(init?.body)
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready
@@ -67,7 +73,7 @@ describe('Readwise telemetry', () => {
     batches = []
     initializeTelemetryRuntime({
       fetch: async (_url, init) => {
-        batches.push(String(init?.body))
+        batches.push(bodyText(init))
         return { ok: true, status: 202 }
       },
       buildChannel: 'production',
@@ -187,8 +193,8 @@ describe('Readwise telemetry', () => {
         result: 'success',
         metrics: { durationMs: 1250, itemCount: 7, resultCount: 17, value: 0 }
       })
-      expect(Object.keys(events[0]).sort()).toEqual(
-        ['action', 'id', 'metrics', 'name', 'occurredAt', 'result', 'source', 'surface'].sort()
+      expect(Object.keys(events[0]).toSorted()).toEqual(
+        ['action', 'id', 'metrics', 'name', 'occurredAt', 'result', 'source', 'surface'].toSorted()
       )
       expect(raw).not.toContain(TOKEN)
     })

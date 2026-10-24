@@ -17,17 +17,22 @@
       "filterAll": "Sve datoteke"
     },
     "exportCancelled": "Izvoz otkazan",
-    "update": {
-      "availableTitle": "Ažuriranje dostupno",
-      "availableMessage": "memrynote {version} je dostupan.",
-      "availableDetailFallback": "Želite li sada preuzeti ažuriranje?",
-      "buttonDownload": "Preuzmi",
-      "buttonLater": "Kasnije",
-      "readyTitle": "Ažuriranje spremno",
-      "readyMessage": "memrynote {version} je preuzet.",
-      "readyDetailFallback": "Ponovno pokrenite memrynote kako biste dovršili instalaciju ažuriranja.",
-      "buttonRestartNow": "Ponovno pokreni sada",
-      "releaseNotesLabel": "Napomene o izdanju:"
+    "dataDbRecovery": {
+      "title": "Popravi bazu podataka trezora",
+      "message": "Memryjeva baza podataka za ovaj trezor je oštećena.",
+      "detail": "Vaše bilješke i datoteke dnevnika nisu zahvaćene. Popravak sprema oštećenu bazu kao sigurnosnu kopiju na {path}, pokreće novu, obnavlja što može iz datoteka vašeg trezora i vraća sinkronizirane stavke pri sljedećoj sinkronizaciji. Promjene koje još nisu bile sinkronizirane oporavljaju se gdje je moguće.",
+      "buttonRecover": "Popravi",
+      "buttonLater": "Ne sada"
+    },
+    "obsidianVault": {
+      "title": "Otvori Obsidian trezor",
+      "message": "Otvoriti kopiju ovog Obsidian trezora?",
+      "detail": "Otvaranje Obsidian trezora u memrynoteu može izgubiti podatke na koje se oslanjaju vaši Obsidian dodaci. Kad memrynote pretvori redak zadatka iz dodatka u zadatak, taj redak prepisuje. Polja poput rokova iz dodatka Tasks napuštaju datoteku i Obsidian ih više ne vidi.\n\nmemrynote može kopirati „{name}” u „{copyName}” pored njega i otvoriti kopiju. „{name}” ostaje točno onakav kakav jest.",
+      "detailExistingCopy": "Otvaranje Obsidian trezora u memrynoteu može izgubiti podatke na koje se oslanjaju vaši Obsidian dodaci. Kad memrynote pretvori redak zadatka iz dodatka u zadatak, taj redak prepisuje. Polja poput rokova iz dodatka Tasks napuštaju datoteku i Obsidian ih više ne vidi.\n\nmemrynote kopija „{copyName}” već je pored njega. memrynote može otvoriti tu kopiju. „{name}” ostaje točno onakav kakav jest.",
+      "buttonCopy": "Stvori kopiju",
+      "buttonOpenCopy": "Otvori kopiju",
+      "buttonOpenOriginal": "Otvori original",
+      "buttonCancel": "Odustani"
     },
     "pair": {
       "title": "Uparivanje proširenja preglednika",

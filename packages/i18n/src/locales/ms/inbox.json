@@ -15,19 +15,13 @@
       "showWithCount": "Tunjukkan item ditunda ({count})",
       "hide": "Sembunyikan item yang ditunda"
     },
-    "density": {
-      "toComfortable": "Paparan selesa",
-      "toCompact": "Paparan padat"
-    },
     "filter": {
-      "button": "Penapis",
       "byType": "Tapis mengikut jenis",
       "active": "{count, plural, other {Menapis mengikut # jenis}}",
       "clearAll": "Kosongkan semua"
     },
     "jobs": {
-      "running": "{count, plural, one {# kerja latar belakang berjalan} other {# kerja latar belakang berjalan}}",
-      "failed": "{count} gagal"
+      "running": "{count, plural, one {# kerja latar belakang berjalan} other {# kerja latar belakang berjalan}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Buat “{name}”",
     "addTags": "Tambah teg…",
     "linkToNote": "Pautan ke nota",
-    "linkANote": "Pautkan nota",
-    "suggestedCount": "{count} dicadangkan",
-    "linkNotesPlaceholder": "Pautkan nota…",
     "linkOrCreateNotePlaceholder": "Cari atau buat nota…",
     "createNote": "Buat “{title}”",
     "pendingNote": "Nota baharu",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Data peringatan tidak tersedia.",
     "triggered": "Peringatan dicetuskan",
-    "noteLabel": "Nota peringatan",
     "source": "Sumber",
     "journalTitle": "Jurnal — {date}",
     "noteFallback": "Nota",
@@ -514,9 +504,7 @@
       "settings": "Tetapan",
       "processing": "Memproses…",
       "cancelRecording": "Batalkan rakaman",
-      "cancel": "Batal",
       "stopRecording": "Hentikan rakaman",
-      "stop": "Hentikan",
       "recordingError": "Ralat berlaku semasa merakam",
       "microphoneAccessDenied": "Akses mikrofon ditolak",
       "noMicrophoneFound": "Tiada mikrofon ditemui",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, other {# item ditunda}}",
     "notificationBody": "{count, plural, =1 {Item anda yang ditunda sedia untuk disemak} other {Item anda yang ditunda sudah sedia}}",
     "toast": "{count, plural, =1 {“{itemTitle}” kembali selepas ditunda} other {# item yang ditunda sudah kembali}}"
+  },
+  "sticky": {
+    "kindLabel": "Hantar sebagai",
+    "kinds": {
+      "note": "Nota",
+      "task": "Tugas",
+      "journal": "Jurnal"
+    },
+    "placeholders": {
+      "note": "Catatkan di sini…",
+      "task": "Telefon Ana @esok #rumah !tinggi",
+      "journal": "Tambah ke jurnal hari ini…"
+    },
+    "saving": "Menyimpan…",
+    "saved": "Disimpan",
+    "saveFailed": "Tidak disimpan",
+    "tuck": "Simpan ke tepi",
+    "send": "Hantar",
+    "hints": "Esc simpan ke tepi · {mod}⌫ padam",
+    "sendAndCloseHint": "⌥{mod}↵ hantar dan tutup",
+    "deleted": "Draf dipadamkan",
+    "open": "Buka",
+    "undo": "Buat asal",
+    "sent": {
+      "note": "Disimpan ke folder Sticky",
+      "task": "Tugas ditambah",
+      "journal": "Ditambah ke jurnal hari ini"
+    },
+    "tab": {
+      "label": "{count, plural, other {# draf sticky}}",
+      "newSticky": "Sticky baharu"
+    },
+    "errors": {
+      "empty": "Tulis sesuatu dahulu.",
+      "taskFailed": "Tidak dapat membuat tugas.",
+      "tasksOff": "Tugas dimatikan dalam Tetapan.",
+      "journalOff": "Jurnal dimatikan dalam Tetapan.",
+      "sendFailed": "Tidak dapat menghantar sticky.",
+      "undoExpired": "Sudah terlambat untuk membuat asal.",
+      "undoFailed": "Tidak dapat membuat asal penghantaran."
+    },
+    "inputLabel": "Teks sticky",
+    "dismissError": "Tutup"
   }
 }

@@ -27,9 +27,10 @@ export function MarqueeSelectionOverlay({
   const { t } = useT('calendar')
   const showTimes = Boolean(startAt && endAt)
   const compact = height < 32
-  const timeLabel = showTimes
-    ? `${formatTimeOfDay(new Date(startAt as string), clockFormat)} – ${formatTimeOfDay(new Date(endAt as string), clockFormat)}`
-    : null
+  const timeLabel =
+    startAt && endAt
+      ? `${formatTimeOfDay(new Date(startAt), clockFormat)} – ${formatTimeOfDay(new Date(endAt), clockFormat)}`
+      : null
 
   return (
     <div

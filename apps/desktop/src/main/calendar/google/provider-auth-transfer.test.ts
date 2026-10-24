@@ -1,4 +1,4 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('./oauth', () => ({
@@ -18,6 +18,9 @@ import {
   encryptGoogleProviderAuthTransfer,
   persistImportedGoogleProviderAuth
 } from './provider-auth-transfer'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 describe('google provider auth transfer', () => {
   beforeAll(async () => {

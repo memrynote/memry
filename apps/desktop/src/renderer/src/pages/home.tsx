@@ -34,6 +34,7 @@ function asLocalPage(page: {
   widgets: unknown[]
   cover?: unknown
 }): HomePage {
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- IPC HomePage widget.type is string; WidgetType narrows it with identical runtime shape (see comment above)
   return page as unknown as HomePage
 }
 

@@ -15,19 +15,13 @@
       "showWithCount": "Uitgestelde items tonen ({count})",
       "hide": "Uitgestelde items verbergen"
     },
-    "density": {
-      "toComfortable": "Comfortabele weergave",
-      "toCompact": "Compacte weergave"
-    },
     "filter": {
-      "button": "Filteren",
       "byType": "Filteren op type",
       "active": "{count, plural, one {Gefilterd op # type} other {Gefilterd op # typen}}",
       "clearAll": "Alles wissen"
     },
     "jobs": {
-      "running": "{count, plural, one {# achtergrondtaak actief} other {# achtergrondtaken actief}}",
-      "failed": "{count} mislukt"
+      "running": "{count, plural, one {# achtergrondtaak actief} other {# achtergrondtaken actief}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "“{name}” maken",
     "addTags": "Tags toevoegen…",
     "linkToNote": "Aan notitie koppelen",
-    "linkANote": "Een notitie koppelen",
-    "suggestedCount": "{count} voorgesteld",
-    "linkNotesPlaceholder": "Notities koppelen…",
     "linkOrCreateNotePlaceholder": "Notitie zoeken of maken…",
     "createNote": "“{title}” maken",
     "pendingNote": "Nieuwe notitie",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Herinneringsgegevens niet beschikbaar.",
     "triggered": "Herinnering geactiveerd",
-    "noteLabel": "Notitie bij herinnering",
     "source": "Bron",
     "journalTitle": "Dagboek – {date}",
     "noteFallback": "Notitie",
@@ -514,9 +504,7 @@
       "settings": "Instellingen",
       "processing": "Verwerken…",
       "cancelRecording": "Opname annuleren",
-      "cancel": "Annuleren",
       "stopRecording": "Opname stoppen",
-      "stop": "Stoppen",
       "recordingError": "Er is een opnamefout opgetreden",
       "microphoneAccessDenied": "Microfoontoegang geweigerd",
       "noMicrophoneFound": "Geen microfoon gevonden",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# uitgesteld item} other {# uitgestelde items}}",
     "notificationBody": "{count, plural, one {Je uitgestelde item staat klaar om te bekijken} other {Je uitgestelde items staan klaar}}",
     "toast": "{count, plural, =1 {“{itemTitle}” staat weer in je inbox} one {# uitgesteld item staat weer in je inbox} other {# uitgestelde items staan weer in je inbox}}"
+  },
+  "sticky": {
+    "kindLabel": "Verzenden als",
+    "kinds": {
+      "note": "Notitie",
+      "task": "Taak",
+      "journal": "Dagboek"
+    },
+    "placeholders": {
+      "note": "Noteer het even…",
+      "task": "Ana bellen @morgen #thuis !hoog",
+      "journal": "Toevoegen aan het dagboek van vandaag…"
+    },
+    "saving": "Opslaan…",
+    "saved": "Opgeslagen",
+    "saveFailed": "Niet opgeslagen",
+    "tuck": "Wegstoppen",
+    "send": "Verzenden",
+    "hints": "Esc wegstoppen · {mod}⌫ verwijderen",
+    "sendAndCloseHint": "⌥{mod}↵ verzendt en sluit",
+    "deleted": "Concept verwijderd",
+    "open": "Openen",
+    "undo": "Ongedaan maken",
+    "sent": {
+      "note": "Opgeslagen in de map Sticky",
+      "task": "Taak toegevoegd",
+      "journal": "Toegevoegd aan het dagboek van vandaag"
+    },
+    "tab": {
+      "label": "{count, plural, one {# sticky-concept} other {# sticky-concepten}}",
+      "newSticky": "Nieuwe sticky"
+    },
+    "errors": {
+      "empty": "Schrijf eerst iets.",
+      "taskFailed": "Kan de taak niet maken.",
+      "tasksOff": "Taken staan uit in Instellingen.",
+      "journalOff": "Dagboek staat uit in Instellingen.",
+      "sendFailed": "Kan de sticky niet verzenden.",
+      "undoExpired": "Het is te laat om dit ongedaan te maken.",
+      "undoFailed": "Kan het verzenden niet ongedaan maken."
+    },
+    "inputLabel": "Sticky-tekst",
+    "dismissError": "Sluiten"
   }
 }

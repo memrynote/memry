@@ -2189,8 +2189,6 @@ describe('updateDeviceCursor', () => {
 // ============================================================================
 
 describe('processPushItem', () => {
-  const mockedGetDevice = vi.mocked(getDevice)
-
   beforeEach(() => {
     vi.clearAllMocks()
     armCursorSequence(42)

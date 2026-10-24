@@ -371,6 +371,7 @@ function partToBackendEvent(part: unknown): BackendEvent | null {
   }
 
   if (typed.type === 'tool-result') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     const output = typed.output as { ok?: boolean; data?: unknown; error?: unknown } | undefined
     const error = toToolError(output?.error)
     return {

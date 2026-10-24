@@ -78,6 +78,19 @@ export interface GraphClientDeps {
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+async function requireOk(response: Response, what: string): Promise<Response> {
+  if (!response.ok) {
+    const body = await response.text().catch(() => '')
+    throw new Error(`${what} failed (${response.status}): ${body.slice(0, 200)}`)
+  }
+  return response
+}
+
+const toSectionSummary = (s: RawSection): OneNoteSectionSummary => ({
+  id: s.id,
+  displayName: s.displayName ?? 'Untitled Section'
+})
+
 export function createOneNoteGraphClient(deps: GraphClientDeps) {
   const doFetch = deps.fetch ?? ((url, init) => fetch(url, init))
 
@@ -149,14 +162,6 @@ export function createOneNoteGraphClient(deps: GraphClientDeps) {
     }
   }
 
-  async function requireOk(response: Response, what: string): Promise<Response> {
-    if (!response.ok) {
-      const body = await response.text().catch(() => '')
-      throw new Error(`${what} failed (${response.status}): ${body.slice(0, 200)}`)
-    }
-    return response
-  }
-
   // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
   async function listAll<TRaw, TOut>(firstUrl: string, map: (raw: TRaw) => TOut): Promise<TOut[]> {
     const out: TOut[] = []
@@ -164,17 +169,13 @@ export function createOneNoteGraphClient(deps: GraphClientDeps) {
     while (url) {
       if (deps.isCancelled()) break
       const response = await requireOk(await request(url), 'Graph request')
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fetch JSON body is untyped; shape is fixed by the endpoint this call targets
       const json = (await response.json()) as GraphListResponse<TRaw>
       for (const raw of json.value ?? []) out.push(map(raw))
       url = json['@odata.nextLink']
     }
     return out
   }
-
-  const toSectionSummary = (s: RawSection): OneNoteSectionSummary => ({
-    id: s.id,
-    displayName: s.displayName ?? 'Untitled Section'
-  })
 
   function listNotebookSections(notebookId: string): Promise<OneNoteSectionSummary[]> {
     return listAll<RawSection, OneNoteSectionSummary>(

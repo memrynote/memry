@@ -1,11 +1,14 @@
 import { beforeAll, describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import {
   AGENT_AT_REST_VERSION,
   decryptAgentJsonForVault,
   encryptAgentJsonForVault
 } from '../encryption'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 describe('Agent at-rest encryption', () => {
   let vaultKey: Uint8Array

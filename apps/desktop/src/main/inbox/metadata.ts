@@ -350,6 +350,7 @@ export async function downloadImage(imageUrl: string, destDir: string): Promise<
     // Convert web stream to node stream and pipe to file
     const nodeStream = await import('stream')
     const { Readable } = nodeStream
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- undici's fetch body type is the DOM ReadableStream; Readable.fromWeb wants the node:stream/web one, same runtime object
     const readable = Readable.fromWeb(response.body as ReadableStream)
     const writeStream = createWriteStream(filePath)
 

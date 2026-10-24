@@ -551,7 +551,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         ...(prunedAttachmentRefs ? { attachmentReferences: prunedAttachmentRefs } : {}),
         propertyDefinitionNames:
           remoteProperties && Object.keys(remoteProperties).length > 0
-            ? Object.keys(remoteProperties).sort((a, b) => a.localeCompare(b))
+            ? Object.keys(remoteProperties).toSorted((a, b) => a.localeCompare(b))
             : undefined
       })
 
@@ -590,7 +590,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
     if (data.fileType && isBinaryFileType(data.fileType)) {
       const ext =
         (data.mimeType ? getExtensionFromMimeType(data.mimeType) : null) ??
-        getDefaultExtension(data.fileType as FileType)
+        getDefaultExtension(data.fileType)
       const basePath = generateFilePath(notesDir, title, ext, data.folderPath ?? undefined)
       const absolutePath = generateUniquePathSync(
         basePath,
@@ -602,6 +602,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         id: itemId,
         path: relPath,
         title,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- isBinaryFileType takes a string and returns boolean, so it cannot narrow fileType; the guard above excludes markdown
         fileType: data.fileType as Exclude<FileType, 'markdown'>,
         mimeType: data.mimeType ?? getMimeType(ext) ?? null,
         fileSize: 0,
@@ -619,7 +620,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         path: relPath,
         title,
         emoji: data.emoji ?? null,
-        fileType: data.fileType as Exclude<FileType, 'markdown'>,
+        fileType: data.fileType,
         mimeType: data.mimeType ?? getMimeType(ext) ?? null,
         fileSize: 0,
         attachmentId: data.attachmentId ?? null,
@@ -697,7 +698,7 @@ class NoteHandler extends BaseItemHandler<NoteSyncPayload> {
         : {}),
       propertyDefinitionNames:
         data.properties && Object.keys(data.properties).length > 0
-          ? Object.keys(data.properties).sort((a, b) => a.localeCompare(b))
+          ? Object.keys(data.properties).toSorted((a, b) => a.localeCompare(b))
           : undefined
     })
 

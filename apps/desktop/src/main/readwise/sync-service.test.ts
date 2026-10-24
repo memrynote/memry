@@ -38,6 +38,9 @@ import type * as RunnerModule from '../import/runner'
 import type * as RegistryModule from '../import/registry'
 import type { BookEvent } from '../readwise/sync-service'
 
+const requestUrl = (input: RequestInfo | URL): string =>
+  input instanceof Request ? input.url : String(input)
+
 const mocks = vi.hoisted(() => ({
   secrets: new Map<string, string>(),
   imageFetch: vi.fn(),
@@ -162,7 +165,7 @@ describe('Readwise incremental sync', () => {
       journalDateFormat: 'yyyy-MM-dd'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -768,7 +771,7 @@ describe('Readwise incremental sync', () => {
     edit(1, (b) => b.highlights.push(hl(14, 40, 5)))
     const handle = vi.mocked(fetch).getMockImplementation()!
     vi.mocked(fetch).mockImplementation(async (input, init) =>
-      new URL(String(input)).searchParams.has('ids')
+      new URL(requestUrl(input)).searchParams.has('ids')
         ? new Response(JSON.stringify({ nextPageCursor: null, results: [] }), { status: 200 })
         : handle(input, init)
     )
@@ -822,7 +825,7 @@ describe('Readwise incremental sync', () => {
       // Book 2 is edited after the window was read and before the full books are.
       const handle = vi.mocked(fetch).getMockImplementation()!
       vi.mocked(fetch).mockImplementation(async (input, init) => {
-        if (new URL(String(input)).searchParams.has('ids')) {
+        if (new URL(requestUrl(input)).searchParams.has('ids')) {
           edit(1, (b) => b.highlights.push(hl(15, 50, 20)))
         }
         return handle(input, init)

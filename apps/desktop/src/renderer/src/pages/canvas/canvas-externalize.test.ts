@@ -38,7 +38,7 @@ describe('externalizeSceneAssets', () => {
       data: expect.any(ArrayBuffer)
     })
     const [[{ data }]] = upload.mock.calls
-    expect(new TextDecoder().decode(data as ArrayBuffer)).toBe('hello')
+    expect(new TextDecoder().decode(data)).toBe('hello')
 
     const parsed = JSON.parse(result)
     expect(parsed.files['file-1'].dataURL).toBe('memry-file://canvas-1/file-1')

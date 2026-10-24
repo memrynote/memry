@@ -35,7 +35,7 @@ export const CanvasPage = ({ canvasId }: CanvasPageProps): React.JSX.Element => 
 
   useEffect(() => {
     if (!enabled || !canvasId) {
-      return
+      return undefined
     }
     let cancelled = false
     canvasService

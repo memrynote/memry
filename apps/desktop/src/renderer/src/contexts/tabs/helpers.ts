@@ -79,7 +79,7 @@ export const findTabById = (state: TabSystemState, tabId: string): FoundTab | nu
 export const isLastHomeTab = (state: TabSystemState, groupId: string): boolean => {
   if (Object.keys(state.tabGroups).length !== 1) return false
   const group = state.tabGroups[groupId]
-  if (!group || group.tabs.length !== 1) return false
+  if (group?.tabs.length !== 1) return false
   return group.tabs[0].type === 'home'
 }
 

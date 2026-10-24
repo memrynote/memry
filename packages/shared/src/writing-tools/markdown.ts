@@ -70,6 +70,11 @@ export interface WritingFrontmatter {
 }
 
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/
+
+function isWritingMarkerKind(value: string): value is WritingMarkerKind {
+  return value === 'alt' || value === 'ghost'
+}
+
 const MARKER_PATTERN = /<!--\s*(\/?)(alt|ghost)(?::([A-Za-z0-9_-]{1,64}))?\s*-->/g
 
 export function isWritingAlternativeId(value: string): boolean {
@@ -136,10 +141,11 @@ export function decodeWritingMarkers(markdown: string): {
 } {
   const tokens: MarkerToken[] = []
   for (const match of markdown.matchAll(MARKER_PATTERN)) {
+    if (!isWritingMarkerKind(match[2])) continue
     tokens.push({
       index: match.index,
       length: match[0].length,
-      kind: match[2] as WritingMarkerKind,
+      kind: match[2],
       id: match[3],
       open: match[1] !== '/'
     })

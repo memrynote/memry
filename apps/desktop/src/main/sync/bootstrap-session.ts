@@ -106,6 +106,7 @@ export async function openBootstrapSession(
       return null
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     const negotiated = (body as { elevationFactor?: unknown }).elevationFactor
     const elevationFactor =
       typeof negotiated === 'number' && Number.isFinite(negotiated) && negotiated >= 1
@@ -125,7 +126,8 @@ export async function openBootstrapSession(
       manifestItems: (body as Partial<BootstrapOpenResponse>).manifest?.items?.length ?? 0,
       chunkHashes: (body as Partial<BootstrapOpenResponse>).attachments?.chunkHashes?.length ?? 0,
       packsReserved: Array.isArray((body as Partial<BootstrapOpenResponse>).packs)
-        ? ((body as Partial<BootstrapOpenResponse>).packs as unknown[]).length
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
+          ((body as Partial<BootstrapOpenResponse>).packs as unknown[]).length
         : 0
     })
 

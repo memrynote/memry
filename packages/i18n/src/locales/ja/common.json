@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "ポータルをコピーできませんでした",
+    "hiddenCount": "{count} 件非表示",
+    "windowFailed": "このポータルを開けませんでした。代わりに元のノートを開いてください。",
+    "noTarget": "このポータルにはまだ対象がありません。定義にノートを追加するか、ブロックを削除してください。",
+    "invalidJson": "このポータルの定義は有効な JSON ではありません。下で修正するか、ブロックを削除してください。",
+    "invalidShape": "このポータルの定義にノートも検索もありません。下で修正するか、ブロックを削除してください。",
+    "search": {
+      "editQuery": "クエリを編集",
+      "count": "{count, plural, other {# 個のブロック}}",
+      "loading": "検索中…",
+      "empty": "このクエリに一致するブロックはありません。",
+      "failed": "検索を実行できませんでした。",
+      "retry": "もう一度試す",
+      "truncated": "最初の {count} 件の一致を表示しています。"
+    },
+    "copiedContents": "内容をコピーしました",
+    "copiedLink": "リンクをコピーしました",
+    "actionFailed": "このポータルを変更できませんでした",
+    "keepsOneBlock": "ポータルには少なくとも 1 つのブロックが必要です。代わりにポータルを削除してください。",
+    "expandChildren": "子を表示",
+    "collapseChildren": "子を非表示",
+    "toolbar": {
+      "label": "ポータル",
+      "include": "「{block}」を含める",
+      "locked": "{note} はロック中 · 読み取り専用",
+      "more": "その他",
+      "openBeside": "{note} を横に開く",
+      "click": "クリック",
+      "copyContents": "内容をコピー",
+      "copyLink": "リンクをコピー",
+      "remove": "ポータルを削除",
+      "removeHint": "{note} のブロックはすべて残ります"
+    },
+    "states": {
+      "missingNote": {
+        "text": "元のノートが削除されました。参照は保持されています。",
+        "action": "削除"
+      },
+      "missingBlock": {
+        "text": "このブロックは {source} で削除されました。",
+        "action": "別のものを選ぶ"
+      },
+      "notSynced": {
+        "text": "元のノートの同期を待っています。",
+        "action": "再試行"
+      },
+      "cycle": {
+        "text": "このポータルは自分自身に戻っています。",
+        "action": "元を開く"
+      },
+      "tooDeep": {
+        "text": "ポータルは {max} 階層までネストできます。これはリンクとして開きます。",
+        "action": "元を開く"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "キャプチャ入力にフォーカス",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "デフォルトのアプリで開く",
     "revealFailed": "フォルダーで表示できませんでした"
   },
+  "commands": {
+    "runFailed": "このコマンドを実行できませんでした。もう一度お試しください。"
+  },
+  "commandsPalette": {
+    "title": "コマンド",
+    "placeholder": "コマンドを入力…",
+    "groups": {
+      "navigation": "ナビゲーション",
+      "create": "作成",
+      "tabs": "タブ",
+      "editor": "エディター",
+      "view": "表示",
+      "app": "アプリ",
+      "note": "ノート",
+      "settings": "設定",
+      "sync": "同期",
+      "help": "ヘルプ",
+      "project": "プロジェクト",
+      "tasks": "タスク",
+      "canvas": "キャンバス",
+      "folder": "フォルダー",
+      "file": "ファイル"
+    },
+    "contexts": {
+      "note": "このノート",
+      "journal": "このジャーナル",
+      "project": "このプロジェクト",
+      "tasks": "これらのタスク",
+      "canvas": "このキャンバス",
+      "folder": "このフォルダー",
+      "tag": "このタグ",
+      "file": "このファイル"
+    },
+    "recent": "最近",
+    "empty": "「{query}」に一致するコマンドはありません",
+    "searchHint": "ノートを検索：{shortcut}",
+    "status": {
+      "count": "{count, plural, other {# 件のコマンド}}"
+    },
+    "actions": {
+      "run": "実行",
+      "searchNotes": "ノートを検索"
+    }
+  },
   "tabs": {
     "pin": "タブをピン留め",
     "unpin": "タブのピン留めを解除",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "操作を実行できませんでした",
-    "nothingToUndo": "元に戻すものはありません",
     "undone": "元に戻しました：{description}",
     "undoFailed": "操作を元に戻せませんでした",
     "filesImported": "{count, plural, other {# 件のファイルをインポートしました}}",
@@ -131,6 +231,20 @@
     "openInTab": "会話をタブで開く",
     "stop": "停止",
     "thinking": "エージェントが考えています",
+    "toolsUnavailable": "このモデルでは Vault ツールがオフです。ツールの確認に失敗したため、チャットのみ利用できます。",
+    "toolsUnavailableWithDetail": "このモデルでは Vault ツールがオフです。ツールの確認に失敗したため、チャットのみ利用できます。{detail}",
+    "toolsOff": {
+      "toolsRejected": "このモデルでは Vault ツールがオフです。ツールを含むテストリクエストをプロバイダーが拒否したため、チャットのみ利用できます。",
+      "noToolCall": "このモデルでは Vault ツールがオフです。テストリクエストにツールを呼び出さずに回答したため、チャットのみ利用できます。",
+      "toolResultRejected": "このモデルでは Vault ツールがオフです。テスト用ツールを呼び出しましたが、結果を受け取った後に失敗したため、チャットのみ利用できます。",
+      "streamingUnsupported": "このモデルでは Vault ツールがオフです。プロバイダーがテスト返信をストリーミングしなかったため、チャットのみ利用できます。",
+      "providerSaid": "プロバイダーからのメッセージ：{detail}",
+      "wroteToolCall": "モデルがツール呼び出しをテキストとして書き出したため、何も実行されませんでした。"
+    },
+    "stepLimit": {
+      "notice": "ステップ数の上限で停止しました。",
+      "continue": "続ける"
+    },
     "enable": {
       "title": "memrynote エージェントを有効化",
       "description": "memrynote エージェントは、選択したローカルのエージェント CLI を使って保管庫についてチャットします。Claude は会話内容を Anthropic に、Codex は OpenAI に送信します。",
@@ -164,7 +278,6 @@
       "descriptionCreate": "エージェントが {title} を作成しようとしています。適用する前に変更内容を確認してください。",
       "descriptionDelete": "エージェントが {title} を削除しようとしています。適用する前に変更内容を確認してください。",
       "fallbackTitle": "この項目",
-      "current": "現在",
       "candidate": "候補",
       "loading": "読み込み中…",
       "apply": "適用",
@@ -268,13 +381,18 @@
       "removeAttachment": "{label} を削除",
       "placeholder": "memrynote に何でも頼めます… @ でノート、タスク、予定をメンション",
       "send": "送信",
-      "providerLabel": "エージェントプロバイダー：{provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "接続済みのツール",
       "connectTool": "{tool} を接続",
-      "addContext": "コンテキストを追加",
-      "addContextWithPermissions": "コンテキストを追加（{permissions}）",
       "mentionContext": "ノート、タスク、予定をメンション",
+      "files": {
+        "attach": "テキストファイルを添付",
+        "refused": {
+          "unsupportedType": "{name} は対応していないテキストファイルです。.txt、.md、.log、.csv、.tsv、.json、.yaml、.yml のいずれかを添付してください。",
+          "notText": "{name} は UTF-8 のテキストファイルではありません。テキストファイルを添付してください。",
+          "tooLarge": "{name} を加えると、このメッセージが 100 KB の上限を超えます。ファイルを外すか、小さいファイルを添付してください。",
+          "readFailed": "{name} を読み込めませんでした。ファイルが存在し、開けることを確認してから、もう一度添付してください。"
+        }
+      },
       "voice": {
         "start": "音声入力を開始",
         "stop": "音声入力を停止",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "音声を文字起こしできませんでした"
         }
       },
-      "modelLabel": "エージェントのモデル：{provider} {model}",
-      "reasoningLabel": "エージェントの推論：{reasoning}",
       "providers": {
-        "label": "プロバイダー",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "コンピューターへのアクセス"
       },
       "webSearch": {
-        "on": "オン",
-        "off": "オフ",
         "label": "Web 検索"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "エージェントを利用できません。設定を開く…"
       },
       "settings": {
-        "reasoning": "推論",
         "effort": "推論の強度"
       },
       "includeCurrentNote": "現在のノートを含める",
@@ -340,13 +452,29 @@
           "extraHigh": "超高"
         }
       },
-      "permissionsLabel": "エージェントの権限：{access}、Web 検索 {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "デフォルト",
+          "default": "デフォルトの深さ",
+          "high": "高",
+          "max": "最大"
+        }
+      },
       "permissions": {
-        "label": "権限",
-        "access": "アクセス",
-        "tools": "ツール"
+        "access": "アクセス"
       },
       "modelSettingsLabel": "エージェントのモデル設定：{model}、{settings}",
+      "queue": {
+        "label": "キュー内のメッセージ",
+        "queueMessage": "メッセージをキューに追加",
+        "edit": "キュー内のメッセージを編集",
+        "editLabel": "キュー内のメッセージのテキスト",
+        "remove": "キュー内のメッセージを削除",
+        "save": "保存",
+        "cancel": "キャンセル",
+        "sending": "送信中…",
+        "notSent": "送信されていません。編集して再送信するか、削除してください。"
+      },
       "unavailable": {
         "vaultToolsOnly": "このモデルでは保管庫ツールのみ"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "同意の状態を保存できませんでした",
       "resolveWindow": "エージェントの送信元ウィンドウを特定できませんでした",
       "detectCli": "エージェントのバックエンドを検出できませんでした",
-      "loadDisclosure": "同意の状態を読み込めませんでした"
+      "loadDisclosure": "同意の状態を読み込めませんでした",
+      "turnFailed": "エラーで返信が止まりました。メッセージは残っているので、もう一度送信できます。"
     },
     "actions": {
       "copy": "コピー",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "ファイルをドロップしてインポート",
       "dropFilesIntoVaultRoot": "保管庫の最上位",
       "newNoteN": "新規ノート（⌘N）",
-      "new": "新規",
       "newItemMenu": "新規作成…",
       "feedbackButton": "フィードバックを送信",
       "feedbackTitle": "フィードバックを送信",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "検索、置換、質問…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "オンボーディングをスキップ",
-      "welcomeToMemry": "memrynote へようこそ",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "個人のナレッジベースです。2 分ほどで使い始める準備をしましょう。",
-      "getStarted": "始めましょう ",
-      "createYourFirstNote": "最初のノートを作成",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown ベースで、プレーンファイルとしてローカルに保存されます。",
-      "eGMeetingNotesIdeasAnything": "例：会議メモ、アイデア、何でも…",
-      "skip": "スキップ",
-      "createNote": "ノートを作成 ",
-      "addYourFirstTask": "最初のタスクを追加",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "タスクはノートにリンクでき、優先度と期限を設定できます。",
-      "eGReviewProjectProposal": "例：プロジェクト提案書を確認…",
-      "skip2": "スキップ",
-      "createTask": "タスクを作成 ",
-      "syncAcrossDevices": "デバイス間で同期",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "ノートとタスクをすべてのデバイスで同期できます。この設定は後からいつでも行えます。",
-      "skipForNow": "今はスキップ",
-      "doneLetSGo": "完了、始めましょう！ "
+      "skip": "スキップ"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "フォルダーのアイコンを設定",
@@ -707,8 +818,7 @@
       "unknownTabType": "不明なタブの種類: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "未保存の変更",
-      "preview": "プレビュー"
+      "unsavedChanges": "未保存の変更"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "新しいタブ",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "ドラッグでサイズを変更 · ダブルクリックでリセット"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "memrynote へようこそ",
-      "yourPersonalKnowledgeManagementSystem": "個人のためのナレッジマネジメントシステム。",
-      "selectAFolderToStoreYourNotesAndTasks": "ノートとタスクを保存するフォルダーを選択してください。",
       "opening": "開いています…",
-      "selectVaultFolder": "保管庫のフォルダーを選択",
-      "plainMarkdown": "プレーンな Markdown",
-      "yourNotesStayPortable": "ノートはどこへでも持ち出せます",
-      "syncAnywhere": "どこでも同期",
-      "useDropboxIcloudGit": "Dropbox、iCloud、Git が使えます",
       "recentVaults": "最近の保管庫",
-      "notesLastOpened": "ノート · 最終アクセス",
-      "preRelease": "Beta",
       "createNewVault": "新しい保管庫を作成",
-      "createNewVaultDesc": "選択したフォルダーに新しい保管庫を作成します。",
-      "openExistingVault": "既存の保管庫を開く",
-      "openExistingVaultDesc": "すでに管理している Markdown ファイルのフォルダーを選択します。",
-      "signInToSync": "サインインして同期",
-      "signInToSyncDesc": "デバイス間でエンドツーエンド暗号化された保管庫。",
-      "create": "作成",
       "open": "開く",
-      "signIn": "サインイン",
       "helpAndDocs": "ヘルプとドキュメント",
-      "signInRequiresVault": "同期を設定するには、先に保管庫を開くか作成してください。",
       "addVault": "保管庫を追加",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "まだ保管庫はありません",
       "openVault": "保管庫を開く",
       "settings": "設定",
-      "logOut": "ログアウト",
-      "signInToSync": "サインインして同期",
       "remove": "削除：「",
       "removeVaultTitle": "「{name}」を一覧から削除しますか？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "この保管庫はアプリから削除されますが、ファイルはディスク上に残ります。後からいつでも再追加できます。",
       "cancel": "キャンセル",
       "remove2": "削除",
       "inYourAccount": "アカウント内",
+      "trySandbox": "サンドボックス Vault を試す",
+      "sandboxVault": "サンドボックス Vault",
+      "sandboxPreparing": "サンドボックスを準備中…",
+      "sandboxFailed": "サンドボックス Vault を準備できませんでした",
+      "resetSandbox": "サンドボックス Vault をリセット",
       "itemsCount": "{count} 件",
       "untitledVault": "保管庫",
       "downloadVaultTitle": "「{name}」をダウンロード",
@@ -870,7 +965,6 @@
       "changeLocation": "変更…",
       "download": "ダウンロード",
       "downloadFailed": "保管庫をダウンロードできませんでした",
-      "deleteFromAccount": "アカウントから削除",
       "deleteVaultTitle": "「{name}」をアカウントから削除しますか？",
       "deleteVaultBody": "この保管庫のすべての同期データを Memry のサーバーから完全に削除します。この操作は元に戻せません。ディスク上のファイルは削除されません。",
       "deleteVaultConfirm": "アカウントから削除",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "ウィジェットを削除",
       "dragAria": "ウィジェットをドラッグ",
-      "configAria": "ウィジェットを設定",
-      "resizeAria": "{size} にサイズ変更",
       "menuAria": "ウィジェットのオプション",
-      "resize": "サイズ",
       "remove": "削除",
       "filter": {
         "all": "すべて",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "開いたノートがここに表示されます",
       "bookmarks": "ブックマーク",
       "tasks": "タスク",
+      "chart": "チャート",
       "calendar": "カレンダー",
       "calendarToday": "今日",
       "openCalendar": "カレンダーを開く",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "フォルダーを選択",
       "folderEmpty": "フォルダーはまだありません",
       "folderNoSelection": "フォルダーが選択されていません",
-      "folderView_list": "リスト",
-      "folderView_gallery": "ギャラリー",
       "folderViewSelect": "ビュー",
       "project": "プロジェクト",
       "projectNoSelection": "プロジェクトが選択されていません",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "ホームレイアウト",
       "deleteAria": "レイアウトを削除",
-      "newAria": "新しいボード",
       "newName": "新しいボード",
       "defaultName": "ホーム",
       "manage": "ボードを管理",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, other {今日が期限のタスク # 件}}",
       "events": "{count, plural, other {予定 # 件}}"
     },
-    "edit": "編集",
-    "done": "完了",
     "addWidget": "ウィジェットを追加",
+    "cover": {
+      "add": "カバーを追加"
+    },
     "empty": {
       "title": "ボードは空です",
       "body": "ウィジェットは、ノート・タスク・ブックマークを一つの落ち着いた場所にまとめます。",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "ツアーが完了しました",
-      "body": "GitHub でスターを付けてください。ほかの人が MemryNote を見つけやすくなります。",
-      "action": "GitHub でスターを付ける"
+      "body": "GitHub でスターを付けてください。ほかの人が MemryNote を見つけやすくなります。"
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "アップデートの準備ができました",
     "failed": "アップデートできませんでした",
     "downloadAction": "ダウンロード",
-    "restartAction": "再起動",
     "detailsAction": "詳細",
     "popover": {
       "readyTitle": "MemryNote {version} の準備ができました",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "保管庫",
     "position": "{name}、{count} 件中 {index} 件目の保管庫",
-    "openList": "{position}。保管庫の一覧を開く",
     "switchTo": "{name} に切り替え",
     "switchingTo": "{name} に切り替え中",
     "changeIcon": "アイコンを変更…",
     "resetIcon": "アイコンをリセット",
     "iconButton": "{name} のアイコンを変更",
+    "leaveSandbox": "{name} に戻る",
     "iconFailed": "保管庫のアイコンを変更できませんでした"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "種類",
     "filterModified": "更新日",
     "matches": "一致箇所",
+    "matchesMore": "{count, plural, other {他に # 件の一致}}",
+    "matchesHide": "一致を非表示",
+    "matchOf": "{total} 件中 {index} 件目の一致",
     "showMore": "さらに{count}件表示",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "次のセクション",
       "open": "開く",
       "openNote": "ノートを開く",
+      "openAtMatch": "一致箇所で開く",
       "openFile": "ファイルを開く",
       "openJournal": "ジャーナルを開く",
       "openTask": "タスクを開く",
@@ -1259,6 +1350,7 @@
       "chooseTag": "タグを選択",
       "addTag": "タグを追加",
       "showAll": "すべて表示",
+      "hideMatches": "一致を非表示",
       "searchEverywhere": "すべてから検索",
       "clearFilters": "フィルターをクリア"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "{device}内",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {保管庫が # 件見つかりました}}",
-      "notion": "Notion",
       "otherApps": "その他のアプリとファイル",
       "otherAppsHint": "ほか {count} 件",
       "detectedFootnote": "インストール済みのアプリを確認して検出しました。{device}の外には何も送信されません。",

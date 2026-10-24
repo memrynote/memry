@@ -36,6 +36,7 @@ const LATENCY_BUCKETS = [
   { max: 1000, bucket: '250_to_999ms' }
 ] as const
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over the item-type union; unknown types from other builds fall through unchanged
 const toSyncDomain = (itemType: SyncItemType): SyncDomain => {
   switch (itemType) {
     case 'note':

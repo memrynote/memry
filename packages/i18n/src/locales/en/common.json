@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Action failed",
-    "nothingToUndo": "Nothing to undo",
     "undone": "Undone: {description}",
     "undoFailed": "Failed to undo action",
     "filesImported": "{count, plural, one {Imported # file} other {Imported # files}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "The agent wants to create {title}. Review the change before applying it.",
       "descriptionDelete": "The agent wants to delete {title}. Review the change before applying it.",
       "fallbackTitle": "this item",
-      "current": "Current",
       "candidate": "Candidate",
       "loading": "Loading...",
       "apply": "Apply",
@@ -383,12 +381,8 @@
       "removeAttachment": "Remove {label}",
       "placeholder": "Do anything with memrynote... @ to mention notes, tasks, and events",
       "send": "Send",
-      "providerLabel": "Agent provider: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Connected tools",
       "connectTool": "Connect {tool}",
-      "addContext": "Add context",
-      "addContextWithPermissions": "Add context ({permissions})",
       "mentionContext": "Mention a note, task, or event",
       "files": {
         "attach": "Attach a text file",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Could not transcribe voice input"
         }
       },
-      "modelLabel": "Agent model: {provider} {model}",
-      "reasoningLabel": "Agent reasoning: {reasoning}",
       "providers": {
-        "label": "Provider",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Computer access"
       },
       "webSearch": {
-        "on": "On",
-        "off": "Off",
         "label": "Web search"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent unavailable — open Settings…"
       },
       "settings": {
-        "reasoning": "Reasoning",
         "effort": "Effort"
       },
       "includeCurrentNote": "Include current note",
@@ -472,11 +460,8 @@
           "max": "Max"
         }
       },
-      "permissionsLabel": "Agent permissions: {access}, web search {webSearch}",
       "permissions": {
-        "label": "Permissions",
-        "access": "Access",
-        "tools": "Tools"
+        "access": "Access"
       },
       "modelSettingsLabel": "Agent model settings: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "New folder",
       "newProject": "New project",
       "bookmarks": "Bookmarks",
-      "chart": "Chart",
       "tags": "Tags",
       "reorderSection": "Reorder {section}",
       "dropFilesToImport": "Drop files to import",
       "dropFilesIntoVaultRoot": "Vault root",
       "newNoteN": "New note (⌘N)",
-      "new": "New",
       "newItemMenu": "Create new…",
       "feedbackButton": "Send feedback",
       "feedbackTitle": "Send feedback",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Find, replace, ask..."
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Skip onboarding",
-      "welcomeToMemry": "Welcome to memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Your personal knowledge base. Let's take 2 minutes to get you started.",
-      "getStarted": "Get started ",
-      "createYourFirstNote": "Create your first note",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-based, stored locally as plain files.",
-      "eGMeetingNotesIdeasAnything": "e.g. Meeting notes, ideas, anything...",
-      "skip": "Skip",
-      "createNote": "Create note ",
-      "addYourFirstTask": "Add your first task",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tasks link to your notes, with priorities and due dates.",
-      "eGReviewProjectProposal": "e.g. Review project proposal...",
-      "skip2": "Skip",
-      "createTask": "Create task ",
-      "syncAcrossDevices": "Sync across devices",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Keep your notes and tasks in sync across all your devices. You can always set this up later.",
-      "skipForNow": "Skip for now",
-      "doneLetSGo": "Done — let's go! "
+      "skip": "Skip"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Set folder icon",
@@ -852,8 +818,7 @@
       "unknownTabType": "Unknown tab type: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "unsaved changes",
-      "preview": "preview"
+      "unsavedChanges": "unsaved changes"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "New Tab",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Drag to resize · Double-click to reset"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Welcome to memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Your personal knowledge management system.",
-      "selectAFolderToStoreYourNotesAndTasks": "Select a folder to store your notes and tasks.",
       "opening": "Opening...",
-      "selectVaultFolder": "Select Vault Folder",
-      "plainMarkdown": "Plain Markdown",
-      "yourNotesStayPortable": "Your notes stay portable",
-      "syncAnywhere": "Sync Anywhere",
-      "useDropboxIcloudGit": "Use Dropbox, iCloud, Git",
       "recentVaults": "Recent Vaults",
-      "notesLastOpened": "notes · Last opened",
-      "preRelease": "Beta",
       "createNewVault": "Create new vault",
-      "createNewVaultDesc": "Start a fresh vault in a folder of your choice.",
-      "openExistingVault": "Open existing vault",
-      "openExistingVaultDesc": "Pick a folder of Markdown files you already keep.",
-      "signInToSync": "Sign in to sync",
-      "signInToSyncDesc": "End-to-end encrypted vaults across your devices.",
-      "create": "Create",
       "open": "Open",
-      "signIn": "Sign in",
       "helpAndDocs": "Help & docs",
-      "signInRequiresVault": "Open or create a vault first to set up sync.",
       "addVault": "Add vault",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "No vaults yet",
       "openVault": "Open vault",
       "settings": "Settings",
-      "logOut": "Log out",
-      "signInToSync": "Sign in to sync",
       "remove": "Remove “",
       "removeVaultTitle": "Remove “{name}” from list?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "This vault will be removed from the app, but your files will remain on disk. You can always re-add it later.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Change…",
       "download": "Download",
       "downloadFailed": "Could not download the vault",
-      "deleteFromAccount": "Delete from account",
       "deleteVaultTitle": "Delete “{name}” from your account?",
       "deleteVaultBody": "This permanently removes all synced data for this vault from Memry's servers and cannot be undone. Your files on disk are not deleted.",
       "deleteVaultConfirm": "Delete from account",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Remove widget",
       "dragAria": "Drag widget",
-      "configAria": "Configure widget",
-      "resizeAria": "Resize to {size}",
       "menuAria": "Widget options",
-      "resize": "Size",
       "remove": "Remove",
       "filter": {
         "all": "All",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Pick a folder",
       "folderEmpty": "No folders yet",
       "folderNoSelection": "No folder selected",
-      "folderView_list": "List",
-      "folderView_gallery": "Gallery",
       "folderViewSelect": "View",
       "project": "Project",
       "projectNoSelection": "No project selected",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Home layout",
       "deleteAria": "Delete layout",
-      "newAria": "New board",
       "newName": "New board",
       "defaultName": "Home",
       "manage": "Manage boards",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# task due today} other {# tasks due today}}",
       "events": "{count, plural, one {# event} other {# events}}"
     },
-    "edit": "Edit",
-    "done": "Done",
     "addWidget": "Add widget",
     "cover": {
       "add": "Add cover"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Onboarding complete",
-      "body": "Please star us on GitHub — it helps other people find MemryNote.",
-      "action": "Star on GitHub"
+      "body": "Please star us on GitHub — it helps other people find MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Update ready",
     "failed": "Update failed",
     "downloadAction": "Download",
-    "restartAction": "Restart",
     "detailsAction": "Details",
     "popover": {
       "readyTitle": "MemryNote {version} is ready",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Vaults",
     "position": "{name}, vault {index} of {count}",
-    "openList": "{position}. Open the vault list",
     "switchTo": "Switch to {name}",
     "switchingTo": "Switching to {name}",
     "changeIcon": "Change icon…",
@@ -1501,7 +1433,6 @@
       "onDevice": "On {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# vault found} other {# vaults found}}",
-      "notion": "Notion",
       "otherApps": "Other apps and files",
       "otherAppsHint": "and {count} more",
       "detectedFootnote": "Found by checking which apps are installed. Nothing leaves {device}.",

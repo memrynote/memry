@@ -56,6 +56,7 @@ const LEGACY_SPAN: Record<string, { w: number; h: number }> = {
 function parseWidgets(row: HomePageRow): Array<Record<string, unknown>> {
   try {
     const parsed = JSON.parse(row.widgets) as unknown
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     return Array.isArray(parsed) ? (parsed as Array<Record<string, unknown>>) : []
   } catch {
     log.warn('Home board has an unparseable widgets blob, rendering it empty', { id: row.id })
@@ -73,10 +74,12 @@ function rowToHomePage(row: HomePageRow): HomePage {
       typeof w.w === 'number' &&
       typeof w.h === 'number'
     ) {
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- foreign runtime object with no published type for this member; shape checked at use
       return w as unknown as WidgetInstance
     }
     // ponytail: migrate old {size} widgets on read; the next drag/resize persists real coords and
     // react-grid-layout compacts any overlap. Remove once no legacy boards remain (pre-production).
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     const span = LEGACY_SPAN[w.size as string] ?? LEGACY_SPAN.M
     const migrated: WidgetInstance = {
       id: String(w.id),
@@ -85,6 +88,7 @@ function rowToHomePage(row: HomePageRow): HomePage {
       y,
       w: span.w,
       h: span.h,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
       config: (w.config as Record<string, unknown>) ?? {}
     }
     y += span.h

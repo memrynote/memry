@@ -40,6 +40,7 @@ class TaskActivityHandler extends BaseItemHandler<TaskActivitySyncPayload> {
       return 'skipped'
     }
 
+    const { taskId, action } = data
     const createdAt = data.createdAt ?? utcNow()
 
     // Retention is enforced here, not only where rows are written. A row this
@@ -59,8 +60,8 @@ class TaskActivityHandler extends BaseItemHandler<TaskActivitySyncPayload> {
       tx.insert(taskActivity)
         .values({
           id: itemId,
-          taskId: data.taskId as string,
-          action: data.action as string,
+          taskId,
+          action,
           field: data.field ?? null,
           oldValue: data.oldValue ?? null,
           newValue: data.newValue ?? null,
@@ -89,9 +90,7 @@ class TaskActivityHandler extends BaseItemHandler<TaskActivitySyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(taskActivity).where(eq(taskActivity.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(taskActivity).where(eq(taskActivity.id, itemId)).get()
   }
 
   buildPushPayload(

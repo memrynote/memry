@@ -158,8 +158,11 @@ export const DateMention = createDateMentionSpec((inlineContent) => {
     anchorId,
     dateISO,
     hasTime,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted attribute: the schema props are plain strings, and editor-schema parse casts the same way
     dateFormat: dateFormat as DateMentionDateFormat,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted attribute: the schema props are plain strings, and editor-schema parse casts the same way
     remind: remind as RemindOffset,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted attribute: the schema props are plain strings, and editor-schema parse casts the same way
     timeFormat: timeFormat as DateMentionTimeFormat
   })
   return { dom }

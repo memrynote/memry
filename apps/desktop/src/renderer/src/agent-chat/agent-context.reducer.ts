@@ -212,7 +212,7 @@ function sortMerged(messages: Message[], existing: number, nextMessage: Message)
     existing === -1
       ? [...messages, nextMessage]
       : messages.map((message, index) => (index === existing ? nextMessage : message))
-  return markOrdered(merged.sort((left, right) => left.createdAt - right.createdAt))
+  return markOrdered(merged.toSorted((left, right) => left.createdAt - right.createdAt))
 }
 
 function appendAssistantDelta(messages: Message[], event: AgentEvent): Message[] {
@@ -311,7 +311,8 @@ function upsertToolCallMessage(
 
 function toToolArgs(args: unknown): Record<string, unknown> {
   return args && typeof args === 'object' && !Array.isArray(args)
-    ? (args as Record<string, unknown>)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed above to a non-null, non-array object; keys are unvalidated by design
+      (args as Record<string, unknown>)
     : {}
 }
 

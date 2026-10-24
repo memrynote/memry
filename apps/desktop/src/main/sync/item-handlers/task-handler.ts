@@ -173,47 +173,46 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
         if (resolution.action === 'merge') {
           const localFC =
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeTaskFields returns Record<string, unknown>; each key is a typed task column and the merge only copies values of the matching field
             (existing.fieldClocks as FieldClocks) ??
             initAllFieldClocks(existing.clock ?? {}, TASK_SYNCABLE_FIELDS)
           const remoteFC =
             remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
-          const result = mergeTaskFields(
-            existing as Record<string, unknown>,
-            data as Record<string, unknown>,
-            localFC,
-            remoteFC
-          )
+          const mergeResult = mergeTaskFields(existing, data, localFC, remoteFC)
 
           log.info('=== TASK SYNC: MERGE RESULT ===', {
             itemId,
-            hadConflicts: result.hadConflicts,
-            conflictedFields: result.conflictedFields,
+            hadConflicts: mergeResult.hadConflicts,
+            conflictedFields: mergeResult.conflictedFields,
             merged: {
-              title: result.merged.title,
-              projectId: result.merged.projectId,
-              statusId: result.merged.statusId,
-              priority: result.merged.priority,
-              description: (result.merged.description as string)?.slice(0, 50) ?? null
+              title: mergeResult.merged.title,
+              projectId: mergeResult.merged.projectId,
+              statusId: mergeResult.merged.statusId,
+              priority: mergeResult.merged.priority,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeTaskFields returns Record<string, unknown>; each key is a typed task column and the merge only copies values of the matching field
+              description: (mergeResult.merged.description as string)?.slice(0, 50) ?? null
             }
           })
 
-          const mergedTx = tx as unknown as DrizzleDb
+          const mergedTx = tx
           // Same "unchanged means omitted" rule as the plain-apply branch below.
-          const mergedProjectId = result.merged.projectId as string | undefined
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeTaskFields returns Record<string, unknown>; each key is a typed task column and the merge only copies values of the matching field
+          const mergedProjectId = mergeResult.merged.projectId as string | undefined
           if (mergedProjectId) requireProject(mergedTx, itemId, mergedProjectId)
-          result.merged.statusId = resolveStatusId(
+          mergeResult.merged.statusId = resolveStatusId(
             mergedTx,
             itemId,
-            result.merged.statusId as string | null
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeTaskFields returns Record<string, unknown>; each key is a typed task column and the merge only copies values of the matching field
+            mergeResult.merged.statusId as string | null
           )
 
           tx.update(tasks)
             .set({
-              ...result.merged,
+              ...mergeResult.merged,
               ...fieldsWrite,
               clock: resolution.mergedClock,
-              fieldClocks: result.mergedFieldClocks,
+              fieldClocks: mergeResult.mergedFieldClocks,
               syncedAt: now,
               modifiedAt: data.modifiedAt ?? now
             })
@@ -227,19 +226,19 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           // because a stray link is visible and removable, a silently dropped
           // one is not.
           if (data.tags) {
-            const localTags = queryTags(tx as unknown as DrizzleDb, itemId)
+            const localTags = queryTags(tx, itemId)
             const merged = [...new Set([...localTags, ...data.tags])]
-            writeTags(tx as unknown as DrizzleDb, itemId, merged)
+            writeTags(tx, itemId, merged)
           }
           if (data.linkedNoteIds) {
-            const localNotes = queryNoteIds(tx as unknown as DrizzleDb, itemId)
+            const localNotes = queryNoteIds(tx, itemId)
             const merged = [...new Set([...localNotes, ...data.linkedNoteIds])]
-            writeNoteIds(tx as unknown as DrizzleDb, itemId, merged)
+            writeNoteIds(tx, itemId, merged)
           }
           if (data.linkedCanvasIds) {
-            const localCanvases = queryCanvasIds(tx as unknown as DrizzleDb, itemId)
+            const localCanvases = queryCanvasIds(tx, itemId)
             const merged = [...new Set([...localCanvases, ...data.linkedCanvasIds])]
-            writeCanvasIds(tx as unknown as DrizzleDb, itemId, merged)
+            writeCanvasIds(tx, itemId, merged)
           }
 
           // The only activity rows a remote apply may write. Ordinary applied
@@ -247,7 +246,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           // device that made them; emitting here too would duplicate every
           // entry once per device. A lost merge has no such row — until now it
           // was only ever a log line — so this is where it gets recorded.
-          for (const conflict of result.conflicts) {
+          for (const conflict of mergeResult.conflicts) {
             if (JSON.stringify(conflict.mergedValue) === JSON.stringify(conflict.localValue)) {
               continue
             }
@@ -271,8 +270,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
           })
           if (data.tags) ctx.emit('notes:tags-changed', {})
           publishProjectionEvent({ type: 'task.upserted', taskId: itemId })
-          heal = owesHeal('merge', fields, result.hadConflicts)
-          return result.hadConflicts ? 'conflict' : 'applied'
+          heal = owesHeal('merge', fields, mergeResult.hadConflicts)
+          return mergeResult.hadConflicts ? 'conflict' : 'applied'
         }
 
         const appliedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
@@ -280,8 +279,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
         // An absent projectId means "unchanged" — drizzle omits the column, so
         // the existing (already valid) parent stays. Only a supplied one needs
         // checking.
-        if (data.projectId) requireProject(tx as unknown as DrizzleDb, itemId, data.projectId)
-        const appliedStatusId = resolveStatusId(tx as unknown as DrizzleDb, itemId, data.statusId)
+        if (data.projectId) requireProject(tx, itemId, data.projectId)
+        const appliedStatusId = resolveStatusId(tx, itemId, data.statusId)
 
         tx.update(tasks)
           .set({
@@ -317,10 +316,9 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
         // it when it pushes the task back; without the guard that round-trip
         // would erase every canvas link on the newer device. An explicit empty
         // array still clears, which is how a real unlink travels.
-        if (data.tags) writeTags(tx as unknown as DrizzleDb, itemId, data.tags)
-        if (data.linkedNoteIds) writeNoteIds(tx as unknown as DrizzleDb, itemId, data.linkedNoteIds)
-        if (data.linkedCanvasIds)
-          writeCanvasIds(tx as unknown as DrizzleDb, itemId, data.linkedCanvasIds)
+        if (data.tags) writeTags(tx, itemId, data.tags)
+        if (data.linkedNoteIds) writeNoteIds(tx, itemId, data.linkedNoteIds)
+        if (data.linkedCanvasIds) writeCanvasIds(tx, itemId, data.linkedCanvasIds)
 
         const updated = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
         ctx.emit(TasksChannels.events.UPDATED, {
@@ -336,8 +334,8 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
 
       const insertedFC = remoteFieldClocks ?? initAllFieldClocks(remoteClock, TASK_SYNCABLE_FIELDS)
 
-      requireProject(tx as unknown as DrizzleDb, itemId, data.projectId!)
-      const insertedStatusId = resolveStatusId(tx as unknown as DrizzleDb, itemId, data.statusId)
+      requireProject(tx, itemId, data.projectId!)
+      const insertedStatusId = resolveStatusId(tx, itemId, data.statusId)
 
       tx.insert(tasks)
         .values({
@@ -367,10 +365,9 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
         })
         .run()
 
-      if (data.tags) writeTags(tx as unknown as DrizzleDb, itemId, data.tags)
-      if (data.linkedNoteIds) writeNoteIds(tx as unknown as DrizzleDb, itemId, data.linkedNoteIds)
-      if (data.linkedCanvasIds)
-        writeCanvasIds(tx as unknown as DrizzleDb, itemId, data.linkedCanvasIds)
+      if (data.tags) writeTags(tx, itemId, data.tags)
+      if (data.linkedNoteIds) writeNoteIds(tx, itemId, data.linkedNoteIds)
+      if (data.linkedCanvasIds) writeCanvasIds(tx, itemId, data.linkedCanvasIds)
 
       const inserted = tx.select().from(tasks).where(eq(tasks.id, itemId)).get()
       ctx.emit(TasksChannels.events.CREATED, { task: plainTask(inserted) })
@@ -404,9 +401,7 @@ class TaskHandler extends BaseItemHandler<TaskSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(tasks).where(eq(tasks.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(tasks).where(eq(tasks.id, itemId)).get()
   }
 
   buildPushPayload(

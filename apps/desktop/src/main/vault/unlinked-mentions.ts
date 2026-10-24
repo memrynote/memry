@@ -88,7 +88,7 @@ export async function getUnlinkedMentions(noteId: string): Promise<UnlinkedMenti
       contexts: mentions.map((mention) => snippetAround(body, mention.start, mention.end))
     })
   }
-  return out.sort((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
+  return out.toSorted((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
 }
 
 /**

@@ -40,7 +40,9 @@ function makeInfo(overrides: Partial<DownloadedInfo> = {}): DownloadedInfo {
     version: '2026.911.1',
     tag: 'v2026-09-11.1',
     files: [{ url: 'MemryNote-2026.911.1-setup.exe', sha512: 'sha' }],
+    // oxlint-disable-next-line typescript/no-deprecated -- UpdateInfo still requires the legacy path field
     path: 'MemryNote-2026.911.1-setup.exe',
+    // oxlint-disable-next-line typescript/no-deprecated -- UpdateInfo still requires the legacy sha512 field
     sha512: 'sha',
     releaseDate: '2026-09-11',
     downloadedFile: NSIS_INSTALLER,
@@ -218,7 +220,7 @@ describe('createInstallerHandoff', () => {
     expect(percents[0]).toBe(0)
     expect(percents).toContain(40)
     expect(percents.at(-1)).toBe(100)
-    expect(percents).toEqual([...percents].sort((a, b) => a - b))
+    expect(percents).toEqual([...percents].toSorted((a, b) => a - b))
   })
 
   // Production hit INSTALLER_HANDOFF_DOWNLOAD_FAILED twice for the same user inside

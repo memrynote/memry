@@ -184,7 +184,7 @@ export function useInboxItem(id: string | null): UseInboxItemResult {
   })
 
   useEffect(() => {
-    if (!id) return
+    if (!id) return undefined
 
     const unsubUpdated = onInboxUpdated((event) => {
       if (event.id === id) {

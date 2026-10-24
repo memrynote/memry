@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Tidak ditemui — klik untuk membuat “{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "Tindakan pautan",
+    "open": "Buka",
+    "openInNewTab": "Buka dalam Tab Baharu",
+    "openToTheSide": "Buka di Sebelah",
+    "edit": "Edit Pautan",
+    "copy": "Salin Pautan",
+    "unlink": "Buang Pautan",
+    "displayRow": "Paparan…",
+    "sizeNone": "Tiada",
+    "sizeSmall": "Kecil",
+    "sizeMedium": "Sederhana",
+    "showCover": "Tunjukkan kulit",
+    "showPreview": "Tunjukkan pratonton",
+    "copyFailed": "Tidak dapat menyalin pautan"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Import semula daripada Readwise",
+    "refreshAction": "Segarkan maklumat buku",
+    "syncsOn": "Readwise disegerakkan pada {device}.",
+    "syncsOnAnotherDevice": "Readwise disegerakkan pada peranti lain.",
+    "takeOverHint": "Segerak pada peranti itu, atau ambil alih dalam Tetapan → Import.",
+    "reimport": {
+      "title": "Import semula “{title}” daripada Readwise?",
+      "body": "Bahagian Readwise ditulis semula dari awal. Apa-apa yang anda tulis di dalamnya akan hilang.",
+      "note": "Teks di luar bahagian dan sifat nota kekal seperti asal.",
+      "cancel": "Batal",
+      "confirm": "Import semula"
+    },
+    "commands": {
+      "reimported": "Diimport semula daripada Readwise",
+      "refreshed": "Maklumat buku disegarkan",
+      "failed": "Tidak dapat melengkapkan arahan Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Tiada nota dipilih",
@@ -25,6 +61,7 @@
       "willSync": "Nota akan disegerakkan ke awan",
       "renameFailed": "Gagal menamakan semula nota",
       "titleRequired": "Nota memerlukan tajuk",
+      "duplicateTitle": "Nota lain dalam {folder} turut bernama “{title}”. Pautan ke nota ini akan menyertakan foldernya.",
       "toggleLocalOnlyFailed": "Gagal menogol setempat sahaja",
       "toggleFullWidthFailed": "Gagal menogol lebar penuh",
       "pathCopied": "Laluan disalin",
@@ -98,6 +135,7 @@
       "openToTheSide": "Buka di sisi",
       "newNote": "Nota baharu",
       "newFolder": "Folder baharu",
+      "showTasks": "Tunjukkan Tugas",
       "expandSubfolders": "Kembangkan semua subfolder",
       "collapseSubfolders": "Runtuhkan semua subfolder",
       "rename": "Namakan semula",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "Alih keluar daripada penanda halaman",
       "journalSettings": "Tetapan jurnal…"
     },
-    "nav": {
-      "label": "Navigasi",
-      "ariaExpanded": "Bahagian navigasi, dikembangkan",
-      "ariaCollapsed": "Bahagian navigasi, diruntuhkan",
-      "saveFailed": "Tidak dapat menyimpan keadaan bahagian navigasi"
-    },
     "viewOptions": {
       "label": "Pilihan paparan",
       "notesFirst": "Nota sebelum folder",
@@ -138,7 +170,15 @@
       "folderSuffix": "folder",
       "moreItems": "…dan {count} lagi",
       "deleting": "Memadamkan…",
-      "deleteCount": "Padam {count}"
+      "deleteCount": "Padam {count}",
+      "journalFolderWarning": "Ini termasuk folder jurnal anda. Setiap catatan jurnal di dalamnya dipadamkan, pada semua peranti anda."
+    },
+    "journalChange": {
+      "leaveTitle": "Jadikan catatan jurnal sebagai nota?",
+      "leaveBody": "Apabila dialihkan keluar daripada folder jurnal, atau dinamakan semula di luar format tarikhnya, catatan jurnal menjadi nota biasa dan keluar daripada Jurnal anda. Pada peranti anda yang lain, hari-hari itu dibuang daripada Jurnal dan nota muncul sebagai gantinya.",
+      "joinTitle": "Jadikan nota sebagai catatan jurnal?",
+      "joinBody": "Fail yang dinamakan mengikut format tarikh jurnal dalam folder jurnal menjadi catatan jurnal. Pada peranti anda yang lain, nota itu digantikan dengan catatan jurnal.",
+      "confirm": "Teruskan"
     },
     "toast": {
       "selectionBookmarked": "{count} item ditanda buku",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "Tajuk",
       "listPlaceholder": "Item senarai",
       "todoPlaceholder": "Item tugas",
-      "htmlComment": "Ulasan HTML tersembunyi"
+      "htmlComment": "Ulasan HTML tersembunyi",
+      "percentComment": "Ulasan tersembunyi",
+      "readwise": {
+        "noteStart": "Readwise · disegerakkan secara automatik",
+        "noteEnd": "Penghujung bahagian Readwise",
+        "dayStart": "Readwise · sorotan hari ini",
+        "dayEnd": "Penghujung Readwise",
+        "hint": "Edit dalam bahagian ini dan Readwise berhenti mengemas kininya."
+      }
     },
     "table": {
       "keyboardMenuAria": "Tindakan jadual untuk baris {row}, lajur {column}",
-      "keyboardMenuTitle": "Baris {row} · Lajur {column}"
+      "keyboardMenuTitle": "Baris {row} · Lajur {column}",
+      "sizePicker": {
+        "aria": "Saiz jadual. Gunakan kekunci anak panah untuk memilih baris dan lajur, kemudian tekan Enter.",
+        "size": "{rows, plural, other {# baris}} × {columns, plural, other {# lajur}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, other {Padam # baris}}",
+        "addRowsAbove": "{count, plural, other {Tambah # baris di atas}}",
+        "addRowsBelow": "{count, plural, other {Tambah # baris di bawah}}",
+        "deleteColumns": "{count, plural, other {Padam # lajur}}",
+        "addColumnsLeft": "{count, plural, other {Tambah # lajur di kiri}}",
+        "addColumnsRight": "{count, plural, other {Tambah # lajur di kanan}}"
+      }
     },
     "list": {
       "bulleted": "Senarai berbutir",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "Sembunyikan graf setempat",
       "showLocalGraph": "Tunjukkan graf setempat",
       "moreActions": "Tindakan lain",
+      "searchActions": "Cari tindakan...",
+      "noMatchingActions": "Tiada tindakan sepadan",
       "find": "Cari…",
       "versionHistory": "Sejarah versi",
       "export": "Eksport",
@@ -215,6 +277,8 @@
       "notSynced": "Belum disegerakkan ke peranti ini",
       "revealFailed": "Gagal menunjukkan fail",
       "openFailed": "Gagal membuka fail",
+      "showAsLink": "Tunjukkan sebagai pautan",
+      "showAsEmbed": "Tunjukkan tertanam",
       "missingTitle": "Fail lampiran tiada",
       "missingExpected": "Fail yang dijangka: {name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "Namakan semula",
       "renamed": "Dinamakan semula sebagai {name}",
       "failed": "Gagal menamakan semula lampiran"
+    },
+    "imageLightbox": {
+      "menuItem": "Lihat lebih besar",
+      "title": "Pemapar imej",
+      "zoomIn": "Zum masuk",
+      "zoomOut": "Zum keluar",
+      "reset": "Tetap semula zum"
+    },
+    "imageCrop": {
+      "menuItem": "Pangkas…",
+      "title": "Pangkas imej",
+      "description": "Seret pada gambar untuk memilih apa yang nota tunjukkan. Fail asal dikekalkan seperti sedia ada.",
+      "reset": "Tunjukkan keseluruhan imej",
+      "cancel": "Batal",
+      "apply": "Pangkas",
+      "unavailable": "Imej belum dimuatkan, jadi tidak boleh dipangkas"
     },
     "attachmentsDialog": {
       "title": "Lampiran",
@@ -248,12 +328,24 @@
       "title": "Kotak serlahan",
       "group": "Blok asas",
       "subtext": "Serlahkan maklumat penting",
+      "customSubtext": "Jenis callout tersuai anda",
       "changeType": "Tukar jenis kotak serlahan",
+      "expand": "Kembangkan callout",
+      "collapse": "Runtuhkan callout",
       "menuLabel": "Jenis kotak serlahan",
       "info": "Maklumat",
       "warning": "Amaran",
       "error": "Ralat",
-      "success": "Berjaya"
+      "success": "Berjaya",
+      "note": "Nota",
+      "abstract": "Ringkasan",
+      "todo": "Untuk dibuat",
+      "tip": "Petua",
+      "important": "Penting",
+      "question": "Soalan",
+      "example": "Contoh",
+      "quote": "Petikan",
+      "bug": "Pepijat"
     },
     "columns": {
       "group": "Blok asas",
@@ -332,6 +424,83 @@
       "invalidShape": "Definisi paparan ini tiada sumber. Pilih satu di atas, atau betulkannya di bawah.",
       "definition": "Definisi"
     },
+    "chart": {
+      "title": "Carta",
+      "subtext": "Plot sifat mengikut masa: garis, bar atau peta haba kalendar",
+      "layout": "Carta",
+      "settings": "Tetapan carta",
+      "chooseProperty": "Pilih apa yang hendak diplot",
+      "source": "Sumber",
+      "headerMeta": "{range} · {type}",
+      "property": "Sifat",
+      "noProperties": "Belum ada apa-apa untuk diplot. Tambah sifat pada catatan jurnal atau nota dahulu.",
+      "chartType": "Carta",
+      "suggested": "Dicadangkan",
+      "types": {
+        "line": "Garis",
+        "bar": "Bar",
+        "heatmap": "Peta haba"
+      },
+      "range": "Julat",
+      "lastDays": "{count, plural, other {# hari lepas}}",
+      "sameDay": "Catatan pada hari yang sama",
+      "aggregates": {
+        "average": "Purata",
+        "sum": "Jumlah",
+        "min": "Terendah",
+        "max": "Tertinggi",
+        "count": "Kiraan"
+      },
+      "missingDays": "Hari yang tiada",
+      "missing": {
+        "gap": "Biarkan jurang",
+        "zero": "Kira sebagai sifar"
+      },
+      "dateFrom": {
+        "label": "Tarikh daripada",
+        "created": "Dibuat",
+        "modified": "Diubah suai"
+      },
+      "propertyTypes": {
+        "text": "Teks",
+        "number": "Nombor",
+        "checkbox": "Kotak semak",
+        "date": "Tarikh",
+        "url": "URL",
+        "status": "Status",
+        "select": "Pilih",
+        "multiselect": "Pilih berbilang",
+        "relation": "Hubungan",
+        "project": "Projek",
+        "rating": "Penilaian"
+      },
+      "noEntry": "Tiada catatan",
+      "done": "Selesai",
+      "notDone": "Belum selesai",
+      "logged": "Direkodkan",
+      "valueCount": "{count, plural, other {# nilai}}",
+      "average": "Purata",
+      "vsPrevious": "berbanding tempoh sebelumnya",
+      "lowest": "Terendah",
+      "currentStreak": "Rentetan semasa",
+      "longestStreak": "Rentetan terpanjang",
+      "dayCount": "{count, plural, other {# hari}}",
+      "doneDays": "Selesai",
+      "loggedDays": "Direkodkan",
+      "mostCommon": "Paling kerap",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} sepanjang {days} hari lepas",
+      "noData": "Belum ada apa-apa direkodkan dalam julat ini.",
+      "loadFailed": "Tidak dapat memuatkan carta ini. Catatan itu sendiri tidak terjejas.",
+      "sourceJournal": "Jurnal",
+      "history": {
+        "show": "Tunjukkan sejarah",
+        "title": "Sejarah {property}",
+        "range": "13 minggu lepas",
+        "insert": "Salin sebagai blok carta",
+        "copied": "Blok carta disalin. Tampalkannya dalam mana-mana nota."
+      }
+    },
     "slashMenu": {
       "aria": "Blok dan tindakan",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Sebagai togol",
         "asLinkedTask": "Sebagai tugas terpaut",
         "asReminder": "Sebagai peringatan"
       },
-      "actions": {
-        "insert": "Sisip",
-        "open": "Buka"
-      },
+      "close": "Tutup menu",
       "matchesAlias": "sepadan dengan",
       "noMatch": "Tiada blok sepadan dengan “{query}”",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "Alihkan blok ke nota",
         "searchPlaceholder": "Cari nota…",
         "noResults": "Tiada nota yang sepadan",
-        "moved": "Blok dialihkan ke “{title}”",
         "failed": "Tidak dapat mengalihkan blok"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Tunjukkan sebagai",
+        "embed": "Tertanam",
+        "link": "Pautan"
+      },
       "title": {
         "image": "Tambah imej",
         "media": "Tambah media",
@@ -525,6 +694,11 @@
       "empty": "Taip untuk membuat teg baharu",
       "create": "Buat #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Tunjukkan PDF sebagai",
+      "embed": "Pemapar tertanam",
+      "link": "Nama fail"
+    },
     "pasteLink": {
       "title": "Tampal sebagai",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "Kerangka",
     "aria": "Kerangka dokumen",
-    "emptyYet": "Tiada tajuk lagi",
     "readTime": "{count} min bacaan",
     "words": "{count} perkataan",
     "created": "Dibuat",
-    "modified": "Diubah suai"
+    "modified": "Diubah suai",
+    "sync": {
+      "label": "Segerak",
+      "confirmed": "Di pelayan {time}",
+      "pending": "Menunggu sejak {time}",
+      "sent": "Menghantar",
+      "rejected": "Pelayan menolak perubahan terakhir",
+      "notRecorded": "Tiada apa menunggu untuk dihantar",
+      "localOnly": "Setempat sahaja",
+      "notSyncing": "Tidak disegerakkan",
+      "waiting": "Menunggu untuk dihantar"
+    }
   },
   "backlinks": {
     "sortRecent": "Terkini",
@@ -587,7 +771,18 @@
     "expandSection": "Kembangkan bahagian pautan balik",
     "showMore": "Tunjukkan {count} lagi pautan balik",
     "more": "{count} lagi",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Ditunjukkan dalam portal"
+  },
+  "unlinkedMentions": {
+    "title": "Sebutan tanpa pautan",
+    "summary": "{count, plural, other {# sebutan tanpa pautan}}",
+    "sectionAria": "Sebutan tanpa pautan",
+    "fromAria": "Sebutan tanpa pautan dalam {title}",
+    "link": "Pautkan",
+    "linkAria": "Pautkan {text}",
+    "gone": "Sebutan itu berubah sejak senarai dibaca",
+    "linkFailed": "Tidak dapat memautkan sebutan"
   },
   "outgoingLinks": {
     "summary": "{count, plural, other {# pautan keluar}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "Tidak dapat menambah nota ke kanvas"
   },
   "suggestedTags": {
-    "label": "Teg dicadangkan:",
-    "hint": "Teg yang dikongsi oleh nota yang paling serupa dengan nota ini. Tiada apa-apa ditambah sehingga anda memilih satu.",
-    "acceptAria": "Tambah teg {tag}",
-    "support": "{count, plural, other {Digunakan pada # nota serupa}}",
-    "dismiss": "Sembunyikan teg dicadangkan"
+    "support": "{count, plural, other {Digunakan pada # nota serupa}}"
   },
   "comments": {
     "railAria": "Komen",
@@ -631,11 +822,9 @@
     "toolbarComment": "Komen",
     "commentPlaceholder": "Tambah komen…",
     "createdTooltip": "Dibuat {date} pada {time}",
-    "cancel": "Batal",
     "resolve": "Selesaikan",
     "edit": "Edit komen",
     "delete": "Padam komen",
-    "replyPlaceholder": "Balas…",
     "attachAria": "Lampirkan fail",
     "mentionAria": "Sebut orang, halaman atau tarikh",
     "sendAria": "Hantar komen",
@@ -648,13 +837,7 @@
       "code": "Kod"
     },
     "openImageAria": "Buka imej {name}",
-    "openAttachmentAria": "Buka lampiran {name}",
-    "kind": {
-      "comment": "Komen",
-      "addition": "Penambahan",
-      "deletion": "Pemadaman",
-      "substitution": "Penggantian"
-    }
+    "openAttachmentAria": "Buka lampiran {name}"
   },
   "tagsRow": {
     "aria": "Teg",
@@ -663,6 +846,7 @@
     "removeAria": "Alih keluar teg: {tag}",
     "inputPlaceholder": "Taip nama teg…",
     "recent": "Terkini",
+    "suggested": "Dicadangkan",
     "matching": "Padanan",
     "all": "Semua teg",
     "none": "Tiada teg ditemui",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "Sifat",
     "noteAria": "Sifat nota",
-    "workspaceAria": "Sifat ruang kerja",
     "listAria": "Senarai sifat",
     "add": "Tambah sifat",
     "addDescription": "Tambahkan sifat baharu pada nota ini",
@@ -723,7 +906,6 @@
       "inProgress": "Sedang dibuat",
       "done": "Selesai"
     },
-    "projectAlreadySet": "Nota ini sudah mempunyai sifat projek",
     "projectPlaceholder": "Tiada projek",
     "projectSearch": "Cari projek",
     "projectEmpty": "Tiada projek",
@@ -755,6 +937,9 @@
     "repositionHint": "Seret untuk ubah kedudukan",
     "repositionSave": "simpan",
     "repositionCancel": "batal",
+    "zoomIn": "Zum masuk",
+    "zoomOut": "Zum keluar",
+    "resize": "Seret untuk mengubah saiz kulit",
     "credit": "Foto oleh {name} di Unsplash",
     "focusFailed": "Tidak dapat menyimpan kedudukan kulit",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Penapis",
-      "filters": "Penapis",
-      "clearAll": "Kosongkan semua",
-      "noFiltersApplied": "Tiada penapis digunakan",
-      "addFiltersToNarrowDownYourNotes": "Tambah penapis untuk mengecilkan senarai nota anda",
       "match": "Padankan",
-      "allAnd": "Semua (DAN)",
-      "anyOr": "Mana-mana (ATAU)",
-      "ofTheFollowing": "daripada yang berikut:",
       "match2": "Padankan",
       "all": "Semua",
       "any": "Mana-mana",
-      "of": "daripada:",
       "addCondition": "Tambah syarat",
       "addFilter": "Tambah penapis",
       "addGroup": "Tambah kumpulan",
@@ -995,7 +1172,6 @@
       "available": "Tersedia: ",
       "preview": "Pratonton",
       "fixExpressionErrorsToSeePreview": "Betulkan ralat ungkapan untuk melihat pratonton",
-      "usingNote": "Menggunakan nota: “",
       "cancel": "Batal",
       "namePlaceholder": "hari_hingga_tarikh_akhir",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "Memuatkan folder…",
       "suggested": "CADANGAN",
       "bestMatch": "Padanan terbaik",
-      "current": "semasa)",
       "allFolders": "SEMUA FOLDER",
-      "noFoldersMatch": "Tiada folder yang sepadan \"",
-      "create": "Buat \"",
       "cancel": "Batal",
       "currentFolderBadge": "(semasa)",
       "noFoldersMatchQuery": "Tiada folder sepadan dengan “{query}”",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "lalai",
       "viewActions": "Tindakan paparan",
-      "rename": "Namakan semula",
       "duplicate": "Pendua",
       "setAsDefault": "Tetapkan sebagai lalai",
       "delete": "Padam",
-      "createNewView": "Buat paparan baharu",
-      "createNewView2": "Buat paparan baharu",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Buat paparan baharu dengan lajur tersuai, penapis dan pengisihan.",
-      "viewName": "Nama paparan",
       "myCustomView": "Paparan tersuai saya",
-      "baseConfiguration": "Konfigurasi asas",
-      "copyFromCurrentView": "Salin daripada paparan semasa",
-      "startFreshDefaultColumns": "Mula dari awal (lajur lalai)",
       "cancel": "Batal",
-      "renameView": "Namakan semula paparan",
-      "enterANewNameForThisView": "Masukkan nama baharu untuk paparan ini.",
-      "viewName2": "Nama paparan",
-      "viewName3": "Nama paparan",
-      "cancel2": "Batal",
       "deleteView": "Padam paparan",
       "areYouSureYouWantToDelete": "Adakah anda pasti mahu memadamkan \"",
       "thisActionCannotBeUndone": "Tindakan ini tidak boleh dibuat asal.",
@@ -1077,22 +1237,17 @@
       "layout": "Susun atur",
       "table": "Jadual",
       "list": "Senarai",
-      "gallery": "Galeri",
-      "createView": "Buat paparan",
-      "save": "Simpan"
+      "gallery": "Galeri"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Gagal memuatkan PDF: ",
-      "download": "Muat turun",
       "download2": "Muat turun",
       "noFileAttached": "Tiada fail dilampirkan",
       "resizePdf": "Ubah saiz PDF",
       "resizeHtml": "Ubah saiz benaman HTML",
       "alignLeft": "Jajarkan ke kiri",
       "alignCenter": "Jajarkan ke tengah",
-      "alignRight": "Jajarkan ke kanan",
-      "previousPage": "Halaman sebelumnya",
-      "nextPage": "Halaman seterusnya"
+      "alignRight": "Jajarkan ke kanan"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Buka dalam panel tugas",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "Letter (8.5 x 11 in)",
       "legal85X14In": "Legal (8.5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Disegerakkan"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Perkataan",
       "characters": "Aksara",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "Tiada penanda halaman lagi",
       "moreOptions": "Lebih banyak pilihan",
       "remove": "Alih keluar"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Buka",
-      "openToTheSide": "Buka di sisi",
-      "pinToTabs": "Semat pada tab",
-      "edit": "Edit",
-      "delete": "Padam",
-      "copyLink": "Salin pautan"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Memuatkan teg…",
@@ -1168,26 +1309,9 @@
       "cancel": "Batal"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Kembali",
-      "notes": "nota",
-      "loadingNotes": "Memuatkan nota…",
-      "noNotesWithThisTag": "Tiada nota dengan teg ini",
-      "addThisTagToANoteToSeeItHere": "Tambahkan teg ini pada nota untuk melihatnya di sini",
-      "pinned": "DISEMAT",
-      "allNotes": "SEMUA NOTA",
-      "allNotesArePinned": "Semua nota disemat",
-      "tasks": "TUGAS",
-      "unpinFromTag": "Nyahsemat daripada teg",
-      "unpin": "Nyahsemat",
-      "pinToTag": "Semat pada teg",
-      "pin": "Semat",
       "tagActions": "Tindakan teg",
-      "editTagName": "Edit nama teg",
       "changeColor": "Tukar warna",
-      "deleteTag": "Padam teg",
-      "recent": "Terkini",
-      "created": "Dibuat",
-      "alphabetical": "Mengikut abjad"
+      "deleteTag": "Padam teg"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Namakan semula teg",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Buat nota baharu",
-      "viewSettings": "Tetapan paparan",
-      "displayDensity": "Ketumpatan paparan",
-      "comfortable": "Selesa",
-      "compact": "Padat",
-      "showSummaries": "Tunjukkan ringkasan",
       "cancel": "Batal"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "Buka hab teg"
   },
   "tagView": {
-    "moreActions": "Tindakan lain",
     "pin": {
       "action": "Semat {count, plural, other {# nota}} pada teg",
       "success": "{count, plural, other {# nota}} disemat pada teg",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, other {# nota}}"
+    },
+    "noteTasks": {
+      "expand": "Tunjukkan tugas {title}",
+      "collapse": "Sembunyikan tugas {title}",
+      "list": "Tugas dalam {title}",
+      "progressOpen": "{open}/{total} terbuka",
+      "progressDone": "{total}/{total} selesai",
+      "nextDue": "Akhir seterusnya",
+      "reminder": "Peringatan ditetapkan"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "Namakan carian ini",
     "saveDialogPlaceholder": "cth. Mesyuarat kerja",
     "cancel": "Batal",
-    "save": "Simpan",
-    "addToFilterHint": "Ctrl/Cmd-klik teg untuk menambahnya pada penapis"
+    "save": "Simpan"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternatif",
+      "overflow": "Limpahan",
+      "menu": "Alat penulisan",
+      "close": "Tutup alat penulisan"
+    },
+    "menu": {
+      "aria": "Tindakan editor",
+      "cut": "Potong",
+      "copy": "Salin",
+      "paste": "Tampal",
+      "selectAll": "Pilih Semua",
+      "undo": "Buat asal",
+      "redo": "Buat semula",
+      "comment": "Ulasan",
+      "addAlternative": "Tambah alternatif",
+      "suggestAlternatives": "Cadangkan alternatif",
+      "ghost": "Bayang",
+      "revive": "Hidupkan semula",
+      "stash": "Simpan dalam limpahan",
+      "noSpellingSuggestions": "Tiada cadangan",
+      "addToDictionary": "Tambah ke kamus",
+      "clipboardFailed": "Tidak dapat menggunakan papan keratan"
+    },
+    "alternatives": {
+      "railAria": "Alternatif",
+      "hint": "{position} daripada {total} ↑ ↓",
+      "original": "Asal",
+      "byYou": "Ditulis oleh anda",
+      "byAI": "Dicadangkan oleh AI",
+      "showing": "Dipaparkan",
+      "addPlaceholder": "Tambah alternatif…",
+      "removeSuggestions": "Buang cadangan",
+      "removeVariant": "Buang alternatif",
+      "empty": "Pilih teks dan pilih Tambah alternatif untuk menyimpan cara lain menyebutnya.",
+      "suggesting": "Mencadangkan alternatif…",
+      "suggestFailed": "Tidak dapat mencadangkan alternatif",
+      "noSuggestions": "Tiada alternatif baharu dicadangkan"
+    },
+    "overflow": {
+      "railAria": "Limpahan",
+      "addPlaceholder": "Tulis sesuatu untuk disimpan…",
+      "empty": "Baris yang anda simpan atau tulis di sini kekal bersama nota ini, di luar teks.",
+      "dragHint": "Seret ke dalam nota",
+      "copy": "Salin",
+      "copied": "Disalin",
+      "delete": "Padam"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Kunci nota",
+    "unlockNote": "Buka kunci nota",
+    "lockFolder": "Kunci folder",
+    "unlockFolder": "Buka kunci folder",
+    "toggleFailed": "Tidak dapat menukar kunci",
+    "readOnlyIndicator": "Dikunci. Baca sahaja untuk anda dan untuk ejen.",
+    "externalEditRestored": "“{title}” dikunci, jadi suntingan luarnya dibuat asal",
+    "externalEditRestoredHint": "Teks yang disunting disimpan dalam sejarah versi nota."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Orang",
+        "plural": "Orang",
+        "fields": {
+          "company": "Syarikat",
+          "role": "Peranan",
+          "email": "E-mel",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Orang"
+        },
+        "template": {
+          "name": "Orang",
+          "context": "Konteks",
+          "contextHint": "Bagaimana kita bertemu, apa yang mereka ambil berat",
+          "notes": "Nota"
+        }
+      },
+      "company": {
+        "name": "Syarikat",
+        "plural": "Syarikat",
+        "fields": {
+          "website": "Laman web",
+          "industry": "Industri",
+          "location": "Lokasi"
+        },
+        "template": {
+          "name": "Syarikat",
+          "overview": "Gambaran keseluruhan",
+          "overviewHint": "Apa yang mereka lakukan, siapa yang kita kenali di sana",
+          "notes": "Nota"
+        }
+      },
+      "meeting": {
+        "name": "Mesyuarat",
+        "plural": "Mesyuarat",
+        "fields": {
+          "date": "Tarikh",
+          "attendees": "Hadirin",
+          "company": "Syarikat"
+        },
+        "inverse": {
+          "attendees": "Mesyuarat",
+          "company": "Mesyuarat"
+        },
+        "template": {
+          "name": "Mesyuarat",
+          "agenda": "Agenda",
+          "notes": "Nota",
+          "actionItems": "Item tindakan"
+        }
+      },
+      "book": {
+        "name": "Buku",
+        "plural": "Buku",
+        "fields": {
+          "author": "Pengarang",
+          "shelf": "Rak",
+          "rating": "Penilaian",
+          "finished": "Tamat"
+        },
+        "shelf": {
+          "toRead": "Untuk dibaca",
+          "reading": "Sedang dibaca",
+          "read": "Sudah dibaca"
+        },
+        "template": {
+          "name": "Buku",
+          "highlights": "Sorotan",
+          "thoughts": "Pemikiran"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} kini ialah {tag}. Templat ditambah.",
+      "templateChanged": "Nota berubah selepas templat ditambah, jadi ia dikekalkan.",
+      "undoFailed": "Tidak dapat membuat asal",
+      "addFailed": "Tidak dapat menambah teg",
+      "removeFailed": "Tidak dapat membuang teg",
+      "removedKept": "#{tag} dibuang. {count} nilai dikekalkan.",
+      "removedKeptOne": "#{tag} dibuang. 1 nilai dikekalkan."
+    },
+    "picker": {
+      "create": "Buat #{tag}",
+      "fillsTemplate": "Mengisi nota kosong ini dengan templat {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Teg sedia guna",
+        "subtitle": "Teg yang disertakan dengan medan. Nota kekal seperti asal sehingga anda menandanya.",
+        "notNow": "Bukan sekarang",
+        "add": "Tambah",
+        "addFields": "Tambah medan",
+        "added": "Ditambah",
+        "alreadyOn": "Sudah pada {count} nota",
+        "alreadyOnOne": "Sudah pada 1 nota"
+      },
+      "dialog": {
+        "title": "Tambah medan {preset} pada #{tag}?",
+        "body": "#{tag} sudah ada pada {count} nota. Nota itu mengekalkan semua yang ada dan mendapat medan ini, kosong sehingga seseorang mengisinya.",
+        "bodyOne": "#{tag} sudah ada pada 1 nota. Nota itu mengekalkan semua yang ada dan mendapat medan ini, kosong sehingga seseorang mengisinya.",
+        "template": "Templat ({sections}) hanya mengisi nota yang kosong.",
+        "alsoAddsPrefix": "Turut menambah",
+        "alsoAddsSuffix": "untuk medan {field}.",
+        "useAnotherName": "Gunakan nama lain",
+        "nameLabel": "Nama teg baharu",
+        "namePlaceholder": "kenalan",
+        "cancel": "Batal",
+        "addFields": "Tambah medan"
+      },
+      "toast": {
+        "added": "#{tag} ditambah",
+        "addedFields": "Medan {preset} ditambah pada #{tag}"
+      },
+      "hasFields": "Mempunyai medan"
+    },
+    "tasks": {
+      "thisTask": "Tugas ini",
+      "viaTag": "{name} melalui #{via}",
+      "clearValue": "Kosongkan {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "melalui #{tag}",
+      "groupMenu": "Pilihan {tag}",
+      "openTag": "Buka #{tag}",
+      "thisNote": "Nota ini"
+    },
+    "offer": {
+      "text": "Tambah templat {tag} di bawah teks anda",
+      "add": "Tambah",
+      "dismiss": "Tutup",
+      "addFailed": "Tidak dapat menambah templat"
+    },
+    "settings": {
+      "title": "Tetapan untuk #{tag}",
+      "close": "Tutup",
+      "cancel": "Batal",
+      "save": "Simpan",
+      "onCounts": "Pada {notes, plural, other {# nota}} dan {tasks, plural, other {# tugas}}",
+      "onNotes": "Pada {count, plural, other {# nota}}",
+      "headerFields": "{count, plural, other {# medan}}",
+      "editTag": "Edit teg",
+      "syncNote": "Perubahan disegerakkan ke peranti anda yang lain",
+      "newerVersion": "Versi Memry yang lebih baharu telah mengubah teg ini. Kemas kini Memry untuk mengeditnya di sini.",
+      "sections": {
+        "appearance": "Penampilan",
+        "extends": "Memanjangkan",
+        "fields": "Medan · {count}",
+        "template": "Templat"
+      },
+      "appearance": {
+        "icon": "Ikon",
+        "color": "Warna",
+        "customColor": "Tersuai",
+        "category": "Kategori",
+        "noCategory": "Tiada kategori"
+      },
+      "extends": {
+        "nothing": "Tiada",
+        "hint": "Ambil medan teg lain dan muncul dalam jadualnya.",
+        "hintSet": "Nota {tag} mendapat medan {parent} dan muncul dalam jadual {parent}."
+      },
+      "types": {
+        "text": "Teks",
+        "number": "Nombor",
+        "date": "Tarikh",
+        "url": "URL",
+        "status": "Status",
+        "select": "Pilih",
+        "multiselect": "Pilih berbilang",
+        "checkbox": "Kotak semak",
+        "relation": "Hubungan"
+      },
+      "fields": {
+        "empty": "Belum ada medan. Tambah satu untuk memberi setiap nota #teg sifat yang sama.",
+        "fromParent": "Daripada #{tag} · edit di sana",
+        "inverseSub": "Dipaparkan pada {target} sebagai {inverse}",
+        "anyNoteSub": "Memaut ke mana-mana nota",
+        "actions": "Tindakan untuk {field}",
+        "rename": "Namakan semula…",
+        "relationSettings": "Tetapan hubungan",
+        "remove": "Buang…"
+      },
+      "addField": {
+        "button": "Tambah medan",
+        "namePlaceholder": "Nama medan",
+        "existing": "Sifat sedia ada",
+        "existingSub": "{type} · pada {count, plural, other {# nota}} · guna semula",
+        "newType": "Jenis medan baharu",
+        "relationSub": "Pautkan ke nota dengan teg",
+        "submit": "Tambah medan",
+        "reserved": "{name} dikhaskan dan tidak boleh menjadi medan.",
+        "taken": "#{tag} sudah mempunyai {name}."
+      },
+      "relation": {
+        "target": "Menunjuk kepada nota bertanda",
+        "pickTag": "Pilih teg",
+        "howMany": "Berapa banyak",
+        "one": "Satu",
+        "many": "Banyak",
+        "inverseLabel": "Pada halaman {target}, senaraikan sebagai",
+        "inverseLabelAny": "Pada halaman terpaut, senaraikan sebagai",
+        "inverseHint": "Senarai baca sahaja pada setiap {target}. Tiada apa ditulis pada nota {target}.",
+        "inverseHintAny": "Senarai baca sahaja pada setiap nota terpaut. Tiada apa ditulis pada nota itu."
+      },
+      "shared": {
+        "title": "Medan baharu pada #{tag}",
+        "existsWith": "{name} sudah wujud dalam peti besi ini dengan {options}.",
+        "existsAs": "{name} sudah wujud dalam peti besi ini sebagai sifat {type}.",
+        "shareWith": "#{tag} akan berkongsinya dengan {others} nota anda.",
+        "shareAny": "#{tag} akan berkongsinya dengan nota anda yang lain.",
+        "useInstead": "Gunakan {name} sebaliknya",
+        "share": "Kongsi {name}"
+      },
+      "template": {
+        "edit": "Edit templat",
+        "none": "Belum ada templat. Templat mengisi nota kosong apabila ia mendapat teg.",
+        "create": "Buat templat",
+        "defaultHeading": "Nota",
+        "inherited": "Daripada #{tag}",
+        "autofill": "Isi nota kosong apabila ia mendapat #{tag}"
+      },
+      "remove": {
+        "title": "Buang {field} daripada #{tag}?",
+        "body": "{field} diisi pada {filled, plural, other {# nota}}. Nilai itu kekal pada nota sebagai sifat biasa; {empty, plural, other {# slot kosong hilang}}.",
+        "confirm": "Buang medan"
+      },
+      "rename": {
+        "title": "Namakan semula {from} kepada {to}",
+        "titleEmpty": "Namakan semula {from}",
+        "label": "Nama baharu",
+        "body": "{count, plural, other {# nota mempunyai}} nilai {field}. Memry menamakan semula kunci dalam setiap fail dan dalam sifatnya; Obsidian turut melihat nama baharu.",
+        "progress": "Menamakan semula dalam nota",
+        "confirm": "Namakan semula",
+        "taken": "Teg ini sudah mempunyai {name}.",
+        "done": "{from} dinamakan semula kepada {to} dalam {count, plural, other {# item}}.",
+        "skipped": "{from} dinamakan semula kepada {to} dalam {count, plural, other {# item}}. {locked, plural, =0 {} other {# nota berkunci selesai apabila dibuka kuncinya.}} {existing, plural, =0 {} other {# nota sudah mempunyai {to} dan mengekalkan kedua-duanya.}}"
+      },
+      "delete": {
+        "button": "Padam teg",
+        "title": "Padam #{tag}?",
+        "body": "#{tag} akan dibuang daripada {notes, plural, other {# nota}} dan teg itu hilang bersama {fields, plural, other {# medan}} dan templatnya.",
+        "bodyNoTemplate": "#{tag} akan dibuang daripada {notes, plural, other {# nota}} dan teg itu hilang bersama {fields, plural, other {# medan}}.",
+        "bodyPlain": "#{tag} akan dibuang daripada setiap nota yang mempunyai teg ini.",
+        "statNotes": "nota mengekalkan teksnya",
+        "statValues": "nilai kekal sebagai sifat",
+        "plainText": "Nota yang menyebut #{tag} dalam teksnya mengekalkannya sebagai teks biasa.",
+        "confirm": "Padam teg",
+        "done": "#{tag} dipadamkan."
+      },
+      "errors": {
+        "addField": "Tidak dapat menambah medan.",
+        "removeField": "Tidak dapat membuang medan.",
+        "renameField": "Tidak dapat menamakan semula medan.",
+        "moveField": "Tidak dapat mengalihkan medan.",
+        "relation": "Tidak dapat menyimpan hubungan.",
+        "extends": "Tidak dapat menukar apa yang dipanjangkan teg ini.",
+        "template": "Tidak dapat mengemas kini templat.",
+        "deleteTag": "Tidak dapat memadamkan teg.",
+        "icon": "Tidak dapat menukar ikon.",
+        "color": "Tidak dapat menukar warna.",
+        "category": "Tidak dapat menukar kategori."
+      }
+    },
+    "fill": {
+      "action": "Isi daripada nota",
+      "reading": "Membaca nota…",
+      "disclosure": "Model ejen anda ({model}) membaca nota ini untuk mencadangkan nilai. Hanya nota ini dihantar. Tiada apa disimpan sehingga anda menerima.",
+      "disclosureLocal": "Model setempat anda ({model}) membaca nota ini pada peranti ini untuk mencadangkan nilai. Tiada apa keluar daripada peranti, dan tiada apa disimpan sehingga anda menerima.",
+      "disclosureMany": "Model ejen anda ({model}) membaca nota ini satu demi satu untuk mencadangkan nilai. Hanya nota itu dihantar. Tiada apa disimpan sehingga anda menerima.",
+      "disclosureLocalMany": "Model setempat anda ({model}) membaca nota ini pada peranti ini untuk mencadangkan nilai. Tiada apa keluar daripada peranti, dan tiada apa disimpan sehingga anda menerima.",
+      "suggest": "Cadangkan nilai",
+      "notNow": "Bukan sekarang",
+      "countOne": "· {count} cadangan",
+      "count": "· {count} cadangan",
+      "dismiss": "Tutup",
+      "acceptAll": "Terima semua",
+      "accept": "Terima {field}",
+      "reject": "Tolak {field}",
+      "notInNote": "Tiada dalam nota",
+      "createHint": "Mencipta #{tag} baharu apabila diterima",
+      "nothingFound": "Tiada apa dalam nota ini yang mengisi medan kosong",
+      "failed": "Tidak dapat mencadangkan nilai. {message}",
+      "saveFailed": "Tidak dapat menyimpan nilai yang diterima",
+      "bulkAction": "Isi medan kosong",
+      "bulkTitle": "Isi medan kosong",
+      "bulkReading": "{done} daripada {total} nota · membaca nota…",
+      "bulkRead": "{done} daripada {total} nota dibaca",
+      "stop": "Henti",
+      "name": "Nama",
+      "nothingInRow": "Tiada apa ditemui",
+      "found": "{count} ditemui",
+      "reviewOneByOne": "Semak satu demi satu",
+      "acceptRow": "Terima nilai untuk {title}",
+      "rejectRow": "Langkau {title}",
+      "bulkSavedOne": "{count} medan diisi pada {notes} nota",
+      "bulkSaved": "{count} medan diisi pada {notes} nota"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Buat {title} sebagai",
+      "asPrefix": "Buat",
+      "asSuffix": "sebagai",
+      "failed": "Tidak dapat membuat nota",
+      "lastUsed": "Terakhir digunakan",
+      "noteWord": "nota",
+      "plainNote": "Nota biasa",
+      "readyMade": "Teg sedia guna",
+      "row": "Buat “{title}”",
+      "rowHint": "Sebagai {types}"
+    },
+    "hover": {
+      "at": "di",
+      "lastMet": "Terakhir bertemu · {title}",
+      "lastMetOn": "Terakhir bertemu {date} · {title}",
+      "mentionedIn": "{count, plural, other {Disebut dalam # nota}}",
+      "open": "Buka",
+      "tasks": "{count, plural, other {# tugas · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} dalam teks",
+      "explain": "Dalam teks, teg ialah label. Nota ini disenaraikan di bawah Disebut dalam pada #{tag}.",
+      "made": "#{tag} ditambah pada teg nota ini",
+      "make": "Jadikan nota ini {tag}",
+      "makeFailed": "Tidak dapat menambah teg",
+      "makeHint": "Menambah #{tag} pada pengepala dan menunjukkan medannya",
+      "meta": "{count, plural, other {# objek}} · {fields, plural, other {# medan}}",
+      "metaNamed": "{count, plural, one {# {one}} other {# {other}}} · {fields, plural, other {# medan}}",
+      "open": "Buka #{tag}",
+      "remove": "Buang teg daripada teks"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "sebagai {field}",
+      "due": "Akhir {date}",
+      "inTheText": "dalam teks",
+      "mentionedIn": "Disebut dalam",
+      "tasks": "Tugas",
+      "title": "Dipautkan di sini"
+    },
+    "mention": {
+      "notes": "Nota"
+    },
+    "picker": {
+      "create": "{tag} baharu",
+      "createNamed": "{tag} baharu “{title}”",
+      "empty": "Tiada padanan",
+      "search": "Cari {tag}",
+      "untitled": "{tag} baharu"
+    },
+    "quickFields": {
+      "add": "Tambah {field}",
+      "aria": "Medan pertama {title}",
+      "done": "Selesai",
+      "later": "Kemudian",
+      "newObject": "{tag} baharu",
+      "saveFailed": "Tidak dapat menyimpan medan"
+    },
+    "table": {
+      "untitled": "{tag} baharu",
+      "newInGroup": "{tag} baharu dalam {group}",
+      "newInGroupHint": "⌘↵ membukanya dalam tab baharu",
+      "new": "{tag} baharu",
+      "includes": "{field} termasuk",
+      "removeFilter": "Buang penapis",
+      "shown": "{shown} daripada {total}",
+      "saveView": "Simpan paparan",
+      "mentionedMeta": "{count, plural, other {# nota dengan '#'{tag} dalam teksnya}}",
+      "saveFailed": "Tidak dapat menyimpan medan",
+      "created": "{title} dibuat"
+    },
+    "relationDrop": {
+      "title": "Tambah #{tag} pada “{title}”?",
+      "body": "Medan ini hanya memaut nota bertanda #{tag}. Memry menambah #{tag} pada pengepala “{title}”, kemudian memautkannya di sini.",
+      "confirm": "Tambah #{tag} dan pautkan",
+      "cancel": "Batal",
+      "added": "“{title}” kini ialah #{tag} dan dipautkan",
+      "notANote": "Hanya nota boleh dipautkan di sini sebagai #{tag}",
+      "failed": "Tidak dapat memautkan nota ini"
+    }
   },
   "names": {
     "also": "juga",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "Cari nota",
     "pickerEmpty": "Tiada nota yang sepadan",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Tambah butiran"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Tunjukkan nota atau blok secara langsung dari tempat lain"
+      },
+      "searchPortal": {
+        "title": "Portal carian",
+        "subtext": "Senarai langsung blok yang sepadan dengan pertanyaan"
+      }
+    },
+    "picker": {
+      "aria": "Pilih nota atau blok untuk dijadikan portal",
+      "notes": "Nota",
+      "blocks": "Blok",
+      "loading": "Mencari…",
+      "empty": "Tiada nota atau blok sepadan",
+      "hintInsert": "Sisip portal",
+      "hintClose": "Tutup",
+      "keyEsc": "Esc",
+      "create": "Buat nota “{query}”",
+      "createFailed": "Tidak dapat membuat nota itu",
+      "stampFailed": "Tidak dapat menyediakan blok itu untuk portal",
+      "retargetFailed": "Tidak dapat mengarahkan portal ke blok itu"
+    },
+    "insert": {
+      "cycle": "Portal tidak boleh menunjukkan nota di dalam dirinya sendiri."
+    },
+    "copy": {
+      "done": "Portal disalin. Tampalkannya dalam mana-mana nota.",
+      "failed": "Tidak dapat menyalin portal untuk blok ini"
+    },
+    "menu": {
+      "copyAsPortal": "Salin sebagai portal",
+      "hideInPortal": "Sembunyikan dalam portal ini"
+    },
+    "usage": {
+      "chipAria": "{count, plural, other {Digunakan di # tempat lain}}"
+    },
+    "whereUsed": {
+      "aria": "Tempat blok ini digunakan",
+      "portals": "Portal",
+      "links": "Pautan",
+      "openBeside": "Buka di sebelah",
+      "loadFailed": "Tidak dapat memuatkan tempat blok ini ditunjukkan"
+    },
+    "hiddenBlocks": {
+      "title": "Blok tersembunyi",
+      "showAll": "Tunjukkan semua",
+      "search": "Cari blok tersembunyi",
+      "showFailed": "Tidak dapat menunjukkan blok ini"
+    },
+    "searchQuery": {
+      "titleNew": "Portal carian",
+      "titleEdit": "Edit pertanyaan",
+      "text": "Mengandungi perkataan",
+      "textPlaceholder": "Perkataan dalam blok",
+      "tag": "Teg",
+      "tagPlaceholder": "peperiksaan",
+      "limit": "Had",
+      "footer": "Had {limit} hasil.",
+      "create": "Buat",
+      "apply": "Guna"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Padam blok ini di mana-mana?",
+        "note": "Padam nota ini di mana-mana?"
+      },
+      "description": {
+        "block": "“{title}” juga muncul dalam {count, plural, other {# nota lain}}.",
+        "note": "“{title}” ditunjukkan atau dipautkan dalam {count, plural, other {# nota lain}}."
+      },
+      "manyNotes": "{count} nota",
+      "source": "{title} (sumber)",
+      "removeHere": "Sembunyikan di sini sebaliknya",
+      "cancel": "Batal",
+      "everywhere": "Padam di mana-mana",
+      "undoToast": "{count, plural, other {Blok yang dipadamkan ditunjukkan dalam # nota lain.}}",
+      "undo": "Buat asal"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Penuh",
+      "brief": "Ringkas",
+      "key": "Utama",
+      "takeaway": "Intipati",
+      "topic": "Topik"
+    },
+    "chrome": {
+      "fold": "Lipat nota",
+      "unfold": "Dilipat kepada {level}. Tunjukkan teks penuh",
+      "words": "{count, plural, other {# perkataan}}",
+      "writing": "Menulis…",
+      "writtenBy": "Ditulis oleh {agent}",
+      "retry": "Larian terakhir gagal · Cuba lagi",
+      "captionOff": "Hidupkan Ringkaskan nota panjang dalam Tetapan → AI",
+      "captionNoAgent": "Tiada ejen disambungkan · Tetapan → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Nota panjang? Imbas sahaja.",
+      "body": "Lipat kepada ayat utamanya, kemudian buka hanya perenggan yang anda perlukan.",
+      "dismiss": "Faham"
+    },
+    "pill": {
+      "opened": "{count, plural, other {# perenggan dibuka}}",
+      "escape": "esc",
+      "copy": "Salin sebagai teks",
+      "copied": "Disalin",
+      "aria": "Paparan terlipat",
+      "hintMac": "Cubit, ⌘-tatal, atau tatal pada bar ini untuk zum · klik perenggan untuk membukanya",
+      "hint": "Cubit, Ctrl-tatal, atau tatal pada bar ini untuk zum · klik perenggan untuk membukanya"
+    },
+    "view": {
+      "aria": "Paparan {level} terlipat",
+      "paragraphOpen": "Dibuka kepada Penuh · klik lagi untuk melipat",
+      "paragraphFold": "Lipat perenggan ini",
+      "paragraphOpenAction": "Buka perenggan ini sepenuhnya",
+      "unfoldSection": "Buka lipatan bahagian {heading}",
+      "jumpToParagraph": "Tunjukkan perenggan ini sepenuhnya: {topic}",
+      "untitledSection": "Tanpa tajuk",
+      "skipped": {
+        "code": "… {count, plural, other {# blok kod}}",
+        "table": "… {count, plural, other {# jadual}}",
+        "image": "… {count, plural, other {# imej}}",
+        "callout": "… {count, plural, other {# callout}}",
+        "embed": "… {count, plural, other {# benam}}",
+        "other": "… {count, plural, other {# blok lagi}}"
+      }
+    }
   }
 }

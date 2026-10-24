@@ -309,7 +309,7 @@ describe('cold renderer component smoke coverage', () => {
     )
     expect(mocks.expandNode).toHaveBeenCalledWith('folder-Work')
     expect(mocks.expandNode).toHaveBeenCalledWith('folder-Work/Plans')
-    act(() => vi.advanceTimersByTime(50))
+    void act(() => vi.advanceTimersByTime(50))
     expect(onReveal).toHaveBeenCalledWith('note-1')
 
     render(
@@ -324,7 +324,7 @@ describe('cold renderer component smoke coverage', () => {
     // moment ago only arrives when the list query refetches — so the handler
     // gives up on a timer instead of immediately.
     expect(onClear).not.toHaveBeenCalled()
-    act(() => vi.advanceTimersByTime(5000))
+    void act(() => vi.advanceTimersByTime(5000))
     expect(onClear).toHaveBeenCalled()
 
     const target = document.createElement('div')
@@ -334,7 +334,7 @@ describe('cold renderer component smoke coverage', () => {
     window.dispatchEvent(
       new CustomEvent('memry:reveal-folder', { detail: { folderPath: 'Work/Plans' } })
     )
-    act(() => vi.advanceTimersByTime(100))
+    void act(() => vi.advanceTimersByTime(100))
     expect(target.scrollIntoView).toHaveBeenCalled()
 
     const ref = createRef<{

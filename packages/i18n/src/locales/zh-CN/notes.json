@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "未找到——点击创建“{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "链接操作",
+    "open": "打开",
+    "openInNewTab": "在新标签页中打开",
+    "openToTheSide": "在侧边打开",
+    "edit": "编辑链接",
+    "copy": "复制链接",
+    "unlink": "移除链接",
+    "displayRow": "显示方式…",
+    "sizeNone": "无",
+    "sizeSmall": "小",
+    "sizeMedium": "中",
+    "showCover": "显示封面",
+    "showPreview": "显示预览",
+    "copyFailed": "无法复制链接"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "从 Readwise 重新导入",
+    "refreshAction": "刷新书籍信息",
+    "syncsOn": "Readwise 在 {device} 上同步。",
+    "syncsOnAnotherDevice": "Readwise 在另一台设备上同步。",
+    "takeOverHint": "请在那台设备上同步，或在“设置 → 导入”中接管。",
+    "reimport": {
+      "title": "从 Readwise 重新导入“{title}”？",
+      "body": "Readwise 部分将被完全重写。你在其中写下的任何内容都会丢失。",
+      "note": "该部分之外的文本以及笔记的属性保持不变。",
+      "cancel": "取消",
+      "confirm": "重新导入"
+    },
+    "commands": {
+      "reimported": "已从 Readwise 重新导入",
+      "refreshed": "书籍信息已刷新",
+      "failed": "无法完成 Readwise 命令"
+    }
+  },
   "page": {
     "empty": {
       "title": "未选择笔记",
@@ -25,6 +61,7 @@
       "willSync": "笔记将同步到云端",
       "renameFailed": "无法重命名笔记",
       "titleRequired": "笔记需要标题",
+      "duplicateTitle": "{folder} 中的另一篇笔记也名为“{title}”。指向这些笔记的链接将包含其文件夹。",
       "toggleLocalOnlyFailed": "无法更改“仅本地”设置",
       "toggleFullWidthFailed": "无法更改全宽设置",
       "pathCopied": "路径已复制",
@@ -98,6 +135,7 @@
       "openToTheSide": "在侧边打开",
       "newNote": "新建笔记",
       "newFolder": "新建文件夹",
+      "showTasks": "显示任务",
       "expandSubfolders": "展开所有子文件夹",
       "collapseSubfolders": "折叠所有子文件夹",
       "rename": "重命名",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "从书签中移除",
       "journalSettings": "日记设置…"
     },
-    "nav": {
-      "label": "导航",
-      "ariaExpanded": "导航部分，已展开",
-      "ariaCollapsed": "导航部分，已折叠",
-      "saveFailed": "无法保存导航部分的状态"
-    },
     "viewOptions": {
       "label": "视图选项",
       "notesFirst": "笔记排在文件夹前",
@@ -138,7 +170,15 @@
       "folderSuffix": "文件夹",
       "moreItems": "…以及另外 {count} 项",
       "deleting": "正在删除…",
-      "deleteCount": "删除 {count} 项"
+      "deleteCount": "删除 {count} 项",
+      "journalFolderWarning": "其中包含你的日记文件夹。其中的每条日记条目都会在你所有设备上被删除。"
+    },
+    "journalChange": {
+      "leaveTitle": "将日记条目转为笔记？",
+      "leaveBody": "移出日记文件夹，或重命名后不再符合其日期格式的日记条目会变成普通笔记，并从你的日记中消失。在你的其他设备上，这些日期会从日记中移除，取而代之的是这些笔记。",
+      "joinTitle": "将笔记转为日记条目？",
+      "joinBody": "日记文件夹中按日记日期格式命名的文件会变成日记条目。在你的其他设备上，这些笔记会被日记条目取代。",
+      "confirm": "继续"
     },
     "toast": {
       "selectionBookmarked": "已收藏 {count} 项",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "标题",
       "listPlaceholder": "列表项",
       "todoPlaceholder": "待办事项",
-      "htmlComment": "隐藏的 HTML 注释"
+      "htmlComment": "隐藏的 HTML 注释",
+      "percentComment": "隐藏的注释",
+      "readwise": {
+        "noteStart": "Readwise · 自动同步",
+        "noteEnd": "Readwise 部分结束",
+        "dayStart": "Readwise · 今天的高亮",
+        "dayEnd": "Readwise 结束",
+        "hint": "在此部分内编辑后，Readwise 将不再更新它。"
+      }
     },
     "table": {
       "keyboardMenuAria": "第 {row} 行第 {column} 列的表格操作",
-      "keyboardMenuTitle": "第 {row} 行 · 第 {column} 列"
+      "keyboardMenuTitle": "第 {row} 行 · 第 {column} 列",
+      "sizePicker": {
+        "aria": "表格大小。使用方向键选择行和列，然后按 Enter。",
+        "size": "{rows, plural, other {# 行}} × {columns, plural, other {# 列}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, other {删除 # 行}}",
+        "addRowsAbove": "{count, plural, other {在上方添加 # 行}}",
+        "addRowsBelow": "{count, plural, other {在下方添加 # 行}}",
+        "deleteColumns": "{count, plural, other {删除 # 列}}",
+        "addColumnsLeft": "{count, plural, other {在左侧添加 # 列}}",
+        "addColumnsRight": "{count, plural, other {在右侧添加 # 列}}"
+      }
     },
     "list": {
       "bulleted": "无序列表",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "隐藏局部图谱",
       "showLocalGraph": "显示局部图谱",
       "moreActions": "更多操作",
+      "searchActions": "搜索操作...",
+      "noMatchingActions": "没有匹配的操作",
       "find": "查找…",
       "versionHistory": "版本历史",
       "export": "导出",
@@ -215,6 +277,8 @@
       "notSynced": "尚未同步到此设备",
       "revealFailed": "无法在文件管理器中显示文件",
       "openFailed": "无法打开文件",
+      "showAsLink": "显示为链接",
+      "showAsEmbed": "显示为嵌入",
       "missingTitle": "附件文件缺失",
       "missingExpected": "预期文件：{name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "重命名",
       "renamed": "已重命名为 {name}",
       "failed": "无法重命名附件"
+    },
+    "imageLightbox": {
+      "menuItem": "查看大图",
+      "title": "图片查看器",
+      "zoomIn": "放大",
+      "zoomOut": "缩小",
+      "reset": "重置缩放"
+    },
+    "imageCrop": {
+      "menuItem": "裁剪…",
+      "title": "裁剪图片",
+      "description": "在图片上拖动以选择笔记中显示的区域。原始文件保持不变。",
+      "reset": "显示整张图片",
+      "cancel": "取消",
+      "apply": "裁剪",
+      "unavailable": "图片尚未加载，无法裁剪"
     },
     "attachmentsDialog": {
       "title": "附件",
@@ -248,12 +328,24 @@
       "title": "提示框",
       "group": "基本块",
       "subtext": "突出显示重要信息",
+      "customSubtext": "你的自定义标注类型",
       "changeType": "更改提示框类型",
+      "expand": "展开标注",
+      "collapse": "收起标注",
       "menuLabel": "提示框类型",
       "info": "信息",
       "warning": "警告",
       "error": "错误",
-      "success": "成功"
+      "success": "成功",
+      "note": "笔记",
+      "abstract": "摘要",
+      "todo": "待办",
+      "tip": "提示",
+      "important": "重要",
+      "question": "问题",
+      "example": "示例",
+      "quote": "引用",
+      "bug": "缺陷"
     },
     "columns": {
       "group": "基本块",
@@ -332,6 +424,83 @@
       "invalidShape": "此视图的定义没有来源。请在上方选择一个，或在下方修正。",
       "definition": "定义"
     },
+    "chart": {
+      "title": "图表",
+      "subtext": "按时间绘制某个属性：折线、柱状或日历热力图",
+      "layout": "图表",
+      "settings": "图表设置",
+      "chooseProperty": "选择要绘制的内容",
+      "source": "来源",
+      "headerMeta": "{range} · {type}",
+      "property": "属性",
+      "noProperties": "还没有可绘制的内容。请先为日记条目或笔记添加属性。",
+      "chartType": "图表",
+      "suggested": "推荐",
+      "types": {
+        "line": "折线",
+        "bar": "柱状",
+        "heatmap": "热力图"
+      },
+      "range": "范围",
+      "lastDays": "{count, plural, other {最近 # 天}}",
+      "sameDay": "同一天的条目",
+      "aggregates": {
+        "average": "平均值",
+        "sum": "总和",
+        "min": "最低",
+        "max": "最高",
+        "count": "计数"
+      },
+      "missingDays": "缺失的日期",
+      "missing": {
+        "gap": "留空",
+        "zero": "按零计算"
+      },
+      "dateFrom": {
+        "label": "日期取自",
+        "created": "创建时间",
+        "modified": "修改时间"
+      },
+      "propertyTypes": {
+        "text": "文本",
+        "number": "数字",
+        "checkbox": "复选框",
+        "date": "日期",
+        "url": "URL",
+        "status": "状态",
+        "select": "单选",
+        "multiselect": "多选",
+        "relation": "关联",
+        "project": "项目",
+        "rating": "评分"
+      },
+      "noEntry": "无条目",
+      "done": "已完成",
+      "notDone": "未完成",
+      "logged": "已记录",
+      "valueCount": "{count, plural, other {# 个值}}",
+      "average": "平均值",
+      "vsPrevious": "与上一时段相比",
+      "lowest": "最低",
+      "currentStreak": "当前连续",
+      "longestStreak": "最长连续",
+      "dayCount": "{count, plural, other {# 天}}",
+      "doneDays": "已完成",
+      "loggedDays": "已记录",
+      "mostCommon": "最常见",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property}在最近 {days} 天的变化",
+      "noData": "此范围内还没有记录。",
+      "loadFailed": "无法加载此图表。条目本身未受影响。",
+      "sourceJournal": "日记",
+      "history": {
+        "show": "显示历史",
+        "title": "{property}历史",
+        "range": "最近 13 周",
+        "insert": "复制为图表块",
+        "copied": "图表块已复制。可将其粘贴到任何笔记中。"
+      }
+    },
     "slashMenu": {
       "aria": "块和操作",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "可折叠",
         "asLinkedTask": "作为关联任务",
         "asReminder": "作为提醒"
       },
-      "actions": {
-        "insert": "插入",
-        "open": "打开"
-      },
+      "close": "关闭菜单",
       "matchesAlias": "匹配",
       "noMatch": "没有与“{query}”匹配的块",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "将块移动到笔记",
         "searchPlaceholder": "搜索笔记…",
         "noResults": "没有匹配的笔记",
-        "moved": "已将块移动到“{title}”",
         "failed": "无法移动块"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "显示为",
+        "embed": "嵌入",
+        "link": "链接"
+      },
       "title": {
         "image": "添加图片",
         "media": "添加媒体",
@@ -525,6 +694,11 @@
       "empty": "输入以创建新标签",
       "create": "创建 #{tag}"
     },
+    "pdfDisplay": {
+      "title": "将 PDF 显示为",
+      "embed": "嵌入式查看器",
+      "link": "文件名"
+    },
     "pasteLink": {
       "title": "粘贴为",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "大纲",
     "aria": "文档大纲",
-    "emptyYet": "尚无标题",
     "readTime": "阅读约 {count} 分钟",
     "words": "{count} 字",
     "created": "创建时间",
-    "modified": "修改时间"
+    "modified": "修改时间",
+    "sync": {
+      "label": "同步",
+      "confirmed": "{time}已在服务器上",
+      "pending": "自 {time}起等待中",
+      "sent": "正在发送",
+      "rejected": "服务器拒绝了最近一次更改",
+      "notRecorded": "没有等待发送的内容",
+      "localOnly": "仅本地",
+      "notSyncing": "未同步",
+      "waiting": "等待发送"
+    }
   },
   "backlinks": {
     "sortRecent": "最近",
@@ -587,7 +771,18 @@
     "expandSection": "展开反向链接部分",
     "showMore": "再显示 {count} 条反向链接",
     "more": "还有 {count} 条",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "显示在传送门中"
+  },
+  "unlinkedMentions": {
+    "title": "未链接的提及",
+    "summary": "{count, plural, other {# 处未链接的提及}}",
+    "sectionAria": "未链接的提及",
+    "fromAria": "{title} 中未链接的提及",
+    "link": "链接",
+    "linkAria": "链接 {text}",
+    "gone": "该提及在列表读取后已发生变化",
+    "linkFailed": "无法链接该提及"
   },
   "outgoingLinks": {
     "summary": "{count, plural, other {# 条出链}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "无法将笔记添加到画布"
   },
   "suggestedTags": {
-    "label": "建议的标签：",
-    "hint": "与此笔记最相似的笔记所共用的标签。选择之后才会添加。",
-    "acceptAria": "添加标签 {tag}",
-    "support": "{count, plural, other {用于 # 篇相似笔记}}",
-    "dismiss": "隐藏建议的标签"
+    "support": "{count, plural, other {用于 # 篇相似笔记}}"
   },
   "comments": {
     "railAria": "评论",
@@ -631,11 +822,9 @@
     "toolbarComment": "评论",
     "commentPlaceholder": "添加评论…",
     "createdTooltip": "创建于 {date} {time}",
-    "cancel": "取消",
     "resolve": "解决",
     "edit": "编辑评论",
     "delete": "删除评论",
-    "replyPlaceholder": "回复…",
     "attachAria": "附加文件",
     "mentionAria": "提及人物、页面或日期",
     "sendAria": "发送评论",
@@ -648,13 +837,7 @@
       "code": "代码"
     },
     "openImageAria": "打开图片 {name}",
-    "openAttachmentAria": "打开附件 {name}",
-    "kind": {
-      "comment": "评论",
-      "addition": "新增",
-      "deletion": "删除",
-      "substitution": "替换"
-    }
+    "openAttachmentAria": "打开附件 {name}"
   },
   "tagsRow": {
     "aria": "标签",
@@ -663,6 +846,7 @@
     "removeAria": "移除标签：{tag}",
     "inputPlaceholder": "输入标签名称…",
     "recent": "最近",
+    "suggested": "推荐",
     "matching": "匹配",
     "all": "所有标签",
     "none": "未找到标签",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "属性",
     "noteAria": "笔记属性",
-    "workspaceAria": "工作区属性",
     "listAria": "属性列表",
     "add": "添加属性",
     "addDescription": "为此笔记添加新属性",
@@ -723,7 +906,6 @@
       "inProgress": "进行中",
       "done": "已完成"
     },
-    "projectAlreadySet": "此笔记已有项目属性",
     "projectPlaceholder": "无项目",
     "projectSearch": "搜索项目",
     "projectEmpty": "没有项目",
@@ -755,6 +937,9 @@
     "repositionHint": "拖动以调整位置",
     "repositionSave": "保存",
     "repositionCancel": "取消",
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "resize": "拖动以调整封面大小",
     "credit": "照片由 {name} 拍摄，来自 Unsplash",
     "focusFailed": "无法保存封面位置",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "筛选",
-      "filters": "筛选条件",
-      "clearAll": "全部清除",
-      "noFiltersApplied": "未应用筛选条件",
-      "addFiltersToNarrowDownYourNotes": "添加筛选条件以缩小笔记范围",
       "match": "匹配",
-      "allAnd": "全部（与）",
-      "anyOr": "任意（或）",
-      "ofTheFollowing": "以下条件：",
       "match2": "匹配",
       "all": "全部",
       "any": "任意",
-      "of": "条件：",
       "addCondition": "添加条件",
       "addFilter": "添加筛选条件",
       "addGroup": "添加分组",
@@ -995,7 +1172,6 @@
       "available": "可用函数：",
       "preview": "预览",
       "fixExpressionErrorsToSeePreview": "修复表达式错误以查看预览",
-      "usingNote": "使用笔记：“",
       "cancel": "取消",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "正在加载文件夹…",
       "suggested": "建议",
       "bestMatch": "最佳匹配",
-      "current": "当前）",
       "allFolders": "所有文件夹",
-      "noFoldersMatch": "没有匹配的文件夹",
-      "create": "创建",
       "cancel": "取消",
       "currentFolderBadge": "（当前）",
       "noFoldersMatchQuery": "没有与“{query}”匹配的文件夹",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "默认",
       "viewActions": "视图操作",
-      "rename": "重命名",
       "duplicate": "创建副本",
       "setAsDefault": "设为默认",
       "delete": "删除",
-      "createNewView": "新建视图",
-      "createNewView2": "新建视图",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "新建一个包含自定义列、筛选条件和排序的视图。",
-      "viewName": "视图名称",
       "myCustomView": "我的自定义视图",
-      "baseConfiguration": "基础配置",
-      "copyFromCurrentView": "从当前视图复制",
-      "startFreshDefaultColumns": "全新开始（默认列）",
       "cancel": "取消",
-      "renameView": "重命名视图",
-      "enterANewNameForThisView": "为此视图输入新名称。",
-      "viewName2": "视图名称",
-      "viewName3": "视图名称",
-      "cancel2": "取消",
       "deleteView": "删除视图",
       "areYouSureYouWantToDelete": "确定要删除 \"",
       "thisActionCannotBeUndone": "此操作无法撤销。",
@@ -1077,22 +1237,17 @@
       "layout": "布局",
       "table": "表格",
       "list": "列表",
-      "gallery": "画廊",
-      "createView": "创建视图",
-      "save": "保存"
+      "gallery": "画廊"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "无法加载 PDF：",
-      "download": "下载",
       "download2": "下载",
       "noFileAttached": "没有附加文件",
       "resizePdf": "调整 PDF 大小",
       "resizeHtml": "调整 HTML 嵌入大小",
       "alignLeft": "左对齐",
       "alignCenter": "居中对齐",
-      "alignRight": "右对齐",
-      "previousPage": "上一页",
-      "nextPage": "下一页"
+      "alignRight": "右对齐"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "在任务面板中打开",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "美国信纸（8.5 x 11 英寸）",
       "legal85X14In": "美国法律用纸（8.5 x 14 英寸）"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "日.月.年"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "已同步"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "字数",
       "characters": "字符数",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "尚无书签",
       "moreOptions": "更多选项",
       "remove": "移除"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "打开",
-      "openToTheSide": "在侧边打开",
-      "pinToTabs": "固定到标签页",
-      "edit": "编辑",
-      "delete": "删除",
-      "copyLink": "复制链接"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "正在加载标签…",
@@ -1168,26 +1309,9 @@
       "cancel": "取消"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "返回",
-      "notes": "笔记",
-      "loadingNotes": "正在加载笔记…",
-      "noNotesWithThisTag": "没有带有此标签的笔记",
-      "addThisTagToANoteToSeeItHere": "为笔记添加此标签后，笔记会显示在这里",
-      "pinned": "已置顶",
-      "allNotes": "所有笔记",
-      "allNotesArePinned": "所有笔记均已置顶",
-      "tasks": "任务",
-      "unpinFromTag": "取消置顶",
-      "unpin": "取消置顶",
-      "pinToTag": "在标签中置顶",
-      "pin": "置顶",
       "tagActions": "标签操作",
-      "editTagName": "编辑标签名称",
       "changeColor": "更改颜色",
-      "deleteTag": "删除标签",
-      "recent": "最近",
-      "created": "创建时间",
-      "alphabetical": "按字母顺序"
+      "deleteTag": "删除标签"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "重命名标签",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "新建笔记",
-      "viewSettings": "视图设置",
-      "displayDensity": "显示密度",
-      "comfortable": "舒适",
-      "compact": "紧凑",
-      "showSummaries": "显示汇总",
       "cancel": "取消"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "打开标签主页"
   },
   "tagView": {
-    "moreActions": "更多操作",
     "pin": {
       "action": "在标签中置顶 {count, plural, other {# 篇笔记}}",
       "success": "已在标签中置顶 {count, plural, other {# 篇笔记}}",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, other {# 篇笔记}}"
+    },
+    "noteTasks": {
+      "expand": "显示 {title} 的任务",
+      "collapse": "隐藏 {title} 的任务",
+      "list": "{title} 中的任务",
+      "progressOpen": "{open}/{total} 未完成",
+      "progressDone": "{total}/{total} 已完成",
+      "nextDue": "下一个截止",
+      "reminder": "已设置提醒"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "为此搜索命名",
     "saveDialogPlaceholder": "例如：工作会议",
     "cancel": "取消",
-    "save": "保存",
-    "addToFilterHint": "按住 Ctrl/Cmd 点击标签，即可将其加入筛选"
+    "save": "保存"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "备选",
+      "overflow": "暂存区",
+      "menu": "写作工具",
+      "close": "关闭写作工具"
+    },
+    "menu": {
+      "aria": "编辑器操作",
+      "cut": "剪切",
+      "copy": "复制",
+      "paste": "粘贴",
+      "selectAll": "全选",
+      "undo": "撤销",
+      "redo": "重做",
+      "comment": "评论",
+      "addAlternative": "添加备选",
+      "suggestAlternatives": "建议备选",
+      "ghost": "淡化",
+      "revive": "恢复",
+      "stash": "移入暂存区",
+      "noSpellingSuggestions": "没有建议",
+      "addToDictionary": "添加到词典",
+      "clipboardFailed": "无法使用剪贴板"
+    },
+    "alternatives": {
+      "railAria": "备选",
+      "hint": "第 {position} 个，共 {total} 个 ↑ ↓",
+      "original": "原文",
+      "byYou": "由你撰写",
+      "byAI": "AI 建议",
+      "showing": "当前显示",
+      "addPlaceholder": "添加备选…",
+      "removeSuggestions": "移除建议",
+      "removeVariant": "移除备选",
+      "empty": "选中文本并选择“添加备选”，即可保留其他表达方式。",
+      "suggesting": "正在建议备选…",
+      "suggestFailed": "无法建议备选",
+      "noSuggestions": "没有新的备选建议"
+    },
+    "overflow": {
+      "railAria": "暂存区",
+      "addPlaceholder": "写下想保留的内容…",
+      "empty": "你暂存或写在这里的内容会留在这篇笔记中，但不在正文里。",
+      "dragHint": "拖入笔记",
+      "copy": "复制",
+      "copied": "已复制",
+      "delete": "删除"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "锁定笔记",
+    "unlockNote": "解锁笔记",
+    "lockFolder": "锁定文件夹",
+    "unlockFolder": "解锁文件夹",
+    "toggleFailed": "无法更改锁定状态",
+    "readOnlyIndicator": "已锁定。对你和智能体均为只读。",
+    "externalEditRestored": "“{title}”已锁定，因此其外部编辑已被撤销",
+    "externalEditRestoredHint": "编辑后的文本已保存在该笔记的版本历史中。"
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "人物",
+        "plural": "人物",
+        "fields": {
+          "company": "公司",
+          "role": "职位",
+          "email": "电子邮件",
+          "phone": "电话"
+        },
+        "inverse": {
+          "company": "人物"
+        },
+        "template": {
+          "name": "人物",
+          "context": "背景",
+          "contextHint": "我们如何认识，对方关心什么",
+          "notes": "笔记"
+        }
+      },
+      "company": {
+        "name": "公司",
+        "plural": "公司",
+        "fields": {
+          "website": "网站",
+          "industry": "行业",
+          "location": "地点"
+        },
+        "template": {
+          "name": "公司",
+          "overview": "概览",
+          "overviewHint": "他们做什么，我们在那里认识谁",
+          "notes": "笔记"
+        }
+      },
+      "meeting": {
+        "name": "会议",
+        "plural": "会议",
+        "fields": {
+          "date": "日期",
+          "attendees": "参会者",
+          "company": "公司"
+        },
+        "inverse": {
+          "attendees": "会议",
+          "company": "会议"
+        },
+        "template": {
+          "name": "会议",
+          "agenda": "议程",
+          "notes": "笔记",
+          "actionItems": "行动项"
+        }
+      },
+      "book": {
+        "name": "书籍",
+        "plural": "书籍",
+        "fields": {
+          "author": "作者",
+          "shelf": "书架",
+          "rating": "评分",
+          "finished": "读完日期"
+        },
+        "shelf": {
+          "toRead": "想读",
+          "reading": "在读",
+          "read": "已读"
+        },
+        "template": {
+          "name": "书籍",
+          "highlights": "高亮",
+          "thoughts": "想法"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} 现在是{tag}。已添加模板。",
+      "templateChanged": "添加模板后笔记发生了变化，因此保持原样。",
+      "undoFailed": "无法撤销",
+      "addFailed": "无法添加标签",
+      "removeFailed": "无法移除标签",
+      "removedKept": "已移除 #{tag}。保留了 {count} 个值。",
+      "removedKeptOne": "已移除 #{tag}。保留了 1 个值。"
+    },
+    "picker": {
+      "create": "创建 #{tag}",
+      "fillsTemplate": "用{tag}模板填充这篇空笔记"
+    },
+    "hub": {
+      "strip": {
+        "title": "现成的标签",
+        "subtitle": "自带字段的标签。在你为笔记添加标签之前，笔记保持原样。",
+        "notNow": "暂不",
+        "add": "添加",
+        "addFields": "添加字段",
+        "added": "已添加",
+        "alreadyOn": "已用于 {count} 篇笔记",
+        "alreadyOnOne": "已用于 1 篇笔记"
+      },
+      "dialog": {
+        "title": "为 #{tag} 添加{preset}字段？",
+        "body": "#{tag} 已用于 {count} 篇笔记。这些笔记会保留原有的全部内容，并获得这些字段，在有人填写之前为空。",
+        "bodyOne": "#{tag} 已用于 1 篇笔记。该笔记会保留原有的全部内容，并获得这些字段，在有人填写之前为空。",
+        "template": "模板（{sections}）只会填充空笔记。",
+        "alsoAddsPrefix": "还会添加",
+        "alsoAddsSuffix": "用于{field}字段。",
+        "useAnotherName": "使用其他名称",
+        "nameLabel": "新标签名称",
+        "namePlaceholder": "contact",
+        "cancel": "取消",
+        "addFields": "添加字段"
+      },
+      "toast": {
+        "added": "已添加 #{tag}",
+        "addedFields": "已为 #{tag} 添加{preset}字段"
+      },
+      "hasFields": "有字段"
+    },
+    "tasks": {
+      "thisTask": "此任务",
+      "viaTag": "{name}，来自 #{via}",
+      "clearValue": "清除{name}",
+      "chipAria": "{field}：{title}"
+    },
+    "panel": {
+      "via": "来自 #{tag}",
+      "groupMenu": "{tag}选项",
+      "openTag": "打开 #{tag}",
+      "thisNote": "此笔记"
+    },
+    "offer": {
+      "text": "在你的文本下方添加{tag}模板",
+      "add": "添加",
+      "dismiss": "忽略",
+      "addFailed": "无法添加模板"
+    },
+    "settings": {
+      "title": "#{tag} 的设置",
+      "close": "关闭",
+      "cancel": "取消",
+      "save": "保存",
+      "onCounts": "用于 {notes, plural, other {# 篇笔记}}和 {tasks, plural, other {# 个任务}}",
+      "onNotes": "用于 {count, plural, other {# 篇笔记}}",
+      "headerFields": "{count, plural, other {# 个字段}}",
+      "editTag": "编辑标签",
+      "syncNote": "更改会同步到你的其他设备",
+      "newerVersion": "较新版本的 Memry 更改了此标签。请更新 Memry 后在此编辑。",
+      "sections": {
+        "appearance": "外观",
+        "extends": "继承",
+        "fields": "字段 · {count}",
+        "template": "模板"
+      },
+      "appearance": {
+        "icon": "图标",
+        "color": "颜色",
+        "customColor": "自定义",
+        "category": "类别",
+        "noCategory": "无类别"
+      },
+      "extends": {
+        "nothing": "无",
+        "hint": "继承另一个标签的字段，并显示在它的表格中。",
+        "hintSet": "{tag}笔记会获得{parent}的字段，并出现在{parent}表格中。"
+      },
+      "types": {
+        "text": "文本",
+        "number": "数字",
+        "date": "日期",
+        "url": "URL",
+        "status": "状态",
+        "select": "单选",
+        "multiselect": "多选",
+        "checkbox": "复选框",
+        "relation": "关联"
+      },
+      "fields": {
+        "empty": "还没有字段。添加一个字段，让每篇 #标签 笔记都有相同的属性。",
+        "fromParent": "来自 #{tag} · 请在那里编辑",
+        "inverseSub": "在{target}上显示为{inverse}",
+        "anyNoteSub": "链接到任意笔记",
+        "actions": "{field}的操作",
+        "rename": "重命名…",
+        "relationSettings": "关联设置",
+        "remove": "移除…"
+      },
+      "addField": {
+        "button": "添加字段",
+        "namePlaceholder": "字段名称",
+        "existing": "现有属性",
+        "existingSub": "{type} · 用于 {count, plural, other {# 篇笔记}} · 复用",
+        "newType": "新字段类型",
+        "relationSub": "链接到带有某个标签的笔记",
+        "submit": "添加字段",
+        "reserved": "{name}为保留名称，不能用作字段。",
+        "taken": "#{tag} 已有{name}。"
+      },
+      "relation": {
+        "target": "指向带有以下标签的笔记",
+        "pickTag": "选择标签",
+        "howMany": "数量",
+        "one": "一个",
+        "many": "多个",
+        "inverseLabel": "在{target}页面上，将它们列为",
+        "inverseLabelAny": "在被链接的页面上，将它们列为",
+        "inverseHint": "每个{target}上的只读列表。不会向{target}笔记写入任何内容。",
+        "inverseHintAny": "每篇被链接笔记上的只读列表。不会向这些笔记写入任何内容。"
+      },
+      "shared": {
+        "title": "#{tag} 上的新字段",
+        "existsWith": "此保险库中已存在{name}，选项为{options}。",
+        "existsAs": "此保险库中已存在{name}，类型为{type}属性。",
+        "shareWith": "#{tag} 将与你的 {others} 篇笔记共享它。",
+        "shareAny": "#{tag} 将与你的其他笔记共享它。",
+        "useInstead": "改用{name}",
+        "share": "共享{name}"
+      },
+      "template": {
+        "edit": "编辑模板",
+        "none": "还没有模板。模板会在空笔记获得该标签时填充它们。",
+        "create": "创建模板",
+        "defaultHeading": "笔记",
+        "inherited": "来自 #{tag}",
+        "autofill": "空笔记获得 #{tag} 时自动填充"
+      },
+      "remove": {
+        "title": "从 #{tag} 中移除{field}？",
+        "body": "{field}已在 {filled, plural, other {# 篇笔记}}中填写。这些值会作为普通属性保留在笔记上；{empty, plural, other {# 个空位将消失}}。",
+        "confirm": "移除字段"
+      },
+      "rename": {
+        "title": "将{from}重命名为{to}",
+        "titleEmpty": "重命名{from}",
+        "label": "新名称",
+        "body": "{count, plural, other {# 篇笔记}}有{field}的值。Memry 会在每个文件及其属性中重命名该键；Obsidian 也会看到新名称。",
+        "progress": "正在笔记中重命名",
+        "confirm": "重命名",
+        "taken": "此标签已有{name}。",
+        "done": "已在 {count, plural, other {# 项}}中将{from}重命名为{to}。",
+        "skipped": "已在 {count, plural, other {# 项}}中将{from}重命名为{to}。{locked, plural, =0 {} other {# 篇已锁定的笔记将在解锁后完成。}}{existing, plural, =0 {} other {# 篇笔记已有{to}，两者都会保留。}}"
+      },
+      "delete": {
+        "button": "删除标签",
+        "title": "删除 #{tag}？",
+        "body": "#{tag} 将从 {notes, plural, other {# 篇笔记}}中移除，该标签连同其 {fields, plural, other {# 个字段}}和模板一并消失。",
+        "bodyNoTemplate": "#{tag} 将从 {notes, plural, other {# 篇笔记}}中移除，该标签连同其 {fields, plural, other {# 个字段}}一并消失。",
+        "bodyPlain": "#{tag} 将从所有在标签中包含它的笔记中移除。",
+        "statNotes": "笔记保留其文本",
+        "statValues": "值保留为属性",
+        "plainText": "正文中提到 #{tag} 的笔记会将其保留为纯文本。",
+        "confirm": "删除标签",
+        "done": "已删除 #{tag}。"
+      },
+      "errors": {
+        "addField": "无法添加字段。",
+        "removeField": "无法移除字段。",
+        "renameField": "无法重命名字段。",
+        "moveField": "无法移动字段。",
+        "relation": "无法保存关联。",
+        "extends": "无法更改此标签的继承对象。",
+        "template": "无法更新模板。",
+        "deleteTag": "无法删除标签。",
+        "icon": "无法更改图标。",
+        "color": "无法更改颜色。",
+        "category": "无法更改类别。"
+      }
+    },
+    "fill": {
+      "action": "从笔记填充",
+      "reading": "正在读取笔记…",
+      "disclosure": "你的智能体模型（{model}）会读取这篇笔记以建议取值。只会发送这篇笔记。在你接受之前不会保存任何内容。",
+      "disclosureLocal": "你的本地模型（{model}）会在此设备上读取这篇笔记以建议取值。没有任何内容离开此设备，在你接受之前也不会保存任何内容。",
+      "disclosureMany": "你的智能体模型（{model}）会逐篇读取这些笔记以建议取值。只会发送这些笔记。在你接受之前不会保存任何内容。",
+      "disclosureLocalMany": "你的本地模型（{model}）会在此设备上读取这些笔记以建议取值。没有任何内容离开此设备，在你接受之前也不会保存任何内容。",
+      "suggest": "建议取值",
+      "notNow": "暂不",
+      "countOne": "· {count} 条建议",
+      "count": "· {count} 条建议",
+      "dismiss": "忽略",
+      "acceptAll": "全部接受",
+      "accept": "接受{field}",
+      "reject": "拒绝{field}",
+      "notInNote": "不在笔记中",
+      "createHint": "接受后会创建新的 #{tag}",
+      "nothingFound": "这篇笔记中没有可填入空字段的内容",
+      "failed": "无法建议取值。{message}",
+      "saveFailed": "无法保存已接受的取值",
+      "bulkAction": "填充空字段",
+      "bulkTitle": "填充空字段",
+      "bulkReading": "{done}/{total} 篇笔记 · 正在读取笔记…",
+      "bulkRead": "已读取 {done}/{total} 篇笔记",
+      "stop": "停止",
+      "name": "名称",
+      "nothingInRow": "未找到内容",
+      "found": "找到 {count} 项",
+      "reviewOneByOne": "逐个审阅",
+      "acceptRow": "接受{title}的取值",
+      "rejectRow": "跳过{title}",
+      "bulkSavedOne": "已在 {notes} 篇笔记上填充 {count} 个字段",
+      "bulkSaved": "已在 {notes} 篇笔记上填充 {count} 个字段"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "将{title}创建为",
+      "asPrefix": "将",
+      "asSuffix": "创建为",
+      "failed": "无法创建笔记",
+      "lastUsed": "上次使用",
+      "noteWord": "笔记",
+      "plainNote": "普通笔记",
+      "readyMade": "现成的标签",
+      "row": "创建“{title}”",
+      "rowHint": "作为{types}"
+    },
+    "hover": {
+      "at": "在",
+      "lastMet": "上次见面 · {title}",
+      "lastMetOn": "上次见面 {date} · {title}",
+      "mentionedIn": "{count, plural, other {在 # 篇笔记中被提及}}",
+      "open": "打开",
+      "tasks": "{count, plural, other {# 个任务 · {field}}}"
+    },
+    "inline": {
+      "aria": "文本中的 #{tag}",
+      "explain": "在文本中，标签只是一个标记。这篇笔记会列在 #{tag} 的“提及于”之下。",
+      "made": "已将 #{tag} 添加到这篇笔记的标签",
+      "make": "将这篇笔记设为{tag}",
+      "makeFailed": "无法添加标签",
+      "makeHint": "将 #{tag} 添加到页眉并显示其字段",
+      "meta": "{count, plural, other {# 个对象}} · {fields, plural, other {# 个字段}}",
+      "metaNamed": "{count, plural, =1 {# {one}} other {# {other}}} · {fields, plural, other {# 个字段}}",
+      "open": "打开 #{tag}",
+      "remove": "从文本中移除标签"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "作为{field}",
+      "due": "截止 {date}",
+      "inTheText": "在文本中",
+      "mentionedIn": "提及于",
+      "tasks": "任务",
+      "title": "链接到此处"
+    },
+    "mention": {
+      "notes": "笔记"
+    },
+    "picker": {
+      "create": "新建{tag}",
+      "createNamed": "新建{tag}“{title}”",
+      "empty": "没有匹配项",
+      "search": "搜索{tag}",
+      "untitled": "新建{tag}"
+    },
+    "quickFields": {
+      "add": "添加{field}",
+      "aria": "{title}的前几个字段",
+      "done": "完成",
+      "later": "稍后",
+      "newObject": "新建{tag}",
+      "saveFailed": "无法保存字段"
+    },
+    "table": {
+      "untitled": "新建{tag}",
+      "newInGroup": "在{group}中新建{tag}",
+      "newInGroupHint": "⌘↵ 在新标签页中打开",
+      "new": "新建{tag}",
+      "includes": "{field}包含",
+      "removeFilter": "移除筛选",
+      "shown": "{shown}/{total}",
+      "saveView": "保存视图",
+      "mentionedMeta": "{count, plural, other {# 篇文本中含有 '#'{tag} 的笔记}}",
+      "saveFailed": "无法保存字段",
+      "created": "已创建{title}"
+    },
+    "relationDrop": {
+      "title": "将 #{tag} 添加到“{title}”？",
+      "body": "此字段只链接带有 #{tag} 的笔记。Memry 会将 #{tag} 添加到“{title}”的页眉，然后在此处链接它。",
+      "confirm": "添加 #{tag} 并链接",
+      "cancel": "取消",
+      "added": "“{title}”现在是 #{tag}，并已链接",
+      "notANote": "这里只能将笔记链接为 #{tag}",
+      "failed": "无法链接这篇笔记"
+    }
   },
   "names": {
     "also": "又名",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "搜索笔记",
     "pickerEmpty": "没有匹配的笔记",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "添加详情"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "传送门",
+        "subtext": "实时显示来自别处的笔记或块"
+      },
+      "searchPortal": {
+        "title": "搜索传送门",
+        "subtext": "符合某个查询的块的实时列表"
+      }
+    },
+    "picker": {
+      "aria": "选择要传送的笔记或块",
+      "notes": "笔记",
+      "blocks": "块",
+      "loading": "正在搜索…",
+      "empty": "没有匹配的笔记或块",
+      "hintInsert": "插入传送门",
+      "hintClose": "关闭",
+      "keyEsc": "Esc",
+      "create": "创建笔记“{query}”",
+      "createFailed": "无法创建该笔记",
+      "stampFailed": "无法为传送门准备该块",
+      "retargetFailed": "无法将传送门指向该块"
+    },
+    "insert": {
+      "cycle": "传送门不能在笔记内部显示该笔记自身。"
+    },
+    "copy": {
+      "done": "传送门已复制。可将其粘贴到任何笔记中。",
+      "failed": "无法为此块复制传送门"
+    },
+    "menu": {
+      "copyAsPortal": "复制为传送门",
+      "hideInPortal": "在此传送门中隐藏"
+    },
+    "usage": {
+      "chipAria": "{count, plural, other {在其他 # 处被使用}}"
+    },
+    "whereUsed": {
+      "aria": "此块的使用位置",
+      "portals": "传送门",
+      "links": "链接",
+      "openBeside": "在旁边打开",
+      "loadFailed": "无法加载此块的显示位置"
+    },
+    "hiddenBlocks": {
+      "title": "已隐藏的块",
+      "showAll": "全部显示",
+      "search": "搜索已隐藏的块",
+      "showFailed": "无法显示此块"
+    },
+    "searchQuery": {
+      "titleNew": "搜索传送门",
+      "titleEdit": "编辑查询",
+      "text": "包含文字",
+      "textPlaceholder": "块中的文字",
+      "tag": "标签",
+      "tagPlaceholder": "exam",
+      "limit": "上限",
+      "footer": "最多 {limit} 条结果。",
+      "create": "创建",
+      "apply": "应用"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "在所有位置删除此块？",
+        "note": "在所有位置删除此笔记？"
+      },
+      "description": {
+        "block": "“{title}”还出现在其他 {count, plural, other {# 篇笔记}}中。",
+        "note": "“{title}”在其他 {count, plural, other {# 篇笔记}}中被显示或链接。"
+      },
+      "manyNotes": "{count} 篇笔记",
+      "source": "{title}（来源）",
+      "removeHere": "改为在此处隐藏",
+      "cancel": "取消",
+      "everywhere": "在所有位置删除",
+      "undoToast": "{count, plural, other {被删除的块曾显示在其他 # 篇笔记中。}}",
+      "undo": "撤销"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "全文",
+      "brief": "简要",
+      "key": "要点",
+      "takeaway": "结论",
+      "topic": "主题"
+    },
+    "chrome": {
+      "fold": "折叠笔记",
+      "unfold": "已折叠为{level}。显示全文",
+      "words": "{count, plural, other {# 个词}}",
+      "writing": "正在撰写…",
+      "writtenBy": "由 {agent} 撰写",
+      "retry": "上次运行失败 · 重试",
+      "captionOff": "请在“设置 → AI”中开启“总结长笔记”",
+      "captionNoAgent": "未连接智能体 · 设置 → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "笔记太长？先速览一下。",
+      "body": "将它折叠为关键句，再只展开你需要的段落。",
+      "dismiss": "知道了"
+    },
+    "pill": {
+      "opened": "{count, plural, other {已展开 # 个段落}}",
+      "escape": "esc",
+      "copy": "复制为文本",
+      "copied": "已复制",
+      "aria": "折叠视图",
+      "hintMac": "在此栏上双指捏合、⌘ 加滚动或滚动即可缩放 · 点击段落即可展开",
+      "hint": "在此栏上双指捏合、Ctrl 加滚动或滚动即可缩放 · 点击段落即可展开"
+    },
+    "view": {
+      "aria": "折叠的{level}视图",
+      "paragraphOpen": "已展开为全文 · 再次点击可折叠",
+      "paragraphFold": "折叠此段落",
+      "paragraphOpenAction": "完整展开此段落",
+      "unfoldSection": "展开章节{heading}",
+      "jumpToParagraph": "完整显示此段落：{topic}",
+      "untitledSection": "无标题",
+      "skipped": {
+        "code": "… {count, plural, other {# 个代码块}}",
+        "table": "… {count, plural, other {# 个表格}}",
+        "image": "… {count, plural, other {# 张图片}}",
+        "callout": "… {count, plural, other {# 个标注}}",
+        "embed": "… {count, plural, other {# 个嵌入}}",
+        "other": "… {count, plural, other {另有 # 个块}}"
+      }
+    }
   }
 }

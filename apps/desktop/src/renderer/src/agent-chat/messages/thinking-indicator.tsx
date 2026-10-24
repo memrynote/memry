@@ -53,7 +53,7 @@ export function useSilentSince(signal: string, active: boolean): number | null {
   const [silence, setSilence] = useState<{ signal: string; since: number } | null>(null)
 
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
     const lastChange = Date.now()
     const timer = setTimeout(() => setSilence({ signal, since: lastChange }), SILENCE_MS)
     return () => clearTimeout(timer)

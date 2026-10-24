@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Nu a fost găsită – faceți clic pentru a crea „{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "Acțiuni pentru legătură",
+    "open": "Deschide",
+    "openInNewTab": "Deschide într-o filă nouă",
+    "openToTheSide": "Deschide alături",
+    "edit": "Editează legătura",
+    "copy": "Copiază legătura",
+    "unlink": "Elimină legătura",
+    "displayRow": "Afișare…",
+    "sizeNone": "Niciuna",
+    "sizeSmall": "Mică",
+    "sizeMedium": "Medie",
+    "showCover": "Afișează coperta",
+    "showPreview": "Afișează previzualizarea",
+    "copyFailed": "Legătura nu a putut fi copiată"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Reimportă din Readwise",
+    "refreshAction": "Reîmprospătează informațiile cărții",
+    "syncsOn": "Readwise se sincronizează pe {device}.",
+    "syncsOnAnotherDevice": "Readwise se sincronizează pe alt dispozitiv.",
+    "takeOverHint": "Sincronizează pe acel dispozitiv sau preia în Setări → Importare.",
+    "reimport": {
+      "title": "Reimporți „{title}” din Readwise?",
+      "body": "Secțiunea Readwise este rescrisă de la zero. Tot ce ai scris în ea se pierde.",
+      "note": "Textul din afara secțiunii și proprietățile notiței rămân neschimbate.",
+      "cancel": "Anulează",
+      "confirm": "Reimportă"
+    },
+    "commands": {
+      "reimported": "Reimportat din Readwise",
+      "refreshed": "Informațiile cărții au fost reîmprospătate",
+      "failed": "Nu s-a putut finaliza comanda Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Nicio notiță selectată",
@@ -25,6 +61,7 @@
       "willSync": "Notița se va sincroniza în cloud",
       "renameFailed": "Nu s-a putut redenumi notița",
       "titleRequired": "Notița trebuie să aibă un titlu",
+      "duplicateTitle": "Altă notiță din {folder} se numește tot „{title}”. Legăturile către aceste notițe vor include dosarul lor.",
       "toggleLocalOnlyFailed": "Nu s-a putut schimba setarea „doar local”",
       "toggleFullWidthFailed": "Nu s-a putut activa/dezactiva lățimea completă",
       "pathCopied": "Cale copiată",
@@ -98,6 +135,7 @@
       "openToTheSide": "Deschide în lateral",
       "newNote": "Notiță nouă",
       "newFolder": "Dosar nou",
+      "showTasks": "Afișează sarcinile",
       "expandSubfolders": "Extinde toate subdosarele",
       "collapseSubfolders": "Restrânge toate subdosarele",
       "rename": "Redenumește",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "Elimină din marcaje",
       "journalSettings": "Setările jurnalului…"
     },
-    "nav": {
-      "label": "Navigare",
-      "ariaExpanded": "Secțiunea de navigare, extinsă",
-      "ariaCollapsed": "Secțiunea de navigare, restrânsă",
-      "saveFailed": "Nu s-a putut salva starea secțiunii de navigare"
-    },
     "viewOptions": {
       "label": "Opțiuni de vizualizare",
       "notesFirst": "Notițele înaintea dosarelor",
@@ -138,7 +170,15 @@
       "folderSuffix": "dosar",
       "moreItems": "…și încă {count}",
       "deleting": "Se șterge…",
-      "deleteCount": "Șterge {count}"
+      "deleteCount": "Șterge {count}",
+      "journalFolderWarning": "Aceasta include dosarul jurnalului. Fiecare intrare din jurnal din el este ștearsă, pe toate dispozitivele tale."
+    },
+    "journalChange": {
+      "leaveTitle": "Transformi intrările din jurnal în notițe?",
+      "leaveBody": "Mutate din dosarul jurnalului sau redenumite în afara formatului de dată, intrările din jurnal devin notițe obișnuite și părăsesc Jurnalul. Pe celelalte dispozitive, acele zile sunt eliminate din Jurnal și apar notițele în loc.",
+      "joinTitle": "Transformi notițele în intrări de jurnal?",
+      "joinBody": "Fișierele denumite după formatul de dată al jurnalului din dosarul jurnalului devin intrări de jurnal. Pe celelalte dispozitive, acele notițe sunt înlocuite cu intrări de jurnal.",
+      "confirm": "Continuă"
     },
     "toast": {
       "selectionBookmarked": "Elemente adăugate la marcaje: {count}",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "Titlu",
       "listPlaceholder": "Element din listă",
       "todoPlaceholder": "Element de făcut",
-      "htmlComment": "Comentariu HTML ascuns"
+      "htmlComment": "Comentariu HTML ascuns",
+      "percentComment": "Comentariu ascuns",
+      "readwise": {
+        "noteStart": "Readwise · se sincronizează automat",
+        "noteEnd": "Sfârșitul secțiunii Readwise",
+        "dayStart": "Readwise · evidențierile de azi",
+        "dayEnd": "Sfârșitul Readwise",
+        "hint": "Editează în această secțiune și Readwise nu o mai actualizează."
+      }
     },
     "table": {
       "keyboardMenuAria": "Acțiuni de tabel pentru rândul {row}, coloana {column}",
-      "keyboardMenuTitle": "Rândul {row} · Coloana {column}"
+      "keyboardMenuTitle": "Rândul {row} · Coloana {column}",
+      "sizePicker": {
+        "aria": "Dimensiunea tabelului. Folosește tastele săgeți pentru a alege rândurile și coloanele, apoi apasă Enter.",
+        "size": "{rows, plural, one {# rând} few {# rânduri} other {# de rânduri}} × {columns, plural, one {# coloană} few {# coloane} other {# de coloane}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, one {Șterge rândul} few {Șterge # rânduri} other {Șterge # de rânduri}}",
+        "addRowsAbove": "{count, plural, one {Adaugă un rând deasupra} few {Adaugă # rânduri deasupra} other {Adaugă # de rânduri deasupra}}",
+        "addRowsBelow": "{count, plural, one {Adaugă un rând dedesubt} few {Adaugă # rânduri dedesubt} other {Adaugă # de rânduri dedesubt}}",
+        "deleteColumns": "{count, plural, one {Șterge coloana} few {Șterge # coloane} other {Șterge # de coloane}}",
+        "addColumnsLeft": "{count, plural, one {Adaugă o coloană la stânga} few {Adaugă # coloane la stânga} other {Adaugă # de coloane la stânga}}",
+        "addColumnsRight": "{count, plural, one {Adaugă o coloană la dreapta} few {Adaugă # coloane la dreapta} other {Adaugă # de coloane la dreapta}}"
+      }
     },
     "list": {
       "bulleted": "Listă cu marcatori",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "Ascunde graful local",
       "showLocalGraph": "Afișează graful local",
       "moreActions": "Mai multe acțiuni",
+      "searchActions": "Caută acțiuni...",
+      "noMatchingActions": "Nicio acțiune potrivită",
       "find": "Caută…",
       "versionHistory": "Istoricul versiunilor",
       "export": "Exportă",
@@ -215,6 +277,8 @@
       "notSynced": "Nesincronizat încă pe acest dispozitiv",
       "revealFailed": "Nu s-a putut afișa locația fișierului",
       "openFailed": "Nu s-a putut deschide fișierul",
+      "showAsLink": "Afișează ca legătură",
+      "showAsEmbed": "Afișează încorporat",
       "missingTitle": "Fișierul atașamentului lipsește",
       "missingExpected": "Fișier așteptat: {name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "Redenumește",
       "renamed": "Redenumit în {name}",
       "failed": "Nu s-a putut redenumi atașamentul"
+    },
+    "imageLightbox": {
+      "menuItem": "Vezi mai mare",
+      "title": "Vizualizator de imagini",
+      "zoomIn": "Mărește",
+      "zoomOut": "Micșorează",
+      "reset": "Resetează zoomul"
+    },
+    "imageCrop": {
+      "menuItem": "Decupează…",
+      "title": "Decupează imaginea",
+      "description": "Trage peste imagine pentru a alege ce arată notița. Fișierul original rămâne neschimbat.",
+      "reset": "Afișează imaginea întreagă",
+      "cancel": "Anulează",
+      "apply": "Decupează",
+      "unavailable": "Imaginea nu s-a încărcat încă, deci nu poate fi decupată"
     },
     "attachmentsDialog": {
       "title": "Atașamente",
@@ -248,12 +328,24 @@
       "title": "Casetă explicativă",
       "group": "Blocuri de bază",
       "subtext": "Evidențiați informațiile importante",
+      "customSubtext": "Tipul tău personalizat de casetă explicativă",
       "changeType": "Schimbă tipul casetei explicative",
+      "expand": "Extinde caseta explicativă",
+      "collapse": "Restrânge caseta explicativă",
       "menuLabel": "Tipul casetei explicative",
       "info": "Informație",
       "warning": "Avertisment",
       "error": "Eroare",
-      "success": "Succes"
+      "success": "Succes",
+      "note": "Notă",
+      "abstract": "Rezumat",
+      "todo": "De făcut",
+      "tip": "Sfat",
+      "important": "Important",
+      "question": "Întrebare",
+      "example": "Exemplu",
+      "quote": "Citat",
+      "bug": "Bug"
     },
     "columns": {
       "group": "Blocuri de bază",
@@ -332,6 +424,83 @@
       "invalidShape": "Definiția acestei vizualizări nu are o sursă. Alegeți una mai sus sau corectați definiția mai jos.",
       "definition": "Definiție"
     },
+    "chart": {
+      "title": "Grafic",
+      "subtext": "Reprezintă o proprietate în timp: o linie, bare sau o hartă termică de calendar",
+      "layout": "Grafic",
+      "settings": "Setările graficului",
+      "chooseProperty": "Alege ce se reprezintă",
+      "source": "Sursă",
+      "headerMeta": "{range} · {type}",
+      "property": "Proprietate",
+      "noProperties": "Nu există încă nimic de reprezentat. Adaugă mai întâi o proprietate la o intrare de jurnal sau la o notiță.",
+      "chartType": "Grafic",
+      "suggested": "Sugerat",
+      "types": {
+        "line": "Linie",
+        "bar": "Bare",
+        "heatmap": "Hartă termică"
+      },
+      "range": "Interval",
+      "lastDays": "{count, plural, one {Ultima zi} few {Ultimele # zile} other {Ultimele # de zile}}",
+      "sameDay": "Intrări din aceeași zi",
+      "aggregates": {
+        "average": "Medie",
+        "sum": "Sumă",
+        "min": "Cea mai mică",
+        "max": "Cea mai mare",
+        "count": "Număr"
+      },
+      "missingDays": "Zile lipsă",
+      "missing": {
+        "gap": "Lasă un gol",
+        "zero": "Numără ca zero"
+      },
+      "dateFrom": {
+        "label": "Data din",
+        "created": "Creare",
+        "modified": "Modificare"
+      },
+      "propertyTypes": {
+        "text": "Text",
+        "number": "Număr",
+        "checkbox": "Casetă de selectare",
+        "date": "Dată",
+        "url": "URL",
+        "status": "Stare",
+        "select": "Selecție",
+        "multiselect": "Selecție multiplă",
+        "relation": "Relație",
+        "project": "Proiect",
+        "rating": "Evaluare"
+      },
+      "noEntry": "Nicio intrare",
+      "done": "Făcut",
+      "notDone": "Nefăcut",
+      "logged": "Înregistrat",
+      "valueCount": "{count, plural, one {# valoare} few {# valori} other {# de valori}}",
+      "average": "Medie",
+      "vsPrevious": "față de perioada anterioară",
+      "lowest": "Cea mai mică",
+      "currentStreak": "Serie curentă",
+      "longestStreak": "Cea mai lungă serie",
+      "dayCount": "{count, plural, one {# zi} few {# zile} other {# de zile}}",
+      "doneDays": "Făcut",
+      "loggedDays": "Înregistrat",
+      "mostCommon": "Cea mai frecventă",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} în ultimele {days} zile",
+      "noData": "Nimic înregistrat încă în acest interval.",
+      "loadFailed": "Acest grafic nu a putut fi încărcat. Intrările în sine nu au fost modificate.",
+      "sourceJournal": "Jurnal",
+      "history": {
+        "show": "Arată istoricul",
+        "title": "Istoricul {property}",
+        "range": "Ultimele 13 săptămâni",
+        "insert": "Copiază ca bloc de grafic",
+        "copied": "Blocul de grafic a fost copiat. Lipește-l în orice notiță."
+      }
+    },
     "slashMenu": {
       "aria": "Blocuri și acțiuni",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Ca bloc pliabil",
         "asLinkedTask": "Ca sarcină legată",
         "asReminder": "Ca memento"
       },
-      "actions": {
-        "insert": "Inserează",
-        "open": "Deschide"
-      },
+      "close": "Închide meniul",
       "matchesAlias": "corespunde cu",
       "noMatch": "Niciun bloc nu corespunde cu „{query}”",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "Mutați blocul într-o notiță",
         "searchPlaceholder": "Caută notițe…",
         "noResults": "Nicio notiță potrivită",
-        "moved": "Bloc mutat în „{title}”",
         "failed": "Nu s-a putut muta blocul"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Afișează ca",
+        "embed": "Încorporat",
+        "link": "Legătură"
+      },
       "title": {
         "image": "Adaugă o imagine",
         "media": "Adaugă conținut media",
@@ -525,6 +694,11 @@
       "empty": "Tastați pentru a crea o nouă etichetă",
       "create": "Creează #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Afișează PDF-ul ca",
+      "embed": "Vizualizator încorporat",
+      "link": "Nume de fișier"
+    },
     "pasteLink": {
       "title": "Lipește ca",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "Structură",
     "aria": "Structura documentului",
-    "emptyYet": "Încă nu există titluri",
     "readTime": "Citire: {count} min",
     "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
     "created": "Creat",
-    "modified": "Modificat"
+    "modified": "Modificat",
+    "sync": {
+      "label": "Sincronizare",
+      "confirmed": "Pe server {time}",
+      "pending": "În așteptare din {time}",
+      "sent": "Se trimite",
+      "rejected": "Serverul a refuzat ultima modificare",
+      "notRecorded": "Nimic în așteptare de trimis",
+      "localOnly": "Doar local",
+      "notSyncing": "Nu se sincronizează",
+      "waiting": "În așteptarea trimiterii"
+    }
   },
   "backlinks": {
     "sortRecent": "Recent",
@@ -587,7 +771,18 @@
     "expandSection": "Extinde secțiunea de linkuri inverse",
     "showMore": "Afișează încă {count, plural, one {# link invers} few {# linkuri inverse} other {# de linkuri inverse}}",
     "more": "Încă {count}",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Afișat într-un portal"
+  },
+  "unlinkedMentions": {
+    "title": "Mențiuni nelegate",
+    "summary": "{count, plural, one {# mențiune nelegată} few {# mențiuni nelegate} other {# de mențiuni nelegate}}",
+    "sectionAria": "Mențiuni nelegate",
+    "fromAria": "Mențiuni nelegate în {title}",
+    "link": "Leagă",
+    "linkAria": "Leagă {text}",
+    "gone": "Mențiunea s-a schimbat de când a fost citită lista",
+    "linkFailed": "Mențiunea nu a putut fi legată"
   },
   "outgoingLinks": {
     "summary": "{count, plural, one {# link de ieșire} few {# linkuri de ieșire} other {# de linkuri de ieșire}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "Nu s-a putut adăuga notița în canvas"
   },
   "suggestedTags": {
-    "label": "Etichete sugerate:",
-    "hint": "Etichete comune notițelor cele mai asemănătoare cu aceasta. Nu se adaugă nimic până nu alegeți una.",
-    "acceptAria": "Adaugă eticheta {tag}",
-    "support": "{count, plural, one {Folosită în # notiță similară} few {Folosită în # notițe similare} other {Folosită în # de notițe similare}}",
-    "dismiss": "Ascunde etichetele sugerate"
+    "support": "{count, plural, one {Folosită în # notiță similară} few {Folosită în # notițe similare} other {Folosită în # de notițe similare}}"
   },
   "comments": {
     "railAria": "Comentarii",
@@ -631,11 +822,9 @@
     "toolbarComment": "Comentează",
     "commentPlaceholder": "Adaugă un comentariu…",
     "createdTooltip": "Creat pe {date}, la {time}",
-    "cancel": "Anulează",
     "resolve": "Rezolvă",
     "edit": "Editează comentariul",
     "delete": "Șterge comentariul",
-    "replyPlaceholder": "Răspunde…",
     "attachAria": "Atașează fișier",
     "mentionAria": "Menționează o persoană, pagină sau dată",
     "sendAria": "Trimite comentariul",
@@ -648,13 +837,7 @@
       "code": "Cod"
     },
     "openImageAria": "Deschide imaginea {name}",
-    "openAttachmentAria": "Deschide atașamentul {name}",
-    "kind": {
-      "comment": "Comentariu",
-      "addition": "Adăugare",
-      "deletion": "Ștergere",
-      "substitution": "Înlocuire"
-    }
+    "openAttachmentAria": "Deschide atașamentul {name}"
   },
   "tagsRow": {
     "aria": "Etichete",
@@ -663,6 +846,7 @@
     "removeAria": "Elimină eticheta: {tag}",
     "inputPlaceholder": "Numele etichetei…",
     "recent": "Recente",
+    "suggested": "Sugerate",
     "matching": "Potrivite",
     "all": "Toate etichetele",
     "none": "Nu au fost găsite etichete",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "Proprietăți",
     "noteAria": "Proprietățile notiței",
-    "workspaceAria": "Proprietățile spațiului de lucru",
     "listAria": "Lista de proprietăți",
     "add": "Adaugă o proprietate",
     "addDescription": "Adăugați o proprietate nouă la această notiță",
@@ -723,7 +906,6 @@
       "inProgress": "În curs",
       "done": "Finalizat"
     },
-    "projectAlreadySet": "Această notiță are deja o proprietate de proiect",
     "projectPlaceholder": "Niciun proiect",
     "projectSearch": "Caută proiecte",
     "projectEmpty": "Niciun proiect",
@@ -755,6 +937,9 @@
     "repositionHint": "Trageți pentru a repoziționa",
     "repositionSave": "salvează",
     "repositionCancel": "anulează",
+    "zoomIn": "Mărește",
+    "zoomOut": "Micșorează",
+    "resize": "Trage pentru a redimensiona coperta",
     "credit": "Fotografie de {name} pe Unsplash",
     "focusFailed": "Nu s-a putut salva poziția copertei",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtru",
-      "filters": "Filtre",
-      "clearAll": "Șterge tot",
-      "noFiltersApplied": "Nu s-au aplicat filtre",
-      "addFiltersToNarrowDownYourNotes": "Adăugați filtre pentru a restrânge lista de notițe",
       "match": "Potrivire",
-      "allAnd": "Toate (ȘI)",
-      "anyOr": "Orice (SAU)",
-      "ofTheFollowing": "dintre următoarele:",
       "match2": "Potrivire",
       "all": "Toate",
       "any": "Oricare",
-      "of": "din:",
       "addCondition": "Adaugă o condiție",
       "addFilter": "Adaugă un filtru",
       "addGroup": "Adaugă un grup",
@@ -995,7 +1172,6 @@
       "available": "Disponibile: ",
       "preview": "Previzualizare",
       "fixExpressionErrorsToSeePreview": "Remediați erorile de expresie pentru a vedea previzualizarea",
-      "usingNote": "Se folosește notița: „",
       "cancel": "Anulează",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "Se încarcă dosarele…",
       "suggested": "SUGERATE",
       "bestMatch": "Cea mai bună potrivire",
-      "current": "curent)",
       "allFolders": "TOATE DOSARELE",
-      "noFoldersMatch": "Niciun dosar nu se potrivește cu „",
-      "create": "Creează „",
       "cancel": "Anulează",
       "currentFolderBadge": "(curent)",
       "noFoldersMatchQuery": "Niciun dosar nu se potrivește cu „{query}”",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "implicită",
       "viewActions": "Acțiunile vizualizării",
-      "rename": "Redenumește",
       "duplicate": "Duplică",
       "setAsDefault": "Setează ca implicită",
       "delete": "Șterge",
-      "createNewView": "Creează o vizualizare nouă",
-      "createNewView2": "Creați o nouă vizualizare",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Creați o nouă vizualizare cu coloane, filtre și sortare personalizate.",
-      "viewName": "Numele vizualizării",
       "myCustomView": "Vizualizarea mea personalizată",
-      "baseConfiguration": "Configurație de bază",
-      "copyFromCurrentView": "Copiază din vizualizarea curentă",
-      "startFreshDefaultColumns": "Pornește de la zero (coloane implicite)",
       "cancel": "Anulează",
-      "renameView": "Redenumiți vizualizarea",
-      "enterANewNameForThisView": "Introduceți un nume nou pentru această vizualizare.",
-      "viewName2": "Numele vizualizării",
-      "viewName3": "Numele vizualizării",
-      "cancel2": "Anulează",
       "deleteView": "Ștergeți vizualizarea",
       "areYouSureYouWantToDelete": "Sigur doriți să ștergeți \"",
       "thisActionCannotBeUndone": "Acțiunea nu poate fi anulată.",
@@ -1077,22 +1237,17 @@
       "layout": "Aspect",
       "table": "Tabel",
       "list": "Listă",
-      "gallery": "Galerie",
-      "createView": "Creează vizualizare",
-      "save": "Salvează"
+      "gallery": "Galerie"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nu s-a putut încărca PDF-ul: ",
-      "download": "Descarcă",
       "download2": "Descarcă",
       "noFileAttached": "Niciun fișier atașat",
       "resizePdf": "Redimensionează PDF-ul",
       "resizeHtml": "Redimensionează conținutul HTML încorporat",
       "alignLeft": "Aliniază la stânga",
       "alignCenter": "Aliniază la centru",
-      "alignRight": "Aliniază la dreapta",
-      "previousPage": "Pagina anterioară",
-      "nextPage": "Pagina următoare"
+      "alignRight": "Aliniază la dreapta"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Deschide în panoul sarcinii",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 inchi)",
       "legal85X14In": "Legal (8,5 x 14 inchi)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "zz.ll.aaaa"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Sincronizat"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Cuvinte",
       "characters": "Caractere",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "Încă nu există marcaje",
       "moreOptions": "Mai multe opțiuni",
       "remove": "Elimină"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Deschide",
-      "openToTheSide": "Deschide în lateral",
-      "pinToTabs": "Fixează în file",
-      "edit": "Editează",
-      "delete": "Șterge",
-      "copyLink": "Copiază linkul"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Se încarcă etichetele…",
@@ -1168,26 +1309,9 @@
       "cancel": "Anulează"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Înapoi",
-      "notes": "notițe",
-      "loadingNotes": "Se încarcă notițele…",
-      "noNotesWithThisTag": "Nicio notiță cu această etichetă",
-      "addThisTagToANoteToSeeItHere": "Adăugați această etichetă la o notiță pentru a o vedea aici",
-      "pinned": "FIXATE",
-      "allNotes": "TOATE NOTIȚELE",
-      "allNotesArePinned": "Toate notițele sunt fixate",
-      "tasks": "SARCINI",
-      "unpinFromTag": "Anulează fixarea în etichetă",
-      "unpin": "Anulează fixarea",
-      "pinToTag": "Fixează în etichetă",
-      "pin": "Fixează",
       "tagActions": "Acțiuni pentru etichetă",
-      "editTagName": "Editează numele etichetei",
       "changeColor": "Schimbă culoarea",
-      "deleteTag": "Șterge eticheta",
-      "recent": "Recent",
-      "created": "Creat",
-      "alphabetical": "Alfabetic"
+      "deleteTag": "Șterge eticheta"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Redenumiți eticheta",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Creează o notiță nouă",
-      "viewSettings": "Setări de vizualizare",
-      "displayDensity": "Densitatea afișajului",
-      "comfortable": "Confortabil",
-      "compact": "Compact",
-      "showSummaries": "Afișează rezumatele",
       "cancel": "Anulează"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "Deschide pagina etichetelor"
   },
   "tagView": {
-    "moreActions": "Mai multe acțiuni",
     "pin": {
       "action": "Fixează {count, plural, one {# notiță} few {# notițe} other {# de notițe}} în etichetă",
       "success": "{count, plural, one {# notiță fixată} few {# notițe fixate} other {# de notițe fixate}} în etichetă",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}"
+    },
+    "noteTasks": {
+      "expand": "Arată sarcinile din {title}",
+      "collapse": "Ascunde sarcinile din {title}",
+      "list": "Sarcini în {title}",
+      "progressOpen": "{open}/{total} deschise",
+      "progressDone": "{total}/{total} finalizate",
+      "nextDue": "Următorul termen",
+      "reminder": "Memento setat"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "Denumiți această căutare",
     "saveDialogPlaceholder": "de ex. Întâlniri de lucru",
     "cancel": "Anulează",
-    "save": "Salvează",
-    "addToFilterHint": "Faceți Ctrl/Cmd-clic pe o etichetă pentru a o adăuga la filtru"
+    "save": "Salvează"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Alternative",
+      "overflow": "Surplus",
+      "menu": "Instrumente de scriere",
+      "close": "Închide instrumentele de scriere"
+    },
+    "menu": {
+      "aria": "Acțiuni ale editorului",
+      "cut": "Decupează",
+      "copy": "Copiază",
+      "paste": "Lipește",
+      "selectAll": "Selectează tot",
+      "undo": "Anulează",
+      "redo": "Refă",
+      "comment": "Comentariu",
+      "addAlternative": "Adaugă o alternativă",
+      "suggestAlternatives": "Sugerează alternative",
+      "ghost": "Estompează",
+      "revive": "Reactivează",
+      "stash": "Pune în surplus",
+      "noSpellingSuggestions": "Nicio sugestie",
+      "addToDictionary": "Adaugă în dicționar",
+      "clipboardFailed": "Clipboardul nu a putut fi folosit"
+    },
+    "alternatives": {
+      "railAria": "Alternative",
+      "hint": "{position} din {total} ↑ ↓",
+      "original": "Original",
+      "byYou": "Scris de tine",
+      "byAI": "Sugerat de AI",
+      "showing": "Afișat",
+      "addPlaceholder": "Adaugă o alternativă…",
+      "removeSuggestions": "Elimină sugestiile",
+      "removeVariant": "Elimină alternativa",
+      "empty": "Selectează text și alege Adaugă o alternativă pentru a păstra și alte moduri de a spune același lucru.",
+      "suggesting": "Se sugerează alternative…",
+      "suggestFailed": "Alternativele nu au putut fi sugerate",
+      "noSuggestions": "Nu au fost sugerate alternative noi"
+    },
+    "overflow": {
+      "railAria": "Surplus",
+      "addPlaceholder": "Scrie ceva de păstrat…",
+      "empty": "Rândurile pe care le pui sau le scrii aici rămân cu această notiță, în afara textului.",
+      "dragHint": "Trage în notiță",
+      "copy": "Copiază",
+      "copied": "Copiat",
+      "delete": "Șterge"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Blochează notița",
+    "unlockNote": "Deblochează notița",
+    "lockFolder": "Blochează dosarul",
+    "unlockFolder": "Deblochează dosarul",
+    "toggleFailed": "Blocarea nu a putut fi schimbată",
+    "readOnlyIndicator": "Blocat. Doar citire pentru tine și pentru agenți.",
+    "externalEditRestored": "„{title}” este blocată, deci modificarea din exterior a fost anulată",
+    "externalEditRestoredHint": "Textul modificat este salvat în istoricul versiunilor notiței."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Persoană",
+        "plural": "Persoane",
+        "fields": {
+          "company": "Companie",
+          "role": "Rol",
+          "email": "E-mail",
+          "phone": "Telefon"
+        },
+        "inverse": {
+          "company": "Persoane"
+        },
+        "template": {
+          "name": "Persoană",
+          "context": "Context",
+          "contextHint": "Cum ne-am cunoscut, ce îl/o interesează",
+          "notes": "Notițe"
+        }
+      },
+      "company": {
+        "name": "Companie",
+        "plural": "Companii",
+        "fields": {
+          "website": "Site web",
+          "industry": "Industrie",
+          "location": "Locație"
+        },
+        "template": {
+          "name": "Companie",
+          "overview": "Prezentare generală",
+          "overviewHint": "Ce face, pe cine cunoaștem acolo",
+          "notes": "Notițe"
+        }
+      },
+      "meeting": {
+        "name": "Întâlnire",
+        "plural": "Întâlniri",
+        "fields": {
+          "date": "Dată",
+          "attendees": "Participanți",
+          "company": "Companie"
+        },
+        "inverse": {
+          "attendees": "Întâlniri",
+          "company": "Întâlniri"
+        },
+        "template": {
+          "name": "Întâlnire",
+          "agenda": "Agendă",
+          "notes": "Notițe",
+          "actionItems": "Acțiuni de urmat"
+        }
+      },
+      "book": {
+        "name": "Carte",
+        "plural": "Cărți",
+        "fields": {
+          "author": "Autor",
+          "shelf": "Raft",
+          "rating": "Evaluare",
+          "finished": "Terminată"
+        },
+        "shelf": {
+          "toRead": "De citit",
+          "reading": "În lectură",
+          "read": "Citite"
+        },
+        "template": {
+          "name": "Carte",
+          "highlights": "Evidențieri",
+          "thoughts": "Gânduri"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} este acum {tag}. Șablonul a fost adăugat.",
+      "templateChanged": "Notița s-a schimbat după adăugarea șablonului, deci rămâne așa.",
+      "undoFailed": "Nu s-a putut anula",
+      "addFailed": "Eticheta nu a putut fi adăugată",
+      "removeFailed": "Eticheta nu a putut fi eliminată",
+      "removedKept": "S-a eliminat #{tag}. {count} valori păstrate.",
+      "removedKeptOne": "S-a eliminat #{tag}. 1 valoare păstrată."
+    },
+    "picker": {
+      "create": "Creează #{tag}",
+      "fillsTemplate": "Completează această notiță goală cu șablonul {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "Etichete gata făcute",
+        "subtitle": "Etichete care vin cu câmpuri. Notițele rămân neschimbate până le etichetezi.",
+        "notNow": "Nu acum",
+        "add": "Adaugă",
+        "addFields": "Adaugă câmpuri",
+        "added": "Adăugat",
+        "alreadyOn": "Deja pe {count} notițe",
+        "alreadyOnOne": "Deja pe 1 notiță"
+      },
+      "dialog": {
+        "title": "Adaugi câmpurile {preset} la #{tag}?",
+        "body": "#{tag} este deja pe {count} notițe. Ele păstrează tot ce au și primesc aceste câmpuri, goale până când le completează cineva.",
+        "bodyOne": "#{tag} este deja pe 1 notiță. Ea păstrează tot ce are și primește aceste câmpuri, goale până când le completează cineva.",
+        "template": "Șablonul ({sections}) completează doar notițele goale.",
+        "alsoAddsPrefix": "Adaugă și",
+        "alsoAddsSuffix": "pentru câmpul {field}.",
+        "useAnotherName": "Folosește alt nume",
+        "nameLabel": "Numele noii etichete",
+        "namePlaceholder": "contact",
+        "cancel": "Anulează",
+        "addFields": "Adaugă câmpuri"
+      },
+      "toast": {
+        "added": "S-a adăugat #{tag}",
+        "addedFields": "S-au adăugat câmpurile {preset} la #{tag}"
+      },
+      "hasFields": "Are câmpuri"
+    },
+    "tasks": {
+      "thisTask": "Această sarcină",
+      "viaTag": "{name} prin #{via}",
+      "clearValue": "Șterge {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "prin #{tag}",
+      "groupMenu": "Opțiuni pentru {tag}",
+      "openTag": "Deschide #{tag}",
+      "thisNote": "Această notiță"
+    },
+    "offer": {
+      "text": "Adaugă șablonul {tag} sub textul tău",
+      "add": "Adaugă",
+      "dismiss": "Închide",
+      "addFailed": "Șablonul nu a putut fi adăugat"
+    },
+    "settings": {
+      "title": "Setări pentru #{tag}",
+      "close": "Închide",
+      "cancel": "Anulează",
+      "save": "Salvează",
+      "onCounts": "Pe {notes, plural, one {# notiță} few {# notițe} other {# de notițe}} și {tasks, plural, one {# sarcină} few {# sarcini} other {# de sarcini}}",
+      "onNotes": "Pe {count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
+      "headerFields": "{count, plural, one {# câmp} few {# câmpuri} other {# de câmpuri}}",
+      "editTag": "Editează eticheta",
+      "syncNote": "Modificările se sincronizează pe celelalte dispozitive",
+      "newerVersion": "O versiune mai nouă a Memry a modificat această etichetă. Actualizează Memry pentru a o edita aici.",
+      "sections": {
+        "appearance": "Aspect",
+        "extends": "Extinde",
+        "fields": "Câmpuri · {count}",
+        "template": "Șablon"
+      },
+      "appearance": {
+        "icon": "Pictogramă",
+        "color": "Culoare",
+        "customColor": "Personalizată",
+        "category": "Categorie",
+        "noCategory": "Fără categorie"
+      },
+      "extends": {
+        "nothing": "Nimic",
+        "hint": "Preia câmpurile altei etichete și apare în tabelul ei.",
+        "hintSet": "Notițele {tag} primesc câmpurile {parent} și apar în tabelul {parent}."
+      },
+      "types": {
+        "text": "Text",
+        "number": "Număr",
+        "date": "Dată",
+        "url": "URL",
+        "status": "Stare",
+        "select": "Selecție",
+        "multiselect": "Selecție multiplă",
+        "checkbox": "Casetă de selectare",
+        "relation": "Relație"
+      },
+      "fields": {
+        "empty": "Încă nu există câmpuri. Adaugă unul pentru a da aceleași proprietăți fiecărei notițe #etichetate.",
+        "fromParent": "Din #{tag} · editează acolo",
+        "inverseSub": "Afișat pe {target} ca {inverse}",
+        "anyNoteSub": "Face legătura cu orice notiță",
+        "actions": "Acțiuni pentru {field}",
+        "rename": "Redenumește…",
+        "relationSettings": "Setările relației",
+        "remove": "Elimină…"
+      },
+      "addField": {
+        "button": "Adaugă un câmp",
+        "namePlaceholder": "Numele câmpului",
+        "existing": "Proprietăți existente",
+        "existingSub": "{type} · pe {count, plural, one {# notiță} few {# notițe} other {# de notițe}} · reutilizează",
+        "newType": "Tipul noului câmp",
+        "relationSub": "Leagă de notițe cu o etichetă",
+        "submit": "Adaugă câmpul",
+        "reserved": "{name} este rezervat și nu poate fi câmp.",
+        "taken": "#{tag} are deja {name}."
+      },
+      "relation": {
+        "target": "Trimite la notițe cu eticheta",
+        "pickTag": "Alege o etichetă",
+        "howMany": "Câte",
+        "one": "Una",
+        "many": "Mai multe",
+        "inverseLabel": "Pe pagina {target}, listează-le ca",
+        "inverseLabelAny": "Pe pagina legată, listează-le ca",
+        "inverseHint": "O listă doar în citire pe fiecare {target}. Nu se scrie nimic în notițele {target}.",
+        "inverseHintAny": "O listă doar în citire pe fiecare notiță legată. Nu se scrie nimic în acele notițe."
+      },
+      "shared": {
+        "title": "Câmp nou pe #{tag}",
+        "existsWith": "{name} există deja în acest seif cu {options}.",
+        "existsAs": "{name} există deja în acest seif ca proprietate de tip {type}.",
+        "shareWith": "#{tag} îl va partaja cu cele {others} notițe ale tale.",
+        "shareAny": "#{tag} îl va partaja cu celelalte notițe ale tale.",
+        "useInstead": "Folosește {name} în schimb",
+        "share": "Partajează {name}"
+      },
+      "template": {
+        "edit": "Editează șablonul",
+        "none": "Încă nu există șablon. Un șablon completează notițele goale când primesc eticheta.",
+        "create": "Creează șablonul",
+        "defaultHeading": "Notițe",
+        "inherited": "Din #{tag}",
+        "autofill": "Completează notițele goale când primesc #{tag}"
+      },
+      "remove": {
+        "title": "Elimini {field} din #{tag}?",
+        "body": "{field} este completat pe {filled, plural, one {# notiță} few {# notițe} other {# de notițe}}. Acele valori rămân pe notițe ca proprietate obișnuită; {empty, plural, one {# loc gol dispare} few {# locuri goale dispar} other {# de locuri goale dispar}}.",
+        "confirm": "Elimină câmpul"
+      },
+      "rename": {
+        "title": "Redenumește {from} în {to}",
+        "titleEmpty": "Redenumește {from}",
+        "label": "Nume nou",
+        "body": "{count, plural, one {# notiță are} few {# notițe au} other {# de notițe au}} o valoare {field}. Memry redenumește cheia în fiecare fișier și în proprietățile lor; Obsidian vede și el numele nou.",
+        "progress": "Se redenumește în notițe",
+        "confirm": "Redenumește",
+        "taken": "Această etichetă are deja {name}.",
+        "done": "{from} a fost redenumit în {to} în {count, plural, one {# element} few {# elemente} other {# de elemente}}.",
+        "skipped": "{from} a fost redenumit în {to} în {count, plural, one {# element} few {# elemente} other {# de elemente}}. {locked, plural, =0 {} one {# notiță blocată se va finaliza când este deblocată.} few {# notițe blocate se vor finaliza când sunt deblocate.} other {# de notițe blocate se vor finaliza când sunt deblocate.}} {existing, plural, =0 {} one {# notiță avea deja {to} și le păstrează pe amândouă.} few {# notițe aveau deja {to} și le păstrează pe amândouă.} other {# de notițe aveau deja {to} și le păstrează pe amândouă.}}"
+      },
+      "delete": {
+        "button": "Șterge eticheta",
+        "title": "Ștergi #{tag}?",
+        "body": "#{tag} va fi eliminat din {notes, plural, one {# notiță} few {# notițe} other {# de notițe}}, iar eticheta dispare împreună cu {fields, plural, one {# câmp} few {# câmpuri} other {# de câmpuri}} și șablonul ei.",
+        "bodyNoTemplate": "#{tag} va fi eliminat din {notes, plural, one {# notiță} few {# notițe} other {# de notițe}}, iar eticheta dispare împreună cu {fields, plural, one {# câmp} few {# câmpuri} other {# de câmpuri}}.",
+        "bodyPlain": "#{tag} va fi eliminat din fiecare notiță care îl are în etichete.",
+        "statNotes": "notițe își păstrează textul",
+        "statValues": "valori rămân ca proprietăți",
+        "plainText": "Notițele care menționează #{tag} în text îl păstrează ca text simplu.",
+        "confirm": "Șterge eticheta",
+        "done": "#{tag} a fost șters."
+      },
+      "errors": {
+        "addField": "Câmpul nu a putut fi adăugat.",
+        "removeField": "Câmpul nu a putut fi eliminat.",
+        "renameField": "Câmpul nu a putut fi redenumit.",
+        "moveField": "Câmpul nu a putut fi mutat.",
+        "relation": "Relația nu a putut fi salvată.",
+        "extends": "Nu s-a putut schimba ce extinde această etichetă.",
+        "template": "Șablonul nu a putut fi actualizat.",
+        "deleteTag": "Eticheta nu a putut fi ștearsă.",
+        "icon": "Pictograma nu a putut fi schimbată.",
+        "color": "Culoarea nu a putut fi schimbată.",
+        "category": "Categoria nu a putut fi schimbată."
+      }
+    },
+    "fill": {
+      "action": "Completează din notiță",
+      "reading": "Se citește notița…",
+      "disclosure": "Modelul tău de agent ({model}) citește această notiță pentru a sugera valori. Se trimite doar această notiță. Nu se salvează nimic până nu accepți.",
+      "disclosureLocal": "Modelul tău local ({model}) citește această notiță pe acest dispozitiv pentru a sugera valori. Nimic nu părăsește dispozitivul și nu se salvează nimic până nu accepți.",
+      "disclosureMany": "Modelul tău de agent ({model}) citește aceste notițe pe rând pentru a sugera valori. Se trimit doar acele notițe. Nu se salvează nimic până nu accepți.",
+      "disclosureLocalMany": "Modelul tău local ({model}) citește aceste notițe pe acest dispozitiv pentru a sugera valori. Nimic nu părăsește dispozitivul și nu se salvează nimic până nu accepți.",
+      "suggest": "Sugerează valori",
+      "notNow": "Nu acum",
+      "countOne": "· {count} sugestie",
+      "count": "· {count} sugestii",
+      "dismiss": "Închide",
+      "acceptAll": "Acceptă tot",
+      "accept": "Acceptă {field}",
+      "reject": "Respinge {field}",
+      "notInNote": "Nu se află în notiță",
+      "createHint": "Creează un nou #{tag} când este acceptat",
+      "nothingFound": "Nimic din această notiță nu completează câmpurile goale",
+      "failed": "Nu s-au putut sugera valori. {message}",
+      "saveFailed": "Valorile acceptate nu au putut fi salvate",
+      "bulkAction": "Completează câmpurile goale",
+      "bulkTitle": "Completează câmpurile goale",
+      "bulkReading": "{done} din {total} notițe · se citesc notițele…",
+      "bulkRead": "{done} din {total} notițe citite",
+      "stop": "Oprește",
+      "name": "Nume",
+      "nothingInRow": "Nu s-a găsit nimic",
+      "found": "{count} găsite",
+      "reviewOneByOne": "Revizuiește pe rând",
+      "acceptRow": "Acceptă valorile pentru {title}",
+      "rejectRow": "Omite {title}",
+      "bulkSavedOne": "S-a completat {count} câmp pe {notes} notițe",
+      "bulkSaved": "S-au completat {count} câmpuri pe {notes} notițe"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Creează {title} ca",
+      "asPrefix": "Creează",
+      "asSuffix": "ca",
+      "failed": "Notița nu a putut fi creată",
+      "lastUsed": "Ultima folosită",
+      "noteWord": "notiță",
+      "plainNote": "Notiță simplă",
+      "readyMade": "Etichetă gata făcută",
+      "row": "Creează „{title}”",
+      "rowHint": "Ca {types}"
+    },
+    "hover": {
+      "at": "la",
+      "lastMet": "Ultima întâlnire · {title}",
+      "lastMetOn": "Ultima întâlnire {date} · {title}",
+      "mentionedIn": "{count, plural, one {Menționat într-o notiță} few {Menționat în # notițe} other {Menționat în # de notițe}}",
+      "open": "Deschide",
+      "tasks": "{count, plural, one {# sarcină · {field}} few {# sarcini · {field}} other {# de sarcini · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} în text",
+      "explain": "În text, o etichetă este o marcare. Această notiță apare la Menționat în pe #{tag}.",
+      "made": "S-a adăugat #{tag} la etichetele acestei notițe",
+      "make": "Fă din această notiță un {tag}",
+      "makeFailed": "Eticheta nu a putut fi adăugată",
+      "makeHint": "Adaugă #{tag} în antet și afișează câmpurile lui",
+      "meta": "{count, plural, one {# obiect} few {# obiecte} other {# de obiecte}} · {fields, plural, one {# câmp} few {# câmpuri} other {# de câmpuri}}",
+      "metaNamed": "{count, plural, one {# {one}} few {# {other}} other {# {other}}} · {fields, plural, one {# câmp} few {# câmpuri} other {# de câmpuri}}",
+      "open": "Deschide #{tag}",
+      "remove": "Elimină eticheta din text"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "ca {field}",
+      "due": "Termen {date}",
+      "inTheText": "în text",
+      "mentionedIn": "Menționat în",
+      "tasks": "Sarcini",
+      "title": "Legat aici"
+    },
+    "mention": {
+      "notes": "Notițe"
+    },
+    "picker": {
+      "create": "{tag} nou",
+      "createNamed": "{tag} nou „{title}”",
+      "empty": "Nicio potrivire",
+      "search": "Caută {tag}",
+      "untitled": "{tag} nou"
+    },
+    "quickFields": {
+      "add": "Adaugă {field}",
+      "aria": "Primele câmpuri ale {title}",
+      "done": "Gata",
+      "later": "Mai târziu",
+      "newObject": "{tag} nou",
+      "saveFailed": "Câmpurile nu au putut fi salvate"
+    },
+    "table": {
+      "untitled": "{tag} nou",
+      "newInGroup": "{tag} nou în {group}",
+      "newInGroupHint": "⌘↵ îl deschide într-o filă nouă",
+      "new": "{tag} nou",
+      "includes": "{field} include",
+      "removeFilter": "Elimină filtrul",
+      "shown": "{shown} din {total}",
+      "saveView": "Salvează vizualizarea",
+      "mentionedMeta": "{count, plural, one {# notiță cu '#'{tag} în text} few {# notițe cu '#'{tag} în text} other {# de notițe cu '#'{tag} în text}}",
+      "saveFailed": "Câmpul nu a putut fi salvat",
+      "created": "{title} a fost creat"
+    },
+    "relationDrop": {
+      "title": "Adaugi #{tag} la „{title}”?",
+      "body": "Acest câmp leagă doar notițe cu eticheta #{tag}. Memry adaugă #{tag} în antetul „{title}”, apoi o leagă aici.",
+      "confirm": "Adaugă #{tag} și leagă",
+      "cancel": "Anulează",
+      "added": "„{title}” este acum #{tag} și legată",
+      "notANote": "Aici pot fi legate ca #{tag} doar notițe",
+      "failed": "Această notiță nu a putut fi legată"
+    }
   },
   "names": {
     "also": "și",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "Caută note",
     "pickerEmpty": "Nicio notă nu se potrivește",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Adaugă detalii"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Afișează în direct o notiță sau un bloc din altă parte"
+      },
+      "searchPortal": {
+        "title": "Portal de căutare",
+        "subtext": "Listă în direct a blocurilor care corespund unei interogări"
+      }
+    },
+    "picker": {
+      "aria": "Alege o notiță sau un bloc pentru portal",
+      "notes": "Notițe",
+      "blocks": "Blocuri",
+      "loading": "Se caută…",
+      "empty": "Nicio notiță sau bloc nu corespunde",
+      "hintInsert": "Inserează portalul",
+      "hintClose": "Închide",
+      "keyEsc": "Esc",
+      "create": "Creează notița „{query}”",
+      "createFailed": "Acea notiță nu a putut fi creată",
+      "stampFailed": "Acel bloc nu a putut fi pregătit pentru un portal",
+      "retargetFailed": "Portalul nu a putut fi îndreptat spre acel bloc"
+    },
+    "insert": {
+      "cycle": "Un portal nu poate afișa o notiță în interiorul ei."
+    },
+    "copy": {
+      "done": "Portal copiat. Lipește-l în orice notiță.",
+      "failed": "Nu s-a putut copia un portal pentru acest bloc"
+    },
+    "menu": {
+      "copyAsPortal": "Copiază ca portal",
+      "hideInPortal": "Ascunde în acest portal"
+    },
+    "usage": {
+      "chipAria": "{count, plural, one {Folosit în # alt loc} few {Folosit în alte # locuri} other {Folosit în alte # de locuri}}"
+    },
+    "whereUsed": {
+      "aria": "Unde este folosit acest bloc",
+      "portals": "Portaluri",
+      "links": "Legături",
+      "openBeside": "Deschide alături",
+      "loadFailed": "Nu s-a putut încărca unde este afișat acest bloc"
+    },
+    "hiddenBlocks": {
+      "title": "Blocuri ascunse",
+      "showAll": "Arată tot",
+      "search": "Caută blocuri ascunse",
+      "showFailed": "Acest bloc nu a putut fi afișat"
+    },
+    "searchQuery": {
+      "titleNew": "Portal de căutare",
+      "titleEdit": "Editează interogarea",
+      "text": "Conține cuvintele",
+      "textPlaceholder": "Cuvinte din bloc",
+      "tag": "Etichetă",
+      "tagPlaceholder": "examen",
+      "limit": "Limită",
+      "footer": "Limită de {limit} rezultate.",
+      "create": "Creează",
+      "apply": "Aplică"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Ștergi acest bloc peste tot?",
+        "note": "Ștergi această notiță peste tot?"
+      },
+      "description": {
+        "block": "„{title}” apare și în {count, plural, one {# altă notiță} few {alte # notițe} other {alte # de notițe}}.",
+        "note": "„{title}” este afișată sau legată în {count, plural, one {# altă notiță} few {alte # notițe} other {alte # de notițe}}."
+      },
+      "manyNotes": "{count} notițe",
+      "source": "{title} (sursă)",
+      "removeHere": "Ascunde aici în schimb",
+      "cancel": "Anulează",
+      "everywhere": "Șterge peste tot",
+      "undoToast": "{count, plural, one {Blocul șters era afișat în # altă notiță.} few {Blocul șters era afișat în alte # notițe.} other {Blocul șters era afișat în alte # de notițe.}}",
+      "undo": "Anulează"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Complet",
+      "brief": "Scurt",
+      "key": "Esențial",
+      "takeaway": "Concluzie",
+      "topic": "Subiect"
+    },
+    "chrome": {
+      "fold": "Restrânge notița",
+      "unfold": "Restrâns la {level}. Arată textul complet",
+      "words": "{count, plural, one {# cuvânt} few {# cuvinte} other {# de cuvinte}}",
+      "writing": "Se scrie…",
+      "writtenBy": "Scris de {agent}",
+      "retry": "Ultima rulare a eșuat · Reîncearcă",
+      "captionOff": "Activează Rezumă notițele lungi în Setări → AI",
+      "captionNoAgent": "Niciun agent conectat · Setări → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Notiță lungă? Parcurge-o rapid.",
+      "body": "Restrânge-o la propozițiile cheie, apoi deschide doar paragraful de care ai nevoie.",
+      "dismiss": "Am înțeles"
+    },
+    "pill": {
+      "opened": "{count, plural, one {# paragraf deschis} few {# paragrafe deschise} other {# de paragrafe deschise}}",
+      "escape": "esc",
+      "copy": "Copiază ca text",
+      "copied": "Copiat",
+      "aria": "Vizualizare restrânsă",
+      "hintMac": "Ciupește, derulează cu ⌘ sau derulează pe această bară pentru zoom · fă clic pe un paragraf pentru a-l deschide",
+      "hint": "Ciupește, derulează cu Ctrl sau derulează pe această bară pentru zoom · fă clic pe un paragraf pentru a-l deschide"
+    },
+    "view": {
+      "aria": "Vizualizare restrânsă {level}",
+      "paragraphOpen": "Deschis la Complet · fă clic din nou pentru a restrânge",
+      "paragraphFold": "Restrânge acest paragraf",
+      "paragraphOpenAction": "Deschide acest paragraf complet",
+      "unfoldSection": "Extinde secțiunea {heading}",
+      "jumpToParagraph": "Arată acest paragraf complet: {topic}",
+      "untitledSection": "Fără titlu",
+      "skipped": {
+        "code": "… {count, plural, one {# bloc de cod} few {# blocuri de cod} other {# de blocuri de cod}}",
+        "table": "… {count, plural, one {# tabel} few {# tabele} other {# de tabele}}",
+        "image": "… {count, plural, one {# imagine} few {# imagini} other {# de imagini}}",
+        "callout": "… {count, plural, one {# casetă explicativă} few {# casete explicative} other {# de casete explicative}}",
+        "embed": "… {count, plural, one {# element încorporat} few {# elemente încorporate} other {# de elemente încorporate}}",
+        "other": "… {count, plural, one {încă # bloc} few {încă # blocuri} other {încă # de blocuri}}"
+      }
+    }
   }
 }

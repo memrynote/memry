@@ -32,10 +32,11 @@ const writer: IcalWrite = (icalWrite as IcalWrite & { default?: IcalWrite }).def
 const mappers: Mappers = (googleMappers as Mappers & { default?: Mappers }).default ?? googleMappers
 
 // `writer-compat.ts` restated line for line.
+const parseVersion = (value: string): number[] => value.split('.').map((part) => Number(part))
+
 function isAppVersionBelow(version: string, minimum: string): boolean {
-  const parse = (value: string): number[] => value.split('.').map((part) => Number(part))
-  const [aMajor, aMinor = 0, aPatch = 0] = parse(version)
-  const [bMajor, bMinor = 0, bPatch = 0] = parse(minimum)
+  const [aMajor, aMinor = 0, aPatch = 0] = parseVersion(version)
+  const [bMajor, bMinor = 0, bPatch = 0] = parseVersion(minimum)
   if ([aMajor, aMinor, aPatch].some((part) => !Number.isFinite(part))) return true
   if (aMajor !== bMajor) return aMajor < bMajor
   if (aMinor !== bMinor) return aMinor < bMinor
@@ -56,10 +57,12 @@ export function buildCalendarWrite(): Record<string, unknown> {
     zones: WRITE_ZONES.map((zone) => zoneTable(zone, fromMs, toMs)),
     newObjects: NEW_OBJECTS.map((c) => ({
       ...c,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- fixture events are deliberately partial rows; the writer is fed what the phone sends; vectors:check pins the output
       expected: writer.eventToICalendar(c.event as unknown as Input, { uid: c.uid, now })
     })),
     patches: PATCHES.map((c) => ({
       ...c,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- fixture events are deliberately partial rows; the writer is fed what the phone sends; vectors:check pins the output
       expected: writer.patchICalendar(c.raw, c.event as unknown as Input, {
         recurrenceId: c.recurrenceId,
         now
@@ -72,6 +75,7 @@ export function buildCalendarWrite(): Record<string, unknown> {
     recurrences: RECURRENCES.map((c) => ({
       ...c,
       expected:
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- fixture row is deliberately partial; the mapper is fed what the phone sends; vectors:check pins the output
         mappers.mapCalendarEventToGoogleInput({
           id: 'evt',
           title: 't',

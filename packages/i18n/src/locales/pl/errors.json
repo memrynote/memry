@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Twój plan obejmuje synchronizację mniejszej liczby sejfów, niż ma to konto, więc ten sejf pozostaje na tym urządzeniu. Usuń sejf z konta (Ustawienia → Konto) lub uaktualnij plan.",
     "certificatePinFailed": "Nie udało się nawiązać bezpiecznego połączenia. Sprawdź połączenie sieciowe.",
     "deviceKeyMismatch": "Klucz bezpieczeństwa tego urządzenia nie pasuje już do klucza zarejestrowanego na twoim koncie, więc serwer odrzuca jego zmiany. Zaloguj się ponownie na tym urządzeniu, aby zarejestrować je ponownie.",
+    "deviceKeysMissing": "Zmiany na tym urządzeniu nie są przesyłane, bo brakuje jego kluczy urządzenia. Wybierz Napraw, aby je przywrócić. Jeśli to urządzenie nie ma już swoich kluczy, zalogujesz się ponownie i możesz potrzebować frazy odzyskiwania. Niezsynchronizowane notatki, zadania i projekty zostaną zachowane.",
     "keychainUnavailable": "Synchronizacja jest wstrzymana, ponieważ aplikacja Memry nie może teraz odczytać kluczy synchronizacji z systemowego pęku kluczy. Odblokuj pęk kluczy, a synchronizacja wznowi się automatycznie. Jeśli tak się nie stanie, uruchom ponownie aplikację Memry. Nic nie zostało usunięte.",
     "unknown": "Wystąpił nieoczekiwany błąd synchronizacji. Ponowna próba nastąpi automatycznie.",
     "statusFetchFailed": "Nie udało się pobrać stanu synchronizacji",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synchronizacja nie powiodła się",
     "pauseFailed": "Nie udało się wstrzymać synchronizacji",
     "resumeFailed": "Nie udało się wznowić synchronizacji",
+    "syncNowSignedOut": "Synchronizacja wymaga ponownego zalogowania na tym urządzeniu.",
+    "syncNowBusy": "Synchronizacja już trwa. Spróbuj ponownie za chwilę.",
+    "syncNowPaused": "Synchronizacja została wstrzymana w trakcie działania. Wznów ją z menu synchronizacji.",
+    "openAccountSettings": "Otwórz ustawienia",
     "settingsNotInitialized": "Synchronizacja ustawień nie została zainicjowana",
     "securityQuarantinePermanent": "Nie udało się zweryfikować elementu synchronizacji, więc ze względów bezpieczeństwa został on poddany kwarantannie.",
     "securityQuarantineRetry": "Weryfikacja podpisu elementu synchronizowanego nie powiodła się i zostanie ponowiona.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Edycja AI w tekście jest wyłączona",
-    "listOllamaModelsFailed": "Nie udało się pobrać listy modeli Ollama"
+    "listOllamaModelsFailed": "Nie udało się pobrać listy modeli Ollama",
+    "writingAssistInvalid": "Nie udało się wysłać tego żądania do modelu AI.",
+    "apiKeyMissing": "Dodaj swój klucz API {provider} w Ustawieniach → AI, aby korzystać z narzędzi do pisania.",
+    "apiKeyInvalid": "Twój klucz API {provider} został odrzucony. Sprawdź go w Ustawieniach → AI.",
+    "ollamaUnreachable": "Ollama nie jest uruchomiona. Uruchom ją poleceniem „ollama serve” albo wybierz innego dostawcę w Ustawieniach → AI.",
+    "providerUnreachable": "Nie udało się połączyć z {provider}. Sprawdź połączenie z internetem i spróbuj ponownie."
   },
   "auth": {
     "notAuthenticated": "Brak uwierzytelnienia",
-    "sessionExpired": "Sesja wygasła. Zaloguj się ponownie.",
     "setupSessionExpired": "Sesja logowania wygasła, zanim ten proces się zakończył. Zaloguj się ponownie, a następnie wpisz frazę odzyskiwania.",
     "setupSessionExpiredLinking": "Sesja logowania wygasła, zanim to urządzenie zostało połączone. Zaloguj się ponownie, a następnie jeszcze raz zeskanuj kod.",
     "invalidRecoveryPhraseFormat": "Nieprawidłowy format frazy odzyskiwania",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Nie udało się przekształcić zewnętrznego wydarzenia kalendarza",
     "onlyCalendarSourcesRetryable": "Ponowić synchronizację można tylko dla źródeł kalendarza",
     "invalidProviderSettings": "Nieprawidłowe ustawienia dostawcy kalendarza",
-    "getExternalEventFailed": "Nie udało się załadować tego wydarzenia. Nadal jest w kalendarzu – spróbuj otworzyć je ponownie."
+    "getExternalEventFailed": "Nie udało się załadować tego wydarzenia. Nadal jest w kalendarzu – spróbuj otworzyć je ponownie.",
+    "listLinkedNotesFailed": "Nie udało się wczytać notatek połączonych z tym wydarzeniem."
   },
   "canvasFolder": {
     "exists": "Folder kanw o tej nazwie już tu istnieje.",
@@ -209,10 +219,35 @@
     "previewFailed": "Nie udało się wyświetlić podglądu",
     "listFailed": "Nie udało się pobrać listy narzędzi importu",
     "appleNotesFoldersFailed": "Nie udało się odczytać folderów Apple Notes",
+    "appleNotesPasswordFailed": "Nie udało się sprawdzić hasła do aplikacji Notatki.",
     "onenoteStatusFailed": "Nie udało się odczytać stanu połączenia z OneNote",
     "onenoteConnectFailed": "Nie udało się zalogować do konta Microsoft",
     "onenoteDisconnectFailed": "Nie udało się odłączyć konta Microsoft",
-    "onenoteNotebooksFailed": "Nie udało się załadować notesów OneNote"
+    "onenoteNotebooksFailed": "Nie udało się załadować notesów OneNote",
+    "readwiseStatusFailed": "Nie udało się odczytać stanu połączenia z Readwise",
+    "readwiseConnectFailed": "Nie udało się połączyć z Readwise",
+    "readwiseInvalidToken": "Readwise nie zaakceptował tego tokenu. Skopiuj go ponownie z readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise ogranicza teraz liczbę żądań. Spróbuj ponownie za minutę.",
+    "readwiseUnreachable": "Nie udało się połączyć z Readwise. Sprawdź połączenie i spróbuj ponownie.",
+    "readwiseDisconnectFailed": "Nie udało się rozłączyć Readwise",
+    "readwiseSyncFailed": "Nie udało się rozpocząć synchronizacji z Readwise",
+    "readwiseRunUnavailable": "Readwise nie synchronizuje się na tym urządzeniu.",
+    "readwiseRunInProgress": "Import z Readwise już trwa. Spróbuj ponownie, gdy się zakończy.",
+    "readwiseOptionsFailed": "Nie udało się zapisać ustawień Readwise",
+    "readwiseNotConnected": "Readwise nie jest połączony. Najpierw wklej swój token dostępu.",
+    "readwiseSyncsElsewhere": "Readwise synchronizuje się na innym urządzeniu. Uruchom to polecenie tam.",
+    "readwiseBookCommandFailed": "Nie udało się wykonać polecenia Readwise",
+    "readwiseBookGone": "Tej książki nie ma już w Twojej bibliotece Readwise.",
+    "readwiseNotLinked": "Ta notatka nie jest połączona z książką z Readwise.",
+    "readwiseNotDeleted": "Tej książki nie ma na liście usuniętych.",
+    "readwiseBookBusy": "Notatka zmieniła się podczas wykonywania polecenia. Spróbuj ponownie.",
+    "readwiseSyncsOnDevice": "Readwise synchronizuje się na urządzeniu {device}. Użyj opcji „Synchronizuj tutaj”, aby przenieść go tutaj.",
+    "readwiseAnotherDevice": "innym urządzeniu",
+    "readwiseNotReady": "Memry nie zakończyło jeszcze synchronizacji z Twoimi pozostałymi urządzeniami. Spróbuj ponownie za chwilę.",
+    "readwiseNeedsSync": "Włącz synchronizację, aby przenosić Readwise między urządzeniami.",
+    "readwiseClaimNotDelivered": "Nie udało się jeszcze powiadomić Twoich pozostałych urządzeń. Sprawdź połączenie i spróbuj ponownie.",
+    "readwiseTakeOverFailed": "Nie udało się przenieść Readwise na to urządzenie",
+    "readwiseCancelFailed": "Nie udało się anulować synchronizacji z Readwise"
   },
   "project": {
     "createFailed": "Nie udało się utworzyć projektu",
@@ -236,7 +271,8 @@
     "renameFailed": "Nie udało się zmienić nazwy właściwości",
     "createDefinitionFailed": "Nie udało się utworzyć definicji właściwości",
     "updateDefinitionFailed": "Nie udało się zaktualizować definicji właściwości",
-    "setCalendarVisibilityFailed": "Nie udało się ustawić widoczności właściwości w kalendarzu"
+    "setCalendarVisibilityFailed": "Nie udało się ustawić widoczności właściwości w kalendarzu",
+    "definitionsFileUnreadable": "Nie można zapisać zmian właściwości, bo pliku .memry/properties.md nie da się odczytać. Napraw lub usuń ten plik, a potem spróbuj ponownie."
   },
   "reminder": {
     "notFound": "Nie znaleziono przypomnienia",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Nie udało się załadować modelu",
     "voiceModelDownloadFailed": "Nie udało się pobrać modelu transkrypcji głosu",
     "terminalCommandInstallFailed": "Nie udało się zainstalować polecenia terminala",
-    "terminalCommandUninstallFailed": "Nie udało się odinstalować polecenia terminala",
-    "shortcutInUse": "Skrót {shortcut} jest już używany"
+    "terminalCommandUninstallFailed": "Nie udało się odinstalować polecenia terminala"
   },
   "tag": {
+    "renameInProgress": "Zmiana nazwy #{from} na #{to} wciąż trwa. Spróbuj ponownie, gdy się zakończy.",
     "mergeSameTag": "Tag źródłowy i docelowy są takie same",
     "categoryNameRequired": "Nazwa kategorii jest wymagana",
     "pinNoteFailed": "Nie udało się przypiąć notatki",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Nie udało się usunąć zadań",
     "moveManyFailed": "Nie udało się przenieść zadań",
     "archiveManyFailed": "Nie udało się zarchiwizować zadań",
-    "projectMissing": "Ten projekt już nie istnieje"
+    "projectMissing": "Ten projekt już nie istnieje",
+    "invalidParent": "Zadanie nie może trafić w to miejsce"
   },
   "taskStatus": {
     "createFailed": "Nie udało się utworzyć statusu",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Właściciel ustawił tę notatkę jako tylko do odczytu.",
     "folderReadOnly": "Właściciel ustawił ten folder jako tylko do odczytu."
+  },
+  "ocrLanguages": {
+    "unreachable": "Nie udało się połączyć z serwerem Memry. Języki, które już są, nadal działają, a Memry spróbuje ponownie przy następnym uruchomieniu.",
+    "unavailable": "Serwer Memry nie oferuje jeszcze tego języka. Języki, które już są, nadal działają.",
+    "corrupt": "Pobrane dane nie zgadzały się z oczekiwaniami Memry, więc ich nie użyto. Spróbuj pobrać je ponownie.",
+    "saveFailed": "Nie udało się zapisać danych języka na tym komputerze. Sprawdź wolne miejsce na dysku i spróbuj ponownie."
+  },
+  "tagFields": {
+    "reservedName": "„{name}” jest zarezerwowana i nie może być nazwą pola",
+    "duplicateField": "#{definedBy} ma już pole o nazwie „{name}”",
+    "unknownField": "Ten tag nie ma pola o nazwie „{name}”",
+    "inheritedField": "„{name}” pochodzi z #{definedBy}. Edytuj je tam",
+    "cycle": "#{parent} już przejmuje pola z tego tagu",
+    "unreadableSchema": "Nowsza wersja Memry zmieniła ten tag. Zaktualizuj Memry, aby go edytować",
+    "relationTargetRequired": "Wybierz, na jaki tag wskazuje ta relacja",
+    "renameRunning": "Inna zmiana nazwy pola wciąż się kończy ({from} na {to}). Spróbuj ponownie, gdy się zakończy."
   }
 }

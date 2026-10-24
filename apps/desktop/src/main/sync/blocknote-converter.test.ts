@@ -85,7 +85,6 @@ describe('blocknote-converter code block language', () => {
     // #when — round-trip: blocks back to markdown via Yjs
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { blocksToYFragment } = await import('./blocknote-converter')
     const ok = blocksToYFragment(blocks!, fragment)
     expect(ok).toBe(true)
 
@@ -107,7 +106,6 @@ describe('blocknote-converter code block language', () => {
 
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { blocksToYFragment } = await import('./blocknote-converter')
     blocksToYFragment(blocks!, fragment)
 
     writeMarkdownSourceToYDoc(doc, null)
@@ -133,7 +131,6 @@ describe('blocknote-converter code block language', () => {
 
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { blocksToYFragment } = await import('./blocknote-converter')
     blocksToYFragment(blocks!, fragment)
 
     writeMarkdownSourceToYDoc(doc, null)
@@ -163,7 +160,6 @@ describe('blocknote-converter code block language', () => {
     const markdown = 'Alpha\n\n\nBeta'
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { markdownToYFragment, yFragmentToBlocks } = await import('./blocknote-converter')
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
@@ -267,7 +263,6 @@ describe('blocknote-converter code block language', () => {
       'Plain intro\n<!-- colors:{"textColor":"red","backgroundColor":"yellow"} -->\nColored line'
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { markdownToYFragment } = await import('./blocknote-converter')
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
@@ -287,7 +282,6 @@ describe('blocknote-converter code block language', () => {
     const markdown = '- one\n<!-- colors:{"backgroundColor":"blue"} -->\n- two\n- three'
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { markdownToYFragment } = await import('./blocknote-converter')
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
@@ -307,7 +301,6 @@ describe('blocknote-converter code block language', () => {
     const markdown = 'Keep {--deleted--} and {++added++}'
     const doc = new Y.Doc()
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-    const { markdownToYFragment } = await import('./blocknote-converter')
 
     // #when
     const ok = await markdownToYFragment(markdown, fragment)
@@ -404,7 +397,8 @@ describe('blocknote-converter code block language', () => {
   const taskTree = (blocks: unknown[]): string[] =>
     (blocks as TaskTreeBlock[]).flatMap((block) =>
       block.type === 'taskBlock'
-        ? [`${block.props.taskId}<${block.props.parentTaskId || '-'}`, ...taskTree(block.children)]
+        ? // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
+          [`${block.props.taskId}<${block.props.parentTaskId || '-'}`, ...taskTree(block.children)]
         : []
     )
 
@@ -510,7 +504,6 @@ describe('blocknote-converter code block language', () => {
     const roundTrip = async (md: string): Promise<string> => {
       const doc = new Y.Doc()
       const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
-      const { markdownToYFragment } = await import('./blocknote-converter')
       await markdownToYFragment(md, fragment)
       writeMarkdownSourceToYDoc(doc, null)
       return (await yDocToMarkdown(doc)) ?? ''
@@ -1236,7 +1229,7 @@ describe('a spec registered under a key that is not its config.type', () => {
     // so no editor exists to reach `yDocToMarkdown` with
     expect(() =>
       createMemrySchema({ blocks: misKeyed, inline: createServerInlineSpecs() })
-    ).toThrowError(/blockSpecs\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
+    ).toThrow(/blockSpecs\["bookmarkRenamed"\].*config\.type is "bookmark"/s)
   })
 })
 
@@ -1681,6 +1674,7 @@ describe('a wiki link carries its marks to disk', () => {
       doc.getXmlFragment(CRDT_FRAGMENT_NAME)
     )
     const fragment = doc.getXmlFragment(CRDT_FRAGMENT_NAME)
+    // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
     expect(fragment.toString()).toContain('bold="true"')
     const before = Y.encodeStateAsUpdate(doc)
 
@@ -1795,7 +1789,9 @@ describe('a custom spec must not claim the block its text sits in', () => {
   // Derived from MEMRY_INLINE_CONTENT_TYPES on purpose: a new spec cannot opt
   // out of this by simply not having a fixture written for it.
   it('declares a textual form for every custom inline type', () => {
-    expect(Object.keys(INLINE_TEXT_FORMS).sort()).toEqual([...MEMRY_INLINE_CONTENT_TYPES].sort())
+    expect(Object.keys(INLINE_TEXT_FORMS).toSorted()).toEqual(
+      [...MEMRY_INLINE_CONTENT_TYPES].toSorted()
+    )
   })
 
   /**
@@ -2115,12 +2111,14 @@ describe('the round-trip tables cover every custom node type', () => {
   // the case lists are checked against the package's exported type lists —
   // adding a spec without a fixture FAILS here rather than being skipped.
   it('has a round-trip fixture for every custom block type', () => {
-    expect(BLOCK_CASES.map((c) => c.type as string).sort()).toEqual([...MEMRY_BLOCK_TYPES].sort())
+    expect(BLOCK_CASES.map((c) => c.type as string).toSorted()).toEqual(
+      [...MEMRY_BLOCK_TYPES].toSorted()
+    )
   })
 
   it('has a round-trip fixture for every custom inline type', () => {
-    expect(INLINE_CASES.map((c) => c.nodeName as string).sort()).toEqual(
-      [...MEMRY_INLINE_CONTENT_TYPES].sort()
+    expect(INLINE_CASES.map((c) => c.nodeName as string).toSorted()).toEqual(
+      [...MEMRY_INLINE_CONTENT_TYPES].toSorted()
     )
   })
 
@@ -2643,7 +2641,7 @@ describe('custom block markers are not claimed out of context', () => {
       const props = { url: 'memry-file://x/y.pdf', name, size: 5, mimeType: 'application/pdf' }
 
       // #when
-      const marker = `<!--${fileBlockCommentData(props as never)}-->`
+      const marker = `<!--${fileBlockCommentData(props)}-->`
 
       // #then exactly one terminator — the one that closes the marker
       expect(marker.match(/--!?>/g)).toHaveLength(1)
@@ -3569,7 +3567,9 @@ describe('a date pill keeps its exact bytes on the main path', () => {
 
   /** A base64url run as a markdown escaper would have left it. */
   const markdownEscaped = (run: string): string =>
-    [...run].map((c) => (c === '_' || c === '-' ? `\\${c}` : c)).join('')
+    Array.from(run)
+      .map((c) => (c === '_' || c === '-' ? `\\${c}` : c))
+      .join('')
 
   async function roundTrip(markdown: string): Promise<string | null> {
     const doc = new Y.Doc()
@@ -3658,7 +3658,7 @@ describe('callouts on the CRDT path (#1846)', () => {
       // #when / #then the doc holds a real callout block again…
       const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
       expect(blocks?.[0]?.type).toBe('callout')
-      expect((blocks?.[0]?.props as { type: string }).type).toBe(type)
+      expect((blocks?.[0]?.props as { type: string } | undefined)?.type).toBe(type)
       // …and write-back reproduces the file byte-for-byte
       writeMarkdownSourceToYDoc(doc, null)
       expect(await yDocToMarkdown(doc)).toBe(markdown)
@@ -3678,7 +3678,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
       const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
       expect(blocks?.[0]?.type).toBe('callout')
-      expect((blocks?.[0]?.props as { fold: string }).fold).toBe(
+      expect((blocks?.[0]?.props as { fold: string } | undefined)?.fold).toBe(
         name.startsWith('closed') ? 'closed' : 'open'
       )
       writeMarkdownSourceToYDoc(doc, null)
@@ -3692,7 +3692,7 @@ describe('callouts on the CRDT path (#1846)', () => {
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
-    expect((blocks?.[0]?.props as { fold: string }).fold).toBe('none')
+    expect((blocks?.[0]?.props as { fold: string } | undefined)?.fold).toBe('none')
     writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
@@ -3726,7 +3726,7 @@ describe('callouts on the CRDT path (#1846)', () => {
 
         const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
         expect(blocks?.[0]?.type).toBe('callout')
-        expect((blocks?.[0]?.props as { type: string }).type).toBe('mytype')
+        expect((blocks?.[0]?.props as { type: string } | undefined)?.type).toBe('mytype')
         writeMarkdownSourceToYDoc(doc, null)
         expect(await yDocToMarkdown(doc)).toBe(markdown)
       }
@@ -3795,13 +3795,13 @@ describe('callouts on the CRDT path (#1846)', () => {
     const markdown = `${serializeBlockColorsMarker({
       textColor: 'red',
       backgroundColor: 'default'
-    } as never)}\n${serializeCalloutBlock('info', 'colored body')}`
+    })}\n${serializeCalloutBlock('info', 'colored body')}`
     const doc = new Y.Doc()
     await markdownToYFragment(markdown, doc.getXmlFragment(CRDT_FRAGMENT_NAME))
 
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(CRDT_FRAGMENT_NAME))
     expect(blocks?.[0]?.type).toBe('callout')
-    expect((blocks?.[0]?.props as { textColor: string }).textColor).toBe('red')
+    expect((blocks?.[0]?.props as { textColor: string } | undefined)?.textColor).toBe('red')
     writeMarkdownSourceToYDoc(doc, null)
     expect(await yDocToMarkdown(doc)).toBe(markdown)
   })
@@ -4157,14 +4157,14 @@ describe('image width through the vault file', () => {
     const find = (list: Block[]): Block | undefined => {
       for (const block of list) {
         if (block.type === 'image') return block
-        const nested = find((block.children ?? []) as Block[])
+        const nested = find(block.children ?? [])
         if (nested) return nested
       }
       return undefined
     }
     const found = find(blocks as Block[])
     expect(found).toBeDefined()
-    return found!.props as Record<string, unknown>
+    return found!.props
   }
 
   it('keeps a resized captioned image width through a Y.Doc re-seed', async () => {

@@ -49,6 +49,7 @@ interface TextRun {
 
 /** Inline embeds count as one character, as they do in Yjs indices. */
 function plainTextOf(type: Y.XmlText): string {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Yjs toDelta/relativePositionToJSON return any; the shape is fixed by Yjs
   return (type.toDelta() as Array<{ insert: unknown }>)
     .map((op) => (typeof op.insert === 'string' ? op.insert : '\ufffc'))
     .join('')
@@ -185,11 +186,11 @@ export function insertWritingSentinels(
   }
 
   for (const [type, byIndex] of inserts) {
-    const indices = [...byIndex.keys()].sort((a, b) => b - a)
+    const indices = [...byIndex.keys()].toSorted((a, b) => b - a)
     for (const index of indices) {
       const text = byIndex
         .get(index)!
-        .sort(
+        .toSorted(
           (a, b) => a.order[0] - b.order[0] || a.order[1] - b.order[1] || a.order[2] - b.order[2]
         )
         .map((entry) => entry.char)
@@ -222,7 +223,7 @@ export function writingFrontmatterFor(
       })
     ),
     overflow: [...overflow]
-      .sort((a, b) => b.createdAt - a.createdAt)
+      .toSorted((a, b) => b.createdAt - a.createdAt)
       .map((item) => (item.label ? { text: item.text, label: item.label } : { text: item.text }))
   }
 }
@@ -296,7 +297,9 @@ function extractWritingRanges(
     ranges.push({
       kind,
       key,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Yjs toDelta/relativePositionToJSON return any; the shape is fixed by Yjs
       anchorStart: Y.relativePositionToJSON(startPosition) as WritingAnchor,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Yjs toDelta/relativePositionToJSON return any; the shape is fixed by Yjs
       anchorEnd: { ...(Y.relativePositionToJSON(lastPosition) as WritingAnchor), assoc: -1 },
       shownText: textBetween(runs, first, { run: last.run, index: last.index + 1 })
     })

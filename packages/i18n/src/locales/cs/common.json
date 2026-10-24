@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Portál se nepodařilo zkopírovat",
+    "hiddenCount": "Skryto: {count}",
+    "windowFailed": "Tento portál se nepodařilo otevřít. Otevřete místo něj zdrojovou poznámku.",
+    "noTarget": "Tento portál zatím nemá cíl. Přidejte do definice poznámku, nebo blok odeberte.",
+    "invalidJson": "Definice tohoto portálu není platný JSON. Opravte ji níže, nebo blok odeberte.",
+    "invalidShape": "Definice tohoto portálu neobsahuje poznámku ani hledání. Opravte ji níže, nebo blok odeberte.",
+    "search": {
+      "editQuery": "Upravit dotaz",
+      "count": "{count, plural, one {# blok} few {# bloky} many {# bloku} other {# bloků}}",
+      "loading": "Hledání…",
+      "empty": "Tomuto dotazu neodpovídají žádné bloky.",
+      "failed": "Hledání se nepodařilo spustit.",
+      "retry": "Zkusit znovu",
+      "truncated": "Zobrazuje se prvních {count} shod."
+    },
+    "copiedContents": "Obsah zkopírován",
+    "copiedLink": "Odkaz zkopírován",
+    "actionFailed": "Tento portál se nepodařilo změnit",
+    "keepsOneBlock": "Portál musí obsahovat alespoň jeden blok. Odeberte raději celý portál.",
+    "expandChildren": "Zobrazit podřízené",
+    "collapseChildren": "Skrýt podřízené",
+    "toolbar": {
+      "label": "Portál",
+      "include": "Zahrnout „{block}“",
+      "locked": "{note} je zamčená · jen pro čtení",
+      "more": "Více",
+      "openBeside": "Otevřít {note} vedle",
+      "click": "Kliknutí",
+      "copyContents": "Kopírovat obsah",
+      "copyLink": "Kopírovat odkaz",
+      "remove": "Odebrat portál",
+      "removeHint": "{note} si ponechá všechny bloky"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Zdrojová poznámka byla smazána. Odkaz zůstává zachován.",
+        "action": "Odebrat"
+      },
+      "missingBlock": {
+        "text": "Blok byl smazán v poznámce {source}.",
+        "action": "Vybrat jiný"
+      },
+      "notSynced": {
+        "text": "Čeká se na synchronizaci zdrojové poznámky.",
+        "action": "Zkusit znovu"
+      },
+      "cycle": {
+        "text": "Tento portál vede zpět sám na sebe.",
+        "action": "Otevřít zdroj"
+      },
+      "tooDeep": {
+        "text": "Portály lze vnořit do hloubky {max}. Tento se otevře jako odkaz.",
+        "action": "Otevřít zdroj"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Přejít do pole pro zachycení",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Otevřít ve výchozí aplikaci",
     "revealFailed": "Nepodařilo se zobrazit ve složce"
   },
+  "commands": {
+    "runFailed": "Tento příkaz se nepodařilo spustit. Zkuste to znovu."
+  },
+  "commandsPalette": {
+    "title": "Příkazy",
+    "placeholder": "Zadejte příkaz…",
+    "groups": {
+      "navigation": "Navigace",
+      "create": "Vytvořit",
+      "tabs": "Karty",
+      "editor": "Editor",
+      "view": "Zobrazení",
+      "app": "Aplikace",
+      "note": "Poznámka",
+      "settings": "Nastavení",
+      "sync": "Synchronizace",
+      "help": "Nápověda",
+      "project": "Projekt",
+      "tasks": "Úkoly",
+      "canvas": "Plátno",
+      "folder": "Složka",
+      "file": "Soubor"
+    },
+    "contexts": {
+      "note": "Tato poznámka",
+      "journal": "Tento deník",
+      "project": "Tento projekt",
+      "tasks": "Tyto úkoly",
+      "canvas": "Toto plátno",
+      "folder": "Tato složka",
+      "tag": "Tento štítek",
+      "file": "Tento soubor"
+    },
+    "recent": "Nedávné",
+    "empty": "Dotazu „{query}“ neodpovídají žádné příkazy",
+    "searchHint": "Hledat poznámky: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# příkaz} few {# příkazy} many {# příkazu} other {# příkazů}}"
+    },
+    "actions": {
+      "run": "Spustit",
+      "searchNotes": "Hledat poznámky"
+    }
+  },
   "tabs": {
     "pin": "Připnout kartu",
     "unpin": "Odepnout kartu",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Akce se nezdařila",
-    "nothingToUndo": "Není co vrátit",
     "undone": "Vráceno: {description}",
     "undoFailed": "Akci se nepodařilo vrátit zpět",
     "filesImported": "{count, plural, one {Importován # soubor} few {Importovány # soubory} other {Importováno # souborů}}",
@@ -131,6 +231,20 @@
     "openInTab": "Otevřít konverzaci na kartě",
     "stop": "Zastavit",
     "thinking": "Agent přemýšlí",
+    "toolsUnavailable": "Nástroje trezoru jsou pro tento model vypnuté. Neprošel kontrolou nástrojů, takže umí jen chatovat.",
+    "toolsUnavailableWithDetail": "Nástroje trezoru jsou pro tento model vypnuté. Neprošel kontrolou nástrojů, takže umí jen chatovat. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Nástroje trezoru jsou pro tento model vypnuté. Poskytovatel odmítl testovací požadavek s nástroji, takže model umí jen chatovat.",
+      "noToolCall": "Nástroje trezoru jsou pro tento model vypnuté. Na testovací požadavek odpověděl bez volání nástroje, takže umí jen chatovat.",
+      "toolResultRejected": "Nástroje trezoru jsou pro tento model vypnuté. Zavolal testovací nástroj, ale po získání výsledku selhal, takže umí jen chatovat.",
+      "streamingUnsupported": "Nástroje trezoru jsou pro tento model vypnuté. Poskytovatel nestreamoval testovací odpověď, takže model umí jen chatovat.",
+      "providerSaid": "Poskytovatel uvedl: {detail}",
+      "wroteToolCall": "Model zapsal volání nástroje jako text a nic se nespustilo."
+    },
+    "stepLimit": {
+      "notice": "Zastaveno na limitu kroků.",
+      "continue": "Pokračovat"
+    },
     "enable": {
       "title": "Zapnout agenta memrynote",
       "description": "Agent memrynote používá k chatu o vašem trezoru vybrané místní rozhraní CLI agenta. Claude odesílá zprávy společnosti Anthropic, Codex společnosti OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Agent chce vytvořit {title}. Před použitím změnu zkontrolujte.",
       "descriptionDelete": "Agent chce smazat {title}. Před použitím změnu zkontrolujte.",
       "fallbackTitle": "tuto položku",
-      "current": "Aktuální",
       "candidate": "Návrh",
       "loading": "Načítání…",
       "apply": "Použít",
@@ -268,13 +381,18 @@
       "removeAttachment": "Odebrat {label}",
       "placeholder": "Zadejte, co má memrynote udělat… @ pro zmínku poznámky, úkolu nebo události",
       "send": "Odeslat",
-      "providerLabel": "Poskytovatel agenta: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Připojené nástroje",
       "connectTool": "Připojit {tool}",
-      "addContext": "Přidat kontext",
-      "addContextWithPermissions": "Přidat kontext ({permissions})",
       "mentionContext": "Zmínit poznámku, úkol nebo událost",
+      "files": {
+        "attach": "Připojit textový soubor",
+        "refused": {
+          "unsupportedType": "{name} není podporovaný textový soubor. Připojte soubor .txt, .md, .log, .csv, .tsv, .json, .yaml nebo .yml.",
+          "notText": "{name} není textový soubor v kódování UTF-8. Připojte místo něj textový soubor.",
+          "tooLarge": "Se souborem {name} by zpráva překročila limit 100 KB. Odeberte soubor nebo připojte menší.",
+          "readFailed": "Soubor {name} se nepodařilo přečíst. Zkontrolujte, že stále existuje a že jej můžete otevřít, a poté jej připojte znovu."
+        }
+      },
       "voice": {
         "start": "Spustit hlasové diktování",
         "stop": "Zastavit hlasové diktování",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Hlasový vstup se nepodařilo přepsat"
         }
       },
-      "modelLabel": "Model agenta: {provider} {model}",
-      "reasoningLabel": "Uvažování agenta: {reasoning}",
       "providers": {
-        "label": "Poskytovatel",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Přístup k počítači"
       },
       "webSearch": {
-        "on": "Zapnuto",
-        "off": "Vypnuto",
         "label": "Vyhledávání na webu"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agent není k dispozici – otevřít Nastavení…"
       },
       "settings": {
-        "reasoning": "Uvažování",
         "effort": "Úsilí"
       },
       "includeCurrentNote": "Zahrnout aktuální poznámku",
@@ -340,13 +452,29 @@
           "extraHigh": "Velmi vysoké"
         }
       },
-      "permissionsLabel": "Oprávnění agenta: {access}, vyhledávání na webu {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Výchozí",
+          "default": "Výchozí hloubka",
+          "high": "Vysoká",
+          "max": "Maximální"
+        }
+      },
       "permissions": {
-        "label": "Oprávnění",
-        "access": "Přístup",
-        "tools": "Nástroje"
+        "access": "Přístup"
       },
       "modelSettingsLabel": "Nastavení modelu agenta: {model}, {settings}",
+      "queue": {
+        "label": "Zprávy ve frontě",
+        "queueMessage": "Zařadit zprávu do fronty",
+        "edit": "Upravit zprávu ve frontě",
+        "editLabel": "Text zprávy ve frontě",
+        "remove": "Odebrat zprávu z fronty",
+        "save": "Uložit",
+        "cancel": "Zrušit",
+        "sending": "Odesílání…",
+        "notSent": "Neodesláno. Upravte ji a odešlete znovu, nebo ji odeberte."
+      },
       "unavailable": {
         "vaultToolsOnly": "S tímto modelem pouze nástroje trezoru"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Potvrzení upozornění se nepodařilo uložit",
       "resolveWindow": "Zdrojové okno agenta se nepodařilo určit",
       "detectCli": "Nepodařilo se zjistit backendy agenta",
-      "loadDisclosure": "Potvrzení upozornění se nepodařilo načíst"
+      "loadDisclosure": "Potvrzení upozornění se nepodařilo načíst",
+      "turnFailed": "Odpověď skončila chybou. Vaše zpráva zůstala zachována, můžete ji odeslat znovu."
     },
     "actions": {
       "copy": "Kopírovat",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Přetáhněte soubory k importu",
       "dropFilesIntoVaultRoot": "Kořen trezoru",
       "newNoteN": "Nová poznámka (⌘N)",
-      "new": "Nové",
       "newItemMenu": "Vytvořit novou položku…",
       "feedbackButton": "Odeslat zpětnou vazbu",
       "feedbackTitle": "Odeslat zpětnou vazbu",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Najít, nahradit, zeptat se…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Přeskočit úvodního průvodce",
-      "welcomeToMemry": "Vítejte v aplikaci memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaše osobní znalostní báze. Za 2 minuty vše připravíme.",
-      "getStarted": "Začít ",
-      "createYourFirstNote": "Vytvořte svou první poznámku",
-      "markdownBasedStoredLocallyAsPlainFiles": "Založené na formátu Markdown, uložené místně jako obyčejné soubory.",
-      "eGMeetingNotesIdeasAnything": "např. poznámky ze schůzky, nápady, cokoli…",
-      "skip": "Přeskočit",
-      "createNote": "Vytvořit poznámku ",
-      "addYourFirstTask": "Přidejte svůj první úkol",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Úkoly se propojují s vašimi poznámkami a mají priority a termíny.",
-      "eGReviewProjectProposal": "např. zkontrolovat návrh projektu…",
-      "skip2": "Přeskočit",
-      "createTask": "Vytvořit úkol ",
-      "syncAcrossDevices": "Synchronizace napříč zařízeními",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Udržujte své poznámky a úkoly synchronizované ve všech svých zařízeních. Nastavit to můžete kdykoli později.",
-      "skipForNow": "Zatím přeskočit",
-      "doneLetSGo": "Hotovo – jdeme na to! "
+      "skip": "Přeskočit"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Nastavit ikonu složky",
@@ -707,8 +818,7 @@
       "unknownTabType": "Neznámý typ karty: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "neuložené změny",
-      "preview": "náhled"
+      "unsavedChanges": "neuložené změny"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nová karta",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Přetažením změníte velikost · Dvojitým kliknutím obnovíte"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Vítejte v aplikaci memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Váš osobní systém pro správu znalostí.",
-      "selectAFolderToStoreYourNotesAndTasks": "Vyberte složku pro ukládání poznámek a úkolů.",
       "opening": "Otevírání…",
-      "selectVaultFolder": "Vybrat složku trezoru",
-      "plainMarkdown": "Prostý Markdown",
-      "yourNotesStayPortable": "Vaše poznámky zůstanou přenosné",
-      "syncAnywhere": "Synchronizovat kdekoli",
-      "useDropboxIcloudGit": "Použijte Dropbox, iCloud, Git",
       "recentVaults": "Nedávné trezory",
-      "notesLastOpened": "poznámky · Naposledy otevřeno",
-      "preRelease": "Beta",
       "createNewVault": "Vytvořit nový trezor",
-      "createNewVaultDesc": "Začněte s novým trezorem ve složce podle svého výběru.",
-      "openExistingVault": "Otevřít existující trezor",
-      "openExistingVaultDesc": "Vyberte složku se soubory Markdown, které už máte.",
-      "signInToSync": "Přihlásit se pro synchronizaci",
-      "signInToSyncDesc": "Koncově šifrované trezory ve všech vašich zařízeních.",
-      "create": "Vytvořit",
       "open": "Otevřít",
-      "signIn": "Přihlásit se",
       "helpAndDocs": "Nápověda a dokumentace",
-      "signInRequiresVault": "Nejprve otevřete nebo vytvořte trezor, abyste mohli nastavit synchronizaci.",
       "addVault": "Přidat trezor",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Zatím žádné trezory",
       "openVault": "Otevřít trezor",
       "settings": "Nastavení",
-      "logOut": "Odhlásit se",
-      "signInToSync": "Přihlásit se k synchronizaci",
       "remove": "Odebrat „",
       "removeVaultTitle": "Odebrat „{name}“ ze seznamu?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Tento trezor bude odebrán z aplikace, ale vaše soubory zůstanou na disku. Později ho můžete kdykoli znovu přidat.",
       "cancel": "Zrušit",
       "remove2": "Odebrat",
       "inYourAccount": "Ve vašem účtu",
+      "trySandbox": "Vyzkoušet pískoviště",
+      "sandboxVault": "Trezor pískoviště",
+      "sandboxPreparing": "Připravuje se pískoviště…",
+      "sandboxFailed": "Trezor pískoviště se nepodařilo připravit",
+      "resetSandbox": "Obnovit trezor pískoviště",
       "itemsCount": "{count, plural, one {# položka} few {# položky} other {# položek}}",
       "untitledVault": "Trezor",
       "downloadVaultTitle": "Stáhnout „{name}“",
@@ -870,7 +965,6 @@
       "changeLocation": "Změnit…",
       "download": "Stáhnout",
       "downloadFailed": "Trezor se nepodařilo stáhnout",
-      "deleteFromAccount": "Smazat z účtu",
       "deleteVaultTitle": "Smazat „{name}“ z vašeho účtu?",
       "deleteVaultBody": "Tím se ze serverů Memry trvale odstraní všechna synchronizovaná data tohoto trezoru. Tuto akci nelze vrátit zpět. Soubory na disku zůstanou zachovány.",
       "deleteVaultConfirm": "Smazat z účtu",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Odebrat widget",
       "dragAria": "Přetáhnout widget",
-      "configAria": "Konfigurovat widget",
-      "resizeAria": "Změnit velikost na {size}",
       "menuAria": "Možnosti widgetu",
-      "resize": "Velikost",
       "remove": "Odebrat",
       "filter": {
         "all": "Vše",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Zde se zobrazí poznámky, které otevřete",
       "bookmarks": "Záložky",
       "tasks": "Úkoly",
+      "chart": "Graf",
       "calendar": "Kalendář",
       "calendarToday": "Dnes",
       "openCalendar": "Otevřít kalendář",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Vyberte složku",
       "folderEmpty": "Zatím žádné složky",
       "folderNoSelection": "Není vybrána žádná složka",
-      "folderView_list": "Seznam",
-      "folderView_gallery": "Galerie",
       "folderViewSelect": "Zobrazení",
       "project": "Projekt",
       "projectNoSelection": "Není vybrán žádný projekt",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Rozložení domovské stránky",
       "deleteAria": "Smazat rozložení",
-      "newAria": "Nová nástěnka",
       "newName": "Nová nástěnka",
       "defaultName": "Domů",
       "manage": "Spravovat nástěnky",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# úkol s termínem dnes} few {# úkoly s termínem dnes} other {# úkolů s termínem dnes}}",
       "events": "{count, plural, one {# událost} few {# události} other {# událostí}}"
     },
-    "edit": "Upravit",
-    "done": "Hotovo",
     "addWidget": "Přidat widget",
+    "cover": {
+      "add": "Přidat obálku"
+    },
     "empty": {
       "title": "Vaše nástěnka je prázdná",
       "body": "Widgety spojují vaše poznámky, úkoly a záložky na jednom klidném místě.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Úvodní průvodce dokončen",
-      "body": "Dejte nám prosím hvězdičku na GitHubu – pomůžete tak dalším lidem aplikaci MemryNote najít.",
-      "action": "Dát hvězdičku na GitHubu"
+      "body": "Dejte nám prosím hvězdičku na GitHubu – pomůžete tak dalším lidem aplikaci MemryNote najít."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Aktualizace je připravena",
     "failed": "Aktualizace se nezdařila",
     "downloadAction": "Stáhnout",
-    "restartAction": "Restartovat",
     "detailsAction": "Podrobnosti",
     "popover": {
       "readyTitle": "Verze MemryNote {version} je připravena",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Trezory",
     "position": "{name}, trezor {index} z {count}",
-    "openList": "{position}. Otevřít seznam trezorů",
     "switchTo": "Přepnout na trezor {name}",
     "switchingTo": "Přepínání na trezor {name}",
     "changeIcon": "Změnit ikonu…",
     "resetIcon": "Obnovit výchozí ikonu",
     "iconButton": "Změnit ikonu trezoru {name}",
+    "leaveSandbox": "Zpět do {name}",
     "iconFailed": "Ikonu trezoru se nepodařilo změnit"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Typ",
     "filterModified": "Změněno",
     "matches": "Shody",
+    "matchesMore": "{count, plural, one {Ještě # shoda} few {Ještě # shody} many {Ještě # shody} other {Ještě # shod}}",
+    "matchesHide": "Skrýt shody",
+    "matchOf": "Shoda {index} z {total}",
     "showMore": "Zobrazit dalších {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Další sekce",
       "open": "Otevřít",
       "openNote": "Otevřít poznámku",
+      "openAtMatch": "Otevřít na shodě",
       "openFile": "Otevřít soubor",
       "openJournal": "Otevřít deník",
       "openTask": "Otevřít úkol",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Vybrat štítek",
       "addTag": "Přidat štítek",
       "showAll": "Zobrazit vše",
+      "hideMatches": "Skrýt shody",
       "searchEverywhere": "Hledat všude",
       "clearFilters": "Vymazat filtry"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "V {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Nalezen # trezor} few {Nalezeny # trezory} other {Nalezeno # trezorů}}",
-      "notion": "Notion",
       "otherApps": "Další aplikace a soubory",
       "otherAppsHint": "a {count} dalších",
       "detectedFootnote": "Zjištěno kontrolou nainstalovaných aplikací. Nic neopustí zařízení: vše zůstává v {device}.",

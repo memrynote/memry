@@ -17,17 +17,22 @@
       "filterAll": "Alle filer"
     },
     "exportCancelled": "Eksporten ble avbrutt",
-    "update": {
-      "availableTitle": "Oppdatering tilgjengelig",
-      "availableMessage": "memrynote {version} er tilgjengelig.",
-      "availableDetailFallback": "Vil du laste ned oppdateringen nå?",
-      "buttonDownload": "Last ned",
-      "buttonLater": "Senere",
-      "readyTitle": "Oppdatering klar",
-      "readyMessage": "memrynote {version} er lastet ned.",
-      "readyDetailFallback": "Start memrynote på nytt for å fullføre installasjonen av oppdateringen.",
-      "buttonRestartNow": "Start på nytt nå",
-      "releaseNotesLabel": "Utgivelsesnotater:"
+    "dataDbRecovery": {
+      "title": "Reparer vaultens database",
+      "message": "Memrys database for denne vaulten er skadet.",
+      "detail": "Notat- og journalfilene dine påvirkes ikke. Reparasjonen beholder den skadde databasen som sikkerhetskopi i {path}, starter en ny, bygger opp igjen det den kan fra vault-filene dine og gjenoppretter synkroniserte elementer ved neste synkronisering. Endringer som ikke var synkronisert ennå, gjenopprettes der det er mulig.",
+      "buttonRecover": "Reparer",
+      "buttonLater": "Ikke nå"
+    },
+    "obsidianVault": {
+      "title": "Åpne Obsidian-vault",
+      "message": "Vil du åpne en kopi av denne Obsidian-vaulten?",
+      "detail": "Hvis du åpner en Obsidian-vault i memrynote, kan du miste data som Obsidian-pluginene dine er avhengige av. Når memrynote gjør en plugins oppgavelinje om til en oppgave, skriver den om linjen. Felt som forfallsdatoer fra Tasks-pluginen forsvinner fra filen, og Obsidian ser dem ikke lenger.\n\nmemrynote kan kopiere «{name}» til «{copyName}» ved siden av og åpne kopien. «{name}» forblir helt uendret.",
+      "detailExistingCopy": "Hvis du åpner en Obsidian-vault i memrynote, kan du miste data som Obsidian-pluginene dine er avhengige av. Når memrynote gjør en plugins oppgavelinje om til en oppgave, skriver den om linjen. Felt som forfallsdatoer fra Tasks-pluginen forsvinner fra filen, og Obsidian ser dem ikke lenger.\n\nEn memrynote-kopi, «{copyName}», ligger allerede ved siden av. memrynote kan åpne den kopien. «{name}» forblir helt uendret.",
+      "buttonCopy": "Opprett kopi",
+      "buttonOpenCopy": "Åpne kopi",
+      "buttonOpenOriginal": "Åpne originalen",
+      "buttonCancel": "Avbryt"
     },
     "pair": {
       "title": "Koble til nettleserutvidelse",

@@ -72,12 +72,13 @@ function attribute(element: Y.XmlElement, name: string): string | null {
 function propsOf(element: Y.XmlElement): BlockProp[] {
   return Object.entries(element.getAttributes() as Record<string, unknown>)
     .map(([name, value]) => ({ name, value: anyDisplay(value) }))
-    .sort((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
+    .toSorted((left, right) => (left.name < right.name ? -1 : left.name > right.name ? 1 : 0))
 }
 
 /** One `XmlText`'s deltas, as runs. */
 function runsOfText(text: Y.XmlText): InlineRun[] {
   const runs: InlineRun[] = []
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   for (const chunk of text.toDelta() as Array<{
     insert: unknown
     attributes?: Record<string, unknown>
@@ -85,7 +86,7 @@ function runsOfText(text: Y.XmlText): InlineRun[] {
     if (typeof chunk.insert !== 'string') continue
     const marks: string[] = []
     const markAttrs: Record<string, string> = {}
-    const entries = Object.entries(chunk.attributes ?? {}).sort(([left], [right]) =>
+    const entries = Object.entries(chunk.attributes ?? {}).toSorted(([left], [right]) =>
       left < right ? -1 : left > right ? 1 : 0
     )
     for (const [key, value] of entries) {
@@ -171,7 +172,7 @@ function walkElement(element: Y.XmlElement, depth: number, blocks: Block[], atRo
     const before = blocks.length
     walk(element, deeper, blocks, false)
     const first = blocks[before]
-    if (containerId !== null && first !== undefined && first.id === null) first.id = containerId
+    if (containerId !== null && first?.id === null) first.id = containerId
     return
   }
 

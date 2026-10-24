@@ -267,17 +267,19 @@ const host: UpdaterHost = {
  * One decision, once. Windows packaged builds prefer Velopack; every other platform
  * stays on electron-updater unchanged.
  */
-function selectUpdaterBackend(host: UpdaterHost): UpdaterBackend {
+function selectUpdaterBackend(updaterHost: UpdaterHost): UpdaterBackend {
   if (process.platform === 'win32') {
-    const velopack = createVelopackBackend(host)
+    const velopack = createVelopackBackend(updaterHost)
     if (velopack) {
       return velopack
     }
     // An NSIS install. electron-updater keeps checking and downloading; the install
     // step migrates to Velopack when the release carries its installer.
-    return createElectronUpdaterBackend(host, { handoff: createInstallerHandoff(host) })
+    return createElectronUpdaterBackend(updaterHost, {
+      handoff: createInstallerHandoff(updaterHost)
+    })
   }
-  return createElectronUpdaterBackend(host)
+  return createElectronUpdaterBackend(updaterHost)
 }
 
 /**

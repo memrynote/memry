@@ -51,7 +51,8 @@ export const LinkMentionPreviewCard = memo(function LinkMentionPreviewCard({
               alt=""
               className="w-full object-cover"
               onError={(e) => {
-                ;(e.currentTarget.parentElement as HTMLElement).style.display = 'none'
+                const frame = e.currentTarget.parentElement
+                if (frame) frame.style.display = 'none'
               }}
             />
           </div>
@@ -73,7 +74,7 @@ export const LinkMentionPreviewCard = memo(function LinkMentionPreviewCard({
               alt=""
               className="size-3.5 shrink-0 rounded-[3px] object-contain"
               onError={(e) => {
-                ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                e.currentTarget.style.display = 'none'
               }}
             />
           )}

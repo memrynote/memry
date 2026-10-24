@@ -9,7 +9,14 @@ import {
   loadLocaleResources
 } from './resources.mjs'
 
-const DEFAULT_SCAN_PATHS = ['apps/desktop/src/renderer/src', 'apps/desktop/src/main']
+// The two shared packages below hand key strings to the renderer as data: contracts carries
+// `i18nKey`/`labelKey` constants and domain-tasks returns `errors:` codes that the renderer translates.
+const DEFAULT_SCAN_PATHS = [
+  'apps/desktop/src/renderer/src',
+  'apps/desktop/src/main',
+  'packages/contracts/src',
+  'packages/domain-tasks/src'
+]
 const USER_FACING_ATTRIBUTES = new Set(['aria-label', 'title', 'placeholder', 'alt'])
 const USER_FACING_PROPS = new Set(['label', 'description', 'emptyText', 'tooltip', 'message'])
 const TECHNICAL_ATTRIBUTES = new Set([
@@ -30,6 +37,7 @@ const IGNORED_TEXT_TAGS = new Set([
   'ContextMenuShortcut',
   'DropdownMenuShortcut'
 ])
+const DOTTED_KEY_HEAD_RE = /^(?:[A-Za-z]+:)?[\w-]+\.[\w.-]+$/
 const TODO_RE = /TODO\(i18n\):\s*wrap(?:\s+[\w-]+)?\s+in\s+t\(\)/i
 
 function normalizePath(filePath) {
@@ -90,7 +98,7 @@ export function resolveSourceFiles(
   for (const inputPath of paths.length === 0 ? DEFAULT_SCAN_PATHS : paths) {
     collectSourceFiles(inputPath, workspaceRoot, files)
   }
-  return [...new Set(files)].sort()
+  return [...new Set(files)].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 function getLineAndColumn(sourceFile, position) {
@@ -126,7 +134,25 @@ function looksLikeResourcePath(value) {
   return value.includes('.') || value.includes(':')
 }
 
-function collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces) {
+function collectStringConstants(sourceFile) {
+  const constants = new Map()
+  function visit(node) {
+    if (
+      ts.isVariableDeclaration(node) &&
+      ts.isIdentifier(node.name) &&
+      ts.isVariableDeclarationList(node.parent) &&
+      node.parent.flags & ts.NodeFlags.Const
+    ) {
+      const value = stringLiteralValue(node.initializer)
+      if (value !== null) constants.set(node.name.text, value)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return constants
+}
+
+function collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces, constants) {
   const keys = new Set()
 
   function addLiteral(value) {
@@ -134,6 +160,14 @@ function collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces) {
 
     if (englishKeys.has(value)) {
       keys.add(value)
+    }
+
+    // A namespace-qualified object path (`notes:tagFields.presets`) is a key prefix that code
+    // extends with `${prefix}.person.name`, so everything below it is in use.
+    if (value.includes(':')) {
+      for (const key of englishKeys) {
+        if (key.startsWith(`${value}.`)) keys.add(key)
+      }
     }
 
     if (!value.includes(':')) {
@@ -147,6 +181,17 @@ function collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces) {
   function visit(node) {
     const value = stringLiteralValue(node)
     if (value) addLiteral(value)
+    // A key built outside a `t()` call (`const key = \`drawer.activityField${name}\``) is still a
+    // key. Only a dotted head counts here, so `inbox:${id}` or `calendar.${provider}` do not
+    // claim a whole namespace or section.
+    if (ts.isTemplateExpression(node)) {
+      const { head } = resolveTemplateHead(node, constants)
+      if (DOTTED_KEY_HEAD_RE.test(head)) {
+        for (const key of expandDynamicTranslationKeys(node, null, englishKeys, constants)) {
+          keys.add(key)
+        }
+      }
+    }
     ts.forEachChild(node, visit)
   }
 
@@ -340,10 +385,27 @@ function resolveTranslationKey(rawKey, boundNamespace) {
   }
 }
 
-function expandDynamicTranslationKeys(keyNode, boundNamespace, englishKeys) {
+// `${K}.title` with `const K = 'onboardingWizard.agent'`: fold leading string constants into the
+// head, so `${K}.${state}` is the prefix `onboardingWizard.agent.` rather than an empty one.
+function resolveTemplateHead(keyNode, constants) {
+  let head = keyNode.head.text
+  let resolvedSpans = 0
+  for (const span of keyNode.templateSpans) {
+    if (!constants || !ts.isIdentifier(span.expression) || !constants.has(span.expression.text)) {
+      break
+    }
+    head += constants.get(span.expression.text) + span.literal.text
+    resolvedSpans += 1
+  }
+  // A fully resolved template is a plain key; keep the original loose head for it.
+  if (resolvedSpans === keyNode.templateSpans.length) return { head: keyNode.head.text }
+  return { head }
+}
+
+function expandDynamicTranslationKeys(keyNode, boundNamespace, englishKeys, constants) {
   if (!keyNode || !ts.isTemplateExpression(keyNode)) return []
 
-  const rawPrefix = keyNode.head.text
+  const rawPrefix = resolveTemplateHead(keyNode, constants).head
   const rawSuffix = keyNode.templateSpans.at(-1)?.literal.text ?? ''
 
   if (!rawPrefix && !rawSuffix) return []
@@ -359,7 +421,7 @@ function expandDynamicTranslationKeys(keyNode, boundNamespace, englishKeys) {
     .filter(
       (key) => fullPrefixes.some((prefix) => key.startsWith(prefix)) && key.endsWith(rawSuffix)
     )
-    .sort()
+    .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 function createFinding(sourceFile, workspaceRoot, filePath, node, type, extras = {}) {
@@ -386,6 +448,7 @@ export function scanFile(filePath, options = {}) {
     sourceKind
   )
   const tBindings = new Map()
+  const constants = collectStringConstants(sourceFile)
   const usedKeys = new Set()
   const missingKeys = []
   const unknownNamespaces = []
@@ -393,17 +456,26 @@ export function scanFile(filePath, options = {}) {
   const untranslated = []
   const todoFindings = []
 
-  for (const key of collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces)) {
+  for (const key of collectLiteralTranslationKeys(sourceFile, englishKeys, namespaces, constants)) {
     usedKeys.add(key)
   }
 
-  function recordTranslationCall(node, translationCall) {
+  function recordTranslationCall(translationCall) {
+    // `t(cond ? 'a.b' : \`${K}.c\`)`: each branch is a key of its own.
+    if (translationCall.keyNode && ts.isConditionalExpression(translationCall.keyNode)) {
+      for (const branch of [translationCall.keyNode.whenTrue, translationCall.keyNode.whenFalse]) {
+        recordTranslationCall({ ...translationCall, keyNode: branch })
+      }
+      return
+    }
+
     const rawKey = stringLiteralValue(translationCall.keyNode)
     if (!rawKey) {
       for (const key of expandDynamicTranslationKeys(
         translationCall.keyNode,
         translationCall.namespace,
-        englishKeys
+        englishKeys,
+        constants
       )) {
         usedKeys.add(key)
       }
@@ -468,7 +540,7 @@ export function scanFile(filePath, options = {}) {
     bindGetFixedTDeclaration(node, tBindings)
 
     const translationCall = getTranslationCall(node, tBindings)
-    if (translationCall) recordTranslationCall(node, translationCall)
+    if (translationCall) recordTranslationCall(translationCall)
 
     if (ts.isJsxText(node) && !shouldIgnoreJsxText(node)) {
       const text = collapseWhitespace(node.getText(sourceFile))
@@ -558,7 +630,7 @@ export function scanSourceFiles(options = {}) {
   return {
     workspaceRoot,
     files: files.map((file) => relativePath(workspaceRoot, file)),
-    usedKeys: [...usedKeys].sort(),
+    usedKeys: [...usedKeys].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
     missingKeys,
     unknownNamespaces,
     dynamicKeyWarnings,

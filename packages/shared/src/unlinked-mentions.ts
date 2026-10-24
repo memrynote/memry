@@ -86,8 +86,9 @@ export function findPlainMentions(text: string, names: readonly string[]): Plain
 const LINKED_RUNS =
   /!?\[\[[^[\]\n]*\]\]|!?\[[^[\]\n]*\]\([^()\s]*\)|(?<![\p{L}\p{N}+.-])[a-z][a-z0-9+.-]*:\/\/[^\s<>()]*/giu
 
+const blank = (run: string): string => run.replace(/[^\n]/g, ' ')
+
 function maskMarkdown(markdown: string): string {
-  const blank = (run: string): string => run.replace(/[^\n]/g, ' ')
   const masked = replaceMarkdownComments(maskMarkdownCode(markdown), blank)
   return masked.replace(LINKED_RUNS, blank)
 }

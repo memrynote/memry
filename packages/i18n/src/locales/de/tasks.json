@@ -53,8 +53,7 @@
       "high": "Hoch",
       "urgent": "Dringend"
     },
-    "unarchive": "Archivierung aufheben",
-    "archivedOn": "Archiviert: {date}"
+    "unarchive": "Archivierung aufheben"
   },
   "reminders": {
     "summary": "Erinnerung: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Teilaufgabe hinzufügen",
     "subIssuePlaceholder": "Teilaufgabe hinzufügen…",
     "noSubIssues": "Noch keine Teilaufgaben",
-    "linkedNotes": "Verknüpft",
-    "linkNote": "Verknüpftes Element hinzufügen",
     "loading": "Wird geladen…",
-    "searchNotes": "Elemente durchsuchen…",
-    "noMatchingNotes": "Keine passenden Elemente",
-    "noNotesAvailable": "Keine Elemente verfügbar",
-    "noLinkedNotes": "Noch keine verknüpften Elemente",
-    "removeLinkTo": "Verknüpftes Element „{title}“ entfernen",
-    "removeLinkFallback": "Element",
     "related": "Verknüpft",
     "addRelatedItem": "Verknüpftes Element hinzufügen",
     "searchRelated": "Elemente durchsuchen…",
     "noMatchingRelated": "Keine passenden Elemente",
     "noRelatedAvailable": "Keine Elemente verfügbar",
-    "noRelatedItems": "Noch keine verknüpften Elemente",
     "removeRelatedItem": "Verknüpftes Element „{title}“ entfernen",
     "relatedItemFallback": "Element",
     "relatedItemMissing": "Dieses verknüpfte Element ist nicht mehr in diesem Tresor.",
@@ -251,7 +241,6 @@
     "deleted": "Aufgabe gelöscht",
     "deletedSeries": "Serie abgeschlossen!",
     "completed": "Aufgabe erledigt!",
-    "archived": "Aufgabe archiviert",
     "undoNotAvailableForDelete": "Löschen kann nicht rückgängig gemacht werden",
     "alreadyAllComplete": "Alle ausgewählten Aufgaben sind bereits erledigt",
     "noCompletedSelected": "Keine erledigten Aufgaben ausgewählt",
@@ -305,7 +294,10 @@
       "dueDateCleared": "{count, plural, one {Fälligkeitsdatum für # Teilaufgabe entfernt} other {Fälligkeitsdatum für # Teilaufgaben entfernt}}",
       "prioritySet": "{count, plural, one {Priorität für # Teilaufgabe festgelegt} other {Priorität für # Teilaufgaben festgelegt}}",
       "deleted": "{count, plural, one {# Teilaufgabe gelöscht} other {# Teilaufgaben gelöscht}}"
-    }
+    },
+    "completedBranch": "{title} und {count, plural, one {# offene Teilaufgabe} other {# offene Teilaufgaben}} abgeschlossen",
+    "deletedKeepSubtasks": "{title} gelöscht, Teilaufgaben bleiben erhalten",
+    "deletedBranch": "{title} und {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} gelöscht"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -328,7 +320,6 @@
       "archive": "Archivieren",
       "delete": "Löschen",
       "cancelSelection": "Auswahl aufheben",
-      "cancel": "Abbrechen",
       "unarchive": "Archivierung aufheben"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -400,9 +391,6 @@
       "delete": "Löschen \"",
       "thisProjectHas": "Dieses Projekt hat ",
       "task": "Aufgabe",
-      "whatWouldYouLikeToDoWithThem": "Was möchtest du mit ihnen machen?",
-      "moveTasksToPersonalProject": "Aufgaben in das persönliche Projekt verschieben",
-      "deleteAllTasksPermanently": "Alle Aufgaben dauerhaft löschen",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Dieses Projekt hat keine Aufgaben und wird dauerhaft gelöscht.",
       "notesEventsAndFilesStayNotice": "Aufgaben in diesem Projekt werden gelöscht. Deine Notizen, Termine und Dateien bleiben in deinem Tresor.",
       "thisActionCannotBeUndone": "Diese Aktion kann nicht rückgängig gemacht werden.",
@@ -423,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Fälligkeitsdatum für alle Teilaufgaben festlegen",
-      "setDueDateFor": "Fälligkeitsdatum festlegen für ",
-      "alsoApplyToCompletedSubtasks": "Auch auf erledigte Teilaufgaben anwenden (",
       "clearDate": "Datum entfernen",
       "cancel": "Abbrechen",
       "apply": "Anwenden",
@@ -433,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Priorität für alle Teilaufgaben festlegen",
-      "setPriorityFor": "Priorität festlegen für ",
-      "alsoApplyToCompletedSubtasks": "Auch auf erledigte Teilaufgaben anwenden (",
       "cancel": "Abbrechen",
       "apply": "Anwenden",
       "setPriorityForSubtasksIn": "Priorität für {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} in „{title}“ festlegen",
@@ -461,36 +445,13 @@
       "deleteAll": "Alle löschen",
       "deleteSubtasksConfirmation": "Damit {count, plural, one {wird # Teilaufgabe} other {werden # Teilaufgaben}} aus „{title}“ gelöscht."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Aufgabe mit Teilaufgaben löschen?",
-      "has": "hat ",
-      "subtask": "Teilaufgabe",
-      "whatWouldYouLikeToDo": "Was möchtest du tun?",
-      "deleteTaskAndAllSubtasks": "Aufgabe und alle Teilaufgaben löschen",
-      "permanentlyRemovesEverything": "Entfernt dauerhaft alles",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Aufgabe löschen, Teilaufgaben als eigenständige Aufgaben behalten",
-      "subtasksBecomeTopLevelTasks": "Teilaufgaben werden zu Aufgaben der obersten Ebene",
-      "cancel": "Abbrechen",
-      "delete": "Löschen"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Aufgabe duplizieren",
-      "createACopyOf": "Kopie erstellen von „",
-      "alsoDuplicateSubtasks": "Teilaufgaben ebenfalls duplizieren (",
       "cancel": "Abbrechen",
-      "duplicate": "Duplizieren ",
       "createACopyOfTitle": "Eine Kopie von „{title}“ erstellen",
       "alsoDuplicateSubtasksCount": "Teilaufgaben ebenfalls duplizieren ({count})",
       "duplicateWithItems": "Duplizieren ({count, plural, one {# Element} other {# Elemente}})",
       "duplicateTaskOnly": "Aufgabe duplizieren"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Übergeordnete Aufgabe auswählen…",
-      "selectATaskToMake": "Wähle eine Aufgabe, der \"",
-      "aSubtaskOf": "als Teilaufgabe untergeordnet wird.",
-      "searchTasks": "Aufgaben durchsuchen…",
-      "sameProject": "Gleiches Projekt",
-      "otherProjects": "Andere Projekte"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Loslassen, um neu zu planen: "
@@ -564,16 +525,13 @@
       "status": "Status",
       "projectIs": "Projekt ist",
       "project": "Projekt",
+      "locationIs": "Ort ist",
+      "location": "Ort",
+      "unknownNote": "Unbekannte Notiz",
       "due": "Fällig",
       "dueDate": "Fälligkeitsdatum",
       "search": "Suche",
       "clearAll": "Alle entfernen"
-    },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Nach Fälligkeitsdatum filtern",
-      "customRange": "Benutzerdefinierter Zeitraum",
-      "clear": "Zurücksetzen",
-      "apply": "Anwenden"
     },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filtern nach…"
@@ -584,6 +542,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Fälligkeitsdatum"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Ort",
+      "search": "Ordner und Notizen suchen...",
+      "empty": "Keine Ordner oder Notizen mit Aufgaben"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorität",
@@ -608,23 +571,9 @@
       "search": "Suchen…",
       "selected": "ausgewählt"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Weitere Filter",
-      "more": "Mehr",
-      "status": "Status",
-      "hasTimeSet": "Mit Uhrzeit",
-      "recurringOnly": "Nur wiederkehrend",
-      "status2": "Status"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Nach Priorität filtern",
       "priority": "Priorität"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Nach Projekt filtern",
-      "project": "Projekt",
-      "allProjects": "Alle Projekte",
-      "clear": "Zurücksetzen"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Schnellfilter:"
@@ -648,13 +597,6 @@
       "summaryTimeWith": "Zeit: Mit Uhrzeit",
       "summaryTimeWithout": "Zeit: Ohne Uhrzeit",
       "nameRequired": "Bitte gib einen Namen für diesen Filter ein"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Gespeicherte Filter",
-      "saved": "Gespeichert",
-      "noSavedFiltersYet": "Noch keine gespeicherten Filter",
-      "saveCurrentFilters": "Aktuelle Filter speichern",
-      "saveCurrentFilters2": "Aktuelle Filter speichern"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Filtername",
@@ -704,8 +646,7 @@
       "openTasksOnThisProject": "Die Aufgabenseite startet mit diesem Projekt"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Projekt auswählen",
-      "selectProject2": "Projekt auswählen"
+      "selectProject": "Projekt auswählen"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Projekt bearbeiten",
@@ -714,11 +655,6 @@
       "selectProject": "Projekt auswählen",
       "noProjectsYet": "Noch keine Projekte",
       "createProject": "Projekt erstellen"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Kein Projekt ausgewählt",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Wähle ein Projekt aus der Liste aus oder erstelle ein neues",
-      "createYourFirstProject": "Erstelle dein erstes Projekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Hilfe zu Kürzeln beim schnellen Hinzufügen",
@@ -804,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Uhrzeit auswählen",
-      "selectTime2": "Uhrzeit auswählen",
       "clearTime": "Uhrzeit entfernen"
     },
     "componentsTasksTodayEmptyState": {
@@ -869,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Kein Projekt ausgewählt",
     "emptyBody": "Wähle in der Seitenleiste ein Projekt, um seine Startseite zu öffnen.",
-    "loadError": "Projektdetails konnten nicht geladen werden",
     "overview": {
       "sectionTitle": "Übersicht",
       "create": "Übersichtsnotiz erstellen",
@@ -897,6 +831,7 @@
     "tabs": {
       "label": "Projektansichten",
       "overview": "Übersicht",
+      "all": "Alle",
       "tasks": "Aufgaben",
       "notes": "Notizen",
       "files": "Dateien",
@@ -951,6 +886,18 @@
       "fileError": "{name} konnte nicht verknüpft werden",
       "fileErrorGeneric": "Die Dateien konnten nicht importiert werden",
       "label": "Zu {name} hinzufügen"
+    },
+    "all": {
+      "showDone": "Erledigte anzeigen",
+      "empty": "In diesem Projekt ist nichts offen.",
+      "expand": "Aufgaben in {title} anzeigen",
+      "collapse": "Aufgaben in {title} ausblenden",
+      "daysLeft": "{count} T",
+      "overdue": "{count} T überfällig",
+      "columns": {
+        "title": "Titel",
+        "daysLeft": "Verbleibende Tage"
+      }
     }
   },
   "project": {
@@ -1001,5 +948,49 @@
     "indigo": "Indigo",
     "purple": "Violett",
     "pink": "Rosa"
+  },
+  "subtaskTree": {
+    "addSubtask": "Teilaufgabe hinzufügen",
+    "dropInto": "In {title}",
+    "dropOut": "Eine Ebene nach oben",
+    "draftPlaceholder": "Titel der Teilaufgabe",
+    "draftLabel": "Neue Teilaufgabe in {title}",
+    "draftIn": "in {title}",
+    "toggleComplete": "{title} abschließen",
+    "moveUnder": {
+      "title": "Verschieben unter",
+      "placeholder": "Verschieben unter…",
+      "empty": "Keine passende Aufgabe",
+      "topLevel": "Oberste Ebene von {project}",
+      "thisTask": "Diese Aufgabe",
+      "currentParent": "Aktuell übergeordnet",
+      "movesOne": "Verschiebt {title}",
+      "movesBranch": "Verschiebt {title} und {count, plural, one {# Teilaufgabe} other {# Teilaufgaben}}",
+      "keys": "↵ Hierher verschieben · ⌘↵ Oberste Ebene · esc Schließen"
+    },
+    "zoom": {
+      "path": "Aufgabenpfad",
+      "up": "Eine Ebene nach oben",
+      "upShortcut": "Eine Ebene nach oben (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "{title} löschen?",
+      "summary": "{direct, plural, one {Sie hat # Teilaufgabe} other {Sie hat # Teilaufgaben}}{deeper, plural, =0 {} one { und # weitere darunter} other { und # weitere darunter}}{open, plural, =0 {, alle erledigt.} other {, # davon noch offen.}}",
+      "cancel": "Abbrechen",
+      "deleteAll": "Alle löschen",
+      "keepSubtasks": "Teilaufgaben behalten"
+    },
+    "menu": {
+      "open": "Öffnen",
+      "complete": "Abschließen",
+      "reopen": "Wieder öffnen",
+      "zoom": "In Teilaufgaben hineinzoomen",
+      "moveUnder": "Verschieben unter…",
+      "indent": "Unter {title} verschieben",
+      "outdent": "Eine Ebene nach oben verschieben",
+      "topLevel": "Zur Aufgabe der obersten Ebene machen",
+      "delete": "Löschen"
+    },
+    "openPath": "{path} öffnen"
   }
 }

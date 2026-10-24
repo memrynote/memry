@@ -1243,7 +1243,7 @@ function stringFrom(random: () => number, alphabet: readonly string[], length: n
 
 /** Every character class the issue names as a breaker, plus plain filler. */
 const URL_ALPHABET = [
-  ...'abcz019',
+  ...'abcz019'.split(''),
   '_',
   '*',
   '!',
@@ -1260,7 +1260,18 @@ const URL_ALPHABET = [
   '日'
 ] as const
 
-const ANCHOR_ALPHABET = [...'abcz019', '-', '_', '?', '~', '>', '<', '&', 'ÿ', 'û'] as const
+const ANCHOR_ALPHABET = [
+  ...'abcz019'.split(''),
+  '-',
+  '_',
+  '?',
+  '~',
+  '>',
+  '<',
+  '&',
+  'ÿ',
+  'û'
+] as const
 
 /**
  * Free text remark-stringify reproduces verbatim. Emphasis pairs (`_x_`,
@@ -1270,7 +1281,7 @@ const ANCHOR_ALPHABET = [...'abcz019', '-', '_', '?', '~', '>', '<', '&', 'ÿ', 
  * markdown-significant characters belong, because inside a token nothing may
  * be rewritten, ever.
  */
-const INERT_TEXT_ALPHABET = [...'abcz019 .,:;?!', 'é', '日'] as const
+const INERT_TEXT_ALPHABET = [...'abcz019 .,:;?!'.split(''), 'é', '日'] as const
 
 function inertLine(random: () => number): string {
   // Runs of spaces collapse in any paragraph — accepted remark behavior, same
@@ -1309,7 +1320,19 @@ function fuzzCalloutMarkdown(random: () => number): string {
  * LaTeX-ish source: every character class a formula is made of, minus `$` so
  * the generator cannot write a fence line into the body it is fencing.
  */
-const LATEX_ALPHABET = [...'abcxyz019', '\\', '{', '}', '^', '_', '+', '-', '=', '&', ' '] as const
+const LATEX_ALPHABET = [
+  ...'abcxyz019'.split(''),
+  '\\',
+  '{',
+  '}',
+  '^',
+  '_',
+  '+',
+  '-',
+  '=',
+  '&',
+  ' '
+] as const
 
 function fuzzMathMarkdown(random: () => number): string {
   const line = (): string =>
@@ -1338,7 +1361,7 @@ function fuzzToggleMarkdown(random: () => number, depth = 0): string {
  * mixed-document family stays green while the mention family above carries the
  * hostile alphabet (and its pending flag) alone.
  */
-const SAFE_URL_ALPHABET = [...'abcz019', ' ', '(', ')', 'é', '日'] as const
+const SAFE_URL_ALPHABET = [...'abcz019'.split(''), ' ', '(', ')', 'é', '日'] as const
 
 function safeMentionSentence(random: () => number): string {
   const path = stringFrom(random, SAFE_URL_ALPHABET, 1 + Math.floor(random() * 12))

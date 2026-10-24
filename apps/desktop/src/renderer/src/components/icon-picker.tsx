@@ -362,9 +362,8 @@ const ICON_CATEGORIES = {
 } as const
 
 // Tüm ikonları düz bir map olarak export et
-export const ALL_ICONS: Record<string, AppIcon> = Object.values(ICON_CATEGORIES).reduce(
-  (acc, category) => ({ ...acc, ...category }),
-  {}
+export const ALL_ICONS: Record<string, AppIcon> = Object.fromEntries(
+  Object.values(ICON_CATEGORIES).flatMap((category) => Object.entries(category))
 )
 
 // İkon adından bileşeni al
@@ -396,6 +395,7 @@ export const IconPicker = ({
   // Dışarı tıklandığında kapat
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- MouseEvent.target is a Node for document mousedown events
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
         onClose()
       }

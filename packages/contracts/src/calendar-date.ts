@@ -4,7 +4,7 @@
  * The shape regex alone accepts `2026-02-30`, `2025-02-29` and `2026-13-01`,
  * so a date a user typed by hand or an importer read out of someone else's
  * markdown lands in the database and is rendered from there. `completedAt` is
- * a `z.string().datetime()` and zod already refuses the impossible instant,
+ * a `z.iso.datetime()` and zod already refuses the impossible instant,
  * which is the asymmetry this closes.
  *
  * The round trip goes through the LOCAL constructor and the local getters, the

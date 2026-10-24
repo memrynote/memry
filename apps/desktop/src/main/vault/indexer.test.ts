@@ -73,6 +73,7 @@ vi.mock('fs/promises', async (importOriginal) => {
   return {
     ...actual,
     readFile: vi.fn((filePath: Parameters<typeof actual.readFile>[0], ...rest: unknown[]) => {
+      // oxlint-disable-next-line typescript/no-base-to-string -- readFile receives string paths here; String() normalizes the PathLike union for the map lookup
       const code = unreadablePaths.get(String(filePath))
       if (code) {
         return Promise.reject(Object.assign(new Error(`${code}: mocked`), { code }))
@@ -290,7 +291,7 @@ describe('indexer', () => {
         .from(noteCache)
         .all()
         .map((row) => row.title)
-      expect(titles.sort()).toEqual(['Filed', 'Nested', 'Visible'])
+      expect(titles.toSorted()).toEqual(['Filed', 'Nested', 'Visible'])
     })
 
     it('T374: handles nested subfolders', async () => {

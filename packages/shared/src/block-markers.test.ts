@@ -341,10 +341,10 @@ describe('link-card marker', () => {
       const mixed = paragraph([text('see '), link()])
       const heading: MarkedBlock = { type: 'heading', props: {}, content: [text('[[Dune]]')] }
       const plain = paragraph([text('just text')])
-      for (const block of [running, mixed, heading, plain]) {
-        const before = JSON.stringify(block)
-        parseSidecarMarkerLine(line)!(block)
-        expect(JSON.stringify(block)).toBe(before)
+      for (const target of [running, mixed, heading, plain]) {
+        const before = JSON.stringify(target)
+        parseSidecarMarkerLine(line)!(target)
+        expect(JSON.stringify(target)).toBe(before)
       }
     })
 

@@ -91,7 +91,7 @@ const hubCollisionDetection: CollisionDetection = (args) => {
   if (activeType === 'category') return collisions
 
   const typeById = new Map(droppableContainers.map((c) => [c.id, c.data.current?.type]))
-  return [...collisions].sort(
+  return collisions.toSorted(
     (a, b) => (typeById.get(a.id) === 'tag' ? 0 : 1) - (typeById.get(b.id) === 'tag' ? 0 : 1)
   )
 }
@@ -281,6 +281,7 @@ export function TagsHubPage(): React.JSX.Element {
       const session = dragSessionRef.current
       if (!session || !over) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is untyped; only this page registers draggable data
       const overData = over.data.current as OverTarget | undefined
       if (!overData || (overData.type !== 'tag' && overData.type !== 'tag-container')) return
 
@@ -356,6 +357,7 @@ export function TagsHubPage(): React.JSX.Element {
       // before any `onDragOver` ran, there is no preview to read and the
       // final collision is resolved directly instead.
       const preview = overrideRef.current
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is untyped; only this page registers draggable data
       const overData = event.over?.data.current as OverTarget | undefined
       const isTagTarget = overData && (overData.type === 'tag' || overData.type === 'tag-container')
       const assignments =

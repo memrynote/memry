@@ -44,12 +44,12 @@ async function isOverlayGone(page): Promise<void> {
 
 async function injectButton(page, button: InjectedButton, index = 0): Promise<void> {
   await page.evaluate(
-    ({ label, top, left, index, testid }) => {
+    ({ label, top, left, index: indexArg, testid }) => {
       const btn = document.createElement('button')
       btn.setAttribute('data-hint', '')
-      btn.setAttribute('data-testid', `${testid}-${index}`)
+      btn.setAttribute('data-testid', `${testid}-${indexArg}`)
       btn.setAttribute('aria-label', label)
-      btn.dataset.hintE2eIndex = String(index)
+      btn.dataset.hintE2eIndex = String(indexArg)
       btn.textContent = label
       Object.assign(btn.style, {
         position: 'fixed',
@@ -65,9 +65,9 @@ async function injectButton(page, button: InjectedButton, index = 0): Promise<vo
       if (typeof (window as any).__hintClicks !== 'object') {
         ;(window as any).__hintClicks = {}
       }
-      ;(window as any).__hintClicks[String(index)] = 0
+      ;(window as any).__hintClicks[String(indexArg)] = 0
       btn.addEventListener('click', () => {
-        ;(window as any).__hintClicks[String(index)] += 1
+        ;(window as any).__hintClicks[String(indexArg)] += 1
       })
       document.body.appendChild(btn)
     },
@@ -101,7 +101,7 @@ async function readBadges(
       const rect = (badge as HTMLElement).getBoundingClientRect()
       return {
         label: badge.textContent ?? '',
-        opacity: parseFloat(getComputedStyle(badge as HTMLElement).opacity),
+        opacity: parseFloat(getComputedStyle(badge).opacity),
         top: rect.top,
         left: rect.left
       }

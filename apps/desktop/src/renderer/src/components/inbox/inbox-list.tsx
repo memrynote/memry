@@ -38,6 +38,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger
 } from '@/components/ui/context-menu'
+import { metadataAs } from '@/components/inbox-detail/item-metadata'
 import { InboxRowNameInput } from './inbox-row-name-input'
 import {
   formatDuration,
@@ -433,7 +434,8 @@ export function InboxListItem({
   const filteredFolders = getFilteredFolders(folders, quickFileQuery, 5)
 
   // For reminder items, show the target title from metadata
-  const reminderMetadata = item.type === 'reminder' ? (item.metadata as ReminderMetadata) : null
+  const reminderMetadata =
+    item.type === 'reminder' ? metadataAs<ReminderMetadata>(item.metadata) : null
   const isReminderViewed = item.type === 'reminder' && !!item.viewedAt
 
   const rawDisplayTitle =

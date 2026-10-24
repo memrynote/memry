@@ -76,7 +76,7 @@ export function SummarizeLongNotesRow({
   }, [])
 
   useEffect(() => {
-    if (!checked) return
+    if (!checked) return undefined
     // oxlint-disable-next-line react/set-state-in-effect -- loads from the main process over IPC on mount; the effect synchronizes with that external system
     void refreshLastRun()
     return window.api.noteFold.onUpdated(() => void refreshLastRun())
@@ -153,6 +153,7 @@ export function SummarizeLongNotesRow({
           {checked && (
             <Select
               value={agent}
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
               onValueChange={(value) => void handleAgentChange(value as FoldAgentChoice)}
             >
               <SelectTrigger

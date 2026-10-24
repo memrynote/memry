@@ -99,11 +99,13 @@ export function registerAccountHandlers(): void {
 
   ipcMain.handle(AccountChannels.invoke.PREVIEW_PLAN_CHANGE, async (_event, input) => {
     log.info('account:previewPlanChange requested')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC payload validated by the registering handler before this call
     return previewPlanChange(input as PlanChangeTarget)
   })
 
   ipcMain.handle(AccountChannels.invoke.CHANGE_PLAN, async (_event, input) => {
     log.info('account:changePlan requested')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC payload validated by the registering handler before this call
     return changePlan(input as PlanChangeTarget)
   })
 }

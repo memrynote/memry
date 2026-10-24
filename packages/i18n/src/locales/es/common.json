@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "No se pudo copiar el portal",
+    "hiddenCount": "{count} ocultos",
+    "windowFailed": "No se pudo abrir este portal. Abre la nota de origen en su lugar.",
+    "noTarget": "Este portal aún no tiene destino. Añade una nota a la definición o quita el bloque.",
+    "invalidJson": "La definición de este portal no es un JSON válido. Corrígela abajo o quita el bloque.",
+    "invalidShape": "La definición de este portal no tiene ninguna nota ni búsqueda. Corrígela abajo o quita el bloque.",
+    "search": {
+      "editQuery": "Editar consulta",
+      "count": "{count, plural, one {# bloque} other {# bloques}}",
+      "loading": "Buscando…",
+      "empty": "Ningún bloque coincide con esta consulta.",
+      "failed": "No se pudo ejecutar la búsqueda.",
+      "retry": "Reintentar",
+      "truncated": "Mostrando las primeras {count} coincidencias."
+    },
+    "copiedContents": "Contenido copiado",
+    "copiedLink": "Enlace copiado",
+    "actionFailed": "No se pudo modificar este portal",
+    "keepsOneBlock": "Un portal conserva al menos un bloque. Quita el portal en su lugar.",
+    "expandChildren": "Mostrar hijos",
+    "collapseChildren": "Ocultar hijos",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Incluir «{block}»",
+      "locked": "{note} está bloqueada · solo lectura",
+      "more": "Más",
+      "openBeside": "Abrir {note} al lado",
+      "click": "Clic",
+      "copyContents": "Copiar contenido",
+      "copyLink": "Copiar enlace",
+      "remove": "Quitar portal",
+      "removeHint": "{note} conserva todos sus bloques"
+    },
+    "states": {
+      "missingNote": {
+        "text": "La nota de origen se eliminó. La referencia se conserva.",
+        "action": "Quitar"
+      },
+      "missingBlock": {
+        "text": "El bloque se eliminó en {source}.",
+        "action": "Elegir otro"
+      },
+      "notSynced": {
+        "text": "Esperando a que se sincronice la nota de origen.",
+        "action": "Reintentar"
+      },
+      "cycle": {
+        "text": "Este portal vuelve a sí mismo.",
+        "action": "Abrir origen"
+      },
+      "tooDeep": {
+        "text": "Los portales se anidan hasta {max} niveles. Este se abre como enlace.",
+        "action": "Abrir origen"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Enfocar el campo de captura",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Abrir en la app predeterminada",
     "revealFailed": "No se pudo mostrar en la carpeta"
   },
+  "commands": {
+    "runFailed": "No se pudo ejecutar ese comando. Inténtalo de nuevo."
+  },
+  "commandsPalette": {
+    "title": "Comandos",
+    "placeholder": "Escribe un comando…",
+    "groups": {
+      "navigation": "Navegación",
+      "create": "Crear",
+      "tabs": "Pestañas",
+      "editor": "Editor",
+      "view": "Vista",
+      "app": "App",
+      "note": "Nota",
+      "settings": "Ajustes",
+      "sync": "Sincronización",
+      "help": "Ayuda",
+      "project": "Proyecto",
+      "tasks": "Tareas",
+      "canvas": "Lienzo",
+      "folder": "Carpeta",
+      "file": "Archivo"
+    },
+    "contexts": {
+      "note": "Esta nota",
+      "journal": "Este diario",
+      "project": "Este proyecto",
+      "tasks": "Estas tareas",
+      "canvas": "Este lienzo",
+      "folder": "Esta carpeta",
+      "tag": "Esta etiqueta",
+      "file": "Este archivo"
+    },
+    "recent": "Recientes",
+    "empty": "Ningún comando coincide con «{query}»",
+    "searchHint": "Buscar notas: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# comando} other {# comandos}}"
+    },
+    "actions": {
+      "run": "Ejecutar",
+      "searchNotes": "Buscar notas"
+    }
+  },
   "tabs": {
     "pin": "Fijar pestaña",
     "unpin": "Dejar de fijar pestaña",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "La acción falló",
-    "nothingToUndo": "Nada que deshacer",
     "undone": "Deshecho: {description}",
     "undoFailed": "No se pudo deshacer la acción",
     "filesImported": "{count, plural, one {Se importó # archivo} other {Se importaron # archivos}}",
@@ -131,6 +231,20 @@
     "openInTab": "Abrir conversación en pestaña",
     "stop": "Detener",
     "thinking": "El agente está pensando",
+    "toolsUnavailable": "Las herramientas de la bóveda están desactivadas para este modelo. No superó la comprobación de herramientas, así que solo puede chatear.",
+    "toolsUnavailableWithDetail": "Las herramientas de la bóveda están desactivadas para este modelo. No superó la comprobación de herramientas, así que solo puede chatear. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Las herramientas de la bóveda están desactivadas para este modelo. El proveedor rechazó una solicitud de prueba que incluía herramientas, así que el modelo solo puede chatear.",
+      "noToolCall": "Las herramientas de la bóveda están desactivadas para este modelo. Respondió a una solicitud de prueba sin llamar a la herramienta, así que solo puede chatear.",
+      "toolResultRejected": "Las herramientas de la bóveda están desactivadas para este modelo. Llamó a una herramienta de prueba, pero falló al recibir el resultado, así que solo puede chatear.",
+      "streamingUnsupported": "Las herramientas de la bóveda están desactivadas para este modelo. El proveedor no transmitió una respuesta de prueba, así que el modelo solo puede chatear.",
+      "providerSaid": "El proveedor dijo: {detail}",
+      "wroteToolCall": "El modelo escribió una llamada a una herramienta como texto y no se ejecutó nada."
+    },
+    "stepLimit": {
+      "notice": "Se detuvo al alcanzar el límite de pasos.",
+      "continue": "Continuar"
+    },
     "enable": {
       "title": "Activar el agente de memrynote",
       "description": "El agente de memrynote usa la CLI de agente local que elijas para conversar sobre tu bóveda. Claude envía los turnos a Anthropic; Codex los envía a OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "El agente quiere crear {title}. Revisa el cambio antes de aplicarlo.",
       "descriptionDelete": "El agente quiere eliminar {title}. Revisa el cambio antes de aplicarlo.",
       "fallbackTitle": "este elemento",
-      "current": "Actual",
       "candidate": "Propuesta",
       "loading": "Cargando…",
       "apply": "Aplicar",
@@ -268,13 +381,18 @@
       "removeAttachment": "Quitar {label}",
       "placeholder": "Haz cualquier cosa con memrynote… Usa @ para mencionar notas, tareas y eventos",
       "send": "Enviar",
-      "providerLabel": "Proveedor del agente: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Herramientas conectadas",
       "connectTool": "Conectar {tool}",
-      "addContext": "Añadir contexto",
-      "addContextWithPermissions": "Añadir contexto ({permissions})",
       "mentionContext": "Mencionar una nota, tarea o evento",
+      "files": {
+        "attach": "Adjuntar un archivo de texto",
+        "refused": {
+          "unsupportedType": "{name} no es un archivo de texto compatible. Adjunta un archivo .txt, .md, .log, .csv, .tsv, .json, .yaml o .yml.",
+          "notText": "{name} no es un archivo de texto UTF-8. Adjunta un archivo de texto en su lugar.",
+          "tooLarge": "{name} haría que este mensaje superara el límite de 100 KB. Quita un archivo o adjunta uno más pequeño.",
+          "readFailed": "No se pudo leer {name}. Comprueba que el archivo siga existiendo y que puedas abrirlo, y vuelve a adjuntarlo."
+        }
+      },
       "voice": {
         "start": "Iniciar dictado por voz",
         "stop": "Detener dictado por voz",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "No se pudo transcribir la entrada de voz"
         }
       },
-      "modelLabel": "Modelo del agente: {provider} {model}",
-      "reasoningLabel": "Razonamiento del agente: {reasoning}",
       "providers": {
-        "label": "Proveedor",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Acceso al equipo"
       },
       "webSearch": {
-        "on": "Activada",
-        "off": "Desactivada",
         "label": "Búsqueda web"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agente no disponible: abre Ajustes…"
       },
       "settings": {
-        "reasoning": "Razonamiento",
         "effort": "Esfuerzo"
       },
       "includeCurrentNote": "Incluir la nota actual",
@@ -340,13 +452,29 @@
           "extraHigh": "Extra alto"
         }
       },
-      "permissionsLabel": "Permisos del agente: {access}, búsqueda web {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Predeterminado",
+          "default": "Profundidad predeterminada",
+          "high": "Alta",
+          "max": "Máxima"
+        }
+      },
       "permissions": {
-        "label": "Permisos",
-        "access": "Acceso",
-        "tools": "Herramientas"
+        "access": "Acceso"
       },
       "modelSettingsLabel": "Ajustes del modelo del agente: {model}, {settings}",
+      "queue": {
+        "label": "Mensajes en cola",
+        "queueMessage": "Poner mensaje en cola",
+        "edit": "Editar mensaje en cola",
+        "editLabel": "Texto del mensaje en cola",
+        "remove": "Quitar mensaje en cola",
+        "save": "Guardar",
+        "cancel": "Cancelar",
+        "sending": "Enviando…",
+        "notSent": "No enviado. Edítalo para enviarlo de nuevo o quítalo."
+      },
       "unavailable": {
         "vaultToolsOnly": "Solo herramientas de la bóveda con este modelo"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "No se pudo guardar el estado del aviso",
       "resolveWindow": "No se pudo resolver la ventana de origen del agente",
       "detectCli": "No se pudieron detectar los backends del agente",
-      "loadDisclosure": "No se pudo cargar el estado del aviso"
+      "loadDisclosure": "No se pudo cargar el estado del aviso",
+      "turnFailed": "La respuesta se detuvo con un error. Tu mensaje se conserva, así que puedes enviarlo de nuevo."
     },
     "actions": {
       "copy": "Copiar",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Soltar archivos para importar",
       "dropFilesIntoVaultRoot": "Raíz de la bóveda",
       "newNoteN": "Nueva nota (⌘N)",
-      "new": "Nuevo",
       "newItemMenu": "Crear nuevo…",
       "feedbackButton": "Enviar comentarios",
       "feedbackTitle": "Enviar comentarios",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Buscar, reemplazar, preguntar…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Omitir la introducción",
-      "welcomeToMemry": "Te damos la bienvenida a memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Tu base de conocimiento personal. En 2 minutos te ayudamos a empezar.",
-      "getStarted": "Empezar ",
-      "createYourFirstNote": "Crea tu primera nota",
-      "markdownBasedStoredLocallyAsPlainFiles": "Basadas en Markdown y guardadas localmente como archivos de texto plano.",
-      "eGMeetingNotesIdeasAnything": "p. ej., notas de reuniones, ideas, lo que quieras…",
-      "skip": "Omitir",
-      "createNote": "Crear nota ",
-      "addYourFirstTask": "Añade tu primera tarea",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Las tareas se enlazan con tus notas, con prioridades y fechas de vencimiento.",
-      "eGReviewProjectProposal": "p. ej., revisar la propuesta del proyecto…",
-      "skip2": "Omitir",
-      "createTask": "Crear tarea ",
-      "syncAcrossDevices": "Sincronización entre dispositivos",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Mantén tus notas y tareas sincronizadas en todos tus dispositivos. Puedes configurarlo más tarde cuando quieras.",
-      "skipForNow": "Omitir por ahora",
-      "doneLetSGo": "Listo, ¡vamos! "
+      "skip": "Omitir"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Establecer icono de carpeta",
@@ -707,8 +818,7 @@
       "unknownTabType": "Tipo de pestaña desconocido: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "cambios no guardados",
-      "preview": "vista previa"
+      "unsavedChanges": "cambios no guardados"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nueva pestaña",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Arrastra para cambiar el tamaño · Haz doble clic para restablecer"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Te damos la bienvenida a memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Tu sistema personal de gestión del conocimiento.",
-      "selectAFolderToStoreYourNotesAndTasks": "Selecciona una carpeta para guardar tus notas y tareas.",
       "opening": "Abriendo…",
-      "selectVaultFolder": "Seleccionar carpeta de la bóveda",
-      "plainMarkdown": "Markdown plano",
-      "yourNotesStayPortable": "Tus notas se pueden llevar a cualquier parte",
-      "syncAnywhere": "Sincronizar en cualquier lugar",
-      "useDropboxIcloudGit": "Usa Dropbox, iCloud o Git",
       "recentVaults": "Bóvedas recientes",
-      "notesLastOpened": "notas · Última apertura",
-      "preRelease": "Beta",
       "createNewVault": "Crear nueva bóveda",
-      "createNewVaultDesc": "Crea una bóveda nueva en la carpeta que elijas.",
-      "openExistingVault": "Abrir bóveda existente",
-      "openExistingVaultDesc": "Elige una carpeta con archivos Markdown que ya tengas.",
-      "signInToSync": "Iniciar sesión para sincronizar",
-      "signInToSyncDesc": "Bóvedas cifradas de extremo a extremo en tus dispositivos.",
-      "create": "Crear",
       "open": "Abrir",
-      "signIn": "Iniciar sesión",
       "helpAndDocs": "Ayuda y documentación",
-      "signInRequiresVault": "Abre o crea una bóveda primero para configurar la sincronización.",
       "addVault": "Añadir bóveda",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Aún no hay bóvedas",
       "openVault": "Abrir bóveda",
       "settings": "Ajustes",
-      "logOut": "Cerrar sesión",
-      "signInToSync": "Iniciar sesión para sincronizar",
       "remove": "Quitar “",
       "removeVaultTitle": "¿Quitar «{name}» de la lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Esta bóveda se quitará de la app, pero tus archivos seguirán en el disco. Puedes volver a añadirla cuando quieras.",
       "cancel": "Cancelar",
       "remove2": "Quitar",
       "inYourAccount": "En tu cuenta",
+      "trySandbox": "Probar la bóveda de pruebas",
+      "sandboxVault": "Bóveda de pruebas",
+      "sandboxPreparing": "Preparando la bóveda de pruebas…",
+      "sandboxFailed": "No se pudo preparar la bóveda de pruebas",
+      "resetSandbox": "Restablecer la bóveda de pruebas",
       "itemsCount": "{count} elementos",
       "untitledVault": "Bóveda",
       "downloadVaultTitle": "Descargar «{name}»",
@@ -870,7 +965,6 @@
       "changeLocation": "Cambiar…",
       "download": "Descargar",
       "downloadFailed": "No se pudo descargar la bóveda",
-      "deleteFromAccount": "Eliminar de la cuenta",
       "deleteVaultTitle": "¿Eliminar «{name}» de tu cuenta?",
       "deleteVaultBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
       "deleteVaultConfirm": "Eliminar de la cuenta",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Quitar widget",
       "dragAria": "Arrastrar widget",
-      "configAria": "Configurar widget",
-      "resizeAria": "Redimensionar a {size}",
       "menuAria": "Opciones del widget",
-      "resize": "Tamaño",
       "remove": "Quitar",
       "filter": {
         "all": "Todas",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Las notas que abras aparecerán aquí",
       "bookmarks": "Marcadores",
       "tasks": "Tareas",
+      "chart": "Gráfico",
       "calendar": "Calendario",
       "calendarToday": "Hoy",
       "openCalendar": "Abrir calendario",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Elige una carpeta",
       "folderEmpty": "Aún no hay carpetas",
       "folderNoSelection": "No hay ninguna carpeta seleccionada",
-      "folderView_list": "Lista",
-      "folderView_gallery": "Galería",
       "folderViewSelect": "Vista",
       "project": "Proyecto",
       "projectNoSelection": "No hay ningún proyecto seleccionado",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Tablero de Inicio",
       "deleteAria": "Eliminar tablero",
-      "newAria": "Nuevo tablero",
       "newName": "Nuevo tablero",
       "defaultName": "Inicio",
       "manage": "Gestionar tableros",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# tarea vence hoy} other {# tareas vencen hoy}}",
       "events": "{count, plural, one {# evento} other {# eventos}}"
     },
-    "edit": "Editar",
-    "done": "Listo",
     "addWidget": "Añadir widget",
+    "cover": {
+      "add": "Añadir portada"
+    },
     "empty": {
       "title": "Tu tablero está vacío",
       "body": "Los widgets reúnen tus notas, tareas y marcadores en un solo lugar tranquilo.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introducción completada",
-      "body": "Por favor, danos una estrella en GitHub: ayuda a que otras personas encuentren MemryNote.",
-      "action": "Dar una estrella en GitHub"
+      "body": "Por favor, danos una estrella en GitHub: ayuda a que otras personas encuentren MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Actualización lista",
     "failed": "No se pudo actualizar",
     "downloadAction": "Descargar",
-    "restartAction": "Reiniciar",
     "detailsAction": "Detalles",
     "popover": {
       "readyTitle": "MemryNote {version} está listo",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Bóvedas",
     "position": "{name}, bóveda {index} de {count}",
-    "openList": "{position}. Abrir la lista de bóvedas",
     "switchTo": "Cambiar a {name}",
     "switchingTo": "Cambiando a {name}",
     "changeIcon": "Cambiar icono…",
     "resetIcon": "Restablecer icono",
     "iconButton": "Cambiar el icono de {name}",
+    "leaveSandbox": "Volver a {name}",
     "iconFailed": "No se pudo cambiar el icono de la bóveda"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Tipo",
     "filterModified": "Modificado",
     "matches": "Coincidencias",
+    "matchesMore": "{count, plural, one {# coincidencia más} other {# coincidencias más}}",
+    "matchesHide": "Ocultar coincidencias",
+    "matchOf": "Coincidencia {index} de {total}",
     "showMore": "Mostrar {count} más",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Siguiente sección",
       "open": "Abrir",
       "openNote": "Abrir nota",
+      "openAtMatch": "Abrir en la coincidencia",
       "openFile": "Abrir archivo",
       "openJournal": "Abrir diario",
       "openTask": "Abrir tarea",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Elegir etiqueta",
       "addTag": "Añadir etiqueta",
       "showAll": "Mostrar todo",
+      "hideMatches": "Ocultar coincidencias",
       "searchEverywhere": "Buscar en todo",
       "clearFilters": "Borrar filtros"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "En {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# bóveda encontrada} many {# de bóvedas encontradas} other {# bóvedas encontradas}}",
-      "notion": "Notion",
       "otherApps": "Otras apps y archivos",
       "otherAppsHint": "y {count} más",
       "detectedFootnote": "Se encontraron comprobando qué apps están instaladas. Nada sale de {device}.",

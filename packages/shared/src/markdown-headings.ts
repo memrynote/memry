@@ -29,6 +29,10 @@ export interface MarkdownHeading {
   level: 1 | 2 | 3 | 4 | 5 | 6
 }
 
+function isHeadingLevel(level: number): level is MarkdownHeading['level'] {
+  return Number.isInteger(level) && level >= 1 && level <= 6
+}
+
 const ATX_HEADING = /^ {0,3}(#{1,6})(?:[ \t]+(.*))?$/
 const FENCE = /^ {0,3}(```|~~~)/
 
@@ -71,7 +75,9 @@ export function extractMarkdownHeadings(markdown: string): MarkdownHeading[] {
     const text = stripInlineMarkdown(withoutClosing)
     if (!text) continue
 
-    headings.push({ text, level: match[1].length as MarkdownHeading['level'] })
+    const level = match[1].length
+    if (!isHeadingLevel(level)) continue
+    headings.push({ text, level })
   }
 
   return headings

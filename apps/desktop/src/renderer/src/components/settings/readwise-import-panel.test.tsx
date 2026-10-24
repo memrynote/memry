@@ -272,16 +272,16 @@ describe('ReadwiseImportPanel', () => {
       }
     }
     let preview: ReturnType<typeof vi.fn>
-    let cancel: ReturnType<typeof vi.fn>
+    let cancelPreview: ReturnType<typeof vi.fn>
 
     beforeEach(() => {
       status.mockResolvedValue(firstImportStatus)
       preview = vi.fn(() => Promise.resolve(libraryPreview))
-      cancel = vi.fn(() => Promise.resolve())
+      cancelPreview = vi.fn(() => Promise.resolve())
       ;(window as unknown as { api: { import: Record<string, unknown> } }).api.import.preview =
         preview
       ;(window as unknown as { api: { import: Record<string, unknown> } }).api.import.cancel =
-        cancel
+        cancelPreview
     })
 
     it('shows a count per category, and the books the enabled ones will import', async () => {
@@ -386,7 +386,7 @@ describe('ReadwiseImportPanel', () => {
       await waitFor(() => expect(states.length).toBeGreaterThan(0))
       expect(states[states.length - 1].ready).toBe(false)
       unmount()
-      expect(cancel).toHaveBeenCalledWith({ importId: preview.mock.calls[0][0].importId })
+      expect(cancelPreview).toHaveBeenCalledWith({ importId: preview.mock.calls[0][0].importId })
     })
 
     it('offers a plain Import for an empty library', async () => {

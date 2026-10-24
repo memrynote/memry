@@ -72,6 +72,8 @@ const resolveMutableGroupColumnId = (
       const validTypes = new Set(['todo', 'in_progress'])
       return validTypes.has(groupKey) ? groupKey : undefined
     }
+    default:
+      return undefined
   }
 }
 

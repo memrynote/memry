@@ -17,17 +17,22 @@
       "filterAll": "Semua file"
     },
     "exportCancelled": "Ekspor dibatalkan",
-    "update": {
-      "availableTitle": "Pembaruan tersedia",
-      "availableMessage": "memrynote {version} tersedia.",
-      "availableDetailFallback": "Unduh pembaruan sekarang?",
-      "buttonDownload": "Unduh",
-      "buttonLater": "Nanti",
-      "readyTitle": "Pembaruan siap",
-      "readyMessage": "memrynote {version} telah diunduh.",
-      "readyDetailFallback": "Mulai ulang memrynote untuk menyelesaikan instalasi pembaruan.",
-      "buttonRestartNow": "Mulai ulang sekarang",
-      "releaseNotesLabel": "Catatan rilis:"
+    "dataDbRecovery": {
+      "title": "Perbaiki database vault",
+      "message": "Database Memry untuk vault ini rusak.",
+      "detail": "File catatan dan jurnal Anda tidak terpengaruh. Perbaikan menyimpan database yang rusak sebagai cadangan di {path}, memulai yang baru, membangun ulang apa yang bisa dari file vault Anda, dan memulihkan item tersinkron pada sinkronisasi berikutnya. Perubahan yang belum tersinkron dipulihkan jika memungkinkan.",
+      "buttonRecover": "Perbaiki",
+      "buttonLater": "Nanti saja"
+    },
+    "obsidianVault": {
+      "title": "Buka vault Obsidian",
+      "message": "Buka salinan vault Obsidian ini?",
+      "detail": "Membuka vault Obsidian di memrynote dapat menghilangkan data yang diandalkan plugin Obsidian Anda. Saat memrynote mengubah baris tugas dari sebuah plugin menjadi tugas, baris itu ditulis ulang. Kolom seperti tanggal jatuh tempo plugin Tasks keluar dari file, dan Obsidian tidak lagi melihatnya.\n\nmemrynote dapat menyalin “{name}” menjadi “{copyName}” di sebelahnya dan membuka salinannya. “{name}” tetap persis seperti semula.",
+      "detailExistingCopy": "Membuka vault Obsidian di memrynote dapat menghilangkan data yang diandalkan plugin Obsidian Anda. Saat memrynote mengubah baris tugas dari sebuah plugin menjadi tugas, baris itu ditulis ulang. Kolom seperti tanggal jatuh tempo plugin Tasks keluar dari file, dan Obsidian tidak lagi melihatnya.\n\nSalinan memrynote, “{copyName}”, sudah ada di sebelahnya. memrynote dapat membuka salinan itu. “{name}” tetap persis seperti semula.",
+      "buttonCopy": "Buat salinan",
+      "buttonOpenCopy": "Buka salinan",
+      "buttonOpenOriginal": "Buka aslinya",
+      "buttonCancel": "Batal"
     },
     "pair": {
       "title": "Pasangkan ekstensi peramban",

@@ -27,24 +27,37 @@ export interface AgentModelPreference {
   localModel?: string | null
 }
 
-const PROVIDERS: ReadonlySet<AgentProvider> = new Set([
+const PROVIDERS: ReadonlySet<string> = new Set([
   'claude_cli',
   'codex_cli',
   'antigravity_cli',
   'local_openai_compatible'
 ])
 const CLI_BACKENDS: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
-const CLAUDE_EFFORTS: ReadonlySet<ClaudeEffort> = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
-const CODEX_EFFORTS: CodexReasoningEffort[] = ['low', 'medium', 'high', 'xhigh']
-const LOCAL_EFFORTS: LocalReasoningEffort[] = ['default', 'high', 'max']
+const CLAUDE_EFFORTS: ReadonlySet<string> = new Set(['low', 'medium', 'high', 'xhigh', 'max'])
+const CODEX_EFFORTS: ReadonlySet<string> = new Set(['low', 'medium', 'high', 'xhigh'])
+const LOCAL_EFFORTS: ReadonlySet<string> = new Set(['default', 'high', 'max'])
+
+function isProvider(value: unknown): value is AgentProvider {
+  return typeof value === 'string' && PROVIDERS.has(value)
+}
+function isClaudeEffort(value: unknown): value is ClaudeEffort {
+  return typeof value === 'string' && CLAUDE_EFFORTS.has(value)
+}
+function isCodexEffort(value: unknown): value is CodexReasoningEffort {
+  return typeof value === 'string' && CODEX_EFFORTS.has(value)
+}
+function isLocalEffort(value: unknown): value is LocalReasoningEffort {
+  return typeof value === 'string' && LOCAL_EFFORTS.has(value)
+}
 
 /** Last provider + per-backend model/effort the user picked. Device-local by design (no sync). */
 export function readAgentModelPreference(): AgentModelPreference | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<AgentModelPreference>
-    if (!parsed || !PROVIDERS.has(parsed.provider as AgentProvider)) return null
+    const parsed: Partial<AgentModelPreference> | null = JSON.parse(raw)
+    if (!parsed || !isProvider(parsed.provider)) return null
     const models: Partial<Record<AgentCliBackendId, string | null>> = {}
     if (parsed.models && typeof parsed.models === 'object') {
       for (const backend of CLI_BACKENDS) {
@@ -55,14 +68,14 @@ export function readAgentModelPreference(): AgentModelPreference | null {
     // Older persisted shapes carry no efforts/localModel; treat them as unset.
     const efforts: AgentModelPreference['efforts'] = {}
     if (parsed.efforts && typeof parsed.efforts === 'object') {
-      if (CLAUDE_EFFORTS.has(parsed.efforts.claude_cli as ClaudeEffort)) {
+      if (isClaudeEffort(parsed.efforts.claude_cli)) {
         efforts.claude_cli = parsed.efforts.claude_cli
       }
-      if (CODEX_EFFORTS.includes(parsed.efforts.codex_cli as CodexReasoningEffort)) {
+      if (isCodexEffort(parsed.efforts.codex_cli)) {
         efforts.codex_cli = parsed.efforts.codex_cli
       }
       const local = parsed.efforts.local_openai_compatible
-      if (LOCAL_EFFORTS.includes(local as LocalReasoningEffort)) {
+      if (isLocalEffort(local)) {
         efforts.local_openai_compatible = local
       }
     }
@@ -71,7 +84,7 @@ export function readAgentModelPreference(): AgentModelPreference | null {
         ? parsed.localModel
         : undefined
     return {
-      provider: parsed.provider as AgentProvider,
+      provider: parsed.provider,
       models,
       efforts,
       ...(localModel !== undefined ? { localModel } : {})

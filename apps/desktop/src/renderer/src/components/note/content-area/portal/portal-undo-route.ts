@@ -31,8 +31,14 @@ interface Route {
 const routeKey = new PluginKey<Route | null>('portalUndoRoute')
 
 function isUndoable(editor: unknown): editor is UndoableEditor {
-  const candidate = editor as Partial<UndoableEditor> | null
-  return typeof candidate?.undo === 'function' && typeof candidate.redo === 'function'
+  return (
+    typeof editor === 'object' &&
+    editor !== null &&
+    'undo' in editor &&
+    typeof editor.undo === 'function' &&
+    'redo' in editor &&
+    typeof editor.redo === 'function'
+  )
 }
 
 /** The window's fence edit just landed in `host`: its undo is next. */
@@ -50,7 +56,7 @@ export function createPortalUndoRoutePlugin(): Plugin<Route | null> {
     state: {
       init: () => null,
       apply(tr, value) {
-        const meta = tr.getMeta(routeKey) as Route | null | undefined
+        const meta: Route | null | undefined = tr.getMeta(routeKey)
         if (meta !== undefined) return meta
         // A local edit in the window is the user's own history again.
         if (tr.docChanged && !tr.getMeta(ySyncPluginKey)?.isChangeOrigin) return null

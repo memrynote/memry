@@ -28,7 +28,7 @@ export function AddNameDialog({ name, onClose, onPick }: AddNameDialogProps) {
   const open = name !== null
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     notesService
       .list({ limit: 500, sortBy: 'modified' })

@@ -41,6 +41,7 @@ function pascalCase(section: string): string {
 export function settingsCommandId<S extends SettingsSection>(
   section: S
 ): `settings.open${PascalCase<S>}` {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- template-literal key computed from the section name; TS cannot carry PascalCase<S> through pascalCase()
   return `settings.open${pascalCase(section)}` as `settings.open${PascalCase<S>}`
 }
 
@@ -54,6 +55,7 @@ interface SettingsCommandMeta extends CommandMeta {
  * One "open this section" command per section, derived from the list so a new
  * section gets its command with its name. Labels are `menu:commands.settings<Section>`.
  */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- template-literal key computed from the section name; TS cannot carry PascalCase<S> through pascalCase()
 export const SETTINGS_COMMANDS = Object.fromEntries(
   SETTINGS_SECTIONS.map((section) => [
     settingsCommandId(section),

@@ -11,7 +11,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
 
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 async function openVault(page: Page): Promise<void> {
@@ -51,6 +52,7 @@ const row = (page: Page, nodeId: string) => page.locator(`[data-tree-node-id="${
 async function dragOnto(page: Page, fromId: string, toId: string): Promise<void> {
   const from = await row(page, fromId).boundingBox()
   const to = await row(page, toId).boundingBox()
+  if (!from || !to) throw new Error(`no bounding box for ${fromId} or ${toId}`)
   await page.mouse.move(from.x + 60, from.y + from.height / 2)
   await page.mouse.down()
   await page.mouse.move(from.x + 64, from.y + from.height / 2 + 6, { steps: 4 })

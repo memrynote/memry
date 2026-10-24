@@ -24,6 +24,7 @@ export function InboxWidget({ config, size }: WidgetComponentProps): React.JSX.E
   const { t } = useT('common')
   const { t: tInbox } = useT('inbox')
   const limit = inboxWidgetLimit(size)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- widget config is persisted JSON; the value was chosen from the inbox type list when saved
   const type = typeof config.type === 'string' ? (config.type as InboxListInput['type']) : undefined
   const { items, isLoading, error } = useInboxList(type ? { type } : {})
   const { openTab } = useTabActions()

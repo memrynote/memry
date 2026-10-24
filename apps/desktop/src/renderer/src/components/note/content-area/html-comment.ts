@@ -69,23 +69,24 @@ function createReadwiseDividerDOM(
   return dom
 }
 
+function isReadwiseKind(key: string): key is keyof typeof READWISE_LABEL_KEYS {
+  return key in READWISE_LABEL_KEYS
+}
+
 export function renderHtmlComment(
   this: { renderType?: string } | undefined,
   inlineContent: { props: { source: string } }
 ): { dom: HTMLElement } {
+  // oxlint-disable-next-line oxc/no-this-in-exported-function -- BlockNote calls an inline-content render with `this` bound to the node-view context (`renderType`)
   if (this?.renderType !== 'nodeView') {
     return { dom: createHtmlCommentExternalDOM(inlineContent.props.source) }
   }
   const { source } = inlineContent.props
   const t = getI18n().getFixedT(null, 'notes')
   const readwise = READWISE_MARKER.exec(source)
-  if (readwise) {
-    return {
-      dom: createReadwiseDividerDOM(
-        `${readwise[1]}:${readwise[2]}` as keyof typeof READWISE_LABEL_KEYS,
-        t
-      )
-    }
+  const readwiseKind = readwise ? `${readwise[1]}:${readwise[2]}` : null
+  if (readwiseKind !== null && isReadwiseKind(readwiseKind)) {
+    return { dom: createReadwiseDividerDOM(readwiseKind, t) }
   }
   return {
     dom: createHtmlCommentMarkerDOM(

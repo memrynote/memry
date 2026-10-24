@@ -9,7 +9,6 @@ import { crdtOwedFileBodies } from '@memry/db-schema/schema/crdt-owed-file-bodie
 import { noteBodySync } from '@memry/db-schema/schema/note-body-sync'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { syncQueue } from '@memry/db-schema/schema/sync-queue'
-import type { IndexDb } from '../database/client'
 import { getNoteSyncState, listUnsentNotes, type NoteSyncStateDbs } from './note-sync-state'
 import * as Y from 'yjs'
 import { recordNoteBodyPush } from './note-body-push-record'
@@ -63,7 +62,7 @@ describe('note sync state (#2647)', () => {
   beforeEach(() => {
     data = createTestDataDb()
     index = createTestIndexDb()
-    dbs = { data: asClientDb(data.db), index: index.db as unknown as IndexDb }
+    dbs = { data: asClientDb(data.db), index: index.db }
   })
 
   afterEach(() => {

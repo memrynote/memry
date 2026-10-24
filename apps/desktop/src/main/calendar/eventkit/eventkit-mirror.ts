@@ -109,6 +109,7 @@ export function listAppleCalendarSources(db: DataDb): CalendarSource[] {
 export function appleAccountPermission(
   account: Pick<CalendarSource, 'metadata'> | undefined
 ): EventKitAuthorizationStatus | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
   const permission = (account?.metadata as Partial<AppleAccountMetadata> | null)?.permission
   return typeof permission === 'string' ? permission : null
 }
@@ -135,7 +136,7 @@ export function recordAppleAccountState(
   const permission = state.permission ?? appleAccountPermission(existing) ?? 'not_determined'
   const error = state.error !== undefined ? state.error : permissionErrorCode(permission)
   const metadata: AppleAccountMetadata = {
-    ...((existing?.metadata as Record<string, unknown> | null) ?? {}),
+    ...existing?.metadata,
     permission
   }
   const next = {
@@ -276,6 +277,7 @@ export function reconcileAppleCalendars(
     if (seen.has(calendar.id)) continue
     seen.add(calendar.id)
     const previous = existing.get(calendar.id)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
     const previousMeta = (previous?.metadata as Partial<AppleCalendarMetadata> | null) ?? null
     // The overlap is decided when a calendar first appears; afterwards the
     // user's choice stands and the label only records why it started off.

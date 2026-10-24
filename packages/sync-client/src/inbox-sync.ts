@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { inboxItems } from '@memry/db-schema/schema/inbox'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 
@@ -57,9 +57,7 @@ export class InboxSyncService {
 
   constructor(deps: InboxSyncDeps) {
     const load = (itemId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get() as
-        | Record<string, unknown>
-        | undefined
+      deps.db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
 
     this.controller = new RecordSyncController({
       type: 'inbox',
@@ -67,7 +65,7 @@ export class InboxSyncService {
       getDeviceId: deps.getDeviceId,
       load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = clockFromColumn(local.clock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
         deps.db.update(inboxItems).set({ clock: newClock }).where(eq(inboxItems.id, itemId)).run()

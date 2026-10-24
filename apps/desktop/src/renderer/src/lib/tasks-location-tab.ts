@@ -23,6 +23,7 @@ const stringArray = (raw: unknown): string[] | null =>
 
 export const parseShowTasksLocation = (raw: unknown): ShowTasksLocationRequest | null => {
   if (typeof raw !== 'object' || raw === null) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `raw` was narrowed to a non-null object; each field is validated by stringArray/typeof below
   const record = raw as Record<string, unknown>
   const folderPaths = stringArray(record.folderPaths)
   const noteIds = stringArray(record.noteIds)

@@ -22,6 +22,7 @@
 
 import { test, expect, bootstrapSyncDevice } from './fixtures/sync-proxy-fixtures'
 import { waitForAppReady } from './utils/electron-helpers'
+import type { SharedSyncBootstrap } from './utils/sync-backend'
 
 const SEED_NOTE_COUNT = 40
 
@@ -32,9 +33,11 @@ interface PackRow {
   item_count: number
 }
 
+type SyncD1 = Awaited<ReturnType<SharedSyncBootstrap['server']['getD1']>>
+
 async function seedAndPush(
   page: Parameters<typeof waitForAppReady>[0],
-  db: D1Database,
+  db: SyncD1,
   email: string,
   prefix: string
 ): Promise<void> {

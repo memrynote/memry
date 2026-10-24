@@ -56,6 +56,7 @@ function instrumentStatement(db: Database.Database, stmt: Database.Statement): D
  */
 export function instrumentDataDbConnection(db: Database.Database): void {
   const prepare = db.prepare.bind(db)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 returns unknown rows; row shape is fixed by this SQL
   db.prepare = ((source: string) =>
     instrumentStatement(db, prepare(source))) as Database.Database['prepare']
   db.exec = guard(db, db.exec.bind(db))

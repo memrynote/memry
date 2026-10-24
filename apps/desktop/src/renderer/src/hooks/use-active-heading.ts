@@ -70,7 +70,7 @@ export function useActiveHeading({
       const cached = headingElementsRef.current.get(id)
       // A cached node survives scrolling but not a body rewrite: once the editor
       // replaces the block, the old node is detached and its rect reads as zero.
-      if (cached && cached.isConnected) return cached
+      if (cached?.isConnected) return cached
 
       // Scoped to this pane. In split view both panes render the same note's
       // block ids, and a document-wide lookup hands this pane the other one's
@@ -161,7 +161,7 @@ export function useActiveHeading({
     // does not retain a detached element for every heading it ever rendered.
     headingElementsRef.current = new Map()
 
-    if (stableHeadings.length === 0) return
+    if (stableHeadings.length === 0) return undefined
 
     const initialCalculation = requestAnimationFrame(findActiveHeading)
 

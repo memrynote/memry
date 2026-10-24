@@ -108,7 +108,10 @@ describe('vault-wide tag changes and a note file linked outside the vault', () =
   function expectLinkUntouched(): void {
     expect(fs.lstatSync(link).isSymbolicLink()).toBe(true)
     expect(fs.readFileSync(secret, 'utf-8')).toBe(SECRET)
-    expect(fs.readdirSync(path.join(state.vault, 'notes')).sort()).toEqual(['free.md', 'linked.md'])
+    expect(fs.readdirSync(path.join(state.vault, 'notes')).toSorted()).toEqual([
+      'free.md',
+      'linked.md'
+    ])
   }
 
   it('rename skips the linked note and renames the tag in the free one', async () => {

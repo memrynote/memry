@@ -175,6 +175,7 @@ export function createAttachmentToolsService({
         .join(encodeAttachmentUrl(newPart))
       content = content.replace(/<!-- file:(\{.*?\}) -->/g, (marker, json: string) => {
         try {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
           const props = JSON.parse(json) as Record<string, unknown>
           if (typeof props.url !== 'string' || !props.url.endsWith(newPart)) return marker
           return `<!-- file:${JSON.stringify({ ...props, name: display.replace(/[{}]/g, '') })} -->`
@@ -232,7 +233,7 @@ export function createAttachmentToolsService({
           })
         }
       }
-      return entries.sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
+      return entries.toSorted((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
     },
 
     // Embeds an attachment another note already stores. Nothing is copied or
@@ -279,7 +280,12 @@ export function createAttachmentToolsService({
       try {
         response = await fetch(parsed)
       } catch (error) {
-        throw new Error(`Could not fetch ${url}: ${error instanceof Error ? error.message : error}`)
+        throw new Error(
+          `Could not fetch ${url}: ${error instanceof Error ? error.message : error}`,
+          {
+            cause: error
+          }
+        )
       }
       if (!response.ok) throw new Error(`Could not fetch ${url}: HTTP ${response.status}`)
       // A page that shows a photo answers with HTML; refusing on the declared

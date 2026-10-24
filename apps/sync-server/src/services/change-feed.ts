@@ -45,7 +45,7 @@ export const closeChangePage = <T>(
   after: number,
   limit: number
 ): ChangePage<T> => {
-  const merged = slices.flat().sort((a, b) => a.cursor - b.cursor)
+  const merged = slices.flat().toSorted((a, b) => a.cursor - b.cursor)
   const taken = merged.slice(0, limit)
   return {
     entries: taken.flatMap((row) => (row.value === null ? [] : [row.value])),

@@ -29,7 +29,9 @@ let cachedFfmpegPath: string | null | undefined
 
 async function loadSharp(): Promise<SharpFactory> {
   sharpPromise ??= import('sharp').then((mod) => {
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- foreign runtime object with no published type for this member; shape checked at use
     const loaded = mod as unknown as { default?: SharpFactory }
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- foreign runtime object with no published type for this member; shape checked at use
     return loaded.default ?? (mod as unknown as SharpFactory)
   })
   return sharpPromise

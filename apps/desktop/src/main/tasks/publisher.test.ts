@@ -95,19 +95,19 @@ describe('createTasksPublisher tags-changed broadcast', () => {
 
   it('broadcasts notes:tags-changed when a created task has tags', () => {
     const publisher = createTasksPublisher()
-    publisher.taskCreated({ task: makeTask({ tags: ['urgent'] }) })
+    void publisher.taskCreated({ task: makeTask({ tags: ['urgent'] }) })
     expect(mockSend).toHaveBeenCalledWith(TAGS_CHANGED, {})
   })
 
   it('does not broadcast notes:tags-changed when a created task has no tags', () => {
     const publisher = createTasksPublisher()
-    publisher.taskCreated({ task: makeTask({ tags: [] }) })
+    void publisher.taskCreated({ task: makeTask({ tags: [] }) })
     expect(mockSend).not.toHaveBeenCalledWith(TAGS_CHANGED, {})
   })
 
   it('broadcasts notes:tags-changed when an update changes tags', () => {
     const publisher = createTasksPublisher()
-    publisher.taskUpdated({
+    void publisher.taskUpdated({
       id: 'task-1',
       task: makeTask({ tags: ['new'] }),
       changes: { tags: ['new'] },
@@ -118,7 +118,7 @@ describe('createTasksPublisher tags-changed broadcast', () => {
 
   it('does not broadcast notes:tags-changed when an update does not touch tags', () => {
     const publisher = createTasksPublisher()
-    publisher.taskUpdated({
+    void publisher.taskUpdated({
       id: 'task-1',
       task: makeTask({ title: 'Renamed' }),
       changes: { title: 'Renamed' },
@@ -129,13 +129,13 @@ describe('createTasksPublisher tags-changed broadcast', () => {
 
   it('broadcasts notes:tags-changed when a deleted task had tags', () => {
     const publisher = createTasksPublisher()
-    publisher.taskDeleted({ id: 'task-1', snapshot: makeTask({ tags: ['urgent'] }) })
+    void publisher.taskDeleted({ id: 'task-1', snapshot: makeTask({ tags: ['urgent'] }) })
     expect(mockSend).toHaveBeenCalledWith(TAGS_CHANGED, {})
   })
 
   it('does not broadcast notes:tags-changed when a deleted task had no tags', () => {
     const publisher = createTasksPublisher()
-    publisher.taskDeleted({ id: 'task-1', snapshot: makeTask({ tags: [] }) })
+    void publisher.taskDeleted({ id: 'task-1', snapshot: makeTask({ tags: [] }) })
     expect(mockSend).not.toHaveBeenCalledWith(TAGS_CHANGED, {})
   })
 })
@@ -181,18 +181,18 @@ describe('createTasksPublisher leaves sync to the unit of work', () => {
     const project = { id: 'proj-1', name: 'P' } as never
     const status = { id: 's-1', projectId: 'proj-1' } as never
 
-    publisher.taskCreated({ task })
-    publisher.taskUpdated({ id: 'task-1', task, changes: {}, changedFields: ['title'] })
-    publisher.taskCompleted({ id: 'task-1', task })
-    publisher.taskMoved({ id: 'task-1', task, changedFields: ['position'] })
-    publisher.taskReordered?.({ id: 'task-1', changedFields: ['position'] })
+    void publisher.taskCreated({ task })
+    void publisher.taskUpdated({ id: 'task-1', task, changes: {}, changedFields: ['title'] })
+    void publisher.taskCompleted({ id: 'task-1', task })
+    void publisher.taskMoved({ id: 'task-1', task, changedFields: ['position'] })
+    void publisher.taskReordered?.({ id: 'task-1', changedFields: ['position'] })
     await publisher.taskDeleted({ id: 'task-1', snapshot: task })
-    publisher.projectCreated({ project })
-    publisher.projectUpdated({ id: 'proj-1', project, changedFields: ['name'] })
-    publisher.projectDeleted({ id: 'proj-1', snapshot: project })
-    publisher.statusCreated({ status })
-    publisher.statusUpdated({ status })
-    publisher.statusDeleted({ id: 's-1', projectId: 'proj-1' })
+    void publisher.projectCreated({ project })
+    void publisher.projectUpdated({ id: 'proj-1', project, changedFields: ['name'] })
+    void publisher.projectDeleted({ id: 'proj-1', snapshot: project })
+    void publisher.statusCreated({ status })
+    void publisher.statusUpdated({ status })
+    void publisher.statusDeleted({ id: 's-1', projectId: 'proj-1' })
 
     expect(localMutations.enqueueLocalSyncCreate).not.toHaveBeenCalled()
     expect(localMutations.enqueueLocalSyncUpdate).not.toHaveBeenCalled()
@@ -213,17 +213,17 @@ describe('createTasksPublisher note header status', () => {
     const publisher = createTasksPublisher()
     const task = makeTask({ sourceNoteId: 'note-1' })
 
-    publisher.taskCreated({ task })
-    publisher.taskCompleted({ id: task.id, task, previous: { completedAt: null } })
+    void publisher.taskCreated({ task })
+    void publisher.taskCompleted({ id: task.id, task, previous: { completedAt: null } })
     await publisher.taskDeleted({ id: task.id, snapshot: task })
-    publisher.taskUpdated({
+    void publisher.taskUpdated({
       id: task.id,
       task,
       changes: { statusId: 's2' },
       changedFields: ['statusId'],
       previous: { statusId: 's1' }
     })
-    publisher.taskMoved({
+    void publisher.taskMoved({
       id: task.id,
       task,
       changedFields: ['position', 'statusId'],
@@ -238,14 +238,14 @@ describe('createTasksPublisher note header status', () => {
     const publisher = createTasksPublisher()
     const task = makeTask({ sourceNoteId: 'note-1' })
 
-    publisher.taskUpdated({
+    void publisher.taskUpdated({
       id: task.id,
       task,
       changes: { title: 'Renamed' },
       changedFields: ['title'],
       previous: { title: 'Task' }
     })
-    publisher.taskMoved({
+    void publisher.taskMoved({
       id: task.id,
       task,
       changedFields: ['position'],

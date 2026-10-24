@@ -134,7 +134,7 @@ describe('Write tools — P1 deny-by-default', () => {
   })
 
   it('registers all write tools', () => {
-    expect(tools.map((t) => t.name).sort()).toEqual([...WRITE_TOOL_NAMES].sort())
+    expect(tools.map((t) => t.name).toSorted()).toEqual([...WRITE_TOOL_NAMES].toSorted())
   })
 
   it('returns PERMISSION_DENIED for vault_create_note when no gate is wired', async () => {
@@ -723,9 +723,9 @@ describe('Write tools — P1 deny-by-default', () => {
       tasks: { ...handles.tasks, get: readFailed },
       journal: { ...handles.journal, stored: readFailed }
     }
-    const tools = buildWriteTools(local, async () => ({ approved: true }))
+    const localTools = buildWriteTools(local, async () => ({ approved: true }))
     const run = (name: string, input: unknown) =>
-      tools.find((x) => x.name === name)!.handler(input, { writeGrant: 'g', windowId: 'w1' })
+      localTools.find((x) => x.name === name)!.handler(input, { writeGrant: 'g', windowId: 'w1' })
     const warning =
       'The write landed, but reading it back failed (index busy). ' +
       'Read the record to see what was stored.'
@@ -776,9 +776,9 @@ describe('Write tools — P1 deny-by-default', () => {
         }))
       }
     }
-    const tools = buildWriteTools(local, async () => ({ approved: true }))
+    const localTools = buildWriteTools(local, async () => ({ approved: true }))
     const run = (name: string, input: unknown) =>
-      tools.find((x) => x.name === name)!.handler(input, { writeGrant: 'g', windowId: 'w1' })
+      localTools.find((x) => x.name === name)!.handler(input, { writeGrant: 'g', windowId: 'w1' })
 
     await expect(
       run('vault_create_note', { title: 't', content_markdown: '- [ ] Check the log' })

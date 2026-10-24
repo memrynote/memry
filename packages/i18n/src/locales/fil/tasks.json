@@ -53,8 +53,7 @@
       "high": "Mataas",
       "urgent": "Apurahan"
     },
-    "unarchive": "Alisin sa archive ang gawain",
-    "archivedOn": "Na-archive noong {date}"
+    "unarchive": "Alisin sa archive ang gawain"
   },
   "reminders": {
     "summary": "Paalala: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Magdagdag ng subtask",
     "subIssuePlaceholder": "Magdagdag ng subtask…",
     "noSubIssues": "Wala pang subtask",
-    "linkedNotes": "Kaugnay",
-    "linkNote": "Magdagdag ng kaugnay na item",
     "loading": "Naglo-load…",
-    "searchNotes": "Maghanap ng kaugnay…",
-    "noMatchingNotes": "Walang tumutugmang item",
-    "noNotesAvailable": "Walang available na item",
-    "noLinkedNotes": "Wala pang kaugnay na item",
-    "removeLinkTo": "Alisin ang kaugnay na item na {title}",
-    "removeLinkFallback": "item",
     "related": "Kaugnay",
     "addRelatedItem": "Magdagdag ng kaugnay na item",
     "searchRelated": "Maghanap ng kaugnay…",
     "noMatchingRelated": "Walang tumutugmang item",
     "noRelatedAvailable": "Walang available na item",
-    "noRelatedItems": "Wala pang kaugnay na item",
     "removeRelatedItem": "Alisin ang kaugnay na item na {title}",
     "relatedItemFallback": "item",
     "relatedItemMissing": "Wala na sa vault na ito ang kaugnay na item na iyon.",
@@ -251,7 +241,6 @@
     "deleted": "Tinanggal ang gawain",
     "deletedSeries": "Tapos na ang serye!",
     "completed": "Tapos na ang gawain!",
-    "archived": "Na-archive ang gawain",
     "undoNotAvailableForDelete": "Hindi available ang pag-undo para sa pagtanggal",
     "alreadyAllComplete": "Tapos na ang lahat ng napiling gawain",
     "noCompletedSelected": "Walang napiling mga natapos na gawain",
@@ -305,7 +294,10 @@
       "dueDateCleared": "{count, plural, one {Na-clear ang takdang petsa ng # subtask} other {Na-clear ang takdang petsa ng # subtask}}",
       "prioritySet": "{count, plural, one {Itinakda ang priyoridad ng # subtask} other {Itinakda ang priyoridad ng # subtask}}",
       "deleted": "{count, plural, one {Tinanggal ang # subtask} other {Tinanggal ang # subtask}}"
-    }
+    },
+    "completedBranch": "Natapos ang {title} at {count, plural, one {# bukas na subtask} other {# bukas na subtask}}",
+    "deletedKeepSubtasks": "Natanggal ang {title} at itinira ang mga subtask nito",
+    "deletedBranch": "Natanggal ang {title} at {count, plural, one {# subtask} other {# subtask}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -328,7 +320,6 @@
       "archive": "I-archive",
       "delete": "Tanggalin",
       "cancelSelection": "Kanselahin ang pagpili",
-      "cancel": "Kanselahin",
       "unarchive": "Alisin sa archive"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -400,9 +391,6 @@
       "delete": "Tanggalin ang \"",
       "thisProjectHas": "Ang proyektong ito ay may ",
       "task": "gawain",
-      "whatWouldYouLikeToDoWithThem": "Ano ang gusto mong gawin sa mga ito?",
-      "moveTasksToPersonalProject": "Ilipat ang mga gawain sa Personal na proyekto",
-      "deleteAllTasksPermanently": "Permanenteng tanggalin ang lahat ng gawain",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Walang gawain ang proyektong ito at permanente itong tatanggalin.",
       "notesEventsAndFilesStayNotice": "Tatanggalin ang mga gawain sa proyektong ito. Mananatili sa vault mo ang iyong mga tala, kaganapan, at file.",
       "thisActionCannotBeUndone": "Hindi na ito maibabalik.",
@@ -423,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Itakda ang takdang petsa para sa lahat ng subtask",
-      "setDueDateFor": "Itakda ang takdang petsa para sa ",
-      "alsoApplyToCompletedSubtasks": "Ilapat din sa mga natapos na subtask (",
       "clearDate": "I-clear ang petsa",
       "cancel": "Kanselahin",
       "apply": "Ilapat",
@@ -433,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Magtakda ng priyoridad para sa lahat ng subtask",
-      "setPriorityFor": "Magtakda ng priyoridad para sa ",
-      "alsoApplyToCompletedSubtasks": "Ilapat din sa mga natapos na subtask (",
       "cancel": "Kanselahin",
       "apply": "Ilapat",
       "setPriorityForSubtasksIn": "Magtakda ng priyoridad para sa {count, plural, one {# subtask} other {# subtask}} sa “{title}”",
@@ -461,36 +445,13 @@
       "deleteAll": "Tanggalin lahat",
       "deleteSubtasksConfirmation": "Tatanggalin nito ang {count, plural, one {# subtask} other {# subtask}} mula sa “{title}”."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Tanggalin ang gawaing may mga subtask?",
-      "has": "may ",
-      "subtask": "subtask",
-      "whatWouldYouLikeToDo": "Ano ang gusto mong gawin?",
-      "deleteTaskAndAllSubtasks": "Tanggalin ang gawain at lahat ng subtask",
-      "permanentlyRemovesEverything": "Permanenteng tinatanggal ang lahat",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Tanggalin ang gawain, panatilihin ang mga subtask bilang hiwalay na gawain",
-      "subtasksBecomeTopLevelTasks": "Magiging hiwalay na gawain ang mga subtask",
-      "cancel": "Kanselahin",
-      "delete": "Tanggalin"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "I-duplicate ang gawain",
-      "createACopyOf": "Gumawa ng kopya ng “",
-      "alsoDuplicateSubtasks": "I-duplicate din ang mga subtask (",
       "cancel": "Kanselahin",
-      "duplicate": "I-duplicate ",
       "createACopyOfTitle": "Gumawa ng kopya ng “{title}”",
       "alsoDuplicateSubtasksCount": "I-duplicate din ang mga subtask ({count})",
       "duplicateWithItems": "I-duplicate ({count, plural, one {# item} other {# item}})",
       "duplicateTaskOnly": "I-duplicate ang gawain"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Gawing subtask ng…",
-      "selectATaskToMake": "Gawing subtask ang \"",
-      "aSubtaskOf": "ng gawaing pipiliin mo.",
-      "searchTasks": "Maghanap ng mga gawain…",
-      "sameProject": "Parehong proyekto",
-      "otherProjects": "Ibang proyekto"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "I-drop para mag-reschedule sa "
@@ -564,16 +525,13 @@
       "status": "katayuan",
       "projectIs": "Proyekto:",
       "project": "proyekto",
+      "locationIs": "Ang lokasyon ay",
+      "location": "lokasyon",
+      "unknownNote": "Hindi kilalang tala",
       "due": "Takda:",
       "dueDate": "takdang petsa",
       "search": "paghahanap",
       "clearAll": "I-clear lahat"
-    },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "I-filter ayon sa takdang petsa",
-      "customRange": "Custom na saklaw",
-      "clear": "I-clear",
-      "apply": "Ilapat"
     },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "I-filter ayon sa…"
@@ -584,6 +542,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Takdang petsa"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Lokasyon",
+      "search": "Maghanap ng mga folder at tala...",
+      "empty": "Walang folder o tala na may mga gawain"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priyoridad",
@@ -608,23 +571,9 @@
       "search": "Maghanap…",
       "selected": "napili"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Higit pang mga filter",
-      "more": "Higit pa",
-      "status": "Katayuan",
-      "hasTimeSet": "May nakatakdang oras",
-      "recurringOnly": "Umuulit lang",
-      "status2": "Katayuan"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "I-filter ayon sa priyoridad",
       "priority": "Priyoridad"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "I-filter ayon sa proyekto",
-      "project": "Proyekto",
-      "allProjects": "Lahat ng proyekto",
-      "clear": "I-clear"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Mabilisang filter:"
@@ -648,13 +597,6 @@
       "summaryTimeWith": "Oras: May oras",
       "summaryTimeWithout": "Oras: Walang oras",
       "nameRequired": "Maglagay ng pangalan para sa filter na ito"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Mga naka-save na filter",
-      "saved": "Naka-save",
-      "noSavedFiltersYet": "Wala pang naka-save na filter",
-      "saveCurrentFilters": "I-save ang kasalukuyang mga filter",
-      "saveCurrentFilters2": "I-save ang kasalukuyang mga filter"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Pangalan ng filter",
@@ -704,8 +646,7 @@
       "openTasksOnThisProject": "Magbubukas ang Mga gawain sa proyektong ito"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Pumili ng proyekto",
-      "selectProject2": "Pumili ng proyekto"
+      "selectProject": "Pumili ng proyekto"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "I-edit ang proyekto",
@@ -714,11 +655,6 @@
       "selectProject": "Pumili ng proyekto",
       "noProjectsYet": "Wala pang proyekto",
       "createProject": "Gumawa ng proyekto"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Walang napiling proyekto",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Pumili ng proyekto mula sa dropdown o gumawa ng bago",
-      "createYourFirstProject": "Gumawa ng una mong proyekto"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Tulong sa mga shortcut ng mabilisang pagdagdag",
@@ -804,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Pumili ng oras",
-      "selectTime2": "Pumili ng oras",
       "clearTime": "Alisin ang oras"
     },
     "componentsTasksTodayEmptyState": {
@@ -869,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Walang napiling proyekto",
     "emptyBody": "Pumili ng proyekto sa sidebar para buksan ang pahina nito.",
-    "loadError": "Hindi ma-load ang mga detalye ng proyekto",
     "overview": {
       "sectionTitle": "Buod",
       "create": "Gumawa ng talang buod",
@@ -897,6 +831,7 @@
     "tabs": {
       "label": "Mga view ng proyekto",
       "overview": "Buod",
+      "all": "Lahat",
       "tasks": "Mga gawain",
       "notes": "Mga tala",
       "files": "Mga file",
@@ -951,6 +886,18 @@
       "fileError": "Hindi ma-link ang {name}",
       "fileErrorGeneric": "Hindi ma-import ang mga file",
       "label": "Idagdag sa {name}"
+    },
+    "all": {
+      "showDone": "Ipakita ang tapos na",
+      "empty": "Walang bukas sa proyektong ito.",
+      "expand": "Ipakita ang mga gawain sa {title}",
+      "collapse": "Itago ang mga gawain sa {title}",
+      "daysLeft": "{count}d",
+      "overdue": "{count}d na overdue",
+      "columns": {
+        "title": "Pamagat",
+        "daysLeft": "Natitirang araw"
+      }
     }
   },
   "project": {
@@ -1001,5 +948,49 @@
     "indigo": "Indigo",
     "purple": "Lila",
     "pink": "Rosas"
+  },
+  "subtaskTree": {
+    "addSubtask": "Magdagdag ng subtask",
+    "dropInto": "Sa loob ng {title}",
+    "dropOut": "Lumabas ng isang antas",
+    "draftPlaceholder": "Pamagat ng subtask",
+    "draftLabel": "Bagong subtask sa {title}",
+    "draftIn": "sa {title}",
+    "toggleComplete": "Tapusin ang {title}",
+    "moveUnder": {
+      "title": "Ilipat sa ilalim ng",
+      "placeholder": "Ilipat sa ilalim ng…",
+      "empty": "Walang katugmang gawain",
+      "topLevel": "Pinakataas na antas ng {project}",
+      "thisTask": "Ang gawaing ito",
+      "currentParent": "Kasalukuyang parent",
+      "movesOne": "Ililipat ang {title}",
+      "movesBranch": "Ililipat ang {title} at {count, plural, one {# subtask} other {# subtask}}",
+      "keys": "↵ Ilipat dito · ⌘↵ Pinakataas na antas · esc Isara"
+    },
+    "zoom": {
+      "path": "Path ng gawain",
+      "up": "Umakyat ng isang antas",
+      "upShortcut": "Umakyat ng isang antas (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Tanggalin ang {title}?",
+      "summary": "{direct, plural, one {May # subtask ito} other {May # subtask ito}}{deeper, plural, =0 {} one { at # pa sa ilalim nito} other { at # pa sa ilalim ng mga ito}}{open, plural, =0 {, tapos na lahat.} other {, # ang bukas pa.}}",
+      "cancel": "Kanselahin",
+      "deleteAll": "Tanggalin lahat",
+      "keepSubtasks": "Itira ang mga subtask"
+    },
+    "menu": {
+      "open": "Buksan",
+      "complete": "Tapusin",
+      "reopen": "Buksan ulit",
+      "zoom": "I-zoom ang mga subtask",
+      "moveUnder": "Ilipat sa ilalim ng…",
+      "indent": "Ilipat sa ilalim ng {title}",
+      "outdent": "Ilabas ng isang antas",
+      "topLevel": "Gawing pinakataas na gawain",
+      "delete": "Tanggalin"
+    },
+    "openPath": "Buksan ang {path}"
   }
 }

@@ -196,6 +196,7 @@ export function readTagViews(db: DrizzleDb, tag: string): ViewConfig[] | null {
   if (!row?.views) return null
   try {
     const parsed = JSON.parse(row.views)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Array.isArray narrows to any[]; element type is the one stored by writers of this field
     return Array.isArray(parsed) ? (parsed as ViewConfig[]) : null
   } catch {
     logger.warn('Discarding corrupt saved views for tag', { tag })

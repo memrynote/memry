@@ -4,10 +4,13 @@ import path from 'node:path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { canvasFolderSyncId } from '@memry/contracts/canvas-folder-types'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const legacyVaultKey = vi.hoisted(() => ({ current: null as Uint8Array | null }))
 
@@ -860,7 +863,7 @@ describe('folder reconciliation', () => {
     expect(
       listCanvasFolders(db, 'vault-1')
         .map((folder) => folder.path)
-        .sort()
+        .toSorted()
     ).toEqual(['Work', 'Work/Q3'])
   })
 
@@ -982,7 +985,7 @@ describe('non-portable directory names', () => {
     expect(
       listCanvasFolders(db, 'vault-1')
         .map((folder) => folder.path)
-        .sort()
+        .toSorted()
     ).toEqual(['CON canvas', 'CON canvas/Q3'])
   })
 
@@ -1010,7 +1013,7 @@ describe('non-portable directory names', () => {
     expect(
       listCanvasFolders(db, 'vault-1')
         .map((folder) => folder.path)
-        .sort()
+        .toSorted()
     ).toEqual(['Work', 'Work 2'])
     expect(fs.existsSync(path.join(vault, CANVAS_DIR, 'Work', 'Kept.excalidraw'))).toBe(true)
   })
@@ -1052,7 +1055,7 @@ describe('duplicated documents', () => {
       .select({ id: schema.canvases.id, filePath: schema.canvases.filePath })
       .from(schema.canvases)
       .all()
-      .sort((a, b) => a.id.localeCompare(b.id))
+      .toSorted((a, b) => a.id.localeCompare(b.id))
 
     const second = await reconcileCanvasFiles(db, vault, 'vault-1')
 
@@ -1063,7 +1066,7 @@ describe('duplicated documents', () => {
         .select({ id: schema.canvases.id, filePath: schema.canvases.filePath })
         .from(schema.canvases)
         .all()
-        .sort((a, b) => a.id.localeCompare(b.id))
+        .toSorted((a, b) => a.id.localeCompare(b.id))
     ).toEqual(before)
     expect(getCanvas(db, vault, canvas.id)?.unreadable).toBeUndefined()
   })
@@ -1121,10 +1124,9 @@ describe('duplicated documents', () => {
     expect(result.adopted).toBe(2)
     const rows = db.select().from(schema.canvases).all()
     expect(new Set(rows.map((row) => row.id)).size).toBe(2)
-    expect(rows.map((row) => row.filePath).sort()).toEqual([
-      `${CANVAS_DIR}/A.excalidraw`,
-      `${CANVAS_DIR}/B.excalidraw`
-    ])
+    expect(
+      rows.map((row) => row.filePath).toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))
+    ).toEqual([`${CANVAS_DIR}/A.excalidraw`, `${CANVAS_DIR}/B.excalidraw`])
   })
 })
 
@@ -1146,7 +1148,7 @@ describe('adversarial reconciliation probes', () => {
       })
       .from(schema.canvases)
       .all()
-      .sort((a, b) => a.id.localeCompare(b.id))
+      .toSorted((a, b) => a.id.localeCompare(b.id))
   }
 
   function moveOnDisk(from: string[], to: string[]): void {
@@ -1197,7 +1199,7 @@ describe('adversarial reconciliation probes', () => {
       expect(result.adopted).toBe(0)
       expect(placements()).toEqual(
         [...ids]
-          .sort((a, b) => a.localeCompare(b))
+          .toSorted((a, b) => a.localeCompare(b))
           .map((id) => ({
             id,
             filePath: expect.stringMatching(new RegExp(`^${CANVAS_DIR}/Archive/`)),
@@ -1313,7 +1315,7 @@ describe('adversarial reconciliation probes', () => {
       expect(
         listCanvasFolders(db, 'vault-1')
           .map((folder) => folder.path)
-          .sort()
+          .toSorted()
       ).toEqual(['CON canvas', 'CON canvas/Work'])
       // The child is reachable by the raw path the user made in Finder.
       expect(setCanvasFolderIcon(db, 'vault-1', 'CON/Work ', '📦')?.icon).toBe('📦')
@@ -1396,7 +1398,9 @@ describe('adversarial reconciliation probes', () => {
       expect(first.adopted).toBe(3)
       expect(second).toMatchObject({ adopted: 0, missingFiles: 0 })
       expect(new Set(afterFirst.map((row) => row.id)).size).toBe(3)
-      expect(afterFirst.map((row) => row.filePath).sort()).toEqual([
+      expect(
+        afterFirst.map((row) => row.filePath).toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))
+      ).toEqual([
         `${CANVAS_DIR}/A.excalidraw`,
         `${CANVAS_DIR}/B.excalidraw`,
         `${CANVAS_DIR}/C.excalidraw`

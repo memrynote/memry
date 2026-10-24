@@ -62,6 +62,7 @@ export function SidebarSortPicker({
   viewOptionsLabel
 }: SidebarSortPickerProps): React.JSX.Element {
   return (
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
     <Picker value={mode} onValueChange={(value) => onModeChange(value as SidebarSortMode)}>
       <Picker.Trigger
         variant="icon"

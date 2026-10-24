@@ -51,7 +51,9 @@ function readBlocks(host: BlockTreeHost | null): MindMapSourceBlock[] {
     (block): block is MindMapSourceBlock =>
       typeof block === 'object' &&
       block !== null &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
       typeof (block as { id?: unknown }).id === 'string' &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing an unknown inline-content item to its documented shape
       typeof (block as { type?: unknown }).type === 'string'
   )
 }
@@ -155,6 +157,7 @@ export function useMindMap({
 
   const handleEditorReady = useCallback(
     (editor: unknown) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       editorRef.current = (editor as BlockTreeHost | null) ?? null
       setEditorRevision((previous) => previous + 1)
       onEditorReady(editor)

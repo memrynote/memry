@@ -113,7 +113,7 @@ interface WikiLinkEditPluginState {
 /** The carried settings of `state`, when they belong to the raw run starting at `from`. */
 function carriedDisplayAt(state: EditorState, from: number): WikiLinkDisplayProps | null {
   const carried = WIKI_LINK_EDIT_PLUGIN_KEY.getState(state)?.carried
-  return carried && carried.from === from ? carried.display : null
+  return carried?.from === from ? carried.display : null
 }
 
 function mapCarried(
@@ -553,9 +553,8 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
       init: () => ({ insertedAt: null, carried: null }),
 
       apply(tr, value, _oldState, newState) {
-        const carried =
-          (tr.getMeta(WIKI_LINK_CARRY_META) as CarriedDisplay | undefined) ??
-          mapCarried(value.carried, tr, newState)
+        const carriedMeta: CarriedDisplay | undefined = tr.getMeta(WIKI_LINK_CARRY_META)
+        const carried = carriedMeta ?? mapCarried(value.carried, tr, newState)
         if (tr.getMeta(WIKI_LINK_INSERTED_META)) {
           return { insertedAt: newState.selection.from, carried }
         }
@@ -772,7 +771,7 @@ export function createWikiLinkEditPlugin(options: WikiLinkEditPluginOptions = {}
       if (to <= from) return null
 
       const current = activeRun(newState)
-      if (current && current.from === from) return null
+      if (current?.from === from) return null
 
       const parsed = parseEditedWikiLinkText(newState.doc.textBetween(from, to))
       if (!parsed) return null

@@ -1491,7 +1491,7 @@ describe('vault lifecycle', () => {
     expect(mocks.currentVaultPath).toBe('/vault/two')
     expect(mocks.closeAllDatabases).toHaveBeenCalledTimes(1)
     expect(mocks.registerLazyAgentHandlers.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
-      mocks.unregisterLazyAgentHandlers.mock.invocationCallOrder[0] as number
+      mocks.unregisterLazyAgentHandlers.mock.invocationCallOrder[0]
     )
   })
 

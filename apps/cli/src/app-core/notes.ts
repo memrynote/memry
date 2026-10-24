@@ -1,15 +1,4 @@
 import type { NoteRecord, NotesService } from '@memry/app-core/service-types'
-export type {
-  NoteRecord,
-  CreateNoteInput,
-  UpdateNoteInput,
-  NoteLinkRecord,
-  NoteLinksResponse,
-  NotePreviewRecord,
-  ResolvedNoteRecord,
-  ResolvedWikiTargetRecord,
-  NotesService
-} from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { eq } from 'drizzle-orm'
@@ -40,6 +29,17 @@ import { frontmatterWithProperties, propertiesFromFrontmatter } from './note-pro
 import { normalizePath, safeFilename, type VaultConfig } from './paths.ts'
 import { noteLinkStem, resolveWikiTarget as resolveTargetWith } from '@memry/shared/wiki-target'
 import { rewriteWikiLinksToNote, type WikiLinkNames } from '@memry/shared/rewrite-wiki-links'
+export type {
+  NoteRecord,
+  CreateNoteInput,
+  UpdateNoteInput,
+  NoteLinkRecord,
+  NoteLinksResponse,
+  NotePreviewRecord,
+  ResolvedNoteRecord,
+  ResolvedWikiTargetRecord,
+  NotesService
+} from '@memry/app-core/service-types'
 
 interface NoteMetadataRow {
   id: string
@@ -170,7 +170,7 @@ function saveMetadata(
     path: input.path,
     title: input.title,
     journalDate: input.journalDate ?? null,
-    propertyDefinitionNames: input.properties ? Object.keys(input.properties).sort() : [],
+    propertyDefinitionNames: input.properties ? Object.keys(input.properties).toSorted() : [],
     localOnly: input.localOnly,
     createdAt: input.createdAt,
     modifiedAt: input.modifiedAt

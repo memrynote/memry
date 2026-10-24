@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Dit abonnement synkroniserer færre bokse, end denne konto har, så denne boks bliver på denne enhed. Fjern en boks fra din konto under Indstillinger → Konto, eller opgradér dit abonnement.",
     "certificatePinFailed": "Sikker forbindelse mislykkedes. Tjek din netværksforbindelse.",
     "deviceKeyMismatch": "Denne enheds sikkerhedsnøgle matcher ikke længere den, der er registreret for din konto, så serveren afviser dens ændringer. Log ind igen på denne enhed for at registrere den igen.",
+    "deviceKeysMissing": "Ændringer på denne enhed uploades ikke, fordi enhedens nøgler mangler. Vælg Reparér for at gendanne dem. Hvis enheden ikke længere har sine nøgler, skal du logge ind igen og får muligvis brug for din gendannelsesfrase. Usynkroniserede noter, opgaver og projekter bevares.",
     "keychainUnavailable": "Synkroniseringen er sat på pause, fordi Memry ikke kan læse sine synkroniseringsnøgler fra systemets nøglering lige nu. Lås nøgleringen op, så genoptages synkroniseringen af sig selv. Hvis ikke, så genstart Memry. Intet er slettet.",
     "unknown": "Der opstod en uventet synkroniseringsfejl. Prøver igen automatisk.",
     "statusFetchFailed": "Kunne ikke hente synkroniseringsstatus",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synkronisering mislykkedes",
     "pauseFailed": "Kunne ikke sætte synkroniseringen på pause",
     "resumeFailed": "Kunne ikke genoptage synkroniseringen",
+    "syncNowSignedOut": "Synkronisering kræver, at du logger ind igen på denne enhed.",
+    "syncNowBusy": "Synkronisering kører allerede. Prøv igen om lidt.",
+    "syncNowPaused": "Synkroniseringen blev sat på pause, mens den kørte. Genoptag den fra synkroniseringsmenuen.",
+    "openAccountSettings": "Åbn indstillinger",
     "settingsNotInitialized": "Synkronisering af indstillinger ikke initialiseret",
     "securityQuarantinePermanent": "Et synkroniseringselement kunne ikke bekræftes og er blevet sat i karantæne af sikkerhedsmæssige årsager.",
     "securityQuarantineRetry": "Et synkroniseringselement bestod ikke signaturbekræftelsen og bliver forsøgt igen.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "AI-redigering i teksten er slået fra",
-    "listOllamaModelsFailed": "Kunne ikke hente Ollama-modeller"
+    "listOllamaModelsFailed": "Kunne ikke hente Ollama-modeller",
+    "writingAssistInvalid": "Den forespørgsel kunne ikke sendes til AI-modellen.",
+    "apiKeyMissing": "Tilføj din {provider}-API-nøgle under Indstillinger → AI for at bruge skriveværktøjer.",
+    "apiKeyInvalid": "Din {provider}-API-nøgle blev afvist. Tjek den under Indstillinger → AI.",
+    "ollamaUnreachable": "Ollama kører ikke. Start den med \"ollama serve\", eller vælg en anden udbyder under Indstillinger → AI.",
+    "providerUnreachable": "Kunne ikke nå {provider}. Tjek din internetforbindelse, og prøv igen."
   },
   "auth": {
     "notAuthenticated": "Ikke logget ind",
-    "sessionExpired": "Din session er udløbet. Log ind igen.",
     "setupSessionExpired": "Dit login udløb, før dette blev færdigt. Log ind igen, og indtast derefter din gendannelsessætning.",
     "setupSessionExpiredLinking": "Dit login udløb, før denne enhed blev tilknyttet. Log ind igen, og scan derefter koden en gang til.",
     "invalidRecoveryPhraseFormat": "Ugyldigt format på gendannelsessætningen",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Kunne ikke konvertere den eksterne kalenderbegivenhed",
     "onlyCalendarSourcesRetryable": "Kun kalenderkilder kan forsøges igen",
     "invalidProviderSettings": "Ugyldige indstillinger for kalenderudbyderen",
-    "getExternalEventFailed": "Kunne ikke indlæse denne begivenhed. Den er stadig i din kalender – prøv at åbne den igen."
+    "getExternalEventFailed": "Kunne ikke indlæse denne begivenhed. Den er stadig i din kalender – prøv at åbne den igen.",
+    "listLinkedNotesFailed": "Kunne ikke indlæse noterne, der er linket til denne begivenhed."
   },
   "canvasFolder": {
     "exists": "Der findes allerede en lærredsmappe med det navn her.",
@@ -209,10 +219,35 @@
     "previewFailed": "Forhåndsvisningen mislykkedes",
     "listFailed": "Kunne ikke hente importmulighederne",
     "appleNotesFoldersFailed": "Kunne ikke læse dine Apple Notes-mapper",
+    "appleNotesPasswordFailed": "Kunne ikke kontrollere adgangskoden til Notes.",
     "onenoteStatusFailed": "Kunne ikke læse forbindelsesstatus for OneNote",
     "onenoteConnectFailed": "Login hos Microsoft mislykkedes",
     "onenoteDisconnectFailed": "Kunne ikke afbryde forbindelsen til Microsoft-kontoen",
-    "onenoteNotebooksFailed": "Kunne ikke indlæse OneNote-notesbøger"
+    "onenoteNotebooksFailed": "Kunne ikke indlæse OneNote-notesbøger",
+    "readwiseStatusFailed": "Kunne ikke læse Readwise-forbindelsens tilstand",
+    "readwiseConnectFailed": "Kunne ikke oprette forbindelse til Readwise",
+    "readwiseInvalidToken": "Readwise accepterede ikke dette token. Kopiér det igen fra readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise begrænser forespørgsler lige nu. Prøv igen om et minut.",
+    "readwiseUnreachable": "Kunne ikke nå Readwise. Tjek din forbindelse, og prøv igen.",
+    "readwiseDisconnectFailed": "Kunne ikke afbryde forbindelsen til Readwise",
+    "readwiseSyncFailed": "Kunne ikke starte Readwise-synkroniseringen",
+    "readwiseRunUnavailable": "Readwise synkroniserer ikke på denne enhed.",
+    "readwiseRunInProgress": "En Readwise-import kører allerede. Prøv igen, når den er færdig.",
+    "readwiseOptionsFailed": "Kunne ikke gemme Readwise-indstillingerne",
+    "readwiseNotConnected": "Readwise er ikke forbundet. Indsæt først dit adgangstoken.",
+    "readwiseSyncsElsewhere": "Readwise synkroniserer på en anden enhed. Kør denne kommando dér.",
+    "readwiseBookCommandFailed": "Kunne ikke gennemføre Readwise-kommandoen",
+    "readwiseBookGone": "Denne bog er ikke længere i dit Readwise-bibliotek.",
+    "readwiseNotLinked": "Denne note er ikke linket til en Readwise-bog.",
+    "readwiseNotDeleted": "Denne bog er ikke på listen over slettede.",
+    "readwiseBookBusy": "Noten blev ændret, mens kommandoen kørte. Prøv igen.",
+    "readwiseSyncsOnDevice": "Readwise synkroniserer på {device}. Brug »Synkronisér her i stedet« for at flytte det hertil.",
+    "readwiseAnotherDevice": "en anden enhed",
+    "readwiseNotReady": "Memry er endnu ikke færdig med at synkronisere med dine andre enheder. Prøv igen om lidt.",
+    "readwiseNeedsSync": "Slå synkronisering til for at flytte Readwise mellem enheder.",
+    "readwiseClaimNotDelivered": "Kunne endnu ikke give dine andre enheder besked. Tjek din forbindelse, og prøv igen.",
+    "readwiseTakeOverFailed": "Kunne ikke flytte Readwise til denne enhed",
+    "readwiseCancelFailed": "Kunne ikke annullere Readwise-synkroniseringen"
   },
   "project": {
     "createFailed": "Kunne ikke oprette projektet",
@@ -236,7 +271,8 @@
     "renameFailed": "Kunne ikke omdøbe egenskaben",
     "createDefinitionFailed": "Kunne ikke oprette egenskabsdefinitionen",
     "updateDefinitionFailed": "Kunne ikke opdatere egenskabsdefinitionen",
-    "setCalendarVisibilityFailed": "Kunne ikke angive egenskabens synlighed i kalenderen"
+    "setCalendarVisibilityFailed": "Kunne ikke angive egenskabens synlighed i kalenderen",
+    "definitionsFileUnreadable": "Kan ikke gemme egenskabsændringer, fordi .memry/properties.md ikke kan læses. Ret eller fjern filen, og prøv igen."
   },
   "reminder": {
     "notFound": "Påmindelsen blev ikke fundet",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Kunne ikke indlæse modellen",
     "voiceModelDownloadFailed": "Kunne ikke hente stemmemodellen",
     "terminalCommandInstallFailed": "Kunne ikke installere terminalkommandoen",
-    "terminalCommandUninstallFailed": "Kunne ikke afinstallere terminalkommandoen",
-    "shortcutInUse": "Genvejen {shortcut} er allerede i brug"
+    "terminalCommandUninstallFailed": "Kunne ikke afinstallere terminalkommandoen"
   },
   "tag": {
+    "renameInProgress": "Omdøbningen af #{from} til #{to} kører stadig. Prøv igen, når den er færdig.",
     "mergeSameTag": "Kilde- og måltag er det samme",
     "categoryNameRequired": "Kategorinavn er påkrævet",
     "pinNoteFailed": "Kunne ikke fastgøre noten",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Kunne ikke slette opgaverne",
     "moveManyFailed": "Kunne ikke flytte opgaverne",
     "archiveManyFailed": "Kunne ikke arkivere opgaverne",
-    "projectMissing": "Projektet findes ikke længere"
+    "projectMissing": "Projektet findes ikke længere",
+    "invalidParent": "En opgave kan ikke placeres dér"
   },
   "taskStatus": {
     "createFailed": "Kunne ikke oprette statussen",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Ejeren har gjort denne note skrivebeskyttet.",
     "folderReadOnly": "Ejeren har gjort denne mappe skrivebeskyttet."
+  },
+  "ocrLanguages": {
+    "unreachable": "Memrys server kunne ikke nås. De sprog, der allerede er her, virker stadig, og Memry prøver igen ved næste start.",
+    "unavailable": "Memrys server tilbyder ikke dette sprog endnu. De sprog, der allerede er her, virker stadig.",
+    "corrupt": "De downloadede data svarede ikke til det, Memry forventer, så de blev ikke brugt. Prøv igen for at downloade dem igen.",
+    "saveFailed": "Sprogdataene kunne ikke gemmes på denne computer. Tjek den ledige diskplads, og prøv igen."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" er reserveret og kan ikke bruges som feltnavn",
+    "duplicateField": "#{definedBy} har allerede et felt med navnet \"{name}\"",
+    "unknownField": "Dette tag har intet felt med navnet \"{name}\"",
+    "inheritedField": "\"{name}\" kommer fra #{definedBy}. Redigér det dér",
+    "cycle": "#{parent} henter allerede sine felter fra dette tag",
+    "unreadableSchema": "En nyere version af Memry har ændret dette tag. Opdatér Memry for at redigere det",
+    "relationTargetRequired": "Vælg, hvilket tag denne relation peger på",
+    "renameRunning": "En anden omdøbning af felt er stadig ved at blive færdig ({from} til {to}). Prøv igen, når den er færdig."
   }
 }

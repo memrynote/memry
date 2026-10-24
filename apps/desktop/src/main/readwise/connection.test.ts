@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { createTestDataDb, asClientDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import type { DataDb } from '../database/types'
 
@@ -22,6 +22,9 @@ vi.mock('../secrets/secret-storage', () => ({
 
 import { connectReadwise, disconnectReadwise, getReadwiseStatus } from './connection'
 import { getCursor, setCursor } from './sync-state'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready

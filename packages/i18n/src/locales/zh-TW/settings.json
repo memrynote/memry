@@ -7,11 +7,6 @@
     "backToApp": "返回應用程式",
     "nav": {
       "groups": {
-        "account": "帳號",
-        "application": "應用程式",
-        "editing": "編輯",
-        "modules": "模組",
-        "services": "服務",
         "data": "資料",
         "workspace": "工作區",
         "features": "功能"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "設定{module}"
-    },
-    "vaultImport": {
-      "label": "從其他應用程式匯入",
-      "description": "Notion、Evernote、Bear、Apple Notes、Todoist 等",
-      "action": "匯入…"
     },
     "search": {
       "placeholder": "搜尋設定",
@@ -102,45 +92,31 @@
       "loading": "正在載入設定…"
     },
     "groups": {
-      "startup": "啟動",
       "updates": "更新",
       "languageRegion": "語言與地區",
-      "tabBehavior": "分頁行為",
-      "window": "視窗行為",
-      "fileCreation": "檔案建立",
       "privacy": "隱私",
       "startupWindows": "啟動與視窗",
-      "newNotes": "新筆記"
+      "newNotes": "新筆記",
+      "sticky": "便利貼"
     },
     "startup": {
       "launchAtLogin": {
         "label": "登入時啟動",
-        "description": "登入時啟動 memrynote",
         "error": "無法更新登入時啟動設定"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "自動檢查更新",
-        "description": "在啟動時，以及應用程式開啟期間定期檢查新版本。",
         "error": "無法更新自動檢查設定"
       },
       "autoDownload": {
         "label": "自動下載更新",
-        "description": "在背景下載並安裝新版本，不另行詢問。",
         "error": "無法更新自動下載設定"
       },
-      "appUpdates": "應用程式更新",
-      "installedVersion": "已安裝版本 {version}",
-      "availableVersion": "可用版本 {version}",
-      "unsupported": "封裝版本可以從 GitHub Releases 檢查、下載與安裝更新",
       "available": "memrynote {version} 可供下載",
       "downloadingLatest": "正在下載最新版本",
-      "downloadingLatestPercent": "正在下載最新版本（{percent}%）",
       "downloaded": "memrynote {version} 已準備好安裝",
-      "upToDate": "目前已是最新發布的版本",
-      "checking": "正在檢查 GitHub Releases 是否有更新版本",
-      "idle": "檢查新版本並在應用程式內安裝",
       "unsupportedToast": "自動更新僅適用於封裝版本",
       "upToDateToast": "memrynote {version} 已是最新",
       "actionFailed": "更新操作失敗",
@@ -163,23 +139,25 @@
         "downloading": "下載中…",
         "downloadingPercent": "下載中 {percent}%",
         "downloaded": "版本 {version} 已可安裝"
-      },
-      "mode": {
-        "label": "更新模式",
-        "off": "不檢查",
-        "notify": "僅通知",
-        "auto": "自動下載"
       }
     },
     "language": {
       "label": "語言",
-      "helper": "應用程式大部分內容會立即更新。部分系統層級文字——已顯示的通知、Dock 標籤、視窗標題列——會在下次啟動後更新。",
       "changed": "語言已變更為 {nativeName}",
       "failed": "無法變更語言。請再試一次。"
     },
+    "ocrLanguages": {
+      "label": "文字辨識",
+      "helper": "掃描 PDF 與圖片中要辨識的語言，讓搜尋能找到其中的文字。英文已內建，其他語言會從 Memry 伺服器下載。",
+      "more": "{names} +{count}",
+      "downloading": "正在下載{language}：{percent}%",
+      "failed": "下載失敗。已有的語言仍可使用。",
+      "failedWith": "{language}：{reason}",
+      "retry": "重試",
+      "saveFailed": "無法變更文字辨識語言。"
+    },
     "clockFormat": {
       "label": "時間格式",
-      "description": "12 小時或 24 小時制",
       "options": {
         "12h": "12 小時",
         "24h": "24 小時"
@@ -188,7 +166,6 @@
     },
     "dateFormat": {
       "label": "日期格式",
-      "description": "行事曆日期的顯示方式",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY（美國）",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -199,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "在新分頁中開啟頁面",
-        "description": "點擊或建立頁面（筆記、資料夾、專案、畫布、標籤、書籤）時，會在新分頁中開啟。關閉時會沿用目前的分頁，包括在筆記中點擊連結時；已釘選的分頁一律不會被取代。「在新分頁中開啟」、「在側邊開啟」與滑鼠中鍵點擊一律會開啟新分頁。"
+        "label": "在新分頁中開啟頁面"
       },
       "restoreSession": {
         "label": "啟動時還原分頁",
@@ -208,7 +184,6 @@
       },
       "closeButton": {
         "label": "分頁關閉按鈕",
-        "description": "何時顯示關閉按鈕",
         "options": {
           "always": "始終可見",
           "hover": "游標停留時顯示",
@@ -220,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "關閉後繼續在選單列中執行",
-        "description": "關閉視窗時，memrynote 會隱藏到系統匣，而不會結束。按一下系統匣圖示即可重新顯示。在 macOS 上，應用程式也會保留在 Dock 中；在沒有系統匣的 Linux 桌面上，視窗會照常關閉。",
         "error": "無法更新最小化至系統匣的設定"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "在選定的資料夾中建立",
-        "description": "新筆記與資料夾會建立在目前選取的資料夾中。關閉時，項目一律建立在根目錄。"
+        "label": "在選定的資料夾中建立"
       },
       "defaultNoteFolder": {
         "label": "新筆記的預設位置",
         "description": "側邊欄中未選取資料夾時使用。",
-        "placeholder": "筆記",
         "root": "/"
       }
     },
@@ -261,9 +233,24 @@
         "error": "無法傳送診斷報告",
         "sendReport": {
           "label": "診斷報告",
-          "description": "傳送一份一次性的報告，內含去識別化的技術記錄，協助我們找出你遇到的問題。",
           "button": "傳送報告…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Memry 執行期間，按下便利貼快速鍵（鍵盤快速鍵 → 系統全域）即可開啟便利貼。尚未送出的文字會以草稿形式留在螢幕邊緣。",
+      "error": "無法儲存便利貼設定。",
+      "defaultKind": {
+        "label": "新便利貼送出為",
+        "last": "上次使用",
+        "note": "筆記",
+        "task": "任務",
+        "journal": "日誌"
+      },
+      "tuckEdge": {
+        "label": "收合至",
+        "left": "左側邊緣",
+        "right": "右側邊緣"
       }
     }
   },
@@ -274,20 +261,14 @@
       "loading": "正在載入設定…"
     },
     "groups": {
-      "theme": "主題",
-      "accentColor": "強調色",
-      "typography": "字型",
-      "zoom": "縮放"
+      "theme": "主題"
     },
     "theme": {
       "colorMode": {
-        "label": "顏色模式",
-        "description": "選擇你偏好的主題",
         "aria": "顏色模式"
       },
       "options": {
         "light": "淺色",
-        "white": "白色",
         "dark": "深色",
         "system": "系統"
       },
@@ -305,11 +286,8 @@
       "importInvalid": "剪貼簿中沒有 memrynote 主題"
     },
     "accent": {
-      "pick": "選擇強調色",
       "custom": {
-        "label": "自訂顏色",
-        "description": "輸入十六進位值",
-        "placeholder": "#000000"
+        "label": "自訂顏色"
       },
       "presets": {
         "indigo": "靛藍",
@@ -321,7 +299,6 @@
         "pink": "粉紅色",
         "orange": "橙色"
       },
-      "error": "無法更新強調色",
       "aria": "強調色預設組合",
       "options": {
         "theme": "主題",
@@ -360,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "縮放比例",
-      "description": "縮放整個介面",
       "decrease": "縮小",
       "increase": "放大",
       "reset": "將縮放比例重設為預設值",
@@ -369,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "字型大小",
-        "description": "介面文字的基本大小（像素）",
         "decrease": "縮小字型",
         "increase": "放大字型",
         "reset": "將字型大小重設為預設值"
       },
       "fontFamily": {
         "label": "字型系列",
-        "description": "介面的主要字型",
         "options": {
           "system": "系統預設",
           "sansSerif": "無襯線字型",
@@ -401,13 +373,9 @@
       "fontFamilyError": "無法更新字型系列"
     },
     "v2": {
-      "groups": {
-        "text": "文字與縮放"
-      },
       "colorMode": "顏色模式",
       "colorTheme": "主題",
       "accent": "強調色",
-      "customColor": "自訂顏色",
       "fontFamily": "字型系列",
       "fontSize": "字型大小",
       "zoom": "縮放"
@@ -421,12 +389,30 @@
     },
     "groups": {
       "layout": "版面配置",
-      "toolbar": "工具列",
       "spelling": "拼字",
-      "checklists": "檢查清單"
+      "checklists": "檢查清單",
+      "attachments": "附件",
+      "calloutTypes": "提示框類型"
+    },
+    "calloutTypes": {
+      "description": "你自訂的提示框，在筆記中寫成 > [!name]。其他應用程式會將它顯示為一般引用。",
+      "empty": "尚無自訂提示框類型",
+      "add": "新增類型",
+      "edit": "編輯 {name}",
+      "delete": "刪除 {name}",
+      "name": "Markdown 中的名稱",
+      "namePlaceholder": "mytype",
+      "label": "顯示名稱",
+      "color": "顏色",
+      "icon": "圖示",
+      "nameInvalid": "請使用小寫字母、數字、- 或 _，且以字母開頭",
+      "nameBuiltIn": "該名稱已是內建提示框",
+      "nameTaken": "你已有使用該名稱的類型",
+      "save": "儲存",
+      "cancel": "取消",
+      "error": "無法更新提示框類型"
     },
     "width": {
-      "label": "編輯器寬度",
       "description": "套用至所有筆記與日誌頁面",
       "options": {
         "normal": "標準",
@@ -435,12 +421,10 @@
       "error": "無法更新編輯器寬度"
     },
     "toolbarMode": {
-      "label": "固定顯示格式工具列",
       "description": "總是在編輯器上方顯示工具列",
       "error": "無法更新工具列模式"
     },
     "spellCheck": {
-      "label": "檢查拼字",
       "description": "在筆記與日誌中為拼錯的字加上底線",
       "error": "無法更新拼字檢查設定"
     },
@@ -449,7 +433,16 @@
       "toolbarMode": "固定顯示格式工具列",
       "spellCheck": "檢查拼字",
       "convertChecklists": "將檢查清單項目轉為任務",
-      "convertAgentChecklists": "將代理程式寫入的檢查清單項目轉為任務"
+      "convertAgentChecklists": "將代理程式寫入的檢查清單項目轉為任務",
+      "pdfDisplayMode": "新 PDF 顯示為"
+    },
+    "pdfDisplayMode": {
+      "description": "加入筆記的 PDF 的顯示方式。每個 PDF 都可從其選單切換。",
+      "options": {
+        "embed": "內嵌",
+        "link": "檔案名稱"
+      },
+      "error": "無法更新 PDF 顯示方式"
     },
     "convertChecklists": {
       "description": "每個新的檢查清單項目都會成為任務。關閉後清單維持為一般核取方塊；在項目上按右鍵即可轉為任務。",
@@ -466,14 +459,12 @@
       "subtitle": "管理筆記範本，以便快速建立筆記"
     },
     "actions": {
-      "new": "新增範本",
       "edit": "編輯",
       "duplicate": "製作副本",
       "delete": "刪除"
     },
     "groups": {
-      "builtIn": "內建",
-      "myTemplates": "我的範本"
+      "builtIn": "內建"
     },
     "loading": "正在載入範本…",
     "newTemplateTitle": "新範本",
@@ -481,9 +472,6 @@
     "empty": {
       "title": "目前還沒有自訂範本",
       "description": "建立範本以開始使用"
-    },
-    "preview": {
-      "notFound": "無法載入此範本。"
     },
     "toasts": {
       "deleted": "範本已刪除",
@@ -516,11 +504,7 @@
       "loading": "正在載入設定…"
     },
     "groups": {
-      "defaultTemplate": "預設範本",
-      "location": "位置與格式",
-      "sidebarVisibility": "側邊欄顯示項目",
-      "footer": "頁尾",
-      "weekdayTemplates": "依星期設定範本"
+      "footer": "頁尾"
     },
     "template": {
       "label": "範本",
@@ -532,18 +516,6 @@
       "updated": "預設範本已更新",
       "cleared": "已清除預設範本",
       "error": "無法更新預設範本"
-    },
-    "showSchedule": {
-      "label": "顯示行程",
-      "description": "顯示今天的活動與行事曆"
-    },
-    "showTasks": {
-      "label": "顯示任務",
-      "description": "顯示選定日期到期的任務"
-    },
-    "showAIConnections": {
-      "label": "顯示 AI 關聯",
-      "description": "顯示由 AI 找出的相關日誌"
     },
     "showStatsFooter": {
       "label": "顯示統計頁尾",
@@ -561,7 +533,8 @@
       "renameNote": "變更格式會重新命名現有的日誌檔案。新名稱已被使用的檔案會維持不變。",
       "tokensHelp": "日期格式說明",
       "tokensNote": "其他字元維持不變。星期名稱一律為英文。",
-      "tokensTitle": "格式標記"
+      "tokensTitle": "格式標記",
+      "foldersNote": "使用 / 將日誌歸入子資料夾：YYYY/MMMM/YYYY-MM-DD 會把每一天放在對應的年份與月份下。"
     },
     "preview": {
       "label": "預覽",
@@ -575,7 +548,6 @@
       "inheritWith": "預設 · {name}",
       "inheritNone": "預設 · 無",
       "missing": "已刪除的範本",
-      "clear": "清除",
       "updated": "已更新{day}的範本",
       "cleared": "已清除{day}的範本",
       "error": "無法更新{day}的範本",
@@ -586,6 +558,10 @@
         "defaultTemplate": "預設範本",
         "location": "位置與格式"
       }
+    },
+    "showInSidebar": {
+      "label": "顯示於側邊欄",
+      "description": "在筆記樹狀結構中顯示日誌資料夾及其項目"
     }
   },
   "tasks": {
@@ -596,6 +572,7 @@
     },
     "groups": {
       "defaults": "預設值",
+      "subtasks": "子任務",
       "inbox": "收件匣"
     },
     "defaultProject": {
@@ -632,6 +609,11 @@
       "description": "超過此天數的任務會標示為久未處理",
       "unit": "天",
       "error": "無法更新收件匣久未處理門檻"
+    },
+    "nestedSubtasks": {
+      "label": "子任務中的子任務",
+      "description": "子任務可巢狀至任意層級。使用舊版的裝置在更新前只會顯示第一層。",
+      "error": "無法更新巢狀子任務"
     }
   },
   "inbox": {
@@ -684,11 +666,6 @@
       "subtitle": "設定每日面板中日期格的行為",
       "loading": "正在載入設定…"
     },
-    "groups": {
-      "weekStart": "週",
-      "dayCellClick": "點擊日期",
-      "notes": "筆記"
-    },
     "weekStart": {
       "label": "每週開始於",
       "description": "所有行事曆的每週第一天",
@@ -728,8 +705,6 @@
       },
       "accountReconnect": "重新連結 Google",
       "addAccount": "新增帳號",
-      "importedCalendars": "已匯入的行事曆",
-      "selected": "已選取 {count} 個",
       "syncNow": "立即同步",
       "disconnect": "中斷連結",
       "reconnect": "重新連結 Google",
@@ -958,10 +933,8 @@
       "loading": "載入中…"
     },
     "groups": {
-      "identity": "身分",
       "sync": "同步",
       "billing": "帳單",
-      "storage": "儲存空間",
       "devices": "裝置"
     },
     "identity": {
@@ -981,6 +954,7 @@
         "syncing": "同步中…",
         "paused": "已暫停",
         "syncError": "同步錯誤",
+        "deviceKeysMissing": "同步已暫停：缺少裝置金鑰",
         "offline": "離線",
         "connecting": "連線中…",
         "localOnly": "僅限本機",
@@ -1004,6 +978,19 @@
       "activating": {
         "title": "正在完成啟用",
         "description": "你的方案已啟用。我們確認後就會開始同步——通常重新整理一下就可以了。"
+      },
+      "unsent": {
+        "title": "有未送出變更的筆記",
+        "count": "{count, plural, other {# 則筆記}}",
+        "description": "這部裝置上有這些筆記的變更，伺服器尚未儲存。",
+        "waitingSince": "自 {time} 起等待中",
+        "more": "{count, plural, other {另有 # 則筆記}}",
+        "reasons": {
+          "body": "文字",
+          "record": "詳細資料",
+          "file_not_taken": "檔案尚未合併",
+          "rejected": "遭伺服器拒絕"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1043,8 @@
         "refreshFailed": "無法重新整理帳單狀態",
         "billingActive": "帳單已啟用",
         "activationPending": "正在等待啟用",
-        "portalFailed": "無法開啟帳單管理頁面"
+        "portalFailed": "無法開啟帳單管理頁面",
+        "portalNoCustomer": "尚未找到帳單帳號。若你剛付款，請選擇「重新整理狀態」後再試一次。"
       }
     },
     "storage": {
@@ -1070,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "登出",
         "description": "讓這部裝置停止同步",
         "action": "登出"
       }
@@ -1302,21 +1289,28 @@
       "disabled": "已停用 AI 功能",
       "error": "無法更新設定"
     },
-    "unknownError": "未知錯誤",
-    "groups": {
-      "voice": "語音轉錄",
-      "embeddingModel": "本機嵌入模型",
-      "embeddingIndex": "嵌入索引",
-      "inline": "內嵌 AI 編輯"
+    "summarizeLongNotes": {
+      "label": "摘要長篇筆記",
+      "description": "使用你連接的代理程式為長篇筆記產生較短的版本，讓你將筆記摺疊成重點。於這部裝置上執行。",
+      "error": "無法更新長篇筆記摘要設定",
+      "failed": "上次執行失敗 ·",
+      "retry": "重試",
+      "retryError": "無法重試摘要",
+      "agentLabel": "撰寫摘要的代理程式",
+      "agentAuto": "自動",
+      "agentError": "無法變更摘要代理程式",
+      "noAgent": "找不到代理程式 ·",
+      "openAgents": "開啟代理程式"
     },
+    "imageSearch": {
+      "label": "依內容搜尋圖片",
+      "description": "依畫面內容尋找照片。首次為圖片建立索引時，會下載 109 MB 的圖片模型。",
+      "enabled": "已啟用圖片搜尋",
+      "disabled": "已停用圖片搜尋"
+    },
+    "unknownError": "未知錯誤",
     "voice": {
-      "provider": "供應商",
       "providerDescription": "語音備忘錄的語音轉文字供應商",
-      "providers": {
-        "local": "本機（預設）",
-        "openai": "OpenAI（自帶金鑰）"
-      },
-      "memoNameMode": "備忘錄名稱",
       "memoNameModeDescription": "轉錄後語音備忘錄的命名方式",
       "naming": {
         "transcript": "轉錄標題",
@@ -1324,12 +1318,13 @@
         "none": "不重新命名"
       },
       "namingError": "無法更新語音備忘錄命名方式",
+      "audioSearch": "依聲音搜尋語音備忘錄",
+      "audioSearchDescription": "依聲音特徵尋找沒有逐字稿的語音備忘錄，例如音樂或音效。首次需要建立索引時，會下載 189 MB 的音訊模型。",
+      "audioSearchError": "無法更新語音備忘錄搜尋設定",
       "language": "口說語言",
       "languageDescription": "你在語音備忘錄中使用的語言",
       "languageDefault": "預設",
       "languageError": "無法更新轉寫語言",
-      "localModel": "本機模型",
-      "localModelDescription": "Whisper Small 會在需要時下載，並快取在本機",
       "status": {
         "ready": "準備就緒",
         "downloading": "下載中",
@@ -1354,17 +1349,12 @@
     "embedding": {
       "loaded": "已載入",
       "loading": "載入中",
-      "cacheHint": "~210MB · 本機快取 · 完全在裝置上執行",
-      "dimensions": "維度",
-      "embeddings": "嵌入向量",
       "downloadLoad": "下載並載入模型",
       "downloadingModel": "正在下載模型…",
       "loadingModel": "正在載入模型…",
       "loadSuccess": "模型載入成功",
       "loadFailed": "無法載入模型",
       "rebuildIndex": "重建索引",
-      "rebuildDescription": "為所有筆記重新產生嵌入向量",
-      "rebuild": "重建",
       "scanning": "正在掃描筆記…",
       "generating": "正在產生嵌入向量…",
       "complete": "完成！",
@@ -1373,13 +1363,10 @@
     },
     "inline": {
       "loading": "載入中…",
-      "title": "內嵌 AI 編輯",
-      "enable": "啟用內嵌 AI",
       "enableDescription": "編輯筆記時顯示 AI 選單",
       "enabled": "已啟用內嵌 AI 編輯",
       "disabled": "已停用內嵌 AI 編輯",
       "provider": "供應商",
-      "providerDescription": "用於文字操作的 AI 服務",
       "providers": {
         "ollama": "Ollama（本機）",
         "openai": "OpenAI",
@@ -1398,7 +1385,6 @@
       "activePort": "在連接埠 {port} 上執行中",
       "notConnected": "未連線",
       "test": "測試",
-      "stopFailed": "無法停止現有的伺服器",
       "connected": "已連線！伺服器在連接埠 {port} 上執行",
       "connectFailed": "連線失敗",
       "testFailed": "連線測試失敗",
@@ -1459,10 +1445,9 @@
       "csv": "匯入 .csv 檔案——每列一則筆記，欄位成為屬性",
       "raindrop": "匯入 Raindrop.io 書籤匯出檔（.csv）——書籤會進入收件匣",
       "apple-notes": "從 Apple Notes 資料庫匯入（NoteStore.sqlite，macOS）",
-      "onenote": "匯入 OneNote 筆記本（需要 Microsoft 帳號）"
+      "onenote": "匯入 OneNote 筆記本（需要 Microsoft 帳號）",
+      "readwise": "從 Readwise 匯入你的標註（需要存取權杖）"
     },
-    "action": "匯入",
-    "select": "選擇要從中匯入的應用程式…",
     "stats": {
       "notes": "{count, plural, other {# 則筆記}}",
       "projects": "{count, plural, other {# 個專案}}",
@@ -1477,7 +1462,12 @@
     },
     "preview": {
       "warnings": "警告",
-      "confirm": "匯入"
+      "confirm": "匯入",
+      "readwise": {
+        "books": "{count, plural, other {# 本書}}",
+        "highlights": "{count, plural, other {# 則標註}}",
+        "documents": "{count, plural, other {# 份文件}}"
+      }
     },
     "dialog": {
       "title": "從 {name} 匯入",
@@ -1505,18 +1495,27 @@
         "deselectAll": "清除選取",
         "foldersSelected": "{count, plural, other {已選取 # 個資料夾}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, other {# 則已鎖定的筆記}}",
+          "hint": "輸入你的備忘錄密碼以匯入這些筆記。密碼僅用於此次匯入，且不會被儲存。已鎖定筆記中的附件不會匯入。",
+          "label": "備忘錄密碼",
+          "placeholder": "備忘錄密碼",
+          "check": "檢查",
+          "wrong": "此密碼無法解鎖任何已鎖定的筆記。",
+          "unlockedAll": "{count, plural, other {可解鎖全部 # 則已鎖定的筆記。}}",
+          "unlockedSome": "可解鎖 {total} 則已鎖定筆記中的 {unlocked} 則。其餘筆記使用不同的密碼，將會略過。",
+          "checkError": "無法檢查密碼。"
+        }
       },
       "chooseFolder": "選擇 Apple Notes 資料夾…",
       "chooseDirectory": "選擇資料夾…",
       "folderKeepsAssets": "若圖片不在筆記本身的資料夾裡，請選擇資料夾——匯出的內容常把媒體集中放在共用資料夾。",
-      "chooseHint": "選擇你的 {label}",
       "folderHint": "點擊下方，並在選擇器開啟時選取「group.com.apple.notes」資料夾（選擇器會從那裡開始）。這樣 Memry 就能讀取你的筆記與附件——不需要完整磁碟取用權限。",
       "noteplanFolderHint": "選擇你的 NotePlan 資料夾——可以是應用程式存放資料的資料夾，或其中一份 Backups 備份。Memry 會讀取其中的 Calendar、Notes 與 @Archive 資料夾。",
       "selected": "{count, plural, other {已選取 # 個檔案}}",
       "start": "開始匯入",
       "cancel": "取消",
-      "close": "關閉",
       "done": "完成",
       "running": "匯入中…",
       "progress": "{completed}/{total}",
@@ -1529,12 +1528,204 @@
         "failed": "{count} 個失敗"
       },
       "error": "匯入失敗",
-      "previewError": "預覽失敗"
+      "previewError": "預覽失敗",
+      "readwise": {
+        "intro": "貼上你的 Readwise 存取權杖。Memry 會先向 Readwise 驗證，再將它存放在這部裝置的系統鑰匙圈中，且絕不會同步。",
+        "tokenLabel": "存取權杖",
+        "tokenPlaceholder": "貼上你的權杖",
+        "getToken": "取得權杖",
+        "connect": "連線",
+        "connecting": "連線中…",
+        "connectFailed": "無法連線至 Readwise",
+        "takeOver": {
+          "explain": "同一時間只有一部裝置會從 Readwise 拉取資料，因此同一則標註不會被寫入兩次。若要改由這部裝置拉取，請重新貼上權杖：權杖絕不會在裝置之間傳送。另一部裝置會在處理完目前這本書後停止，所有筆記都會保留。",
+          "button": "改在此處同步",
+          "working": "正在將 Readwise 移至此處…",
+          "failed": "無法將 Readwise 移至這部裝置"
+        },
+        "groups": {
+          "location": "筆記存放位置",
+          "categories": "要匯入的內容",
+          "reader": "Readwise Reader",
+          "journal": "日誌",
+          "sync": "同步"
+        },
+        "journal": {
+          "highlights": {
+            "label": "在日誌中列出每天的標註",
+            "description": "在你標註當天新增 Readwise 區段，並連結到各本書的筆記。僅限新標註，不會回補舊資料。",
+            "firstImport": "首次匯入不會寫入日誌。"
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "同時匯入已儲存的 Reader 文件",
+            "description": "預設為關閉。可能會新增數千則筆記。"
+          },
+          "fullText": {
+            "label": "包含文章全文",
+            "description": "僅在建立筆記時寫入一次"
+          }
+        },
+        "rootFolder": {
+          "label": "資料夾",
+          "description": "新書會放在這裡。既有筆記維持原位。"
+        },
+        "layout": {
+          "label": "資料夾結構",
+          "description": "僅套用於新書。",
+          "options": {
+            "by-category": "依類別",
+            "flat": "單一資料夾"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "書籍",
+            "description": "Kindle、Apple Books 與其他標註"
+          },
+          "articles": {
+            "label": "文章",
+            "description": "網頁文章與電子報"
+          },
+          "tweets": {
+            "label": "推文",
+            "description": "已儲存的推文與串文"
+          },
+          "podcasts": {
+            "label": "Podcast",
+            "description": "Podcast 集數與片段"
+          },
+          "supplementals": {
+            "label": "補充內容",
+            "description": "Readwise 自行新增、不含你標註的書籍"
+          },
+          "other": {
+            "label": "其他",
+            "description": "Readwise 在此版本之後新增的類別"
+          }
+        },
+        "cadence": {
+          "label": "頻率",
+          "description": "新標註多久送達一次。",
+          "options": {
+            "manual": "手動",
+            "hourly": "每小時",
+            "daily": "每天"
+          }
+        },
+        "syncNow": {
+          "label": "立即同步",
+          "description": "檢查 Readwise 是否有新標註。",
+          "button": "立即同步"
+        },
+        "disconnect": "中斷連線",
+        "disconnectHint": "中斷連線會從這部裝置移除權杖，你的筆記會保留。",
+        "deleted": {
+          "heading": "已刪除的書籍",
+          "description": "你在 Memry 中刪除的筆記。在你還原之前，它們會保持刪除狀態。",
+          "meta": "{date} 刪除 · {count, plural, other {# 則標註}}",
+          "metaDocument": "{date} 刪除 · 已儲存的文章",
+          "restore": "還原",
+          "footer": "還原會重新建立筆記，並包含其所有標註。",
+          "empty": "沒有已刪除的書籍",
+          "syncsOn": "Readwise 在 {device} 上同步。",
+          "syncsOnAnotherDevice": "Readwise 在另一部裝置上同步。",
+          "loadFailed": "無法載入已刪除的書籍",
+          "restoreFailed": "無法還原筆記"
+        },
+        "importNow": "立即匯入",
+        "importBooks": "{count, plural, other {匯入 # 本書}}",
+        "importNotes": "{count, plural, other {匯入 # 則筆記}}",
+        "importNone": "匯入",
+        "preview": {
+          "intro": "{books, plural, other {# 本書}}共 {highlights, plural, other {# 則標註}}已就緒。在你確認之前不會寫入任何內容。",
+          "introOff": "{books, plural, other {# 本書}}共 {highlights, plural, other {# 則標註}}已就緒。已關閉：{off}。將匯入 {willImport, plural, other {# 本書}}。在你確認之前不會寫入任何內容。",
+          "introReaderOnly": "你的 Readwise 資料庫還沒有任何標註。{documents, plural, other {# 份已儲存的 Reader 文件}}將匯入為筆記。在你確認之前不會寫入任何內容。",
+          "readerLabel": "已儲存的 Reader 文件",
+          "empty": "你的 Readwise 資料庫還沒有任何標註，不會寫入任何內容。請執行匯入以完成設定。",
+          "willImport": "將匯入",
+          "off": "已關閉",
+          "retry": "再試一次"
+        },
+        "status": {
+          "connected": "已連線",
+          "synced": "{time}已同步",
+          "syncing": "正在與 Readwise 同步",
+          "reading": "正在讀取你的資料庫…",
+          "writing": "正在寫入書籍，{done} / {total}",
+          "finishing": "即將完成…",
+          "waitingTitle": "等待 Memry 同步",
+          "waitingDetail": "Memry 會等到你其他裝置的筆記都送達後才開始，以免同一本書被寫入兩次。Readwise 隨後立即開始。",
+          "otherTitle": "在 {device} 上同步",
+          "otherTitleUnknown": "在另一部裝置上同步",
+          "otherDetail": "同一時間只有一部裝置會從 Readwise 拉取資料，因此同一則標註不會被寫入兩次。",
+          "lastRun": "上次執行：{counts}",
+          "lastRunNothing": "上次執行：沒有新內容",
+          "nextRun": "下次同步 {time}",
+          "retryAt": "Memry 將於 {time}重試。",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise 需要新的權杖",
+              "detail": "Readwise 不接受已儲存的權杖。請從 readwise.io/access_token 貼上新的權杖。"
+            },
+            "subscription-expired": {
+              "title": "你的 Readwise 訂閱已到期",
+              "detail": "請到 readwise.io 續訂，然後再試一次。"
+            },
+            "rate-limited": {
+              "title": "Readwise 正在限制請求",
+              "detail": "短時間內請求過多。"
+            },
+            "network": {
+              "title": "無法連上 Readwise",
+              "detail": "請檢查你的網路連線。"
+            },
+            "server": {
+              "title": "Readwise 發生問題",
+              "detail": "Readwise 回應了錯誤。"
+            },
+            "unexpected": {
+              "title": "同步已停止",
+              "detail": "執行過程中發生錯誤。"
+            }
+          },
+          "counts": {
+            "added": "新增 {count}",
+            "updated": "更新 {count}",
+            "appended": "擴充 {count}",
+            "deferred": "{count} 則等待筆記開啟",
+            "failed": "失敗 {count}",
+            "highlights": "{count, plural, other {# 則標註}}"
+          },
+          "actions": {
+            "cancel": "取消",
+            "retry": "立即重試",
+            "newToken": "貼上新權杖",
+            "reconnect": "重新連線",
+            "syncHere": "改在此處同步"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise 需要新的權杖",
+            "description": "在你貼上新權杖之前，同步會暫停。"
+          },
+          "subscription-expired": {
+            "title": "你的 Readwise 訂閱已到期",
+            "description": "在訂閱恢復有效之前，同步會暫停。"
+          },
+          "open": "開啟 Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "無法讀取檔案",
       "appleNotes": {
-        "lockedNote": "{count, plural, other {# 則已鎖定的筆記}}未匯入；沒有你的備忘錄密碼，Memry 無法讀取這些筆記。"
+        "lockedNote": "{count, plural, other {# 則已鎖定的筆記}}未匯入；沒有你的備忘錄密碼，Memry 無法讀取這些筆記。",
+        "lockedWrongPassword": "{count, plural, other {# 則已鎖定的筆記}}未匯入；這些筆記使用的密碼與你輸入的不同。",
+        "lockedUnreadable": "{count, plural, other {# 則已鎖定的筆記}}無法解密，未匯入。",
+        "lockedAttachment": "{count, plural, other {已鎖定筆記中的 # 個附件}}未匯入；筆記文字已匯入。"
       },
       "csv": {
         "noHeaders": "CSV 檔案沒有標頭列",
@@ -1563,6 +1754,16 @@
         "unknownPriority": "未知的優先順序 {priority} → 無",
         "unparsedDate": "無法解析日期「{date}」",
         "subtaskNoParent": "子任務「{title}」在縮排層級 {indent} 沒有上層任務；已匯入為頂層任務"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise 尚未連線。",
+        "tokenInvalid": "Readwise 不接受已儲存的權杖。請中斷連線，並使用新的權杖重新連線。",
+        "unreachable": "無法連上 Readwise。請檢查網路連線後再試一次。",
+        "categoryOff": "{count, plural, other {# 本書}}屬於你已關閉的類別，未匯入。",
+        "unchanged": "{count, plural, other {# 本書}}已是最新狀態。",
+        "sourceDeleted": "{count, plural, other {# 本書}}已在 Readwise 中刪除。筆記會保留。",
+        "noteDeleted": "{count, plural, other {# 則筆記}}已在 Memry 中刪除，並會維持刪除狀態。",
+        "busy": "{count, plural, other {# 則筆記}}正在編輯器中開啟，將於下次執行時寫入。"
       }
     },
     "status": {
@@ -1603,18 +1804,35 @@
       },
       "todoist": {
         "importing": "正在匯入 Todoist 任務…"
+      },
+      "readwise": {
+        "fetching": "正在讀取你的 Readwise 資料庫…"
       }
     },
     "v2": {
       "searchPlaceholder": "尋找應用程式或檔案類型…",
       "noMatch": "沒有符合「{query}」的來源",
       "formatAccount": "帳號",
-      "showMore": "{count, plural, other {再顯示 # 個}}",
-      "showLess": "顯示較少",
       "groups": {
+        "reading": "閱讀",
         "noteApps": "筆記應用程式",
         "tasks": "任務、日誌與書籤",
         "files": "檔案"
+      },
+      "readwise": {
+        "notConnected": "未連線",
+        "connected": "已連線",
+        "synced": "{time}已同步",
+        "syncing": "同步中…",
+        "waiting": "等待同步",
+        "otherDevice": "在 {device} 上同步",
+        "otherDeviceUnknown": "在其他裝置上同步",
+        "invalidToken": "需要新的權杖",
+        "subscriptionExpired": "訂閱已到期",
+        "rateLimited": "已達速率限制",
+        "network": "無法連上 Readwise",
+        "server": "Readwise 錯誤",
+        "unexpected": "同步失敗"
       }
     }
   },
@@ -1624,8 +1842,6 @@
       "subtitle": "儲存庫設定與儲存空間"
     },
     "groups": {
-      "storageUsage": "儲存空間使用量",
-      "location": "位置",
       "accountVaults": "你帳號中的儲存庫",
       "largeNotes": "接近同步上限的筆記",
       "activity": "活動"
@@ -1783,6 +1999,9 @@
     "toasts": {
       "renamed": "已將「{oldName}」重新命名為「{newName}」",
       "renameFailed": "無法重新命名標籤",
+      "renaming": "正在重新命名 #{oldName}：{done} / {total} 則筆記",
+      "renamedBodySkipped": "「{newName}」無法作為行內標籤輸入，因此筆記文字中的 #{oldName} 維持原樣",
+      "renamedSomeFailed": "無法更新 {count, plural, other {# 則筆記}}。請開啟{count, plural, other {這些筆記}}並重新加入標籤",
       "deleteFailed": "無法刪除標籤",
       "deleted": "已從 {count, plural, other {# 個項目}}中刪除「{name}」",
       "mergeFailed": "無法合併標籤",
@@ -1882,8 +2101,6 @@
       "loading": "正在載入設定…"
     },
     "searchPlaceholder": "搜尋快速鍵…",
-    "resetAll": "重設全部",
-    "custom": "自訂",
     "pressShortcut": "按下快速鍵…",
     "cancelTitle": "取消",
     "rebindTitle": "點擊以重新指定",
@@ -1894,19 +2111,35 @@
     "noMatch": "沒有符合搜尋條件的快速鍵",
     "conflict": "與以下項目衝突：{labels}",
     "globalCapture": {
-      "title": "全域擷取",
       "description": "從任何地方擷取筆記",
       "active": "啟用中",
       "inUse": "{shortcut} 已被其他應用程式使用。請選擇其他組合。",
       "unsupported": "{shortcut} 無法作為全域快速鍵。請選擇其他組合。",
       "fallbackInUse": "預設快速鍵 {shortcut} 已被其他應用程式使用。請設定其他組合以使用全域擷取。"
     },
+    "folderNotes": {
+      "title": "在資料夾中新增筆記",
+      "description": "直接在你選擇的資料夾中建立筆記",
+      "add": "新增資料夾",
+      "empty": "尚無資料夾快速鍵。新增資料夾即可為它設定快速鍵。",
+      "rowDescription": "在此資料夾中建立筆記",
+      "missing": "此資料夾已不存在。請選擇其他資料夾，或移除這個快速鍵。",
+      "changeFolder": "變更資料夾",
+      "searchFolders": "搜尋資料夾...",
+      "noFolders": "找不到資料夾",
+      "remove": "移除快速鍵",
+      "conflictLabel": "在 {folder} 中新增筆記",
+      "missingToast": "資料夾「{folder}」已不存在",
+      "missingToastAction": "編輯快速鍵",
+      "foldersLoadFailed": "無法檢查此快速鍵的資料夾"
+    },
     "toasts": {
       "saveGlobalFailed": "無法儲存全域擷取快速鍵",
       "saveFailed": "無法儲存快速鍵",
       "resetFailed": "無法重設快速鍵",
       "resetAllSuccess": "所有快速鍵已重設為預設值",
-      "resetAllFailed": "無法重設快速鍵"
+      "resetAllFailed": "無法重設快速鍵",
+      "saveStickyFailed": "無法儲存便利貼快速鍵"
     },
     "categories": {
       "navigation": "導覽",
@@ -1939,6 +2172,10 @@
         "search": {
           "label": "搜尋",
           "description": "開啟全域搜尋"
+        },
+        "commands": {
+          "label": "命令面板",
+          "description": "搜尋並執行任何命令"
         },
         "settings": {
           "label": "開啟設定",
@@ -2042,6 +2279,10 @@
           "label": "顯示/隱藏側邊欄",
           "description": "顯示或隱藏側邊欄"
         },
+        "toggleDayPanel": {
+          "label": "切換當日面板",
+          "description": "顯示或隱藏右側的當日面板"
+        },
         "shortcuts": {
           "label": "鍵盤快速鍵說明",
           "description": "顯示鍵盤快速鍵參考"
@@ -2057,6 +2298,26 @@
         "actualSize": {
           "label": "實際大小",
           "description": "將縮放重設為 100%"
+        },
+        "foldFull": {
+          "label": "摺疊：完整",
+          "description": "顯示筆記的每一個字"
+        },
+        "foldBrief": {
+          "label": "摺疊：精簡",
+          "description": "僅顯示原文中的關鍵句"
+        },
+        "foldKey": {
+          "label": "摺疊：重點",
+          "description": "顯示每個重點及其原因"
+        },
+        "foldTakeaway": {
+          "label": "摺疊：摘要",
+          "description": "每段只顯示一行"
+        },
+        "foldTopic": {
+          "label": "摺疊：主題",
+          "description": "以章節地圖的形式顯示筆記"
         }
       }
     },
@@ -2066,8 +2327,11 @@
       "systemWide": "全系統",
       "globalCapture": "全域擷取",
       "recordingHint": "按下按鍵…按 esc 取消",
-      "reset": "重設",
-      "resetAll": "全部重設為預設值"
+      "resetAll": "全部重設為預設值",
+      "sticky": "便利貼"
+    },
+    "sticky": {
+      "description": "memrynote 執行期間，可在任何應用程式中開啟便利貼"
     }
   },
   "phaseF": {
@@ -2112,7 +2376,17 @@
       "clockSkewDetected": "偵測到時鐘偏差",
       "items": "項目",
       "willSyncWhenBackOnline": "恢復連線後就會同步",
-      "openSyncSettings": "開啟同步設定"
+      "stalled": "變更已有一段時間未同步。請試試「立即同步」。",
+      "openSyncSettings": "開啟同步設定",
+      "repairDeviceKeys": "修復",
+      "signInToRepair": "請重新登入以設定這部裝置的金鑰。尚未同步的筆記、任務與專案都會保留。你可能需要輸入復原片語。",
+      "repairFailed": "無法修復這部裝置的金鑰。請再試一次。",
+      "syncNotStarted": {
+        "vault-binding": "這部裝置的金鑰已還原，但此儲存庫尚未設定與你的帳號同步。請從同步選單選擇同步方式。",
+        "vault-foreign": "這部裝置的金鑰已還原，但此儲存庫屬於另一個帳號，因此僅保留在這部裝置上。",
+        "entitlement": "這部裝置的金鑰已還原，但同步需要有效的同步方案。",
+        "unavailable": "這部裝置的金鑰已還原，但同步無法啟動。系統會自動重試；若仍未恢復，請重新啟動 Memry。"
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2128,7 +2402,6 @@
       "failedToResendCode": "無法重新傳送驗證碼",
       "failedToSetUpDevice": "無法設定裝置",
       "failedToConfirmRecoveryPhrase": "無法確認復原片語",
-      "failedToAnalyzeContent": "無法分析內容",
       "failedToLoadUpdaterState": "無法載入更新程式狀態",
       "failedToCheckForUpdates": "無法檢查更新",
       "failedToDownloadUpdate": "無法下載更新",
@@ -2143,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "無法載入筆記編輯器設定",
       "failedToUpdateSettings": "無法更新設定",
       "failedToLoadTabSettings": "無法載入分頁設定",
-      "failedToLoadNotes": "無法載入筆記",
       "failedToLoadTags": "無法載入標籤",
-      "failedToLoadTasks": "無法載入任務",
       "failedToLoadVaultStatus": "無法載入儲存庫狀態",
       "failedToSelectVault": "無法選擇儲存庫",
       "failedToCloseVault": "無法關閉儲存庫",
@@ -2159,18 +2430,12 @@
       "title": "代理程式 MCP",
       "subtitle": "供外部 MCP 用戶端存取的本機伺服器。"
     },
-    "groups": {
-      "connection": "連線",
-      "access": "存取權"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "在 Cursor、Claude Desktop 或 Zed 中使用這個 localhost 端點。"
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer 權杖",
-        "description": "僅在本次啟動期間存於記憶體的憑證。"
+        "label": "Bearer 權杖"
       }
     },
     "actions": {
@@ -2181,7 +2446,7 @@
     },
     "copyLabel": "複製 {label}",
     "notRunning": "未執行",
-    "toolsBadge": "{count, plural, one {# 個工具} other {# 個工具}}",
+    "toolsBadge": "{count, plural, other {# 個工具}}",
     "v2": {
       "hint": "供 Cursor、Claude Desktop、Zed 使用的本機伺服器",
       "running": "執行中",
@@ -2194,11 +2459,6 @@
     "header": {
       "title": "代理程式權限",
       "subtitle": "為代理程式對話選擇預設存取權、確認方式與本機供應商。"
-    },
-    "groups": {
-      "cliAgents": "CLI 代理程式",
-      "local": "本機 OpenAI 相容供應商",
-      "actions": "連線檢查"
     },
     "cliAgents": {
       "claude": {
@@ -2222,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "代理程式權限",
       "access": {
-        "label": "預設存取權",
         "description": "設定代理程式新回合的起始存取模式。",
         "vaultOnly": "僅限儲存庫",
         "computerAccess": "電腦存取",
         "builtInNote": "內建模型連線一律僅使用儲存庫工具。"
       },
       "confirm": {
-        "label": "確認動作",
         "description": "選擇工具呼叫要自動執行，還是在對話中等待核准。鎖定的筆記和資料夾在兩種模式下都維持唯讀。",
         "alwaysAllow": "一律允許",
         "askBeforeChanges": "變更前先詢問"
@@ -2259,6 +2516,12 @@
         "label": "模型",
         "description": "選擇回傳的模型，或手動輸入一個。"
       },
+      "thinking": {
+        "label": "思考",
+        "description": "關閉後，DeepSeek 類模型會跳過思考，回答更快也更省。",
+        "default": "預設",
+        "off": "關閉"
+      },
       "apiKey": {
         "label": "API 金鑰",
         "description": "選填的憑證，儲存在作業系統的鑰匙圈中。",
@@ -2266,26 +2529,31 @@
       }
     },
     "actions": {
-      "save": "儲存",
-      "models": "載入模型",
-      "test": "測試連線",
-      "probe": "偵測工具"
+      "test": "測試連線"
     },
     "status": {
       "label": "連線",
       "checking": "檢查中…",
       "connected": "已連線",
-      "disconnected": "未連線",
-      "toolsDisabled": "工具已停用",
-      "fullTools": "已啟用完整工具"
+      "disconnected": "未連線"
     },
     "alwaysAllowed": {
-      "group": "一律允許",
       "description": "你在此儲存庫中授予長期核准的工具。刪除動作永遠無法授予長期核准。",
       "empty": "沒有任何工具被設為一律允許。每項變更仍會詢問。",
       "revoke": "撤銷",
       "revokeLabel": "撤銷「{tool}」的長期核准",
       "ignoredInPageReview": "已忽略：編輯筆記與日誌時一律會詢問。"
+    },
+    "memory": {
+      "group": "記憶",
+      "description": "代理程式會在為此儲存庫保留、位於儲存庫之外的資料夾中執行，因此它們在那裡儲存的內容會延續到下一次對話。",
+      "clear": "清除代理程式記憶",
+      "clearDescription": "刪除代理程式儲存的關於此儲存庫的內容。筆記與聊天記錄會保留。",
+      "clearAction": "清除",
+      "cleared": "已清除代理程式記憶。",
+      "failed": "無法清除代理程式記憶。",
+      "confirmTitle": "清除代理程式記憶？",
+      "confirmDescription": "代理程式會失去它們儲存的關於此儲存庫的內容，包括 Claude Code 為其保留的專案記憶。此操作無法復原。筆記與聊天記錄會保留。"
     },
     "v2": {
       "permissions": {

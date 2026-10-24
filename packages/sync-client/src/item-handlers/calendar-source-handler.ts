@@ -130,7 +130,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
       if (resolution.skip) {
         log.info('Skipping remote calendar source delete, local is ahead of the tombstone', {
           itemId
@@ -145,9 +145,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(calendarSources).where(eq(calendarSources.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(calendarSources).where(eq(calendarSources.id, itemId)).get()
   }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {
@@ -169,7 +167,7 @@ class CalendarSourceHandler extends BaseItemHandler<CalendarSourceSyncPayload> {
       lastSyncedAt: row.lastSyncedAt ?? null,
       metadata: row.metadata ?? null,
       archivedAt: row.archivedAt ?? null,
-      clock: (row.clock as VectorClock) ?? undefined,
+      clock: row.clock ?? undefined,
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt
     }

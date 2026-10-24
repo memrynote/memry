@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Gói của bạn đồng bộ được ít kho hơn số kho trong tài khoản này, nên kho này chỉ nằm trên thiết bị này. Gỡ một kho khỏi tài khoản trong Cài đặt → Tài khoản, hoặc nâng cấp gói.",
     "certificatePinFailed": "Không thể thiết lập kết nối bảo mật. Kiểm tra kết nối mạng của bạn.",
     "deviceKeyMismatch": "Khóa bảo mật của thiết bị này không còn khớp với khóa đã đăng ký cho tài khoản của bạn, nên máy chủ từ chối các thay đổi từ thiết bị này. Đăng nhập lại trên thiết bị này để đăng ký lại.",
+    "deviceKeysMissing": "Các thay đổi trên thiết bị này không được tải lên vì thiếu khóa thiết bị. Chọn Sửa chữa để khôi phục. Nếu thiết bị này không còn giữ khóa, bạn sẽ đăng nhập lại và có thể cần cụm từ khôi phục. Ghi chú, công việc và dự án chưa đồng bộ vẫn được giữ lại.",
     "keychainUnavailable": "Đồng bộ đang tạm dừng vì Memry hiện không thể đọc khóa đồng bộ từ chuỗi khóa hệ thống. Mở khóa chuỗi khóa và đồng bộ sẽ tự tiếp tục; nếu không, hãy khởi động lại Memry. Không có gì bị xóa.",
     "unknown": "Đã xảy ra lỗi đồng bộ không mong muốn. Sẽ tự động thử lại.",
     "statusFetchFailed": "Không thể lấy trạng thái đồng bộ",
@@ -106,6 +107,10 @@
     "triggerFailed": "Không thể đồng bộ",
     "pauseFailed": "Không thể tạm dừng đồng bộ",
     "resumeFailed": "Không thể tiếp tục đồng bộ",
+    "syncNowSignedOut": "Đồng bộ cần bạn đăng nhập lại trên thiết bị này.",
+    "syncNowBusy": "Đồng bộ đang chạy. Hãy thử lại sau giây lát.",
+    "syncNowPaused": "Đồng bộ đã bị tạm dừng khi đang chạy. Hãy tiếp tục từ menu đồng bộ.",
+    "openAccountSettings": "Mở cài đặt",
     "settingsNotInitialized": "Đồng bộ cài đặt chưa được khởi tạo",
     "securityQuarantinePermanent": "Một mục đồng bộ không thể được xác minh và đã bị cách ly vì lý do bảo mật.",
     "securityQuarantineRetry": "Một mục đồng bộ không vượt qua kiểm tra chữ ký và sẽ được thử lại.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Đã tắt chỉnh sửa nội dòng bằng AI",
-    "listOllamaModelsFailed": "Không thể liệt kê các mô hình Ollama"
+    "listOllamaModelsFailed": "Không thể liệt kê các mô hình Ollama",
+    "writingAssistInvalid": "Không thể gửi yêu cầu đó đến mô hình AI.",
+    "apiKeyMissing": "Hãy thêm khóa API {provider} của bạn trong Cài đặt → AI để dùng công cụ viết.",
+    "apiKeyInvalid": "Khóa API {provider} của bạn bị từ chối. Hãy kiểm tra trong Cài đặt → AI.",
+    "ollamaUnreachable": "Ollama không chạy. Hãy khởi động bằng \"ollama serve\", hoặc chọn nhà cung cấp khác trong Cài đặt → AI.",
+    "providerUnreachable": "Không thể kết nối đến {provider}. Hãy kiểm tra kết nối internet và thử lại."
   },
   "auth": {
     "notAuthenticated": "Chưa xác thực",
-    "sessionExpired": "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
     "setupSessionExpired": "Phiên đăng nhập đã hết thời gian chờ trước khi quá trình này hoàn tất. Đăng nhập lại, rồi nhập cụm từ khôi phục.",
     "setupSessionExpiredLinking": "Phiên đăng nhập đã hết thời gian chờ trước khi thiết bị này liên kết xong. Đăng nhập lại, rồi quét mã thêm một lần nữa.",
     "invalidRecoveryPhraseFormat": "Định dạng cụm từ khôi phục không hợp lệ",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Không thể chuyển sự kiện lịch bên ngoài",
     "onlyCalendarSourcesRetryable": "Chỉ có thể thử lại các nguồn lịch",
     "invalidProviderSettings": "Cài đặt nhà cung cấp lịch không hợp lệ",
-    "getExternalEventFailed": "Không thể tải sự kiện này. Sự kiện vẫn còn trong lịch của bạn; thử mở lại."
+    "getExternalEventFailed": "Không thể tải sự kiện này. Sự kiện vẫn còn trong lịch của bạn; thử mở lại.",
+    "listLinkedNotesFailed": "Không thể tải các ghi chú được liên kết với sự kiện này."
   },
   "canvasFolder": {
     "exists": "Đã có thư mục bảng trắng trùng tên tại đây.",
@@ -209,10 +219,35 @@
     "previewFailed": "Không thể xem trước",
     "listFailed": "Không thể liệt kê các trình nhập",
     "appleNotesFoldersFailed": "Không thể đọc các thư mục Apple Notes",
+    "appleNotesPasswordFailed": "Không thể kiểm tra mật khẩu Notes.",
     "onenoteStatusFailed": "Không thể đọc trạng thái kết nối OneNote",
     "onenoteConnectFailed": "Không thể đăng nhập Microsoft",
     "onenoteDisconnectFailed": "Không thể ngắt kết nối tài khoản Microsoft",
-    "onenoteNotebooksFailed": "Không thể tải sổ tay OneNote"
+    "onenoteNotebooksFailed": "Không thể tải sổ tay OneNote",
+    "readwiseStatusFailed": "Không thể đọc trạng thái kết nối Readwise",
+    "readwiseConnectFailed": "Không thể kết nối với Readwise",
+    "readwiseInvalidToken": "Readwise không chấp nhận token này. Hãy sao chép lại từ readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise đang giới hạn yêu cầu. Hãy thử lại sau một phút.",
+    "readwiseUnreachable": "Không thể kết nối đến Readwise. Hãy kiểm tra kết nối và thử lại.",
+    "readwiseDisconnectFailed": "Không thể ngắt kết nối Readwise",
+    "readwiseSyncFailed": "Không thể bắt đầu đồng bộ Readwise",
+    "readwiseRunUnavailable": "Readwise không đồng bộ trên thiết bị này.",
+    "readwiseRunInProgress": "Một lần nhập Readwise đang chạy. Hãy thử lại khi nó hoàn tất.",
+    "readwiseOptionsFailed": "Không thể lưu cài đặt Readwise",
+    "readwiseNotConnected": "Readwise chưa được kết nối. Hãy dán access token của bạn trước.",
+    "readwiseSyncsElsewhere": "Readwise đồng bộ trên thiết bị khác. Hãy chạy lệnh này ở đó.",
+    "readwiseBookCommandFailed": "Không thể hoàn tất lệnh Readwise",
+    "readwiseBookGone": "Cuốn sách này không còn trong thư viện Readwise của bạn.",
+    "readwiseNotLinked": "Ghi chú này không được liên kết với cuốn sách Readwise nào.",
+    "readwiseNotDeleted": "Cuốn sách này không có trong danh sách đã xóa.",
+    "readwiseBookBusy": "Ghi chú đã thay đổi khi lệnh đang chạy. Hãy thử lại.",
+    "readwiseSyncsOnDevice": "Readwise đồng bộ trên {device}. Dùng “Đồng bộ tại đây thay thế” để chuyển nó sang đây.",
+    "readwiseAnotherDevice": "thiết bị khác",
+    "readwiseNotReady": "Memry chưa đồng bộ xong với các thiết bị khác của bạn. Hãy thử lại sau giây lát.",
+    "readwiseNeedsSync": "Hãy bật đồng bộ để chuyển Readwise giữa các thiết bị.",
+    "readwiseClaimNotDelivered": "Chưa thể thông báo cho các thiết bị khác của bạn. Hãy kiểm tra kết nối và thử lại.",
+    "readwiseTakeOverFailed": "Không thể chuyển Readwise sang thiết bị này",
+    "readwiseCancelFailed": "Không thể hủy đồng bộ Readwise"
   },
   "project": {
     "createFailed": "Không thể tạo dự án",
@@ -236,7 +271,8 @@
     "renameFailed": "Không thể đổi tên thuộc tính",
     "createDefinitionFailed": "Không thể tạo định nghĩa thuộc tính",
     "updateDefinitionFailed": "Không thể cập nhật định nghĩa thuộc tính",
-    "setCalendarVisibilityFailed": "Không thể đặt hiển thị thuộc tính lịch"
+    "setCalendarVisibilityFailed": "Không thể đặt hiển thị thuộc tính lịch",
+    "definitionsFileUnreadable": "Không thể lưu thay đổi thuộc tính vì không đọc được .memry/properties.md. Hãy sửa hoặc xóa tệp đó, rồi thử lại."
   },
   "reminder": {
     "notFound": "Không tìm thấy lời nhắc",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Không thể tải mô hình",
     "voiceModelDownloadFailed": "Không thể tải xuống mô hình giọng nói",
     "terminalCommandInstallFailed": "Không thể cài đặt lệnh terminal",
-    "terminalCommandUninstallFailed": "Không thể gỡ lệnh terminal",
-    "shortcutInUse": "Phím tắt {shortcut} đang được sử dụng"
+    "terminalCommandUninstallFailed": "Không thể gỡ lệnh terminal"
   },
   "tag": {
+    "renameInProgress": "Việc đổi tên #{from} thành #{to} vẫn đang chạy. Hãy thử lại khi nó hoàn tất.",
     "mergeSameTag": "Thẻ nguồn và thẻ đích giống nhau",
     "categoryNameRequired": "Cần có tên danh mục",
     "pinNoteFailed": "Không thể ghim ghi chú",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Không thể xóa các công việc",
     "moveManyFailed": "Không thể di chuyển các công việc",
     "archiveManyFailed": "Không thể lưu trữ các công việc",
-    "projectMissing": "Dự án đó không còn tồn tại"
+    "projectMissing": "Dự án đó không còn tồn tại",
+    "invalidParent": "Không thể đặt công việc vào đó"
   },
   "taskStatus": {
     "createFailed": "Không thể tạo trạng thái",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Chủ sở hữu đã đặt ghi chú này ở chế độ chỉ đọc.",
     "folderReadOnly": "Chủ sở hữu đã đặt thư mục này ở chế độ chỉ đọc."
+  },
+  "ocrLanguages": {
+    "unreachable": "Không thể kết nối đến máy chủ của Memry. Các ngôn ngữ đã có vẫn hoạt động, và Memry sẽ thử lại ở lần khởi động tiếp theo.",
+    "unavailable": "Máy chủ của Memry chưa cung cấp ngôn ngữ này. Các ngôn ngữ đã có vẫn hoạt động.",
+    "corrupt": "Dữ liệu đã tải xuống không khớp với những gì Memry mong đợi nên không được dùng. Hãy thử lại để tải xuống lần nữa.",
+    "saveFailed": "Không thể lưu dữ liệu ngôn ngữ trên máy tính này. Hãy kiểm tra dung lượng trống của ổ đĩa, rồi thử lại."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" là tên dành riêng và không thể dùng làm tên trường",
+    "duplicateField": "#{definedBy} đã có một trường tên \"{name}\"",
+    "unknownField": "Thẻ này không có trường nào tên \"{name}\"",
+    "inheritedField": "\"{name}\" đến từ #{definedBy}. Hãy sửa ở đó",
+    "cycle": "#{parent} đã lấy các trường của nó từ thẻ này",
+    "unreadableSchema": "Một phiên bản Memry mới hơn đã thay đổi thẻ này. Hãy cập nhật Memry để sửa nó",
+    "relationTargetRequired": "Hãy chọn thẻ mà quan hệ này trỏ tới",
+    "renameRunning": "Một lần đổi tên trường khác vẫn đang hoàn tất ({from} thành {to}). Hãy thử lại khi nó xong."
   }
 }

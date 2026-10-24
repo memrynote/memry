@@ -51,15 +51,20 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
   const editor = useBlockNoteEditor()
   const state = useEditorState({
     editor,
+    // oxlint-disable-next-line no-shadow -- the selector param is the same editor; renaming would obscure that it is the hook's editor
     selector: ({ editor }) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const blocks = getSelectedBlocks(editor as BlockNoteEditor)
       const alignable = blocks.filter((block) => 'textAlignment' in (block.props ?? {}))
       const first = alignable[0]?.props as { textAlignment?: TextAlignment } | undefined
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const cells = selectedTableCells(editor as BlockNoteEditor, blocks)
       return {
         canAlign: alignable.length > 0 || cells !== null,
         alignment: first?.textAlignment ?? cells?.alignment ?? 'left',
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         canNest: editor.isEditable && (editor as BlockNoteEditor).canNestBlock(),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         canUnnest: editor.isEditable && (editor as BlockNoteEditor).canUnnestBlock()
       }
     }
@@ -80,6 +85,7 @@ export function ToolbarMoreMenu({ isPinned, onPinnedChange }: ToolbarMoreMenuPro
     editor.transact(() => {
       for (const block of blocks) {
         if (!('textAlignment' in (block.props ?? {}))) continue
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion, typescript/no-unsafe-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers; BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         editor.updateBlock(block.id, { props: { textAlignment } } as never)
       }
     })
@@ -165,6 +171,7 @@ function selectedTableCells(
   const selection = editor.getExtension(TableHandlesExtension)?.getCellSelection()
   if (!selection || selection.cells.length === 0) return null
   const { row, col } = selection.cells[0]
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const rows = (block.content as TableContent<never, never>).rows
   const alignment = mapTableCell(rows[row].cells[col]).props.textAlignment
   return {
@@ -179,6 +186,7 @@ function alignTableCells(
   { block, positions }: SelectedTableCells,
   textAlignment: TextAlignment
 ): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const content = block.content as TableContent<never, never>
   const rows = content.rows.map((row) => ({
     ...row,
@@ -187,11 +195,13 @@ function alignTableCells(
   for (const { row, col } of positions) {
     rows[row].cells[col].props.textAlignment = textAlignment
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   editor.updateBlock(block.id, { type: 'table', content: { ...content, rows } } as never)
   // updateBlock moves the selection out of the table; put the cursor back.
   editor.setTextCursorPosition(block.id)
 }
 
 function getSelectedBlocks(editor: BlockNoteEditor): AnyBlock[] {
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
   return (editor.getSelection()?.blocks ?? [editor.getTextCursorPosition().block]) as AnyBlock[]
 }

@@ -29,7 +29,9 @@ const payload = (token: string): string => token.replace(/^\(\(date:|\)\)$/g, ''
 
 /** A base64url run as a markdown escaper would have left it. */
 const markdownEscaped = (run: string): string =>
-  [...run].map((c) => (c === '_' || c === '-' ? `\\${c}` : c)).join('')
+  Array.from(run)
+    .map((c) => (c === '_' || c === '-' ? `\\${c}` : c))
+    .join('')
 
 describe('date-mention token', () => {
   it('round-trips through serialize/parse', () => {

@@ -35,6 +35,7 @@ export interface AvailabilitySnapshot {
   readonly commands: readonly AvailableCommand[]
 }
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- COMMANDS is keyed by CommandId; Object.keys only widens to string
 const COMMAND_IDS = Object.keys(COMMANDS) as CommandId[]
 
 let snapshot: AvailabilitySnapshot = { activeTabId: null, activeTabType: null, commands: [] }

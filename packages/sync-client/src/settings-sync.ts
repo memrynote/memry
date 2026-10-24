@@ -138,7 +138,8 @@ export class SettingsSyncManager {
     const row = this.db.select().from(settings).where(eq(settings.key, SETTINGS_KEY)).get()
     if (!row) return {}
     try {
-      return JSON.parse(row.value) as SyncedSettings
+      const parsed: SyncedSettings = JSON.parse(row.value)
+      return parsed
     } catch {
       return {}
     }
@@ -148,7 +149,8 @@ export class SettingsSyncManager {
     const row = this.db.select().from(settings).where(eq(settings.key, CLOCKS_KEY)).get()
     if (!row) return {}
     try {
-      return JSON.parse(row.value) as FieldClockMap
+      const parsed: FieldClockMap = JSON.parse(row.value)
+      return parsed
     } catch {
       return {}
     }

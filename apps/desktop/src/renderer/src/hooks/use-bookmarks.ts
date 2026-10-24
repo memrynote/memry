@@ -339,6 +339,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
       // Reorder local state to match
       setBookmarks((prev) => {
         const bookmarkMap = new Map(prev.map((b) => [b.id, b]))
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- filter(Boolean) drops the undefined misses, which the type cannot express
         return bookmarkIds.map((id) => bookmarkMap.get(id)).filter(Boolean) as BookmarkWithItem[]
       })
 
@@ -362,7 +363,7 @@ export function useBookmarks(options: UseBookmarksOptions = {}): UseBookmarksRet
 
   // Load initial bookmarks
   useEffect(() => {
-    if (!autoLoad) return
+    if (!autoLoad) return undefined
     let cancelled = false
     void (async () => {
       await loadBookmarks()

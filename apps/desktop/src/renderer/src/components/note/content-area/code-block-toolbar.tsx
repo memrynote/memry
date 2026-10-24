@@ -95,7 +95,7 @@ export const CodeBlockToolbar: FC<CodeBlockToolbarProps> = ({ containerEl }) => 
   }, [block, tick])
 
   useEffect(() => {
-    if (!containerEl) return
+    if (!containerEl) return undefined
 
     const handlePointerOver = (event: PointerEvent): void => {
       const target = event.target

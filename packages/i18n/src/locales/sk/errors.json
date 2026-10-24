@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Váš plán umožňuje synchronizovať menej trezorov, než má tento účet, preto tento trezor zostáva na tomto zariadení. Odstráňte trezor zo svojho účtu v časti Nastavenia → Účet alebo prejdite na vyšší plán.",
     "certificatePinFailed": "Nepodarilo sa nadviazať bezpečné pripojenie. Skontrolujte svoje sieťové pripojenie.",
     "deviceKeyMismatch": "Bezpečnostný kľúč tohto zariadenia sa už nezhoduje s kľúčom zaregistrovaným vo vašom účte, preto server jeho zmeny odmieta. Opätovným prihlásením na tomto zariadení ho znova zaregistrujete.",
+    "deviceKeysMissing": "Zmeny v tomto zariadení sa nenahrávajú, pretože chýbajú jeho kľúče zariadenia. Výberom možnosti Opraviť ich obnovíte. Ak toto zariadenie svoje kľúče už nemá, prihlásite sa znova a možno budete potrebovať svoju frázu na obnovenie. Nesynchronizované poznámky, úlohy a projekty sa zachovajú.",
     "keychainUnavailable": "Synchronizácia je pozastavená, pretože aplikácia Memry momentálne nemôže prečítať svoje synchronizačné kľúče zo systémovej kľúčenky. Odomknite kľúčenku a synchronizácia sa obnoví sama; ak nie, reštartujte aplikáciu Memry. Nič sa neodstránilo.",
     "unknown": "Vyskytla sa neočakávaná chyba synchronizácie. Skúsi sa to automaticky znova.",
     "statusFetchFailed": "Nepodarilo sa načítať stav synchronizácie",
@@ -106,6 +107,10 @@
     "triggerFailed": "Synchronizácia zlyhala",
     "pauseFailed": "Nepodarilo sa pozastaviť synchronizáciu",
     "resumeFailed": "Nepodarilo sa obnoviť synchronizáciu",
+    "syncNowSignedOut": "Synchronizácia vyžaduje, aby ste sa v tomto zariadení znova prihlásili.",
+    "syncNowBusy": "Synchronizácia už beží. Skúste to o chvíľu znova.",
+    "syncNowPaused": "Synchronizácia sa počas behu pozastavila. Obnovte ju v ponuke synchronizácie.",
+    "openAccountSettings": "Otvoriť nastavenia",
     "settingsNotInitialized": "Synchronizácia nastavení nebola inicializovaná",
     "securityQuarantinePermanent": "Synchronizačná položka nemohla byť overená a bola umiestnená do karantény z bezpečnostných dôvodov.",
     "securityQuarantineRetry": "Overenie podpisu synchronizačnej položky zlyhalo a bude sa skúšať znova.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Úpravy pomocou AI priamo v texte sú vypnuté",
-    "listOllamaModelsFailed": "Nepodarilo sa načítať zoznam modelov Ollama"
+    "listOllamaModelsFailed": "Nepodarilo sa načítať zoznam modelov Ollama",
+    "writingAssistInvalid": "Túto požiadavku sa nepodarilo odoslať modelu AI.",
+    "apiKeyMissing": "Ak chcete používať nástroje na písanie, pridajte svoj kľúč API pre {provider} v časti Nastavenia → AI.",
+    "apiKeyInvalid": "Váš kľúč API pre {provider} bol odmietnutý. Skontrolujte ho v časti Nastavenia → AI.",
+    "ollamaUnreachable": "Ollama nebeží. Spustite ju príkazom „ollama serve“ alebo vyberte iného poskytovateľa v časti Nastavenia → AI.",
+    "providerUnreachable": "Nepodarilo sa spojiť s poskytovateľom {provider}. Skontrolujte internetové pripojenie a skúste to znova."
   },
   "auth": {
     "notAuthenticated": "Nie je prihlásený žiadny účet",
-    "sessionExpired": "Relácia vypršala. Prihláste sa znova.",
     "setupSessionExpired": "Prihlásenie vypršalo skôr, ako sa to dokončilo. Prihláste sa znova a potom zadajte obnovovaciu frázu.",
     "setupSessionExpiredLinking": "Prihlásenie vypršalo skôr, ako sa dokončilo prepojenie tohto zariadenia. Prihláste sa znova a potom znova naskenujte kód.",
     "invalidRecoveryPhraseFormat": "Neplatný formát obnovovacej frázy",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Nepodarilo sa vytvoriť prepojenú kópiu externej udalosti kalendára",
     "onlyCalendarSourcesRetryable": "Synchronizáciu možno znova skúsiť len pri zdrojoch kalendára",
     "invalidProviderSettings": "Neplatné nastavenia poskytovateľa kalendára",
-    "getExternalEventFailed": "Túto udalosť sa nepodarilo načítať. V kalendári stále je – skúste ju otvoriť znova."
+    "getExternalEventFailed": "Túto udalosť sa nepodarilo načítať. V kalendári stále je – skúste ju otvoriť znova.",
+    "listLinkedNotesFailed": "Nepodarilo sa načítať poznámky prepojené s touto udalosťou."
   },
   "canvasFolder": {
     "exists": "Priečinok pláten s týmto názvom tu už existuje.",
@@ -209,10 +219,35 @@
     "previewFailed": "Náhľad zlyhal",
     "listFailed": "Nepodarilo sa načítať zoznam importérov",
     "appleNotesFoldersFailed": "Nepodarilo sa prečítať vaše priečinky v Apple Notes",
+    "appleNotesPasswordFailed": "Heslo aplikácie Poznámky sa nepodarilo overiť.",
     "onenoteStatusFailed": "Nepodarilo sa zistiť stav pripojenia k OneNote",
     "onenoteConnectFailed": "Prihlásenie do účtu Microsoft zlyhalo",
     "onenoteDisconnectFailed": "Nepodarilo sa odpojiť účet Microsoft",
-    "onenoteNotebooksFailed": "Nepodarilo sa načítať poznámkové bloky OneNote"
+    "onenoteNotebooksFailed": "Nepodarilo sa načítať poznámkové bloky OneNote",
+    "readwiseStatusFailed": "Nepodarilo sa prečítať stav pripojenia k Readwise",
+    "readwiseConnectFailed": "Nepodarilo sa pripojiť k Readwise",
+    "readwiseInvalidToken": "Readwise tento token neprijal. Skopírujte ho znova z readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise momentálne obmedzuje počet požiadaviek. Skúste to o minútu.",
+    "readwiseUnreachable": "Nepodarilo sa spojiť s Readwise. Skontrolujte pripojenie a skúste to znova.",
+    "readwiseDisconnectFailed": "Nepodarilo sa odpojiť Readwise",
+    "readwiseSyncFailed": "Nepodarilo sa spustiť synchronizáciu s Readwise",
+    "readwiseRunUnavailable": "Readwise sa v tomto zariadení nesynchronizuje.",
+    "readwiseRunInProgress": "Import z Readwise už beží. Skúste to znova, keď skončí.",
+    "readwiseOptionsFailed": "Nepodarilo sa uložiť nastavenia Readwise",
+    "readwiseNotConnected": "Readwise nie je pripojený. Najprv vložte svoj prístupový token.",
+    "readwiseSyncsElsewhere": "Readwise sa synchronizuje v inom zariadení. Spustite tento príkaz tam.",
+    "readwiseBookCommandFailed": "Príkaz Readwise sa nepodarilo dokončiť",
+    "readwiseBookGone": "Táto kniha už nie je vo vašej knižnici Readwise.",
+    "readwiseNotLinked": "Táto poznámka nie je prepojená s knihou z Readwise.",
+    "readwiseNotDeleted": "Táto kniha nie je v zozname odstránených.",
+    "readwiseBookBusy": "Poznámka sa zmenila počas behu príkazu. Skúste to znova.",
+    "readwiseSyncsOnDevice": "Readwise sa synchronizuje v zariadení {device}. Použite „Synchronizovať radšej tu“ a presuniete ho sem.",
+    "readwiseAnotherDevice": "inom zariadení",
+    "readwiseNotReady": "Memry sa ešte nedokončila synchronizáciu s vašimi ostatnými zariadeniami. Skúste to o chvíľu znova.",
+    "readwiseNeedsSync": "Ak chcete presúvať Readwise medzi zariadeniami, zapnite synchronizáciu.",
+    "readwiseClaimNotDelivered": "Ostatné zariadenia sa zatiaľ nepodarilo informovať. Skontrolujte pripojenie a skúste to znova.",
+    "readwiseTakeOverFailed": "Readwise sa nepodarilo presunúť do tohto zariadenia",
+    "readwiseCancelFailed": "Synchronizáciu s Readwise sa nepodarilo zrušiť"
   },
   "project": {
     "createFailed": "Nepodarilo sa vytvoriť projekt",
@@ -236,7 +271,8 @@
     "renameFailed": "Nepodarilo sa premenovať vlastnosť",
     "createDefinitionFailed": "Nepodarilo sa vytvoriť definíciu vlastnosti",
     "updateDefinitionFailed": "Nepodarilo sa aktualizovať definíciu vlastnosti",
-    "setCalendarVisibilityFailed": "Nepodarilo sa nastaviť viditeľnosť vlastnosti v kalendári"
+    "setCalendarVisibilityFailed": "Nepodarilo sa nastaviť viditeľnosť vlastnosti v kalendári",
+    "definitionsFileUnreadable": "Zmeny vlastností sa nedajú uložiť, pretože súbor .memry/properties.md sa nedá prečítať. Opravte alebo odstráňte tento súbor a skúste to znova."
   },
   "reminder": {
     "notFound": "Pripomienka sa nenašla",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Nepodarilo sa načítať model",
     "voiceModelDownloadFailed": "Nepodarilo sa stiahnuť hlasový model",
     "terminalCommandInstallFailed": "Nepodarilo sa nainštalovať terminálový príkaz",
-    "terminalCommandUninstallFailed": "Nepodarilo sa odinštalovať terminálový príkaz",
-    "shortcutInUse": "Skratka {shortcut} sa už používa"
+    "terminalCommandUninstallFailed": "Nepodarilo sa odinštalovať terminálový príkaz"
   },
   "tag": {
+    "renameInProgress": "Premenovanie #{from} na #{to} ešte beží. Skúste to znova, keď skončí.",
     "mergeSameTag": "Zdrojová a cieľová značka sú rovnaké",
     "categoryNameRequired": "Názov kategórie je povinný",
     "pinNoteFailed": "Nepodarilo sa pripnúť poznámku",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Nepodarilo sa odstrániť úlohy",
     "moveManyFailed": "Nepodarilo sa presunúť úlohy",
     "archiveManyFailed": "Nepodarilo sa archivovať úlohy",
-    "projectMissing": "Tento projekt už neexistuje"
+    "projectMissing": "Tento projekt už neexistuje",
+    "invalidParent": "Úloha sa tam nedá presunúť"
   },
   "taskStatus": {
     "createFailed": "Nepodarilo sa vytvoriť stav",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Vlastník nastavil túto poznámku iba na čítanie.",
     "folderReadOnly": "Vlastník nastavil tento priečinok iba na čítanie."
+  },
+  "ocrLanguages": {
+    "unreachable": "Nepodarilo sa spojiť so serverom Memry. Už stiahnuté jazyky naďalej fungujú a Memry to skúsi znova pri ďalšom spustení.",
+    "unavailable": "Server Memry tento jazyk zatiaľ neponúka. Už stiahnuté jazyky naďalej fungujú.",
+    "corrupt": "Stiahnuté dáta nezodpovedali očakávaniu Memry, preto sa nepoužili. Skúste ich stiahnuť znova.",
+    "saveFailed": "Jazykové dáta sa nepodarilo uložiť do tohto počítača. Skontrolujte voľné miesto na disku a skúste to znova."
+  },
+  "tagFields": {
+    "reservedName": "„{name}“ je vyhradený názov a nemôže byť názvom poľa",
+    "duplicateField": "#{definedBy} už má pole s názvom „{name}“",
+    "unknownField": "Táto značka nemá pole s názvom „{name}“",
+    "inheritedField": "„{name}“ pochádza z #{definedBy}. Upravte ho tam",
+    "cycle": "#{parent} už preberá polia z tejto značky",
+    "unreadableSchema": "Novšia verzia Memry zmenila túto značku. Ak ju chcete upraviť, aktualizujte Memry",
+    "relationTargetRequired": "Vyberte, na ktorú značku táto relácia odkazuje",
+    "renameRunning": "Ďalšie premenovanie poľa ešte dobieha ({from} na {to}). Skúste to znova, keď skončí."
   }
 }

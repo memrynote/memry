@@ -208,26 +208,30 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
             initAllFieldClocks(existing.clock ?? {}, PROJECT_SYNCABLE_FIELDS)
           const remoteFC =
             data.fieldClocks ?? initAllFieldClocks(remoteClock, PROJECT_SYNCABLE_FIELDS)
-          const mergeResult = mergeProjectFields(
-            existing as unknown as Record<string, unknown>,
-            data as unknown as Record<string, unknown>,
-            localFC,
-            remoteFC
-          )
+          const mergeResult = mergeProjectFields(existing, data, localFC, remoteFC)
 
           tx.update(projects)
             .set({
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               name: (mergeResult.merged.name as string) ?? existing.name,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               description: (mergeResult.merged.description as string | null) ?? null,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               color: (mergeResult.merged.color as string) ?? existing.color,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               icon: (mergeResult.merged.icon as string | null) ?? null,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               position: (mergeResult.merged.position as number) ?? existing.position,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               isInbox: (mergeResult.merged.isInbox as boolean) ?? existing.isInbox,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               archivedAt: (mergeResult.merged.archivedAt as string | null) ?? null,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               homeNoteId: (mergeResult.merged.homeNoteId as string | null) ?? null,
               clock: resolution.mergedClock,
               fieldClocks: mergeResult.mergedFieldClocks,
               syncedAt: now,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeProjectFields returns Record<string, unknown>; each key is a typed project column and the merge only copies values of the matching field
               modifiedAt: (mergeResult.merged.modifiedAt as string) ?? now
             })
             .where(eq(projects.id, itemId))
@@ -253,11 +257,11 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
         }
 
         if (data.statuses) {
-          reconcileStatuses(tx as unknown as DrizzleDb, itemId, data.statuses)
+          reconcileStatuses(tx, itemId, data.statuses)
         }
 
         if (data.links) {
-          reconcileLinks(tx as unknown as DrizzleDb, itemId, data.links)
+          reconcileLinks(tx, itemId, data.links)
         }
         rememberSyncedProjectLinks(
           itemId,
@@ -298,7 +302,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
         .run()
 
       if (data.statuses) {
-        reconcileStatuses(tx as unknown as DrizzleDb, itemId, data.statuses)
+        reconcileStatuses(tx, itemId, data.statuses)
       }
 
       // Before the payload's links, so their `pinned`/`position` land on the
@@ -306,18 +310,20 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
       // leaves those notes unlinked until their next apply.
       let derivedNoteIds: string[] = []
       try {
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- tx is the abstract sync transaction; this helper needs the better-sqlite3 DataDb the desktop always supplies (retyping the callee is outside this slice)
         derivedNoteIds = linkNotesNamingProject(tx as unknown as DataDb, itemId, name)
       } catch (err) {
         log.error('Failed to link notes that name a synced project', { itemId, error: err })
       }
 
       if (data.links) {
-        reconcileLinks(tx as unknown as DrizzleDb, itemId, data.links)
+        reconcileLinks(tx, itemId, data.links)
       }
       rememberSyncedProjectLinks(
         itemId,
         (data.links ?? []).map((l) => l.itemId)
       )
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- tx is the abstract sync transaction; this helper needs the better-sqlite3 DataDb the desktop always supplies (retyping the callee is outside this slice)
       pushLinksMissingFromPayload(tx as unknown as DataDb, itemId, derivedNoteIds)
 
       const inserted = tx.select().from(projects).where(eq(projects.id, itemId)).get()
@@ -362,7 +368,7 @@ class ProjectHandler extends BaseItemHandler<ProjectSyncPayload> {
     const projectStatuses = db.select().from(statuses).where(eq(statuses.projectId, itemId)).all()
     const links = db.select().from(projectLinks).where(eq(projectLinks.projectId, itemId)).all()
 
-    return { ...project, statuses: projectStatuses, links } as Record<string, unknown>
+    return { ...project, statuses: projectStatuses, links }
   }
 
   buildPushPayload(

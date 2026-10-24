@@ -15,6 +15,7 @@ const transfer: VaultTransfer = {
 }
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   await sodium.ready
 })
 
@@ -51,8 +52,10 @@ describe('vault-transfer', () => {
     expect(() =>
       decryptVaultTransfer({
         ...enc,
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         vaultTransferConfirm: sodium.to_base64(
           sodium.randombytes_buf(32),
+          // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
           sodium.base64_variants.ORIGINAL
         ),
         sessionId: SESSION,

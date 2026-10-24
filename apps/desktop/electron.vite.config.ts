@@ -239,7 +239,8 @@ export default defineConfig({
             name: 'sort-optimizer-entries',
             setup(build) {
               const { entryPoints } = build.initialOptions
-              if (Array.isArray(entryPoints)) entryPoints.sort()
+              if (Array.isArray(entryPoints))
+                entryPoints.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0))
             }
           }
         ]

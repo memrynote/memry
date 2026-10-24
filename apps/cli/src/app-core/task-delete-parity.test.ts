@@ -67,7 +67,7 @@ async function desktopDeleteOrder(
       statusCreated: noop,
       statusUpdated: noop,
       statusDeleted: noop
-    } as never,
+    },
     generateId: () => 'unused'
   })
   await commands.deleteTask(id)

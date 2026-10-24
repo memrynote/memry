@@ -105,7 +105,7 @@ describe('settingsHandler — journal template settings', () => {
     const data: SettingsSyncPayload = {
       settings: { journal },
       fieldClocks: {}
-    } as SettingsSyncPayload
+    }
     return settingsHandler.applyUpsert(ctx, 'synced_settings', data, clock)
   }
 
@@ -173,7 +173,7 @@ describe('settingsHandler — journal template settings', () => {
     settingsHandler.applyUpsert(
       ctx,
       'synced_settings',
-      { settings: { general: { theme: 'dark' } }, fieldClocks: {} } as SettingsSyncPayload,
+      { settings: { general: { theme: 'dark' } }, fieldClocks: {} },
       clock
     )
     expect(journalBroadcasts()).toHaveLength(0)

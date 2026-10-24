@@ -28,7 +28,7 @@ export function fetchLocalNote(itemId: string): Record<string, unknown> | undefi
   const dataDb = getDatabase()
   const cached = getNoteMetadataById(dataDb, itemId)
   if (!cached) return undefined
-  return cached as unknown as Record<string, unknown>
+  return cached
 }
 
 export function buildNotePushPayload(itemId: string, operation: string): string | null {

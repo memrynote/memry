@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Portal kopyalanamadı",
+    "hiddenCount": "{count} gizli",
+    "windowFailed": "Bu portal açılamadı. Bunun yerine kaynak notu açın.",
+    "noTarget": "Bu portalın henüz bir hedefi yok. Tanıma bir not ekleyin ya da bloğu kaldırın.",
+    "invalidJson": "Bu portalın tanımı geçerli bir JSON değil. Aşağıdan düzeltin ya da bloğu kaldırın.",
+    "invalidShape": "Bu portalın tanımında not veya arama yok. Aşağıdan düzeltin ya da bloğu kaldırın.",
+    "search": {
+      "editQuery": "Sorguyu düzenle",
+      "count": "{count, plural, one {# blok} other {# blok}}",
+      "loading": "Aranıyor…",
+      "empty": "Bu sorguyla eşleşen blok yok.",
+      "failed": "Arama çalıştırılamadı.",
+      "retry": "Tekrar dene",
+      "truncated": "İlk {count} eşleşme gösteriliyor."
+    },
+    "copiedContents": "İçerik kopyalandı",
+    "copiedLink": "Bağlantı kopyalandı",
+    "actionFailed": "Bu portal değiştirilemedi",
+    "keepsOneBlock": "Bir portal en az bir blok içerir. Bunun yerine portalı kaldırın.",
+    "expandChildren": "Alt blokları göster",
+    "collapseChildren": "Alt blokları gizle",
+    "toolbar": {
+      "label": "Portal",
+      "include": "“{block}” bloğunu dahil et",
+      "locked": "{note} kilitli · salt okunur",
+      "more": "Daha fazla",
+      "openBeside": "{note} notunu yanda aç",
+      "click": "Tıkla",
+      "copyContents": "İçeriği kopyala",
+      "copyLink": "Bağlantıyı kopyala",
+      "remove": "Portalı kaldır",
+      "removeHint": "{note} tüm bloklarını korur"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Kaynak not silindi. Referans korundu.",
+        "action": "Kaldır"
+      },
+      "missingBlock": {
+        "text": "Blok {source} içinde silindi.",
+        "action": "Başka birini seç"
+      },
+      "notSynced": {
+        "text": "Kaynak notun eşitlenmesi bekleniyor.",
+        "action": "Yeniden dene"
+      },
+      "cycle": {
+        "text": "Bu portal kendisine geri dönüyor.",
+        "action": "Kaynağı aç"
+      },
+      "tooDeep": {
+        "text": "Portallar en fazla {max} seviye iç içe geçer. Bu portal bağlantı olarak açılır.",
+        "action": "Kaynağı aç"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Hızlı kayıt alanına odaklan",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Varsayılan uygulamada aç",
     "revealFailed": "Klasörde gösterilemedi"
   },
+  "commands": {
+    "runFailed": "Bu komut çalıştırılamadı. Tekrar deneyin."
+  },
+  "commandsPalette": {
+    "title": "Komutlar",
+    "placeholder": "Bir komut yazın…",
+    "groups": {
+      "navigation": "Gezinme",
+      "create": "Oluştur",
+      "tabs": "Sekmeler",
+      "editor": "Düzenleyici",
+      "view": "Görünüm",
+      "app": "Uygulama",
+      "note": "Not",
+      "settings": "Ayarlar",
+      "sync": "Eşitleme",
+      "help": "Yardım",
+      "project": "Proje",
+      "tasks": "Görevler",
+      "canvas": "Tuval",
+      "folder": "Klasör",
+      "file": "Dosya"
+    },
+    "contexts": {
+      "note": "Bu not",
+      "journal": "Bu günlük",
+      "project": "Bu proje",
+      "tasks": "Bu görevler",
+      "canvas": "Bu tuval",
+      "folder": "Bu klasör",
+      "tag": "Bu etiket",
+      "file": "Bu dosya"
+    },
+    "recent": "Son kullanılanlar",
+    "empty": "“{query}” ile eşleşen komut yok",
+    "searchHint": "Notlarda ara: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# komut} other {# komut}}"
+    },
+    "actions": {
+      "run": "Çalıştır",
+      "searchNotes": "Notlarda ara"
+    }
+  },
   "tabs": {
     "pin": "Sekmeyi sabitle",
     "unpin": "Sekmenin sabitlemesini kaldır",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "İşlem başarısız oldu",
-    "nothingToUndo": "Geri alınacak bir şey yok",
     "undone": "Geri alındı: {description}",
     "undoFailed": "İşlem geri alınamadı",
     "filesImported": "{count, plural, one {# dosya içe aktarıldı} other {# dosya içe aktarıldı}}",
@@ -131,6 +231,20 @@
     "openInTab": "Sohbeti sekmede aç",
     "stop": "Durdur",
     "thinking": "Ajan düşünüyor",
+    "toolsUnavailable": "Bu model için kasa araçları kapalı. Araç denetimini geçemediği için yalnızca sohbet edebilir.",
+    "toolsUnavailableWithDetail": "Bu model için kasa araçları kapalı. Araç denetimini geçemediği için yalnızca sohbet edebilir. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Bu model için kasa araçları kapalı. Sağlayıcı, araç içeren bir deneme isteğini reddetti; bu yüzden model yalnızca sohbet edebilir.",
+      "noToolCall": "Bu model için kasa araçları kapalı. Bir deneme isteğini aracı çağırmadan yanıtladı; bu yüzden yalnızca sohbet edebilir.",
+      "toolResultRejected": "Bu model için kasa araçları kapalı. Bir deneme aracını çağırdı ama sonucu geri aldıktan sonra başarısız oldu; bu yüzden yalnızca sohbet edebilir.",
+      "streamingUnsupported": "Bu model için kasa araçları kapalı. Sağlayıcı deneme yanıtını akış olarak göndermedi; bu yüzden model yalnızca sohbet edebilir.",
+      "providerSaid": "Sağlayıcının yanıtı: {detail}",
+      "wroteToolCall": "Model bir araç çağrısını metin olarak yazdı ve hiçbir şey çalışmadı."
+    },
+    "stepLimit": {
+      "notice": "Adım sınırında durduruldu.",
+      "continue": "Devam"
+    },
     "enable": {
       "title": "memrynote ajanını etkinleştir",
       "description": "memrynote ajanı, kasanız hakkında sohbet etmek için seçtiğiniz yerel ajan CLI aracını kullanır. Claude mesajları Anthropic'e, Codex mesajları OpenAI'ye gönderir.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Ajan, {title} oluşturmak istiyor. Uygulamadan önce değişikliği inceleyin.",
       "descriptionDelete": "Ajan, {title} öğesini silmek istiyor. Uygulamadan önce değişikliği inceleyin.",
       "fallbackTitle": "bu öğe",
-      "current": "Mevcut",
       "candidate": "Önerilen",
       "loading": "Yükleniyor…",
       "apply": "Uygula",
@@ -268,13 +381,18 @@
       "removeAttachment": "Kaldır: {label}",
       "placeholder": "memrynote ile her şeyi yap… Not, görev ve etkinliklerden bahsetmek için @",
       "send": "Gönder",
-      "providerLabel": "Ajan sağlayıcısı: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Bağlı araçlar",
       "connectTool": "Bağla: {tool}",
-      "addContext": "Bağlam ekle",
-      "addContextWithPermissions": "Bağlam ekle ({permissions})",
       "mentionContext": "Bir not, görev veya etkinlikten bahset",
+      "files": {
+        "attach": "Metin dosyası ekle",
+        "refused": {
+          "unsupportedType": "{name} desteklenen bir metin dosyası değil. .txt, .md, .log, .csv, .tsv, .json, .yaml veya .yml dosyası ekleyin.",
+          "notText": "{name} UTF-8 metin dosyası değil. Bunun yerine bir metin dosyası ekleyin.",
+          "tooLarge": "{name} eklenirse bu mesaj 100 KB sınırını aşar. Bir dosyayı kaldırın ya da daha küçük bir dosya ekleyin.",
+          "readFailed": "{name} okunamadı. Dosyanın hâlâ var olduğunu ve açabildiğinizi denetleyin, sonra yeniden ekleyin."
+        }
+      },
       "voice": {
         "start": "Sesle yazmayı başlat",
         "stop": "Sesle yazmayı durdur",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Sesli giriş yazıya dökülemedi"
         }
       },
-      "modelLabel": "Ajan modeli: {provider} {model}",
-      "reasoningLabel": "Ajan akıl yürütmesi: {reasoning}",
       "providers": {
-        "label": "Sağlayıcı",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Bilgisayar erişimi"
       },
       "webSearch": {
-        "on": "Açık",
-        "off": "Kapalı",
         "label": "Web araması"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Ajan kullanılamıyor — Ayarları aç…"
       },
       "settings": {
-        "reasoning": "Akıl yürütme",
         "effort": "Çaba"
       },
       "includeCurrentNote": "Geçerli notu dahil et",
@@ -340,13 +452,29 @@
           "extraHigh": "Ekstra yüksek"
         }
       },
-      "permissionsLabel": "Ajan izinleri: {access}, web araması: {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Varsayılan",
+          "default": "Varsayılan derinlik",
+          "high": "Yüksek",
+          "max": "En yüksek"
+        }
+      },
       "permissions": {
-        "label": "İzinler",
-        "access": "Erişim",
-        "tools": "Araçlar"
+        "access": "Erişim"
       },
       "modelSettingsLabel": "Ajan model ayarları: {model}, {settings}",
+      "queue": {
+        "label": "Sıradaki mesajlar",
+        "queueMessage": "Mesajı sıraya al",
+        "edit": "Sıradaki mesajı düzenle",
+        "editLabel": "Sıradaki mesaj metni",
+        "remove": "Sıradaki mesajı kaldır",
+        "save": "Kaydet",
+        "cancel": "İptal",
+        "sending": "Gönderiliyor…",
+        "notSent": "Gönderilmedi. Yeniden göndermek için düzenleyin ya da kaldırın."
+      },
       "unavailable": {
         "vaultToolsOnly": "Bu modelle yalnızca kasa araçları"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Bilgilendirme onayı kaydedilemedi",
       "resolveWindow": "Ajan kaynak penceresi belirlenemedi",
       "detectCli": "Ajan arka uçları algılanamadı",
-      "loadDisclosure": "Bilgilendirme onayı yüklenemedi"
+      "loadDisclosure": "Bilgilendirme onayı yüklenemedi",
+      "turnFailed": "Yanıt bir hatayla durdu. Mesajınız korundu, yeniden gönderebilirsiniz."
     },
     "actions": {
       "copy": "Kopyala",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "İçe aktarılacak dosyaları bırakın",
       "dropFilesIntoVaultRoot": "Kasa kökü",
       "newNoteN": "Yeni not (⌘N)",
-      "new": "Yeni",
       "newItemMenu": "Yeni oluştur…",
       "feedbackButton": "Geri bildirim gönder",
       "feedbackTitle": "Geri bildirim gönder",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Bul, değiştir, sor…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "İlk kurulumu atla",
-      "welcomeToMemry": "memrynote'a hoş geldiniz",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Kişisel bilgi tabanınız. Başlamanız için 2 dakika ayıralım.",
-      "getStarted": "Başla ",
-      "createYourFirstNote": "İlk notunuzu oluşturun",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown tabanlıdır, yerel olarak düz dosyalarda saklanır.",
-      "eGMeetingNotesIdeasAnything": "ör. toplantı notları, fikirler, her şey…",
-      "skip": "Atla",
-      "createNote": "Not oluştur ",
-      "addYourFirstTask": "İlk görevinizi ekleyin",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Görevler notlarınıza bağlanır; öncelik ve son tarih eklenebilir.",
-      "eGReviewProjectProposal": "ör. Proje teklifini incele…",
-      "skip2": "Atla",
-      "createTask": "Görev oluştur ",
-      "syncAcrossDevices": "Cihazlar arasında eşitleme",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Notlarınızı ve görevlerinizi tüm cihazlarınızda eşitlenmiş tutun. Bunu daha sonra istediğiniz zaman ayarlayabilirsiniz.",
-      "skipForNow": "Şimdilik atla",
-      "doneLetSGo": "Tamam — başlayalım! "
+      "skip": "Atla"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Klasör simgesini ayarla",
@@ -707,8 +818,7 @@
       "unknownTabType": "Bilinmeyen sekme türü: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "kaydedilmemiş değişiklikler",
-      "preview": "önizleme"
+      "unsavedChanges": "kaydedilmemiş değişiklikler"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Yeni sekme",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Yeniden boyutlandırmak için sürükleyin · Sıfırlamak için çift tıklayın"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "memrynote'a hoş geldiniz",
-      "yourPersonalKnowledgeManagementSystem": "Kişisel bilgi yönetim sisteminiz.",
-      "selectAFolderToStoreYourNotesAndTasks": "Notlarınızı ve görevlerinizi saklamak için bir klasör seçin.",
       "opening": "Açılıyor…",
-      "selectVaultFolder": "Kasa klasörü seç",
-      "plainMarkdown": "Düz Markdown",
-      "yourNotesStayPortable": "Notlarınız taşınabilir kalır",
-      "syncAnywhere": "Her yerde eşitleme",
-      "useDropboxIcloudGit": "Dropbox, iCloud veya Git kullanın",
       "recentVaults": "Son kasalar",
-      "notesLastOpened": "not · Son açılış",
-      "preRelease": "Beta",
       "createNewVault": "Yeni kasa oluştur",
-      "createNewVaultDesc": "Seçtiğiniz bir klasörde yeni bir kasa başlatın.",
-      "openExistingVault": "Mevcut kasayı aç",
-      "openExistingVaultDesc": "Zaten tuttuğunuz Markdown dosyalarının bulunduğu bir klasör seçin.",
-      "signInToSync": "Eşitleme için oturum aç",
-      "signInToSyncDesc": "Cihazlarınız arasında uçtan uca şifreli kasalar.",
-      "create": "Oluştur",
       "open": "Aç",
-      "signIn": "Oturum aç",
       "helpAndDocs": "Yardım ve belgeler",
-      "signInRequiresVault": "Eşitlemeyi ayarlamak için önce bir kasa açın veya oluşturun.",
       "addVault": "Kasa ekle",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Henüz kasa yok",
       "openVault": "Kasayı aç",
       "settings": "Ayarlar",
-      "logOut": "Oturumu kapat",
-      "signInToSync": "Eşitleme için oturum aç",
       "remove": "Kaldır “",
       "removeVaultTitle": "“{name}” listeden kaldırılsın mı?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bu kasa uygulamadan kaldırılacak ancak dosyalarınız diskte kalacak. Daha sonra istediğiniz zaman yeniden ekleyebilirsiniz.",
       "cancel": "İptal",
       "remove2": "Kaldır",
       "inYourAccount": "Hesabınızda",
+      "trySandbox": "Deneme kasasını dene",
+      "sandboxVault": "Deneme kasası",
+      "sandboxPreparing": "Deneme kasası hazırlanıyor…",
+      "sandboxFailed": "Deneme kasası hazırlanamadı",
+      "resetSandbox": "Deneme kasasını sıfırla",
       "itemsCount": "{count} öğe",
       "untitledVault": "Kasa",
       "downloadVaultTitle": "“{name}” kasasını indir",
@@ -870,7 +965,6 @@
       "changeLocation": "Değiştir…",
       "download": "İndir",
       "downloadFailed": "Kasa indirilemedi",
-      "deleteFromAccount": "Hesaptan sil",
       "deleteVaultTitle": "“{name}” hesabınızdan silinsin mi?",
       "deleteVaultBody": "Bu işlem, bu kasaya ait eşitlenmiş tüm verileri Memry sunucularından kalıcı olarak siler ve geri alınamaz. Diskteki dosyalarınız silinmez.",
       "deleteVaultConfirm": "Hesaptan sil",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Widget'ı kaldır",
       "dragAria": "Widget'ı sürükle",
-      "configAria": "Widget'ı yapılandır",
-      "resizeAria": "{size} boyutuna getir",
       "menuAria": "Widget seçenekleri",
-      "resize": "Boyut",
       "remove": "Kaldır",
       "filter": {
         "all": "Tümü",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Açtığınız notlar burada görünür",
       "bookmarks": "Yer imleri",
       "tasks": "Görevler",
+      "chart": "Çizelge",
       "calendar": "Takvim",
       "calendarToday": "Bugün",
       "openCalendar": "Takvimi aç",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Bir klasör seçin",
       "folderEmpty": "Henüz klasör yok",
       "folderNoSelection": "Klasör seçilmedi",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galeri",
       "folderViewSelect": "Görünüm",
       "project": "Proje",
       "projectNoSelection": "Proje seçilmedi",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Ana sayfa düzeni",
       "deleteAria": "Düzeni sil",
-      "newAria": "Yeni pano",
       "newName": "Yeni pano",
       "defaultName": "Ana sayfa",
       "manage": "Panoları yönet",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# görevin son tarihi bugün} other {# görevin son tarihi bugün}}",
       "events": "{count, plural, one {# etkinlik} other {# etkinlik}}"
     },
-    "edit": "Düzenle",
-    "done": "Tamam",
     "addWidget": "Widget ekle",
+    "cover": {
+      "add": "Kapak ekle"
+    },
     "empty": {
       "title": "Panonuz boş",
       "body": "Widget'lar notlarınızı, görevlerinizi ve yer imlerinizi tek bir sakin yerde bir araya getirir.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Tanıtım tamamlandı",
-      "body": "Lütfen GitHub'da bize yıldız verin — başkalarının MemryNote'u bulmasına yardımcı olur.",
-      "action": "GitHub'da yıldız ver"
+      "body": "Lütfen GitHub'da bize yıldız verin — başkalarının MemryNote'u bulmasına yardımcı olur."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Güncelleme hazır",
     "failed": "Güncellenemedi",
     "downloadAction": "İndir",
-    "restartAction": "Yeniden başlat",
     "detailsAction": "Ayrıntılar",
     "popover": {
       "readyTitle": "MemryNote {version} hazır",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Kasalar",
     "position": "{name}, {index}. kasa, toplam {count}",
-    "openList": "{position}. Kasa listesini aç",
     "switchTo": "{name} kasasına geç",
     "switchingTo": "{name} kasasına geçiliyor",
     "changeIcon": "Simgeyi değiştir…",
     "resetIcon": "Simgeyi sıfırla",
     "iconButton": "{name} kasasının simgesini değiştir",
+    "leaveSandbox": "{name} kasasına dön",
     "iconFailed": "Kasa simgesi değiştirilemedi"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Tür",
     "filterModified": "Değiştirilme",
     "matches": "Eşleşmeler",
+    "matchesMore": "{count, plural, one {# eşleşme daha} other {# eşleşme daha}}",
+    "matchesHide": "Eşleşmeleri gizle",
+    "matchOf": "{index}. eşleşme, toplam {total}",
     "showMore": "{count} tane daha göster",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Sonraki bölüm",
       "open": "Aç",
       "openNote": "Notu aç",
+      "openAtMatch": "Eşleşmede aç",
       "openFile": "Dosyayı aç",
       "openJournal": "Günlüğü aç",
       "openTask": "Görevi aç",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Etiket seç",
       "addTag": "Etiket ekle",
       "showAll": "Tümünü göster",
+      "hideMatches": "Eşleşmeleri gizle",
       "searchEverywhere": "Her yerde ara",
       "clearFilters": "Filtreleri temizle"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "{device} üzerinde",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# kasa bulundu} other {# kasa bulundu}}",
-      "notion": "Notion",
       "otherApps": "Diğer uygulamalar ve dosyalar",
       "otherAppsHint": "ve {count} tane daha",
       "detectedFootnote": "Hangi uygulamaların yüklü olduğu kontrol edilerek bulundu. {device} dışına hiçbir şey çıkmaz.",

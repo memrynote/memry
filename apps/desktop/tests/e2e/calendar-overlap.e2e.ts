@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 import { getVisibleDayStart, waitForStable } from './utils/wait-helpers'
@@ -20,7 +20,7 @@ function toIsoDay(date: Date): string {
 }
 
 async function seedOverlap(
-  electronApp: Parameters<typeof test>[0]['electronApp'],
+  electronApp: ElectronApplication,
   input: OverlapSeedInput
 ): Promise<void> {
   await electronApp.evaluate(async (_ctx, payload) => {

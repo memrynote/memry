@@ -192,6 +192,7 @@ describe('useFolderView', () => {
     mocks.propertiesSet.mockResolvedValue({ success: true })
     mocks.notesUpdate.mockResolvedValue({ success: true })
     vi.stubGlobal('window', {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test stub copies the jsdom window (a class instance) on purpose so the stubbed global keeps its own properties
       ...window,
       api: {
         ...(window as any).api,

@@ -9,9 +9,13 @@ export const folderViewApi = {
     invoke(FolderViewChannels.invoke.SET_CONFIG, { folderPath, config }),
   getViews: (scope: ViewScope) => invoke(FolderViewChannels.invoke.GET_VIEWS, { scope }),
   setView: (scope: ViewScope, view: Record<string, unknown>, previousName?: string) =>
-    invoke(FolderViewChannels.invoke.SET_VIEW, { scope, view, previousName } as MainIpcInvokeArgs<
-      typeof FolderViewChannels.invoke.SET_VIEW
-    >[0]),
+    invoke(
+      FolderViewChannels.invoke.SET_VIEW,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- view is a loose record here; the main handler's zod schema validates the view shape
+      { scope, view, previousName } as MainIpcInvokeArgs<
+        typeof FolderViewChannels.invoke.SET_VIEW
+      >[0]
+    ),
   deleteView: (scope: ViewScope, viewName: string) =>
     invoke(FolderViewChannels.invoke.DELETE_VIEW, { scope, viewName }),
   listWithProperties: (options: {

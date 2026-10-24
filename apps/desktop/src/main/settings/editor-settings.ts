@@ -24,6 +24,7 @@ export function getEditorSettings(): EditorSettings {
   if (!raw) return { ...EDITOR_SETTINGS_DEFAULTS }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored editor settings JSON, spread over defaults so missing keys fall back
     return { ...EDITOR_SETTINGS_DEFAULTS, ...(JSON.parse(raw) as Partial<EditorSettings>) }
   } catch {
     return { ...EDITOR_SETTINGS_DEFAULTS }

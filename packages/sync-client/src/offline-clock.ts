@@ -20,7 +20,7 @@ import {
   type VectorClock,
   type FieldClocks
 } from '@memry/contracts/sync-api'
-import { increment } from '@memry/sync-client/vector-clock'
+import { clockFromColumn, increment } from '@memry/sync-client/vector-clock'
 import { getCurrentDeviceId } from './current-device-id'
 import {
   initAllFieldClocks,
@@ -78,7 +78,7 @@ export function recoverOfflineDocClock(
   deviceId: string,
   persistClock: (clock: VectorClock) => void
 ): Record<string, unknown> | null {
-  const clock = row?.clock as VectorClock | null | undefined
+  const clock = clockFromColumn(row?.clock)
   if (!row || !clock || !hasOfflineTick(clock)) return null
 
   const rebound = rebindClockDevice(clock, deviceId)
@@ -189,7 +189,7 @@ export function incrementTaskClocksOffline(
     const task = db.select().from(tasks).where(eq(tasks.id, taskId)).get()
     if (!task) return
 
-    const existingClock = (task.clock as VectorClock) ?? {}
+    const existingClock = task.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
     const updatedFC = incrementFieldClocksForFields(
       task.fieldClocks,
@@ -221,7 +221,7 @@ export function incrementProjectClocksOffline(
     const project = db.select().from(projects).where(eq(projects.id, projectId)).get()
     if (!project) return
 
-    const existingClock = (project.clock as VectorClock) ?? {}
+    const existingClock = project.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
     const fields = changedFields ?? [...PROJECT_SYNCABLE_FIELDS]
     const updatedFC = incrementFieldClocksForFields(
@@ -247,7 +247,7 @@ export function incrementInboxClockOffline(db: DrizzleDb, itemId: string): void 
     const item = db.select().from(inboxItems).where(eq(inboxItems.id, itemId)).get()
     if (!item) return
 
-    const existingClock = (item.clock as VectorClock) ?? {}
+    const existingClock = item.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(inboxItems).set({ clock: newClock }).where(eq(inboxItems.id, itemId)).run()
@@ -267,7 +267,7 @@ export function incrementPropertyDefinitionClockOffline(db: DrizzleDb, name: str
       .get()
     if (!definition) return
 
-    const existingClock = (definition.clock as VectorClock) ?? {}
+    const existingClock = definition.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(propertyDefinitions)
@@ -286,7 +286,7 @@ export function incrementFilterClockOffline(db: DrizzleDb, filterId: string): vo
     const filter = db.select().from(savedFilters).where(eq(savedFilters.id, filterId)).get()
     if (!filter) return
 
-    const existingClock = (filter.clock as VectorClock) ?? {}
+    const existingClock = filter.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(savedFilters).set({ clock: newClock }).where(eq(savedFilters.id, filterId)).run()
@@ -307,7 +307,7 @@ export function incrementTaskActivityClockOffline(db: DrizzleDb, activityId: str
     const row = db.select().from(taskActivity).where(eq(taskActivity.id, activityId)).get()
     if (!row) return
 
-    const existingClock = (row.clock as VectorClock) ?? {}
+    const existingClock = row.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(taskActivity).set({ clock: newClock }).where(eq(taskActivity.id, activityId)).run()
@@ -323,7 +323,7 @@ export function incrementTemplateClockOffline(db: DrizzleDb, templateId: string)
     const template = db.select().from(templates).where(eq(templates.id, templateId)).get()
     if (!template) return
 
-    const existingClock = (template.clock as VectorClock) ?? {}
+    const existingClock = template.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(templates).set({ clock: newClock }).where(eq(templates.id, templateId)).run()
@@ -339,7 +339,7 @@ export function incrementHomePageClockOffline(db: DrizzleDb, boardId: string): v
     const board = db.select().from(homePages).where(eq(homePages.id, boardId)).get()
     if (!board) return
 
-    const existingClock = (board.clock as VectorClock) ?? {}
+    const existingClock = board.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(homePages).set({ clock: newClock }).where(eq(homePages.id, boardId)).run()
@@ -355,7 +355,7 @@ export function incrementCustomIconClockOffline(db: DrizzleDb, iconId: string): 
     const icon = db.select().from(customIcons).where(eq(customIcons.id, iconId)).get()
     if (!icon) return
 
-    const existingClock = (icon.clock as VectorClock) ?? {}
+    const existingClock = icon.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(customIcons).set({ clock: newClock }).where(eq(customIcons.id, iconId)).run()
@@ -399,7 +399,7 @@ export function incrementBookmarkClockOffline(db: DrizzleDb, bookmarkId: string)
     const bookmark = db.select().from(bookmarks).where(eq(bookmarks.id, bookmarkId)).get()
     if (!bookmark) return
 
-    const existingClock = (bookmark.clock as VectorClock) ?? {}
+    const existingClock = bookmark.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(bookmarks).set({ clock: newClock }).where(eq(bookmarks.id, bookmarkId)).run()
@@ -415,7 +415,7 @@ export function incrementReminderClockOffline(db: DrizzleDb, reminderId: string)
     const reminder = db.select().from(reminders).where(eq(reminders.id, reminderId)).get()
     if (!reminder) return
 
-    const existingClock = (reminder.clock as VectorClock) ?? {}
+    const existingClock = reminder.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(reminders).set({ clock: newClock }).where(eq(reminders.id, reminderId)).run()
@@ -497,7 +497,7 @@ export function incrementCanvasClockOffline(db: DrizzleDb, canvasId: string): vo
     const canvas = db.select().from(canvases).where(eq(canvases.id, canvasId)).get()
     if (!canvas) return
 
-    const existingClock = (canvas.clock as VectorClock) ?? {}
+    const existingClock = canvas.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(canvases).set({ clock: newClock }).where(eq(canvases.id, canvasId)).run()
@@ -513,7 +513,7 @@ export function incrementCanvasFolderClockOffline(db: DrizzleDb, folderId: strin
     const folder = db.select().from(canvasFolders).where(eq(canvasFolders.id, folderId)).get()
     if (!folder) return
 
-    const existingClock = (folder.clock as VectorClock) ?? {}
+    const existingClock = folder.clock ?? {}
     const newClock = increment(existingClock, OFFLINE_DEVICE_KEY)
 
     db.update(canvasFolders).set({ clock: newClock }).where(eq(canvasFolders.id, folderId)).run()

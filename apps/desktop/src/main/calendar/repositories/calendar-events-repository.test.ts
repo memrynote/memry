@@ -14,7 +14,7 @@ describe('calendarEvents.targetCalendarId (M2)', () => {
 
   beforeEach(() => {
     dbResult = createTestDataDb()
-    dataDb = dbResult.db as unknown as DataDb
+    dataDb = dbResult.db
   })
 
   afterEach(() => {
@@ -103,7 +103,7 @@ describe('calendarEvents rich fields (M5)', () => {
 
   beforeEach(() => {
     dbResult = createTestDataDb()
-    dataDb = dbResult.db as unknown as DataDb
+    dataDb = dbResult.db
   })
 
   afterEach(() => {
@@ -564,7 +564,7 @@ describe('searchCalendarEventsByTitle (#869)', () => {
 
   beforeEach(() => {
     dbResult = createTestDataDb()
-    dataDb = dbResult.db as unknown as DataDb
+    dataDb = dbResult.db
   })
 
   afterEach(() => {
@@ -580,7 +580,7 @@ describe('searchCalendarEventsByTitle (#869)', () => {
     const found = searchCalendarEventsByTitle(dataDb, { query: 'standup', limit: 20, now: NOW })
 
     // #then — both are reachable; the window is gone
-    expect(found.map((row) => row.id).sort()).toEqual(['future', 'old'])
+    expect(found.map((row) => row.id).toSorted()).toEqual(['future', 'old'])
   })
 
   it('matches a case-insensitive title substring', () => {

@@ -72,8 +72,9 @@ export function useWikiLinkBroken(
   }, [objectOf])
 
   useEffect(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote exposes its tiptap editor only as an underscore field
     const tiptap = (editor as { _tiptapEditor?: TiptapLike } | undefined)?._tiptapEditor
-    if (!tiptap?.on || !tiptap?.off) return
+    if (!tiptap?.on || !tiptap?.off) return undefined
 
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | null = null

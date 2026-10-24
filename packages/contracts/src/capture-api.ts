@@ -10,7 +10,7 @@ export const ArticlePropertiesSchema = z.object({
 })
 
 export const ArticleCaptureSchema = z.object({
-  url: z.string().url(),
+  url: z.url(),
   mode: z.enum(['article', 'selection', 'screenshot', 'pdf']),
   contentMarkdown: z.string(),
   excerpt: z.string(),

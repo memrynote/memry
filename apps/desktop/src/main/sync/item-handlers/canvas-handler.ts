@@ -358,7 +358,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
     let deletedFilePath: string | null = null
     const result = ctx.db.transaction((tx): 'applied' | 'skipped' => {
       const existing = tx.select().from(canvases).where(eq(canvases.id, itemId)).get()
-      if (!existing || existing.deletedAt !== null) return 'skipped'
+      if (existing?.deletedAt !== null) return 'skipped'
 
       let nextClock: VectorClock = existing.clock ?? {}
       if (clock) {
@@ -406,9 +406,7 @@ export class CanvasHandler extends BaseItemHandler<CanvasSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(canvases).where(eq(canvases.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(canvases).where(eq(canvases.id, itemId)).get()
   }
 
   buildPushPayload(

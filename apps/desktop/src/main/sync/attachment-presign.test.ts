@@ -57,6 +57,7 @@ function buildEncryptedFixture(opts: {
   vaultKey: Uint8Array
   signingKeypair: { privateKey: Uint8Array; publicKey: Uint8Array }
 }): { encManifest: Record<string, string>; encryptedChunk: Uint8Array; encryptedHash: string } {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   const toB64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
   const fileKey = generateFileKey()
 
@@ -71,6 +72,7 @@ function buildEncryptedFixture(opts: {
   const encryptedChunk = new Uint8Array(chunkNonce.length + chunkCiphertext.length)
   encryptedChunk.set(chunkNonce, 0)
   encryptedChunk.set(chunkCiphertext, chunkNonce.length)
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   const encryptedHash = sodium.to_hex(sodium.crypto_hash_sha256(encryptedChunk))
 
   const manifest = {
@@ -78,10 +80,12 @@ function buildEncryptedFixture(opts: {
     filename: 'file.bin',
     mimeType: 'application/octet-stream',
     size: opts.plaintext.length,
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
     checksum: sodium.to_hex(sodium.crypto_hash_sha256(opts.plaintext)),
     chunks: [
       {
         index: 0,
+        // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
         hash: sodium.to_hex(sodium.crypto_hash_sha256(opts.plaintext)),
         encryptedHash,
         size: opts.plaintext.length
@@ -108,7 +112,7 @@ function buildEncryptedFixture(opts: {
     opts.vaultKey
   )
 
-  const signaturePayload: Record<string, unknown> = {
+  const signaturePayload: Record<string, string> = {
     encryptedManifest: toB64(manifestCiphertext),
     manifestNonce: toB64(manifestNonce),
     encryptedFileKey: toB64(wrappedKey),
@@ -122,7 +126,7 @@ function buildEncryptedFixture(opts: {
 
   return {
     encManifest: {
-      ...(signaturePayload as Record<string, string>),
+      ...signaturePayload,
       manifestSignature: toB64(manifestSignature),
       signerDeviceId: 'device-1'
     },
@@ -144,11 +148,12 @@ describe('direct-to-R2 attachment transfers (#1836)', () => {
     getSigningKeys: vi.fn().mockResolvedValue(null),
     getDevicePublicKey: vi.fn(),
     getSyncServerUrl: () => 'http://worker.test',
-    fetchFn: fetchFn as unknown as typeof globalThis.fetch,
+    fetchFn,
     ...overrides
   })
 
   beforeEach(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
     await sodium.ready
     tmpDir = await mkdtemp(path.join(os.tmpdir(), 'memry-presign-test-'))
   })
@@ -589,7 +594,7 @@ describe('direct-to-R2 attachment transfers (#1836)', () => {
       )
       const presigner = new AttachmentPresigner({
         getSyncServerUrl: () => 'http://worker.test',
-        fetchFn: fetchFn as unknown as typeof globalThis.fetch
+        fetchFn
       })
 
       // Transient 5xx: falls back for this batch, stays available.

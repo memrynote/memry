@@ -82,14 +82,14 @@ async function confirmRecoveryWords(page: Page, words: string[]): Promise<void> 
   await page.getByRole('button', { name: "I've saved my recovery phrase" }).click()
   await expect(page.getByText('Confirm your recovery phrase')).toBeVisible()
 
-  const inputs = page.locator('input[placeholder^="Enter word #"]')
+  const inputs = page.locator('input[aria-label^="Enter word #"]')
   const count = await inputs.count()
   expect(count).toBe(3)
 
   for (let i = 0; i < count; i++) {
     const input = inputs.nth(i)
-    const placeholder = await input.getAttribute('placeholder')
-    const wordIndex = Number(placeholder?.match(/#(\d+)/)?.[1] ?? 0)
+    const label = await input.getAttribute('aria-label')
+    const wordIndex = Number(label?.match(/#(\d+)/)?.[1] ?? 0)
     expect(wordIndex).toBeGreaterThan(0)
     await input.fill(words[wordIndex - 1])
   }
@@ -101,13 +101,22 @@ async function fillWrongConfirmationWords(page: Page): Promise<void> {
   await page.getByRole('button', { name: "I've saved my recovery phrase" }).click()
   await expect(page.getByText('Confirm your recovery phrase')).toBeVisible()
 
-  const inputs = page.locator('input[placeholder^="Enter word #"]')
+  const inputs = page.locator('input[aria-label^="Enter word #"]')
   const count = await inputs.count()
   expect(count).toBe(3)
 
   for (let i = 0; i < count; i++) {
     await inputs.nth(i).fill(`wrong-${i}`)
   }
+}
+
+// The phrase is a grid of 24 word boxes; a whole phrase entered in the first box spreads over the grid.
+async function fillRecoveryPhrase(page: Page, phrase: string): Promise<void> {
+  await page
+    .getByRole('group', { name: 'Recovery phrase' })
+    .getByRole('textbox')
+    .first()
+    .fill(phrase)
 }
 
 async function expectAuthenticated(page: Page, email: string): Promise<void> {
@@ -162,7 +171,7 @@ test.describe('Auth state machine E2E', () => {
     await submitOtp(pageA)
     await expect(pageA.getByText('Link this device')).toBeVisible()
     await pageA.getByRole('button', { name: 'Recovery phrase' }).click()
-    await pageA.getByLabel('Recovery phrase').fill(recoveryWords.join(' '))
+    await fillRecoveryPhrase(pageA, recoveryWords.join(' '))
     await pageA.getByRole('button', { name: 'Restore access' }).click()
 
     await expectAuthenticated(pageA, email)
@@ -241,11 +250,11 @@ test.describe('Auth state machine E2E', () => {
     await expect(pageA.getByText('Link this device')).toBeVisible()
     await pageA.getByRole('button', { name: 'Recovery phrase' }).click()
 
-    await pageA.getByLabel('Recovery phrase').fill(WRONG_VALID_RECOVERY_PHRASE)
+    await fillRecoveryPhrase(pageA, WRONG_VALID_RECOVERY_PHRASE)
     await pageA.getByRole('button', { name: 'Restore access' }).click()
 
     await expect(pageA.getByText('Recovery phrase does not match. Please try again.')).toBeVisible()
-    await expect(pageA.getByLabel('Recovery phrase')).toBeVisible()
+    await expect(pageA.getByRole('group', { name: 'Recovery phrase' })).toBeVisible()
     await expect
       .poll(() => pageA.evaluate(() => window.api.account.getInfo()))
       .toMatchObject({ email, joinedAt: null })

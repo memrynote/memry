@@ -59,6 +59,7 @@ function contentTypes(parsed: ParsedCli): Set<(typeof CONTENT_TYPES)[number]> | 
     if (!(CONTENT_TYPES as readonly string[]).includes(type)) {
       throw new Error(`Invalid --type: ${type}. Use ${CONTENT_TYPES.join(', ')}`)
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string value from a CLI flag; the command validates it downstream and a parser here would change error messages
     types.add(type as (typeof CONTENT_TYPES)[number])
   }
   return types

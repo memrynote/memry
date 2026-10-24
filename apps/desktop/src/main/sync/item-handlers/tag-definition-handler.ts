@@ -65,6 +65,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
         const resolution = this.resolveUpsertClock(
           ctx,
           itemId,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clock column is a JSON blob typed loosely by the schema; it is always a VectorClock or null
           existing.clock as VectorClock | null,
           remoteClock,
           data
@@ -160,6 +161,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       deleted: (row: { name: string }) => service?.enqueueDelete(row.name, JSON.stringify(row)),
       updated: (name: string) => service?.enqueueUpdate(name)
     }
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- ctx.db is the abstract sync DrizzleDb; mergeDefinitions needs the better-sqlite3 DataDb the desktop always supplies (retyping the callee is outside this slice)
     if (created && mergeDefinitions(ctx.db as unknown as DataDb, effects, tagKey(itemId)) > 0) {
       ctx.emit('notes:tags-changed', {})
     }
@@ -176,6 +178,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clock column is a JSON blob typed loosely by the schema; it is always a VectorClock or null
       const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
       if (resolution.skip) {
         log.info('Skipping remote tag definition delete, local is ahead of the tombstone', {
@@ -192,9 +195,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(tagDefinitions).where(eq(tagDefinitions.name, itemId)).get()
   }
 
   buildPushPayload(
@@ -219,6 +220,7 @@ class TagDefinitionHandler extends BaseItemHandler<TagDefinitionSyncPayload> {
       // information (chapter 13 §13.7.7). "No views" travels as `[]`.
       ...(views !== null ? { views } : {}),
       ...(schema ? { schema } : {}),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- clock column is a JSON blob typed loosely by the schema; it is always a VectorClock or null
       clock: (tag.clock as VectorClock) ?? undefined,
       createdAt: tag.createdAt
     }

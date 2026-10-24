@@ -84,14 +84,17 @@ async function resolveWikiHrefs(
   nodes: readonly MindMapPositionedNode[],
   labels: ReadonlyMap<string, string>
 ): Promise<Map<string, string>> {
-  const links = nodes.filter((node) => node.kind === 'wikiLink' && node.wikiTarget !== null)
-  const targets = [...new Set(links.map((node) => node.wikiTarget as string))]
+  const links = nodes.filter(
+    (node): node is typeof node & { wikiTarget: string } =>
+      node.kind === 'wikiLink' && node.wikiTarget !== null
+  )
+  const targets = [...new Set(links.map((node) => node.wikiTarget))]
 
   // A wiki node's name comes from its target alone, so every node sharing a
   // target shares a name and the label can be resolved once per target too.
   const labelByTarget = new Map<string, string>()
   for (const node of links) {
-    const target = node.wikiTarget as string
+    const target = node.wikiTarget
     if (!labelByTarget.has(target)) labelByTarget.set(target, labels.get(node.id) ?? '')
   }
 
@@ -126,7 +129,7 @@ async function resolveWikiHrefs(
 
   const hrefs = new Map<string, string>()
   for (const node of links) {
-    const href = byTarget.get(node.wikiTarget as string)
+    const href = byTarget.get(node.wikiTarget)
     if (href) hrefs.set(node.id, href)
   }
   return hrefs

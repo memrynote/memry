@@ -111,7 +111,7 @@ function useStickToBottom(scrollRef: RefObject<HTMLDivElement | null>, children:
     const element = scrollRef.current
     if (!element) return undefined
 
-    const applyScrollPolicy = (element: HTMLDivElement): void => {
+    const applyScrollPolicy = (scroller: HTMLDivElement): void => {
       const action = conversationScrollAction({
         stored: storedRef.current,
         restored: restoredRef.current
@@ -123,17 +123,17 @@ function useStickToBottom(scrollRef: RefObject<HTMLDivElement | null>, children:
         // Assignment rather than `scrollTo`: the browser clamps it to the
         // reachable range exactly the same way, and it is the one form jsdom
         // implements, so the tests around this component keep running.
-        element.scrollTop = element.scrollHeight
-        lastWrittenRef.current = element.scrollTop
+        scroller.scrollTop = scroller.scrollHeight
+        lastWrittenRef.current = scroller.scrollTop
         return
       }
 
       // The transcript arrives asynchronously, so the scroller may still be too
       // short to reach the target; the browser clamps the write, and the next
       // batch of children gives it another go.
-      element.scrollTop = action.offset
-      lastWrittenRef.current = element.scrollTop
-      if (Math.abs(element.scrollTop - action.offset) <= OFFSET_EPSILON) {
+      scroller.scrollTop = action.offset
+      lastWrittenRef.current = scroller.scrollTop
+      if (Math.abs(scroller.scrollTop - action.offset) <= OFFSET_EPSILON) {
         restoredRef.current = true
       }
     }

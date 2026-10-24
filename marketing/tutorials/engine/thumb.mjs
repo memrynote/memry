@@ -53,6 +53,8 @@ function check(v, i) {
   return errors
 }
 
+const row = (name, imgs) => `<div class="row"><b>${name}</b>${imgs.join('')}</div>`
+
 export async function renderThumbs(dir) {
   const topic = path.basename(dir)
   const N = JSON.parse(fs.readFileSync(path.join(dir, 'narration.json'), 'utf8'))
@@ -96,7 +98,6 @@ export async function renderThumbs(dir) {
     .map((t) => path.join(root, t, `out/${t}.thumb-1.jpg`))
     .filter((f) => fs.existsSync(f))
   const img = (f, w) => `<img src="${url(f)}" width="${w}" height="${(w * 9) / 16}">`
-  const row = (name, imgs) => `<div class="row"><b>${name}</b>${imgs.join('')}</div>`
   const rows = files.map((f, i) => row(i + 1, [img(f, 640), img(f, 320), img(f, 168)]))
   const phoneList = [files[0], ...others].map((f) => img(f, 168))
   if (others.length) rows.push(row('channel', phoneList))

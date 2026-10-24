@@ -44,6 +44,7 @@ async function verifyResendWebhook(req: VercelRequest): Promise<ResendWebhookPay
     webhookSecret
   })
 
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Resend SDK types the verified payload loosely; the handler reads only fields it checks
   return verifiedPayload as unknown as ResendWebhookPayload
 }
 

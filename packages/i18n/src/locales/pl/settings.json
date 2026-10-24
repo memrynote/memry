@@ -7,11 +7,6 @@
     "backToApp": "Wróć do aplikacji",
     "nav": {
       "groups": {
-        "account": "Konto",
-        "application": "Aplikacja",
-        "editing": "Edycja",
-        "modules": "Moduły",
-        "services": "Usługi",
         "data": "Dane",
         "workspace": "Obszar roboczy",
         "features": "Funkcje"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Skonfiguruj: {module}"
-    },
-    "vaultImport": {
-      "label": "Importuj z innej aplikacji",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist i inne",
-      "action": "Importuj…"
     },
     "search": {
       "placeholder": "Szukaj ustawień…",
@@ -102,45 +92,31 @@
       "loading": "Ładowanie ustawień…"
     },
     "groups": {
-      "startup": "Uruchamianie",
       "updates": "Aktualizacje",
       "languageRegion": "Język i region",
-      "tabBehavior": "Zachowanie kart",
-      "window": "Zachowanie okna",
-      "fileCreation": "Tworzenie plików",
       "privacy": "Prywatność",
       "startupWindows": "Uruchamianie i okna",
-      "newNotes": "Nowe notatki"
+      "newNotes": "Nowe notatki",
+      "sticky": "Karteczka"
     },
     "startup": {
       "launchAtLogin": {
         "label": "Uruchamiaj po zalogowaniu",
-        "description": "Uruchamiaj memrynote po zalogowaniu się do systemu",
         "error": "Nie udało się zmienić ustawienia uruchamiania po zalogowaniu"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Automatycznie sprawdzaj aktualizacje",
-        "description": "Sprawdzaj nowe wersje przy uruchomieniu i co pewien czas, gdy aplikacja jest otwarta.",
         "error": "Nie udało się zaktualizować ustawienia automatycznego sprawdzania"
       },
       "autoDownload": {
         "label": "Automatycznie pobieraj aktualizacje",
-        "description": "Pobieraj i instaluj nowe wersje w tle, bez pytania.",
         "error": "Nie udało się zaktualizować ustawienia automatycznego pobierania"
       },
-      "appUpdates": "Aktualizacje aplikacji",
-      "installedVersion": "Zainstalowana wersja {version}",
-      "availableVersion": "Dostępna wersja {version}",
-      "unsupported": "Wersje instalacyjne mogą sprawdzać, pobierać i instalować aktualizacje z GitHub Releases",
       "available": "memrynote {version} jest dostępny do pobrania",
       "downloadingLatest": "Pobieranie najnowszej wersji",
-      "downloadingLatestPercent": "Pobieranie najnowszej wersji ({percent}%)",
       "downloaded": "memrynote {version} jest gotowy do instalacji",
-      "upToDate": "Zainstalowana jest najnowsza opublikowana wersja",
-      "checking": "Szukanie nowszej wersji w GitHub Releases",
-      "idle": "Sprawdź dostępność nowych wersji i zainstaluj je bez opuszczania aplikacji",
       "unsupportedToast": "Automatyczne aktualizacje są dostępne tylko w wersjach instalacyjnych",
       "upToDateToast": "memrynote {version} jest aktualny",
       "actionFailed": "Nie udało się wykonać operacji aktualizacji",
@@ -163,23 +139,25 @@
         "downloading": "Pobieranie…",
         "downloadingPercent": "Pobieranie {percent}%",
         "downloaded": "Wersja {version} jest gotowa do instalacji"
-      },
-      "mode": {
-        "label": "Tryb aktualizacji",
-        "off": "Nie sprawdzaj",
-        "notify": "Tylko powiadamiaj",
-        "auto": "Pobieraj automatycznie"
       }
     },
     "language": {
       "label": "Język",
-      "helper": "Większość interfejsu zmienia się od razu. Niektóre teksty systemowe – już wyświetlone powiadomienia, etykieta w Docku, pasek tytułu okna – odświeżą się po następnym uruchomieniu.",
       "changed": "Zmieniono język na: {nativeName}",
       "failed": "Nie udało się zmienić języka. Spróbuj ponownie."
     },
+    "ocrLanguages": {
+      "label": "Rozpoznawanie tekstu",
+      "helper": "Języki odczytywane w zeskanowanych plikach PDF i obrazach, dzięki czemu wyszukiwanie znajduje ich słowa. Angielski jest wbudowany. Pozostałe pobierają się z serwera Memry.",
+      "more": "{names} +{count}",
+      "downloading": "Pobieranie: {language}, {percent}%",
+      "failed": "Pobieranie się nie powiodło. Języki, które już masz, nadal działają.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Spróbuj ponownie",
+      "saveFailed": "Nie udało się zmienić języków rozpoznawania tekstu."
+    },
     "clockFormat": {
       "label": "Format czasu",
-      "description": "Zegar 12-godzinny lub 24-godzinny",
       "options": {
         "12h": "12-godzinny",
         "24h": "24-godzinny"
@@ -188,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Format daty",
-      "description": "Sposób wyświetlania dat",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -199,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Otwieraj strony w nowej karcie",
-        "description": "Kliknięcie lub utworzenie strony – notatki, folderu, projektu, kanwy, tagu, zakładki – otwiera ją w nowej karcie. Gdy opcja jest wyłączona, używana jest bieżąca karta, także po kliknięciu linku w notatce; przypięte karty nigdy nie są zastępowane. „Otwórz w nowej karcie”, „Otwórz obok” i kliknięcie środkowym przyciskiem zawsze otwierają nową kartę."
+        "label": "Otwieraj strony w nowej karcie"
       },
       "restoreSession": {
         "label": "Przywracaj karty przy uruchomieniu",
@@ -208,7 +184,6 @@
       },
       "closeButton": {
         "label": "Przycisk zamykania karty",
-        "description": "Kiedy wyświetlać przycisk zamykania",
         "options": {
           "always": "Zawsze widoczny",
           "hover": "Po najechaniu kursorem",
@@ -220,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Po zamknięciu działaj w tle na pasku menu",
-        "description": "Zamknięcie okna ukrywa memrynote w zasobniku systemowym zamiast zamykać aplikację. Kliknij ikonę w zasobniku, aby ją przywrócić. W systemie macOS aplikacja pozostaje też w Docku; w środowiskach Linux bez zasobnika systemowego okno zamyka się normalnie.",
         "error": "Nie udało się zmienić ustawienia działania w tle"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Twórz w wybranym folderze",
-        "description": "Nowe notatki i foldery są tworzone w aktualnie wybranym folderze. Gdy opcja jest wyłączona, elementy są zawsze tworzone w folderze głównym sejfu."
+        "label": "Twórz w wybranym folderze"
       },
       "defaultNoteFolder": {
         "label": "Domyślna lokalizacja",
         "description": "Używana, gdy na pasku bocznym nie wybrano folderu.",
-        "placeholder": "notatki",
         "root": "/"
       }
     },
@@ -261,9 +233,24 @@
         "error": "Nie udało się wysłać raportu diagnostycznego",
         "sendReport": {
           "label": "Raport diagnostyczny",
-          "description": "Wyślij jednorazowy raport z zanonimizowanymi logami technicznymi, aby pomóc nam zdiagnozować napotkany problem.",
           "button": "Wyślij raport…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Skrót karteczki (Skróty klawiszowe → W całym systemie) otwiera karteczkę, gdy Memry jest uruchomione. Niewysłany tekst zostaje jako szkic przy krawędzi ekranu.",
+      "error": "Nie udało się zapisać ustawień karteczki.",
+      "defaultKind": {
+        "label": "Nowe karteczki wysyłaj jako",
+        "last": "Ostatnio użyte",
+        "note": "Notatka",
+        "task": "Zadanie",
+        "journal": "Dziennik"
+      },
+      "tuckEdge": {
+        "label": "Chowaj przy",
+        "left": "Lewej krawędzi",
+        "right": "Prawej krawędzi"
       }
     }
   },
@@ -274,20 +261,14 @@
       "loading": "Ładowanie ustawień…"
     },
     "groups": {
-      "theme": "Motyw",
-      "accentColor": "Kolor akcentujący",
-      "typography": "Typografia",
-      "zoom": "Powiększenie"
+      "theme": "Motyw"
     },
     "theme": {
       "colorMode": {
-        "label": "Tryb koloru",
-        "description": "Wybierz preferowany motyw",
         "aria": "Tryb koloru"
       },
       "options": {
         "light": "Jasny",
-        "white": "Biały",
         "dark": "Ciemny",
         "system": "Systemowy"
       },
@@ -305,11 +286,8 @@
       "importInvalid": "Schowek nie zawiera motywu memrynote"
     },
     "accent": {
-      "pick": "Wybierz kolor akcentujący",
       "custom": {
-        "label": "Kolor niestandardowy",
-        "description": "Wprowadź wartość szesnastkową",
-        "placeholder": "#000000"
+        "label": "Kolor niestandardowy"
       },
       "presets": {
         "indigo": "Indygo",
@@ -321,7 +299,6 @@
         "pink": "Różowy",
         "orange": "Pomarańczowy"
       },
-      "error": "Nie udało się zaktualizować koloru akcentującego",
       "aria": "Gotowy kolor akcentujący",
       "options": {
         "theme": "Motyw",
@@ -360,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Poziom powiększenia",
-      "description": "Skaluj cały interfejs",
       "decrease": "Zmniejsz powiększenie",
       "increase": "Zwiększ powiększenie",
       "reset": "Przywróć domyślne powiększenie",
@@ -369,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Rozmiar czcionki",
-        "description": "Podstawowy rozmiar tekstu interfejsu w pikselach",
         "decrease": "Zmniejsz rozmiar czcionki",
         "increase": "Zwiększ rozmiar czcionki",
         "reset": "Przywróć domyślny rozmiar czcionki"
       },
       "fontFamily": {
         "label": "Rodzina czcionek",
-        "description": "Podstawowy krój pisma interfejsu",
         "options": {
           "system": "Domyślny systemowy",
           "sansSerif": "Bezszeryfowy",
@@ -401,13 +373,9 @@
       "fontFamilyError": "Nie udało się zaktualizować rodziny czcionek"
     },
     "v2": {
-      "groups": {
-        "text": "Tekst i powiększenie"
-      },
       "colorMode": "Tryb koloru",
       "colorTheme": "Motyw",
       "accent": "Kolor akcentujący",
-      "customColor": "Kolor niestandardowy",
       "fontFamily": "Rodzina czcionek",
       "fontSize": "Rozmiar czcionki",
       "zoom": "Powiększenie"
@@ -421,12 +389,30 @@
     },
     "groups": {
       "layout": "Układ",
-      "toolbar": "Pasek narzędzi",
       "spelling": "Pisownia",
-      "checklists": "Listy kontrolne"
+      "checklists": "Listy kontrolne",
+      "attachments": "Załączniki",
+      "calloutTypes": "Typy wyróżnień"
+    },
+    "calloutTypes": {
+      "description": "Twoje własne wyróżnienia, zapisywane w notatce jako > [!nazwa]. W innej aplikacji wyglądają jak zwykły cytat.",
+      "empty": "Brak własnych typów wyróżnień",
+      "add": "Dodaj typ",
+      "edit": "Edytuj: {name}",
+      "delete": "Usuń: {name}",
+      "name": "Nazwa w Markdown",
+      "namePlaceholder": "mojtyp",
+      "label": "Nazwa wyświetlana",
+      "color": "Kolor",
+      "icon": "Ikona",
+      "nameInvalid": "Użyj małych liter, cyfr, - lub _, zaczynając od litery",
+      "nameBuiltIn": "Ta nazwa jest już wbudowanym wyróżnieniem",
+      "nameTaken": "Masz już typ o tej nazwie",
+      "save": "Zapisz",
+      "cancel": "Anuluj",
+      "error": "Nie udało się zaktualizować typów wyróżnień"
     },
     "width": {
-      "label": "Szerokość edytora",
       "description": "Dotyczy każdej notatki i strony dziennika",
       "options": {
         "normal": "Normalna",
@@ -435,12 +421,10 @@
       "error": "Nie udało się zaktualizować szerokości edytora"
     },
     "toolbarMode": {
-      "label": "Stały pasek narzędzi formatowania",
       "description": "Zawsze pokazuj pasek narzędzi nad edytorem",
       "error": "Nie udało się zaktualizować trybu paska narzędzi"
     },
     "spellCheck": {
-      "label": "Sprawdzaj pisownię",
       "description": "Podkreślaj błędnie napisane słowa w notatkach i w dzienniku",
       "error": "Nie udało się zaktualizować sprawdzania pisowni"
     },
@@ -449,7 +433,16 @@
       "toolbarMode": "Stały pasek narzędzi formatowania",
       "spellCheck": "Sprawdzaj pisownię",
       "convertChecklists": "Zamieniaj elementy listy kontrolnej w zadania",
-      "convertAgentChecklists": "Zamieniaj elementy listy kontrolnej od agenta w zadania"
+      "convertAgentChecklists": "Zamieniaj elementy listy kontrolnej od agenta w zadania",
+      "pdfDisplayMode": "Pokazuj nowe pliki PDF jako"
+    },
+    "pdfDisplayMode": {
+      "description": "Jak wygląda plik PDF dodany do notatki. Każdy plik PDF można przełączyć z jego menu.",
+      "options": {
+        "embed": "Osadzony",
+        "link": "Nazwa pliku"
+      },
+      "error": "Nie udało się zaktualizować wyświetlania plików PDF"
     },
     "convertChecklists": {
       "description": "Każdy nowy element listy kontrolnej staje się zadaniem. Po wyłączeniu listy pozostają zwykłymi polami wyboru; kliknij element prawym przyciskiem, aby zrobić z niego zadanie.",
@@ -466,14 +459,12 @@
       "subtitle": "Zarządzaj szablonami do szybkiego tworzenia notatek"
     },
     "actions": {
-      "new": "Nowy szablon",
       "edit": "Edytuj",
       "duplicate": "Duplikuj",
       "delete": "Usuń"
     },
     "groups": {
-      "builtIn": "Wbudowane",
-      "myTemplates": "Moje szablony"
+      "builtIn": "Wbudowane"
     },
     "loading": "Ładowanie szablonów…",
     "newTemplateTitle": "Nowy szablon",
@@ -481,9 +472,6 @@
     "empty": {
       "title": "Nie ma jeszcze żadnych szablonów niestandardowych",
       "description": "Utwórz szablon, aby zacząć"
-    },
-    "preview": {
-      "notFound": "Nie udało się załadować tego szablonu."
     },
     "toasts": {
       "deleted": "Usunięto szablon",
@@ -516,11 +504,7 @@
       "loading": "Ładowanie ustawień…"
     },
     "groups": {
-      "defaultTemplate": "Domyślny szablon",
-      "location": "Lokalizacja i format",
-      "sidebarVisibility": "Widoczność paska bocznego",
-      "footer": "Stopka",
-      "weekdayTemplates": "Szablony dla dni tygodnia"
+      "footer": "Stopka"
     },
     "template": {
       "label": "Szablon",
@@ -532,18 +516,6 @@
       "updated": "Zaktualizowano domyślny szablon",
       "cleared": "Wyczyszczono domyślny szablon",
       "error": "Nie udało się zaktualizować szablonu domyślnego"
-    },
-    "showSchedule": {
-      "label": "Pokaż harmonogram",
-      "description": "Wyświetl dzisiejsze wydarzenia i kalendarz"
-    },
-    "showTasks": {
-      "label": "Pokaż zadania",
-      "description": "Wyświetl zadania z terminem w wybranym dniu"
-    },
-    "showAIConnections": {
-      "label": "Pokaż połączenia AI",
-      "description": "Wyświetl połączenia z powiązanymi wpisami wskazane przez AI"
     },
     "showStatsFooter": {
       "label": "Pokaż stopkę statystyk",
@@ -561,7 +533,8 @@
       "renameNote": "Zmiana formatu zmienia nazwy istniejących plików dziennika. Plik, którego nowa nazwa jest już zajęta, pozostaje bez zmian.",
       "tokensHelp": "Pomoc dotycząca formatu daty",
       "tokensNote": "Pozostałe znaki są zachowywane bez zmian. Nazwy dni tygodnia są zawsze po angielsku.",
-      "tokensTitle": "Znaczniki formatu"
+      "tokensTitle": "Znaczniki formatu",
+      "foldersNote": "Użyj /, aby układać wpisy w podfolderach: YYYY/MMMM/YYYY-MM-DD umieszcza każdy dzień w folderze roku i miesiąca."
     },
     "preview": {
       "label": "Podgląd",
@@ -575,7 +548,6 @@
       "inheritWith": "Domyślny · {name}",
       "inheritNone": "Domyślny · brak",
       "missing": "Usunięty szablon",
-      "clear": "Wyczyść",
       "updated": "Zaktualizowano szablon dla dnia: {day}",
       "cleared": "Wyczyszczono szablon dla dnia: {day}",
       "error": "Nie udało się zaktualizować szablonu dla dnia: {day}",
@@ -586,6 +558,10 @@
         "defaultTemplate": "Domyślny szablon",
         "location": "Lokalizacja i format"
       }
+    },
+    "showInSidebar": {
+      "label": "Pokaż na pasku bocznym",
+      "description": "Pokaż folder dziennika i jego wpisy w drzewie notatek"
     }
   },
   "tasks": {
@@ -596,6 +572,7 @@
     },
     "groups": {
       "defaults": "Domyślne",
+      "subtasks": "Podzadania",
       "inbox": "Skrzynka odbiorcza"
     },
     "defaultProject": {
@@ -632,6 +609,11 @@
       "description": "Zadania starsze niż ten próg są wyróżniane jako nieruszane",
       "unit": "dni",
       "error": "Nie udało się zmienić progu nieruszanych elementów"
+    },
+    "nestedSubtasks": {
+      "label": "Podzadania w podzadaniach",
+      "description": "Zagnieżdżaj podzadania na dowolną głębokość. Urządzenia ze starszymi wersjami pokażą tylko pierwszy poziom do czasu aktualizacji.",
+      "error": "Nie udało się zaktualizować zagnieżdżonych podzadań"
     }
   },
   "inbox": {
@@ -684,11 +666,6 @@
       "subtitle": "Skonfiguruj, co dzieje się po kliknięciu dnia w panelu dnia",
       "loading": "Ładowanie ustawień…"
     },
-    "groups": {
-      "weekStart": "Tydzień",
-      "dayCellClick": "Kliknięcie komórki dnia",
-      "notes": "Notatki"
-    },
     "weekStart": {
       "label": "Początek tygodnia",
       "description": "Pierwszy dzień tygodnia we wszystkich kalendarzach",
@@ -728,8 +705,6 @@
       },
       "accountReconnect": "Połącz ponownie konto Google",
       "addAccount": "Dodaj konto",
-      "importedCalendars": "Importowane kalendarze",
-      "selected": "Wybrano {count}",
       "syncNow": "Synchronizuj teraz",
       "disconnect": "Rozłącz",
       "reconnect": "Połącz ponownie konto Google",
@@ -958,10 +933,8 @@
       "loading": "Ładowanie…"
     },
     "groups": {
-      "identity": "Tożsamość",
       "sync": "Synchronizacja",
       "billing": "Rozliczenia",
-      "storage": "Pamięć",
       "devices": "Urządzenia"
     },
     "identity": {
@@ -981,6 +954,7 @@
         "syncing": "Synchronizowanie…",
         "paused": "Wstrzymano",
         "syncError": "Błąd synchronizacji",
+        "deviceKeysMissing": "Synchronizacja wstrzymana: brak kluczy urządzenia",
         "offline": "Offline",
         "connecting": "Łączenie…",
         "localOnly": "Tylko lokalnie",
@@ -1004,6 +978,19 @@
       "activating": {
         "title": "Kończenie aktywacji",
         "description": "Plan jest aktywny. Synchronizacja zacznie się, gdy tylko to potwierdzimy – zwykle wystarczy odświeżyć."
+      },
+      "unsent": {
+        "title": "Notatki z niewysłanymi zmianami",
+        "count": "{count, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}}",
+        "description": "To urządzenie ma zmiany w tych notatkach, których serwer jeszcze nie zapisał.",
+        "waitingSince": "Oczekuje od {time}",
+        "more": "{count, plural, one {Oraz # notatka więcej} few {Oraz # notatki więcej} many {Oraz # notatek więcej} other {Oraz # notatki więcej}}",
+        "reasons": {
+          "body": "Tekst",
+          "record": "Szczegóły",
+          "file_not_taken": "Plik jeszcze nie scalony",
+          "rejected": "Odrzucone przez serwer"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1043,8 @@
         "refreshFailed": "Nie udało się odświeżyć statusu rozliczeń",
         "billingActive": "Rozliczenia są aktywne",
         "activationPending": "Aktywacja w toku",
-        "portalFailed": "Nie udało się otworzyć portalu rozliczeń"
+        "portalFailed": "Nie udało się otworzyć portalu rozliczeń",
+        "portalNoCustomer": "Nie znaleziono jeszcze konta rozliczeniowego. Jeśli właśnie zapłacono, wybierz Odśwież status i spróbuj ponownie."
       }
     },
     "storage": {
@@ -1070,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Wyloguj się",
         "description": "Odłącz to urządzenie od synchronizacji",
         "action": "Wyloguj się"
       }
@@ -1302,21 +1289,28 @@
       "disabled": "Wyłączono funkcje AI",
       "error": "Nie udało się zaktualizować ustawienia"
     },
-    "unknownError": "Nieznany błąd",
-    "groups": {
-      "voice": "Transkrypcja głosu",
-      "embeddingModel": "Lokalny model osadzeń",
-      "embeddingIndex": "Indeks osadzeń",
-      "inline": "Edycja AI w tekście"
+    "summarizeLongNotes": {
+      "label": "Streszczaj długie notatki",
+      "description": "Tworzy krótsze wersje długich notatek za pomocą połączonego agenta, dzięki czemu możesz zwinąć notatkę do najważniejszych punktów. Działa na tym urządzeniu.",
+      "error": "Nie udało się zaktualizować streszczania długich notatek",
+      "failed": "Ostatnie uruchomienie nie powiodło się ·",
+      "retry": "Spróbuj ponownie",
+      "retryError": "Nie udało się ponowić streszczania",
+      "agentLabel": "Agent tworzący streszczenia",
+      "agentAuto": "Automatycznie",
+      "agentError": "Nie udało się zmienić agenta streszczeń",
+      "noAgent": "Nie znaleziono agenta ·",
+      "openAgents": "Otwórz agentów"
     },
+    "imageSearch": {
+      "label": "Szukaj obrazów według zawartości",
+      "description": "Znajdź zdjęcia po tym, co przedstawiają. Przy pierwszym indeksowaniu obrazu pobiera model obrazów o rozmiarze 109 MB.",
+      "enabled": "Wyszukiwanie obrazów włączone",
+      "disabled": "Wyszukiwanie obrazów wyłączone"
+    },
+    "unknownError": "Nieznany błąd",
     "voice": {
-      "provider": "Dostawca",
       "providerDescription": "Dostawca zamiany mowy na tekst dla notatek głosowych",
-      "providers": {
-        "local": "Lokalny (domyślny)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Nazwy notatek",
       "memoNameModeDescription": "Jak nazywane są notatki głosowe po transkrypcji",
       "naming": {
         "transcript": "Tytuł z transkrypcji",
@@ -1324,12 +1318,13 @@
         "none": "Nie zmieniaj nazwy"
       },
       "namingError": "Nie udało się zaktualizować nazewnictwa notatek głosowych",
+      "audioSearch": "Szukaj notatek głosowych po dźwięku",
+      "audioSearchDescription": "Znajdź notatki głosowe bez transkrypcji, takie jak muzyka lub dźwięki, po tym, jak brzmią. Przy pierwszym indeksowaniu pobiera model audio o rozmiarze 189 MB.",
+      "audioSearchError": "Nie udało się zaktualizować wyszukiwania notatek głosowych",
       "language": "Język mówiony",
       "languageDescription": "Język, w którym mówisz w notatkach głosowych",
       "languageDefault": "Domyślny",
       "languageError": "Nie udało się zmienić języka transkrypcji",
-      "localModel": "Model lokalny",
-      "localModelDescription": "Whisper Small jest pobierany na żądanie i przechowywany lokalnie w pamięci podręcznej",
       "status": {
         "ready": "Gotowy",
         "downloading": "Pobieranie",
@@ -1354,17 +1349,12 @@
     "embedding": {
       "loaded": "Załadowano",
       "loading": "Ładowanie",
-      "cacheHint": "~210 MB · Buforowane lokalnie · Wszystko na urządzeniu",
-      "dimensions": "Wymiary",
-      "embeddings": "Osadzenia",
       "downloadLoad": "Pobierz i załaduj model",
       "downloadingModel": "Pobieranie modelu…",
       "loadingModel": "Ładowanie modelu…",
       "loadSuccess": "Załadowano model",
       "loadFailed": "Nie udało się załadować modelu",
       "rebuildIndex": "Odbuduj indeks",
-      "rebuildDescription": "Wygeneruj ponownie osadzenia dla wszystkich notatek",
-      "rebuild": "Odbuduj",
       "scanning": "Skanowanie notatek…",
       "generating": "Generowanie osadzeń…",
       "complete": "Gotowe!",
@@ -1373,13 +1363,10 @@
     },
     "inline": {
       "loading": "Ładowanie…",
-      "title": "Edycja AI w tekście",
-      "enable": "Włącz AI w tekście",
       "enableDescription": "Pokaż menu AI podczas edycji notatek",
       "enabled": "Włączono edycję AI w tekście",
       "disabled": "Wyłączono edycję AI w tekście",
       "provider": "Dostawca",
-      "providerDescription": "Usługa AI do operacji tekstowych",
       "providers": {
         "ollama": "Ollama (lokalnie)",
         "openai": "OpenAI",
@@ -1398,7 +1385,6 @@
       "activePort": "Aktywny na porcie {port}",
       "notConnected": "Nie połączono",
       "test": "Testuj",
-      "stopFailed": "Nie udało się zatrzymać istniejącego serwera",
       "connected": "Połączono! Serwer działa na porcie {port}",
       "connectFailed": "Nie udało się połączyć",
       "testFailed": "Test połączenia nie powiódł się",
@@ -1459,10 +1445,9 @@
       "csv": "Importuj plik .csv – jedna notatka na wiersz, kolumny stają się właściwościami",
       "raindrop": "Importuj eksport zakładek Raindrop.io (.csv) – zakładki trafiają do skrzynki odbiorczej",
       "apple-notes": "Importuj z bazy danych Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Importuj notatniki OneNote (wymaga konta Microsoft)"
+      "onenote": "Importuj notatniki OneNote (wymaga konta Microsoft)",
+      "readwise": "Zaimportuj swoje wyróżnienia z Readwise (wymaga tokenu dostępu)"
     },
-    "action": "Importuj",
-    "select": "Wybierz aplikację, z której chcesz importować…",
     "stats": {
       "notes": "{count, plural, one {# notatka} few {# notatki} many {# notatek} other {# notatki}}",
       "projects": "{count, plural, one {# projekt} few {# projekty} many {# projektów} other {# projektu}}",
@@ -1477,7 +1462,12 @@
     },
     "preview": {
       "warnings": "Ostrzeżenia",
-      "confirm": "Importuj"
+      "confirm": "Importuj",
+      "readwise": {
+        "books": "{count, plural, one {# książka} few {# książki} many {# książek} other {# książki}}",
+        "highlights": "{count, plural, one {# wyróżnienie} few {# wyróżnienia} many {# wyróżnień} other {# wyróżnienia}}",
+        "documents": "{count, plural, one {# dokument} few {# dokumenty} many {# dokumentów} other {# dokumentu}}"
+      }
     },
     "dialog": {
       "title": "Importuj z: {name}",
@@ -1505,18 +1495,27 @@
         "deselectAll": "Wyczyść zaznaczenie",
         "foldersSelected": "{count, plural, one {Wybrano # folder} few {Wybrano # foldery} many {Wybrano # folderów} other {Wybrano # folderu}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# zablokowana notatka} few {# zablokowane notatki} many {# zablokowanych notatek} other {# zablokowanej notatki}}",
+          "hint": "Wpisz hasło do Notatek, aby je zaimportować. Jest używane tylko do tego importu i nigdy nie jest zapisywane. Załączniki w zablokowanych notatkach nie są importowane.",
+          "label": "Hasło do Notatek",
+          "placeholder": "Hasło do Notatek",
+          "check": "Sprawdź",
+          "wrong": "To hasło nie odblokowuje żadnej zablokowanej notatki.",
+          "unlockedAll": "{count, plural, one {Odblokowuje zablokowaną notatkę.} few {Odblokowuje wszystkie # zablokowane notatki.} many {Odblokowuje wszystkie # zablokowanych notatek.} other {Odblokowuje wszystkie # zablokowanej notatki.}}",
+          "unlockedSome": "Odblokowuje {unlocked} z {total} zablokowanych notatek. Pozostałe używają innego hasła i zostaną pominięte.",
+          "checkError": "Nie udało się sprawdzić hasła."
+        }
       },
       "chooseFolder": "Wybierz folder Apple Notes…",
       "chooseDirectory": "Wybierz folder…",
       "folderKeepsAssets": "Wybierz folder, gdy obrazy znajdują się poza folderem z notatkami – eksporty często przechowują multimedia we wspólnym folderze.",
-      "chooseHint": "Wybierz: {label}",
       "folderHint": "Kliknij poniżej i wybierz folder „group.com.apple.notes”, gdy otworzy się okno wyboru (zostanie otwarte właśnie w tym miejscu). Dzięki temu Memry może odczytać notatki i załączniki – bez pełnego dostępu do dysku.",
       "noteplanFolderHint": "Wybierz folder NotePlan – folder danych aplikacji albo jedną z jego kopii w Backups. Memry odczytuje z niego foldery Calendar, Notes i @Archive.",
       "selected": "{count, plural, one {Wybrano # plik} few {Wybrano # pliki} many {Wybrano # plików} other {Wybrano # pliku}}",
       "start": "Rozpocznij import",
       "cancel": "Anuluj",
-      "close": "Zamknij",
       "done": "Gotowe",
       "running": "Importowanie…",
       "progress": "{completed} z {total}",
@@ -1529,12 +1528,204 @@
         "failed": "Nieudane: {count}"
       },
       "error": "Import nie powiódł się",
-      "previewError": "Nie udało się wygenerować podglądu"
+      "previewError": "Nie udało się wygenerować podglądu",
+      "readwise": {
+        "intro": "Wklej token dostępu do Readwise. Memry najpierw sprawdza go w Readwise, a potem zapisuje w systemowym breloku kluczy na tym urządzeniu. Nigdy nie jest synchronizowany.",
+        "tokenLabel": "Token dostępu",
+        "tokenPlaceholder": "Wklej token",
+        "getToken": "Pobierz token",
+        "connect": "Połącz",
+        "connecting": "Łączenie…",
+        "connectFailed": "Nie udało się połączyć z Readwise",
+        "takeOver": {
+          "explain": "Tylko jedno urządzenie pobiera dane z Readwise, więc to samo wyróżnienie nigdy nie jest zapisane dwa razy. Aby pobierać z tego urządzenia, wklej token ponownie: nigdy nie jest przesyłany między urządzeniami. Drugie urządzenie zatrzyma się przy następnej książce, a wszystkie notatki zostaną.",
+          "button": "Synchronizuj tutaj",
+          "working": "Przenoszenie Readwise tutaj…",
+          "failed": "Nie udało się przenieść Readwise na to urządzenie"
+        },
+        "groups": {
+          "location": "Gdzie trafią notatki",
+          "categories": "Co zaimportować",
+          "reader": "Readwise Reader",
+          "journal": "Dziennik",
+          "sync": "Synchronizacja"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Wypisuj wyróżnienia z każdego dnia w dzienniku",
+            "description": "Dodaje sekcję Readwise do dnia, w którym zrobiono wyróżnienie, z odnośnikami do notatek książek. Tylko nowe wyróżnienia, bez uzupełniania wstecz.",
+            "firstImport": "Pierwszy import niczego nie zapisuje w dzienniku."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Importuj także zapisane dokumenty Reader",
+            "description": "Domyślnie wyłączone. Może dodać tysiące notatek."
+          },
+          "fullText": {
+            "label": "Dołącz pełny tekst artykułu",
+            "description": "Zapisywany raz, przy tworzeniu notatki"
+          }
+        },
+        "rootFolder": {
+          "label": "Folder",
+          "description": "Nowe książki trafiają tutaj. Istniejące notatki zostają, gdzie są."
+        },
+        "layout": {
+          "label": "Układ folderów",
+          "description": "Dotyczy tylko nowych książek.",
+          "options": {
+            "by-category": "Według kategorii",
+            "flat": "Jeden folder"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Książki",
+            "description": "Wyróżnienia z Kindle, Apple Books i innych"
+          },
+          "articles": {
+            "label": "Artykuły",
+            "description": "Artykuły internetowe i newslettery"
+          },
+          "tweets": {
+            "label": "Tweety",
+            "description": "Zapisane tweety i wątki"
+          },
+          "podcasts": {
+            "label": "Podcasty",
+            "description": "Odcinki podcastów i fragmenty"
+          },
+          "supplementals": {
+            "label": "Materiały uzupełniające",
+            "description": "Książki, które Readwise dodaje samo, bez Twoich wyróżnień"
+          },
+          "other": {
+            "label": "Inne",
+            "description": "Kategorie dodane przez Readwise po wydaniu tej wersji"
+          }
+        },
+        "cadence": {
+          "label": "Częstotliwość",
+          "description": "Jak często przychodzą nowe wyróżnienia.",
+          "options": {
+            "manual": "Ręcznie",
+            "hourly": "Co godzinę",
+            "daily": "Codziennie"
+          }
+        },
+        "syncNow": {
+          "label": "Synchronizuj teraz",
+          "description": "Sprawdź w Readwise, czy są nowe wyróżnienia.",
+          "button": "Synchronizuj teraz"
+        },
+        "disconnect": "Rozłącz",
+        "disconnectHint": "Rozłączenie usuwa token z tego urządzenia. Notatki zostają.",
+        "deleted": {
+          "heading": "Usunięte książki",
+          "description": "Notatki usunięte w memry. Pozostają usunięte, dopóki ich nie przywrócisz.",
+          "meta": "Usunięto {date} · {count, plural, one {# wyróżnienie} few {# wyróżnienia} many {# wyróżnień} other {# wyróżnienia}}",
+          "metaDocument": "Usunięto {date} · zapisany artykuł",
+          "restore": "Przywróć",
+          "footer": "Przywrócenie odtwarza notatkę ze wszystkimi jej wyróżnieniami.",
+          "empty": "Brak usuniętych książek",
+          "syncsOn": "Readwise synchronizuje się na urządzeniu {device}.",
+          "syncsOnAnotherDevice": "Readwise synchronizuje się na innym urządzeniu.",
+          "loadFailed": "Nie udało się wczytać usuniętych książek",
+          "restoreFailed": "Nie udało się przywrócić notatki"
+        },
+        "importNow": "Importuj teraz",
+        "importBooks": "{count, plural, one {Importuj # książkę} few {Importuj # książki} many {Importuj # książek} other {Importuj # książki}}",
+        "importNotes": "{count, plural, one {Importuj # notatkę} few {Importuj # notatki} many {Importuj # notatek} other {Importuj # notatki}}",
+        "importNone": "Importuj",
+        "preview": {
+          "intro": "Gotowe: {highlights, plural, one {# wyróżnienie} few {# wyróżnienia} many {# wyróżnień} other {# wyróżnienia}} z {books, plural, one {# książki} few {# książek} many {# książek} other {# książki}}. Nic nie zostanie zapisane, dopóki nie potwierdzisz.",
+          "introOff": "Gotowe: {highlights, plural, one {# wyróżnienie} few {# wyróżnienia} many {# wyróżnień} other {# wyróżnienia}} z {books, plural, one {# książki} few {# książek} many {# książek} other {# książki}}. Wyłączone: {off}. Zaimportowane zostanie: {willImport, plural, one {# książka} few {# książki} many {# książek} other {# książki}}. Nic nie zostanie zapisane, dopóki nie potwierdzisz.",
+          "introReaderOnly": "Twoja biblioteka Readwise nie ma jeszcze wyróżnień. {documents, plural, one {# zapisany dokument Reader zostanie zaimportowany} few {# zapisane dokumenty Reader zostaną zaimportowane} many {# zapisanych dokumentów Reader zostanie zaimportowanych} other {# zapisanego dokumentu Reader zostanie zaimportowane}} jako notatki. Nic nie zostanie zapisane, dopóki nie potwierdzisz.",
+          "readerLabel": "Zapisane dokumenty Reader",
+          "empty": "Twoja biblioteka Readwise nie ma jeszcze wyróżnień. Nic nie zostanie zapisane. Zaimportuj, aby dokończyć konfigurację.",
+          "willImport": "zostanie zaimportowane",
+          "off": "wyłączone",
+          "retry": "Spróbuj ponownie"
+        },
+        "status": {
+          "connected": "Połączono",
+          "synced": "Zsynchronizowano {time}",
+          "syncing": "Synchronizacja z Readwise",
+          "reading": "Czytanie Twojej biblioteki…",
+          "writing": "Zapisywanie książek: {done} z {total}",
+          "finishing": "Kończenie…",
+          "waitingTitle": "Oczekiwanie na synchronizację memry",
+          "waitingDetail": "Memry czeka, aż dotrą notatki z Twoich innych urządzeń, aby żadna książka nie została zapisana dwa razy. Readwise rusza zaraz potem.",
+          "otherTitle": "Synchronizuje się na urządzeniu {device}",
+          "otherTitleUnknown": "Synchronizuje się na innym urządzeniu",
+          "otherDetail": "Tylko jedno urządzenie pobiera dane z Readwise, więc to samo wyróżnienie nigdy nie jest zapisane dwa razy.",
+          "lastRun": "Ostatnie uruchomienie: {counts}",
+          "lastRunNothing": "Ostatnie uruchomienie: nic nowego",
+          "nextRun": "Następna synchronizacja {time}",
+          "retryAt": "Memry spróbuje ponownie {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise potrzebuje nowego tokenu",
+              "detail": "Readwise nie zaakceptowało zapisanego tokenu. Wklej nowy z readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Twoja subskrypcja Readwise wygasła",
+              "detail": "Odnów subskrypcję na readwise.io, a potem spróbuj ponownie."
+            },
+            "rate-limited": {
+              "title": "Readwise ogranicza liczbę żądań",
+              "detail": "Zbyt wiele żądań w krótkim czasie."
+            },
+            "network": {
+              "title": "Nie można połączyć się z Readwise",
+              "detail": "Sprawdź połączenie."
+            },
+            "server": {
+              "title": "Problem po stronie Readwise",
+              "detail": "Readwise odpowiedziało błędem."
+            },
+            "unexpected": {
+              "title": "Synchronizacja zatrzymała się",
+              "detail": "Coś poszło nie tak podczas uruchomienia."
+            }
+          },
+          "counts": {
+            "added": "Dodano: {count}",
+            "updated": "Zaktualizowano: {count}",
+            "appended": "Rozszerzono: {count}",
+            "deferred": "Oczekuje na otwartą notatkę: {count}",
+            "failed": "Niepowodzenia: {count}",
+            "highlights": "{count, plural, one {# wyróżnienie} few {# wyróżnienia} many {# wyróżnień} other {# wyróżnienia}}"
+          },
+          "actions": {
+            "cancel": "Anuluj",
+            "retry": "Ponów teraz",
+            "newToken": "Wklej nowy token",
+            "reconnect": "Połącz ponownie",
+            "syncHere": "Synchronizuj tutaj"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise potrzebuje nowego tokenu",
+            "description": "Synchronizacja jest wstrzymana, dopóki nie wkleisz nowego."
+          },
+          "subscription-expired": {
+            "title": "Twoja subskrypcja Readwise wygasła",
+            "description": "Synchronizacja jest wstrzymana, dopóki subskrypcja nie będzie znów aktywna."
+          },
+          "open": "Otwórz Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Nie udało się odczytać pliku",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {Nie zaimportowano # zablokowanej notatki} few {Nie zaimportowano # zablokowanych notatek} many {Nie zaimportowano # zablokowanych notatek} other {Nie zaimportowano # zablokowanej notatki}}; Memry nie może odczytać zablokowanych notatek bez hasła do Apple Notes."
+        "lockedNote": "{count, plural, one {Nie zaimportowano # zablokowanej notatki} few {Nie zaimportowano # zablokowanych notatek} many {Nie zaimportowano # zablokowanych notatek} other {Nie zaimportowano # zablokowanej notatki}}; Memry nie może odczytać zablokowanych notatek bez hasła do Apple Notes.",
+        "lockedWrongPassword": "{count, plural, one {# zablokowana notatka nie została zaimportowana} few {# zablokowane notatki nie zostały zaimportowane} many {# zablokowanych notatek nie zostało zaimportowanych} other {# zablokowanej notatki nie zaimportowano}}: używają innego hasła niż wpisane.",
+        "lockedUnreadable": "{count, plural, one {Nie udało się odszyfrować # zablokowanej notatki, więc nie została zaimportowana} few {Nie udało się odszyfrować # zablokowanych notatek, więc nie zostały zaimportowane} many {Nie udało się odszyfrować # zablokowanych notatek, więc nie zostało zaimportowanych} other {Nie udało się odszyfrować # zablokowanej notatki, więc nie zaimportowano jej}}.",
+        "lockedAttachment": "{count, plural, one {# załącznik w zablokowanej notatce nie został zaimportowany} few {# załączniki w zablokowanych notatkach nie zostały zaimportowane} many {# załączników w zablokowanych notatkach nie zostało zaimportowanych} other {# załącznika w zablokowanych notatkach nie zaimportowano}}; tekst notatek został zaimportowany."
       },
       "csv": {
         "noHeaders": "Plik CSV nie ma nagłówków",
@@ -1563,6 +1754,16 @@
         "unknownPriority": "Nieznany priorytet {priority} → brak",
         "unparsedDate": "Nie udało się odczytać daty „{date}”",
         "subtaskNoParent": "Podzadanie „{title}” nie ma zadania nadrzędnego przy wcięciu {indent}; zaimportowano na najwyższym poziomie"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise nie jest połączone.",
+        "tokenInvalid": "Readwise nie zaakceptowało zapisanego tokenu. Rozłącz i połącz ponownie z nowym.",
+        "unreachable": "Nie udało się połączyć z Readwise. Sprawdź połączenie i spróbuj ponownie.",
+        "categoryOff": "{count, plural, one {# książka z wyłączonej kategorii nie została zaimportowana} few {# książki z wyłączonej kategorii nie zostały zaimportowane} many {# książek z wyłączonej kategorii nie zostało zaimportowanych} other {# książki z wyłączonej kategorii nie zaimportowano}}.",
+        "unchanged": "{count, plural, one {# książka była już aktualna} few {# książki były już aktualne} many {# książek było już aktualnych} other {# książki była już aktualna}}.",
+        "sourceDeleted": "{count, plural, one {# książka została usunięta w Readwise} few {# książki zostały usunięte w Readwise} many {# książek zostało usuniętych w Readwise} other {# książki usunięto w Readwise}}. Notatki zostają.",
+        "noteDeleted": "{count, plural, one {# notatka została usunięta w Memry i pozostaje usunięta} few {# notatki zostały usunięte w Memry i pozostają usunięte} many {# notatek zostało usuniętych w Memry i pozostaje usuniętych} other {# notatki usunięto w Memry i pozostają usunięte}}.",
+        "busy": "{count, plural, one {# notatka jest otwarta w edytorze i zostanie zapisana} few {# notatki są otwarte w edytorze i zostaną zapisane} many {# notatek jest otwartych w edytorze i zostanie zapisanych} other {# notatki jest otwarte w edytorze i zostanie zapisane}} przy następnym uruchomieniu."
       }
     },
     "status": {
@@ -1603,18 +1804,35 @@
       },
       "todoist": {
         "importing": "Importowanie zadań Todoist…"
+      },
+      "readwise": {
+        "fetching": "Czytanie Twojej biblioteki Readwise…"
       }
     },
     "v2": {
       "searchPlaceholder": "Znajdź aplikację lub typ pliku…",
       "noMatch": "Brak źródeł pasujących do „{query}”",
       "formatAccount": "Konto",
-      "showMore": "{count, plural, one {Pokaż jeszcze #} few {Pokaż jeszcze #} many {Pokaż jeszcze #} other {Pokaż jeszcze #}}",
-      "showLess": "Pokaż mniej",
       "groups": {
+        "reading": "Czytanie",
         "noteApps": "Aplikacje do notatek",
         "tasks": "Zadania, dziennik i zakładki",
         "files": "Pliki"
+      },
+      "readwise": {
+        "notConnected": "Niepołączone",
+        "connected": "Połączono",
+        "synced": "Zsynchronizowano {time}",
+        "syncing": "Synchronizacja…",
+        "waiting": "Oczekiwanie na synchronizację",
+        "otherDevice": "Synchronizuje się na urządzeniu {device}",
+        "otherDeviceUnknown": "Synchronizuje się gdzie indziej",
+        "invalidToken": "Wymaga nowego tokenu",
+        "subscriptionExpired": "Subskrypcja wygasła",
+        "rateLimited": "Ograniczono liczbę żądań",
+        "network": "Brak połączenia z Readwise",
+        "server": "Błąd Readwise",
+        "unexpected": "Synchronizacja nie powiodła się"
       }
     }
   },
@@ -1624,8 +1842,6 @@
       "subtitle": "Konfiguracja i przechowywanie sejfu"
     },
     "groups": {
-      "storageUsage": "Wykorzystanie pamięci",
-      "location": "Lokalizacja",
       "accountVaults": "Sejfy na koncie",
       "largeNotes": "Notatki bliskie limitu synchronizacji",
       "activity": "Aktywność"
@@ -1783,6 +1999,9 @@
     "toasts": {
       "renamed": "Zmieniono nazwę „{oldName}” na „{newName}”",
       "renameFailed": "Nie udało się zmienić nazwy tagu",
+      "renaming": "Zmiana nazwy #{oldName}: {done} / {total} notatek",
+      "renamedBodySkipped": "„{newName}” nie może być wpisane jako tag w tekście, więc #{oldName} w treści notatek zostaje bez zmian",
+      "renamedSomeFailed": "{count, plural, one {Nie udało się zaktualizować # notatki. Otwórz ją} few {Nie udało się zaktualizować # notatek. Otwórz je} many {Nie udało się zaktualizować # notatek. Otwórz je} other {Nie udało się zaktualizować # notatki. Otwórz ją}} i dodaj tag ponownie",
       "deleteFailed": "Nie udało się usunąć tagu",
       "deleted": "Usunięto „{name}” z {count, plural, one {# elementu} few {# elementów} many {# elementów} other {# elementu}}",
       "mergeFailed": "Nie udało się scalić tagów",
@@ -1882,8 +2101,6 @@
       "loading": "Ładowanie ustawień…"
     },
     "searchPlaceholder": "Szukaj skrótów…",
-    "resetAll": "Zresetuj wszystko",
-    "custom": "Niestandardowe",
     "pressShortcut": "Naciśnij skrót…",
     "cancelTitle": "Anuluj",
     "rebindTitle": "Kliknij, aby zmienić",
@@ -1894,19 +2111,35 @@
     "noMatch": "Brak skrótów pasujących do wyszukiwania",
     "conflict": "Konflikt z: {labels}",
     "globalCapture": {
-      "title": "Globalny szybki zapis",
       "description": "Zanotuj coś z dowolnego miejsca",
       "active": "Aktywny",
       "inUse": "Skrót {shortcut} jest używany przez inną aplikację. Wybierz inną kombinację.",
       "unsupported": "Skrótu {shortcut} nie można użyć jako skrótu globalnego. Wybierz inną kombinację.",
       "fallbackInUse": "Domyślny skrót {shortcut} jest używany przez inną aplikację. Ustaw inną kombinację, aby korzystać z globalnego szybkiego zapisu."
     },
+    "folderNotes": {
+      "title": "Nowa notatka w folderze",
+      "description": "Utwórz notatkę od razu we wskazanym folderze",
+      "add": "Dodaj folder",
+      "empty": "Brak skrótów do folderów. Dodaj folder, aby nadać mu skrót.",
+      "rowDescription": "Tworzy notatkę w tym folderze",
+      "missing": "Ten folder już nie istnieje. Wybierz inny folder lub usuń skrót.",
+      "changeFolder": "Zmień folder",
+      "searchFolders": "Szukaj folderów...",
+      "noFolders": "Nie znaleziono folderów",
+      "remove": "Usuń skrót",
+      "conflictLabel": "Nowa notatka w {folder}",
+      "missingToast": "Folder „{folder}” już nie istnieje",
+      "missingToastAction": "Edytuj skrót",
+      "foldersLoadFailed": "Nie udało się sprawdzić folderu dla tego skrótu"
+    },
     "toasts": {
       "saveGlobalFailed": "Nie udało się zapisać skrótu globalnego szybkiego zapisu",
       "saveFailed": "Nie udało się zapisać skrótu",
       "resetFailed": "Nie udało się zresetować skrótu",
       "resetAllSuccess": "Wszystkie skróty zostały zresetowane do wartości domyślnych",
-      "resetAllFailed": "Nie udało się zresetować skrótów"
+      "resetAllFailed": "Nie udało się zresetować skrótów",
+      "saveStickyFailed": "Nie udało się zapisać skrótu karteczki"
     },
     "categories": {
       "navigation": "Nawigacja",
@@ -1939,6 +2172,10 @@
         "search": {
           "label": "Szukaj",
           "description": "Otwórz wyszukiwanie globalne"
+        },
+        "commands": {
+          "label": "Paleta poleceń",
+          "description": "Szukaj i uruchamiaj dowolne polecenie"
         },
         "settings": {
           "label": "Otwórz ustawienia",
@@ -2042,6 +2279,10 @@
           "label": "Pokaż/ukryj pasek boczny",
           "description": "Pokaż lub ukryj pasek boczny"
         },
+        "toggleDayPanel": {
+          "label": "Przełącz panel dnia",
+          "description": "Pokaż lub ukryj panel dnia po prawej"
+        },
         "shortcuts": {
           "label": "Pomoc dotycząca skrótów klawiszowych",
           "description": "Pokaż listę skrótów klawiszowych"
@@ -2057,6 +2298,26 @@
         "actualSize": {
           "label": "Rzeczywisty rozmiar",
           "description": "Przywróć powiększenie 100%"
+        },
+        "foldFull": {
+          "label": "Zwinięcie: pełne",
+          "description": "Pokaż każde słowo notatki"
+        },
+        "foldBrief": {
+          "label": "Zwinięcie: krótkie",
+          "description": "Pokaż tylko kluczowe zdania, bez zmian"
+        },
+        "foldKey": {
+          "label": "Zwinięcie: kluczowe",
+          "description": "Pokaż każdy punkt wraz z uzasadnieniem"
+        },
+        "foldTakeaway": {
+          "label": "Zwinięcie: wniosek",
+          "description": "Pokaż jedną linię na akapit"
+        },
+        "foldTopic": {
+          "label": "Zwinięcie: temat",
+          "description": "Pokaż notatkę jako mapę jej sekcji"
         }
       }
     },
@@ -2066,8 +2327,11 @@
       "systemWide": "W całym systemie",
       "globalCapture": "Globalny szybki zapis",
       "recordingHint": "Naciśnij klawisze… esc, aby anulować",
-      "reset": "Zresetuj",
-      "resetAll": "Przywróć wszystkie domyślne"
+      "resetAll": "Przywróć wszystkie domyślne",
+      "sticky": "Karteczka"
+    },
+    "sticky": {
+      "description": "Otwieraj karteczkę z dowolnej aplikacji, gdy memrynote jest uruchomione"
     }
   },
   "phaseF": {
@@ -2112,7 +2376,17 @@
       "clockSkewDetected": "Wykryto przesunięcie zegara",
       "items": "elementów",
       "willSyncWhenBackOnline": "Synchronizacja nastąpi po powrocie do trybu online",
-      "openSyncSettings": "Otwórz ustawienia synchronizacji"
+      "stalled": "Zmiany nie były synchronizowane od dłuższego czasu. Spróbuj Synchronizuj teraz.",
+      "openSyncSettings": "Otwórz ustawienia synchronizacji",
+      "repairDeviceKeys": "Napraw",
+      "signInToRepair": "Zaloguj się ponownie, aby skonfigurować klucze tego urządzenia. Niezsynchronizowane notatki, zadania i projekty zostaną zachowane. Może być potrzebna fraza odzyskiwania.",
+      "repairFailed": "Nie udało się naprawić kluczy tego urządzenia. Spróbuj ponownie.",
+      "syncNotStarted": {
+        "vault-binding": "Klucze tego urządzenia zostały przywrócone, ale ten sejf nie jest jeszcze ustawiony na synchronizację z Twoim kontem. Wybierz sposób synchronizacji z menu synchronizacji.",
+        "vault-foreign": "Klucze tego urządzenia zostały przywrócone, ale ten sejf należy do innego konta. Pozostaje lokalny na tym urządzeniu.",
+        "entitlement": "Klucze tego urządzenia zostały przywrócone, ale synchronizacja wymaga aktywnego planu Sync.",
+        "unavailable": "Klucze tego urządzenia zostały przywrócone, ale nie udało się uruchomić synchronizacji. Zostanie ponowiona; jeśli nie ruszy, uruchom Memry ponownie."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2128,7 +2402,6 @@
       "failedToResendCode": "Nie udało się ponownie wysłać kodu",
       "failedToSetUpDevice": "Nie udało się skonfigurować urządzenia",
       "failedToConfirmRecoveryPhrase": "Nie udało się potwierdzić frazy odzyskiwania",
-      "failedToAnalyzeContent": "Nie udało się przeanalizować treści",
       "failedToLoadUpdaterState": "Nie udało się załadować stanu aktualizatora",
       "failedToCheckForUpdates": "Nie udało się sprawdzić dostępności aktualizacji",
       "failedToDownloadUpdate": "Nie udało się pobrać aktualizacji",
@@ -2143,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Nie udało się załadować ustawień edytora notatek",
       "failedToUpdateSettings": "Nie udało się zaktualizować ustawień",
       "failedToLoadTabSettings": "Nie udało się załadować ustawień kart",
-      "failedToLoadNotes": "Nie udało się załadować notatek",
       "failedToLoadTags": "Nie udało się załadować tagów",
-      "failedToLoadTasks": "Nie udało się załadować zadań",
       "failedToLoadVaultStatus": "Nie udało się załadować stanu sejfu",
       "failedToSelectVault": "Nie udało się wybrać sejfu",
       "failedToCloseVault": "Nie udało się zamknąć sejfu",
@@ -2159,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Dostęp do lokalnego serwera dla zewnętrznych klientów MCP."
     },
-    "groups": {
-      "connection": "Połączenie",
-      "access": "Dostęp"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Użyj tego punktu końcowego localhost w aplikacjach Cursor, Claude Desktop lub Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Token Bearer",
-        "description": "Poświadczenie przechowywane w pamięci na czas tego uruchomienia aplikacji."
+        "label": "Token Bearer"
       }
     },
     "actions": {
@@ -2195,11 +2460,6 @@
       "title": "Uprawnienia agenta",
       "subtitle": "Wybierz domyślny dostęp, potwierdzenia i lokalnych dostawców dla Czatu z agentem."
     },
-    "groups": {
-      "cliAgents": "Agenci CLI",
-      "local": "Lokalny dostawca zgodny z OpenAI",
-      "actions": "Testy połączenia"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2222,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Uprawnienia agenta",
       "access": {
-        "label": "Domyślny dostęp",
         "description": "Ustawia początkowy tryb dostępu dla nowych tur agenta.",
         "vaultOnly": "Tylko sejf",
         "computerAccess": "Dostęp do komputera",
         "builtInNote": "Wbudowane połączenie z modelem zawsze używa tylko narzędzi sejfu."
       },
       "confirm": {
-        "label": "Potwierdzaj działania",
         "description": "Wybierz, czy wywołania narzędzi mają działać automatycznie, czy czekać na zatwierdzenie w czacie. Zablokowane notatki i foldery pozostają tylko do odczytu w obu trybach.",
         "alwaysAllow": "Zawsze zezwalaj",
         "askBeforeChanges": "Pytaj przed zmianami"
@@ -2259,6 +2516,12 @@
         "label": "Model",
         "description": "Wybierz zwrócony model lub wpisz go ręcznie."
       },
+      "thinking": {
+        "label": "Myślenie",
+        "description": "Wyłączone prosi modele w stylu DeepSeek o pominięcie myślenia, aby odpowiedzi były szybsze i tańsze.",
+        "default": "Domyślne",
+        "off": "Wyłączone"
+      },
       "apiKey": {
         "label": "Klucz API",
         "description": "Opcjonalne poświadczenie przechowywane w pęku kluczy systemu operacyjnego.",
@@ -2266,26 +2529,31 @@
       }
     },
     "actions": {
-      "save": "Zapisz",
-      "models": "Modele",
-      "test": "Sprawdź połączenie",
-      "probe": "Sprawdź narzędzia"
+      "test": "Sprawdź połączenie"
     },
     "status": {
       "label": "Połączenie",
       "checking": "Sprawdzanie…",
       "connected": "Połączono",
-      "disconnected": "Rozłączono",
-      "toolsDisabled": "Narzędzia wyłączone",
-      "fullTools": "Wszystkie narzędzia włączone"
+      "disconnected": "Rozłączono"
     },
     "alwaysAllowed": {
-      "group": "Zawsze dozwolone",
       "description": "Narzędzia, którym udzielono stałego zatwierdzenia w tym sejfie. Usuwania nigdy nie można tak zatwierdzić.",
       "empty": "Nic nie jest zawsze dozwolone. Każda zmiana nadal wymaga potwierdzenia.",
       "revoke": "Wycofaj",
       "revokeLabel": "Wycofaj stałe zatwierdzenie dla narzędzia {tool}",
       "ignoredInPageReview": "Ignorowane: edycje notatek i dziennika zawsze wymagają potwierdzenia."
+    },
+    "memory": {
+      "group": "Pamięć",
+      "description": "Agenci działają w folderze przechowywanym dla tego sejfu, poza sejfem, więc to, co tam zapiszą, przechodzi do następnej rozmowy.",
+      "clear": "Wyczyść pamięć agentów",
+      "clearDescription": "Usuwa to, co agenci zapisali o tym sejfie. Notatki i historia czatów zostają.",
+      "clearAction": "Wyczyść",
+      "cleared": "Pamięć agentów wyczyszczona.",
+      "failed": "Nie udało się wyczyścić pamięci agentów.",
+      "confirmTitle": "Wyczyścić pamięć agentów?",
+      "confirmDescription": "Agenci utracą to, co zapisali o tym sejfie, w tym pamięć projektu Claude Code dla niego. Tej operacji nie można cofnąć. Notatki i historia czatów zostają."
     },
     "v2": {
       "permissions": {

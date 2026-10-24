@@ -10,7 +10,14 @@
  * decrypted, so the tampered cases below have exactly one correct outcome.
  */
 import { describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  base64_variants,
+  from_base64,
+  from_hex,
+  ready,
+  to_base64,
+  to_hex
+} from 'libsodium-wrappers-sumo'
 
 import {
   decryptAttachmentManifest,
@@ -41,18 +48,15 @@ const vectors = loadVectorFile<{
   cases: Case[]
 }>('attachment-manifest.json')
 
-await sodium.ready
+await ready
 
-const vaultKey = sodium.from_hex(vectors.meta.vaultKeyHex)
-const signerPublicKey = sodium.from_base64(
-  vectors.meta.signerPublicKeyB64,
-  sodium.base64_variants.ORIGINAL
-)
+const vaultKey = from_hex(vectors.meta.vaultKeyHex)
+const signerPublicKey = from_base64(vectors.meta.signerPublicKeyB64, base64_variants.ORIGINAL)
 
 /** The production reader's crypto seam, over real libsodium. */
 const reader = {
-  fromBase64: (value: string) => sodium.from_base64(value, sodium.base64_variants.ORIGINAL),
-  toBase64: (bytes: Uint8Array) => sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL),
+  fromBase64: (value: string) => from_base64(value, base64_variants.ORIGINAL),
+  toBase64: (bytes: Uint8Array) => to_base64(bytes, base64_variants.ORIGINAL),
   verifyDetached: async (signature: Uint8Array, message: Uint8Array, publicKey: Uint8Array) =>
     sodium.crypto_sign_verify_detached(signature, message, publicKey),
   unwrapFileKey: async (wrapped: Uint8Array, nonce: Uint8Array, key: Uint8Array) =>
@@ -84,7 +88,7 @@ describe('attachment-manifest vectors', () => {
           signerPublicKey
         )
         expect(manifest, entry.pins).toEqual(entry.manifest)
-        expect(sodium.to_hex(fileKey)).toBe(vectors.meta.fileKeyHex)
+        expect(to_hex(fileKey)).toBe(vectors.meta.fileKeyHex)
       })
 
       it('records the manifest body byte for byte', () => {
@@ -106,10 +110,10 @@ describe('attachment-manifest vectors', () => {
     // or worse succeed on attacker-chosen bytes.
     const base = vectors.cases[0].envelope
     const swaps: Array<[string, EncryptedAttachmentManifest]> = [
-      ['encryptedManifest', { ...base, encryptedManifest: sodium.to_base64(new Uint8Array(8)) }],
-      ['manifestNonce', { ...base, manifestNonce: sodium.to_base64(new Uint8Array(24)) }],
-      ['encryptedFileKey', { ...base, encryptedFileKey: sodium.to_base64(new Uint8Array(48)) }],
-      ['keyNonce', { ...base, keyNonce: sodium.to_base64(new Uint8Array(24)) }]
+      ['encryptedManifest', { ...base, encryptedManifest: to_base64(new Uint8Array(8)) }],
+      ['manifestNonce', { ...base, manifestNonce: to_base64(new Uint8Array(24)) }],
+      ['encryptedFileKey', { ...base, encryptedFileKey: to_base64(new Uint8Array(48)) }],
+      ['keyNonce', { ...base, keyNonce: to_base64(new Uint8Array(24)) }]
     ]
 
     for (const [field, envelope] of swaps) {

@@ -90,13 +90,13 @@ describe('buildPack / parsePack round trip', () => {
 })
 
 describe('openPack streaming assembly', () => {
-  const planOf = (entry: PackEntryInput): PackEntryPlan => ({
-    kind: entry.kind,
-    id: entry.id,
-    sourceKey: entry.sourceKey,
-    sortKey: entry.sortKey,
-    sizeBytes: entry.bytes.length,
-    ...(entry.meta ? { meta: entry.meta } : {})
+  const planOf = (source: PackEntryInput): PackEntryPlan => ({
+    kind: source.kind,
+    id: source.id,
+    sourceKey: source.sourceKey,
+    sortKey: source.sortKey,
+    sizeBytes: source.bytes.length,
+    ...(source.meta ? { meta: source.meta } : {})
   })
 
   it('produces byte-identical files to buildPack for the same entries', async () => {

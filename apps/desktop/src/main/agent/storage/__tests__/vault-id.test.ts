@@ -64,6 +64,7 @@ describe('getOrCreateVaultUuid', () => {
     let selects = 0
     const counting = new Proxy(sqlite, {
       get(target, prop, receiver) {
+        // oxlint-disable-next-line anti-slop/no-reflect-get -- Proxy trap forwarding to the real better-sqlite3 handle, receiver included
         const value = Reflect.get(target, prop, receiver)
         if (prop !== 'prepare') return typeof value === 'function' ? value.bind(target) : value
         return (source: string) => {
@@ -71,7 +72,7 @@ describe('getOrCreateVaultUuid', () => {
           return target.prepare(source)
         }
       }
-    }) as Database.Database
+    })
     const countedDb = drizzle(counting, { schema })
 
     // #when the same vault identity is resolved from several call sites

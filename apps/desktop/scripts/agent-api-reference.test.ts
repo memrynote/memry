@@ -28,8 +28,8 @@ const fromContracts = createRequire(
 type ValidateFunction = ((data: unknown) => boolean) & { errors?: unknown }
 type Validator = {
   addVocabulary(keywords: string[]): unknown
-  addSchema(schema: object): unknown
-  compile(schema: object): unknown
+  addSchema(schema: Record<string, unknown>): unknown
+  compile(schema: Record<string, unknown>): unknown
   getSchema(ref: string): ValidateFunction | undefined
 }
 const { default: Ajv2020 } = fromContracts('ajv/dist/2020') as {

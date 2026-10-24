@@ -56,7 +56,7 @@ export function resolveNoteSyncPolicy(
 export function buildCanonicalNoteMetadata(input: UpsertCanonicalNoteInput): NewNoteMetadata {
   const propertyDefinitionNames =
     input.propertyDefinitionNames ??
-    (input.properties ? Object.keys(input.properties).sort((a, b) => a.localeCompare(b)) : null)
+    (input.properties ? Object.keys(input.properties).toSorted((a, b) => a.localeCompare(b)) : null)
   // `undefined` means "caller had nothing to say", and it must survive as
   // undefined: upsertNoteMetadata's onConflictDoUpdate writes every key it is
   // given, and drizzle drops only undefined. Materialising `null` here turned

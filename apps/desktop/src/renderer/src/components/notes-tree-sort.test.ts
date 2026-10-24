@@ -31,12 +31,12 @@ const names = (items: { name: string }[]): string[] => items.map((i) => i.name)
 
 describe('sidebar sort modes', () => {
   it('sorts notes by title, case-insensitively, in both directions', () => {
-    expect([...NOTES].sort(compareNotes('name-asc', {})).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('name-asc', {})).map((n) => n.title)).toEqual([
       'alpha',
       'Beta',
       'Gamma'
     ])
-    expect([...NOTES].sort(compareNotes('name-desc', {})).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('name-desc', {})).map((n) => n.title)).toEqual([
       'Gamma',
       'Beta',
       'alpha'
@@ -44,17 +44,17 @@ describe('sidebar sort modes', () => {
   })
 
   it('sorts notes by modified and created independently', () => {
-    expect([...NOTES].sort(compareNotes('modified-desc', {})).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('modified-desc', {})).map((n) => n.title)).toEqual([
       'alpha',
       'Gamma',
       'Beta'
     ])
-    expect([...NOTES].sort(compareNotes('created-desc', {})).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('created-desc', {})).map((n) => n.title)).toEqual([
       'Beta',
       'Gamma',
       'alpha'
     ])
-    expect([...NOTES].sort(compareNotes('created-asc', {})).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('created-asc', {})).map((n) => n.title)).toEqual([
       'alpha',
       'Gamma',
       'Beta'
@@ -62,7 +62,7 @@ describe('sidebar sort modes', () => {
   })
 
   it('falls back to newest-first for notes with no stored position in manual mode', () => {
-    expect([...NOTES].sort(compareNotes('manual', {})).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('manual', {})).map((n) => n.title)).toEqual([
       'alpha',
       'Gamma',
       'Beta'
@@ -71,7 +71,7 @@ describe('sidebar sort modes', () => {
 
   it('honours stored positions in manual mode', () => {
     const positions = { 'Beta.md': 0, 'Gamma.md': 1, 'alpha.md': 2 }
-    expect([...NOTES].sort(compareNotes('manual', positions)).map((n) => n.title)).toEqual([
+    expect([...NOTES].toSorted(compareNotes('manual', positions)).map((n) => n.title)).toEqual([
       'Beta',
       'Gamma',
       'alpha'
@@ -87,7 +87,7 @@ describe('sidebar sort modes', () => {
       { name: 'apple', path: 'apple' }
     ]
     for (const mode of ['modified-desc', 'modified-asc', 'created-desc', 'created-asc'] as const) {
-      expect(names([...folders].sort(compareFolders(mode, {})))).toEqual(['apple', 'Zeta'])
+      expect(names([...folders].toSorted(compareFolders(mode, {})))).toEqual(['apple', 'Zeta'])
     }
   })
 
@@ -98,8 +98,8 @@ describe('sidebar sort modes', () => {
       { name: 'alpha', path: 'alpha' },
       { name: 'Alpha', path: 'Alpha' }
     ]
-    const sorted = names([...folders].sort(compareFolders('name-asc', {})))
-    expect(sorted).toEqual(['alpha', 'Alpha'].sort((a, b) => a.localeCompare(b)))
+    const sorted = names([...folders].toSorted(compareFolders('name-asc', {})))
+    expect(sorted).toEqual(['alpha', 'Alpha'].toSorted((a, b) => a.localeCompare(b)))
     expect(sorted[0]).not.toBe(sorted[1])
   })
 
@@ -108,7 +108,7 @@ describe('sidebar sort modes', () => {
       { name: 'Zeta', path: 'Zeta' },
       { name: 'apple', path: 'apple' }
     ]
-    expect(names([...folders].sort(compareFolders('name-desc', {})))).toEqual(['Zeta', 'apple'])
+    expect(names([...folders].toSorted(compareFolders('name-desc', {})))).toEqual(['Zeta', 'apple'])
   })
 })
 

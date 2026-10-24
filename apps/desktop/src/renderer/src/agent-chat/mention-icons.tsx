@@ -36,6 +36,7 @@ export type MentionAttachment = AttachmentInput & {
   icon: MentionIconSpec
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- switch is exhaustive over AttachmentInput['kind'] (checked by tsc)
 export function mentionColorForKind(kind: AttachmentInput['kind']): string {
   switch (kind) {
     case 'note':
@@ -86,6 +87,7 @@ function InboxMentionIcon({
   }
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- switch is exhaustive over MentionIconSpec['kind'] (checked by tsc)
 export function MentionIcon({
   icon,
   className

@@ -77,6 +77,7 @@ describe('expectedEncryptedTotal', () => {
 
     // #then
     expect(ceiling).toBe(1064)
+    // oxlint-disable-next-line oxc/const-comparisons -- the self-comparison is the assertion: exactly at the ceiling is not over it
     expect(ceiling > ceiling).toBe(false) // exactly at the limit: accepted
     expect(ceiling + 1 > ceiling).toBe(true) // one byte over: rejected
   })

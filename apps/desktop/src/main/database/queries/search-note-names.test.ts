@@ -15,7 +15,7 @@ describe('search by other names', () => {
   beforeEach(() => {
     indexDb = createTestIndexDb()
     dataDb = createTestDataDb()
-    initializeFts(indexDb.db as never)
+    initializeFts(indexDb.db)
     initializeFtsTasks(dataDb.db as never)
     initializeFtsInbox(dataDb.db as never)
   })
@@ -42,11 +42,11 @@ describe('search by other names', () => {
         VALUES (${id}, ${nameKey(alias)}, ${alias}, 'alias')
       `)
     }
-    insertFtsNote(indexDb.db as never, id, title, content, [])
+    insertFtsNote(indexDb.db, id, title, content, [])
   }
 
   function search(text: string, types: ContentType[] = ['note']) {
-    return searchAll(indexDb.db as never, dataDb.db as never, {
+    return searchAll(indexDb.db, dataDb.db as never, {
       text,
       types,
       tags: [],

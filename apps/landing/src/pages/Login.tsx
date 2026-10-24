@@ -117,7 +117,7 @@ export function LoginPage() {
       await registerWebDevice({ setupToken: res.setupToken, baseUrl: SYNC_SERVER_URL, storage })
       refreshSignedIn()
       trackLandingEvent('landing_account_signin', 'auth:otp')
-      navigate(safeNextPath(next))
+      void navigate(safeNextPath(next))
     } catch (e) {
       setError(authErrorMessage(e, 'Invalid code'))
     } finally {

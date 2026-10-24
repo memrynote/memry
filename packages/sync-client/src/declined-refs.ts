@@ -23,8 +23,10 @@ export interface DeclinedRef {
 const isDeclinedRef = (value: unknown): value is DeclinedRef =>
   typeof value === 'object' &&
   value !== null &&
-  typeof (value as DeclinedRef).type === 'string' &&
-  typeof (value as DeclinedRef).id === 'string'
+  'type' in value &&
+  typeof value.type === 'string' &&
+  'id' in value &&
+  typeof value.id === 'string'
 
 export function listDeclinedRefs(db: DrizzleDb): DeclinedRef[] {
   const row = db

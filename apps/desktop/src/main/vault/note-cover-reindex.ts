@@ -60,7 +60,7 @@ async function writeNoteCovers(input: NoteCoverReindexInput): Promise<number | n
     if (shouldStop()) return null
 
     const before = getNoteCacheById(indexDb, noteId)
-    if (!before || before.fileType !== 'markdown' || before.cover !== null) continue
+    if (before?.fileType !== 'markdown' || before.cover !== null) continue
 
     let raw: string | null
     try {

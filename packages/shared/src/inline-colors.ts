@@ -28,16 +28,12 @@
  * to them keep valid CommonMark flanking (`:*em*:` parses, `x*em*x` does not).
  */
 
+import { isObject } from './is-record.ts'
+
 export interface InlineColorStyles {
   textColor?: string
   backgroundColor?: string
   underline?: boolean
-}
-
-interface StyledText {
-  type: string
-  text: string
-  styles: Record<string, unknown>
 }
 
 interface InlineNode {
@@ -64,9 +60,18 @@ interface TableContent {
 // Both shapes must be walked: a cell we fail to recognize on the parse side
 // keeps its masking tokens and writes them into the vault as literal text.
 function cellInlineContent(cell: unknown): InlineNode[] | null {
-  if (Array.isArray(cell)) return cell as InlineNode[]
-  const content = (cell as { content?: unknown } | null)?.content
-  return Array.isArray(content) ? (content as InlineNode[]) : null
+  if (Array.isArray(cell)) return cell
+  const content = isObject(cell) ? cell.content : undefined
+  return Array.isArray(content) ? content : null
+}
+
+/** `cell` with its inline content replaced, in whichever shape the cell has. */
+function withCellContent(cell: unknown, content: InlineNode[]): unknown {
+  return Array.isArray(cell) ? content : { ...(isObject(cell) ? cell : {}), content }
+}
+
+function isTableContent(content: unknown): content is TableContent {
+  return isObject(content) && content.type === 'tableContent'
 }
 
 const openToken = (index: number): string => `MEMRYICO${index}:`
@@ -228,12 +233,7 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
         // around the node are what carries the colour to disk.
         out.push(item)
       } else {
-        const {
-          textColor: _t,
-          backgroundColor: _b,
-          underline: _u,
-          ...rest
-        } = styled as InlineColorStyles & Record<string, unknown>
+        const { textColor: _t, backgroundColor: _b, underline: _u, ...rest } = styled ?? {}
         out.push({ ...item, styles: rest })
       }
       changed = true
@@ -251,7 +251,7 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
         const wrapped = wrapInline(inline)
         if (wrapped === inline) return cell
         changed = true
-        return Array.isArray(cell) ? wrapped : { ...(cell as object), content: wrapped }
+        return withCellContent(cell, wrapped)
       })
       return { ...row, cells }
     })
@@ -269,10 +269,10 @@ export function extractInlineColorRuns(blocks: BlockNode[]): {
       if (block.type === 'codeBlock') {
         // content is left as it is
       } else if (Array.isArray(block.content)) {
-        const content = wrapInline(block.content as InlineNode[])
+        const content = wrapInline(block.content)
         if (content !== block.content) next = { ...next, content }
-      } else if ((block.content as TableContent | undefined)?.type === 'tableContent') {
-        const table = wrapTable(block.content as TableContent)
+      } else if (isTableContent(block.content)) {
+        const table = wrapTable(block.content)
         if (table) next = { ...next, content: table }
       }
       if (Array.isArray(block.children) && block.children.length > 0) {
@@ -406,9 +406,9 @@ export function stripInlineStyleSpanTags(markdown: string): string {
 }
 
 function mergeActive(
-  styles: Record<string, unknown>,
+  styles: Record<string, unknown> | undefined,
   active: InlineColorStyles[]
-): Record<string, unknown> {
+): Record<string, unknown> | undefined {
   if (active.length === 0) return styles
   return Object.assign({}, styles, ...active)
 }
@@ -432,14 +432,12 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
         out.push(item)
         continue
       }
-      // SAFETY: `item.text` was just checked to be a string, so this is a text run.
-      const run = item as unknown as StyledText
       let last = 0
       TOKEN_REGEX.lastIndex = 0
-      for (const match of run.text.matchAll(TOKEN_REGEX)) {
-        const plain = run.text.slice(last, match.index)
+      for (const match of item.text.matchAll(TOKEN_REGEX)) {
+        const plain = item.text.slice(last, match.index)
         if (plain) {
-          out.push({ ...run, text: plain, styles: mergeActive(run.styles, active) })
+          out.push({ ...item, text: plain, styles: mergeActive(item.styles, active) })
         }
         last = match.index + match[0].length
         const openIndex = match[1]
@@ -449,15 +447,15 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
             active.push(span.styles)
           } else {
             // No matching masked span: the text happened to look like a token.
-            out.push({ ...run, text: match[0], styles: mergeActive(run.styles, active) })
+            out.push({ ...item, text: match[0], styles: mergeActive(item.styles, active) })
           }
         } else if (active.length > 0) {
           active.pop()
         }
       }
-      const tail = run.text.slice(last)
+      const tail = item.text.slice(last)
       if (tail) {
-        out.push({ ...run, text: tail, styles: mergeActive(run.styles, active) })
+        out.push({ ...item, text: tail, styles: mergeActive(item.styles, active) })
       }
     }
     return out
@@ -471,7 +469,7 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
         const inline = cellInlineContent(cell)
         if (!inline) return cell
         const applied = applyInline(inline, [])
-        return Array.isArray(cell) ? applied : { ...(cell as object), content: applied }
+        return withCellContent(cell, applied)
       })
     }))
   })
@@ -485,7 +483,7 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
         if (Array.isArray(block.content)) {
           next = {
             ...next,
-            content: (block.content as InlineNode[]).map((item) =>
+            content: block.content.map((item: InlineNode) =>
               typeof item.text === 'string'
                 ? { ...item, text: restoreTokensInText(item.text, spans) }
                 : item
@@ -493,9 +491,9 @@ export function applyInlineColorTokens(blocks: BlockNode[], spans: MaskedColorSp
           }
         }
       } else if (Array.isArray(block.content)) {
-        next = { ...next, content: applyInline(block.content as InlineNode[], []) }
-      } else if ((block.content as TableContent | undefined)?.type === 'tableContent') {
-        next = { ...next, content: applyTable(block.content as TableContent) }
+        next = { ...next, content: applyInline(block.content, []) }
+      } else if (isTableContent(block.content)) {
+        next = { ...next, content: applyTable(block.content) }
       }
       if (Array.isArray(block.children) && block.children.length > 0) {
         next = { ...next, children: applyBlocks(block.children) }

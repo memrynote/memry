@@ -64,6 +64,7 @@ export const InlinePriorityPopover = ({
   return (
     <Picker
       value={priority}
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the picker's option list is the closed Priority set; its onValueChange types the value as string
       onValueChange={(v) => onPriorityChange(v as Priority)}
       open={open}
       onOpenChange={onOpenChange}

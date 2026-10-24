@@ -15,19 +15,13 @@
       "showWithCount": "הצגת פריטים מושהים ({count})",
       "hide": "הסתרת פריטים מושהים"
     },
-    "density": {
-      "toComfortable": "תצוגה מרווחת",
-      "toCompact": "תצוגה קומפקטית"
-    },
     "filter": {
-      "button": "סינון",
       "byType": "סינון לפי סוג",
       "active": "{count, plural, one {סינון לפי סוג אחד} other {סינון לפי # סוגים}}",
       "clearAll": "ניקוי הכול"
     },
     "jobs": {
-      "running": "{count, plural, one {תהליך רקע אחד פועל} other {# תהליכי רקע פועלים}}",
-      "failed": "{count} נכשלו"
+      "running": "{count, plural, one {תהליך רקע אחד פועל} other {# תהליכי רקע פועלים}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "יצירת \"{name}\"",
     "addTags": "הוספת תגיות…",
     "linkToNote": "קישור לפתק",
-    "linkANote": "קישור פתק",
-    "suggestedCount": "{count} מוצעים",
-    "linkNotesPlaceholder": "קישור פתקים…",
     "linkOrCreateNotePlaceholder": "חיפוש או יצירה של פתק…",
     "createNote": "יצירת \"{title}\"",
     "pendingNote": "פתק חדש",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "נתוני תזכורת אינם זמינים.",
     "triggered": "התזכורת הופעלה",
-    "noteLabel": "הערת תזכורת",
     "source": "מקור",
     "journalTitle": "יומן — {date}",
     "noteFallback": "פתק",
@@ -514,9 +504,7 @@
       "settings": "הגדרות",
       "processing": "מעבד…",
       "cancelRecording": "ביטול ההקלטה",
-      "cancel": "ביטול",
       "stopRecording": "עצירת ההקלטה",
-      "stop": "עצירה",
       "recordingError": "אירעה שגיאה בהקלטה",
       "microphoneAccessDenied": "הגישה למיקרופון נדחתה",
       "noMicrophoneFound": "לא נמצא מיקרופון",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {פריט מושהה אחד} other {# פריטים מושהים}}",
     "notificationBody": "{count, plural, one {הפריט המושהה מוכן לטיפול} other {הפריטים המושהים מוכנים לטיפול}}",
     "toast": "{count, plural, =1 {\"{itemTitle}\" חזר מההשהיה} one {\"{itemTitle}\" חזר מההשהיה} other {# פריטים מושהים חזרו}}"
+  },
+  "sticky": {
+    "kindLabel": "שליחה כ",
+    "kinds": {
+      "note": "פתק",
+      "task": "משימה",
+      "journal": "יומן"
+    },
+    "placeholders": {
+      "note": "רושמים כאן…",
+      "task": "להתקשר לאנה @מחר #בית !גבוה",
+      "journal": "הוספה ליומן של היום…"
+    },
+    "saving": "שומר…",
+    "saved": "נשמר",
+    "saveFailed": "לא נשמר",
+    "tuck": "הסתרה",
+    "send": "שליחה",
+    "hints": "Esc הסתרה · {mod}⌫ מחיקה",
+    "sendAndCloseHint": "⌥{mod}↵ שולח וסוגר",
+    "deleted": "הטיוטה נמחקה",
+    "open": "פתיחה",
+    "undo": "ביטול",
+    "sent": {
+      "note": "נשמר בתיקיית Sticky",
+      "task": "המשימה נוספה",
+      "journal": "נוסף ליומן של היום"
+    },
+    "tab": {
+      "label": "{count, plural, one {טיוטת פתק דביק אחת} other {# טיוטות פתק דביק}}",
+      "newSticky": "פתק דביק חדש"
+    },
+    "errors": {
+      "empty": "צריך לכתוב משהו קודם.",
+      "taskFailed": "לא ניתן ליצור את המשימה.",
+      "tasksOff": "המשימות כבויות בהגדרות.",
+      "journalOff": "היומן כבוי בהגדרות.",
+      "sendFailed": "לא ניתן לשלוח את הפתק הדביק.",
+      "undoExpired": "מאוחר מדי לבטל את זה.",
+      "undoFailed": "לא ניתן לבטל את השליחה."
+    },
+    "inputLabel": "טקסט הפתק הדביק",
+    "dismissError": "סגירה"
   }
 }

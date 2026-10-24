@@ -7,10 +7,11 @@ export function useClickOutside<T extends HTMLElement>(
   enabled: boolean = true
 ) {
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
 
     const listener = (event: MouseEvent | TouchEvent) => {
       const el = ref.current
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       if (!el || el.contains(event.target as Node)) {
         return
       }

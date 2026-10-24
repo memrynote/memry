@@ -57,10 +57,10 @@ describe('withCollaborationIfLive', () => {
     // #then the text is in the CRDT, not only in the editor. Asserted on the
     // encoded state as well as the fragment so a fragment that merely holds a
     // detached node cannot pass.
-    expect(fragment.toString()).toContain('kaan was here')
+    expect(fragment.toJSON()).toContain('kaan was here')
     const replica = new Y.Doc()
     Y.applyUpdate(replica, Y.encodeStateAsUpdate(doc))
-    expect(replica.getXmlFragment('document-store').toString()).toContain('kaan was here')
+    expect(replica.getXmlFragment('document-store').toJSON()).toContain('kaan was here')
   })
 
   it('binds the same fragment a second editor already populated', () => {
@@ -111,6 +111,6 @@ describe('withCollaborationIfLive', () => {
 
     // #then
     expect(result.extensions).toContain(marker)
-    expect(result.extensions!.length).toBeGreaterThan(1)
+    expect(result.extensions.length).toBeGreaterThan(1)
   })
 })

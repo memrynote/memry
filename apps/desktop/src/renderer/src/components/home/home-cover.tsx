@@ -58,8 +58,11 @@ const UNSPLASH_FAILURES = new Set<string>([
 /** Main's failure set spans every source; each picker tab names only its own. */
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- the type parameter is the caller's assertion about data crossing an untyped boundary (JSON, IPC, mock lookup) or a type-level equality check
 function narrowFailure<T extends string>(reason: HomePageCoverFailure, known: Set<string>): T {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- each picker tab passes the failure subset it renders; the set membership check is the narrowing
   return (known.has(reason) ? reason : 'failed') as T
 }
+
+const refOf = (page: HomePage) => page.cover?.ref ?? ''
 
 /**
  * A failure throws an empty `Error`, so the picker shows its own translated
@@ -67,7 +70,6 @@ function narrowFailure<T extends string>(reason: HomePageCoverFailure, known: Se
  */
 function boardCoverImageTarget(boardId: string): CoverImageTarget {
   const set = (source: HomePageCoverSource) => window.api.homePages.setCover(boardId, source)
-  const refOf = (page: HomePage) => page.cover?.ref ?? ''
   return {
     key: boardId,
     upload: async (file) => {

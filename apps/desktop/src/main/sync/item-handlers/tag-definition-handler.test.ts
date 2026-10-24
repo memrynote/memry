@@ -375,7 +375,7 @@ describe('tagDefinitionHandler versioned schema', () => {
     testDb.close()
   })
 
-  function seed(schema: object | null, clock: VectorClock): void {
+  function seed(schema: Record<string, unknown> | null, clock: VectorClock): void {
     testDb.db
       .insert(tagDefinitions)
       .values({

@@ -52,7 +52,7 @@ async function importPdf(page: Page): Promise<string> {
 
   // Imported file notes surface in the list only after indexing — poll by
   // filename/title rather than assuming a fileType value.
-  let pdfId: string | null = null
+  let pdfId = null as string | null
   await expect
     .poll(
       async () => {
@@ -76,9 +76,9 @@ async function importPdf(page: Page): Promise<string> {
 async function openNoteInEditor(page: Page, noteId: string, title: string): Promise<void> {
   const storageKey = await tabSessionStorageKey(page)
   await page.addInitScript(
-    ({ id, t, storageKey }) => {
+    ({ id, t, storageKey: storageKeyArg }) => {
       localStorage.setItem(
-        storageKey,
+        storageKeyArg,
         JSON.stringify({
           version: 2,
           tabGroups: {
@@ -134,9 +134,9 @@ async function dropSidebarItem(page: Page, itemId: string): Promise<void> {
 /** Read a note's saved markdown through the app data layer (survives autosave debounce). */
 async function noteMarkdown(page: Page, id: string): Promise<string> {
   return page.evaluate(async (noteId) => {
-    const res = (await window.api.notes.get(noteId)) as Record<string, unknown>
-    const note = (res?.note ?? res) as Record<string, unknown> | undefined
-    return String(note?.content ?? note?.contentMarkdown ?? '')
+    const res = (await window.api.notes.get(noteId)) as unknown as Record<string, unknown>
+    const note = (res?.note ?? res) as { content?: string; contentMarkdown?: string } | undefined
+    return note?.content ?? note?.contentMarkdown ?? ''
   }, id)
 }
 

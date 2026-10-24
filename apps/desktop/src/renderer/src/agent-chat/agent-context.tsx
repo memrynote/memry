@@ -387,12 +387,7 @@ export function AgentProvider({
   useEffect(() => {
     for (const [conversationId, queue] of Object.entries(state.queuedTurns)) {
       const head = queue[0]
-      if (
-        !head ||
-        head.status !== 'queued' ||
-        head.editing ||
-        state.inFlight[conversationId] === true
-      ) {
+      if (head?.status !== 'queued' || head.editing || state.inFlight[conversationId] === true) {
         continue
       }
       dispatch({ type: 'start_queued_turn', conversationId, id: head.id })
@@ -471,7 +466,7 @@ export function AgentProvider({
   }, [t])
 
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
 
     const api = getAgentApi()
     let cancelled = false
@@ -577,7 +572,7 @@ export function AgentProvider({
   // transcript.
   useEffect(() => {
     const setStreamTarget = getAgentApi().setStreamTarget
-    if (!setStreamTarget) return
+    if (!setStreamTarget) return undefined
 
     const conversationId = active ? state.activeConversationId : null
     let cancelled = false

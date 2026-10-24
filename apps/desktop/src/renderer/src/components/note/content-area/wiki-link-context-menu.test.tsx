@@ -6,7 +6,7 @@ import { WikiLinkContextMenu } from './wiki-link-context-menu'
 const loadCard = vi.hoisted(() => vi.fn())
 vi.mock('./wiki-link-card-data', () => ({ loadWikiLinkCardContent: loadCard }))
 
-function noteWith(cover: object | null) {
+function noteWith(cover: Record<string, unknown> | null) {
   return { icon: null, text: null, cover }
 }
 
@@ -20,7 +20,7 @@ beforeEach(() => {
 async function openMenu(options: {
   display: DisplayProps
   editable?: boolean
-  onDisplayChange?: (patch: object) => void
+  onDisplayChange?: (patch: Record<string, unknown>) => void
 }) {
   render(
     <WikiLinkContextMenu

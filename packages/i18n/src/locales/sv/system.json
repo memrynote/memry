@@ -17,17 +17,22 @@
       "filterAll": "Alla filer"
     },
     "exportCancelled": "Export avbruten",
-    "update": {
-      "availableTitle": "Uppdatering tillgänglig",
-      "availableMessage": "memrynote {version} är tillgänglig.",
-      "availableDetailFallback": "Ladda ner uppdateringen nu?",
-      "buttonDownload": "Ladda ner",
-      "buttonLater": "Senare",
-      "readyTitle": "Uppdatering redo",
-      "readyMessage": "memrynote {version} har laddats ner.",
-      "readyDetailFallback": "Starta om memrynote för att slutföra installationen av uppdateringen.",
-      "buttonRestartNow": "Starta om nu",
-      "releaseNotesLabel": "Versionsinformation:"
+    "dataDbRecovery": {
+      "title": "Reparera valvets databas",
+      "message": "Memrys databas för det här valvet är skadad.",
+      "detail": "Dina anteckningar och dagboksfiler påverkas inte. Reparationen sparar den skadade databasen som säkerhetskopia i {path}, startar en ny, bygger upp det som går från dina valvfiler och återställer synkade objekt vid nästa synk. Ändringar som ännu inte hade synkats återskapas så långt det går.",
+      "buttonRecover": "Reparera",
+      "buttonLater": "Inte nu"
+    },
+    "obsidianVault": {
+      "title": "Öppna Obsidian-valv",
+      "message": "Öppna en kopia av det här Obsidian-valvet?",
+      "detail": "Att öppna ett Obsidian-valv i memrynote kan ta bort data som dina Obsidian-tillägg är beroende av. När memrynote gör om en tilläggsuppgiftsrad till en uppgift skrivs raden om. Fält som förfallodatum från tillägget Tasks lämnar filen, och Obsidian ser dem inte längre.\n\nmemrynote kan kopiera ”{name}” till ”{copyName}” bredvid och öppna kopian. ”{name}” förblir precis som den är.",
+      "detailExistingCopy": "Att öppna ett Obsidian-valv i memrynote kan ta bort data som dina Obsidian-tillägg är beroende av. När memrynote gör om en tilläggsuppgiftsrad till en uppgift skrivs raden om. Fält som förfallodatum från tillägget Tasks lämnar filen, och Obsidian ser dem inte längre.\n\nEn memrynote-kopia, ”{copyName}”, finns redan bredvid. memrynote kan öppna den kopian. ”{name}” förblir precis som den är.",
+      "buttonCopy": "Skapa kopia",
+      "buttonOpenCopy": "Öppna kopia",
+      "buttonOpenOriginal": "Öppna original",
+      "buttonCancel": "Avbryt"
     },
     "pair": {
       "title": "Parkoppla webbläsartillägg",

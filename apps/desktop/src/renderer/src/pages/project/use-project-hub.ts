@@ -115,7 +115,7 @@ export function deriveProgress(project: Project | null, tasks: Task[]): ProjectP
     done,
     total,
     pct: total === 0 ? 0 : Math.round((done / total) * 100),
-    statuses: [...project.statuses].sort(byOrder).map((status) => ({
+    statuses: project.statuses.toSorted(byOrder).map((status) => ({
       id: status.id,
       name: status.name,
       color: status.color,
@@ -153,7 +153,7 @@ export function useProjectHub(projectId: string | undefined): ProjectHubData {
   const rowTasks = useMemo(() => projectTasks.filter((t) => t.parentId === null), [projectTasks])
 
   useEffect(() => {
-    if (!projectId) return
+    if (!projectId) return undefined
 
     // Cancellation is per effect run, so a response for a project the user has
     // already navigated away from can never be stored.

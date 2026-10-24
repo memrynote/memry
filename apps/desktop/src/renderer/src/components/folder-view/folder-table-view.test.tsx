@@ -850,7 +850,7 @@ describe('GroupedTable', () => {
         columns={branchColumns}
         formulas={{ isLarge: 'score > 5' }}
         propertyTypes={{ done: 'checkbox' }}
-        groupBy={{ property: 'folder', collapsed: false } as any}
+        groupBy={{ property: 'folder', collapsed: false }}
         selectedRowIds={new Set(['note-1', 'note-2'])}
         onMoveToFolder={onMoveToFolder}
       />

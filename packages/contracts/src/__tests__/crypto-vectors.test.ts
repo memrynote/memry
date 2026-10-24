@@ -9,7 +9,15 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  base64_variants,
+  from_hex,
+  from_string,
+  ready,
+  to_base64,
+  to_hex,
+  to_string
+} from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import {
@@ -92,13 +100,13 @@ const loadVectors = () =>
 let vectors: Vectors
 
 beforeAll(async () => {
-  await sodium.ready
+  await ready
   vectors = loadVectors()
 })
 
-const hex = (bytes: Uint8Array): string => sodium.to_hex(bytes)
-const fromHex = (value: string): Uint8Array => sodium.from_hex(value)
-const utf8 = (value: string): Uint8Array => sodium.from_string(value)
+const hex = (bytes: Uint8Array): string => to_hex(bytes)
+const fromHex = (value: string): Uint8Array => from_hex(value)
+const utf8 = (value: string): Uint8Array => from_string(value)
 
 describe('crypto parity vectors', () => {
   it('pins the production Argon2id and XChaCha20 constants', () => {
@@ -163,7 +171,7 @@ describe('crypto parity vectors', () => {
       )
     ).toBe(true)
 
-    expect(sodium.to_hex(sodium.crypto_generichash(16, pair.publicKey, null))).toBe(v.deviceIdHex)
+    expect(to_hex(sodium.crypto_generichash(16, pair.publicKey, null))).toBe(v.deviceIdHex)
   })
 
   it('reproduces crypto_kdf_derive_from_key for all 7 production contexts', () => {
@@ -237,7 +245,7 @@ describe('crypto parity vectors', () => {
     expect(hex(masterKey)).toBe(v.masterKeyHex)
 
     const verifierKey = sodium.crypto_kdf_derive_from_key(32, 4, 'memrykve', masterKey)
-    expect(sodium.to_base64(verifierKey, sodium.base64_variants.ORIGINAL)).toBe(v.keyVerifierBase64)
+    expect(to_base64(verifierKey, base64_variants.ORIGINAL)).toBe(v.keyVerifierBase64)
 
     const vaultKey = sodium.crypto_kdf_derive_from_key(32, 1, 'memryvlt', masterKey)
     expect(hex(vaultKey)).toBe(v.vaultKeyHex)
@@ -258,7 +266,7 @@ describe('crypto parity vectors', () => {
       fromHex(v.dataNonceHex),
       fileKey
     )
-    expect(sodium.to_string(plaintext)).toBe(v.plaintextMarkdownUtf8)
+    expect(to_string(plaintext)).toBe(v.plaintextMarkdownUtf8)
     expect(createHash('sha256').update(Buffer.from(plaintext)).digest('hex')).toBe(
       v.plaintextSha256Hex
     )
@@ -322,12 +330,12 @@ function productionKdfMap(relativePath: string): Array<{ name: string; ctx: stri
     const name = COMPUTED_KEYS[m[1]]
     if (name) rows.push({ name, ctx: m[2], id: Number(m[3]) })
   }
-  return rows.sort((a, b) => a.id - b.id)
+  return rows.toSorted((a, b) => a.id - b.id)
 }
 
 describe('KDF context table parity (T054)', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   for (const source of KDF_MAP_SOURCES) {
@@ -338,10 +346,10 @@ describe('KDF context table parity (T054)', () => {
         `no KDF_CONTEXT_MAP rows found in ${source.path}. If the map moved, move this assertion with it — do not delete it.`
       ).toHaveLength(7)
 
-      const vectors = loadVectors()
-      const fromVectors = vectors.kdfDeriveFromKey
+      const loaded = loadVectors()
+      const fromVectors = loaded.kdfDeriveFromKey
         .map((v) => ({ name: v.contextName, ctx: v.ctx, id: v.subkeyId }))
-        .sort((a, b) => a.id - b.id)
+        .toSorted((a, b) => a.id - b.id)
 
       expect(fromVectors).toEqual(production)
     })

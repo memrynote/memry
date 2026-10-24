@@ -164,10 +164,9 @@ async function importHooks() {
 }
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(body), {
-    status: init?.status ?? 200,
-    headers: { 'Content-Type': 'application/json', ...init?.headers }
-  })
+  const headers = new Headers(init?.headers)
+  if (!headers.has('Content-Type')) headers.set('Content-Type', 'application/json')
+  return new Response(JSON.stringify(body), { status: init?.status ?? 200, headers })
 }
 
 describe('main test hooks', () => {
@@ -177,7 +176,7 @@ describe('main test hooks', () => {
     process.env = { ...ORIGINAL_ENV }
     globalThis.__memryTestHooks = undefined
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = String(input)
+      const url = input instanceof Request ? input.url : String(input)
       if (url.includes('/events') && init?.method === 'POST') {
         return jsonResponse({ id: 'inserted-event' })
       }
@@ -199,7 +198,7 @@ describe('main test hooks', () => {
         })
       }
       return jsonResponse({ id: 'inserted-event' })
-    }) as typeof fetch
+    })
     dbGetMock.mockReturnValue({ id: 'project-1' })
     getNetworkMonitorMock.mockReturnValue({ setOnlineForTests: networkSetOnlineMock })
     getNoteBodyOutboxMock.mockReturnValue({ getOutstandingCount: outstandingCountMock })

@@ -573,10 +573,12 @@ export class FullSyncRunner {
     } else {
       // Never log serverOnlyCount here: its 0 reads as "verified clean" when
       // no manifest was fetched (#2310).
-      const { skipped } = manifestResult
+      const { skipped: manifestSkipped } = manifestResult
       log.debug('fullSync: manifest check skipped', {
-        reason: skipped?.reason,
-        nextEligibleAt: skipped ? new Date(skipped.nextEligibleAt).toISOString() : undefined
+        reason: manifestSkipped?.reason,
+        nextEligibleAt: manifestSkipped
+          ? new Date(manifestSkipped.nextEligibleAt).toISOString()
+          : undefined
       })
     }
 
@@ -800,7 +802,7 @@ export class FullSyncRunner {
     const provider = this.ctx.deps.crdtProvider
     // With no persistent store every doc opens empty, so each marker would be
     // settled as owed against state the real store still holds.
-    if (!provider || provider.storeId == null) return
+    if (provider?.storeId == null) return
     if (this.stateManager.getStateValue(SYNC_STATE_KEYS.PACK_SEED_SETTLE_PENDING) !== '1') return
     const db = this.ctx.deps.db
     const noteIds = listPackSeeded(db)

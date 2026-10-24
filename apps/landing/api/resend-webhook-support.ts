@@ -55,6 +55,7 @@ function addClickProperties(
   const click = data.click
   if (!click || typeof click !== 'object') return
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing a non-null object to a string-keyed record; the field is checked with stringValue
   const link = stringValue((click as Record<string, unknown>).link)
   if (!link) return
 

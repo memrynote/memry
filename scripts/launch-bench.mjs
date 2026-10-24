@@ -150,7 +150,7 @@ export function detectTier(slice) {
 }
 
 export function median(numbers) {
-  const sorted = numbers.filter((value) => Number.isFinite(value)).sort((a, b) => a - b)
+  const sorted = numbers.filter((value) => Number.isFinite(value)).toSorted((a, b) => a - b)
   if (sorted.length === 0) {
     return null
   }

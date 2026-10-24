@@ -161,6 +161,7 @@ function calloutDom(block: { props: { type: string; fold?: string }; content?: u
  * 0.47 with or without the wrapper; measured both.
  */
 function taskBlockDom(block: { props: unknown }): { dom: HTMLElement } {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- block.props is the task block's prop record, TaskBlockProps
   const props = block.props as TaskBlockProps
   const dom = document.createElement('ul')
   const item = document.createElement('li')

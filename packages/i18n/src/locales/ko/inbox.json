@@ -15,19 +15,13 @@
       "showWithCount": "다시 알림 항목 표시({count})",
       "hide": "다시 알림 항목 숨기기"
     },
-    "density": {
-      "toComfortable": "넓게 보기",
-      "toCompact": "좁게 보기"
-    },
     "filter": {
-      "button": "필터",
       "byType": "유형별로 필터링",
       "active": "{count, plural, other {유형 #개로 필터링 중}}",
       "clearAll": "모두 지우기"
     },
     "jobs": {
-      "running": "{count, plural, other {백그라운드 처리 #개 진행 중}}",
-      "failed": "{count}개 실패"
+      "running": "{count, plural, other {백그라운드 처리 #개 진행 중}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "“{name}” 만들기",
     "addTags": "태그 추가…",
     "linkToNote": "노트에 연결",
-    "linkANote": "노트 연결",
-    "suggestedCount": "{count}개 제안됨",
-    "linkNotesPlaceholder": "노트 연결…",
     "linkOrCreateNotePlaceholder": "노트 찾기 또는 만들기…",
     "createNote": "“{title}” 만들기",
     "pendingNote": "새 노트",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "리마인더 데이터를 사용할 수 없습니다.",
     "triggered": "리마인더 시간이 되었습니다",
-    "noteLabel": "리마인더 노트",
     "source": "원본",
     "journalTitle": "저널 — {date}",
     "noteFallback": "노트",
@@ -514,9 +504,7 @@
       "settings": "설정",
       "processing": "처리 중…",
       "cancelRecording": "녹음 취소",
-      "cancel": "취소",
       "stopRecording": "녹음 중지",
-      "stop": "중지",
       "recordingError": "녹음 중 오류가 발생했습니다",
       "microphoneAccessDenied": "마이크 접근이 거부되었습니다",
       "noMicrophoneFound": "마이크를 찾을 수 없습니다",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, other {다시 알림 항목 #개}}",
     "notificationBody": "{count, plural, other {다시 알림으로 설정한 항목을 검토할 시간입니다}}",
     "toast": "{count, plural, =1 {“{itemTitle}”이(가) 수신함으로 돌아왔습니다} other {다시 알림 항목 #개가 수신함으로 돌아왔습니다}}"
+  },
+  "sticky": {
+    "kindLabel": "보낼 형식",
+    "kinds": {
+      "note": "노트",
+      "task": "작업",
+      "journal": "저널"
+    },
+    "placeholders": {
+      "note": "간단히 적어두세요…",
+      "task": "내일 Ana에게 전화 @tomorrow #home !high",
+      "journal": "오늘 저널에 추가…"
+    },
+    "saving": "저장 중…",
+    "saved": "저장됨",
+    "saveFailed": "저장되지 않음",
+    "tuck": "접어두기",
+    "send": "보내기",
+    "hints": "Esc 접기 · {mod}⌫ 삭제",
+    "sendAndCloseHint": "⌥{mod}↵ 보내고 닫기",
+    "deleted": "초안을 삭제했습니다",
+    "open": "열기",
+    "undo": "실행 취소",
+    "sent": {
+      "note": "스티키 폴더에 저장했습니다",
+      "task": "작업을 추가했습니다",
+      "journal": "오늘 저널에 추가했습니다"
+    },
+    "tab": {
+      "label": "{count, plural, other {스티키 초안 #개}}",
+      "newSticky": "새 스티키"
+    },
+    "errors": {
+      "empty": "먼저 내용을 작성하세요.",
+      "taskFailed": "작업을 만들지 못했습니다.",
+      "tasksOff": "설정에서 작업이 꺼져 있습니다.",
+      "journalOff": "설정에서 저널이 꺼져 있습니다.",
+      "sendFailed": "스티키를 보내지 못했습니다.",
+      "undoExpired": "더 이상 실행 취소할 수 없습니다.",
+      "undoFailed": "보내기를 취소하지 못했습니다."
+    },
+    "inputLabel": "스티키 텍스트",
+    "dismissError": "닫기"
   }
 }

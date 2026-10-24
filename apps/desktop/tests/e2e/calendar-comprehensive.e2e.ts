@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
@@ -100,10 +100,7 @@ class CalendarPO {
   }
 }
 
-async function seedProjection(
-  electronApp: Parameters<typeof test>[0]['electronApp'],
-  input: SeededCalendarData
-) {
+async function seedProjection(electronApp: ElectronApplication, input: SeededCalendarData) {
   await electronApp.evaluate(async (_ctx, payload) => {
     const hooks = (
       globalThis as typeof globalThis & {

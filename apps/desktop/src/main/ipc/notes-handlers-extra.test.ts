@@ -74,7 +74,7 @@ const mocks = vi.hoisted(() => {
     getPropertyDefinition: vi.fn(),
     listPropertyDefinitions: vi.fn(),
     emitNoteAttachmentSaved: vi.fn(),
-    getVaultStatus: vi.fn(() => ({ path: null }) as { path: string | null }),
+    getVaultStatus: vi.fn(() => ({ path: null })),
     renderNoteAsHtml: vi.fn(() => '<html><body>note</body></html>'),
     getCustomIcon: vi.fn(),
     service: {

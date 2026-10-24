@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Συνδέσεις AI",
     "todaysNotes": "Σημερινές σημειώσεις",
-    "todaysSchedule": "Σημερινό πρόγραμμα",
-    "todaysTasks": "Σημερινές εργασίες",
     "tasks": "Εργασίες",
     "technicalDetails": "Τεχνικές λεπτομέρειες"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Καλησπέρα",
       "evening": "Καλησπέρα",
       "night": "Καληνύχτα"
-    },
-    "allDay": "Ολοήμερο"
+    }
   },
   "nav": {
     "previousDay": "Προηγούμενη ημέρα",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Περισσότερες επιλογές",
     "documentStatistics": "Στατιστικά εγγράφου",
-    "dayContext": "Πλαίσιο ημέρας: εργασίες και πρόγραμμα",
-    "scheduleEvents": "Συμβάντα προγράμματος",
-    "tasks": "Εργασίες",
     "notesCreatedToday": "{count} σημειώσεις που δημιουργήθηκαν σήμερα"
   },
   "empty": {
     "noEntry": "Καμία καταχώριση",
     "noDaysInMonth": "Δεν υπάρχουν ημέρες σε αυτόν τον μήνα",
-    "noEventsScheduled": "Δεν έχουν προγραμματιστεί συμβάντα",
-    "noEventsScheduledToday": "Δεν έχουν προγραμματιστεί συμβάντα σήμερα",
-    "noEventsWereScheduled": "Δεν είχαν προγραμματιστεί συμβάντα",
-    "noTasksDue": "Καμία εργασία δεν λήγει",
-    "noTasksDueToday": "Καμία εργασία δεν λήγει σήμερα",
-    "noTasksWereDue": "Δεν έληγε καμία εργασία",
     "noNotesToday": "Δεν δημιουργήθηκαν σημειώσεις σήμερα",
     "startDocumenting": "Ξεκινήστε να καταγράφετε τις σκέψεις και τις ιδέες σας"
   },
@@ -155,9 +143,7 @@
     "day": "ημέρα",
     "days": "ημέρες",
     "event": "συμβάν",
-    "events": "συμβάντα",
     "task": "εργασία",
-    "todo": "προς εκτέλεση",
     "moreConnections": "+ {count} ακόμη σύνδεση",
     "moreConnections_plural": "+ {count} ακόμη συνδέσεις",
     "moreNotes": "+ {count} ακόμη σημείωση",
@@ -166,7 +152,6 @@
     "charactersWritten": "χαρακτήρες που γράφτηκαν",
     "words": "{count} λέξεις",
     "characters": "{count} χαρακτήρες",
-    "completed": "{count} ολοκληρωμένες",
     "overdue": "{count} εκπρόθεσμες"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Τροποποιήθηκε {date}"
   },
   "task": {
-    "completed": "Ολοκληρώθηκε",
-    "notCompleted": "Δεν έχει ολοκληρωθεί",
-    "priority": "{priority} προτεραιότητα",
-    "overdue": "εκπρόθεσμη",
-    "markComplete": "Σήμανση της εργασίας «{title}» ως ολοκληρωμένης",
-    "markNotComplete": "Σήμανση της εργασίας «{title}» ως μη ολοκληρωμένης"
+    "priority": "{priority} προτεραιότητα"
   },
   "template": {
     "using": "Χρήση του «{templateName}»"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Το περιεχόμενό σας είναι ακόμα στη μνήμη. Κάντε κλικ για να προσπαθήσετε ξανά να αποθηκεύσετε.",
-    "noteNotFound": "Η σημείωση «{target}» δεν βρέθηκε",
     "createLinkedFailed": "Αποτυχία δημιουργίας συνδεδεμένης σημείωσης",
     "fileNotFound": "Το αρχείο δεν βρέθηκε: {target}",
     "openLinkedItemFailed": "Αποτυχία ανοίγματος συνδεδεμένου στοιχείου",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Διαγραφή καταχώρισης ημερολογίου γραφής",
     "description": "Θέλετε σίγουρα να διαγράψετε το «{title}»; Η ενέργεια δεν μπορεί να αναιρεθεί."
+  },
+  "dayTimeline": {
+    "label": "Πρόγραμμα ημέρας",
+    "allDay": "Στοιχεία ολοήμερα",
+    "unscheduled": "Χωρίς προγραμματισμό",
+    "unscheduledEmpty": "Δεν υπάρχουν εργασίες χωρίς προγραμματισμό. Σύρετε ένα μπλοκ εδώ για να αφαιρέσετε την ώρα του.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Ολοκλήρωση: {title}"
   }
 }

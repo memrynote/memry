@@ -43,7 +43,7 @@ function toOptions(canvases: CanvasSummary[], untitled: string): CanvasOption[] 
   return canvases
     .filter((canvas) => !canvas.unreadable && canvas.ownerNoteId === null)
     .map((canvas) => ({ id: canvas.id, title: canvas.title?.trim() || untitled }))
-    .sort((a, b) => a.title.localeCompare(b.title))
+    .toSorted((a, b) => a.title.localeCompare(b.title))
 }
 
 export function AddToCanvasPicker({
@@ -60,7 +60,7 @@ export function AddToCanvasPicker({
 
   // Listed on open, not on mount: every similar-note row carries a picker.
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     let cancelled = false
     canvasService
       .list()

@@ -78,7 +78,7 @@ export function useVaultItemIcon(kind: string | undefined, id: string | undefine
   const [resolved, setResolved] = useState<{ key: string; icon: string | null } | null>(null)
 
   useEffect(() => {
-    if (!key || kind === undefined || id === undefined) return
+    if (!key || kind === undefined || id === undefined) return undefined
     let cancelled = false
     void lookupVaultItemIcon(kind, id).then((icon) => {
       if (!cancelled) setResolved({ key, icon })

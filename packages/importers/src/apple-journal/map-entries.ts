@@ -13,7 +13,7 @@ export function mapEntry(input: JournalEntryInput): JournalEntryPlan {
 
   const parts: string[] = []
   if (bodyMarkdown.trim()) parts.push(bodyMarkdown.trim())
-  if (reflection && reflection.trim()) parts.push(`> ${reflection.trim()}`)
+  if (reflection?.trim()) parts.push(`> ${reflection.trim()}`)
   const content = parts.join('\n\n')
 
   const properties: Record<string, unknown> = {}

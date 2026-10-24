@@ -46,6 +46,7 @@ const stopRowInteraction = (event: React.SyntheticEvent): void => {
   event.stopPropagation()
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; a default branch would hide new members from the compiler
 const RelatedItemIcon = ({
   fileType,
   className
@@ -86,7 +87,7 @@ export function TaskLinkedNoteIndicator({
     : ''
 
   useEffect(() => {
-    if (noteIds.length === 0) return
+    if (noteIds.length === 0) return undefined
 
     let isCurrent = true
 

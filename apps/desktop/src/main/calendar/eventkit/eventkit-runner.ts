@@ -89,6 +89,7 @@ export function requestAppleCalendarPass(db: DataDb): Promise<AppleSyncOutcome |
     do {
       rerunRequested = false
       outcome = await onePass(db, passGeneration)
+      // oxlint-disable-next-line eslint/no-unmodified-loop-condition -- generation is module state that stopAppleCalendar bumps while onePass awaits; the loop body cannot see the write
     } while (rerunRequested && passGeneration === generation)
     return outcome
   }

@@ -3,13 +3,6 @@ import type {
   TemplateRecord,
   TemplatesService
 } from '@memry/app-core/service-types'
-export type {
-  TemplateProperty,
-  TemplateRecord,
-  CreateTemplateInput,
-  UpdateTemplateInput,
-  TemplatesService
-} from '@memry/app-core/service-types'
 import fs from 'node:fs/promises'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
@@ -19,6 +12,13 @@ import { createId } from '@memry/app-core/ids'
 import { parseMarkdownNote } from '@memry/app-core/markdown'
 import type { DataDb } from './database.ts'
 import { getMemryDir, safeFilename } from './paths.ts'
+export type {
+  TemplateProperty,
+  TemplateRecord,
+  CreateTemplateInput,
+  UpdateTemplateInput,
+  TemplatesService
+} from '@memry/app-core/service-types'
 
 // Custom templates live in the `templates` table of data.db and sync as
 // whole-row LWW; `.memry/templates/<id>.md` is the retired pre-sync location,
@@ -41,6 +41,11 @@ function toTags(value: unknown): string[] {
   return value.map((tag) => String(tag).trim()).filter(Boolean)
 }
 
+// Frontmatter written by older builds can hold any scalar; coerce it like `String()` always did.
+function toText(value: unknown): string {
+  return String(value)
+}
+
 function toProperties(value: unknown): TemplateProperty[] {
   if (!Array.isArray(value)) return []
   return value
@@ -48,8 +53,8 @@ function toProperties(value: unknown): TemplateProperty[] {
       return typeof property === 'object' && property !== null
     })
     .map((property) => ({
-      name: String(property.name ?? ''),
-      type: String(property.type ?? 'text'),
+      name: toText(property.name ?? ''),
+      type: toText(property.type ?? 'text'),
       value: property.value,
       options: Array.isArray(property.options)
         ? property.options.map((option) => String(option))
@@ -112,23 +117,23 @@ function migrateLegacyTemplateFiles(dataDb: DataDb, vaultPath: string): void {
     try {
       const parsed = parseMarkdownNote(raw)
       if (parsed.frontmatter.isBuiltIn === true) continue
-      const id = String(parsed.frontmatter.id ?? path.basename(file, '.md'))
+      const id = toText(parsed.frontmatter.id ?? path.basename(file, '.md'))
       dataDb
         .insert(templates)
         .values({
           id,
-          name: String(parsed.frontmatter.name ?? id),
+          name: toText(parsed.frontmatter.name ?? id),
           description:
             parsed.frontmatter.description === undefined
               ? null
-              : String(parsed.frontmatter.description),
-          icon: parsed.frontmatter.icon === undefined ? null : String(parsed.frontmatter.icon),
+              : toText(parsed.frontmatter.description),
+          icon: parsed.frontmatter.icon === undefined ? null : toText(parsed.frontmatter.icon),
           tags: toTags(parsed.frontmatter.tags),
           properties: toProperties(parsed.frontmatter.properties),
           content: parsed.content,
           clock: null,
-          createdAt: String(parsed.frontmatter.createdAt ?? new Date().toISOString()),
-          modifiedAt: String(parsed.frontmatter.modifiedAt ?? new Date().toISOString())
+          createdAt: toText(parsed.frontmatter.createdAt ?? new Date().toISOString()),
+          modifiedAt: toText(parsed.frontmatter.modifiedAt ?? new Date().toISOString())
         })
         .onConflictDoNothing()
         .run()

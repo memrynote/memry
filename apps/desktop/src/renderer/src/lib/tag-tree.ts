@@ -85,7 +85,7 @@ function buildTreeFromMap(map: Map<string, BuildNode>, depth: number): TagTreeNo
     })
   }
 
-  return nodes.sort((a, b) => b.totalCount - a.totalCount)
+  return nodes.toSorted((a, b) => b.totalCount - a.totalCount)
 }
 
 export function flattenTree(nodes: TagTreeNode[]): TagTreeNode[] {

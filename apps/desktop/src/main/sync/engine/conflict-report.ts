@@ -25,6 +25,7 @@ export function reportConflict(
   log.info('Merged concurrent edit', { itemId: dec.id, type: dec.type, remoteClock: dec.clock })
 
   deps.queue.enqueue({
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
     type: dec.type as SyncItemType,
     itemId: dec.id,
     operation: 'update',

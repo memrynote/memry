@@ -15,19 +15,13 @@
       "showWithCount": "Show snoozed items ({count})",
       "hide": "Hide snoozed items"
     },
-    "density": {
-      "toComfortable": "Comfortable view",
-      "toCompact": "Compact view"
-    },
     "filter": {
-      "button": "Filter",
       "byType": "Filter by type",
       "active": "{count, plural, one {Filtering by # type} other {Filtering by # types}}",
       "clearAll": "Clear all"
     },
     "jobs": {
-      "running": "{count, plural, one {# background job running} other {# background jobs running}}",
-      "failed": "{count} failed"
+      "running": "{count, plural, one {# background job running} other {# background jobs running}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Create \"{name}\"",
     "addTags": "Add tags...",
     "linkToNote": "Link to note",
-    "linkANote": "Link a note",
-    "suggestedCount": "{count} suggested",
-    "linkNotesPlaceholder": "Link notes...",
     "linkOrCreateNotePlaceholder": "Find or create a note...",
     "createNote": "Create \"{title}\"",
     "pendingNote": "New note",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Reminder data unavailable.",
     "triggered": "Reminder triggered",
-    "noteLabel": "Reminder Note",
     "source": "Source",
     "journalTitle": "Journal — {date}",
     "noteFallback": "Note",
@@ -514,9 +504,7 @@
       "settings": "Settings",
       "processing": "Processing...",
       "cancelRecording": "Cancel recording",
-      "cancel": "Cancel",
       "stopRecording": "Stop recording",
-      "stop": "Stop",
       "recordingError": "Recording error occurred",
       "microphoneAccessDenied": "Microphone access denied",
       "noMicrophoneFound": "No microphone found",

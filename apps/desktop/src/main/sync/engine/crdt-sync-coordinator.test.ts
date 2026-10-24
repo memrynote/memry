@@ -1224,7 +1224,7 @@ describe('CrdtSyncCoordinator', () => {
       expect(next.hydrateBodyDebts()).toBe(2)
       expect(next.hasUnmergedRemoteState('note-1')).toBe(true)
       const owed = next.drainPendingPulls()
-      expect(owed.sort()).toEqual(['note-1', 'note-2'])
+      expect(owed.toSorted()).toEqual(['note-1', 'note-2'])
 
       clean('note-1')
       await next.applyCrdtBatch(['note-1'], 'token-1', new Uint8Array([4]))
@@ -1442,7 +1442,7 @@ describe('CrdtSyncCoordinator', () => {
         expect(coordinator.hasUnmergedRemoteState(noteId)).toBe(true)
       }
       // The two counted failures wait out their backoff; the rest run now.
-      expect(coordinator.drainPendingPulls().sort()).toEqual([
+      expect(coordinator.drainPendingPulls().toSorted()).toEqual([
         'note-2',
         'note-3',
         'note-4',
@@ -1547,7 +1547,7 @@ describe('CrdtSyncCoordinator', () => {
       await coordinator.applyCrdtBatch(['note-1', 'note-2'], 'token-1', new Uint8Array([4]))
 
       expect(rows()).toEqual([['note-2', 'record', 0]])
-      expect(coordinator.drainPendingPulls().sort()).toEqual(['note-1', 'note-2'])
+      expect(coordinator.drainPendingPulls().toSorted()).toEqual(['note-1', 'note-2'])
     })
 
     // #2297 round 2 b-L3: one pass counts one failure, however it failed.

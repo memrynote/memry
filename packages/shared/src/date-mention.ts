@@ -6,6 +6,8 @@
  * is the single source of truth for the format — imported by both sides.
  */
 
+import { isObject } from './is-record.ts'
+
 export type RemindOffset =
   | 'none'
   | 'at'
@@ -41,7 +43,7 @@ export interface DateMentionData {
  */
 export const DATE_MENTION_TOKEN_REGEX = /\(\(date:([A-Za-z0-9,;_\\-]+)\)\)/g
 
-const REMIND_OFFSETS: ReadonlySet<RemindOffset> = new Set([
+const REMIND_OFFSETS: ReadonlySet<unknown> = new Set<RemindOffset>([
   'none',
   'at',
   '5m',
@@ -54,6 +56,10 @@ const REMIND_OFFSETS: ReadonlySet<RemindOffset> = new Set([
   '2d',
   '1w'
 ])
+
+function isRemindOffset(value: unknown): value is RemindOffset {
+  return REMIND_OFFSETS.has(value)
+}
 
 // Sub-day offsets subtract a fixed duration from the event instant.
 const SUBDAY_MS: Record<string, number> = {
@@ -103,8 +109,8 @@ function decodeTokenPayload(s: string): string {
 
 function decodeTokenObject(encoded: string): Record<string, unknown> | null {
   try {
-    const obj = JSON.parse(decodeTokenPayload(encoded)) as unknown
-    return obj && typeof obj === 'object' ? (obj as Record<string, unknown>) : null
+    const obj: unknown = JSON.parse(decodeTokenPayload(encoded))
+    return isObject(obj) ? obj : null
   } catch {
     return null
   }
@@ -125,8 +131,7 @@ export function parseDateMentionToken(encoded: string): DateMentionData | null {
     typeof obj.anchorId !== 'string' ||
     typeof obj.dateISO !== 'string' ||
     typeof obj.hasTime !== 'boolean' ||
-    typeof obj.remind !== 'string' ||
-    !REMIND_OFFSETS.has(obj.remind as RemindOffset)
+    !isRemindOffset(obj.remind)
   ) {
     return null
   }
@@ -140,7 +145,7 @@ export function parseDateMentionToken(encoded: string): DateMentionData | null {
     dateISO: obj.dateISO,
     hasTime: obj.hasTime,
     dateFormat,
-    remind: obj.remind as RemindOffset,
+    remind: obj.remind,
     timeFormat
   }
 }

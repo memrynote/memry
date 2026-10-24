@@ -280,9 +280,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       toolBridge: {
         execute: vi.fn()
       } as never,
-      fetch: vi.fn(async () =>
-        jsonResponse({ data: [{ id: 'other-model' }] })
-      ) as unknown as typeof fetch
+      fetch: vi.fn(async () => jsonResponse({ data: [{ id: 'other-model' }] }))
     })
 
     await expect(modelMissingBackend.probeCapabilities()).resolves.toMatchObject({
@@ -326,7 +324,7 @@ describe('LocalOpenAICompatibleBackend', () => {
       toolBridge: {
         execute: vi.fn()
       } as never,
-      fetch: fetchImpl as typeof fetch
+      fetch: fetchImpl
     })
 
     await expect(backend.probeCapabilities()).resolves.toMatchObject({
@@ -669,7 +667,7 @@ function createProbeFetch(
       return jsonResponse({ data: (input.models ?? ['llama3.2']).map((id) => ({ id })) })
     }
 
-    const body = JSON.parse(String(init?.body ?? '{}')) as {
+    const body = JSON.parse(typeof init?.body === 'string' ? init.body : '{}') as {
       stream?: boolean
       tools?: unknown[]
       tool_choice?: unknown

@@ -26,6 +26,6 @@ describe('feature flags', () => {
   })
 
   it('keeps FEATURE_KEYS aligned with the schema shape', () => {
-    expect([...FEATURE_KEYS].sort()).toEqual(Object.keys(FEATURES_SETTINGS_DEFAULTS).sort())
+    expect([...FEATURE_KEYS].toSorted()).toEqual(Object.keys(FEATURES_SETTINGS_DEFAULTS).toSorted())
   })
 })

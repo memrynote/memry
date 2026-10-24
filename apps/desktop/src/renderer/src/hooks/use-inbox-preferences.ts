@@ -43,6 +43,7 @@ export function useInboxPreferences(): UseInboxPreferencesReturn {
   useEffect(() => {
     const unsubscribe = window.api.onSettingsChanged((event) => {
       if (event.key === 'inbox') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings:changed event.value is unknown; the patch shape is fixed by the settings key this listener filtered on
         setSettings((prev) => mergeSettingsPatch(prev, event.value as Partial<InboxSettings>))
       }
     })

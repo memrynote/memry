@@ -78,6 +78,7 @@ interface BindingLike {
 }
 
 function getBinding(state: EditorState): BindingLike | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- y-prosemirror's plugin state is untyped; binding is the field it documents
   const binding = (ySyncPluginKey.getState(state) as { binding?: BindingLike } | undefined)?.binding
   return binding?.doc && binding.type && binding.mapping ? binding : null
 }
@@ -102,12 +103,16 @@ export function anchorsForRange(
   const binding = getBinding(state)
   if (!binding || to <= from) return null
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const start = absolutePositionToRelativePosition(from, binding.type, binding.mapping as never)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const last = absolutePositionToRelativePosition(to - 1, binding.type, binding.mapping as never)
     // Only a character id can carry the left association.
     if (!start.item || !last.item) return null
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Y.relativePositionToJSON returns an untyped JSON object; WritingAnchor is the shape this plugin stores and resolves
     const anchorEnd = Y.relativePositionToJSON(last) as WritingAnchor
     return {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Y.relativePositionToJSON returns an untyped JSON object; WritingAnchor is the shape this plugin stores and resolves
       anchorStart: Y.relativePositionToJSON(start) as WritingAnchor,
       anchorEnd: { ...anchorEnd, assoc: -1 }
     }
@@ -128,6 +133,7 @@ function resolveAnchoredRange(
         binding.doc,
         binding.type,
         Y.createRelativePositionFromJSON(anchor),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         binding.mapping as never
       )
     const from = resolve(record.anchorStart)
@@ -249,7 +255,7 @@ function resolveRecords(state: EditorState, records: AnchoredRecord[]): WritingR
     }
     if (range) ranges.push({ id: record.id, ...range })
   }
-  return ranges.sort((a, b) => a.from - b.from)
+  return ranges.toSorted((a, b) => a.from - b.from)
 }
 
 function mapRanges(ranges: WritingRange[], tr: Transaction): WritingRange[] {
@@ -322,8 +328,10 @@ export function createWritingToolsPlugin(options: WritingToolsPluginOptions): Pl
         hoveredAlternativeId: null
       }),
       apply(tr, previous, _oldState, newState) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- transaction meta is untyped; this plugin is the only writer of this key
         const meta = tr.getMeta(writingToolsPluginKey) as WritingToolsMeta | undefined
         const fromYjs =
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- transaction meta is untyped; y-prosemirror sets isChangeOrigin on its own transactions
           (tr.getMeta(ySyncPluginKey) as { isChangeOrigin?: boolean } | undefined)
             ?.isChangeOrigin === true
         let next: WritingToolsPluginState =

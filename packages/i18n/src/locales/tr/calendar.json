@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Tamamla: {title}",
     "task-completed": "Görev tamamlandı",
-    "could-not-complete": "Görev tamamlanamadı",
+    "could-not-update-status": "Görev durumu değiştirilemedi",
     "duration-minutes": "{minutes} dk",
     "duration-hours": "{hours} sa",
     "duration-hours-minutes": "{hours} sa {minutes} dk"
@@ -214,12 +213,9 @@
     "next-week": "Gelecek hafta",
     "open-task": "Görevi aç",
     "source-note": "Kaynak not",
-    "reschedule": "Yeniden planla",
     "mark-done": "Tamamla",
     "mark-not-done": "Tamamlanmadı olarak işaretle",
-    "later-today": "Bugün daha sonra",
     "tomorrow": "Yarın",
-    "next-week-mon": "Gelecek hafta · Pazartesi",
     "pick-date-time": "Tarih ve saat seç…",
     "remove-due-date": "Son tarihi kaldır",
     "subtasks-prefix": "Alt görevler",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Son tarih kaldırılamadı",
       "could-not-open-note": "Not açılamadı"
     }
+  },
+  "eventNotes": {
+    "heading": "Notlar",
+    "create": "Yeni not",
+    "link": "Not bağla",
+    "untitled": "Toplantı notu",
+    "searchPlaceholder": "Not ara",
+    "noResults": "Not bulunamadı",
+    "createFailed": "Bu etkinlik için not oluşturulamadı.",
+    "linkFailed": "Not bu etkinliğe bağlanamadı.",
+    "loadFailed": "Bu etkinliğe bağlı notlar yüklenemedi.",
+    "propertyTaken": "Bu notta bağlantı olmayan bir “{name}” özelliği zaten var."
   },
   "notePopover": {
     "kind": "Not",
@@ -254,6 +262,10 @@
     "overdue": "gecikmiş",
     "untitled": "Başlıksız",
     "days": "{count, plural, one {# gün} other {# gün}}",
+    "subtasks": {
+      "expand": "{title} görevinin {count, plural, one {# alt görevini} other {# alt görevini}} göster",
+      "collapse": "{title} görevinin {count, plural, one {# alt görevini} other {# alt görevini}} gizle"
+    },
     "events": "Etkinlikler",
     "schedule-hint": "Tarih ayarlamak için tıklayın, aralık için sürükleyin",
     "empty-title": "Zaman çizelgesinde burada bir şey yok",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Abone olunan takvimler"
     },
     "caldav": {
       "name": "CalDAV"

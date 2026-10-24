@@ -44,7 +44,7 @@ export function useAttachmentPresence(url: string): AttachmentPresence {
     // tests without the IPC surface) just never show the card.
     const isVaultRef = Boolean(url) && (!HAS_SCHEME.test(url) || url.startsWith('memry-file:'))
     if (!noteId || !isVaultRef || !window.api?.notes?.resolveAttachment) {
-      return
+      return undefined
     }
     let cancelled = false
     window.api.notes

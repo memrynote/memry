@@ -10,6 +10,8 @@
  * three, so a stale echo loses on `t` whatever clock carried it.
  */
 
+import { isRecord } from './is-record.ts'
+
 export type JsonValue =
   | string
   | number
@@ -65,14 +67,14 @@ function canonicalNumber(value: number): string {
 /** §6.4.2. */
 export function canonicalJson(value: unknown): string {
   if (typeof value === 'number') return canonicalNumber(value)
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   if (Array.isArray(value)) {
     return `[${value.map((item: unknown) => canonicalJson(item)).join(',')}]`
   }
-  const record = value as Record<string, unknown>
+  if (!isRecord(value)) return JSON.stringify(value) ?? 'null'
+  const record = value
   const keys = Object.keys(record)
     .filter((key) => record[key] !== undefined)
-    .sort()
+    .toSorted()
   return `{${keys.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`).join(',')}}`
 }
 
@@ -86,6 +88,7 @@ export function compareVersioned(a: unknown, b: unknown): number {
 
 /** Payloads and columns are parsed JSON, so an object read from one holds JSON values. */
 export function readVersionedObject(value: unknown): VersionedObject | undefined {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- values are parsed JSON by contract; deep-validating every entry would reject payloads older builds wrote
   return isPlainObject(value) ? (value as VersionedObject) : undefined
 }
 
@@ -130,8 +133,9 @@ export function joinVersionedMap(local: unknown, remote: unknown): JoinResult<Ve
     const other = theirs?.[name]
     const winner =
       ours === undefined || (other !== undefined && compareVersioned(other, ours) > 0)
-        ? (other as VersionedObject)
+        ? other
         : ours
+    if (winner === undefined) continue
     joined[name] = winner
     if (other === undefined || compareVersioned(winner, other) !== 0) remoteBehind = true
     if (ours === undefined || compareVersioned(winner, ours) !== 0) localChanged = true

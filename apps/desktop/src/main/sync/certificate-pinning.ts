@@ -192,7 +192,7 @@ function pinnedAgentCacheKey(): string {
 
 export function getSharedPinnedAgent(): https.Agent {
   const key = pinnedAgentCacheKey()
-  if (sharedPinnedAgent && sharedPinnedAgent.key === key) return sharedPinnedAgent.agent
+  if (sharedPinnedAgent?.key === key) return sharedPinnedAgent.agent
   sharedPinnedAgent?.agent.destroy()
   sharedPinnedAgent = { key, agent: createPinnedAgent() }
   return sharedPinnedAgent.agent

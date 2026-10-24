@@ -15,19 +15,13 @@
       "showWithCount": "Zobraziť odložené položky ({count})",
       "hide": "Skryť odložené položky"
     },
-    "density": {
-      "toComfortable": "Pohodlné zobrazenie",
-      "toCompact": "Kompaktné zobrazenie"
-    },
     "filter": {
-      "button": "Filter",
       "byType": "Filtrovať podľa typu",
       "active": "{count, plural, one {Filtruje sa podľa # typu} few {Filtruje sa podľa # typov} other {Filtruje sa podľa # typov}}",
       "clearAll": "Vymazať všetko"
     },
     "jobs": {
-      "running": "{count, plural, one {Beží # proces na pozadí} few {Bežia # procesy na pozadí} other {Beží # procesov na pozadí}}",
-      "failed": "Zlyhané: {count}"
+      "running": "{count, plural, one {Beží # proces na pozadí} few {Bežia # procesy na pozadí} other {Beží # procesov na pozadí}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Vytvoriť „{name}“",
     "addTags": "Pridať značky…",
     "linkToNote": "Prepojiť s poznámkou",
-    "linkANote": "Prepojiť poznámku",
-    "suggestedCount": "Navrhované: {count}",
-    "linkNotesPlaceholder": "Prepojiť poznámky…",
     "linkOrCreateNotePlaceholder": "Nájsť alebo vytvoriť poznámku…",
     "createNote": "Vytvoriť „{title}“",
     "pendingNote": "Nová poznámka",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Údaje pripomienky nie sú k dispozícii.",
     "triggered": "Pripomienka spustená",
-    "noteLabel": "Poznámka k pripomienke",
     "source": "Zdroj",
     "journalTitle": "Denník – {date}",
     "noteFallback": "Poznámka",
@@ -514,9 +504,7 @@
       "settings": "Nastavenia",
       "processing": "Spracúva sa…",
       "cancelRecording": "Zrušiť nahrávanie",
-      "cancel": "Zrušiť",
       "stopRecording": "Zastaviť nahrávanie",
-      "stop": "Zastaviť",
       "recordingError": "Pri nahrávaní nastala chyba",
       "microphoneAccessDenied": "Prístup k mikrofónu bol zamietnutý",
       "noMicrophoneFound": "Nenašiel sa žiadny mikrofón",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# odložená položka} few {# odložené položky} other {# odložených položiek}}",
     "notificationBody": "{count, plural, one {Odložená položka je pripravená na kontrolu} few {Odložené položky sú pripravené} other {Odložené položky sú pripravené}}",
     "toast": "{count, plural, =1 {Položka „{itemTitle}“ sa vrátila z odloženia} one {# odložená položka sa vrátila} few {# odložené položky sa vrátili} other {# odložených položiek sa vrátilo}}"
+  },
+  "sticky": {
+    "kindLabel": "Odoslať ako",
+    "kinds": {
+      "note": "Poznámka",
+      "task": "Úloha",
+      "journal": "Denník"
+    },
+    "placeholders": {
+      "note": "Zapíšte si to…",
+      "task": "Zavolať Ane @zajtra #domov !vysoká",
+      "journal": "Pridať do dnešného denníka…"
+    },
+    "saving": "Ukladá sa…",
+    "saved": "Uložené",
+    "saveFailed": "Neuložené",
+    "tuck": "Odložiť",
+    "send": "Odoslať",
+    "hints": "Esc odložiť · {mod}⌫ odstrániť",
+    "sendAndCloseHint": "⌥{mod}↵ odošle a zavrie",
+    "deleted": "Koncept odstránený",
+    "open": "Otvoriť",
+    "undo": "Vrátiť späť",
+    "sent": {
+      "note": "Uložené do priečinka Sticky",
+      "task": "Úloha pridaná",
+      "journal": "Pridané do dnešného denníka"
+    },
+    "tab": {
+      "label": "{count, plural, one {# koncept Sticky} few {# koncepty Sticky} other {# konceptov Sticky}}",
+      "newSticky": "Nový Sticky"
+    },
+    "errors": {
+      "empty": "Najprv niečo napíšte.",
+      "taskFailed": "Úlohu sa nepodarilo vytvoriť.",
+      "tasksOff": "Úlohy sú vypnuté v Nastaveniach.",
+      "journalOff": "Denník je vypnutý v Nastaveniach.",
+      "sendFailed": "Sticky sa nepodarilo odoslať.",
+      "undoExpired": "Na vrátenie je už neskoro.",
+      "undoFailed": "Odoslanie sa nepodarilo vrátiť späť."
+    },
+    "inputLabel": "Text Sticky",
+    "dismissError": "Zavrieť"
   }
 }

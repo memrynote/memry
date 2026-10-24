@@ -343,6 +343,7 @@ function ValueInput({
       return (
         <Input
           type="number"
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- condition.value is unknown from persisted view config; Input accepts number
           value={(value as number) ?? ''}
           onChange={(e) => onChange(e.target.value ? Number(e.target.value) : '')}
           className="h-[26px] flex-1 min-w-0 rounded-md border-border bg-transparent px-2 text-[11.5px] text-foreground [font-variant-numeric:tabular-nums]"

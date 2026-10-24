@@ -13,7 +13,7 @@ vi.mock('@/lib/telemetry', () => ({ trackTelemetry: vi.fn() }))
 vi.mock('@memry/i18n/renderer', () => ({
   // The real English strings, so the tests read what the user reads.
   useT: (namespace: keyof typeof RESOURCES.en) => ({
-    t: (key: string, params?: Record<string, unknown>) => {
+    t: (key: string, params?: Record<string, string | number | undefined>) => {
       const text = key
         .split('.')
         .reduce<unknown>(

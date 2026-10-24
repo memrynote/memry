@@ -15,7 +15,7 @@ describe('scoreFolders', () => {
     const scored = scoreFolders({ hits })
 
     expect(scored[0]?.path).toBe('recipes')
-    expect(scored[0]!.confidence).toBeGreaterThan(scored[1]!.confidence)
+    expect(scored[0].confidence).toBeGreaterThan(scored[1].confidence)
   })
 
   it('does not let a large mediocre folder beat a small excellent cluster', () => {
@@ -68,7 +68,7 @@ describe('scoreFolders', () => {
     })
 
     expect(scored[0]?.path).toBe('recipes')
-    expect(scored[0]!.confidence).toBeGreaterThan(0.5)
+    expect(scored[0].confidence).toBeGreaterThan(0.5)
   })
 
   it('lets a strong name match lift a folder above a same-similarity folder', () => {
@@ -90,7 +90,7 @@ describe('scoreFolders', () => {
     })
 
     expect(scored[0]?.path).toBe('cooking')
-    expect(scored[0]!.confidence).toBeGreaterThan(0.4)
+    expect(scored[0].confidence).toBeGreaterThan(0.4)
   })
 
   it('excludes folders in the exclude set', () => {

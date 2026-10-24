@@ -172,10 +172,10 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
 
   useLayoutEffect(() => {
     const el = viewRef.current
-    if (!el) return
+    if (!el) return undefined
     const measure = () => setMaxWidth(el.clientWidth)
     measure()
-    if (typeof ResizeObserver === 'undefined') return
+    if (typeof ResizeObserver === 'undefined') return undefined
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     return () => observer.disconnect()
@@ -218,7 +218,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
     // A page pdf.js has not painted yet (and every element under jsdom)
     // measures 0, which would collapse the whole list onto one offset.
     if (measured > 0) return measured
-    return estimateRowHeight(Number((el as HTMLElement).dataset.index ?? 0))
+    return estimateRowHeight(
+      Number((el instanceof HTMLElement ? el.dataset.index : undefined) ?? 0)
+    )
   }
 
   // TanStack Virtual's `useVirtualizer()` returns unstable function refs, a
@@ -736,6 +738,15 @@ interface FileBlockEditor {
   updateBlock: (block: unknown, update: { props: Record<string, unknown> }) => void
 }
 
+function isFileBlockEditor(editor: unknown): editor is FileBlockEditor {
+  return (
+    typeof editor === 'object' &&
+    editor !== null &&
+    'updateBlock' in editor &&
+    typeof editor.updateBlock === 'function'
+  )
+}
+
 // No `contentRef`: BlockNote 0.54 stopped handing one to a block declared
 // `content: "none"`, which this one is.
 function FileBlockRender({
@@ -758,6 +769,7 @@ function FileBlockRender({
 }) {
   const { t: tPhaseF } = useT('notes')
   const { url, name, size, mimeType, width, height, align } = block.props
+  const fileEditor = isFileBlockEditor(editor) ? editor : undefined
   const isPdf = mimeType === 'application/pdf'
   // Only `link` is stored; a block with no prop is an older one and stays the viewer.
   const isPdfLink = isPdf && block.props.display === 'link'
@@ -778,28 +790,25 @@ function FileBlockRender({
   // the early return to keep hook order stable.
   const handleResize = useCallback(
     (nextWidth: number, nextHeight: number) => {
-      const fileEditor = editor as FileBlockEditor | undefined
       fileEditor?.updateBlock(block, {
         props: { ...block.props, width: nextWidth, height: nextHeight }
       })
     },
-    [editor, block]
+    [fileEditor, block]
   )
 
   const handleAlign = useCallback(
     (nextAlign: 'left' | 'center' | 'right') => {
-      const fileEditor = editor as FileBlockEditor | undefined
       fileEditor?.updateBlock(block, { props: { ...block.props, align: nextAlign } })
     },
-    [editor, block]
+    [fileEditor, block]
   )
 
   const handleDisplayChange = useCallback(
     (next: 'embed' | 'link') => {
-      const fileEditor = editor as FileBlockEditor | undefined
       fileEditor?.updateBlock(block, { props: { ...block.props, display: next } })
     },
-    [editor, block]
+    [fileEditor, block]
   )
 
   // The file on disk is already renamed when this runs (#1714); writing the new
@@ -807,10 +816,9 @@ function FileBlockRender({
   // it to the other devices, which rename their own copy from the body change.
   const handleRenamed = useCallback(
     (next: { url: string; name: string }) => {
-      const fileEditor = editor as FileBlockEditor | undefined
       fileEditor?.updateBlock(block, { props: { ...block.props, url: next.url, name: next.name } })
     },
-    [editor, block]
+    [fileEditor, block]
   )
 
   // Don't render if no URL

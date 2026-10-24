@@ -60,7 +60,7 @@ export function useTags() {
   const searchTags = useCallback(
     (query: string): Tag[] => {
       if (!query || query.trim() === '') {
-        return [...tags].sort((a, b) => b.count - a.count)
+        return tags.toSorted((a, b) => b.count - a.count)
       }
 
       const lastSlash = query.lastIndexOf('/')
@@ -79,25 +79,25 @@ export function useTags() {
             const leaf = segments[segments.length - 1]
             return leaf.toLowerCase().includes(leafQuery)
           })
-          .sort((a, b) => b.count - a.count)
+          .toSorted((a, b) => b.count - a.count)
       }
 
       const filtered = fuzzySearch(tags, query, ['name'])
-      return filtered.sort((a, b) => b.count - a.count)
+      return filtered.toSorted((a, b) => b.count - a.count)
     },
     [tags]
   )
 
   const getPopularTags = useCallback(
     (limit = 10): Tag[] => {
-      return [...tags].sort((a, b) => b.count - a.count).slice(0, limit)
+      return tags.toSorted((a, b) => b.count - a.count).slice(0, limit)
     },
     [tags]
   )
 
   const getRecentTags = useCallback(
     (limit = 5): Tag[] => {
-      return [...tags].sort((a, b) => b.count - a.count).slice(0, limit)
+      return tags.toSorted((a, b) => b.count - a.count).slice(0, limit)
     },
     [tags]
   )

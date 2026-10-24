@@ -69,6 +69,7 @@ export function migrateSettingsToConfig(
 
   if (rawGeneral) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
       const general = JSON.parse(rawGeneral) as Partial<GeneralSettings>
       if (general.theme) seedPrefs.theme = general.theme
       if (general.fontSize) seedPrefs.fontSize = general.fontSize
@@ -107,6 +108,7 @@ export function migrateSettingsToConfig(
 
   if (rawEditor) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
       const editor = JSON.parse(rawEditor) as Partial<EditorSettings>
       const editorSeed: Partial<EditorSettings> = {}
       if (editor.width) editorSeed.width = editor.width
@@ -175,6 +177,7 @@ export function writeCacheFromPreferences(db: DataDb, prefs: VaultPreferences): 
   let mergedGeneral: GeneralSettings
   if (existingGeneral) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
       const existing = JSON.parse(existingGeneral) as GeneralSettings
       mergedGeneral = { ...existing, ...portableFields }
     } catch {

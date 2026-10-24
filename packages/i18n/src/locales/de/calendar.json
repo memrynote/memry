@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "{title} erledigen",
     "task-completed": "Aufgabe erledigt",
-    "could-not-complete": "Aufgabe konnte nicht als erledigt markiert werden",
+    "could-not-update-status": "Aufgabenstatus konnte nicht geändert werden",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Nächste Woche",
     "open-task": "Aufgabe öffnen",
     "source-note": "Quellnotiz",
-    "reschedule": "Neu planen",
     "mark-done": "Als erledigt markieren",
     "mark-not-done": "Als nicht erledigt markieren",
-    "later-today": "Später heute",
     "tomorrow": "Morgen",
-    "next-week-mon": "Nächste Woche · Mo",
     "pick-date-time": "Datum und Uhrzeit auswählen…",
     "remove-due-date": "Fälligkeitsdatum entfernen",
     "subtasks-prefix": "Teilaufgaben",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Das Fälligkeitsdatum konnte nicht entfernt werden",
       "could-not-open-note": "Notiz konnte nicht geöffnet werden"
     }
+  },
+  "eventNotes": {
+    "heading": "Notizen",
+    "create": "Neue Notiz",
+    "link": "Notiz verknüpfen",
+    "untitled": "Meeting-Notiz",
+    "searchPlaceholder": "Notizen suchen",
+    "noResults": "Keine Notizen gefunden",
+    "createFailed": "Für diesen Termin konnte keine Notiz erstellt werden.",
+    "linkFailed": "Die Notiz konnte nicht mit diesem Termin verknüpft werden.",
+    "loadFailed": "Die mit diesem Termin verknüpften Notizen konnten nicht geladen werden.",
+    "propertyTaken": "Diese Notiz hat bereits eine Eigenschaft „{name}“, die kein Link ist."
   },
   "notePopover": {
     "kind": "Notiz",
@@ -254,6 +262,10 @@
     "overdue": "überfällig",
     "untitled": "Ohne Titel",
     "days": "{count, plural, one {# Tag} other {# Tage}}",
+    "subtasks": {
+      "expand": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} von {title} anzeigen",
+      "collapse": "{count, plural, one {# Teilaufgabe} other {# Teilaufgaben}} von {title} ausblenden"
+    },
     "events": "Termine",
     "schedule-hint": "Klicken, um ein Datum festzulegen, ziehen, um einen Zeitraum festzulegen",
     "empty-title": "Hier ist nichts auf der Zeitachse",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Abonnierte Kalender"
     },
     "caldav": {
       "name": "CalDAV"

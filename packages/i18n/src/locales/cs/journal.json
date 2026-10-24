@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Propojení AI",
     "todaysNotes": "Dnešní poznámky",
-    "todaysSchedule": "Dnešní rozvrh",
-    "todaysTasks": "Dnešní úkoly",
     "tasks": "Úkoly",
     "technicalDetails": "Technické detaily"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Dobré odpoledne",
       "evening": "Dobrý večer",
       "night": "Dobrou noc"
-    },
-    "allDay": "Celý den"
+    }
   },
   "nav": {
     "previousDay": "Předchozí den",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Více možností",
     "documentStatistics": "Statistiky dokumentu",
-    "dayContext": "Kontext dne: úkoly a rozvrh",
-    "scheduleEvents": "Naplánované události",
-    "tasks": "Úkoly",
     "notesCreatedToday": "{count, plural, one {Dnes vytvořena # poznámka} few {Dnes vytvořeny # poznámky} other {Dnes vytvořeno # poznámek}}"
   },
   "empty": {
     "noEntry": "Žádný zápis",
     "noDaysInMonth": "Žádné dny v tomto měsíci",
-    "noEventsScheduled": "Žádné naplánované události",
-    "noEventsScheduledToday": "Dnes nejsou naplánovány žádné události",
-    "noEventsWereScheduled": "Nebyly naplánovány žádné události",
-    "noTasksDue": "Žádné úkoly s termínem",
-    "noTasksDueToday": "Žádné úkoly s termínem dnes",
-    "noTasksWereDue": "V tento den neměly termín žádné úkoly",
     "noNotesToday": "Dnes nebyly vytvořeny žádné poznámky",
     "startDocumenting": "Začněte zapisovat své myšlenky a nápady"
   },
@@ -155,9 +143,7 @@
     "day": "den",
     "days": "dní",
     "event": "událost",
-    "events": "události",
     "task": "úkol",
-    "todo": "k provedení",
     "moreConnections": "{count, plural, one {+ # další propojení} few {+ # další propojení} other {+ # dalších propojení}}",
     "moreConnections_plural": "{count, plural, one {+ # další propojení} few {+ # další propojení} other {+ # dalších propojení}}",
     "moreNotes": "{count, plural, one {+ # další poznámka} few {+ # další poznámky} other {+ # dalších poznámek}}",
@@ -166,7 +152,6 @@
     "charactersWritten": "napsaných znaků",
     "words": "{count, plural, one {# slovo} few {# slova} other {# slov}}",
     "characters": "{count, plural, one {# znak} few {# znaky} other {# znaků}}",
-    "completed": "Dokončeno: {count}",
     "overdue": "{count} po termínu"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Upraveno {date}"
   },
   "task": {
-    "completed": "Dokončeno",
-    "notCompleted": "Nedokončeno",
-    "priority": "Priorita: {priority}",
-    "overdue": "po termínu",
-    "markComplete": "Označit úkol „{title}“ jako dokončený",
-    "markNotComplete": "Označit úkol „{title}“ jako nedokončený"
+    "priority": "Priorita: {priority}"
   },
   "template": {
     "using": "Použita šablona „{templateName}“"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Váš obsah je stále v paměti. Kliknutím zkusíte uložení zopakovat.",
-    "noteNotFound": "Poznámka „{target}“ nebyla nalezena",
     "createLinkedFailed": "Propojenou poznámku se nepodařilo vytvořit",
     "fileNotFound": "Soubor nenalezen: {target}",
     "openLinkedItemFailed": "Propojenou položku se nepodařilo otevřít",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Smazat zápis v deníku",
     "description": "Opravdu chcete smazat „{title}“? Tuto akci nelze vrátit zpět."
+  },
+  "dayTimeline": {
+    "label": "Denní rozvrh",
+    "allDay": "Celodenní položky",
+    "unscheduled": "Nenaplánováno",
+    "unscheduledEmpty": "Žádné nenaplánované úkoly. Přetažením bloku sem zrušíte jeho čas.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Dokončit {title}"
   }
 }

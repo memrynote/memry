@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "Không tìm thấy — bấm để tạo “{title}”"
   },
+  "wikiLinkMenu": {
+    "aria": "Thao tác với liên kết",
+    "open": "Mở",
+    "openInNewTab": "Mở trong tab mới",
+    "openToTheSide": "Mở bên cạnh",
+    "edit": "Sửa liên kết",
+    "copy": "Sao chép liên kết",
+    "unlink": "Xóa liên kết",
+    "displayRow": "Hiển thị…",
+    "sizeNone": "Không",
+    "sizeSmall": "Nhỏ",
+    "sizeMedium": "Vừa",
+    "showCover": "Hiện ảnh bìa",
+    "showPreview": "Hiện bản xem trước",
+    "copyFailed": "Không thể sao chép liên kết"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "Nhập lại từ Readwise",
+    "refreshAction": "Làm mới thông tin sách",
+    "syncsOn": "Readwise đồng bộ trên {device}.",
+    "syncsOnAnotherDevice": "Readwise đồng bộ trên thiết bị khác.",
+    "takeOverHint": "Hãy đồng bộ trên thiết bị đó, hoặc tiếp quản trong Cài đặt → Nhập.",
+    "reimport": {
+      "title": "Nhập lại “{title}” từ Readwise?",
+      "body": "Phần Readwise sẽ được viết lại từ đầu. Mọi thứ bạn đã viết trong đó sẽ mất.",
+      "note": "Văn bản bên ngoài phần này và các thuộc tính của ghi chú được giữ nguyên.",
+      "cancel": "Hủy",
+      "confirm": "Nhập lại"
+    },
+    "commands": {
+      "reimported": "Đã nhập lại từ Readwise",
+      "refreshed": "Đã làm mới thông tin sách",
+      "failed": "Không thể hoàn tất lệnh Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "Chưa chọn ghi chú",
@@ -25,6 +61,7 @@
       "willSync": "Ghi chú sẽ được đồng bộ lên đám mây",
       "renameFailed": "Không thể đổi tên ghi chú",
       "titleRequired": "Ghi chú cần có tiêu đề",
+      "duplicateTitle": "Một ghi chú khác trong {folder} cũng có tên “{title}”. Liên kết đến các ghi chú này sẽ kèm thư mục của chúng.",
       "toggleLocalOnlyFailed": "Không thể bật/tắt chế độ chỉ cục bộ",
       "toggleFullWidthFailed": "Không thể bật/tắt toàn bộ chiều rộng",
       "pathCopied": "Đã sao chép đường dẫn",
@@ -98,6 +135,7 @@
       "openToTheSide": "Mở bên cạnh",
       "newNote": "Ghi chú mới",
       "newFolder": "Thư mục mới",
+      "showTasks": "Hiện công việc",
       "expandSubfolders": "Mở rộng tất cả thư mục con",
       "collapseSubfolders": "Thu gọn tất cả thư mục con",
       "rename": "Đổi tên",
@@ -116,12 +154,6 @@
       "removeFromBookmarks": "Gỡ khỏi dấu trang",
       "journalSettings": "Cài đặt nhật ký…"
     },
-    "nav": {
-      "label": "Điều hướng",
-      "ariaExpanded": "Mục điều hướng, đã mở rộng",
-      "ariaCollapsed": "Mục điều hướng, đã thu gọn",
-      "saveFailed": "Không thể lưu trạng thái của mục điều hướng"
-    },
     "viewOptions": {
       "label": "Tùy chọn hiển thị",
       "notesFirst": "Ghi chú trước thư mục",
@@ -138,7 +170,15 @@
       "folderSuffix": "thư mục",
       "moreItems": "…và {count} mục khác",
       "deleting": "Đang xóa…",
-      "deleteCount": "Xóa {count}"
+      "deleteCount": "Xóa {count}",
+      "journalFolderWarning": "Việc này bao gồm thư mục nhật ký của bạn. Mọi mục nhật ký trong đó sẽ bị xóa, trên tất cả thiết bị của bạn."
+    },
+    "journalChange": {
+      "leaveTitle": "Biến các mục nhật ký thành ghi chú?",
+      "leaveBody": "Khi bị chuyển ra khỏi thư mục nhật ký, hoặc đổi tên khác định dạng ngày, các mục nhật ký trở thành ghi chú thường và rời khỏi Nhật ký của bạn. Trên các thiết bị khác, những ngày đó bị xóa khỏi Nhật ký và thay vào đó là các ghi chú.",
+      "joinTitle": "Biến các ghi chú thành mục nhật ký?",
+      "joinBody": "Các tệp được đặt tên theo định dạng ngày nhật ký bên trong thư mục nhật ký sẽ trở thành mục nhật ký. Trên các thiết bị khác, những ghi chú đó được thay bằng mục nhật ký.",
+      "confirm": "Tiếp tục"
     },
     "toast": {
       "selectionBookmarked": "Đã đánh dấu {count} mục",
@@ -165,11 +205,31 @@
       "headingPlaceholder": "Tiêu đề",
       "listPlaceholder": "Mục danh sách",
       "todoPlaceholder": "Việc cần làm",
-      "htmlComment": "Bình luận HTML ẩn"
+      "htmlComment": "Bình luận HTML ẩn",
+      "percentComment": "Chú thích ẩn",
+      "readwise": {
+        "noteStart": "Readwise · tự động đồng bộ",
+        "noteEnd": "Hết phần Readwise",
+        "dayStart": "Readwise · các đoạn nổi bật hôm nay",
+        "dayEnd": "Hết Readwise",
+        "hint": "Nếu bạn sửa trong phần này, Readwise sẽ ngừng cập nhật nó."
+      }
     },
     "table": {
       "keyboardMenuAria": "Thao tác bảng cho hàng {row}, cột {column}",
-      "keyboardMenuTitle": "Hàng {row} · Cột {column}"
+      "keyboardMenuTitle": "Hàng {row} · Cột {column}",
+      "sizePicker": {
+        "aria": "Kích thước bảng. Dùng phím mũi tên để chọn số hàng và cột, rồi nhấn Enter.",
+        "size": "{rows, plural, other {# hàng}} × {columns, plural, other {# cột}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, other {Xóa # hàng}}",
+        "addRowsAbove": "{count, plural, other {Thêm # hàng phía trên}}",
+        "addRowsBelow": "{count, plural, other {Thêm # hàng phía dưới}}",
+        "deleteColumns": "{count, plural, other {Xóa # cột}}",
+        "addColumnsLeft": "{count, plural, other {Thêm # cột bên trái}}",
+        "addColumnsRight": "{count, plural, other {Thêm # cột bên phải}}"
+      }
     },
     "list": {
       "bulleted": "Danh sách dấu đầu dòng",
@@ -195,6 +255,8 @@
       "hideLocalGraph": "Ẩn đồ thị cục bộ",
       "showLocalGraph": "Hiện đồ thị cục bộ",
       "moreActions": "Thao tác khác",
+      "searchActions": "Tìm thao tác...",
+      "noMatchingActions": "Không có thao tác phù hợp",
       "find": "Tìm…",
       "versionHistory": "Lịch sử phiên bản",
       "export": "Xuất",
@@ -215,6 +277,8 @@
       "notSynced": "Chưa đồng bộ về thiết bị này",
       "revealFailed": "Không thể hiển thị tệp trong trình quản lý tệp",
       "openFailed": "Không thể mở tệp",
+      "showAsLink": "Hiện dưới dạng liên kết",
+      "showAsEmbed": "Hiện dạng nhúng",
       "missingTitle": "Thiếu tệp đính kèm",
       "missingExpected": "Tệp dự kiến: {name}"
     },
@@ -226,6 +290,22 @@
       "confirm": "Đổi tên",
       "renamed": "Đã đổi tên thành {name}",
       "failed": "Không thể đổi tên tệp đính kèm"
+    },
+    "imageLightbox": {
+      "menuItem": "Xem lớn hơn",
+      "title": "Trình xem hình ảnh",
+      "zoomIn": "Phóng to",
+      "zoomOut": "Thu nhỏ",
+      "reset": "Đặt lại thu phóng"
+    },
+    "imageCrop": {
+      "menuItem": "Cắt…",
+      "title": "Cắt hình ảnh",
+      "description": "Kéo trên hình để chọn phần ghi chú hiển thị. Tệp gốc được giữ nguyên.",
+      "reset": "Hiện toàn bộ hình ảnh",
+      "cancel": "Hủy",
+      "apply": "Cắt",
+      "unavailable": "Hình ảnh chưa tải xong nên chưa thể cắt"
     },
     "attachmentsDialog": {
       "title": "Tệp đính kèm",
@@ -248,12 +328,24 @@
       "title": "Khung chú thích",
       "group": "Khối cơ bản",
       "subtext": "Làm nổi bật thông tin quan trọng",
+      "customSubtext": "Loại callout tùy chỉnh của bạn",
       "changeType": "Thay đổi loại khung chú thích",
+      "expand": "Mở rộng callout",
+      "collapse": "Thu gọn callout",
       "menuLabel": "Loại khung chú thích",
       "info": "Thông tin",
       "warning": "Cảnh báo",
       "error": "Lỗi",
-      "success": "Thành công"
+      "success": "Thành công",
+      "note": "Ghi chú",
+      "abstract": "Tóm tắt",
+      "todo": "Việc cần làm",
+      "tip": "Mẹo",
+      "important": "Quan trọng",
+      "question": "Câu hỏi",
+      "example": "Ví dụ",
+      "quote": "Trích dẫn",
+      "bug": "Lỗi"
     },
     "columns": {
       "group": "Khối cơ bản",
@@ -332,6 +424,83 @@
       "invalidShape": "Định nghĩa của chế độ xem này không có nguồn. Hãy chọn nguồn ở trên hoặc sửa bên dưới.",
       "definition": "Định nghĩa"
     },
+    "chart": {
+      "title": "Biểu đồ",
+      "subtext": "Vẽ một thuộc tính theo thời gian: đường, cột hoặc bản đồ nhiệt lịch",
+      "layout": "Biểu đồ",
+      "settings": "Cài đặt biểu đồ",
+      "chooseProperty": "Chọn nội dung cần vẽ",
+      "source": "Nguồn",
+      "headerMeta": "{range} · {type}",
+      "property": "Thuộc tính",
+      "noProperties": "Chưa có gì để vẽ. Hãy thêm một thuộc tính vào mục nhật ký hoặc ghi chú trước.",
+      "chartType": "Biểu đồ",
+      "suggested": "Gợi ý",
+      "types": {
+        "line": "Đường",
+        "bar": "Cột",
+        "heatmap": "Bản đồ nhiệt"
+      },
+      "range": "Khoảng",
+      "lastDays": "{count, plural, other {# ngày qua}}",
+      "sameDay": "Các mục cùng ngày",
+      "aggregates": {
+        "average": "Trung bình",
+        "sum": "Tổng",
+        "min": "Thấp nhất",
+        "max": "Cao nhất",
+        "count": "Số lượng"
+      },
+      "missingDays": "Ngày thiếu",
+      "missing": {
+        "gap": "Để trống",
+        "zero": "Tính là không"
+      },
+      "dateFrom": {
+        "label": "Ngày lấy từ",
+        "created": "Ngày tạo",
+        "modified": "Ngày sửa"
+      },
+      "propertyTypes": {
+        "text": "Văn bản",
+        "number": "Số",
+        "checkbox": "Hộp kiểm",
+        "date": "Ngày",
+        "url": "URL",
+        "status": "Trạng thái",
+        "select": "Chọn",
+        "multiselect": "Chọn nhiều",
+        "relation": "Quan hệ",
+        "project": "Dự án",
+        "rating": "Đánh giá"
+      },
+      "noEntry": "Không có mục",
+      "done": "Xong",
+      "notDone": "Chưa xong",
+      "logged": "Đã ghi",
+      "valueCount": "{count, plural, other {# giá trị}}",
+      "average": "Trung bình",
+      "vsPrevious": "so với kỳ trước",
+      "lowest": "Thấp nhất",
+      "currentStreak": "Chuỗi hiện tại",
+      "longestStreak": "Chuỗi dài nhất",
+      "dayCount": "{count, plural, other {# ngày}}",
+      "doneDays": "Xong",
+      "loggedDays": "Đã ghi",
+      "mostCommon": "Phổ biến nhất",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} trong {days} ngày qua",
+      "noData": "Chưa có gì được ghi trong khoảng này.",
+      "loadFailed": "Không thể tải biểu đồ này. Bản thân các mục không bị ảnh hưởng.",
+      "sourceJournal": "Nhật ký",
+      "history": {
+        "show": "Hiện lịch sử",
+        "title": "Lịch sử {property}",
+        "range": "13 tuần qua",
+        "insert": "Sao chép dưới dạng khối biểu đồ",
+        "copied": "Đã sao chép khối biểu đồ. Hãy dán vào bất kỳ ghi chú nào."
+      }
+    },
     "slashMenu": {
       "aria": "Khối và thao tác",
       "groups": {
@@ -344,14 +513,10 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Dạng thu gọn được",
         "asLinkedTask": "Dạng công việc liên kết",
         "asReminder": "Dạng lời nhắc"
       },
-      "actions": {
-        "insert": "Chèn",
-        "open": "Mở"
-      },
+      "close": "Đóng menu",
       "matchesAlias": "khớp",
       "noMatch": "Không có khối nào khớp với “{query}”",
       "fallback": {
@@ -427,11 +592,15 @@
         "title": "Di chuyển khối sang ghi chú",
         "searchPlaceholder": "Tìm kiếm ghi chú…",
         "noResults": "Không có ghi chú phù hợp",
-        "moved": "Đã di chuyển khối sang “{title}”",
         "failed": "Không thể di chuyển khối"
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "Hiện dưới dạng",
+        "embed": "Nhúng",
+        "link": "Liên kết"
+      },
       "title": {
         "image": "Thêm hình ảnh",
         "media": "Thêm phương tiện",
@@ -525,6 +694,11 @@
       "empty": "Gõ để tạo thẻ mới",
       "create": "Tạo #{tag}"
     },
+    "pdfDisplay": {
+      "title": "Hiện PDF dưới dạng",
+      "embed": "Trình xem nhúng",
+      "link": "Tên tệp"
+    },
     "pasteLink": {
       "title": "Dán dưới dạng",
       "url": "URL",
@@ -566,11 +740,21 @@
   "outline": {
     "title": "Dàn ý",
     "aria": "Dàn ý tài liệu",
-    "emptyYet": "Chưa có tiêu đề nào",
     "readTime": "{count} phút đọc",
     "words": "{count} từ",
     "created": "Ngày tạo",
-    "modified": "Ngày sửa đổi"
+    "modified": "Ngày sửa đổi",
+    "sync": {
+      "label": "Đồng bộ",
+      "confirmed": "Trên máy chủ {time}",
+      "pending": "Đang chờ từ {time}",
+      "sent": "Đang gửi",
+      "rejected": "Máy chủ đã từ chối thay đổi gần nhất",
+      "notRecorded": "Không có gì đang chờ gửi",
+      "localOnly": "Chỉ cục bộ",
+      "notSyncing": "Không đồng bộ",
+      "waiting": "Đang chờ gửi"
+    }
   },
   "backlinks": {
     "sortRecent": "Gần đây",
@@ -587,7 +771,18 @@
     "expandSection": "Mở rộng phần liên kết ngược",
     "showMore": "Hiển thị thêm {count} liên kết ngược",
     "more": "{count} mục khác",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "Hiển thị trong một portal"
+  },
+  "unlinkedMentions": {
+    "title": "Đề cập chưa liên kết",
+    "summary": "{count, plural, other {# đề cập chưa liên kết}}",
+    "sectionAria": "Đề cập chưa liên kết",
+    "fromAria": "Đề cập chưa liên kết trong {title}",
+    "link": "Liên kết",
+    "linkAria": "Liên kết {text}",
+    "gone": "Đề cập đó đã thay đổi kể từ khi danh sách được đọc",
+    "linkFailed": "Không thể liên kết đề cập"
   },
   "outgoingLinks": {
     "summary": "{count, plural, other {# liên kết đi}}",
@@ -619,11 +814,7 @@
     "addToCanvasFailed": "Không thể thêm ghi chú vào bảng trắng"
   },
   "suggestedTags": {
-    "label": "Thẻ gợi ý:",
-    "hint": "Các thẻ chung của những ghi chú giống ghi chú này nhất. Chưa có thẻ nào được thêm cho đến khi bạn chọn.",
-    "acceptAria": "Thêm thẻ {tag}",
-    "support": "{count, plural, other {Dùng trong # ghi chú tương tự}}",
-    "dismiss": "Ẩn thẻ gợi ý"
+    "support": "{count, plural, other {Dùng trong # ghi chú tương tự}}"
   },
   "comments": {
     "railAria": "Bình luận",
@@ -631,11 +822,9 @@
     "toolbarComment": "Bình luận",
     "commentPlaceholder": "Thêm bình luận…",
     "createdTooltip": "Đã tạo {date} lúc {time}",
-    "cancel": "Hủy",
     "resolve": "Giải quyết",
     "edit": "Chỉnh sửa bình luận",
     "delete": "Xóa bình luận",
-    "replyPlaceholder": "Trả lời…",
     "attachAria": "Đính kèm tệp",
     "mentionAria": "Đề cập một người, trang hoặc ngày",
     "sendAria": "Gửi bình luận",
@@ -648,13 +837,7 @@
       "code": "Mã"
     },
     "openImageAria": "Mở ảnh {name}",
-    "openAttachmentAria": "Mở tệp đính kèm {name}",
-    "kind": {
-      "comment": "Bình luận",
-      "addition": "Bổ sung",
-      "deletion": "Xóa bỏ",
-      "substitution": "Thay thế"
-    }
+    "openAttachmentAria": "Mở tệp đính kèm {name}"
   },
   "tagsRow": {
     "aria": "Thẻ",
@@ -663,6 +846,7 @@
     "removeAria": "Gỡ thẻ: {tag}",
     "inputPlaceholder": "Gõ tên thẻ…",
     "recent": "Gần đây",
+    "suggested": "Gợi ý",
     "matching": "Phù hợp",
     "all": "Tất cả thẻ",
     "none": "Không tìm thấy thẻ",
@@ -675,7 +859,6 @@
   "properties": {
     "title": "Thuộc tính",
     "noteAria": "Thuộc tính ghi chú",
-    "workspaceAria": "Thuộc tính không gian làm việc",
     "listAria": "Danh sách thuộc tính",
     "add": "Thêm thuộc tính",
     "addDescription": "Thêm thuộc tính mới cho ghi chú này",
@@ -723,7 +906,6 @@
       "inProgress": "Đang làm",
       "done": "Hoàn thành"
     },
-    "projectAlreadySet": "Ghi chú này đã có thuộc tính dự án",
     "projectPlaceholder": "Không có dự án",
     "projectSearch": "Tìm kiếm dự án",
     "projectEmpty": "Không có dự án nào",
@@ -755,6 +937,9 @@
     "repositionHint": "Kéo để đặt lại vị trí",
     "repositionSave": "lưu",
     "repositionCancel": "hủy",
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ",
+    "resize": "Kéo để đổi kích thước ảnh bìa",
     "credit": "Ảnh của {name} trên Unsplash",
     "focusFailed": "Không thể lưu vị trí ảnh bìa",
     "picker": {
@@ -947,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Bộ lọc",
-      "filters": "Bộ lọc",
-      "clearAll": "Xóa tất cả",
-      "noFiltersApplied": "Chưa áp dụng bộ lọc nào",
-      "addFiltersToNarrowDownYourNotes": "Thêm bộ lọc để thu hẹp danh sách ghi chú",
       "match": "Khớp",
-      "allAnd": "Tất cả (VÀ)",
-      "anyOr": "Bất kỳ (HOẶC)",
-      "ofTheFollowing": "điều kiện sau:",
       "match2": "Khớp",
       "all": "Tất cả",
       "any": "Bất kỳ",
-      "of": "trong số:",
       "addCondition": "Thêm điều kiện",
       "addFilter": "Thêm bộ lọc",
       "addGroup": "Thêm nhóm",
@@ -995,7 +1172,6 @@
       "available": "Có sẵn: ",
       "preview": "Xem trước",
       "fixExpressionErrorsToSeePreview": "Sửa lỗi biểu thức để xem trước",
-      "usingNote": "Đang dùng ghi chú: “",
       "cancel": "Hủy",
       "namePlaceholder": "so_ngay_den_han",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1023,10 +1199,7 @@
       "loadingFolders": "Đang tải thư mục…",
       "suggested": "ĐỀ XUẤT",
       "bestMatch": "Phù hợp nhất",
-      "current": "hiện tại)",
       "allFolders": "TẤT CẢ THƯ MỤC",
-      "noFoldersMatch": "Không có thư mục nào khớp với \"",
-      "create": "Tạo \"",
       "cancel": "Hủy",
       "currentFolderBadge": "(hiện tại)",
       "noFoldersMatchQuery": "Không có thư mục nào khớp với “{query}”",
@@ -1050,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "mặc định",
       "viewActions": "Thao tác chế độ xem",
-      "rename": "Đổi tên",
       "duplicate": "Nhân bản",
       "setAsDefault": "Đặt làm mặc định",
       "delete": "Xóa",
-      "createNewView": "Tạo chế độ xem mới",
-      "createNewView2": "Tạo chế độ xem mới",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Tạo chế độ xem mới với các cột, bộ lọc và sắp xếp tùy chỉnh.",
-      "viewName": "Tên chế độ xem",
       "myCustomView": "Chế độ xem tùy chỉnh của tôi",
-      "baseConfiguration": "Cấu hình cơ sở",
-      "copyFromCurrentView": "Sao chép từ chế độ xem hiện tại",
-      "startFreshDefaultColumns": "Bắt đầu mới (các cột mặc định)",
       "cancel": "Hủy",
-      "renameView": "Đổi tên chế độ xem",
-      "enterANewNameForThisView": "Nhập tên mới cho chế độ xem này.",
-      "viewName2": "Tên chế độ xem",
-      "viewName3": "Tên chế độ xem",
-      "cancel2": "Hủy",
       "deleteView": "Xóa chế độ xem",
       "areYouSureYouWantToDelete": "Bạn có chắc muốn xóa \"",
       "thisActionCannotBeUndone": "Không thể hoàn tác thao tác này.",
@@ -1077,22 +1237,17 @@
       "layout": "Bố cục",
       "table": "Bảng",
       "list": "Danh sách",
-      "gallery": "Lưới",
-      "createView": "Tạo chế độ xem",
-      "save": "Lưu"
+      "gallery": "Lưới"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Không thể tải PDF: ",
-      "download": "Tải xuống",
       "download2": "Tải xuống",
       "noFileAttached": "Không có tệp đính kèm",
       "resizePdf": "Đổi kích thước PDF",
       "resizeHtml": "Đổi kích thước nội dung nhúng HTML",
       "alignLeft": "Căn trái",
       "alignCenter": "Căn giữa",
-      "alignRight": "Căn phải",
-      "previousPage": "Trang trước",
-      "nextPage": "Trang sau"
+      "alignRight": "Căn phải"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Mở trong bảng công việc",
@@ -1116,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 in)",
       "legal85X14In": "Legal (8,5 x 14 in)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Đã đồng bộ"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Số từ",
       "characters": "Số ký tự",
@@ -1140,14 +1289,6 @@
       "noBookmarksYet": "Chưa có dấu trang nào",
       "moreOptions": "Tùy chọn khác",
       "remove": "Gỡ bỏ"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Mở",
-      "openToTheSide": "Mở bên cạnh",
-      "pinToTabs": "Ghim vào tab",
-      "edit": "Chỉnh sửa",
-      "delete": "Xóa",
-      "copyLink": "Sao chép liên kết"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Đang tải thẻ…",
@@ -1168,26 +1309,9 @@
       "cancel": "Hủy"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Quay lại",
-      "notes": "ghi chú",
-      "loadingNotes": "Đang tải ghi chú…",
-      "noNotesWithThisTag": "Không có ghi chú nào có thẻ này",
-      "addThisTagToANoteToSeeItHere": "Gắn thẻ này cho một ghi chú để ghi chú đó hiển thị tại đây",
-      "pinned": "ĐÃ GHIM",
-      "allNotes": "TẤT CẢ GHI CHÚ",
-      "allNotesArePinned": "Tất cả ghi chú đều đã được ghim",
-      "tasks": "CÔNG VIỆC",
-      "unpinFromTag": "Bỏ ghim khỏi thẻ",
-      "unpin": "Bỏ ghim",
-      "pinToTag": "Ghim vào thẻ",
-      "pin": "Ghim",
       "tagActions": "Thao tác với thẻ",
-      "editTagName": "Chỉnh sửa tên thẻ",
       "changeColor": "Đổi màu",
-      "deleteTag": "Xóa thẻ",
-      "recent": "Gần đây",
-      "created": "Ngày tạo",
-      "alphabetical": "Theo bảng chữ cái"
+      "deleteTag": "Xóa thẻ"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Đổi tên thẻ",
@@ -1246,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Tạo ghi chú mới",
-      "viewSettings": "Cài đặt chế độ xem",
-      "displayDensity": "Mật độ hiển thị",
-      "comfortable": "Thoải mái",
-      "compact": "Nhỏ gọn",
-      "showSummaries": "Hiển thị tóm tắt",
       "cancel": "Hủy"
     },
     "componentsFolderViewSortSelector": {
@@ -1354,7 +1473,6 @@
     "openHub": "Mở trang thẻ"
   },
   "tagView": {
-    "moreActions": "Thao tác khác",
     "pin": {
       "action": "Ghim {count, plural, other {# ghi chú}} vào thẻ",
       "success": "Đã ghim {count, plural, other {# ghi chú}} vào thẻ",
@@ -1412,6 +1530,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, other {# ghi chú}}"
+    },
+    "noteTasks": {
+      "expand": "Hiện công việc của {title}",
+      "collapse": "Ẩn công việc của {title}",
+      "list": "Công việc trong {title}",
+      "progressOpen": "{open}/{total} đang mở",
+      "progressDone": "{total}/{total} đã xong",
+      "nextDue": "Hạn tiếp theo",
+      "reminder": "Đã đặt lời nhắc"
     }
   },
   "mindMap": {
@@ -1458,8 +1585,456 @@
     "saveDialogTitle": "Đặt tên cho tìm kiếm này",
     "saveDialogPlaceholder": "vd. Cuộc họp công việc",
     "cancel": "Hủy",
-    "save": "Lưu",
-    "addToFilterHint": "Ctrl/Cmd + bấm vào thẻ để thêm vào bộ lọc"
+    "save": "Lưu"
+  },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "Phương án khác",
+      "overflow": "Phần tràn",
+      "menu": "Công cụ viết",
+      "close": "Đóng công cụ viết"
+    },
+    "menu": {
+      "aria": "Thao tác trình soạn thảo",
+      "cut": "Cắt",
+      "copy": "Sao chép",
+      "paste": "Dán",
+      "selectAll": "Chọn tất cả",
+      "undo": "Hoàn tác",
+      "redo": "Làm lại",
+      "comment": "Bình luận",
+      "addAlternative": "Thêm phương án khác",
+      "suggestAlternatives": "Gợi ý phương án khác",
+      "ghost": "Làm mờ",
+      "revive": "Khôi phục",
+      "stash": "Cất vào phần tràn",
+      "noSpellingSuggestions": "Không có gợi ý",
+      "addToDictionary": "Thêm vào từ điển",
+      "clipboardFailed": "Không thể dùng bộ nhớ tạm"
+    },
+    "alternatives": {
+      "railAria": "Phương án khác",
+      "hint": "{position}/{total} ↑ ↓",
+      "original": "Bản gốc",
+      "byYou": "Do bạn viết",
+      "byAI": "Do AI gợi ý",
+      "showing": "Đang hiện",
+      "addPlaceholder": "Thêm phương án khác…",
+      "removeSuggestions": "Xóa các gợi ý",
+      "removeVariant": "Xóa phương án",
+      "empty": "Chọn văn bản và chọn Thêm phương án khác để giữ lại những cách diễn đạt khác.",
+      "suggesting": "Đang gợi ý phương án khác…",
+      "suggestFailed": "Không thể gợi ý phương án khác",
+      "noSuggestions": "Không có phương án mới nào được gợi ý"
+    },
+    "overflow": {
+      "railAria": "Phần tràn",
+      "addPlaceholder": "Viết gì đó để giữ lại…",
+      "empty": "Các dòng bạn cất hoặc viết ở đây sẽ ở cùng ghi chú này, ngoài phần văn bản.",
+      "dragHint": "Kéo vào ghi chú",
+      "copy": "Sao chép",
+      "copied": "Đã sao chép",
+      "delete": "Xóa"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "Khóa ghi chú",
+    "unlockNote": "Mở khóa ghi chú",
+    "lockFolder": "Khóa thư mục",
+    "unlockFolder": "Mở khóa thư mục",
+    "toggleFailed": "Không thể thay đổi khóa",
+    "readOnlyIndicator": "Đã khóa. Chỉ đọc đối với bạn và các tác nhân.",
+    "externalEditRestored": "“{title}” đã bị khóa, nên chỉnh sửa từ bên ngoài đã được hoàn tác",
+    "externalEditRestoredHint": "Văn bản đã chỉnh sửa được lưu trong lịch sử phiên bản của ghi chú."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "Người",
+        "plural": "Mọi người",
+        "fields": {
+          "company": "Công ty",
+          "role": "Vai trò",
+          "email": "Email",
+          "phone": "Điện thoại"
+        },
+        "inverse": {
+          "company": "Mọi người"
+        },
+        "template": {
+          "name": "Người",
+          "context": "Bối cảnh",
+          "contextHint": "Chúng ta gặp nhau thế nào, họ quan tâm điều gì",
+          "notes": "Ghi chú"
+        }
+      },
+      "company": {
+        "name": "Công ty",
+        "plural": "Các công ty",
+        "fields": {
+          "website": "Website",
+          "industry": "Ngành",
+          "location": "Địa điểm"
+        },
+        "template": {
+          "name": "Công ty",
+          "overview": "Tổng quan",
+          "overviewHint": "Họ làm gì, chúng ta quen ai ở đó",
+          "notes": "Ghi chú"
+        }
+      },
+      "meeting": {
+        "name": "Cuộc họp",
+        "plural": "Các cuộc họp",
+        "fields": {
+          "date": "Ngày",
+          "attendees": "Người tham dự",
+          "company": "Công ty"
+        },
+        "inverse": {
+          "attendees": "Các cuộc họp",
+          "company": "Các cuộc họp"
+        },
+        "template": {
+          "name": "Cuộc họp",
+          "agenda": "Chương trình họp",
+          "notes": "Ghi chú",
+          "actionItems": "Việc cần làm"
+        }
+      },
+      "book": {
+        "name": "Sách",
+        "plural": "Sách",
+        "fields": {
+          "author": "Tác giả",
+          "shelf": "Kệ sách",
+          "rating": "Đánh giá",
+          "finished": "Đã đọc xong"
+        },
+        "shelf": {
+          "toRead": "Cần đọc",
+          "reading": "Đang đọc",
+          "read": "Đã đọc"
+        },
+        "template": {
+          "name": "Sách",
+          "highlights": "Đoạn nổi bật",
+          "thoughts": "Suy nghĩ"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} giờ là một {tag}. Đã thêm mẫu.",
+      "templateChanged": "Ghi chú đã thay đổi sau khi mẫu được thêm, nên nó được giữ nguyên.",
+      "undoFailed": "Không thể hoàn tác",
+      "addFailed": "Không thể thêm thẻ",
+      "removeFailed": "Không thể xóa thẻ",
+      "removedKept": "Đã xóa #{tag}. Giữ lại {count} giá trị.",
+      "removedKeptOne": "Đã xóa #{tag}. Giữ lại 1 giá trị."
+    },
+    "picker": {
+      "create": "Tạo #{tag}",
+      "fillsTemplate": "Điền mẫu {tag} vào ghi chú trống này"
+    },
+    "hub": {
+      "strip": {
+        "title": "Thẻ dựng sẵn",
+        "subtitle": "Các thẻ đi kèm trường. Ghi chú được giữ nguyên cho đến khi bạn gắn thẻ.",
+        "notNow": "Không phải bây giờ",
+        "add": "Thêm",
+        "addFields": "Thêm trường",
+        "added": "Đã thêm",
+        "alreadyOn": "Đã có trên {count} ghi chú",
+        "alreadyOnOne": "Đã có trên 1 ghi chú"
+      },
+      "dialog": {
+        "title": "Thêm các trường {preset} vào #{tag}?",
+        "body": "#{tag} đã có trên {count} ghi chú. Chúng giữ nguyên mọi thứ đang có và nhận thêm các trường này, để trống cho đến khi ai đó điền.",
+        "bodyOne": "#{tag} đã có trên 1 ghi chú. Ghi chú giữ nguyên mọi thứ đang có và nhận thêm các trường này, để trống cho đến khi ai đó điền.",
+        "template": "Mẫu ({sections}) chỉ điền vào các ghi chú trống.",
+        "alsoAddsPrefix": "Cũng thêm",
+        "alsoAddsSuffix": "cho trường {field}.",
+        "useAnotherName": "Dùng tên khác",
+        "nameLabel": "Tên thẻ mới",
+        "namePlaceholder": "contact",
+        "cancel": "Hủy",
+        "addFields": "Thêm trường"
+      },
+      "toast": {
+        "added": "Đã thêm #{tag}",
+        "addedFields": "Đã thêm các trường {preset} vào #{tag}"
+      },
+      "hasFields": "Có trường"
+    },
+    "tasks": {
+      "thisTask": "Công việc này",
+      "viaTag": "{name} qua #{via}",
+      "clearValue": "Xóa {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "qua #{tag}",
+      "groupMenu": "Tùy chọn {tag}",
+      "openTag": "Mở #{tag}",
+      "thisNote": "Ghi chú này"
+    },
+    "offer": {
+      "text": "Thêm mẫu {tag} bên dưới văn bản của bạn",
+      "add": "Thêm",
+      "dismiss": "Bỏ qua",
+      "addFailed": "Không thể thêm mẫu"
+    },
+    "settings": {
+      "title": "Cài đặt cho #{tag}",
+      "close": "Đóng",
+      "cancel": "Hủy",
+      "save": "Lưu",
+      "onCounts": "Trên {notes, plural, other {# ghi chú}} và {tasks, plural, other {# công việc}}",
+      "onNotes": "Trên {count, plural, other {# ghi chú}}",
+      "headerFields": "{count, plural, other {# trường}}",
+      "editTag": "Sửa thẻ",
+      "syncNote": "Các thay đổi được đồng bộ sang các thiết bị khác của bạn",
+      "newerVersion": "Một phiên bản Memry mới hơn đã thay đổi thẻ này. Hãy cập nhật Memry để sửa nó ở đây.",
+      "sections": {
+        "appearance": "Giao diện",
+        "extends": "Kế thừa",
+        "fields": "Trường · {count}",
+        "template": "Mẫu"
+      },
+      "appearance": {
+        "icon": "Biểu tượng",
+        "color": "Màu",
+        "customColor": "Tùy chỉnh",
+        "category": "Danh mục",
+        "noCategory": "Không có danh mục"
+      },
+      "extends": {
+        "nothing": "Không có",
+        "hint": "Lấy các trường của thẻ khác và xuất hiện trong bảng của nó.",
+        "hintSet": "Các ghi chú {tag} nhận các trường của {parent} và xuất hiện trong bảng {parent}."
+      },
+      "types": {
+        "text": "Văn bản",
+        "number": "Số",
+        "date": "Ngày",
+        "url": "URL",
+        "status": "Trạng thái",
+        "select": "Chọn",
+        "multiselect": "Chọn nhiều",
+        "checkbox": "Hộp kiểm",
+        "relation": "Quan hệ"
+      },
+      "fields": {
+        "empty": "Chưa có trường nào. Hãy thêm một trường để mọi ghi chú #tag có cùng thuộc tính.",
+        "fromParent": "Từ #{tag} · sửa ở đó",
+        "inverseSub": "Hiển thị trên {target} dưới dạng {inverse}",
+        "anyNoteSub": "Liên kết đến bất kỳ ghi chú nào",
+        "actions": "Thao tác cho {field}",
+        "rename": "Đổi tên…",
+        "relationSettings": "Cài đặt quan hệ",
+        "remove": "Xóa…"
+      },
+      "addField": {
+        "button": "Thêm trường",
+        "namePlaceholder": "Tên trường",
+        "existing": "Thuộc tính hiện có",
+        "existingSub": "{type} · trên {count, plural, other {# ghi chú}} · dùng lại",
+        "newType": "Loại trường mới",
+        "relationSub": "Liên kết đến các ghi chú có một thẻ",
+        "submit": "Thêm trường",
+        "reserved": "{name} là tên dành riêng và không thể làm trường.",
+        "taken": "#{tag} đã có {name}."
+      },
+      "relation": {
+        "target": "Trỏ tới các ghi chú được gắn thẻ",
+        "pickTag": "Chọn một thẻ",
+        "howMany": "Bao nhiêu",
+        "one": "Một",
+        "many": "Nhiều",
+        "inverseLabel": "Trên trang {target}, liệt kê chúng là",
+        "inverseLabelAny": "Trên trang được liên kết, liệt kê chúng là",
+        "inverseHint": "Một danh sách chỉ đọc trên mỗi {target}. Không có gì được ghi vào các ghi chú {target}.",
+        "inverseHintAny": "Một danh sách chỉ đọc trên mỗi ghi chú được liên kết. Không có gì được ghi vào các ghi chú đó."
+      },
+      "shared": {
+        "title": "Trường mới trên #{tag}",
+        "existsWith": "{name} đã có trong kho này với {options}.",
+        "existsAs": "{name} đã có trong kho này dưới dạng thuộc tính {type}.",
+        "shareWith": "#{tag} sẽ dùng chung nó với {others} ghi chú của bạn.",
+        "shareAny": "#{tag} sẽ dùng chung nó với các ghi chú khác của bạn.",
+        "useInstead": "Dùng {name} thay thế",
+        "share": "Dùng chung {name}"
+      },
+      "template": {
+        "edit": "Sửa mẫu",
+        "none": "Chưa có mẫu. Mẫu sẽ điền vào các ghi chú trống khi chúng được gắn thẻ.",
+        "create": "Tạo mẫu",
+        "defaultHeading": "Ghi chú",
+        "inherited": "Từ #{tag}",
+        "autofill": "Điền vào ghi chú trống khi chúng được gắn #{tag}"
+      },
+      "remove": {
+        "title": "Xóa {field} khỏi #{tag}?",
+        "body": "{field} đã được điền trên {filled, plural, other {# ghi chú}}. Các giá trị đó vẫn ở lại trên ghi chú như một thuộc tính thông thường; {empty, plural, other {# ô trống sẽ biến mất}}.",
+        "confirm": "Xóa trường"
+      },
+      "rename": {
+        "title": "Đổi tên {from} thành {to}",
+        "titleEmpty": "Đổi tên {from}",
+        "label": "Tên mới",
+        "body": "{count, plural, other {# ghi chú có}} giá trị {field}. Memry đổi tên khóa trong từng tệp và trong thuộc tính của chúng; Obsidian cũng sẽ thấy tên mới.",
+        "progress": "Đang đổi tên trong các ghi chú",
+        "confirm": "Đổi tên",
+        "taken": "Thẻ này đã có {name}.",
+        "done": "Đã đổi tên {from} thành {to} trong {count, plural, other {# mục}}.",
+        "skipped": "Đã đổi tên {from} thành {to} trong {count, plural, other {# mục}}. {locked, plural, =0 {} other {# ghi chú bị khóa sẽ hoàn tất khi được mở khóa.}} {existing, plural, =0 {} other {# ghi chú đã có {to} và giữ cả hai.}}"
+      },
+      "delete": {
+        "button": "Xóa thẻ",
+        "title": "Xóa #{tag}?",
+        "body": "#{tag} sẽ bị xóa khỏi {notes, plural, other {# ghi chú}} và thẻ sẽ biến mất cùng {fields, plural, other {# trường}} và mẫu của nó.",
+        "bodyNoTemplate": "#{tag} sẽ bị xóa khỏi {notes, plural, other {# ghi chú}} và thẻ sẽ biến mất cùng {fields, plural, other {# trường}} của nó.",
+        "bodyPlain": "#{tag} sẽ bị xóa khỏi mọi ghi chú có nó trong thẻ.",
+        "statNotes": "ghi chú giữ nguyên văn bản",
+        "statValues": "giá trị được giữ lại dưới dạng thuộc tính",
+        "plainText": "Các ghi chú nhắc đến #{tag} trong văn bản sẽ giữ nó dưới dạng văn bản thuần.",
+        "confirm": "Xóa thẻ",
+        "done": "Đã xóa #{tag}."
+      },
+      "errors": {
+        "addField": "Không thể thêm trường.",
+        "removeField": "Không thể xóa trường.",
+        "renameField": "Không thể đổi tên trường.",
+        "moveField": "Không thể di chuyển trường.",
+        "relation": "Không thể lưu quan hệ.",
+        "extends": "Không thể thay đổi những gì thẻ này kế thừa.",
+        "template": "Không thể cập nhật mẫu.",
+        "deleteTag": "Không thể xóa thẻ.",
+        "icon": "Không thể đổi biểu tượng.",
+        "color": "Không thể đổi màu.",
+        "category": "Không thể đổi danh mục."
+      }
+    },
+    "fill": {
+      "action": "Điền từ ghi chú",
+      "reading": "Đang đọc ghi chú…",
+      "disclosure": "Mô hình tác nhân của bạn ({model}) đọc ghi chú này để gợi ý giá trị. Chỉ ghi chú này được gửi đi. Không có gì được lưu cho đến khi bạn chấp nhận.",
+      "disclosureLocal": "Mô hình cục bộ của bạn ({model}) đọc ghi chú này trên thiết bị này để gợi ý giá trị. Không có gì rời khỏi thiết bị, và không có gì được lưu cho đến khi bạn chấp nhận.",
+      "disclosureMany": "Mô hình tác nhân của bạn ({model}) đọc từng ghi chú này để gợi ý giá trị. Chỉ các ghi chú đó được gửi đi. Không có gì được lưu cho đến khi bạn chấp nhận.",
+      "disclosureLocalMany": "Mô hình cục bộ của bạn ({model}) đọc các ghi chú này trên thiết bị này để gợi ý giá trị. Không có gì rời khỏi thiết bị, và không có gì được lưu cho đến khi bạn chấp nhận.",
+      "suggest": "Gợi ý giá trị",
+      "notNow": "Không phải bây giờ",
+      "countOne": "· {count} gợi ý",
+      "count": "· {count} gợi ý",
+      "dismiss": "Bỏ qua",
+      "acceptAll": "Chấp nhận tất cả",
+      "accept": "Chấp nhận {field}",
+      "reject": "Từ chối {field}",
+      "notInNote": "Không có trong ghi chú",
+      "createHint": "Tạo #{tag} mới khi được chấp nhận",
+      "nothingFound": "Không có gì trong ghi chú này để điền vào các trường trống",
+      "failed": "Không thể gợi ý giá trị. {message}",
+      "saveFailed": "Không thể lưu các giá trị đã chấp nhận",
+      "bulkAction": "Điền các trường trống",
+      "bulkTitle": "Điền các trường trống",
+      "bulkReading": "{done}/{total} ghi chú · đang đọc ghi chú…",
+      "bulkRead": "Đã đọc {done}/{total} ghi chú",
+      "stop": "Dừng",
+      "name": "Tên",
+      "nothingInRow": "Không tìm thấy gì",
+      "found": "Tìm thấy {count}",
+      "reviewOneByOne": "Xem lại từng mục",
+      "acceptRow": "Chấp nhận giá trị cho {title}",
+      "rejectRow": "Bỏ qua {title}",
+      "bulkSavedOne": "Đã điền {count} trường trên {notes} ghi chú",
+      "bulkSaved": "Đã điền {count} trường trên {notes} ghi chú"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "Tạo {title} dưới dạng",
+      "asPrefix": "Tạo",
+      "asSuffix": "dưới dạng",
+      "failed": "Không thể tạo ghi chú",
+      "lastUsed": "Dùng gần nhất",
+      "noteWord": "ghi chú",
+      "plainNote": "Ghi chú thường",
+      "readyMade": "Thẻ dựng sẵn",
+      "row": "Tạo “{title}”",
+      "rowHint": "Dưới dạng {types}"
+    },
+    "hover": {
+      "at": "tại",
+      "lastMet": "Gặp gần nhất · {title}",
+      "lastMetOn": "Gặp gần nhất {date} · {title}",
+      "mentionedIn": "{count, plural, other {Được nhắc đến trong # ghi chú}}",
+      "open": "Mở",
+      "tasks": "{count, plural, other {# công việc · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} trong văn bản",
+      "explain": "Trong văn bản, thẻ là một nhãn. Ghi chú này được liệt kê trong mục Được nhắc đến trong trên #{tag}.",
+      "made": "Đã thêm #{tag} vào thẻ của ghi chú này",
+      "make": "Biến ghi chú này thành {tag}",
+      "makeFailed": "Không thể thêm thẻ",
+      "makeHint": "Thêm #{tag} vào phần đầu và hiện các trường của nó",
+      "meta": "{count, plural, other {# đối tượng}} · {fields, plural, other {# trường}}",
+      "metaNamed": "{count, plural, =1 {# {one}} other {# {other}}} · {fields, plural, other {# trường}}",
+      "open": "Mở #{tag}",
+      "remove": "Xóa thẻ khỏi văn bản"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "là {field}",
+      "due": "Hạn {date}",
+      "inTheText": "trong văn bản",
+      "mentionedIn": "Được nhắc đến trong",
+      "tasks": "Công việc",
+      "title": "Liên kết tại đây"
+    },
+    "mention": {
+      "notes": "Ghi chú"
+    },
+    "picker": {
+      "create": "{tag} mới",
+      "createNamed": "{tag} mới “{title}”",
+      "empty": "Không có kết quả",
+      "search": "Tìm {tag}",
+      "untitled": "{tag} mới"
+    },
+    "quickFields": {
+      "add": "Thêm {field}",
+      "aria": "Các trường đầu tiên của {title}",
+      "done": "Xong",
+      "later": "Để sau",
+      "newObject": "{tag} mới",
+      "saveFailed": "Không thể lưu các trường"
+    },
+    "table": {
+      "untitled": "{tag} mới",
+      "newInGroup": "{tag} mới trong {group}",
+      "newInGroupHint": "⌘↵ mở trong tab mới",
+      "new": "{tag} mới",
+      "includes": "{field} bao gồm",
+      "removeFilter": "Xóa bộ lọc",
+      "shown": "{shown}/{total}",
+      "saveView": "Lưu chế độ xem",
+      "mentionedMeta": "{count, plural, other {# ghi chú có '#'{tag} trong văn bản}}",
+      "saveFailed": "Không thể lưu trường",
+      "created": "Đã tạo {title}"
+    },
+    "relationDrop": {
+      "title": "Thêm #{tag} vào “{title}”?",
+      "body": "Trường này chỉ liên kết các ghi chú được gắn thẻ #{tag}. Memry thêm #{tag} vào phần đầu của “{title}”, rồi liên kết nó ở đây.",
+      "confirm": "Thêm #{tag} và liên kết",
+      "cancel": "Hủy",
+      "added": "“{title}” giờ là #{tag} và đã được liên kết",
+      "notANote": "Chỉ có thể liên kết ghi chú ở đây dưới dạng #{tag}",
+      "failed": "Không thể liên kết ghi chú này"
+    }
   },
   "names": {
     "also": "còn gọi là",
@@ -1480,5 +2055,141 @@
     "pickerPlaceholder": "Tìm ghi chú",
     "pickerEmpty": "Không có ghi chú phù hợp",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "Thêm chi tiết"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "Portal",
+        "subtext": "Hiện trực tiếp một ghi chú hoặc khối từ nơi khác"
+      },
+      "searchPortal": {
+        "title": "Portal tìm kiếm",
+        "subtext": "Danh sách trực tiếp các khối khớp với một truy vấn"
+      }
+    },
+    "picker": {
+      "aria": "Chọn ghi chú hoặc khối để tạo portal",
+      "notes": "Ghi chú",
+      "blocks": "Khối",
+      "loading": "Đang tìm kiếm…",
+      "empty": "Không có ghi chú hoặc khối nào khớp",
+      "hintInsert": "Chèn portal",
+      "hintClose": "Đóng",
+      "keyEsc": "Esc",
+      "create": "Tạo ghi chú “{query}”",
+      "createFailed": "Không thể tạo ghi chú đó",
+      "stampFailed": "Không thể chuẩn bị khối đó cho portal",
+      "retargetFailed": "Không thể trỏ portal tới khối đó"
+    },
+    "insert": {
+      "cycle": "Một portal không thể hiện một ghi chú bên trong chính nó."
+    },
+    "copy": {
+      "done": "Đã sao chép portal. Hãy dán vào bất kỳ ghi chú nào.",
+      "failed": "Không thể sao chép portal cho khối này"
+    },
+    "menu": {
+      "copyAsPortal": "Sao chép dưới dạng portal",
+      "hideInPortal": "Ẩn trong portal này"
+    },
+    "usage": {
+      "chipAria": "{count, plural, other {Được dùng ở # nơi khác}}"
+    },
+    "whereUsed": {
+      "aria": "Nơi khối này được sử dụng",
+      "portals": "Portal",
+      "links": "Liên kết",
+      "openBeside": "Mở bên cạnh",
+      "loadFailed": "Không thể tải nơi khối này được hiển thị"
+    },
+    "hiddenBlocks": {
+      "title": "Khối đã ẩn",
+      "showAll": "Hiện tất cả",
+      "search": "Tìm khối đã ẩn",
+      "showFailed": "Không thể hiện khối này"
+    },
+    "searchQuery": {
+      "titleNew": "Portal tìm kiếm",
+      "titleEdit": "Sửa truy vấn",
+      "text": "Chứa từ",
+      "textPlaceholder": "Các từ trong khối",
+      "tag": "Thẻ",
+      "tagPlaceholder": "exam",
+      "limit": "Giới hạn",
+      "footer": "Giới hạn {limit} kết quả.",
+      "create": "Tạo",
+      "apply": "Áp dụng"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "Xóa khối này ở mọi nơi?",
+        "note": "Xóa ghi chú này ở mọi nơi?"
+      },
+      "description": {
+        "block": "“{title}” cũng xuất hiện trong {count, plural, other {# ghi chú khác}}.",
+        "note": "“{title}” được hiển thị hoặc liên kết trong {count, plural, other {# ghi chú khác}}."
+      },
+      "manyNotes": "{count} ghi chú",
+      "source": "{title} (nguồn)",
+      "removeHere": "Ẩn ở đây thay thế",
+      "cancel": "Hủy",
+      "everywhere": "Xóa ở mọi nơi",
+      "undoToast": "{count, plural, other {Khối đã xóa được hiển thị trong # ghi chú khác.}}",
+      "undo": "Hoàn tác"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "Đầy đủ",
+      "brief": "Ngắn gọn",
+      "key": "Ý chính",
+      "takeaway": "Điểm rút ra",
+      "topic": "Chủ đề"
+    },
+    "chrome": {
+      "fold": "Thu gọn ghi chú",
+      "unfold": "Đã thu gọn ở mức {level}. Hiện toàn văn",
+      "words": "{count, plural, other {# từ}}",
+      "writing": "Đang viết…",
+      "writtenBy": "Do {agent} viết",
+      "retry": "Lần chạy gần nhất thất bại · Thử lại",
+      "captionOff": "Hãy bật Tóm tắt ghi chú dài trong Cài đặt → AI",
+      "captionNoAgent": "Chưa kết nối tác nhân · Cài đặt → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "Ghi chú dài? Hãy đọc lướt.",
+      "body": "Thu gọn về các câu chính, rồi chỉ mở đoạn bạn cần.",
+      "dismiss": "Đã hiểu"
+    },
+    "pill": {
+      "opened": "{count, plural, other {# đoạn đang mở}}",
+      "escape": "esc",
+      "copy": "Sao chép dưới dạng văn bản",
+      "copied": "Đã sao chép",
+      "aria": "Chế độ xem thu gọn",
+      "hintMac": "Chụm, ⌘-cuộn, hoặc cuộn trên thanh này để thu phóng · nhấp vào một đoạn để mở",
+      "hint": "Chụm, Ctrl-cuộn, hoặc cuộn trên thanh này để thu phóng · nhấp vào một đoạn để mở"
+    },
+    "view": {
+      "aria": "Chế độ xem thu gọn {level}",
+      "paragraphOpen": "Đã mở ở mức Đầy đủ · nhấp lần nữa để thu gọn",
+      "paragraphFold": "Thu gọn đoạn này",
+      "paragraphOpenAction": "Mở đầy đủ đoạn này",
+      "unfoldSection": "Mở rộng phần {heading}",
+      "jumpToParagraph": "Hiện đầy đủ đoạn này: {topic}",
+      "untitledSection": "Không có tiêu đề",
+      "skipped": {
+        "code": "… {count, plural, other {# khối mã}}",
+        "table": "… {count, plural, other {# bảng}}",
+        "image": "… {count, plural, other {# hình ảnh}}",
+        "callout": "… {count, plural, other {# callout}}",
+        "embed": "… {count, plural, other {# nhúng}}",
+        "other": "… {count, plural, other {# khối nữa}}"
+      }
+    }
   }
 }

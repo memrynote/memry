@@ -68,6 +68,7 @@ function loadInboxItems(dataDb: DataDb, hits: SemanticHit[]): SearchResultItem[]
       const cosine = byId.get(row.id)!.cosine
       const metadata: InboxResultMetadata = {
         type: 'inbox',
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
         itemType: row.type as InboxResultMetadata['itemType'],
         sourceUrl: row.sourceUrl,
         sourceTitle: row.sourceTitle,
@@ -85,7 +86,7 @@ function loadInboxItems(dataDb: DataDb, hits: SemanticHit[]): SearchResultItem[]
         metadata
       }
     })
-    .sort((a, b) => b.score - a.score)
+    .toSorted((a, b) => b.score - a.score)
 }
 
 function closeness(cosine: number): number {
@@ -187,7 +188,7 @@ export function fuseSemanticHits(args: {
     })
 
     const results = [...fused.values()]
-      .sort((a, b) => b.rrf - a.rrf || a.order - b.order)
+      .toSorted((a, b) => b.rrf - a.rrf || a.order - b.order)
       .slice(0, limit)
       .map((entry) => entry.item)
     const group = { type, results, totalInGroup: results.length }

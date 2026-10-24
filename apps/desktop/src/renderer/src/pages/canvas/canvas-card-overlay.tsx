@@ -173,7 +173,9 @@ export const CanvasCardLayer = ({
     cards: CanvasCardRef[]
     appState: CanvasAppStateView & { offsetLeft: number; offsetTop: number }
   } => {
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     const elements = excalidrawAPI.getSceneElements() as unknown as CardElement[]
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     const appState = excalidrawAPI.getAppState() as unknown as CanvasAppStateView & {
       offsetLeft: number
       offsetTop: number
@@ -193,6 +195,7 @@ export const CanvasCardLayer = ({
     if (!clip || !layer) {
       return
     }
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     const appState = excalidrawAPI.getAppState() as unknown as CanvasAppStateView
     layer.style.transform = overlayTransform(appState)
     clip.dataset.scrollX = String(appState.scrollX)
@@ -252,6 +255,7 @@ export const CanvasCardLayer = ({
     const active = activeCardIdRef.current
     if (active) {
       const stillPresent = cards.some((c) => c.elementId === active)
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
       const toolType = (appState as unknown as { activeTool?: { type?: string } }).activeTool?.type
       if (!stillPresent) {
         dispatchActive({ type: 'cardGone', id: active })
@@ -319,7 +323,7 @@ export const CanvasCardLayer = ({
   useEffect(() => {
     const clip = clipRef.current
     if (!clip || typeof ResizeObserver === 'undefined') {
-      return
+      return undefined
     }
     const observer = new ResizeObserver(() => {
       clipSizeRef.current = null
@@ -404,15 +408,17 @@ export const CanvasCardLayer = ({
         })
       )
       const created = convertToExcalidrawElements(
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
         skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
       )
       // A card put down on a frame joins it, as a card dragged there would:
       // that is what files it under a bound frame's category (#2483).
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
       let elements = [...existing, ...created] as unknown as FrameSceneElement[]
       if (joinFrames) {
         const byFrame = new Map<string, Set<string>>()
         for (const element of created) {
-          const frameId = frameAtPoint(existing as unknown as FrameSceneElement[], {
+          const frameId = frameAtPoint(existing, {
             x: element.x + element.width / 2,
             y: element.y + element.height / 2
           })
@@ -423,6 +429,7 @@ export const CanvasCardLayer = ({
         }
       }
       excalidrawAPI.updateScene({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Excalidraw wants its branded ordered-element type; the scene model is structurally identical but not nominally typed
         elements: elements as never,
         ...(select
           ? {
@@ -475,7 +482,7 @@ export const CanvasCardLayer = ({
       const existing = excalidrawAPI.getSceneElementsIncludingDeleted()
       // Occupancy grows as we place, so cards in the same drop avoid each other
       // and not just the cards that were already on the scene.
-      const occupied = getCardRefs(existing as unknown as CardElement[])
+      const occupied = getCardRefs(existing)
       const resolvedSizes = refs.map(
         (ref, index) => sizes?.[index] ?? cardDefaultSize(ref.entityType)
       )
@@ -643,7 +650,7 @@ export const CanvasCardLayer = ({
   useEffect(() => {
     const wrapper = wrapperRef.current
     if (!wrapper) {
-      return
+      return undefined
     }
 
     const onDragOver = (e: DragEvent): void => {
@@ -686,6 +693,7 @@ export const CanvasCardLayer = ({
     // tab for an editable card — skip when the dblclick landed on that button,
     // matrix #20). A card with nothing to edit in place opens its item instead.
     const onDblClick = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target narrowed to Element for closest(); listeners are only attached to DOM nodes
       if ((e.target as Element | null)?.closest('[data-canvas-redirect]')) {
         return
       }
@@ -694,7 +702,7 @@ export const CanvasCardLayer = ({
         { clientX: e.clientX, clientY: e.clientY },
         appState
       )
-      const cards = getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[])
+      const cards = getCardRefs(excalidrawAPI.getSceneElements())
       const hit = hitTestCard(cards, scene)
       if (hit) {
         e.preventDefault()
@@ -738,7 +746,7 @@ export const CanvasCardLayer = ({
         { clientX: e.clientX, clientY: e.clientY },
         appState
       )
-      const cards = getCardRefs(excalidrawAPI.getSceneElements() as unknown as CardElement[])
+      const cards = getCardRefs(excalidrawAPI.getSceneElements())
       const hit = hitTestCard(cards, scene)
       if (!hit || hit.elementId === activeCardIdRef.current) {
         return
@@ -773,6 +781,7 @@ export const CanvasCardLayer = ({
       if (!active) {
         return
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target narrowed to Element for closest(); listeners are only attached to DOM nodes
       const target = e.target as Element | null
       if (!target?.closest(`[data-canvas-active-card="${active}"]`)) {
         dispatchActive({ type: 'deactivate' })
@@ -808,9 +817,9 @@ export const CanvasCardLayer = ({
   // activeCardId only: visibleRefs changes on every geometry tick, and keying on
   // it would churn claim/release during a drag.
   useEffect(() => {
-    if (!activeCardId) return
+    if (!activeCardId) return undefined
     const card = visibleRefsRef.current.find((c) => c.elementId === activeCardId)
-    if (!card || card.entityType !== 'note') return
+    if (card?.entityType !== 'note') return undefined
     const noteId = card.entityId
     noteCardClaims.claim(noteId, activeCardId)
     return () => noteCardClaims.release(noteId, activeCardId)

@@ -69,6 +69,7 @@ import {
 } from '@/pages/file-view-state'
 
 // Configure PDF.js worker - import from node_modules for Electron compatibility
+// oxlint-disable-next-line import/default -- Vite's `?url` suffix default-exports the asset URL; the linter cannot resolve the query import
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useT } from '@memry/i18n/renderer'
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
@@ -427,7 +428,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
   // that is A4, landscape or a mix of sizes fits to the wrong width otherwise.
   useEffect(() => {
     const pdf = pdfRef.current
-    if (!pdf || typeof pdf.getPage !== 'function') return
+    if (!pdf || typeof pdf.getPage !== 'function') return undefined
     let cancelled = false
     void pdf
       .getPage(spreadStart)
@@ -488,14 +489,14 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
   // auto-positioning a stored choice is supposed to suppress.
   useEffect(() => {
     const el = pageScrollRef.current
-    if (!el) return
+    if (!el) return undefined
     const fit = () => {
       if (!fitModeRef.current) return
       const fitted = computeFitScale()
       if (fitted !== null) applyScale(fitted, { persist: false })
     }
     fit()
-    if (typeof ResizeObserver === 'undefined') return
+    if (typeof ResizeObserver === 'undefined') return undefined
     const observer = new ResizeObserver(fit)
     observer.observe(el)
     return () => observer.disconnect()
@@ -675,6 +676,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
                   with nothing selected is the honest reading of that state. */}
               <DropdownMenuRadioGroup
                 value={fitMode ?? ''}
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
                 onValueChange={(value) => chooseFit(value as 'width' | 'height')}
               >
                 <DropdownMenuRadioItem value="width">
@@ -692,6 +694,7 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
               </DropdownMenuLabel>
               <DropdownMenuRadioGroup
                 value={pageMode}
+                // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
                 onValueChange={(value) => choosePageMode(value as PdfPageMode)}
               >
                 <DropdownMenuRadioItem value="single">

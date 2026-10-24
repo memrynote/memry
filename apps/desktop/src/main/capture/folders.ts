@@ -24,7 +24,7 @@ function vaultIdFor(vaultPath: string): string {
 export async function listCaptureFolders(): Promise<CaptureFolderList | null> {
   const { path: vaultPath } = getStatus()
   if (!vaultPath) return null
-  const folders = (await getFolders()).map((f) => f.path).sort((a, b) => a.localeCompare(b))
+  const folders = (await getFolders()).map((f) => f.path).toSorted((a, b) => a.localeCompare(b))
   return { vaultId: vaultIdFor(vaultPath), vaultName: path.basename(vaultPath), folders }
 }
 

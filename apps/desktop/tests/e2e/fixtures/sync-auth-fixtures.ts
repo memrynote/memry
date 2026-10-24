@@ -56,22 +56,23 @@ export const test = base.extend<{
   syncBootstrap: SharedSyncBootstrap
   bootstrappedSyncPair: void
 }>({
-  syncBootstrap: async ({}, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  syncBootstrap: async ({}, provide) => {
     const bootstrap = await startSharedSyncBootstrap()
     try {
-      await use(bootstrap)
+      await provide(bootstrap)
     } finally {
       await bootstrap.server.stop()
     }
   },
 
-  syncServerUrl: async ({ syncBootstrap }, use) => {
-    await use(syncBootstrap.serverUrl)
+  syncServerUrl: async ({ syncBootstrap }, provide) => {
+    await provide(syncBootstrap.serverUrl)
   },
 
   bootstrappedSyncPair: async (
     { electronAppA, electronAppB, pageA, pageB, syncBootstrap },
-    use
+    provide
   ) => {
     await bootstrapSyncDevice(electronAppA, syncBootstrap.deviceA)
     await bootstrapSyncDevice(electronAppB, syncBootstrap.deviceB)
@@ -87,7 +88,7 @@ export const test = base.extend<{
     await waitForSyncedDeviceList(pageA, syncBootstrap.email)
     await waitForSyncedDeviceList(pageB, syncBootstrap.email)
 
-    await use()
+    await provide()
   }
 })
 

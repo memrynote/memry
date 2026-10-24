@@ -19,6 +19,7 @@ export function setLandingLenis(lenis: Lenis | null) {
 
 export function prefersReducedLandingMotion() {
   return (
+    // oxlint-disable-next-line typescript/prefer-optional-chain -- `typeof window` guards SSR where `window` is an undeclared global; `window?.` would throw
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   )
 }

@@ -62,9 +62,11 @@ const registerDevice = async (
   signingSecretKey: Uint8Array,
   vaultId: string | undefined
 ): Promise<RegisteredDevice> => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   await sodium.ready
 
   const publicKey = getDevicePublicKey(signingSecretKey)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const publicKeyBase64 = sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL)
 
   const nonce = crypto.randomUUID()
@@ -72,6 +74,7 @@ const registerDevice = async (
   const challengePayload = `${nonce}:${jti}`
   const payloadBytes = new TextEncoder().encode(challengePayload)
   const signature = sodium.crypto_sign_detached(payloadBytes, signingSecretKey)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const signatureBase64 = sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
 
   const raw = await postToServer<unknown>(
@@ -203,6 +206,7 @@ export const persistKeysAndRegisterDevice = async (
   }
 
   const pubKey = getDevicePublicKey(signingSecretKey)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
 
   db?.transaction((tx) => {
@@ -351,6 +355,7 @@ export const ensureDeviceRowForVault = async (
 
   try {
     const pubKey = getDevicePublicKey(signingSecretKey)
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const pubKeyBase64 = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
     db.insert(syncDevices)
       .values({
@@ -409,9 +414,12 @@ const performDeviceKeysRepair = async (): Promise<RepairDeviceKeysResult> => {
   try {
     const accessToken = db && signingSecretKey ? await getValidAccessToken() : null
     if (db && signingSecretKey && accessToken) {
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       await sodium.ready
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       const publicKey = sodium.to_base64(
         getDevicePublicKey(signingSecretKey),
+        // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
         sodium.base64_variants.ORIGINAL
       )
       const parsed = DeviceKeysResponseSchema.safeParse(

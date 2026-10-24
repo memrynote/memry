@@ -90,6 +90,7 @@ export function createSnapshot(
     noteId: snapshot.noteId,
     title: snapshot.title,
     wordCount: snapshot.wordCount,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     reason: snapshot.reason as SnapshotReason,
     createdAt: snapshot.createdAt
   }

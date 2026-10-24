@@ -7,6 +7,7 @@ import type { SyncIntent } from '../sync/sync-intents'
  * longer lose a task or project push, a cascaded tombstone included. A delete
  * without a snapshot owes nothing: the adapter needs the snapshot to build it.
  */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union: TS rejects a missing case, and a default would invent behavior for kinds that cannot occur
 export function tasksEventSyncIntents(event: TasksDomainEvent): SyncIntent[] {
   switch (event.kind) {
     case 'taskCreated':

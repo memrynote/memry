@@ -92,6 +92,7 @@ export function revealedOpacity(element: Element): number {
     if (!variants) opacity = Number(value)
   }
   for (const [, variants, value] of parsed) {
+    // oxlint-disable-next-line typescript/prefer-optional-chain -- variants may be '' (no-variant class); `?.` would pass [''] to variantHolds and throw
     if (variants && variants.split(':').every((variant) => variantHolds(variant, element))) {
       opacity = Number(value)
     }

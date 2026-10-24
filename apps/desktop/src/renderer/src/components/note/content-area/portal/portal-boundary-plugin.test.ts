@@ -47,9 +47,9 @@ function mount(blocks: PartialBlock[], spec: PortalWindowSpec) {
     }
   })
   const events: Array<{ type: string; detail: unknown }> = []
-  for (const type of [PORTAL_EXIT_EVENT, PORTAL_SELECT_EVENT]) {
-    mounted.view.dom.addEventListener(type, (e) =>
-      events.push({ type, detail: (e as CustomEvent).detail })
+  for (const eventType of [PORTAL_EXIT_EVENT, PORTAL_SELECT_EVENT]) {
+    mounted.view.dom.addEventListener(eventType, (e) =>
+      events.push({ type: eventType, detail: (e as CustomEvent).detail })
     )
   }
   return { ...mounted, plans, events }
@@ -59,12 +59,12 @@ type View = ReturnType<typeof mount>['view']
 
 /** Caret in the block with this text (without anchor), at the start or the visible end. */
 function caretIn(view: View, text: string, at: 'start' | 'end'): void {
-  let target = -1
+  let caret = -1
   view.state.doc.descendants((node, pos) => {
     if (!node.isTextblock || node.textContent.replace(/ \^[a-z0-9-]+$/, '') !== text) return
-    target = at === 'start' ? pos + 1 : anchorVisibleEnd(view.state.doc.resolve(pos + 1))
+    caret = at === 'start' ? pos + 1 : anchorVisibleEnd(view.state.doc.resolve(pos + 1))
   })
-  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, target)))
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, caret)))
 }
 
 function press(view: View, key: string, init: KeyboardEventInit = {}): void {
@@ -104,22 +104,15 @@ describe('Enter', () => {
   describe('the anchor stays on the block that keeps the text', () => {
     const kinds: Array<[string, (text: string, children?: PartialBlock[]) => PartialBlock]> = [
       ['paragraph', para],
-      [
-        'bullet item',
-        (text, children) => ({ type: 'bulletListItem', content: text, children }) as PartialBlock
-      ],
+      ['bullet item', (text, children) => ({ type: 'bulletListItem', content: text, children })],
       [
         'numbered item',
-        (text, children) => ({ type: 'numberedListItem', content: text, children }) as PartialBlock
+        (text, children) => ({ type: 'numberedListItem', content: text, children })
       ],
-      [
-        'checklist item',
-        (text, children) => ({ type: 'checkListItem', content: text, children }) as PartialBlock
-      ],
+      ['checklist item', (text, children) => ({ type: 'checkListItem', content: text, children })],
       [
         'heading',
-        (text, children) =>
-          ({ type: 'heading', props: { level: 2 }, content: text, children }) as PartialBlock
+        (text, children) => ({ type: 'heading', props: { level: 2 }, content: text, children })
       ]
     ]
     for (const [kind, make] of kinds) {
@@ -273,18 +266,18 @@ describe('Enter', () => {
   it('keeps every keystroke in the new block while the fence write is still in flight', async () => {
     let release: () => void = () => undefined
     const { view, plans } = (() => {
-      const plans: PortalPlan[] = []
+      const recorded: PortalPlan[] = []
       const mounted = mountPortalWindow(
         [para('Root ^root1', [para('old ^old111')])],
         target(['root1']),
         {
           onPlan: (plan) => {
-            plans.push(plan)
+            recorded.push(plan)
             return new Promise<void>((resolve) => (release = resolve))
           }
         }
       )
-      return { ...mounted, plans }
+      return { ...mounted, plans: recorded }
     })()
     caretIn(view, 'Root', 'end')
 

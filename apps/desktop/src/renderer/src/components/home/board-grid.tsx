@@ -79,6 +79,7 @@ export function BoardGrid({ board, onChange }: BoardGridProps): React.JSX.Elemen
   // every drag and resize made on a narrower window was silently discarded — issue #1216.)
   const handleLayoutChange = (next: Layout): void => {
     if (unchanged(board, next)) return
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- react-grid-layout hands back a readonly layout of the same item shape we gave it
     onChange(applyLayout(board, next as GridLayoutItem[]))
   }
 

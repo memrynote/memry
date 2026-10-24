@@ -56,7 +56,7 @@ const NOT_AN_IMAGE: VaultAttachmentEntry = {
   displayName: 'notes.pdf',
   mimeType: 'application/pdf',
   type: 'file'
-} as VaultAttachmentEntry
+}
 
 function renderPicker() {
   const onApply = vi.fn()

@@ -64,7 +64,7 @@ export function CheckoutPage() {
             search={params.toString()}
             webToken={webToken}
             mintError={mintError}
-            onRetry={mintToken}
+            onRetry={() => void mintToken()}
             initialPlan={initialPlan}
             initialCadence={initialCadence}
           />

@@ -257,6 +257,7 @@ type GlobalCaptureRowStatus =
   | { kind: 'rejected'; reason: 'in_use' | 'unsupported'; binding: ShortcutBindingDTO }
   | { kind: 'fallbackInUse' }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default; adding one would drop the compile-time exhaustiveness check
 function toRowStatus(
   result: GlobalCaptureResult,
   binding: ShortcutBindingDTO | null

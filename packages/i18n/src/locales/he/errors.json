@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "התוכנית שלך מסנכרנת פחות כספות ממה שיש בחשבון הזה, ולכן הכספת הזו נשארת במכשיר הזה. אפשר להסיר כספת מהחשבון בהגדרות ← חשבון, או לשדרג את התוכנית.",
     "certificatePinFailed": "החיבור המאובטח נכשל. כדאי לבדוק את חיבור הרשת.",
     "deviceKeyMismatch": "מפתח האבטחה של המכשיר הזה כבר לא תואם למפתח הרשום בחשבון שלך, ולכן השרת דוחה את השינויים שלו. כדי לרשום אותו מחדש, יש להתחבר שוב במכשיר הזה.",
+    "deviceKeysMissing": "שינויים במכשיר הזה לא מועלים כי מפתחות המכשיר חסרים. אפשר לבחור ב״תיקון״ כדי לשחזר אותם. אם המכשיר כבר לא מחזיק במפתחות שלו, תתבקשו להיכנס שוב וייתכן שתצטרכו את משפט השחזור. פתקים, משימות ופרויקטים שלא סונכרנו נשמרים.",
     "keychainUnavailable": "הסנכרון מושהה כי ל-Memry אין כרגע גישה למפתחות הסנכרון שלו במחזיק המפתחות של המערכת. אחרי ביטול הנעילה של מחזיק המפתחות, הסנכרון יתחדש מעצמו; אם לא, אפשר להפעיל מחדש את Memry. שום דבר לא נמחק.",
     "unknown": "אירעה שגיאת סנכרון בלתי צפויה. ניסיון נוסף יתבצע באופן אוטומטי.",
     "statusFetchFailed": "אחזור מצב הסנכרון נכשל",
@@ -106,6 +107,10 @@
     "triggerFailed": "הסנכרון נכשל",
     "pauseFailed": "השהיית הסנכרון נכשלה",
     "resumeFailed": "חידוש הסנכרון נכשל",
+    "syncNowSignedOut": "הסנכרון דורש כניסה מחדש במכשיר הזה.",
+    "syncNowBusy": "הסנכרון כבר פועל. כדאי לנסות שוב בעוד רגע.",
+    "syncNowPaused": "הסנכרון הושהה בזמן שהיה פעיל. אפשר להמשיך אותו מתפריט הסנכרון.",
+    "openAccountSettings": "פתיחת ההגדרות",
     "settingsNotInitialized": "סנכרון ההגדרות לא אותחל",
     "securityQuarantinePermanent": "לא ניתן היה לאמת פריט סנכרון והוא הועבר להסגר לצורך אבטחה.",
     "securityQuarantineRetry": "אימות החתימה של פריט סנכרון נכשל, וניסיון נוסף יתבצע.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "עריכת AI בתוך הטקסט מושבתת",
-    "listOllamaModelsFailed": "טעינת רשימת המודלים של Ollama נכשלה"
+    "listOllamaModelsFailed": "טעינת רשימת המודלים של Ollama נכשלה",
+    "writingAssistInvalid": "לא ניתן לשלוח את הבקשה למודל ה-AI.",
+    "apiKeyMissing": "כדי להשתמש בכלי הכתיבה, יש להוסיף את מפתח ה-API של {provider} ב-הגדרות ← AI.",
+    "apiKeyInvalid": "מפתח ה-API של {provider} נדחה. כדאי לבדוק אותו ב-הגדרות ← AI.",
+    "ollamaUnreachable": "Ollama לא פועל. אפשר להפעיל אותו עם \"ollama serve\", או לבחור ספק אחר ב-הגדרות ← AI.",
+    "providerUnreachable": "לא ניתן להתחבר אל {provider}. כדאי לבדוק את חיבור האינטרנט ולנסות שוב."
   },
   "auth": {
     "notAuthenticated": "לא בוצעה התחברות",
-    "sessionExpired": "פג תוקף ההתחברות. יש להתחבר שוב.",
     "setupSessionExpired": "תוקף ההתחברות פג לפני שהתהליך הסתיים. יש להתחבר שוב ואז להזין את ביטוי השחזור.",
     "setupSessionExpiredLinking": "תוקף ההתחברות פג לפני שקישור המכשיר הזה הסתיים. יש להתחבר שוב ואז לסרוק את הקוד פעם נוספת.",
     "invalidRecoveryPhraseFormat": "ביטוי השחזור אינו בפורמט תקין",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "המרת האירוע החיצוני לאירוע מקומי נכשלה",
     "onlyCalendarSourcesRetryable": "רק מקורות לוח שנה ניתנים לניסיון חוזר",
     "invalidProviderSettings": "הגדרות לא תקינות של ספק לוח השנה",
-    "getExternalEventFailed": "לא ניתן לטעון את האירוע הזה. הוא עדיין בלוח השנה שלך; אפשר לנסות לפתוח אותו שוב."
+    "getExternalEventFailed": "לא ניתן לטעון את האירוע הזה. הוא עדיין בלוח השנה שלך; אפשר לנסות לפתוח אותו שוב.",
+    "listLinkedNotesFailed": "לא ניתן לטעון את הפתקים המקושרים לאירוע הזה."
   },
   "canvasFolder": {
     "exists": "כבר קיימת כאן תיקיית קנבסים בשם הזה.",
@@ -209,10 +219,35 @@
     "previewFailed": "התצוגה המקדימה נכשלה",
     "listFailed": "טעינת רשימת המייבאים נכשלה",
     "appleNotesFoldersFailed": "לא ניתן לקרוא את התיקיות שלך ב-Apple Notes",
+    "appleNotesPasswordFailed": "לא ניתן לבדוק את הסיסמה של Notes.",
     "onenoteStatusFailed": "לא ניתן לקרוא את מצב החיבור ל-OneNote",
     "onenoteConnectFailed": "ההתחברות ל-Microsoft נכשלה",
     "onenoteDisconnectFailed": "לא ניתן לנתק את חשבון Microsoft",
-    "onenoteNotebooksFailed": "לא ניתן לטעון את מחברות OneNote"
+    "onenoteNotebooksFailed": "לא ניתן לטעון את מחברות OneNote",
+    "readwiseStatusFailed": "לא ניתן לקרוא את מצב החיבור ל-Readwise",
+    "readwiseConnectFailed": "לא ניתן להתחבר ל-Readwise",
+    "readwiseInvalidToken": "Readwise לא קיבל את האסימון הזה. אפשר להעתיק אותו שוב מ-readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise מגביל כרגע את מספר הבקשות. כדאי לנסות שוב בעוד דקה.",
+    "readwiseUnreachable": "לא ניתן להתחבר אל Readwise. כדאי לבדוק את החיבור ולנסות שוב.",
+    "readwiseDisconnectFailed": "לא ניתן לנתק את Readwise",
+    "readwiseSyncFailed": "לא ניתן להתחיל את הסנכרון עם Readwise",
+    "readwiseRunUnavailable": "Readwise לא מסתנכרן במכשיר הזה.",
+    "readwiseRunInProgress": "ייבוא מ-Readwise כבר פועל. כדאי לנסות שוב כשיסתיים.",
+    "readwiseOptionsFailed": "לא ניתן לשמור את הגדרות Readwise",
+    "readwiseNotConnected": "Readwise לא מחובר. יש להדביק קודם את אסימון הגישה.",
+    "readwiseSyncsElsewhere": "Readwise מסתנכרן במכשיר אחר. יש להריץ את הפקודה הזו שם.",
+    "readwiseBookCommandFailed": "לא ניתן להשלים את הפקודה של Readwise",
+    "readwiseBookGone": "הספר הזה כבר לא בספרייה שלך ב-Readwise.",
+    "readwiseNotLinked": "הפתק הזה אינו מקושר לספר ב-Readwise.",
+    "readwiseNotDeleted": "הספר הזה אינו ברשימת המחוקים.",
+    "readwiseBookBusy": "הפתק השתנה בזמן שהפקודה רצה. כדאי לנסות שוב.",
+    "readwiseSyncsOnDevice": "Readwise מסתנכרן ב-{device}. אפשר להשתמש ב״סנכרון כאן במקום״ כדי להעביר אותו לכאן.",
+    "readwiseAnotherDevice": "מכשיר אחר",
+    "readwiseNotReady": "Memry עדיין לא סיים להסתנכרן עם המכשירים האחרים שלך. כדאי לנסות שוב בעוד רגע.",
+    "readwiseNeedsSync": "יש להפעיל סנכרון כדי להעביר את Readwise בין מכשירים.",
+    "readwiseClaimNotDelivered": "עדיין לא ניתן לעדכן את המכשירים האחרים שלך. כדאי לבדוק את החיבור ולנסות שוב.",
+    "readwiseTakeOverFailed": "לא ניתן להעביר את Readwise למכשיר הזה",
+    "readwiseCancelFailed": "לא ניתן לבטל את הסנכרון עם Readwise"
   },
   "project": {
     "createFailed": "יצירת הפרויקט נכשלה",
@@ -236,7 +271,8 @@
     "renameFailed": "שינוי שם המאפיין נכשל",
     "createDefinitionFailed": "יצירת הגדרת המאפיין נכשלה",
     "updateDefinitionFailed": "עדכון הגדרת המאפיין נכשל",
-    "setCalendarVisibilityFailed": "הגדרת נראות המאפיין בלוח השנה נכשלה"
+    "setCalendarVisibilityFailed": "הגדרת נראות המאפיין בלוח השנה נכשלה",
+    "definitionsFileUnreadable": "לא ניתן לשמור שינויים במאפיינים כי אי אפשר לקרוא את הקובץ .memry/properties.md. יש לתקן או להסיר את הקובץ ולנסות שוב."
   },
   "reminder": {
     "notFound": "התזכורת לא נמצאה",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "טעינת המודל נכשלה",
     "voiceModelDownloadFailed": "הורדת מודל הקול נכשלה",
     "terminalCommandInstallFailed": "התקנת פקודת הטרמינל נכשלה",
-    "terminalCommandUninstallFailed": "הסרת פקודת הטרמינל נכשלה",
-    "shortcutInUse": "הקיצור {shortcut} כבר בשימוש"
+    "terminalCommandUninstallFailed": "הסרת פקודת הטרמינל נכשלה"
   },
   "tag": {
+    "renameInProgress": "שינוי השם של #{from} ל-#{to} עדיין מתבצע. כדאי לנסות שוב כשיסתיים.",
     "mergeSameTag": "תגית המקור ותגית היעד זהות",
     "categoryNameRequired": "נדרש שם לקטגוריה",
     "pinNoteFailed": "הצמדת הפתק נכשלה",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "מחיקת המשימות נכשלה",
     "moveManyFailed": "העברת המשימות נכשלה",
     "archiveManyFailed": "העברת המשימות לארכיון נכשלה",
-    "projectMissing": "הפרויקט הזה כבר לא קיים"
+    "projectMissing": "הפרויקט הזה כבר לא קיים",
+    "invalidParent": "אי אפשר להניח משימה שם"
   },
   "taskStatus": {
     "createFailed": "יצירת הסטטוס נכשלה",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "הבעלים הגדיר את הפתק הזה לקריאה בלבד.",
     "folderReadOnly": "הבעלים הגדיר את התיקייה הזו לקריאה בלבד."
+  },
+  "ocrLanguages": {
+    "unreachable": "לא ניתן להתחבר לשרת של Memry. השפות שכבר קיימות ממשיכות לעבוד, ו-Memry ינסה שוב בהפעלה הבאה.",
+    "unavailable": "השרת של Memry עדיין לא מציע את השפה הזו. השפות שכבר קיימות ממשיכות לעבוד.",
+    "corrupt": "הנתונים שהורדו לא תאמו למצופה על ידי Memry, ולכן לא נעשה בהם שימוש. אפשר לנסות שוב כדי להוריד אותם מחדש.",
+    "saveFailed": "לא ניתן לשמור את נתוני השפה במחשב הזה. כדאי לבדוק את שטח הדיסק הפנוי ולנסות שוב."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" שמור ואינו יכול לשמש שם שדה",
+    "duplicateField": "ל-#{definedBy} כבר יש שדה בשם \"{name}\"",
+    "unknownField": "בתגית הזו אין שדה בשם \"{name}\"",
+    "inheritedField": "\"{name}\" מגיע מ-#{definedBy}. יש לערוך אותו שם",
+    "cycle": "#{parent} כבר לוקח את השדות שלו מהתגית הזו",
+    "unreadableSchema": "גרסה חדשה יותר של Memry שינתה את התגית הזו. יש לעדכן את Memry כדי לערוך אותה",
+    "relationTargetRequired": "יש לבחור לאיזו תגית הקשר הזה מצביע",
+    "renameRunning": "שינוי שם אחר של שדה עדיין מסתיים ({from} ל-{to}). כדאי לנסות שוב כשיסתיים."
   }
 }

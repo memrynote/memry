@@ -66,6 +66,7 @@ export function readAIInlineSettings(): AIInlineSettings {
   if (!raw) return { ...AI_INLINE_SETTINGS_DEFAULTS }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     const parsed = JSON.parse(raw) as Partial<AIInlineSettings>
     return { ...AI_INLINE_SETTINGS_DEFAULTS, ...parsed }
   } catch {
@@ -146,6 +147,7 @@ export function registerAIInlineHandlers(): void {
         throw error
       }
       if (!res.ok) throw new Error(`Ollama responded ${res.status}`)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
       const json = (await res.json()) as { data?: Array<{ id?: string }> }
       const models = (json.data ?? []).map((m) => m.id).filter((id): id is string => Boolean(id))
       return { success: true, models }

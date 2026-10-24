@@ -257,6 +257,7 @@ const getOrCreateAttachmentService = (): AttachmentSyncService | null => {
         .where(eq(syncDevices.id, deviceId))
         .get()
       if (!device?.signingPublicKey) return null
+      // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
       return sodium.from_base64(device.signingPublicKey, sodium.base64_variants.ORIGINAL)
     },
     getReusableAttachmentIds: (noteId: string, filePath: string) => {

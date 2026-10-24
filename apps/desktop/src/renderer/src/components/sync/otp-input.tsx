@@ -30,7 +30,7 @@ function useCountdown(
   const [seconds, setSeconds] = useState(initialSeconds)
 
   useEffect(() => {
-    if (seconds <= 0) return
+    if (seconds <= 0) return undefined
 
     const countdownTimeout = setTimeout(() => {
       setSeconds((prev) => Math.max(prev - 1, 0))

@@ -82,7 +82,8 @@ export function reviewTargetForTool(toolName: string, args: unknown): AgentRevie
   if (!isInPageReviewTool(toolName)) return null
   const record =
     args && typeof args === 'object' && !Array.isArray(args)
-      ? (args as Record<string, unknown>)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
+        (args as Record<string, unknown>)
       : {}
   if (toolName === 'vault_update_note' && typeof record.id === 'string') {
     return { kind: 'note', id: record.id }

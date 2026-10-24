@@ -143,7 +143,7 @@ export const TabBarWithDrag = ({
   // Set up scroll listener - must be before early return (rules of hooks)
   useLayoutEffect(() => {
     const el = scrollRef.current
-    if (!el) return
+    if (!el) return undefined
 
     checkScroll()
     el.addEventListener('scroll', checkScroll, { passive: true })

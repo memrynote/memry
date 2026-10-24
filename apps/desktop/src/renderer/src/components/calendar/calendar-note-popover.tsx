@@ -39,6 +39,7 @@ export function CalendarNotePopover({
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
       if (!containerRef.current) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; outside-click on document always targets a Node
       if (containerRef.current.contains(event.target as Node)) return
       onDismiss()
     }

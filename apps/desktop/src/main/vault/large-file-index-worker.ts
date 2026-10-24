@@ -79,6 +79,7 @@ async function runSearch(input: SearchWorkerInput, handle: FileHandle): Promise<
 }
 
 async function run(): Promise<void> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- worker message payload is untyped; sender in this module posts only this union
   const input = workerData as LargeFileWorkerInput
   const handle = await fs.open(input.absolutePath, 'r')
   try {

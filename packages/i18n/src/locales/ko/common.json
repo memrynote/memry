@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "포털을 복사하지 못했습니다",
+    "hiddenCount": "{count}개 숨김",
+    "windowFailed": "이 포털을 열 수 없습니다. 대신 원본 노트를 여세요.",
+    "noTarget": "이 포털에는 아직 대상이 없습니다. 정의에 노트를 추가하거나 블록을 제거하세요.",
+    "invalidJson": "이 포털의 정의가 올바른 JSON이 아닙니다. 아래에서 수정하거나 블록을 제거하세요.",
+    "invalidShape": "이 포털의 정의에 노트나 검색이 없습니다. 아래에서 수정하거나 블록을 제거하세요.",
+    "search": {
+      "editQuery": "쿼리 편집",
+      "count": "{count, plural, other {블록 #개}}",
+      "loading": "검색 중…",
+      "empty": "이 쿼리와 일치하는 블록이 없습니다.",
+      "failed": "검색을 실행하지 못했습니다.",
+      "retry": "다시 시도",
+      "truncated": "처음 {count}개 결과를 표시합니다."
+    },
+    "copiedContents": "내용을 복사했습니다",
+    "copiedLink": "링크를 복사했습니다",
+    "actionFailed": "이 포털을 변경하지 못했습니다",
+    "keepsOneBlock": "포털에는 블록이 최소 하나 있어야 합니다. 대신 포털을 제거하세요.",
+    "expandChildren": "하위 항목 표시",
+    "collapseChildren": "하위 항목 숨기기",
+    "toolbar": {
+      "label": "포털",
+      "include": "“{block}” 포함",
+      "locked": "{note}은(는) 잠겨 있음 · 읽기 전용",
+      "more": "더 보기",
+      "openBeside": "{note}을(를) 옆에 열기",
+      "click": "클릭",
+      "copyContents": "내용 복사",
+      "copyLink": "링크 복사",
+      "remove": "포털 제거",
+      "removeHint": "{note}의 모든 블록은 그대로 유지됩니다"
+    },
+    "states": {
+      "missingNote": {
+        "text": "원본 노트가 삭제되었습니다. 참조는 유지됩니다.",
+        "action": "제거"
+      },
+      "missingBlock": {
+        "text": "{source}에서 블록이 삭제되었습니다.",
+        "action": "다른 블록 선택"
+      },
+      "notSynced": {
+        "text": "원본 노트가 동기화되기를 기다리는 중입니다.",
+        "action": "다시 시도"
+      },
+      "cycle": {
+        "text": "이 포털이 자기 자신으로 되돌아옵니다.",
+        "action": "원본 열기"
+      },
+      "tooDeep": {
+        "text": "포털은 {max}단계까지 중첩됩니다. 이 포털은 링크로 열립니다.",
+        "action": "원본 열기"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "기록 입력란에 포커스",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "기본 앱에서 열기",
     "revealFailed": "폴더에서 표시하지 못했습니다."
   },
+  "commands": {
+    "runFailed": "이 명령을 실행하지 못했습니다. 다시 시도하세요."
+  },
+  "commandsPalette": {
+    "title": "명령",
+    "placeholder": "명령 입력…",
+    "groups": {
+      "navigation": "이동",
+      "create": "만들기",
+      "tabs": "탭",
+      "editor": "편집기",
+      "view": "보기",
+      "app": "앱",
+      "note": "노트",
+      "settings": "설정",
+      "sync": "동기화",
+      "help": "도움말",
+      "project": "프로젝트",
+      "tasks": "작업",
+      "canvas": "캔버스",
+      "folder": "폴더",
+      "file": "파일"
+    },
+    "contexts": {
+      "note": "이 노트",
+      "journal": "이 저널",
+      "project": "이 프로젝트",
+      "tasks": "이 작업들",
+      "canvas": "이 캔버스",
+      "folder": "이 폴더",
+      "tag": "이 태그",
+      "file": "이 파일"
+    },
+    "recent": "최근",
+    "empty": "“{query}”와(과) 일치하는 명령이 없습니다",
+    "searchHint": "노트 검색: {shortcut}",
+    "status": {
+      "count": "{count, plural, other {명령 #개}}"
+    },
+    "actions": {
+      "run": "실행",
+      "searchNotes": "노트 검색"
+    }
+  },
   "tabs": {
     "pin": "탭 고정",
     "unpin": "탭 고정 해제",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "실행하지 못했습니다",
-    "nothingToUndo": "실행 취소할 항목이 없습니다.",
     "undone": "실행 취소: {description}",
     "undoFailed": "실행 취소하지 못했습니다.",
     "filesImported": "{count, plural, other {파일 #개를 가져왔습니다}}",
@@ -131,6 +231,20 @@
     "openInTab": "대화를 탭에서 열기",
     "stop": "중지",
     "thinking": "에이전트가 생각하는 중",
+    "toolsUnavailable": "이 모델에서는 볼트 도구가 꺼져 있습니다. 도구 검사를 통과하지 못해 대화만 할 수 있습니다.",
+    "toolsUnavailableWithDetail": "이 모델에서는 볼트 도구가 꺼져 있습니다. 도구 검사를 통과하지 못해 대화만 할 수 있습니다. {detail}",
+    "toolsOff": {
+      "toolsRejected": "이 모델에서는 볼트 도구가 꺼져 있습니다. 공급자가 도구가 포함된 테스트 요청을 거부하여 모델은 대화만 할 수 있습니다.",
+      "noToolCall": "이 모델에서는 볼트 도구가 꺼져 있습니다. 테스트 요청에 도구를 호출하지 않고 답했으므로 대화만 할 수 있습니다.",
+      "toolResultRejected": "이 모델에서는 볼트 도구가 꺼져 있습니다. 테스트 도구를 호출했지만 결과를 받은 뒤 실패하여 대화만 할 수 있습니다.",
+      "streamingUnsupported": "이 모델에서는 볼트 도구가 꺼져 있습니다. 공급자가 테스트 응답을 스트리밍하지 않아 모델은 대화만 할 수 있습니다.",
+      "providerSaid": "공급자 응답: {detail}",
+      "wroteToolCall": "모델이 도구 호출을 텍스트로 작성했으며 아무것도 실행되지 않았습니다."
+    },
+    "stepLimit": {
+      "notice": "단계 제한에서 중단되었습니다.",
+      "continue": "계속"
+    },
     "enable": {
       "title": "memrynote 에이전트 켜기",
       "description": "memrynote 에이전트는 선택한 로컬 에이전트 CLI를 사용해 볼트에 관해 대화합니다. Claude는 메시지를 Anthropic에, Codex는 OpenAI에 보냅니다.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "에이전트가 {title}을(를) 만들려고 합니다. 적용하기 전에 변경 사항을 검토하세요.",
       "descriptionDelete": "에이전트가 {title}을(를) 삭제하려고 합니다. 적용하기 전에 변경 사항을 검토하세요.",
       "fallbackTitle": "이 항목",
-      "current": "현재",
       "candidate": "제안 내용",
       "loading": "불러오는 중…",
       "apply": "적용",
@@ -268,13 +381,18 @@
       "removeAttachment": "{label} 제거",
       "placeholder": "memrynote로 무엇이든 하세요… @로 노트, 작업, 일정 멘션",
       "send": "보내기",
-      "providerLabel": "에이전트 제공자: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "연결된 도구",
       "connectTool": "{tool} 연결",
-      "addContext": "컨텍스트 추가",
-      "addContextWithPermissions": "컨텍스트 추가({permissions})",
       "mentionContext": "노트, 작업 또는 일정 멘션",
+      "files": {
+        "attach": "텍스트 파일 첨부",
+        "refused": {
+          "unsupportedType": "{name}은(는) 지원되는 텍스트 파일이 아닙니다. .txt, .md, .log, .csv, .tsv, .json, .yaml 또는 .yml 파일을 첨부하세요.",
+          "notText": "{name}은(는) UTF-8 텍스트 파일이 아닙니다. 텍스트 파일을 첨부하세요.",
+          "tooLarge": "{name}을(를) 추가하면 이 메시지가 100 KB 제한을 초과합니다. 파일을 제거하거나 더 작은 파일을 첨부하세요.",
+          "readFailed": "{name}을(를) 읽을 수 없습니다. 파일이 아직 있고 열 수 있는지 확인한 뒤 다시 첨부하세요."
+        }
+      },
       "voice": {
         "start": "음성 받아쓰기 시작",
         "stop": "음성 받아쓰기 중지",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "음성 입력을 텍스트로 변환하지 못했습니다"
         }
       },
-      "modelLabel": "에이전트 모델: {provider} {model}",
-      "reasoningLabel": "에이전트 추론: {reasoning}",
       "providers": {
-        "label": "제공자",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "컴퓨터 액세스"
       },
       "webSearch": {
-        "on": "켬",
-        "off": "끔",
         "label": "웹 검색"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "에이전트를 사용할 수 없음 — 설정 열기…"
       },
       "settings": {
-        "reasoning": "추론",
         "effort": "강도"
       },
       "includeCurrentNote": "현재 노트 포함",
@@ -340,13 +452,29 @@
           "extraHigh": "매우 높음"
         }
       },
-      "permissionsLabel": "에이전트 권한: {access}, 웹 검색 {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "기본값",
+          "default": "기본 깊이",
+          "high": "높음",
+          "max": "최대"
+        }
+      },
       "permissions": {
-        "label": "권한",
-        "access": "액세스",
-        "tools": "도구"
+        "access": "액세스"
       },
       "modelSettingsLabel": "에이전트 모델 설정: {model}, {settings}",
+      "queue": {
+        "label": "대기 중인 메시지",
+        "queueMessage": "메시지 대기열에 추가",
+        "edit": "대기 중인 메시지 편집",
+        "editLabel": "대기 중인 메시지 텍스트",
+        "remove": "대기 중인 메시지 제거",
+        "save": "저장",
+        "cancel": "취소",
+        "sending": "보내는 중…",
+        "notSent": "보내지 못했습니다. 편집하여 다시 보내거나 제거하세요."
+      },
       "unavailable": {
         "vaultToolsOnly": "이 모델에서는 볼트 도구만 사용"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "안내 동의 상태를 저장하지 못했습니다.",
       "resolveWindow": "에이전트 소스 창을 확인하지 못했습니다.",
       "detectCli": "에이전트 백엔드를 감지하지 못했습니다.",
-      "loadDisclosure": "안내 동의 상태를 불러오지 못했습니다."
+      "loadDisclosure": "안내 동의 상태를 불러오지 못했습니다.",
+      "turnFailed": "오류로 답변이 중단되었습니다. 메시지는 그대로 남아 있으니 다시 보낼 수 있습니다."
     },
     "actions": {
       "copy": "복사",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "가져올 파일을 여기에 놓으세요",
       "dropFilesIntoVaultRoot": "볼트 최상위",
       "newNoteN": "새 노트(⌘N)",
-      "new": "새로 만들기",
       "newItemMenu": "새로 만들기…",
       "feedbackButton": "피드백 보내기",
       "feedbackTitle": "피드백 보내기",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "찾기, 바꾸기, 질문하기…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "시작 안내 건너뛰기",
-      "welcomeToMemry": "memrynote에 오신 것을 환영합니다",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "나만의 지식 베이스입니다. 2분이면 시작할 수 있습니다.",
-      "getStarted": "시작하기 ",
-      "createYourFirstNote": "첫 노트 만들기",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown 기반이며 일반 파일로 로컬에 저장됩니다.",
-      "eGMeetingNotesIdeasAnything": "예: 회의록, 아이디어, 무엇이든…",
-      "skip": "건너뛰기",
-      "createNote": "노트 만들기 ",
-      "addYourFirstTask": "첫 번째 작업 추가",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "작업은 노트와 연결되며 우선순위와 마감일을 설정할 수 있습니다.",
-      "eGReviewProjectProposal": "예: 프로젝트 제안서 검토…",
-      "skip2": "건너뛰기",
-      "createTask": "작업 만들기 ",
-      "syncAcrossDevices": "여러 기기에서 동기화",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "노트와 작업을 모든 기기에서 동기화하세요. 나중에 언제든지 설정할 수 있습니다.",
-      "skipForNow": "지금은 건너뛰기",
-      "doneLetSGo": "완료 — 시작하기 "
+      "skip": "건너뛰기"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "폴더 아이콘 설정",
@@ -707,8 +818,7 @@
       "unknownTabType": "알 수 없는 탭 유형: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "저장되지 않은 변경 사항",
-      "preview": "미리보기"
+      "unsavedChanges": "저장되지 않은 변경 사항"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "새 탭",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "크기를 조정하려면 드래그하세요. 재설정하려면 두 번 클릭하세요."
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "memrynote에 오신 것을 환영합니다",
-      "yourPersonalKnowledgeManagementSystem": "나만의 지식 관리 시스템입니다.",
-      "selectAFolderToStoreYourNotesAndTasks": "노트와 작업을 저장할 폴더를 선택하세요.",
       "opening": "여는 중…",
-      "selectVaultFolder": "볼트 폴더 선택",
-      "plainMarkdown": "일반 Markdown",
-      "yourNotesStayPortable": "노트를 어디로든 옮길 수 있습니다",
-      "syncAnywhere": "어디서나 동기화",
-      "useDropboxIcloudGit": "Dropbox, iCloud, Git 사용",
       "recentVaults": "최근 볼트",
-      "notesLastOpened": "노트 · 최근 열람",
-      "preRelease": "베타",
       "createNewVault": "새 볼트 만들기",
-      "createNewVaultDesc": "원하는 폴더에 새 볼트를 만드세요.",
-      "openExistingVault": "기존 볼트 열기",
-      "openExistingVaultDesc": "이미 가지고 있는 Markdown 파일 폴더를 선택하세요.",
-      "signInToSync": "동기화를 위해 로그인",
-      "signInToSyncDesc": "기기 간에 종단 간 암호화되는 볼트.",
-      "create": "만들기",
       "open": "열기",
-      "signIn": "로그인",
       "helpAndDocs": "도움말 및 문서",
-      "signInRequiresVault": "동기화를 설정하려면 먼저 볼트를 열거나 만드세요.",
       "addVault": "볼트 추가",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "아직 볼트가 없습니다",
       "openVault": "볼트 열기",
       "settings": "설정",
-      "logOut": "로그아웃",
-      "signInToSync": "동기화하려면 로그인하세요.",
       "remove": "제거: “",
       "removeVaultTitle": "목록에서 “{name}” 볼트를 제거하시겠습니까?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "이 볼트는 앱에서 제거되지만 파일은 디스크에 남아 있습니다. 나중에 언제든지 다시 추가할 수 있습니다.",
       "cancel": "취소",
       "remove2": "제거",
       "inYourAccount": "계정에 있는 볼트",
+      "trySandbox": "샌드박스 볼트 체험",
+      "sandboxVault": "샌드박스 볼트",
+      "sandboxPreparing": "샌드박스를 준비하는 중…",
+      "sandboxFailed": "샌드박스 볼트를 준비하지 못했습니다",
+      "resetSandbox": "샌드박스 볼트 초기화",
       "itemsCount": "항목 {count}개",
       "untitledVault": "볼트",
       "downloadVaultTitle": "“{name}” 다운로드",
@@ -870,7 +965,6 @@
       "changeLocation": "변경…",
       "download": "다운로드",
       "downloadFailed": "볼트를 다운로드하지 못했습니다",
-      "deleteFromAccount": "계정에서 삭제",
       "deleteVaultTitle": "계정에서 “{name}” 볼트를 삭제하시겠습니까?",
       "deleteVaultBody": "이 볼트의 동기화된 데이터가 Memry 서버에서 영구적으로 삭제되며 되돌릴 수 없습니다. 디스크에 있는 파일은 삭제되지 않습니다.",
       "deleteVaultConfirm": "계정에서 삭제",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "위젯 제거",
       "dragAria": "위젯 드래그",
-      "configAria": "위젯 구성",
-      "resizeAria": "{size}(으)로 크기 조정",
       "menuAria": "위젯 옵션",
-      "resize": "크기",
       "remove": "제거",
       "filter": {
         "all": "전체",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "열어 본 노트가 여기에 표시됩니다",
       "bookmarks": "북마크",
       "tasks": "작업",
+      "chart": "차트",
       "calendar": "캘린더",
       "calendarToday": "오늘",
       "openCalendar": "캘린더 열기",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "폴더 선택",
       "folderEmpty": "아직 폴더가 없습니다",
       "folderNoSelection": "선택된 폴더 없음",
-      "folderView_list": "목록",
-      "folderView_gallery": "갤러리",
       "folderViewSelect": "보기",
       "project": "프로젝트",
       "projectNoSelection": "선택된 프로젝트 없음",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "홈 레이아웃",
       "deleteAria": "레이아웃 삭제",
-      "newAria": "새 보드",
       "newName": "새 보드",
       "defaultName": "홈",
       "manage": "보드 관리",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, other {오늘 마감 작업 #개}}",
       "events": "{count, plural, other {일정 #개}}"
     },
-    "edit": "편집",
-    "done": "완료",
     "addWidget": "위젯 추가",
+    "cover": {
+      "add": "커버 추가"
+    },
     "empty": {
       "title": "보드가 비어 있습니다",
       "body": "위젯은 노트, 작업, 북마크를 한곳에 차분하게 모아줍니다.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "시작 안내 완료",
-      "body": "GitHub에서 스타를 눌러 주세요 — 다른 사람들이 MemryNote를 찾는 데 도움이 됩니다.",
-      "action": "GitHub에서 스타 주기"
+      "body": "GitHub에서 스타를 눌러 주세요 — 다른 사람들이 MemryNote를 찾는 데 도움이 됩니다."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "업데이트 준비됨",
     "failed": "업데이트 실패",
     "downloadAction": "다운로드",
-    "restartAction": "다시 시작",
     "detailsAction": "세부 정보",
     "popover": {
       "readyTitle": "MemryNote {version} 준비 완료",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "볼트",
     "position": "{name}, 볼트 {count}개 중 {index}번째",
-    "openList": "{position}. 볼트 목록 열기",
     "switchTo": "{name}(으)로 전환",
     "switchingTo": "{name}(으)로 전환 중",
     "changeIcon": "아이콘 변경…",
     "resetIcon": "아이콘 초기화",
     "iconButton": "{name} 아이콘 변경",
+    "leaveSandbox": "{name}(으)로 돌아가기",
     "iconFailed": "볼트 아이콘을 변경하지 못했습니다"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "유형",
     "filterModified": "수정됨",
     "matches": "일치 항목",
+    "matchesMore": "{count, plural, other {일치 항목 #개 더 있음}}",
+    "matchesHide": "일치 항목 숨기기",
+    "matchOf": "{total}개 중 {index}번째 일치",
     "showMore": "{count}개 더 보기",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "다음 섹션",
       "open": "열기",
       "openNote": "노트 열기",
+      "openAtMatch": "일치 위치에서 열기",
       "openFile": "파일 열기",
       "openJournal": "저널 열기",
       "openTask": "작업 열기",
@@ -1259,6 +1350,7 @@
       "chooseTag": "태그 선택",
       "addTag": "태그 추가",
       "showAll": "모두 보기",
+      "hideMatches": "일치 항목 숨기기",
       "searchEverywhere": "전체에서 검색",
       "clearFilters": "필터 지우기"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "{device}에서",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {볼트 #개 발견}}",
-      "notion": "Notion",
       "otherApps": "다른 앱 및 파일",
       "otherAppsHint": "외 {count}개",
       "detectedFootnote": "설치된 앱을 확인해 찾았습니다. 아무것도 {device} 밖으로 나가지 않습니다.",

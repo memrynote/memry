@@ -143,6 +143,7 @@ export async function checkNotesUnlock(
   const store = await openNoteStore(sourcePath)
   try {
     const keys = loadPrimaryKeys(store.db)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- better-sqlite3 .get()/.all() return unknown; row shape is fixed by the SELECT in this statement
     const rows: (LockedCryptoRow & { hexdata: string | null })[] = store.db
       .prepare(
         `SELECT hex(nd.zdata) AS hexdata ${lockedCryptoSelect(store.db)} ${LOCKED_NOTES_FROM_WHERE}`

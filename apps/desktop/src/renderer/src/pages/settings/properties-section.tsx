@@ -278,6 +278,7 @@ function PropertyManager() {
         )}
         {selectDefs.map((def) => {
           const isExpanded = expandedDef === def.name
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- def.type is a string in the IPC DTO; unknown types fall through to the undefined config handled below
           const config = PROPERTY_TYPE_CONFIG[def.type as keyof typeof PROPERTY_TYPE_CONFIG]
           const options = parseOptions(def.options)
           const categories = def.type === 'status' ? parseCategories(def.options) : null

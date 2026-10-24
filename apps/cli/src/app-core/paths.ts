@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { normalizeJournalFolder } from '@memry/storage-vault'
+import { errorCode } from './errno.ts'
 
 export interface VaultConfig {
   excludePatterns: string[]
@@ -93,9 +94,10 @@ async function ensureVaultFolders(vaultPath: string, config: VaultConfig): Promi
 /** `{}` for a missing config.json, `null` for one that cannot be read or parsed. */
 async function readVaultConfig(configPath: string): Promise<Partial<VaultConfig> | null> {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     return JSON.parse(await fs.readFile(configPath, 'utf-8')) as Partial<VaultConfig>
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    if (errorCode(error) === 'ENOENT') return {}
     // Leave the file alone: overwriting it would lose the user's settings.
     const reason = error instanceof Error ? error.message : String(error)
     process.stderr.write(

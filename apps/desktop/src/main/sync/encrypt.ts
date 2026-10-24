@@ -15,6 +15,10 @@ import {
   SYNC_ITEM_MAX_ENCRYPT_BYTES
 } from '@memry/sync-client/note-size'
 
+const toB64 = (bytes: Uint8Array): string =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
+  sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
+
 export interface EncryptItemInput {
   id: string
   type: SyncItemType
@@ -48,9 +52,6 @@ export function encryptItemForPush(input: EncryptItemInput): EncryptItemResult {
     const compressed = compressPayload(input.content)
     const { ciphertext, nonce: dataNonce } = encrypt(compressed, fileKey)
     const { wrappedKey, nonce: keyNonce } = wrapFileKey(fileKey, input.vaultKey)
-
-    const toB64 = (bytes: Uint8Array): string =>
-      sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
 
     const encryptedKeyB64 = toB64(wrappedKey)
     const keyNonceB64 = toB64(keyNonce)

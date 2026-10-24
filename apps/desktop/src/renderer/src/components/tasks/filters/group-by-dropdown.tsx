@@ -74,6 +74,7 @@ export const GroupByDropdown = ({
 
   const handleSelectField = useCallback(
     (field: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- field comes from this dropdown's closed SortField option list
       onChange({ ...sort, field: field as SortField })
     },
     [sort, onChange]

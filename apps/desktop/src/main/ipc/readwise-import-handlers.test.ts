@@ -43,6 +43,7 @@ function handlerFor(channel: string): Handler {
 const TOKEN = 'tok-secret-xyz'
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
   await sodium.ready
 })
 

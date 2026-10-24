@@ -2,10 +2,13 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import Database from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { createConversationStore } from '../conversation-store'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 function freshDb() {
   const sqlite = new Database(':memory:')

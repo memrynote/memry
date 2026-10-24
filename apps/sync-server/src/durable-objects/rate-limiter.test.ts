@@ -26,7 +26,7 @@ function makeStorage() {
 }
 
 function createDO() {
-  const doObj = new RateLimiter({} as DurableObjectState, {} as never)
+  const doObj = new RateLimiter({} as DurableObjectState, {})
   const storage = makeStorage()
   ;(doObj as unknown as { ctx: { storage: unknown } }).ctx.storage = storage
   return { doObj, storage }

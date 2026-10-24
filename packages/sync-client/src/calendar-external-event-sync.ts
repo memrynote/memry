@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm'
 import { calendarExternalEvents } from '@memry/db-schema/schema/calendar-external-events'
 import { calendarSources } from '@memry/db-schema/schema/calendar-sources'
 import { DEVICE_LOCAL_CALENDAR_PROVIDERS } from '@memry/contracts/calendar-api'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 import { recoverOfflineDocClock } from './offline-clock'
@@ -17,7 +16,7 @@ function sourceIdOf(row: { sourceId?: unknown } | null | undefined): string | nu
 function parseSnapshot(snapshotPayload: string): { sourceId?: unknown } | null {
   try {
     const parsed = JSON.parse(snapshotPayload) as unknown
-    return parsed && typeof parsed === 'object' ? (parsed as { sourceId?: unknown }) : null
+    return parsed && typeof parsed === 'object' ? parsed : null
   } catch {
     return null
   }
@@ -75,13 +74,13 @@ export class CalendarExternalEventSyncService {
           .select()
           .from(calendarExternalEvents)
           .where(eq(calendarExternalEvents.id, id))
-          .get() as Record<string, unknown> | undefined,
+          .get(),
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const nextClock = nextLocalClock(
           deps.db,
           'calendar_external_event',
           itemId,
-          local.clock as VectorClock | null,
+          local.clock,
           deviceId,
           operation
         )
@@ -102,7 +101,7 @@ export class CalendarExternalEventSyncService {
             .select()
             .from(calendarExternalEvents)
             .where(eq(calendarExternalEvents.id, itemId))
-            .get() as Record<string, unknown> | undefined,
+            .get(),
           deviceId,
           (clock) =>
             deps.db

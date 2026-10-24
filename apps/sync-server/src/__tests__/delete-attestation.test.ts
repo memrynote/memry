@@ -91,7 +91,7 @@ const buildApp = () => {
 type App = ReturnType<typeof buildApp>
 
 const sign = async (key: CryptoKey, bytes: Uint8Array) =>
-  toB64(await crypto.subtle.sign('Ed25519', key, bytes as unknown as ArrayBuffer))
+  toB64(await crypto.subtle.sign('Ed25519', key, bytes))
 
 const attest = (claim: DeleteClaim, key: CryptoKey = signingKey) =>
   sign(key, encodeSignaturePayload(deleteAttestationPayload(claim), 'DELETE_ATTESTATION'))
@@ -148,7 +148,7 @@ const request = (app: App, path: string, init: RequestInit = {}) =>
       ...init,
       headers: { 'Content-Type': 'application/json', ...(init.headers as Record<string, string>) }
     },
-    env as unknown as Record<string, unknown>,
+    env,
     {
       waitUntil: () => undefined,
       passThroughOnException: () => undefined
@@ -163,6 +163,7 @@ interface PushBody {
 const push = async (app: App, specs: PushSpec[]) => {
   const items = await Promise.all(specs.map(signedItem))
   const res = await request(app, '/sync/push', { method: 'POST', body: JSON.stringify({ items }) })
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- rule false positive: the awaited value is unknown, removing the cast fails typecheck
   return { status: res.status, body: (await res.json()) as PushBody }
 }
 

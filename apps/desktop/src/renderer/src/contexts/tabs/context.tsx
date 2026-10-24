@@ -389,6 +389,7 @@ export const TabProvider = ({
         // Update settings from database change
         dispatch({
           type: 'UPDATE_SETTINGS',
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed payload is unknown over IPC; the reducer spreads a partial TabSettings
           payload: event.value as Partial<TabSettings>
         })
       }
@@ -686,7 +687,7 @@ export const TabProvider = ({
    */
   const getActiveTabSnapshot = useCallback((): Tab | null => {
     const group = stateRef.current.tabGroups[activeGroupIdRef.current]
-    if (!group || !group.activeTabId) return null
+    if (!group?.activeTabId) return null
     return group.tabs.find((t) => t.id === group.activeTabId) ?? null
   }, [])
 
@@ -787,7 +788,7 @@ export const TabProvider = ({
 
   const getActiveTab = useCallback((): Tab | null => {
     const group = state.tabGroups[state.activeGroupId]
-    if (!group || !group.activeTabId) return null
+    if (!group?.activeTabId) return null
     return group.tabs.find((t) => t.id === group.activeTabId) ?? null
   }, [state.tabGroups, state.activeGroupId])
 
@@ -984,7 +985,7 @@ export const useActiveTab = (groupId?: string): Tab | null => {
   const targetGroupId = groupId ?? state.activeGroupId
   const group = state.tabGroups[targetGroupId]
 
-  if (!group || !group.activeTabId) return null
+  if (!group?.activeTabId) return null
   return group.tabs.find((t) => t.id === group.activeTabId) ?? null
 }
 

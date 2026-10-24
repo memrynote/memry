@@ -1,10 +1,14 @@
 import { eq } from 'drizzle-orm'
 import { tasks } from '@memry/db-schema/schema/tasks'
 import { taskTags, taskNotes, taskCanvases } from '@memry/db-schema/schema/task-relations'
-import type { VectorClock, FieldClocks } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import type { SyncQueueManager } from './queue'
-import { initAllFieldClocks, TASK_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
+import {
+  fieldClocksFromColumn,
+  initAllFieldClocks,
+  TASK_SYNCABLE_FIELDS
+} from '@memry/sync-client/field-merge'
 import {
   hasOfflineClockData,
   incrementTaskClocksOffline,
@@ -67,20 +71,17 @@ export class TaskSyncService {
   private controller: RecordSyncController<Record<string, unknown>, [string[]?], [string]>
 
   constructor(deps: TaskSyncDeps) {
-    this.controller = new RecordSyncController({
+    this.controller = new RecordSyncController<Record<string, unknown>, [string[]?], [string]>({
       type: 'task',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (taskId) =>
-        deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load: (taskId) => deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get(),
       applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
         const changedFields = extra[0]
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = clockFromColumn(local.clock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
-        let fieldClocks = (local.fieldClocks as FieldClocks) ?? null
+        let fieldClocks = fieldClocksFromColumn(local.fieldClocks) ?? null
         if (!fieldClocks) {
           fieldClocks = initAllFieldClocks(existingClock, TASK_SYNCABLE_FIELDS)
         }
@@ -125,9 +126,7 @@ export class TaskSyncService {
           return null
         }
 
-        return JSON.stringify(
-          enrichWithJunctionData(deps.db, taskId, task as Record<string, unknown>)
-        )
+        return JSON.stringify(enrichWithJunctionData(deps.db, taskId, task))
       },
       recoverPendingChange: (taskId, deviceId) => {
         const task = deps.db.select().from(tasks).where(eq(tasks.id, taskId)).get()
@@ -136,7 +135,7 @@ export class TaskSyncService {
           return null
         }
 
-        const existingClock = (task.clock as VectorClock) ?? {}
+        const existingClock = task.clock ?? {}
         const existingFieldClocks = task.fieldClocks ?? null
 
         if (!hasOfflineClockData(existingClock, existingFieldClocks)) {

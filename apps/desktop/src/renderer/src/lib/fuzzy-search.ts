@@ -49,7 +49,7 @@ export function fuzzySearch<T>(items: T[], query: string, keys: (keyof T)[]): T[
   }
 
   // Sort by score (higher is better)
-  return matches.sort((a, b) => b.score - a.score).map((m) => m.item)
+  return matches.toSorted((a, b) => b.score - a.score).map((m) => m.item)
 }
 
 /**

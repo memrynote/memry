@@ -58,7 +58,7 @@ export function RevealHandler({
   useEffect(() => {
     if (!pendingRevealNoteId) {
       expandedForRef.current = null
-      return
+      return undefined
     }
 
     const note = noteMap.get(pendingRevealNoteId)
@@ -144,8 +144,10 @@ export function FolderRevealHandler() {
       }, 100)
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
     window.addEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, handleRevealFolder as EventListener)
     return () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
       window.removeEventListener(SIDEBAR_REVEAL_FOLDER_EVENT, handleRevealFolder as EventListener)
     }
   }, [expandNode])
@@ -169,7 +171,7 @@ export type TreeActionsHandle = {
 export function TreeActionsExposer({
   actionsRef
 }: {
-  actionsRef: React.MutableRefObject<TreeActionsHandle | null>
+  actionsRef: React.RefObject<TreeActionsHandle | null>
 }) {
   const { collapseAll, expandAll, expandNode, expandNodes, setNodesExpanded, renameNode } =
     useTree()

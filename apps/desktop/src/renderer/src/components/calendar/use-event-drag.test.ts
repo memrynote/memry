@@ -33,7 +33,7 @@ function makeEvent(overrides: Partial<CalendarProjectionItem> = {}): CalendarPro
     binding: null,
     snoozeOffsetMinutes: null,
     ...overrides
-  } as CalendarProjectionItem
+  }
 }
 
 function minutesLocal(iso: string): number {

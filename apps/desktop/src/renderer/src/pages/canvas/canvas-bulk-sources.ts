@@ -34,7 +34,7 @@ export async function listBulkTags(): Promise<BulkTagSource[]> {
   return tags
     .filter((tag) => tag.count > 0)
     .map((tag) => ({ name: tag.name, count: tag.count }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .toSorted((a, b) => a.name.localeCompare(b.name))
 }
 
 /** Vault folders, root excluded: "every note in the vault" is not a folder pick. */
@@ -43,7 +43,7 @@ export async function listBulkFolders(): Promise<string[]> {
   return folders
     .map((folder) => folder.path)
     .filter((path) => path.length > 0)
-    .sort((a, b) => a.localeCompare(b))
+    .toSorted((a, b) => a.localeCompare(b))
 }
 
 async function listScopeRows(scope: ViewScope): Promise<NoteWithProperties[]> {
@@ -73,7 +73,7 @@ export async function loadBulkScopeOptions(scope: ViewScope): Promise<BulkScopeO
     listScopeRows(scope),
     window.api.folderView.getViews(scope)
   ])
-  const sorted = [...rows].sort((a, b) => a.title.localeCompare(b.title))
+  const sorted = [...rows].toSorted((a, b) => a.title.localeCompare(b.title))
   const options: BulkScopeOption[] = [{ viewName: null, refs: refsFromViewRows(sorted) }]
   for (const view of views) {
     if (isFilterEmpty(view.filters)) continue

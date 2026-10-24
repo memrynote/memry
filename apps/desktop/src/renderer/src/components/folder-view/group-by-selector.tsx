@@ -76,7 +76,7 @@ export function GroupBySelector({
   // Filter built-in columns to only include groupable ones
   const groupableBuiltIn = useMemo(() => {
     return builtInColumns.filter((col) =>
-      GROUPABLE_BUILT_IN.includes(col.id as (typeof GROUPABLE_BUILT_IN)[number])
+      (GROUPABLE_BUILT_IN as readonly string[]).includes(col.id)
     )
   }, [builtInColumns])
 

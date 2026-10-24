@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI 关联",
     "todaysNotes": "今天的笔记",
-    "todaysSchedule": "今天的日程",
-    "todaysTasks": "今天的任务",
     "tasks": "任务",
     "technicalDetails": "技术细节"
   },
@@ -102,8 +100,7 @@
       "afternoon": "下午好",
       "evening": "晚上好",
       "night": "晚安"
-    },
-    "allDay": "全天"
+    }
   },
   "nav": {
     "previousDay": "前一天",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "更多选项",
     "documentStatistics": "文档统计",
-    "dayContext": "当日概况：任务和日程",
-    "scheduleEvents": "日程安排",
-    "tasks": "任务",
     "notesCreatedToday": "今天创建了 {count} 篇笔记"
   },
   "empty": {
     "noEntry": "没有日记",
     "noDaysInMonth": "本月没有日期",
-    "noEventsScheduled": "没有日程",
-    "noEventsScheduledToday": "今天没有日程",
-    "noEventsWereScheduled": "当天没有日程",
-    "noTasksDue": "没有到期的任务",
-    "noTasksDueToday": "今天没有到期的任务",
-    "noTasksWereDue": "当天没有到期的任务",
     "noNotesToday": "今天没有创建笔记",
     "startDocumenting": "开始记录你的想法和创意"
   },
@@ -155,9 +143,7 @@
     "day": "天",
     "days": "天",
     "event": "日程",
-    "events": "日程",
     "task": "任务",
-    "todo": "待办",
     "moreConnections": "还有 {count} 条关联",
     "moreConnections_plural": "还有 {count} 条关联",
     "moreNotes": "还有 {count} 篇笔记",
@@ -166,7 +152,6 @@
     "charactersWritten": "已写字符数",
     "words": "{count} 字",
     "characters": "{count} 字符",
-    "completed": "{count} 项已完成",
     "overdue": "{count} 项逾期"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "修改于 {date}"
   },
   "task": {
-    "completed": "已完成",
-    "notCompleted": "未完成",
-    "priority": "{priority}优先级",
-    "overdue": "已逾期",
-    "markComplete": "将“{title}”标记为已完成",
-    "markNotComplete": "将“{title}”标记为未完成"
+    "priority": "{priority}优先级"
   },
   "template": {
     "using": "使用模板“{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "内容仍在内存中。点击以重试保存。",
-    "noteNotFound": "未找到笔记“{target}”",
     "createLinkedFailed": "无法创建链接的笔记",
     "fileNotFound": "未找到文件：{target}",
     "openLinkedItemFailed": "无法打开链接的条目",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "删除日记",
     "description": "确定要删除“{title}”吗？此操作无法撤销。"
+  },
+  "dayTimeline": {
+    "label": "当天日程",
+    "allDay": "全天事项",
+    "unscheduled": "未安排",
+    "unscheduledEmpty": "没有未安排的任务。将任务块拖到此处可清除其时间。",
+    "range": "{start} – {end}",
+    "openTask": "{title}，{range}",
+    "completeTask": "完成 {title}"
   }
 }

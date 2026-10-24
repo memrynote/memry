@@ -21,7 +21,7 @@ import {
   type ViewBlockDefinition,
   type ViewBlockLayout
 } from '@memry/shared/view-block'
-import { DEFAULT_COLUMNS, type FilterExpression } from '@memry/contracts/folder-view-api'
+import { DEFAULT_COLUMNS } from '@memry/contracts/folder-view-api'
 import { useT } from '@memry/i18n/renderer'
 import {
   DropdownMenu,
@@ -123,11 +123,9 @@ interface ViewBlockEditor {
 export function viewBlockText(content: unknown): string {
   if (!Array.isArray(content)) return ''
   return content
-    .map((run) =>
-      typeof run === 'object' &&
-      run !== null &&
-      typeof (run as { text?: unknown }).text === 'string'
-        ? (run as { text: string }).text
+    .map((run: unknown) =>
+      typeof run === 'object' && run !== null && 'text' in run && typeof run.text === 'string'
+        ? run.text
         : ''
     )
     .join('')
@@ -171,7 +169,7 @@ function applyDefinition(
   activeView: FolderViewResult['activeView']
 ): NoteWithProperties[] {
   let matched = notes
-  const filters = definition.filters as FilterExpression | undefined
+  const filters = definition.filters
   if (filters && !isFilterEmpty(filters)) {
     try {
       matched = matched.filter((note) => evaluateFilter(note, filters))
@@ -285,7 +283,7 @@ function ViewBlockHeader({
       {editable ? (
         <>
           <FilterBuilder
-            filters={definition.filters as FilterExpression | undefined}
+            filters={definition.filters}
             availableProperties={availableProperties}
             builtInColumns={builtInColumns}
             onFiltersChange={(filters) =>
@@ -333,6 +331,7 @@ function ViewBlockRows({
   const propertyTypes = useMemo(() => {
     const map: TablePropertyTypes = {}
     for (const prop of availableProperties) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- prop.type is the property's stored type name, one of TablePropertyTypes' keys
       map[prop.name] = prop.type as TablePropertyTypes[string]
     }
     return map
@@ -511,7 +510,7 @@ function FolderViewBlockBody(
 function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void {
   useEffect(() => {
     const frame = frameRef.current
-    if (!frame) return
+    if (!frame) return undefined
     const claim = (event: MouseEvent): void => event.preventDefault()
     frame.addEventListener('mousedown', claim)
     return () => frame.removeEventListener('mousedown', claim)
@@ -648,11 +647,7 @@ export const createViewBlockSpec = createReactBlockSpec(
   },
   {
     render: (props) => (
-      <ViewBlockRenderer
-        block={props.block as unknown as ViewBlockNode}
-        editor={props.editor as unknown as ViewBlockEditor}
-        contentRef={props.contentRef}
-      />
+      <ViewBlockRenderer block={props.block} editor={props.editor} contentRef={props.contentRef} />
     )
   }
 )

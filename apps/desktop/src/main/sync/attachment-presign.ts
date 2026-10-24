@@ -96,6 +96,7 @@ export class AttachmentPresigner {
     }
 
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse / response.json / require returns any; the asserted type is the wire or persisted contract and a runtime guard here would change behavior
       const body = (await response.json()) as {
         urls: Record<string, string>
         expiresAt: number

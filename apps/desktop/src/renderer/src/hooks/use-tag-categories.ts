@@ -61,7 +61,7 @@ interface CategoryRow {
 const EMPTY_CATEGORY_ROWS: CategoryRow[] = []
 
 function sortTags(tags: HubTag[]): HubTag[] {
-  return [...tags].sort((a, b) => a.sortOrder - b.sortOrder || a.tag.localeCompare(b.tag))
+  return tags.toSorted((a, b) => a.sortOrder - b.sortOrder || a.tag.localeCompare(b.tag))
 }
 
 export function useTagCategories(): UseTagCategoriesResult {
@@ -157,7 +157,7 @@ export function useTagCategories(): UseTagCategoriesResult {
         sortOrder: row.sortOrder,
         tags: sortTags(buckets.get(row.id) ?? [])
       }))
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
+      .toSorted((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))
 
     return {
       categories: builtCategories,

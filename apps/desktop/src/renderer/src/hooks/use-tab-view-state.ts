@@ -81,11 +81,11 @@ export function useTabViewState<T>({
   const read = useCallback((): T => {
     if (!identity) return defaultValue
 
-    const viewState = getTab?.(identity.tabId, identity.groupId)?.viewState
-    const names = aliasToken === '' ? [key] : [key, ...aliasToken.split(ALIAS_SEPARATOR)]
+    const savedViewState = getTab?.(identity.tabId, identity.groupId)?.viewState
+    const candidateNames = aliasToken === '' ? [key] : [key, ...aliasToken.split(ALIAS_SEPARATOR)]
 
-    for (const name of names) {
-      const raw = viewState?.[name]
+    for (const name of candidateNames) {
+      const raw = savedViewState?.[name]
       if (raw === undefined) continue
       try {
         const parsed = parse(raw)
@@ -147,6 +147,7 @@ export function useTabViewState<T>({
   const setTabViewState = useCallback<TabViewStateSetter<T>>(
     (next) => {
       const resolved =
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- T may itself be a function type; typeof check cannot narrow the updater generically
         typeof next === 'function' ? (next as (previous: T) => T)(valueRef.current) : next
       valueRef.current = resolved
       setValue(resolved)
@@ -154,16 +155,16 @@ export function useTabViewState<T>({
       const current = identityRef.current
       if (!current || !dispatch) return
       unseenWritesRef.current.push(resolved)
-      const viewState: Record<string, unknown> = { [key]: resolved }
+      const nextViewState: Record<string, unknown> = { [key]: resolved }
       if (aliasToken !== '') {
-        for (const alias of aliasToken.split(ALIAS_SEPARATOR)) viewState[alias] = resolved
+        for (const alias of aliasToken.split(ALIAS_SEPARATOR)) nextViewState[alias] = resolved
       }
       dispatch({
         type: 'SAVE_TAB_STATE',
         payload: {
           tabId: current.tabId,
           groupId: current.groupId,
-          viewState
+          viewState: nextViewState
         }
       })
     },

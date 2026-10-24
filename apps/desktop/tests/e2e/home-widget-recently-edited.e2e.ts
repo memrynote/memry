@@ -48,6 +48,7 @@ function writeNote(
   // Post frontmatter-diet (#697) a note's title comes from the filename basename,
   // not an in-file `title:` key — name the file after the requested title so
   // lookups by title resolve it.
+  // oxlint-disable-next-line typescript/no-base-to-string -- seeded titles are always strings; String() keeps the old coercion for any other value
   const base = String(frontmatter.title ?? fileName).replace(/\.md$/, '')
   const normalizedName = `${base}.md`
 

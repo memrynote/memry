@@ -109,7 +109,9 @@ describe('useLinkMentionHover', () => {
     const baseline = renders
     // One act() per event so React cannot batch them into a single render.
     for (let i = 0; i < 5; i++) {
-      act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+      act(() => {
+        container.dispatchEvent(new Event('scroll', { bubbles: true }))
+      })
     }
 
     expect(renders).toBe(baseline)
@@ -124,22 +126,30 @@ describe('useLinkMentionHover', () => {
       return useLinkMentionHover(ref)
     })
 
-    act(() => favicon.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    act(() => {
+      favicon.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
     expect(result.current.isVisible).toBe(true)
 
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    act(() => {
+      container.dispatchEvent(new Event('scroll', { bubbles: true }))
+    })
     expect(result.current.isVisible).toBe(false)
 
     // One more scroll to absorb React's render-phase bailout: right after a real
     // update it re-renders this component once before it can compare eagerly.
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    act(() => {
+      container.dispatchEvent(new Event('scroll', { bubbles: true }))
+    })
     const settled = renders
 
     for (let i = 0; i < 5; i++) {
-      act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+      act(() => {
+        container.dispatchEvent(new Event('scroll', { bubbles: true }))
+      })
     }
 
     expect(renders).toBe(settled)
@@ -155,13 +165,17 @@ describe('useLinkMentionHover', () => {
       return useLinkMentionHover(ref)
     })
 
-    act(() => favicon.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    act(() => {
+      favicon.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(150)
     })
 
     const baseline = renders
-    act(() => container.dispatchEvent(new Event('scroll', { bubbles: true })))
+    act(() => {
+      container.dispatchEvent(new Event('scroll', { bubbles: true }))
+    })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(500)
     })
@@ -176,15 +190,17 @@ describe('useLinkMentionHover', () => {
     const ref = { current: container }
     const { result } = renderHook(() => useLinkMentionHover(ref))
 
-    act(() => favicon.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })))
+    act(() => {
+      favicon.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+    })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300)
     })
     expect(result.current.isVisible).toBe(true)
 
-    act(() =>
+    act(() => {
       link.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null }))
-    )
+    })
     await act(async () => {
       await vi.advanceTimersByTimeAsync(100)
     })

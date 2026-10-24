@@ -1,4 +1,4 @@
-import type { SyncItemType, SyncOperation } from '@memry/contracts/sync-api'
+import type { SyncItemType } from '@memry/contracts/sync-api'
 import { encryptItemForPush, decryptItemFromPull, initCrypto } from './crypto.js'
 import type { DeviceIdentity, FetchFn, VectorClock, SyncItem, PullItemData } from './types.js'
 
@@ -143,7 +143,7 @@ export class SimulatedDevice {
       const { pushItem } = encryptItemForPush({
         id: item.id,
         type: item.type,
-        operation: item.operation as SyncOperation,
+        operation: item.operation,
         content: contentBytes,
         vaultKey: this.identity.vaultKey,
         signingSecretKey: this.identity.signingSecretKey,
@@ -190,7 +190,7 @@ export class SimulatedDevice {
         const signerKey = this.devicePublicKeys.get(item.signerDeviceId)
         if (!signerKey) {
           throw new Error(
-            `Unknown signer device: ${item.signerDeviceId}. ` + `Call registerPeerDevice() first.`
+            `Unknown signer device: ${item.signerDeviceId}. Call registerPeerDevice() first.`
           )
         }
 

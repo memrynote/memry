@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useRegisterEvents, useSigma } from '@react-sigma/core'
 import { useTabActions } from '@/contexts/tabs'
 import { useT } from '@memry/i18n/renderer'
+import { readNodeAttrs } from './graph-node-attrs'
 
 /** Pointer travel (viewport px) past which a press counts as a drag rather than a click. */
 const DRAG_THRESHOLD_PX = 3
@@ -156,7 +157,7 @@ export function GraphEvents({
         const graph = sigma.getGraph()
         const attrs = graph.hasNode(node) ? graph.getNodeAttributes(node) : null
         if (attrs?.nodeType === 'group') {
-          onToggleCategory?.(attrs.categoryId as string)
+          onToggleCategory?.(readNodeAttrs(attrs).categoryId)
           return
         }
         openNodeInTab(sigma, openTab, node, t('context-menu.untitled'))
@@ -222,13 +223,13 @@ function openNodeInTab(
   const graph = sigma.getGraph()
   if (!graph.hasNode(node)) return
 
-  const attrs = graph.getNodeAttributes(node)
-  const nodeType = attrs.nodeType as string
-  const isUnresolved = attrs.isUnresolved as boolean
+  const attrs = readNodeAttrs(graph.getNodeAttributes(node))
+  const nodeType = attrs.nodeType
+  const isUnresolved = attrs.isUnresolved
 
   if (isUnresolved) return
 
-  const tabTypeMap: Record<string, string> = {
+  const tabTypeMap: Record<string, 'note' | 'journal' | 'tasks' | 'project'> = {
     note: 'note',
     journal: 'journal',
     task: 'tasks',
@@ -239,8 +240,8 @@ function openNodeInTab(
   if (!tabType) return
 
   openTab({
-    type: tabType as 'note' | 'journal' | 'tasks' | 'project',
-    title: (attrs.label as string) || untitledLabel,
+    type: tabType,
+    title: attrs.label || untitledLabel,
     icon:
       tabType === 'note'
         ? 'file-text'

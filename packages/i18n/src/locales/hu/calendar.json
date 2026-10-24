@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Befejezés: {title}",
     "task-completed": "Feladat befejezve",
-    "could-not-complete": "Nem sikerült befejezni a feladatot",
+    "could-not-update-status": "Nem sikerült módosítani a feladat állapotát",
     "duration-minutes": "{minutes} p",
     "duration-hours": "{hours} ó",
     "duration-hours-minutes": "{hours} ó {minutes} p"
@@ -214,12 +213,9 @@
     "next-week": "Jövő héten",
     "open-task": "Feladat megnyitása",
     "source-note": "Forrásjegyzet",
-    "reschedule": "Átütemezés",
     "mark-done": "Megjelölés befejezettként",
     "mark-not-done": "Megjelölés befejezetlenként",
-    "later-today": "Ma később",
     "tomorrow": "Holnap",
-    "next-week-mon": "Jövő hét · hétfő",
     "pick-date-time": "Dátum és időpont kiválasztása…",
     "remove-due-date": "Határidő eltávolítása",
     "subtasks-prefix": "Részfeladatok",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Nem sikerült eltávolítani a határidőt",
       "could-not-open-note": "Nem sikerült megnyitni a jegyzetet"
     }
+  },
+  "eventNotes": {
+    "heading": "Jegyzetek",
+    "create": "Új jegyzet",
+    "link": "Jegyzet csatolása",
+    "untitled": "Megbeszélés jegyzete",
+    "searchPlaceholder": "Jegyzetek keresése",
+    "noResults": "Nem található jegyzet",
+    "createFailed": "Nem sikerült jegyzetet létrehozni ehhez az eseményhez.",
+    "linkFailed": "Nem sikerült a jegyzetet az eseményhez csatolni.",
+    "loadFailed": "Nem sikerült betölteni az eseményhez csatolt jegyzeteket.",
+    "propertyTaken": "Ennek a jegyzetnek már van egy „{name}” tulajdonsága, amely nem hivatkozás."
   },
   "notePopover": {
     "kind": "Jegyzet",
@@ -254,6 +262,10 @@
     "overdue": "lejárt",
     "untitled": "Névtelen",
     "days": "{count, plural, one {# nap} other {# nap}}",
+    "subtasks": {
+      "expand": "{title} {count, plural, one {# részfeladatának} other {# részfeladatának}} megjelenítése",
+      "collapse": "{title} {count, plural, one {# részfeladatának} other {# részfeladatának}} elrejtése"
+    },
     "events": "Események",
     "schedule-hint": "Kattintással dátumot, húzással tartományt állíthat be",
     "empty-title": "Itt nincs semmi az idővonalon",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Feliratkozott naptárak"
     },
     "caldav": {
       "name": "CalDAV"

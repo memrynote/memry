@@ -598,7 +598,7 @@ describe('projects queries', () => {
 
       const rows = listProjectsByNames(db, ['alpha', 'BETA', 'ghost'])
 
-      expect(rows.map((r) => r.id).sort()).toEqual(['p1', 'p2'])
+      expect(rows.map((r) => r.id).toSorted()).toEqual(['p1', 'p2'])
     })
 
     it('orders duplicate-named projects oldest-first', () => {
@@ -655,7 +655,7 @@ describe('projects queries', () => {
 
       const rows = listNoteProjectLinkIds(db, 'n1')
 
-      expect(rows.map((r) => r.projectId).sort()).toEqual(['p1', 'p2'])
+      expect(rows.map((r) => r.projectId).toSorted()).toEqual(['p1', 'p2'])
       expect(rows.every((r) => typeof r.id === 'string')).toBe(true)
     })
 

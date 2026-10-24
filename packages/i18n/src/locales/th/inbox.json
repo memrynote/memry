@@ -15,19 +15,13 @@
       "showWithCount": "แสดงรายการที่เลื่อนไว้ ({count})",
       "hide": "ซ่อนรายการที่เลื่อนไว้"
     },
-    "density": {
-      "toComfortable": "มุมมองสบายตา",
-      "toCompact": "มุมมองกระชับ"
-    },
     "filter": {
-      "button": "กรอง",
       "byType": "กรองตามประเภท",
       "active": "{count, plural, other {กรองตาม # ประเภท}}",
       "clearAll": "ล้างทั้งหมด"
     },
     "jobs": {
-      "running": "{count, plural, other {กำลังประมวลผลเบื้องหลัง # รายการ}}",
-      "failed": "ไม่สำเร็จ {count} รายการ"
+      "running": "{count, plural, other {กำลังประมวลผลเบื้องหลัง # รายการ}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "สร้าง “{name}”",
     "addTags": "เพิ่มแท็ก…",
     "linkToNote": "ลิงก์ไปยังโน้ต",
-    "linkANote": "เชื่อมโยงโน้ต",
-    "suggestedCount": "แนะนำ {count} รายการ",
-    "linkNotesPlaceholder": "ลิงก์โน้ต…",
     "linkOrCreateNotePlaceholder": "ค้นหาหรือสร้างโน้ต…",
     "createNote": "สร้าง “{title}”",
     "pendingNote": "โน้ตใหม่",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "ไม่มีข้อมูลการเตือน",
     "triggered": "เตือนแล้ว",
-    "noteLabel": "โน้ตของการเตือน",
     "source": "แหล่งที่มา",
     "journalTitle": "บันทึกประจำวัน — {date}",
     "noteFallback": "โน้ต",
@@ -514,9 +504,7 @@
       "settings": "การตั้งค่า",
       "processing": "กำลังประมวลผล…",
       "cancelRecording": "ยกเลิกการบันทึก",
-      "cancel": "ยกเลิก",
       "stopRecording": "หยุดการบันทึก",
-      "stop": "หยุด",
       "recordingError": "เกิดข้อผิดพลาดในการบันทึกเสียง",
       "microphoneAccessDenied": "ไม่ได้รับสิทธิ์เข้าถึงไมโครโฟน",
       "noMicrophoneFound": "ไม่พบไมโครโฟน",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, other {รายการที่เลื่อนไว้ # รายการ}}",
     "notificationBody": "{count, plural, other {รายการที่เลื่อนไว้พร้อมให้ทบทวนแล้ว}}",
     "toast": "{count, plural, =1 {“{itemTitle}” กลับมาจากการเลื่อนแล้ว} other {รายการที่เลื่อนไว้ # รายการกลับมาแล้ว}}"
+  },
+  "sticky": {
+    "kindLabel": "ส่งเป็น",
+    "kinds": {
+      "note": "โน้ต",
+      "task": "งาน",
+      "journal": "บันทึกประจำวัน"
+    },
+    "placeholders": {
+      "note": "จดไว้เลย…",
+      "task": "โทรหา Ana @tomorrow #home !high",
+      "journal": "เพิ่มในบันทึกประจำวันของวันนี้…"
+    },
+    "saving": "กำลังบันทึก…",
+    "saved": "บันทึกแล้ว",
+    "saveFailed": "ไม่ได้บันทึก",
+    "tuck": "เก็บไว้ก่อน",
+    "send": "ส่ง",
+    "hints": "Esc เก็บไว้ · {mod}⌫ ลบ",
+    "sendAndCloseHint": "⌥{mod}↵ ส่งแล้วปิด",
+    "deleted": "ลบฉบับร่างแล้ว",
+    "open": "เปิด",
+    "undo": "เลิกทำ",
+    "sent": {
+      "note": "บันทึกในโฟลเดอร์ Sticky แล้ว",
+      "task": "เพิ่มงานแล้ว",
+      "journal": "เพิ่มในบันทึกประจำวันของวันนี้แล้ว"
+    },
+    "tab": {
+      "label": "{count, plural, other {ฉบับร่างสติกกี้ # รายการ}}",
+      "newSticky": "สติกกี้ใหม่"
+    },
+    "errors": {
+      "empty": "เขียนอะไรสักอย่างก่อน",
+      "taskFailed": "สร้างงานไม่สำเร็จ",
+      "tasksOff": "งานถูกปิดไว้ในการตั้งค่า",
+      "journalOff": "บันทึกประจำวันถูกปิดไว้ในการตั้งค่า",
+      "sendFailed": "ส่งสติกกี้ไม่สำเร็จ",
+      "undoExpired": "สายเกินไปที่จะเลิกทำแล้ว",
+      "undoFailed": "เลิกทำการส่งไม่สำเร็จ"
+    },
+    "inputLabel": "ข้อความสติกกี้",
+    "dismissError": "ปิด"
   }
 }

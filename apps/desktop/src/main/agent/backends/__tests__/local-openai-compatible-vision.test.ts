@@ -30,7 +30,7 @@ interface ChatRequest {
 }
 
 function sse(chunks: unknown[]): Response {
-  const lines = chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`).join('')
+  const lines = chunks.map((entry) => `data: ${JSON.stringify(entry)}\n\n`).join('')
   return new Response(`${lines}data: [DONE]\n\n`, {
     headers: { 'content-type': 'text/event-stream' }
   })
@@ -68,7 +68,7 @@ function createProvider(
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     if (String(url).endsWith('/models')) return json({ data: [{ id: MODEL }] })
 
-    const body = JSON.parse(String(init?.body)) as ChatRequest
+    const body = JSON.parse(typeof init?.body === 'string' ? init.body : '') as ChatRequest
     requests.push(body)
     if (options.hangsOnImageProbe && !body.stream && carriesImage(body)) {
       return new Promise<Response>((_, reject) => {
@@ -164,7 +164,7 @@ function lastToolTurn(requests: ChatRequest[]): ChatRequest {
     (request) => request.stream && request.messages.some((message) => message.role === 'tool')
   )
   expect(turn).toHaveLength(1)
-  return turn[0]!
+  return turn[0]
 }
 
 describe('LocalOpenAICompatibleBackend with a viewed image', () => {
@@ -180,8 +180,8 @@ describe('LocalOpenAICompatibleBackend with a viewed image', () => {
     expect(exitCode).toBe(0)
     const continuation = lastToolTurn(requests)
     const toolIndex = continuation.messages.findIndex((message) => message.role === 'tool')
-    const tool = continuation.messages[toolIndex]!
-    const after = continuation.messages[toolIndex + 1]!
+    const tool = continuation.messages[toolIndex]
+    const after = continuation.messages[toolIndex + 1]
 
     expect(typeof tool.content).toBe('string')
     expect(tool.content).not.toContain(IMAGE)
@@ -221,7 +221,7 @@ describe('LocalOpenAICompatibleBackend with a viewed image', () => {
 
     const probe = requests.filter((request) => !request.stream && carriesImage(request))
     expect(probe).toHaveLength(1)
-    expect(probe[0]!.max_tokens).toBe(1)
+    expect(probe[0].max_tokens).toBe(1)
   })
 
   it('goes on without the image when the image probe times out', async () => {
@@ -239,14 +239,14 @@ describe('LocalOpenAICompatibleBackend with a viewed image', () => {
       text: 'It says hello.'
     })
     expect(warn).toHaveBeenCalledTimes(1)
-    expect(String(warn.mock.calls[0]![0])).toContain(MODEL)
+    expect(String(warn.mock.calls[0][0])).toContain(MODEL)
   })
 
   it('logs a failed image probe once with the model and the provider error', async () => {
     await runViewTurn(false)
 
     expect(warn).toHaveBeenCalledTimes(1)
-    const line = warn.mock.calls[0]!.map(String).join(' ')
+    const line = warn.mock.calls[0].map(String).join(' ')
     expect(line).toContain(MODEL)
     expect(line).toContain('image input is not supported')
     expect(line).not.toContain('base64')

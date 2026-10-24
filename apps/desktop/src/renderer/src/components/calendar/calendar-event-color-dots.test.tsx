@@ -80,7 +80,9 @@ describe('event colour dots', () => {
         />
       )
       fireEvent.click(screen.getAllByRole('button', { name: /Sunday, May 10/i })[0])
-      act(() => vi.advanceTimersByTime(250))
+      act(() => {
+        vi.advanceTimersByTime(250)
+      })
 
       expect(dotBeside('Standup').style.backgroundColor).toBe('rgb(213, 0, 0)')
       expect(dotBeside('Review').style.backgroundColor).toBe('rgb(62, 99, 221)')

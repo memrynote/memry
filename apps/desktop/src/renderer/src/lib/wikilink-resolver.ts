@@ -152,7 +152,7 @@ export async function resolveWikiLink(target: string): Promise<ResolvedWikiLink>
       type: 'not-found',
       id: '',
       title: trimmedTarget,
-      fileType: detectedFileType as ResolvedWikiLink['fileType'],
+      fileType: detectedFileType,
       icon: FILE_TYPE_ICONS[detectedFileType] || 'file',
       heading: anchor
     }

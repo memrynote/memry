@@ -75,6 +75,7 @@ export async function rebuildAllIndexes(
   logger.info('Starting full FTS index rebuild via search projector')
 
   return rebuildProjections(['search']).then((results) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
     return results.search as {
       notes: number
       tasks: number

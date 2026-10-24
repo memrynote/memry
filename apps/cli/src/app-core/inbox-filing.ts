@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { and, asc, desc, eq, inArray, isNull, lt, type SQL } from 'drizzle-orm'
-import type { CalendarService } from '@memry/app-core/calendar'
+import type { CalendarService } from '@memry/app-core/calendar-types'
 import { createId } from '@memry/app-core/ids'
 import type { RemindersService } from '@memry/app-core/reminders'
 import type { InboxBulkResponse, InboxRecord, InboxService } from '@memry/app-core/service-types'
@@ -17,6 +17,7 @@ import type { DataDb } from './database.ts'
 import type { FoldersService } from './folders.ts'
 import type { NotesService } from './notes.ts'
 import { normalizePath } from './paths.ts'
+import { errorCode } from './errno.ts'
 
 export type InboxFilingAction = 'folder' | 'note' | 'linked' | 'task' | 'event' | 'reminder'
 export type InboxJobType = 'transcription' | 'metadata-scrape'
@@ -338,7 +339,7 @@ export function createInboxFilingService({
     try {
       await fs.rename(source, destination)
     } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EXDEV') throw error
+      if (errorCode(error) !== 'EXDEV') throw error
       await fs.copyFile(source, destination)
       await fs.unlink(source)
     }
@@ -514,6 +515,7 @@ export function createInboxFilingService({
         const key = folder === '.' ? '' : folder
         const entry = byFolder.get(key) ?? { count: 0, tags: new Map<string, number>() }
         entry.count += 1
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
         const rowTags = Array.isArray(row.tags) ? (row.tags as string[]) : []
         for (const tag of rowTags) {
           if (tag !== 'inbox') entry.tags.set(tag, (entry.tags.get(tag) ?? 0) + 1)
@@ -522,14 +524,14 @@ export function createInboxFilingService({
       }
       const total = history.length
       const suggestions = [...byFolder.entries()]
-        .sort((left, right) => right[1].count - left[1].count)
+        .toSorted((left, right) => right[1].count - left[1].count)
         .slice(0, 3)
         .map(([folder, entry]): InboxFilingSuggestion => ({
           destination: { type: 'folder', path: folder },
           confidence: Math.round((entry.count / total) * 100) / 100,
           reason: `${entry.count} of ${total} similar ${item.type} items were filed here`,
           suggestedTags: [...entry.tags.entries()]
-            .sort((left, right) => right[1] - left[1])
+            .toSorted((left, right) => right[1] - left[1])
             .slice(0, 3)
             .map(([tag]) => tag)
         }))

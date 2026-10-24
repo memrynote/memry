@@ -24,11 +24,11 @@ import {
   initSettingsSyncManager,
   type SettingsSyncManager
 } from '@memry/sync-client/settings-sync'
+import { DEFAULT_WRITE_TARGET_SETTINGS_KEY } from './provider/write-routing'
 
 // The runtime imports settings sync through here so the calendar mirror
 // starts with it; `sync/runtime.ts` sits on its line ceiling.
 export { resetSettingsSyncManager } from '@memry/sync-client/settings-sync'
-import { DEFAULT_WRITE_TARGET_SETTINGS_KEY } from './provider/write-routing'
 
 /**
  * Two-way calendar settings (spec 007 D3a).
@@ -81,9 +81,7 @@ function parseObject(raw: string | null): Record<string, unknown> | null {
   if (raw === null) return null
   try {
     const parsed = JSON.parse(raw) as unknown
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Record<string, unknown>)
-      : null
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? { ...parsed } : null
   } catch {
     return null
   }
@@ -162,7 +160,7 @@ function syncedValueAt(settings: SyncedSettings, path: string): unknown {
   let current: unknown = settings
   for (const part of path.split('.')) {
     if (current === null || current === undefined || typeof current !== 'object') return undefined
-    current = (current as Record<string, unknown>)[part]
+    current = part in current ? current[part] : undefined
   }
   return current
 }
@@ -220,6 +218,13 @@ function writeLocalGroup(
   })
 }
 
+const pick = (source: Record<string, unknown>, keys: readonly string[]): Record<string, unknown> =>
+  Object.fromEntries(
+    keys
+      .filter((k) => Object.prototype.hasOwnProperty.call(source, k) && source[k] !== undefined)
+      .map((k) => [k, source[k]])
+  )
+
 /**
  * Writes merged synced calendar values into the local groups every reader
  * uses. Raw writes, so they do not echo back into settings sync. A key the
@@ -232,15 +237,6 @@ export function applyMergedCalendarSettings(
 ): void {
   if (!merged || typeof merged !== 'object') return
   const calendar = merged as Record<string, unknown>
-  const pick = (
-    source: Record<string, unknown>,
-    keys: readonly string[]
-  ): Record<string, unknown> =>
-    Object.fromEntries(
-      keys
-        .filter((k) => Object.prototype.hasOwnProperty.call(source, k) && source[k] !== undefined)
-        .map((k) => [k, source[k]])
-    )
 
   writeLocalGroup(db, 'calendar', pick(calendar, CALENDAR_KEYS), emit)
 
@@ -250,7 +246,7 @@ export function applyMergedCalendarSettings(
     const key = `calendar.${name}`
     const leaves = groupLeaves(key)
     if (!leaves) continue
-    writeLocalGroup(db, key, pick(value as Record<string, unknown>, leaves), emit)
+    writeLocalGroup(db, key, pick({ ...value }, leaves), emit)
   }
 
   if (Object.prototype.hasOwnProperty.call(calendar, 'defaultWriteTarget')) {
@@ -283,13 +279,17 @@ export function initSettingsSync(
     const current = getSettingsSyncManager()
     if (current) mirrorCalendarSettingWrite(current, key, before, after)
   })
+  // The settings-sync manager types its handle as the sync client's DB; it is the same
+  // Drizzle handle the local settings table lives in.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- two unrelated Drizzle DB types for one handle
+  const dataDb = deps.db as unknown as DataDb
   try {
-    seedCalendarSyncedSettings(deps.db as unknown as DataDb, manager)
+    seedCalendarSyncedSettings(dataDb, manager)
   } catch (error) {
     log.warn('Seeding calendar settings into settings sync failed', error)
   }
   try {
-    seedFeaturesSyncedSettings(deps.db as unknown as DataDb, manager)
+    seedFeaturesSyncedSettings(dataDb, manager)
   } catch (error) {
     log.warn('Seeding features settings into settings sync failed', error)
   }

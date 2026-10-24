@@ -359,6 +359,7 @@ export async function runBookmarks(app: MemryApp, parsed: ParsedCli, io: CliIo):
             if (!item || typeof item !== 'object' || Array.isArray(item)) {
               throw new Error('Bookmark bulk item must be a JSON object')
             }
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
             const input = item as Record<string, unknown>
             if (typeof input.itemType !== 'string' || typeof input.itemId !== 'string') {
               throw new Error('Bookmark bulk item requires itemType and itemId')

@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  ready as sodiumReady,
+  to_base64 as sodiumToBase64,
+  base64_variants as sodiumBase64Variants
+} from 'libsodium-wrappers-sumo'
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -96,12 +100,11 @@ const localRow = (db: TestDatabaseResult, type: RowType, id: string): unknown =>
   return db.db.select().from(tagDefinitions).where(eq(tagDefinitions.name, id)).get()
 }
 
-await sodium.ready
+await sodiumReady
 const SIGNER = 'device-a'
 const signerKeys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(7))
 const attackerKeys = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(9))
-const toB64 = (bytes: Uint8Array): string =>
-  sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
+const toB64 = (bytes: Uint8Array): string => sodiumToBase64(bytes, sodiumBase64Variants.ORIGINAL)
 
 /** #2408: device-a's delete attestation over exactly this claim. */
 const attestationFor = (

@@ -24,23 +24,23 @@ import { startSyncProxy, type SyncProxy } from './utils/sync-proxy'
 const SYNC_TIMEOUT = 60_000
 
 const test = base.extend<{ proxyB: SyncProxy }>({
-  proxyB: async ({ syncBootstrap }, use) => {
+  proxyB: async ({ syncBootstrap }, provide) => {
     const proxy = await startSyncProxy(syncBootstrap.serverUrl, { forwardWebSocket: true })
     try {
-      await use(proxy)
+      await provide(proxy)
     } finally {
       await proxy.close()
     }
   },
 
-  electronAppB: async ({ deviceIdB, vaultPathB, proxyB }, use) => {
+  electronAppB: async ({ deviceIdB, vaultPathB, proxyB }, provide) => {
     const launched = await launchElectronWithWindow({
       testVaultPath: vaultPathB,
       deviceId: deviceIdB,
       syncServerUrl: proxyB.url
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
-    await use(launched.app)
+    await provide(launched.app)
     await destroyLaunchedElectron(launched)
   }
 })

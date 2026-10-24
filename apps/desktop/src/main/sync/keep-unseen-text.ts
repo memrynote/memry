@@ -53,6 +53,7 @@ export function readNoteFileBody(absolutePath: string): string | null {
 }
 
 export function keepUnseenText(ctx: ApplyContext, del: UnseenTextDelete): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   const facts = readLocalBodyFacts(ctx.db as DataDb, del.itemId)
   const decide = (bodyBlank: boolean): boolean =>
     keepsUnseenText({

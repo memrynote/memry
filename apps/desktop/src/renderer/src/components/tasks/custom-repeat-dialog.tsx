@@ -393,7 +393,7 @@ const CustomRepeatDialogInner = ({
         frequency: initialConfig.frequency,
         interval: initialConfig.interval,
         daysOfWeek: initialConfig.daysOfWeek || [effectiveDueDate.getDay()],
-        monthlyType: initialConfig.monthlyType || ('dayOfMonth' as MonthlyType),
+        monthlyType: initialConfig.monthlyType || 'dayOfMonth',
         dayOfMonth: initialConfig.dayOfMonth || effectiveDueDate.getDate(),
         weekOfMonth: initialConfig.weekOfMonth || Math.ceil(effectiveDueDate.getDate() / 7),
         dayOfWeekForMonth: initialConfig.dayOfWeekForMonth ?? effectiveDueDate.getDay(),
@@ -408,11 +408,11 @@ const CustomRepeatDialogInner = ({
       frequency: defaultConfig.frequency,
       interval: defaultConfig.interval,
       daysOfWeek: defaultConfig.daysOfWeek || [effectiveDueDate.getDay()],
-      monthlyType: 'dayOfMonth' as MonthlyType,
+      monthlyType: 'dayOfMonth' as const,
       dayOfMonth: effectiveDueDate.getDate(),
       weekOfMonth: Math.ceil(effectiveDueDate.getDate() / 7),
       dayOfWeekForMonth: effectiveDueDate.getDay(),
-      endType: 'never' as RepeatEndType,
+      endType: 'never' as const,
       endDate: null,
       endCount: 10
     }
@@ -517,6 +517,7 @@ const CustomRepeatDialogInner = ({
             onChange={(e) => setInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
             className="w-[60px] h-8"
           />
+          {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- options are the closed RepeatFrequency list */}
           <Select value={frequency} onValueChange={(val) => setFrequency(val as RepeatFrequency)}>
             <SelectTrigger className="w-[100px] h-8">
               <SelectValue />

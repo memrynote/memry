@@ -661,12 +661,12 @@ describe('CalendarPage', () => {
   // otherwise promotion would silently widen what the agent can read.
   it('promotes external events directly when the confirmation is dismissed', async () => {
     const user = userEvent.setup()
-    const api = window.api as typeof window.api & {
+    const api: {
       settings: {
         getCalendarGoogleSettings: ReturnType<typeof vi.fn>
         setCalendarGoogleSettings: ReturnType<typeof vi.fn>
       }
-    }
+    } = window.api
     api.settings.getCalendarGoogleSettings.mockResolvedValue({
       promoteConfirmDismissed: true,
       agentReadEventsConsent: true

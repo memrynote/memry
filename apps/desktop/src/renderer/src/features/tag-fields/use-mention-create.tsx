@@ -101,7 +101,7 @@ export function useMentionCreate(editor: any, containerRef: RefObject<HTMLDivEle
   const isOpen = menu !== null
   useEffect(() => {
     const container = containerRef.current
-    if (!isOpen || !container) return
+    if (!isOpen || !container) return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
       const state = menuRef.current
       if (!state || MODIFIERS.has(event.key)) return
@@ -122,6 +122,7 @@ export function useMentionCreate(editor: any, containerRef: RefObject<HTMLDivEle
       }
     }
     const onMouseDown = (event: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event.target may be null or a non-HTMLElement node; optional chaining covers both, an instanceof guard would change behavior
       if ((event.target as HTMLElement | null)?.closest('[data-mention-create-menu]')) return
       const state = menuRef.current
       if (state) editor.insertInlineContent(state.title)

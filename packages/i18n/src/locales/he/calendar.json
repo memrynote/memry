@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "השלמת {title}",
     "task-completed": "המשימה הושלמה",
-    "could-not-complete": "לא ניתן היה להשלים את המשימה",
+    "could-not-update-status": "לא ניתן לשנות את סטטוס המשימה",
     "duration-minutes": "{minutes} דק׳",
     "duration-hours": "{hours} שע׳",
     "duration-hours-minutes": "{hours} שע׳ {minutes} דק׳"
@@ -214,12 +213,9 @@
     "next-week": "בשבוע הבא",
     "open-task": "פתיחת המשימה",
     "source-note": "פתק מקור",
-    "reschedule": "תזמון מחדש",
     "mark-done": "סימון כהושלמה",
     "mark-not-done": "סימון כלא הושלמה",
-    "later-today": "מאוחר יותר היום",
     "tomorrow": "מחר",
-    "next-week-mon": "בשבוע הבא · שני",
     "pick-date-time": "בחירת תאריך ושעה…",
     "remove-due-date": "הסרת תאריך היעד",
     "subtasks-prefix": "תת-משימות",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "לא ניתן היה להסיר את תאריך היעד",
       "could-not-open-note": "לא ניתן היה לפתוח את הפתק"
     }
+  },
+  "eventNotes": {
+    "heading": "פתקים",
+    "create": "פתק חדש",
+    "link": "קישור פתק",
+    "untitled": "פתק פגישה",
+    "searchPlaceholder": "חיפוש בפתקים",
+    "noResults": "לא נמצאו פתקים",
+    "createFailed": "לא ניתן ליצור פתק עבור האירוע הזה.",
+    "linkFailed": "לא ניתן לקשר את הפתק לאירוע הזה.",
+    "loadFailed": "לא ניתן לטעון את הפתקים המקושרים לאירוע הזה.",
+    "propertyTaken": "לפתק הזה כבר יש מאפיין \"{name}\" שאינו קישור."
   },
   "notePopover": {
     "kind": "פתק",
@@ -254,6 +262,10 @@
     "overdue": "באיחור",
     "untitled": "ללא כותרת",
     "days": "{count, plural, one {יום אחד} two {יומיים} other {# ימים}}",
+    "subtasks": {
+      "expand": "הצגת {count, plural, one {תת-משימה אחת} other {# תת-משימות}} של {title}",
+      "collapse": "הסתרת {count, plural, one {תת-משימה אחת} other {# תת-משימות}} של {title}"
+    },
     "events": "אירועים",
     "schedule-hint": "לחיצה לקביעת תאריך, גרירה לקביעת טווח",
     "empty-title": "אין כאן שום דבר על ציר הזמן",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "לוחות שנה במינוי"
     },
     "caldav": {
       "name": "CalDAV"

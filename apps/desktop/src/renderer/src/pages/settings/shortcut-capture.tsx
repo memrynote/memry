@@ -66,7 +66,7 @@ export function useShortcutCapture(
   }, [])
 
   useEffect(() => {
-    if (!isCapturing) return
+    if (!isCapturing) return undefined
     setShortcutRecording(true)
     const handleKeyDown = (e: KeyboardEvent): void => {
       e.preventDefault()
@@ -78,6 +78,7 @@ export function useShortcutCapture(
       onKeyRef.current(e, () => setIsCapturing(false))
     }
     const handleMouseDown = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mousedown event.target is a DOM Node at runtime
       if (captureRef.current && !captureRef.current.contains(e.target as Node)) {
         cancel()
       }

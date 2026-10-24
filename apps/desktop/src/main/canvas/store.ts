@@ -44,6 +44,7 @@ import { createLogger } from '../lib/logger'
 import { OutsideVaultError } from '../lib/errors'
 import { isGoneFromDisk } from '../vault/gone-from-disk'
 import { clearCanvasEdges, rewriteCanvasEdges } from './edge-index'
+import { errnoCode } from './errno'
 import { storedFolderPath } from './folder-lookup'
 import { normalizeFolder, normalizeStoredFolder } from './folder-paths'
 import {
@@ -475,7 +476,7 @@ export async function deleteCanvas(
       // tombstone already stands; fall back to a plain unlink so a deleted
       // canvas does not keep haunting the user's folder.
       log.warn('Could not trash canvas file; falling back to unlink', {
-        code: (err as NodeJS.ErrnoException).code
+        code: errnoCode(err)
       })
       deleteCanvasFileSync(absolutePath)
     }

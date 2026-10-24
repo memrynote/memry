@@ -18,12 +18,12 @@ export function GraphPinMarkers({ graph, color }: { graph: Graph; color: string 
 
   useEffect(() => {
     // Same guard as SigmaSettingsSync: skip a killed instance React may still hand us.
-    if (sigma.getGraph() !== graph) return
+    if (sigma.getGraph() !== graph) return undefined
 
     sigma.createCanvasContext(LAYER_ID, { style: { pointerEvents: 'none' } })
     const canvas = sigma.getCanvases()[LAYER_ID]
     const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx) return
+    if (!canvas || !ctx) return undefined
 
     const draw = (): void => {
       const { width, height } = sigma.getDimensions()

@@ -32,6 +32,7 @@ export interface OrphanRepairParams {
 }
 
 function parentExistsLocally(ctx: SyncContext, parentType: string, parentId: string): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
   const handler = getHandler(parentType as SyncItemType)
   if (!handler) return false
   try {
@@ -97,7 +98,9 @@ export async function repairOrphans(
     try {
       const result = ctx.applier.apply({
         itemId: parent.id,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
         type: parent.type as Parameters<typeof ctx.applier.apply>[0]['type'],
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire operation is a plain string; a runtime guard would change behavior for unexpected values
         operation: parent.deletedAt ? 'delete' : (parent.operation as 'create' | 'update'),
         content: new TextEncoder().encode(parent.content),
         clock: parent.clock,
@@ -195,6 +198,7 @@ export async function repairOrphans(
 
     const payload = withIncrementedClock(orphan.item.content, tombstoneDeviceId)
     ctx.deps.queue.enqueue({
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
       type: orphan.item.type as SyncItemType,
       itemId: orphan.item.id,
       operation: 'delete',
@@ -204,6 +208,7 @@ export async function repairOrphans(
     // The only delete that bypasses local-mutations; a re-create must tick past it (#2409).
     recordLocalDeleteClock(
       ctx.deps.db,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
       orphan.item.type as SyncItemType,
       orphan.item.id,
       payload,

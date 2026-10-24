@@ -1382,7 +1382,7 @@ describe('sync routes', () => {
       )
 
       // The pushing client's response is unchanged: the items ride the broadcast only.
-      expect(Object.keys((await res.json()) as object).sort()).toEqual([
+      expect(Object.keys(await res.json()).toSorted()).toEqual([
         'accepted',
         'maxCursor',
         'rejected',
@@ -2524,7 +2524,7 @@ describe('record push rate limit', () => {
 
     // #then
     expect(next).toHaveBeenCalled()
-    expect([...counts.keys()].sort()).toEqual([
+    expect([...counts.keys()].toSorted()).toEqual([
       'sync_push:device:device-a',
       'sync_push:device:device-b'
     ])

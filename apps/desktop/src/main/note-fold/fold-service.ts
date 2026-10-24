@@ -69,6 +69,8 @@ export interface FoldService {
   dispose(): void
 }
 
+const jobKey = (k: ChunkCacheKey): string => `${k.chunkHash}|${k.language}|${k.modelId}`
+
 export function createFoldService(deps: FoldServiceDeps): FoldService {
   const idleMs = deps.idleMs ?? FOLD_IDLE_MS
   const now = deps.now ?? Date.now
@@ -88,8 +90,6 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
   const opened = new Set<string>()
   const timers = new Map<string, ReturnType<typeof setTimeout>>()
   let disposed = false
-
-  const jobKey = (k: ChunkCacheKey): string => `${k.chunkHash}|${k.language}|${k.modelId}`
 
   const execute = async (job: Job): Promise<void> => {
     try {
@@ -122,6 +122,7 @@ export function createFoldService(deps: FoldServiceDeps): FoldService {
   }
 
   const pump = (): void => {
+    // oxlint-disable-next-line eslint/no-unmodified-loop-condition -- `disposed` is set by dispose() and by job callbacks, which run in other call frames
     while (!disposed && running < FOLD_CONCURRENCY && queue.length > 0) {
       const job = queue.shift()!
       running++

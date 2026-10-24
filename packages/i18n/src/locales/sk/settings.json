@@ -7,11 +7,6 @@
     "backToApp": "Späť do aplikácie",
     "nav": {
       "groups": {
-        "account": "Účet",
-        "application": "Aplikácia",
-        "editing": "Úpravy",
-        "modules": "Moduly",
-        "services": "Služby",
         "data": "Údaje",
         "workspace": "Pracovný priestor",
         "features": "Funkcie"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Nastaviť modul {module}"
-    },
-    "vaultImport": {
-      "label": "Importovať z inej aplikácie",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist a ďalšie",
-      "action": "Importovať…"
     },
     "search": {
       "placeholder": "Hľadať v nastaveniach",
@@ -102,45 +92,31 @@
       "loading": "Načítavajú sa nastavenia…"
     },
     "groups": {
-      "startup": "Spustenie",
       "updates": "Aktualizácie",
       "languageRegion": "Jazyk a región",
-      "tabBehavior": "Správanie kariet",
-      "window": "Správanie okna",
-      "fileCreation": "Vytváranie súborov",
       "privacy": "Súkromie",
       "startupWindows": "Spustenie a okná",
-      "newNotes": "Nové poznámky"
+      "newNotes": "Nové poznámky",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
         "label": "Spustiť pri prihlásení",
-        "description": "Spustiť memrynote po prihlásení",
         "error": "Nepodarilo sa aktualizovať spúšťanie pri prihlásení"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Automaticky kontrolovať aktualizácie",
-        "description": "Kontrolovať nové vydania pri spustení a priebežne, kým je aplikácia otvorená.",
         "error": "Nepodarilo sa aktualizovať nastavenie automatickej kontroly"
       },
       "autoDownload": {
         "label": "Automaticky sťahovať aktualizácie",
-        "description": "Sťahovať a inštalovať nové vydania na pozadí bez opýtania.",
         "error": "Nepodarilo sa aktualizovať nastavenie automatického sťahovania"
       },
-      "appUpdates": "Aktualizácie aplikácie",
-      "installedVersion": "Nainštalovaná verzia {version}",
-      "availableVersion": "Dostupná verzia {version}",
-      "unsupported": "Zabalené zostavy môžu kontrolovať, sťahovať a inštalovať aktualizácie z GitHub Releases",
       "available": "memrynote {version} je dostupný na stiahnutie",
       "downloadingLatest": "Sťahuje sa najnovšie vydanie",
-      "downloadingLatestPercent": "Sťahuje sa najnovšie vydanie ({percent} %)",
       "downloaded": "memrynote {version} je pripravený na inštaláciu",
-      "upToDate": "Používate najnovšie zverejnené vydanie",
-      "checking": "Hľadá sa novšia verzia v GitHub Releases",
-      "idle": "Skontrolujte nové vydania a nainštalujte ich bez opustenia aplikácie",
       "unsupportedToast": "Automatické aktualizácie sú dostupné iba v balíkových vydaniach",
       "upToDateToast": "memrynote {version} je aktuálny",
       "actionFailed": "Akcia aktualizácie zlyhala",
@@ -163,23 +139,25 @@
         "downloading": "Sťahuje sa…",
         "downloadingPercent": "Sťahuje sa {percent} %",
         "downloaded": "Verzia {version} je pripravená na inštaláciu"
-      },
-      "mode": {
-        "label": "Režim aktualizácií",
-        "off": "Nekontrolovať",
-        "notify": "Len upozorniť",
-        "auto": "Sťahovať automaticky"
       }
     },
     "language": {
       "label": "Jazyk",
-      "helper": "Väčšina aplikácie sa prepne okamžite. Niektoré systémové texty – už zobrazené upozornenia, názov v Docku, záhlavie okna – sa obnovia po ďalšom spustení.",
       "changed": "Jazyk bol zmenený na: {nativeName}",
       "failed": "Nepodarilo sa zmeniť jazyk. Skúste to znova."
     },
+    "ocrLanguages": {
+      "label": "Rozpoznávanie textu",
+      "helper": "Jazyky čítané v skenovaných PDF a obrázkoch, aby vyhľadávanie nachádzalo ich slová. Angličtina je zabudovaná. Ostatné sa sťahujú zo servera Memry.",
+      "more": "{names} +{count}",
+      "downloading": "Sťahuje sa {language}: {percent} %",
+      "failed": "Sťahovanie zlyhalo. Už stiahnuté jazyky naďalej fungujú.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Skúsiť znova",
+      "saveFailed": "Jazyky rozpoznávania textu sa nepodarilo zmeniť."
+    },
     "clockFormat": {
       "label": "Formát času",
-      "description": "12-hodinové alebo 24-hodinové zobrazenie",
       "options": {
         "12h": "12 h",
         "24h": "24 h"
@@ -188,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Formát dátumu",
-      "description": "Spôsob zobrazenia dátumov",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -199,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Otvárať stránky na novej karte",
-        "description": "Kliknutím na stránku alebo jej vytvorením – poznámky, priečinky, projekty, plátna, značky, záložky – sa stránka otvorí na novej karte. Keď je vypnuté, použije sa aktuálna karta, a to aj pri otváraní odkazov v poznámke; pripnuté karty sa nikdy nenahrádzajú. „Otvoriť na novej karte“, „Otvoriť vedľa“ a kliknutie stredným tlačidlom vždy otvoria novú kartu."
+        "label": "Otvárať stránky na novej karte"
       },
       "restoreSession": {
         "label": "Obnoviť karty pri spustení",
@@ -208,7 +184,6 @@
       },
       "closeButton": {
         "label": "Tlačidlo zavretia karty",
-        "description": "Kedy zobraziť tlačidlo zavretia",
         "options": {
           "always": "Vždy",
           "hover": "Pri prejdení myšou",
@@ -220,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Po zavretí nechať bežať v lište menu",
-        "description": "Zavretím okna sa memrynote skryje do systémovej lišty namiesto ukončenia. Kliknutím na ikonu v lište ho vrátite späť. V macOS aplikácia zostane aj v Docku; na linuxových plochách bez systémovej lišty sa okno zavrie ako zvyčajne.",
         "error": "Nepodarilo sa aktualizovať nastavenie minimalizácie do systémovej lišty"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Vytvárať vo vybranom priečinku",
-        "description": "Nové poznámky a priečinky sa vytvárajú v aktuálne vybranom priečinku. Keď je vypnuté, položky sa vždy vytvárajú v koreňovom priečinku trezora."
+        "label": "Vytvárať vo vybranom priečinku"
       },
       "defaultNoteFolder": {
         "label": "Predvolené umiestnenie",
         "description": "Používa sa, keď v bočnom paneli nie je vybraný žiadny priečinok.",
-        "placeholder": "poznámky",
         "root": "/"
       }
     },
@@ -261,9 +233,24 @@
         "error": "Nepodarilo sa odoslať diagnostickú správu",
         "sendReport": {
           "label": "Diagnostická správa",
-          "description": "Odošlite jednorazovú správu s technickými protokolmi bez citlivých údajov, aby sme mohli vyriešiť problém, na ktorý ste narazili.",
           "button": "Odoslať správu…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Skratka Sticky (Klávesové skratky → Celosystémové) otvorí Sticky, kým beží Memry. Neodoslaný text zostane ako koncept na okraji obrazovky.",
+      "error": "Nastavenia Sticky sa nepodarilo uložiť.",
+      "defaultKind": {
+        "label": "Nové Sticky sa odošlú ako",
+        "last": "Naposledy použité",
+        "note": "Poznámka",
+        "task": "Úloha",
+        "journal": "Denník"
+      },
+      "tuckEdge": {
+        "label": "Odložiť na",
+        "left": "Ľavý okraj",
+        "right": "Pravý okraj"
       }
     }
   },
@@ -274,20 +261,14 @@
       "loading": "Načítavajú sa nastavenia…"
     },
     "groups": {
-      "theme": "Téma",
-      "accentColor": "Akcentová farba",
-      "typography": "Typografia",
-      "zoom": "Priblíženie"
+      "theme": "Téma"
     },
     "theme": {
       "colorMode": {
-        "label": "Farebný režim",
-        "description": "Vyberte si preferovanú tému",
         "aria": "Farebný režim"
       },
       "options": {
         "light": "Svetlá",
-        "white": "Biela",
         "dark": "Tmavá",
         "system": "Podľa systému"
       },
@@ -305,11 +286,8 @@
       "importInvalid": "Schránka neobsahuje tému memrynote"
     },
     "accent": {
-      "pick": "Vyberte si akcentovú farbu",
       "custom": {
-        "label": "Vlastná farba",
-        "description": "Zadajte hexadecimálnu hodnotu",
-        "placeholder": "#000000"
+        "label": "Vlastná farba"
       },
       "presets": {
         "indigo": "Indigová",
@@ -321,7 +299,6 @@
         "pink": "Ružová",
         "orange": "Oranžová"
       },
-      "error": "Nepodarilo sa aktualizovať akcentovú farbu",
       "aria": "Predvoľba akcentovej farby",
       "options": {
         "theme": "Podľa témy",
@@ -360,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Úroveň priblíženia",
-      "description": "Zmeniť mierku celého rozhrania",
       "decrease": "Oddialiť",
       "increase": "Priblížiť",
       "reset": "Obnoviť predvolené priblíženie",
@@ -369,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Veľkosť písma",
-        "description": "Základná veľkosť textu rozhrania v pixeloch",
         "decrease": "Zmenšiť písmo",
         "increase": "Zväčšiť písmo",
         "reset": "Obnoviť predvolenú veľkosť písma"
       },
       "fontFamily": {
         "label": "Písmo",
-        "description": "Primárne písmo pre rozhranie",
         "options": {
           "system": "Predvolené systémové",
           "sansSerif": "Bezpätkové",
@@ -401,13 +373,9 @@
       "fontFamilyError": "Nepodarilo sa aktualizovať rodinu písma"
     },
     "v2": {
-      "groups": {
-        "text": "Text a priblíženie"
-      },
       "colorMode": "Farebný režim",
       "colorTheme": "Téma",
       "accent": "Akcentová farba",
-      "customColor": "Vlastná farba",
       "fontFamily": "Písmo",
       "fontSize": "Veľkosť písma",
       "zoom": "Priblíženie"
@@ -421,12 +389,30 @@
     },
     "groups": {
       "layout": "Rozloženie",
-      "toolbar": "Panel nástrojov",
       "spelling": "Pravopis",
-      "checklists": "Kontrolné zoznamy"
+      "checklists": "Kontrolné zoznamy",
+      "attachments": "Prílohy",
+      "calloutTypes": "Typy zvýraznených blokov"
+    },
+    "calloutTypes": {
+      "description": "Vaše vlastné zvýraznené bloky, zapísané v poznámke ako > [!name]. Iná aplikácia ich zobrazí ako obyčajný citát.",
+      "empty": "Zatiaľ žiadne vlastné typy zvýraznených blokov",
+      "add": "Pridať typ",
+      "edit": "Upraviť {name}",
+      "delete": "Odstrániť {name}",
+      "name": "Názov v markdowne",
+      "namePlaceholder": "mojtyp",
+      "label": "Zobrazený názov",
+      "color": "Farba",
+      "icon": "Ikona",
+      "nameInvalid": "Použite malé písmená, číslice, - alebo _ a začnite písmenom",
+      "nameBuiltIn": "Tento názov už má vstavaný zvýraznený blok",
+      "nameTaken": "Typ s týmto názvom už máte",
+      "save": "Uložiť",
+      "cancel": "Zrušiť",
+      "error": "Typy zvýraznených blokov sa nepodarilo aktualizovať"
     },
     "width": {
-      "label": "Šírka editora",
       "description": "Platí pre všetky poznámky a stránky denníka",
       "options": {
         "normal": "Normálna",
@@ -435,12 +421,10 @@
       "error": "Nepodarilo sa aktualizovať šírku editora"
     },
     "toolbarMode": {
-      "label": "Pripevnený panel formátovania",
       "description": "Vždy zobraziť panel nad editorom",
       "error": "Nepodarilo sa aktualizovať režim panela nástrojov"
     },
     "spellCheck": {
-      "label": "Kontrola pravopisu",
       "description": "Podčiarkovať nesprávne napísané slová v poznámkach a v denníku",
       "error": "Nepodarilo sa aktualizovať kontrolu pravopisu"
     },
@@ -449,7 +433,16 @@
       "toolbarMode": "Pripevnený panel formátovania",
       "spellCheck": "Kontrola pravopisu",
       "convertChecklists": "Meniť položky kontrolného zoznamu na úlohy",
-      "convertAgentChecklists": "Meniť položky kontrolného zoznamu od agenta na úlohy"
+      "convertAgentChecklists": "Meniť položky kontrolného zoznamu od agenta na úlohy",
+      "pdfDisplayMode": "Zobrazovať nové PDF ako"
+    },
+    "pdfDisplayMode": {
+      "description": "Ako sa zobrazí PDF, ktoré pridáte do poznámky. Každé PDF možno prepnúť v jeho ponuke.",
+      "options": {
+        "embed": "Vložené",
+        "link": "Názov súboru"
+      },
+      "error": "Zobrazenie PDF sa nepodarilo aktualizovať"
     },
     "convertChecklists": {
       "description": "Každá nová položka kontrolného zoznamu sa stane úlohou. Keď je vypnuté, zoznamy zostanú obyčajnými začiarkavacími políčkami; úlohu z položky urobíte kliknutím pravým tlačidlom.",
@@ -466,14 +459,12 @@
       "subtitle": "Spravujte šablóny na rýchle vytváranie poznámok"
     },
     "actions": {
-      "new": "Nová šablóna",
       "edit": "Upraviť",
       "duplicate": "Duplikovať",
       "delete": "Odstrániť"
     },
     "groups": {
-      "builtIn": "Vstavané",
-      "myTemplates": "Moje šablóny"
+      "builtIn": "Vstavané"
     },
     "loading": "Načítavajú sa šablóny…",
     "newTemplateTitle": "Nová šablóna",
@@ -481,9 +472,6 @@
     "empty": {
       "title": "Zatiaľ žiadne vlastné šablóny",
       "description": "Vytvorte šablónu a môžete začať."
-    },
-    "preview": {
-      "notFound": "Túto šablónu sa nepodarilo načítať."
     },
     "toasts": {
       "deleted": "Šablóna odstránená",
@@ -516,11 +504,7 @@
       "loading": "Načítavajú sa nastavenia…"
     },
     "groups": {
-      "defaultTemplate": "Predvolená šablóna",
-      "location": "Umiestnenie a formát",
-      "sidebarVisibility": "Viditeľnosť v bočnom paneli",
-      "footer": "Päta",
-      "weekdayTemplates": "Šablóny pre jednotlivé dni"
+      "footer": "Päta"
     },
     "template": {
       "label": "Šablóna",
@@ -532,18 +516,6 @@
       "updated": "Predvolená šablóna aktualizovaná",
       "cleared": "Predvolená šablóna vymazaná",
       "error": "Nepodarilo sa aktualizovať predvolenú šablónu"
-    },
-    "showSchedule": {
-      "label": "Zobraziť harmonogram",
-      "description": "Zobraziť dnešné udalosti a kalendár"
-    },
-    "showTasks": {
-      "label": "Zobraziť úlohy",
-      "description": "Zobraziť úlohy s termínom vo vybraný deň"
-    },
-    "showAIConnections": {
-      "label": "Zobraziť AI prepojenia",
-      "description": "Zobraziť prepojenia na súvisiace zápisy navrhnuté pomocou AI"
     },
     "showStatsFooter": {
       "label": "Zobraziť pätu so štatistikami",
@@ -561,7 +533,8 @@
       "renameNote": "Zmena formátu premenuje existujúce súbory denníka. Súbor, ktorého nový názov je už obsadený, zostane bez zmeny.",
       "tokensHelp": "Pomocník k formátu dátumu",
       "tokensNote": "Ostatné znaky zostávajú bez zmeny. Názvy dní v týždni sú vždy po anglicky.",
-      "tokensTitle": "Zástupné znaky formátu"
+      "tokensTitle": "Zástupné znaky formátu",
+      "foldersNote": "Znakom / zaraďte záznamy do podpriečinkov: YYYY/MMMM/YYYY-MM-DD uloží každý deň pod jeho rok a mesiac."
     },
     "preview": {
       "label": "Náhľad",
@@ -575,7 +548,6 @@
       "inheritWith": "Predvolená · {name}",
       "inheritNone": "Predvolená · žiadna",
       "missing": "Odstránená šablóna",
-      "clear": "Vymazať",
       "updated": "Šablóna aktualizovaná: {day}",
       "cleared": "Šablóna vymazaná: {day}",
       "error": "Nepodarilo sa aktualizovať šablónu: {day}",
@@ -586,6 +558,10 @@
         "defaultTemplate": "Predvolená šablóna",
         "location": "Umiestnenie a formát"
       }
+    },
+    "showInSidebar": {
+      "label": "Zobraziť v bočnom paneli",
+      "description": "Zobraziť priečinok denníka a jeho záznamy v strome poznámok"
     }
   },
   "tasks": {
@@ -596,6 +572,7 @@
     },
     "groups": {
       "defaults": "Predvolené",
+      "subtasks": "Podúlohy",
       "inbox": "Prijaté"
     },
     "defaultProject": {
@@ -632,6 +609,11 @@
       "description": "Úlohy staršie ako tento počet dní sa zvýraznia ako dlho neriešené",
       "unit": "dní",
       "error": "Nepodarilo sa aktualizovať prah pre dlho neriešené úlohy"
+    },
+    "nestedSubtasks": {
+      "label": "Podúlohy v podúlohách",
+      "description": "Vnárajte podúlohy do ľubovoľnej hĺbky. Zariadenia so staršími verziami zobrazia len prvú úroveň, kým sa neaktualizujú.",
+      "error": "Vnorené podúlohy sa nepodarilo aktualizovať"
     }
   },
   "inbox": {
@@ -684,11 +666,6 @@
       "subtitle": "Nastavte, čo sa stane po kliknutí na deň v paneli dňa",
       "loading": "Načítavajú sa nastavenia…"
     },
-    "groups": {
-      "weekStart": "Týždeň",
-      "dayCellClick": "Kliknutie na deň",
-      "notes": "Poznámky"
-    },
     "weekStart": {
       "label": "Začiatok týždňa",
       "description": "Prvý deň týždňa vo všetkých kalendároch",
@@ -728,8 +705,6 @@
       },
       "accountReconnect": "Znova pripojiť účet Google",
       "addAccount": "Pridať účet",
-      "importedCalendars": "Importované kalendáre",
-      "selected": "Vybrané: {count}",
       "syncNow": "Synchronizovať teraz",
       "disconnect": "Odpojiť",
       "reconnect": "Znova pripojiť účet Google",
@@ -958,10 +933,8 @@
       "loading": "Načítava sa…"
     },
     "groups": {
-      "identity": "Identita",
       "sync": "Synchronizácia",
       "billing": "Fakturácia",
-      "storage": "Úložisko",
       "devices": "Zariadenia"
     },
     "identity": {
@@ -981,6 +954,7 @@
         "syncing": "Synchronizuje sa…",
         "paused": "Pozastavené",
         "syncError": "Chyba synchronizácie",
+        "deviceKeysMissing": "Synchronizácia pozastavená: chýbajú kľúče zariadenia",
         "offline": "Offline",
         "connecting": "Pripája sa…",
         "localOnly": "Iba lokálne",
@@ -1004,6 +978,19 @@
       "activating": {
         "title": "Dokončuje sa aktivácia",
         "description": "Váš plán je aktívny. Synchronizácia sa spustí hneď, ako ho potvrdíme – zvyčajne pomôže obnoviť stav."
+      },
+      "unsent": {
+        "title": "Poznámky s neodoslanými zmenami",
+        "count": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
+        "description": "Toto zariadenie má zmeny týchto poznámok, ktoré server ešte neuložil.",
+        "waitingSince": "Čaká od {time}",
+        "more": "{count, plural, one {A ešte # poznámka} few {A ešte # poznámky} other {A ešte # poznámok}}",
+        "reasons": {
+          "body": "Text",
+          "record": "Podrobnosti",
+          "file_not_taken": "Súbor ešte nebol zlúčený",
+          "rejected": "Odmietnuté serverom"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1043,8 @@
         "refreshFailed": "Nepodarilo sa obnoviť stav fakturácie",
         "billingActive": "Fakturácia je aktívna",
         "activationPending": "Aktivácia čaká",
-        "portalFailed": "Nepodarilo sa otvoriť fakturačný portál"
+        "portalFailed": "Nepodarilo sa otvoriť fakturačný portál",
+        "portalNoCustomer": "Zatiaľ sa nenašiel žiadny fakturačný účet. Ak ste práve zaplatili, vyberte Obnoviť stav a skúste to znova."
       }
     },
     "storage": {
@@ -1070,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Odhlásiť sa",
         "description": "Odpojiť toto zariadenie zo synchronizácie",
         "action": "Odhlásiť sa"
       }
@@ -1302,21 +1289,28 @@
       "disabled": "Funkcie AI vypnuté",
       "error": "Nepodarilo sa aktualizovať nastavenie"
     },
-    "unknownError": "Neznáma chyba",
-    "groups": {
-      "voice": "Prepis hlasu",
-      "embeddingModel": "Lokálny model vektorizácie",
-      "embeddingIndex": "Index vektorizácie",
-      "inline": "Úpravy s AI priamo v texte"
+    "summarizeLongNotes": {
+      "label": "Zhrnúť dlhé poznámky",
+      "description": "Pomocou pripojeného agenta vytvára kratšie verzie dlhých poznámok, aby ste ich mohli zbaliť na kľúčové body. Beží v tomto zariadení.",
+      "error": "Zhrnutie dlhých poznámok sa nepodarilo aktualizovať",
+      "failed": "Posledné spustenie zlyhalo ·",
+      "retry": "Skúsiť znova",
+      "retryError": "Zhrnutie sa nepodarilo zopakovať",
+      "agentLabel": "Agent, ktorý píše zhrnutia",
+      "agentAuto": "Automaticky",
+      "agentError": "Agenta zhrnutí sa nepodarilo zmeniť",
+      "noAgent": "Nenašiel sa žiadny agent ·",
+      "openAgents": "Otvoriť Agentov"
     },
+    "imageSearch": {
+      "label": "Hľadať obrázky podľa obsahu",
+      "description": "Nájdite fotografie podľa toho, čo zobrazujú. Pri prvom indexovaní obrázka sa stiahne obrazový model s veľkosťou 109 MB.",
+      "enabled": "Vyhľadávanie obrázkov je zapnuté",
+      "disabled": "Vyhľadávanie obrázkov je vypnuté"
+    },
+    "unknownError": "Neznáma chyba",
     "voice": {
-      "provider": "Poskytovateľ",
       "providerDescription": "Poskytovateľ prevodu reči na text pre hlasové poznámky",
-      "providers": {
-        "local": "Lokálne (predvolené)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Názvy hlasových poznámok",
       "memoNameModeDescription": "Ako sa hlasové poznámky pomenúvajú po prepise",
       "naming": {
         "transcript": "Názov z prepisu",
@@ -1324,12 +1318,13 @@
         "none": "Nepremenovať"
       },
       "namingError": "Nepodarilo sa aktualizovať pomenovanie hlasových poznámok",
+      "audioSearch": "Hľadať hlasové poznámky podľa zvuku",
+      "audioSearchDescription": "Nájdite hlasové poznámky bez prepisu, napríklad hudbu alebo zvuky, podľa toho, ako znejú. Pri prvom indexovaní sa stiahne zvukový model s veľkosťou 189 MB.",
+      "audioSearchError": "Vyhľadávanie hlasových poznámok sa nepodarilo aktualizovať",
       "language": "Hovorený jazyk",
       "languageDescription": "Jazyk, ktorým hovoríte v hlasových poznámkach",
       "languageDefault": "Predvolený",
       "languageError": "Jazyk prepisu sa nepodarilo zmeniť",
-      "localModel": "Lokálny model",
-      "localModelDescription": "Whisper Small sa sťahuje na požiadanie a zostáva lokálne uložený v cache",
       "status": {
         "ready": "Pripravené",
         "downloading": "Sťahuje sa",
@@ -1354,17 +1349,12 @@
     "embedding": {
       "loaded": "Načítané",
       "loading": "Načítava sa",
-      "cacheHint": "~210 MB · Uložené lokálne · Všetko v zariadení",
-      "dimensions": "Dimenzie",
-      "embeddings": "Vektorizácie",
       "downloadLoad": "Stiahnuť a načítať model",
       "downloadingModel": "Sťahuje sa model…",
       "loadingModel": "Načítava sa model…",
       "loadSuccess": "Model bol úspešne načítaný",
       "loadFailed": "Nepodarilo sa načítať model",
       "rebuildIndex": "Prebudovať index",
-      "rebuildDescription": "Znova vektorizovať všetky poznámky",
-      "rebuild": "Prebudovať",
       "scanning": "Skenujú sa poznámky…",
       "generating": "Vektorizujú sa poznámky…",
       "complete": "Dokončené!",
@@ -1373,13 +1363,10 @@
     },
     "inline": {
       "loading": "Načítava sa…",
-      "title": "Úpravy s AI priamo v texte",
-      "enable": "Zapnúť AI priamo v texte",
       "enableDescription": "Zobraziť ponuku AI pri úprave poznámok",
       "enabled": "Úpravy s AI priamo v texte zapnuté",
       "disabled": "Úpravy s AI priamo v texte vypnuté",
       "provider": "Poskytovateľ",
-      "providerDescription": "Služba AI na prácu s textom",
       "providers": {
         "ollama": "Ollama (lokálne)",
         "openai": "OpenAI",
@@ -1398,7 +1385,6 @@
       "activePort": "Aktívne na porte {port}",
       "notConnected": "Nie je pripojené",
       "test": "Otestovať",
-      "stopFailed": "Nepodarilo sa zastaviť existujúci server",
       "connected": "Pripojené! Server beží na porte {port}",
       "connectFailed": "Nepodarilo sa pripojiť",
       "testFailed": "Test pripojenia zlyhal",
@@ -1459,10 +1445,9 @@
       "csv": "Importovať súbor .csv – jedna poznámka na riadok, stĺpce sa stanú vlastnosťami",
       "raindrop": "Importovať export záložiek Raindrop.io (.csv) – záložky sa uložia do Prijatých",
       "apple-notes": "Importovať z databázy Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Importovať poznámkové bloky OneNote (vyžaduje účet Microsoft)"
+      "onenote": "Importovať poznámkové bloky OneNote (vyžaduje účet Microsoft)",
+      "readwise": "Importujte svoje zvýraznenia z Readwise (vyžaduje prístupový token)"
     },
-    "action": "Importovať",
-    "select": "Vyberte aplikáciu, z ktorej chcete importovať…",
     "stats": {
       "notes": "{count, plural, one {# poznámka} few {# poznámky} other {# poznámok}}",
       "projects": "{count, plural, one {# projekt} few {# projekty} other {# projektov}}",
@@ -1477,7 +1462,12 @@
     },
     "preview": {
       "warnings": "Varovania",
-      "confirm": "Importovať"
+      "confirm": "Importovať",
+      "readwise": {
+        "books": "{count, plural, one {# kniha} few {# knihy} other {# kníh}}",
+        "highlights": "{count, plural, one {# zvýraznenie} few {# zvýraznenia} other {# zvýraznení}}",
+        "documents": "{count, plural, one {# dokument} few {# dokumenty} other {# dokumentov}}"
+      }
     },
     "dialog": {
       "title": "Importovať z aplikácie {name}",
@@ -1505,18 +1495,27 @@
         "deselectAll": "Zrušiť výber",
         "foldersSelected": "{count, plural, one {Vybraný # priečinok} few {Vybrané # priečinky} other {Vybraných # priečinkov}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# zamknutá poznámka} few {# zamknuté poznámky} other {# zamknutých poznámok}}",
+          "hint": "Zadajte heslo aplikácie Poznámky, aby sa naimportovali. Použije sa len pre tento import a nikdy sa neuloží. Prílohy v zamknutých poznámkach sa neimportujú.",
+          "label": "Heslo aplikácie Poznámky",
+          "placeholder": "Heslo aplikácie Poznámky",
+          "check": "Skontrolovať",
+          "wrong": "Toto heslo neodomkne žiadnu zamknutú poznámku.",
+          "unlockedAll": "{count, plural, one {Odomkne zamknutú poznámku.} few {Odomkne všetky # zamknuté poznámky.} other {Odomkne všetkých # zamknutých poznámok.}}",
+          "unlockedSome": "Odomkne {unlocked} z {total} zamknutých poznámok. Ostatné používajú iné heslo a preskočia sa.",
+          "checkError": "Heslo sa nepodarilo skontrolovať."
+        }
       },
       "chooseFolder": "Vybrať priečinok Apple Notes…",
       "chooseDirectory": "Vybrať priečinok…",
       "folderKeepsAssets": "Priečinok vyberte vtedy, keď sú obrázky mimo priečinka so samotnými poznámkami – exporty ich často ukladajú do spoločného priečinka.",
-      "chooseHint": "Vyberte svoj {label}",
       "folderHint": "Kliknite nižšie a keď sa otvorí výber, vyberte priečinok „group.com.apple.notes“ (výber sa otvorí priamo v ňom). Aplikácia Memry tak bude môcť čítať vaše poznámky a prílohy – bez potreby úplného prístupu k disku.",
       "noteplanFolderHint": "Vyberte priečinok NotePlan – buď priečinok s údajmi aplikácie, alebo niektorú z jej záložných kópií (Backups). Memry v ňom načíta priečinky Calendar, Notes a @Archive.",
       "selected": "{count, plural, one {# vybraný súbor} few {# vybrané súbory} other {# vybraných súborov}}",
       "start": "Spustiť import",
       "cancel": "Zrušiť",
-      "close": "Zavrieť",
       "done": "Hotovo",
       "running": "Importuje sa…",
       "progress": "{completed} z {total}",
@@ -1529,12 +1528,204 @@
         "failed": "Zlyhalo: {count}"
       },
       "error": "Import zlyhal",
-      "previewError": "Náhľad zlyhal"
+      "previewError": "Náhľad zlyhal",
+      "readwise": {
+        "intro": "Vložte svoj prístupový token Readwise. Memry ho najprv overí v Readwise a potom ho uloží do systémovej kľúčenky v tomto zariadení. Nikdy sa nesynchronizuje.",
+        "tokenLabel": "Prístupový token",
+        "tokenPlaceholder": "Vložte svoj token",
+        "getToken": "Získať token",
+        "connect": "Pripojiť",
+        "connecting": "Pripája sa…",
+        "connectFailed": "Nepodarilo sa pripojiť k Readwise",
+        "takeOver": {
+          "explain": "Z Readwise sťahuje len jedno zariadenie, aby sa rovnaké zvýraznenie nezapísalo dvakrát. Ak chcete sťahovať z tohto zariadenia, vložte token znova: nikdy necestuje medzi zariadeniami. Druhé zariadenie sa zastaví pri ďalšej knihe a všetky poznámky zostanú.",
+          "button": "Synchronizovať radšej tu",
+          "working": "Readwise sa presúva sem…",
+          "failed": "Readwise sa nepodarilo presunúť do tohto zariadenia"
+        },
+        "groups": {
+          "location": "Kam sa poznámky ukladajú",
+          "categories": "Čo priniesť",
+          "reader": "Readwise Reader",
+          "journal": "Denník",
+          "sync": "Synchronizácia"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Uviesť denné zvýraznenia v denníku",
+            "description": "Pridá sekciu Readwise do dňa, v ktorom ste zvýrazňovali, s odkazmi na poznámky ku knihám. Iba nové zvýraznenia, bez doplnenia minulosti.",
+            "firstImport": "Prvý import do denníka nič nezapíše."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "Importovať aj uložené dokumenty z Readera",
+            "description": "Predvolene vypnuté. Môže pridať tisíce poznámok."
+          },
+          "fullText": {
+            "label": "Zahrnúť celý text článku",
+            "description": "Zapíše sa raz, pri vytvorení poznámky"
+          }
+        },
+        "rootFolder": {
+          "label": "Priečinok",
+          "description": "Nové knihy sa uložia sem. Existujúce poznámky zostanú, kde sú."
+        },
+        "layout": {
+          "label": "Rozloženie priečinkov",
+          "description": "Platí len pre nové knihy.",
+          "options": {
+            "by-category": "Podľa kategórie",
+            "flat": "Jeden priečinok"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Knihy",
+            "description": "Zvýraznenia z Kindle, Apple Books a ďalších"
+          },
+          "articles": {
+            "label": "Články",
+            "description": "Webové články a newslettre"
+          },
+          "tweets": {
+            "label": "Tweety",
+            "description": "Uložené tweety a vlákna"
+          },
+          "podcasts": {
+            "label": "Podcasty",
+            "description": "Epizódy podcastov a úryvky"
+          },
+          "supplementals": {
+            "label": "Doplnky",
+            "description": "Knihy, ktoré Readwise pridá sám, bez vašich zvýraznení"
+          },
+          "other": {
+            "label": "Iné",
+            "description": "Kategórie, ktoré Readwise pridal po tejto verzii"
+          }
+        },
+        "cadence": {
+          "label": "Frekvencia",
+          "description": "Ako často prichádzajú nové zvýraznenia.",
+          "options": {
+            "manual": "Manuálne",
+            "hourly": "Každú hodinu",
+            "daily": "Denne"
+          }
+        },
+        "syncNow": {
+          "label": "Synchronizovať teraz",
+          "description": "Skontrolovať nové zvýraznenia v Readwise.",
+          "button": "Synchronizovať teraz"
+        },
+        "disconnect": "Odpojiť",
+        "disconnectHint": "Odpojením sa token odstráni z tohto zariadenia. Vaše poznámky zostanú.",
+        "deleted": {
+          "heading": "Odstránené knihy",
+          "description": "Poznámky, ktoré ste odstránili v memry. Zostanú odstránené, kým ich neobnovíte.",
+          "meta": "Odstránené {date} · {count, plural, one {# zvýraznenie} few {# zvýraznenia} other {# zvýraznení}}",
+          "metaDocument": "Odstránené {date} · uložený článok",
+          "restore": "Obnoviť",
+          "footer": "Obnovením sa poznámka znova vytvorí so všetkými zvýrazneniami.",
+          "empty": "Žiadne odstránené knihy",
+          "syncsOn": "Readwise sa synchronizuje v zariadení {device}.",
+          "syncsOnAnotherDevice": "Readwise sa synchronizuje v inom zariadení.",
+          "loadFailed": "Odstránené knihy sa nepodarilo načítať",
+          "restoreFailed": "Poznámku sa nepodarilo obnoviť"
+        },
+        "importNow": "Importovať teraz",
+        "importBooks": "{count, plural, one {Importovať # knihu} few {Importovať # knihy} other {Importovať # kníh}}",
+        "importNotes": "{count, plural, one {Importovať # poznámku} few {Importovať # poznámky} other {Importovať # poznámok}}",
+        "importNone": "Importovať",
+        "preview": {
+          "intro": "{highlights, plural, one {# zvýraznenie} few {# zvýraznenia} other {# zvýraznení}} v {books, plural, one {# knihe} few {# knihách} other {# knihách}} je pripravených. Nič sa nezapíše, kým to nepotvrdíte.",
+          "introOff": "{highlights, plural, one {# zvýraznenie} few {# zvýraznenia} other {# zvýraznení}} v {books, plural, one {# knihe} few {# knihách} other {# knihách}} je pripravených. Vypnuté: {off}. Naimportuje sa {willImport, plural, one {# kniha} few {# knihy} other {# kníh}}. Nič sa nezapíše, kým to nepotvrdíte.",
+          "introReaderOnly": "Vaša knižnica Readwise zatiaľ nemá žiadne zvýraznenia. {documents, plural, one {# uložený dokument z Readera} few {# uložené dokumenty z Readera} other {# uložených dokumentov z Readera}} sa naimportuje ako poznámky. Nič sa nezapíše, kým to nepotvrdíte.",
+          "readerLabel": "Uložené dokumenty z Readera",
+          "empty": "Vaša knižnica Readwise zatiaľ nemá žiadne zvýraznenia. Nič sa nezapíše. Dokončite nastavenie importom.",
+          "willImport": "sa naimportuje",
+          "off": "vypnuté",
+          "retry": "Skúsiť znova"
+        },
+        "status": {
+          "connected": "Pripojené",
+          "synced": "Synchronizované {time}",
+          "syncing": "Synchronizuje sa s Readwise",
+          "reading": "Číta sa vaša knižnica…",
+          "writing": "Zapisujú sa knihy, {done} z {total}",
+          "finishing": "Dokončuje sa…",
+          "waitingTitle": "Čaká sa na synchronizáciu memry",
+          "waitingDetail": "Memry počká, kým dorazia poznámky z vašich ostatných zariadení, aby sa žiadna kniha nezapísala dvakrát. Readwise sa spustí hneď potom.",
+          "otherTitle": "Synchronizuje sa v zariadení {device}",
+          "otherTitleUnknown": "Synchronizuje sa v inom zariadení",
+          "otherDetail": "Z Readwise sťahuje len jedno zariadenie, aby sa rovnaké zvýraznenie nezapísalo dvakrát.",
+          "lastRun": "Posledné spustenie: {counts}",
+          "lastRunNothing": "Posledné spustenie: nič nové",
+          "nextRun": "Ďalšia synchronizácia {time}",
+          "retryAt": "Memry to skúsi znova {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise potrebuje nový token",
+              "detail": "Readwise neprijal uložený token. Vložte nový z readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Vaše predplatné Readwise vypršalo",
+              "detail": "Obnovte predplatné na readwise.io a skúste to znova."
+            },
+            "rate-limited": {
+              "title": "Readwise obmedzuje požiadavky",
+              "detail": "Príliš veľa požiadaviek v krátkom čase."
+            },
+            "network": {
+              "title": "Readwise nie je dostupný",
+              "detail": "Skontrolujte pripojenie."
+            },
+            "server": {
+              "title": "Readwise mal problém",
+              "detail": "Readwise odpovedal chybou."
+            },
+            "unexpected": {
+              "title": "Synchronizácia sa zastavila",
+              "detail": "Počas behu sa niečo pokazilo."
+            }
+          },
+          "counts": {
+            "added": "pridané: {count}",
+            "updated": "aktualizované: {count}",
+            "appended": "rozšírené: {count}",
+            "deferred": "čaká na otvorenú poznámku: {count}",
+            "failed": "zlyhalo: {count}",
+            "highlights": "{count, plural, one {# zvýraznenie} few {# zvýraznenia} other {# zvýraznení}}"
+          },
+          "actions": {
+            "cancel": "Zrušiť",
+            "retry": "Skúsiť znova teraz",
+            "newToken": "Vložiť nový token",
+            "reconnect": "Pripojiť znova",
+            "syncHere": "Synchronizovať radšej tu"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise potrebuje nový token",
+            "description": "Synchronizácia je pozastavená, kým nevložíte nový."
+          },
+          "subscription-expired": {
+            "title": "Vaše predplatné Readwise vypršalo",
+            "description": "Synchronizácia je pozastavená, kým predplatné nebude opäť aktívne."
+          },
+          "open": "Otvoriť Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Nepodarilo sa prečítať súbor",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# zamknutá poznámka nebola importovaná} few {# zamknuté poznámky neboli importované} other {# zamknutých poznámok nebolo importovaných}}; zamknuté poznámky Memry nedokáže prečítať bez hesla aplikácie Poznámky."
+        "lockedNote": "{count, plural, one {# zamknutá poznámka nebola importovaná} few {# zamknuté poznámky neboli importované} other {# zamknutých poznámok nebolo importovaných}}; zamknuté poznámky Memry nedokáže prečítať bez hesla aplikácie Poznámky.",
+        "lockedWrongPassword": "{count, plural, one {# zamknutá poznámka sa neimportovala; používa} few {# zamknuté poznámky sa neimportovali; používajú} other {# zamknutých poznámok sa neimportovalo; používajú}} iné heslo než to, ktoré ste zadali.",
+        "lockedUnreadable": "{count, plural, one {# zamknutú poznámku} few {# zamknuté poznámky} other {# zamknutých poznámok}} sa nepodarilo dešifrovať, preto sa neimportovali.",
+        "lockedAttachment": "{count, plural, one {# príloha v zamknutej poznámke sa neimportovala} few {# prílohy v zamknutých poznámkach sa neimportovali} other {# príloh v zamknutých poznámkach sa neimportovalo}}; text poznámky áno."
       },
       "csv": {
         "noHeaders": "Súbor CSV nemá hlavičky",
@@ -1563,6 +1754,16 @@
         "unknownPriority": "Neznáma priorita {priority} → žiadna",
         "unparsedDate": "Nepodarilo sa spracovať dátum „{date}“",
         "subtaskNoParent": "Podúloha „{title}“ nemá nadradenú úlohu na odsadení {indent}; importovaná na najvyššej úrovni"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise nie je pripojený.",
+        "tokenInvalid": "Readwise neprijal uložený token. Odpojte sa a pripojte znova s novým.",
+        "unreachable": "Nepodarilo sa spojiť s Readwise. Skontrolujte pripojenie a skúste to znova.",
+        "categoryOff": "{count, plural, one {# kniha je v kategórii, ktorú ste vypli, a neimportovala sa} few {# knihy sú v kategórii, ktorú ste vypli, a neimportovali sa} other {# kníh je v kategórii, ktorú ste vypli, a neimportovalo sa}}.",
+        "unchanged": "{count, plural, one {# kniha} few {# knihy} other {# kníh}} už bolo aktuálnych.",
+        "sourceDeleted": "{count, plural, one {# kniha bola odstránená} few {# knihy boli odstránené} other {# kníh bolo odstránených}} v Readwise. Poznámky zostanú.",
+        "noteDeleted": "{count, plural, one {# poznámka bola odstránená} few {# poznámky boli odstránené} other {# poznámok bolo odstránených}} v Memry a zostanú odstránené.",
+        "busy": "{count, plural, one {# poznámka je otvorená} few {# poznámky sú otvorené} other {# poznámok je otvorených}} v editore a zapíšu sa pri ďalšom spustení."
       }
     },
     "status": {
@@ -1603,18 +1804,35 @@
       },
       "todoist": {
         "importing": "Importujú sa úlohy z Todoist…"
+      },
+      "readwise": {
+        "fetching": "Číta sa vaša knižnica Readwise…"
       }
     },
     "v2": {
       "searchPlaceholder": "Hľadať aplikáciu alebo typ súboru…",
       "noMatch": "Výrazu „{query}“ nezodpovedajú žiadne zdroje",
       "formatAccount": "Účet",
-      "showMore": "{count, plural, one {Zobraziť # ďalší} few {Zobraziť # ďalšie} other {Zobraziť # ďalších}}",
-      "showLess": "Zobraziť menej",
       "groups": {
+        "reading": "Čítanie",
         "noteApps": "Aplikácie na poznámky",
         "tasks": "Úlohy, denník a záložky",
         "files": "Súbory"
+      },
+      "readwise": {
+        "notConnected": "Nepripojené",
+        "connected": "Pripojené",
+        "synced": "Synchronizované {time}",
+        "syncing": "Synchronizuje sa…",
+        "waiting": "Čaká na synchronizáciu",
+        "otherDevice": "Synchronizuje sa v zariadení {device}",
+        "otherDeviceUnknown": "Synchronizuje sa inde",
+        "invalidToken": "Potrebuje nový token",
+        "subscriptionExpired": "Predplatné vypršalo",
+        "rateLimited": "Obmedzená frekvencia",
+        "network": "Readwise nie je dostupný",
+        "server": "Chyba Readwise",
+        "unexpected": "Synchronizácia zlyhala"
       }
     }
   },
@@ -1624,8 +1842,6 @@
       "subtitle": "Nastavenia a úložisko trezora"
     },
     "groups": {
-      "storageUsage": "Využitie úložiska",
-      "location": "Umiestnenie",
       "accountVaults": "Trezory vo vašom účte",
       "largeNotes": "Poznámky blízko limitu synchronizácie",
       "activity": "Aktivita"
@@ -1783,6 +1999,9 @@
     "toasts": {
       "renamed": "Premenované „{oldName}“ na „{newName}“",
       "renameFailed": "Nepodarilo sa premenovať značku",
+      "renaming": "Premenúva sa #{oldName}: {done} / {total} poznámok",
+      "renamedBodySkipped": "„{newName}“ sa nedá zapísať ako vložená značka, preto #{oldName} v texte poznámky zostáva tak, ako je",
+      "renamedSomeFailed": "Nepodarilo sa aktualizovať {count, plural, one {# poznámku} few {# poznámky} other {# poznámok}}. Otvorte {count, plural, one {ju} other {ich}} a pridajte značku znova",
       "deleteFailed": "Nepodarilo sa odstrániť značku",
       "deleted": "Značka „{name}“ odstránená z {count, plural, one {# položky} few {# položiek} other {# položiek}}",
       "mergeFailed": "Nepodarilo sa zlúčiť značky",
@@ -1882,8 +2101,6 @@
       "loading": "Načítavajú sa nastavenia…"
     },
     "searchPlaceholder": "Hľadať skratky…",
-    "resetAll": "Obnoviť všetko",
-    "custom": "Vlastné",
     "pressShortcut": "Stlačte skratku…",
     "cancelTitle": "Zrušiť",
     "rebindTitle": "Kliknutím zmeníte priradenie",
@@ -1894,19 +2111,35 @@
     "noMatch": "Žiadne skratky nezodpovedajú vášmu vyhľadávaniu",
     "conflict": "Koliduje s: {labels}",
     "globalCapture": {
-      "title": "Globálny rýchly záznam",
       "description": "Zaznamenať poznámku odkiaľkoľvek",
       "active": "Aktívne",
       "inUse": "Skratku {shortcut} používa iná aplikácia. Vyberte inú kombináciu.",
       "unsupported": "Skratku {shortcut} nemožno použiť ako globálnu skratku. Vyberte inú kombináciu.",
       "fallbackInUse": "Predvolenú skratku {shortcut} používa iná aplikácia. Ak chcete používať globálny rýchly záznam, nastavte inú kombináciu."
     },
+    "folderNotes": {
+      "title": "Nová poznámka v priečinku",
+      "description": "Vytvoriť poznámku priamo vo vybranom priečinku",
+      "add": "Pridať priečinok",
+      "empty": "Zatiaľ žiadne skratky priečinkov. Pridajte priečinok, aby ste mu dali skratku.",
+      "rowDescription": "Vytvorí poznámku v tomto priečinku",
+      "missing": "Tento priečinok už neexistuje. Vyberte iný priečinok alebo skratku odstráňte.",
+      "changeFolder": "Zmeniť priečinok",
+      "searchFolders": "Hľadať priečinky...",
+      "noFolders": "Nenašli sa žiadne priečinky",
+      "remove": "Odstrániť skratku",
+      "conflictLabel": "Nová poznámka v {folder}",
+      "missingToast": "Priečinok „{folder}“ už neexistuje",
+      "missingToastAction": "Upraviť skratku",
+      "foldersLoadFailed": "Priečinok pre túto skratku sa nepodarilo skontrolovať"
+    },
     "toasts": {
       "saveGlobalFailed": "Nepodarilo sa uložiť skratku globálneho rýchleho záznamu",
       "saveFailed": "Nepodarilo sa uložiť skratku",
       "resetFailed": "Nepodarilo sa obnoviť predvolenú skratku",
       "resetAllSuccess": "Všetky skratky obnovené na predvolené",
-      "resetAllFailed": "Nepodarilo sa obnoviť predvolené skratky"
+      "resetAllFailed": "Nepodarilo sa obnoviť predvolené skratky",
+      "saveStickyFailed": "Skratku Sticky sa nepodarilo uložiť"
     },
     "categories": {
       "navigation": "Navigácia",
@@ -1939,6 +2172,10 @@
         "search": {
           "label": "Vyhľadávanie",
           "description": "Otvoriť globálne vyhľadávanie"
+        },
+        "commands": {
+          "label": "Paleta príkazov",
+          "description": "Vyhľadať a spustiť ľubovoľný príkaz"
         },
         "settings": {
           "label": "Otvoriť nastavenia",
@@ -2042,6 +2279,10 @@
           "label": "Zobraziť/skryť bočný panel",
           "description": "Zobraziť alebo skryť bočný panel"
         },
+        "toggleDayPanel": {
+          "label": "Zobraziť/skryť panel dňa",
+          "description": "Zobraziť alebo skryť panel dňa vpravo"
+        },
         "shortcuts": {
           "label": "Prehľad klávesových skratiek",
           "description": "Zobraziť prehľad klávesových skratiek"
@@ -2057,6 +2298,26 @@
         "actualSize": {
           "label": "Skutočná veľkosť",
           "description": "Obnoviť priblíženie na 100 %"
+        },
+        "foldFull": {
+          "label": "Zbalenie: Úplné",
+          "description": "Zobraziť každé slovo poznámky"
+        },
+        "foldBrief": {
+          "label": "Zbalenie: Stručné",
+          "description": "Zobraziť len kľúčové vety tak, ako sú napísané"
+        },
+        "foldKey": {
+          "label": "Zbalenie: Kľúčové",
+          "description": "Zobraziť každý bod s jeho dôvodom"
+        },
+        "foldTakeaway": {
+          "label": "Zbalenie: Poznatok",
+          "description": "Zobraziť jeden riadok na odsek"
+        },
+        "foldTopic": {
+          "label": "Zbalenie: Téma",
+          "description": "Zobraziť poznámku ako mapu jej sekcií"
         }
       }
     },
@@ -2066,8 +2327,11 @@
       "systemWide": "Celosystémové",
       "globalCapture": "Globálny rýchly záznam",
       "recordingHint": "Stlačte klávesy… esc na zrušenie",
-      "reset": "Obnoviť",
-      "resetAll": "Obnoviť všetky predvolené"
+      "resetAll": "Obnoviť všetky predvolené",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Otvoriť Sticky z ktorejkoľvek aplikácie, kým beží memrynote"
     }
   },
   "phaseF": {
@@ -2112,7 +2376,17 @@
       "clockSkewDetected": "Zistená odchýlka hodín",
       "items": "položiek",
       "willSyncWhenBackOnline": "Synchronizácia prebehne po obnovení pripojenia",
-      "openSyncSettings": "Otvoriť nastavenia synchronizácie"
+      "stalled": "Zmeny sa dlho nesynchronizovali. Skúste Synchronizovať teraz.",
+      "openSyncSettings": "Otvoriť nastavenia synchronizácie",
+      "repairDeviceKeys": "Opraviť",
+      "signInToRepair": "Prihláste sa znova a nastavte kľúče tohto zariadenia. Nesynchronizované poznámky, úlohy a projekty sa zachovajú. Možno budete potrebovať obnovovaciu frázu.",
+      "repairFailed": "Kľúče tohto zariadenia sa nepodarilo opraviť. Skúste to znova.",
+      "syncNotStarted": {
+        "vault-binding": "Kľúče tohto zariadenia sú obnovené, ale tento trezor ešte nie je nastavený na synchronizáciu s vaším účtom. V ponuke synchronizácie vyberte, ako ho synchronizovať.",
+        "vault-foreign": "Kľúče tohto zariadenia sú obnovené, ale tento trezor patrí inému účtu. Zostáva lokálny v tomto zariadení.",
+        "entitlement": "Kľúče tohto zariadenia sú obnovené, ale synchronizácia vyžaduje aktívny plán Sync.",
+        "unavailable": "Kľúče tohto zariadenia sú obnovené, ale synchronizáciu sa nepodarilo spustiť. Skúsi to znova; ak nie, reštartujte Memry."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2128,7 +2402,6 @@
       "failedToResendCode": "Nepodarilo sa znova odoslať kód",
       "failedToSetUpDevice": "Nepodarilo sa nastaviť zariadenie",
       "failedToConfirmRecoveryPhrase": "Nepodarilo sa potvrdiť obnovovaciu frázu",
-      "failedToAnalyzeContent": "Nepodarilo sa analyzovať obsah",
       "failedToLoadUpdaterState": "Nepodarilo sa načítať stav aktualizátora",
       "failedToCheckForUpdates": "Nepodarilo sa skontrolovať aktualizácie",
       "failedToDownloadUpdate": "Nepodarilo sa stiahnuť aktualizáciu",
@@ -2143,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Nepodarilo sa načítať nastavenia editora poznámok",
       "failedToUpdateSettings": "Nepodarilo sa aktualizovať nastavenia",
       "failedToLoadTabSettings": "Nepodarilo sa načítať nastavenia kariet",
-      "failedToLoadNotes": "Nepodarilo sa načítať poznámky",
       "failedToLoadTags": "Nepodarilo sa načítať značky",
-      "failedToLoadTasks": "Nepodarilo sa načítať úlohy",
       "failedToLoadVaultStatus": "Nepodarilo sa načítať stav trezora",
       "failedToSelectVault": "Nepodarilo sa vybrať trezor",
       "failedToCloseVault": "Nepodarilo sa zavrieť trezor",
@@ -2159,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Prístup k lokálnemu serveru pre externých klientov MCP."
     },
-    "groups": {
-      "connection": "Pripojenie",
-      "access": "Prístup"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Použite tento koncový bod localhost z aplikácií Cursor, Claude Desktop alebo Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "Poverenie v pamäti platné pre toto spustenie aplikácie."
+        "label": "Bearer token"
       }
     },
     "actions": {
@@ -2195,11 +2460,6 @@
       "title": "Povolenia agenta",
       "subtitle": "Zvoľte predvolený prístup, potvrdenia a lokálnych poskytovateľov pre Chat s agentom."
     },
-    "groups": {
-      "cliAgents": "CLI agenti",
-      "local": "Lokálny poskytovateľ kompatibilný s OpenAI",
-      "actions": "Kontroly pripojenia"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2222,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Povolenia agenta",
       "access": {
-        "label": "Predvolený prístup",
         "description": "Nastaví východiskový režim prístupu pre nové správy agentovi.",
         "vaultOnly": "Iba trezor",
         "computerAccess": "Prístup k počítaču",
         "builtInNote": "Vstavané pripojenie k modelu vždy používa iba nástroje trezoru."
       },
       "confirm": {
-        "label": "Potvrdzovať akcie",
         "description": "Zvoľte, či sa volania nástrojov spustia automaticky, alebo počkajú na schválenie v chate. Zamknuté poznámky a priečinky zostávajú v oboch režimoch len na čítanie.",
         "alwaysAllow": "Vždy povoliť",
         "askBeforeChanges": "Pýtať sa pred zmenami"
@@ -2259,6 +2516,12 @@
         "label": "Model",
         "description": "Vyberte jeden z vrátených modelov alebo zadajte model ručne."
       },
+      "thinking": {
+        "label": "Premýšľanie",
+        "description": "Vypnuté žiada modely typu DeepSeek, aby premýšľanie preskočili pre rýchlejšie a lacnejšie odpovede.",
+        "default": "Predvolené",
+        "off": "Vypnuté"
+      },
       "apiKey": {
         "label": "Kľúč API",
         "description": "Voliteľné poverenie uložené v systémovom úložisku kľúčov.",
@@ -2266,26 +2529,31 @@
       }
     },
     "actions": {
-      "save": "Uložiť",
-      "models": "Modely",
-      "test": "Otestovať pripojenie",
-      "probe": "Preskúmať nástroje"
+      "test": "Otestovať pripojenie"
     },
     "status": {
       "label": "Pripojenie",
       "checking": "Kontroluje sa…",
       "connected": "Pripojené",
-      "disconnected": "Odpojené",
-      "toolsDisabled": "Nástroje vypnuté",
-      "fullTools": "Všetky nástroje zapnuté"
+      "disconnected": "Odpojené"
     },
     "alwaysAllowed": {
-      "group": "Vždy povolené",
       "description": "Nástroje, ktorým ste v tomto trezore udelili trvalé schválenie. Pre odstraňovanie ho nikdy nemožno udeliť.",
       "empty": "Nič nie je vždy povolené. Každá zmena stále vyžaduje schválenie.",
       "revoke": "Odvolať",
       "revokeLabel": "Odvolať trvalé schválenie pre {tool}",
       "ignoredInPageReview": "Ignorované: úpravy poznámok a denníka vždy vyžadujú schválenie."
+    },
+    "memory": {
+      "group": "Pamäť",
+      "description": "Agenti bežia v priečinku uchovávanom pre tento trezor mimo trezora, takže to, čo si tam uložia, sa prenesie do ďalšej konverzácie.",
+      "clear": "Vymazať pamäť agenta",
+      "clearDescription": "Odstráni to, čo si agenti o tomto trezore uložili. Poznámky a história chatu zostanú.",
+      "clearAction": "Vymazať",
+      "cleared": "Pamäť agenta bola vymazaná.",
+      "failed": "Pamäť agenta sa nepodarilo vymazať.",
+      "confirmTitle": "Vymazať pamäť agenta?",
+      "confirmDescription": "Agenti stratia to, čo si o tomto trezore uložili, vrátane projektovej pamäte Claude Code. Túto akciu nemožno vrátiť späť. Poznámky a história chatu zostanú."
     },
     "v2": {
       "permissions": {

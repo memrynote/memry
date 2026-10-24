@@ -192,6 +192,7 @@ export function OptionList({
     const options = Array.from(
       event.currentTarget.querySelectorAll<HTMLElement>('[data-wizard-option]:not([disabled])')
     )
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- activeElement is an element when it is one of options; otherwise indexOf returns -1
     const current = options.indexOf(document.activeElement as HTMLElement)
     const target = options[current + (event.key === next ? 1 : -1)]
     if (!target) return

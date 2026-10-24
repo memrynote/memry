@@ -142,6 +142,7 @@ export function listNoteMetadata(
   let query = db.select().from(noteMetadata)
 
   if (conditions.length > 0) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle's where() returns a different builder type than the dynamic query it replaces; the cast keeps the original type for the reassignment
     query = query.where(and(...conditions)) as typeof query
   }
 

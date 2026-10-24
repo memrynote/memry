@@ -42,6 +42,7 @@ export function useEventDateDrop(
 ): void {
   useDndMonitor({
     onDragEnd: ({ active, over }) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit active.data.current is any; calendar chips register a CalendarProjectionItem
       const item = active.data.current?.calendarItem as CalendarProjectionItem | undefined
       const overData = over?.data.current
       if (!item || overData?.type !== 'date' || overData.timeBehavior === 'slot') return

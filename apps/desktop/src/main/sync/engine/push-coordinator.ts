@@ -269,6 +269,7 @@ export class PushCoordinator {
                 // refuses as delete-wins has already republished the body.
                 if (isNoteKnownDeleted(this.ctx.deps.db, item.itemId)) return false
                 try {
+                  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the parsed shape is probed field by field right after
                   const parsed = JSON.parse(item.payload) as { fileType?: string }
                   if (parsed.fileType && isBinaryFileType(parsed.fileType)) return false
                 } catch {
@@ -824,6 +825,7 @@ export class PushCoordinator {
 
   private extractPayloadTitle(payload: string): string | undefined {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the parsed shape is probed field by field right after
       const parsed = JSON.parse(payload) as { title?: unknown }
       return typeof parsed.title === 'string' && parsed.title ? parsed.title : undefined
     } catch {
@@ -836,13 +838,15 @@ export class PushCoordinator {
     stateVector?: string
   } {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the parsed shape is probed field by field right after
       const parsed = JSON.parse(payload) as Record<string, unknown>
       const clockValue = parsed.clock
       const stateVectorValue = parsed.stateVector
       return {
         clock:
           clockValue && typeof clockValue === 'object' && !Array.isArray(clockValue)
-            ? (clockValue as Record<string, number>)
+            ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value was just checked to be a non-null object; contents are read defensively
+              (clockValue as Record<string, number>)
             : undefined,
         stateVector: typeof stateVectorValue === 'string' ? stateVectorValue : undefined
       }
@@ -861,7 +865,9 @@ export class PushCoordinator {
 
     try {
       const adapter =
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
         this.ctx.deps.adapters?.getRemote(item.type as SyncItemType) ??
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
         getRemoteSyncAdapter(item.type as SyncItemType)
       const fresh =
         adapter?.buildPushPayload?.(
@@ -871,6 +877,7 @@ export class PushCoordinator {
           item.operation,
           vaultKey
         ) ??
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
         getHandler(item.type as SyncItemType)?.buildPushPayload?.(
           this.ctx.deps.db,
           item.itemId,
@@ -937,6 +944,7 @@ export class PushCoordinator {
     try {
       const value: unknown = JSON.parse(payload)
       if (value && typeof value === 'object' && !Array.isArray(value)) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value was just checked to be a non-null object; contents are read defensively
         parsed = value as Record<string, unknown>
       }
     } catch {

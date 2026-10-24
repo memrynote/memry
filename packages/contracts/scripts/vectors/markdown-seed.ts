@@ -65,6 +65,7 @@ function serverEditor(): ServerBlockNoteEditor {
       blocks: createServerBlockSpecs(),
       inline: createServerInlineSpecs()
     })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     editor = ServerBlockNoteEditor.create({ schema }) as ServerBlockNoteEditor
   }
   return editor
@@ -142,6 +143,7 @@ async function seededCanonical(markdown: string): Promise<string> {
   const doc = new Y.Doc()
   doc.clientID = 0x6d656d72
   const blocks = withIds(await markdownToBlocks(markdown), 'seed')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   serverEditor().blocksToYXmlFragment(blocks as never, doc.getXmlFragment('prosemirror'))
   return withoutBlockIds(canonicalFragment(doc))
 }

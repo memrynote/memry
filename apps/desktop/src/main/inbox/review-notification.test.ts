@@ -1,15 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const { show, on, NotificationMock, supportedRef, windowsRef } = vi.hoisted(() => {
-  const show = vi.fn()
-  const on = vi.fn()
-  const supportedRef = { value: true }
-  const windowsRef: { value: unknown[] } = { value: [] }
-  const NotificationMock = vi.fn().mockImplementation(function (this: Record<string, unknown>) {
-    this.on = on
-    this.show = show
+  const showFn = vi.fn()
+  const onFn = vi.fn()
+  const supportedState = { value: true }
+  const windowsState: { value: unknown[] } = { value: [] }
+  const NotificationCtor = vi.fn().mockImplementation(function (this: Record<string, unknown>) {
+    this.on = onFn
+    this.show = showFn
   })
-  return { show, on, NotificationMock, supportedRef, windowsRef }
+  return {
+    show: showFn,
+    on: onFn,
+    NotificationMock: NotificationCtor,
+    supportedRef: supportedState,
+    windowsRef: windowsState
+  }
 })
 
 vi.mock('electron', () => ({

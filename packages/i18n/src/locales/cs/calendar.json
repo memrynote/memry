@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Dokončit úkol {title}",
     "task-completed": "Úkol dokončen",
-    "could-not-complete": "Úkol se nepodařilo dokončit",
+    "could-not-update-status": "Stav úkolu se nepodařilo změnit",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
     "duration-hours-minutes": "{hours} h {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Příští týden",
     "open-task": "Otevřít úkol",
     "source-note": "Zdrojová poznámka",
-    "reschedule": "Přeplánovat",
     "mark-done": "Označit jako dokončený",
     "mark-not-done": "Označit jako nedokončený",
-    "later-today": "Později dnes",
     "tomorrow": "Zítra",
-    "next-week-mon": "Příští týden · Po",
     "pick-date-time": "Vybrat datum a čas…",
     "remove-due-date": "Odebrat termín",
     "subtasks-prefix": "Dílčí úkoly",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Termín se nepodařilo odebrat",
       "could-not-open-note": "Poznámku se nepodařilo otevřít"
     }
+  },
+  "eventNotes": {
+    "heading": "Poznámky",
+    "create": "Nová poznámka",
+    "link": "Propojit poznámku",
+    "untitled": "Poznámka ze schůzky",
+    "searchPlaceholder": "Hledat poznámky",
+    "noResults": "Nenalezeny žádné poznámky",
+    "createFailed": "Poznámku k této události se nepodařilo vytvořit.",
+    "linkFailed": "Poznámku se nepodařilo propojit s touto událostí.",
+    "loadFailed": "Poznámky propojené s touto událostí se nepodařilo načíst.",
+    "propertyTaken": "Tato poznámka už má vlastnost „{name}“, která není odkazem."
   },
   "notePopover": {
     "kind": "Poznámka",
@@ -254,6 +262,10 @@
     "overdue": "po termínu",
     "untitled": "Bez názvu",
     "days": "{count, plural, one {# den} few {# dny} other {# dní}}",
+    "subtasks": {
+      "expand": "Zobrazit {count, plural, one {# dílčí úkol} few {# dílčí úkoly} many {# dílčího úkolu} other {# dílčích úkolů}} u úkolu {title}",
+      "collapse": "Skrýt {count, plural, one {# dílčí úkol} few {# dílčí úkoly} many {# dílčího úkolu} other {# dílčích úkolů}} u úkolu {title}"
+    },
     "events": "Události",
     "schedule-hint": "Kliknutím nastavíte datum, přetažením rozsah",
     "empty-title": "Na časové ose tu nic není",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Odebírané kalendáře"
     },
     "caldav": {
       "name": "CalDAV"

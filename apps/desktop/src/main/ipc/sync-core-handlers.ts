@@ -134,6 +134,7 @@ export async function checkSyncIntegrity(): Promise<void> {
 
     const derivedPubKey = getDevicePublicKey(signingKey)
     secureCleanup(signingKey)
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is CJS whose members fill in at runtime and tests vi.mock the default export; a named import would change the module contract
     const derivedPubKeyB64 = sodium.to_base64(derivedPubKey, sodium.base64_variants.ORIGINAL)
 
     if (currentDevice.signingPublicKey && currentDevice.signingPublicKey !== derivedPubKeyB64) {
@@ -260,6 +261,7 @@ export function registerSyncHandlers(syncEngine?: SyncEngine): void {
       return {
         entries: rows.map((r) => ({
           id: r.id,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
           type: r.type as 'push' | 'pull' | 'error',
           itemCount: r.itemCount,
           direction: r.direction ?? undefined,

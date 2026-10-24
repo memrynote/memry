@@ -382,7 +382,7 @@ describe('tasks queries', () => {
     const task = createTask('task-46')
     setTaskTags(db, task.id, ['Alpha', 'Beta'])
 
-    expect(getTaskTags(db, task.id).sort()).toEqual(['Alpha', 'Beta'])
+    expect(getTaskTags(db, task.id).toSorted()).toEqual(['Alpha', 'Beta'])
 
     const counts = getAllTaskTags(db)
     expect(counts).toEqual(
@@ -397,7 +397,7 @@ describe('tasks queries', () => {
     const task = createTask('task-47')
     setTaskNotes(db, task.id, ['note-1', 'note-2'])
 
-    expect(getTaskNoteIds(db, task.id).sort()).toEqual(['note-1', 'note-2'])
+    expect(getTaskNoteIds(db, task.id).toSorted()).toEqual(['note-1', 'note-2'])
 
     const linked = getTasksLinkedToNote(db, 'note-1')
     expect(linked.map((t) => t.id)).toEqual(['task-47'])

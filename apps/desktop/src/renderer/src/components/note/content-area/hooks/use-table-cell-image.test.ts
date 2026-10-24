@@ -431,13 +431,13 @@ describe('picking an image for the cell (the slash menu row)', () => {
   }
 
   function mountPicker(container: HTMLDivElement, editor: any) {
-    ;(editor.prosemirrorView as any).state.tr = { setSelection: (sel: unknown) => sel }
-    ;(editor.prosemirrorView as any).state.doc = { content: { size: 40 } }
-    ;(editor.prosemirrorView as any).state.selection = {
+    editor.prosemirrorView.state.tr = { setSelection: (sel: unknown) => sel }
+    editor.prosemirrorView.state.doc = { content: { size: 40 } }
+    editor.prosemirrorView.state.selection = {
       ...editor.prosemirrorView.state.selection,
       from: 7
     }
-    ;(editor.prosemirrorView as any).focus = vi.fn()
+    editor.prosemirrorView.focus = vi.fn()
     return mount(editor, container)
   }
 

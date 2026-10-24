@@ -1,5 +1,4 @@
 import {
-  type BlockColors,
   applyTableCellColors,
   extractTableCellColors,
   hasNonDefaultColors,
@@ -8,6 +7,7 @@ import {
   serializeBlockColorsMarker,
   serializeTableCellColorsMarker
 } from './block-colors'
+import { isObject, isRecord } from './is-record.ts'
 import { applyLinkCard, parseLinkCardMarker, serializeLinkCardMarker } from './link-card-marker'
 
 /**
@@ -42,7 +42,8 @@ export function serializeBlockAlignMarker(props: { textAlignment?: unknown }): s
 /** Parse a text alignment marker line; null when the line is not one. */
 export function parseBlockAlignMarker(line: string): Exclude<TextAlignment, 'left'> | null {
   const match = line.match(BLOCK_ALIGN_LINE_REGEX)
-  return match ? (match[1] as Exclude<TextAlignment, 'left'>) : null
+  const alignment = match?.[1]
+  return isNonDefaultAlignment(alignment) ? alignment : null
 }
 
 /**
@@ -60,10 +61,8 @@ export const TABLE_ALIGN_LINE_REGEX = /^<!-- table-align:(\{.*\}) -->$/
 
 const NON_DEFAULT_ALIGNMENTS = new Set<unknown>(['center', 'right', 'justify'])
 
-function mutableCellProps(cell: unknown): Record<string, unknown> | null {
-  if (!cell || typeof cell !== 'object' || Array.isArray(cell)) return null
-  const props = (cell as { props?: unknown }).props
-  return props && typeof props === 'object' ? (props as Record<string, unknown>) : null
+function isNonDefaultAlignment(value: unknown): value is Exclude<TextAlignment, 'left'> {
+  return NON_DEFAULT_ALIGNMENTS.has(value)
 }
 
 /** The alignment of every non-left cell, or null when there is none. */
@@ -74,9 +73,10 @@ export function extractTableCellAlignments(content: unknown): TableCellAlignment
   const alignments: TableCellAlignments = {}
   rows.forEach((row, rowIndex) => {
     row?.cells?.forEach((cell, cellIndex) => {
-      const alignment = mutableCellProps(cell)?.textAlignment
-      if (NON_DEFAULT_ALIGNMENTS.has(alignment)) {
-        alignments[`${rowIndex}:${cellIndex}`] = alignment as Exclude<TextAlignment, 'left'>
+      const alignment =
+        isRecord(cell) && isObject(cell.props) ? cell.props.textAlignment : undefined
+      if (isNonDefaultAlignment(alignment)) {
+        alignments[`${rowIndex}:${cellIndex}`] = alignment
       }
     })
   })
@@ -97,9 +97,13 @@ export function parseTableCellAlignmentsMarker(line: string): TableCellAlignment
   } catch {
     return null
   }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
-  if (!Object.values(parsed).every((value) => NON_DEFAULT_ALIGNMENTS.has(value))) return null
-  return parsed as TableCellAlignments
+  if (!isRecord(parsed)) return null
+  const alignments: [string, Exclude<TextAlignment, 'left'>][] = []
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!isNonDefaultAlignment(value)) return null
+    alignments.push([key, value])
+  }
+  return Object.fromEntries(alignments)
 }
 
 /**
@@ -114,9 +118,8 @@ export function applyTableCellAlignments(content: unknown, alignments: TableCell
     const [rowIndex, cellIndex] = key.split(':').map(Number)
     if (!Number.isInteger(rowIndex) || !Number.isInteger(cellIndex)) continue
     const cell = rows[rowIndex]?.cells?.[cellIndex]
-    const props = mutableCellProps(cell)
-    if (!props) continue
-    ;(cell as { props: Record<string, unknown> }).props = { ...props, textAlignment }
+    if (!isRecord(cell) || !isObject(cell.props)) continue
+    cell.props = { ...cell.props, textAlignment }
   }
 }
 
@@ -143,9 +146,12 @@ interface TableContentLike {
   rows?: Array<{ cells?: unknown[] } | undefined>
 }
 
+function isTableContentLike(content: unknown): content is TableContentLike {
+  return isRecord(content) && Array.isArray(content.rows)
+}
+
 function tableContent(content: unknown): TableContentLike | null {
-  if (!content || typeof content !== 'object' || Array.isArray(content)) return null
-  return Array.isArray((content as TableContentLike).rows) ? (content as TableContentLike) : null
+  return isTableContentLike(content) ? content : null
 }
 
 function isStoredWidth(value: unknown): value is number {
@@ -179,13 +185,15 @@ export function parseTableLayoutMarker(line: string): TableLayout | null {
   } catch {
     return null
   }
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  if (!isRecord(parsed)) return null
 
-  const widths = (parsed as { columnWidths?: unknown }).columnWidths
+  const widths = parsed.columnWidths
   if (!Array.isArray(widths)) return null
-  if (!widths.every((width) => width === null || isStoredWidth(width))) return null
+  if (!widths.every((width): width is number | null => width === null || isStoredWidth(width))) {
+    return null
+  }
 
-  return { columnWidths: widths as (number | null)[] }
+  return { columnWidths: widths }
 }
 
 /**
@@ -218,9 +226,7 @@ interface SidecarMarker {
 const MARKERS_IN_DISK_ORDER: readonly SidecarMarker[] = [
   {
     write: (block) =>
-      hasNonDefaultColors(block.props as BlockColors)
-        ? serializeBlockColorsMarker(block.props as BlockColors)
-        : null,
+      hasNonDefaultColors(block.props) ? serializeBlockColorsMarker(block.props) : null,
     read: (line) => {
       const colors = parseBlockColorsMarker(line)
       if (!colors) return null

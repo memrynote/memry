@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Kunne ikke kopiere portalen",
+    "hiddenCount": "{count} skjult",
+    "windowFailed": "Portalen kunne ikke åpnes. Åpne kildenotatet i stedet.",
+    "noTarget": "Denne portalen har ikke noe mål ennå. Legg til et notat i definisjonen, eller fjern blokken.",
+    "invalidJson": "Definisjonen til denne portalen er ikke gyldig JSON. Rett den under, eller fjern blokken.",
+    "invalidShape": "Definisjonen til denne portalen har verken notat eller søk. Rett den under, eller fjern blokken.",
+    "search": {
+      "editQuery": "Rediger søket",
+      "count": "{count, plural, one {# blokk} other {# blokker}}",
+      "loading": "Søker …",
+      "empty": "Ingen blokker samsvarer med dette søket.",
+      "failed": "Søket kunne ikke kjøres.",
+      "retry": "Prøv på nytt",
+      "truncated": "Viser de første {count} treffene."
+    },
+    "copiedContents": "Innholdet er kopiert",
+    "copiedLink": "Lenken er kopiert",
+    "actionFailed": "Kunne ikke endre denne portalen",
+    "keepsOneBlock": "En portal beholder minst én blokk. Fjern portalen i stedet.",
+    "expandChildren": "Vis underelementer",
+    "collapseChildren": "Skjul underelementer",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Ta med «{block}»",
+      "locked": "{note} er låst · skrivebeskyttet",
+      "more": "Mer",
+      "openBeside": "Åpne {note} ved siden av",
+      "click": "Klikk",
+      "copyContents": "Kopier innhold",
+      "copyLink": "Kopier lenke",
+      "remove": "Fjern portal",
+      "removeHint": "{note} beholder alle blokkene"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Kildenotatet ble slettet. Referansen beholdes.",
+        "action": "Fjern"
+      },
+      "missingBlock": {
+        "text": "Blokken ble slettet i {source}.",
+        "action": "Velg en annen"
+      },
+      "notSynced": {
+        "text": "Venter på at kildenotatet synkroniseres.",
+        "action": "Prøv på nytt"
+      },
+      "cycle": {
+        "text": "Denne portalen fører tilbake til seg selv.",
+        "action": "Åpne kilden"
+      },
+      "tooDeep": {
+        "text": "Portaler kan nestes {max} nivåer dypt. Denne åpnes som en lenke.",
+        "action": "Åpne kilden"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Fokuser på oppfangingsfeltet",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Åpne i standardappen",
     "revealFailed": "Kunne ikke vise i mappen"
   },
+  "commands": {
+    "runFailed": "Kommandoen kunne ikke kjøres. Prøv igjen."
+  },
+  "commandsPalette": {
+    "title": "Kommandoer",
+    "placeholder": "Skriv en kommando …",
+    "groups": {
+      "navigation": "Navigasjon",
+      "create": "Opprett",
+      "tabs": "Faner",
+      "editor": "Redigering",
+      "view": "Visning",
+      "app": "App",
+      "note": "Notat",
+      "settings": "Innstillinger",
+      "sync": "Synkronisering",
+      "help": "Hjelp",
+      "project": "Prosjekt",
+      "tasks": "Oppgaver",
+      "canvas": "Canvas",
+      "folder": "Mappe",
+      "file": "Fil"
+    },
+    "contexts": {
+      "note": "Dette notatet",
+      "journal": "Denne journalen",
+      "project": "Dette prosjektet",
+      "tasks": "Disse oppgavene",
+      "canvas": "Dette canvaset",
+      "folder": "Denne mappen",
+      "tag": "Denne taggen",
+      "file": "Denne filen"
+    },
+    "recent": "Nylig",
+    "empty": "Ingen kommandoer samsvarer med «{query}»",
+    "searchHint": "Søk i notater: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# kommando} other {# kommandoer}}"
+    },
+    "actions": {
+      "run": "Kjør",
+      "searchNotes": "Søk i notater"
+    }
+  },
   "tabs": {
     "pin": "Fest fane",
     "unpin": "Løsne fane",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Handlingen mislyktes",
-    "nothingToUndo": "Ingenting å angre",
     "undone": "Angret: {description}",
     "undoFailed": "Kunne ikke angre handlingen",
     "filesImported": "{count, plural, one {# fil importert} other {# filer importert}}",
@@ -131,6 +231,20 @@
     "openInTab": "Åpne samtale i fane",
     "stop": "Stopp",
     "thinking": "Agenten tenker",
+    "toolsUnavailable": "Vault-verktøyene er av for denne modellen. Den besto ikke verktøysjekken, så den kan bare chatte.",
+    "toolsUnavailableWithDetail": "Vault-verktøyene er av for denne modellen. Den besto ikke verktøysjekken, så den kan bare chatte. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Vault-verktøyene er av for denne modellen. Leverandøren avviste en testforespørsel som inneholdt verktøy, så modellen kan bare chatte.",
+      "noToolCall": "Vault-verktøyene er av for denne modellen. Den svarte på en testforespørsel uten å kalle verktøyet, så den kan bare chatte.",
+      "toolResultRejected": "Vault-verktøyene er av for denne modellen. Den kalte et testverktøy, men feilet etter å ha fått resultatet tilbake, så den kan bare chatte.",
+      "streamingUnsupported": "Vault-verktøyene er av for denne modellen. Leverandøren strømmet ikke et testsvar, så modellen kan bare chatte.",
+      "providerSaid": "Leverandøren sa: {detail}",
+      "wroteToolCall": "Modellen skrev et verktøykall som tekst, og ingenting ble kjørt."
+    },
+    "stepLimit": {
+      "notice": "Stoppet ved trinngrensen.",
+      "continue": "Fortsett"
+    },
     "enable": {
       "title": "Slå på memrynote Agent",
       "description": "memrynote Agent bruker den lokale agent-CLI-en du har valgt, til å chatte om hvelvet ditt. Claude sender meldingene til Anthropic; Codex sender dem til OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Agenten vil opprette {title}. Se gjennom endringen før du bruker den.",
       "descriptionDelete": "Agenten vil slette {title}. Se gjennom endringen før du bruker den.",
       "fallbackTitle": "dette elementet",
-      "current": "Gjeldende",
       "candidate": "Kandidat",
       "loading": "Laster inn …",
       "apply": "Bruk",
@@ -268,13 +381,18 @@
       "removeAttachment": "Fjern {label}",
       "placeholder": "Gjør hva som helst med memrynote … @ for å nevne notater, oppgaver og hendelser",
       "send": "Send",
-      "providerLabel": "Agentleverandør: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Tilkoblede verktøy",
       "connectTool": "Koble til {tool}",
-      "addContext": "Legg til kontekst",
-      "addContextWithPermissions": "Legg til kontekst ({permissions})",
       "mentionContext": "Nevn et notat, en oppgave eller en hendelse",
+      "files": {
+        "attach": "Legg ved en tekstfil",
+        "refused": {
+          "unsupportedType": "{name} er ikke en støttet tekstfil. Legg ved en .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- eller .yml-fil.",
+          "notText": "{name} er ikke en UTF-8-tekstfil. Legg ved en tekstfil i stedet.",
+          "tooLarge": "{name} ville gjort at meldingen overskrider grensen på 100 KB. Fjern en fil eller legg ved en mindre.",
+          "readFailed": "{name} kunne ikke leses. Sjekk at filen fortsatt finnes og at du kan åpne den, og legg den ved på nytt."
+        }
+      },
       "voice": {
         "start": "Start diktering",
         "stop": "Stopp diktering",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Kunne ikke gjøre om talen til tekst"
         }
       },
-      "modelLabel": "Agentmodell: {provider} {model}",
-      "reasoningLabel": "Agentresonnering: {reasoning}",
       "providers": {
-        "label": "Leverandør",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Datamaskintilgang"
       },
       "webSearch": {
-        "on": "På",
-        "off": "Av",
         "label": "Nettsøk"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agenten er utilgjengelig – åpne Innstillinger …"
       },
       "settings": {
-        "reasoning": "Resonnering",
         "effort": "Innsats"
       },
       "includeCurrentNote": "Ta med gjeldende notat",
@@ -340,13 +452,29 @@
           "extraHigh": "Ekstra høy"
         }
       },
-      "permissionsLabel": "Agenttillatelser: {access}, nettsøk {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Standard",
+          "default": "Standarddybde",
+          "high": "Høy",
+          "max": "Maks"
+        }
+      },
       "permissions": {
-        "label": "Tillatelser",
-        "access": "Tilgang",
-        "tools": "Verktøy"
+        "access": "Tilgang"
       },
       "modelSettingsLabel": "Agentens modellinnstillinger: {model}, {settings}",
+      "queue": {
+        "label": "Meldinger i kø",
+        "queueMessage": "Legg melding i kø",
+        "edit": "Rediger melding i kø",
+        "editLabel": "Tekst for melding i kø",
+        "remove": "Fjern melding i kø",
+        "save": "Lagre",
+        "cancel": "Avbryt",
+        "sending": "Sender …",
+        "notSent": "Ikke sendt. Rediger for å sende på nytt, eller fjern den."
+      },
       "unavailable": {
         "vaultToolsOnly": "Bare hvelvverktøy med denne modellen"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Kunne ikke lagre bekreftelsen din",
       "resolveWindow": "Kunne ikke finne agentens kildevindu",
       "detectCli": "Kunne ikke finne agent-CLI-er",
-      "loadDisclosure": "Kunne ikke laste inn bekreftelsen din"
+      "loadDisclosure": "Kunne ikke laste inn bekreftelsen din",
+      "turnFailed": "Svaret stoppet med en feil. Meldingen din er beholdt, så du kan sende den på nytt."
     },
     "actions": {
       "copy": "Kopier",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Slipp filer for å importere",
       "dropFilesIntoVaultRoot": "Hvelvroten",
       "newNoteN": "Nytt notat (⌘N)",
-      "new": "Nytt",
       "newItemMenu": "Opprett ny …",
       "feedbackButton": "Send tilbakemelding",
       "feedbackTitle": "Send tilbakemelding",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Finn, erstatt, spør …"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Hopp over introduksjonen",
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Den personlige kunnskapsbasen din. La oss bruke to minutter på å komme i gang.",
-      "getStarted": "Kom i gang ",
-      "createYourFirstNote": "Opprett ditt første notat",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-basert, lagret lokalt som vanlige filer.",
-      "eGMeetingNotesIdeasAnything": "f.eks. møtenotater, ideer, hva som helst …",
-      "skip": "Hopp over",
-      "createNote": "Opprett notat ",
-      "addYourFirstTask": "Legg til din første oppgave",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Oppgaver lenker til notatene dine, med prioriteter og forfallsdatoer.",
-      "eGReviewProjectProposal": "f.eks. gå gjennom prosjektforslaget …",
-      "skip2": "Hopp over",
-      "createTask": "Opprett oppgave ",
-      "syncAcrossDevices": "Synkroniser på tvers av enheter",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Hold notatene og oppgavene dine synkronisert på alle enhetene dine. Du kan alltid sette opp dette senere.",
-      "skipForNow": "Hopp over foreløpig",
-      "doneLetSGo": "Ferdig – sett i gang! "
+      "skip": "Hopp over"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Angi mappeikon",
@@ -707,8 +818,7 @@
       "unknownTabType": "Ukjent fanetype: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "ulagrede endringer",
-      "preview": "forhåndsvisning"
+      "unsavedChanges": "ulagrede endringer"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Ny fane",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Dra for å endre størrelse · Dobbeltklikk for å tilbakestille"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Det personlige kunnskapssystemet ditt.",
-      "selectAFolderToStoreYourNotesAndTasks": "Velg en mappe for å lagre notatene og oppgavene dine.",
       "opening": "Åpner …",
-      "selectVaultFolder": "Velg hvelvmappe",
-      "plainMarkdown": "Vanlig Markdown",
-      "yourNotesStayPortable": "Notatene dine kan flyttes fritt",
-      "syncAnywhere": "Synkroniser hvor som helst",
-      "useDropboxIcloudGit": "Bruk Dropbox, iCloud, Git",
       "recentVaults": "Nylige hvelv",
-      "notesLastOpened": "notater · Sist åpnet",
-      "preRelease": "Beta",
       "createNewVault": "Opprett nytt hvelv",
-      "createNewVaultDesc": "Start et nytt hvelv i en mappe du velger.",
-      "openExistingVault": "Åpne eksisterende hvelv",
-      "openExistingVaultDesc": "Velg en mappe med Markdown-filer du allerede har.",
-      "signInToSync": "Logg på for å synkronisere",
-      "signInToSyncDesc": "Ende-til-ende-krypterte hvelv på tvers av enhetene dine.",
-      "create": "Opprett",
       "open": "Åpne",
-      "signIn": "Logg på",
       "helpAndDocs": "Hjelp og dokumentasjon",
-      "signInRequiresVault": "Åpne eller opprett et hvelv først for å konfigurere synkronisering.",
       "addVault": "Legg til hvelv",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Ingen hvelv ennå",
       "openVault": "Åpne hvelv",
       "settings": "Innstillinger",
-      "logOut": "Logg ut",
-      "signInToSync": "Logg på for å synkronisere",
       "remove": "Fjern \"",
       "removeVaultTitle": "Vil du fjerne «{name}» fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dette hvelvet blir fjernet fra appen, men filene dine blir liggende på disken. Du kan alltid legge det til igjen senere.",
       "cancel": "Avbryt",
       "remove2": "Fjern",
       "inYourAccount": "På kontoen din",
+      "trySandbox": "Prøv sandkasse-vaulten",
+      "sandboxVault": "Sandkasse-vault",
+      "sandboxPreparing": "Forbereder sandkassen …",
+      "sandboxFailed": "Kunne ikke forberede sandkasse-vaulten",
+      "resetSandbox": "Tilbakestill sandkasse-vaulten",
       "itemsCount": "{count, plural, one {# element} other {# elementer}}",
       "untitledVault": "Hvelv",
       "downloadVaultTitle": "Last ned «{name}»",
@@ -870,7 +965,6 @@
       "changeLocation": "Endre …",
       "download": "Last ned",
       "downloadFailed": "Kunne ikke laste ned hvelvet",
-      "deleteFromAccount": "Slett fra kontoen",
       "deleteVaultTitle": "Vil du slette «{name}» fra kontoen din?",
       "deleteVaultBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere og kan ikke angres. Filene dine på disken blir ikke slettet.",
       "deleteVaultConfirm": "Slett fra kontoen",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Fjern widget",
       "dragAria": "Dra widget",
-      "configAria": "Konfigurer widget",
-      "resizeAria": "Endre størrelse til {size}",
       "menuAria": "Alternativer for widget",
-      "resize": "Størrelse",
       "remove": "Fjern",
       "filter": {
         "all": "Alle",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Notater du åpner, vises her",
       "bookmarks": "Bokmerker",
       "tasks": "Oppgaver",
+      "chart": "Diagram",
       "calendar": "Kalender",
       "calendarToday": "I dag",
       "openCalendar": "Åpne kalender",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Velg en mappe",
       "folderEmpty": "Ingen mapper ennå",
       "folderNoSelection": "Ingen mappe valgt",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galleri",
       "folderViewSelect": "Visning",
       "project": "Prosjekt",
       "projectNoSelection": "Ingen prosjekt valgt",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Oppsett for Hjem",
       "deleteAria": "Slett oppsett",
-      "newAria": "Ny tavle",
       "newName": "Ny tavle",
       "defaultName": "Hjem",
       "manage": "Administrer tavler",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# oppgave forfaller i dag} other {# oppgaver forfaller i dag}}",
       "events": "{count, plural, one {# hendelse} other {# hendelser}}"
     },
-    "edit": "Rediger",
-    "done": "Ferdig",
     "addWidget": "Legg til widget",
+    "cover": {
+      "add": "Legg til omslag"
+    },
     "empty": {
       "title": "Tavlen din er tom",
       "body": "Widgeter samler notater, oppgaver og bokmerker på ett rolig sted.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introduksjonen er fullført",
-      "body": "Gi oss en stjerne på GitHub – det hjelper andre med å finne MemryNote.",
-      "action": "Gi en stjerne på GitHub"
+      "body": "Gi oss en stjerne på GitHub – det hjelper andre med å finne MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Oppdateringen er klar",
     "failed": "Oppdatering mislyktes",
     "downloadAction": "Last ned",
-    "restartAction": "Start på nytt",
     "detailsAction": "Detaljer",
     "popover": {
       "readyTitle": "MemryNote {version} er klar",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Hvelv",
     "position": "{name}, hvelv {index} av {count}",
-    "openList": "{position}. Åpne listen over hvelv",
     "switchTo": "Bytt til {name}",
     "switchingTo": "Bytter til {name}",
     "changeIcon": "Endre ikon …",
     "resetIcon": "Tilbakestill ikon",
     "iconButton": "Endre ikonet for {name}",
+    "leaveSandbox": "Tilbake til {name}",
     "iconFailed": "Kunne ikke endre hvelvikonet"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Type",
     "filterModified": "Endret",
     "matches": "Treff",
+    "matchesMore": "{count, plural, one {# treff til} other {# treff til}}",
+    "matchesHide": "Skjul treff",
+    "matchOf": "Treff {index} av {total}",
     "showMore": "Vis {count} til",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Neste seksjon",
       "open": "Åpne",
       "openNote": "Åpne notat",
+      "openAtMatch": "Åpne ved treffet",
       "openFile": "Åpne fil",
       "openJournal": "Åpne dagbok",
       "openTask": "Åpne oppgave",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Velg tagg",
       "addTag": "Legg til tagg",
       "showAll": "Vis alle",
+      "hideMatches": "Skjul treff",
       "searchEverywhere": "Søk overalt",
       "clearFilters": "Tøm filtre"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "På {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# hvelv funnet} other {# hvelv funnet}}",
-      "notion": "Notion",
       "otherApps": "Andre apper og filer",
       "otherAppsHint": "og {count} til",
       "detectedFootnote": "Funnet ved å sjekke hvilke apper som er installert. Ingenting forlater {device}.",

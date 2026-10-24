@@ -222,7 +222,7 @@ export async function openVaultFile(
 ): Promise<FileHandle | null> {
   // A save renames a new file over the note, so the path can name another
   // file inside the vault by the time the opened one is checked: open again.
-  for (let attempt = 1; ; attempt++) {
+  for (let opens = 1; ; opens++) {
     if ((await resolveVaultFile(vaultPath, relativePath)).kind === 'outside') {
       throw new OutsideVaultError(relativePath)
     }
@@ -245,7 +245,7 @@ export async function openVaultFile(
     }
     await handle.close()
     if (now.kind === 'outside') throw new OutsideVaultError(relativePath)
-    if (attempt === REPLACED_RETRIES)
+    if (opens === REPLACED_RETRIES)
       throw new Error(`${relativePath} kept changing while it was opened`)
   }
 }
@@ -253,12 +253,13 @@ export async function openVaultFile(
 /** `openVaultFile` for callers that cannot await. Returns a file descriptor. */
 export function openVaultFileSync(vaultPath: string, relativePath: string): number | null {
   // See `openVaultFile`: a file renamed over the path inside the vault is opened again.
-  for (let attempt = 1; ; attempt++) {
+  for (let opens = 1; ; opens++) {
     refuseOutsideVaultSync(vaultPath, relativePath)
     let fd: number
     try {
       fd = openSync(path.join(vaultPath, relativePath), openFlags(), OPEN_MODE)
     } catch (err) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught fs error; only .code is read and a non-errno value yields undefined
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null
       throw err
     }
@@ -275,7 +276,7 @@ export function openVaultFileSync(vaultPath: string, relativePath: string): numb
     }
     closeSync(fd)
     if (now.kind === 'outside') throw new OutsideVaultError(relativePath)
-    if (attempt === REPLACED_RETRIES)
+    if (opens === REPLACED_RETRIES)
       throw new Error(`${relativePath} kept changing while it was opened`)
   }
 }

@@ -172,6 +172,21 @@ interface ResolvedCalloutStyle {
   accent?: string
 }
 
+function isCalloutEditor(editor: unknown): editor is CalloutEditor {
+  return (
+    typeof editor === 'object' &&
+    editor !== null &&
+    'updateBlock' in editor &&
+    typeof editor.updateBlock === 'function' &&
+    'getTextCursorPosition' in editor &&
+    typeof editor.getTextCursorPosition === 'function'
+  )
+}
+
+function isMarkerLine(line: string): boolean {
+  return parseSidecarMarkerLine(line.trim()) !== null
+}
+
 function isBuiltIn(type: string): type is CalloutTypeValue {
   return (CALLOUT_TYPE_VALUES as readonly string[]).includes(type)
 }
@@ -197,7 +212,7 @@ function resolveCalloutStyle(
 
 function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendererProps) {
   const { t } = useT('notes')
-  const calloutEditor = editor as CalloutEditor
+  const calloutEditor = isCalloutEditor(editor) ? editor : undefined
   const customTypes = useCalloutTypes()
   const labels: Record<CalloutTypeValue, string> = {
     info: t('editor.callout.info'),
@@ -220,7 +235,7 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
   const closed = block.props.fold === 'closed'
   // Toggling rewrites the `> [!type]-` / `+` marker in the note (#3206).
   const toggleFold = () =>
-    calloutEditor.updateBlock(block, {
+    calloutEditor?.updateBlock(block, {
       type: 'callout',
       props: { fold: closed ? 'open' : 'closed' }
     })
@@ -268,7 +283,7 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
               <DropdownMenuItem
                 key={value}
                 onClick={() =>
-                  calloutEditor.updateBlock(block, {
+                  calloutEditor?.updateBlock(block, {
                     type: 'callout',
                     props: { type: value }
                   })
@@ -286,7 +301,7 @@ function CalloutBlockRenderer({ block, editor, contentRef }: CalloutBlockRendere
               <DropdownMenuItem
                 key={definition.name}
                 onClick={() =>
-                  calloutEditor.updateBlock(block, {
+                  calloutEditor?.updateBlock(block, {
                     type: 'callout',
                     props: { type: definition.name }
                   })
@@ -344,7 +359,8 @@ export function getCalloutSlashMenuItem(
   return {
     title: labels.title,
     onItemClick: () => {
-      const calloutEditor = editor as CalloutEditor
+      if (!isCalloutEditor(editor)) return
+      const calloutEditor = editor
       const currentBlock = calloutEditor.getTextCursorPosition().block
       calloutEditor.updateBlock(currentBlock, {
         type: 'callout',
@@ -366,7 +382,8 @@ export function getCustomCalloutSlashMenuItems(
     id: `callout:${definition.name}`,
     title: definition.label,
     onItemClick: () => {
-      const calloutEditor = editor as CalloutEditor
+      if (!isCalloutEditor(editor)) return
+      const calloutEditor = editor
       calloutEditor.updateBlock(calloutEditor.getTextCursorPosition().block, {
         type: 'callout',
         props: { type: definition.name }
@@ -451,8 +468,6 @@ export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[
     mdLines = []
   }
 
-  const isMarkerLine = (line: string): boolean => parseSidecarMarkerLine(line.trim()) !== null
-
   // Sidecar marker lines belong to the block below them, so a run that sits
   // under one still starts its paragraph: main's `afterSidecarMarker` twin.
   const startsParagraph = (index: number): boolean => {
@@ -464,7 +479,7 @@ export function splitMarkdownByBlockquoteRuns(markdown: string): ContentSegment[
   const popTrailingMarkers = (): string[] => {
     const markers: string[] = []
     while (mdLines.length > 0 && isMarkerLine(mdLines[mdLines.length - 1])) {
-      markers.unshift((mdLines.pop() as string).trim())
+      markers.unshift((mdLines.pop() ?? '').trim())
     }
     return markers
   }

@@ -27,9 +27,10 @@ export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
   const previouslyFocused = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
 
-    previouslyFocused.current = document.activeElement as HTMLElement | null
+    previouslyFocused.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
     document.body.style.overflow = 'hidden'
 
     const handleKey = (event: KeyboardEvent) => {
@@ -95,6 +96,8 @@ export function HeroDemoDialog({ open, onClose }: HeroDemoDialogProps) {
   )
 }
 
+const track = (name: LandingEventName) => trackLandingEvent(name, TARGET)
+
 function DemoVideo() {
   const ref = useRef<HTMLVideoElement>(null)
   const reached = useRef(new Set<number>())
@@ -107,8 +110,6 @@ function DemoVideo() {
       void video.play()
     })
   }, [])
-
-  const track = (name: LandingEventName) => trackLandingEvent(name, TARGET)
 
   return (
     // oxlint-disable-next-line jsx-a11y/media-has-caption -- no caption track exists for the narrated demo yet

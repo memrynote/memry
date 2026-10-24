@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import keytar from 'keytar'
 
 import {
@@ -34,6 +34,9 @@ import {
   getOrCreateSigningKeyPair,
   getOrDeriveVaultKey
 } from './keys'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready

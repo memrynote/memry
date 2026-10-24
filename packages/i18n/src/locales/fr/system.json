@@ -17,17 +17,22 @@
       "filterAll": "Tous les fichiers"
     },
     "exportCancelled": "Exportation annulée",
-    "update": {
-      "availableTitle": "Mise à jour disponible",
-      "availableMessage": "memrynote {version} est disponible.",
-      "availableDetailFallback": "Télécharger la mise à jour maintenant ?",
-      "buttonDownload": "Télécharger",
-      "buttonLater": "Plus tard",
-      "readyTitle": "Mise à jour prête",
-      "readyMessage": "memrynote {version} a été téléchargé.",
-      "readyDetailFallback": "Redémarrez memrynote pour terminer l'installation de la mise à jour.",
-      "buttonRestartNow": "Redémarrer maintenant",
-      "releaseNotesLabel": "Notes de version :"
+    "dataDbRecovery": {
+      "title": "Réparer la base de données du coffre",
+      "message": "La base de données de Memry pour ce coffre est endommagée.",
+      "detail": "Vos notes et fichiers de journal ne sont pas touchés. La réparation conserve la base endommagée comme sauvegarde dans {path}, en crée une nouvelle, reconstruit ce qu'elle peut à partir des fichiers de votre coffre et restaure les éléments synchronisés à la prochaine synchronisation. Les modifications non encore synchronisées sont récupérées dans la mesure du possible.",
+      "buttonRecover": "Réparer",
+      "buttonLater": "Pas maintenant"
+    },
+    "obsidianVault": {
+      "title": "Ouvrir un coffre Obsidian",
+      "message": "Ouvrir une copie de ce coffre Obsidian ?",
+      "detail": "Ouvrir un coffre Obsidian dans memrynote peut faire perdre des données dont vos plugins Obsidian ont besoin. Quand memrynote transforme la ligne de tâche d'un plugin en tâche, il réécrit cette ligne. Les champs comme les dates d'échéance du plugin Tasks quittent le fichier, et Obsidian ne les voit plus.\n\nmemrynote peut copier « {name} » vers « {copyName} » à côté, puis ouvrir la copie. « {name} » reste exactement tel quel.",
+      "detailExistingCopy": "Ouvrir un coffre Obsidian dans memrynote peut faire perdre des données dont vos plugins Obsidian ont besoin. Quand memrynote transforme la ligne de tâche d'un plugin en tâche, il réécrit cette ligne. Les champs comme les dates d'échéance du plugin Tasks quittent le fichier, et Obsidian ne les voit plus.\n\nUne copie memrynote, « {copyName} », se trouve déjà à côté. memrynote peut ouvrir cette copie. « {name} » reste exactement tel quel.",
+      "buttonCopy": "Créer une copie",
+      "buttonOpenCopy": "Ouvrir la copie",
+      "buttonOpenOriginal": "Ouvrir l'original",
+      "buttonCancel": "Annuler"
     },
     "pair": {
       "title": "Jumeler l'extension de navigateur",

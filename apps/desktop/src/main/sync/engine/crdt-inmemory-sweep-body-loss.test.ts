@@ -2,7 +2,7 @@ import * as Y from 'yjs'
 import os from 'node:os'
 import fs from 'node:fs'
 import path from 'node:path'
-import sodium from 'libsodium-wrappers-sumo'
+import { ready as sodiumReady } from 'libsodium-wrappers-sumo'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -60,9 +60,9 @@ vi.mock('../http-client', () => ({
       revision: snapshot.revision
     }
   },
-  getFromServer: async (path: string) => {
+  getFromServer: async (requestPath: string) => {
     if (h.updatesDelayMs > 0) await new Promise((resolve) => setTimeout(resolve, h.updatesDelayMs))
-    const since = Number(new URL(path, 'http://server').searchParams.get('since'))
+    const since = Number(new URL(requestPath, 'http://server').searchParams.get('since'))
     return {
       updates: (h.server?.updates ?? []).filter((u) => u.sequenceNum > since),
       hasMore: false
@@ -248,7 +248,7 @@ beforeEach(() => {
 
 describe('CRDT sweep in in-memory mode (#2511)', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await sodiumReady
     h.contentHash = generateContentHash
   })
 
@@ -337,7 +337,7 @@ describe('CrdtProvider with no store (#2536)', () => {
   ].join('\n')
 
   beforeAll(async () => {
-    await sodium.ready
+    await sodiumReady
     h.contentHash = generateContentHash
   })
 
@@ -891,7 +891,7 @@ describe('CrdtProvider with no store (#2536)', () => {
           return coordinator.pullCrdtForNote(id)
         },
         () => false
-      ).catch((err) => err.message)
+      ).catch((err: unknown) => (err instanceof Error ? err.message : String(err)))
       const afterFailedFlush = { failed, owed: owesFileBody(NOTE), server: await bodyAfterPull() }
       await flushFullStates()
 

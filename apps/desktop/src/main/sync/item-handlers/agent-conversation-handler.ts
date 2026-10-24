@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { AgentConversationSyncPayloadSchema } from '@memry/contracts/sync-payloads'
 import type { AgentConversationSyncPayload } from '@memry/contracts/sync-payloads'
 import { AgentChannels } from '@memry/contracts/ipc-agent'
-import type { FieldClocks, VectorClock } from '@memry/contracts/sync-api'
+import type { VectorClock } from '@memry/contracts/sync-api'
 import { agentConversations } from '@memry/db-schema/schema/agent-conversations'
 import type { SyncQueueManager } from '@memry/sync-client/queue'
 import {
@@ -150,12 +150,17 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
 
         const nextPayload: AgentConversationSyncPayload = {
           ...localPayload,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
           title: (merged.merged.title as string | undefined) ?? localPayload.title,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
           backend: (merged.merged.backend as string | undefined) ?? localPayload.backend,
           backendModel: Object.hasOwn(merged.merged, 'backendModel')
-            ? (merged.merged.backendModel as string | null)
+            ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
+              (merged.merged.backendModel as string | null)
             : localPayload.backendModel,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
           trustList: (merged.merged.trustList as string[] | undefined) ?? localPayload.trustList,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mergeAgentConversationFields returns Record<string, unknown>; each key is a typed conversation field and the merge only copies values of the matching field
           pinned: (merged.merged.pinned as boolean | undefined) ?? localPayload.pinned,
           clock: resolution.mergedClock,
           fieldClocks: merged.mergedFieldClocks,
@@ -188,7 +193,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
       .from(agentConversations)
       .where(eq(agentConversations.id, itemId))
       .get()
-    if (!existing || existing.deletedAt !== null) return 'skipped'
+    if (existing?.deletedAt !== null) return 'skipped'
 
     if (clock) {
       const resolution = this.resolveDeleteClock(existing.vectorClock ?? {}, clock)
@@ -206,9 +211,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(agentConversations).where(eq(agentConversations.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(agentConversations).where(eq(agentConversations.id, itemId)).get()
   }
 
   seedUnclocked(_db: DrizzleDb, _deviceId: string, _queue: SyncQueueManager): number {
@@ -254,7 +257,7 @@ export class AgentConversationHandler extends BaseItemHandler<AgentConversationS
         trustList: payload.trustList,
         pinned: payload.pinned,
         vectorClock: payload.clock ?? {},
-        fieldClocks: payload.fieldClocks as FieldClocks,
+        fieldClocks: payload.fieldClocks,
         updatedAt: payload.updatedAt,
         deletedAt: payload.deletedAt ?? null,
         lastSyncedAt

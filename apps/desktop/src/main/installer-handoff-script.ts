@@ -174,6 +174,7 @@ export function judgeAuthenticode(stdout: string, expectedSubject: string): Auth
   // SAFETY: the brand check above establishes a plain object, and every field of
   // AuthenticodeSignatureJson is optional and checked before use, so the assertion
   // grants no trust that the checks below do not re-establish.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON from PowerShell Get-AuthenticodeSignature; every field is read defensively
   const report = parsed as AuthenticodeSignatureJson
   const status = report.Status
   if (status !== 0 && status !== 'Valid') {

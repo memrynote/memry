@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { motion, useInView, useReducedMotion } from 'motion/react'
+import { motion, stagger, useInView, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router'
 import { Container } from '@/components/layout/Container'
 
@@ -24,7 +24,7 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
   const reduceMotion = useReducedMotion()
 
   useEffect(() => {
-    if (!trigger) return
+    if (!trigger) return undefined
 
     function scramble() {
       setLines(
@@ -39,7 +39,7 @@ function useScramble(trigger: boolean, lineCount: number, charsPerLine: number) 
 
     scramble()
     // Reduced motion: one static cipher fill, no flicker loop.
-    if (reduceMotion) return
+    if (reduceMotion) return undefined
     intervalRef.current = setInterval(scramble, hovered ? FAST_INTERVAL : SLOW_INTERVAL)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)
@@ -141,7 +141,7 @@ export function SecurityShowcase() {
           animate={isInView ? 'show' : 'hidden'}
           variants={{
             hidden: {},
-            show: { transition: { staggerChildren: 0.12, delayChildren: 0.4 } }
+            show: { transition: { delayChildren: stagger(0.12, { startDelay: 0.4 }) } }
           }}
         >
           {PILLARS.map(({ title, desc }) => (

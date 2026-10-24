@@ -58,6 +58,7 @@ async function approvedArgs<T>(
   parsedArgs: T,
   ctx: ToolHandlerContext
 ): Promise<T> {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
   return (await gateOrDeny(gate, {
     writeGrant: ctx.writeGrant ?? '',
     windowId: ctx.windowId,
@@ -87,6 +88,7 @@ export function buildWriteTools(
           folder_path?: string
           tags?: string[]
         }>(TOOL_SCHEMAS.vault_create_note.input, input)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
@@ -417,6 +419,7 @@ export function buildWriteTools(
           TOOL_SCHEMAS.vault_create_journal_entry.input,
           input
         )
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
@@ -462,6 +465,7 @@ export function buildWriteTools(
           TOOL_SCHEMAS.vault_add_to_inbox.input,
           input
         )
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
@@ -570,6 +574,7 @@ export function buildWriteTools(
           mode: 'append' | 'prepend' | 'replace'
           content_markdown: string
         }>(TOOL_SCHEMAS.vault_update_note.input, input)
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
@@ -631,6 +636,7 @@ export function buildWriteTools(
           TOOL_SCHEMAS.vault_add_tag.input,
           input
         )
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
@@ -654,6 +660,7 @@ export function buildWriteTools(
           TOOL_SCHEMAS.vault_remove_tag.input,
           input
         )
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,
@@ -677,6 +684,7 @@ export function buildWriteTools(
           TOOL_SCHEMAS.vault_move_to_folder.input,
           input
         )
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- gateOrDeny returns the approved args typed as the broad parse result; they are the same parsedArgs object passed in
         const args = (await gateOrDeny(gate, {
           writeGrant: ctx.writeGrant ?? '',
           windowId: ctx.windowId,

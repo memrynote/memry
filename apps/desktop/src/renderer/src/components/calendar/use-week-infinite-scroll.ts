@@ -76,7 +76,7 @@ export function useWeekInfiniteScroll({
 
   useLayoutEffect(() => {
     const el = scrollContainerRef.current
-    if (!el) return
+    if (!el) return undefined
     const measure = (): void => {
       setContainerWidth(el.clientWidth)
     }
@@ -120,7 +120,7 @@ export function useWeekInfiniteScroll({
 
   useEffect(() => {
     const el = scrollContainerRef.current
-    if (!el) return
+    if (!el) return undefined
     const onScroll = (): void => {
       if (columnWidth <= 0) return
       // Chromium keeps scrollLeft on whole device pixels, so a programmatic
@@ -136,7 +136,7 @@ export function useWeekInfiniteScroll({
 
   useEffect(() => {
     const el = scrollContainerRef.current
-    if (!el) return
+    if (!el) return undefined
     const onWheel = (event: WheelEvent): void => {
       if (!event.shiftKey) return
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return

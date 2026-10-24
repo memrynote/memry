@@ -31,6 +31,7 @@ type Detail =
   | { kind: 'task'; task: Task }
   | { kind: 'inbox'; content: string | null; capturedAt: string }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; the implicit fallthrough is unreachable for typed input
 async function loadDetail(item: SearchResultItemType): Promise<Detail | null> {
   const meta = item.metadata
   switch (meta.type) {
@@ -61,7 +62,7 @@ function useDetail(item: SearchResultItemType): Detail | null | undefined {
   const key = resultValue(item)
   const [, rerender] = useState(0)
   useEffect(() => {
-    if (cache.current.has(key)) return
+    if (cache.current.has(key)) return undefined
     let cancelled = false
     const timer = setTimeout(() => {
       void loadDetail(item)

@@ -194,7 +194,7 @@ async function releaseCanvas(
     .get()
   // A concurrent edit on a peer revived it (delete loses to edit): it is live
   // again and keeps its assets.
-  if (canvas && canvas.deletedAt === null) return true
+  if (canvas?.deletedAt === null) return true
 
   const rows = db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, canvasId)).all()
   // The deleted canvas holds none of its images any more (#3022), kept or not:

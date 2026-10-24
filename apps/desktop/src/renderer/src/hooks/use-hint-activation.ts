@@ -13,6 +13,7 @@ export const useHintActivation = (): void => {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // oxlint-disable-next-line typescript/no-deprecated -- keyCode 229 is the only IME-composition marker WebKit sets on the keydown that follows compositionend; KeyboardEvent.key is "Process" or the raw key there
       if (e.isComposing || e.keyCode === 229 || isShortcutRecording()) return
 
       if (hintModeActiveRef.current) {
@@ -59,6 +60,7 @@ export const useHintActivation = (): void => {
       // Escape leaves a text field so F can start hint mode. A field holding an open popup
       // (slash, wiki-link or date menu, capture suggestions) marks it with aria-expanded; that
       // Escape only closes the popup, or the keys typed next run as app shortcuts.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
       const focused = document.activeElement as HTMLElement | null
       if (
         e.key === 'Escape' &&

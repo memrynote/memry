@@ -64,6 +64,7 @@ export function useSidebarSortMode(surface: SidebarSortSurface): UseSidebarSortM
     try {
       const unsubscribe = window.api?.onSettingsChanged?.((event) => {
         if (event.key !== SIDEBAR_SORT_SETTINGS_KEY) return
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed IPC event value is untyped; resolveSortMode validates each entry
         const modes = event.value as Partial<Record<SidebarSortSurface, SidebarSortMode>>
         setModeState(resolveSortMode(surface, modes?.[surface]))
       })

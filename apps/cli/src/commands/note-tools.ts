@@ -39,6 +39,7 @@ function parseJsonObject(value: string | undefined, label: string): Record<strin
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
     throw new Error(`${label} must be a JSON object`)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   return parsed as Record<string, unknown>
 }
 
@@ -166,7 +167,9 @@ export async function runNoteTools(app: MemryApp, parsed: ParsedCli, io: CliIo):
         json,
         await app.attachmentTools.attachExisting(
           noteId,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
           (existing as string).slice(0, slash),
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
           (existing as string).slice(slash + 1)
         )
       )

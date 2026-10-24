@@ -57,7 +57,7 @@ describe('useTagSuggestions chip styling', () => {
     editor.mount(el)
     mounted.push({ editor, el })
 
-    const containerRef = { current: el as HTMLDivElement }
+    const containerRef = { current: el }
     const { rerender } = renderHook(
       (maps: { color: Map<string, string>; icon: Map<string, string> }) =>
         useTagSuggestions({

@@ -73,6 +73,7 @@ export function WritingChrome({
         <DropdownMenuContent align="end" className="min-w-52">
           <DropdownMenuRadioGroup
             value={mode ?? NO_MODE}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Select values come from this component's own option list
             onValueChange={(value) => onSelectMode(value as WritingRailMode)}
           >
             {modes.map((entry) => (

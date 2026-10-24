@@ -44,6 +44,7 @@ export function RecoveryPhraseConfirm({
 
   const matches = useMemo(
     () =>
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- indices always has three entries, so the mapped array is the three-tuple
       indices.map((idx, i) => inputs[i].trim().toLowerCase() === words[idx].toLowerCase()) as [
         boolean,
         boolean,
@@ -70,7 +71,7 @@ export function RecoveryPhraseConfirm({
     })
   }, [])
 
-  const submit = (event: React.FormEvent): void => {
+  const submit = (event: React.SyntheticEvent): void => {
     event.preventDefault()
     if (allCorrect) onConfirmed()
   }

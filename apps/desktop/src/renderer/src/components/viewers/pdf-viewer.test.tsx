@@ -108,6 +108,7 @@ vi.mock('react-pdf', async () => {
       useEffect(() => {
         const canvas = {
           page: pageNumber,
+          // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
           kind: (width ? 'thumbnail' : 'main') as 'main' | 'thumbnail'
         }
         pdfMocks.liveCanvases.add(canvas)
@@ -133,7 +134,7 @@ const renderedPages = (): number[] =>
   screen
     .queryAllByTestId('pdf-thumbnail')
     .map((node) => Number(node.getAttribute('data-page')))
-    .sort((a, b) => a - b)
+    .toSorted((a, b) => a - b)
 
 const thumbnailFor = (page: number): HTMLElement => {
   const match = screen

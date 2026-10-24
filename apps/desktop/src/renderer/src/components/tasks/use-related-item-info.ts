@@ -67,7 +67,7 @@ export function useRelatedItemInfo(
 
   useEffect(() => {
     const ids = splitKey(noteKey)
-    if (!ids.length) return
+    if (!ids.length) return undefined
     let cancelled = false
     void Promise.all(
       ids.map(async (id) => {
@@ -109,7 +109,7 @@ export function useRelatedItemInfo(
 
   useEffect(() => {
     const ids = splitKey(canvasKey)
-    if (!ids.length) return
+    if (!ids.length) return undefined
     let cancelled = false
     const linked = new Set(ids)
     void canvasService.list().then(

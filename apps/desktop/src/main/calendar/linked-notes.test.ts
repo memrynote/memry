@@ -73,7 +73,7 @@ describe('calendar event note links', () => {
   beforeEach(() => {
     const dbs = createTestDatabases()
     dataDb = dbs.data.db as unknown as DataDb
-    indexDb = dbs.index.db as unknown as IndexDb
+    indexDb = dbs.index.db
     closeAll = dbs.closeAll
 
     dataDb

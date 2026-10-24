@@ -93,13 +93,13 @@ export function StickyCapture(): React.JSX.Element {
   }, [deleted, draft])
 
   useEffect(() => {
-    if (!deleted) return
+    if (!deleted) return undefined
     const timer = window.setTimeout(() => setDeleted(null), DELETE_UNDO_MS)
     return () => window.clearTimeout(timer)
   }, [deleted])
 
   useEffect(() => {
-    if (sent) return
+    if (sent) return undefined
     const onKey = (e: KeyboardEvent): void => {
       const mod = e.metaKey || e.ctrlKey
       if (e.key === 'Escape') {
@@ -135,7 +135,7 @@ export function StickyCapture(): React.JSX.Element {
 
   useEffect(() => {
     const el = containerRef.current
-    if (!el) return
+    if (!el) return undefined
     // The border box: the margin the card's shadow draws into counts too.
     const observer = new ResizeObserver(() => {
       const height = el.getBoundingClientRect().height

@@ -10,7 +10,7 @@ import { createRemindersService, type RemindersServiceHooks } from '@memry/app-c
 import type { DataDb } from './database.ts'
 
 test('reminder target types: canonical set is exactly the five supported targets', () => {
-  assert.deepEqual(Object.values(reminderTargetType).sort(), [
+  assert.deepEqual(Object.values(reminderTargetType).toSorted(), [
     'highlight',
     'journal',
     'note',
@@ -47,7 +47,7 @@ function createInMemoryDataDb(): DataDb {
       synced_at TEXT
     );
   `)
-  return drizzle(sqlite, { schema: dataSchema }) as DataDb
+  return drizzle(sqlite, { schema: dataSchema })
 }
 
 function collectMutations(): {
@@ -147,7 +147,7 @@ test('createRemindersService: onMutate fires delete with a non-empty snapshot th
     calls[0].snapshot,
     'delete snapshot must be non-empty so downstream enqueueDelete does not no-op'
   )
-  const parsedSnapshot = JSON.parse(calls[0].snapshot as string) as Record<string, unknown>
+  const parsedSnapshot = JSON.parse(calls[0].snapshot) as Record<string, unknown>
   assert.equal('triggeredAt' in parsedSnapshot, false)
   assert.equal(parsedSnapshot.id, row.id)
 })

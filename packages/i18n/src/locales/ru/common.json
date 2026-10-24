@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Не удалось скопировать портал",
+    "hiddenCount": "Скрыто: {count}",
+    "windowFailed": "Не удалось открыть этот портал. Откройте исходную заметку.",
+    "noTarget": "У этого портала пока нет цели. Добавьте заметку в определение или удалите блок.",
+    "invalidJson": "Определение этого портала — некорректный JSON. Исправьте его ниже или удалите блок.",
+    "invalidShape": "В определении этого портала нет заметки или поиска. Исправьте его ниже или удалите блок.",
+    "search": {
+      "editQuery": "Изменить запрос",
+      "count": "{count, plural, one {# блок} few {# блока} many {# блоков} other {# блока}}",
+      "loading": "Поиск…",
+      "empty": "Нет блоков, подходящих под этот запрос.",
+      "failed": "Не удалось выполнить поиск.",
+      "retry": "Повторить",
+      "truncated": "Показаны первые совпадения: {count}."
+    },
+    "copiedContents": "Содержимое скопировано",
+    "copiedLink": "Ссылка скопирована",
+    "actionFailed": "Не удалось изменить этот портал",
+    "keepsOneBlock": "В портале должен остаться хотя бы один блок. Удалите портал целиком.",
+    "expandChildren": "Показать вложенные",
+    "collapseChildren": "Скрыть вложенные",
+    "toolbar": {
+      "label": "Портал",
+      "include": "Включить «{block}»",
+      "locked": "{note} заблокирована · только чтение",
+      "more": "Ещё",
+      "openBeside": "Открыть {note} рядом",
+      "click": "Клик",
+      "copyContents": "Скопировать содержимое",
+      "copyLink": "Скопировать ссылку",
+      "remove": "Удалить портал",
+      "removeHint": "{note} сохранит все блоки"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Исходная заметка удалена. Ссылка сохранена.",
+        "action": "Удалить"
+      },
+      "missingBlock": {
+        "text": "Блок удалён в {source}.",
+        "action": "Выбрать другой"
+      },
+      "notSynced": {
+        "text": "Ожидание синхронизации исходной заметки.",
+        "action": "Повторить"
+      },
+      "cycle": {
+        "text": "Этот портал ведёт обратно на себя.",
+        "action": "Открыть источник"
+      },
+      "tooDeep": {
+        "text": "Порталы вкладываются на глубину {max}. Этот откроется как ссылка.",
+        "action": "Открыть источник"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Перейти к полю быстрой записи",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Открыть в приложении по умолчанию",
     "revealFailed": "Не удалось показать в папке"
   },
+  "commands": {
+    "runFailed": "Не удалось выполнить команду. Повторите попытку."
+  },
+  "commandsPalette": {
+    "title": "Команды",
+    "placeholder": "Введите команду…",
+    "groups": {
+      "navigation": "Навигация",
+      "create": "Создать",
+      "tabs": "Вкладки",
+      "editor": "Редактор",
+      "view": "Вид",
+      "app": "Приложение",
+      "note": "Заметка",
+      "settings": "Настройки",
+      "sync": "Синхронизация",
+      "help": "Справка",
+      "project": "Проект",
+      "tasks": "Задачи",
+      "canvas": "Холст",
+      "folder": "Папка",
+      "file": "Файл"
+    },
+    "contexts": {
+      "note": "Эта заметка",
+      "journal": "Этот дневник",
+      "project": "Этот проект",
+      "tasks": "Эти задачи",
+      "canvas": "Этот холст",
+      "folder": "Эта папка",
+      "tag": "Этот тег",
+      "file": "Этот файл"
+    },
+    "recent": "Недавние",
+    "empty": "Нет команд по запросу «{query}»",
+    "searchHint": "Поиск заметок: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# команда} few {# команды} many {# команд} other {# команды}}"
+    },
+    "actions": {
+      "run": "Выполнить",
+      "searchNotes": "Искать заметки"
+    }
+  },
   "tabs": {
     "pin": "Закрепить вкладку",
     "unpin": "Открепить вкладку",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Действие не выполнено",
-    "nothingToUndo": "Нечего отменять",
     "undone": "Отменено: {description}",
     "undoFailed": "Не удалось отменить действие",
     "filesImported": "{count, plural, one {Импортирован # файл} few {Импортировано # файла} many {Импортировано # файлов} other {Импортировано # файла}}",
@@ -131,6 +231,20 @@
     "openInTab": "Открыть чат во вкладке",
     "stop": "Остановить",
     "thinking": "Агент думает",
+    "toolsUnavailable": "Инструменты хранилища отключены для этой модели: она не прошла проверку инструментов и может только вести чат.",
+    "toolsUnavailableWithDetail": "Инструменты хранилища отключены для этой модели: она не прошла проверку инструментов и может только вести чат. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Инструменты хранилища отключены для этой модели. Провайдер отклонил тестовый запрос с инструментами, поэтому модель может только вести чат.",
+      "noToolCall": "Инструменты хранилища отключены для этой модели. Она ответила на тестовый запрос, не вызвав инструмент, поэтому может только вести чат.",
+      "toolResultRejected": "Инструменты хранилища отключены для этой модели. Она вызвала тестовый инструмент, но дала сбой после получения результата, поэтому может только вести чат.",
+      "streamingUnsupported": "Инструменты хранилища отключены для этой модели. Провайдер не передал тестовый ответ потоком, поэтому модель может только вести чат.",
+      "providerSaid": "Провайдер сообщил: {detail}",
+      "wroteToolCall": "Модель написала вызов инструмента текстом, и ничего не выполнилось."
+    },
+    "stepLimit": {
+      "notice": "Остановлено по лимиту шагов.",
+      "continue": "Продолжить"
+    },
     "enable": {
       "title": "Включить агента memrynote",
       "description": "Агент memrynote использует выбранный вами локальный CLI-агент, чтобы обсуждать содержимое хранилища. Claude отправляет запросы в Anthropic, Codex — в OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Агент хочет создать {title}. Проверьте изменение, прежде чем применять его.",
       "descriptionDelete": "Агент хочет удалить {title}. Проверьте изменение, прежде чем применять его.",
       "fallbackTitle": "этот элемент",
-      "current": "Текущая версия",
       "candidate": "Предлагаемая версия",
       "loading": "Загрузка…",
       "apply": "Применить",
@@ -268,13 +381,18 @@
       "removeAttachment": "Убрать {label}",
       "placeholder": "Поручите memrynote что угодно… @ — упомянуть заметку, задачу или событие",
       "send": "Отправить",
-      "providerLabel": "Провайдер агента: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Подключённые инструменты",
       "connectTool": "Подключить {tool}",
-      "addContext": "Добавить контекст",
-      "addContextWithPermissions": "Добавить контекст ({permissions})",
       "mentionContext": "Упомянуть заметку, задачу или событие",
+      "files": {
+        "attach": "Прикрепить текстовый файл",
+        "refused": {
+          "unsupportedType": "{name} не является поддерживаемым текстовым файлом. Прикрепите файл .txt, .md, .log, .csv, .tsv, .json, .yaml или .yml.",
+          "notText": "{name} не является текстовым файлом в UTF-8. Прикрепите текстовый файл.",
+          "tooLarge": "Из-за {name} сообщение превысит лимит в 100 КБ. Уберите файл или прикрепите файл поменьше.",
+          "readFailed": "Не удалось прочитать {name}. Проверьте, что файл существует и открывается, и прикрепите его снова."
+        }
+      },
       "voice": {
         "start": "Начать голосовой ввод",
         "stop": "Остановить голосовой ввод",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Не удалось распознать речь"
         }
       },
-      "modelLabel": "Модель агента: {provider} {model}",
-      "reasoningLabel": "Рассуждение агента: {reasoning}",
       "providers": {
-        "label": "Провайдер",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Доступ к компьютеру"
       },
       "webSearch": {
-        "on": "Вкл.",
-        "off": "Выкл.",
         "label": "Веб-поиск"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Агент недоступен — открыть настройки…"
       },
       "settings": {
-        "reasoning": "Рассуждение",
         "effort": "Уровень усилий"
       },
       "includeCurrentNote": "Добавить текущую заметку",
@@ -340,13 +452,29 @@
           "extraHigh": "Очень высокий"
         }
       },
-      "permissionsLabel": "Разрешения агента: {access}, веб-поиск: {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "По умолчанию",
+          "default": "Глубина по умолчанию",
+          "high": "Высокая",
+          "max": "Максимальная"
+        }
+      },
       "permissions": {
-        "label": "Разрешения",
-        "access": "Доступ",
-        "tools": "Инструменты"
+        "access": "Доступ"
       },
       "modelSettingsLabel": "Настройки модели агента: {model}, {settings}",
+      "queue": {
+        "label": "Сообщения в очереди",
+        "queueMessage": "Поставить сообщение в очередь",
+        "edit": "Изменить сообщение в очереди",
+        "editLabel": "Текст сообщения в очереди",
+        "remove": "Удалить сообщение из очереди",
+        "save": "Сохранить",
+        "cancel": "Отмена",
+        "sending": "Отправка…",
+        "notSent": "Не отправлено. Измените сообщение, чтобы отправить снова, или удалите его."
+      },
       "unavailable": {
         "vaultToolsOnly": "С этой моделью только инструменты хранилища"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Не удалось сохранить состояние раскрытия",
       "resolveWindow": "Не удалось определить исходное окно агента",
       "detectCli": "Не удалось обнаружить бэкенды агента",
-      "loadDisclosure": "Не удалось загрузить состояние раскрытия"
+      "loadDisclosure": "Не удалось загрузить состояние раскрытия",
+      "turnFailed": "Ответ прервался с ошибкой. Ваше сообщение сохранено, его можно отправить снова."
     },
     "actions": {
       "copy": "Скопировать",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Перетащите файлы для импорта",
       "dropFilesIntoVaultRoot": "Корневая папка хранилища",
       "newNoteN": "Новая заметка (⌘N)",
-      "new": "Создать",
       "newItemMenu": "Создать…",
       "feedbackButton": "Отправить отзыв",
       "feedbackTitle": "Отправить отзыв",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Найти, заменить, спросить…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Пропустить знакомство",
-      "welcomeToMemry": "Добро пожаловать в memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша личная база знаний. Настройка займёт всего 2 минуты.",
-      "getStarted": "Начать ",
-      "createYourFirstNote": "Создайте свою первую заметку",
-      "markdownBasedStoredLocallyAsPlainFiles": "На основе Markdown, хранятся локально в виде простых файлов.",
-      "eGMeetingNotesIdeasAnything": "Например: заметки со встреч, идеи, что угодно…",
-      "skip": "Пропустить",
-      "createNote": "Создать заметку ",
-      "addYourFirstTask": "Добавьте свою первую задачу",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Задачи связаны с заметками, у них есть приоритеты и сроки.",
-      "eGReviewProjectProposal": "Например: изучить предложение по проекту…",
-      "skip2": "Пропустить",
-      "createTask": "Создать задачу ",
-      "syncAcrossDevices": "Синхронизация между устройствами",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Синхронизируйте заметки и задачи на всех своих устройствах. Вы всегда можете настроить это позже.",
-      "skipForNow": "Не сейчас",
-      "doneLetSGo": "Готово — поехали! "
+      "skip": "Пропустить"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Установить значок папки",
@@ -707,8 +818,7 @@
       "unknownTabType": "Неизвестный тип вкладки: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "несохранённые изменения",
-      "preview": "предпросмотр"
+      "unsavedChanges": "несохранённые изменения"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Новая вкладка",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Перетащите, чтобы изменить размер · Дважды щёлкните, чтобы сбросить"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Добро пожаловать в memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ваша персональная система управления знаниями.",
-      "selectAFolderToStoreYourNotesAndTasks": "Выберите папку для хранения ваших заметок и задач.",
       "opening": "Открытие…",
-      "selectVaultFolder": "Выбрать папку хранилища",
-      "plainMarkdown": "Обычный Markdown",
-      "yourNotesStayPortable": "Заметки легко перенести куда угодно",
-      "syncAnywhere": "Синхронизация где угодно",
-      "useDropboxIcloudGit": "Через Dropbox, iCloud, Git",
       "recentVaults": "Недавние хранилища",
-      "notesLastOpened": "заметки · Последнее открытие",
-      "preRelease": "Бета",
       "createNewVault": "Создать новое хранилище",
-      "createNewVaultDesc": "Создайте новое хранилище в любой папке.",
-      "openExistingVault": "Открыть существующее хранилище",
-      "openExistingVaultDesc": "Выберите папку с Markdown-файлами, которые у вас уже есть.",
-      "signInToSync": "Войдите, чтобы включить синхронизацию",
-      "signInToSyncDesc": "Хранилища со сквозным шифрованием на всех ваших устройствах.",
-      "create": "Создать",
       "open": "Открыть",
-      "signIn": "Войти",
       "helpAndDocs": "Справка и документация",
-      "signInRequiresVault": "Сначала откройте или создайте хранилище, чтобы настроить синхронизацию.",
       "addVault": "Добавить хранилище",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Хранилищ пока нет",
       "openVault": "Открыть хранилище",
       "settings": "Настройки",
-      "logOut": "Выйти",
-      "signInToSync": "Войдите, чтобы включить синхронизацию",
       "remove": "Убрать «",
       "removeVaultTitle": "Убрать «{name}» из списка?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Хранилище будет убрано из приложения, но файлы останутся на диске. Его всегда можно добавить снова.",
       "cancel": "Отмена",
       "remove2": "Убрать",
       "inYourAccount": "В вашем аккаунте",
+      "trySandbox": "Попробовать песочницу",
+      "sandboxVault": "Хранилище-песочница",
+      "sandboxPreparing": "Подготовка песочницы…",
+      "sandboxFailed": "Не удалось подготовить хранилище-песочницу",
+      "resetSandbox": "Сбросить хранилище-песочницу",
       "itemsCount": "Элементов: {count}",
       "untitledVault": "Хранилище",
       "downloadVaultTitle": "Скачать «{name}»",
@@ -870,7 +965,6 @@
       "changeLocation": "Изменить…",
       "download": "Скачать",
       "downloadFailed": "Не удалось скачать хранилище",
-      "deleteFromAccount": "Удалить из аккаунта",
       "deleteVaultTitle": "Удалить «{name}» из вашего аккаунта?",
       "deleteVaultBody": "Все синхронизированные данные этого хранилища будут навсегда удалены с серверов Memry. Это действие нельзя отменить. Ваши файлы останутся на диске.",
       "deleteVaultConfirm": "Удалить из аккаунта",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Убрать виджет",
       "dragAria": "Перетащить виджет",
-      "configAria": "Настроить виджет",
-      "resizeAria": "Изменить размер до {size}",
       "menuAria": "Параметры виджета",
-      "resize": "Размер",
       "remove": "Убрать",
       "filter": {
         "all": "Все",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Здесь появятся заметки, которые вы открываете",
       "bookmarks": "Закладки",
       "tasks": "Задачи",
+      "chart": "График",
       "calendar": "Календарь",
       "calendarToday": "Сегодня",
       "openCalendar": "Открыть календарь",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Выберите папку",
       "folderEmpty": "Папок пока нет",
       "folderNoSelection": "Папка не выбрана",
-      "folderView_list": "Список",
-      "folderView_gallery": "Галерея",
       "folderViewSelect": "Вид",
       "project": "Проект",
       "projectNoSelection": "Проект не выбран",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Макет главной",
       "deleteAria": "Удалить макет",
-      "newAria": "Новая доска",
       "newName": "Новая доска",
       "defaultName": "Главная",
       "manage": "Управление досками",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# задача на сегодня} few {# задачи на сегодня} many {# задач на сегодня} other {# задачи на сегодня}}",
       "events": "{count, plural, one {# событие} few {# события} many {# событий} other {# события}}"
     },
-    "edit": "Изменить",
-    "done": "Готово",
     "addWidget": "Добавить виджет",
+    "cover": {
+      "add": "Добавить обложку"
+    },
     "empty": {
       "title": "Доска пуста",
       "body": "Виджеты собирают ваши заметки, задачи и закладки в одном спокойном месте.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Знакомство завершено",
-      "body": "Пожалуйста, поставьте нам звезду на GitHub — так другие люди смогут узнать о MemryNote.",
-      "action": "Поставить звезду на GitHub"
+      "body": "Пожалуйста, поставьте нам звезду на GitHub — так другие люди смогут узнать о MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Обновление готово",
     "failed": "Ошибка обновления",
     "downloadAction": "Скачать",
-    "restartAction": "Перезапустить",
     "detailsAction": "Подробнее",
     "popover": {
       "readyTitle": "MemryNote {version} готов к установке",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Хранилища",
     "position": "{name}, хранилище {index} из {count}",
-    "openList": "{position}. Открыть список хранилищ",
     "switchTo": "Переключиться на «{name}»",
     "switchingTo": "Переключение на «{name}»",
     "changeIcon": "Изменить значок…",
     "resetIcon": "Сбросить значок",
     "iconButton": "Изменить значок хранилища «{name}»",
+    "leaveSandbox": "Назад в «{name}»",
     "iconFailed": "Не удалось изменить значок хранилища"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Тип",
     "filterModified": "Изменено",
     "matches": "Совпадения",
+    "matchesMore": "{count, plural, one {Ещё # совпадение} few {Ещё # совпадения} many {Ещё # совпадений} other {Ещё # совпадения}}",
+    "matchesHide": "Скрыть совпадения",
+    "matchOf": "Совпадение {index} из {total}",
     "showMore": "Ещё {count}",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Следующий раздел",
       "open": "Открыть",
       "openNote": "Открыть заметку",
+      "openAtMatch": "Открыть на совпадении",
       "openFile": "Открыть файл",
       "openJournal": "Открыть журнал",
       "openTask": "Открыть задачу",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Выбрать тег",
       "addTag": "Добавить тег",
       "showAll": "Показать все",
+      "hideMatches": "Скрыть совпадения",
       "searchEverywhere": "Искать везде",
       "clearFilters": "Сбросить фильтры"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "На {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Найдено # хранилище} few {Найдено # хранилища} many {Найдено # хранилищ} other {Найдено # хранилища}}",
-      "notion": "Notion",
       "otherApps": "Другие приложения и файлы",
       "otherAppsHint": "и ещё {count}",
       "detectedFootnote": "Найдено по списку установленных приложений. Ничего не покидает устройство: всё остаётся на {device}.",

@@ -53,7 +53,7 @@ describe('bootstrap session tokens', () => {
     )
     const [payload] = token.split('.')
     // Swap the userId inside the payload without re-signing.
-    const decoded = JSON.parse(Buffer.from(payload!, 'base64url').toString())
+    const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString())
     decoded.userId = 'victim'
     const forged = `${Buffer.from(JSON.stringify(decoded)).toString('base64url')}.${token.split('.')[1]}`
 
@@ -550,6 +550,7 @@ describe('open/renew/close over real SQLite', () => {
         deviceId: 'd3',
         vaultId: 'v1'
       })
+      // oxlint-disable-next-line no-unmodified-loop-condition -- flag is set by a callback while the loop awaits
       while (!parkedAtInsert) await new Promise((r) => setTimeout(r, 0))
 
       // …d4 slips a complete open through the gap…

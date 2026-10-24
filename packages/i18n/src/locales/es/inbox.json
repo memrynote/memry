@@ -15,19 +15,13 @@
       "showWithCount": "Mostrar elementos pospuestos ({count})",
       "hide": "Ocultar elementos pospuestos"
     },
-    "density": {
-      "toComfortable": "Vista cómoda",
-      "toCompact": "Vista compacta"
-    },
     "filter": {
-      "button": "Filtrar",
       "byType": "Filtrar por tipo",
       "active": "{count, plural, one {Filtrando por # tipo} other {Filtrando por # tipos}}",
       "clearAll": "Quitar todo"
     },
     "jobs": {
-      "running": "{count, plural, one {# proceso en segundo plano en ejecución} other {# procesos en segundo plano en ejecución}}",
-      "failed": "{count} fallidos"
+      "running": "{count, plural, one {# proceso en segundo plano en ejecución} other {# procesos en segundo plano en ejecución}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Crear «{name}»",
     "addTags": "Añadir etiquetas…",
     "linkToNote": "Enlazar a una nota",
-    "linkANote": "Enlazar una nota",
-    "suggestedCount": "{count} sugeridas",
-    "linkNotesPlaceholder": "Enlazar notas…",
     "linkOrCreateNotePlaceholder": "Buscar o crear una nota…",
     "createNote": "Crear «{title}»",
     "pendingNote": "Nueva nota",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Los datos del recordatorio no están disponibles.",
     "triggered": "Recordatorio activado",
-    "noteLabel": "Nota del recordatorio",
     "source": "Origen",
     "journalTitle": "Diario: {date}",
     "noteFallback": "Nota",
@@ -514,9 +504,7 @@
       "settings": "Ajustes",
       "processing": "Procesando…",
       "cancelRecording": "Cancelar grabación",
-      "cancel": "Cancelar",
       "stopRecording": "Detener grabación",
-      "stop": "Detener",
       "recordingError": "Se produjo un error de grabación",
       "microphoneAccessDenied": "Acceso al micrófono denegado",
       "noMicrophoneFound": "No se encontró ningún micrófono",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, one {# elemento pospuesto} other {# elementos pospuestos}}",
     "notificationBody": "{count, plural, one {Tu elemento pospuesto está listo para revisarlo} other {Tus elementos pospuestos están listos}}",
     "toast": "{count, plural, =1 {«{itemTitle}» ya no está pospuesto} one {# elemento ya no está pospuesto} other {# elementos pospuestos han vuelto}}"
+  },
+  "sticky": {
+    "kindLabel": "Enviar como",
+    "kinds": {
+      "note": "Nota",
+      "task": "Tarea",
+      "journal": "Diario"
+    },
+    "placeholders": {
+      "note": "Apúntalo…",
+      "task": "Llamar a Ana @mañana #casa !alta",
+      "journal": "Añadir al diario de hoy…"
+    },
+    "saving": "Guardando…",
+    "saved": "Guardado",
+    "saveFailed": "No guardado",
+    "tuck": "Guardar a un lado",
+    "send": "Enviar",
+    "hints": "Esc guardar a un lado · {mod}⌫ eliminar",
+    "sendAndCloseHint": "⌥{mod}↵ envía y cierra",
+    "deleted": "Borrador eliminado",
+    "open": "Abrir",
+    "undo": "Deshacer",
+    "sent": {
+      "note": "Guardado en la carpeta Sticky",
+      "task": "Tarea añadida",
+      "journal": "Añadido al diario de hoy"
+    },
+    "tab": {
+      "label": "{count, plural, one {# borrador sticky} other {# borradores sticky}}",
+      "newSticky": "Nuevo sticky"
+    },
+    "errors": {
+      "empty": "Escribe algo primero.",
+      "taskFailed": "No se pudo crear la tarea.",
+      "tasksOff": "Las tareas están desactivadas en Ajustes.",
+      "journalOff": "El diario está desactivado en Ajustes.",
+      "sendFailed": "No se pudo enviar el sticky.",
+      "undoExpired": "Es demasiado tarde para deshacerlo.",
+      "undoFailed": "No se pudo deshacer el envío."
+    },
+    "inputLabel": "Texto del sticky",
+    "dismissError": "Descartar"
   }
 }

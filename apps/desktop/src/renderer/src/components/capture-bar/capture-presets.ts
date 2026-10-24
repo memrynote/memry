@@ -117,7 +117,7 @@ export function stripTokens(
 ): string {
   const spans = findQuickAddSpans(value, now)
     .filter((span) => kinds.includes(span.kind))
-    .sort((a, b) => b.start - a.start)
+    .toSorted((a, b) => b.start - a.start)
   if (spans.length === 0) return value
 
   let next = value
@@ -134,6 +134,7 @@ export const isPresetDefault = (presets: TaskPresets, field: TaskPresetField): b
 }
 
 export const hasNonDefaultPresets = (presets: TaskPresets): boolean =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys returns string[]; DEFAULT_PRESETS keys are TaskPresets fields
   (Object.keys(DEFAULT_PRESETS) as TaskPresetField[]).some(
     (field) => !isPresetDefault(presets, field)
   )

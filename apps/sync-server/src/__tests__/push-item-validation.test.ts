@@ -48,10 +48,10 @@ const seed = async (): Promise<void> => {
   ])) as CryptoKeyPair
   signingKey = keyPair.privateKey
   const publicKey = Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       keyPair.publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
   harness.raw
@@ -144,7 +144,7 @@ const push = async (app: Hono<AppContext>, items: unknown[]): Promise<Response> 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items })
     },
-    env as unknown as Record<string, unknown>,
+    env,
     {
       waitUntil: () => undefined,
       passThroughOnException: () => undefined
@@ -195,7 +195,7 @@ describe('#given a batch with one schema-invalid item', () => {
       rejected: Array<{ id: string; reason: string }>
     }
 
-    expect(body.accepted.sort()).toEqual(['task-ok-1', 'task-ok-2'])
+    expect(body.accepted.toSorted()).toEqual(['task-ok-1', 'task-ok-2'])
     expect(body.rejected).toHaveLength(1)
     expect(body.rejected[0].id).toBe('note-no-clock')
     expect(body.rejected[0].reason).toContain('SYNC_INVALID_ITEM')
@@ -228,7 +228,7 @@ describe('#given a batch where every item is invalid', () => {
     }
 
     expect(body.accepted).toEqual([])
-    expect(body.rejected.map((entry) => entry.id).sort()).toEqual(['note-a', 'note-b'])
+    expect(body.rejected.map((entry) => entry.id).toSorted()).toEqual(['note-a', 'note-b'])
     expect(body.maxCursor).toBe(0)
     expect(body.serverTime).toBeGreaterThan(0)
   })

@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Yapay zeka bağlantıları",
     "todaysNotes": "Bugünkü notlar",
-    "todaysSchedule": "Bugünkü program",
-    "todaysTasks": "Bugünkü görevler",
     "tasks": "Görevler",
     "technicalDetails": "Teknik ayrıntılar"
   },
@@ -102,8 +100,7 @@
       "afternoon": "İyi günler",
       "evening": "İyi akşamlar",
       "night": "İyi geceler"
-    },
-    "allDay": "Tüm gün"
+    }
   },
   "nav": {
     "previousDay": "Önceki gün",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Daha fazla seçenek",
     "documentStatistics": "Belge istatistikleri",
-    "dayContext": "Gün bağlamı: görevler ve program",
-    "scheduleEvents": "Program etkinlikleri",
-    "tasks": "Görevler",
     "notesCreatedToday": "Bugün {count} not oluşturuldu"
   },
   "empty": {
     "noEntry": "Girdi yok",
     "noDaysInMonth": "Bu ayda gün yok",
-    "noEventsScheduled": "Planlanmış etkinlik yok",
-    "noEventsScheduledToday": "Bugün planlanmış bir etkinlik yok",
-    "noEventsWereScheduled": "Hiçbir etkinlik planlanmadı",
-    "noTasksDue": "Son tarihi bu gün olan görev yok",
-    "noTasksDueToday": "Son tarihi bugün olan görev yok",
-    "noTasksWereDue": "Son tarihi bu gün olan görev yoktu",
     "noNotesToday": "Bugün hiç not oluşturulmadı",
     "startDocumenting": "Düşüncelerinizi ve fikirlerinizi belgelemeye başlayın"
   },
@@ -155,9 +143,7 @@
     "day": "gün",
     "days": "gün",
     "event": "etkinlik",
-    "events": "etkinlik",
     "task": "görev",
-    "todo": "yapılacak",
     "moreConnections": "+ {count} bağlantı daha",
     "moreConnections_plural": "+ {count} bağlantı daha",
     "moreNotes": "+ {count} not daha",
@@ -166,7 +152,6 @@
     "charactersWritten": "yazılan karakter",
     "words": "{count} kelime",
     "characters": "{count} karakter",
-    "completed": "{count} tamamlandı",
     "overdue": "{count} gecikmiş"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Değiştirilme: {date}"
   },
   "task": {
-    "completed": "Tamamlandı",
-    "notCompleted": "Tamamlanmadı",
-    "priority": "{priority} öncelikli",
-    "overdue": "gecikmiş",
-    "markComplete": "“{title}” görevini tamamla",
-    "markNotComplete": "“{title}” görevini tamamlanmadı olarak işaretle"
+    "priority": "{priority} öncelikli"
   },
   "template": {
     "using": "“{templateName}” şablonu kullanılıyor"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "İçeriğiniz hâlâ bellekte. Kaydetmeyi yeniden denemek için tıklayın.",
-    "noteNotFound": "“{target}” notu bulunamadı",
     "createLinkedFailed": "Bağlantılı not oluşturulamadı",
     "fileNotFound": "Dosya bulunamadı: {target}",
     "openLinkedItemFailed": "Bağlantılı öğe açılamadı",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Günlük girdisini sil",
     "description": "“{title}” girdisini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz."
+  },
+  "dayTimeline": {
+    "label": "Gün programı",
+    "allDay": "Tüm gün öğeleri",
+    "unscheduled": "Zamanlanmamış",
+    "unscheduledEmpty": "Zamanlanmamış görev yok. Saatini kaldırmak için bir bloğu buraya sürükleyin.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} görevini tamamla"
   }
 }

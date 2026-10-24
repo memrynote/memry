@@ -1,12 +1,17 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { createConversationStore } from '../../storage/conversation-store'
 import { createMessageStore } from '../../storage/message-store'
 import { backfillAgentChatRows } from '../backfill'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
+
+const byId = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
 
 function freshDb() {
   const sqlite = new Database(':memory:')
@@ -89,14 +94,14 @@ describe('backfillAgentChatRows', () => {
       calls
         .filter((item) => item.type === 'agent_conversation')
         .map((item) => item.id)
-        .sort()
-    ).toEqual([first.id, second.id].sort())
+        .toSorted(byId)
+    ).toEqual([first.id, second.id].toSorted(byId))
     expect(
       calls
         .filter((item) => item.type === 'agent_message')
         .map((item) => item.id)
-        .sort()
-    ).toEqual([terminalA.id, terminalB.id].sort())
+        .toSorted(byId)
+    ).toEqual([terminalA.id, terminalB.id].toSorted(byId))
     expect(onProgress).toHaveBeenCalled()
   })
 

@@ -82,7 +82,11 @@ export function archiveCalendarsOfDisconnectedGoogleAccounts(db: DataDb): void {
     .all()
   if (liveCalendars.length === 0) return
 
-  const accountIds = [...new Set(liveCalendars.map((source) => source.accountId as string))]
+  const accountIds = [
+    ...new Set(
+      liveCalendars.flatMap((source) => (source.accountId === null ? [] : [source.accountId]))
+    )
+  ]
   const disconnected = new Set(
     accountIds.filter((accountId) => isGoogleAccountDisconnected(db, accountId))
   )

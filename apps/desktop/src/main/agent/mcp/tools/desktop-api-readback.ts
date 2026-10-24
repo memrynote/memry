@@ -15,6 +15,7 @@ interface Readback {
 const whole = (data: unknown) => data
 
 function field(value: unknown, key: string): unknown {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   return value && typeof value === 'object' ? (value as Record<string, unknown>)[key] : undefined
 }
 

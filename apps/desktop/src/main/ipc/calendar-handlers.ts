@@ -121,12 +121,12 @@ function mapCalendarEvent(row: typeof calendarEvents.$inferSelect): CalendarEven
     isAllDay: row.isAllDay,
     recurrenceRule: row.recurrenceRule ?? null,
     recurrenceExceptions: row.recurrenceExceptions ?? null,
-    attendees: (row.attendees as CalendarEventRecord['attendees']) ?? null,
-    reminders: (row.reminders as CalendarEventRecord['reminders']) ?? null,
-    visibility: (row.visibility as CalendarEventRecord['visibility']) ?? null,
+    attendees: row.attendees ?? null,
+    reminders: row.reminders ?? null,
+    visibility: row.visibility ?? null,
     colorId: row.colorId ?? null,
     color: calendarEventColorFromColorId(row.colorId),
-    conferenceData: (row.conferenceData as CalendarEventRecord['conferenceData']) ?? null,
+    conferenceData: row.conferenceData ?? null,
     parentEventId: row.parentEventId ?? null,
     originalStartTime: row.originalStartTime ?? null,
     targetCalendarId: row.targetCalendarId ?? null,
@@ -149,7 +149,7 @@ function toEventSearchItem(row: typeof calendarEvents.$inferSelect): CalendarEve
 }
 
 function sortSources(sources: CalendarSourceRecord[]): CalendarSourceRecord[] {
-  return [...sources].sort((left, right) => {
+  return [...sources].toSorted((left, right) => {
     if (left.kind !== right.kind) {
       return left.kind === 'account' ? -1 : 1
     }
@@ -377,7 +377,7 @@ export function registerCalendarHandlers(): void {
         Math.abs(Date.parse(item.startAt) - nowMs) || 0
       return {
         events: [...events, ...external]
-          .sort((a, b) => distance(a) - distance(b))
+          .toSorted((a, b) => distance(a) - distance(b))
           .slice(0, input.limit)
       }
     })

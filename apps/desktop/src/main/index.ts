@@ -947,6 +947,7 @@ function createWindow(): void {
   })
 
   mainWindow.on('swipe', (_event, direction) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Electron's swipe event emits only up/down/left/right, which AppNavigationSwipeDirection mirrors
     sendAppNavigationSwipeCommand(mainWindow.webContents, direction as AppNavigationSwipeDirection)
   })
 
@@ -1167,6 +1168,7 @@ function ensureStartupWindow(error: unknown): void {
   // The window is created synchronously above and revealed by the fallback timer
   // regardless, so resolving the localized copy can never be what leaves the
   // user with no window.
+  // oxlint-disable-next-line promise/no-promise-in-callback -- fire-and-forget page load on the crash screen; nothing to chain a rejection to
   void loadPreBootCopy().then((copy) => {
     if (errorWindow.isDestroyed()) return
     void errorWindow.loadURL(
@@ -1315,6 +1317,7 @@ if (!headlessCliArgs && !allowMultiInstanceForDeviceTests) {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
+// oxlint-disable-next-line promise/always-return -- startup callback returns early (bare return) for headless CLI args; appReady's value is never read
 const appReady = app.whenReady().then(async () => {
   // Register the process-level nets before ANY other startup work: failures in
   // the identity carry-over / pending-install window used to happen before the
@@ -1374,7 +1377,7 @@ const appReady = app.whenReady().then(async () => {
         // Get the latest version directory
         const versions = readdirSync(extensionDir).filter((v) => !v.startsWith('.'))
         if (versions.length > 0) {
-          const latestVersion = versions.sort().pop()!
+          const latestVersion = versions.toSorted().pop()!
           const extensionPath = join(extensionDir, latestVersion)
 
           // Check if extensions API is available (Electron 38+)
@@ -1597,7 +1600,7 @@ const appReady = app.whenReady().then(async () => {
         }
       }
 
-      return new Promise<string | null>((resolve) => {
+      return new Promise<string | null>((finish) => {
         const menu = new Menu()
         let resolved = false
 
@@ -1613,7 +1616,7 @@ const appReady = app.whenReady().then(async () => {
                 click: () => {
                   if (!resolved) {
                     resolved = true
-                    resolve(item.id)
+                    finish(item.id)
                   }
                 }
               })
@@ -1626,7 +1629,7 @@ const appReady = app.whenReady().then(async () => {
           setTimeout(() => {
             if (!resolved) {
               resolved = true
-              resolve(null)
+              finish(null)
             }
           }, 100)
         })
@@ -2048,10 +2051,10 @@ function removePendingFlush(requestId: string): void {
 const FLUSH_WINDOW_TIMEOUT_MS = 2000
 
 function flushWindow(win: BrowserWindow, timeoutMs = FLUSH_WINDOW_TIMEOUT_MS): Promise<void> {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((finish) => {
     if (win.isDestroyed() || !win.webContents) {
       shutdownLog.info('flushWindow: window already destroyed', win.id)
-      resolve()
+      finish()
       return
     }
 
@@ -2065,7 +2068,7 @@ function flushWindow(win: BrowserWindow, timeoutMs = FLUSH_WINDOW_TIMEOUT_MS): P
       settled = true
       clearTimeout(timer)
       removePendingFlush(requestId)
-      resolve()
+      finish()
     }
 
     const timer = setTimeout(() => {

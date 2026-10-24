@@ -97,7 +97,8 @@ export function pickIconExtension(
   const ext = path.extname(url.pathname).slice(1).toLowerCase()
   const normalized = ext === 'jpeg' ? 'jpg' : ext
   return (CUSTOM_ICON_INPUT_EXTENSIONS as readonly string[]).includes(normalized)
-    ? (normalized as CustomIconInputExtension)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- normalized is the lower-cased extension; the includes() check above restricts it to the allowed set
+      (normalized as CustomIconInputExtension)
     : null
 }
 

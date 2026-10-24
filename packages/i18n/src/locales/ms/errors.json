@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Pelan anda menyegerakkan lebih sedikit bilik kebal daripada yang ada dalam akaun ini, jadi bilik kebal ini kekal pada peranti ini. Alih keluar bilik kebal daripada akaun anda dalam Tetapan → Akaun, atau naik taraf pelan anda.",
     "certificatePinFailed": "Sambungan selamat gagal. Semak sambungan rangkaian anda.",
     "deviceKeyMismatch": "Kunci keselamatan peranti ini tidak lagi sepadan dengan kunci yang didaftarkan untuk akaun anda, jadi pelayan menolak perubahannya. Log masuk semula pada peranti ini untuk mendaftarkannya semula.",
+    "deviceKeysMissing": "Perubahan pada peranti ini tidak dimuat naik kerana kunci peranti hilang. Pilih Baiki untuk memulihkannya. Jika peranti ini tidak lagi memegang kuncinya, anda akan log masuk semula dan mungkin memerlukan frasa pemulihan. Nota, tugas dan projek yang belum disegerakkan dikekalkan.",
     "keychainUnavailable": "Penyegerakan dijeda kerana Memry tidak dapat membaca kunci penyegerakannya daripada rantai kunci sistem anda buat masa ini. Buka kunci rantai kunci anda dan penyegerakan akan bersambung semula dengan sendirinya; jika tidak, mulakan semula Memry. Tiada apa-apa yang dipadam.",
     "unknown": "Ralat penyegerakan yang tidak dijangka berlaku. Akan mencuba semula secara automatik.",
     "statusFetchFailed": "Gagal mengambil status penyegerakan",
@@ -106,6 +107,10 @@
     "triggerFailed": "Penyegerakan gagal",
     "pauseFailed": "Gagal menjeda penyegerakan",
     "resumeFailed": "Gagal menyambung semula penyegerakan",
+    "syncNowSignedOut": "Penyegerakan memerlukan anda log masuk semula pada peranti ini.",
+    "syncNowBusy": "Penyegerakan sedang berjalan. Cuba lagi sebentar lagi.",
+    "syncNowPaused": "Penyegerakan dijeda semasa ia berjalan. Sambungkannya daripada menu penyegerakan.",
+    "openAccountSettings": "Buka tetapan",
     "settingsNotInitialized": "Penyegerakan tetapan tidak dimulakan",
     "securityQuarantinePermanent": "Item penyegerakan tidak dapat disahkan dan telah dikuarantin untuk keselamatan.",
     "securityQuarantineRetry": "Item penyegerakan gagal pengesahan tandatangan dan akan dicuba semula.",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "Pengeditan AI dalam baris dilumpuhkan",
-    "listOllamaModelsFailed": "Gagal menyenaraikan model Ollama"
+    "listOllamaModelsFailed": "Gagal menyenaraikan model Ollama",
+    "writingAssistInvalid": "Permintaan itu tidak dapat dihantar ke model AI.",
+    "apiKeyMissing": "Tambah kunci API {provider} anda dalam Tetapan → AI untuk menggunakan alat penulisan.",
+    "apiKeyInvalid": "Kunci API {provider} anda ditolak. Semaknya dalam Tetapan → AI.",
+    "ollamaUnreachable": "Ollama tidak berjalan. Mulakannya dengan \"ollama serve\", atau pilih penyedia lain dalam Tetapan → AI.",
+    "providerUnreachable": "Tidak dapat menghubungi {provider}. Semak sambungan internet anda dan cuba lagi."
   },
   "auth": {
     "notAuthenticated": "Tidak disahkan",
-    "sessionExpired": "Sesi telah tamat tempoh. Sila log masuk semula.",
     "setupSessionExpired": "Log masuk anda tamat masa sebelum proses ini selesai. Log masuk semula, kemudian masukkan frasa pemulihan anda.",
     "setupSessionExpiredLinking": "Log masuk anda tamat masa sebelum peranti ini selesai dipautkan. Log masuk semula, kemudian imbas kod sekali lagi.",
     "invalidRecoveryPhraseFormat": "Format frasa pemulihan tidak sah",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "Gagal membuat salinan terpaut bagi acara kalendar luaran",
     "onlyCalendarSourcesRetryable": "Hanya sumber kalendar boleh dicuba semula",
     "invalidProviderSettings": "Tetapan penyedia kalendar tidak sah",
-    "getExternalEventFailed": "Tidak dapat memuatkan acara ini. Acara ini masih ada dalam kalendar anda; cuba bukanya sekali lagi."
+    "getExternalEventFailed": "Tidak dapat memuatkan acara ini. Acara ini masih ada dalam kalendar anda; cuba bukanya sekali lagi.",
+    "listLinkedNotesFailed": "Tidak dapat memuatkan nota yang dipautkan ke acara ini."
   },
   "canvasFolder": {
     "exists": "Folder kanvas dengan nama itu sudah wujud di sini.",
@@ -209,10 +219,35 @@
     "previewFailed": "Pratonton gagal",
     "listFailed": "Gagal menyenaraikan pengimport",
     "appleNotesFoldersFailed": "Tidak dapat membaca folder Apple Notes anda",
+    "appleNotesPasswordFailed": "Tidak dapat menyemak kata laluan Notes.",
     "onenoteStatusFailed": "Tidak dapat membaca keadaan sambungan OneNote",
     "onenoteConnectFailed": "Log masuk Microsoft gagal",
     "onenoteDisconnectFailed": "Tidak dapat memutuskan sambungan akaun Microsoft",
-    "onenoteNotebooksFailed": "Tidak dapat memuatkan buku nota OneNote"
+    "onenoteNotebooksFailed": "Tidak dapat memuatkan buku nota OneNote",
+    "readwiseStatusFailed": "Tidak dapat membaca keadaan sambungan Readwise",
+    "readwiseConnectFailed": "Tidak dapat menyambung ke Readwise",
+    "readwiseInvalidToken": "Readwise tidak menerima token ini. Salin semula daripada readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise sedang mengehadkan permintaan. Cuba lagi dalam seminit.",
+    "readwiseUnreachable": "Tidak dapat menghubungi Readwise. Semak sambungan anda dan cuba lagi.",
+    "readwiseDisconnectFailed": "Tidak dapat memutuskan sambungan Readwise",
+    "readwiseSyncFailed": "Tidak dapat memulakan penyegerakan Readwise",
+    "readwiseRunUnavailable": "Readwise tidak disegerakkan pada peranti ini.",
+    "readwiseRunInProgress": "Import Readwise sedang berjalan. Cuba lagi apabila ia selesai.",
+    "readwiseOptionsFailed": "Tidak dapat menyimpan tetapan Readwise",
+    "readwiseNotConnected": "Readwise tidak disambungkan. Tampal token akses anda dahulu.",
+    "readwiseSyncsElsewhere": "Readwise disegerakkan pada peranti lain. Jalankan arahan ini di sana.",
+    "readwiseBookCommandFailed": "Tidak dapat melengkapkan arahan Readwise",
+    "readwiseBookGone": "Buku ini tiada lagi dalam pustaka Readwise anda.",
+    "readwiseNotLinked": "Nota ini tidak dipautkan ke buku Readwise.",
+    "readwiseNotDeleted": "Buku ini tiada dalam senarai yang dipadamkan.",
+    "readwiseBookBusy": "Nota berubah semasa arahan dijalankan. Cuba lagi.",
+    "readwiseSyncsOnDevice": "Readwise disegerakkan pada {device}. Gunakan “Segerak di sini” untuk mengalihkannya ke sini.",
+    "readwiseAnotherDevice": "peranti lain",
+    "readwiseNotReady": "Memry belum selesai menyegerak dengan peranti anda yang lain. Cuba lagi sebentar lagi.",
+    "readwiseNeedsSync": "Hidupkan penyegerakan untuk mengalihkan Readwise antara peranti.",
+    "readwiseClaimNotDelivered": "Belum dapat memberitahu peranti anda yang lain. Semak sambungan anda dan cuba lagi.",
+    "readwiseTakeOverFailed": "Tidak dapat mengalihkan Readwise ke peranti ini",
+    "readwiseCancelFailed": "Tidak dapat membatalkan penyegerakan Readwise"
   },
   "project": {
     "createFailed": "Gagal membuat projek",
@@ -236,7 +271,8 @@
     "renameFailed": "Gagal menamakan semula sifat",
     "createDefinitionFailed": "Gagal membuat definisi sifat",
     "updateDefinitionFailed": "Gagal mengemas kini definisi sifat",
-    "setCalendarVisibilityFailed": "Gagal menetapkan keterlihatan sifat kalendar"
+    "setCalendarVisibilityFailed": "Gagal menetapkan keterlihatan sifat kalendar",
+    "definitionsFileUnreadable": "Tidak dapat menyimpan perubahan sifat kerana .memry/properties.md tidak dapat dibaca. Betulkan atau buang fail itu, kemudian cuba lagi."
   },
   "reminder": {
     "notFound": "Peringatan tidak ditemui",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "Gagal memuatkan model",
     "voiceModelDownloadFailed": "Gagal memuat turun model suara",
     "terminalCommandInstallFailed": "Gagal memasang arahan terminal",
-    "terminalCommandUninstallFailed": "Gagal menyahpasang arahan terminal",
-    "shortcutInUse": "Pintasan {shortcut} sudah digunakan"
+    "terminalCommandUninstallFailed": "Gagal menyahpasang arahan terminal"
   },
   "tag": {
+    "renameInProgress": "Penamaan semula #{from} kepada #{to} masih berjalan. Cuba lagi apabila ia selesai.",
     "mergeSameTag": "Teg sumber dan teg sasaran ialah teg yang sama",
     "categoryNameRequired": "Nama kategori diperlukan",
     "pinNoteFailed": "Gagal menyemat nota",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "Gagal memadamkan tugas",
     "moveManyFailed": "Gagal mengalihkan tugas",
     "archiveManyFailed": "Gagal mengarkibkan tugas",
-    "projectMissing": "Projek itu tidak lagi wujud"
+    "projectMissing": "Projek itu tidak lagi wujud",
+    "invalidParent": "Tugas tidak boleh diletakkan di situ"
   },
   "taskStatus": {
     "createFailed": "Gagal membuat status",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "Pemilik telah menjadikan nota ini baca sahaja.",
     "folderReadOnly": "Pemilik telah menjadikan folder ini baca sahaja."
+  },
+  "ocrLanguages": {
+    "unreachable": "Pelayan Memry tidak dapat dihubungi. Bahasa yang sudah ada terus berfungsi, dan Memry mencuba lagi pada permulaan seterusnya.",
+    "unavailable": "Pelayan Memry belum menawarkan bahasa ini. Bahasa yang sudah ada terus berfungsi.",
+    "corrupt": "Data yang dimuat turun tidak sepadan dengan jangkaan Memry, jadi ia tidak digunakan. Cuba lagi untuk memuat turunnya semula.",
+    "saveFailed": "Data bahasa tidak dapat disimpan pada komputer ini. Semak ruang cakera kosong, kemudian cuba lagi."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" dikhaskan dan tidak boleh menjadi nama medan",
+    "duplicateField": "#{definedBy} sudah mempunyai medan bernama \"{name}\"",
+    "unknownField": "Teg ini tiada medan bernama \"{name}\"",
+    "inheritedField": "\"{name}\" datang daripada #{definedBy}. Edit di sana",
+    "cycle": "#{parent} sudah mengambil medannya daripada teg ini",
+    "unreadableSchema": "Versi Memry yang lebih baharu telah mengubah teg ini. Kemas kini Memry untuk mengeditnya",
+    "relationTargetRequired": "Pilih teg yang ditunjuk oleh hubungan ini",
+    "renameRunning": "Penamaan semula medan lain masih diselesaikan ({from} kepada {to}). Cuba lagi sebaik ia selesai."
   }
 }

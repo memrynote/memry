@@ -586,7 +586,7 @@ describe('sync components coverage', () => {
     render(<QrLinking onCancel={onCancel} />)
 
     expect(screen.getByRole('status', { name: 'qrLinking.generatingAria' })).toBeInTheDocument()
-    act(() => vi.runOnlyPendingTimers())
+    void act(() => vi.runOnlyPendingTimers())
     await waitFor(() => expect(screen.getByRole('img')).toHaveTextContent('qr:'))
 
     fireEvent.click(screen.getByRole('button', { name: 'qrLinking.copyAria' }))

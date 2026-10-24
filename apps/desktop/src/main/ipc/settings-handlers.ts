@@ -367,6 +367,7 @@ function readGroupSettings<T extends Record<string, unknown>>(groupKey: string, 
   if (!raw) return { ...defaults }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse is untyped; persisted shape is read defensively by the following code
     const parsed = JSON.parse(raw) as Partial<T>
     return { ...defaults, ...parsed }
   } catch {
@@ -1142,7 +1143,7 @@ export function registerSettingsHandlers(): void {
     return {
       ...modelInfo,
       embeddingCount
-    } as AIModelStatus
+    }
   })
 
   // Load AI model
@@ -1179,6 +1180,7 @@ export function registerSettingsHandlers(): void {
       // Reindex is an explicit retry — clear the circuit breaker first (#803).
       resetEmbeddingModelFailure()
       const result = await rebuildProjections(['embedding'])
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
       return result.embedding as {
         success: boolean
         computed: number
@@ -1204,6 +1206,7 @@ export function registerSettingsHandlers(): void {
           ? restoreSessionStr === 'true'
           : DEFAULT_TAB_SETTINGS.restoreSessionOnStart,
       tabCloseButton:
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
         (closeButtonStr as TabSettings['tabCloseButton']) ?? DEFAULT_TAB_SETTINGS.tabCloseButton
     }
   })
@@ -1251,6 +1254,7 @@ export function registerSettingsHandlers(): void {
 
     return {
       toolbarMode:
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
         (toolbarModeStr as NoteEditorSettings['toolbarMode']) ??
         DEFAULT_NOTE_EDITOR_SETTINGS.toolbarMode
     }
@@ -1448,6 +1452,7 @@ export function registerSettingsHandlers(): void {
       const parsed = GetCalendarProviderSettingsSchema.safeParse(input)
       const shape = parsed.success ? calendarProviderSettingsShape(parsed.data.provider) : null
       if (!shape) return null
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- value from an untyped boundary (database, parser or runtime); the asserted shape is what its producer writes
       return readGroupSettings(
         shape.key,
         shape.defaults as Record<string, unknown>

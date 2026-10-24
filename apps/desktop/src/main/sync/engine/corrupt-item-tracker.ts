@@ -175,6 +175,7 @@ export class CorruptItemTracker {
         token,
         vaultKey
       )
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys of a RefetchResult-keyed record; keys are exactly keyof RefetchResult
       for (const key of Object.keys(total) as Array<keyof RefetchResult>) {
         ;(total[key] as unknown[]).push(...chunk[key])
       }

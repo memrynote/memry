@@ -15,6 +15,7 @@
 
 import { createFenceTracker } from './markdown-fences.ts'
 import { parseObsidianTaskFields } from './obsidian-tasks.ts'
+import { isObject } from './is-record.ts'
 
 const TASK_BLOCK_SUFFIX_OPEN = '{task:'
 
@@ -36,6 +37,18 @@ export interface TaskNormalizableBlock {
   props?: Record<string, unknown>
   content?: unknown
   children?: TaskNormalizableBlock[]
+}
+
+/**
+ * A block whose children are blocks of its own kind, so a generic walk can
+ * rebuild a node of the caller's own type without asserting it.
+ */
+type TaskTreeBlock<T> = Omit<TaskNormalizableBlock, 'children'> & { children?: T[] }
+
+/** `props.taskId` of a task block; '' when a malformed block has none. */
+function taskIdOf(block: { props?: Record<string, unknown> }): string {
+  const taskId = block.props?.taskId
+  return typeof taskId === 'string' ? taskId : ''
 }
 
 export function serializeTaskBlock(props: TaskBlockProps): string {
@@ -64,7 +77,7 @@ export const MAX_NOTE_TASK_DEPTH = 1
  * tree parent. Only the tree changes; the DB parents stay where they are.
  * Returns `block` itself when nothing sits too deep.
  */
-export function capTaskTreeDepth<T extends TaskNormalizableBlock>(block: T): T {
+export function capTaskTreeDepth<T extends TaskTreeBlock<T>>(block: T): T {
   const tooDeep = (children: TaskNormalizableBlock[] | undefined, depth: number): boolean =>
     (children ?? []).some(
       (child) =>
@@ -81,7 +94,7 @@ export function capTaskTreeDepth<T extends TaskNormalizableBlock>(block: T): T {
   const cap = (node: T, depth: number): T[] => {
     const kept: T[] = []
     const lifted: T[] = []
-    for (const child of (node.children ?? []) as T[]) {
+    for (const child of node.children ?? []) {
       if (child.type !== 'taskBlock') {
         kept.push(child)
         continue
@@ -90,11 +103,16 @@ export function capTaskTreeDepth<T extends TaskNormalizableBlock>(block: T): T {
       if (depth < MAX_NOTE_TASK_DEPTH) kept.push(self, ...below)
       else lifted.push(self, ...below)
     }
-    const parentTaskId = node.props?.taskId as string
+    const parentTaskId = taskIdOf(node)
     const own = depth < MAX_NOTE_TASK_DEPTH ? reparent(kept, parentTaskId) : kept
     return [{ ...node, children: own }, ...lifted]
   }
   return cap(block, 0)[0]
+}
+
+function taskBlockProps(block: TaskNormalizableBlock): TaskBlockProps {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- a `taskBlock`'s props are `TaskBlockProps`; callers pass only those
+  return block.props as unknown as TaskBlockProps
 }
 
 /**
@@ -103,13 +121,13 @@ export function capTaskTreeDepth<T extends TaskNormalizableBlock>(block: T): T {
  * byte-identical to what builds before nested subtasks wrote.
  */
 export function serializeTaskBlockTree(block: TaskNormalizableBlock): string[] {
-  // SAFETY: a `taskBlock`'s props are `TaskBlockProps`; callers pass only those.
-  const lines = [serializeTaskBlock(block.props as unknown as TaskBlockProps)]
+  const lines = [serializeTaskBlock(taskBlockProps(block))]
   const walk = (children: TaskNormalizableBlock[], depth: number): void => {
     for (const child of children) {
       if (child.type !== 'taskBlock') continue
-      const props = child.props as unknown as TaskBlockProps
-      lines.push('  '.repeat(depth) + serializeTaskBlock({ ...props, parentTaskId: '' }))
+      lines.push(
+        '  '.repeat(depth) + serializeTaskBlock({ ...taskBlockProps(child), parentTaskId: '' })
+      )
       walk(child.children ?? [], depth + 1)
     }
   }
@@ -241,13 +259,8 @@ export function extractInlineText(content: unknown): string {
   return content
     .map((item: unknown) => {
       if (typeof item === 'string') return item
-      if (
-        item &&
-        typeof item === 'object' &&
-        'type' in item &&
-        (item as Record<string, unknown>).type === 'text'
-      ) {
-        return ((item as Record<string, unknown>).text as string) || ''
+      if (isObject(item) && item.type === 'text') {
+        return typeof item.text === 'string' ? item.text : ''
       }
       return ''
     })
@@ -309,15 +322,15 @@ function scanTaskLineDepths(markdown: string): Map<string, number> {
  * order and each line's source depth. A tree holding anything but task blocks,
  * or a task the source scan missed, is left as parsed.
  */
-function renestTaskTree<T extends TaskNormalizableBlock>(root: T, depths: Map<string, number>): T {
-  const rootId = root.props?.taskId as string
+function renestTaskTree<T extends TaskTreeBlock<T>>(root: T, depths: Map<string, number>): T {
+  const rootId = taskIdOf(root)
   const rootDepth = depths.get(rootId)
   if (rootDepth === undefined) return root
   const flat: T[] = []
-  const collect = (children: TaskNormalizableBlock[] | undefined): boolean =>
+  const collect = (children: T[] | undefined): boolean =>
     (children ?? []).every((child) => {
-      if (child.type !== 'taskBlock' || !depths.has(child.props?.taskId as string)) return false
-      flat.push(child as T)
+      if (child.type !== 'taskBlock' || !depths.has(taskIdOf(child))) return false
+      flat.push(child)
       return collect(child.children)
     })
   if (!collect(root.children)) return root
@@ -326,7 +339,7 @@ function renestTaskTree<T extends TaskNormalizableBlock>(root: T, depths: Map<st
   const top: Node = { block: root, depth: rootDepth, children: [] }
   const stack = [top]
   for (const block of flat) {
-    const depth = depths.get(block.props?.taskId as string)!
+    const depth = depths.get(taskIdOf(block))!
     while (stack.length > 1 && stack[stack.length - 1].depth >= depth) stack.pop()
     if (stack[stack.length - 1].depth >= depth) return root
     const node: Node = { block, depth, children: [] }
@@ -336,9 +349,10 @@ function renestTaskTree<T extends TaskNormalizableBlock>(root: T, depths: Map<st
   const build = (node: Node, parentTaskId: string): T => ({
     ...node.block,
     props: { ...node.block.props, parentTaskId },
-    children: node.children.map((child) => build(child, node.block.props?.taskId as string))
+    children: node.children.map((child) => build(child, taskIdOf(node.block)))
   })
-  return build(top, (root.props?.parentTaskId as string) ?? '')
+  const rootParentTaskId = root.props?.parentTaskId
+  return build(top, typeof rootParentTaskId === 'string' ? rootParentTaskId : '')
 }
 
 function words(text: string): string[] {
@@ -370,6 +384,8 @@ function takeSourceTitle(queue: string[] | undefined, plainTitle: string): strin
   return index === -1 ? null : queue.splice(index, 1)[0]
 }
 
+const bare = (id: string): string => id.replace(/[_*]/g, '')
+
 /**
  * The id a task line holds in the source, given the id read back from parsed
  * inline text. Ids are nanoids, whose alphabet has `_`, so the markdown parser
@@ -379,7 +395,6 @@ function takeSourceTitle(queue: string[] | undefined, plainTitle: string): strin
  * with the same characters left once those are ignored is the line's real id.
  */
 function sourceTaskId(sourceIds: Iterable<string>, parsedId: string): string | null {
-  const bare = (id: string): string => id.replace(/[_*]/g, '')
   const wanted = bare(parsedId)
   for (const id of sourceIds) {
     if (bare(id) === wanted) return id
@@ -391,7 +406,7 @@ function sourceTaskId(sourceIds: Iterable<string>, parsedId: string): string | n
  * `source` is the markdown `blocks` were parsed from, or null for blocks that
  * did not come from markdown. Without it a title keeps only its plain text.
  */
-export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
+export function normalizeTaskBlocks<T extends TaskTreeBlock<T>>(
   blocks: T[],
   source: string | null
 ): { blocks: T[]; didChange: boolean } {
@@ -406,12 +421,12 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
 
   function processBlocks(blockList: T[], parentTaskId: string): T[] {
     return blockList.map((block) => {
-      if ((block.type as string) === 'taskBlock' && block.children?.length) {
-        const taskId = (block.props as Record<string, unknown>).taskId as string
-        const processedChildren = processBlocks(block.children as T[], taskId)
+      if (block.type === 'taskBlock' && block.children?.length) {
+        const taskId = taskIdOf(block)
+        const processedChildren = processBlocks(block.children, taskId)
         if (processedChildren !== block.children) {
           didChange = true
-          return { ...block, children: processedChildren } as T
+          return { ...block, children: processedChildren }
         }
         return block
       }
@@ -420,10 +435,10 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
         // A task nested under a list item or a paragraph is still a task: its
         // line is read back under the parent's nesting marker (#2365).
         if (!block.children?.length) return block
-        const processedChildren = processBlocks(block.children as T[], parentTaskId)
+        const processedChildren = processBlocks(block.children, parentTaskId)
         return processedChildren === block.children
           ? block
-          : ({ ...block, children: processedChildren } as T)
+          : { ...block, children: processedChildren }
       }
 
       const text = extractInlineText(block.content)
@@ -437,14 +452,13 @@ export function normalizeTaskBlocks<T extends TaskNormalizableBlock>(
           : parsed.taskId
       const title = takeSourceTitle(sourceTitles?.get(taskId), parsed.title) ?? parsed.title
 
-      const processedChildren = block.children?.length
-        ? processBlocks(block.children as T[], taskId)
-        : []
+      const processedChildren = block.children?.length ? processBlocks(block.children, taskId) : []
 
       // BlockNote's checkListItem exposes its state as `checked`; older callers
       // (and some tests) pass `isChecked`. Honour both so a `- [x]` round-trips.
       const checked = block.props?.checked ?? block.props?.isChecked ?? false
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- builds a block of the caller's own type T from a literal; T is only constrained structurally
       const taskBlock = {
         type: 'taskBlock',
         props: {

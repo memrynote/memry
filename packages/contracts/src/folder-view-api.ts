@@ -117,7 +117,7 @@ export function normalizeAndTags(primaryTag: string, andTags: string[] | undefin
     if (normalized === '' || normalized === primary) continue
     seen.add(normalized)
   }
-  return [...seen].sort()
+  return [...seen].toSorted()
 }
 
 // ============================================================================

@@ -387,17 +387,23 @@ describe('AssistantMessage', () => {
         screen.queryByRole('status', { name: 'Agent is thinking' })
       const { rerender } = render(<AssistantMessage message={streaming('Handing this off.')} />)
 
-      act(() => vi.advanceTimersByTime(2900))
+      act(() => {
+        vi.advanceTimersByTime(2900)
+      })
       expect(waiting()).toBeNull()
 
-      act(() => vi.advanceTimersByTime(1200))
+      act(() => {
+        vi.advanceTimersByTime(1200)
+      })
       expect(screen.getByText('Handing this off.')).toBeInTheDocument()
       expect(waiting()).toHaveTextContent('4.1s')
 
       rerender(<AssistantMessage message={streaming('Handing this off. Done')} />)
       expect(waiting()).toBeNull()
 
-      act(() => vi.advanceTimersByTime(3500))
+      act(() => {
+        vi.advanceTimersByTime(3500)
+      })
       expect(waiting()).toHaveTextContent('3.5s')
 
       rerender(
@@ -461,7 +467,9 @@ describe('AssistantMessage', () => {
       Object.defineProperty(el, 'scrollTop', {
         configurable: true,
         get: () => top,
-        set: (v: number) => (top = Math.max(0, Math.min(v, height - 180)))
+        set: (v: number) => {
+          top = Math.max(0, Math.min(v, height - 180))
+        }
       })
       const landUnobserved = (h: number): void => {
         height = h

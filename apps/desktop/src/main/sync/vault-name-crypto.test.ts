@@ -12,6 +12,7 @@ describe('vault name crypto', () => {
   let key: Uint8Array
 
   beforeAll(async () => {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     await sodium.ready
     key = sodium.randombytes_buf(32)
   })

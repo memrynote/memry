@@ -192,9 +192,8 @@
     }
   },
   "chip": {
-    "complete-task": "Ukończ „{title}”",
     "task-completed": "Ukończono zadanie",
-    "could-not-complete": "Nie udało się ukończyć zadania",
+    "could-not-update-status": "Nie udało się zmienić statusu zadania",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} godz.",
     "duration-hours-minutes": "{hours} godz. {minutes} min"
@@ -214,12 +213,9 @@
     "next-week": "Następny tydzień",
     "open-task": "Otwórz zadanie",
     "source-note": "Notatka źródłowa",
-    "reschedule": "Zmień termin",
     "mark-done": "Oznacz jako ukończone",
     "mark-not-done": "Oznacz jako nieukończone",
-    "later-today": "Później dzisiaj",
     "tomorrow": "Jutro",
-    "next-week-mon": "W przyszłym tygodniu · pon.",
     "pick-date-time": "Wybierz datę i godzinę…",
     "remove-due-date": "Usuń termin",
     "subtasks-prefix": "Podzadania",
@@ -235,6 +231,18 @@
       "could-not-remove-due-date": "Nie udało się usunąć terminu",
       "could-not-open-note": "Nie udało się otworzyć notatki"
     }
+  },
+  "eventNotes": {
+    "heading": "Notatki",
+    "create": "Nowa notatka",
+    "link": "Połącz notatkę",
+    "untitled": "Notatka ze spotkania",
+    "searchPlaceholder": "Szukaj notatek",
+    "noResults": "Nie znaleziono notatek",
+    "createFailed": "Nie udało się utworzyć notatki dla tego wydarzenia.",
+    "linkFailed": "Nie udało się połączyć notatki z tym wydarzeniem.",
+    "loadFailed": "Nie udało się wczytać notatek połączonych z tym wydarzeniem.",
+    "propertyTaken": "Ta notatka ma już właściwość „{name}”, która nie jest linkiem."
   },
   "notePopover": {
     "kind": "Notatka",
@@ -254,6 +262,10 @@
     "overdue": "po terminie",
     "untitled": "Bez tytułu",
     "days": "{count, plural, one {# dzień} few {# dni} many {# dni} other {# dnia}}",
+    "subtasks": {
+      "expand": "Pokaż {count, plural, one {# podzadanie} few {# podzadania} many {# podzadań} other {# podzadania}} zadania {title}",
+      "collapse": "Ukryj {count, plural, one {# podzadanie} few {# podzadania} many {# podzadań} other {# podzadania}} zadania {title}"
+    },
     "events": "Wydarzenia",
     "schedule-hint": "Kliknij, aby ustawić datę, lub przeciągnij, aby ustawić zakres",
     "empty-title": "Na tym odcinku osi czasu nic nie ma",
@@ -375,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Subskrybowane kalendarze"
     },
     "caldav": {
       "name": "CalDAV"

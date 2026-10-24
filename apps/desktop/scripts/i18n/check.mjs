@@ -100,7 +100,9 @@ export function runCheck(options = {}) {
   }
 
   const usedKeys = new Set(scan.usedKeys)
-  const orphanEnglishKeys = [...englishKeys].filter((key) => !usedKeys.has(key)).sort()
+  const orphanEnglishKeys = [...englishKeys]
+    .filter((key) => !usedKeys.has(key))
+    .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
   const todoCount = scan.todoCommentCount
   const todoLimitFailure =
     options.strictTodo && todoCount > 0

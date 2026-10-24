@@ -8,6 +8,10 @@
  * @module note/content-area/portal-flows/portal-hide-in-portal
  */
 
+import type { EditorSchema } from '../editor-schema'
+
+type Editor = EditorSchema['BlockNoteEditor']
+
 export interface HideInPortalHandler {
   /** Whether `blockId` can be hidden here (false for the only root). */
   canHide: (blockId: string) => boolean
@@ -24,16 +28,16 @@ export const hideInPortalShortcut = {
   label: '⌘⇧H'
 } as const
 
-const registry = new WeakMap<object, HideInPortalHandler>()
+const registry = new WeakMap<Editor, HideInPortalHandler>()
 
 /** Returns the unregister function. */
-export function registerHideInPortal(editor: object, handler: HideInPortalHandler): () => void {
+export function registerHideInPortal(editor: Editor, handler: HideInPortalHandler): () => void {
   registry.set(editor, handler)
   return () => {
     if (registry.get(editor) === handler) registry.delete(editor)
   }
 }
 
-export function getHideInPortal(editor: object): HideInPortalHandler | undefined {
+export function getHideInPortal(editor: Editor): HideInPortalHandler | undefined {
   return registry.get(editor)
 }

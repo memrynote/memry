@@ -16,7 +16,7 @@ export function useReadwiseStatus(enabled: boolean): {
   const [nonce, setNonce] = useState(0)
 
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
     let active = true
     void window.api.import.readwise
       .status()
@@ -35,7 +35,7 @@ export function useReadwiseStatus(enabled: boolean): {
 
   // A run starting, moving on or ending changes what the row says.
   useEffect(() => {
-    if (!enabled) return
+    if (!enabled) return undefined
     return window.api.onReadwiseStatusChanged(() => setNonce((n) => n + 1))
   }, [enabled])
 

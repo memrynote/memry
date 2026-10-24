@@ -10,6 +10,17 @@ interface SyncApiOptions {
   onSessionCleared?: () => void
 }
 
+async function isDeviceRevoked(res: Response): Promise<boolean> {
+  const body = await res
+    .clone()
+    .text()
+    .catch(() => '')
+  return body.includes('AUTH_DEVICE_REVOKED')
+}
+
+// Plain-object headers only: the request builders below spread them into an object literal.
+type ApiRequestInit = Omit<RequestInit, 'headers'> & { headers?: Record<string, string> }
+
 export function createSyncApi({
   baseUrl,
   storage,
@@ -22,22 +33,24 @@ export function createSyncApi({
   // sign-out).
   let inFlightRefresh: Promise<boolean> | null = null
 
+  async function requestRefresh(): Promise<boolean> {
+    const session = storage.getSession()
+    if (!session) return false
+    const res = await fetchImpl(`${baseUrl}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: session.refreshToken })
+    })
+    if (!res.ok) return false
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: /auth/refresh is our own sync-server route
+    const data = (await res.json()) as { accessToken: string; refreshToken: string }
+    storage.setSession({ ...session, ...data })
+    return true
+  }
+
   function refresh(): Promise<boolean> {
     if (inFlightRefresh) return inFlightRefresh
-    const run = async (): Promise<boolean> => {
-      const session = storage.getSession()
-      if (!session) return false
-      const res = await fetchImpl(`${baseUrl}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: session.refreshToken })
-      })
-      if (!res.ok) return false
-      const data = (await res.json()) as { accessToken: string; refreshToken: string }
-      storage.setSession({ ...session, ...data })
-      return true
-    }
-    inFlightRefresh = run().finally(() => {
+    inFlightRefresh = requestRefresh().finally(() => {
       inFlightRefresh = null
     })
     return inFlightRefresh
@@ -48,15 +61,7 @@ export function createSyncApi({
     onSessionCleared?.()
   }
 
-  async function isDeviceRevoked(res: Response): Promise<boolean> {
-    const body = await res
-      .clone()
-      .text()
-      .catch(() => '')
-    return body.includes('AUTH_DEVICE_REVOKED')
-  }
-
-  async function authedFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  async function authedFetch(path: string, init: ApiRequestInit = {}): Promise<Response> {
     const send = () => {
       const token = storage.getSession()?.accessToken
       return fetchImpl(`${baseUrl}${path}`, {
@@ -87,17 +92,18 @@ export function createSyncApi({
     return res
   }
 
-  async function authedJson<T = unknown>(path: string, init?: RequestInit): Promise<T> {
+  async function authedJson<T = unknown>(path: string, init?: ApiRequestInit): Promise<T> {
     const res = await authedFetch(path, init)
     if (!res.ok) {
       const message = await res.text().catch(() => '')
       throw new Error(message || `Request failed: ${res.status}`)
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: the caller names the response shape of our own sync-server route
     return (await res.json()) as T
   }
 
   // Public (unauthenticated) helper for OTP/OAuth/device endpoints.
-  async function publicJson<T = unknown>(path: string, init?: RequestInit): Promise<T> {
+  async function publicJson<T = unknown>(path: string, init?: ApiRequestInit): Promise<T> {
     const res = await fetchImpl(`${baseUrl}${path}`, {
       ...init,
       headers: { 'Content-Type': 'application/json', ...init?.headers }
@@ -106,6 +112,7 @@ export function createSyncApi({
       const message = await res.text().catch(() => '')
       throw new Error(message || `Request failed: ${res.status}`)
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: the caller names the response shape of our own sync-server route
     return (await res.json()) as T
   }
 

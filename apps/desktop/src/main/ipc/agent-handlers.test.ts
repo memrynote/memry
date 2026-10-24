@@ -571,7 +571,7 @@ describe('agent IPC handlers', () => {
 
   it('returns the calling BrowserWindow id for agent turns', async () => {
     registerAgentHandlers(deps)
-    mockElectron.BrowserWindow.fromWebContents.mockReturnValue({ id: 42 } as never)
+    mockElectron.BrowserWindow.fromWebContents.mockReturnValue({ id: 42 })
 
     const result = await findHandler(AgentChannels.invoke.GET_WINDOW_ID)({
       sender: { id: 123 }

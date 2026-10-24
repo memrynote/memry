@@ -14,6 +14,11 @@ import { MemoMascot } from '@/components/ui/memo-mascot'
 import { HomeSection } from '@/components/site/primitives'
 import { cn } from '@/lib/utils'
 
+// CSS custom properties are valid style keys that CSSProperties does not list.
+function cssVars(vars: Record<`--${string}`, string>): CSSProperties {
+  return vars
+}
+
 const EASE = [0.16, 1, 0.3, 1] as const
 
 type ChipKind = 'note' | 'task' | 'event' | 'journal' | 'saved'
@@ -203,7 +208,7 @@ function RainLane({
     <div className={cn('min-w-0 flex-1 px-2.5', className)} style={{ paddingTop: column.offset }}>
       <div
         className="rain-track flex flex-col gap-3"
-        style={{ '--rain-duration': `${column.duration}s` } as CSSProperties}
+        style={cssVars({ '--rain-duration': `${column.duration}s` })}
       >
         {/* Two identical passes: the track scrolls exactly one pass, so the loop has no seam. */}
         {[0, 1].map((pass) => (
@@ -256,7 +261,7 @@ function SatelliteCard({
             ? 'flex-col gap-2 text-center'
             : placement.reverse && 'flex-row-reverse'
         )}
-        style={{ '--breathe-delay': `${index * 0.7}s` } as CSSProperties}
+        style={cssVars({ '--breathe-delay': `${index * 0.7}s` })}
       >
         <Mascot
           src={satellite.iconSrc}

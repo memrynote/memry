@@ -60,19 +60,18 @@ function num(value: unknown): number {
 /** The deep link a saved mind-map box carries. See `mind-map-hover.ts`. */
 function mindMapHref(customData: unknown): string | undefined {
   if (typeof customData !== 'object' || customData === null) return undefined
-  return str((customData as { memryHref?: unknown }).memryHref)
+  return str('memryHref' in customData ? customData.memryHref : undefined)
 }
 
 function bindingId(value: unknown): string | undefined {
   if (!value || typeof value !== 'object') return undefined
-  return str((value as { elementId?: unknown }).elementId)
+  return str('elementId' in value ? value.elementId : undefined)
 }
 
 function entityRef(value: unknown): { entityType?: string; entityId?: string } {
   if (!value || typeof value !== 'object') return {}
-  const data = value as Record<string, unknown>
-  const entityType = str(data.entityType)
-  const entityId = str(data.entityId)
+  const entityType = str('entityType' in value ? value.entityType : undefined)
+  const entityId = str('entityId' in value ? value.entityId : undefined)
   if (!entityType || !entityId) return {}
   if (!(CANVAS_ENTITY_TYPES as readonly string[]).includes(entityType)) return {}
   return { entityType, entityId }
@@ -101,13 +100,14 @@ export function readSceneElements(scene: string): CanvasSceneElements {
 
   let raw: unknown
   try {
-    raw = (JSON.parse(scene) as { elements?: unknown }).elements
+    const parsed: { elements?: unknown } = JSON.parse(scene)
+    raw = parsed.elements
   } catch {
     return empty
   }
   if (!Array.isArray(raw)) return empty
 
-  const all = raw as RawElement[]
+  const all: RawElement[] = raw
   const labels = labelsByContainer(all)
   const views: CanvasElementView[] = []
   let elementCount = 0

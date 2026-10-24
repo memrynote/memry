@@ -216,7 +216,7 @@ describe('note derived state projector', () => {
           expect(event).toEqual({ id: expect.any(String), changes: {}, source: 'internal' })
           return (event as { id: string }).id
         })
-        .sort()
+        .toSorted()
 
     seedExtractedText('source-note', 'chart.html', 'html', 'Tide table for [[Harbor Log]]')
     await projector.project({ type: 'note.text-extracted', noteId: 'source-note' })

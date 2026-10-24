@@ -287,7 +287,7 @@ export function useMentionSuggestions(
   const isChoiceOpen = canvasChoice !== null
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!isChoiceOpen || !container) return
+    if (!isChoiceOpen || !container) return undefined
 
     const handleKeyDown = (e: KeyboardEvent): void => {
       const choice = canvasChoiceRef.current
@@ -320,6 +320,7 @@ export function useMentionSuggestions(
     // mousedown, not click: it lands before the press moves the caret, so the
     // mention goes where the `@` was rather than where the user clicked.
     const handleClickAway = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = e.target as HTMLElement | null
       if (target?.closest('[data-inline-choice-menu]')) return
       selectCanvasChoice('mention')

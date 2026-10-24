@@ -346,7 +346,7 @@ const deleteFolderNamed = async (name: string): Promise<void> => {
   await waitFor(() => expect(screen.queryByTestId('confirm-delete')).toBeNull())
 }
 
-const notesInVault = (): string[] => vault.notes.map((n) => n.path).sort()
+const notesInVault = (): string[] => vault.notes.map((n) => n.path).toSorted()
 
 /** Every folder path the tree currently has a node for. */
 const folderNodePaths = (container: HTMLElement): string[] =>
@@ -436,7 +436,7 @@ describe('folder rename → rename → delete', () => {
 
       expect(mocks.deleteFolder).toHaveBeenCalledWith('Projects')
       expect(vault.folders).toEqual([])
-      expect(notesInVault()).toEqual(extraNotes.map((n) => n.path).sort())
+      expect(notesInVault()).toEqual(extraNotes.map((n) => n.path).toSorted())
     })
 
     // The reported sequence, end to end: a folder named with a typo, corrected
@@ -453,7 +453,7 @@ describe('folder rename → rename → delete', () => {
       await deleteFolderNamed('Project Notes')
       await waitFor(() => expect(folderNodePaths(container)).toEqual([]))
 
-      expect(notesInVault()).toEqual(extraNotes.map((n) => n.path).sort())
+      expect(notesInVault()).toEqual(extraNotes.map((n) => n.path).toSorted())
     })
 
     // Expansion is keyed by folder path. Renaming must move that key, not drop

@@ -75,6 +75,7 @@ export const PriorityFilter = ({
   const hasSelection = selectedPriorities.length > 0
 
   const handleToggle = (value: string): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- toggle values come from the closed Priority option list rendered by this panel
     const p = value as Priority
     const next = selectedPriorities.includes(p)
       ? selectedPriorities.filter((x) => x !== p)

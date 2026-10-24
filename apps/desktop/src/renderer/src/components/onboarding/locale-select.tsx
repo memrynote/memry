@@ -15,8 +15,7 @@ import { cn } from '@/lib/utils'
 const log = createLogger('LocaleSelect')
 
 function supportedLocale(language: string): Locale {
-  const locale = language as Locale
-  return SUPPORTED_LOCALES.includes(locale) ? locale : 'en'
+  return SUPPORTED_LOCALES.find((locale) => locale === language) ?? 'en'
 }
 
 /** Language picker for screens shown before a vault is open. */
@@ -50,7 +49,7 @@ export function LocaleSelect({
   return (
     <Select
       value={active}
-      onValueChange={(value) => void change(value as Locale)}
+      onValueChange={(value) => void change(supportedLocale(value))}
       disabled={changing}
     >
       <SelectTrigger

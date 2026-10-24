@@ -85,6 +85,9 @@ jobs:
       - name: Typecheck desktop renderer tests
         run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.web.json
 
+      - name: Typecheck desktop e2e specs
+        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.e2e.json
+
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check
 
@@ -116,8 +119,19 @@ jobs:
           pnpm --filter @memry/extension exec wxt prepare
           pnpm lint
 
+      # Root pnpm typecheck skips the extension; wxt prepare ran in the Lint step.
+      - name: Typecheck extension
+        run: pnpm --filter @memry/extension exec node ../../scripts/typecheck.mjs
+
       - name: Check desktop i18n
         run: node apps/desktop/scripts/i18n/check.mjs --max-todo 0
+
+      # check.mjs exits 0 on warnings; these tests fail on incomplete locales,
+      # placeholder drift and orphan English keys.
+      - name: Test i18n
+        run: |
+          pnpm --filter @memry/i18n test
+          pnpm --filter @memry/desktop test:i18n-tools
 
       - name: Check formatting
         run: pnpm format:check
@@ -359,6 +373,13 @@ jobs:
           bash apps/desktop/scripts/check-cert-hashes.sh
           bash apps/desktop/scripts/ensure-native.sh electron
           pnpm --filter @memry/desktop exec electron-vite build
+
+      # The main bundle's require graph is platform-independent, so check it
+      # here, once, before the Linux E2E jobs download the artifact. Windows
+      # runs the same check, but only after its own build.
+      - name: Check main startup set
+        working-directory: apps/desktop
+        run: node scripts/check-main-startup-set.mjs
 
       - name: Pack build output
         # tar rather than a raw multi-path upload: it keeps file modes (the

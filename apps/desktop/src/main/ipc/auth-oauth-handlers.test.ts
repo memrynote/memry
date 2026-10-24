@@ -427,7 +427,7 @@ describe('auth-oauth handlers', () => {
     it('does not activate sync engine during first device setup', async () => {
       // #given
       const mockActivate = vi.fn().mockResolvedValue(undefined)
-      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
+      mockGetSyncEngine.mockReturnValue({ activate: mockActivate })
       registerAuthOAuthHandlers()
       seedOAuthSession('test-state-3', 'http://127.0.0.1:9999/callback')
 
@@ -580,7 +580,7 @@ describe('auth-oauth handlers', () => {
     it('activates sync engine when confirmed is true', async () => {
       // #given
       const mockActivate = vi.fn().mockResolvedValue(undefined)
-      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
+      mockGetSyncEngine.mockReturnValue({ activate: mockActivate })
       registerAuthOAuthHandlers()
 
       // #when
@@ -593,7 +593,7 @@ describe('auth-oauth handlers', () => {
     it('does not activate sync engine when confirmed is false', async () => {
       // #given
       const mockActivate = vi.fn().mockResolvedValue(undefined)
-      mockGetSyncEngine.mockReturnValue({ activate: mockActivate } as never)
+      mockGetSyncEngine.mockReturnValue({ activate: mockActivate })
       registerAuthOAuthHandlers()
 
       // #when

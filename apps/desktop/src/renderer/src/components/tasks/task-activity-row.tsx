@@ -21,6 +21,7 @@ export function fieldLabel(field: string | null, t: TFunction<'tasks'>): string 
     return field.slice(TASK_FIELD_ACTIVITY_PREFIX.length)
   }
   const key = `drawer.activityField${field.charAt(0).toUpperCase()}${field.slice(1)}`
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- i18n key is assembled at runtime from the value; a missing translation falls back to the raw value
   const label = t(key as never)
   return label === key ? field : label
 }
@@ -79,6 +80,7 @@ export function formatValue(
 
   if (field === 'priority' && typeof value === 'number') {
     const key = PRIORITY_KEYS[value]
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- i18n key is assembled at runtime from the value; a missing translation falls back to the raw value
     return key ? t(key as never) : String(value)
   }
 
@@ -103,6 +105,7 @@ export function formatValue(
 
 /** `description` rows carry `{ delta }` instead of the body — never the text. */
 function descriptionSummary(raw: string | null, t: TFunction<'tasks'>): string {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- decoded activity JSON for description rows; read defensively through `?.` and `?? 0`
   const value = decode(raw) as { delta?: number } | null
   const delta = value?.delta ?? 0
   if (delta > 0) return t('drawer.activityCharsAdded', { count: delta })
@@ -112,6 +115,7 @@ function descriptionSummary(raw: string | null, t: TFunction<'tasks'>): string {
 
 export function actionLabel(action: string, t: TFunction<'tasks'>): string {
   const key = `drawer.activityAction${action.charAt(0).toUpperCase()}${action.slice(1)}`
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- i18n key is assembled at runtime from the value; a missing translation falls back to the raw value
   const label = t(key as never)
   return label === key ? action : label
 }

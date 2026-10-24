@@ -6,6 +6,7 @@ function findRange(root: Element, text: string): Range | null {
   const starts: number[] = []
   let joined = ''
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- walker is created with SHOW_TEXT, so every node is a Text
     nodes.push(node as Text)
     starts.push(joined.length)
     joined += node.nodeValue ?? ''

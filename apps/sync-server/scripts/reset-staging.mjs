@@ -185,6 +185,7 @@ async function main() {
   console.log('\nStaging reset complete.')
 }
 
+// oxlint-disable-next-line typescript/use-unknown-in-catch-callback-variable -- plain .mjs script, no type annotation possible
 main().catch((err) => {
   console.error(err.message ?? err)
   process.exit(1)

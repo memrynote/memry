@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "ご利用のプランで同期できる保管庫の数が、このアカウントの保管庫の数より少ないため、この保管庫はこのデバイス上にのみ保存されます。設定 → アカウントでアカウントから保管庫を削除するか、プランをアップグレードしてください。",
     "certificatePinFailed": "安全な接続を確立できませんでした。ネットワーク接続を確認してください。",
     "deviceKeyMismatch": "このデバイスのセキュリティキーがアカウントに登録されているキーと一致しないため、サーバーが変更を拒否しています。このデバイスで再度サインインして、再登録してください。",
+    "deviceKeysMissing": "このデバイスのデバイスキーがないため、変更をアップロードできません。「修復」を選んでキーを復元してください。このデバイスにキーが残っていない場合は、再度サインインし、リカバリーフレーズが必要になることがあります。未同期のノート、タスク、プロジェクトは保持されます。",
     "keychainUnavailable": "Memry がシステムのキーチェーンから同期キーを読み取れないため、同期を一時停止しています。キーリングのロックを解除すると同期は自動的に再開されます。再開しない場合は Memry を再起動してください。何も削除されていません。",
     "unknown": "予期しない同期エラーが発生しました。自動的に再試行されます。",
     "statusFetchFailed": "同期の状態を取得できませんでした",
@@ -106,6 +107,10 @@
     "triggerFailed": "同期できませんでした",
     "pauseFailed": "同期を一時停止できませんでした",
     "resumeFailed": "同期を再開できませんでした",
+    "syncNowSignedOut": "同期するには、このデバイスで再度サインインしてください。",
+    "syncNowBusy": "同期はすでに実行中です。少し待ってからもう一度お試しください。",
+    "syncNowPaused": "実行中に同期が一時停止されました。同期メニューから再開してください。",
+    "openAccountSettings": "設定を開く",
     "settingsNotInitialized": "設定の同期が初期化されていません",
     "securityQuarantinePermanent": "同期項目を検証できなかったため、セキュリティのために隔離しました。",
     "securityQuarantineRetry": "同期項目の署名を検証できなかったため、再試行します。",
@@ -131,11 +136,15 @@
   },
   "ai": {
     "inlineDisabled": "AI のインライン編集は無効になっています",
-    "listOllamaModelsFailed": "Ollama のモデル一覧を取得できませんでした"
+    "listOllamaModelsFailed": "Ollama のモデル一覧を取得できませんでした",
+    "writingAssistInvalid": "このリクエストを AI モデルに送信できませんでした。",
+    "apiKeyMissing": "文章ツールを使うには、設定 → AI で {provider} の API キーを追加してください。",
+    "apiKeyInvalid": "{provider} の API キーが拒否されました。設定 → AI で確認してください。",
+    "ollamaUnreachable": "Ollama が起動していません。\"ollama serve\" で起動するか、設定 → AI で別のプロバイダーを選んでください。",
+    "providerUnreachable": "{provider} に接続できませんでした。インターネット接続を確認して、もう一度お試しください。"
   },
   "auth": {
     "notAuthenticated": "認証されていません",
-    "sessionExpired": "セッションの有効期限が切れました。もう一度サインインしてください。",
     "setupSessionExpired": "処理が完了する前にサインインがタイムアウトしました。もう一度サインインしてから、リカバリーフレーズを入力してください。",
     "setupSessionExpiredLinking": "このデバイスのリンクが完了する前にサインインがタイムアウトしました。もう一度サインインしてから、コードをもう一度スキャンしてください。",
     "invalidRecoveryPhraseFormat": "リカバリーフレーズの形式が正しくありません",
@@ -182,7 +191,8 @@
     "promoteExternalEventFailed": "外部カレンダーの予定を取り込めませんでした",
     "onlyCalendarSourcesRetryable": "再試行できるのはカレンダーソースのみです",
     "invalidProviderSettings": "カレンダープロバイダーの設定が無効です",
-    "getExternalEventFailed": "この予定を読み込めませんでした。予定はカレンダーに残っています。もう一度開いてみてください。"
+    "getExternalEventFailed": "この予定を読み込めませんでした。予定はカレンダーに残っています。もう一度開いてみてください。",
+    "listLinkedNotesFailed": "このイベントにリンクされたノートを読み込めませんでした。"
   },
   "canvasFolder": {
     "exists": "この場所には同じ名前のキャンバスフォルダーがすでにあります。",
@@ -209,10 +219,35 @@
     "previewFailed": "プレビューできませんでした",
     "listFailed": "インポーターの一覧を取得できませんでした",
     "appleNotesFoldersFailed": "Apple Notes のフォルダーを読み取れませんでした",
+    "appleNotesPasswordFailed": "メモのパスワードを確認できませんでした。",
     "onenoteStatusFailed": "OneNote の接続状態を読み取れませんでした",
     "onenoteConnectFailed": "Microsoft にサインインできませんでした",
     "onenoteDisconnectFailed": "Microsoft アカウントの接続を解除できませんでした",
-    "onenoteNotebooksFailed": "OneNote のノートブックを読み込めませんでした"
+    "onenoteNotebooksFailed": "OneNote のノートブックを読み込めませんでした",
+    "readwiseStatusFailed": "Readwise の接続状態を読み取れませんでした",
+    "readwiseConnectFailed": "Readwise に接続できませんでした",
+    "readwiseInvalidToken": "Readwise がこのトークンを受け付けませんでした。readwise.io/access_token から再度コピーしてください。",
+    "readwiseRateLimited": "Readwise が現在リクエストを制限しています。1 分ほど待ってからもう一度お試しください。",
+    "readwiseUnreachable": "Readwise に接続できませんでした。接続を確認して、もう一度お試しください。",
+    "readwiseDisconnectFailed": "Readwise の接続を解除できませんでした",
+    "readwiseSyncFailed": "Readwise の同期を開始できませんでした",
+    "readwiseRunUnavailable": "このデバイスでは Readwise は同期されません。",
+    "readwiseRunInProgress": "Readwise のインポートがすでに実行中です。完了してからもう一度お試しください。",
+    "readwiseOptionsFailed": "Readwise の設定を保存できませんでした",
+    "readwiseNotConnected": "Readwise が接続されていません。先にアクセストークンを貼り付けてください。",
+    "readwiseSyncsElsewhere": "Readwise は別のデバイスで同期されます。このコマンドはそのデバイスで実行してください。",
+    "readwiseBookCommandFailed": "Readwise のコマンドを完了できませんでした",
+    "readwiseBookGone": "この本は Readwise のライブラリにありません。",
+    "readwiseNotLinked": "このノートは Readwise の本にリンクされていません。",
+    "readwiseNotDeleted": "この本は削除済みリストにありません。",
+    "readwiseBookBusy": "コマンドの実行中にノートが変更されました。もう一度お試しください。",
+    "readwiseSyncsOnDevice": "Readwise は {device} で同期されます。ここに移すには「代わりにここで同期」を使ってください。",
+    "readwiseAnotherDevice": "別のデバイス",
+    "readwiseNotReady": "Memry は他のデバイスとの同期をまだ完了していません。少し待ってからもう一度お試しください。",
+    "readwiseNeedsSync": "デバイス間で Readwise を移すには、同期をオンにしてください。",
+    "readwiseClaimNotDelivered": "他のデバイスにまだ通知できませんでした。接続を確認して、もう一度お試しください。",
+    "readwiseTakeOverFailed": "Readwise をこのデバイスに移せませんでした",
+    "readwiseCancelFailed": "Readwise の同期をキャンセルできませんでした"
   },
   "project": {
     "createFailed": "プロジェクトを作成できませんでした",
@@ -236,7 +271,8 @@
     "renameFailed": "プロパティの名前を変更できませんでした",
     "createDefinitionFailed": "プロパティ定義を作成できませんでした",
     "updateDefinitionFailed": "プロパティ定義を更新できませんでした",
-    "setCalendarVisibilityFailed": "カレンダーでのプロパティの表示を設定できませんでした"
+    "setCalendarVisibilityFailed": "カレンダーでのプロパティの表示を設定できませんでした",
+    "definitionsFileUnreadable": ".memry/properties.md を読み取れないため、プロパティの変更を保存できません。このファイルを修正または削除してから、もう一度お試しください。"
   },
   "reminder": {
     "notFound": "リマインダーが見つかりません",
@@ -258,10 +294,10 @@
     "modelLoadFailed": "モデルを読み込めませんでした",
     "voiceModelDownloadFailed": "音声モデルをダウンロードできませんでした",
     "terminalCommandInstallFailed": "ターミナルコマンドをインストールできませんでした",
-    "terminalCommandUninstallFailed": "ターミナルコマンドをアンインストールできませんでした",
-    "shortcutInUse": "ショートカット {shortcut} はすでに使用されています"
+    "terminalCommandUninstallFailed": "ターミナルコマンドをアンインストールできませんでした"
   },
   "tag": {
+    "renameInProgress": "#{from} から #{to} への名前変更がまだ実行中です。完了してからもう一度お試しください。",
     "mergeSameTag": "結合元と結合先のタグが同じです",
     "categoryNameRequired": "カテゴリー名を入力してください",
     "pinNoteFailed": "ノートをピン留めできませんでした",
@@ -295,7 +331,8 @@
     "deleteManyFailed": "タスクを削除できませんでした",
     "moveManyFailed": "タスクを移動できませんでした",
     "archiveManyFailed": "タスクをアーカイブできませんでした",
-    "projectMissing": "そのプロジェクトはもう存在しません"
+    "projectMissing": "そのプロジェクトはもう存在しません",
+    "invalidParent": "タスクをここには移動できません"
   },
   "taskStatus": {
     "createFailed": "ステータスを作成できませんでした",
@@ -319,5 +356,21 @@
   "vaultLock": {
     "noteReadOnly": "所有者がこのノートを読み取り専用にしました。",
     "folderReadOnly": "所有者がこのフォルダを読み取り専用にしました。"
+  },
+  "ocrLanguages": {
+    "unreachable": "Memry のサーバーに接続できませんでした。すでにある言語は引き続き使え、Memry は次回の起動時に再試行します。",
+    "unavailable": "Memry のサーバーはまだこの言語を提供していません。すでにある言語は引き続き使えます。",
+    "corrupt": "ダウンロードしたデータが Memry の想定と一致しなかったため、使用されませんでした。再試行してもう一度ダウンロードしてください。",
+    "saveFailed": "言語データをこのコンピューターに保存できませんでした。ディスクの空き容量を確認してから再試行してください。"
+  },
+  "tagFields": {
+    "reservedName": "「{name}」は予約されているため、フィールド名にできません",
+    "duplicateField": "#{definedBy} にはすでに「{name}」というフィールドがあります",
+    "unknownField": "このタグには「{name}」というフィールドがありません",
+    "inheritedField": "「{name}」は #{definedBy} から引き継がれています。そちらで編集してください",
+    "cycle": "#{parent} はすでにこのタグからフィールドを引き継いでいます",
+    "unreadableSchema": "新しいバージョンの Memry がこのタグを変更しました。編集するには Memry をアップデートしてください",
+    "relationTargetRequired": "このリレーションが指すタグを選んでください",
+    "renameRunning": "別のフィールド名変更（{from} から {to}）がまだ完了していません。完了してからもう一度お試しください。"
   }
 }

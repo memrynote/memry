@@ -1,5 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { KEYCHAIN_ENTRIES, KEY_DERIVATION_CONTEXTS } from '@memry/contracts/crypto'
@@ -10,6 +10,9 @@ import { checkAccountKey } from './vault-key-policy'
 import { deriveKey } from './keys'
 import { lockKeyMaterial } from './memory-lock'
 import { secureCleanup } from './primitives'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 export const VAULT_KEY_VERIFIER_SETTING = 'vault.crypto.verifier.v1'
 

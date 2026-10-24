@@ -136,7 +136,7 @@ function nodeChildren(node: OrderedNode, tag: string): OrderedNode[] {
   if (!Array.isArray(children)) return []
   // Pretty-printed MathML interleaves whitespace text nodes between element
   // children; they would shift positional operands (mfrac, msup, …).
-  return (children as OrderedNode[]).filter((child) => {
+  return children.filter((child: OrderedNode) => {
     const childTag = nodeTag(child)
     return !(childTag === '#text' && String(child[childTag]).trim() === '')
   })
@@ -146,7 +146,7 @@ function nodeAttrs(node: OrderedNode): Record<string, string> {
   const attrs = node[':@']
   if (attrs === null || typeof attrs !== 'object') return {}
   const out: Record<string, string> = {}
-  for (const [key, value] of Object.entries(attrs as Record<string, unknown>)) {
+  for (const [key, value] of Object.entries(attrs)) {
     if (key.startsWith('@_')) out[key.slice(2)] = String(value)
   }
   return out
@@ -281,6 +281,7 @@ function convertNode(node: OrderedNode): string {
  *   not be parsed or produced no output.
  */
 export function mathmlToLatex(mathml: string): string | null {
+  // oxlint-disable-next-line typescript/no-deprecated -- fast-xml-validator would be a new dependency; fast-xml-parser's XMLValidator is what this importer ships on
   if (XMLValidator.validate(mathml) !== true) return null
 
   let parsed: unknown
@@ -299,8 +300,6 @@ export function mathmlToLatex(mathml: string): string | null {
   }
 
   if (!Array.isArray(parsed)) return null
-  const latex = convertList(parsed as OrderedNode[])
-    .replace(/\s+/g, ' ')
-    .trim()
+  const latex = convertList(parsed).replace(/\s+/g, ' ').trim()
   return latex.length > 0 ? latex : null
 }

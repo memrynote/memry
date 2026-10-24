@@ -154,7 +154,7 @@ export function findEnvFiles(root, { readDir = readdirSync } = {}) {
     }
   }
   walk('')
-  return found.sort()
+  return found.toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 /**

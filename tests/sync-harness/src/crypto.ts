@@ -6,13 +6,16 @@ import { XCHACHA20_PARAMS } from '@memry/contracts/crypto'
 import type { PushItem, SyncItemType, SyncOperation, VectorClock } from '@memry/contracts/sync-api'
 
 export async function initCrypto(): Promise<void> {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   await sodium.ready
 }
 
 const toB64 = (bytes: Uint8Array): string =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   sodium.to_base64(bytes, sodium.base64_variants.ORIGINAL)
 
 const fromB64 = (str: string): Uint8Array =>
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   sodium.from_base64(str, sodium.base64_variants.ORIGINAL)
 
 function encodeCbor(data: Record<string, unknown>, fieldOrder: readonly string[]): Uint8Array {
@@ -30,6 +33,7 @@ const FLAG_DEFLATE = 0x01
 
 function compressPayload(data: Uint8Array): Uint8Array {
   if (data.byteLength < 64) return prependFlag(FLAG_RAW, data)
+  // oxlint-disable-next-line import/no-named-as-default-member -- pako default export kept: a named import would change how the harness resolves the module
   const compressed = pako.deflate(data)
   return compressed.byteLength >= data.byteLength
     ? prependFlag(FLAG_RAW, data)
@@ -39,6 +43,7 @@ function compressPayload(data: Uint8Array): Uint8Array {
 function decompressPayload(data: Uint8Array): Uint8Array {
   if (data.byteLength === 0) return data
   const flag = data[0]
+  // oxlint-disable-next-line import/no-named-as-default-member -- pako default export kept: a named import would change how the harness resolves the module
   if (flag === FLAG_DEFLATE) return pako.inflate(data.subarray(1))
   if (flag === FLAG_RAW) return data.subarray(1)
   throw new Error(`Unknown compression flag: 0x${flag.toString(16)}`)
@@ -151,6 +156,7 @@ export function encryptItemForPush(input: EncryptForPushInput): {
       sizeBytes: ciphertext.length
     }
   } finally {
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
     sodium.memzero(fileKey)
   }
 }
@@ -232,6 +238,7 @@ export function decryptItemFromPull(input: DecryptFromPullInput): {
     const content = decompressPayload(plaintext)
     return { content, verified: true }
   } finally {
+    // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
     sodium.memzero(fileKey)
   }
 }

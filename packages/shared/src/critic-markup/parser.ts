@@ -1,3 +1,5 @@
+import { isObject } from '../is-record'
+
 export type CriticMarkupKind = 'addition' | 'deletion' | 'substitution' | 'comment'
 
 export type CriticMarkupCommentMentionKind =
@@ -247,7 +249,7 @@ export function serializeCriticMarkup(plainText: string, marks: CriticMarkupMark
   const ranges = marks
     .map((mark) => resolveMarkRange(plainText, mark))
     .filter((range): range is CriticMarkupMark => range !== null)
-    .sort((a, b) => a.start - b.start)
+    .toSorted((a, b) => a.start - b.start)
 
   let result = ''
   let cursor = 0
@@ -279,8 +281,8 @@ export function normalizeCriticMarkupCommentMentions(
 ): CriticMarkupCommentMentionRef[] | undefined {
   if (!Array.isArray(value)) return undefined
   const mentions = value.flatMap((item) => {
-    if (!item || typeof item !== 'object') return []
-    const mention = item as Record<string, unknown>
+    if (!isObject(item)) return []
+    const mention = item
     if (!isCriticMarkupCommentMentionKind(mention.kind)) return []
     if (typeof mention.refId !== 'string' || mention.refId.length === 0) return []
     if (typeof mention.label !== 'string' || mention.label.length === 0) return []
@@ -300,8 +302,8 @@ export function normalizeCriticMarkupCommentAttachments(
 ): CriticMarkupCommentAttachmentRef[] | undefined {
   if (!Array.isArray(value)) return undefined
   const attachments = value.flatMap((item) => {
-    if (!item || typeof item !== 'object') return []
-    const attachment = item as Record<string, unknown>
+    if (!isObject(item)) return []
+    const attachment = item
     if (typeof attachment.id !== 'string' || attachment.id.length === 0) return []
     if (typeof attachment.name !== 'string' || attachment.name.length === 0) return []
     if (typeof attachment.path !== 'string' || attachment.path.length === 0) return []
@@ -349,8 +351,8 @@ export function normalizeCriticMarkupCommentFormatRanges(
 ): CriticMarkupCommentFormatRange[] | undefined {
   if (!Array.isArray(value)) return undefined
   const ranges = value.flatMap((item) => {
-    if (!item || typeof item !== 'object') return []
-    const range = item as Record<string, unknown>
+    if (!isObject(item)) return []
+    const range = item
     const start = range.start
     const end = range.end
     if (typeof start !== 'number' || !Number.isFinite(start) || start < 0) return []
@@ -374,8 +376,8 @@ export function parseCriticMarkupCommentFormat(
 ): CriticMarkupCommentFormatRange[] | undefined {
   if (!encoded) return undefined
   try {
-    const payload = JSON.parse(decodeURIComponent(encoded)) as Record<string, unknown>
-    if (!payload || typeof payload !== 'object') return undefined
+    const payload: unknown = JSON.parse(decodeURIComponent(encoded))
+    if (!isObject(payload)) return undefined
     if (payload.v !== COMMENT_FORMAT_VERSION) return undefined
     if (payload.hash !== criticMarkupCommentBodyHash(body)) return undefined
     return normalizeCriticMarkupCommentFormatRanges(payload.ranges, body.length)
@@ -403,6 +405,7 @@ function isCriticMarkupCommentFormatMark(value: unknown): value is CriticMarkupC
   )
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; a default branch would change what an unknown persisted kind serializes to
 function serializeMark(mark: CriticMarkupMark, visibleText: string): string {
   switch (mark.kind) {
     case 'addition':

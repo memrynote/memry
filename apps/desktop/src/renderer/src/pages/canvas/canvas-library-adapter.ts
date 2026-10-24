@@ -32,6 +32,7 @@ export function createVaultLibraryAdapter(
         // interpret — so this cast is the one place the loose stored shape is
         // reasserted as Excalidraw's. Anything narrower would strip fields a
         // future Excalidraw version adds.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
         return { libraryItems: libraryItems as unknown as LibraryItems }
       } catch (err) {
         // Returning null means "no stored library" rather than "empty

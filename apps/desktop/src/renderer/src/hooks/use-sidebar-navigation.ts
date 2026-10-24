@@ -107,7 +107,7 @@ export const isItemOpenInTab = (state: TabSystemState, item: SidebarItem): boole
  */
 export const isItemActiveTab = (state: TabSystemState, item: SidebarItem): boolean => {
   const activeGroup = state.tabGroups[state.activeGroupId]
-  if (!activeGroup || !activeGroup.activeTabId) return false
+  if (!activeGroup?.activeTabId) return false
 
   const activeTab = activeGroup.tabs.find((t) => t.id === activeGroup.activeTabId)
   if (!activeTab) return false

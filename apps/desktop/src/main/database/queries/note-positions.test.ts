@@ -415,7 +415,7 @@ describe('note-positions queries', () => {
 
       // Assert
       expect(result).toHaveLength(3)
-      expect(result.map((p) => p.path).sort()).toEqual([
+      expect(result.map((p) => p.path).toSorted()).toEqual([
         'notes/personal/diary.md',
         'notes/root.md',
         'notes/work/task.md'

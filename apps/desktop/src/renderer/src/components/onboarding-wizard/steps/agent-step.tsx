@@ -116,10 +116,6 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
     statuses?.find((status) => status.backend === backend)
   const noneFound = statuses !== null && !statuses.some((status) => status.state === 'found')
 
-  const install = (backend: AgentBackendId): void => {
-    window.open(INSTALL_URL[backend], '_blank', 'noopener,noreferrer')
-  }
-
   return (
     <>
       <StepHeading title={t(`${K}.title`)} body={t(`${K}.body`)} />
@@ -215,4 +211,8 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
       </div>
     </>
   )
+}
+
+function install(backend: AgentBackendId): void {
+  window.open(INSTALL_URL[backend], '_blank', 'noopener,noreferrer')
 }

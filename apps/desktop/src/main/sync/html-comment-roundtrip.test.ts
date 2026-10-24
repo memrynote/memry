@@ -76,7 +76,7 @@ function inlineItems(blocks: Block[]): Array<{ type: string; text?: string; prop
   const visit = (list: Block[]): void => {
     for (const block of list) {
       if (Array.isArray(block.content)) out.push(...(block.content as never[]))
-      visit((block.children ?? []) as Block[])
+      visit(block.children ?? [])
     }
   }
   visit(blocks)

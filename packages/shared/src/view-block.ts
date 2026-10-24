@@ -33,6 +33,8 @@
  * the block's "invalid definition" notice and keeps the bytes as they are.
  */
 
+import { isRecord } from './is-record.ts'
+
 /** The fence info string. Also the `codeBlock` `language` prop value. */
 export const VIEW_BLOCK_LANGUAGE = 'memry-view'
 
@@ -130,10 +132,6 @@ export type ParsedViewBlock =
       raw?: Record<string, unknown>
     }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 /** A source as stored, or null when this build cannot read it. */
 export function readViewBlockSource(value: unknown): ViewBlockSource | null {
   if (!isRecord(value)) return null
@@ -183,7 +181,7 @@ function readOrder(value: unknown): ViewBlockOrder[] | undefined {
 }
 
 function oneOf<T extends string>(list: readonly T[], value: unknown): T | undefined {
-  return list.includes(value as T) ? (value as T) : undefined
+  return list.find((item) => item === value)
 }
 
 /** The chart settings. A key this build cannot use is left out, not fatal. */
@@ -233,9 +231,8 @@ export function parseViewBlockDefinition(text: string): ParsedViewBlock {
 
   const definition: ViewBlockDefinition = { source }
   if (typeof json.view === 'string' && json.view.trim() !== '') definition.view = json.view
-  if (VIEW_BLOCK_LAYOUTS.includes(json.layout as ViewBlockLayout)) {
-    definition.layout = json.layout as ViewBlockLayout
-  }
+  const layout = oneOf(VIEW_BLOCK_LAYOUTS, json.layout)
+  if (layout !== undefined) definition.layout = layout
   if (json.filters !== undefined && isViewBlockFilter(json.filters)) {
     definition.filters = json.filters
   }

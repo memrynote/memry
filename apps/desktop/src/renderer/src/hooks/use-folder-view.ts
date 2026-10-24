@@ -19,7 +19,6 @@ import {
 import { createLogger } from '@/lib/logger'
 import { toast } from 'sonner'
 
-const log = createLogger('Hook:FolderView')
 import { DEFAULT_COLUMNS, BUILT_IN_COLUMNS, scopeKey } from '@memry/contracts/folder-view-api'
 import type {
   FilterExpression,
@@ -34,6 +33,8 @@ import { getColumnLabel } from '@/lib/contract-display-names'
 import { propertiesService } from '@/services/properties-service'
 import { notesService, onTagsChanged } from '@/services/notes-service'
 import { onTagNotesChanged } from '@/services/tags-service'
+
+const log = createLogger('Hook:FolderView')
 
 // ============================================================================
 // Types (mirrored from preload for renderer use)
@@ -269,6 +270,19 @@ interface UseFolderViewResult {
 // ============================================================================
 
 /**
+ * Remove undefined values from an object (for YAML serialization)
+ */
+const cleanUndefinedValues = <T extends Record<string, unknown>>(obj: T): T => {
+  const cleaned = { ...obj }
+  for (const key of Object.keys(cleaned)) {
+    if (cleaned[key] === undefined) {
+      delete cleaned[key]
+    }
+  }
+  return cleaned
+}
+
+/**
  * Hook for managing folder view data and state.
  * Uses TanStack Query for caching - data persists across tab switches.
  */
@@ -420,6 +434,7 @@ export function useFolderView({
 
   // Client-side filtered notes
   const filteredNotes = useMemo(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
     const viewFilters = activeView?.filters as FilterExpression | undefined
     const filters: FilterExpression | undefined =
       extraFilter && viewFilters
@@ -469,19 +484,6 @@ export function useFolderView({
   // ============================================================================
 
   /**
-   * Remove undefined values from an object (for YAML serialization)
-   */
-  const cleanUndefinedValues = <T extends Record<string, unknown>>(obj: T): T => {
-    const cleaned = { ...obj }
-    for (const key of Object.keys(cleaned)) {
-      if (cleaned[key] === undefined) {
-        delete cleaned[key]
-      }
-    }
-    return cleaned
-  }
-
-  /**
    * Update current view configuration with optimistic update
    */
   const updateView = useCallback(
@@ -508,6 +510,7 @@ export function useFolderView({
           try {
             const result = await window.api.folderView.setView(
               scope,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
               updatedView as unknown as ContractViewConfig
             )
 
@@ -533,6 +536,7 @@ export function useFolderView({
       try {
         const result = await window.api.folderView.setView(
           scope,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
           view as unknown as ContractViewConfig
         )
 
@@ -631,6 +635,7 @@ export function useFolderView({
             if (persistedName === name) return
             const result = await window.api.folderView.setView(
               scope,
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
               renamed as unknown as ContractViewConfig,
               persistedName
             )
@@ -671,6 +676,7 @@ export function useFolderView({
       })
 
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
         const result = await window.api.folderView.setView(scope, {
           ...targetView,
           default: true
@@ -807,6 +813,7 @@ export function useFolderView({
       updateTimeoutRef.current = setTimeout(() => {
         void (async () => {
           try {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- local ViewConfig mirrors the preload type with unknown filters/groupBy; the IPC contract type is narrower
             await window.api.folderView.setView(scope, updatedView as unknown as ContractViewConfig)
 
             // The properties.{id}.displayName record lives in .folder.md,
@@ -1181,7 +1188,7 @@ export function useFolderView({
   // render, so the effects depend on `scopeKey(scope)` (stable per logical
   // scope) instead of `scope` itself to avoid resubscribing on every render.
   useEffect(() => {
-    if (scope.kind !== 'tag') return
+    if (scope.kind !== 'tag') return undefined
     const currentTag = scope.tag
     const unsubscribe = onTagNotesChanged((event) => {
       if (foldTag(event.tag) === foldTag(currentTag)) {
@@ -1193,7 +1200,7 @@ export function useFolderView({
   }, [scopeKey(scope), queryClient])
 
   useEffect(() => {
-    if (scope.kind !== 'tag') return
+    if (scope.kind !== 'tag') return undefined
     const unsubscribe = onTagsChanged(() => {
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.views(scope) })
       void queryClient.invalidateQueries({ queryKey: folderViewKeys.availableProperties(scope) })

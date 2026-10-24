@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "לא ניתן להעתיק את הפורטל",
+    "hiddenCount": "{count} מוסתרים",
+    "windowFailed": "לא ניתן לפתוח את הפורטל הזה. אפשר לפתוח את פתק המקור במקום.",
+    "noTarget": "לפורטל הזה אין עדיין יעד. אפשר להוסיף פתק להגדרה, או להסיר את הבלוק.",
+    "invalidJson": "ההגדרה של הפורטל הזה אינה JSON תקין. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
+    "invalidShape": "בהגדרה של הפורטל הזה אין פתק או חיפוש. אפשר לתקן אותה למטה, או להסיר את הבלוק.",
+    "search": {
+      "editQuery": "עריכת השאילתה",
+      "count": "{count, plural, one {בלוק אחד} other {# בלוקים}}",
+      "loading": "מחפש…",
+      "empty": "אין בלוקים שמתאימים לשאילתה הזו.",
+      "failed": "לא ניתן להריץ את החיפוש.",
+      "retry": "ניסיון חוזר",
+      "truncated": "מוצגות {count} ההתאמות הראשונות."
+    },
+    "copiedContents": "התוכן הועתק",
+    "copiedLink": "הקישור הועתק",
+    "actionFailed": "לא ניתן לשנות את הפורטל הזה",
+    "keepsOneBlock": "פורטל חייב להכיל לפחות בלוק אחד. אפשר להסיר את הפורטל במקום.",
+    "expandChildren": "הצגת הצאצאים",
+    "collapseChildren": "הסתרת הצאצאים",
+    "toolbar": {
+      "label": "פורטל",
+      "include": "הכללת “{block}”",
+      "locked": "{note} נעול · לקריאה בלבד",
+      "more": "עוד",
+      "openBeside": "פתיחת {note} בצד",
+      "click": "לחיצה",
+      "copyContents": "העתקת התוכן",
+      "copyLink": "העתקת הקישור",
+      "remove": "הסרת הפורטל",
+      "removeHint": "{note} שומר על כל הבלוקים"
+    },
+    "states": {
+      "missingNote": {
+        "text": "פתק המקור נמחק. ההפניה נשמרה.",
+        "action": "הסרה"
+      },
+      "missingBlock": {
+        "text": "הבלוק נמחק ב-{source}.",
+        "action": "בחירת בלוק אחר"
+      },
+      "notSynced": {
+        "text": "ממתין לסנכרון של פתק המקור.",
+        "action": "ניסיון חוזר"
+      },
+      "cycle": {
+        "text": "הפורטל הזה מוביל חזרה לעצמו.",
+        "action": "פתיחת המקור"
+      },
+      "tooDeep": {
+        "text": "פורטלים מקוננים עד עומק {max}. הפורטל הזה נפתח כקישור.",
+        "action": "פתיחת המקור"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "מיקוד בשדה הלכידה",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "פתיחה באפליקציית ברירת המחדל",
     "revealFailed": "לא ניתן להציג בתיקייה"
   },
+  "commands": {
+    "runFailed": "לא ניתן להריץ את הפקודה. כדאי לנסות שוב."
+  },
+  "commandsPalette": {
+    "title": "פקודות",
+    "placeholder": "הקלדת פקודה…",
+    "groups": {
+      "navigation": "ניווט",
+      "create": "יצירה",
+      "tabs": "כרטיסיות",
+      "editor": "עורך",
+      "view": "תצוגה",
+      "app": "אפליקציה",
+      "note": "פתק",
+      "settings": "הגדרות",
+      "sync": "סנכרון",
+      "help": "עזרה",
+      "project": "פרויקט",
+      "tasks": "משימות",
+      "canvas": "קנבס",
+      "folder": "תיקייה",
+      "file": "קובץ"
+    },
+    "contexts": {
+      "note": "הפתק הזה",
+      "journal": "היומן הזה",
+      "project": "הפרויקט הזה",
+      "tasks": "המשימות האלה",
+      "canvas": "הקנבס הזה",
+      "folder": "התיקייה הזו",
+      "tag": "התגית הזו",
+      "file": "הקובץ הזה"
+    },
+    "recent": "אחרונות",
+    "empty": "אין פקודות שמתאימות ל-“{query}”",
+    "searchHint": "חיפוש בפתקים: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {פקודה אחת} other {# פקודות}}"
+    },
+    "actions": {
+      "run": "הרצה",
+      "searchNotes": "חיפוש בפתקים"
+    }
+  },
   "tabs": {
     "pin": "הצמדת הכרטיסייה",
     "unpin": "ביטול הצמדת הכרטיסייה",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "הפעולה נכשלה",
-    "nothingToUndo": "אין מה לבטל",
     "undone": "בוטל: {description}",
     "undoFailed": "ביטול הפעולה נכשל",
     "filesImported": "{count, plural, one {קובץ אחד יובא} other {# קבצים יובאו}}",
@@ -131,6 +231,20 @@
     "openInTab": "פתיחת השיחה בכרטיסייה",
     "stop": "עצירה",
     "thinking": "הסוכן חושב",
+    "toolsUnavailable": "כלי הכספת כבויים עבור המודל הזה. הוא נכשל בבדיקת הכלים, ולכן אפשר רק לשוחח איתו.",
+    "toolsUnavailableWithDetail": "כלי הכספת כבויים עבור המודל הזה. הוא נכשל בבדיקת הכלים, ולכן אפשר רק לשוחח איתו. {detail}",
+    "toolsOff": {
+      "toolsRejected": "כלי הכספת כבויים עבור המודל הזה. הספק דחה בקשת בדיקה שכללה כלים, ולכן אפשר רק לשוחח עם המודל.",
+      "noToolCall": "כלי הכספת כבויים עבור המודל הזה. הוא השיב לבקשת בדיקה בלי להפעיל את הכלי, ולכן אפשר רק לשוחח איתו.",
+      "toolResultRejected": "כלי הכספת כבויים עבור המודל הזה. הוא הפעיל כלי בדיקה אך נכשל לאחר קבלת התוצאה, ולכן אפשר רק לשוחח איתו.",
+      "streamingUnsupported": "כלי הכספת כבויים עבור המודל הזה. הספק לא שידר תשובת בדיקה בהזרמה, ולכן אפשר רק לשוחח עם המודל.",
+      "providerSaid": "הספק הודיע: {detail}",
+      "wroteToolCall": "המודל כתב קריאה לכלי כטקסט, ולא הופעל דבר."
+    },
+    "stepLimit": {
+      "notice": "נעצר במגבלת השלבים.",
+      "continue": "המשך"
+    },
     "enable": {
       "title": "הפעלת הסוכן של memrynote",
       "description": "הסוכן של memrynote משתמש בכלי ה-CLI של הסוכן המקומי שבחרת כדי לשוחח על הכספת שלך. Claude שולח את ההודעות ל-Anthropic; Codex שולח את ההודעות ל-OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "הסוכן רוצה ליצור את {title}. כדאי לעבור על השינוי לפני החלתו.",
       "descriptionDelete": "הסוכן רוצה למחוק את {title}. כדאי לעבור על השינוי לפני החלתו.",
       "fallbackTitle": "הפריט הזה",
-      "current": "נוכחי",
       "candidate": "מוצע",
       "loading": "טוען…",
       "apply": "החלה",
@@ -268,13 +381,18 @@
       "removeAttachment": "הסרת {label}",
       "placeholder": "אפשר לעשות כל דבר עם memrynote… @ לאזכור פתקים, משימות ואירועים",
       "send": "שליחה",
-      "providerLabel": "ספק הסוכן: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "כלים מחוברים",
       "connectTool": "חיבור {tool}",
-      "addContext": "הוספת הקשר",
-      "addContextWithPermissions": "הוספת הקשר ({permissions})",
       "mentionContext": "אזכור פתק, משימה או אירוע",
+      "files": {
+        "attach": "צירוף קובץ טקסט",
+        "refused": {
+          "unsupportedType": "{name} אינו קובץ טקסט נתמך. אפשר לצרף קובץ .txt, .md, .log, .csv, .tsv, .json, .yaml או .yml.",
+          "notText": "{name} אינו קובץ טקסט בקידוד UTF-8. אפשר לצרף קובץ טקסט במקום.",
+          "tooLarge": "עם {name} ההודעה תחרוג ממגבלת 100 KB. אפשר להסיר קובץ או לצרף קובץ קטן יותר.",
+          "readFailed": "לא ניתן לקרוא את {name}. כדאי לוודא שהקובץ עדיין קיים ושאפשר לפתוח אותו, ואז לצרף אותו שוב."
+        }
+      },
       "voice": {
         "start": "התחלת הכתבה קולית",
         "stop": "הפסקת ההכתבה הקולית",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "לא ניתן להמיר את הקלט הקולי לטקסט"
         }
       },
-      "modelLabel": "מודל הסוכן: {provider} {model}",
-      "reasoningLabel": "רמת החשיבה של הסוכן: {reasoning}",
       "providers": {
-        "label": "ספק",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "גישה למחשב"
       },
       "webSearch": {
-        "on": "פועל",
-        "off": "כבוי",
         "label": "חיפוש באינטרנט"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "הסוכן לא זמין — פתיחת ההגדרות…"
       },
       "settings": {
-        "reasoning": "חשיבה",
         "effort": "מאמץ"
       },
       "includeCurrentNote": "צירוף הפתק הנוכחי",
@@ -340,13 +452,29 @@
           "extraHigh": "גבוה במיוחד"
         }
       },
-      "permissionsLabel": "הרשאות הסוכן: {access}, חיפוש באינטרנט {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "ברירת מחדל",
+          "default": "עומק ברירת מחדל",
+          "high": "גבוה",
+          "max": "מרבי"
+        }
+      },
       "permissions": {
-        "label": "הרשאות",
-        "access": "גישה",
-        "tools": "כלים"
+        "access": "גישה"
       },
       "modelSettingsLabel": "הגדרות המודל של הסוכן: {model}, {settings}",
+      "queue": {
+        "label": "הודעות בתור",
+        "queueMessage": "הוספת ההודעה לתור",
+        "edit": "עריכת הודעה בתור",
+        "editLabel": "טקסט ההודעה בתור",
+        "remove": "הסרת הודעה מהתור",
+        "save": "שמירה",
+        "cancel": "ביטול",
+        "sending": "שולח…",
+        "notSent": "לא נשלחה. אפשר לערוך כדי לשלוח שוב, או להסיר אותה."
+      },
       "unavailable": {
         "vaultToolsOnly": "רק כלי הכספת עם מודל זה"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "לא ניתן לשמור את מצב ההסכמה",
       "resolveWindow": "לא ניתן לזהות את חלון המקור של הסוכן",
       "detectCli": "לא ניתן לזהות את מנועי הסוכן הזמינים",
-      "loadDisclosure": "לא ניתן לטעון את מצב ההסכמה"
+      "loadDisclosure": "לא ניתן לטעון את מצב ההסכמה",
+      "turnFailed": "התשובה נעצרה בשגיאה. ההודעה שלך נשמרה, ואפשר לשלוח אותה שוב."
     },
     "actions": {
       "copy": "העתקה",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "שחרור קבצים לייבוא",
       "dropFilesIntoVaultRoot": "תיקיית השורש של הכספת",
       "newNoteN": "פתק חדש (⌘N)",
-      "new": "חדש",
       "newItemMenu": "יצירת פריט חדש…",
       "feedbackButton": "שליחת משוב",
       "feedbackTitle": "שליחת משוב",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "חיפוש, החלפה, שאלה…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "דילוג על ההדרכה",
-      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "מאגר הידע האישי שלך. נתחיל? זה לוקח רק 2 דקות.",
-      "getStarted": "התחלה ",
-      "createYourFirstNote": "יצירת הפתק הראשון שלך",
-      "markdownBasedStoredLocallyAsPlainFiles": "מבוסס Markdown, מאוחסן באופן מקומי כקבצים רגילים.",
-      "eGMeetingNotesIdeasAnything": "למשל סיכומי פגישות, רעיונות, כל דבר…",
-      "skip": "דילוג",
-      "createNote": "יצירת פתק ",
-      "addYourFirstTask": "הוספת המשימה הראשונה שלך",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "משימות מקושרות לפתקים שלך, עם עדיפויות ותאריכי יעד.",
-      "eGReviewProjectProposal": "למשל לעבור על הצעת הפרויקט…",
-      "skip2": "דילוג",
-      "createTask": "יצירת משימה ",
-      "syncAcrossDevices": "סנכרון בין מכשירים",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "אפשר לשמור על הפתקים והמשימות שלך מסונכרנים בכל המכשירים שלך. את ההגדרה אפשר לעשות גם מאוחר יותר.",
-      "skipForNow": "דילוג בינתיים",
-      "doneLetSGo": "סיום — יוצאים לדרך! "
+      "skip": "דילוג"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "הגדרת סמל לתיקייה",
@@ -707,8 +818,7 @@
       "unknownTabType": "סוג כרטיסייה לא ידוע: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "שינויים שלא נשמרו",
-      "preview": "תצוגה מקדימה"
+      "unsavedChanges": "שינויים שלא נשמרו"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "כרטיסייה חדשה",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "גרירה לשינוי הגודל · לחיצה כפולה לאיפוס"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
-      "yourPersonalKnowledgeManagementSystem": "מערכת ניהול הידע האישי שלך.",
-      "selectAFolderToStoreYourNotesAndTasks": "יש לבחור תיקייה לאחסון הפתקים והמשימות שלך.",
       "opening": "פותח…",
-      "selectVaultFolder": "בחירת תיקיית כספת",
-      "plainMarkdown": "Markdown רגיל",
-      "yourNotesStayPortable": "הפתקים שלך נשארים ניידים",
-      "syncAnywhere": "סנכרון בכל מקום",
-      "useDropboxIcloudGit": "שימוש ב-Dropbox, iCloud, Git",
       "recentVaults": "כספות אחרונות",
-      "notesLastOpened": "פתקים · נפתח לאחרונה",
-      "preRelease": "בטא",
       "createNewVault": "יצירת כספת חדשה",
-      "createNewVaultDesc": "יצירת כספת חדשה בתיקייה לבחירתך.",
-      "openExistingVault": "פתיחת כספת קיימת",
-      "openExistingVaultDesc": "בחירת תיקייה של קובצי Markdown שכבר יש לך.",
-      "signInToSync": "התחברות לסנכרון",
-      "signInToSyncDesc": "כספות מוצפנות מקצה לקצה בכל המכשירים שלך.",
-      "create": "יצירה",
       "open": "פתיחה",
-      "signIn": "התחברות",
       "helpAndDocs": "עזרה ותיעוד",
-      "signInRequiresVault": "כדי להגדיר סנכרון, יש קודם לפתוח או ליצור כספת.",
       "addVault": "הוספת כספת",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "עדיין אין כספות",
       "openVault": "פתיחת כספת",
       "settings": "הגדרות",
-      "logOut": "התנתקות",
-      "signInToSync": "התחברות לסנכרון",
       "remove": "הסרת \"",
       "removeVaultTitle": "להסיר את \"{name}\" מהרשימה?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "הכספת הזו תוסר מהאפליקציה, אבל הקבצים שלך יישארו בדיסק. אפשר תמיד להוסיף אותה מחדש מאוחר יותר.",
       "cancel": "ביטול",
       "remove2": "הסרה",
       "inYourAccount": "בחשבון שלך",
+      "trySandbox": "נסו את כספת ארגז החול",
+      "sandboxVault": "כספת ארגז חול",
+      "sandboxPreparing": "מכין את ארגז החול…",
+      "sandboxFailed": "לא ניתן להכין את כספת ארגז החול",
+      "resetSandbox": "איפוס כספת ארגז החול",
       "itemsCount": "{count} פריטים",
       "untitledVault": "כספת",
       "downloadVaultTitle": "הורדת \"{name}\"",
@@ -870,7 +965,6 @@
       "changeLocation": "שינוי…",
       "download": "הורדה",
       "downloadFailed": "לא ניתן היה להוריד את הכספת",
-      "deleteFromAccount": "מחיקה מהחשבון",
       "deleteVaultTitle": "למחוק את \"{name}\" מהחשבון שלך?",
       "deleteVaultBody": "פעולה זו מסירה לצמיתות את כל הנתונים המסונכרנים של הכספת הזו משרתי Memry, ולא ניתן לבטל אותה. הקבצים שלך בדיסק לא יימחקו.",
       "deleteVaultConfirm": "מחיקה מהחשבון",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "הסרת הווידג׳ט",
       "dragAria": "גרירת הווידג׳ט",
-      "configAria": "הגדרת הווידג׳ט",
-      "resizeAria": "שינוי הגודל ל-{size}",
       "menuAria": "אפשרויות הווידג׳ט",
-      "resize": "גודל",
       "remove": "הסרה",
       "filter": {
         "all": "הכול",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "פתקים שנפתחו יופיעו כאן",
       "bookmarks": "סימניות",
       "tasks": "משימות",
+      "chart": "תרשים",
       "calendar": "לוח שנה",
       "calendarToday": "היום",
       "openCalendar": "פתיחת לוח השנה",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "בחירת תיקייה",
       "folderEmpty": "אין עדיין תיקיות",
       "folderNoSelection": "לא נבחרה תיקייה",
-      "folderView_list": "רשימה",
-      "folderView_gallery": "גלריה",
       "folderViewSelect": "תצוגה",
       "project": "פרויקט",
       "projectNoSelection": "לא נבחר פרויקט",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "פריסת דף הבית",
       "deleteAria": "מחיקת הפריסה",
-      "newAria": "לוח חדש",
       "newName": "לוח חדש",
       "defaultName": "דף הבית",
       "manage": "ניהול לוחות",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {משימה אחת להיום} other {# משימות להיום}}",
       "events": "{count, plural, one {אירוע אחד} other {# אירועים}}"
     },
-    "edit": "עריכה",
-    "done": "סיום",
     "addWidget": "הוספת וידג׳ט",
+    "cover": {
+      "add": "הוספת עטיפה"
+    },
     "empty": {
       "title": "הלוח שלך ריק",
       "body": "וידג׳טים מאחדים את הפתקים, המשימות והסימניות שלך במקום רגוע אחד.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "הדרכת הפתיחה הושלמה",
-      "body": "נשמח לכוכב ב-GitHub — זה עוזר לאנשים אחרים למצוא את MemryNote.",
-      "action": "כוכב ב-GitHub"
+      "body": "נשמח לכוכב ב-GitHub — זה עוזר לאנשים אחרים למצוא את MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "העדכון מוכן",
     "failed": "העדכון נכשל",
     "downloadAction": "הורדה",
-    "restartAction": "הפעלה מחדש",
     "detailsAction": "פרטים",
     "popover": {
       "readyTitle": "MemryNote {version} מוכן",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "כספות",
     "position": "{name}, כספת {index} מתוך {count}",
-    "openList": "{position}. פתיחת רשימת הכספות",
     "switchTo": "מעבר אל {name}",
     "switchingTo": "עובר אל {name}",
     "changeIcon": "שינוי סמל…",
     "resetIcon": "איפוס הסמל",
     "iconButton": "שינוי הסמל של {name}",
+    "leaveSandbox": "חזרה אל {name}",
     "iconFailed": "לא ניתן לשנות את סמל הכספת"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "סוג",
     "filterModified": "שונה",
     "matches": "התאמות",
+    "matchesMore": "{count, plural, one {התאמה נוספת אחת} other {# התאמות נוספות}}",
+    "matchesHide": "הסתרת ההתאמות",
+    "matchOf": "התאמה {index} מתוך {total}",
     "showMore": "הצגת {count} נוספים",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "המקטע הבא",
       "open": "פתיחה",
       "openNote": "פתיחת הפתק",
+      "openAtMatch": "פתיחה בהתאמה",
       "openFile": "פתיחת הקובץ",
       "openJournal": "פתיחת היומן",
       "openTask": "פתיחת המשימה",
@@ -1259,6 +1350,7 @@
       "chooseTag": "בחירת תגית",
       "addTag": "הוספת תגית",
       "showAll": "הצגת הכול",
+      "hideMatches": "הסתרת ההתאמות",
       "searchEverywhere": "חיפוש בכל מקום",
       "clearFilters": "ניקוי מסננים"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "על {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {נמצאה כספת #} two {נמצאו # כספות} other {נמצאו # כספות}}",
-      "notion": "Notion",
       "otherApps": "אפליקציות וקבצים אחרים",
       "otherAppsHint": "ועוד {count}",
       "detectedFootnote": "נמצא לפי בדיקה של האפליקציות המותקנות. שום דבר לא יוצא מ{device}.",

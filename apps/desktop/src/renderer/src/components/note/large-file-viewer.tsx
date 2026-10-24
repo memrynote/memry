@@ -130,7 +130,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   // rows off screen fall back to the estimate until they are scrolled back to.
   useEffect(() => {
     const element = scrollRef.current
-    if (!element) return
+    if (!element) return undefined
     let lastWidth = element.getBoundingClientRect().width
     const observer = new ResizeObserver((entries) => {
       const width = entries[0]?.contentRect.width ?? element.getBoundingClientRect().width
@@ -151,7 +151,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
   // surface in note.tsx — it walks the DOM, and the DOM here is a few dozen
   // rows out of millions.
   useEffect(() => {
-    if (!active || !canFind) return
+    if (!active || !canFind) return undefined
     const handler = (event: KeyboardEvent): void => {
       const isMac = navigator.platform.toUpperCase().includes('MAC')
       const modifier = isMac ? event.metaKey : event.ctrlKey
@@ -166,7 +166,7 @@ export const LargeFileViewer = memo(function LargeFileViewer({
 
   // Edit > Find and the note menu reach the bar through this.
   useEffect(() => {
-    if (!openFindRef) return
+    if (!openFindRef) return undefined
     openFindRef.current = canFind ? openFind : null
     return () => {
       openFindRef.current = null

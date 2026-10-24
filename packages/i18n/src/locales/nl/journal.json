@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI-verbindingen",
     "todaysNotes": "Notities van vandaag",
-    "todaysSchedule": "Planning van vandaag",
-    "todaysTasks": "Taken van vandaag",
     "tasks": "Taken",
     "technicalDetails": "Technische details"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Goedemiddag",
       "evening": "Goedenavond",
       "night": "Goedenacht"
-    },
-    "allDay": "Hele dag"
+    }
   },
   "nav": {
     "previousDay": "Vorige dag",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Meer opties",
     "documentStatistics": "Documentstatistieken",
-    "dayContext": "Dagcontext: taken en planning",
-    "scheduleEvents": "Geplande afspraken",
-    "tasks": "Taken",
     "notesCreatedToday": "{count} notities vandaag gemaakt"
   },
   "empty": {
     "noEntry": "Geen notitie",
     "noDaysInMonth": "Geen dagen in deze maand",
-    "noEventsScheduled": "Geen afspraken gepland",
-    "noEventsScheduledToday": "Vandaag geen afspraken gepland",
-    "noEventsWereScheduled": "Er waren geen afspraken gepland",
-    "noTasksDue": "Geen taken die vervallen",
-    "noTasksDueToday": "Geen taken die vandaag vervallen",
-    "noTasksWereDue": "Er vervielen geen taken",
     "noNotesToday": "Er zijn vandaag geen notities gemaakt",
     "startDocumenting": "Leg je gedachten en ideeën vast"
   },
@@ -155,9 +143,7 @@
     "day": "dag",
     "days": "dagen",
     "event": "afspraak",
-    "events": "afspraken",
     "task": "taak",
-    "todo": "te doen",
     "moreConnections": "+ nog {count} verbinding",
     "moreConnections_plural": "+ nog {count} verbindingen",
     "moreNotes": "+ nog {count} notitie",
@@ -166,7 +152,6 @@
     "charactersWritten": "tekens geschreven",
     "words": "{count} woorden",
     "characters": "{count} tekens",
-    "completed": "{count} voltooid",
     "overdue": "{count} te laat"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Gewijzigd {date}"
   },
   "task": {
-    "completed": "Voltooid",
-    "notCompleted": "Niet voltooid",
-    "priority": "Prioriteit {priority}",
-    "overdue": "te laat",
-    "markComplete": "“{title}” als voltooid markeren",
-    "markNotComplete": "“{title}” als niet voltooid markeren"
+    "priority": "Prioriteit {priority}"
   },
   "template": {
     "using": "Sjabloon “{templateName}” wordt gebruikt"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Je inhoud staat nog in het geheugen. Klik om het opslaan opnieuw te proberen.",
-    "noteNotFound": "Notitie “{target}” niet gevonden",
     "createLinkedFailed": "Kan gekoppelde notitie niet maken",
     "fileNotFound": "Bestand niet gevonden: {target}",
     "openLinkedItemFailed": "Kan het gekoppelde item niet openen",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Dagboeknotitie verwijderen",
     "description": "Weet je zeker dat je “{title}” wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt."
+  },
+  "dayTimeline": {
+    "label": "Dagplanning",
+    "allDay": "Items voor de hele dag",
+    "unscheduled": "Niet ingepland",
+    "unscheduledEmpty": "Geen niet-geplande taken. Sleep een blok hierheen om de tijd te wissen.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} voltooien"
   }
 }

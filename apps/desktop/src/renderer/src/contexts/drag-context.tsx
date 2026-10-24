@@ -125,11 +125,15 @@ const getActivatorClientY = (event: Event): number | null => {
     return event.clientY
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed by the "touches" in event check; lib.dom Event has no touches
   if ('touches' in event && (event as TouchEvent).touches.length > 0) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed by the "touches" in event check; lib.dom Event has no touches
     return (event as TouchEvent).touches[0]?.clientY ?? null
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed by the "changedTouches" in event check
   if ('changedTouches' in event && (event as TouchEvent).changedTouches.length > 0) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed by the "changedTouches" in event check
     return (event as TouchEvent).changedTouches[0]?.clientY ?? null
   }
 
@@ -414,6 +418,7 @@ export const DragProvider = ({
       const activeData = active.data.current
       // A surface that shows a task twice (the day panel beside a calendar)
       // namespaces its draggable id and names the task in `taskId`.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; draggables set taskId as string and active.id is the task id string
       const draggedId = (activeData?.taskId as string | undefined) ?? (active.id as string)
       const overlayWidth = active.rect.current.initial?.width
         ? Math.round(active.rect.current.initial.width)
@@ -466,6 +471,7 @@ export const DragProvider = ({
             : null,
         overlayShowProjectBadge: Boolean(activeData?.overlayShowProjectBadge),
         overlayParentProgress:
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; task draggables set overlayParentProgress
           (activeData?.overlayParentProgress as SubtaskProgress | undefined) ?? null,
         overlayParentExpanded: Boolean(activeData?.overlayParentExpanded),
         draggedTasks,
@@ -508,16 +514,21 @@ export const DragProvider = ({
       }
 
       const overData = over.data.current
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; droppables set type as DropTargetType
       const overType = (overData?.type as DropTargetType) || null
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; droppables set sectionId
       const overSectionId = (overData?.sectionId as string | undefined) ?? null
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; droppables set columnId
       const overColumnId = (overData?.columnId as string | undefined) ?? null
       const overTaskEdge = overType === 'task' ? resolveTaskEdgeFromDndEvent(event) : null
       const sectionDropPosition =
         overType === 'column'
-          ? ((overData?.sectionDropPosition as 'start' | 'end' | undefined) ?? 'start')
+          ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit data.current is any; column droppables set sectionDropPosition
+            ((overData?.sectionDropPosition as 'start' | 'end' | undefined) ?? 'start')
           : null
 
       setDragState({
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- droppable ids are task id strings
         overId: over.id as string,
         overType,
         overSectionId,
@@ -529,6 +540,7 @@ export const DragProvider = ({
       // Call external callback
       onDragOverCallback?.(event, {
         ...dragState,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- droppable ids are task id strings
         overId: over.id as string,
         overType,
         overSectionId,

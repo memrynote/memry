@@ -71,6 +71,7 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; every case returns, the implicit end is unreachable and must keep returning undefined for unknown runtime values
 export function applyWheel(state: SwipeState, sample: WheelSample, ctx: SwipeContext): SwipeState {
   switch (state.phase) {
     case 'ignoring':

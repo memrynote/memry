@@ -52,8 +52,8 @@ export type LocalGraphRequest = z.infer<typeof LocalGraphRequestSchema>
  * rest only seed where the layout starts, so a reopen looks like the last one.
  */
 export const GraphLayoutNodeSchema = z.object({
-  x: z.number().finite(),
-  y: z.number().finite(),
+  x: z.number(),
+  y: z.number(),
   pinned: z.boolean().optional()
 })
 

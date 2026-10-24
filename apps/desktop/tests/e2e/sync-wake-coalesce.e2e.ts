@@ -45,12 +45,12 @@ function callHook<K extends keyof WakeCoalesceHooks>(
   ...args: Parameters<WakeCoalesceHooks[K]>
 ): Promise<Awaited<ReturnType<WakeCoalesceHooks[K]>>> {
   return app.evaluate(
-    async (_context, { name, args }) => {
+    async (_context, { name: nameArg, args: argsArg }) => {
       const hooks = (globalThis as typeof globalThis & { __memryTestHooks?: WakeCoalesceHooks })
         .__memryTestHooks
       if (!hooks) throw new Error('Memry test hooks are not registered')
-      const hook = hooks[name] as (...a: unknown[]) => Promise<unknown>
-      return hook(...args)
+      const hook = hooks[nameArg] as (...a: unknown[]) => Promise<unknown>
+      return hook(...argsArg)
     },
     { name, args }
   ) as Promise<Awaited<ReturnType<WakeCoalesceHooks[K]>>>
@@ -63,10 +63,13 @@ async function createTasks(
   count: number
 ): Promise<string[]> {
   return page.evaluate(
-    async ({ projectId, prefix, count }) => {
+    async ({ projectId: projectIdArg, prefix: prefixArg, count: countArg }) => {
       const ids: string[] = []
-      for (let i = 0; i < count; i++) {
-        const result = await window.api.tasks.create({ projectId, title: `${prefix} ${i}` })
+      for (let i = 0; i < countArg; i++) {
+        const result = await window.api.tasks.create({
+          projectId: projectIdArg,
+          title: `${prefixArg} ${i}`
+        })
         if (!result.success || !result.task) throw new Error(result.error ?? 'task create failed')
         ids.push(result.task.id)
       }

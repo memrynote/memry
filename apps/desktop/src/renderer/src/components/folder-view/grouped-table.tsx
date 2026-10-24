@@ -871,6 +871,7 @@ export function GroupedTable({
 
   const handleRowClick = useCallback(
     (rowIndex: number, rowId: string, event: React.MouseEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; bound to element handler
       const target = event.target as HTMLElement
       if (target.closest('button, a, [role="button"]')) return
 
@@ -915,22 +916,24 @@ export function GroupedTable({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const rows = table.getRowModel().rows.filter((r) => !r.getIsGrouped())
-      if (rows.length === 0) return
+      const tableRows = table.getRowModel().rows.filter((r) => !r.getIsGrouped())
+      if (tableRows.length === 0) return
 
-      const currentIndex = focusedRowId ? rows.findIndex((r) => r.original.id === focusedRowId) : -1
+      const currentIndex = focusedRowId
+        ? tableRows.findIndex((r) => r.original.id === focusedRowId)
+        : -1
 
       switch (e.key) {
         case 'ArrowDown': {
           e.preventDefault()
           let nextIndex: number
           if (currentIndex === -1) nextIndex = 0
-          else if (currentIndex >= rows.length - 1) {
+          else if (currentIndex >= tableRows.length - 1) {
             if (e.shiftKey) return
             nextIndex = 0
           } else nextIndex = currentIndex + 1
 
-          const nextRow = rows[nextIndex]
+          const nextRow = tableRows[nextIndex]
           setFocusedRowId(nextRow.original.id)
           scrollToRowById(nextRow.original.id)
 
@@ -950,13 +953,13 @@ export function GroupedTable({
         case 'ArrowUp': {
           e.preventDefault()
           let prevIndex: number
-          if (currentIndex === -1) prevIndex = rows.length - 1
+          if (currentIndex === -1) prevIndex = tableRows.length - 1
           else if (currentIndex <= 0) {
             if (e.shiftKey) return
-            prevIndex = rows.length - 1
+            prevIndex = tableRows.length - 1
           } else prevIndex = currentIndex - 1
 
-          const prevRow = rows[prevIndex]
+          const prevRow = tableRows[prevIndex]
           setFocusedRowId(prevRow.original.id)
           scrollToRowById(prevRow.original.id)
 
@@ -982,11 +985,11 @@ export function GroupedTable({
         case ' ': {
           if (e.target !== e.currentTarget) break
           e.preventDefault()
-          const lastRow = rows[rows.length - 1]
+          const lastRow = tableRows[tableRows.length - 1]
           setFocusedRowId(lastRow.original.id)
           scrollToRowById(lastRow.original.id)
           setSelectedRowIds(new Set([lastRow.original.id]))
-          lastSelectedIndexRef.current = rows.length - 1
+          lastSelectedIndexRef.current = tableRows.length - 1
           break
         }
 
@@ -1010,11 +1013,11 @@ export function GroupedTable({
         case 'a': {
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault()
-            const allIds = new Set(rows.map((r) => r.original.id))
+            const allIds = new Set(tableRows.map((r) => r.original.id))
             setSelectedRowIds(allIds)
-            if (!focusedRowId && rows.length > 0) {
-              setFocusedRowId(rows[0].original.id)
-              scrollToRowById(rows[0].original.id)
+            if (!focusedRowId && tableRows.length > 0) {
+              setFocusedRowId(tableRows[0].original.id)
+              scrollToRowById(tableRows[0].original.id)
             }
           }
           break

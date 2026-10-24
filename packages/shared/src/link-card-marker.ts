@@ -1,3 +1,4 @@
+import { isRecord } from './is-record.ts'
 import {
   DEFAULT_WIKI_LINK_DISPLAY,
   isWikiLinkSize,
@@ -27,11 +28,11 @@ interface WikiLinkNode {
   props: Record<string, unknown>
 }
 
-const WIKI_LINK_TEXT = /^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
+function isWikiLinkNode(item: unknown): item is WikiLinkNode {
+  return isRecord(item) && item.type === 'wikiLink' && isRecord(item.props)
 }
+
+const WIKI_LINK_TEXT = /^\[\[([^\]|]+)(?:\|([^\]]+))?\]\]$/
 
 function isBlankText(item: unknown): boolean {
   return (
@@ -50,8 +51,8 @@ function soleWikiLinkNode(block: LinkCardBlock): WikiLinkNode | null {
   if (block.type !== 'paragraph' || !Array.isArray(block.content)) return null
   const links = block.content.filter((item) => !isBlankText(item))
   const [only] = links
-  if (links.length !== 1 || !isRecord(only) || only.type !== 'wikiLink') return null
-  return isRecord(only.props) ? (only as unknown as WikiLinkNode) : null
+  if (links.length !== 1) return null
+  return isWikiLinkNode(only) ? only : null
 }
 
 /**
@@ -64,18 +65,17 @@ function promoteSoleWikiLinkText(block: LinkCardBlock): WikiLinkNode | null {
   if (block.type !== 'paragraph' || !Array.isArray(block.content) || block.content.length === 0) {
     return null
   }
-  const runs = block.content
-  const first = runs[0]
-  if (!runs.every((run) => isRecord(run) && run.type === 'text' && typeof run.text === 'string')) {
-    return null
+  const runs: Record<string, unknown>[] = []
+  for (const run of block.content) {
+    if (!isRecord(run) || run.type !== 'text' || typeof run.text !== 'string') return null
+    runs.push(run)
   }
-  const styles = isRecord(first) && isRecord(first.styles) ? first.styles : {}
-  const sameStyle = runs.every(
-    (run) => JSON.stringify((run as { styles?: unknown }).styles ?? {}) === JSON.stringify(styles)
-  )
+  const first = runs[0]
+  const styles = isRecord(first.styles) ? first.styles : {}
+  const sameStyle = runs.every((run) => JSON.stringify(run.styles ?? {}) === JSON.stringify(styles))
   if (!sameStyle) return null
 
-  const joined = runs.map((run) => (run as { text: string }).text).join('')
+  const joined = runs.map((run) => run.text).join('')
   const match = joined.match(WIKI_LINK_TEXT)
   const target = match?.[1]?.trim()
   if (!match || !target) return null

@@ -51,7 +51,7 @@ export const CelebrationProgress = ({
 
   // Auto-hide the celebration after a few seconds.
   useEffect(() => {
-    if (!showCelebration) return
+    if (!showCelebration) return undefined
     const timer = setTimeout(() => {
       setCelebrationState((prev) => ({ ...prev, show: false }))
     }, 3000)

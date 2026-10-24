@@ -31,6 +31,7 @@ export const isExpectedConditionError = (error: unknown): boolean =>
   Boolean(
     error &&
     typeof error === 'object' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the marker is a symbol-keyed property set on the error object by this module
     (error as Record<symbol, unknown>)[EXPECTED_CONDITION] === true
   )
 
@@ -65,6 +66,7 @@ export const isExpectedWarningError = (error: unknown): boolean =>
   Boolean(
     error &&
     typeof error === 'object' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the marker is a symbol-keyed property set on the error object by this module
     (error as Record<symbol, unknown>)[EXPECTED_WARNING] === true
   ) ||
   isNetworkEnvironmentError(error)

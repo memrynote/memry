@@ -67,7 +67,7 @@ export const TASK_FIELD_LIMITS = {
 const TaskFieldValueSchema: z.ZodType<TaskFieldValue, TaskFieldValue> = z.lazy(() =>
   z.union([
     z.string().max(TASK_FIELD_LIMITS.textLength),
-    z.number().finite(),
+    z.number(),
     z.boolean(),
     z.null(),
     z.array(TaskFieldValueSchema).max(TASK_FIELD_LIMITS.listItems),
@@ -138,7 +138,7 @@ export const TaskUpdateSchema = z.object({
 
 export const TaskCompleteSchema = z.object({
   id: z.string(),
-  completedAt: z.string().datetime().optional() // Defaults to now
+  completedAt: z.iso.datetime().optional() // Defaults to now
 })
 
 export const TaskMoveSchema = z.object({

@@ -46,7 +46,9 @@ function toInboxJob(row: JobRow): InboxJobContract {
   return {
     id: row.id,
     itemId: row.itemId,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
     type: row.type as InboxJobType,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column is typed string; only enum values are ever written
     status: row.status as InboxJobStatus,
     runAt: new Date(row.runAt),
     attempts: row.attempts,
@@ -203,6 +205,7 @@ function rescheduleJob(db: DataDb, job: JobRow, error: string, delayMs: number):
 
 async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job payload is a JSON bag typed unknown; the producer enqueues these keys as strings and || handles absence
   const sourceUrl = item?.sourceUrl || (job.payload?.url as string | undefined)
 
   if (!item || !sourceUrl) {
@@ -313,6 +316,7 @@ async function processMetadataJob(db: DataDb, job: JobRow): Promise<void> {
 
 export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job payload is a JSON bag typed unknown; the producer enqueues these keys as strings and || handles absence
   const sourceUrl = item?.sourceUrl || (job.payload?.url as string | undefined)
 
   if (!item || !sourceUrl) {
@@ -335,6 +339,7 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
 
     await ingestArticleCapture(
       { ...capture, itemId: job.itemId },
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text column typed string; only CaptureSource values are written
       (item.captureSource as CaptureSource) ?? 'api'
     )
     completeJob(db, job.id, { extractionStatus: capture.extractionStatus })
@@ -352,6 +357,7 @@ export async function processArticleExtractJob(db: DataDb, job: JobRow): Promise
 
 async function processTranscriptionJob(db: DataDb, job: JobRow): Promise<void> {
   const item = db.select().from(inboxItems).where(eq(inboxItems.id, job.itemId)).get()
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job payload is a JSON bag typed unknown; the producer enqueues these keys as strings and || handles absence
   const attachmentPath = item?.attachmentPath || (job.payload?.attachmentPath as string | undefined)
 
   if (!item || !attachmentPath) {

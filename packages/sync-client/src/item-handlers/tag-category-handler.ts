@@ -8,7 +8,7 @@ import {
 import { TagsChannels } from '@memry/contracts/ipc-channels'
 import type { VectorClock } from '@memry/contracts/sync-api'
 import type { SyncQueueManager } from '../queue'
-import { increment } from '@memry/sync-client/vector-clock'
+import { clockFromColumn, increment } from '@memry/sync-client/vector-clock'
 import { createLogger } from '../logging'
 import { BaseItemHandler } from './base-handler'
 import type { ApplyContext, ApplyResult, DrizzleDb } from './types'
@@ -34,7 +34,7 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
         const resolution = this.resolveUpsertClock(
           ctx,
           itemId,
-          existing.clock as VectorClock | null,
+          clockFromColumn(existing.clock),
           remoteClock,
           data
         )
@@ -84,7 +84,7 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
 
     let mergedClock: VectorClock | undefined = clock
     if (clock && existing.clock) {
-      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveDeleteClock(clockFromColumn(existing.clock), clock)
       if (resolution.skip) {
         log.info('Skipping remote tag category delete, local is ahead of the tombstone', { itemId })
         return 'skipped'
@@ -111,9 +111,7 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(tagCategories).where(eq(tagCategories.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(tagCategories).where(eq(tagCategories.id, itemId)).get()
   }
 
   buildPushPayload(
@@ -128,7 +126,7 @@ class TagCategoryHandler extends BaseItemHandler<TagCategorySyncPayload> {
       name: row.name,
       sortOrder: row.sortOrder,
       deletedAt: row.deletedAt ?? null,
-      clock: (row.clock as VectorClock) ?? undefined,
+      clock: clockFromColumn(row.clock) ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt
     }

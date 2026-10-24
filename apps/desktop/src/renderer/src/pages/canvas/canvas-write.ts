@@ -77,7 +77,9 @@ export async function applyAdd(
   // @excalidraw/excalidraw stays out of the main renderer bundle, and this
   // module is reachable from always-mounted code.
   const { convertToExcalidrawElements } = await import('@excalidraw/excalidraw')
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
   const created = convertToExcalidrawElements(
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- skeletons are built from this module's plan type; Excalidraw's skeleton union cannot be expressed without the cast
     skeletons as unknown as Parameters<typeof convertToExcalidrawElements>[0]
   ) as unknown as SceneEditElement[]
 
@@ -90,7 +92,8 @@ async function readStoredScene(
   const canvas = await window.api.canvas.get(canvasId)
   if (!canvas) throw new Error(`Canvas ${canvasId} not found`)
   const scene = canvas.scene
-    ? (JSON.parse(canvas.scene) as Record<string, unknown> & { elements?: SceneEditElement[] })
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or persisted data narrowed at its boundary; fields are read defensively after
+      (JSON.parse(canvas.scene) as Record<string, unknown> & { elements?: SceneEditElement[] })
     : {}
   return { updatedAt: canvas.updatedAt, scene, elements: scene.elements ?? [] }
 }
@@ -156,6 +159,7 @@ const FONT_KEYS: Record<CanvasFontFamily, string> = {
 
 export async function drawOptions(): Promise<DrawPlanOptions> {
   const { FONT_FAMILY, ROUNDNESS } = await import('@excalidraw/excalidraw')
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
   const fonts = FONT_FAMILY as unknown as Record<string, number | undefined>
   const fallback = fonts.Nunito ?? 2
   return {
@@ -165,6 +169,7 @@ export async function drawOptions(): Promise<DrawPlanOptions> {
       code: fonts[FONT_KEYS.code] ?? fallback,
       lilita: fonts[FONT_KEYS.lilita] ?? fallback
     },
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- Excalidraw's element/appState types are wider than the structural subset this module reads, narrowed at the library boundary
     adaptiveRadius: (ROUNDNESS as unknown as { ADAPTIVE_RADIUS?: number }).ADAPTIVE_RADIUS ?? 3,
     // Excalidraw ids are opaque strings; uniqueness is the only requirement,
     // and minting them here (rather than letting convertToExcalidrawElements

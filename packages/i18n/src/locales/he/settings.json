@@ -7,11 +7,6 @@
     "backToApp": "חזרה לאפליקציה",
     "nav": {
       "groups": {
-        "account": "חשבון",
-        "application": "אפליקציה",
-        "editing": "עריכה",
-        "modules": "מודולים",
-        "services": "שירותים",
         "data": "נתונים",
         "workspace": "סביבת עבודה",
         "features": "תכונות"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "הגדרת {module}"
-    },
-    "vaultImport": {
-      "label": "ייבוא מאפליקציה אחרת",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist ועוד",
-      "action": "ייבוא…"
     },
     "search": {
       "placeholder": "חיפוש בהגדרות",
@@ -102,45 +92,31 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "startup": "הפעלה",
       "updates": "עדכונים",
       "languageRegion": "שפה ואזור",
-      "tabBehavior": "התנהגות כרטיסיות",
-      "window": "התנהגות החלון",
-      "fileCreation": "יצירת קבצים",
       "privacy": "פרטיות",
       "startupWindows": "הפעלה וחלונות",
-      "newNotes": "פתקים חדשים"
+      "newNotes": "פתקים חדשים",
+      "sticky": "פתק דביק"
     },
     "startup": {
       "launchAtLogin": {
         "label": "הפעלה בכניסה למערכת",
-        "description": "פתיחת memrynote בכל כניסה למערכת",
         "error": "עדכון ההפעלה בכניסה למערכת נכשל"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "בדיקת עדכונים אוטומטית",
-        "description": "בדיקת מהדורות חדשות בעת ההפעלה ומדי פעם כשהאפליקציה פתוחה.",
         "error": "עדכון הגדרת הבדיקה האוטומטית נכשל"
       },
       "autoDownload": {
         "label": "הורדת עדכונים אוטומטית",
-        "description": "הורדה והתקנה של מהדורות חדשות ברקע, ללא בקשת אישור.",
         "error": "עדכון הגדרת ההורדה האוטומטית נכשל"
       },
-      "appUpdates": "עדכוני אפליקציה",
-      "installedVersion": "גרסה מותקנת {version}",
-      "availableVersion": "גרסה זמינה {version}",
-      "unsupported": "בגרסאות ארוזות אפשר לבדוק, להוריד ולהתקין עדכונים מ-GitHub Releases",
       "available": "memrynote {version} זמין להורדה",
       "downloadingLatest": "מוריד את המהדורה האחרונה",
-      "downloadingLatestPercent": "מוריד את המהדורה האחרונה ({percent}%)",
       "downloaded": "memrynote {version} מוכן להתקנה",
-      "upToDate": "ההתקנה הזו מעודכנת למהדורה האחרונה שפורסמה",
-      "checking": "מחפש גרסה חדשה יותר ב-GitHub Releases",
-      "idle": "אפשר לבדוק אם יש מהדורות חדשות ולהתקין אותן בלי לצאת מהאפליקציה",
       "unsupportedToast": "עדכונים אוטומטיים זמינים במהדורות ארוזות בלבד",
       "upToDateToast": "memrynote {version} מעודכן",
       "actionFailed": "פעולת העדכון נכשלה",
@@ -163,23 +139,25 @@
         "downloading": "מוריד…",
         "downloadingPercent": "מוריד {percent}%",
         "downloaded": "גרסה {version} מוכנה להתקנה"
-      },
-      "mode": {
-        "label": "מצב עדכון",
-        "off": "לא לבדוק",
-        "notify": "התראה בלבד",
-        "auto": "הורדה אוטומטית"
       }
     },
     "language": {
       "label": "שפה",
-      "helper": "רוב האפליקציה מתעדכנת מיד. חלק מהטקסט ברמת המערכת — התראות שכבר הוצגו, התווית ב-Dock, שורת הכותרת של החלון — יתרענן אחרי ההפעלה הבאה.",
       "changed": "השפה שונתה ל-{nativeName}",
       "failed": "שינוי השפה נכשל. אפשר לנסות שוב."
     },
+    "ocrLanguages": {
+      "label": "זיהוי טקסט",
+      "helper": "שפות שנקראות ב-PDF ובתמונות סרוקים, כך שהחיפוש מוצא את המילים שלהן. אנגלית מובנית. האחרות יורדות מהשרת של Memry.",
+      "more": "{names} +{count}",
+      "downloading": "מוריד {language}: {percent}%",
+      "failed": "ההורדה נכשלה. השפות שכבר קיימות ממשיכות לעבוד.",
+      "failedWith": "{language}: {reason}",
+      "retry": "ניסיון חוזר",
+      "saveFailed": "לא ניתן לשנות את שפות זיהוי הטקסט."
+    },
     "clockFormat": {
       "label": "פורמט זמן",
-      "description": "שעון 12 שעות או 24 שעות",
       "options": {
         "12h": "12 שעות",
         "24h": "24 שעות"
@@ -188,7 +166,6 @@
     },
     "dateFormat": {
       "label": "פורמט תאריך",
-      "description": "אופן הצגת התאריכים",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (ארה״ב)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -199,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "פתיחת דפים בכרטיסייה חדשה",
-        "description": "לחיצה על דף או יצירת דף — פתקים, תיקיות, פרויקטים, קנבסים, תגיות, סימניות — פותחת אותו בכרטיסייה חדשה. כשההגדרה כבויה, נעשה שימוש חוזר בכרטיסייה הנוכחית, גם במעבר לקישורים בתוך פתק; כרטיסיות מוצמדות אף פעם לא מוחלפות. \"פתיחה בכרטיסייה חדשה\", \"פתיחה בצד\" ולחיצה על גלגלת העכבר תמיד פותחות כרטיסייה חדשה."
+        "label": "פתיחת דפים בכרטיסייה חדשה"
       },
       "restoreSession": {
         "label": "שחזור כרטיסיות בהפעלה",
@@ -208,7 +184,6 @@
       },
       "closeButton": {
         "label": "כפתור סגירה בכרטיסיות",
-        "description": "מתי להציג את כפתור הסגירה",
         "options": {
           "always": "תמיד גלוי",
           "hover": "בריחוף",
@@ -220,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "המשך פעולה בשורת התפריטים אחרי סגירה",
-        "description": "סגירת החלון מסתירה את memrynote במגש המערכת במקום לסגור אותו. לחיצה על הסמל במגש מחזירה אותו. ב-macOS האפליקציה נשארת גם ב-Dock; בשולחנות עבודה של Linux ללא מגש מערכת החלון נסגר כרגיל.",
         "error": "עדכון הגדרת המזעור למגש נכשל"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "יצירה בתוך התיקייה שנבחרה",
-        "description": "פתקים ותיקיות חדשים נוצרים בתוך התיקייה שנבחרה כעת. כשההגדרה כבויה, פריטים תמיד נוצרים בשורש הכספת."
+        "label": "יצירה בתוך התיקייה שנבחרה"
       },
       "defaultNoteFolder": {
         "label": "מיקום ברירת מחדל",
         "description": "משמש כשלא נבחרה תיקייה בסרגל הצד.",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -261,9 +233,24 @@
         "error": "שליחת דוח האבחון נכשלה",
         "sendReport": {
           "label": "דוח אבחון",
-          "description": "שליחת דוח חד-פעמי של יומנים טכניים ללא פרטים מזהים, כדי לעזור לנו לאתר תקלה שנתקלת בה.",
           "button": "שליחת דוח…"
         }
+      }
+    },
+    "sticky": {
+      "description": "קיצור הפתק הדביק (קיצורי מקלדת ← כל המערכת) פותח את הפתק הדביק בזמן ש-Memry פועל. טקסט שלא נשלח נשאר כטיוטה בקצה המסך.",
+      "error": "לא ניתן לשמור את הגדרות הפתק הדביק.",
+      "defaultKind": {
+        "label": "פתקים דביקים חדשים נשלחים כ",
+        "last": "האחרון שנעשה בו שימוש",
+        "note": "פתק",
+        "task": "משימה",
+        "journal": "יומן"
+      },
+      "tuckEdge": {
+        "label": "הסתרה אל",
+        "left": "הקצה השמאלי",
+        "right": "הקצה הימני"
       }
     }
   },
@@ -274,20 +261,14 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "theme": "ערכת נושא",
-      "accentColor": "צבע הדגשה",
-      "typography": "טיפוגרפיה",
-      "zoom": "זום"
+      "theme": "ערכת נושא"
     },
     "theme": {
       "colorMode": {
-        "label": "מצב צבע",
-        "description": "בחירת ערכת הנושא המועדפת",
         "aria": "מצב צבע"
       },
       "options": {
         "light": "בהיר",
-        "white": "לבן",
         "dark": "כהה",
         "system": "לפי המערכת"
       },
@@ -305,11 +286,8 @@
       "importInvalid": "הלוח לא מכיל ערכת נושא של memrynote"
     },
     "accent": {
-      "pick": "בחירת צבע הדגשה",
       "custom": {
-        "label": "צבע מותאם אישית",
-        "description": "הזנת ערך הקסדצימלי",
-        "placeholder": "#000000"
+        "label": "צבע מותאם אישית"
       },
       "presets": {
         "indigo": "אינדיגו",
@@ -321,7 +299,6 @@
         "pink": "ורוד",
         "orange": "כתום"
       },
-      "error": "עדכון צבע ההדגשה נכשל",
       "aria": "צבע הדגשה מוגדר מראש",
       "options": {
         "theme": "ערכת נושא",
@@ -360,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "רמת זום",
-      "description": "שינוי קנה המידה של הממשק כולו",
       "decrease": "הקטנת הזום",
       "increase": "הגדלת הזום",
       "reset": "איפוס הזום לברירת המחדל",
@@ -369,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "גודל גופן",
-        "description": "גודל הטקסט הבסיסי בממשק, בפיקסלים",
         "decrease": "הקטנת גודל הגופן",
         "increase": "הגדלת גודל הגופן",
         "reset": "איפוס גודל הגופן לברירת המחדל"
       },
       "fontFamily": {
         "label": "משפחת גופנים",
-        "description": "גופן ראשי עבור הממשק",
         "options": {
           "system": "ברירת המחדל של המערכת",
           "sansSerif": "סנסריף",
@@ -401,13 +373,9 @@
       "fontFamilyError": "עדכון משפחת הגופנים נכשל"
     },
     "v2": {
-      "groups": {
-        "text": "טקסט וזום"
-      },
       "colorMode": "מצב צבע",
       "colorTheme": "ערכת נושא",
       "accent": "צבע הדגשה",
-      "customColor": "צבע מותאם אישית",
       "fontFamily": "משפחת גופנים",
       "fontSize": "גודל גופן",
       "zoom": "זום"
@@ -421,12 +389,30 @@
     },
     "groups": {
       "layout": "פריסה",
-      "toolbar": "סרגל כלים",
       "spelling": "איות",
-      "checklists": "רשימות סימון"
+      "checklists": "רשימות סימון",
+      "attachments": "קבצים מצורפים",
+      "calloutTypes": "סוגי הדגשות"
+    },
+    "calloutTypes": {
+      "description": "ההדגשות שלך, שנכתבות כ-> [!name] בפתק. אפליקציה אחרת מציגה אותן כציטוט רגיל.",
+      "empty": "עדיין אין סוגי הדגשות מותאמים אישית",
+      "add": "הוספת סוג",
+      "edit": "עריכת {name}",
+      "delete": "מחיקת {name}",
+      "name": "שם ב-Markdown",
+      "namePlaceholder": "mytype",
+      "label": "שם תצוגה",
+      "color": "צבע",
+      "icon": "סמל",
+      "nameInvalid": "יש להשתמש באותיות לטיניות קטנות, בספרות, ב-- או ב-_, ולהתחיל באות",
+      "nameBuiltIn": "השם הזה כבר שייך להדגשה מובנית",
+      "nameTaken": "כבר יש לך סוג בשם הזה",
+      "save": "שמירה",
+      "cancel": "ביטול",
+      "error": "עדכון סוגי ההדגשות נכשל"
     },
     "width": {
-      "label": "רוחב העורך",
       "description": "חל על כל פתק ועל כל דף ביומן",
       "options": {
         "normal": "רגיל",
@@ -435,12 +421,10 @@
       "error": "עדכון רוחב העורך נכשל"
     },
     "toolbarMode": {
-      "label": "סרגל עיצוב קבוע",
       "description": "הצגת סרגל הכלים תמיד מעל העורך",
       "error": "עדכון מצב סרגל הכלים נכשל"
     },
     "spellCheck": {
-      "label": "בדיקת איות",
       "description": "סימון מילים עם שגיאות כתיב בקו תחתון, בפתקים וביומן",
       "error": "עדכון בדיקת האיות נכשל"
     },
@@ -449,7 +433,16 @@
       "toolbarMode": "סרגל עיצוב קבוע",
       "spellCheck": "בדיקת איות",
       "convertChecklists": "להפוך פריטי רשימת סימון למשימות",
-      "convertAgentChecklists": "להפוך פריטי רשימת סימון שכותב סוכן למשימות"
+      "convertAgentChecklists": "להפוך פריטי רשימת סימון שכותב סוכן למשימות",
+      "pdfDisplayMode": "הצגת קובצי PDF חדשים כ"
+    },
+    "pdfDisplayMode": {
+      "description": "האופן שבו PDF שנוסף לפתק מופיע. אפשר לשנות כל PDF מהתפריט שלו.",
+      "options": {
+        "embed": "משובץ",
+        "link": "שם הקובץ"
+      },
+      "error": "עדכון תצוגת ה-PDF נכשל"
     },
     "convertChecklists": {
       "description": "כל פריט חדש ברשימת סימון הופך למשימה. כשהאפשרות כבויה, הרשימות נשארות תיבות סימון רגילות; לחצו לחיצה ימנית על פריט כדי להפוך אותו למשימה.",
@@ -466,14 +459,12 @@
       "subtitle": "ניהול תבניות פתקים ליצירה מהירה"
     },
     "actions": {
-      "new": "תבנית חדשה",
       "edit": "עריכה",
       "duplicate": "שכפול",
       "delete": "מחיקה"
     },
     "groups": {
-      "builtIn": "מובנות",
-      "myTemplates": "התבניות שלי"
+      "builtIn": "מובנות"
     },
     "loading": "טוען תבניות…",
     "newTemplateTitle": "תבנית חדשה",
@@ -481,9 +472,6 @@
     "empty": {
       "title": "עדיין אין תבניות מותאמות אישית",
       "description": "כדי להתחיל, אפשר ליצור תבנית"
-    },
-    "preview": {
-      "notFound": "לא ניתן היה לטעון תבנית זו."
     },
     "toasts": {
       "deleted": "התבנית נמחקה",
@@ -516,11 +504,7 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "defaultTemplate": "תבנית ברירת מחדל",
-      "location": "מיקום ופורמט",
-      "sidebarVisibility": "נראות בסרגל הצד",
-      "footer": "כותרת תחתונה",
-      "weekdayTemplates": "תבניות לפי יום"
+      "footer": "כותרת תחתונה"
     },
     "template": {
       "label": "תבנית",
@@ -532,18 +516,6 @@
       "updated": "תבנית ברירת המחדל עודכנה",
       "cleared": "תבנית ברירת המחדל הוסרה",
       "error": "עדכון תבנית ברירת המחדל נכשל"
-    },
-    "showSchedule": {
-      "label": "הצגת לוח הזמנים",
-      "description": "הצגת האירועים ולוח השנה של היום"
-    },
-    "showTasks": {
-      "label": "הצגת משימות",
-      "description": "הצגת משימות שתאריך היעד שלהן ביום שנבחר"
-    },
-    "showAIConnections": {
-      "label": "הצגת חיבורי AI",
-      "description": "הצגת חיבורים מבוססי AI לרשומות קשורות"
     },
     "showStatsFooter": {
       "label": "הצגת סטטיסטיקות בתחתית",
@@ -561,7 +533,8 @@
       "renameNote": "שינוי הפורמט משנה את שמות קובצי היומן הקיימים. קובץ ששמו החדש כבר תפוס נשאר כפי שהוא.",
       "tokensHelp": "עזרה בנושא פורמט התאריך",
       "tokensNote": "שאר התווים נשמרים כפי שהם. שמות ימי השבוע תמיד באנגלית.",
-      "tokensTitle": "סימני פורמט"
+      "tokensTitle": "סימני פורמט",
+      "foldersNote": "אפשר להשתמש ב-/ כדי לשמור רשומות בתת-תיקיות: YYYY/MMMM/YYYY-MM-DD מניח כל יום תחת השנה והחודש שלו."
     },
     "preview": {
       "label": "תצוגה מקדימה",
@@ -575,7 +548,6 @@
       "inheritWith": "ברירת מחדל · {name}",
       "inheritNone": "ברירת מחדל · ללא",
       "missing": "תבנית שנמחקה",
-      "clear": "ניקוי",
       "updated": "התבנית עבור {day} עודכנה",
       "cleared": "התבנית עבור {day} הוסרה",
       "error": "עדכון התבנית עבור {day} נכשל",
@@ -586,6 +558,10 @@
         "defaultTemplate": "תבנית ברירת מחדל",
         "location": "מיקום ופורמט"
       }
+    },
+    "showInSidebar": {
+      "label": "הצגה בסרגל הצד",
+      "description": "הצגת תיקיית היומן והרשומות שלה בעץ הפתקים"
     }
   },
   "tasks": {
@@ -596,6 +572,7 @@
     },
     "groups": {
       "defaults": "ברירות מחדל",
+      "subtasks": "תת-משימות",
       "inbox": "תיבת נכנסים"
     },
     "defaultProject": {
@@ -632,6 +609,11 @@
       "description": "משימות ישנות יותר מזה מסומנות כמיושנות",
       "unit": "ימים",
       "error": "עדכון הסף למשימות ישנות בתיבת הנכנסים נכשל"
+    },
+    "nestedSubtasks": {
+      "label": "תת-משימות בתוך תת-משימות",
+      "description": "קינון תת-משימות בכל עומק. מכשירים בגרסאות ישנות יותר מציגים רק את הרמה הראשונה עד שיתעדכנו.",
+      "error": "עדכון תת-המשימות המקוננות נכשל"
     }
   },
   "inbox": {
@@ -684,11 +666,6 @@
       "subtitle": "הגדרת ההתנהגות של תאי היום בחלונית היום",
       "loading": "טוען הגדרות…"
     },
-    "groups": {
-      "weekStart": "שבוע",
-      "dayCellClick": "לחיצה על תא יום",
-      "notes": "פתקים"
-    },
     "weekStart": {
       "label": "השבוע מתחיל ביום",
       "description": "היום הראשון של השבוע בכל לוחות השנה",
@@ -728,8 +705,6 @@
       },
       "accountReconnect": "חיבור מחדש ל-Google",
       "addAccount": "הוספת חשבון",
-      "importedCalendars": "לוחות שנה מיובאים",
-      "selected": "נבחרו: {count}",
       "syncNow": "סנכרון עכשיו",
       "disconnect": "ניתוק",
       "reconnect": "חיבור מחדש ל-Google",
@@ -958,10 +933,8 @@
       "loading": "טוען…"
     },
     "groups": {
-      "identity": "זהות",
       "sync": "סנכרון",
       "billing": "חיוב",
-      "storage": "אחסון",
       "devices": "מכשירים"
     },
     "identity": {
@@ -981,6 +954,7 @@
         "syncing": "מסנכרן…",
         "paused": "מושהה",
         "syncError": "שגיאת סנכרון",
+        "deviceKeysMissing": "הסנכרון מושהה: מפתחות המכשיר חסרים",
         "offline": "לא מקוון",
         "connecting": "מתחבר…",
         "localOnly": "מקומי בלבד",
@@ -1004,6 +978,19 @@
       "activating": {
         "title": "משלים את ההפעלה שלך",
         "description": "התוכנית שלך פעילה. הסנכרון יתחיל ברגע שנאשר אותה — בדרך כלל רענון פותר את זה."
+      },
+      "unsent": {
+        "title": "פתקים עם שינויים שלא נשלחו",
+        "count": "{count, plural, one {פתק אחד} other {# פתקים}}",
+        "description": "במכשיר הזה יש שינויים בפתקים האלה שהשרת עדיין לא שמר.",
+        "waitingSince": "ממתין מאז {time}",
+        "more": "{count, plural, one {ועוד פתק אחד} other {ועוד # פתקים}}",
+        "reasons": {
+          "body": "טקסט",
+          "record": "פרטים",
+          "file_not_taken": "הקובץ עדיין לא מוזג",
+          "rejected": "נדחה על ידי השרת"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1043,8 @@
         "refreshFailed": "לא ניתן היה לרענן את מצב החיוב",
         "billingActive": "החיוב פעיל",
         "activationPending": "ההפעלה ממתינה",
-        "portalFailed": "לא ניתן היה לפתוח את פורטל החיוב"
+        "portalFailed": "לא ניתן היה לפתוח את פורטל החיוב",
+        "portalNoCustomer": "עדיין לא נמצא חשבון חיוב. אם בדיוק שילמתם, יש לבחור ברענון הסטטוס ולנסות שוב."
       }
     },
     "storage": {
@@ -1070,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "התנתקות",
         "description": "ניתוק המכשיר הזה מהסנכרון",
         "action": "התנתקות"
       }
@@ -1302,21 +1289,28 @@
       "disabled": "תכונות AI מושבתות",
       "error": "עדכון ההגדרה נכשל"
     },
-    "unknownError": "שגיאה לא ידועה",
-    "groups": {
-      "voice": "תמלול קולי",
-      "embeddingModel": "מודל הטמעה מקומי",
-      "embeddingIndex": "אינדקס וקטורי ההטמעה",
-      "inline": "עריכת AI בתוך הטקסט"
+    "summarizeLongNotes": {
+      "label": "סיכום פתקים ארוכים",
+      "description": "כותב גרסאות קצרות יותר של פתקים ארוכים בעזרת הסוכן המחובר שלך, כך שאפשר לכווץ פתק לנקודות המפתח שלו. רץ במכשיר הזה.",
+      "error": "עדכון סיכום הפתקים הארוכים נכשל",
+      "failed": "ההרצה האחרונה נכשלה ·",
+      "retry": "ניסיון חוזר",
+      "retryError": "לא ניתן לנסות שוב את הסיכום",
+      "agentLabel": "הסוכן שכותב סיכומים",
+      "agentAuto": "אוטומטי",
+      "agentError": "שינוי סוכן הסיכום נכשל",
+      "noAgent": "לא נמצא סוכן ·",
+      "openAgents": "פתיחת הסוכנים"
     },
+    "imageSearch": {
+      "label": "חיפוש תמונות לפי תוכן",
+      "description": "מציאת תמונות לפי מה שהן מציגות. מוריד מודל תמונות של 109 MB בפעם הראשונה שתמונה מאונדקסת.",
+      "enabled": "חיפוש התמונות הופעל",
+      "disabled": "חיפוש התמונות כובה"
+    },
+    "unknownError": "שגיאה לא ידועה",
     "voice": {
-      "provider": "ספק",
       "providerDescription": "ספק דיבור לטקסט עבור תזכירים קוליים",
-      "providers": {
-        "local": "מקומי (ברירת מחדל)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "שמות תזכירים",
       "memoNameModeDescription": "כיצד תזכירים קוליים מקבלים שם לאחר תמלול",
       "naming": {
         "transcript": "כותרת תמלול",
@@ -1324,12 +1318,13 @@
         "none": "ללא שינוי שם"
       },
       "namingError": "עדכון מתן שמות לתזכירים קוליים נכשל",
+      "audioSearch": "חיפוש הקלטות קוליות לפי צליל",
+      "audioSearchDescription": "מציאת הקלטות קוליות בלי תמלול, כמו מוזיקה או צלילים, לפי איך שהן נשמעות. מוריד מודל שמע של 189 MB בפעם הראשונה שהקלטה צריכה אינדוקס.",
+      "audioSearchError": "עדכון החיפוש בהקלטות הקוליות נכשל",
       "language": "שפת הדיבור",
       "languageDescription": "השפה שבה אתה מדבר בתזכורות קוליות",
       "languageDefault": "ברירת מחדל",
       "languageError": "עדכון שפת התמלול נכשל",
-      "localModel": "מודל מקומי",
-      "localModelDescription": "Whisper Small יורד לפי דרישה ונשמר במטמון מקומי",
       "status": {
         "ready": "מוכן",
         "downloading": "מוריד",
@@ -1354,17 +1349,12 @@
     "embedding": {
       "loaded": "טעון",
       "loading": "טוען",
-      "cacheHint": "~210MB · נשמר במטמון מקומי · הכול במכשיר",
-      "dimensions": "ממדים",
-      "embeddings": "וקטורי הטמעה",
       "downloadLoad": "הורדה וטעינה של המודל",
       "downloadingModel": "מוריד מודל…",
       "loadingModel": "טוען מודל…",
       "loadSuccess": "המודל נטען בהצלחה",
       "loadFailed": "טעינת המודל נכשלה",
       "rebuildIndex": "בניית אינדקס מחדש",
-      "rebuildDescription": "יצירה מחדש של וקטורי ההטמעה לכל הפתקים",
-      "rebuild": "בנייה מחדש",
       "scanning": "סורק פתקים…",
       "generating": "יוצר וקטורי הטמעה…",
       "complete": "הושלם!",
@@ -1373,13 +1363,10 @@
     },
     "inline": {
       "loading": "טוען…",
-      "title": "עריכת AI בתוך הטקסט",
-      "enable": "הפעלת AI בתוך הטקסט",
       "enableDescription": "הצגת תפריט AI בעת עריכת פתקים",
       "enabled": "עריכת AI בתוך הטקסט הופעלה",
       "disabled": "עריכת AI בתוך הטקסט הושבתה",
       "provider": "ספק",
-      "providerDescription": "שירות AI לפעולות טקסט",
       "providers": {
         "ollama": "Ollama (מקומי)",
         "openai": "OpenAI",
@@ -1398,7 +1385,6 @@
       "activePort": "פעיל ביציאה {port}",
       "notConnected": "לא מחובר",
       "test": "בדיקה",
-      "stopFailed": "עצירת השרת הקיים נכשלה",
       "connected": "החיבור הצליח! השרת פועל ביציאה {port}",
       "connectFailed": "החיבור נכשל",
       "testFailed": "בדיקת החיבור נכשלה",
@@ -1459,10 +1445,9 @@
       "csv": "ייבוא קובץ .csv — פתק אחד לכל שורה, העמודות הופכות למאפיינים",
       "raindrop": "ייבוא קובץ ייצוא סימניות של Raindrop.io (.csv) — הסימניות מגיעות לתיבת הנכנסים",
       "apple-notes": "ייבוא ממסד הנתונים של Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "ייבוא מחברות OneNote (נדרש חשבון Microsoft)"
+      "onenote": "ייבוא מחברות OneNote (נדרש חשבון Microsoft)",
+      "readwise": "ייבוא ההדגשות שלך מ-Readwise (נדרש אסימון גישה)"
     },
-    "action": "ייבוא",
-    "select": "בחירת אפליקציה לייבוא ממנה…",
     "stats": {
       "notes": "{count, plural, one {פתק אחד} other {# פתקים}}",
       "projects": "{count, plural, one {פרויקט אחד} other {# פרויקטים}}",
@@ -1477,7 +1462,12 @@
     },
     "preview": {
       "warnings": "אזהרות",
-      "confirm": "ייבוא"
+      "confirm": "ייבוא",
+      "readwise": {
+        "books": "{count, plural, one {ספר אחד} other {# ספרים}}",
+        "highlights": "{count, plural, one {הדגשה אחת} other {# הדגשות}}",
+        "documents": "{count, plural, one {מסמך אחד} other {# מסמכים}}"
+      }
     },
     "dialog": {
       "title": "ייבוא מ-{name}",
@@ -1505,18 +1495,27 @@
         "deselectAll": "ניקוי הבחירה",
         "foldersSelected": "{count, plural, one {נבחרה תיקייה אחת} other {נבחרו # תיקיות}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {פתק נעול אחד} other {# פתקים נעולים}}",
+          "hint": "יש להזין את הסיסמה של Notes כדי לייבא אותם. היא משמשת רק לייבוא הזה ואינה נשמרת לעולם. קבצים מצורפים בתוך פתקים נעולים לא מיובאים.",
+          "label": "סיסמת Notes",
+          "placeholder": "סיסמת Notes",
+          "check": "בדיקה",
+          "wrong": "הסיסמה הזו לא פותחת אף פתק נעול.",
+          "unlockedAll": "{count, plural, one {פותחת את הפתק הנעול.} other {פותחת את כל # הפתקים הנעולים.}}",
+          "unlockedSome": "פותחת {unlocked} מתוך {total} פתקים נעולים. השאר משתמשים בסיסמה אחרת וידולגו.",
+          "checkError": "לא ניתן לבדוק את הסיסמה."
+        }
       },
       "chooseFolder": "בחירת תיקיית Apple Notes…",
       "chooseDirectory": "בחירת תיקייה…",
       "folderKeepsAssets": "יש לבחור את התיקייה כשהתמונות נמצאות מחוץ לתיקייה של הפתקים עצמם — בייצוא, המדיה נשמרת לרוב בתיקייה משותפת.",
-      "chooseHint": "בחירת {label}",
       "folderHint": "יש ללחוץ למטה ולבחור את התיקייה \"group.com.apple.notes\" כשהבורר נפתח (הוא נפתח בה). כך Memry יכול לקרוא את הפתקים והקבצים המצורפים שלך — בלי צורך בגישה מלאה לדיסק.",
       "noteplanFolderHint": "יש לבחור את תיקיית NotePlan — תיקיית הנתונים של האפליקציה או אחד מעותקי הגיבוי שלה (Backups). Memry קורא את התיקיות Calendar, Notes ו-@Archive שבתוכה.",
       "selected": "{count, plural, one {נבחר קובץ אחד} other {נבחרו # קבצים}}",
       "start": "התחלת הייבוא",
       "cancel": "ביטול",
-      "close": "סגירה",
       "done": "סיום",
       "running": "מייבא…",
       "progress": "{completed} מתוך {total}",
@@ -1529,12 +1528,204 @@
         "failed": "{count} נכשלו"
       },
       "error": "הייבוא נכשל",
-      "previewError": "התצוגה המקדימה נכשלה"
+      "previewError": "התצוגה המקדימה נכשלה",
+      "readwise": {
+        "intro": "יש להדביק את אסימון הגישה של Readwise. Memry בודק אותו מול Readwise ואז שומר אותו בצרור המפתחות של המערכת במכשיר הזה. הוא לא מסונכרן לעולם.",
+        "tokenLabel": "אסימון גישה",
+        "tokenPlaceholder": "הדבקת האסימון",
+        "getToken": "קבלת האסימון",
+        "connect": "התחברות",
+        "connecting": "מתחבר…",
+        "connectFailed": "לא ניתן להתחבר ל-Readwise",
+        "takeOver": {
+          "explain": "רק מכשיר אחד מושך מ-Readwise, כך שאותה הדגשה לא נכתבת פעמיים. כדי למשוך מהמכשיר הזה במקום, יש להדביק שוב את האסימון: הוא לא עובר בין מכשירים. המכשיר השני נעצר בספר הבא שלו, וכל הפתקים נשארים.",
+          "button": "סנכרון כאן במקום",
+          "working": "מעביר את Readwise לכאן…",
+          "failed": "לא ניתן להעביר את Readwise למכשיר הזה"
+        },
+        "groups": {
+          "location": "לאן הפתקים הולכים",
+          "categories": "מה להביא",
+          "reader": "Readwise Reader",
+          "journal": "יומן",
+          "sync": "סנכרון"
+        },
+        "journal": {
+          "highlights": {
+            "label": "רישום ההדגשות של כל יום ביומן",
+            "description": "מוסיף מקטע Readwise ליום שבו הדגשתם, עם קישור לפתק של כל ספר. הדגשות חדשות בלבד, בלי מילוי לאחור.",
+            "firstImport": "הייבוא הראשון לא כותב דבר ליומן."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "ייבוא גם של מסמכי Reader ששמרתם",
+            "description": "כבוי כברירת מחדל. עלול להוסיף אלפי פתקים."
+          },
+          "fullText": {
+            "label": "הכללת הטקסט המלא של המאמר",
+            "description": "נכתב פעם אחת, כשהפתק נוצר"
+          }
+        },
+        "rootFolder": {
+          "label": "תיקייה",
+          "description": "ספרים חדשים נוחתים כאן. פתקים קיימים נשארים במקומם."
+        },
+        "layout": {
+          "label": "מבנה התיקיות",
+          "description": "חל על ספרים חדשים בלבד.",
+          "options": {
+            "by-category": "לפי קטגוריה",
+            "flat": "תיקייה אחת"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "ספרים",
+            "description": "הדגשות מ-Kindle, Apple Books ומקורות אחרים"
+          },
+          "articles": {
+            "label": "מאמרים",
+            "description": "מאמרי רשת וניוזלטרים"
+          },
+          "tweets": {
+            "label": "ציוצים",
+            "description": "ציוצים ושרשורים שנשמרו"
+          },
+          "podcasts": {
+            "label": "פודקאסטים",
+            "description": "פרקי פודקאסט וקטעים"
+          },
+          "supplementals": {
+            "label": "חומרים משלימים",
+            "description": "ספרים ש-Readwise מוסיף מעצמו, בלי ההדגשות שלך"
+          },
+          "other": {
+            "label": "אחר",
+            "description": "קטגוריות ש-Readwise הוסיף אחרי הגרסה הזו"
+          }
+        },
+        "cadence": {
+          "label": "תדירות",
+          "description": "באיזו תדירות מגיעות הדגשות חדשות.",
+          "options": {
+            "manual": "ידנית",
+            "hourly": "כל שעה",
+            "daily": "כל יום"
+          }
+        },
+        "syncNow": {
+          "label": "סנכרון עכשיו",
+          "description": "בדיקה ב-Readwise אם יש הדגשות חדשות.",
+          "button": "סנכרון עכשיו"
+        },
+        "disconnect": "ניתוק",
+        "disconnectHint": "הניתוק מסיר את האסימון מהמכשיר הזה. הפתקים שלך נשארים.",
+        "deleted": {
+          "heading": "ספרים שנמחקו",
+          "description": "פתקים שמחקתם ב-memry. הם נשארים מחוקים עד שתשחזרו אותם.",
+          "meta": "נמחק ב-{date} · {count, plural, one {הדגשה אחת} other {# הדגשות}}",
+          "metaDocument": "נמחק ב-{date} · מאמר שמור",
+          "restore": "שחזור",
+          "footer": "השחזור יוצר מחדש את הפתק עם כל ההדגשות שלו.",
+          "empty": "אין ספרים שנמחקו",
+          "syncsOn": "Readwise מסתנכרן ב-{device}.",
+          "syncsOnAnotherDevice": "Readwise מסתנכרן במכשיר אחר.",
+          "loadFailed": "לא ניתן לטעון את הספרים שנמחקו",
+          "restoreFailed": "לא ניתן לשחזר את הפתק"
+        },
+        "importNow": "ייבוא עכשיו",
+        "importBooks": "{count, plural, one {ייבוא ספר אחד} other {ייבוא # ספרים}}",
+        "importNotes": "{count, plural, one {ייבוא פתק אחד} other {ייבוא # פתקים}}",
+        "importNone": "ייבוא",
+        "preview": {
+          "intro": "{highlights, plural, one {הדגשה אחת} other {# הדגשות}} ב-{books, plural, one {ספר אחד} other {# ספרים}} מוכנות. דבר לא נכתב עד שתאשרו.",
+          "introOff": "{highlights, plural, one {הדגשה אחת} other {# הדגשות}} ב-{books, plural, one {ספר אחד} other {# ספרים}} מוכנות. כבוי: {off}. {willImport, plural, one {ספר אחד} other {# ספרים}} ייובאו. דבר לא נכתב עד שתאשרו.",
+          "introReaderOnly": "בספריית Readwise שלך עדיין אין הדגשות. {documents, plural, one {מסמך Reader שמור אחד} other {# מסמכי Reader שמורים}} ייובאו כפתקים. דבר לא נכתב עד שתאשרו.",
+          "readerLabel": "מסמכי Reader שמורים",
+          "empty": "בספריית Readwise שלך עדיין אין הדגשות. דבר לא נכתב. יש לייבא כדי לסיים את ההגדרה.",
+          "willImport": "ייובאו",
+          "off": "כבוי",
+          "retry": "ניסיון חוזר"
+        },
+        "status": {
+          "connected": "מחובר",
+          "synced": "סונכרן {time}",
+          "syncing": "מסתנכרן עם Readwise",
+          "reading": "קורא את הספרייה שלך…",
+          "writing": "כותב ספרים, {done} מתוך {total}",
+          "finishing": "מסיים…",
+          "waitingTitle": "ממתין לסנכרון של memry",
+          "waitingDetail": "Memry ממתין עד שהפתקים מהמכשירים האחרים שלך יגיעו, כדי שאף ספר לא ייכתב פעמיים. Readwise מתחיל מיד לאחר מכן.",
+          "otherTitle": "מסתנכרן ב-{device}",
+          "otherTitleUnknown": "מסתנכרן במכשיר אחר",
+          "otherDetail": "רק מכשיר אחד מושך מ-Readwise, כך שאותה הדגשה לא נכתבת פעמיים.",
+          "lastRun": "הרצה אחרונה: {counts}",
+          "lastRunNothing": "הרצה אחרונה: אין חדש",
+          "nextRun": "הסנכרון הבא {time}",
+          "retryAt": "Memry ינסה שוב {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Readwise צריך אסימון חדש",
+              "detail": "Readwise לא קיבל את האסימון השמור. יש להדביק אסימון חדש מ-readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "המנוי שלך ל-Readwise פג",
+              "detail": "יש לחדש את המנוי ב-readwise.io ולנסות שוב."
+            },
+            "rate-limited": {
+              "title": "Readwise מגביל בקשות",
+              "detail": "יותר מדי בקשות בזמן קצר."
+            },
+            "network": {
+              "title": "לא ניתן להתחבר ל-Readwise",
+              "detail": "כדאי לבדוק את החיבור."
+            },
+            "server": {
+              "title": "הייתה בעיה ב-Readwise",
+              "detail": "Readwise השיב בשגיאה."
+            },
+            "unexpected": {
+              "title": "הסנכרון נעצר",
+              "detail": "משהו השתבש במהלך ההרצה."
+            }
+          },
+          "counts": {
+            "added": "{count} נוספו",
+            "updated": "{count} עודכנו",
+            "appended": "{count} הורחבו",
+            "deferred": "{count} ממתינים לפתק פתוח",
+            "failed": "{count} נכשלו",
+            "highlights": "{count, plural, one {הדגשה אחת} other {# הדגשות}}"
+          },
+          "actions": {
+            "cancel": "ביטול",
+            "retry": "ניסיון חוזר עכשיו",
+            "newToken": "הדבקת אסימון חדש",
+            "reconnect": "התחברות מחדש",
+            "syncHere": "סנכרון כאן במקום"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Readwise צריך אסימון חדש",
+            "description": "הסנכרון מושהה עד שתדביקו אסימון חדש."
+          },
+          "subscription-expired": {
+            "title": "המנוי שלך ל-Readwise פג",
+            "description": "הסנכרון מושהה עד שהמנוי יהיה פעיל שוב."
+          },
+          "open": "פתיחת Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "קריאת הקובץ נכשלה",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {פתק נעול אחד לא יובא} other {# פתקים נעולים לא יובאו}}; Memry לא יכול לקרוא פתקים נעולים בלי הסיסמה שלך ל-Apple Notes."
+        "lockedNote": "{count, plural, one {פתק נעול אחד לא יובא} other {# פתקים נעולים לא יובאו}}; Memry לא יכול לקרוא פתקים נעולים בלי הסיסמה שלך ל-Apple Notes.",
+        "lockedWrongPassword": "{count, plural, one {פתק נעול אחד לא יובא, כי הוא משתמש} other {# פתקים נעולים לא יובאו, כי הם משתמשים}} בסיסמה שונה מזו שהוזנה.",
+        "lockedUnreadable": "{count, plural, one {לא ניתן היה לפענח פתק נעול אחד והוא לא יובא.} other {לא ניתן היה לפענח # פתקים נעולים והם לא יובאו.}}",
+        "lockedAttachment": "{count, plural, one {קובץ מצורף אחד בפתק נעול לא יובא; טקסט הפתק כן יובא.} other {# קבצים מצורפים בפתקים נעולים לא יובאו; טקסט הפתקים כן יובא.}}"
       },
       "csv": {
         "noHeaders": "לקובץ ה-CSV אין שורת כותרות",
@@ -1563,6 +1754,16 @@
         "unknownPriority": "עדיפות לא מוכרת {priority} ← ללא",
         "unparsedDate": "לא ניתן היה לפענח את התאריך \"{date}\"",
         "subtaskNoParent": "לתת-המשימה \"{title}\" אין משימת אב בהזחה {indent}; יובאה כמשימה ראשית"
+      },
+      "readwise": {
+        "tokenMissing": "Readwise לא מחובר.",
+        "tokenInvalid": "Readwise לא קיבל את האסימון השמור. יש להתנתק ולהתחבר שוב עם אסימון חדש.",
+        "unreachable": "לא ניתן להתחבר אל Readwise. כדאי לבדוק את החיבור ולנסות שוב.",
+        "categoryOff": "{count, plural, one {ספר אחד נמצא בקטגוריה שכיביתם ולא יובא.} other {# ספרים נמצאים בקטגוריה שכיביתם ולא יובאו.}}",
+        "unchanged": "{count, plural, one {ספר אחד כבר היה מעודכן.} other {# ספרים כבר היו מעודכנים.}}",
+        "sourceDeleted": "{count, plural, one {ספר אחד נמחק} other {# ספרים נמחקו}} ב-Readwise. הפתקים נשארים.",
+        "noteDeleted": "{count, plural, one {פתק אחד נמחק} other {# פתקים נמחקו}} ב-Memry וימשיכו להישאר מחוקים.",
+        "busy": "{count, plural, one {פתק אחד פתוח} other {# פתקים פתוחים}} בעורך, ייכתבו בהרצה הבאה."
       }
     },
     "status": {
@@ -1603,18 +1804,35 @@
       },
       "todoist": {
         "importing": "מייבא משימות מ-Todoist…"
+      },
+      "readwise": {
+        "fetching": "קורא את ספריית Readwise שלך…"
       }
     },
     "v2": {
       "searchPlaceholder": "חיפוש אפליקציה או סוג קובץ…",
       "noMatch": "אין מקורות שתואמים ל-\"{query}\"",
       "formatAccount": "חשבון",
-      "showMore": "{count, plural, one {הצגת עוד אחד} other {הצגת עוד #}}",
-      "showLess": "הצגת פחות",
       "groups": {
+        "reading": "קריאה",
         "noteApps": "אפליקציות פתקים",
         "tasks": "משימות, יומן וסימניות",
         "files": "קבצים"
+      },
+      "readwise": {
+        "notConnected": "לא מחובר",
+        "connected": "מחובר",
+        "synced": "סונכרן {time}",
+        "syncing": "מסתנכרן…",
+        "waiting": "ממתין לסנכרון",
+        "otherDevice": "מסתנכרן ב-{device}",
+        "otherDeviceUnknown": "מסתנכרן במקום אחר",
+        "invalidToken": "צריך אסימון חדש",
+        "subscriptionExpired": "המנוי פג",
+        "rateLimited": "הבקשות מוגבלות",
+        "network": "לא ניתן להתחבר ל-Readwise",
+        "server": "שגיאת Readwise",
+        "unexpected": "הסנכרון נכשל"
       }
     }
   },
@@ -1624,8 +1842,6 @@
       "subtitle": "תצורה ואחסון של הכספת"
     },
     "groups": {
-      "storageUsage": "שימוש באחסון",
-      "location": "מיקום",
       "accountVaults": "כספות בחשבון שלך",
       "largeNotes": "פתקים שקרובים למגבלת הסנכרון",
       "activity": "פעילות"
@@ -1783,6 +1999,9 @@
     "toasts": {
       "renamed": "השם \"{oldName}\" שונה ל-\"{newName}\"",
       "renameFailed": "שינוי שם התגית נכשל",
+      "renaming": "משנה את השם של #{oldName}: {done} / {total} פתקים",
+      "renamedBodySkipped": "את \"{newName}\" אי אפשר להקליד כתגית בתוך הטקסט, ולכן #{oldName} בטקסט הפתקים נשאר כפי שנכתב",
+      "renamedSomeFailed": "לא ניתן לעדכן {count, plural, one {פתק אחד} other {# פתקים}}. כדאי לפתוח {count, plural, one {אותו} other {אותם}} ולהוסיף את התגית שוב",
       "deleteFailed": "מחיקת התגית נכשלה",
       "deleted": "\"{name}\" נמחקה {count, plural, one {מפריט אחד} other {מ-# פריטים}}",
       "mergeFailed": "מיזוג התגיות נכשל",
@@ -1882,8 +2101,6 @@
       "loading": "טוען הגדרות…"
     },
     "searchPlaceholder": "חיפוש קיצורי מקלדת…",
-    "resetAll": "איפוס הכול",
-    "custom": "מותאם אישית",
     "pressShortcut": "הקשת צירוף המקשים…",
     "cancelTitle": "ביטול",
     "rebindTitle": "לחיצה להקצאה מחדש",
@@ -1894,19 +2111,35 @@
     "noMatch": "אין קיצורי מקלדת שתואמים לחיפוש שלך",
     "conflict": "מתנגש עם: {labels}",
     "globalCapture": {
-      "title": "לכידה מכל מקום",
       "description": "לכידת פתק מכל מקום",
       "active": "פעיל",
       "inUse": "{shortcut} נמצא בשימוש של אפליקציה אחרת. יש לבחור צירוף אחר.",
       "unsupported": "אי אפשר להשתמש ב-{shortcut} כקיצור מערכתי. יש לבחור צירוף אחר.",
       "fallbackInUse": "קיצור ברירת המחדל {shortcut} נמצא בשימוש של אפליקציה אחרת. כדי להשתמש בלכידה מכל מקום, יש להגדיר צירוף אחר."
     },
+    "folderNotes": {
+      "title": "פתק חדש בתיקייה",
+      "description": "יצירת פתק ישירות בתיקייה שבחרתם",
+      "add": "הוספת תיקייה",
+      "empty": "עדיין אין קיצורים לתיקיות. אפשר להוסיף תיקייה כדי לתת לה קיצור.",
+      "rowDescription": "יוצר פתק בתיקייה הזו",
+      "missing": "התיקייה הזו כבר לא קיימת. אפשר לבחור תיקייה אחרת או להסיר את הקיצור.",
+      "changeFolder": "החלפת תיקייה",
+      "searchFolders": "חיפוש בתיקיות...",
+      "noFolders": "לא נמצאו תיקיות",
+      "remove": "הסרת הקיצור",
+      "conflictLabel": "פתק חדש ב-{folder}",
+      "missingToast": "התיקייה \"{folder}\" כבר לא קיימת",
+      "missingToastAction": "עריכת הקיצור",
+      "foldersLoadFailed": "לא ניתן לבדוק את התיקייה של הקיצור הזה"
+    },
     "toasts": {
       "saveGlobalFailed": "שמירת הקיצור ללכידה מכל מקום נכשלה",
       "saveFailed": "שמירת קיצור המקלדת נכשלה",
       "resetFailed": "איפוס קיצור המקלדת נכשל",
       "resetAllSuccess": "כל הקיצורים אופסו לברירות המחדל",
-      "resetAllFailed": "איפוס קיצורי המקלדת נכשל"
+      "resetAllFailed": "איפוס קיצורי המקלדת נכשל",
+      "saveStickyFailed": "שמירת קיצור הפתק הדביק נכשלה"
     },
     "categories": {
       "navigation": "ניווט",
@@ -1939,6 +2172,10 @@
         "search": {
           "label": "חיפוש",
           "description": "פתיחת החיפוש הכללי"
+        },
+        "commands": {
+          "label": "לוח פקודות",
+          "description": "חיפוש והרצה של כל פקודה"
         },
         "settings": {
           "label": "פתיחת ההגדרות",
@@ -2042,6 +2279,10 @@
           "label": "הצגה/הסתרה של סרגל הצד",
           "description": "הצגה או הסתרה של סרגל הצד"
         },
+        "toggleDayPanel": {
+          "label": "הצגה או הסתרה של לוח היום",
+          "description": "הצגה או הסתרה של לוח היום מימין"
+        },
         "shortcuts": {
           "label": "עזרה לקיצורי מקלדת",
           "description": "הצגת רשימת קיצורי המקלדת"
@@ -2057,6 +2298,26 @@
         "actualSize": {
           "label": "גודל אמיתי",
           "description": "איפוס הזום ל-100%"
+        },
+        "foldFull": {
+          "label": "קיפול: מלא",
+          "description": "הצגת כל מילה בפתק"
+        },
+        "foldBrief": {
+          "label": "קיפול: תמציתי",
+          "description": "הצגת משפטי המפתח בלבד, כפי שנכתבו"
+        },
+        "foldKey": {
+          "label": "קיפול: עיקרי",
+          "description": "הצגת כל נקודה והסיבה שלה"
+        },
+        "foldTakeaway": {
+          "label": "קיפול: מסקנה",
+          "description": "הצגת שורה אחת לכל פסקה"
+        },
+        "foldTopic": {
+          "label": "קיפול: נושא",
+          "description": "הצגת הפתק כמפה של המקטעים שלו"
         }
       }
     },
@@ -2066,8 +2327,11 @@
       "systemWide": "בכל המערכת",
       "globalCapture": "לכידה מכל מקום",
       "recordingHint": "הקשת מקשים… esc לביטול",
-      "reset": "איפוס",
-      "resetAll": "איפוס הכול לברירות המחדל"
+      "resetAll": "איפוס הכול לברירות המחדל",
+      "sticky": "פתק דביק"
+    },
+    "sticky": {
+      "description": "פתיחת הפתק הדביק מכל אפליקציה בזמן ש-memrynote פועל"
     }
   },
   "phaseF": {
@@ -2112,7 +2376,17 @@
       "clockSkewDetected": "זוהתה הטיית שעון",
       "items": "פריטים",
       "willSyncWhenBackOnline": "הסנכרון יתבצע כשהחיבור יחזור",
-      "openSyncSettings": "פתיחת הגדרות הסנכרון"
+      "stalled": "שינויים לא סונכרנו זמן מה. כדאי לנסות סנכרון עכשיו.",
+      "openSyncSettings": "פתיחת הגדרות הסנכרון",
+      "repairDeviceKeys": "תיקון",
+      "signInToRepair": "יש להיכנס שוב כדי להגדיר את מפתחות המכשיר הזה. פתקים, משימות ופרויקטים שלא סונכרנו נשמרים. ייתכן שתצטרכו את משפט השחזור.",
+      "repairFailed": "לא ניתן לתקן את מפתחות המכשיר הזה. כדאי לנסות שוב.",
+      "syncNotStarted": {
+        "vault-binding": "מפתחות המכשיר הזה שוחזרו, אבל הכספת הזו עדיין לא מוגדרת להסתנכרן עם החשבון שלך. אפשר לבחור איך לסנכרן אותה מתפריט הסנכרון.",
+        "vault-foreign": "מפתחות המכשיר הזה שוחזרו, אבל הכספת הזו שייכת לחשבון אחר. היא נשארת מקומית במכשיר הזה.",
+        "entitlement": "מפתחות המכשיר הזה שוחזרו, אבל הסנכרון דורש תוכנית Sync פעילה.",
+        "unavailable": "מפתחות המכשיר הזה שוחזרו, אבל הסנכרון לא הצליח להתחיל. הוא ינסה שוב; אם זה לא קורה, יש להפעיל מחדש את Memry."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2128,7 +2402,6 @@
       "failedToResendCode": "השליחה מחדש של הקוד נכשלה",
       "failedToSetUpDevice": "הגדרת המכשיר נכשלה",
       "failedToConfirmRecoveryPhrase": "אימות ביטוי השחזור נכשל",
-      "failedToAnalyzeContent": "ניתוח התוכן נכשל",
       "failedToLoadUpdaterState": "טעינת מצב העדכון נכשלה",
       "failedToCheckForUpdates": "בדיקת העדכונים נכשלה",
       "failedToDownloadUpdate": "הורדת העדכון נכשלה",
@@ -2143,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "טעינת הגדרות עורך הפתקים נכשלה",
       "failedToUpdateSettings": "עדכון ההגדרות נכשל",
       "failedToLoadTabSettings": "טעינת הגדרות הכרטיסיות נכשלה",
-      "failedToLoadNotes": "טעינת הפתקים נכשלה",
       "failedToLoadTags": "טעינת התגיות נכשלה",
-      "failedToLoadTasks": "טעינת המשימות נכשלה",
       "failedToLoadVaultStatus": "טעינת מצב הכספת נכשלה",
       "failedToSelectVault": "בחירת הכספת נכשלה",
       "failedToCloseVault": "סגירת הכספת נכשלה",
@@ -2159,18 +2430,12 @@
       "title": "MCP לסוכנים",
       "subtitle": "גישת שרת מקומי עבור לקוחות MCP חיצוניים."
     },
-    "groups": {
-      "connection": "חיבור",
-      "access": "גישה"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "אפשר להשתמש בנקודת הקצה המקומית הזו מתוך Cursor, Claude Desktop או Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "אסימון Bearer",
-        "description": "פרטי גישה בזיכרון, לאורך הפעלה זו של האפליקציה."
+        "label": "אסימון Bearer"
       }
     },
     "actions": {
@@ -2195,11 +2460,6 @@
       "title": "הרשאות הסוכן",
       "subtitle": "בחירת גישת ברירת המחדל, האישורים והספקים המקומיים עבור צ׳אט הסוכן."
     },
-    "groups": {
-      "cliAgents": "סוכני CLI",
-      "local": "ספק מקומי תואם OpenAI",
-      "actions": "בדיקות חיבור"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2222,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "הרשאות הסוכן",
       "access": {
-        "label": "גישת ברירת מחדל",
         "description": "קובע את מצב הגישה ההתחלתי בכל פנייה חדשה לסוכן.",
         "vaultOnly": "כספת בלבד",
         "computerAccess": "גישה למחשב",
         "builtInNote": "חיבור המודל המובנה פועל תמיד עם כלי הכספת בלבד."
       },
       "confirm": {
-        "label": "אישור פעולות",
         "description": "בחירה אם קריאות לכלים יפעלו אוטומטית או ימתינו לאישור בצ׳אט. פתקים ותיקיות נעולים נשארים לקריאה בלבד בשני המצבים.",
         "alwaysAllow": "לאפשר תמיד",
         "askBeforeChanges": "לשאול לפני שינויים"
@@ -2259,6 +2516,12 @@
         "label": "מודל",
         "description": "אפשר לבחור מודל מהרשימה או להזין אחד ידנית."
       },
+      "thinking": {
+        "label": "חשיבה",
+        "description": "כשהאפשרות כבויה, מודלים מסוג DeepSeek מתבקשים לדלג על חשיבה לקבלת תשובות מהירות וזולות יותר.",
+        "default": "ברירת מחדל",
+        "off": "כבוי"
+      },
       "apiKey": {
         "label": "מפתח API",
         "description": "פרטי גישה אופציונליים, נשמרים במחזיק המפתחות של מערכת ההפעלה.",
@@ -2266,26 +2529,31 @@
       }
     },
     "actions": {
-      "save": "שמירה",
-      "models": "מודלים",
-      "test": "בדיקת החיבור",
-      "probe": "בדיקת הכלים"
+      "test": "בדיקת החיבור"
     },
     "status": {
       "label": "חיבור",
       "checking": "בודק…",
       "connected": "מחובר",
-      "disconnected": "מנותק",
-      "toolsDisabled": "כלים מושבתים",
-      "fullTools": "כל הכלים מופעלים"
+      "disconnected": "מנותק"
     },
     "alwaysAllowed": {
-      "group": "מותרים תמיד",
       "description": "כלים שנתת להם אישור קבוע בכספת הזו. אי אפשר לתת אישור קבוע למחיקות.",
       "empty": "אין כלים שמותרים תמיד. כל שינוי עדיין דורש אישור.",
       "revoke": "ביטול",
       "revokeLabel": "ביטול האישור הקבוע עבור {tool}",
       "ignoredInPageReview": "לא בתוקף: עריכות בפתקים וביומן תמיד דורשות אישור."
+    },
+    "memory": {
+      "group": "זיכרון",
+      "description": "סוכנים פועלים בתיקייה ששמורה עבור הכספת הזו, מחוץ לכספת, כך שמה שהם שומרים שם עובר לשיחה הבאה.",
+      "clear": "ניקוי זיכרון הסוכן",
+      "clearDescription": "מוחק את מה שסוכנים שמרו על הכספת הזו. הפתקים והיסטוריית הצ׳אט נשארים.",
+      "clearAction": "ניקוי",
+      "cleared": "זיכרון הסוכן נוקה.",
+      "failed": "לא ניתן לנקות את זיכרון הסוכן.",
+      "confirmTitle": "לנקות את זיכרון הסוכן?",
+      "confirmDescription": "סוכנים מאבדים את מה שהם שמרו על הכספת הזו, כולל זיכרון הפרויקט של Claude Code עבורה. אי אפשר לבטל את הפעולה. הפתקים והיסטוריית הצ׳אט נשארים."
     },
     "v2": {
       "permissions": {

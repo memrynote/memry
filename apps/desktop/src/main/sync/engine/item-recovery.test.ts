@@ -117,7 +117,7 @@ describe('retrySchemaInvalidItems', () => {
       h.ledger
         .quarantinedItems()
         .map((item) => `${item.itemId} ${item.lastError}`)
-        .sort()
+        .toSorted()
     ).toEqual([
       'task-envelope schema_invalid:envelope (app 1.1.0)',
       'task-still-bad schema_invalid:payload (app 1.1.0)',

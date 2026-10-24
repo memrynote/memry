@@ -179,7 +179,10 @@ export const LinkInput = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent): void => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !(e.target instanceof Node && containerRef.current.contains(e.target))
+      ) {
         setIsDropdownDismissed(true)
       }
     }

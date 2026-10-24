@@ -324,8 +324,8 @@ describe('VaultPager', () => {
   it('leaves a frame of the sidebar for the switch screen', async () => {
     seedSnapshot('/vaults/research', 'Q3 planning')
     let finish: (ok: boolean) => void = () => {}
-    const onSwitch = vi.fn().mockImplementation((vault: VaultInfo) => {
-      beginVaultSwitch({ path: vault.path, name: vault.name }, 'next')
+    const onSwitch = vi.fn().mockImplementation((info: VaultInfo) => {
+      beginVaultSwitch({ path: info.path, name: info.name }, 'next')
       return new Promise<boolean>((resolve) => {
         finish = resolve
       })

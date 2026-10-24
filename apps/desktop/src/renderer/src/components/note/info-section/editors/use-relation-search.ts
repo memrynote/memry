@@ -67,7 +67,7 @@ export function useRelationSearch(query: string): RelationSearchState {
       setCanvases([])
       setJournals([])
       setLoading(false)
-      return
+      return undefined
     }
 
     setLoading(true)
@@ -75,6 +75,7 @@ export function useRelationSearch(query: string): RelationSearchState {
     const timer = setTimeout(() => {
       // Settled independently: one source failing must not blank the other.
       const searching = searchService.quick(trimmed).then(
+        // oxlint-disable-next-line promise/always-return -- side-effect handler; the promise only signals settlement to Promise.all
         (response: { results: SearchResultItem[] }) => {
           if (cancelled) return
           setNotes(
@@ -106,6 +107,7 @@ export function useRelationSearch(query: string): RelationSearchState {
       const searchingEvents = calendarService
         .searchEvents({ query: trimmed, includeExternal: true })
         .then(
+          // oxlint-disable-next-line promise/always-return -- side-effect handler; the promise only signals settlement to Promise.all
           (response: { events: CalendarEventSearchItem[] }) => {
             if (cancelled) return
             setEvents(
@@ -135,6 +137,7 @@ export function useRelationSearch(query: string): RelationSearchState {
       const searchingCanvases = Promise.resolve()
         .then(() => canvasService.list())
         .then(
+          // oxlint-disable-next-line promise/always-return -- side-effect handler; the promise only signals settlement to Promise.all
           (response) => {
             if (cancelled) return
             setCanvases(

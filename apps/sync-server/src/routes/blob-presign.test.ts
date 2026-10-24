@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 import { ErrorCodes } from '../lib/errors'
-import type { AppContext } from '../types'
 import type * as R2PresignModule from '../services/r2-presign'
 
 vi.mock('../services/blob', () => ({
@@ -177,7 +176,7 @@ describe('presigned direct transfers (#1836)', () => {
       expect(res.status).toBe(200)
       const body = (await res.json()) as { urls: Record<string, string>; expiresAt: number }
 
-      expect(Object.keys(body.urls).sort()).toEqual([HASH_A, HASH_B].sort())
+      expect(Object.keys(body.urls).toSorted()).toEqual([HASH_A, HASH_B].toSorted())
       for (const url of Object.values(body.urls)) {
         expect(url).toContain('https://test-account.r2.cloudflarestorage.com/test-bucket/')
         expect(url).toContain('X-Amz-Signature=')
@@ -268,7 +267,7 @@ describe('presigned direct transfers (#1836)', () => {
         env
       )
       expect(res.status).toBe(201)
-      const raw = (await res.text()) as string
+      const raw = await res.text()
       expect(JSON.parse(raw)).toEqual({
         sessionId: expect.any(String),
         expiresAt: expect.any(Number)
@@ -367,14 +366,14 @@ describe('presigned direct transfers (#1836)', () => {
       })
 
     const headByKey = (sizes: Record<string, number | null>): void => {
-      vi.mocked(env.STORAGE.head).mockImplementation((async (key: string) => {
+      vi.mocked(env.STORAGE.head).mockImplementation(async (key: string) => {
         for (const [fragment, size] of Object.entries(sizes)) {
           if (key.includes(fragment)) {
             return (size === null ? null : { size }) as unknown as R2Object
           }
         }
         return null
-      }) as unknown as (key: string) => Promise<R2Object | null>)
+      })
     }
 
     it('head-verifies claims, registers blob_chunks rows and merges session state', async () => {
@@ -507,14 +506,14 @@ describe('presigned direct transfers (#1836)', () => {
     const chunkKey = (hash: string): string => `user-1/vaults/vault-1/chunks/${hash}`
 
     const headByKey = (sizes: Record<string, number | null>): void => {
-      vi.mocked(env.STORAGE.head).mockImplementation((async (key: string) => {
+      vi.mocked(env.STORAGE.head).mockImplementation(async (key: string) => {
         for (const [fragment, size] of Object.entries(sizes)) {
           if (key.includes(fragment)) {
             return (size === null ? null : { size }) as unknown as R2Object
           }
         }
         return null
-      }) as unknown as (key: string) => Promise<R2Object | null>)
+      })
     }
 
     it('deletes armed keys the client never registered when the session is aborted', async () => {

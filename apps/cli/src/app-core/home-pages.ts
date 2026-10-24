@@ -23,6 +23,7 @@ export interface HomePagesService {
 function parseWidgets(row: HomePageRow): Array<Record<string, unknown>> {
   try {
     const parsed = JSON.parse(row.widgets) as unknown
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
     return Array.isArray(parsed) ? (parsed as Array<Record<string, unknown>>) : []
   } catch {
     return []
@@ -38,8 +39,10 @@ function rowToHomePage(row: HomePageRow): HomePage {
       typeof widget.w === 'number' &&
       typeof widget.h === 'number'
     ) {
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- partial value cast through its boundary type; precise type is not available
       return widget as unknown as WidgetInstance
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     const span = LEGACY_SPAN[widget.size as string] ?? LEGACY_SPAN.M
     const migrated: WidgetInstance = {
       id: String(widget.id),
@@ -48,6 +51,7 @@ function rowToHomePage(row: HomePageRow): HomePage {
       y,
       w: span.w,
       h: span.h,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
       config: (widget.config as Record<string, unknown>) ?? {}
     }
     y += span.h

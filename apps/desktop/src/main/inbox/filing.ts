@@ -69,6 +69,7 @@ export function extractItemProperties(metadata: unknown): Record<string, unknown
   if (!metadata || typeof metadata !== 'object') return undefined
   const properties = (metadata as { properties?: unknown }).properties
   if (!properties || typeof properties !== 'object') return undefined
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- frontmatter properties are typed loosely upstream; every consumer treats them as an open record
   return properties as Record<string, unknown>
 }
 
@@ -413,6 +414,7 @@ export function generateNoteContent(item: InboxItemRow): string {
     case 'link': {
       const url = item.sourceUrl || ''
       const description = resolveInlineAttachmentPaths(item.content || '')
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inbox metadata is a JSON column typed unknown by drizzle; every read below is optional-chained
       const metadata = item.metadata as Record<string, unknown> | null
       const title = item.title || ''
       const domain = url ? extractDomain(url) : ''
@@ -461,6 +463,7 @@ export function generateNoteContent(item: InboxItemRow): string {
     }
 
     case 'social': {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inbox metadata is a JSON column typed unknown by drizzle; every read below is optional-chained
       const socialMeta = item.metadata as Record<string, unknown> | null
       const url = item.sourceUrl || ''
       const fullPostContent =
@@ -677,6 +680,7 @@ async function fileBinaryToFolder(
       await rename(sourcePath, finalPath)
     } catch (renameError) {
       // Cross-device link error - use copy + delete
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught value is unknown; only .code is read and undefined is handled
       if ((renameError as NodeJS.ErrnoException).code === 'EXDEV') {
         await copyFile(sourcePath, finalPath)
         await unlink(sourcePath)
@@ -1196,6 +1200,7 @@ async function embedImageInNotes(
   mergedTags: string[]
 ): Promise<{ success: boolean; error?: string; linkedCount?: number } | null> {
   const vaultPath = getVaultPath()
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- nullable column; only invoked for attachment-backed image items (a null would throw TypeError from path.join, as before)
   const sourcePath = path.join(vaultPath, item.attachmentPath as string)
   const filename = getFiledBinaryFilename(item)
   const ownerNote = targetNotes[0]
@@ -1318,6 +1323,7 @@ async function linkBinaryToNotes(
     try {
       await rename(sourcePath, finalPath)
     } catch (renameError) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught value is unknown; only .code is read and undefined is handled
       if ((renameError as NodeJS.ErrnoException).code === 'EXDEV') {
         await copyFile(sourcePath, finalPath)
         await unlink(sourcePath)

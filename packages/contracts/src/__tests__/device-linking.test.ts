@@ -11,7 +11,13 @@
  */
 import { createHmac } from 'node:crypto'
 
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  base64_variants,
+  from_base64,
+  ready,
+  to_base64,
+  to_hex
+} from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { CBOR_FIELD_ORDER } from '../cbor-ordering'
@@ -31,13 +37,13 @@ const vectors = loadVectorFile<{
   failureCases: Array<Record<string, unknown>>
 }>('device-linking.json')
 
-const b64 = (b: Uint8Array): string => sodium.to_base64(b, sodium.base64_variants.ORIGINAL)
+const b64 = (b: Uint8Array): string => to_base64(b, base64_variants.ORIGINAL)
 const hmacSha256 = (key: Uint8Array, message: Uint8Array): Uint8Array =>
   new Uint8Array(createHmac('sha256', Buffer.from(key)).update(Buffer.from(message)).digest())
 
 describe('device-linking vectors', () => {
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   it('carries the recorded case count', () => {
@@ -47,9 +53,7 @@ describe('device-linking vectors', () => {
   it('the linking secret is 32 bytes carried as 44 characters of standard base64', () => {
     expect(vectors.meta.linkingSecretBytes).toBe(32)
     expect(vectors.meta.linkingSecretB64).toHaveLength(44)
-    expect(
-      sodium.from_base64(vectors.meta.linkingSecretB64, sodium.base64_variants.ORIGINAL)
-    ).toHaveLength(32)
+    expect(from_base64(vectors.meta.linkingSecretB64, base64_variants.ORIGINAL)).toHaveLength(32)
   })
 
   it('both sides of the X25519 exchange agree', () => {
@@ -88,8 +92,8 @@ describe('device-linking vectors', () => {
     })
 
     it(`${name}: the MAC recomputes`, () => {
-      const message = fromHex(entry.messageHex as string)
-      const key = fromHex(entry.keyHex as string)
+      const message = fromHex(entry.messageHex)
+      const key = fromHex(entry.keyHex)
       const actual =
         entry.channel === 'scan' ? hmacSha256(key, message) : sodium.crypto_auth(message, key)
       expect(b64(actual), entry.pins as string).toBe(entry.expectedMacB64)
@@ -108,9 +112,9 @@ describe('device-linking vectors', () => {
     expect(scan.messageHex, 'both families MAC the same bytes').toBe(confirm.messageHex)
     expect(scan.expectedMacB64).not.toBe(confirm.expectedMacB64)
 
-    const message = fromHex(scan.messageHex as string)
-    const scanKey = fromHex(scan.keyHex as string)
-    const confirmKey = fromHex(confirm.keyHex as string)
+    const message = fromHex(scan.messageHex)
+    const scanKey = fromHex(scan.keyHex)
+    const confirmKey = fromHex(confirm.keyHex)
     // crypto_auth is HMAC-SHA-512 truncated to 32 bytes, NOT SHA-512/256 and
     // NOT SHA-256; asserting the cross products keeps a unified implementation
     // from passing.
@@ -123,12 +127,12 @@ describe('device-linking vectors', () => {
     expect(entry.associatedData).toBeNull()
     const plaintext = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
       null,
-      sodium.from_base64(entry.encryptedMasterKeyB64 as string, sodium.base64_variants.ORIGINAL),
+      from_base64(entry.encryptedMasterKeyB64, base64_variants.ORIGINAL),
       null,
-      fromHex(entry.keyNonceHex as string),
-      fromHex(entry.encKeyHex as string)
+      fromHex(entry.keyNonceHex),
+      fromHex(entry.encKeyHex)
     )
-    expect(sodium.to_hex(plaintext)).toBe(entry.masterKeyHex)
+    expect(to_hex(plaintext)).toBe(entry.masterKeyHex)
   })
 
   it('the SAS derivation, bias included', () => {
@@ -137,11 +141,11 @@ describe('device-linking vectors', () => {
       32,
       7,
       'memrysas',
-      fromHex(entry.sharedSecretHex as string)
+      fromHex(entry.sharedSecretHex)
     )
-    expect(sodium.to_hex(sasKey)).toBe(entry.sasKeyHex)
+    expect(to_hex(sasKey)).toBe(entry.sasKeyHex)
     const h = sodium.crypto_generichash(4, sasKey, null)
-    expect(sodium.to_hex(h)).toBe(entry.generichash4Hex)
+    expect(to_hex(h)).toBe(entry.generichash4Hex)
     const u32 = ((h[0] << 24) | (h[1] << 16) | (h[2] << 8) | h[3]) >>> 0
     expect(u32).toBe(entry.uint32BigEndian)
     expect((u32 % 1000000).toString().padStart(6, '0')).toBe(entry.expectedCode)
@@ -159,7 +163,7 @@ describe('device-linking vectors', () => {
     it(`${entry.name}`, () => {
       if ('verifyWithKeyHex' in entry) {
         const message = fromHex(entry.messageHex as string)
-        const mac = sodium.from_base64(entry.macB64 as string, sodium.base64_variants.ORIGINAL)
+        const mac = from_base64(entry.macB64 as string, base64_variants.ORIGINAL)
         // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
         expect(
           sodium.crypto_auth_verify(mac, message, fromHex(entry.verifyWithKeyHex as string)),

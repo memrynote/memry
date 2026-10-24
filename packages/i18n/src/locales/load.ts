@@ -16,7 +16,7 @@ function parseLocale(language: string): Locale | null {
 }
 
 function parseNamespace(namespace: string): I18nNamespace | null {
-  return I18N_NAMESPACES.includes(namespace as I18nNamespace) ? (namespace as I18nNamespace) : null
+  return I18N_NAMESPACES.find((known) => known === namespace) ?? null
 }
 
 export async function loadLocaleNamespace(
@@ -24,7 +24,8 @@ export async function loadLocaleNamespace(
   namespace: I18nNamespace
 ): Promise<NamespaceResource> {
   const module = await import(`./${locale}/${namespace}.json`)
-  return module.default as NamespaceResource
+  const resource: NamespaceResource = module.default
+  return resource
 }
 
 export async function loadLocaleResources(locale: Locale): Promise<LocaleResources> {
@@ -35,6 +36,7 @@ export async function loadLocaleResources(locale: Locale): Promise<LocaleResourc
     })
   )
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries widens to a string-keyed record; the entries cover every I18N_NAMESPACES member
   return Object.fromEntries(namespaces) as LocaleResources
 }
 

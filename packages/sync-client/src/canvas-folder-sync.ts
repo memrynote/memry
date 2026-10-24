@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { canvasFolders } from '@memry/db-schema/data-schema'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 import { nextLocalClock } from './tombstone-clocks'
@@ -12,6 +12,15 @@ interface CanvasFolderSyncDeps {
   db: DrizzleDb
   getDeviceId: () => string | null
 }
+
+const serializeFolder = (local: Record<string, unknown>): Record<string, unknown> => ({
+  id: local.id,
+  vaultId: local.vaultId,
+  path: local.path,
+  icon: local.icon ?? null,
+  clock: local.clock,
+  deletedAt: local.deletedAt ?? null
+})
 
 let instance: CanvasFolderSyncService | null = null
 
@@ -39,18 +48,7 @@ export class CanvasFolderSyncService {
 
   constructor(deps: CanvasFolderSyncDeps) {
     const load = (folderId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(canvasFolders).where(eq(canvasFolders.id, folderId)).get() as
-        | Record<string, unknown>
-        | undefined
-    const serialize = (local: Record<string, unknown>): Record<string, unknown> => ({
-      id: local.id,
-      vaultId: local.vaultId,
-      path: local.path,
-      icon: (local.icon as string | null) ?? null,
-      clock: local.clock,
-      deletedAt: (local.deletedAt as number | null) ?? null
-    })
-
+      deps.db.select().from(canvasFolders).where(eq(canvasFolders.id, folderId)).get()
     this.controller = new RecordSyncController({
       type: 'canvas_folder',
       queue: deps.queue,
@@ -61,7 +59,7 @@ export class CanvasFolderSyncService {
           deps.db,
           'canvas_folder',
           itemId,
-          local.clock as VectorClock | null,
+          clockFromColumn(local.clock),
           deviceId,
           operation
         )
@@ -74,12 +72,12 @@ export class CanvasFolderSyncService {
 
         return { ...local, clock: newClock }
       },
-      serialize,
+      serialize: serializeFolder,
       recoverPendingChange: (folderId, deviceId) =>
         recoverOfflineDocClock(load(folderId), deviceId, (clock) =>
           deps.db.update(canvasFolders).set({ clock }).where(eq(canvasFolders.id, folderId)).run()
         ),
-      serializeRecovered: serialize,
+      serializeRecovered: serializeFolder,
       buildDeletePayload: ({ extra, deviceId }) => withIncrementedClock(extra[0], deviceId)
     })
   }

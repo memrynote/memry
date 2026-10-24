@@ -26,14 +26,14 @@ export const getDefaultDoneStatus = (project: Project): Status | undefined => {
  * groupTasksByStatus files it under.
  */
 export const resolveTaskStatus = (statusId: string, statuses: Status[]): Status | undefined =>
-  statuses.find((s) => s.id === statusId) ?? [...statuses].sort((a, b) => a.order - b.order)[0]
+  statuses.find((s) => s.id === statusId) ?? [...statuses].toSorted((a, b) => a.order - b.order)[0]
 
 // ============================================================================
 // TASK SORTING
 // ============================================================================
 
 export const sortTasksByPriorityAndDate = (tasks: Task[]): Task[] => {
-  return [...tasks].sort((a, b) => {
+  return [...tasks].toSorted((a, b) => {
     const priorityA = priorityConfig[a.priority].order
     const priorityB = priorityConfig[b.priority].order
 
@@ -60,7 +60,7 @@ const priorityOrder: Record<string, number> = {
 }
 
 export const sortTasksByTimeAndPriority = (tasks: Task[]): Task[] => {
-  return [...tasks].sort((a, b) => {
+  return [...tasks].toSorted((a, b) => {
     if (a.dueTime && !b.dueTime) return -1
     if (!a.dueTime && b.dueTime) return 1
 
@@ -74,7 +74,7 @@ export const sortTasksByTimeAndPriority = (tasks: Task[]): Task[] => {
 }
 
 export const sortOverdueTasks = (tasks: Task[]): Task[] => {
-  return [...tasks].sort((a, b) => {
+  return [...tasks].toSorted((a, b) => {
     if (a.dueDate && b.dueDate) {
       const dateCompare = a.dueDate.getTime() - b.dueDate.getTime()
       if (dateCompare !== 0) return dateCompare
@@ -128,11 +128,10 @@ export const groupTasksByDueDate = (
   })
 
   if (!preserveOrder) {
-    Object.keys(groups).forEach((key) => {
-      groups[key as keyof TaskGroupByDate] = sortTasksByPriorityAndDate(
-        groups[key as keyof TaskGroupByDate]
-      )
-    })
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `groups` is built above with exactly the TaskGroupByDate keys
+    for (const key of Object.keys(groups) as (keyof TaskGroupByDate)[]) {
+      groups[key] = sortTasksByPriorityAndDate(groups[key])
+    }
   }
 
   return groups
@@ -161,7 +160,7 @@ export const groupTasksByStatus = (
   projectStatuses: Status[],
   preserveOrder: boolean = false
 ): TaskGroupByStatus[] => {
-  const sortedStatuses = [...projectStatuses].sort((a, b) => a.order - b.order)
+  const sortedStatuses = [...projectStatuses].toSorted((a, b) => a.order - b.order)
   const knownStatusIds = new Set(projectStatuses.map((status) => status.id))
   const unknownStatusTasks = tasks.filter((t) => !knownStatusIds.has(t.statusId))
 

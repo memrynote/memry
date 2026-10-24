@@ -2456,7 +2456,7 @@ export class CrdtProvider {
     const bound = this.boundVault
     if (!bound || !isDatabaseInitialized() || getDatabase() !== bound.db) return null
     if (getOrCreateVaultUuid(bound.db) !== bound.vaultUuid) return null
-    return bound.db as unknown as DrizzleDb
+    return bound.db
   }
 
   /**
@@ -2567,6 +2567,7 @@ function isIpcOrigin(origin: unknown): origin is IpcOrigin {
     typeof origin === 'object' &&
     origin !== null &&
     'source' in origin &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     (origin as IpcOrigin).source === 'ipc'
   )
 }

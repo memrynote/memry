@@ -275,7 +275,7 @@ function TypeDistribution({
     () =>
       Object.entries(itemsByType)
         .filter(([, count]) => count > 0)
-        .sort(([, a], [, b]) => b - a),
+        .toSorted(([, a], [, b]) => b - a),
     [itemsByType]
   )
 

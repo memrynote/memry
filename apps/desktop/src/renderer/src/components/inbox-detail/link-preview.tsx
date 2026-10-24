@@ -1,6 +1,7 @@
 import { memo, useState } from 'react'
 import { Globe, Play } from '@/lib/icons'
 import { extractYouTubeVideoId } from '@/lib/youtube-utils'
+import { metadataAs } from './item-metadata'
 import type { InboxItem, InboxItemListItem, LinkMetadata } from '@/types'
 
 const PreviewImage = ({
@@ -48,10 +49,14 @@ export const LinkPreview = memo(({ item }: LinkPreviewProps): React.JSX.Element 
   const [faviconError, setFaviconError] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
 
-  const metadata = 'metadata' in item ? (item.metadata as LinkMetadata | null) : null
-  const raw = metadata as Record<string, unknown> | null
-  const heroImageUrl = item.thumbnailUrl || metadata?.heroImage || (raw?.image as string) || null
-  const faviconUrl = metadata?.favicon || (raw?.logo as string) || null
+  const metadata = 'metadata' in item ? metadataAs<LinkMetadata | null>(item.metadata) : null
+  const raw = metadataAs<Record<string, unknown> | null>(item.metadata)
+  const heroImageUrl =
+    item.thumbnailUrl ||
+    metadata?.heroImage ||
+    (typeof raw?.image === 'string' ? raw.image : null) ||
+    null
+  const faviconUrl = metadata?.favicon || (typeof raw?.logo === 'string' ? raw.logo : null) || null
   const excerpt = metadata?.description || metadata?.excerpt || item.content
 
   const youtubeVideoId = item.sourceUrl ? extractYouTubeVideoId(item.sourceUrl) : null

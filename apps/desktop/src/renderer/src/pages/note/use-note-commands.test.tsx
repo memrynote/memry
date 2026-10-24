@@ -159,7 +159,7 @@ describe('note commands', () => {
     expect(
       ids()
         .filter((id) => id.startsWith('note.'))
-        .sort()
+        .toSorted()
     ).toEqual(['note.exportPdf', 'note.find'])
   })
 

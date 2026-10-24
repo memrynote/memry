@@ -93,8 +93,9 @@ describe('cancelling a turn before the backend produces its run handle', () => {
 
     const probeEntered = gate()
     const releaseProbe = gate()
-    const fetchImpl = (async (input: URL | RequestInfo) => {
-      if (String(input).includes('/models')) {
+    const fetchImpl = async (input: URL | RequestInfo) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.includes('/models')) {
         return new Response(JSON.stringify({ data: [{ id: MODEL }] }), {
           status: 200,
           headers: { 'content-type': 'application/json' }
@@ -105,7 +106,7 @@ describe('cancelling a turn before the backend produces its run handle', () => {
       probeEntered.open()
       await releaseProbe.promise
       throw new Error('probe connection reset')
-    }) as unknown as typeof fetch
+    }
 
     const backend = new LocalOpenAICompatibleBackend({
       getSettings: async () => ({

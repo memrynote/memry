@@ -281,7 +281,7 @@ export function useEditorFileUpload({
   // Capture-phase drop handler to intercept before BlockNote
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const captureDropHandler = (e: DragEvent): void => {
       const dataTransfer = e.dataTransfer
@@ -294,7 +294,9 @@ export function useEditorFileUpload({
         e.preventDefault()
         e.stopPropagation()
 
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- the assertion bridges two unrelated structural types; the unknown hop is deliberate; boundary cast: the runtime shape is fixed by the producer named at this call, which has no exported type
         void handleNonImageDrop({
+          // oxlint-disable-next-line typescript/no-misused-spread -- spread kept as is: it builds the synthetic event object handed to handleNonImageDrop, and replacing it would change that object
           ...e,
           dataTransfer,
           preventDefault: () => e.preventDefault(),

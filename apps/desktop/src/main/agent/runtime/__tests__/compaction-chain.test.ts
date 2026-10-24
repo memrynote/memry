@@ -83,7 +83,7 @@ function prompt(store: { all: Message[] }): string {
 }
 
 function factsIn(text: string): string[] {
-  return [...new Set(text.match(/fact-\d+/g) ?? [])].sort()
+  return [...new Set(text.match(/fact-\d+/g) ?? [])].toSorted()
 }
 
 describe('chained compactions', () => {
@@ -97,7 +97,7 @@ describe('chained compactions', () => {
         addUser(store, fact)
       }
       expect(await compact(store)).not.toBeNull()
-      expect(factsIn(prompt(store))).toEqual([...written].sort())
+      expect(factsIn(prompt(store))).toEqual([...written].toSorted())
     }
   })
 
@@ -122,12 +122,12 @@ describe('chained compactions', () => {
         'fact-7',
         'fact-8',
         'fact-9'
-      ].sort()
+      ].toSorted()
     )
     const order = ['fact-1', 'fact-3', 'fact-4', 'fact-5', 'fact-7', 'fact-8', 'fact-9'].map(
       (fact) => before.indexOf(fact)
     )
-    expect(order).toEqual([...order].sort((a, b) => a - b))
+    expect(order).toEqual([...order].toSorted((a, b) => a - b))
 
     expect(await compact(store)).not.toBeNull()
     const after = prompt(store)

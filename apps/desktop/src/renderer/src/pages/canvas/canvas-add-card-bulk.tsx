@@ -88,7 +88,7 @@ function useBulkPickItems(source: BulkSource | null): { items: PickItem[]; loadi
   const [loaded, setLoaded] = useState<{ source: BulkSource; items: PickItem[] } | null>(null)
 
   useEffect(() => {
-    if (!source) return
+    if (!source) return undefined
     let cancelled = false
     void loadPickItems(source)
       .catch((err: unknown) => {
@@ -104,7 +104,7 @@ function useBulkPickItems(source: BulkSource | null): { items: PickItem[]; loadi
     }
   }, [source])
 
-  const current = loaded !== null && loaded.source === source ? loaded.items : null
+  const current = loaded?.source === source ? loaded.items : null
   return { items: current ?? NO_ITEMS, loading: source !== null && current === null }
 }
 

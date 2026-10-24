@@ -91,10 +91,11 @@ export const AddPropertyMenu = ({
         onKeyDown={(event) => {
           // The row's keys work here too: D in the menu is Due date.
           const id = resolvePropertyShortcut(event)
-          if (id && (items as string[]).includes(id)) {
+          const picked = items.find((item) => item === id)
+          if (picked) {
             event.preventDefault()
             event.stopPropagation()
-            pick(id as OptionalTaskPropertyId)
+            pick(picked)
           }
         }}
       >

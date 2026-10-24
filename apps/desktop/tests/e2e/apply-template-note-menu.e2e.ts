@@ -18,19 +18,19 @@ test.describe('Apply template from the note page menu', () => {
     const templateName = uniqueLabel('Apply From Menu')
 
     const projectId = await page.evaluate(
-      async ({ projectName, templateName, icon, tag }) => {
+      async ({ projectName: projectNameArg, templateName: templateNameArg, icon, tag }) => {
         const project = await window.api.tasks.createProject({
-          name: projectName,
+          name: projectNameArg,
           color: '#6366f1'
         })
         if (!project.success || !project.project) {
           throw new Error(project.error ?? 'project create failed')
         }
         const template = await window.api.templates.create({
-          name: templateName,
+          name: templateNameArg,
           icon,
           tags: [tag],
-          properties: [{ name: 'project', type: 'project', value: [projectName] }],
+          properties: [{ name: 'project', type: 'project', value: [projectNameArg] }],
           content: '## From the template'
         })
         if (!template.success) throw new Error(template.error ?? 'template create failed')

@@ -134,6 +134,7 @@ type CoverBytes =
   | { ok: true; bytes: Buffer; filename: string; credit?: { name: string; url: string } }
   | { ok: false; reason: HomePageCoverFailure }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union: TS rejects a missing case, and a default would invent behavior for kinds that cannot occur
 async function bytesFor(
   source: Exclude<HomePageCoverSource, { kind: 'wash' }>,
   deps: HomeCoverDeps

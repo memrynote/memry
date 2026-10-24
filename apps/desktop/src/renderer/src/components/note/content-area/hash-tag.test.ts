@@ -39,7 +39,7 @@ describe('extractInlineTags', () => {
     })
 
     it('extracts #tags from raw string content items', () => {
-      const blocks = [textBlock(['hello #pasted tag' as unknown as Record<string, unknown>])]
+      const blocks = [textBlock(['hello #pasted tag'])]
       expect(extractInlineTags(blocks)).toEqual(['pasted'])
     })
 

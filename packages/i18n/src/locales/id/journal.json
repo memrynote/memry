@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Koneksi AI",
     "todaysNotes": "Catatan hari ini",
-    "todaysSchedule": "Jadwal hari ini",
-    "todaysTasks": "Tugas hari ini",
     "tasks": "Tugas",
     "technicalDetails": "Detail teknis"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Selamat siang",
       "evening": "Selamat malam",
       "night": "Selamat malam"
-    },
-    "allDay": "Sepanjang hari"
+    }
   },
   "nav": {
     "previousDay": "Hari sebelumnya",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Opsi lainnya",
     "documentStatistics": "Statistik dokumen",
-    "dayContext": "Konteks hari: tugas dan jadwal",
-    "scheduleEvents": "Acara terjadwal",
-    "tasks": "Tugas",
     "notesCreatedToday": "{count} catatan dibuat hari ini"
   },
   "empty": {
     "noEntry": "Tidak ada entri",
     "noDaysInMonth": "Tidak ada hari di bulan ini",
-    "noEventsScheduled": "Tidak ada acara yang dijadwalkan",
-    "noEventsScheduledToday": "Tidak ada acara yang dijadwalkan hari ini",
-    "noEventsWereScheduled": "Tidak ada acara yang dijadwalkan",
-    "noTasksDue": "Tidak ada tugas yang harus diselesaikan",
-    "noTasksDueToday": "Tidak ada tugas yang harus diselesaikan hari ini",
-    "noTasksWereDue": "Tidak ada tugas yang harus diselesaikan",
     "noNotesToday": "Tidak ada catatan yang dibuat hari ini",
     "startDocumenting": "Mulailah mendokumentasikan pemikiran dan ide Anda"
   },
@@ -155,9 +143,7 @@
     "day": "hari",
     "days": "hari",
     "event": "acara",
-    "events": "acara",
     "task": "tugas",
-    "todo": "perlu dikerjakan",
     "moreConnections": "+ {count} koneksi lainnya",
     "moreConnections_plural": "+ {count} koneksi lainnya",
     "moreNotes": "+ {count} catatan lainnya",
@@ -166,7 +152,6 @@
     "charactersWritten": "karakter yang ditulis",
     "words": "{count} kata",
     "characters": "{count} karakter",
-    "completed": "{count} selesai",
     "overdue": "{count} terlambat"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Diubah {date}"
   },
   "task": {
-    "completed": "Selesai",
-    "notCompleted": "Belum selesai",
-    "priority": "Prioritas {priority}",
-    "overdue": "terlambat",
-    "markComplete": "Tandai “{title}” selesai",
-    "markNotComplete": "Tandai “{title}” belum selesai"
+    "priority": "Prioritas {priority}"
   },
   "template": {
     "using": "Menggunakan “{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Konten Anda masih ada di memori. Klik untuk mencoba menyimpan lagi.",
-    "noteNotFound": "Catatan “{target}” tidak ditemukan",
     "createLinkedFailed": "Gagal membuat catatan tertaut",
     "fileNotFound": "File tidak ditemukan: {target}",
     "openLinkedItemFailed": "Gagal membuka item tertaut",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "Hapus entri jurnal",
     "description": "Apakah Anda yakin ingin menghapus “{title}”? Tindakan ini tidak dapat dibatalkan."
+  },
+  "dayTimeline": {
+    "label": "Jadwal harian",
+    "allDay": "Item sepanjang hari",
+    "unscheduled": "Belum dijadwalkan",
+    "unscheduledEmpty": "Tidak ada tugas yang belum dijadwalkan. Seret blok ke sini untuk menghapus waktunya.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Selesaikan {title}"
   }
 }

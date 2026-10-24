@@ -64,6 +64,7 @@ function plainLocalPayload(
     content: model.content,
     attachments: model.attachments,
     toolCallId: model.toolCallId,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- status column is a free string; the surrounding terminal-status check guards the value
     status: model.status as Extract<MessageStatus, 'completed' | 'cancelled' | 'error'>,
     clock: model.vectorClock,
     createdAt: model.createdAt,
@@ -73,6 +74,7 @@ function plainLocalPayload(
 }
 
 function isTerminal(status: string): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- status column is a free string; the surrounding terminal-status check guards the value
   return TERMINAL_STATUSES.has(status as MessageStatus)
 }
 
@@ -151,7 +153,7 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
       const remoteClock = Object.keys(clock).length > 0 ? clock : (data.clock ?? {})
 
       if (!existing) {
-        requireConversation(tx as unknown as DrizzleDb, itemId, data.conversationId)
+        requireConversation(tx, itemId, data.conversationId)
         tx.insert(agentMessages)
           .values({
             id: itemId,
@@ -184,7 +186,7 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
 
   applyDelete(ctx: ApplyContext, itemId: string, clock?: VectorClock): 'applied' | 'skipped' {
     const existing = ctx.db.select().from(agentMessages).where(eq(agentMessages.id, itemId)).get()
-    if (!existing || existing.deletedAt !== null) return 'skipped'
+    if (existing?.deletedAt !== null) return 'skipped'
 
     // Every other handler here gates a remote tombstone on the clock (see
     // bookmark-handler / tag-category-handler); this one accepted it blindly, so
@@ -220,9 +222,7 @@ export class AgentMessageHandler extends BaseItemHandler<AgentMessageSyncPayload
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(agentMessages).where(eq(agentMessages.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(agentMessages).where(eq(agentMessages.id, itemId)).get()
   }
 
   seedUnclocked(_db: DrizzleDb, _deviceId: string, _queue: SyncQueueManager): number {

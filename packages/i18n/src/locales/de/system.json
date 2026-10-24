@@ -17,17 +17,22 @@
       "filterAll": "Alle Dateien"
     },
     "exportCancelled": "Export abgebrochen",
-    "update": {
-      "availableTitle": "Update verfügbar",
-      "availableMessage": "memrynote {version} ist verfügbar.",
-      "availableDetailFallback": "Update jetzt herunterladen?",
-      "buttonDownload": "Herunterladen",
-      "buttonLater": "Später",
-      "readyTitle": "Update bereit",
-      "readyMessage": "memrynote {version} wurde heruntergeladen.",
-      "readyDetailFallback": "Starte memrynote neu, um die Installation des Updates abzuschließen.",
-      "buttonRestartNow": "Jetzt neu starten",
-      "releaseNotesLabel": "Versionshinweise:"
+    "dataDbRecovery": {
+      "title": "Tresor-Datenbank reparieren",
+      "message": "Die Datenbank von Memry für diesen Tresor ist beschädigt.",
+      "detail": "Deine Notizen und Journal-Dateien sind nicht betroffen. Die Reparatur behält die beschädigte Datenbank als Backup unter {path}, legt eine neue an, stellt aus deinen Tresor-Dateien wieder her, was möglich ist, und holt synchronisierte Elemente bei der nächsten Synchronisierung zurück. Noch nicht synchronisierte Änderungen werden nach Möglichkeit wiederhergestellt.",
+      "buttonRecover": "Reparieren",
+      "buttonLater": "Nicht jetzt"
+    },
+    "obsidianVault": {
+      "title": "Obsidian-Tresor öffnen",
+      "message": "Eine Kopie dieses Obsidian-Tresors öffnen?",
+      "detail": "Das Öffnen eines Obsidian-Tresors in memrynote kann Daten gefährden, auf die sich deine Obsidian-Plugins verlassen. Wenn memrynote die Aufgabenzeile eines Plugins in eine Aufgabe umwandelt, schreibt es die Zeile um. Felder wie die Fälligkeitsdaten des Tasks-Plugins verschwinden aus der Datei, und Obsidian sieht sie nicht mehr.\n\nmemrynote kann „{name}“ als „{copyName}“ daneben kopieren und die Kopie öffnen. „{name}“ bleibt unverändert.",
+      "detailExistingCopy": "Das Öffnen eines Obsidian-Tresors in memrynote kann Daten gefährden, auf die sich deine Obsidian-Plugins verlassen. Wenn memrynote die Aufgabenzeile eines Plugins in eine Aufgabe umwandelt, schreibt es die Zeile um. Felder wie die Fälligkeitsdaten des Tasks-Plugins verschwinden aus der Datei, und Obsidian sieht sie nicht mehr.\n\nEine memrynote-Kopie, „{copyName}“, liegt bereits daneben. memrynote kann diese Kopie öffnen. „{name}“ bleibt unverändert.",
+      "buttonCopy": "Kopie erstellen",
+      "buttonOpenCopy": "Kopie öffnen",
+      "buttonOpenOriginal": "Original öffnen",
+      "buttonCancel": "Abbrechen"
     },
     "pair": {
       "title": "Browsererweiterung koppeln",

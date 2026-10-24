@@ -17,6 +17,7 @@ vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     t: (key: string, values?: Record<string, unknown>) => {
       const subject = values?.title ?? values?.tag
+      // oxlint-disable-next-line typescript/no-base-to-string -- test i18n stub: subject is a primitive interpolation value
       return subject === undefined ? key : `${key}:${String(subject)}`
     }
   })

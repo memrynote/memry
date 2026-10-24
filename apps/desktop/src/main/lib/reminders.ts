@@ -90,6 +90,7 @@ const MAX_LIVE_NOTIFICATIONS = 50
 function toReminder(row: ReminderRow): Reminder {
   return {
     id: row.id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     targetType: row.targetType as Reminder['targetType'],
     targetId: row.targetId,
     remindAt: row.remindAt,
@@ -99,6 +100,7 @@ function toReminder(row: ReminderRow): Reminder {
     highlightEnd: row.highlightEnd,
     title: row.title,
     note: row.note,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- string DB/wire column narrowed to the union its writers constrain
     status: row.status as Reminder['status'],
     triggeredAt: row.triggeredAt,
     dismissedAt: row.dismissedAt,
@@ -117,6 +119,7 @@ function toReminder(row: ReminderRow): Reminder {
  * - `journal`: `targetId` is the YYYY-MM-DD date and doubles as the title.
  *   Journal entries are created on demand so they always "exist".
  */
+// oxlint-disable-next-line typescript/consistent-return -- switch over the closed targetType union is exhaustive; a default would hide new members from the compiler
 function resolveReminderTarget(
   reminder: Reminder,
   indexDb: IndexDb
@@ -639,6 +642,7 @@ export function listReminders(options: Partial<ListRemindersInput> = {}): {
     }
 
     if (conditions.length > 0) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- drizzle where() narrows the builder type; assertion restores the dynamic-query type
       query = query.where(and(...conditions)) as typeof query
     }
   }

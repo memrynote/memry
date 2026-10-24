@@ -184,9 +184,10 @@ export function useWikiLinkHover(
 
   useEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handleMouseOver = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target/relatedTarget are EventTarget; only closest() is called on them
       const target = e.target as HTMLElement
       const linkEl = target.closest('[data-wiki-link]')
 
@@ -213,10 +214,12 @@ export function useWikiLinkHover(
     }
 
     const handleMouseOut = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target/relatedTarget are EventTarget; only closest() is called on them
       const target = e.target as HTMLElement
       const linkEl = target.closest('[data-wiki-link]')
       if (!linkEl) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target/relatedTarget are EventTarget; only closest() is called on them
       const related = e.relatedTarget as HTMLElement | null
       if (related?.closest('[data-wiki-link-preview]')) return
 

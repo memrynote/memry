@@ -42,6 +42,13 @@ export function lockNote(password: string, body: Buffer): { note: LockedNoteCryp
   }
 }
 
+const ref2 = (n: number): Buffer => Buffer.from([n >> 8, n & 0xff])
+
+const lengthBytes = (marker: number, length: number): Buffer =>
+  length < 15
+    ? Buffer.from([marker | length])
+    : Buffer.concat([Buffer.from([marker | 0x0f, 0x11]), Buffer.from([length >> 8, length & 0xff])])
+
 /** Serialize a value as a `bplist00` (2-byte refs and offsets; enough for fixtures). */
 export function buildBinaryPlist(root: PlistValue): Buffer {
   const objects: PlistValue[] = []
@@ -90,15 +97,6 @@ export function buildBinaryPlist(root: PlistValue): Buffer {
     return mine
   }
   walk(root, { index: 0 })
-
-  const lengthBytes = (marker: number, length: number): Buffer =>
-    length < 15
-      ? Buffer.from([marker | length])
-      : Buffer.concat([
-          Buffer.from([marker | 0x0f, 0x11]),
-          Buffer.from([length >> 8, length & 0xff])
-        ])
-  const ref2 = (n: number): Buffer => Buffer.from([n >> 8, n & 0xff])
 
   const encode = (value: PlistValue): Buffer => {
     if (typeof value === 'number') {

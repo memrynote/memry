@@ -106,7 +106,7 @@ describe('exportPages', () => {
   })
 
   it('stops on a repeated cursor instead of looping forever', async () => {
-    fetchMock.mockImplementation(async () => page([1], 'same'))
+    fetchMock.mockImplementation(() => page([1], 'same'))
     await expect(
       collect(exportPages({ token: TOKEN, includeDeleted: false }))
     ).rejects.toMatchObject({ code: 'server' })
@@ -123,6 +123,7 @@ describe('exportPages', () => {
   it('aborts in the middle of a page and requests nothing more', async () => {
     const controller = new AbortController()
     fetchMock.mockImplementation(
+      // oxlint-disable-next-line typescript/no-misused-promises -- vi.fn() mock type resolves its implementation return to void; this fake must return a Promise that rejects on abort
       (_url: string, init: RequestInit) =>
         new Promise((_resolve, reject) => {
           init.signal?.addEventListener(
@@ -208,7 +209,7 @@ describe('rate limiting', () => {
   it('returns a typed rate-limited error after repeated 429s', async () => {
     vi.useFakeTimers()
     fetchMock.mockImplementation(
-      async () => new Response(null, { status: 429, headers: { 'Retry-After': '1' } })
+      () => new Response(null, { status: 429, headers: { 'Retry-After': '1' } })
     )
     const pending = verifyToken(TOKEN).catch((e: unknown) => e)
     await vi.advanceTimersByTimeAsync(10_000)

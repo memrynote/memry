@@ -585,6 +585,7 @@ export function buildPayloadSchemas(): Record<string, unknown> {
   const groups = SPECS.map((spec) => {
     const unknown = unknownInstance(spec)
     const unknownJson = JSON.stringify(unknown)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const parsedUnknown = spec.schema.parse(unknown) as Record<string, unknown>
     return {
       type: spec.type,

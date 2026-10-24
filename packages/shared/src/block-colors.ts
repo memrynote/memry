@@ -1,3 +1,5 @@
+import { isObject, isRecord } from './is-record.ts'
+
 export interface BlockColors {
   textColor?: string
   backgroundColor?: string
@@ -78,8 +80,9 @@ export type TableCellColors = Record<string, BlockColors>
 /** A whole line that is nothing but a table cell color marker. */
 export const TABLE_CELL_COLORS_LINE_REGEX = /^<!-- table-colors:(\{.*\}) -->$/
 
-interface TableCellLike {
-  props?: BlockColors
+/** A cell's `props` bag: every `BlockColors` field is optional, so any object fits. */
+function isBlockColorsLike(props: unknown): props is BlockColors {
+  return isObject(props)
 }
 
 interface TableContentLike {
@@ -94,13 +97,13 @@ interface TableContentLike {
  * shapes reach here, and only the second one has somewhere to keep a color.
  */
 function cellProps(cell: unknown): BlockColors | null {
-  if (!cell || typeof cell !== 'object' || Array.isArray(cell)) return null
-  const props = (cell as TableCellLike).props
-  return props && typeof props === 'object' ? props : null
+  if (!isRecord(cell)) return null
+  const props = cell.props
+  return isBlockColorsLike(props) ? props : null
 }
 
 function tableRows(content: unknown): TableContentLike['rows'] | null {
-  const rows = (content as TableContentLike | undefined)?.rows
+  const rows = isRecord(content) ? content.rows : undefined
   return Array.isArray(rows) ? rows : null
 }
 
@@ -138,7 +141,8 @@ export function parseTableCellColorsMarker(line: string): TableCellColors | null
   try {
     const parsed = JSON.parse(match[1]) as unknown
     return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as TableCellColors)
+      ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- marker values are not validated: older builds wrote them and rejecting one would drop a note's cell colors
+        (parsed as TableCellColors)
       : null
   } catch {
     return null
@@ -161,8 +165,7 @@ export function applyTableCellColors(content: unknown, colors: TableCellColors):
     if (!Number.isInteger(rowIndex) || !Number.isInteger(cellIndex)) continue
     const cells = rows[rowIndex]?.cells
     const cell = Array.isArray(cells) ? cells[cellIndex] : undefined
-    const props = cellProps(cell)
-    if (!props) continue
-    ;(cell as TableCellLike).props = { ...props, ...cellColors }
+    if (!isRecord(cell) || !isBlockColorsLike(cell.props)) continue
+    cell.props = { ...cell.props, ...cellColors }
   }
 }

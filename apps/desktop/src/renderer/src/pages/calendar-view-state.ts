@@ -66,9 +66,7 @@ export const CALENDAR_SCROLL_KEYS = {
 export const CALENDAR_VIEWS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year', 'timeline']
 
 export const parseCalendarView = (raw: unknown): CalendarWorkspaceView | undefined =>
-  typeof raw === 'string' && (CALENDAR_VIEWS as string[]).includes(raw)
-    ? (raw as CalendarWorkspaceView)
-    : undefined
+  typeof raw === 'string' ? CALENDAR_VIEWS.find((view) => view === raw) : undefined
 
 /**
  * The view a NEW calendar tab opens on: whatever view was last used anywhere.
@@ -155,9 +153,9 @@ export const parseVisualTypes = (raw: unknown): CalendarProjectionVisualType[] |
     : undefined
 
 function pickOption<T extends string>(raw: unknown, options: readonly T[], fallback: T): T {
-  return typeof raw === 'string' && (options as readonly string[]).includes(raw)
-    ? (raw as T)
-    : fallback
+  return (
+    (typeof raw === 'string' ? options.find((option) => option === raw) : undefined) ?? fallback
+  )
 }
 
 function pickBoolean(raw: unknown, fallback: boolean): boolean {
@@ -170,6 +168,7 @@ function pickBoolean(raw: unknown, fallback: boolean): boolean {
  */
 export const parseTimelineSettings = (raw: unknown): TimelineSettings | undefined => {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) return undefined
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- raw is a non-null, non-array object here; each field is validated individually below
   const value = raw as Record<string, unknown>
   const d = DEFAULT_TIMELINE_SETTINGS
   return {

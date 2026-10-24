@@ -27,7 +27,7 @@ function dragHtml(index: number): string {
   document.body.appendChild(el)
   mounted.push(el)
   editor.mount(el)
-  const view = editor.prosemirrorView!
+  const view = editor.prosemirrorView
   const positions: number[] = []
   view.state.doc.descendants((node, pos) => {
     if (node.type.name === 'blockContainer') positions.push(pos)

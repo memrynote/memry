@@ -54,15 +54,15 @@ describe('auth-service', () => {
 
   it('forwards OAuth, setup, recovery, refresh, and logout calls', async () => {
     // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
-    const syncAuth = api.syncAuth as typeof api.syncAuth & {
+    const syncAuth: typeof api.syncAuth & {
       initOAuth: ReturnType<typeof vi.fn>
       refreshToken: ReturnType<typeof vi.fn>
       logout: ReturnType<typeof vi.fn>
-    }
+    } = api.syncAuth
     // oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
-    const syncSetup = api.syncSetup as typeof api.syncSetup & {
+    const syncSetup: typeof api.syncSetup & {
       setupNewAccount: ReturnType<typeof vi.fn>
-    }
+    } = api.syncSetup
 
     syncAuth.initOAuth = vi.fn().mockResolvedValue({ state: 'oauth-state' })
     syncAuth.refreshToken = vi.fn().mockResolvedValue({ success: true })

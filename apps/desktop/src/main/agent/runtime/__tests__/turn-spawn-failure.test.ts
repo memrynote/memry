@@ -158,7 +158,7 @@ function createFakeConversationStore(): ConversationStore {
   return {
     getById: () => conversation,
     update: (_id, patch) => Object.assign(conversation, patch)
-  } as unknown as ConversationStore
+  }
 }
 
 function createFakeMessageStore(): MessageStore {
@@ -195,5 +195,5 @@ function createFakeMessageStore(): MessageStore {
       if (!message) throw new Error(`Message ${id} not found`)
       return Object.assign(message, patch, { status })
     }
-  } as unknown as MessageStore
+  }
 }

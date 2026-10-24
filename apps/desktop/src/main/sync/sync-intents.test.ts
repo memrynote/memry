@@ -309,7 +309,7 @@ describe('sync intents (#2301)', () => {
     ])
     expect(intents()).toMatchObject([{ itemId: 'task-1', op: 'delete', attempts: 0 }])
 
-    const applier = new ItemApplier(db as never, vi.fn())
+    const applier = new ItemApplier(db, vi.fn())
     expect(applier.apply(remoteTaskUpsert('task-1', 'Edited elsewhere', { 'device-B': 5 }))).toBe(
       'skipped'
     )
@@ -457,7 +457,7 @@ describe('sync intents (#2301)', () => {
     })
     expect(intents()).toMatchObject([{ attempts: 5, lastError: 'adapter broke' }])
 
-    const applier = new ItemApplier(db as never, vi.fn())
+    const applier = new ItemApplier(db, vi.fn())
     expect(() =>
       applier.apply(remoteTaskUpsert('task-1', 'Remote', { [DEVICE_ID]: 3, 'device-B': 5 }))
     ).toThrow(PendingSyncIntentError)
@@ -494,7 +494,7 @@ describe('sync intents (#2301)', () => {
       })
       .run()
 
-    const applier = new ItemApplier(db as never, vi.fn())
+    const applier = new ItemApplier(db, vi.fn())
     // Against the pre-edit clock {A:3} this remote ties on the title field
     // (3 vs 3) and a tie goes to the remote: the local edit would be lost.
     applier.apply(remoteTaskUpsert('task-1', 'Remote', { [DEVICE_ID]: 2, 'device-B': 1 }))
@@ -522,7 +522,7 @@ describe('sync intents (#2301)', () => {
       throw new Error('queue broke')
     })
 
-    const applier = new ItemApplier(db as never, vi.fn())
+    const applier = new ItemApplier(db, vi.fn())
     expect(() => applier.apply(remoteTaskUpsert('task-1', 'Remote', { 'device-B': 9 }))).toThrow(
       PendingSyncIntentError
     )

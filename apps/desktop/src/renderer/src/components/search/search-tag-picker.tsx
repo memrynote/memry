@@ -16,7 +16,7 @@ export const tagValue = (name: string): string => `tag:${name}`
 export function useSearchTags(enabled: boolean): TagWithCount[] {
   const [tags, setTags] = useState<TagWithCount[] | null>(null)
   useEffect(() => {
-    if (!enabled || tags) return
+    if (!enabled || tags) return undefined
     let cancelled = false
     tagsService
       .getAllWithCounts()
@@ -40,7 +40,7 @@ export function matchingTags(
   const q = menuQuery.trim().toLowerCase()
   return tags
     .filter((tag) => !active.includes(tag.name) && tag.name.toLowerCase().includes(q))
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       const aPrefix = a.name.toLowerCase().startsWith(q) ? 0 : 1
       const bPrefix = b.name.toLowerCase().startsWith(q) ? 0 : 1
       return aPrefix - bPrefix || b.count - a.count

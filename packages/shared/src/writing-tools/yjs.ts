@@ -21,6 +21,8 @@
  * open, an external edit) rebuilds the arrays from it with fresh anchors.
  */
 
+import { isObject, isRecord } from '../is-record'
+
 export const WRITING_ALTERNATIVES_ARRAY = 'writingAlternatives'
 export const WRITING_GHOSTS_ARRAY = 'writingGhosts'
 export const WRITING_OVERFLOW_ARRAY = 'writingOverflow'
@@ -95,7 +97,11 @@ interface YDocLike {
   transact?: (fn: () => void) => void
 }
 
-const VARIANT_SOURCES = new Set<WritingVariantSource>(['user', 'ai'])
+const VARIANT_SOURCES: ReadonlySet<unknown> = new Set<WritingVariantSource>(['user', 'ai'])
+
+function isWritingVariantSource(value: unknown): value is WritingVariantSource {
+  return VARIANT_SOURCES.has(value)
+}
 
 export function readWritingAlternativesFromYDoc(doc: YDocLike): WritingAlternative[] {
   return readRecords(doc, WRITING_ALTERNATIVES_ARRAY, normalizeWritingAlternative)
@@ -180,7 +186,7 @@ const OVERFLOW_KEYS = ['id', 'text', 'label', 'createdAt'] as const
  */
 function overlayKnownFields(
   raw: Record<string, unknown>,
-  record: object,
+  record: WritingVariant | WritingAlternative | WritingGhost | WritingOverflowItem,
   knownKeys: readonly string[]
 ): Record<string, unknown> {
   const unknown = Object.fromEntries(
@@ -205,7 +211,7 @@ function overlayAlternative(
     const id = recordId(entry)
     if (id === null) continue
     if (normalizeWritingVariant(entry) === null) unreadable.push(entry)
-    else rawById.set(id, entry as Record<string, unknown>)
+    else if (isObject(entry)) rawById.set(id, entry)
   }
   const known = new Set(alternative.variants.map((variant) => variant.id))
   const variants = [
@@ -242,8 +248,10 @@ function writeRecords<T extends { id: string }>(
     const wanted = id === null ? undefined : next.get(id)
     // An unknown entry (no id, or one this build cannot normalize) is left
     // alone: it may be a record a newer build understands.
-    if (id === null || (wanted === undefined && normalize(value) === null)) return
-    stored.set(id, value as Record<string, unknown>)
+    if (id === null || !isObject(value) || (wanted === undefined && normalize(value) === null)) {
+      return
+    }
+    stored.set(id, value)
     if (wanted !== undefined && !kept.has(id) && JSON.stringify(normalize(value)) === wanted.json) {
       kept.add(id)
       return
@@ -268,8 +276,8 @@ function writeRecords<T extends { id: string }>(
 }
 
 function recordId(value: unknown): string | null {
-  if (!value || typeof value !== 'object') return null
-  const id = (value as Record<string, unknown>).id
+  if (!isObject(value)) return null
+  const id = value.id
   return typeof id === 'string' && id.length > 0 ? id : null
 }
 
@@ -278,15 +286,15 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 function normalizeAnchorId(value: unknown): WritingAnchorId | null {
-  if (!value || typeof value !== 'object') return null
-  const { client, clock } = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const { client, clock } = value
   if (!isFiniteNumber(client) || !isFiniteNumber(clock)) return null
   return { client, clock }
 }
 
 export function normalizeWritingAnchor(value: unknown): WritingAnchor | null {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  const raw = value as Record<string, unknown>
+  if (!isRecord(value)) return null
+  const raw = value
   const anchor: WritingAnchor = {}
   if (raw.type !== undefined && raw.type !== null) {
     const type = normalizeAnchorId(raw.type)
@@ -311,18 +319,16 @@ export function normalizeWritingAnchor(value: unknown): WritingAnchor | null {
 }
 
 function normalizeWritingVariant(value: unknown): WritingVariant | null {
-  if (!value || typeof value !== 'object') return null
-  const raw = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const raw = value
   if (typeof raw.id !== 'string' || raw.id.length === 0) return null
   if (typeof raw.text !== 'string') return null
-  if (typeof raw.source !== 'string' || !VARIANT_SOURCES.has(raw.source as WritingVariantSource)) {
-    return null
-  }
+  if (!isWritingVariantSource(raw.source)) return null
   if (!isFiniteNumber(raw.createdAt)) return null
   return {
     id: raw.id,
     text: raw.text,
-    source: raw.source as WritingVariantSource,
+    source: raw.source,
     createdAt: raw.createdAt
   }
 }
@@ -333,8 +339,8 @@ function normalizeWritingVariant(value: unknown): WritingVariant | null {
  * cut short or came from a build with other variant kinds. Both read as absent.
  */
 export function normalizeWritingAlternative(value: unknown): WritingAlternative | null {
-  if (!value || typeof value !== 'object') return null
-  const raw = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const raw = value
   const id = recordId(raw)
   if (!id) return null
   const anchorStart = normalizeWritingAnchor(raw.anchorStart)
@@ -361,8 +367,8 @@ export function normalizeWritingAlternative(value: unknown): WritingAlternative 
 }
 
 export function normalizeWritingGhost(value: unknown): WritingGhost | null {
-  if (!value || typeof value !== 'object') return null
-  const raw = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const raw = value
   const id = recordId(raw)
   if (!id) return null
   const anchorStart = normalizeWritingAnchor(raw.anchorStart)
@@ -372,8 +378,8 @@ export function normalizeWritingGhost(value: unknown): WritingGhost | null {
 }
 
 export function normalizeWritingOverflowItem(value: unknown): WritingOverflowItem | null {
-  if (!value || typeof value !== 'object') return null
-  const raw = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const raw = value
   const id = recordId(raw)
   if (!id) return null
   if (typeof raw.text !== 'string' || raw.text.length === 0) return null

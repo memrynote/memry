@@ -141,6 +141,7 @@ function getEditor(): ServerBlockNoteEditor {
     // `ServerBlockNoteEditor`. The extra block only matters at runtime (for
     // (de)serialization); erase it from the type so the existing default-typed
     // helpers keep working.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     serverEditor = ServerBlockNoteEditor.create({ schema: serverSchema }) as ServerBlockNoteEditor
   }
   // Re-armed on every use. A conversion still running when the timer fires
@@ -394,7 +395,7 @@ async function serializeCanonical(
       }
       return ''
     }
-    const body = await blocksToMarkdownPreserving(editor, blocks as Block[])
+    const body = await blocksToMarkdownPreserving(editor, blocks)
     const references = readLinkReferencesFromYDoc(doc)
     return restoreLinkReferences(body, references.definitions, references.usages)
   } catch (err) {
@@ -406,6 +407,7 @@ async function serializeCanonical(
 /** True when the fragment holds at least one block, at any depth. Reads only. */
 function holdsBlockContainer(node: Y.XmlFragment | Y.XmlElement): boolean {
   for (const child of node.toArray()) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     const el = child as Y.XmlElement
     if (typeof el.nodeName !== 'string') continue
     if (el.nodeName === 'blockContainer') return true
@@ -456,6 +458,7 @@ export function findUnrepresentableNodes(doc: Y.Doc, fragmentName = CRDT_FRAGMEN
     const unknown = new Set<string>()
     const visit = (node: Y.XmlFragment | Y.XmlElement): void => {
       for (const child of node.toArray()) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
         const el = child as Y.XmlElement
         // Y.XmlText carries no nodeName — its runs are marks, and the schema
         // holds every mark both processes use.
@@ -742,6 +745,7 @@ function createEmptyParagraph(): Block {
   // without naming the whole schema. Every literal cast in this file is this
   // same case: the fields are exactly what the named `type` declares, and the
   // serializer round-trip tests are what actually check them.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   return {
     type: 'paragraph',
     content: [],
@@ -763,21 +767,20 @@ async function serializeBlocks(
   blocks: PartialBlock[]
 ): Promise<string> {
   const { blocks: wrapped, replacements } = extractInlineColorRuns(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     withPlainCheckboxMarkers(blocks as never[])
   )
   // The server editor exports the blocks before its first await, so the
   // export runs inside the token scope.
   const md = normalizeSerializedMarkdown(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     await writeHtmlCommentTokens(wrapped as PartialBlock[], (b) => editor.blocksToMarkdownLossy(b))
   )
   return restoreInlineColorTokens(md, replacements)
 }
 
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
-  return (
-    MARKDOWN_LIST_BLOCK_TYPES.has(parent.type as string) &&
-    MARKDOWN_LIST_BLOCK_TYPES.has(child.type as string)
-  )
+  return MARKDOWN_LIST_BLOCK_TYPES.has(parent.type) && MARKDOWN_LIST_BLOCK_TYPES.has(child.type)
 }
 
 function hasMarkerSerializedChildren(block: Block): boolean {
@@ -812,13 +815,15 @@ async function serializeBlocksWithNestingMarkers(
     const shallowBlock = { ...block, children: [] } as Block
     const markdown =
       (block.type as string) === 'file'
-        ? serializeFileBlock(block.props as FileBlockProps)
+        ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
+          serializeFileBlock(block.props as FileBlockProps)
         : (block.type as string) === 'mathBlock'
           ? // Same reason as `file`: the `$` fence is three lines of ONE
             // paragraph in the spec's DOM, and a nested block that serializes
             // through BlockNote alone depends on its `<br>` handling to keep
             // them. Written from the shared serializer instead, so a nested
             // formula reaches the vault as the same bytes as a top-level one.
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
             serializeMathBlock((block.props as { latex?: string }).latex ?? '')
           : (await serializeBlocks(editor, [shallowBlock] as PartialBlock[])).trim()
     if (markdown) parts.push(markdown)
@@ -852,10 +857,12 @@ async function serializeToggle(editor: ServerBlockNoteEditor, block: Block): Pro
   // `open` comes off with the type: BlockNote compares every prop against the
   // target block's propSchema, and a paragraph has no `open` to compare with —
   // it throws there, which returns null for the whole document.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const { open: isOpen, ...summaryProps } = block.props as { open?: boolean }
   // SAFETY: a paragraph carrying the toggle's own content and its props minus
   // `open`, which was destructured off above precisely because a paragraph's
   // propSchema has no such key.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const summaryBlock = {
     ...block,
     type: 'paragraph',
@@ -865,6 +872,7 @@ async function serializeToggle(editor: ServerBlockNoteEditor, block: Block): Pro
   const summary = (await serializeBlocks(editor, [summaryBlock])).trim()
   const children = (block.children ?? []) as Block[]
   const body = children.length > 0 ? await blocksToMarkdownPreserving(editor, children) : ''
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const colors = block.props as BlockColors
   const colorsMarker = hasNonDefaultColors(colors) ? serializeBlockColorsMarker(colors) : null
 
@@ -892,6 +900,7 @@ function isCalloutWithChildren(block: Block): boolean {
 async function serializeQuote(editor: ServerBlockNoteEditor, block: Block): Promise<string> {
   // SAFETY: the quote's own inline content as a bare paragraph, so it is
   // serialized without the `> ` that `serializeQuoteBlock` adds below.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
   const children = (block.children ?? []) as Block[]
   const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
@@ -910,9 +919,11 @@ async function serializeCalloutWithChildren(
 ): Promise<string> {
   // SAFETY: the callout's own inline content as a bare paragraph; `props` is
   // cleared because a paragraph's propSchema has no `type` key.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
   const children = (block.children ?? []) as Block[]
   const inner = await blocksToMarkdownPreserving(editor, [own, ...children])
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   const props = block.props as { type: string; fold?: string }
   return serializeCalloutBlock(props.type, inner.trim(), props.fold)
 }
@@ -948,7 +959,8 @@ async function markdownToBlocksPreserving(
   const { text, spans } = maskInlineColorSpans(separateBlockImages(withEmbeds))
   const blocks = await parseMaskedMarkdown(editor, text)
 
-  return applyInlineColorTokens(blocks as never[], spans) as Block[]
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
+  return applyInlineColorTokens(blocks, spans) as Block[]
 }
 
 /**
@@ -1023,6 +1035,7 @@ async function parseToggleSegment(
 
   // SAFETY: `toggleListItem` as the renderer's own spec declares it — block
   // colours plus `open`, summary as inline content, body as children.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   return {
     type: 'toggleListItem',
     id: crypto.randomUUID(),
@@ -1066,6 +1079,7 @@ async function parseContentWithMarkers(
     if (block) {
       // SAFETY: `MarkedBlock` is the `{ type, props }` subset the sidecar
       // patches read and write; every `Block` has both.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
       const marked = block as unknown as MarkedBlock
       for (const apply of pending) apply(marked)
     }
@@ -1103,6 +1117,7 @@ async function parseContentWithMarkers(
         await flushBuffer()
         // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
         // the callout kinds `parseCalloutRunAt` recognises.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
         const callout = {
           type: 'callout',
           props: { type: claimed.type, fold: claimed.fold },
@@ -1126,6 +1141,7 @@ async function parseContentWithMarkers(
       if (math) {
         await flushBuffer()
         // SAFETY: `mathBlock` as its spec declares it - one string prop.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
         const block = {
           type: 'mathBlock',
           props: { latex: math.latex }
@@ -1144,6 +1160,7 @@ async function parseContentWithMarkers(
         await flushBuffer()
         // SAFETY: `quote` as its spec declares it, with the run's parsed
         // content and children.
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
         const quote = {
           type: 'quote',
           props: {},
@@ -1220,7 +1237,8 @@ async function parseCalloutRunAt(
 
   const claimed = await resolveCalloutRun(
     run,
-    async (md) => (await parseMarkdownToBlocks(editor, md)) as never[],
+    async (md) => await parseMarkdownToBlocks(editor, md),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
   )
   if (!claimed) return null
@@ -1229,6 +1247,7 @@ async function parseCalloutRunAt(
     type: claimed.type,
     fold: claimed.fold,
     content: claimed.content,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     children: claimed.children as Block[],
     end: run.end
   }
@@ -1258,11 +1277,13 @@ async function parseQuoteRunAt(
 
   const claimed = await resolveQuoteRun(
     run,
-    async (md) => (await parseMarkdownToBlocks(editor, md)) as never[],
+    async (md) => await parseMarkdownToBlocks(editor, md),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     async (parsed) => serializeBlocks(editor, parsed as PartialBlock[])
   )
   if (!claimed) return null
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
   return { content: claimed.content, children: claimed.children as Block[], end: run.end }
 }
 
@@ -1294,6 +1315,7 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
     const props = parseFileBlockMarker(trimmed)
     if (props) {
       // SAFETY: `parseFileBlockMarker` returns exactly the `file` spec's props.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
       return { type: 'file', props } as unknown as Block
     }
   }
@@ -1303,6 +1325,7 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
   const embed = parseYoutubeEmbedLine(line)
   if (embed) {
     // SAFETY: `youtubeEmbed`'s declared props, all strings.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     return { type: 'youtubeEmbed', props: embed } as unknown as Block
   }
 
@@ -1316,6 +1339,7 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
     if (parsed) {
       // SAFETY: `bookmark`'s two required props; the rest of its propSchema
       // has defaults and is rehydrated at render time.
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
       return {
         type: 'bookmark',
         props: { url, domain: parsed.hostname.replace(/^www\./, '') }
@@ -1328,6 +1352,7 @@ function parseCustomBlockMarkerLine(line: string): Block | null {
   const canvasId = parseWhiteboardLine(line)
   if (canvasId) {
     // SAFETY: `whiteboard`'s one declared prop, a string.
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote Block generics do not model the Memry custom blocks this converter builds; the shape is fixed by packages/editor-schema; BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     return { type: 'whiteboard', props: { canvasId } } as unknown as Block
   }
 
@@ -1353,7 +1378,7 @@ async function blocksToMarkdownPreserving(
 
   const flushContentGroup = async (): Promise<void> => {
     if (contentGroup.length === 0) return
-    const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
+    const md = await serializeBlocks(editor, contentGroup)
     // Trim BlockNote's trailing newline (see #524) so content flushed before a
     // taskBlock can't re-parse as a growing blank-line gap on every writeback.
     segments.push({ type: 'content', text: md.trim() })
@@ -1376,7 +1401,7 @@ async function blocksToMarkdownPreserving(
     }
 
     // SAFETY: as above — `MarkedBlock` is the `{ type, props }` subset.
-    const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
+    const markers = sidecarMarkerLines(block)
 
     if ((block.type as string) === 'taskBlock') {
       // BlockNote can't serialize a taskBlock (it's content:'none'), so emit the
@@ -1396,6 +1421,7 @@ async function blocksToMarkdownPreserving(
       // always serialized the marker itself.
       await flushContentGroup()
       flushGap()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
       segments.push({ type: 'content', text: serializeFileBlock(block.props as FileBlockProps) })
     } else if ((block.type as string) === 'mathBlock') {
       // Emitted here rather than left to the block spec for the same reason as
@@ -1404,6 +1430,7 @@ async function blocksToMarkdownPreserving(
       // Byte-identical to the renderer's twin in markdown-utils.ts.
       await flushContentGroup()
       flushGap()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
       const latex = (block.props as { latex?: string }).latex ?? ''
       const mathMd = serializeMathBlock(latex)
       segments.push({
@@ -1435,14 +1462,14 @@ async function blocksToMarkdownPreserving(
       })
     } else if (isEmptyParagraph(block)) {
       if (contentGroup.length > 0) {
-        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup)
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
       emptyCount++
     } else if (markers.length > 0) {
       if (contentGroup.length > 0) {
-        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup)
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
@@ -1457,7 +1484,7 @@ async function blocksToMarkdownPreserving(
       })
     } else if (hasMarkerSerializedChildren(block)) {
       if (contentGroup.length > 0) {
-        const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
+        const md = await serializeBlocks(editor, contentGroup)
         segments.push({ type: 'content', text: md.trim() })
         contentGroup = []
       }
@@ -1479,7 +1506,7 @@ async function blocksToMarkdownPreserving(
   }
 
   if (contentGroup.length > 0) {
-    const md = await serializeBlocks(editor, contentGroup as PartialBlock[])
+    const md = await serializeBlocks(editor, contentGroup)
     // Trim the trailing newline BlockNote appends to list/heading groups; left
     // untrimmed it re-parses as a growing blank-line gap on every writeback.
     segments.push({ type: 'content', text: md.trim() })
@@ -1491,6 +1518,7 @@ async function blocksToMarkdownPreserving(
   const endsInPortal =
     lastBlock !== undefined &&
     (lastBlock.type as string) === 'codeBlock' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote Block/PartialBlock generics do not model the Memry custom blocks and props; the shape is fixed by packages/editor-schema
     (lastBlock.props as { language?: string }).language === PORTAL_BLOCK_LANGUAGE
   if (emptyCount > 0 && !endsInPortal) {
     segments.push({ type: 'gap', extraLines: emptyCount })

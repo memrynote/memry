@@ -62,7 +62,7 @@ test('inbox file turns a text item into a note in the folder, records history, a
   assert.match(body, /Filed from Inbox/)
 
   const note = await runOk<{ tags: string[] }>(vault, ['notes', 'get', filed.noteId])
-  assert.deepEqual([...note.tags].sort(), ['home', 'inbox', 'weekly'])
+  assert.deepEqual([...note.tags].toSorted(), ['home', 'inbox', 'weekly'])
 
   const history = await runOk<{ entries: Array<{ itemId: string; filedAction: string }> }>(vault, [
     'inbox',

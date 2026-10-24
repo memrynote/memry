@@ -63,9 +63,11 @@ const iso = (value: unknown): unknown =>
 /** `applyUpsert` / `applyDelete` on one parsed payload. */
 function applyDesktop(existing: Row | null, raw: Row, deleted: boolean): Row | null {
   const data = InboxSyncPayloadSchema.parse(raw) as Row
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const clock = (data.clock ?? {}) as Clock
   if (deleted) {
     if (!existing) return null
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     return compare((existing.clock ?? {}) as Clock, clock) === 'after' ? existing : null
   }
   if (!existing) {
@@ -74,6 +76,7 @@ function applyDesktop(existing: Row | null, raw: Row, deleted: boolean): Row | n
     row.createdAt = data.createdAt ?? null
     return row
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const cmp = compare((existing.clock ?? {}) as Clock, clock)
   if (cmp === 'after') return existing
   const hasKey = (k: string): boolean => Object.prototype.hasOwnProperty.call(data, k)
@@ -107,28 +110,30 @@ function buildApply(): Row[] {
 const dayOf = (ms: number): number => Math.floor(ms / DAY)
 const COUNTED = new Set(['link', 'note', 'image', 'voice', 'clip', 'pdf', 'social', 'reminder'])
 
+const newestFirst = (
+  a: { createdAt: number; id: string },
+  b: { createdAt: number; id: string }
+): number => b.createdAt - a.createdAt || a.id.localeCompare(b.id)
+
 function buildViews(): Row {
   const rows = VIEW_ROWS.map(({ id, payload }) => {
     const p = InboxSyncPayloadSchema.parse(payload) as Row
-    const ms = (k: string): number | null =>
-      typeof p[k] === 'string' ? Date.parse(p[k] as string) : null
+    const ms = (k: string): number | null => (typeof p[k] === 'string' ? Date.parse(p[k]) : null)
     return {
       id,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       type: p.type as string,
       createdAt: ms('createdAt') ?? 0,
       filedAt: ms('filedAt'),
       snoozedUntil: ms('snoozedUntil'),
       archivedAt: ms('archivedAt'),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       processing: (payload.processingStatus as string | undefined) ?? null
     }
   })
   const pending = rows.filter(
     (r) => r.filedAt === null && r.snoozedUntil === null && r.archivedAt === null
   )
-  const newestFirst = (
-    a: { createdAt: number; id: string },
-    b: { createdAt: number; id: string }
-  ): number => b.createdAt - a.createdAt || a.id.localeCompare(b.id)
   const staleCutoff = VIEWS_NOW - 7 * DAY
   const captured = new Map<number, number>()
   const processed = new Map<number, number>()
@@ -145,6 +150,7 @@ function buildViews(): Row {
   const capturedThisWeek = sum(captured)
   const processedThisWeek = sum(processed)
   const filedRecent = rows.filter((r) => r.filedAt !== null && r.filedAt > VIEWS_NOW - 30 * DAY)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const minutes = filedRecent.map((r) => ((r.filedAt as number) - r.createdAt) / 60_000)
   // getProcessingStreak
   let streak = 0
@@ -178,7 +184,7 @@ function buildViews(): Row {
     staleDays: 7,
     rows: VIEW_ROWS,
     expected: {
-      listIds: [...pending].sort(newestFirst).map((r) => r.id),
+      listIds: [...pending].toSorted(newestFirst).map((r) => r.id),
       snoozedIds: rows
         .filter((r) => r.snoozedUntil !== null && r.filedAt === null)
         .map((r) => r.id),

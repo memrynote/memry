@@ -122,7 +122,12 @@ export async function serveHtmlEmbed(
     // the vault, or swapped for such a link after the check, is never served.
     const handle = vault ? await openVaultFile(vault, path.relative(vault, filePath)) : null
     if (!handle) return new Response(null, { status: 404, statusText: 'Not Found' })
-    const bytes = await handle.readFile().finally(() => handle.close())
+    let bytes: Buffer<ArrayBuffer>
+    try {
+      bytes = await handle.readFile()
+    } finally {
+      await handle.close()
+    }
     return new Response(bytes, {
       status: 200,
       headers: {

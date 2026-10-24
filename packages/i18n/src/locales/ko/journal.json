@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI 연결",
     "todaysNotes": "오늘의 노트",
-    "todaysSchedule": "오늘의 일정",
-    "todaysTasks": "오늘의 작업",
     "tasks": "작업",
     "technicalDetails": "기술 세부 정보"
   },
@@ -102,8 +100,7 @@
       "afternoon": "좋은 오후입니다",
       "evening": "좋은 저녁입니다",
       "night": "좋은 밤 되세요"
-    },
-    "allDay": "종일"
+    }
   },
   "nav": {
     "previousDay": "전날",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "추가 옵션",
     "documentStatistics": "문서 통계",
-    "dayContext": "이날의 작업 및 일정",
-    "scheduleEvents": "일정 목록",
-    "tasks": "작업",
     "notesCreatedToday": "오늘 만든 노트 {count}개"
   },
   "empty": {
     "noEntry": "항목 없음",
     "noDaysInMonth": "이번 달에는 날짜가 없습니다",
-    "noEventsScheduled": "예정된 일정이 없습니다",
-    "noEventsScheduledToday": "오늘 예정된 일정이 없습니다",
-    "noEventsWereScheduled": "예정된 일정이 없었습니다",
-    "noTasksDue": "마감인 작업 없음",
-    "noTasksDueToday": "오늘 마감인 작업이 없습니다",
-    "noTasksWereDue": "마감인 작업이 없었습니다",
     "noNotesToday": "오늘 만든 노트가 없습니다",
     "startDocumenting": "생각과 아이디어를 적어 보세요"
   },
@@ -155,9 +143,7 @@
     "day": "일",
     "days": "일",
     "event": "일정",
-    "events": "일정",
     "task": "작업",
-    "todo": "할 일",
     "moreConnections": "+ 연결 {count}개 더",
     "moreConnections_plural": "+ 연결 {count}개 더",
     "moreNotes": "+ 노트 {count}개 더",
@@ -166,7 +152,6 @@
     "charactersWritten": "작성한 글자 수",
     "words": "단어 {count}개",
     "characters": "{count}자",
-    "completed": "완료 {count}개",
     "overdue": "기한 지남 {count}개"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "{date}에 수정됨"
   },
   "task": {
-    "completed": "완료됨",
-    "notCompleted": "완료되지 않음",
-    "priority": "우선순위: {priority}",
-    "overdue": "기한 지남",
-    "markComplete": "“{title}”을(를) 완료로 표시",
-    "markNotComplete": "“{title}”을(를) 미완료로 표시"
+    "priority": "우선순위: {priority}"
   },
   "template": {
     "using": "“{templateName}” 사용 중"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "내용이 아직 메모리에 있습니다. 클릭하여 다시 저장하세요.",
-    "noteNotFound": "“{target}” 노트를 찾을 수 없습니다",
     "createLinkedFailed": "링크된 노트를 만들지 못했습니다",
     "fileNotFound": "파일을 찾을 수 없습니다: {target}",
     "openLinkedItemFailed": "링크된 항목을 열지 못했습니다",
@@ -248,5 +227,14 @@
   "deleteConfirm": {
     "title": "저널 항목 삭제",
     "description": "“{title}”을(를) 삭제하시겠습니까? 되돌릴 수 없습니다."
+  },
+  "dayTimeline": {
+    "label": "하루 일정",
+    "allDay": "종일 항목",
+    "unscheduled": "일정 없음",
+    "unscheduledEmpty": "일정이 지정되지 않은 작업이 없습니다. 블록을 여기로 끌어 놓으면 시간이 지워집니다.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "{title} 완료"
   }
 }

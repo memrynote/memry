@@ -85,6 +85,7 @@ function bootModulePreloads(): string {
   const manifestPath = path.resolve(DIST, '.vite/manifest.json')
   if (!fs.existsSync(manifestPath)) return ''
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: Vite manifest written by the build step just before
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) as Record<
     string,
     { file: string; imports?: string[] }
@@ -131,6 +132,7 @@ async function prerender() {
     const templateWithoutSeo = stripSeoTags(template)
     const bootPreloads = bootModulePreloads()
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- ssrLoadModule returns an untyped module; ROUTES is a string[] exported by entry-server
     for (const route of ROUTES as string[]) {
       const { html: appHtml } = render(route)
       const { cleaned: withoutSeo, headTags: embeddedHeadTags } = extractSeoTags(appHtml)

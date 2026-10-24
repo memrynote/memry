@@ -48,6 +48,7 @@ export function readTabDragData(dataTransfer: DataTransfer): OpenTargetTab | nul
     if (typeof type !== 'string' || typeof title !== 'string' || typeof path !== 'string') {
       return null
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- type, title and path were checked as strings above; the rest of the drag payload is tab data written by this app
     return parsed as OpenTargetTab
   } catch {
     return null

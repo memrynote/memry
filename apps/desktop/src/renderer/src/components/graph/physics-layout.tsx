@@ -37,7 +37,7 @@ export interface PhysicsHandle {
 export type LayoutChangeHandler = (positions: Record<string, NodePosition>) => void
 
 /** Latest callback without restarting the simulation when its identity changes. */
-function useLatest<T>(value: T): React.MutableRefObject<T> {
+function useLatest<T>(value: T): React.RefObject<T> {
   const ref = useRef(value)
   useEffect(() => {
     ref.current = value
@@ -57,7 +57,7 @@ export function LivePhysics({
   onLayoutChange
 }: {
   graph: Graph
-  handleRef: React.MutableRefObject<PhysicsHandle | null>
+  handleRef: React.RefObject<PhysicsHandle | null>
   /** Bumped whenever the graph was patched in place; never remounts the simulation. */
   revision?: number
   options?: GraphPhysicsOptions
@@ -157,7 +157,7 @@ export function SettledPhysics({
 }: {
   graph: Graph
   /** Dragging is a live-motion feature; here the handle only reads and clears pins. */
-  handleRef?: React.MutableRefObject<PhysicsHandle | null>
+  handleRef?: React.RefObject<PhysicsHandle | null>
   /** Bumped whenever the graph was patched in place; never remounts the simulation. */
   revision?: number
   options?: GraphPhysicsOptions

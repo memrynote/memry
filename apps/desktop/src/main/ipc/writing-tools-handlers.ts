@@ -46,6 +46,7 @@ export function registerWritingToolsHandlers(): void {
   // same `{ success: false, error }` envelope.
   ipcMain.handle(
     WritingToolsChannels.invoke.GENERATE_ASSIST,
+    // oxlint-disable-next-line typescript/consistent-return -- the failure switch covers every classifyWritingAssistFailure result; a default would hide new members from the compiler
     async (_event: IpcMainInvokeEvent, payload: unknown): Promise<WritingAssistResponse> => {
       const i18n = getMainI18n()
       const parsed = WritingAssistInputSchema.safeParse(payload)

@@ -20,6 +20,7 @@ function localDaysBetween(from: Date, to: Date): DateRange {
   }
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; the implicit fallthrough is unreachable for typed input
 function presetStart(id: DatePresetId, now: Date): Date {
   switch (id) {
     case 'today':

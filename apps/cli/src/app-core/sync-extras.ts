@@ -339,6 +339,7 @@ export function createSyncExtrasService({
         .get()
       if (!row) return { status: 'unbound', mode: null }
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped JSON or driver result; shape fixed by the producer, a runtime parser would change accepted input
         const parsed = JSON.parse(row.value) as { userId?: unknown; mode?: unknown }
         if (typeof parsed.userId === 'string' && parsed.mode === 'sync') {
           return { status: 'sync', mode: 'sync' }

@@ -128,7 +128,7 @@ function externalSource(row: typeof calendarSources.$inferSelect): CalendarProje
 }
 
 function sortProjectionItems(items: CalendarProjectionItem[]): CalendarProjectionItem[] {
-  return [...items].sort((left, right) => {
+  return [...items].toSorted((left, right) => {
     if (left.startAt !== right.startAt) return left.startAt.localeCompare(right.startAt)
     return left.projectionId.localeCompare(right.projectionId)
   })
@@ -218,6 +218,13 @@ function loadGoogleCalendarColors(db: DataDb): Map<string, string> {
   return colors
 }
 
+const taskEditability = (canResize: boolean): CalendarProjectionEditability => ({
+  canMove: true,
+  canResize,
+  canEditText: true,
+  canDelete: true
+})
+
 function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjectionItem[] {
   const dueRange = getLocalDueDateRange(input)
   if (!dueRange) return []
@@ -243,13 +250,6 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
     rows.map((row) => row.id)
   )
 
-  const editability = (canResize: boolean): CalendarProjectionEditability => ({
-    canMove: true,
-    canResize,
-    canEditText: true,
-    canDelete: true
-  })
-
   return rows.map((row) => {
     const isAllDay = !row.dueTime
     const startAt = toLocalInstant(row.dueDate!, row.dueTime ?? null)
@@ -270,7 +270,7 @@ function loadTaskItems(db: DataDb, input: GetCalendarRangeInput): CalendarProjec
       isAllDay,
       timezone: LOCAL_TIMEZONE,
       visualType: 'task',
-      editability: editability(blockMinutes !== null),
+      editability: taskEditability(blockMinutes !== null),
       source: nativeSource('memrynote Tasks'),
       binding: bindings.get(row.id) ?? null,
       snoozeOffsetMinutes: null,

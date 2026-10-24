@@ -76,7 +76,7 @@ describe('main.log file transport', () => {
     const total = 600
     for (let i = 0; i < total; i++) logger.info(`line ${i}`)
 
-    expect(readdirSync(dir).sort()).toEqual([
+    expect(readdirSync(dir).toSorted()).toEqual([
       'main.1.log',
       'main.2.log',
       'main.3.log',

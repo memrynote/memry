@@ -27,6 +27,7 @@ const USAGE_DEBOUNCE_MS = 300
 type Editor = EditorSchema['BlockNoteEditor']
 
 function viewOf(editor: Editor): EditorView | undefined {
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- `prosemirrorView` is not on BlockNote's public editor type; it is the standard escape hatch to the ProseMirror view
   return (editor as unknown as { prosemirrorView?: EditorView }).prosemirrorView
 }
 
@@ -44,7 +45,7 @@ export function usePortalUsageChips(
   onOpenRef.current = onOpen
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
     const sourceNoteId = noteId
 
     const unregister = registerEditorPlugin(

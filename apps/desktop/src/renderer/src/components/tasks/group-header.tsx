@@ -66,6 +66,7 @@ const GroupLeadingIcon = ({
     return groupKey === 'urgent' && color ? (
       <PriorityStar color={color} />
     ) : (
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- groupKey is a Priority key whenever sortField is 'priority' (this branch)
       <PriorityBars priority={groupKey as Priority} />
     )
   }
@@ -93,6 +94,7 @@ const getGroupLabelColor = (
   groupKey: string,
   color?: string
 ): string | undefined => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- groupKey is a Priority key whenever sortField is 'priority' (guarded on this line)
   if (sortField === 'priority') return priorityConfig[groupKey as Priority]?.color ?? undefined
   if (color && (sortField === 'dueDate' || sortField === 'createdAt')) return color
   if (DONE_GROUP_KEYS.has(groupKey)) return 'var(--task-complete)'

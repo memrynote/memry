@@ -53,9 +53,9 @@ test.describe('Note-view menu file actions', () => {
     const id = await seedNote(page, title, 'Body for menu actions')
     const storageKey = await tabSessionStorageKey(page)
     await page.addInitScript(
-      ({ noteId, t, storageKey }) => {
+      ({ noteId, t, storageKey: storageKeyArg }) => {
         localStorage.setItem(
-          storageKey,
+          storageKeyArg,
           JSON.stringify({
             version: 2,
             tabGroups: {

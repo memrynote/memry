@@ -91,10 +91,12 @@ export function agentMessageRowToModel(row: schema.AgentMessageRow, vaultKey: Ui
   return {
     id: row.id,
     conversationId: row.conversationId,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column typed string in the schema; only this store writes these enum values
     role: row.role as MessageRole,
     content: decryptMessageContent(row.contentCiphertext, vaultKey),
     toolCallId: row.toolCallId,
     attachments: decryptMessageAttachments(row.attachmentsCiphertext, vaultKey),
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column typed string in the schema; only this store writes these enum values
     status: row.status as MessageStatus,
     vectorClock: parseJsonColumn(row.vectorClock, {}),
     createdAt: row.createdAt,
@@ -106,6 +108,7 @@ export function agentMessageRowToModel(row: schema.AgentMessageRow, vaultKey: Ui
 function parseJsonColumn<T>(value: T | string | null, fallback: T): T {
   if (value === null) return fallback
   if (typeof value !== 'string') return value
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is a JSON column this store wrote; T is the column type the caller names
   return JSON.parse(value) as T
 }
 

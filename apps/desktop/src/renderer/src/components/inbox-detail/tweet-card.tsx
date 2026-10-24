@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useTweet } from 'react-tweet'
 import { ExternalLink } from '@/lib/icons'
 import { cn } from '@/lib/utils'
+import { metadataAs } from './item-metadata'
 import type { SocialMetadata } from '@/types'
 import { useT } from '@memry/i18n/renderer'
 
@@ -188,7 +189,7 @@ function TweetMetrics({
 
 export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
   const { t: tPhaseF } = useT('inbox')
-  const meta = item.metadata as SocialMetadata | null
+  const meta = metadataAs<SocialMetadata | null>(item.metadata)
   const tweetId = meta?.tweetId || extractTweetId(item.sourceUrl)
 
   const { data: tweet, error, isLoading } = useTweet(tweetId ?? undefined)
@@ -207,6 +208,8 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
 
   const user = tweet.user
   const text = tweet.text || ''
+  // The syndication payload carries counters that react-tweet's Tweet type does not declare.
+  const extraCounts: Record<string, unknown> = { ...tweet }
 
   return (
     <div
@@ -258,12 +261,10 @@ export function TweetCard({ item }: TweetCardProps): React.JSX.Element {
       {/* Metrics */}
       <TweetMetrics
         likes={tweet.favorite_count}
-        retweets={(tweet as unknown as Record<string, unknown>).retweet_count as number | undefined}
-        views={
-          (tweet as unknown as Record<string, unknown>).views_count
-            ? Number((tweet as unknown as Record<string, unknown>).views_count)
-            : undefined
+        retweets={
+          typeof extraCounts.retweet_count === 'number' ? extraCounts.retweet_count : undefined
         }
+        views={extraCounts.views_count ? Number(extraCounts.views_count) : undefined}
       />
 
       {/* Open link */}

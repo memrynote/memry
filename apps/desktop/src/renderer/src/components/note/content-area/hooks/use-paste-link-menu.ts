@@ -46,7 +46,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
 
   useLayoutEffect(() => {
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handlePaste = (e: ClipboardEvent): void => {
       // A URL pasted onto a whiteboard goes onto the drawing, not the note.
@@ -122,6 +122,7 @@ export function usePasteLinkMenu({ editorContainerRef, onSelect }: UsePasteLinkM
 
     const handleClickAway = (e: MouseEvent): void => {
       if (!state.isOpen) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = e.target as HTMLElement
       if (target.closest('[data-inline-choice-menu]')) return
       close()

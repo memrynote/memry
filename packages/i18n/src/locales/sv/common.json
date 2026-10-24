@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Det gick inte att kopiera portalen",
+    "hiddenCount": "{count} dolda",
+    "windowFailed": "Den här portalen kunde inte öppnas. Öppna källanteckningen i stället.",
+    "noTarget": "Den här portalen har inget mål ännu. Lägg till en anteckning i definitionen eller ta bort blocket.",
+    "invalidJson": "Portalens definition är inte giltig JSON. Åtgärda den nedan eller ta bort blocket.",
+    "invalidShape": "Portalens definition har ingen anteckning eller sökning. Åtgärda den nedan eller ta bort blocket.",
+    "search": {
+      "editQuery": "Redigera fråga",
+      "count": "{count, plural, one {# block} other {# block}}",
+      "loading": "Söker…",
+      "empty": "Inga block matchar den här frågan.",
+      "failed": "Sökningen kunde inte köras.",
+      "retry": "Försök igen",
+      "truncated": "Visar de första {count} träffarna."
+    },
+    "copiedContents": "Innehållet kopierades",
+    "copiedLink": "Länken kopierades",
+    "actionFailed": "Det gick inte att ändra den här portalen",
+    "keepsOneBlock": "En portal behåller minst ett block. Ta bort portalen i stället.",
+    "expandChildren": "Visa underordnade",
+    "collapseChildren": "Dölj underordnade",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Inkludera ”{block}”",
+      "locked": "{note} är låst · skrivskyddad",
+      "more": "Mer",
+      "openBeside": "Öppna {note} bredvid",
+      "click": "Klicka",
+      "copyContents": "Kopiera innehåll",
+      "copyLink": "Kopiera länk",
+      "remove": "Ta bort portal",
+      "removeHint": "{note} behåller alla block"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Källanteckningen raderades. Referensen behålls.",
+        "action": "Ta bort"
+      },
+      "missingBlock": {
+        "text": "Blocket raderades i {source}.",
+        "action": "Välj ett annat"
+      },
+      "notSynced": {
+        "text": "Väntar på att källanteckningen ska synkroniseras.",
+        "action": "Försök igen"
+      },
+      "cycle": {
+        "text": "Den här portalen leder tillbaka till sig själv.",
+        "action": "Öppna källa"
+      },
+      "tooDeep": {
+        "text": "Portaler kan ligga i varandra {max} nivåer djupt. Den här öppnas som en länk.",
+        "action": "Öppna källa"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Fokusera fältet för att fånga",
@@ -44,6 +101,50 @@
     "openInDefaultApp": "Öppna i standardappen",
     "revealFailed": "Det gick inte att visa i mappen"
   },
+  "commands": {
+    "runFailed": "Kommandot kunde inte köras. Försök igen."
+  },
+  "commandsPalette": {
+    "title": "Kommandon",
+    "placeholder": "Skriv ett kommando…",
+    "groups": {
+      "navigation": "Navigering",
+      "create": "Skapa",
+      "tabs": "Flikar",
+      "editor": "Redigerare",
+      "view": "Vy",
+      "app": "App",
+      "note": "Anteckning",
+      "settings": "Inställningar",
+      "sync": "Synk",
+      "help": "Hjälp",
+      "project": "Projekt",
+      "tasks": "Uppgifter",
+      "canvas": "Canvas",
+      "folder": "Mapp",
+      "file": "Fil"
+    },
+    "contexts": {
+      "note": "Den här anteckningen",
+      "journal": "Den här dagboken",
+      "project": "Det här projektet",
+      "tasks": "De här uppgifterna",
+      "canvas": "Den här canvasen",
+      "folder": "Den här mappen",
+      "tag": "Den här taggen",
+      "file": "Den här filen"
+    },
+    "recent": "Senaste",
+    "empty": "Inga kommandon matchar ”{query}”",
+    "searchHint": "Sök anteckningar: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# kommando} other {# kommandon}}"
+    },
+    "actions": {
+      "run": "Kör",
+      "searchNotes": "Sök anteckningar"
+    }
+  },
   "tabs": {
     "pin": "Fäst flik",
     "unpin": "Lossa flik",
@@ -77,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Åtgärden misslyckades",
-    "nothingToUndo": "Inget att ångra",
     "undone": "Ångrat: {description}",
     "undoFailed": "Det gick inte att ångra åtgärden",
     "filesImported": "{count, plural, one {# fil importerad} other {# filer importerade}}",
@@ -131,6 +231,20 @@
     "openInTab": "Öppna konversation i flik",
     "stop": "Stoppa",
     "thinking": "Agenten tänker",
+    "toolsUnavailable": "Valvverktygen är avstängda för den här modellen. Den klarade inte verktygskontrollen, så den kan bara chatta.",
+    "toolsUnavailableWithDetail": "Valvverktygen är avstängda för den här modellen. Den klarade inte verktygskontrollen, så den kan bara chatta. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Valvverktygen är avstängda för den här modellen. Leverantören avvisade en testbegäran som innehöll verktyg, så modellen kan bara chatta.",
+      "noToolCall": "Valvverktygen är avstängda för den här modellen. Den besvarade en testbegäran utan att anropa verktyget, så den kan bara chatta.",
+      "toolResultRejected": "Valvverktygen är avstängda för den här modellen. Den anropade ett testverktyg men misslyckades efter att ha fått resultatet tillbaka, så den kan bara chatta.",
+      "streamingUnsupported": "Valvverktygen är avstängda för den här modellen. Leverantören strömmade inte ett testsvar, så modellen kan bara chatta.",
+      "providerSaid": "Leverantören sa: {detail}",
+      "wroteToolCall": "Modellen skrev ett verktygsanrop som text, och inget kördes."
+    },
+    "stepLimit": {
+      "notice": "Stoppade vid stegbegränsningen.",
+      "continue": "Fortsätt"
+    },
     "enable": {
       "title": "Aktivera memrynote Agent",
       "description": "memrynote Agent använder den lokala agent-CLI som du har valt för att chatta om ditt valv. Claude skickar konversationen till Anthropic och Codex till OpenAI.",
@@ -164,7 +278,6 @@
       "descriptionCreate": "Agenten vill skapa {title}. Granska ändringen innan du tillämpar den.",
       "descriptionDelete": "Agenten vill radera {title}. Granska ändringen innan du tillämpar den.",
       "fallbackTitle": "det här objektet",
-      "current": "Nuvarande",
       "candidate": "Förslag",
       "loading": "Läser in…",
       "apply": "Tillämpa",
@@ -268,13 +381,18 @@
       "removeAttachment": "Ta bort {label}",
       "placeholder": "Gör vad du vill med memrynote… @ för att nämna anteckningar, uppgifter och händelser",
       "send": "Skicka",
-      "providerLabel": "Agentleverantör: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Anslutna verktyg",
       "connectTool": "Anslut {tool}",
-      "addContext": "Lägg till kontext",
-      "addContextWithPermissions": "Lägg till kontext ({permissions})",
       "mentionContext": "Nämn en anteckning, uppgift eller händelse",
+      "files": {
+        "attach": "Bifoga en textfil",
+        "refused": {
+          "unsupportedType": "{name} är inte en textfil som stöds. Bifoga en .txt-, .md-, .log-, .csv-, .tsv-, .json-, .yaml- eller .yml-fil.",
+          "notText": "{name} är inte en UTF-8-textfil. Bifoga en textfil i stället.",
+          "tooLarge": "Med {name} skulle meddelandet överskrida gränsen på 100 KB. Ta bort en fil eller bifoga en mindre.",
+          "readFailed": "Det gick inte att läsa {name}. Kontrollera att filen finns kvar och att du kan öppna den, och bifoga den sedan igen."
+        }
+      },
       "voice": {
         "start": "Starta diktering",
         "stop": "Stoppa diktering",
@@ -287,10 +405,7 @@
           "transcriptionFailed": "Det gick inte att transkribera röstinmatningen"
         }
       },
-      "modelLabel": "Agentmodell: {provider} {model}",
-      "reasoningLabel": "Agentens resonemang: {reasoning}",
       "providers": {
-        "label": "Leverantör",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -301,8 +416,6 @@
         "computerAccess": "Datoråtkomst"
       },
       "webSearch": {
-        "on": "På",
-        "off": "Av",
         "label": "Webbsökning"
       },
       "models": {
@@ -316,7 +429,6 @@
         "runtimeUnavailable": "Agenten är inte tillgänglig – öppna Inställningar…"
       },
       "settings": {
-        "reasoning": "Resonemang",
         "effort": "Ansträngning"
       },
       "includeCurrentNote": "Inkludera aktuell anteckning",
@@ -340,13 +452,29 @@
           "extraHigh": "Extra hög"
         }
       },
-      "permissionsLabel": "Agentbehörigheter: {access}, webbsökning {webSearch}",
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Standard",
+          "default": "Standarddjup",
+          "high": "Hög",
+          "max": "Max"
+        }
+      },
       "permissions": {
-        "label": "Behörigheter",
-        "access": "Åtkomst",
-        "tools": "Verktyg"
+        "access": "Åtkomst"
       },
       "modelSettingsLabel": "Agentens modellinställningar: {model}, {settings}",
+      "queue": {
+        "label": "Köade meddelanden",
+        "queueMessage": "Köa meddelande",
+        "edit": "Redigera köat meddelande",
+        "editLabel": "Text i köat meddelande",
+        "remove": "Ta bort köat meddelande",
+        "save": "Spara",
+        "cancel": "Avbryt",
+        "sending": "Skickar…",
+        "notSent": "Inte skickat. Redigera för att skicka igen, eller ta bort det."
+      },
       "unavailable": {
         "vaultToolsOnly": "Endast valvverktyg med den här modellen"
       }
@@ -394,7 +522,8 @@
       "saveDisclosure": "Det gick inte att spara aktiveringen av agenten",
       "resolveWindow": "Det gick inte att hitta agentens källfönster",
       "detectCli": "Det gick inte att identifiera tillgängliga agenter",
-      "loadDisclosure": "Det gick inte att läsa in agentens aktiveringsstatus"
+      "loadDisclosure": "Det gick inte att läsa in agentens aktiveringsstatus",
+      "turnFailed": "Svaret avbröts av ett fel. Ditt meddelande finns kvar, så du kan skicka det igen."
     },
     "actions": {
       "copy": "Kopiera",
@@ -581,7 +710,6 @@
       "dropFilesToImport": "Släpp filer för att importera",
       "dropFilesIntoVaultRoot": "Valvets rotmapp",
       "newNoteN": "Ny anteckning (⌘N)",
-      "new": "Ny",
       "newItemMenu": "Skapa ny…",
       "feedbackButton": "Skicka feedback",
       "feedbackTitle": "Skicka feedback",
@@ -622,24 +750,7 @@
       "findReplaceAsk": "Sök, ersätt, fråga…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Hoppa över introduktionen",
-      "welcomeToMemry": "Välkommen till memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personliga kunskapsbas. Det tar bara 2 minuter att komma igång.",
-      "getStarted": "Kom igång ",
-      "createYourFirstNote": "Skapa din första anteckning",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-baserad, lagras lokalt som vanliga filer.",
-      "eGMeetingNotesIdeasAnything": "t.ex. mötesanteckningar, idéer, vad som helst…",
-      "skip": "Hoppa över",
-      "createNote": "Skapa anteckning ",
-      "addYourFirstTask": "Lägg till din första uppgift",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Uppgifter länkas till dina anteckningar, med prioritet och förfallodatum.",
-      "eGReviewProjectProposal": "t.ex. granska projektförslaget…",
-      "skip2": "Hoppa över",
-      "createTask": "Skapa uppgift ",
-      "syncAcrossDevices": "Synkronisera mellan enheter",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Håll dina anteckningar och uppgifter synkroniserade på alla dina enheter. Du kan alltid konfigurera det senare.",
-      "skipForNow": "Hoppa över tills vidare",
-      "doneLetSGo": "Klart – nu kör vi! "
+      "skip": "Hoppa över"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Ställ in mappikon",
@@ -707,8 +818,7 @@
       "unknownTabType": "Okänd fliktyp: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "osparade ändringar",
-      "preview": "förhandsvisning"
+      "unsavedChanges": "osparade ändringar"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Ny flik",
@@ -786,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Dra för att ändra storlek · Dubbelklicka för att återställa"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Välkommen till memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ditt personliga kunskapshanteringssystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Välj en mapp för att lagra dina anteckningar och uppgifter.",
       "opening": "Öppnar…",
-      "selectVaultFolder": "Välj valvmapp",
-      "plainMarkdown": "Ren Markdown",
-      "yourNotesStayPortable": "Dina anteckningar förblir portabla",
-      "syncAnywhere": "Synkronisera var som helst",
-      "useDropboxIcloudGit": "Använd Dropbox, iCloud, Git",
       "recentVaults": "Senaste valven",
-      "notesLastOpened": "anteckningar · Senast öppnad",
-      "preRelease": "Beta",
       "createNewVault": "Skapa nytt valv",
-      "createNewVaultDesc": "Starta ett nytt valv i en valfri mapp.",
-      "openExistingVault": "Öppna befintligt valv",
-      "openExistingVaultDesc": "Välj en mapp med Markdown-filer som du redan har.",
-      "signInToSync": "Logga in för att synkronisera",
-      "signInToSyncDesc": "End-to-end-krypterade valv på dina enheter.",
-      "create": "Skapa",
       "open": "Öppna",
-      "signIn": "Logga in",
       "helpAndDocs": "Hjälp och dokumentation",
-      "signInRequiresVault": "Öppna eller skapa ett valv först för att konfigurera synkronisering.",
       "addVault": "Lägg till valv",
       "brandName": "Memrynote",
       "flow": {
@@ -855,14 +947,17 @@
       "noVaultsYet": "Inga valv ännu",
       "openVault": "Öppna valv",
       "settings": "Inställningar",
-      "logOut": "Logga ut",
-      "signInToSync": "Logga in för att synkronisera",
       "remove": "Ta bort ”",
       "removeVaultTitle": "Ta bort ”{name}” från listan?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Valvet tas bort från appen, men dina filer finns kvar på disken. Du kan alltid lägga till det igen senare.",
       "cancel": "Avbryt",
       "remove2": "Ta bort",
       "inYourAccount": "På ditt konto",
+      "trySandbox": "Prova sandlådevalvet",
+      "sandboxVault": "Sandlådevalv",
+      "sandboxPreparing": "Förbereder sandlådan…",
+      "sandboxFailed": "Det gick inte att förbereda sandlådevalvet",
+      "resetSandbox": "Återställ sandlådevalvet",
       "itemsCount": "{count} objekt",
       "untitledVault": "Valv",
       "downloadVaultTitle": "Ladda ner ”{name}”",
@@ -870,7 +965,6 @@
       "changeLocation": "Ändra…",
       "download": "Ladda ner",
       "downloadFailed": "Det gick inte att ladda ner valvet",
-      "deleteFromAccount": "Radera från kontot",
       "deleteVaultTitle": "Radera ”{name}” från ditt konto?",
       "deleteVaultBody": "All synkroniserad data för det här valvet raderas permanent från Memrys servrar. Det går inte att ångra. Dina filer på disken raderas inte.",
       "deleteVaultConfirm": "Radera från kontot",
@@ -897,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Ta bort widget",
       "dragAria": "Dra widget",
-      "configAria": "Konfigurera widget",
-      "resizeAria": "Ändra storlek till {size}",
       "menuAria": "Widgetalternativ",
-      "resize": "Storlek",
       "remove": "Ta bort",
       "filter": {
         "all": "Alla",
@@ -920,6 +1010,7 @@
       "noRecentlyOpened": "Anteckningar du öppnar visas här",
       "bookmarks": "Bokmärken",
       "tasks": "Uppgifter",
+      "chart": "Diagram",
       "calendar": "Kalender",
       "calendarToday": "Idag",
       "openCalendar": "Öppna kalender",
@@ -936,8 +1027,6 @@
       "folderPickPrompt": "Välj en mapp",
       "folderEmpty": "Inga mappar än",
       "folderNoSelection": "Ingen mapp vald",
-      "folderView_list": "Lista",
-      "folderView_gallery": "Galleri",
       "folderViewSelect": "Vy",
       "project": "Projekt",
       "projectNoSelection": "Inget projekt valt",
@@ -956,7 +1045,6 @@
     "board": {
       "label": "Startsidans layout",
       "deleteAria": "Radera layout",
-      "newAria": "Ny tavla",
       "newName": "Ny tavla",
       "defaultName": "Start",
       "manage": "Hantera tavlor",
@@ -975,9 +1063,10 @@
       "tasksDue": "{count, plural, one {# uppgift förfaller idag} other {# uppgifter förfaller idag}}",
       "events": "{count, plural, one {# händelse} other {# händelser}}"
     },
-    "edit": "Redigera",
-    "done": "Klar",
     "addWidget": "Lägg till widget",
+    "cover": {
+      "add": "Lägg till omslag"
+    },
     "empty": {
       "title": "Din tavla är tom",
       "body": "Widgetar samlar dina anteckningar, uppgifter och bokmärken på en lugn plats.",
@@ -1037,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introduktionen är klar",
-      "body": "Stjärnmärk oss gärna på GitHub – det hjälper andra att hitta MemryNote.",
-      "action": "Stjärnmärk på GitHub"
+      "body": "Stjärnmärk oss gärna på GitHub – det hjälper andra att hitta MemryNote."
     }
   },
   "shortcuts": {
@@ -1127,7 +1215,6 @@
     "ready": "Uppdatering redo",
     "failed": "Uppdateringen misslyckades",
     "downloadAction": "Ladda ner",
-    "restartAction": "Starta om",
     "detailsAction": "Detaljer",
     "popover": {
       "readyTitle": "MemryNote {version} är klar att installera",
@@ -1164,12 +1251,12 @@
   "vaultSwipe": {
     "indicatorLabel": "Valv",
     "position": "{name}, valv {index} av {count}",
-    "openList": "{position}. Öppna listan med valv",
     "switchTo": "Byt till {name}",
     "switchingTo": "Byter till {name}",
     "changeIcon": "Byt ikon…",
     "resetIcon": "Återställ ikon",
     "iconButton": "Byt ikon för {name}",
+    "leaveSandbox": "Tillbaka till {name}",
     "iconFailed": "Det gick inte att byta valvets ikon"
   },
   "sidebarHelp": {
@@ -1213,6 +1300,9 @@
     "filterType": "Typ",
     "filterModified": "Ändrad",
     "matches": "Träffar",
+    "matchesMore": "{count, plural, one {# träff till} other {# träffar till}}",
+    "matchesHide": "Dölj träffar",
+    "matchOf": "Träff {index} av {total}",
     "showMore": "Visa {count} till",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1340,7 @@
       "nextSection": "Nästa avsnitt",
       "open": "Öppna",
       "openNote": "Öppna anteckning",
+      "openAtMatch": "Öppna vid träff",
       "openFile": "Öppna fil",
       "openJournal": "Öppna dagbok",
       "openTask": "Öppna uppgift",
@@ -1259,6 +1350,7 @@
       "chooseTag": "Välj tagg",
       "addTag": "Lägg till tagg",
       "showAll": "Visa alla",
+      "hideMatches": "Dölj träffar",
       "searchEverywhere": "Sök överallt",
       "clearFilters": "Rensa filter"
     },
@@ -1341,7 +1433,6 @@
       "onDevice": "På {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# valv hittades} other {# valv hittades}}",
-      "notion": "Notion",
       "otherApps": "Andra appar och filer",
       "otherAppsHint": "och {count} till",
       "detectedFootnote": "Hittades genom att kontrollera vilka appar som är installerade. Inget lämnar {device}.",

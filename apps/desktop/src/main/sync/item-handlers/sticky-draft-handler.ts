@@ -98,9 +98,7 @@ class StickyDraftHandler extends BaseItemHandler<StickyDraftSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(stickyDrafts).where(eq(stickyDrafts.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(stickyDrafts).where(eq(stickyDrafts.id, itemId)).get()
   }
 
   buildPushPayload(

@@ -34,7 +34,7 @@ export type ChartPatch = Partial<Record<keyof ViewBlockChart, unknown>>
 export function patchChart(chart: ViewBlockChart | undefined, patch: ChartPatch): ViewBlockChart {
   const next: Record<string, unknown> = { ...chart, ...patch }
   for (const key of Object.keys(next)) if (next[key] === undefined) delete next[key]
-  return next as ViewBlockChart
+  return next
 }
 
 const TYPE_LABEL_KEYS: Record<ViewBlockChartType, string> = {
@@ -273,7 +273,7 @@ function DetailSettings({
 }): React.JSX.Element {
   const { t } = useT('notes')
   const ranges = [...new Set<number>([...VIEW_BLOCK_CHART_RANGES, rangeDays])]
-    .sort((a, b) => a - b)
+    .toSorted((a, b) => a - b)
     .map((days) => ({ value: days, label: t('editor.chart.lastDays', { count: days }) }))
   const dateFromOptions = [
     { value: 'created', label: t('editor.chart.dateFrom.created') },

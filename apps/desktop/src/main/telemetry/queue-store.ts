@@ -92,12 +92,14 @@ export const createQueueStore = <T>(filePath: string): QueueStore<T> => {
     const headerLine = firstBreak === -1 ? raw : raw.slice(0, firstBreak)
     let header: { version?: unknown; items?: unknown }
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the persisted queue mirror file; items were written by this same queue
       header = JSON.parse(headerLine) as { version?: unknown; items?: unknown }
     } catch {
       return null
     }
     if (!header || typeof header !== 'object') return null
     if (header.version === LEGACY_FORMAT_VERSION) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
       return Array.isArray(header.items) ? (header.items as T[]) : null
     }
     if (header.version !== FORMAT_VERSION) return null
@@ -107,6 +109,7 @@ export const createQueueStore = <T>(filePath: string): QueueStore<T> => {
     for (const line of raw.slice(firstBreak + 1).split('\n')) {
       if (line.length === 0) continue
       try {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the persisted queue mirror file; items were written by this same queue
         items.push(JSON.parse(line) as T)
       } catch {
         // Only the tail can be half-written: the crash this mirror exists for

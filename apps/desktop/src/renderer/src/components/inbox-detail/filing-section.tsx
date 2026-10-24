@@ -254,7 +254,7 @@ export const FilingSection = ({
         const nextFolders = baseFolders
           .filter((folder) => folder.path !== '')
           .concat(createdFolder)
-          .sort((left, right) => left.path.localeCompare(right.path))
+          .toSorted((left, right) => left.path.localeCompare(right.path))
 
         return rootFolder ? [rootFolder, ...nextFolders] : nextFolders
       })

@@ -17,17 +17,22 @@
       "filterAll": "모든 파일"
     },
     "exportCancelled": "내보내기가 취소되었습니다.",
-    "update": {
-      "availableTitle": "업데이트 가능",
-      "availableMessage": "memrynote {version} 버전을 사용할 수 있습니다.",
-      "availableDetailFallback": "지금 업데이트를 다운로드하시겠습니까?",
-      "buttonDownload": "다운로드",
-      "buttonLater": "나중에",
-      "readyTitle": "업데이트 준비됨",
-      "readyMessage": "memrynote {version} 버전을 다운로드했습니다.",
-      "readyDetailFallback": "memrynote를 다시 시작하여 업데이트 설치를 완료하세요.",
-      "buttonRestartNow": "지금 다시 시작",
-      "releaseNotesLabel": "릴리스 노트:"
+    "dataDbRecovery": {
+      "title": "볼트 데이터베이스 복구",
+      "message": "이 볼트의 Memry 데이터베이스가 손상되었습니다.",
+      "detail": "노트와 저널 파일은 영향을 받지 않습니다. 복구하면 손상된 데이터베이스를 {path}에 백업으로 보관하고, 새 데이터베이스를 만들어 볼트 파일에서 가능한 내용을 다시 구성하며, 동기화된 항목은 다음 동기화 때 복원합니다. 아직 동기화되지 않은 변경 사항도 가능한 한 복구됩니다.",
+      "buttonRecover": "복구",
+      "buttonLater": "나중에"
+    },
+    "obsidianVault": {
+      "title": "Obsidian 볼트 열기",
+      "message": "이 Obsidian 볼트의 복사본을 여시겠습니까?",
+      "detail": "memrynote에서 Obsidian 볼트를 열면 Obsidian 플러그인이 사용하는 데이터가 손실될 수 있습니다. memrynote가 플러그인의 작업 줄을 작업으로 바꿀 때 그 줄을 다시 씁니다. Tasks 플러그인의 마감일 같은 필드가 파일에서 사라져 Obsidian에서 더 이상 보이지 않습니다.\n\nmemrynote는 “{name}”을(를) 바로 옆에 “{copyName}”(으)로 복사한 뒤 복사본을 열 수 있습니다. “{name}”은(는) 그대로 유지됩니다.",
+      "detailExistingCopy": "memrynote에서 Obsidian 볼트를 열면 Obsidian 플러그인이 사용하는 데이터가 손실될 수 있습니다. memrynote가 플러그인의 작업 줄을 작업으로 바꿀 때 그 줄을 다시 씁니다. Tasks 플러그인의 마감일 같은 필드가 파일에서 사라져 Obsidian에서 더 이상 보이지 않습니다.\n\nmemrynote 복사본 “{copyName}”이(가) 이미 바로 옆에 있습니다. memrynote는 그 복사본을 열 수 있습니다. “{name}”은(는) 그대로 유지됩니다.",
+      "buttonCopy": "복사본 만들기",
+      "buttonOpenCopy": "복사본 열기",
+      "buttonOpenOriginal": "원본 열기",
+      "buttonCancel": "취소"
     },
     "pair": {
       "title": "브라우저 확장 프로그램 연결",

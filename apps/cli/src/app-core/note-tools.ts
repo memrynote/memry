@@ -3,11 +3,7 @@ import path from 'node:path'
 import { eq, inArray } from 'drizzle-orm'
 import { notePositions, taskNotes, tasks } from '@memry/db-schema/data-schema'
 import { getNoteMetadataById, getNoteMetadataByPath, listNoteMetadata } from '@memry/storage-data'
-import {
-  parseMarkdownNote,
-  serializeParsedMarkdownNote,
-  type ParsedMarkdownNote
-} from '@memry/app-core/markdown'
+import { parseMarkdownNote, serializeParsedMarkdownNote } from '@memry/app-core/markdown'
 import { classifyMarkdownStat } from '@memry/shared/markdown-class'
 import {
   applyAliasDelta,
@@ -117,6 +113,15 @@ function snippetAround(
   return { snippet, linkStart: lead.length + start - from, linkEnd: lead.length + end - from }
 }
 
+async function assertFile(absolute: string, label: string): Promise<void> {
+  const stat = await fs.stat(absolute).catch(() => null)
+  if (!stat?.isFile()) throw new Error(`Note not found: ${label}`)
+}
+
+const foldedTagKey = (tag: string) => foldTag(tag.trim())
+
+const asciiFold = (value: string) => value.replace(/[A-Z]/g, (char) => char.toLowerCase())
+
 export function createNoteToolsService({
   vaultPath,
   dataDb,
@@ -177,11 +182,6 @@ export function createNoteToolsService({
     return absolute
   }
 
-  async function assertFile(absolute: string, label: string): Promise<void> {
-    const stat = await fs.stat(absolute).catch(() => null)
-    if (!stat?.isFile()) throw new Error(`Note not found: ${label}`)
-  }
-
   async function readFolderTemplateOf(folder: string): Promise<{
     template: string | null
     inherit: boolean
@@ -232,13 +232,9 @@ export function createNoteToolsService({
       else delete frontmatter.aliases
       await fs.writeFile(
         absolute,
-        serializeParsedMarkdownNote(
-          { ...parsed, frontmatter } as ParsedMarkdownNote,
-          parsed.content,
-          {
-            frontmatterEdited: true
-          }
-        ),
+        serializeParsedMarkdownNote({ ...parsed, frontmatter }, parsed.content, {
+          frontmatterEdited: true
+        }),
         'utf-8'
       )
       // The bytes are already on disk, so this only re-saves the metadata row.
@@ -276,10 +272,10 @@ export function createNoteToolsService({
 
       // Same as desktop's buildTemplateApplyUpdate: tags are added without
       // dropping the note's own, and the note's property values win.
-      const key = (tag: string) => foldTag(tag.trim())
       const tags = [...note.tags]
       for (const tag of template.tags) {
-        if (tag.trim() && !tags.some((held) => key(held) === key(tag))) tags.push(tag.trim())
+        if (tag.trim() && !tags.some((held) => foldedTagKey(held) === foldedTagKey(tag)))
+          tags.push(tag.trim())
       }
       const templateProperties: Record<string, unknown> = {}
       for (const property of template.properties) templateProperties[property.name] = property.value
@@ -323,7 +319,7 @@ export function createNoteToolsService({
           )
         })
       }
-      return out.sort((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
+      return out.toSorted((a, b) => a.sourceTitle.localeCompare(b.sourceTitle))
     },
 
     async linkMention({ sourceId, targetId, ordinal }) {
@@ -468,13 +464,9 @@ export function createNoteToolsService({
       await fs.mkdir(path.dirname(target), { recursive: true })
       await fs.writeFile(
         target,
-        serializeParsedMarkdownNote(
-          { ...parsed, frontmatter } as ParsedMarkdownNote,
-          parsed.content,
-          {
-            frontmatterEdited: true
-          }
-        ),
+        serializeParsedMarkdownNote({ ...parsed, frontmatter }, parsed.content, {
+          frontmatterEdited: true
+        }),
         'utf-8'
       )
       return { folder, template: templateId }
@@ -521,13 +513,12 @@ export function createNoteToolsService({
       // Literal, ASCII-case-insensitive, non-overlapping: the rule desktop's
       // in-file search applies, with hits addressed as a line plus an
       // occurrence on it.
-      const fold = (value: string) => value.replace(/[A-Z]/g, (char) => char.toLowerCase())
-      const needle = fold(query)
+      const needle = asciiFold(query)
       const hits: Array<{ line: number; ordinal: number }> = []
       let total = 0
       let line = 0
       for await (const text of iterateFileLines(absolute)) {
-        const haystack = fold(text)
+        const haystack = asciiFold(text)
         let ordinal = 0
         let from = 0
         while (true) {

@@ -19,7 +19,7 @@ export function providerSecretService(providerId: string): string {
 }
 
 export function providerSecretAccountKey(accountId: string, kind: ProviderSecretKind): string {
-  if (!accountId || !accountId.trim()) {
+  if (!accountId?.trim()) {
     throw new Error('getAccountKey requires a non-empty accountId')
   }
   const deviceSuffix = process.env.MEMRY_DEVICE

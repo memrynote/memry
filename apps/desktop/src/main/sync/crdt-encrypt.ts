@@ -65,6 +65,7 @@ export function decryptCrdtUpdate(
   const bodyToVerify = buildSignedPayload(noteIdBytes, packed)
   const valid = sodium.crypto_sign_verify_detached(signature, bodyToVerify, signerPublicKey)
   if (!valid) {
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const keyHex = sodium.to_hex(signerPublicKey).slice(0, 16)
     throw new SignatureVerificationError(noteId, `pubkey:${keyHex}`)
   }

@@ -7,7 +7,7 @@ import { TodaysNotesSection } from '@/components/journal/todays-notes'
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
     i18n: { language: 'en-US' },
-    t: (key: string, values?: Record<string, unknown>) =>
+    t: (key: string, values?: Record<string, string | number | undefined>) =>
       values?.count !== undefined
         ? `${key}:${String(values.count)}`
         : values?.date !== undefined

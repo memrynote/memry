@@ -113,6 +113,7 @@ export const checks = [
         WHERE p.name = 'Lisbon Trip' GROUP BY l.item_type ORDER BY l.item_type`)
       const got = Object.fromEntries(rows.map((r) => [r.type, r.n]))
       if (got.note !== 4 || got.file !== 2 || got.calendar_event !== 2) return JSON.stringify(rows)
+      return undefined
     }
   ]
 ]

@@ -144,7 +144,7 @@ export class SyncEngine extends SyncEventEmitter {
   constructor(deps: SyncEngineDeps, options?: Partial<SyncEngineOptions>) {
     super()
     this.setMaxListeners(MAX_SYNC_ENGINE_LISTENERS)
-    if (SyncEngine.activeInstance && SyncEngine.activeInstance.ctx.syncing) {
+    if (SyncEngine.activeInstance?.ctx.syncing) {
       throw new Error('SyncEngine instance already active — call stop() before creating a new one')
     }
 
@@ -192,7 +192,9 @@ export class SyncEngine extends SyncEventEmitter {
       this.ctx,
       this.stateManager,
       this.quarantine,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- two-phase construction: the coordinators are wired to each other after both exist, so the null placeholder and the private-field wire-up bypass the types; loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
       null as unknown as CrdtSyncCoordinator,
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- two-phase construction: the coordinators are wired to each other after both exist, so the null placeholder and the private-field wire-up bypass the types; loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
       null as unknown as PushCoordinator
     )
     this.crdtSync = new CrdtSyncCoordinator(
@@ -203,7 +205,9 @@ export class SyncEngine extends SyncEventEmitter {
     )
     this.pushCoordinator = new PushCoordinator(this.ctx, this.stateManager)
     // Wire up the circular dependencies now that all collaborators exist
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- two-phase construction: the coordinators are wired to each other after both exist, so the null placeholder and the private-field wire-up bypass the types; loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     ;(this.pullCoordinator as unknown as { crdtSync: CrdtSyncCoordinator }).crdtSync = this.crdtSync
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- two-phase construction: the coordinators are wired to each other after both exist, so the null placeholder and the private-field wire-up bypass the types; loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     ;(this.pullCoordinator as unknown as { pushCoordinator: PushCoordinator }).pushCoordinator =
       this.pushCoordinator
 

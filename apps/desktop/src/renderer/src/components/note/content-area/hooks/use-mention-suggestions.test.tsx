@@ -158,7 +158,7 @@ describe('useMentionSuggestions', () => {
     })
 
     expect(items.some((i) => i.kind === 'date' || i.kind === 'remind')).toBe(false)
-    const titles = items.map((i) => (i.kind === 'note' ? i.title : '')).sort()
+    const titles = items.map((i) => (i.kind === 'note' ? i.title : '')).toSorted()
     expect(titles).toEqual(['Meeting A', 'Meeting B'])
   })
 

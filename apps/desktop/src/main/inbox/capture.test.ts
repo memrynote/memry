@@ -109,7 +109,7 @@ describe('inbox capture', () => {
       .where(eq(inboxItemTags.itemId, response.item!.id))
       .all()
       .map((tag) => tag.tag)
-      .sort()
+      .toSorted()
 
     expect(tags).toEqual(['idea', 'work'])
 

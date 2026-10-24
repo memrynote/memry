@@ -54,7 +54,7 @@ export function mergeSettingsPayloads(
   }
 
   return {
-    settings: settings as SyncedSettings,
+    settings: settings,
     fieldClocks: mergedFieldClocks,
     requeue: paths.some(
       (path) =>
@@ -92,8 +92,14 @@ export function setSettingsPath(
 ): void {
   let node = settings
   for (const segment of segments.slice(0, -1)) {
-    if (!isRecord(node[segment])) node[segment] = {}
-    node = node[segment] as Record<string, unknown>
+    const child = node[segment]
+    if (isRecord(child)) {
+      node = child
+    } else {
+      const created: Record<string, unknown> = {}
+      node[segment] = created
+      node = created
+    }
   }
   node[segments[segments.length - 1]] = value
 }

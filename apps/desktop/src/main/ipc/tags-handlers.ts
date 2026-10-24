@@ -193,7 +193,7 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.PIN_NOTE_TO_TAG,
     createValidatedHandler(
       PinNoteToTagSchema,
-      withErrorHandler((input) => {
+      withErrorHandler((input): TagOperationResponse => {
         const db = requireIndexDatabase()
         pinNoteToTag(db, input.noteId, input.tag)
 
@@ -203,7 +203,7 @@ export function registerTagsHandlers(): void {
           action: 'pinned'
         })
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.pinNoteFailed')
     )
   )
@@ -213,7 +213,7 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.UNPIN_NOTE_FROM_TAG,
     createValidatedHandler(
       UnpinNoteFromTagSchema,
-      withErrorHandler((input) => {
+      withErrorHandler((input): TagOperationResponse => {
         const db = requireIndexDatabase()
         unpinNoteFromTag(db, input.noteId, input.tag)
 
@@ -223,7 +223,7 @@ export function registerTagsHandlers(): void {
           action: 'unpinned'
         })
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.unpinNoteFailed')
     )
   )
@@ -233,7 +233,7 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.RENAME_TAG,
     createValidatedHandler(
       RenameTagSchema,
-      withErrorHandler(async (input) => {
+      withErrorHandler(async (input): Promise<RenameTagResponse> => {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
@@ -251,7 +251,7 @@ export function registerTagsHandlers(): void {
           return {
             success: false,
             error: getMainI18n().t('errors:tag.renameInProgress', { from, to })
-          } as RenameTagResponse
+          }
         }
         const affectedNotes = result.notesWritten
 
@@ -275,7 +275,7 @@ export function registerTagsHandlers(): void {
           affectedNotes,
           failedNoteIds: result.failedNoteIds,
           bodySkipped: result.bodySkipped
-        } as RenameTagResponse
+        }
       }, 'errors:tag.renameFailed')
     )
   )
@@ -285,7 +285,7 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.UPDATE_TAG_COLOR,
     createValidatedHandler(
       UpdateTagColorSchema,
-      withErrorHandler((input) => {
+      withErrorHandler((input): TagOperationResponse => {
         const dataDb = requireDatabase()
         getOrCreateTag(dataDb, input.tag)
         updateTagColor(dataDb, input.tag, input.color)
@@ -298,7 +298,7 @@ export function registerTagsHandlers(): void {
 
         emitTagEvent('notes:tags-changed', {})
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.updateColorFailed')
     )
   )
@@ -308,7 +308,7 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.UPDATE_TAG_ICON,
     createValidatedHandler(
       UpdateTagIconSchema,
-      withErrorHandler((input) => {
+      withErrorHandler((input): TagOperationResponse => {
         const dataDb = requireDatabase()
         getOrCreateTag(dataDb, input.tag)
         updateTagIcon(dataDb, input.tag, input.icon)
@@ -316,7 +316,7 @@ export function registerTagsHandlers(): void {
 
         emitTagEvent('notes:tags-changed', {})
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.updateIconFailed')
     )
   )
@@ -325,7 +325,7 @@ export function registerTagsHandlers(): void {
   ipcMain.handle(
     TagsChannels.invoke.DELETE_TAG,
     createStringHandler(
-      withErrorHandler(async (tag: string) => {
+      withErrorHandler(async (tag: string): Promise<DeleteTagResponse> => {
         const indexDb = requireIndexDatabase()
         const dataDb = requireDatabase()
 
@@ -359,7 +359,7 @@ export function registerTagsHandlers(): void {
           metrics: { itemCount: affectedNotes }
         })
 
-        return { success: true, affectedNotes } as DeleteTagResponse
+        return { success: true, affectedNotes }
       }, 'errors:tag.deleteFailed')
     )
   )
@@ -369,7 +369,7 @@ export function registerTagsHandlers(): void {
     TagsChannels.invoke.REMOVE_TAG_FROM_NOTE,
     createValidatedHandler(
       RemoveTagFromNoteSchema,
-      withErrorHandler(async (input) => {
+      withErrorHandler(async (input): Promise<TagOperationResponse> => {
         const db = requireIndexDatabase()
         assertNoteWritable(input.noteId)
         removeTagFromNote(db, input.noteId, input.tag)
@@ -388,7 +388,7 @@ export function registerTagsHandlers(): void {
         })
         emitTagEvent('notes:tags-changed', {})
 
-        return { success: true } as TagOperationResponse
+        return { success: true }
       }, 'errors:tag.removeFromNoteFailed')
     )
   )

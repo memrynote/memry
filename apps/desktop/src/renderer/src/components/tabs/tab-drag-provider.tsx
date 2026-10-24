@@ -48,7 +48,9 @@ export const TabDragProvider = ({ children }: TabDragProviderProps): React.JSX.E
       if (over.data.current?.type === 'split-zone') return
 
       // Get source and target group info
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
       const sourceGroupId = active.data.current?.groupId as string | undefined
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
       const targetGroupId = over.data.current?.groupId as string | undefined
 
       if (!sourceGroupId || !targetGroupId) return
@@ -61,6 +63,7 @@ export const TabDragProvider = ({ children }: TabDragProviderProps): React.JSX.E
         dispatch({
           type: 'MOVE_TAB',
           payload: {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tab draggables are registered with the tab id string
             tabId: active.id as string,
             fromGroupId: sourceGroupId,
             toGroupId: targetGroupId,

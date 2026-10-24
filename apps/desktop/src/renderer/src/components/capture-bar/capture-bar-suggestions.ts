@@ -53,7 +53,7 @@ export function useTagSuggestions(enabled: boolean): string[] {
     void (async () => {
       try {
         const result = await tagsService.getAllWithCounts()
-        setTags([...result.tags].sort((a, b) => b.count - a.count).map((tag) => tag.name))
+        setTags([...result.tags].toSorted((a, b) => b.count - a.count).map((tag) => tag.name))
       } catch (error) {
         log.error('Failed to load tag suggestions', error)
       }

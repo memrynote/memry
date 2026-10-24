@@ -21,4 +21,4 @@ const PULL_APPLY_ORDER: Record<string, number> = {
 const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
 
 export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
-  [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
+  [...items].toSorted((a, b) => applyRank(a.type) - applyRank(b.type))

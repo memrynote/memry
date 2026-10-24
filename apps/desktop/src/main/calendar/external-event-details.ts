@@ -1,9 +1,4 @@
-import type {
-  CalendarEventAttendeeRecord,
-  CalendarEventConferenceDataRecord,
-  CalendarEventRemindersRecord,
-  CalendarExternalEventDetails
-} from '@memry/contracts/calendar-api'
+import type { CalendarExternalEventDetails } from '@memry/contracts/calendar-api'
 import type { DataDb } from '../database'
 import { getCalendarExternalEventById } from './repositories/calendar-external-events-repository'
 import { getCalendarSourceById } from './repositories/calendar-sources-repository'
@@ -20,6 +15,7 @@ export function getExternalEventDetails(
   const row = getCalendarExternalEventById(db, externalEventId)
   if (!row) return null
   const source = getCalendarSourceById(db, row.sourceId)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untyped external object narrowed to a loose record; members are checked before use
   const sourceMetadata = (source?.metadata as Record<string, unknown> | null) ?? null
   const accountTitle =
     typeof sourceMetadata?.sourceTitle === 'string' ? sourceMetadata.sourceTitle : null
@@ -35,9 +31,9 @@ export function getExternalEventDetails(
     isAllDay: row.isAllDay,
     status: row.status,
     recurrenceRule: row.recurrenceRule ?? null,
-    attendees: (row.attendees as CalendarEventAttendeeRecord[] | null) ?? null,
-    reminders: (row.reminders as CalendarEventRemindersRecord | null) ?? null,
-    conferenceData: (row.conferenceData as CalendarEventConferenceDataRecord | null) ?? null,
+    attendees: row.attendees ?? null,
+    reminders: row.reminders ?? null,
+    conferenceData: row.conferenceData ?? null,
     source: source
       ? {
           id: source.id,

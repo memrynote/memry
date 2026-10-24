@@ -118,7 +118,7 @@ describe('crdt body debts (#2297)', () => {
     owe(['dropped'], 'pull_failed', { needsWalk: true })
     const store = crdtBodyDebtStore(db())
     expect(
-      [...store.needsWalk(['record', 'compaction', 'failing', 'dropped', 'none'])].sort()
+      [...store.needsWalk(['record', 'compaction', 'failing', 'dropped', 'none'])].toSorted()
     ).toEqual(['compaction', 'dropped', 'failing'])
   })
 
@@ -234,7 +234,7 @@ describe('crdt body debts (#2297)', () => {
       store.owe([id], 'record')
       seen.push(listCrdtBodyDebts(db()).find((d) => d.noteId === id)!.generation)
     }
-    expect(seen).toEqual([...seen].sort((x, y) => x - y))
+    expect(seen).toEqual([...seen].toSorted((x, y) => x - y))
     expect(new Set(seen).size).toBe(seen.length)
   })
 

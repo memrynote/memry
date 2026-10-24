@@ -357,6 +357,7 @@ export function ReadwiseImportPanel({ disabled, onStateChange }: ReadwiseImportP
           >
             <Select
               value={options.cadence}
+              // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
               onValueChange={(value) => void setOptions({ cadence: value as ReadwiseCadence })}
               disabled={disabled}
             >

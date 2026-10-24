@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Complete {title}",
     "task-completed": "Task completed",
-    "could-not-complete": "Could not complete task",
     "could-not-update-status": "Could not change task status",
     "duration-minutes": "{minutes}m",
     "duration-hours": "{hours}h",
@@ -215,12 +213,9 @@
     "next-week": "Next week",
     "open-task": "Open task",
     "source-note": "Source note",
-    "reschedule": "Reschedule",
     "mark-done": "Mark done",
     "mark-not-done": "Mark not done",
-    "later-today": "Later today",
     "tomorrow": "Tomorrow",
-    "next-week-mon": "Next week · Mon",
     "pick-date-time": "Pick date & time…",
     "remove-due-date": "Remove due date",
     "subtasks-prefix": "Subtasks",
@@ -247,7 +242,7 @@
     "createFailed": "Could not create a note for this event.",
     "linkFailed": "Could not link the note to this event.",
     "loadFailed": "Could not load the notes linked to this event.",
-    "propertyTaken": "This note already has an \"{{name}}\" property that is not a link."
+    "propertyTaken": "This note already has an \"{name}\" property that is not a link."
   },
   "notePopover": {
     "kind": "Note",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Subscribed calendars"
     },
     "caldav": {
       "name": "CalDAV"

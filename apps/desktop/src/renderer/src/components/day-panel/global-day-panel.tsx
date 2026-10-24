@@ -254,14 +254,14 @@ function GlobalDayPanelContent({ width }: { width: number }): React.JSX.Element 
   )
 
   const handleTodayClick = useCallback(() => {
-    const today = getTodayString()
-    setDate(today)
+    const todayString = getTodayString()
+    setDate(todayString)
     const target = resolveDayCellClickBehavior(calendarPrefs, isCalendarTabActive)
     if (target === 'calendar') {
-      navigateToCalendar(today)
+      navigateToCalendar(todayString)
       return
     }
-    navigateToJournal(today)
+    navigateToJournal(todayString)
   }, [calendarPrefs, isCalendarTabActive, setDate, navigateToCalendar, navigateToJournal])
 
   const endAccessory = useMemo(

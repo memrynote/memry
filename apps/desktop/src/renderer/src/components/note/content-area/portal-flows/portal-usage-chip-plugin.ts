@@ -95,7 +95,7 @@ export function createPortalUsageChipPlugin(options: PortalUsageChipOptions): Pl
         decorations: DecorationSet.empty
       }),
       apply: (tr, prev, _oldState, newState) => {
-        const incoming = tr.getMeta(COUNTS_META) as ReadonlyMap<string, number> | undefined
+        const incoming: ReadonlyMap<string, number> | undefined = tr.getMeta(COUNTS_META)
         if (!incoming && !tr.docChanged) return prev
         const counts = incoming ?? prev.counts
         const anchors = tr.docChanged

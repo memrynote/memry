@@ -36,7 +36,7 @@ describe('calendarExternalEvents rich fields (M5)', () => {
 
   beforeEach(() => {
     dbResult = createTestDataDb()
-    dataDb = dbResult.db as unknown as DataDb
+    dataDb = dbResult.db
     seedSource(dataDb, 'source-1')
   })
 

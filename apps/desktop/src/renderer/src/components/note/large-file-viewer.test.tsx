@@ -64,10 +64,7 @@ class TestResizeObserver {
   unobserve = (): void => {}
   disconnect = (): void => {}
   emit(width: number): void {
-    this.callback(
-      [{ contentRect: { width } } as ResizeObserverEntry],
-      this as unknown as ResizeObserver
-    )
+    this.callback([{ contentRect: { width } } as ResizeObserverEntry], this)
   }
 }
 
@@ -155,7 +152,7 @@ describe('LargeFileViewer', () => {
     mocks.indexListeners = []
     mocks.searchListeners = []
     mocks.resizeObservers = []
-    globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver
+    globalThis.ResizeObserver = TestResizeObserver
     mocks.scrollToIndex.mockReset()
     mocks.measureElement.mockReset()
     mocks.measure.mockReset()
@@ -174,7 +171,7 @@ describe('LargeFileViewer', () => {
 
     const api = window.api as unknown as Record<string, unknown>
     api.notes = {
-      ...((api.notes as Record<string, unknown>) ?? {}),
+      ...(api.notes as Record<string, unknown> | undefined),
       largeFileOpen: mocks.open,
       largeFileReadLines: mocks.readLines,
       largeFileSearch: mocks.search,

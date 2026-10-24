@@ -7,11 +7,6 @@
     "backToApp": "Bumalik sa app",
     "nav": {
       "groups": {
-        "account": "Account",
-        "application": "App",
-        "editing": "Pag-edit",
-        "modules": "Mga module",
-        "services": "Mga serbisyo",
         "data": "Data",
         "workspace": "Workspace",
         "features": "Mga feature"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "I-configure ang {module}"
-    },
-    "vaultImport": {
-      "label": "Mag-import mula sa ibang app",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist at iba pa",
-      "action": "Mag-import…"
     },
     "search": {
       "placeholder": "Maghanap sa mga setting",
@@ -102,45 +92,31 @@
       "loading": "Nilo-load ang mga setting…"
     },
     "groups": {
-      "startup": "Pagsisimula",
       "updates": "Mga update",
       "languageRegion": "Wika at rehiyon",
-      "tabBehavior": "Gawi ng tab",
-      "window": "Gawi ng window",
-      "fileCreation": "Paggawa ng file",
       "privacy": "Pagkapribado",
       "startupWindows": "Pagsisimula at mga window",
-      "newNotes": "Mga bagong tala"
+      "newNotes": "Mga bagong tala",
+      "sticky": "Sticky"
     },
     "startup": {
       "launchAtLogin": {
         "label": "Buksan pagka-log in",
-        "description": "Simulan ang memrynote kapag nag-log in ka",
         "error": "Hindi ma-update ang pagbukas pagka-log in"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Awtomatikong maghanap ng mga update",
-        "description": "Tingnan kung may mga bagong release kapag binuksan ang app at pana-panahon habang bukas ito.",
         "error": "Hindi ma-update ang setting ng awtomatikong pagsuri"
       },
       "autoDownload": {
         "label": "Awtomatikong i-download ang mga update",
-        "description": "I-download at i-install ang mga bagong release sa background nang hindi nagtatanong.",
         "error": "Hindi ma-update ang setting ng awtomatikong pag-download"
       },
-      "appUpdates": "Mga update sa app",
-      "installedVersion": "Naka-install na bersyon {version}",
-      "availableVersion": "Magagamit na bersyon {version}",
-      "unsupported": "Kayang tingnan, i-download, at i-install ng mga naka-package na build ang mga update mula sa GitHub Releases",
       "available": "Maaari nang i-download ang memrynote {version}",
       "downloadingLatest": "Dina-download ang pinakabagong release",
-      "downloadingLatestPercent": "Dina-download ang pinakabagong release ({percent}%)",
       "downloaded": "Handa nang i-install ang memrynote {version}",
-      "upToDate": "Nasa pinakabagong na-publish na release na ang install na ito",
-      "checking": "Tinitingnan sa GitHub Releases kung may mas bagong bersyon",
-      "idle": "Tingnan kung may mga bagong release at i-install ang mga ito nang hindi umaalis sa app",
       "unsupportedToast": "Available lang ang mga auto-update sa mga naka-package na release",
       "upToDateToast": "Napapanahon ang memrynote {version}",
       "actionFailed": "Nabigo ang pag-update",
@@ -163,23 +139,25 @@
         "downloading": "Dina-download…",
         "downloadingPercent": "Dina-download {percent}%",
         "downloaded": "Handa nang i-install ang bersyon {version}"
-      },
-      "mode": {
-        "label": "Mode ng pag-update",
-        "off": "Huwag suriin",
-        "notify": "Ipaalam lang",
-        "auto": "Awtomatikong i-download"
       }
     },
     "language": {
       "label": "Wika",
-      "helper": "Agad na nagbabago ang karamihan ng app. Magre-refresh pagkatapos ng susunod na pagbukas ng app ang ilang text sa antas ng system — mga naipakita nang notification, label sa dock, title bar ng window.",
       "changed": "Ginawang {nativeName} ang wika",
       "failed": "Hindi mapalitan ang wika. Subukan ulit."
     },
+    "ocrLanguages": {
+      "label": "Pagkilala ng teksto",
+      "helper": "Mga wikang binabasa sa mga na-scan na PDF at larawan, para mahanap ng paghahanap ang mga salita nito. Built-in ang English. Ang iba ay dina-download mula sa server ng Memry.",
+      "more": "{names} +{count}",
+      "downloading": "Dina-download ang {language}: {percent}%",
+      "failed": "Nabigo ang pag-download. Patuloy na gagana ang mga wikang nandito na.",
+      "failedWith": "{language}: {reason}",
+      "retry": "Subukan ulit",
+      "saveFailed": "Hindi mabago ang mga wika ng pagkilala ng teksto."
+    },
     "clockFormat": {
       "label": "Format ng oras",
-      "description": "12-oras o 24-oras na orasan",
       "options": {
         "12h": "12-oras",
         "24h": "24-oras"
@@ -188,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Format ng petsa",
-      "description": "Kung paano ipinapakita ang mga petsa sa kalendaryo",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (US)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -199,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Buksan ang mga pahina sa bagong tab",
-        "description": "Kapag nag-click o gumawa ng pahina — mga tala, folder, proyekto, canvas, tag, bookmark — bubuksan ito sa bagong tab. Kapag naka-off, gagamitin ulit ang kasalukuyang tab, pati kapag sinusundan ang mga link sa loob ng tala; hindi kailanman napapalitan ang mga naka-pin na tab. Laging nagbubukas ng bagong tab ang “Buksan sa bagong tab”, “Buksan sa gilid” at middle-click."
+        "label": "Buksan ang mga pahina sa bagong tab"
       },
       "restoreSession": {
         "label": "Ibalik ang mga tab sa pagbukas",
@@ -208,7 +184,6 @@
       },
       "closeButton": {
         "label": "Button sa pagsara ng tab",
-        "description": "Kailan ipapakita ang button sa pagsara",
         "options": {
           "always": "Laging nakikita",
           "hover": "Ipakita sa hover",
@@ -220,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Patuloy na tumakbo sa menu bar kapag isinara",
-        "description": "Kapag isinara ang window, itatago ang memrynote sa system tray sa halip na isara ito. I-click ang icon sa tray para ibalik ito. Sa macOS, nananatili rin ang app sa Dock; sa mga Linux desktop na walang system tray, magsasara ang window gaya ng dati.",
         "error": "Hindi ma-update ang pag-minimize sa tray"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Gumawa sa loob ng napiling folder",
-        "description": "Ginagawa ang mga bagong tala at folder sa loob ng kasalukuyang napiling folder. Kapag naka-off, laging sa root ginagawa ang mga item."
+        "label": "Gumawa sa loob ng napiling folder"
       },
       "defaultNoteFolder": {
         "label": "Default na lokasyon",
         "description": "Ginagamit kapag walang napiling folder sa sidebar.",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -261,9 +233,24 @@
         "error": "Hindi maipadala ang diagnostic report",
         "sendReport": {
           "label": "Diagnostic report",
-          "description": "Magpadala ng isang beses na ulat ng mga na-redact na teknikal na log para matulungan kaming ayusin ang problemang naranasan mo.",
           "button": "Ipadala ang ulat…"
         }
+      }
+    },
+    "sticky": {
+      "description": "Binubuksan ng shortcut ng Sticky (Mga keyboard shortcut → Sa buong system) ang sticky habang tumatakbo ang Memry. Nananatiling draft sa gilid ng screen ang tekstong hindi pa naipapadala.",
+      "error": "Hindi ma-save ang mga setting ng sticky.",
+      "defaultKind": {
+        "label": "Ipinapadala ang mga bagong sticky bilang",
+        "last": "Huling ginamit",
+        "note": "Tala",
+        "task": "Gawain",
+        "journal": "Talaarawan"
+      },
+      "tuckEdge": {
+        "label": "Itabi sa",
+        "left": "Kaliwang gilid",
+        "right": "Kanang gilid"
       }
     }
   },
@@ -274,20 +261,14 @@
       "loading": "Nilo-load ang mga setting…"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Kulay ng accent",
-      "typography": "Tipograpiya",
-      "zoom": "Zoom"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Mode ng kulay",
-        "description": "Piliin ang iyong gustong tema",
         "aria": "Mode ng kulay"
       },
       "options": {
         "light": "Maliwanag",
-        "white": "Puti",
         "dark": "Madilim",
         "system": "System"
       },
@@ -305,11 +286,8 @@
       "importInvalid": "Walang tema ng memrynote sa clipboard"
     },
     "accent": {
-      "pick": "Pumili ng kulay ng accent",
       "custom": {
-        "label": "Custom na kulay",
-        "description": "Maglagay ng hex value",
-        "placeholder": "#000000"
+        "label": "Custom na kulay"
       },
       "presets": {
         "indigo": "Indigo",
@@ -321,7 +299,6 @@
         "pink": "Rosas",
         "orange": "Kahel"
       },
-      "error": "Hindi ma-update ang kulay ng accent",
       "aria": "Preset ng accent",
       "options": {
         "theme": "Tema",
@@ -360,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Antas ng zoom",
-      "description": "Palakihin o paliitin ang buong interface",
       "decrease": "Bawasan ang zoom",
       "increase": "Dagdagan ang zoom",
       "reset": "I-reset ang zoom sa default",
@@ -369,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Laki ng font",
-        "description": "Batayang laki ng text ng interface, sa pixel",
         "decrease": "Paliitin ang font",
         "increase": "Palakihin ang font",
         "reset": "I-reset ang laki ng font sa default"
       },
       "fontFamily": {
         "label": "Pamilya ng font",
-        "description": "Pangunahing typeface para sa interface",
         "options": {
           "system": "Default ng system",
           "sansSerif": "Sans-serif",
@@ -401,13 +373,9 @@
       "fontFamilyError": "Hindi ma-update ang pamilya ng font"
     },
     "v2": {
-      "groups": {
-        "text": "Text at zoom"
-      },
       "colorMode": "Mode ng kulay",
       "colorTheme": "Tema",
       "accent": "Kulay ng accent",
-      "customColor": "Custom na kulay",
       "fontFamily": "Pamilya ng font",
       "fontSize": "Laki ng font",
       "zoom": "Zoom"
@@ -421,12 +389,30 @@
     },
     "groups": {
       "layout": "Layout",
-      "toolbar": "Toolbar",
       "spelling": "Pagbaybay",
-      "checklists": "Mga checklist"
+      "checklists": "Mga checklist",
+      "attachments": "Mga attachment",
+      "calloutTypes": "Mga uri ng callout"
+    },
+    "calloutTypes": {
+      "description": "Sarili mong mga callout, na isinusulat bilang > [!name] sa tala. Ipinapakita ito ng ibang app bilang simpleng quote.",
+      "empty": "Wala pang custom na uri ng callout",
+      "add": "Magdagdag ng uri",
+      "edit": "I-edit ang {name}",
+      "delete": "Tanggalin ang {name}",
+      "name": "Pangalan sa markdown",
+      "namePlaceholder": "mytype",
+      "label": "Ipapakitang pangalan",
+      "color": "Kulay",
+      "icon": "Icon",
+      "nameInvalid": "Gumamit ng maliliit na letra, digit, - o _, na nagsisimula sa letra",
+      "nameBuiltIn": "Built-in na callout na ang pangalang iyon",
+      "nameTaken": "May uri ka na na may ganoong pangalan",
+      "save": "I-save",
+      "cancel": "Kanselahin",
+      "error": "Hindi na-update ang mga uri ng callout"
     },
     "width": {
-      "label": "Lapad ng editor",
       "description": "Nalalapat sa bawat tala at pahina ng talaarawan",
       "options": {
         "normal": "Karaniwan",
@@ -435,12 +421,10 @@
       "error": "Hindi ma-update ang lapad ng editor"
     },
     "toolbarMode": {
-      "label": "Nakadikit na toolbar sa pag-format",
       "description": "Palaging ipakita ang toolbar sa itaas ng editor",
       "error": "Hindi ma-update ang mode ng toolbar"
     },
     "spellCheck": {
-      "label": "Suriin ang pagbaybay",
       "description": "Salungguhitan ang mga salitang mali ang baybay sa mga tala at talaarawan",
       "error": "Hindi ma-update ang pagsuri ng baybay"
     },
@@ -449,7 +433,16 @@
       "toolbarMode": "Nakadikit na toolbar sa pag-format",
       "spellCheck": "Suriin ang pagbaybay",
       "convertChecklists": "Gawing task ang mga item sa checklist",
-      "convertAgentChecklists": "Gawing task ang mga item sa checklist na isinulat ng agent"
+      "convertAgentChecklists": "Gawing task ang mga item sa checklist na isinulat ng agent",
+      "pdfDisplayMode": "Ipakita ang mga bagong PDF bilang"
+    },
+    "pdfDisplayMode": {
+      "description": "Kung paano lumilitaw ang PDF na idinagdag mo sa tala. Mababago ito para sa bawat PDF mula sa menu nito.",
+      "options": {
+        "embed": "Naka-embed",
+        "link": "Pangalan ng file"
+      },
+      "error": "Hindi na-update ang pagpapakita ng PDF"
     },
     "convertChecklists": {
       "description": "Nagiging task ang bawat bagong item sa checklist. Kapag naka-off, nananatiling karaniwang checkbox ang mga checklist; i-right-click ang isa para gawin itong task.",
@@ -466,14 +459,12 @@
       "subtitle": "Pamahalaan ang mga template ng tala para sa mabilis na paggawa"
     },
     "actions": {
-      "new": "Bagong template",
       "edit": "I-edit",
       "duplicate": "I-duplicate",
       "delete": "Tanggalin"
     },
     "groups": {
-      "builtIn": "Kasama sa app",
-      "myTemplates": "Mga template ko"
+      "builtIn": "Kasama sa app"
     },
     "loading": "Nilo-load ang mga template…",
     "newTemplateTitle": "Bagong template",
@@ -481,9 +472,6 @@
     "empty": {
       "title": "Wala pang custom na template",
       "description": "Gumawa ng template para makapagsimula"
-    },
-    "preview": {
-      "notFound": "Hindi ma-load ang template na ito."
     },
     "toasts": {
       "deleted": "Tinanggal ang template",
@@ -516,11 +504,7 @@
       "loading": "Nilo-load ang mga setting…"
     },
     "groups": {
-      "defaultTemplate": "Default na template",
-      "location": "Lokasyon at format",
-      "sidebarVisibility": "Pagpapakita sa sidebar",
-      "footer": "Footer",
-      "weekdayTemplates": "Mga template bawat araw"
+      "footer": "Footer"
     },
     "template": {
       "label": "Template",
@@ -532,18 +516,6 @@
       "updated": "Na-update ang default na template",
       "cleared": "Na-clear ang default na template",
       "error": "Hindi ma-update ang default na template"
-    },
-    "showSchedule": {
-      "label": "Ipakita ang iskedyul",
-      "description": "Ipakita ang kalendaryo at mga kaganapan ngayong araw"
-    },
-    "showTasks": {
-      "label": "Ipakita ang mga gawain",
-      "description": "Ipakita ang mga gawaing may takda sa napiling araw"
-    },
-    "showAIConnections": {
-      "label": "Ipakita ang mga koneksyon ng AI",
-      "description": "Ipakita ang mga koneksyong gawa ng AI sa mga kaugnay na entry"
     },
     "showStatsFooter": {
       "label": "Ipakita ang footer ng istatistika",
@@ -561,7 +533,8 @@
       "renameNote": "Kapag binago ang format, papalitan ang pangalan ng mga kasalukuyang file ng talaarawan. Hindi gagalawin ang file kung gamit na ang bagong pangalan nito.",
       "tokensHelp": "Tulong sa format ng petsa",
       "tokensNote": "Nananatili ang ibang character. Laging nasa Ingles ang mga pangalan ng araw.",
-      "tokensTitle": "Mga token ng format"
+      "tokensTitle": "Mga token ng format",
+      "foldersNote": "Gamitin ang / para ilagay ang mga entry sa mga subfolder: inilalagay ng YYYY/MMMM/YYYY-MM-DD ang bawat araw sa ilalim ng taon at buwan nito."
     },
     "preview": {
       "label": "Preview",
@@ -575,7 +548,6 @@
       "inheritWith": "Default · {name}",
       "inheritNone": "Default · wala",
       "missing": "Tinanggal na template",
-      "clear": "Alisin",
       "updated": "Na-update ang template para sa {day}",
       "cleared": "Inalis ang template para sa {day}",
       "error": "Hindi ma-update ang template para sa {day}",
@@ -586,6 +558,10 @@
         "defaultTemplate": "Default na template",
         "location": "Lokasyon at format"
       }
+    },
+    "showInSidebar": {
+      "label": "Ipakita sa sidebar",
+      "description": "Ipakita ang folder ng talaarawan at ang mga entry nito sa puno ng mga tala"
     }
   },
   "tasks": {
@@ -596,6 +572,7 @@
     },
     "groups": {
       "defaults": "Mga default",
+      "subtasks": "Mga subtask",
       "inbox": "Inbox"
     },
     "defaultProject": {
@@ -632,6 +609,11 @@
       "description": "Naka-highlight bilang lipas ang mga gawaing mas luma rito",
       "unit": "araw",
       "error": "Hindi ma-update ang threshold ng lipas na inbox"
+    },
+    "nestedSubtasks": {
+      "label": "Mga subtask sa loob ng mga subtask",
+      "description": "Mag-nest ng mga subtask sa anumang lalim. Ang unang antas lang ang makikita ng mga device na may mas lumang bersyon hanggang sa mag-update ang mga ito.",
+      "error": "Hindi na-update ang mga nested na subtask"
     }
   },
   "inbox": {
@@ -684,11 +666,6 @@
       "subtitle": "I-configure ang gawi ng pag-click sa araw sa Panel ng araw",
       "loading": "Nilo-load ang mga setting…"
     },
-    "groups": {
-      "weekStart": "Simula ng linggo",
-      "dayCellClick": "Pag-click sa araw",
-      "notes": "Mga tala"
-    },
     "weekStart": {
       "label": "Unang araw ng linggo",
       "description": "Unang araw ng linggo sa lahat ng kalendaryo",
@@ -728,8 +705,6 @@
       },
       "accountReconnect": "Ikonekta muli ang Google",
       "addAccount": "Magdagdag ng account",
-      "importedCalendars": "Mga na-import na kalendaryo",
-      "selected": "{count} ang napili",
       "syncNow": "I-sync ngayon",
       "disconnect": "Idiskonekta",
       "reconnect": "Ikonekta muli ang Google",
@@ -958,10 +933,8 @@
       "loading": "Naglo-load…"
     },
     "groups": {
-      "identity": "Pagkakakilanlan",
       "sync": "Pag-sync",
       "billing": "Pagsingil",
-      "storage": "Imbakan",
       "devices": "Mga device"
     },
     "identity": {
@@ -981,6 +954,7 @@
         "syncing": "Sini-sync…",
         "paused": "Naka-pause",
         "syncError": "Error sa pag-sync",
+        "deviceKeysMissing": "Naka-pause ang sync: nawawala ang mga device key",
         "offline": "Offline",
         "connecting": "Kumokonekta…",
         "localOnly": "Lokal lang",
@@ -1004,6 +978,19 @@
       "activating": {
         "title": "Tinatapos ang pag-activate mo",
         "description": "Aktibo na ang plano mo. Magsisimula ang pag-sync sa sandaling makumpirma namin ito — kadalasan, sapat na ang pag-refresh."
+      },
+      "unsent": {
+        "title": "Mga talang may hindi pa naipapadalang pagbabago",
+        "count": "{count, plural, one {# tala} other {# tala}}",
+        "description": "May mga pagbabago ang device na ito sa mga talang ito na hindi pa naiimbak ng server.",
+        "waitingSince": "Naghihintay mula {time}",
+        "more": "{count, plural, one {At # pang tala} other {At # pang tala}}",
+        "reasons": {
+          "body": "Teksto",
+          "record": "Mga detalye",
+          "file_not_taken": "Hindi pa naisasama ang file",
+          "rejected": "Tinanggihan ng server"
+        }
       }
     },
     "billing": {
@@ -1056,7 +1043,8 @@
         "refreshFailed": "Hindi ma-refresh ang status ng pagsingil",
         "billingActive": "Aktibo ang pagsingil",
         "activationPending": "Nakabinbin ang pag-activate",
-        "portalFailed": "Hindi mabuksan ang portal ng pagsingil"
+        "portalFailed": "Hindi mabuksan ang portal ng pagsingil",
+        "portalNoCustomer": "Wala pang nahanap na billing account. Kung kababayad mo lang, piliin ang I-refresh ang status at subukan ulit."
       }
     },
     "storage": {
@@ -1070,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Mag-sign out",
         "description": "Idiskonekta ang device na ito sa pag-sync",
         "action": "Mag-sign out"
       }
@@ -1302,21 +1289,28 @@
       "disabled": "Naka-off ang mga feature ng AI",
       "error": "Hindi ma-update ang setting"
     },
-    "unknownError": "Hindi kilalang error",
-    "groups": {
-      "voice": "Transkripsyon ng boses",
-      "embeddingModel": "Lokal na modelo ng embedding",
-      "embeddingIndex": "Index ng mga embedding",
-      "inline": "Inline na pag-edit gamit ang AI"
+    "summarizeLongNotes": {
+      "label": "Ibuod ang mahahabang tala",
+      "description": "Gumagawa ng mas maiikling bersyon ng mahahabang tala gamit ang nakakonekta mong agent, para maitiklop mo ang tala sa mga pangunahing punto nito. Tumatakbo sa device na ito.",
+      "error": "Hindi na-update ang pagbubuod ng mahahabang tala",
+      "failed": "Nabigo ang huling takbo ·",
+      "retry": "Subukan ulit",
+      "retryError": "Hindi masubukang ulitin ang pagbubuod",
+      "agentLabel": "Agent na sumusulat ng mga buod",
+      "agentAuto": "Auto",
+      "agentError": "Hindi nabago ang agent ng buod",
+      "noAgent": "Walang nahanap na agent ·",
+      "openAgents": "Buksan ang Mga Agent"
     },
+    "imageSearch": {
+      "label": "Maghanap ng mga larawan ayon sa nilalaman",
+      "description": "Hanapin ang mga larawan ayon sa ipinapakita ng mga ito. Nagda-download ng 109 MB na image model sa unang beses na mai-index ang isang larawan.",
+      "enabled": "Naka-on ang paghahanap ng larawan",
+      "disabled": "Naka-off ang paghahanap ng larawan"
+    },
+    "unknownError": "Hindi kilalang error",
     "voice": {
-      "provider": "Provider",
       "providerDescription": "Provider ng speech-to-text para sa mga voice memo",
-      "providers": {
-        "local": "Lokal (default)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Mga pangalan ng memo",
       "memoNameModeDescription": "Kung paano pinapangalanan ang mga voice memo pagkatapos ng transkripsyon",
       "naming": {
         "transcript": "Pamagat ng transkripsyon",
@@ -1324,12 +1318,13 @@
         "none": "Huwag palitan ang pangalan"
       },
       "namingError": "Hindi ma-update ang pagpapangalan ng voice memo",
+      "audioSearch": "Maghanap ng mga voice memo ayon sa tunog",
+      "audioSearchDescription": "Hanapin ang mga voice memo na walang transcript, gaya ng musika o mga tunog, ayon sa tunog ng mga ito. Nagda-download ng 189 MB na audio model sa unang beses na kailanganing i-index ang isa.",
+      "audioSearchError": "Hindi na-update ang paghahanap ng voice memo",
       "language": "Wikang sinasalita",
       "languageDescription": "Wikang ginagamit mo sa mga voice memo",
       "languageDefault": "Default",
       "languageError": "Hindi na-update ang wika ng transcription",
-      "localModel": "Lokal na modelo",
-      "localModelDescription": "Dina-download ang Whisper Small kapag kailangan at nananatiling naka-cache sa device",
       "status": {
         "ready": "Handa na",
         "downloading": "Nagda-download",
@@ -1354,17 +1349,12 @@
     "embedding": {
       "loaded": "Na-load",
       "loading": "Naglo-load",
-      "cacheHint": "~210MB · Lokal na naka-cache · Lahat sa device",
-      "dimensions": "Mga dimensyon",
-      "embeddings": "Mga embedding",
       "downloadLoad": "I-download at i-load ang modelo",
       "downloadingModel": "Dina-download ang modelo…",
       "loadingModel": "Nilo-load ang modelo…",
       "loadSuccess": "Matagumpay na na-load ang modelo",
       "loadFailed": "Hindi ma-load ang modelo",
       "rebuildIndex": "Buuin ulit ang index",
-      "rebuildDescription": "Buuin ulit ang mga embedding para sa lahat ng tala",
-      "rebuild": "Buuin ulit",
       "scanning": "Ini-scan ang mga tala…",
       "generating": "Bumubuo ng mga embedding…",
       "complete": "Kumpleto na!",
@@ -1373,13 +1363,10 @@
     },
     "inline": {
       "loading": "Naglo-load…",
-      "title": "Inline na pag-edit gamit ang AI",
-      "enable": "I-on ang inline AI",
       "enableDescription": "Ipakita ang AI menu kapag nag-e-edit ng mga tala",
       "enabled": "Naka-on ang inline na pag-edit gamit ang AI",
       "disabled": "Naka-off ang inline na pag-edit gamit ang AI",
       "provider": "Provider",
-      "providerDescription": "Serbisyo ng AI para sa mga operasyon sa text",
       "providers": {
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
@@ -1398,7 +1385,6 @@
       "activePort": "Aktibo sa port {port}",
       "notConnected": "Hindi nakakonekta",
       "test": "Subukan",
-      "stopFailed": "Hindi maihinto ang kasalukuyang server",
       "connected": "Nakakonekta! Tumatakbo ang server sa port {port}",
       "connectFailed": "Hindi makakonekta",
       "testFailed": "Nabigo ang pagsubok sa koneksyon",
@@ -1459,10 +1445,9 @@
       "csv": "Mag-import ng .csv file — isang tala bawat row, nagiging property ang mga column",
       "raindrop": "Mag-import ng Raindrop.io bookmark export (.csv) — mapupunta ang mga bookmark sa inbox",
       "apple-notes": "Mag-import mula sa database ng Apple Notes (NoteStore.sqlite, macOS)",
-      "onenote": "Mag-import ng mga OneNote notebook (kailangan ng Microsoft account)"
+      "onenote": "Mag-import ng mga OneNote notebook (kailangan ng Microsoft account)",
+      "readwise": "I-import ang iyong mga highlight mula sa Readwise (kailangan ng access token)"
     },
-    "action": "Mag-import",
-    "select": "Pumili kung saang app mag-i-import…",
     "stats": {
       "notes": "{count, plural, one {# tala} other {# tala}}",
       "projects": "{count, plural, one {# proyekto} other {# proyekto}}",
@@ -1477,7 +1462,12 @@
     },
     "preview": {
       "warnings": "Mga babala",
-      "confirm": "Mag-import"
+      "confirm": "Mag-import",
+      "readwise": {
+        "books": "{count, plural, one {# aklat} other {# aklat}}",
+        "highlights": "{count, plural, one {# highlight} other {# highlight}}",
+        "documents": "{count, plural, one {# dokumento} other {# dokumento}}"
+      }
     },
     "dialog": {
       "title": "Mag-import mula sa {name}",
@@ -1505,18 +1495,27 @@
         "deselectAll": "I-clear ang pagpili",
         "foldersSelected": "{count, plural, one {# folder ang napili} other {# folder ang napili}}",
         "noteCount": "{count}",
-        "noteCountWithSubfolders": "{count} ({total})"
+        "noteCountWithSubfolders": "{count} ({total})",
+        "password": {
+          "title": "{count, plural, one {# naka-lock na tala} other {# naka-lock na tala}}",
+          "hint": "Ilagay ang iyong password sa Notes para ma-import ang mga ito. Para lang sa pag-import na ito at hindi kailanman sine-save. Hindi ini-import ang mga attachment sa loob ng mga naka-lock na tala.",
+          "label": "Password ng Notes",
+          "placeholder": "Password ng Notes",
+          "check": "Suriin",
+          "wrong": "Hindi nabubuksan ng password na iyon ang anumang naka-lock na tala.",
+          "unlockedAll": "{count, plural, one {Binubuksan ang naka-lock na tala.} other {Binubuksan ang lahat ng # naka-lock na tala.}}",
+          "unlockedSome": "Binubuksan ang {unlocked} sa {total} naka-lock na tala. Ang iba ay iba ang password at lalaktawan.",
+          "checkError": "Hindi masuri ang password."
+        }
       },
       "chooseFolder": "Pumili ng folder ng Apple Notes…",
       "chooseDirectory": "Pumili ng folder…",
       "folderKeepsAssets": "Piliin ang folder kapag nasa labas ng sariling folder ng mga tala ang mga larawan — madalas na iniipon ng mga export ang media sa iisang folder.",
-      "chooseHint": "Piliin ang iyong {label}",
       "folderHint": "I-click sa ibaba at piliin ang folder na “group.com.apple.notes” kapag bumukas ang picker (doon ito nagsisimula). Nagbibigay-daan ito sa Memry na basahin ang iyong mga tala at attachment — hindi kailangan ng Full Disk Access.",
       "noteplanFolderHint": "Piliin ang folder ng NotePlan mo — ang data folder ng app o isa sa mga kopya nito sa Backups. Binabasa ng Memry ang mga folder na Calendar, Notes at @Archive sa loob nito.",
       "selected": "{count, plural, one {# file ang napili} other {# file ang napili}}",
       "start": "Simulan ang pag-import",
       "cancel": "Kanselahin",
-      "close": "Isara",
       "done": "Tapos na",
       "running": "Ini-import…",
       "progress": "{completed} sa {total}",
@@ -1529,12 +1528,204 @@
         "failed": "{count} nabigo"
       },
       "error": "Nabigo ang pag-import",
-      "previewError": "Nabigo ang preview"
+      "previewError": "Nabigo ang preview",
+      "readwise": {
+        "intro": "I-paste ang iyong Readwise access token. Sinusuri muna ito ng Memry sa Readwise, tapos iniimbak sa keychain ng iyong system sa device na ito. Hindi ito kailanman nagsi-sync.",
+        "tokenLabel": "Access token",
+        "tokenPlaceholder": "I-paste ang iyong token",
+        "getToken": "Kunin ang iyong token",
+        "connect": "Kumonekta",
+        "connecting": "Kumokonekta…",
+        "connectFailed": "Hindi makakonekta sa Readwise",
+        "takeOver": {
+          "explain": "Isang device lang ang kumukuha mula sa Readwise, kaya hindi kailanman nasusulat nang dalawang beses ang isang highlight. Para sa device na ito na lang kumuha, i-paste ulit ang iyong token: hindi ito kailanman bumibiyahe sa pagitan ng mga device. Titigil ang kabilang device sa susunod nitong aklat, at mananatili ang bawat tala.",
+          "button": "Mag-sync na lang dito",
+          "working": "Inililipat ang Readwise dito…",
+          "failed": "Hindi mailipat ang Readwise sa device na ito"
+        },
+        "groups": {
+          "location": "Kung saan pupunta ang mga tala",
+          "categories": "Ano ang dadalhin",
+          "reader": "Readwise Reader",
+          "journal": "Talaarawan",
+          "sync": "Sync"
+        },
+        "journal": {
+          "highlights": {
+            "label": "Ilista ang mga highlight ng bawat araw sa talaarawan",
+            "description": "Nagdaragdag ng seksyong Readwise sa araw na nag-highlight ka, na naka-link sa bawat tala ng aklat. Mga bagong highlight lang, walang backfill.",
+            "firstImport": "Walang isusulat sa talaarawan ang unang pag-import."
+          }
+        },
+        "reader": {
+          "documents": {
+            "label": "I-import din ang mga na-save na dokumento ng Reader",
+            "description": "Naka-off bilang default. Maaaring magdagdag ng libu-libong tala."
+          },
+          "fullText": {
+            "label": "Isama ang buong teksto ng artikulo",
+            "description": "Isinusulat nang isang beses, kapag ginawa ang tala"
+          }
+        },
+        "rootFolder": {
+          "label": "Folder",
+          "description": "Dito mapupunta ang mga bagong aklat. Nananatili ang mga kasalukuyang tala kung nasaan ang mga ito."
+        },
+        "layout": {
+          "label": "Ayos ng folder",
+          "description": "Para lang sa mga bagong aklat.",
+          "options": {
+            "by-category": "Ayon sa kategorya",
+            "flat": "Isang folder"
+          }
+        },
+        "categories": {
+          "books": {
+            "label": "Mga aklat",
+            "description": "Mga highlight mula sa Kindle, Apple Books at iba pa"
+          },
+          "articles": {
+            "label": "Mga artikulo",
+            "description": "Mga artikulo sa web at newsletter"
+          },
+          "tweets": {
+            "label": "Mga tweet",
+            "description": "Mga na-save na tweet at thread"
+          },
+          "podcasts": {
+            "label": "Mga podcast",
+            "description": "Mga episode at snip ng podcast"
+          },
+          "supplementals": {
+            "label": "Mga supplemental",
+            "description": "Mga aklat na kusang idinadagdag ng Readwise, walang highlight mo"
+          },
+          "other": {
+            "label": "Iba pa",
+            "description": "Mga kategoryang idinagdag ng Readwise pagkatapos ng bersyong ito"
+          }
+        },
+        "cadence": {
+          "label": "Dalas",
+          "description": "Gaano kadalas dumarating ang mga bagong highlight.",
+          "options": {
+            "manual": "Mano-mano",
+            "hourly": "Kada oras",
+            "daily": "Araw-araw"
+          }
+        },
+        "syncNow": {
+          "label": "Mag-sync ngayon",
+          "description": "Tingnan sa Readwise kung may mga bagong highlight.",
+          "button": "Mag-sync ngayon"
+        },
+        "disconnect": "Idiskonekta",
+        "disconnectHint": "Inaalis ng pagdidiskonekta ang token sa device na ito. Nananatili ang iyong mga tala.",
+        "deleted": {
+          "heading": "Mga natanggal na aklat",
+          "description": "Mga talang tinanggal mo sa memry. Mananatili itong tanggal hanggang ibalik mo.",
+          "meta": "Natanggal noong {date} · {count, plural, one {# highlight} other {# highlight}}",
+          "metaDocument": "Natanggal noong {date} · na-save na artikulo",
+          "restore": "Ibalik",
+          "footer": "Ginagawang muli ng pagbabalik ang tala kasama ang lahat ng highlight nito.",
+          "empty": "Walang natanggal na aklat",
+          "syncsOn": "Nagsi-sync ang Readwise sa {device}.",
+          "syncsOnAnotherDevice": "Nagsi-sync ang Readwise sa ibang device.",
+          "loadFailed": "Hindi ma-load ang mga natanggal na aklat",
+          "restoreFailed": "Hindi maibalik ang tala"
+        },
+        "importNow": "I-import ngayon",
+        "importBooks": "{count, plural, one {I-import ang # aklat} other {I-import ang # aklat}}",
+        "importNotes": "{count, plural, one {I-import ang # tala} other {I-import ang # tala}}",
+        "importNone": "I-import",
+        "preview": {
+          "intro": "Handa na ang {highlights, plural, one {# highlight} other {# highlight}} sa {books, plural, one {# aklat} other {# aklat}}. Walang isusulat hangga't hindi mo kinukumpirma.",
+          "introOff": "Handa na ang {highlights, plural, one {# highlight} other {# highlight}} sa {books, plural, one {# aklat} other {# aklat}}. Naka-off: {off}. {willImport, plural, one {# aklat} other {# aklat}} ang ii-import. Walang isusulat hangga't hindi mo kinukumpirma.",
+          "introReaderOnly": "Wala pang highlight ang iyong Readwise library. {documents, plural, one {# na-save na dokumento ng Reader} other {# na-save na dokumento ng Reader}} ang ii-import bilang mga tala. Walang isusulat hangga't hindi mo kinukumpirma.",
+          "readerLabel": "Mga na-save na dokumento ng Reader",
+          "empty": "Wala pang highlight ang iyong Readwise library. Walang isusulat. Mag-import para matapos ang pag-set up.",
+          "willImport": "ii-import",
+          "off": "naka-off",
+          "retry": "Subukan ulit"
+        },
+        "status": {
+          "connected": "Nakakonekta",
+          "synced": "Na-sync {time}",
+          "syncing": "Nagsi-sync sa Readwise",
+          "reading": "Binabasa ang iyong library…",
+          "writing": "Isinusulat ang mga aklat, {done} sa {total}",
+          "finishing": "Tinatapos na…",
+          "waitingTitle": "Naghihintay sa sync ng memry",
+          "waitingDetail": "Naghihintay ang Memry hanggang dumating ang mga tala ng iyong iba pang device, para walang aklat na maisulat nang dalawang beses. Magsisimula ang Readwise kasunod nito.",
+          "otherTitle": "Nagsi-sync sa {device}",
+          "otherTitleUnknown": "Nagsi-sync sa ibang device",
+          "otherDetail": "Isang device lang ang kumukuha mula sa Readwise, kaya hindi kailanman nasusulat nang dalawang beses ang isang highlight.",
+          "lastRun": "Huling takbo: {counts}",
+          "lastRunNothing": "Huling takbo: walang bago",
+          "nextRun": "Susunod na sync {time}",
+          "retryAt": "Susubukan ulit ng Memry {time}.",
+          "errors": {
+            "invalid-token": {
+              "title": "Kailangan ng Readwise ng bagong token",
+              "detail": "Hindi tinanggap ng Readwise ang na-save na token. Mag-paste ng bago mula sa readwise.io/access_token."
+            },
+            "subscription-expired": {
+              "title": "Nag-expire ang iyong subscription sa Readwise",
+              "detail": "I-renew ang iyong subscription sa readwise.io, tapos subukan ulit."
+            },
+            "rate-limited": {
+              "title": "Nililimitahan ng Readwise ang mga request",
+              "detail": "Napakaraming request sa maikling panahon."
+            },
+            "network": {
+              "title": "Hindi maabot ang Readwise",
+              "detail": "Tingnan ang iyong koneksyon."
+            },
+            "server": {
+              "title": "Nagkaproblema ang Readwise",
+              "detail": "Sumagot ang Readwise ng error."
+            },
+            "unexpected": {
+              "title": "Huminto ang sync",
+              "detail": "May nagkamali habang tumatakbo."
+            }
+          },
+          "counts": {
+            "added": "{count} ang naidagdag",
+            "updated": "{count} ang na-update",
+            "appended": "{count} ang pinahaba",
+            "deferred": "{count} ang naghihintay ng bukas na tala",
+            "failed": "{count} ang nabigo",
+            "highlights": "{count, plural, one {# highlight} other {# highlight}}"
+          },
+          "actions": {
+            "cancel": "Kanselahin",
+            "retry": "Subukan ulit ngayon",
+            "newToken": "Mag-paste ng bagong token",
+            "reconnect": "Kumonekta ulit",
+            "syncHere": "Mag-sync na lang dito"
+          }
+        },
+        "errorToast": {
+          "invalid-token": {
+            "title": "Kailangan ng Readwise ng bagong token",
+            "description": "Naka-pause ang pag-sync hanggang mag-paste ka ng bago."
+          },
+          "subscription-expired": {
+            "title": "Nag-expire ang iyong subscription sa Readwise",
+            "description": "Naka-pause ang pag-sync hanggang maging aktibo ulit ang subscription."
+          },
+          "open": "Buksan ang Readwise"
+        }
+      }
     },
     "messages": {
       "readFileFailed": "Hindi mabasa ang file",
       "appleNotes": {
-        "lockedNote": "{count, plural, one {# naka-lock na tala ang hindi na-import} other {# naka-lock na tala ang hindi na-import}}; hindi mabasa ng Memry ang mga ito nang wala ang password mo sa Notes."
+        "lockedNote": "{count, plural, one {# naka-lock na tala ang hindi na-import} other {# naka-lock na tala ang hindi na-import}}; hindi mabasa ng Memry ang mga ito nang wala ang password mo sa Notes.",
+        "lockedWrongPassword": "{count, plural, one {# naka-lock na tala ang hindi na-import; iba} other {# naka-lock na tala ang hindi na-import; iba}} ang password {count, plural, one {nito} other {ng mga ito}} kaysa sa inilagay mo.",
+        "lockedUnreadable": "{count, plural, one {# naka-lock na tala ang hindi na-decrypt at hindi na-import.} other {# naka-lock na tala ang hindi na-decrypt at hindi na-import.}}",
+        "lockedAttachment": "{count, plural, one {# attachment sa naka-lock na tala ang hindi na-import; na-import ang teksto ng tala.} other {# attachment sa mga naka-lock na tala ang hindi na-import; na-import ang teksto ng mga tala.}}"
       },
       "csv": {
         "noHeaders": "Walang header ang CSV file",
@@ -1563,6 +1754,16 @@
         "unknownPriority": "Hindi kilalang priyoridad na {priority} → wala",
         "unparsedDate": "Hindi ma-parse ang petsang “{date}”",
         "subtaskNoParent": "Walang pangunahing gawain ang subtask na “{title}” sa indent {indent}; na-import bilang top-level"
+      },
+      "readwise": {
+        "tokenMissing": "Hindi nakakonekta ang Readwise.",
+        "tokenInvalid": "Hindi tinanggap ng Readwise ang nakaimbak na token. Idiskonekta at kumonekta ulit gamit ang bago.",
+        "unreachable": "Hindi maabot ang Readwise. Tingnan ang iyong koneksyon at subukan ulit.",
+        "categoryOff": "{count, plural, one {# aklat ang nasa kategoryang in-off mo at hindi na-import.} other {# aklat ang nasa kategoryang in-off mo at hindi na-import.}}",
+        "unchanged": "{count, plural, one {# aklat ang up to date na.} other {# aklat ang up to date na.}}",
+        "sourceDeleted": "{count, plural, one {# aklat ang natanggal sa Readwise. Nananatili ang mga tala.} other {# aklat ang natanggal sa Readwise. Nananatili ang mga tala.}}",
+        "noteDeleted": "{count, plural, one {# tala ang natanggal sa Memry at mananatiling tanggal.} other {# tala ang natanggal sa Memry at mananatiling tanggal.}}",
+        "busy": "{count, plural, one {# tala ang bukas sa editor at isusulat sa susunod na takbo.} other {# tala ang bukas sa editor at isusulat sa susunod na takbo.}}"
       }
     },
     "status": {
@@ -1603,18 +1804,35 @@
       },
       "todoist": {
         "importing": "Ini-import ang mga gawain mula sa Todoist…"
+      },
+      "readwise": {
+        "fetching": "Binabasa ang iyong Readwise library…"
       }
     },
     "v2": {
       "searchPlaceholder": "Maghanap ng app o uri ng file…",
       "noMatch": "Walang source na tumutugma sa “{query}”",
       "formatAccount": "Account",
-      "showMore": "{count, plural, one {Magpakita ng # pa} other {Magpakita ng # pa}}",
-      "showLess": "Magpakita ng mas kaunti",
       "groups": {
+        "reading": "Pagbabasa",
         "noteApps": "Mga app ng tala",
         "tasks": "Mga gawain, talaarawan at bookmark",
         "files": "Mga file"
+      },
+      "readwise": {
+        "notConnected": "Hindi nakakonekta",
+        "connected": "Nakakonekta",
+        "synced": "Na-sync {time}",
+        "syncing": "Nagsi-sync…",
+        "waiting": "Naghihintay ng sync",
+        "otherDevice": "Nagsi-sync sa {device}",
+        "otherDeviceUnknown": "Nagsi-sync sa iba",
+        "invalidToken": "Kailangan ng bagong token",
+        "subscriptionExpired": "Nag-expire ang subscription",
+        "rateLimited": "Nalimitahan ang rate",
+        "network": "Hindi maabot ang Readwise",
+        "server": "Error ng Readwise",
+        "unexpected": "Nabigo ang sync"
       }
     }
   },
@@ -1624,8 +1842,6 @@
       "subtitle": "Mga setting at imbakan ng vault"
     },
     "groups": {
-      "storageUsage": "Paggamit ng imbakan",
-      "location": "Lokasyon",
       "accountVaults": "Mga vault sa iyong account",
       "largeNotes": "Mga talang malapit na sa limit ng pag-sync",
       "activity": "Aktibidad"
@@ -1783,6 +1999,9 @@
     "toasts": {
       "renamed": "Pinalitan ang pangalan ng “{oldName}” at ginawang “{newName}”",
       "renameFailed": "Hindi mapalitan ang pangalan ng tag",
+      "renaming": "Pinapalitan ang pangalan ng #{oldName}: {done} / {total} tala",
+      "renamedBodySkipped": "Hindi maitatype bilang inline tag ang \"{newName}\", kaya nananatiling nakasulat ang #{oldName} sa teksto ng tala",
+      "renamedSomeFailed": "Hindi ma-update ang {count, plural, one {# tala} other {# tala}}. Buksan {count, plural, one {ito} other {ang mga ito}} at idagdag ulit ang tag",
       "deleteFailed": "Hindi matanggal ang tag",
       "deleted": "Tinanggal ang “{name}” mula sa {count, plural, one {# item} other {# item}}",
       "mergeFailed": "Hindi mapagsama ang mga tag",
@@ -1882,8 +2101,6 @@
       "loading": "Nilo-load ang mga setting…"
     },
     "searchPlaceholder": "Maghanap ng mga shortcut…",
-    "resetAll": "I-reset lahat",
-    "custom": "Custom",
     "pressShortcut": "Pindutin ang shortcut…",
     "cancelTitle": "Kanselahin",
     "rebindTitle": "I-click para i-rebind",
@@ -1894,19 +2111,35 @@
     "noMatch": "Walang shortcut na tumutugma sa iyong paghahanap",
     "conflict": "Sumasalungat sa: {labels}",
     "globalCapture": {
-      "title": "Pagtatala kahit saan",
       "description": "Magtala mula kahit saan",
       "active": "Aktibo",
       "inUse": "Ginagamit ng ibang app ang {shortcut}. Pumili ng ibang kombinasyon.",
       "unsupported": "Hindi magagamit ang {shortcut} bilang shortcut na gumagana kahit saan. Pumili ng ibang kombinasyon.",
       "fallbackInUse": "Ginagamit ng ibang app ang default na shortcut na {shortcut}. Magtakda ng ibang kombinasyon para magamit ang Pagtatala kahit saan."
     },
+    "folderNotes": {
+      "title": "Bagong tala sa folder",
+      "description": "Gumawa ng tala nang direkta sa folder na pipiliin mo",
+      "add": "Magdagdag ng folder",
+      "empty": "Wala pang shortcut ng folder. Magdagdag ng folder para bigyan ito ng isa.",
+      "rowDescription": "Gumagawa ng tala sa folder na ito",
+      "missing": "Wala na ang folder na ito. Pumili ng ibang folder o alisin ang shortcut.",
+      "changeFolder": "Palitan ang folder",
+      "searchFolders": "Maghanap ng mga folder...",
+      "noFolders": "Walang nahanap na folder",
+      "remove": "Alisin ang shortcut",
+      "conflictLabel": "Bagong tala sa {folder}",
+      "missingToast": "Wala na ang folder na \"{folder}\"",
+      "missingToastAction": "I-edit ang shortcut",
+      "foldersLoadFailed": "Hindi masuri ang folder para sa shortcut na ito"
+    },
     "toasts": {
       "saveGlobalFailed": "Hindi ma-save ang shortcut ng pagtatala kahit saan",
       "saveFailed": "Hindi ma-save ang shortcut",
       "resetFailed": "Hindi ma-reset ang shortcut",
       "resetAllSuccess": "Ni-reset ang lahat ng shortcut sa mga default",
-      "resetAllFailed": "Hindi ma-reset ang mga shortcut"
+      "resetAllFailed": "Hindi ma-reset ang mga shortcut",
+      "saveStickyFailed": "Hindi na-save ang shortcut ng sticky"
     },
     "categories": {
       "navigation": "Pag-navigate",
@@ -1939,6 +2172,10 @@
         "search": {
           "label": "Maghanap",
           "description": "Buksan ang paghahanap sa buong app"
+        },
+        "commands": {
+          "label": "Command Palette",
+          "description": "Maghanap at magpatakbo ng anumang command"
         },
         "settings": {
           "label": "Buksan ang Mga setting",
@@ -2042,6 +2279,10 @@
           "label": "I-toggle ang sidebar",
           "description": "Ipakita o itago ang sidebar"
         },
+        "toggleDayPanel": {
+          "label": "I-toggle ang day panel",
+          "description": "Ipakita o itago ang day panel sa kanan"
+        },
         "shortcuts": {
           "label": "Tulong sa mga keyboard shortcut",
           "description": "Ipakita ang sanggunian ng mga keyboard shortcut"
@@ -2057,6 +2298,26 @@
         "actualSize": {
           "label": "Aktwal na laki",
           "description": "Ibalik ang zoom sa 100%"
+        },
+        "foldFull": {
+          "label": "Fold: Buo",
+          "description": "Ipakita ang bawat salita ng tala"
+        },
+        "foldBrief": {
+          "label": "Fold: Maikli",
+          "description": "Ipakita lang ang mga pangunahing pangungusap, ayon sa pagkakasulat"
+        },
+        "foldKey": {
+          "label": "Fold: Susi",
+          "description": "Ipakita ang bawat punto at ang dahilan nito"
+        },
+        "foldTakeaway": {
+          "label": "Fold: Takeaway",
+          "description": "Ipakita ang isang linya bawat talata"
+        },
+        "foldTopic": {
+          "label": "Fold: Paksa",
+          "description": "Ipakita ang tala bilang mapa ng mga seksyon nito"
         }
       }
     },
@@ -2066,8 +2327,11 @@
       "systemWide": "Sa buong system",
       "globalCapture": "Pagtatala kahit saan",
       "recordingHint": "Pindutin ang mga key… esc para kanselahin",
-      "reset": "I-reset",
-      "resetAll": "I-reset lahat sa default"
+      "resetAll": "I-reset lahat sa default",
+      "sticky": "Sticky"
+    },
+    "sticky": {
+      "description": "Buksan ang sticky mula sa anumang app habang tumatakbo ang memrynote"
     }
   },
   "phaseF": {
@@ -2112,7 +2376,17 @@
       "clockSkewDetected": "May nakitang hindi pagtutugma ng orasan",
       "items": "item",
       "willSyncWhenBackOnline": "Magsi-sync kapag online na ulit",
-      "openSyncSettings": "Buksan ang mga setting ng pag-sync"
+      "stalled": "Matagal nang hindi nasi-sync ang mga pagbabago. Subukan ang Mag-sync ngayon.",
+      "openSyncSettings": "Buksan ang mga setting ng pag-sync",
+      "repairDeviceKeys": "Ayusin",
+      "signInToRepair": "Mag-sign in ulit para i-set up ang mga key ng device na ito. Nananatili ang mga tala, gawain at proyektong hindi pa na-sync. Maaaring kailanganin mo ang iyong recovery phrase.",
+      "repairFailed": "Hindi maayos ang mga key ng device na ito. Subukan ulit.",
+      "syncNotStarted": {
+        "vault-binding": "Naibalik na ang mga key ng device na ito, pero hindi pa naka-set ang vault na ito na mag-sync sa iyong account. Piliin sa sync menu kung paano ito isi-sync.",
+        "vault-foreign": "Naibalik na ang mga key ng device na ito, pero sa ibang account ang vault na ito. Mananatili itong lokal sa device na ito.",
+        "entitlement": "Naibalik na ang mga key ng device na ito, pero kailangan ng sync ng aktibong Sync plan.",
+        "unavailable": "Naibalik na ang mga key ng device na ito, pero hindi nagsimula ang sync. Susubukan itong ulitin; i-restart ang Memry kung hindi."
+      }
     },
     "pagesSettingsAiInlineSection": {
       "httpLocalhost11434V1": "http://localhost:11434/v1"
@@ -2128,7 +2402,6 @@
       "failedToResendCode": "Hindi maipadala ulit ang code",
       "failedToSetUpDevice": "Hindi ma-set up ang device",
       "failedToConfirmRecoveryPhrase": "Hindi makumpirma ang recovery phrase",
-      "failedToAnalyzeContent": "Hindi masuri ang nilalaman",
       "failedToLoadUpdaterState": "Hindi ma-load ang status ng updater",
       "failedToCheckForUpdates": "Hindi matingnan kung may update",
       "failedToDownloadUpdate": "Hindi ma-download ang update",
@@ -2143,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Hindi ma-load ang mga setting ng editor ng tala",
       "failedToUpdateSettings": "Hindi ma-update ang mga setting",
       "failedToLoadTabSettings": "Hindi ma-load ang mga setting ng tab",
-      "failedToLoadNotes": "Hindi ma-load ang mga tala",
       "failedToLoadTags": "Hindi ma-load ang mga tag",
-      "failedToLoadTasks": "Hindi ma-load ang mga gawain",
       "failedToLoadVaultStatus": "Hindi ma-load ang status ng vault",
       "failedToSelectVault": "Hindi mapili ang vault",
       "failedToCloseVault": "Hindi maisara ang vault",
@@ -2159,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Lokal na access sa server para sa mga panlabas na MCP client."
     },
-    "groups": {
-      "connection": "Koneksyon",
-      "access": "Pag-access"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Gamitin ang localhost endpoint na ito mula sa Cursor, Claude Desktop, o Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer token",
-        "description": "Kredensyal na nasa memory lang para sa pagbukas na ito ng app."
+        "label": "Bearer token"
       }
     },
     "actions": {
@@ -2195,11 +2460,6 @@
       "title": "Mga pahintulot ng agent",
       "subtitle": "Piliin ang default na access, mga kumpirmasyon, at mga lokal na provider para sa Agent Chat."
     },
-    "groups": {
-      "cliAgents": "Mga CLI agent",
-      "local": "Lokal na provider na tugma sa OpenAI",
-      "actions": "Mga pagsusuri sa koneksyon"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2222,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Mga pahintulot ng agent",
       "access": {
-        "label": "Default na access",
         "description": "Itinatakda ang panimulang access mode para sa mga bagong turn ng Agent.",
         "vaultOnly": "Vault lang",
         "computerAccess": "Access sa computer",
         "builtInNote": "Laging mga tool ng vault lang ang gamit ng built-in na koneksyon ng model."
       },
       "confirm": {
-        "label": "Kumpirmahin ang mga aksyon",
         "description": "Piliin kung awtomatikong tatakbo ang mga tool call o maghihintay ng pag-apruba sa chat. Nananatiling read-only ang mga naka-lock na tala at folder sa parehong mode.",
         "alwaysAllow": "Palaging payagan",
         "askBeforeChanges": "Magtanong bago gumawa ng pagbabago"
@@ -2259,6 +2516,12 @@
         "label": "Modelo",
         "description": "Pumili ng ibinalik na modelo o maglagay nang manu-mano."
       },
+      "thinking": {
+        "label": "Pag-iisip",
+        "description": "Kapag naka-off, hinihiling sa mga model na estilong DeepSeek na laktawan ang pag-iisip para sa mas mabilis at mas murang sagot.",
+        "default": "Default",
+        "off": "Naka-off"
+      },
       "apiKey": {
         "label": "API key",
         "description": "Opsyonal na kredensyal na nakaimbak sa OS keychain.",
@@ -2266,26 +2529,31 @@
       }
     },
     "actions": {
-      "save": "I-save",
-      "models": "Mga modelo",
-      "test": "Subukan ang koneksyon",
-      "probe": "Suriin ang mga tool"
+      "test": "Subukan ang koneksyon"
     },
     "status": {
       "label": "Koneksyon",
       "checking": "Sinusuri…",
       "connected": "Nakakonekta",
-      "disconnected": "Hindi nakakonekta",
-      "toolsDisabled": "Naka-off ang mga tool",
-      "fullTools": "Naka-on ang lahat ng tool"
+      "disconnected": "Hindi nakakonekta"
     },
     "alwaysAllowed": {
-      "group": "Laging pinapayagan",
       "description": "Mga tool na binigyan mo ng permanenteng pag-apruba sa vault na ito. Hindi ito kailanman maibibigay sa mga pagtanggal.",
       "empty": "Walang laging pinapayagan. Nagtatanong pa rin bago ang bawat pagbabago.",
       "revoke": "Bawiin",
       "revokeLabel": "Bawiin ang permanenteng pag-apruba para sa {tool}",
       "ignoredInPageReview": "Hindi pinapansin: laging nagtatanong bago i-edit ang mga tala at talaarawan."
+    },
+    "memory": {
+      "group": "Memorya",
+      "description": "Tumatakbo ang mga agent sa folder na itinatabi para sa vault na ito, sa labas ng vault, kaya dala sa susunod na usapan ang mga sine-save nila roon.",
+      "clear": "I-clear ang memorya ng agent",
+      "clearDescription": "Tinatanggal ang mga na-save ng mga agent tungkol sa vault na ito. Nananatili ang mga tala at kasaysayan ng chat.",
+      "clearAction": "I-clear",
+      "cleared": "Na-clear ang memorya ng agent.",
+      "failed": "Hindi ma-clear ang memorya ng agent.",
+      "confirmTitle": "I-clear ang memorya ng agent?",
+      "confirmDescription": "Mawawala sa mga agent ang na-save nila tungkol sa vault na ito, kasama ang project memory ng Claude Code para rito. Hindi ito mababawi. Nananatili ang mga tala at kasaysayan ng chat."
     },
     "v2": {
       "permissions": {

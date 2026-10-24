@@ -107,7 +107,7 @@ function useCaretInBlock(editor: PortalBlockEditor, blockId: string): boolean {
 function useClaimPresses(frameRef: React.RefObject<HTMLDivElement | null>): void {
   useEffect(() => {
     const frame = frameRef.current
-    if (!frame) return
+    if (!frame) return undefined
     const claim = (event: MouseEvent): void => {
       if (event.target instanceof Element && event.target.closest('[data-portal-window]')) return
       event.preventDefault()
@@ -219,7 +219,9 @@ export const createPortalBlockSpec = createReactBlockSpec(
   {
     render: (props) => (
       <PortalBlockRenderer
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote's block/editor generics are far wider than the structural view the portal reads
         block={props.block as unknown as PortalBlockNode}
+        // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- BlockNote's block/editor generics are far wider than the structural view the portal reads
         editor={props.editor as unknown as PortalBlockEditor}
         contentRef={props.contentRef}
       />

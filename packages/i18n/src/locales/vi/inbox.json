@@ -15,19 +15,13 @@
       "showWithCount": "Hiển thị mục đã tạm ẩn ({count})",
       "hide": "Ẩn mục đã tạm ẩn"
     },
-    "density": {
-      "toComfortable": "Chế độ xem thoáng",
-      "toCompact": "Chế độ xem gọn"
-    },
     "filter": {
-      "button": "Bộ lọc",
       "byType": "Lọc theo loại",
       "active": "{count, plural, other {Đang lọc theo # loại}}",
       "clearAll": "Xóa tất cả"
     },
     "jobs": {
-      "running": "{count, plural, other {# tiến trình nền đang chạy}}",
-      "failed": "{count} không thành công"
+      "running": "{count, plural, other {# tiến trình nền đang chạy}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Tạo “{name}”",
     "addTags": "Thêm thẻ…",
     "linkToNote": "Liên kết đến ghi chú",
-    "linkANote": "Liên kết một ghi chú",
-    "suggestedCount": "{count} gợi ý",
-    "linkNotesPlaceholder": "Liên kết ghi chú…",
     "linkOrCreateNotePlaceholder": "Tìm hoặc tạo ghi chú…",
     "createNote": "Tạo “{title}”",
     "pendingNote": "Ghi chú mới",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Không có dữ liệu lời nhắc.",
     "triggered": "Đã đến giờ nhắc",
-    "noteLabel": "Ghi chú lời nhắc",
     "source": "Nguồn",
     "journalTitle": "Nhật ký — {date}",
     "noteFallback": "Ghi chú",
@@ -514,9 +504,7 @@
       "settings": "Cài đặt",
       "processing": "Đang xử lý…",
       "cancelRecording": "Hủy ghi âm",
-      "cancel": "Hủy",
       "stopRecording": "Dừng ghi âm",
-      "stop": "Dừng",
       "recordingError": "Đã xảy ra lỗi khi ghi âm",
       "microphoneAccessDenied": "Đã từ chối quyền truy cập micro",
       "noMicrophoneFound": "Không tìm thấy micro",
@@ -551,5 +539,48 @@
     "notificationTitle": "{count, plural, other {# mục đã tạm ẩn}}",
     "notificationBody": "{count, plural, other {Mục đã tạm ẩn giờ đã sẵn sàng để xem lại}}",
     "toast": "{count, plural, =1 {“{itemTitle}” đã hiện lại} other {# mục tạm ẩn đã hiện lại}}"
+  },
+  "sticky": {
+    "kindLabel": "Gửi dưới dạng",
+    "kinds": {
+      "note": "Ghi chú",
+      "task": "Công việc",
+      "journal": "Nhật ký"
+    },
+    "placeholders": {
+      "note": "Ghi nhanh lại…",
+      "task": "Gọi cho Ana @tomorrow #home !high",
+      "journal": "Thêm vào nhật ký hôm nay…"
+    },
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu",
+    "saveFailed": "Chưa lưu",
+    "tuck": "Cất đi",
+    "send": "Gửi",
+    "hints": "Esc cất đi · {mod}⌫ xóa",
+    "sendAndCloseHint": "⌥{mod}↵ gửi và đóng",
+    "deleted": "Đã xóa bản nháp",
+    "open": "Mở",
+    "undo": "Hoàn tác",
+    "sent": {
+      "note": "Đã lưu vào thư mục Sticky",
+      "task": "Đã thêm công việc",
+      "journal": "Đã thêm vào nhật ký hôm nay"
+    },
+    "tab": {
+      "label": "{count, plural, other {# bản nháp sticky}}",
+      "newSticky": "Sticky mới"
+    },
+    "errors": {
+      "empty": "Hãy viết gì đó trước.",
+      "taskFailed": "Không thể tạo công việc.",
+      "tasksOff": "Công việc đã bị tắt trong Cài đặt.",
+      "journalOff": "Nhật ký đã bị tắt trong Cài đặt.",
+      "sendFailed": "Không thể gửi sticky.",
+      "undoExpired": "Đã quá muộn để hoàn tác.",
+      "undoFailed": "Không thể hoàn tác việc gửi."
+    },
+    "inputLabel": "Nội dung sticky",
+    "dismissError": "Bỏ qua"
   }
 }

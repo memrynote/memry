@@ -68,6 +68,7 @@ export async function liftNestedProperties({ ctx }: PostContext): Promise<number
     const parsed = parseMarkdownNote(await fs.readFile(file, 'utf8'))
     const { properties, ...root } = parsed.frontmatter
     if (!properties || typeof properties !== 'object' || Array.isArray(properties)) continue
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
     const frontmatter = { ...(properties as Record<string, unknown>), ...root }
     const next = parsed.rawFrontmatterBlock
       ? serializeParsedMarkdownNote({ ...parsed, frontmatter }, parsed.content, {
@@ -149,6 +150,7 @@ export function recentlyOpened({ ctx, data }: PostContext): void {
 /** Version-history snapshots (index.db) spread over the days the essay was drafted. */
 export function backdateSnapshots({ ctx, index }: PostContext): void {
   const id = ctx.notes.get('x-draft')!.id
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- boundary value (JSON, SQL row or test double) whose shape the producer fixes
   const rows = index
     .prepare('SELECT id FROM note_snapshots WHERE note_id = ? ORDER BY rowid')
     .all(id) as Array<{ id: string }>

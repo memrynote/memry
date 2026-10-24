@@ -45,10 +45,10 @@ const b64 = (length: number, fill: number) => Buffer.alloc(length, fill).toStrin
 
 const exportRawPublicKey = async (publicKey: CryptoKey): Promise<string> =>
   Buffer.from(
-    (await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
+    await (crypto.subtle.exportKey as (format: string, key: CryptoKey) => Promise<ArrayBuffer>)(
       'raw',
       publicKey
-    )) as ArrayBuffer
+    )
   ).toString('base64')
 
 const seedDevice = async (deviceId: string, revoked = false): Promise<void> => {
@@ -143,7 +143,7 @@ const buildItem = async (options: {
         )
       ).toString('base64')
 
-  return { ...item, signature, signerDeviceId } as PushItemInput
+  return { ...item, signature, signerDeviceId }
 }
 
 const push = (items: PushItemInput[], deviceId = DEVICE_A) =>
@@ -251,7 +251,7 @@ describe('cursor allocation', () => {
 
     for (const result of [fromA, fromB]) {
       const cursors = result.outcomes.map((outcome) => outcome.serverCursor as number)
-      expect(cursors).toEqual([...cursors].sort((x, y) => x - y))
+      expect(cursors).toEqual([...cursors].toSorted((x, y) => x - y))
       expect(result.maxCursor).toBe(Math.max(...cursors))
     }
 
@@ -277,6 +277,7 @@ describe('cursor order equals commit order (#2282)', () => {
       reachedHold = resolve
     })
     const gated = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...db,
       prepare: (sql: string) => {
         const statement = db.prepare(sql)
@@ -353,12 +354,13 @@ describe('one cursor sequence across records and note bodies (#2295)', () => {
     const commits: number[][] = []
     const observed = new Set<number>()
     const recording = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...harness.db,
       batch: async (statements: D1PreparedStatement[]) => {
         const results = await harness.db.batch(statements)
         const fresh = allCursors().filter((cursor) => cursor !== null && !observed.has(cursor))
         fresh.forEach((cursor) => observed.add(cursor))
-        if (fresh.length > 0) commits.push(fresh.sort((a, b) => a - b))
+        if (fresh.length > 0) commits.push(fresh.toSorted((a, b) => a - b))
         return results
       }
     } as D1Database
@@ -384,7 +386,7 @@ describe('one cursor sequence across records and note bodies (#2295)', () => {
     expect(new Set(union).size).toBe(7)
     expect(commits).toHaveLength(3)
     const inCommitOrder = commits.flat()
-    expect(inCommitOrder).toEqual([...inCommitOrder].sort((a, b) => a - b))
+    expect(inCommitOrder).toEqual([...inCommitOrder].toSorted((a, b) => a - b))
     expect(inCommitOrder).toEqual([1, 2, 3, 4, 5, 6, 7])
 
     const sequence = harness.raw
@@ -399,6 +401,7 @@ describe('R2 put concurrency bound', () => {
     let inFlight = 0
     let maxInFlight = 0
     const instrumented = {
+      // oxlint-disable-next-line typescript/no-misused-spread -- test wrapper copies the db object and overrides only the methods under test
       ...storage,
       put: async (key: string, value: ArrayBuffer) => {
         inFlight++
@@ -435,7 +438,7 @@ describe('old-client compat matrix', () => {
 
     // `outcomes`, `committedItems` and `committedAtMs` are internal: the route
     // builds the push response from the other four, field by field.
-    expect(Object.keys(first).sort()).toEqual([
+    expect(Object.keys(first).toSorted()).toEqual([
       'accepted',
       'committedAtMs',
       'committedItems',

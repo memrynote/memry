@@ -46,6 +46,17 @@ const STATUS: Record<ConnectionState, { tone: string; label: string }> = {
   'app-closed': { tone: 'bg-text-tertiary', label: 'Memry is closed — saving opens it' }
 }
 
+// Probe the desktop app again. The mount probe may have run while the Firefox
+// host permission was still blocked and cached a stale 'app-closed'.
+async function fetchStatus(): Promise<StatusResponse> {
+  try {
+    const status: StatusResponse = await browser.runtime.sendMessage({ type: 'GET_STATUS' })
+    return status
+  } catch {
+    return { connection: 'app-closed', port: null }
+  }
+}
+
 export default function App() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const phase = selectPhase(state)
@@ -87,7 +98,7 @@ export default function App() {
       })
       .catch(() => dispatch({ type: 'STATUS', connection: 'app-closed', port: null }))
 
-    browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+    void browser.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
       if (!tab?.id) {
         dispatch({ type: 'DRAFT_READY', draft: null })
         return
@@ -110,22 +121,12 @@ export default function App() {
 
   const setDraft = (draft: ArticleCapture) => dispatch({ type: 'EDIT', draft })
 
-  // Probe the desktop app again. The mount probe may have run while the Firefox
-  // host permission was still blocked and cached a stale 'app-closed'.
-  const fetchStatus = async (): Promise<StatusResponse> => {
-    try {
-      return (await browser.runtime.sendMessage({ type: 'GET_STATUS' })) as StatusResponse
-    } catch {
-      return { connection: 'app-closed', port: null }
-    }
-  }
-
   const onAdd = async (
     connectionOverride?: ConnectionState,
     draftOverride?: ArticleCapture
   ): Promise<CaptureResponse | undefined> => {
     const draft = draftOverride ?? state.draft
-    if (!draft) return
+    if (!draft) return undefined
     const connection = connectionOverride ?? state.connection
     // Pair inline if this connection isn't ready yet.
     if (connection === 'needs-pairing') {
@@ -134,7 +135,7 @@ export default function App() {
         .sendMessage({ type: 'PAIR' })
         .catch(() => ({ ok: false, error: 'network' }))
       dispatch({ type: 'APPROVE_DONE', result: pair })
-      if (!pair.ok) return
+      if (!pair.ok) return undefined
     }
     dispatch({ type: 'SAVE_START' })
     const result: CaptureResponse = await browser.runtime
@@ -178,7 +179,7 @@ export default function App() {
       dispatch({ type: 'SAVE_START' })
       const pdf: FetchPdfResponse = await browser.runtime
         .sendMessage({ type: 'FETCH_PDF', url: draft.url })
-        .catch(() => ({ ok: false, error: 'pdf-fetch-failed' }) as FetchPdfResponse)
+        .catch(() => ({ ok: false, error: 'pdf-fetch-failed' }))
       if (!pdf.ok) {
         dispatch({ type: 'SAVE_DONE', result: { ok: false, error: pdf.error } })
         return
@@ -208,7 +209,7 @@ export default function App() {
         (phase === 'ready' || phase === 'app-closed')
       ) {
         e.preventDefault()
-        sendRef.current()
+        void sendRef.current()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -218,8 +219,7 @@ export default function App() {
   const draft = state.draft
   const editable = phase === 'ready' || phase === 'error' || phase === 'app-closed'
   const isCard = phase !== 'extracting' && phase !== 'queued'
-  const status =
-    state.connection === 'unknown' ? STATUS.ready : STATUS[state.connection as ConnectionState]
+  const status = state.connection === 'unknown' ? STATUS.ready : STATUS[state.connection]
 
   return (
     <div className="flex max-h-[600px] flex-col bg-background font-sans text-foreground">
@@ -414,7 +414,7 @@ export default function App() {
             <PrimaryButton
               label="Send to memrynote"
               hint={draft ? SUBMIT_HINT : undefined}
-              onClick={onSend}
+              onClick={() => void onSend()}
               disabled={!draft}
             />
           )}

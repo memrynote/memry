@@ -38,8 +38,8 @@ export const CreateCalendarEventSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(5000).optional().nullable(),
   location: z.string().max(500).optional().nullable(),
-  startAt: z.string().datetime(),
-  endAt: z.string().datetime().optional().nullable(),
+  startAt: z.iso.datetime(),
+  endAt: z.iso.datetime().optional().nullable(),
   timezone: z.string().min(1).default('UTC'),
   isAllDay: z.boolean().default(false),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
@@ -53,8 +53,8 @@ export const UpdateCalendarEventSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   description: z.string().max(5000).optional().nullable(),
   location: z.string().max(500).optional().nullable(),
-  startAt: z.string().datetime().optional(),
-  endAt: z.string().datetime().optional().nullable(),
+  startAt: z.iso.datetime().optional(),
+  endAt: z.iso.datetime().optional().nullable(),
   timezone: z.string().min(1).optional(),
   isAllDay: z.boolean().optional(),
   recurrenceRule: JsonRecordSchema.optional().nullable(),
@@ -98,8 +98,8 @@ export const ListLinkedNotesSchema = z.object({
 })
 
 export const GetCalendarRangeSchema = z.object({
-  startAt: z.string().datetime(),
-  endAt: z.string().datetime(),
+  startAt: z.iso.datetime(),
+  endAt: z.iso.datetime(),
   includeUnselectedSources: z.boolean().default(false),
   // true = completed tasks stay in the range, flagged `task.isCompleted`, for
   // the calendar page to draw faded. Omitted = open tasks only, as every other

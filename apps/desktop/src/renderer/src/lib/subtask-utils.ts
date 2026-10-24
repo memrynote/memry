@@ -201,7 +201,7 @@ export const sortTasksWithSubtasks = (
 ): Task[] => {
   // First, sort top-level tasks
   const topLevel = tasks.filter((t) => t.parentId === null)
-  const sortedTopLevel = [...topLevel].sort(sortFn)
+  const sortedTopLevel = [...topLevel].toSorted(sortFn)
 
   // Build result with subtasks inserted after parents
   const result: Task[] = []

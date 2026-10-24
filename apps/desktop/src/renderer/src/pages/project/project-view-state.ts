@@ -56,18 +56,18 @@ export const PROJECT_SCROLL_KEYS = {
  * unrecognised value returns `undefined` and the caller falls back.
  */
 export const parseProjectTab = (raw: unknown): ProjectTabKey | undefined =>
-  typeof raw === 'string' && (PROJECT_TAB_KEYS as string[]).includes(raw)
-    ? (raw as ProjectTabKey)
-    : undefined
+  typeof raw === 'string' ? PROJECT_TAB_KEYS.find((tab) => tab === raw) : undefined
 
 const ALL_SORT_KEYS: AllSort['key'][] = ['title', 'due']
 
 export const parseAllSort = (raw: unknown): AllSort | null | undefined => {
   if (raw === null) return null
   if (typeof raw !== 'object' || raw === undefined) return undefined
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- raw is a non-null object here; key and dir are validated individually below
   const { key, dir } = raw as Record<string, unknown>
-  return (ALL_SORT_KEYS as unknown[]).includes(key) && (dir === 'asc' || dir === 'desc')
-    ? { key: key as AllSort['key'], dir }
+  const sortKey = ALL_SORT_KEYS.find((candidate) => candidate === key)
+  return sortKey !== undefined && (dir === 'asc' || dir === 'desc')
+    ? { key: sortKey, dir }
     : undefined
 }
 

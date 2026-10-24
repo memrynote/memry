@@ -105,7 +105,7 @@ export async function seamJsonRequest<T>(ctx: SeamHttpContext, req: JsonRequest)
     let code: string | undefined
     let message = `HTTP ${response.status}`
     try {
-      const parsed = JSON.parse(text) as { error?: string | { code?: string; message?: string } }
+      const parsed: { error?: string | { code?: string; message?: string } } = JSON.parse(text)
       if (typeof parsed.error === 'string') {
         message = parsed.error
       } else if (parsed.error) {
@@ -118,5 +118,6 @@ export async function seamJsonRequest<T>(ctx: SeamHttpContext, req: JsonRequest)
     throw new SyncServerError(message, response.status, code)
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- callers declare the response shape they expect; there is no schema at this transport layer
   return (text ? JSON.parse(text) : {}) as T
 }

@@ -111,6 +111,7 @@ function sameJson(a: unknown, b: unknown): boolean {
 }
 
 function getLiveView(editor: unknown): EditorView | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote exposes its tiptap editor only as an underscore field
   const tiptap = (editor as { _tiptapEditor?: { editorView?: EditorView; view?: EditorView } })
     ?._tiptapEditor
   // `view` on tiptap is a Proxy that is always truthy; `editorView` is the
@@ -244,7 +245,7 @@ export class WritingToolsSession {
     this.ghostRecords = readWritingGhostsFromYDoc(doc)
     this.overflowRecords = readWritingOverflowFromYDoc(doc)
     this.patch({
-      overflow: [...this.overflowRecords].sort((a, b) => b.createdAt - a.createdAt)
+      overflow: this.overflowRecords.toSorted((a, b) => b.createdAt - a.createdAt)
     })
   }
 
@@ -688,15 +689,18 @@ export class WritingToolsSession {
   // -------------------------------------------------------------------------
 
   private handlePointerOver = (event: PointerEvent): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
     const target = event.target as HTMLElement | null
     const element = target?.closest<HTMLElement>('[data-writing-alt-id]')
     if (element?.dataset.writingAltId) this.hoverAlternative(element.dataset.writingAltId)
   }
 
   private handlePointerOut = (event: PointerEvent): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
     const target = event.target as HTMLElement | null
     const element = target?.closest<HTMLElement>('[data-writing-alt-id]')
     if (!element) return
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
     const related = (event.relatedTarget as HTMLElement | null)?.closest<HTMLElement>(
       '[data-writing-alt-id]'
     )
@@ -709,6 +713,7 @@ export class WritingToolsSession {
     const mod = this.platformIsMac ? event.metaKey : event.ctrlKey
     if (!mod || !event.altKey || event.shiftKey || event.code !== 'KeyA') return
     const view = this.view
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
     if (!view || !view.dom.contains(event.target as Node)) return
     const { from, to, empty } = view.state.selection
     if (empty && !this.alternativeAt(from)) return

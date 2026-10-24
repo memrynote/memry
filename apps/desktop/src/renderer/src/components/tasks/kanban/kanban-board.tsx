@@ -75,13 +75,14 @@ export const KanbanBoard = ({
     const result: { taskId: string; columnIndex: number }[] = []
     columns.forEach((col, colIdx) => {
       const colTasks = tasksByColumn.get(col.id) || []
-      colTasks.forEach((t) => result.push({ taskId: t.id, columnIndex: colIdx }))
+      colTasks.forEach((colTask) => result.push({ taskId: colTask.id, columnIndex: colIdx }))
     })
     return result
   }, [columns, tasksByColumn])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mouse/keyboard event target is a DOM element in this handler; only closest()/tagName are read
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
 

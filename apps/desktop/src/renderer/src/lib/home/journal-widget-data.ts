@@ -89,7 +89,7 @@ export function recentEntryDates(
   return entries
     .filter((e) => e.level > 0 && e.date !== excludeIso)
     .map((e) => e.date)
-    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
+    .toSorted((a, b) => (a < b ? 1 : a > b ? -1 : 0))
     .slice(0, limit)
 }
 

@@ -110,8 +110,9 @@ function parseArgs(argv: string[]): CliArgs {
     else if (flag === 'out') args.out = path.resolve(value)
     else if (flag === 'scenarios') {
       args.scenarios = value.split(',').map((name) => {
-        if (!SCENARIOS.includes(name as ScenarioName)) throw new Error(`unknown scenario: ${name}`)
-        return name as ScenarioName
+        const scenario = SCENARIOS.find((candidate) => candidate === name)
+        if (!scenario) throw new Error(`unknown scenario: ${name}`)
+        return scenario
       })
     }
   }
@@ -126,7 +127,7 @@ function parseArgs(argv: string[]): CliArgs {
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
 function median(values: number[]): number {
-  const sorted = [...values].sort((a, b) => a - b)
+  const sorted = [...values].toSorted((a, b) => a - b)
   const mid = Math.floor(sorted.length / 2)
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
@@ -242,7 +243,7 @@ async function sampleProcesses(app: ElectronApplication): Promise<{
         rssKB: rss.get(metric.pid) ?? null
       }
     })
-    .sort((a, b) => b.workingSetKB - a.workingSetKB)
+    .toSorted((a, b) => b.workingSetKB - a.workingSetKB)
   return {
     processes,
     main: { memoryUsage: raw.memoryUsage, processMemoryInfo: raw.processMemoryInfo }
@@ -305,7 +306,7 @@ async function runOnce(scenario: ScenarioName, run: number, args: CliArgs): Prom
       .innerText({ timeout: 2000 })
       .then((text) => text.trim() || null)
       .catch(() => null)
-    const { processes, main } = await sampleProcesses(app)
+    const { processes, main: mainSample } = await sampleProcesses(app)
     const renderer = await sampleRenderer(page)
     const rssValues = processes.map((p) => p.rssKB)
     return {
@@ -320,7 +321,7 @@ async function runOnce(scenario: ScenarioName, run: number, args: CliArgs): Prom
           ? rssValues.reduce<number>((sum, v) => sum + (v ?? 0), 0)
           : null
       },
-      main,
+      main: mainSample,
       renderer
     }
   } finally {
@@ -345,7 +346,7 @@ function summarize(samples: RunSample[]) {
   const mainUsage = (key: keyof NodeJS.MemoryUsage): number =>
     median(samples.map((s) => s.main.memoryUsage[key]))
   return {
-    processes: processes.sort((a, b) => b.workingSetKB - a.workingSetKB),
+    processes: processes.toSorted((a, b) => b.workingSetKB - a.workingSetKB),
     totals: {
       workingSetKB: median(samples.map((s) => s.totals.workingSetKB)),
       rssKB: medianOrNull(samples.map((s) => s.totals.rssKB))

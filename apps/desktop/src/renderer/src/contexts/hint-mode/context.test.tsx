@@ -19,7 +19,7 @@ const mockRect: DOMRect = {
   bottom: 40,
   right: 110,
   toJSON: () => ({})
-} as DOMRect
+}
 
 const addButton = (text: string): HTMLButtonElement => {
   const btn = document.createElement('button')

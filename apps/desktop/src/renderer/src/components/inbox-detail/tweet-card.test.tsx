@@ -39,7 +39,7 @@ describe('TweetCard', () => {
       data: undefined,
       error: undefined,
       isLoading: true
-    } as ReturnType<typeof useTweet>)
+    })
 
     render(<TweetCard item={baseItem} />)
 
@@ -51,7 +51,7 @@ describe('TweetCard', () => {
       data: undefined,
       error: new Error('Not found'),
       isLoading: false
-    } as ReturnType<typeof useTweet>)
+    })
 
     render(<TweetCard item={baseItem} />)
 
@@ -143,7 +143,7 @@ describe('TweetCard', () => {
       data: undefined,
       error: undefined,
       isLoading: true
-    } as ReturnType<typeof useTweet>)
+    })
 
     render(<TweetCard item={baseItem} />)
 
@@ -155,7 +155,7 @@ describe('TweetCard', () => {
       data: undefined,
       error: undefined,
       isLoading: true
-    } as ReturnType<typeof useTweet>)
+    })
 
     const itemWithoutTweetId = {
       ...baseItem,
@@ -172,7 +172,7 @@ describe('TweetCard', () => {
       data: undefined,
       error: undefined,
       isLoading: false
-    } as ReturnType<typeof useTweet>)
+    })
 
     const itemNoId = {
       ...baseItem,

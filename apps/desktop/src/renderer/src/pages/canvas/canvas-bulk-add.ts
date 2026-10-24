@@ -108,6 +108,7 @@ interface RowDragEventLike {
  * 'copy' — Chromium refuses a drop that `effectAllowed` does not permit.
  */
 export function startCanvasRowsDrag(event: RowDragEventLike, refs: CanvasEntityRef[]): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event target narrowed to Element for closest(); listeners are only attached to DOM nodes
   const target = event.target as { closest?: (selector: string) => unknown } | null
   if (target?.closest?.('input, textarea, [contenteditable="true"]')) {
     return

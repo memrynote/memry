@@ -17,17 +17,22 @@
       "filterAll": "すべてのファイル"
     },
     "exportCancelled": "エクスポートをキャンセルしました",
-    "update": {
-      "availableTitle": "アップデートがあります",
-      "availableMessage": "memrynote {version} を利用できます。",
-      "availableDetailFallback": "今すぐアップデートをダウンロードしますか？",
-      "buttonDownload": "ダウンロード",
-      "buttonLater": "後で",
-      "readyTitle": "アップデートの準備ができました",
-      "readyMessage": "memrynote {version} をダウンロードしました。",
-      "readyDetailFallback": "アップデートのインストールを完了するには、memrynote を再起動してください。",
-      "buttonRestartNow": "今すぐ再起動",
-      "releaseNotesLabel": "リリースノート："
+    "dataDbRecovery": {
+      "title": "Vault データベースを修復",
+      "message": "この Vault の Memry データベースが破損しています。",
+      "detail": "ノートとジャーナルのファイルには影響ありません。修復すると、破損したデータベースを {path} にバックアップとして残し、新しいデータベースを作成して、Vault ファイルから復元できるものを再構築し、同期済みの項目は次回の同期で復元します。まだ同期されていなかった変更も、可能な範囲で復旧されます。",
+      "buttonRecover": "修復",
+      "buttonLater": "今はしない"
+    },
+    "obsidianVault": {
+      "title": "Obsidian Vault を開く",
+      "message": "この Obsidian Vault のコピーを開きますか？",
+      "detail": "Obsidian Vault を memrynote で開くと、Obsidian プラグインが利用するデータが失われる可能性があります。memrynote がプラグインのタスク行をタスクに変換するとき、その行を書き換えます。Tasks プラグインの期限などのフィールドはファイルから消え、Obsidian では認識されなくなります。\n\nmemrynote は「{name}」を隣に「{copyName}」としてコピーし、そのコピーを開けます。「{name}」はそのまま残ります。",
+      "detailExistingCopy": "Obsidian Vault を memrynote で開くと、Obsidian プラグインが利用するデータが失われる可能性があります。memrynote がプラグインのタスク行をタスクに変換するとき、その行を書き換えます。Tasks プラグインの期限などのフィールドはファイルから消え、Obsidian では認識されなくなります。\n\n隣に memrynote のコピー「{copyName}」がすでにあります。memrynote はそのコピーを開けます。「{name}」はそのまま残ります。",
+      "buttonCopy": "コピーを作成",
+      "buttonOpenCopy": "コピーを開く",
+      "buttonOpenOriginal": "元のものを開く",
+      "buttonCancel": "キャンセル"
     },
     "pair": {
       "title": "ブラウザー拡張機能をペアリング",

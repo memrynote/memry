@@ -67,7 +67,7 @@ function createCollaborativeEditor(): { editor: BlockNoteEditor; fragment: Y.Xml
 /** Seed the shared doc from vault markdown, as main does on a fresh doc. */
 async function seedFromMarkdown(editor: BlockNoteEditor, markdown: string): Promise<void> {
   const blocks = await parseMarkdownPreservingBlanks(editor, markdown)
-  editor.replaceBlocks(editor.document, blocks as never)
+  editor.replaceBlocks(editor.document, blocks)
 }
 
 function nodeNames(fragment: Y.XmlFragment): string[] {
@@ -122,7 +122,7 @@ describe('opening a collaborative note promotes its hash tags', () => {
       { type: 'text', text: ' here.', styles: {} }
     ])
     // #and the file format is unchanged: the node serializes to the same bytes
-    expect(await serializeBlocksPreservingBlanks(editor, editor.document as Block[])).toBe(markdown)
+    expect(await serializeBlocksPreservingBlanks(editor, editor.document)).toBe(markdown)
   })
 
   it('keeps the promotion off the undo stack', async () => {
@@ -152,7 +152,7 @@ describe('opening a collaborative note promotes its hash tags', () => {
       '#other'
     ].join('\n')
     await seedFromMarkdown(editor, markdown)
-    const seeded = await serializeBlocksPreservingBlanks(editor, editor.document as Block[])
+    const seeded = await serializeBlocksPreservingBlanks(editor, editor.document)
 
     // #when
     openNote(editor, fragment)
@@ -164,7 +164,7 @@ describe('opening a collaborative note promotes its hash tags', () => {
       text: '#work',
       styles: { code: true }
     })
-    expect(await serializeBlocksPreservingBlanks(editor, editor.document as Block[])).toBe(seeded)
+    expect(await serializeBlocksPreservingBlanks(editor, editor.document)).toBe(seeded)
   })
 
   it('promotes nothing without the note tag list and colour map', async () => {
