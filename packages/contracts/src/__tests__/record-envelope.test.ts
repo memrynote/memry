@@ -149,7 +149,7 @@ describe('record-envelope vectors', () => {
       const signer = sodium.crypto_sign_seed_keypair(fromHex(entry.input.signingSeedHex))
       const plaintext = await decryptRecordItem(
         crypto,
-        { ...entry.expected.pushItem, cryptoVersion: 1 } as never,
+        { ...entry.expected.pushItem, cryptoVersion: 1 },
         fromHex(entry.input.vaultKeyHex),
         signer.publicKey
       )
@@ -166,7 +166,7 @@ describe('record-envelope vectors', () => {
       await expect(
         decryptRecordItem(
           crypto,
-          { ...entry.pushItem, cryptoVersion: 1 } as never,
+          { ...entry.pushItem, cryptoVersion: 1 },
           fromHex(firstCase.input.vaultKeyHex),
           fromHex(entry.signerPublicKeyHex)
         ),
@@ -183,8 +183,8 @@ describe('record-envelope vectors', () => {
       const call = (): Promise<unknown> =>
         encryptRecordForPush(crypto, {
           id: 'sizecheck0001',
-          type: 'note' as never,
-          operation: 'create' as never,
+          type: 'note',
+          operation: 'create',
           content: new Uint8Array(entry.contentBytes),
           vaultKey: fromHex(vectors.cases[0].input.vaultKeyHex),
           signingSecretKey: signer.privateKey,

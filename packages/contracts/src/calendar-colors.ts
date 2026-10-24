@@ -40,6 +40,7 @@ const CALENDAR_COLOR_HEX = {
 export type CalendarColor = keyof typeof CALENDAR_COLOR_HEX
 
 /** Every calendar colour, in Google's calendar colour id order ("1".."24"). */
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys of CALENDAR_COLOR_HEX; the keys are the CalendarColor union
 export const CALENDAR_COLORS = Object.keys(CALENDAR_COLOR_HEX) as CalendarColor[]
 
 /**

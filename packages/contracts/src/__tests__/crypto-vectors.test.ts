@@ -346,8 +346,8 @@ describe('KDF context table parity (T054)', () => {
         `no KDF_CONTEXT_MAP rows found in ${source.path}. If the map moved, move this assertion with it — do not delete it.`
       ).toHaveLength(7)
 
-      const vectors = loadVectors()
-      const fromVectors = vectors.kdfDeriveFromKey
+      const loaded = loadVectors()
+      const fromVectors = loaded.kdfDeriveFromKey
         .map((v) => ({ name: v.contextName, ctx: v.ctx, id: v.subkeyId }))
         .toSorted((a, b) => a.id - b.id)
 

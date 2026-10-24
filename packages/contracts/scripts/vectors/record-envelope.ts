@@ -222,6 +222,7 @@ export async function buildRecordEnvelope(): Promise<Record<string, unknown>> {
     })
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const base = cases[0].expected.pushItem as Record<string, unknown>
   const tamperCases = [
     {
@@ -233,6 +234,7 @@ export async function buildRecordEnvelope(): Promise<Record<string, unknown>> {
     },
     {
       name: 'tamper: one ciphertext byte flipped',
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       pushItem: { ...base, encryptedData: flipLastBase64Byte(base.encryptedData as string) },
       signerPublicKeyHex: hex(signerA.publicKey),
       expectFailure: 'signature',

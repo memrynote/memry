@@ -383,7 +383,6 @@ export interface VaultAttachmentEntry {
 export const DownloadAttachmentFromUrlSchema = z.object({
   noteId: z.string().min(1),
   url: z
-    .string()
     .url()
     .max(2048)
     .refine((value) => {

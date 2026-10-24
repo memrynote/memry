@@ -9,12 +9,13 @@
 
 import { z } from 'zod'
 
-// Import and re-export channels from the contract-local surface.
 import { BookmarksChannels } from './ipc-channels'
+import { BookmarkItemTypes, type BookmarkItemType } from './bookmark-types'
+
+// Re-export channels from the contract-local surface.
 export { BookmarksChannels }
 
 // Re-export canonical bookmark item types.
-import { BookmarkItemTypes, type BookmarkItemType } from './bookmark-types'
 export { BookmarkItemTypes, type BookmarkItemType }
 
 // ============================================================================

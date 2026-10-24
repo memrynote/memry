@@ -92,8 +92,8 @@ describe('device-linking vectors', () => {
     })
 
     it(`${name}: the MAC recomputes`, () => {
-      const message = fromHex(entry.messageHex as string)
-      const key = fromHex(entry.keyHex as string)
+      const message = fromHex(entry.messageHex)
+      const key = fromHex(entry.keyHex)
       const actual =
         entry.channel === 'scan' ? hmacSha256(key, message) : sodium.crypto_auth(message, key)
       expect(b64(actual), entry.pins as string).toBe(entry.expectedMacB64)
@@ -112,9 +112,9 @@ describe('device-linking vectors', () => {
     expect(scan.messageHex, 'both families MAC the same bytes').toBe(confirm.messageHex)
     expect(scan.expectedMacB64).not.toBe(confirm.expectedMacB64)
 
-    const message = fromHex(scan.messageHex as string)
-    const scanKey = fromHex(scan.keyHex as string)
-    const confirmKey = fromHex(confirm.keyHex as string)
+    const message = fromHex(scan.messageHex)
+    const scanKey = fromHex(scan.keyHex)
+    const confirmKey = fromHex(confirm.keyHex)
     // crypto_auth is HMAC-SHA-512 truncated to 32 bytes, NOT SHA-512/256 and
     // NOT SHA-256; asserting the cross products keeps a unified implementation
     // from passing.
@@ -127,10 +127,10 @@ describe('device-linking vectors', () => {
     expect(entry.associatedData).toBeNull()
     const plaintext = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
       null,
-      from_base64(entry.encryptedMasterKeyB64 as string, base64_variants.ORIGINAL),
+      from_base64(entry.encryptedMasterKeyB64, base64_variants.ORIGINAL),
       null,
-      fromHex(entry.keyNonceHex as string),
-      fromHex(entry.encKeyHex as string)
+      fromHex(entry.keyNonceHex),
+      fromHex(entry.encKeyHex)
     )
     expect(to_hex(plaintext)).toBe(entry.masterKeyHex)
   })
@@ -141,7 +141,7 @@ describe('device-linking vectors', () => {
       32,
       7,
       'memrysas',
-      fromHex(entry.sharedSecretHex as string)
+      fromHex(entry.sharedSecretHex)
     )
     expect(to_hex(sasKey)).toBe(entry.sasKeyHex)
     const h = sodium.crypto_generichash(4, sasKey, null)

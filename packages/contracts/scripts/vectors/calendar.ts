@@ -87,6 +87,7 @@ const coalesce = (...values: unknown[]): unknown => {
 
 function applySource(existing: Row | null, data: Row, clock: VectorClock): Row | null {
   if (existing) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const r = resolve(existing.clock as VectorClock, clock)
     if (r.action === 'skip') return existing
     const keys = [
@@ -133,6 +134,7 @@ function applySource(existing: Row | null, data: Row, clock: VectorClock): Row |
 
 function applyBinding(existing: Row | null, data: Row, clock: VectorClock): Row | null {
   if (existing) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const r = resolve(existing.clock as VectorClock, clock)
     if (r.action === 'skip') return existing
     const keys = [
@@ -188,6 +190,7 @@ const EXTERNAL_KEEP = [
 
 function applyExternal(existing: Row | null, data: Row, clock: VectorClock): Row | null {
   if (existing) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const r = resolve(existing.clock as VectorClock, clock)
     if (r.action === 'skip') return existing
     const next: Row = { ...existing }
@@ -223,13 +226,17 @@ function applyExternal(existing: Row | null, data: Row, clock: VectorClock): Row
 }
 
 function applyEvent(existing: Row | null, data: Row, clock: VectorClock): Row | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const remoteFC = (data.fieldClocks as FieldClocks | null | undefined) ?? null
   if (existing) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const r = resolve(existing.clock as VectorClock, clock)
     if (r.action === 'skip') return existing
     if (r.action === 'merge') {
       const localFC =
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         (existing.fieldClocks as FieldClocks | null) ??
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         initAllFieldClocks((existing.clock as VectorClock) ?? {}, EVENT_FIELDS)
       const rfc = remoteFC ?? initAllFieldClocks(clock, EVENT_FIELDS)
       const remoteForMerge: Row = {}
@@ -326,9 +333,11 @@ const APPLIERS = {
 
 function step(existing: Row | null, s: ApplyStep): Row | null {
   const data = SCHEMAS[s.type].parse(s.payload) as Row
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const clock = (data.clock ?? {}) as VectorClock
   if (s.deleted) {
     if (!existing) return null
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     return resolve(existing.clock as VectorClock, clock).action === 'skip' ? existing : null
   }
   return APPLIERS[s.type](existing, data, clock)
@@ -441,6 +450,7 @@ function bindingsFor(db: Db, sourceType: string, ids: string[]): Map<string, Row
   const rows = [...db.bindings.values()].filter(
     (b) =>
       (b.sourceType ?? 'event') === sourceType &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       ids.includes(b.sourceId as string) &&
       !b.archivedAt
   )
@@ -449,6 +459,7 @@ function bindingsFor(db: Db, sourceType: string, ids: string[]): Map<string, Row
   // matches every fixture here (inserted oldest first), so the newest wins.
   return new Map(
     rows.map((b) => [
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       b.sourceId as string,
       {
         provider: b.provider ?? 'google',
@@ -462,8 +473,27 @@ function bindingsFor(db: Db, sourceType: string, ids: string[]): Map<string, Row
 }
 
 function eventColors(colorId: unknown, calendarHex: string | null | undefined): Row {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const color = calendarEventColorFromColorId((colorId as string | null) ?? null)
   return { color, displayColor: color ? calendarColorHex(color) : (calendarHex ?? null) }
+}
+
+function position(r: Row): [string, number | null] {
+  const snoozed = r.status === 'snoozed' && !!r.snoozedUntil
+  return snoozed
+    ? [
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+        r.snoozedUntil as string,
+        Math.round(
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+          (new Date(r.snoozedUntil as string).getTime() -
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+            new Date(r.remindAt as string).getTime()) /
+            60000
+        )
+      ]
+    : // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+      [r.remindAt as string, null]
 }
 
 function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
@@ -471,6 +501,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
   const items: Item[] = []
   const googleColors = new Map<string, string>()
   for (const s of db.sources.values()) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const hex = calendarDisplayHex(s.color as string | null)
     if (
       (s.provider ?? 'google') === 'google' &&
@@ -478,20 +509,25 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       !s.archivedAt &&
       hex
     )
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       googleColors.set(s.remoteId as string, hex)
   }
   const events = [...db.events.values()].filter(
     (e) =>
       !e.archivedAt &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       (e.startAt as string) < q.endAt &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       ((e.endAt as string | null) ?? (e.startAt as string)) >= q.startAt
   )
   const eventBindings = bindingsFor(
     db,
     'event',
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     events.map((e) => e.id as string)
   )
   for (const e of events) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const b = eventBindings.get(e.id as string) ?? null
     items.push({
       projectionId: `event:${e.id}`,
@@ -499,6 +535,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       sourceId: e.id,
       title: e.title,
       descriptionPreview: preview(e.description),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       startAt: e.startAt as string,
       endAt: e.endAt ?? null,
       isAllDay: e.isAllDay ?? false,
@@ -511,6 +548,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       ...eventColors(
         e.colorId,
         googleColors.get(
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
           (b?.remoteCalendarId as string) ?? (e.targetCalendarId as string | null) ?? ''
         )
       )
@@ -525,7 +563,9 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       .filter(
         (t) =>
           t.dueDate &&
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
           (t.dueDate as string) >= from &&
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
           (t.dueDate as string) <= to &&
           !t.completedAt &&
           !t.archivedAt
@@ -539,6 +579,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
     const taskBindings = bindingsFor(
       db,
       'task',
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       tasks.map((t) => t.id as string)
     )
     for (const t of tasks) {
@@ -549,32 +590,22 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
         sourceId: t.id,
         title: t.title,
         descriptionPreview: preview(t.description),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         startAt: localInstant(t.dueDate as string, (t.dueTime as string | null) ?? null),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         endAt: allDay ? localAllDayEnd(t.dueDate as string) : null,
         isAllDay: allDay,
         timezone: tz,
         visualType: 'task',
         editability: EDIT_MTD,
         source: native('memrynote Tasks'),
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         binding: taskBindings.get(t.id as string) ?? null,
         snoozeOffsetMinutes: null
       })
     }
   }
   const inRange = (v: unknown): boolean => typeof v === 'string' && v >= q.startAt && v < q.endAt
-  const position = (r: Row): [string, number | null] => {
-    const snoozed = r.status === 'snoozed' && !!r.snoozedUntil
-    return snoozed
-      ? [
-          r.snoozedUntil as string,
-          Math.round(
-            (new Date(r.snoozedUntil as string).getTime() -
-              new Date(r.remindAt as string).getTime()) /
-              60000
-          )
-        ]
-      : [r.remindAt as string, null]
-  }
   const reminders = [...db.reminders.values()].filter(
     (r) =>
       r.targetType !== 'note_date' &&
@@ -584,6 +615,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
   const reminderBindings = bindingsFor(
     db,
     'reminder',
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     reminders.map((r) => r.id as string)
   )
   for (const r of reminders) {
@@ -592,6 +624,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       projectionId: `reminder:${r.id}`,
       sourceType: 'reminder',
       sourceId: r.id,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       title: (r.title as string | null)?.trim() || 'Reminder',
       descriptionPreview: preview(r.note ?? r.highlightText),
       startAt,
@@ -601,6 +634,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       visualType: 'reminder',
       editability: EDIT_MTD,
       source: native('memrynote Reminders'),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       binding: reminderBindings.get(r.id as string) ?? null,
       snoozeOffsetMinutes: offset
     })
@@ -615,11 +649,13 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
     )
       continue
     const [startAt, offset] = position(r)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const note = db.notes.get(r.targetId as string)
     items.push({
       projectionId: `note_date:${r.id}`,
       sourceType: 'note_date',
       sourceId: r.id,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       title: (note?.title as string | undefined)?.trim() || 'Untitled',
       descriptionPreview: preview(r.note),
       startAt,
@@ -642,6 +678,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
   const snoozeBindings = bindingsFor(
     db,
     'inbox_snooze',
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     snoozes.map((i) => i.id as string)
   )
   for (const i of snoozes) {
@@ -651,6 +688,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       sourceId: i.id,
       title: i.title,
       descriptionPreview: preview(i.content),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       startAt: i.snoozedUntil as string,
       endAt: null,
       isAllDay: false,
@@ -658,23 +696,29 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       visualType: 'snooze',
       editability: { canMove: true, canResize: false, canEditText: false, canDelete: true },
       source: native('memrynote Inbox'),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       binding: snoozeBindings.get(i.id as string) ?? null,
       snoozeOffsetMinutes: null
     })
   }
   for (const e of db.externals.values()) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const s = db.sources.get(e.sourceId as string)
     if (!s || e.archivedAt || s.archivedAt) continue
     if (
       !(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         (e.startAt as string) < q.endAt &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         ((e.endAt as string | null) ?? (e.startAt as string)) >= q.startAt
       )
     )
       continue
     if (!q.includeUnselectedSources && s.isSelected !== true) continue
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const provider = (s.provider as string) ?? 'google'
     const writable = provider === 'google' || provider === 'caldav'
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const sourceHex = calendarDisplayHex(s.color as string | null)
     items.push({
       projectionId: `external_event:${e.id}`,
@@ -682,10 +726,12 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
       sourceId: e.id,
       title: e.title,
       descriptionPreview: preview(e.description),
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       startAt: e.startAt as string,
       endAt: e.endAt ?? null,
       isAllDay: e.isAllDay ?? false,
-      timezone: (e.timezone as string | null) ?? (s.timezone as string | null) ?? tz,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+      timezone: e.timezone ?? s.timezone ?? tz,
       visualType: 'external_event',
       editability: writable ? EDIT_ALL : EDIT_NONE,
       source: {
@@ -703,6 +749,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
   }
   const propertyItems: Item[] = []
   for (const n of db.notes.values()) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const props = (n.properties as Row | undefined) ?? {}
     for (const name of q.enabledPropertyNames) {
       const value = props[name]
@@ -732,6 +779,7 @@ function project(db: Db, q: (typeof PROJECTION_QUERIES)[number]): Item[] {
     const taken = new Set(propertyItems.map((i) => `${i.sourceId}:${i.startAt}`))
     for (const n of db.notes.values()) {
       if ((n.fileType ?? 'markdown') !== 'markdown' || !inRange(n.createdAt)) continue
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       const day = dayOf(n.createdAt as string)
       if (day === null) continue
       const startAt = localInstant(day, null)
@@ -767,9 +815,11 @@ function search(items: Item[], query: string, nowMs: number): Item[] {
   return items
     .filter(
       (i) =>
+        // oxlint-disable-next-line typescript/no-base-to-string -- Row values are unknown; String() coercion is the search behavior being pinned
         String(i.title ?? '')
           .toLowerCase()
           .includes(q) ||
+        // oxlint-disable-next-line typescript/no-base-to-string -- Row values are unknown; String() coercion is the search behavior being pinned
         String(i.descriptionPreview ?? '')
           .toLowerCase()
           .includes(q)
@@ -782,26 +832,27 @@ function search(items: Item[], query: string, nowMs: number): Item[] {
     .slice(0, 20)
 }
 
+const zoneOffsetMs = (ms: number): number => -new Date(ms).getTimezoneOffset() * 60_000
+
 /** The zone as the phone passes it: base offset, then each transition. */
 function zoneTable(fromMs: number, toMs: number): Row {
-  const offset = (ms: number): number => -new Date(ms).getTimezoneOffset() * 60_000
   const transitions: Array<{ atMs: number; offsetMs: number }> = []
-  let prev = offset(fromMs)
+  let prev = zoneOffsetMs(fromMs)
   for (let t = fromMs; t < toMs; t += 3_600_000) {
-    const next = offset(t + 3_600_000)
+    const next = zoneOffsetMs(t + 3_600_000)
     if (next !== prev) {
       let lo = t
       let hi = t + 3_600_000
       while (hi - lo > 60_000) {
         const mid = lo + Math.floor((hi - lo) / 2 / 60_000) * 60_000
-        if (offset(mid) === prev) lo = mid
+        if (zoneOffsetMs(mid) === prev) lo = mid
         else hi = mid
       }
       transitions.push({ atMs: hi, offsetMs: next })
       prev = next
     }
   }
-  return { identifier: PROJECTION_TIMEZONE, baseOffsetMs: offset(fromMs), transitions }
+  return { identifier: PROJECTION_TIMEZONE, baseOffsetMs: zoneOffsetMs(fromMs), transitions }
 }
 
 function withZone<T>(tz: string, run: () => T): T {
@@ -848,9 +899,11 @@ const NOW = '2026-11-02T12:00:00.000Z'
 
 /** `RecordSyncController` create/update for `calendar_event`. */
 function enqueueEvent(local: Row, operation: 'create' | 'update', changed?: string[]): Row {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const existingClock = (local.clock as VectorClock) ?? {}
   const nextClock = increment(existingClock, DEVICE)
   const fieldClocks: FieldClocks = {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     ...((local.fieldClocks as FieldClocks | null) ??
       initAllFieldClocks(existingClock, EVENT_FIELDS))
   }
@@ -874,6 +927,7 @@ function createRow(input: Row): Row {
     attendees: null,
     reminders: null,
     visibility: null,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     colorId: colorIdForCalendarEventColor((input.color as CalendarEventColor | null) ?? null),
     conferenceData: null,
     parentEventId: null,
@@ -907,9 +961,11 @@ function updateRow(existing: Row, input: Row): Row {
         (k === 'title' || k === 'startAt' || k === 'timezone' || k === 'isAllDay' ? input[k] : null)
   if (
     has(input, 'color') &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     calendarEventColorFromColorId(existing.colorId as string | null) !== (input.color ?? null)
   )
     changes.colorId = colorIdForCalendarEventColor(
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       (input.color as CalendarEventColor | null) ?? null
     )
   const changed = Object.keys(changes).filter((f) => f !== 'modifiedAt' && f !== 'targetCalendarId')
@@ -948,6 +1004,7 @@ function buildWrites(): Row {
 
   // promote-external-event.ts: event + binding + archived mirror.
   const mirror = { ...external({ desktop: 2 }), id: 'ext-1' }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const mirrorClock = mirror.clock as VectorClock
   const promotedEvent = enqueueEvent(
     {
@@ -1051,11 +1108,13 @@ function buildWrites(): Row {
 // The fixtures' builders, reused for the write section.
 function source(clock: Row, extra: Row = {}): Row {
   return PROJECTION_ROWS.find((r) => r.id === 'src-work')?.payload
-    ? { ...(PROJECTION_ROWS.find((r) => r.id === 'src-work')?.payload as Row), clock, ...extra }
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
+      { ...(PROJECTION_ROWS.find((r) => r.id === 'src-work')?.payload as Row), clock, ...extra }
     : { clock, ...extra }
 }
 function external(clock: Row): Row {
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     ...(PROJECTION_ROWS.find((r) => r.id === 'ext-work')?.payload as Row),
     startAt: '2026-09-24T07:00:00.000Z',
     endAt: '2026-09-24T08:30:00.000Z',
@@ -1065,6 +1124,7 @@ function external(clock: Row): Row {
 }
 function binding(clock: Row): Row {
   return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     ...(PROJECTION_ROWS.find((r) => r.id === 'bind-old')?.payload as Row),
     sourceId: 'evt-1',
     remoteEventId: 'g-1',
@@ -1084,7 +1144,9 @@ export function buildCalendar(): Record<string, unknown> {
         'packages/sync-client/src/item-handlers/calendar-*-handler.ts, apps/desktop/src/main/sync/item-handlers/calendar-event-handler.ts, apps/desktop/src/main/calendar/projection.ts, apps/desktop/src/main/ipc/calendar-handlers.ts, apps/desktop/src/main/calendar/promote-external-event.ts',
       caseCount:
         apply.length +
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         (projection.queries as unknown[]).length +
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         (projection.searches as unknown[]).length +
         4
     }),

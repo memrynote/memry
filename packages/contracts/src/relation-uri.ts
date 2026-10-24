@@ -43,6 +43,7 @@ export function parseRelationUri(value: unknown): RelationRef | null {
   if (typeof value !== 'string') return null
   const match = RELATION_URI_PATTERN.exec(value)
   if (!match) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RELATION_URI_PATTERN alternation only matches RelationKind values
   const kind = match[1] as RelationKind
   const id = match[2]
   if (kind === 'journal' && !JOURNAL_DATE_PATTERN.test(id)) return null
@@ -75,5 +76,5 @@ export function isRelationValue(value: unknown): value is string[] {
 
 export function parseRelationValue(value: unknown): RelationRef[] {
   if (!isRelationValue(value)) return []
-  return value.map((v) => parseRelationUri(v) as RelationRef)
+  return value.flatMap((v) => parseRelationUri(v) ?? [])
 }

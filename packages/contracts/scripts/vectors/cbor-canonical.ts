@@ -160,8 +160,9 @@ const REJECT_CASE = {
 export function buildCborCanonical(): Record<string, unknown> {
   const cases = CASES.map((entry) => {
     const bytes = encodeCbor(entry.input, entry.fieldOrder)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const decoded = decode(bytes) as Map<string, unknown> | Record<string, unknown>
-    const keyOrder = decoded instanceof Map ? [...decoded.keys()] : Object.keys(decoded as object)
+    const keyOrder = decoded instanceof Map ? [...decoded.keys()] : Object.keys(decoded)
     return {
       name: entry.name,
       fieldOrderName: entry.fieldOrderName,

@@ -17,5 +17,5 @@ export const FEATURE_KEYS = [
  * feature. Returns null for everything else (notes, settings, etc.).
  */
 export function featureForTabType(type: string): FeatureKey | null {
-  return (FEATURE_KEYS as readonly string[]).includes(type) ? (type as FeatureKey) : null
+  return FEATURE_KEYS.find((key) => key === type) ?? null
 }

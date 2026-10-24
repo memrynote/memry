@@ -223,14 +223,14 @@ export const sanitizeTelemetryDimensions = (
 }
 
 export const TelemetryMetricsSchema = z.object({
-  durationMs: z.number().finite().nonnegative().optional(),
-  itemCount: z.number().finite().nonnegative().optional(),
-  byteCount: z.number().finite().nonnegative().optional(),
-  queueCount: z.number().finite().nonnegative().optional(),
-  resultCount: z.number().finite().nonnegative().optional(),
-  retryCount: z.number().finite().nonnegative().optional(),
-  activeSeconds: z.number().finite().nonnegative().optional(),
-  value: z.number().finite().optional()
+  durationMs: z.number().nonnegative().optional(),
+  itemCount: z.number().nonnegative().optional(),
+  byteCount: z.number().nonnegative().optional(),
+  queueCount: z.number().nonnegative().optional(),
+  resultCount: z.number().nonnegative().optional(),
+  retryCount: z.number().nonnegative().optional(),
+  activeSeconds: z.number().nonnegative().optional(),
+  value: z.number().optional()
 })
 
 export const TelemetryErrorDetailSchema = z.object({
@@ -308,9 +308,9 @@ export const sanitizeTelemetryFailure = (
 }
 
 export const TelemetryEventSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: TelemetryEventNameSchema,
-  occurredAt: z.string().datetime(),
+  occurredAt: z.iso.datetime(),
   surface: TelemetrySurfaceSchema,
   action: SafeDimensionValueSchema,
   objectType: SafeDimensionValueSchema.optional(),
@@ -325,8 +325,8 @@ export const TelemetryEventSchema = z.object({
 
 export const TelemetryBatchSchema = z.object({
   schemaVersion: z.literal(1),
-  installId: z.string().uuid(),
-  sessionId: z.string().uuid(),
+  installId: z.uuid(),
+  sessionId: z.uuid(),
   appVersion: z.string().min(1).max(32),
   buildChannel: TelemetryBuildChannelSchema,
   platform: TelemetryPlatformSchema,
@@ -405,6 +405,7 @@ const safeRead = <T>(read: () => T, fallback: T): T => {
 // Read one property at a time: a single hostile getter must not cost us the
 // other properties, so each read gets its own guard.
 const readProp = (value: unknown, key: string): unknown =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keeps indexing primitives (a string's `length`) as before; a plain-object guard would change what is read
   safeRead(() => (value as Record<string, unknown> | null | undefined)?.[key], undefined)
 
 /**
@@ -595,8 +596,10 @@ const MAX_SOURCE_FILENAME = 300
 const sourceFrame = (report: WindowErrorReport): string | undefined => {
   const filename = typeof report.filename === 'string' ? report.filename.trim() : ''
   if (!filename) return undefined
-  const line = Number.isFinite(report.lineno) ? (report.lineno as number) : 0
-  const column = Number.isFinite(report.colno) ? (report.colno as number) : 0
+  const line =
+    typeof report.lineno === 'number' && Number.isFinite(report.lineno) ? report.lineno : 0
+  const column =
+    typeof report.colno === 'number' && Number.isFinite(report.colno) ? report.colno : 0
   return `    at window_error (${filename.slice(0, MAX_SOURCE_FILENAME)}:${line}:${column})`
 }
 

@@ -78,6 +78,7 @@ function propsOf(element: Y.XmlElement): BlockProp[] {
 /** One `XmlText`'s deltas, as runs. */
 function runsOfText(text: Y.XmlText): InlineRun[] {
   const runs: InlineRun[] = []
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   for (const chunk of text.toDelta() as Array<{
     insert: unknown
     attributes?: Record<string, unknown>
@@ -171,7 +172,7 @@ function walkElement(element: Y.XmlElement, depth: number, blocks: Block[], atRo
     const before = blocks.length
     walk(element, deeper, blocks, false)
     const first = blocks[before]
-    if (containerId !== null && first !== undefined && first.id === null) first.id = containerId
+    if (containerId !== null && first?.id === null) first.id = containerId
     return
   }
 

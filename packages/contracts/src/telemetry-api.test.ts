@@ -1137,7 +1137,7 @@ describe('sanitizeTelemetryFailure', () => {
     expect(
       sanitizeTelemetryFailure({
         httpStatus: 400,
-        serverCode: 'Invalid push request' as string,
+        serverCode: 'Invalid push request',
         retryable: false
       })
     ).toEqual({ httpStatus: 400, retryable: false })

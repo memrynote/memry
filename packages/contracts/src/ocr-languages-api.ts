@@ -50,6 +50,7 @@ export const OCR_LANGUAGES = Object.values(OCR_LANGUAGE_BY_LOCALE) as OcrLanguag
 /** Ships inside the app and is always read. Every other language is downloaded. */
 export const BUNDLED_OCR_LANGUAGE = 'eng' satisfies OcrLanguage
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- OCR_LANGUAGES is a non-empty literal list; z.enum needs the tuple type
 export const OcrLanguageSchema = z.enum(OCR_LANGUAGES as [OcrLanguage, ...OcrLanguage[]])
 
 export const OcrLanguagesSetSchema = z.object({ languages: z.array(OcrLanguageSchema) })

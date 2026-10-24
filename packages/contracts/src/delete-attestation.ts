@@ -43,6 +43,7 @@ export function deleteClaimOf(item: {
   }
   return {
     id: item.id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- item.type was checked against the record-clock item types above
     type: item.type as RecordClockRequiredItemType,
     deletedAt: item.deletedAt,
     clock: item.clock

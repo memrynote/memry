@@ -394,7 +394,7 @@ export const EncryptedItemPayloadSchema = z.object({
 })
 
 export const SyncItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   userId: z.string().min(1),
   itemType: z.enum(SYNC_ITEM_TYPES),
   itemId: z.string().min(1),
@@ -414,7 +414,7 @@ export const SyncItemSchema = z.object({
 })
 
 export const SyncQueueItemSchema = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   type: z.enum(SYNC_ITEM_TYPES),
   itemId: z.string().min(1),
   operation: z.enum(SYNC_OPERATIONS),
@@ -457,7 +457,7 @@ export const RecordPushItemSchema = PushItemBaseSchema.omit({ type: true, stateV
   .superRefine((item, ctx) => {
     if (recordClockRequiredItemTypeSet.has(item.type) && item.clock === undefined) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: 'custom',
         path: ['clock'],
         message: `Record sync item type "${item.type}" requires clock metadata`
       })
@@ -749,7 +749,7 @@ export const PackSummarySchema = z.object({
    */
   byteSize: z.number().int().min(1),
   createdAt: z.number().int().min(0),
-  url: z.string().url().optional(),
+  url: z.url().optional(),
   /** Epoch seconds at which `url` stops working; mirrors the presign TTL. */
   expiresAt: z.number().int().min(0).optional()
 })

@@ -14,9 +14,7 @@ export const STICKY_KINDS = ['note', 'task', 'journal'] as const
 export type StickyKind = (typeof STICKY_KINDS)[number]
 
 export function parseStickyKind(value: unknown): StickyKind {
-  return typeof value === 'string' && (STICKY_KINDS as readonly string[]).includes(value)
-    ? (value as StickyKind)
-    : 'note'
+  return STICKY_KINDS.find((kind) => kind === value) ?? 'note'
 }
 
 /**
@@ -89,5 +87,5 @@ export type StickyUnfoldInput = z.infer<typeof StickyUnfoldSchema>
 export const StickyPeekSchema = z.object({ open: z.boolean() })
 export type StickyPeekInput = z.infer<typeof StickyPeekSchema>
 
-export const StickyResizeSchema = z.object({ height: z.number().finite().positive() })
+export const StickyResizeSchema = z.object({ height: z.number().positive() })
 export type StickyResizeInput = z.infer<typeof StickyResizeSchema>

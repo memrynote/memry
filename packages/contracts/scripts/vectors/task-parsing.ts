@@ -68,6 +68,7 @@ const day = (date: Date | null): string | null => (date ? formatDateKey(date) : 
 /** The wire shape desktop writes (`use-task-queries.ts` `toServiceRepeatConfig`). */
 function toWire(config: RepeatConfig | null): WireRepeat | null {
   if (!config) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   return JSON.parse(
     JSON.stringify({
       frequency: config.frequency,
@@ -101,6 +102,7 @@ const storedDate = (value: string | null): Date | null =>
 
 function buildNaturalDate() {
   const cases = []
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   for (const nowKey of Object.keys(NOWS) as NowKey[]) {
     for (const input of NATURAL_DATE_INPUTS) {
       const result = parseNaturalDate(input, now(nowKey))
@@ -279,6 +281,8 @@ function buildRecurrence() {
   }
 }
 
+const ids = (list: readonly ViewTask[]): string[] => list.map((task) => task.id)
+
 function buildDueWindows() {
   const tasks: ViewTask[] = WINDOW_TASKS.map((task) => ({
     ...task,
@@ -287,7 +291,6 @@ function buildDueWindows() {
     completedAt: task.completedAt === null ? null : new Date(task.completedAt),
     archivedAt: task.archivedAt === null ? null : new Date(task.archivedAt)
   }))
-  const ids = (list: readonly ViewTask[]): string[] => list.map((task) => task.id)
   const windows: TaskDueWindow[] = ['today', 'tomorrow', 'next7']
   const at = (['wednesday', 'sunday'] as NowKey[]).map((nowKey) => {
     const clock = now(nowKey)

@@ -16,6 +16,7 @@ export const LEGACY_FONT_SIZE_PX = { small: 14, medium: 16, large: 20 } as const
 
 export type LegacyFontSize = keyof typeof LEGACY_FONT_SIZE_PX
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries widens keys to string; the keys are LEGACY_FONT_SIZE_PX's own
 const LEGACY_ENTRIES = Object.entries(LEGACY_FONT_SIZE_PX) as [LegacyFontSize, number][]
 
 export function resolveFontSizePx(

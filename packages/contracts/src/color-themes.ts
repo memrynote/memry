@@ -240,6 +240,7 @@ const OVERRIDE_FIELDS = [
  */
 export function parseThemeCustomization(raw: unknown): Partial<ThemeCustomization> | null {
   if (typeof raw !== 'object' || raw === null) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowed to a non-null object just above; fields are read one by one and validated
   const input = raw as Record<string, unknown>
   const out: Partial<ThemeCustomization> = {}
   if (typeof input.colorTheme === 'string' && input.colorTheme.length <= 64) {

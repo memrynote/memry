@@ -59,7 +59,7 @@ export const HomePageCoverSourceSchema = z.discriminatedUnion('kind', [
     filename: z.string().min(1),
     data: z.instanceof(ArrayBuffer)
   }),
-  z.object({ kind: z.literal('url'), url: z.string().url() }),
+  z.object({ kind: z.literal('url'), url: z.url() }),
   z.object({ kind: z.literal('unsplash'), photo: UnsplashPhotoSchema }),
   z.object({
     kind: z.literal('vaultFile'),

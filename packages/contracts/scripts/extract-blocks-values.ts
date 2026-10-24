@@ -25,11 +25,14 @@ export function anyDisplay(value: unknown): string {
   if (typeof value === 'number') return numberDisplay(value)
   if (Array.isArray(value)) return `[${value.map(anyDisplay).join(', ')}]`
   if (typeof value === 'object') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const entries = Object.entries(value as Record<string, unknown>).map(
       ([key, inner]) => `${key}: ${anyDisplay(inner)}`
     )
     return `{${entries.join(', ')}}`
   }
+  // Only bigint, symbol and function reach here; String() is the Rust-parity display.
+  // oxlint-disable-next-line typescript/no-base-to-string -- narrowed to bigint | symbol | function, which String() prints fine
   return String(value)
 }
 
@@ -67,6 +70,7 @@ export function markName(attribute: string): string {
 export function flattenMarkAttrs(mark: string, value: unknown, out: Record<string, string>): void {
   if (value === null || value === undefined) return
   if (typeof value === 'object' && !Array.isArray(value)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
     const entries = Object.entries(value as Record<string, unknown>)
     if (entries.length === 0) return
     if (entries.length === 1 && entries[0][0] === STRING_VALUE_ATTR) {
