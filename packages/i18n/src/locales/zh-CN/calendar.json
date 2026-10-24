@@ -195,6 +195,7 @@
     "complete-task": "完成“{title}”",
     "task-completed": "任务已完成",
     "could-not-complete": "无法完成任务",
+    "could-not-update-status": "无法更改任务状态",
     "duration-minutes": "{minutes} 分钟",
     "duration-hours": "{hours} 小时",
     "duration-hours-minutes": "{hours} 小时 {minutes} 分钟"
@@ -236,6 +237,18 @@
       "could-not-open-note": "无法打开笔记"
     }
   },
+  "eventNotes": {
+    "heading": "笔记",
+    "create": "新建笔记",
+    "link": "关联笔记",
+    "untitled": "会议笔记",
+    "searchPlaceholder": "搜索笔记",
+    "noResults": "未找到笔记",
+    "createFailed": "无法为此事件创建笔记。",
+    "linkFailed": "无法将笔记关联到此事件。",
+    "loadFailed": "无法加载与此事件关联的笔记。",
+    "propertyTaken": "此笔记已有一个不是链接的“{name}”属性。"
+  },
   "notePopover": {
     "kind": "笔记",
     "kindDateReminder": "日期提醒",
@@ -254,6 +267,10 @@
     "overdue": "已逾期",
     "untitled": "无标题",
     "days": "{count, plural, other {# 天}}",
+    "subtasks": {
+      "expand": "显示{title}的 {count, plural, other {# 个子任务}}",
+      "collapse": "隐藏{title}的 {count, plural, other {# 个子任务}}"
+    },
     "events": "日程",
     "schedule-hint": "点击设置日期，拖动设置时间范围",
     "empty-title": "此处时间线上没有内容",

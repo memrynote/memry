@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "현재 요금제에서 동기화할 수 있는 볼트 수가 이 계정의 볼트 수보다 적어 이 볼트는 이 기기에만 저장됩니다. 설정 → 계정에서 계정의 볼트를 제거하거나 요금제를 업그레이드하세요.",
     "certificatePinFailed": "보안 연결에 실패했습니다. 네트워크 연결을 확인하세요.",
     "deviceKeyMismatch": "이 기기의 보안 키가 계정에 등록된 키와 더 이상 일치하지 않아 서버가 변경 사항을 거부합니다. 이 기기에서 다시 로그인하여 기기를 다시 등록하세요.",
+    "deviceKeysMissing": "이 기기의 기기 키가 없어 변경 사항이 업로드되지 않고 있습니다. 복구를 선택해 키를 복원하세요. 이 기기에 키가 더 이상 없다면 다시 로그인해야 하며 복구 문구가 필요할 수 있습니다. 동기화되지 않은 노트, 작업, 프로젝트는 그대로 보존됩니다.",
     "keychainUnavailable": "Memry가 지금 시스템 키체인에서 동기화 키를 읽을 수 없어 동기화가 일시 중지되었습니다. 키링 잠금을 해제하면 동기화가 자동으로 재개됩니다. 재개되지 않으면 Memry를 다시 시작하세요. 삭제된 것은 없습니다.",
     "unknown": "예상치 못한 동기화 오류가 발생했습니다. 자동으로 다시 시도합니다.",
     "statusFetchFailed": "동기화 상태를 가져오지 못했습니다.",
@@ -106,6 +107,10 @@
     "triggerFailed": "동기화 실패",
     "pauseFailed": "동기화를 일시 중지하지 못했습니다.",
     "resumeFailed": "동기화를 재개하지 못했습니다.",
+    "syncNowSignedOut": "동기화하려면 이 기기에서 다시 로그인해야 합니다.",
+    "syncNowBusy": "동기화가 이미 실행 중입니다. 잠시 후 다시 시도하세요.",
+    "syncNowPaused": "실행 중에 동기화가 일시 중지되었습니다. 동기화 메뉴에서 다시 시작하세요.",
+    "openAccountSettings": "설정 열기",
     "settingsNotInitialized": "설정 동기화가 초기화되지 않았습니다.",
     "securityQuarantinePermanent": "동기화 항목을 확인할 수 없어 보안을 위해 격리되었습니다.",
     "securityQuarantineRetry": "동기화 항목이 서명 확인에 실패하여 다시 시도됩니다.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "AI 인라인 편집이 비활성화되어 있습니다.",
-    "listOllamaModelsFailed": "Ollama 모델 목록을 가져오지 못했습니다."
+    "listOllamaModelsFailed": "Ollama 모델 목록을 가져오지 못했습니다.",
+    "writingAssistInvalid": "AI 모델에 해당 요청을 보내지 못했습니다.",
+    "apiKeyMissing": "글쓰기 도구를 사용하려면 설정 → AI에서 {provider} API 키를 추가하세요.",
+    "apiKeyInvalid": "{provider} API 키가 거부되었습니다. 설정 → AI에서 확인하세요.",
+    "ollamaUnreachable": "Ollama가 실행 중이지 않습니다. \"ollama serve\"로 시작하거나 설정 → AI에서 다른 공급자를 선택하세요.",
+    "providerUnreachable": "{provider}에 연결할 수 없습니다. 인터넷 연결을 확인한 뒤 다시 시도하세요."
   },
   "auth": {
     "notAuthenticated": "인증되지 않았습니다.",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "외부 캘린더 일정의 연결된 복사본을 만들지 못했습니다.",
     "onlyCalendarSourcesRetryable": "캘린더 소스만 다시 시도할 수 있습니다.",
     "invalidProviderSettings": "캘린더 제공자 설정이 잘못되었습니다.",
-    "getExternalEventFailed": "이 일정을 불러오지 못했습니다. 캘린더에는 그대로 있으니 다시 열어 보세요."
+    "getExternalEventFailed": "이 일정을 불러오지 못했습니다. 캘린더에는 그대로 있으니 다시 열어 보세요.",
+    "listLinkedNotesFailed": "이 일정에 연결된 노트를 불러오지 못했습니다."
   },
   "canvasFolder": {
     "exists": "이 위치에 같은 이름의 캔버스 폴더가 이미 있습니다.",
@@ -209,10 +220,35 @@
     "previewFailed": "미리보기에 실패했습니다.",
     "listFailed": "가져오기 도구 목록을 불러오지 못했습니다.",
     "appleNotesFoldersFailed": "Apple Notes 폴더를 읽지 못했습니다.",
+    "appleNotesPasswordFailed": "메모 암호를 확인하지 못했습니다.",
     "onenoteStatusFailed": "OneNote 연결 상태를 읽지 못했습니다.",
     "onenoteConnectFailed": "Microsoft 로그인에 실패했습니다.",
     "onenoteDisconnectFailed": "Microsoft 계정 연결을 해제하지 못했습니다.",
-    "onenoteNotebooksFailed": "OneNote 전자 필기장을 불러오지 못했습니다."
+    "onenoteNotebooksFailed": "OneNote 전자 필기장을 불러오지 못했습니다.",
+    "readwiseStatusFailed": "Readwise 연결 상태를 읽지 못했습니다",
+    "readwiseConnectFailed": "Readwise에 연결하지 못했습니다",
+    "readwiseInvalidToken": "Readwise가 이 토큰을 받아들이지 않았습니다. readwise.io/access_token에서 다시 복사하세요.",
+    "readwiseRateLimited": "Readwise가 현재 요청을 제한하고 있습니다. 1분 후 다시 시도하세요.",
+    "readwiseUnreachable": "Readwise에 연결할 수 없습니다. 연결을 확인한 뒤 다시 시도하세요.",
+    "readwiseDisconnectFailed": "Readwise 연결을 해제하지 못했습니다",
+    "readwiseSyncFailed": "Readwise 동기화를 시작하지 못했습니다",
+    "readwiseRunUnavailable": "Readwise는 이 기기에서 동기화되지 않습니다.",
+    "readwiseRunInProgress": "Readwise 가져오기가 이미 실행 중입니다. 끝난 후 다시 시도하세요.",
+    "readwiseOptionsFailed": "Readwise 설정을 저장하지 못했습니다",
+    "readwiseNotConnected": "Readwise가 연결되어 있지 않습니다. 먼저 액세스 토큰을 붙여넣으세요.",
+    "readwiseSyncsElsewhere": "Readwise는 다른 기기에서 동기화됩니다. 그 기기에서 이 명령을 실행하세요.",
+    "readwiseBookCommandFailed": "Readwise 명령을 완료하지 못했습니다",
+    "readwiseBookGone": "이 책은 더 이상 Readwise 라이브러리에 없습니다.",
+    "readwiseNotLinked": "이 노트는 Readwise 책에 연결되어 있지 않습니다.",
+    "readwiseNotDeleted": "이 책은 삭제된 목록에 없습니다.",
+    "readwiseBookBusy": "명령을 실행하는 동안 노트가 변경되었습니다. 다시 시도하세요.",
+    "readwiseSyncsOnDevice": "Readwise는 {device}에서 동기화됩니다. “여기서 동기화”를 사용해 이 기기로 옮기세요.",
+    "readwiseAnotherDevice": "다른 기기",
+    "readwiseNotReady": "Memry가 다른 기기와 아직 동기화를 마치지 않았습니다. 잠시 후 다시 시도하세요.",
+    "readwiseNeedsSync": "기기 간에 Readwise를 옮기려면 동기화를 켜세요.",
+    "readwiseClaimNotDelivered": "아직 다른 기기에 알리지 못했습니다. 연결을 확인한 뒤 다시 시도하세요.",
+    "readwiseTakeOverFailed": "Readwise를 이 기기로 옮기지 못했습니다",
+    "readwiseCancelFailed": "Readwise 동기화를 취소하지 못했습니다"
   },
   "project": {
     "createFailed": "프로젝트를 만들지 못했습니다.",
@@ -236,7 +272,8 @@
     "renameFailed": "속성 이름을 변경하지 못했습니다.",
     "createDefinitionFailed": "속성 정의를 만들지 못했습니다.",
     "updateDefinitionFailed": "속성 정의를 업데이트하지 못했습니다.",
-    "setCalendarVisibilityFailed": "캘린더 속성 표시 여부를 설정하지 못했습니다."
+    "setCalendarVisibilityFailed": "캘린더 속성 표시 여부를 설정하지 못했습니다.",
+    "definitionsFileUnreadable": ".memry/properties.md를 읽을 수 없어 속성 변경을 저장할 수 없습니다. 해당 파일을 고치거나 제거한 뒤 다시 시도하세요."
   },
   "reminder": {
     "notFound": "리마인더를 찾을 수 없습니다.",
@@ -262,6 +299,7 @@
     "shortcutInUse": "{shortcut} 단축키는 이미 사용 중입니다."
   },
   "tag": {
+    "renameInProgress": "#{from}을(를) #{to}(으)로 바꾸는 작업이 아직 진행 중입니다. 끝난 후 다시 시도하세요.",
     "mergeSameTag": "원본 태그와 대상 태그가 같습니다.",
     "categoryNameRequired": "카테고리 이름을 입력하세요.",
     "pinNoteFailed": "노트를 고정하지 못했습니다.",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "여러 작업을 삭제하지 못했습니다.",
     "moveManyFailed": "여러 작업을 이동하지 못했습니다.",
     "archiveManyFailed": "여러 작업을 보관하지 못했습니다.",
-    "projectMissing": "해당 프로젝트가 더 이상 없습니다."
+    "projectMissing": "해당 프로젝트가 더 이상 없습니다.",
+    "invalidParent": "작업을 그곳에 둘 수 없습니다"
   },
   "taskStatus": {
     "createFailed": "상태를 만들지 못했습니다.",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "소유자가 이 노트를 읽기 전용으로 설정했습니다.",
     "folderReadOnly": "소유자가 이 폴더를 읽기 전용으로 설정했습니다."
+  },
+  "ocrLanguages": {
+    "unreachable": "Memry 서버에 연결할 수 없습니다. 이미 설치된 언어는 계속 작동하며 다음 시작 시 다시 시도합니다.",
+    "unavailable": "Memry 서버가 아직 이 언어를 제공하지 않습니다. 이미 설치된 언어는 계속 작동합니다.",
+    "corrupt": "다운로드한 데이터가 Memry가 기대하는 것과 달라 사용하지 않았습니다. 다시 다운로드하세요.",
+    "saveFailed": "언어 데이터를 이 컴퓨터에 저장하지 못했습니다. 디스크 여유 공간을 확인한 뒤 다시 시도하세요."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\"은(는) 예약어이므로 필드 이름으로 쓸 수 없습니다",
+    "duplicateField": "#{definedBy}에 이미 \"{name}\" 필드가 있습니다",
+    "unknownField": "이 태그에는 \"{name}\" 필드가 없습니다",
+    "inheritedField": "\"{name}\"은(는) #{definedBy}에서 가져온 필드입니다. 그곳에서 편집하세요",
+    "cycle": "#{parent}은(는) 이미 이 태그의 필드를 상속합니다",
+    "unreadableSchema": "더 새로운 버전의 Memry가 이 태그를 변경했습니다. 편집하려면 Memry를 업데이트하세요",
+    "relationTargetRequired": "이 관계가 가리킬 태그를 선택하세요",
+    "editFailed": "태그의 필드를 변경하지 못했습니다",
+    "previewFailed": "이 변경의 영향 범위를 계산하지 못했습니다",
+    "snapshotFailed": "태그 필드를 불러오지 못했습니다",
+    "renameRunning": "다른 필드 이름 변경이 아직 마무리 중입니다({from} → {to}). 끝난 후 다시 시도하세요."
   }
 }

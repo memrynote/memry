@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "刪除日誌",
     "description": "確定要刪除「{title}」嗎？此動作無法復原。"
+  },
+  "dayTimeline": {
+    "label": "當日行程",
+    "allDay": "全天項目",
+    "unscheduled": "未排程",
+    "unscheduledEmpty": "沒有未排程的任務。將區塊拖曳到這裡即可清除其時間。",
+    "range": "{start} – {end}",
+    "openTask": "{title}，{range}",
+    "completeTask": "完成 {title}"
   }
 }

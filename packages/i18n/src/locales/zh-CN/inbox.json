@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, other {# 项已延后的条目}}",
     "notificationBody": "{count, plural, other {已延后的条目可以处理了}}",
     "toast": "{count, plural, =1 {“{itemTitle}”已回到收件箱} other {# 项已延后的条目已回到收件箱}}"
+  },
+  "sticky": {
+    "kindLabel": "发送为",
+    "kinds": {
+      "note": "笔记",
+      "task": "任务",
+      "journal": "日记"
+    },
+    "placeholders": {
+      "note": "随手记下…",
+      "task": "给小安打电话 @明天 #家 !高",
+      "journal": "添加到今天的日记…"
+    },
+    "saving": "正在保存…",
+    "saved": "已保存",
+    "saveFailed": "未保存",
+    "tuck": "收起",
+    "send": "发送",
+    "hints": "Esc 收起 · {mod}⌫ 删除",
+    "sendAndCloseHint": "⌥{mod}↵ 发送并关闭",
+    "deleted": "草稿已删除",
+    "open": "打开",
+    "undo": "撤销",
+    "sent": {
+      "note": "已保存到便签文件夹",
+      "task": "任务已添加",
+      "journal": "已添加到今天的日记"
+    },
+    "tab": {
+      "label": "{count, plural, other {# 个便签草稿}}",
+      "newSticky": "新建便签"
+    },
+    "errors": {
+      "empty": "请先写点内容。",
+      "taskFailed": "无法创建任务。",
+      "tasksOff": "任务功能已在设置中关闭。",
+      "journalOff": "日记功能已在设置中关闭。",
+      "sendFailed": "无法发送便签。",
+      "undoExpired": "已无法撤销。",
+      "undoFailed": "无法撤销发送。"
+    },
+    "inputLabel": "便签文本",
+    "dismissError": "关闭"
   }
 }

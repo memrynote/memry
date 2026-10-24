@@ -195,6 +195,7 @@
     "complete-task": "{title} 완료",
     "task-completed": "작업을 완료했습니다",
     "could-not-complete": "작업을 완료하지 못했습니다",
+    "could-not-update-status": "작업 상태를 변경하지 못했습니다",
     "duration-minutes": "{minutes}분",
     "duration-hours": "{hours}시간",
     "duration-hours-minutes": "{hours}시간 {minutes}분"
@@ -236,6 +237,18 @@
       "could-not-open-note": "노트를 열지 못했습니다."
     }
   },
+  "eventNotes": {
+    "heading": "노트",
+    "create": "새 노트",
+    "link": "노트 연결",
+    "untitled": "회의 노트",
+    "searchPlaceholder": "노트 검색",
+    "noResults": "노트를 찾을 수 없습니다",
+    "createFailed": "이 일정의 노트를 만들지 못했습니다.",
+    "linkFailed": "노트를 이 일정에 연결하지 못했습니다.",
+    "loadFailed": "이 일정에 연결된 노트를 불러오지 못했습니다.",
+    "propertyTaken": "이 노트에는 링크가 아닌 \"{name}\" 속성이 이미 있습니다."
+  },
   "notePopover": {
     "kind": "노트",
     "kindDateReminder": "날짜 리마인더",
@@ -254,6 +267,10 @@
     "overdue": "기한 지남",
     "untitled": "제목 없음",
     "days": "{count, plural, other {#일}}",
+    "subtasks": {
+      "expand": "{title}의 {count, plural, other {하위 작업 #개}} 표시",
+      "collapse": "{title}의 {count, plural, other {하위 작업 #개}} 숨기기"
+    },
     "events": "일정",
     "schedule-hint": "클릭하여 날짜 설정, 드래그하여 기간 설정",
     "empty-title": "이 구간의 타임라인에 항목이 없습니다",

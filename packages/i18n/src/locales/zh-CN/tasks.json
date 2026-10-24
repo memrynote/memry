@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {已清除 # 个子任务的截止日期}}",
       "prioritySet": "{count, plural, other {已为 # 个子任务设置优先级}}",
       "deleted": "{count, plural, other {已删除 # 个子任务}}"
-    }
+    },
+    "completedBranch": "已完成 {title} 及 {count, plural, other {# 个未完成的子任务}}",
+    "deletedKeepSubtasks": "已删除 {title}，并保留其子任务",
+    "deletedBranch": "已删除 {title} 及 {count, plural, other {# 个子任务}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "状态",
       "projectIs": "项目是",
       "project": "项目",
+      "locationIs": "位置为",
+      "location": "位置",
+      "unknownNote": "未知笔记",
       "due": "截止",
       "dueDate": "截止日期",
       "search": "搜索",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "截止日期"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "位置",
+      "search": "搜索文件夹和笔记...",
+      "empty": "没有包含任务的文件夹或笔记"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "优先级",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "项目视图",
       "overview": "概览",
+      "all": "全部",
       "tasks": "任务",
       "notes": "笔记",
       "files": "文件",
@@ -951,6 +963,25 @@
       "fileError": "无法链接 {name}",
       "fileErrorGeneric": "无法导入这些文件",
       "label": "添加到 {name}"
+    },
+    "all": {
+      "showDone": "显示已完成",
+      "empty": "此项目中没有未完成的内容。",
+      "expand": "显示 {title} 中的任务",
+      "collapse": "隐藏 {title} 中的任务",
+      "taskSummary": "{open}/{total} 未完成",
+      "daysLeft": "{count} 天",
+      "overdue": "逾期 {count} 天",
+      "columns": {
+        "title": "标题",
+        "daysLeft": "剩余天数"
+      },
+      "status": {
+        "active": "进行中",
+        "done": "已完成",
+        "upcoming": "即将开始",
+        "past": "已过期"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "靛蓝色",
     "purple": "紫色",
     "pink": "粉色"
+  },
+  "subtaskTree": {
+    "addSubtask": "添加子任务",
+    "dropInto": "放入 {title}",
+    "dropOut": "上移一级",
+    "draftPlaceholder": "子任务标题",
+    "draftLabel": "{title} 中的新子任务",
+    "draftIn": "在 {title} 中",
+    "toggleComplete": "完成 {title}",
+    "moveUnder": {
+      "title": "移到…之下",
+      "placeholder": "移到…之下…",
+      "empty": "没有匹配的任务",
+      "topLevel": "{project} 的顶层",
+      "thisTask": "此任务",
+      "currentParent": "当前父任务",
+      "movesOne": "移动 {title}",
+      "movesBranch": "移动 {title} 及 {count, plural, other {# 个子任务}}",
+      "keys": "↵ 移到此处 · ⌘↵ 顶层 · esc 关闭"
+    },
+    "zoom": {
+      "path": "任务路径",
+      "up": "上一级",
+      "upShortcut": "上一级（⌘↑）"
+    },
+    "deleteParent": {
+      "title": "删除 {title}？",
+      "summary": "{direct, plural, other {它有 # 个子任务}}{deeper, plural, =0 {} other {，其下另有 # 个}}{open, plural, =0 {，均已完成。} other {，还有 # 个未完成。}}",
+      "cancel": "取消",
+      "deleteAll": "全部删除",
+      "keepSubtasks": "保留子任务"
+    },
+    "menu": {
+      "open": "打开",
+      "complete": "完成",
+      "reopen": "重新打开",
+      "zoom": "聚焦到子任务",
+      "moveUnder": "移到…之下…",
+      "indent": "移到 {title} 之下",
+      "outdent": "上移一级",
+      "topLevel": "设为顶层任务",
+      "delete": "删除"
+    },
+    "openPath": "打开 {path}"
   }
 }

@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "你的方案可同步的儲存庫數量少於此帳號擁有的數量，因此這個儲存庫只會留在此裝置上。請在「設定 → 帳號」中從帳號移除一個儲存庫，或升級方案。",
     "certificatePinFailed": "安全連線失敗。請檢查網路連線。",
     "deviceKeyMismatch": "此裝置的安全金鑰與帳號中註冊的金鑰已不相符，因此伺服器會拒絕它的變更。請在此裝置上重新登入以重新註冊。",
+    "deviceKeysMissing": "此裝置上的變更無法上傳，因為裝置金鑰遺失。請選擇「修復」來還原。如果此裝置已不再持有金鑰，你需要重新登入，且可能需要輸入復原片語。尚未同步的筆記、任務與專案會保留。",
     "keychainUnavailable": "Memry 目前無法從系統鑰匙圈讀取同步金鑰，因此同步已暫停。解鎖鑰匙圈後同步會自動恢復；若未恢復，請重新啟動 Memry。沒有任何內容被刪除。",
     "unknown": "發生意外的同步錯誤。將自動重試。",
     "statusFetchFailed": "無法取得同步狀態",
@@ -106,6 +107,10 @@
     "triggerFailed": "同步失敗",
     "pauseFailed": "無法暫停同步",
     "resumeFailed": "無法恢復同步",
+    "syncNowSignedOut": "同步需要你在此裝置上重新登入。",
+    "syncNowBusy": "同步已在執行中。請稍後再試。",
+    "syncNowPaused": "同步在執行期間已暫停。請從同步選單繼續。",
+    "openAccountSettings": "開啟設定",
     "settingsNotInitialized": "設定同步尚未初始化",
     "securityQuarantinePermanent": "無法驗證同步項目，已為安全起見將其隔離。",
     "securityQuarantineRetry": "同步項目的簽章驗證失敗，將會重試。",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "AI 行內編輯已停用",
-    "listOllamaModelsFailed": "無法列出 Ollama 模型"
+    "listOllamaModelsFailed": "無法列出 Ollama 模型",
+    "writingAssistInvalid": "無法將該請求傳送給 AI 模型。",
+    "apiKeyMissing": "請在「設定 → AI」中新增你的 {provider} API 金鑰，以使用寫作工具。",
+    "apiKeyInvalid": "你的 {provider} API 金鑰遭到拒絕。請在「設定 → AI」中檢查。",
+    "ollamaUnreachable": "Ollama 尚未執行。請以「ollama serve」啟動，或在「設定 → AI」中選擇其他供應商。",
+    "providerUnreachable": "無法連線到 {provider}。請檢查網路連線後再試一次。"
   },
   "auth": {
     "notAuthenticated": "尚未驗證身分",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "無法轉換外部行事曆活動",
     "onlyCalendarSourcesRetryable": "只有行事曆來源可以重試",
     "invalidProviderSettings": "行事曆服務設定無效",
-    "getExternalEventFailed": "無法載入這個活動。它仍在你的行事曆上，請再次嘗試開啟。"
+    "getExternalEventFailed": "無法載入這個活動。它仍在你的行事曆上，請再次嘗試開啟。",
+    "listLinkedNotesFailed": "無法載入連結到此事件的筆記。"
   },
   "canvasFolder": {
     "exists": "這裡已有同名的畫布資料夾。",
@@ -209,10 +220,35 @@
     "previewFailed": "預覽失敗",
     "listFailed": "無法列出匯入工具",
     "appleNotesFoldersFailed": "無法讀取 Apple Notes 資料夾",
+    "appleNotesPasswordFailed": "無法檢查備忘錄密碼。",
     "onenoteStatusFailed": "無法讀取 OneNote 連線狀態",
     "onenoteConnectFailed": "Microsoft 登入失敗",
     "onenoteDisconnectFailed": "無法中斷連結 Microsoft 帳號",
-    "onenoteNotebooksFailed": "無法載入 OneNote 筆記本"
+    "onenoteNotebooksFailed": "無法載入 OneNote 筆記本",
+    "readwiseStatusFailed": "無法讀取 Readwise 連線狀態",
+    "readwiseConnectFailed": "無法連線到 Readwise",
+    "readwiseInvalidToken": "Readwise 不接受此權杖。請從 readwise.io/access_token 重新複製。",
+    "readwiseRateLimited": "Readwise 目前限制了請求次數。請一分鐘後再試。",
+    "readwiseUnreachable": "無法連線到 Readwise。請檢查連線後再試一次。",
+    "readwiseDisconnectFailed": "無法中斷 Readwise 連線",
+    "readwiseSyncFailed": "無法開始 Readwise 同步",
+    "readwiseRunUnavailable": "Readwise 不會在此裝置上同步。",
+    "readwiseRunInProgress": "已有 Readwise 匯入正在執行。請在完成後再試。",
+    "readwiseOptionsFailed": "無法儲存 Readwise 設定",
+    "readwiseNotConnected": "尚未連線 Readwise。請先貼上你的存取權杖。",
+    "readwiseSyncsElsewhere": "Readwise 在另一台裝置上同步。請到該裝置執行此指令。",
+    "readwiseBookCommandFailed": "無法完成 Readwise 指令",
+    "readwiseBookGone": "這本書已不在你的 Readwise 資料庫中。",
+    "readwiseNotLinked": "此筆記未連結到任何 Readwise 書籍。",
+    "readwiseNotDeleted": "這本書不在已刪除清單中。",
+    "readwiseBookBusy": "指令執行期間筆記發生了變更。請再試一次。",
+    "readwiseSyncsOnDevice": "Readwise 在 {device} 上同步。請使用「改為在此處同步」移到此裝置。",
+    "readwiseAnotherDevice": "另一台裝置",
+    "readwiseNotReady": "Memry 尚未完成與你其他裝置的同步。請稍後再試。",
+    "readwiseNeedsSync": "請開啟同步，才能在裝置之間移動 Readwise。",
+    "readwiseClaimNotDelivered": "目前無法通知你的其他裝置。請檢查連線後再試一次。",
+    "readwiseTakeOverFailed": "無法將 Readwise 移到此裝置",
+    "readwiseCancelFailed": "無法取消 Readwise 同步"
   },
   "project": {
     "createFailed": "無法建立專案",
@@ -236,7 +272,8 @@
     "renameFailed": "無法重新命名屬性",
     "createDefinitionFailed": "無法建立屬性定義",
     "updateDefinitionFailed": "無法更新屬性定義",
-    "setCalendarVisibilityFailed": "無法設定行事曆屬性的顯示狀態"
+    "setCalendarVisibilityFailed": "無法設定行事曆屬性的顯示狀態",
+    "definitionsFileUnreadable": "無法儲存屬性變更，因為無法讀取 .memry/properties.md。請修復或移除該檔案，然後再試一次。"
   },
   "reminder": {
     "notFound": "找不到提醒",
@@ -262,6 +299,7 @@
     "shortcutInUse": "快速鍵 {shortcut} 已在使用中"
   },
   "tag": {
+    "renameInProgress": "將 #{from} 重新命名為 #{to} 的作業仍在執行。請在完成後再試。",
     "mergeSameTag": "來源標籤與目標標籤相同",
     "categoryNameRequired": "請輸入分類名稱",
     "pinNoteFailed": "無法釘選筆記",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "無法刪除任務",
     "moveManyFailed": "無法移動任務",
     "archiveManyFailed": "無法封存任務",
-    "projectMissing": "該專案已不存在"
+    "projectMissing": "該專案已不存在",
+    "invalidParent": "任務無法放在那裡"
   },
   "taskStatus": {
     "createFailed": "無法建立狀態",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "擁有者已將此筆記設為唯讀。",
     "folderReadOnly": "擁有者已將此資料夾設為唯讀。"
+  },
+  "ocrLanguages": {
+    "unreachable": "無法連線到 Memry 的伺服器。已有的語言仍可使用，Memry 會在下次啟動時重試。",
+    "unavailable": "Memry 的伺服器尚未提供此語言。已有的語言仍可使用。",
+    "corrupt": "下載的資料與 Memry 預期的不符，因此未使用。請重試以重新下載。",
+    "saveFailed": "無法將語言資料儲存在這台電腦上。請檢查可用的磁碟空間，然後重試。"
+  },
+  "tagFields": {
+    "reservedName": "「{name}」為保留名稱，不能作為欄位名稱",
+    "duplicateField": "#{definedBy} 已有名為「{name}」的欄位",
+    "unknownField": "此標籤沒有名為「{name}」的欄位",
+    "inheritedField": "「{name}」來自 #{definedBy}。請到該處編輯",
+    "cycle": "#{parent} 已從此標籤繼承欄位",
+    "unreadableSchema": "較新版本的 Memry 變更了此標籤。請更新 Memry 後再編輯",
+    "relationTargetRequired": "請選擇此關聯指向哪個標籤",
+    "editFailed": "無法變更標籤的欄位",
+    "previewFailed": "無法計算此變更的影響範圍",
+    "snapshotFailed": "無法載入標籤欄位",
+    "renameRunning": "另一個欄位重新命名（{from} 改為 {to}）仍在完成中。完成後請再試一次。"
   }
 }

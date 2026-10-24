@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "无法复制传送门",
+    "hiddenCount": "已隐藏 {count} 个",
+    "windowFailed": "无法打开此传送门。请改为打开源笔记。",
+    "noTarget": "此传送门还没有目标。请在定义中添加一篇笔记，或移除该块。",
+    "invalidJson": "此传送门的定义不是有效的 JSON。请在下方修复，或移除该块。",
+    "invalidShape": "此传送门的定义中没有笔记或搜索。请在下方修复，或移除该块。",
+    "search": {
+      "editQuery": "编辑查询",
+      "count": "{count, plural, other {# 个块}}",
+      "loading": "正在搜索…",
+      "empty": "没有符合此查询的块。",
+      "failed": "无法运行搜索。",
+      "retry": "重试",
+      "truncated": "仅显示前 {count} 个匹配项。"
+    },
+    "copiedContents": "内容已复制",
+    "copiedLink": "链接已复制",
+    "actionFailed": "无法更改此传送门",
+    "keepsOneBlock": "传送门至少保留一个块。请改为移除整个传送门。",
+    "expandChildren": "显示子项",
+    "collapseChildren": "隐藏子项",
+    "toolbar": {
+      "label": "传送门",
+      "include": "包含“{block}”",
+      "locked": "{note} 已锁定 · 只读",
+      "more": "更多",
+      "openBeside": "在旁边打开 {note}",
+      "click": "点击",
+      "copyContents": "复制内容",
+      "copyLink": "复制链接",
+      "remove": "移除传送门",
+      "removeHint": "{note} 会保留所有块"
+    },
+    "states": {
+      "missingNote": {
+        "text": "源笔记已被删除。引用已保留。",
+        "action": "移除"
+      },
+      "missingBlock": {
+        "text": "该块已在 {source} 中被删除。",
+        "action": "选择其他块"
+      },
+      "notSynced": {
+        "text": "正在等待源笔记同步。",
+        "action": "重试"
+      },
+      "cycle": {
+        "text": "此传送门指回了它自身。",
+        "action": "打开源笔记"
+      },
+      "tooDeep": {
+        "text": "传送门最多嵌套 {max} 层。此传送门将以链接形式打开。",
+        "action": "打开源笔记"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "聚焦收集输入框",
@@ -43,6 +100,50 @@
     "showInFileManager": "在文件管理器中显示",
     "openInDefaultApp": "在默认应用程序中打开",
     "revealFailed": "无法在文件夹中显示"
+  },
+  "commands": {
+    "runFailed": "无法运行该命令。请重试。"
+  },
+  "commandsPalette": {
+    "title": "命令",
+    "placeholder": "输入命令…",
+    "groups": {
+      "navigation": "导航",
+      "create": "创建",
+      "tabs": "标签页",
+      "editor": "编辑器",
+      "view": "视图",
+      "app": "应用",
+      "note": "笔记",
+      "settings": "设置",
+      "sync": "同步",
+      "help": "帮助",
+      "project": "项目",
+      "tasks": "任务",
+      "canvas": "画布",
+      "folder": "文件夹",
+      "file": "文件"
+    },
+    "contexts": {
+      "note": "此笔记",
+      "journal": "此日记",
+      "project": "此项目",
+      "tasks": "这些任务",
+      "canvas": "此画布",
+      "folder": "此文件夹",
+      "tag": "此标签",
+      "file": "此文件"
+    },
+    "recent": "最近",
+    "empty": "没有符合“{query}”的命令",
+    "searchHint": "搜索笔记：{shortcut}",
+    "status": {
+      "count": "{count, plural, other {# 个命令}}"
+    },
+    "actions": {
+      "run": "运行",
+      "searchNotes": "搜索笔记"
+    }
   },
   "tabs": {
     "pin": "固定标签页",
@@ -131,6 +232,20 @@
     "openInTab": "在标签页中打开对话",
     "stop": "停止",
     "thinking": "智能体正在思考",
+    "toolsUnavailable": "此模型的保险库工具已关闭。它未通过工具检查，因此只能聊天。",
+    "toolsUnavailableWithDetail": "此模型的保险库工具已关闭。它未通过工具检查，因此只能聊天。{detail}",
+    "toolsOff": {
+      "toolsRejected": "此模型的保险库工具已关闭。服务商拒绝了包含工具的测试请求，因此该模型只能聊天。",
+      "noToolCall": "此模型的保险库工具已关闭。它在回答测试请求时没有调用工具，因此只能聊天。",
+      "toolResultRejected": "此模型的保险库工具已关闭。它调用了测试工具，但在拿到结果后失败，因此只能聊天。",
+      "streamingUnsupported": "此模型的保险库工具已关闭。服务商没有以流式返回测试回复，因此该模型只能聊天。",
+      "providerSaid": "服务商返回：{detail}",
+      "wroteToolCall": "模型把工具调用写成了文本，没有执行任何操作。"
+    },
+    "stepLimit": {
+      "notice": "已在步数上限处停止。",
+      "continue": "继续"
+    },
     "enable": {
       "title": "启用 memrynote 智能体",
       "description": "memrynote 智能体通过你选择的本地智能体 CLI 来讨论仓库内容。Claude 会将对话内容发送给 Anthropic；Codex 会将对话内容发送给 OpenAI。",
@@ -275,6 +390,15 @@
       "addContext": "添加上下文",
       "addContextWithPermissions": "添加上下文（{permissions}）",
       "mentionContext": "提及笔记、任务或日程",
+      "files": {
+        "attach": "附加文本文件",
+        "refused": {
+          "unsupportedType": "{name} 不是受支持的文本文件。请附加 .txt、.md、.log、.csv、.tsv、.json、.yaml 或 .yml 文件。",
+          "notText": "{name} 不是 UTF-8 文本文件。请改为附加文本文件。",
+          "tooLarge": "附加 {name} 后，此消息会超过 100 KB 的上限。请移除一个文件或附加更小的文件。",
+          "readFailed": "无法读取 {name}。请确认文件仍然存在且你可以打开它，然后重新附加。"
+        }
+      },
       "voice": {
         "start": "开始语音输入",
         "stop": "停止语音输入",
@@ -340,6 +464,14 @@
           "extraHigh": "超高"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "默认",
+          "default": "默认深度",
+          "high": "高",
+          "max": "最大"
+        }
+      },
       "permissionsLabel": "智能体权限：{access}，联网搜索{webSearch}",
       "permissions": {
         "label": "权限",
@@ -347,6 +479,17 @@
         "tools": "工具"
       },
       "modelSettingsLabel": "智能体模型设置：{model}，{settings}",
+      "queue": {
+        "label": "排队的消息",
+        "queueMessage": "加入队列",
+        "edit": "编辑排队的消息",
+        "editLabel": "排队的消息文本",
+        "remove": "移除排队的消息",
+        "save": "保存",
+        "cancel": "取消",
+        "sending": "正在发送…",
+        "notSent": "未发送。请编辑后重新发送，或将其移除。"
+      },
       "unavailable": {
         "vaultToolsOnly": "此模型仅可使用仓库工具"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "无法保存说明的确认状态",
       "resolveWindow": "无法确定智能体的来源窗口",
       "detectCli": "无法检测智能体后端",
-      "loadDisclosure": "无法加载说明的确认状态"
+      "loadDisclosure": "无法加载说明的确认状态",
+      "turnFailed": "回复因错误而中断。你的消息已保留，可以重新发送。"
     },
     "actions": {
       "copy": "复制",
@@ -576,6 +720,7 @@
       "newFolder2": "新建文件夹",
       "newProject": "新建项目",
       "bookmarks": "书签",
+      "chart": "图表",
       "tags": "标签",
       "reorderSection": "调整{section}顺序",
       "dropFilesToImport": "拖放文件以导入",
@@ -863,6 +1008,11 @@
       "cancel": "取消",
       "remove2": "移除",
       "inYourAccount": "在你的账户中",
+      "trySandbox": "试用沙盒保险库",
+      "sandboxVault": "沙盒保险库",
+      "sandboxPreparing": "正在准备沙盒…",
+      "sandboxFailed": "无法准备沙盒保险库",
+      "resetSandbox": "重置沙盒保险库",
       "itemsCount": "{count} 项",
       "untitledVault": "仓库",
       "downloadVaultTitle": "下载“{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "打开的笔记会显示在这里",
       "bookmarks": "书签",
       "tasks": "任务",
+      "chart": "图表",
       "calendar": "日历",
       "calendarToday": "今天",
       "openCalendar": "打开日历",
@@ -978,6 +1129,9 @@
     "edit": "编辑",
     "done": "完成",
     "addWidget": "添加小组件",
+    "cover": {
+      "add": "添加封面"
+    },
     "empty": {
       "title": "你的看板是空的",
       "body": "小组件将你的笔记、任务和书签汇聚到一个宁静的地方。",
@@ -1170,6 +1324,7 @@
     "changeIcon": "更改图标…",
     "resetIcon": "重置图标",
     "iconButton": "更改 {name} 的图标",
+    "leaveSandbox": "返回 {name}",
     "iconFailed": "无法更改仓库图标"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "类型",
     "filterModified": "修改时间",
     "matches": "匹配内容",
+    "matchesMore": "{count, plural, other {还有 # 个匹配项}}",
+    "matchesHide": "隐藏匹配项",
+    "matchOf": "第 {index} 个匹配项，共 {total} 个",
     "showMore": "再显示 {count} 项",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "下一部分",
       "open": "打开",
       "openNote": "打开笔记",
+      "openAtMatch": "在匹配处打开",
       "openFile": "打开文件",
       "openJournal": "打开日记",
       "openTask": "打开任务",
@@ -1259,6 +1418,7 @@
       "chooseTag": "选择标签",
       "addTag": "添加标签",
       "showAll": "全部显示",
+      "hideMatches": "隐藏匹配项",
       "searchEverywhere": "全局搜索",
       "clearFilters": "清除筛选"
     },

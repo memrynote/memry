@@ -29,6 +29,23 @@
       "buttonRestartNow": "立即重启",
       "releaseNotesLabel": "更新说明："
     },
+    "dataDbRecovery": {
+      "title": "修复保险库数据库",
+      "message": "Memry 中此保险库的数据库已损坏。",
+      "detail": "你的笔记和日记文件不受影响。修复会将损坏的数据库备份到 {path}，新建一个数据库，尽可能根据保险库文件重建内容，并在下次同步时恢复已同步的条目。尚未同步的更改会尽可能恢复。",
+      "buttonRecover": "修复",
+      "buttonLater": "暂不"
+    },
+    "obsidianVault": {
+      "title": "打开 Obsidian 保险库",
+      "message": "要打开此 Obsidian 保险库的副本吗？",
+      "detail": "在 memrynote 中打开 Obsidian 保险库可能会丢失 Obsidian 插件所依赖的数据。memrynote 将插件的任务行转换为任务时，会改写该行。例如 Tasks 插件的截止日期等字段会从文件中移除，Obsidian 将无法再看到它们。\n\nmemrynote 可以在旁边将“{name}”复制为“{copyName}”并打开该副本。“{name}”将保持原样。",
+      "detailExistingCopy": "在 memrynote 中打开 Obsidian 保险库可能会丢失 Obsidian 插件所依赖的数据。memrynote 将插件的任务行转换为任务时，会改写该行。例如 Tasks 插件的截止日期等字段会从文件中移除，Obsidian 将无法再看到它们。\n\n旁边已有一个 memrynote 副本“{copyName}”。memrynote 可以打开该副本。“{name}”将保持原样。",
+      "buttonCopy": "创建副本",
+      "buttonOpenCopy": "打开副本",
+      "buttonOpenOriginal": "打开原件",
+      "buttonCancel": "取消"
+    },
     "pair": {
       "title": "配对浏览器扩展",
       "message": "允许 Memry 浏览器扩展向此应用发送收集的内容吗？",

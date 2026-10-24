@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, other {รายการที่เลื่อนไว้ # รายการ}}",
     "notificationBody": "{count, plural, other {รายการที่เลื่อนไว้พร้อมให้ทบทวนแล้ว}}",
     "toast": "{count, plural, =1 {“{itemTitle}” กลับมาจากการเลื่อนแล้ว} other {รายการที่เลื่อนไว้ # รายการกลับมาแล้ว}}"
+  },
+  "sticky": {
+    "kindLabel": "ส่งเป็น",
+    "kinds": {
+      "note": "โน้ต",
+      "task": "งาน",
+      "journal": "บันทึกประจำวัน"
+    },
+    "placeholders": {
+      "note": "จดไว้เลย…",
+      "task": "โทรหา Ana @tomorrow #home !high",
+      "journal": "เพิ่มในบันทึกประจำวันของวันนี้…"
+    },
+    "saving": "กำลังบันทึก…",
+    "saved": "บันทึกแล้ว",
+    "saveFailed": "ไม่ได้บันทึก",
+    "tuck": "เก็บไว้ก่อน",
+    "send": "ส่ง",
+    "hints": "Esc เก็บไว้ · {mod}⌫ ลบ",
+    "sendAndCloseHint": "⌥{mod}↵ ส่งแล้วปิด",
+    "deleted": "ลบฉบับร่างแล้ว",
+    "open": "เปิด",
+    "undo": "เลิกทำ",
+    "sent": {
+      "note": "บันทึกในโฟลเดอร์ Sticky แล้ว",
+      "task": "เพิ่มงานแล้ว",
+      "journal": "เพิ่มในบันทึกประจำวันของวันนี้แล้ว"
+    },
+    "tab": {
+      "label": "{count, plural, other {ฉบับร่างสติกกี้ # รายการ}}",
+      "newSticky": "สติกกี้ใหม่"
+    },
+    "errors": {
+      "empty": "เขียนอะไรสักอย่างก่อน",
+      "taskFailed": "สร้างงานไม่สำเร็จ",
+      "tasksOff": "งานถูกปิดไว้ในการตั้งค่า",
+      "journalOff": "บันทึกประจำวันถูกปิดไว้ในการตั้งค่า",
+      "sendFailed": "ส่งสติกกี้ไม่สำเร็จ",
+      "undoExpired": "สายเกินไปที่จะเลิกทำแล้ว",
+      "undoFailed": "เลิกทำการส่งไม่สำเร็จ"
+    },
+    "inputLabel": "ข้อความสติกกี้",
+    "dismissError": "ปิด"
   }
 }
