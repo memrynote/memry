@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Marquee Block Selection — Block Type Matrix
  *
@@ -23,7 +24,7 @@
  * that are flaky in CI.
  */
 
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady, createNote } from './utils/electron-helpers'
 import { marqueeGutterX } from './utils/marquee-helpers'
 
@@ -31,7 +32,6 @@ const EDITOR_CONTAINER = '.bn-container'
 const EDITABLE_SELECTOR = `${EDITOR_CONTAINER} [contenteditable="true"]`
 const BLOCK_SELECTOR = '.bn-block[data-id]'
 const HIGHLIGHTED_SELECTOR = '.marquee-block-highlight'
-const _OVERLAY_SELECTOR = '.marquee-overlay'
 const TASK_BLOCK_SELECTOR = '[data-content-type="taskBlock"]'
 
 async function focusEditor(page: Page) {
@@ -56,8 +56,8 @@ async function getBlockCount(page: Page): Promise<number> {
 // Pattern from inline-subtasks.e2e.ts:77 — provision a real DB task via IPC
 // so the taskBlock renderer can resolve a row, not a placeholder.
 async function createTaskInDb(page: Page, title: string): Promise<string> {
-  return (await page.evaluate(
-    async ({ title }) => {
+  return page.evaluate(
+    async ({ title: titleArg }) => {
       const api = (window as any).api
       if (!api?.tasks) throw new Error('window.api.tasks not exposed')
       const projectsRes = await api.tasks.listProjects()
@@ -66,7 +66,7 @@ async function createTaskInDb(page: Page, title: string): Promise<string> {
       if (!defaultProject) throw new Error('no default project found')
       const created = await api.tasks.create({
         projectId: defaultProject.id,
-        title,
+        title: titleArg,
         priority: 0
       })
       if (!created?.success || !created.task) {
@@ -75,16 +75,16 @@ async function createTaskInDb(page: Page, title: string): Promise<string> {
       return created.task.id as string
     },
     { title }
-  )) as string
+  )
 }
 
 // Pattern from inline-subtasks.e2e.ts:106 — replace the editor doc with a
 // programmatic block array. Triggers BlockNote's onChange.
 async function setEditorBlocks(page: Page, blocks: any[]): Promise<void> {
-  await page.evaluate((blocks) => {
+  await page.evaluate((blocksArg) => {
     const editor = (window as any).__memryActiveEditor
     if (!editor) throw new Error('window.__memryActiveEditor not exposed')
-    editor.replaceBlocks(editor.document, blocks)
+    editor.replaceBlocks(editor.document, blocksArg)
   }, blocks)
 }
 

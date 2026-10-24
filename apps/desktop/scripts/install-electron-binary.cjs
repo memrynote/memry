@@ -251,17 +251,17 @@ function hasValidInstall(distDir, pathFile, platformPath) {
  * Remove staging/retired trees from a previous run that was killed mid-install.
  * Safe because the caller holds the install lock.
  */
-function sweepStaleWorkDirs(electronDir) {
+function sweepStaleWorkDirs(installDir) {
   let entries = []
   try {
-    entries = fs.readdirSync(electronDir)
+    entries = fs.readdirSync(installDir)
   } catch {
     return
   }
 
   for (const entry of entries) {
     if (entry.startsWith('.dist-staging-') || entry.startsWith('.dist-retired-')) {
-      fs.rmSync(path.join(electronDir, entry), { recursive: true, force: true })
+      fs.rmSync(path.join(installDir, entry), { recursive: true, force: true })
     }
   }
 }

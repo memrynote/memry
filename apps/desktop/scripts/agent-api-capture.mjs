@@ -1000,6 +1000,7 @@ await page.keyboard.press('Escape').catch(() => {})
 const seed = await page.evaluate(
   async ({ pngBase64, files }) => {
     const api = window.api
+    // oxlint-disable-next-line unicorn/consistent-function-scoping -- this callback is serialized into the page, so its helpers must stay inside it
     const id = (r) =>
       r?.id ??
       r?.note?.id ??
@@ -1075,20 +1076,24 @@ const seed = await page.evaluate(
       id: ids.noteId,
       content: `# Website relaunch plan\n\nSecond draft.\n${body}`
     })
-    await api.properties.set(ids.noteId, { stage: 'idea' }).catch((e) => (log.props = String(e)))
+    await api.properties
+      .set(ids.noteId, { stage: 'idea' })
+      .catch((/** @type {unknown} */ e) => (log.props = String(e)))
     await api.notes.ensurePropertyDefinition('stage', 'select').catch(() => {})
     await api.notes.ensurePropertyDefinition('progress', 'status').catch(() => {})
     await api.notes.createPropertyDefinition({ name: 'deadline', type: 'date' }).catch(() => {})
     const bytes = Uint8Array.from(atob(pngBase64), (c) => c.charCodeAt(0))
     log.attachment = await api.notes
       .uploadAttachment(ids.noteId, new File([bytes], 'diagram.png', { type: 'image/png' }))
-      .catch((e) => String(e))
+      .catch((/** @type {unknown} */ e) => String(e))
     ids.attachmentName = log.attachment?.name
       ? String(log.attachment.path ?? '')
           .split('/')
           .pop()
       : null
-    log.imported = await api.notes.importFiles([files.pdf], 'Projects').catch((e) => String(e))
+    log.imported = await api.notes
+      .importFiles([files.pdf], 'Projects')
+      .catch((/** @type {unknown} */ e) => String(e))
     for (let i = 0; i < 20 && !ids.fileId; i++) {
       const listed = await api.notes.list({ folder: 'Projects' }).catch(() => null)
       ids.fileId = (listed?.notes ?? []).find((n) => n.path === 'Projects/report.pdf')?.id ?? null
@@ -1165,7 +1170,7 @@ const seed = await page.evaluate(
     await api.inbox.archive(ids.inbox14Id).catch(() => {})
     const link = await api.inbox
       .captureLink({ url: 'https://example.com/pricing' })
-      .catch((e) => String(e))
+      .catch((/** @type {unknown} */ e) => String(e))
     log.linkInboxId = link
     ids.linkInboxId = id(link)
     const voice = await api.inbox
@@ -1175,7 +1180,7 @@ const seed = await page.evaluate(
         format: 'webm',
         transcribe: false
       })
-      .catch((e) => String(e))
+      .catch((/** @type {unknown} */ e) => String(e))
     log.voiceInboxId = voice
     ids.voiceInboxId = id(voice)
 
@@ -1276,6 +1281,7 @@ let release = null
 const released = new Promise((resolve) => (release = resolve))
 const chunk = (delta, finish = null) =>
   `data: ${JSON.stringify({ id: 'fake', object: 'chat.completion.chunk', created: 0, model: 'fake-local', choices: [{ index: 0, delta, finish_reason: finish }] })}\n\n`
+// oxlint-disable-next-line typescript/no-misused-promises -- the handler awaits the request body; the fake server has no error path to report to
 const fake = http.createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', 'http://127.0.0.1')
   if (req.method === 'GET' && url.pathname === '/v1/models') {
@@ -1316,7 +1322,7 @@ const fake = http.createServer(async (req, res) => {
     )
   }
   await released
-  res.end(`${chunk({ content: 'Examples captured.' })}${chunk({}, 'stop')}data: [DONE]\n\n`)
+  return res.end(`${chunk({ content: 'Examples captured.' })}${chunk({}, 'stop')}data: [DONE]\n\n`)
 })
 await new Promise((resolve) => fake.listen(18461, '127.0.0.1', resolve))
 
@@ -1381,7 +1387,7 @@ let rid = 1
 async function rpc(method, params, withGrant) {
   const headers = {
     authorization: `Bearer ${status.token}`,
-    'x-memry-window': String(windowId),
+    'x-memry-window': windowId,
     'content-type': 'application/json',
     accept: 'application/json, text/event-stream',
     ...(withGrant ? { 'x-memry-turn': grant } : {})
@@ -1504,6 +1510,7 @@ for (const [key, kind, rw, call, notRun] of CALLS) {
     entry.reply = trim(tokenize(reply))
     if (isError) entry.is_error = true
     report.push({ key, isError, reply: JSON.stringify(entry.reply).slice(0, 400) })
+    // oxlint-disable-next-line typescript/no-base-to-string -- CALLS keys are always strings; the tuple's mixed element types are inferred as a union
     console.log(`${isError ? 'ERR' : 'ok '} ${key}`)
   }
   ;(kind === 'tool' ? results.tools : results.operations)[key] = entry
@@ -1523,7 +1530,7 @@ if (VERIFY) {
         : `[${shape(value[0])}]`
       : value && typeof value === 'object'
         ? `{${Object.keys(value)
-            .sort()
+            .toSorted()
             .map((k) => `${k}:${shape(value[k])}`)
             .join(',')}}`
         : value === null

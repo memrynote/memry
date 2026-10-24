@@ -16,7 +16,6 @@ import { createNote, SELECTORS } from './utils/electron-helpers'
  * clock so the suite is stable on any day.
  */
 
-const _MOD = process.platform === 'darwin' ? 'Meta' : 'Control'
 const TYPING = '.date-mention-typing'
 const GHOST = '.date-mention-ghost'
 const PILL = '.date-mention[data-date-mention]'
@@ -234,16 +233,16 @@ test.describe('Inline @-date ghost autocomplete', () => {
         const probe = document.createElement('span')
         probe.style.color = 'var(--muted-foreground)'
         document.body.appendChild(probe)
-        const mutedColor = getComputedStyle(probe).color
+        const mutedColorArg = getComputedStyle(probe).color
         probe.remove()
-        const beforeBackground = getComputedStyle(el).backgroundColor
+        const beforeBackgroundArg = getComputedStyle(el).backgroundColor
         el.setAttribute('data-fired', 'true')
         const style = getComputedStyle(el)
         return {
-          beforeBackground,
+          beforeBackground: beforeBackgroundArg,
           firedBackground: style.backgroundColor,
           firedColor: style.color,
-          mutedColor
+          mutedColor: mutedColorArg
         }
       }
     )

@@ -57,7 +57,7 @@ test.describe('Cross-Feature Integration', () => {
 
             // Should navigate to new note or show conversion dialog
             const noteTitle = page.locator(SELECTORS.noteTitle)
-            const _hasNoteTitle = await noteTitle.isVisible().catch(() => false)
+            await noteTitle.isVisible().catch(() => false)
           }
         }
       }
@@ -86,7 +86,7 @@ test.describe('Cross-Feature Integration', () => {
             // Verify content is in the new note
             const noteEditor = page.locator(SELECTORS.noteEditor)
             if (await noteEditor.isVisible()) {
-              const _editorContent = await noteEditor.textContent()
+              await noteEditor.textContent()
               // Content should be preserved
             }
           }
@@ -101,7 +101,7 @@ test.describe('Cross-Feature Integration', () => {
       await page.waitForTimeout(500)
 
       // Get initial count
-      const _initialCount = await page.locator(SELECTORS.inboxItem).count()
+      await page.locator(SELECTORS.inboxItem).count()
 
       const captureInput = page.locator(SELECTORS.captureInput)
       if (await captureInput.isVisible()) {
@@ -121,7 +121,7 @@ test.describe('Cross-Feature Integration', () => {
             await page.waitForTimeout(500)
 
             // Count should be back to initial
-            const _newCount = await page.locator(SELECTORS.inboxItem).count()
+            await page.locator(SELECTORS.inboxItem).count()
           }
         }
       }
@@ -218,7 +218,7 @@ test.describe('Cross-Feature Integration', () => {
     test('T559: should show linked tasks in note', async ({ page }) => {
       // After linking, verify note shows the linked task
       const linkedTasksSection = page.locator('[data-testid="linked-tasks"]')
-      const _hasLinkedTasks = await linkedTasksSection.isVisible().catch(() => false)
+      await linkedTasksSection.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -338,7 +338,7 @@ test.describe('Cross-Feature Integration', () => {
     test('T560: should show reminder indicator', async ({ page }) => {
       // Verify items with reminders show indicator
       const reminderIndicator = page.locator('[data-testid="reminder-indicator"]')
-      const _hasIndicator = await reminderIndicator.isVisible().catch(() => false)
+      await reminderIndicator.isVisible().catch(() => false)
 
       expect(true).toBe(true)
     })
@@ -401,8 +401,6 @@ test.describe('Cross-Feature Integration', () => {
       const results = page.locator(SELECTORS.searchResults)
       if (await results.isVisible()) {
         // Should find both note and task
-        const _noteResult = results.locator('[data-type="note"]')
-        const _taskResult = results.locator('[data-type="task"]')
       }
 
       await closeModal(page)
@@ -428,7 +426,7 @@ test.describe('Cross-Feature Integration', () => {
 
         // Check for backlinks section
         const backlinks = page.locator('[data-testid="backlinks-section"]')
-        const _hasBacklinks = await backlinks.isVisible().catch(() => false)
+        await backlinks.isVisible().catch(() => false)
       }
 
       expect(true).toBe(true)

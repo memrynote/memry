@@ -22,7 +22,7 @@ async function plusOn(rec, page, title) {
     (els, y) => {
       const r = els
         .map((e) => e.getBoundingClientRect())
-        .find((r) => r.width && Math.abs(r.y + r.height / 2 - y) < 8)
+        .find((rc) => rc.width && Math.abs(rc.y + rc.height / 2 - y) < 8)
       return r && { x: r.x + r.width / 2, y: r.y + r.height / 2 }
     },
     b.y + b.height / 2

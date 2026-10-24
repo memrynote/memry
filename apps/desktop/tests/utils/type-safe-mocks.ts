@@ -277,7 +277,7 @@ export function createMockDb(): DataDb {
  * Creates a typed mock for the sync layer's DrizzleDb (data-schema only).
  */
 export function createMockSyncDb(): SyncDrizzleDb {
-  return createMockDb() as unknown as SyncDrizzleDb
+  return createMockDb()
 }
 
 /**

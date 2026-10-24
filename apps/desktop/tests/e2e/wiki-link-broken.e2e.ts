@@ -33,11 +33,15 @@ async function seedMixedLinks(page: Page): Promise<SeededLinks> {
   const sourceTitle = uniqueLabel('Broken Link Source')
 
   await page.evaluate(
-    async ({ sourceTitle, realTarget, ghostTarget }) => {
-      const real = await window.api.notes.create({ title: realTarget, content: 'A target.\n' })
+    async ({
+      sourceTitle: sourceTitleArg,
+      realTarget: realTargetArg,
+      ghostTarget: ghostTargetArg
+    }) => {
+      const real = await window.api.notes.create({ title: realTargetArg, content: 'A target.\n' })
       const source = await window.api.notes.create({
-        title: sourceTitle,
-        content: `A live link [[${realTarget}]] and a dead one [[${ghostTarget}]].\n`
+        title: sourceTitleArg,
+        content: `A live link [[${realTargetArg}]] and a dead one [[${ghostTargetArg}]].\n`
       })
       if (!real.success || !source.success) throw new Error('failed to seed the link pair')
     },

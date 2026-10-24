@@ -11,8 +11,8 @@ import type { Page } from '@playwright/test'
 
 async function createTemplate(page: Page, name: string, content: string): Promise<string> {
   return page.evaluate(
-    async ({ name, content }) => {
-      const result = await window.api.templates.create({ name, content })
+    async ({ name: nameArg, content: contentArg }) => {
+      const result = await window.api.templates.create({ name: nameArg, content: contentArg })
       if (!result.success || !result.template) throw new Error('template create failed')
       return result.template.id
     },

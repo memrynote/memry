@@ -44,7 +44,10 @@ const TYPES = {
 }
 const server = createServer((req, res) => {
   const file = path.join(dir, decodeURIComponent(new URL(req.url, 'http://x').pathname))
-  if (!file.startsWith(dir)) return res.writeHead(403).end()
+  if (!file.startsWith(dir)) {
+    res.writeHead(403).end()
+    return
+  }
   try {
     const body = readFileSync(file)
     res
@@ -184,6 +187,7 @@ async function worker(w) {
     const px = Buffer.allocUnsafe(W * H * 3)
     for (let k = 0; k < px.length; k++) px[k] = (acc[k] + (sub >> 1)) / sub
     // backpressure: keep the reorder window small
+    // oxlint-disable-next-line no-unmodified-loop-condition -- `next` is advanced by the concurrent flush() of other workers; the loop waits on it
     while (f - next > WORKERS * 3) await new Promise((r) => setTimeout(r, 5))
     pending.set(f, px)
     await flush()

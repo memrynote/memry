@@ -22,7 +22,7 @@ const readJson = (path, label) => {
     return JSON.parse(readFileSync(path, 'utf8'))
   } catch (err) {
     console.error(`Could not read ${label} at ${path}: ${err.message}`)
-    process.exit(1)
+    return process.exit(1)
   }
 }
 

@@ -85,6 +85,9 @@ jobs:
       - name: Typecheck desktop renderer tests
         run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.web.json
 
+      - name: Typecheck desktop e2e specs
+        run: pnpm --filter @memry/desktop exec node ../../scripts/typecheck.mjs tsconfig.test.e2e.json
+
       - name: Check IPC generated files
         run: pnpm --filter @memry/desktop run ipc:check
 

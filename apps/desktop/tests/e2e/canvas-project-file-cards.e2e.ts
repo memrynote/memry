@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Project and filed-file cards on the spatial canvas (#2082).
  *
@@ -10,7 +11,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { PNG_BYTES, ready, uniqueLabel } from './utils/desktop-test-helpers'
 
 async function openVault(page: Page): Promise<void> {

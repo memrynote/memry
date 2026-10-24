@@ -22,10 +22,15 @@ test.describe('File attachments and viewer E2E', () => {
 
     try {
       const result = await page.evaluate(
-        async ({ noteTitle, importSourcePath, importFileName, pngBytes }) => {
+        async ({
+          noteTitle: noteTitleArg,
+          importSourcePath: importSourcePathArg,
+          importFileName: importFileNameArg,
+          pngBytes
+        }) => {
           const api = window.api
           const note = await api.notes.create({
-            title: noteTitle,
+            title: noteTitleArg,
             content: 'Attachment host',
             tags: ['e2e-file-attachments']
           })
@@ -38,7 +43,7 @@ test.describe('File attachments and viewer E2E', () => {
           if (!uploaded.success) throw new Error(uploaded.error ?? 'attachment upload failed')
           const attachments = await api.notes.listAttachments(note.note.id)
 
-          const imported = await api.notes.importFiles([importSourcePath], '')
+          const imported = await api.notes.importFiles([importSourcePathArg], '')
           if (!imported.success || imported.imported !== 1) {
             throw new Error(imported.errors.join('\n') || 'file import failed')
           }
@@ -46,7 +51,7 @@ test.describe('File attachments and viewer E2E', () => {
           return {
             noteId: note.note.id,
             attachmentFilename: attachments[0]?.filename,
-            importFileName,
+            importFileName: importFileNameArg,
             imported
           }
         },
@@ -69,13 +74,13 @@ test.describe('File attachments and viewer E2E', () => {
         .poll(
           () =>
             page.evaluate(
-              async ({ fileName, importTitle }) => {
+              async ({ fileName, importTitle: importTitleArg }) => {
                 const list = await window.api.notes.list({ limit: 100 })
                 return (
                   list.notes.find(
                     (note) =>
                       note.fileType === 'image' &&
-                      (note.path === fileName || note.title === importTitle)
+                      (note.path === fileName || note.title === importTitleArg)
                   ) ?? null
                 )
               },
@@ -86,12 +91,13 @@ test.describe('File attachments and viewer E2E', () => {
         .not.toBeNull()
 
       const importedFile = await page.evaluate(
-        async ({ fileName, importTitle }) => {
+        async ({ fileName, importTitle: importTitleArg }) => {
           const list = await window.api.notes.list({ limit: 100 })
           return (
             list.notes.find(
               (note) =>
-                note.fileType === 'image' && (note.path === fileName || note.title === importTitle)
+                note.fileType === 'image' &&
+                (note.path === fileName || note.title === importTitleArg)
             ) ?? null
           )
         },
@@ -126,9 +132,9 @@ test.describe('File attachments and viewer E2E', () => {
       const fileId = importedFile!.id
       const storageKey = await tabSessionStorageKey(page)
       await page.addInitScript(
-        ({ fileId, importTitle, storageKey }) => {
+        ({ fileId: fileIdArg, importTitle: importTitleArg, storageKey: storageKeyArg }) => {
           localStorage.setItem(
-            storageKey,
+            storageKeyArg,
             JSON.stringify({
               version: 2,
               tabGroups: {
@@ -139,10 +145,10 @@ test.describe('File attachments and viewer E2E', () => {
                     {
                       id: 'file-tab',
                       type: 'file',
-                      title: importTitle,
+                      title: importTitleArg,
                       icon: 'file',
-                      path: `/file/${fileId}`,
-                      entityId: fileId,
+                      path: `/file/${fileIdArg}`,
+                      entityId: fileIdArg,
                       isPinned: false
                     }
                   ]
@@ -200,11 +206,12 @@ test.describe('File attachments and viewer E2E', () => {
         .poll(
           async () => {
             fileId = await page.evaluate(
-              async ({ pdfFileName, pdfTitle }) => {
+              async ({ pdfFileName: pdfFileNameArg, pdfTitle: pdfTitleArg }) => {
                 const list = await window.api.notes.list({ limit: 100 })
                 return (
-                  list.notes.find((note) => note.path === pdfFileName || note.title === pdfTitle)
-                    ?.id ?? null
+                  list.notes.find(
+                    (note) => note.path === pdfFileNameArg || note.title === pdfTitleArg
+                  )?.id ?? null
                 )
               },
               { pdfFileName, pdfTitle }
@@ -217,9 +224,9 @@ test.describe('File attachments and viewer E2E', () => {
 
       const storageKey = await tabSessionStorageKey(page)
       await page.addInitScript(
-        ({ fileId, pdfTitle, storageKey }) => {
+        ({ fileId: fileIdArg, pdfTitle: pdfTitleArg, storageKey: storageKeyArg }) => {
           localStorage.setItem(
-            storageKey,
+            storageKeyArg,
             JSON.stringify({
               version: 2,
               tabGroups: {
@@ -230,10 +237,10 @@ test.describe('File attachments and viewer E2E', () => {
                     {
                       id: 'file-tab',
                       type: 'file',
-                      title: pdfTitle,
+                      title: pdfTitleArg,
                       icon: 'file',
-                      path: `/file/${fileId}`,
-                      entityId: fileId,
+                      path: `/file/${fileIdArg}`,
+                      entityId: fileIdArg,
                       isPinned: false
                     }
                   ]

@@ -206,8 +206,7 @@ if (process.contextIsolated) {
     logger.error('contextBridge exposure failed', error)
   }
 } else {
-  ;(window as unknown as Record<string, unknown>).electron = electronAPI
-  ;(window as unknown as Record<string, unknown>).api = api
+  Object.assign(window, { electron: electronAPI, api })
 }
 
 export type API = typeof api

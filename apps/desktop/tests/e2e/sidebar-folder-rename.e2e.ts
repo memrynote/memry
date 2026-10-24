@@ -10,7 +10,8 @@
 import * as fs from 'fs'
 import * as path from 'path'
 
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 async function openVault(page: Page): Promise<void> {

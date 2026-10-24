@@ -6,7 +6,7 @@
 import '@testing-library/jest-dom/vitest'
 import { vi, afterEach } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import i18next from 'i18next'
+import { use as addI18nextPlugin } from 'i18next'
 import { initReactI18next } from 'react-i18next'
 import { IcuFormatter } from '@memry/i18n/shared'
 import { RESOURCES } from '@memry/i18n/locales'
@@ -19,8 +19,7 @@ import { resetVaultStatusCache } from '@/lib/vault-status-cache'
 // initImmediate: false makes init synchronous.
 // ============================================================================
 
-void i18next
-  .use(IcuFormatter)
+void addI18nextPlugin(IcuFormatter)
   .use(initReactI18next)
   .init({
     lng: 'en',
@@ -670,7 +669,7 @@ class MockResizeObserver {
   disconnect = vi.fn()
 }
 
-globalThis.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver
+globalThis.ResizeObserver = MockResizeObserver
 
 // ============================================================================
 // Mock editor geometry APIs
@@ -691,9 +690,7 @@ const emptyClientRect = {
 const emptyClientRects = {
   length: 0,
   item: () => null,
-  [Symbol.iterator]: function* () {
-    return
-  }
+  [Symbol.iterator]: () => [][Symbol.iterator]()
 } as DOMRectList
 
 if (!document.elementFromPoint) {
@@ -701,7 +698,7 @@ if (!document.elementFromPoint) {
 }
 
 if (!Range.prototype.getBoundingClientRect) {
-  Range.prototype.getBoundingClientRect = () => emptyClientRect as DOMRect
+  Range.prototype.getBoundingClientRect = () => emptyClientRect
 }
 
 if (!Range.prototype.getClientRects) {
@@ -709,7 +706,7 @@ if (!Range.prototype.getClientRects) {
 }
 
 if (!HTMLElement.prototype.getBoundingClientRect) {
-  HTMLElement.prototype.getBoundingClientRect = () => emptyClientRect as DOMRect
+  HTMLElement.prototype.getBoundingClientRect = () => emptyClientRect
 }
 
 if (!HTMLElement.prototype.getClientRects) {
@@ -722,7 +719,7 @@ if (typeof Text !== 'undefined') {
     getClientRects?: () => DOMRectList
   }
   if (!textPrototype.getBoundingClientRect) {
-    textPrototype.getBoundingClientRect = () => emptyClientRect as DOMRect
+    textPrototype.getBoundingClientRect = () => emptyClientRect
   }
   if (!textPrototype.getClientRects) {
     textPrototype.getClientRects = () => emptyClientRects

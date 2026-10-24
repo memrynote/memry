@@ -8,7 +8,8 @@
  *  - Main content reclaims full width when the sidebar is offcanvas-collapsed.
  */
 
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 const PIXEL_DRIFT_TOLERANCE = 1 // px — single overlay DOM node; allow sub-pixel rounding

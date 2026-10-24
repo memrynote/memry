@@ -73,7 +73,7 @@ async function seedNoteInFolder(page: Page, folder: string, title: string): Prom
   // Guards the premise: if creation stopped honouring `folder`, every assertion
   // below would be about the wrong tree.
   expect(seeded.path.startsWith(`${folder}/`)).toBe(true)
-  return seeded as SeededNote
+  return seeded
 }
 
 /** The id of the newest note under `folder` that is not already known. */

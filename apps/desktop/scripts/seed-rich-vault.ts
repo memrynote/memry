@@ -410,7 +410,7 @@ db.insert(schema.propertyDefinitions)
 const selectLike: Record<string, unknown> = {}
 for (const p of propertyDefs) {
   if (p.type === 'select' || p.type === 'multiselect') {
-    selectLike[p.name] = { type: p.type, options: JSON.parse(p.options as string) }
+    selectLike[p.name] = { type: p.type, options: JSON.parse(String(p.options)) }
   }
 }
 fs.writeFileSync(
@@ -664,9 +664,9 @@ tasks.forEach((t, i) =>
 )
 const taskTagRows = tasks.flatMap((t) => (t.tags ?? []).map((tag) => ({ taskId: t.tid, tag })))
 if (taskTagRows.length) db.insert(schema.taskTags).values(taskTagRows).run()
-const taskNoteRows = tasks
-  .filter((t) => t.note)
-  .map((t) => ({ taskId: t.tid, noteId: t.note as string, createdAt: nowIso }))
+const taskNoteRows = tasks.flatMap((t) =>
+  t.note ? [{ taskId: t.tid, noteId: t.note, createdAt: nowIso }] : []
+)
 if (taskNoteRows.length) db.insert(schema.taskNotes).values(taskNoteRows).run()
 
 // --- calendar events ---

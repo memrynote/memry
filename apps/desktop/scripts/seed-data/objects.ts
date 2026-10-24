@@ -30,9 +30,15 @@ import { PROJECT_IDS, STATUS_IDS } from './tasks'
 
 /** `notes:tagFields.presets.person.name` → the English string, as `addPreset` would in English. */
 function en(key: string): string {
-  const [ns, path] = key.split(':') as [keyof typeof EN_BUNDLE, string]
-  let node: unknown = EN_BUNDLE[ns]
-  for (const part of path.split('.')) node = (node as Record<string, unknown>)[part]
+  const [ns, path] = key.split(':')
+  if (ns === undefined || path === undefined) throw new Error(`seed objects: malformed key ${key}`)
+  let node: unknown = (EN_BUNDLE as Record<string, unknown>)[ns]
+  for (const part of path.split('.')) {
+    node =
+      typeof node === 'object' && node !== null
+        ? Object.entries(node).find(([name]) => name === part)?.[1]
+        : undefined
+  }
   if (typeof node !== 'string') throw new Error(`seed objects: no English string for ${key}`)
   return node
 }
@@ -48,6 +54,7 @@ const tagName = (spec: PresetSpec): string => en(spec.nameKey).toLowerCase()
 const MODIFIED = seedPastISOAt(-1, 17, 0)
 const uri = (id: string): string => `memry://note/${id}`
 
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fromEntries over PRESET_CATALOG covers every PresetKey, which fromEntries cannot express
 const TEMPLATE_IDS = Object.fromEntries(
   PRESET_CATALOG.map((spec) => [spec.key, generateNoteId()])
 ) as Record<PresetKey, string>
@@ -82,6 +89,7 @@ function schemaColumn(body: {
   extends: string | null
   preset: PresetKey | null
 }): string {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TagFieldStored[] is JSON-shaped but lacks the JsonValue index signature VersionedObject requires
   return serializeSchema(stampVersionedValue(undefined, { ...body, t: 0 } as VersionedObject))
 }
 

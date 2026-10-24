@@ -422,6 +422,7 @@ const TRACKER_ENTRIES: JournalSpec[] = TRACKER_DAYS_LIST.filter(
   body: trackerBody(day, index)
 }))
 
+// oxlint-disable-next-line unicorn/no-array-sort -- sorts a fresh copy; this file is type-checked in an inferred program whose lib has no Array#toSorted
 const RESOLVED_ENTRIES = [...NARRATIVE_ENTRIES, ...TRACKER_ENTRIES].sort((a, b) =>
   a.date.localeCompare(b.date)
 )

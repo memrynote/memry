@@ -156,7 +156,7 @@ export function compareLocaleCompleteness({ englishKeys, localeKeys }) {
   }
 
   return {
-    missing: missing.sort(),
-    orphan: orphan.sort()
+    missing: missing.toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+    orphan: orphan.toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
   }
 }

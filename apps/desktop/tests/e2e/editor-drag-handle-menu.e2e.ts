@@ -28,7 +28,7 @@ async function firstBlock(page: Page) {
     const editor = (window as any).__memryActiveEditor
     if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     const block = editor.document[0]
-    return { id: block?.id as string | undefined, props: (block?.props ?? {}) as any }
+    return { id: block?.id, props: block?.props ?? {} }
   })
 }
 

@@ -158,7 +158,7 @@ export const checks = [
         return `no .memry in ${VAULT}: the vault never opened`
       const before = files(ASSET)
       const after = files(VAULT)
-      const changed = Object.keys(before).filter((f) => !after[f] || !after[f].equals(before[f]))
+      const changed = Object.keys(before).filter((f) => !after[f]?.equals(before[f]))
       const added = Object.keys(after).filter((f) => !before[f])
       return changed.length || added.length
         ? `changed: ${changed.join(', ')}; added: ${added.join(', ')}`

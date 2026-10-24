@@ -823,6 +823,7 @@ export function generateBulkVault(count: number, seed: number): BulkVault {
       path: topic.folder,
       icon: topic.icon
     })),
+    // oxlint-disable-next-line unicorn/no-array-sort -- sorts a fresh copy; this file is type-checked in an inferred program whose lib has no Array#toSorted
     tags: [...new Set(notes.flatMap((note) => note.tags))].sort()
   }
 }

@@ -66,12 +66,12 @@ async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
 }
 
 /** The document as {type, text, children}, so assertions read like the note. */
-async function documentShape(page: Page): Promise<unknown[]> {
+async function documentShape(page: Page): Promise<Array<{ type: string }>> {
   await waitForEditor(page)
   return page.evaluate(() => {
     const editor = (window as any).__memryActiveEditor
     if (!editor) throw new Error('window.__memryActiveEditor not exposed')
-    const shape = (blocks: any[]): unknown[] =>
+    const shape = (blocks: any[]): Array<{ type: string }> =>
       blocks.map((block) => ({
         type: block.type,
         text: Array.isArray(block.content)

@@ -1,3 +1,4 @@
+import type { ElectronApplication, Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 
@@ -27,10 +28,7 @@ function getSeededCalendarData(): SeededCalendarData {
   }
 }
 
-async function seedAndOpenDay(
-  electronApp: Parameters<typeof test>[0]['electronApp'],
-  page: Parameters<typeof test>[0]['page']
-): Promise<void> {
+async function seedAndOpenDay(electronApp: ElectronApplication, page: Page): Promise<void> {
   await waitForAppReady(page)
   await waitForVaultReady(page)
 

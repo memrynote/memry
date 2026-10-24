@@ -490,7 +490,7 @@ test.describe('Table border handles', () => {
       )
       return {
         insideWrapper: Boolean(menu.closest('.tableWrapper')),
-        hitIsMenu: Boolean(hit) && (hit === menu || menu.contains(hit as Node)),
+        hitIsMenu: Boolean(hit) && (hit === menu || menu.contains(hit)),
         hitDescription: hit ? `${hit.tagName}.${hit.className || '(no class)'}` : 'nothing',
         hitCursor: hit ? getComputedStyle(hit).cursor : 'none',
         menuBox,
@@ -885,8 +885,8 @@ test.describe('Table border handles', () => {
             const range = sel.getRangeAt(0)
             const node = range.startContainer
             const el = node instanceof Element ? node : node.parentElement
-            const cell = el?.closest('td, th')
-            if (!cell || cell.textContent !== 'A1') return 'outside-cell'
+            const cellArg = el?.closest('td, th')
+            if (cellArg?.textContent !== 'A1') return 'outside-cell'
             const atEnd =
               node.nodeType === Node.TEXT_NODE
                 ? range.startOffset === (node.textContent?.length ?? 0)

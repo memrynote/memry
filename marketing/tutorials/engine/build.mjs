@@ -42,6 +42,7 @@ const from = flag('from')
 const only = flag('only')
 const takes = Number(flag('takes') ?? 2)
 const APP = path.resolve(flag('app') ?? ROOT)
+// oxlint-disable-next-line react-hooks/rules-of-hooks -- useApp is the agent-app helper that selects the target app, not a React hook
 useApp(APP)
 const name = args[0]
 if (!name) {

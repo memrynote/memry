@@ -15,6 +15,7 @@ export const remindersApi = {
   }) =>
     invoke(
       ReminderChannels.invoke.CREATE,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the public input is one flat shape; the main handler's zod schema enforces the per-targetType union
       input as MainIpcInvokeArgs<typeof ReminderChannels.invoke.CREATE>[0]
     ),
 
@@ -36,6 +37,7 @@ export const remindersApi = {
   }) =>
     invoke(
       ReminderChannels.invoke.LIST,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- status is a plain string here; the main handler's zod schema validates the status enum
       (options ?? {}) as MainIpcInvokeArgs<typeof ReminderChannels.invoke.LIST>[0]
     ),
 

@@ -52,6 +52,8 @@ function query<T>(app: ElectronApplication, sql: string, ...params: unknown[]): 
   ) as Promise<T[]>
 }
 
+const compareStrings = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0)
+
 const readOrNull = (file: string): string | null =>
   fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null
 
@@ -136,7 +138,7 @@ test.describe('Attachments linked outside the note folder', () => {
     )
     expect(updated.success, updated.error ?? 'update failed').toBe(true)
     await expect.poll(() => referencesOn(electronAppA), { timeout: 60_000 }).toHaveLength(2)
-    const uploadedIds = (await referencesOn(electronAppA)).sort()
+    const uploadedIds = (await referencesOn(electronAppA)).toSorted(compareStrings)
     const chunksAfterA = await serverChunks()
 
     fs.writeFileSync(path.join(vaultPathB, 'sources', 'shared.txt'), sharedBytes)
@@ -189,6 +191,6 @@ test.describe('Attachments linked outside the note folder', () => {
 
     expect(await serverChunks(), 'B uploaded nothing').toBe(chunksAfterA)
     expect(uploadedIds).toContain((await sharedRecord())[0].id)
-    expect((await referencesOn(electronAppB)).sort()).toEqual(uploadedIds)
+    expect((await referencesOn(electronAppB)).toSorted(compareStrings)).toEqual(uploadedIds)
   })
 })

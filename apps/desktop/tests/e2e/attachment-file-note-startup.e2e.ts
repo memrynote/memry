@@ -31,10 +31,10 @@ const png = Buffer.concat([
 
 // electronAppA depends on vaultPathA, so the file is on disk before A launches.
 const test = base.extend({
-  vaultPathA: async ({ vaultPathA }, use) => {
+  vaultPathA: async ({ vaultPathA }, provide) => {
     fs.mkdirSync(path.join(vaultPathA, 'sources'), { recursive: true })
     fs.writeFileSync(path.join(vaultPathA, 'sources', 'photo.png'), png)
-    await use(vaultPathA)
+    await provide(vaultPathA)
   }
 })
 

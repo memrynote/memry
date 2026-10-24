@@ -85,10 +85,10 @@ async function seedNoteWithFileBlock(page: Page, title: string): Promise<SeededA
 
   const storageKey = await tabSessionStorageKey(page)
   await page.addInitScript(
-    ({ noteId, t, storageKey }) => {
+    ({ noteId, t, storageKey: storageKeyArg }) => {
       // Tab state is stored per vault since #1702: `memry_tab_state:<vaultPath>`.
       localStorage.setItem(
-        storageKey,
+        storageKeyArg,
         JSON.stringify({
           version: 2,
           tabGroups: {
@@ -148,9 +148,9 @@ async function seedNoteOwningFileBlock(
 
   const storageKey = await tabSessionStorageKey(page)
   await page.addInitScript(
-    ({ noteId, t, storageKey }) => {
+    ({ noteId: noteIdArg, t, storageKey: storageKeyArg }) => {
       localStorage.setItem(
-        storageKey,
+        storageKeyArg,
         JSON.stringify({
           version: 2,
           tabGroups: {
@@ -163,8 +163,8 @@ async function seedNoteOwningFileBlock(
                   type: 'note',
                   title: t,
                   icon: 'file',
-                  path: `/notes/${noteId}`,
-                  entityId: noteId,
+                  path: `/notes/${noteIdArg}`,
+                  entityId: noteIdArg,
                   isPinned: false
                 }
               ]
@@ -187,16 +187,16 @@ async function seedNoteOwningFileBlock(
   })
 
   const storedFilename = await page.evaluate(
-    async ({ noteId, fileName }) => {
+    async ({ noteId: noteIdArg, fileName }) => {
       const api = window.api
       const file = new File([new TextEncoder().encode('attachment rename e2e')], fileName, {
         type: 'text/plain'
       })
-      const uploaded = await api.notes.uploadAttachment(noteId, file)
+      const uploaded = await api.notes.uploadAttachment(noteIdArg, file)
       if (!uploaded.success || !uploaded.path) {
         throw new Error(uploaded.error ?? 'attachment upload failed')
       }
-      const attachments = await api.notes.listAttachments(noteId)
+      const attachments = await api.notes.listAttachments(noteIdArg)
       const stored = attachments[0]?.filename
       if (!stored) throw new Error('uploaded attachment not listed')
 

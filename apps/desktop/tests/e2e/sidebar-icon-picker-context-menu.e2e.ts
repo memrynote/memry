@@ -21,7 +21,8 @@
  * @see components/sidebar/canvas-tree/canvas-folder-row (folder path)
  * @see components/notes-tree (note path)
  */
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 const PICKER = 'Emoji and icon picker' // notes:menus.emoji.aria

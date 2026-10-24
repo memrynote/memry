@@ -51,7 +51,7 @@ function buildEdits(sourceText, findings) {
     }
   }
 
-  return edits.sort((a, b) => b.start - a.start)
+  return edits.toSorted((a, b) => b.start - a.start)
 }
 
 function applyEdits(sourceText, edits) {

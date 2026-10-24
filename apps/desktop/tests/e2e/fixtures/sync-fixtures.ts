@@ -44,66 +44,71 @@ export const test = base.extend<{
   deviceIdB: string
   syncServerUrl: string | null
 }>({
-  syncServerUrl: async ({}, use) => {
-    await use(null)
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  syncServerUrl: async ({}, provide) => {
+    await provide(null)
   },
 
-  deviceIdA: async ({}, use) => {
-    await use(`e2e-${randomUUID()}-A`)
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  deviceIdA: async ({}, provide) => {
+    await provide(`e2e-${randomUUID()}-A`)
   },
 
-  deviceIdB: async ({}, use) => {
-    await use(`e2e-${randomUUID()}-B`)
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  deviceIdB: async ({}, provide) => {
+    await provide(`e2e-${randomUUID()}-B`)
   },
 
-  vaultPathA: async ({}, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  vaultPathA: async ({}, provide) => {
     const vaultPath = createTestVault('memry-e2e-deviceA-')
-    await use(vaultPath)
+    await provide(vaultPath)
     cleanupDir(vaultPath)
   },
 
-  vaultPathB: async ({}, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  vaultPathB: async ({}, provide) => {
     const vaultPath = createTestVault('memry-e2e-deviceB-')
-    await use(vaultPath)
+    await provide(vaultPath)
     cleanupDir(vaultPath)
   },
 
-  electronAppA: async ({ deviceIdA, vaultPathA, syncServerUrl }, use) => {
+  electronAppA: async ({ deviceIdA, vaultPathA, syncServerUrl }, provide) => {
     const launched = await launchElectronWithWindow({
       testVaultPath: vaultPathA,
       deviceId: deviceIdA,
       syncServerUrl
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
-    await use(launched.app)
+    await provide(launched.app)
     await destroyLaunchedElectron(launched)
   },
 
-  electronAppB: async ({ deviceIdB, vaultPathB, syncServerUrl }, use) => {
+  electronAppB: async ({ deviceIdB, vaultPathB, syncServerUrl }, provide) => {
     const launched = await launchElectronWithWindow({
       testVaultPath: vaultPathB,
       deviceId: deviceIdB,
       syncServerUrl
     })
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
-    await use(launched.app)
+    await provide(launched.app)
     await destroyLaunchedElectron(launched)
   },
 
-  pageA: async ({ electronAppA, vaultPathA }, use) => {
+  pageA: async ({ electronAppA, vaultPathA }, provide) => {
     const launched = (electronAppA as unknown as { __launched?: LaunchedElectron }).__launched
     const page = launched?.page ?? (await electronAppA.firstWindow({ timeout: 45_000 }))
     await waitForAppReady(page)
     await waitForVaultPath(page, vaultPathA)
-    await use(page)
+    await provide(page)
   },
 
-  pageB: async ({ electronAppB, vaultPathB }, use) => {
+  pageB: async ({ electronAppB, vaultPathB }, provide) => {
     const launched = (electronAppB as unknown as { __launched?: LaunchedElectron }).__launched
     const page = launched?.page ?? (await electronAppB.firstWindow({ timeout: 45_000 }))
     await waitForAppReady(page)
     await waitForVaultPath(page, vaultPathB)
-    await use(page)
+    await provide(page)
   }
 })
 

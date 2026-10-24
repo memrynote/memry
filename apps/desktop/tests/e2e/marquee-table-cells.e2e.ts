@@ -49,8 +49,8 @@ async function tableCells(page: Page): Promise<string[][] | null> {
     const table = editor.document.find((block: any) => block.type === 'table')
     if (!table) return null
     return table.content.rows.map((row: any) =>
-      row.cells.map((cell: any) =>
-        (cell.content ?? [])
+      row.cells.map((cellArg: any) =>
+        (cellArg.content ?? [])
           .map((inline: any) => (inline.type === 'text' ? inline.text : `<${inline.type}>`))
           .join('')
       )

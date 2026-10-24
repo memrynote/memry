@@ -10,7 +10,8 @@ test.describe('Inbox bulk actions E2E', () => {
     const result = await page.evaluate(async (pngBytes) => {
       const api = window.api
       const image = await api.inbox.captureImage({
-        data: new Uint8Array(pngBytes),
+        // The preload bridge accepts a Uint8Array; the contract type names its ArrayBuffer view loosely.
+        data: new Uint8Array(pngBytes) as unknown as ArrayBuffer,
         filename: 'inbox-image.png',
         mimeType: 'image/png',
         tags: ['e2e-inbox'],
@@ -54,7 +55,7 @@ test.describe('Inbox bulk actions E2E', () => {
         bulkTag,
         bulkArchive,
         archivedIds: archived.items.map((item) => item.id),
-        restoredArchivedAt: restored?.archivedAt ?? null
+        restoredArchivedAt: (restored as { archivedAt?: string | null } | null)?.archivedAt ?? null
       }
     }, PNG_BYTES)
 

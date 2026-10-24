@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Spatial canvas M2 — item cards (rectangle + read-only overlay preview).
  *
@@ -7,7 +8,7 @@
  * uses window.api. Persistence + no-copy are asserted via the scene JSON from
  * window.api.canvas.get, per the design spec (§18 B4).
  */
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 /**
@@ -59,7 +60,7 @@ async function seedTask(page: Page, title: string): Promise<string> {
     const projectId = projects?.projects?.[0]?.id
     if (!projectId) return ''
     const res = await window.api.tasks.create({ projectId, title: t })
-    return res?.task?.id ?? res?.id ?? ''
+    return res?.task?.id ?? (res as { id?: string } | null)?.id ?? ''
   }, title)
   if (!id) throw new Error(`seedTask failed for ${title}`)
   return id
@@ -96,7 +97,7 @@ async function sceneOf(page: Page, canvasId: string) {
   }, canvasId)
 }
 
-function cardRects(parsed): Array<{ customData?: { entityId?: string } }> {
+function cardRects(parsed): Array<{ customData?: { entityId?: string; entityType?: string } }> {
   return (parsed.elements ?? []).filter(
     (e) => e.type === 'rectangle' && !e.isDeleted && e.customData?.entityId
   )
@@ -242,7 +243,7 @@ test.describe('Spatial canvas — item cards (M2)', () => {
     const before = await page
       .locator('[data-canvas-overlay]')
       .evaluate((el) => el.parentElement?.getAttribute('data-scroll-x'))
-    const box = await page.locator('[data-canvas-editor]').boundingBox()
+    const box = (await page.locator('[data-canvas-editor]').boundingBox())!
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
     await page.mouse.wheel(600, 0)
     await expect

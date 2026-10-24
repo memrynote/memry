@@ -46,17 +46,18 @@ export async function quota() {
   return { tier: u.tier, used: u.character_count, limit: u.character_limit }
 }
 
+const norm = (s) =>
+  s
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/memree note|memory ?note|memry ?note/g, 'memrynote')
+    .replace(/end-to-end/g, 'end to end')
+    .replace(/[^a-z0-9' ]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+
 /** Word error rate of `heard` against `said`, brand spellings folded together. */
 export function wer(said, heard) {
-  const norm = (s) =>
-    s
-      .toLowerCase()
-      .replace(/[\u2018\u2019]/g, "'")
-      .replace(/memree note|memory ?note|memry ?note/g, 'memrynote')
-      .replace(/end-to-end/g, 'end to end')
-      .replace(/[^a-z0-9' ]/g, ' ')
-      .split(/\s+/)
-      .filter(Boolean)
   const a = norm(said)
   const b = norm(heard)
   const d = Array.from({ length: b.length + 1 }, (_, j) => j)

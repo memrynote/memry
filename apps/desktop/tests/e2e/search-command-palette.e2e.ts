@@ -13,12 +13,17 @@ test.describe('Search and command palette E2E', () => {
     const inboxTitle = uniqueLabel('Search Inbox')
 
     const seeded = await page.evaluate(
-      async ({ noteTitle, taskTitle, inboxTitle, tag }) => {
+      async ({
+        noteTitle: noteTitleArg,
+        taskTitle: taskTitleArg,
+        inboxTitle: inboxTitleArg,
+        tag: tagArg
+      }) => {
         const api = window.api
         const note = await api.notes.create({
-          title: noteTitle,
+          title: noteTitleArg,
           content: 'Note body for search coverage.',
-          tags: [tag]
+          tags: [tagArg]
         })
         if (!note.success || !note.note) throw new Error(note.error ?? 'failed to seed note')
 
@@ -27,16 +32,16 @@ test.describe('Search and command palette E2E', () => {
         if (!projectId) throw new Error('default task project missing')
         const task = await api.tasks.create({
           projectId,
-          title: taskTitle,
+          title: taskTitleArg,
           priority: 3,
-          tags: [tag]
+          tags: [tagArg]
         })
         if (!task.success || !task.task) throw new Error(task.error ?? 'failed to seed task')
 
         const inbox = await api.inbox.captureText({
-          title: inboxTitle,
+          title: inboxTitleArg,
           content: 'Inbox item for search coverage.',
-          tags: [tag],
+          tags: [tagArg],
           force: true,
           source: 'api'
         })
@@ -64,11 +69,11 @@ test.describe('Search and command palette E2E', () => {
       .poll(
         () =>
           page.evaluate(
-            async ({ title, tag }) => {
+            async ({ title, tag: tagArg }) => {
               const results = await window.api.search.query({
                 text: title,
                 types: ['note'],
-                tags: [tag],
+                tags: [tagArg],
                 limit: 10
               })
               return results.groups.flatMap((group) => group.results).map((item) => item.title)

@@ -45,8 +45,8 @@ const tagsOfNote = new Map(
 
 describe('seeded tags with fields', () => {
   it('stores every schema in a shape the app resolves and can edit', () => {
-    expect([...resolved.keys()].sort()).toEqual(
-      ['book', 'company', 'delegated', 'employee', 'meeting', 'person'].sort()
+    expect([...resolved.keys()].toSorted()).toEqual(
+      ['book', 'company', 'delegated', 'employee', 'meeting', 'person'].toSorted()
     )
     for (const tag of resolved.values()) expect(tag.editable, tag.key).toBe(true)
     expect(resolved.get('person')?.ownPreset).toBe('person')

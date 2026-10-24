@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test'
 /**
  * Renaming a canvas folder from the row's own menu, in a real browser.
  *
@@ -10,7 +11,7 @@
  *
  * @see components/sidebar/canvas-tree/canvas-row-name-input
  */
-import { test, expect, type Page } from './fixtures'
+import { test, expect } from './fixtures'
 import { ready } from './utils/desktop-test-helpers'
 
 async function openVault(page: Page): Promise<void> {

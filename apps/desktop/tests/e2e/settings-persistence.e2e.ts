@@ -25,7 +25,7 @@ test.describe('Settings persistence E2E', () => {
           defaultSortOrder: 'priority',
           weekStartDay: 'monday',
           staleInboxDays: 9
-        }),
+        } as Parameters<typeof api.settings.setTaskSettings>[0]),
         api.settings.setTabSettings({
           restoreSessionOnStart: true,
           tabCloseButton: 'always'

@@ -58,7 +58,7 @@ describe('canvas seed data', () => {
       const scene = JSON.parse(canvas.scene) as SceneShape
       const indices = scene.elements.map((el) => el.index)
       expect(new Set(indices).size).toBe(indices.length)
-      expect([...indices].sort()).toEqual(indices)
+      expect([...indices].toSorted()).toEqual(indices)
     }
   })
 })

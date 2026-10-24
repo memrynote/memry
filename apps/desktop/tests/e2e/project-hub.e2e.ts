@@ -26,11 +26,16 @@ test.describe('Project hub E2E', () => {
     const eventTitle = uniqueLabel('Hub Event')
 
     const seeded = await page.evaluate(
-      async ({ projectName, taskTitle, noteTitle, eventTitle }) => {
+      async ({
+        projectName: projectNameArg,
+        taskTitle: taskTitleArg,
+        noteTitle: noteTitleArg,
+        eventTitle: eventTitleArg
+      }) => {
         const api = window.api
 
         const projectResult = await api.tasks.createProject({
-          name: projectName,
+          name: projectNameArg,
           description: 'Project hub E2E',
           color: '#6366f1',
           icon: 'FolderKanban',
@@ -48,15 +53,15 @@ test.describe('Project hub E2E', () => {
         const todo = statuses.find((status) => status.name === 'To Do')
         if (!todo) throw new Error('todo status missing')
 
-        const task = await api.tasks.create({ projectId, statusId: todo.id, title: taskTitle })
+        const task = await api.tasks.create({ projectId, statusId: todo.id, title: taskTitleArg })
         if (!task.success) throw new Error('task create failed')
 
-        const note = await api.notes.create({ title: noteTitle })
+        const note = await api.notes.create({ title: noteTitleArg })
         if (!note.success || !note.note) throw new Error('note create failed')
         await api.tasks.linkProjectItem({ projectId, itemType: 'note', itemId: note.note.id })
 
         const event = await api.calendar.createEvent({
-          title: eventTitle,
+          title: eventTitleArg,
           startAt: '2026-08-08T12:00:00.000Z',
           endAt: '2026-08-08T13:00:00.000Z',
           isAllDay: false

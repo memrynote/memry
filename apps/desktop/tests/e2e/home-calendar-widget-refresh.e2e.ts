@@ -88,9 +88,9 @@ function todayLocalAt(hour: number): string {
 /** Create a Memry event through the same IPC the calendar UI calls. */
 async function createEvent(page, title: string, hour: number): Promise<void> {
   const result = await page.evaluate(
-    async ({ title, startAt, endAt }) =>
+    async ({ title: titleArg, startAt, endAt }) =>
       window.api.calendar.createEvent({
-        title,
+        title: titleArg,
         startAt,
         endAt,
         timezone: 'UTC',

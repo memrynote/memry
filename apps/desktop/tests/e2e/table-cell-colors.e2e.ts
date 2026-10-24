@@ -94,11 +94,11 @@ async function waitForEditor(page: Page) {
  * double-click's selection from a later `selectionchange`, so under load the
  * DOM already shows the word selected while the editor still holds a caret.
  */
-async function selectWordInCell(page: Page, cell: Locator, word: string): Promise<void> {
+async function selectWordInCell(page: Page, cellArg: Locator, word: string): Promise<void> {
   await expect
     .poll(
       async () => {
-        await cell.dblclick({ position: WORD_START })
+        await cellArg.dblclick({ position: WORD_START })
         return page.evaluate(() => (window as any).__memryActiveEditor?.getSelectedText() ?? '')
       },
       { timeout: 20_000 }
@@ -116,7 +116,9 @@ async function setDocument(page: Page, blocks: unknown[]): Promise<void> {
 }
 
 /** Every cell as {text, textColor, backgroundColor}, row by row. */
-async function tableShape(page: Page): Promise<unknown[]> {
+async function tableShape(
+  page: Page
+): Promise<Array<Array<{ text: string; textColor?: string; backgroundColor?: string }>>> {
   await waitForEditor(page)
   return page.evaluate(() => {
     const editor = (window as any).__memryActiveEditor

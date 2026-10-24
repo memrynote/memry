@@ -95,10 +95,10 @@ test.describe('Wiki links in table cells', () => {
     ].join('\n')
 
     const templateId = await page.evaluate(
-      async ({ templateName, seeded }) => {
+      async ({ templateName: templateNameArg, seeded: seededArg }) => {
         const created = await window.api.templates.create({
-          name: templateName,
-          content: seeded
+          name: templateNameArg,
+          content: seededArg
         })
         if (!created.success || !created.template) {
           throw new Error(created.error ?? 'template create failed')
@@ -163,11 +163,11 @@ test.describe('Wiki links in table cells', () => {
     const target = uniqueLabel('Table Target')
     const source = uniqueLabel('Table Source')
     await page.evaluate(
-      async ({ target, source }) => {
-        const created = await window.api.notes.create({ title: target, content: 'A target.\n' })
+      async ({ target: targetArg, source: sourceArg }) => {
+        const created = await window.api.notes.create({ title: targetArg, content: 'A target.\n' })
         const linking = await window.api.notes.create({
-          title: source,
-          content: ['| Area | Owner |', '| --- | --- |', `| Q3 | [[${target}]] |`, ''].join('\n')
+          title: sourceArg,
+          content: ['| Area | Owner |', '| --- | --- |', `| Q3 | [[${targetArg}]] |`, ''].join('\n')
         })
         if (!created.success || !linking.success) throw new Error('failed to seed the table case')
       },

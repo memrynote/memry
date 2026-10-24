@@ -10,12 +10,12 @@ async function focusEditor(page: Page): Promise<void> {
 }
 
 async function seedDocument(page: Page, paragraphs: string[]): Promise<void> {
-  await page.evaluate((paragraphs) => {
+  await page.evaluate((paragraphsArg) => {
     const editor = (window as any).__memryActiveEditor
     if (!editor) throw new Error('window.__memryActiveEditor not exposed')
     editor.replaceBlocks(
       editor.document,
-      paragraphs.map((text) => ({
+      paragraphsArg.map((text) => ({
         type: 'paragraph',
         content: text ? [{ type: 'text', text, styles: {} }] : ''
       }))
@@ -45,11 +45,11 @@ async function openDragHandleMenu(page: Page, blockIndex: number): Promise<void>
 
 async function createTemplate(page: Page, name: string, content: string): Promise<void> {
   await page.evaluate(
-    async ({ name, content }) => {
+    async ({ name: nameArg, content: contentArg }) => {
       const created = await window.api.templates.create({
-        name,
+        name: nameArg,
         description: 'Inserted from the block menu',
-        content
+        content: contentArg
       })
       if (!created.success) throw new Error(created.error ?? 'template create failed')
     },

@@ -16,7 +16,7 @@ export const LEGACY_TEMPLATE_BODY = '## Legacy Blockers'
  * vault open, so it must be on disk beforehand.
  */
 export const test = base.extend({
-  vaultPathA: async ({ vaultPathA }, use) => {
+  vaultPathA: async ({ vaultPathA }, provide) => {
     const dir = path.join(vaultPathA, '.memry', 'templates')
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(
@@ -30,7 +30,7 @@ export const test = base.extend({
         modifiedAt: '2026-01-01T00:00:00.000Z'
       })
     )
-    await use(vaultPathA)
+    await provide(vaultPathA)
   }
 })
 

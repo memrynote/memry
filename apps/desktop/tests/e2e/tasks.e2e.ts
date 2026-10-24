@@ -178,7 +178,7 @@ test.describe('Tasks Management', () => {
         const checkbox = taskItem.locator(SELECTORS.taskCheckbox)
         const hasCheckbox = await checkbox
           .first()
-          .isVisible({ timeout: 3000 })
+          .isVisible()
           .catch(() => false)
         if (hasCheckbox) {
           await checkbox.first().click({ force: true })

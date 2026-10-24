@@ -32,7 +32,7 @@ function getJsxName(name) {
 }
 
 function getAttributeName(attr) {
-  if (!attr || attr.type !== 'JSXAttribute') return null
+  if (attr?.type !== 'JSXAttribute') return null
   return getJsxName(attr.name)
 }
 

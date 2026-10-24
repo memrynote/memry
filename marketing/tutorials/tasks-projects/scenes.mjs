@@ -318,6 +318,7 @@ export const checks = [
         !t.due_date
       )
         return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -325,6 +326,7 @@ export const checks = [
     (q) => {
       const [t] = q(`SELECT repeat_config FROM tasks WHERE title = 'Water the plants'`)
       if (!t?.repeat_config?.includes('"interval":2')) return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -334,6 +336,7 @@ export const checks = [
         `SELECT due_date, completed_at IS NOT NULL AS done FROM tasks WHERE title = 'Pay rent' ORDER BY due_date`
       )
       if (rows.length !== 2 || !rows[0].done || rows[1].done) return JSON.stringify(rows)
+      return undefined
     }
   ],
   [
@@ -343,6 +346,7 @@ export const checks = [
         `SELECT p.title FROM tasks c JOIN tasks p ON p.id = c.parent_id WHERE c.title = 'Get sign-off from Jonas'`
       )
       if (t?.title !== 'Finalize homepage hero') return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -352,6 +356,7 @@ export const checks = [
         `SELECT p.name FROM tasks t JOIN projects p ON p.id = t.project_id WHERE t.title = 'Buy a SIM card'`
       )
       if (t?.name !== 'Lisbon Trip') return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -361,6 +366,7 @@ export const checks = [
         `SELECT s.name FROM tasks t JOIN statuses s ON s.id = t.status_id WHERE t.title = 'Build style guide page'`
       )
       if (t?.name !== 'Design') return JSON.stringify(t)
+      return undefined
     }
   ],
   [
@@ -370,6 +376,7 @@ export const checks = [
         `SELECT s.name FROM statuses s JOIN projects p ON p.id = s.project_id WHERE p.name = 'Website Redesign' ORDER BY s.position`
       ).map((s) => s.name)
       if (names.join() !== 'Backlog,Design,Client review,Done') return JSON.stringify(names)
+      return undefined
     }
   ],
   [
@@ -378,7 +385,8 @@ export const checks = [
       const [t] = q(
         `SELECT priority, due_date FROM tasks WHERE title = 'Send the style guide to Lea'`
       )
-      if (!t || t.priority !== 3 || !t.due_date) return JSON.stringify(t)
+      if (t?.priority !== 3 || !t.due_date) return JSON.stringify(t)
+      return undefined
     }
   ]
 ]

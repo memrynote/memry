@@ -1,4 +1,5 @@
-import { test, expect, type Page } from './fixtures'
+import type { Page } from '@playwright/test'
+import { test, expect } from './fixtures'
 import { waitForAppReady, waitForVaultReady } from './utils/electron-helpers'
 import { HOUR_HEIGHT } from '../../src/renderer/src/components/calendar/time-grid-constants'
 

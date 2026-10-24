@@ -49,7 +49,7 @@ test('findSymlinks reports nested links without following them', () => {
     fs.symlinkSync(target, path.join(tempDir, 'a'), 'junction')
     fs.symlinkSync(tempDir, path.join(target, 'node_modules', 'loop'), 'junction')
 
-    assert.deepEqual(findSymlinks(tempDir).sort(), [
+    assert.deepEqual(findSymlinks(tempDir).toSorted(), [
       path.join(target, 'node_modules', 'loop'),
       path.join(tempDir, 'a')
     ])

@@ -121,9 +121,9 @@ test.describe('Clicking a page reuses the current tab (#1644)', () => {
     // the same shape persistence writes.
     const storageKey = await tabSessionStorageKey(page)
     await page.addInitScript(
-      ({ noteId, title, storageKey }) => {
+      ({ noteId, title, storageKey: storageKeyArg }) => {
         localStorage.setItem(
-          storageKey,
+          storageKeyArg,
           JSON.stringify({
             version: 2,
             tabGroups: {

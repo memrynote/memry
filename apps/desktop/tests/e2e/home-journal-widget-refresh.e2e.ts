@@ -67,8 +67,8 @@ function todayLocalIso(): string {
 /** Write a journal entry through the same IPC the journal editor's autosave calls. */
 async function writeEntry(page, date: string, content: string): Promise<void> {
   await page.evaluate(
-    async ({ date, content }) => {
-      await window.api.journal.updateEntry({ date, content })
+    async ({ date: dateArg, content: contentArg }) => {
+      await window.api.journal.updateEntry({ date: dateArg, content: contentArg })
     },
     { date, content }
   )

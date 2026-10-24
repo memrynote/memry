@@ -53,7 +53,7 @@ function readExistingFile(filePath) {
 const ts = require('typescript-6')
 
 function readProgram() {
-  const config = ts.readConfigFile(TSCONFIG_PATH, ts.sys.readFile)
+  const config = ts.readConfigFile(TSCONFIG_PATH, (file) => ts.sys.readFile(file))
   if (config.error) {
     throw new Error(ts.flattenDiagnosticMessageText(config.error.messageText, '\n'))
   }
@@ -314,7 +314,7 @@ function hoistTypeImports(signatures) {
 }
 
 function generateFileContent(entries) {
-  const channels = [...entries.keys()].sort((a, b) => a.localeCompare(b))
+  const channels = [...entries.keys()].toSorted((a, b) => a.localeCompare(b))
   const { rewritten, importLines } = hoistTypeImports(
     channels.map((channel) => entries.get(channel))
   )

@@ -49,10 +49,17 @@ test.describe('Linking selected text', () => {
     const selected = 'kuzeyde bir yer'
 
     await page.evaluate(
-      async ({ sourceTitle, targetTitle, selected }) => {
+      async ({
+        sourceTitle: sourceTitleArg,
+        targetTitle: targetTitleArg,
+        selected: selectedArg
+      }) => {
         const api = window.api
-        const target = await api.notes.create({ title: targetTitle, content: 'Bir kıta.\n' })
-        const source = await api.notes.create({ title: sourceTitle, content: `${selected}\n` })
+        const target = await api.notes.create({ title: targetTitleArg, content: 'Bir kıta.\n' })
+        const source = await api.notes.create({
+          title: sourceTitleArg,
+          content: `${selectedArg}\n`
+        })
         if (!target.success || !source.success) throw new Error('failed to seed selection notes')
       },
       { sourceTitle, targetTitle, selected }
@@ -108,12 +115,12 @@ test.describe('Wiki heading links', () => {
     const heading = 'Decisions'
 
     const seeded = await page.evaluate(
-      async ({ sourceTitle, targetTitle, body }) => {
+      async ({ sourceTitle: sourceTitleArg, targetTitle: targetTitleArg, body }) => {
         const api = window.api
-        const target = await api.notes.create({ title: targetTitle, content: body })
+        const target = await api.notes.create({ title: targetTitleArg, content: body })
         const source = await api.notes.create({
-          title: sourceTitle,
-          content: `Jump to [[${targetTitle}#Decisions]].`
+          title: sourceTitleArg,
+          content: `Jump to [[${targetTitleArg}#Decisions]].`
         })
         if (!target.success || !target.note || !source.success || !source.note) {
           throw new Error('failed to seed heading-link notes')
@@ -241,10 +248,10 @@ test.describe('Wiki heading links', () => {
     const heading = 'North America'
 
     await page.evaluate(
-      async ({ sourceTitle, targetTitle, body }) => {
+      async ({ sourceTitle: sourceTitleArg, targetTitle: targetTitleArg, body }) => {
         const api = window.api
-        const target = await api.notes.create({ title: targetTitle, content: body })
-        const source = await api.notes.create({ title: sourceTitle, content: 'Bkz ' })
+        const target = await api.notes.create({ title: targetTitleArg, content: body })
+        const source = await api.notes.create({ title: sourceTitleArg, content: 'Bkz ' })
         if (!target.success || !source.success) throw new Error('failed to seed label notes')
       },
       { sourceTitle, targetTitle, body: bodyWithHeadingFarDown(heading) }
@@ -296,12 +303,12 @@ test.describe('Wiki heading links', () => {
     const sourceTitle = uniqueLabel('Hash Source')
 
     await page.evaluate(
-      async ({ hashTitle, sourceTitle }) => {
+      async ({ hashTitle: hashTitleArg, sourceTitle: sourceTitleArg }) => {
         const api = window.api
-        const target = await api.notes.create({ title: hashTitle, content: 'Sprint body.' })
+        const target = await api.notes.create({ title: hashTitleArg, content: 'Sprint body.' })
         const source = await api.notes.create({
-          title: sourceTitle,
-          content: `See [[${hashTitle}]].`
+          title: sourceTitleArg,
+          content: `See [[${hashTitleArg}]].`
         })
         if (!target.success || !source.success) throw new Error('failed to seed hash-title notes')
       },

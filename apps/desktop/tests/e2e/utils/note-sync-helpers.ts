@@ -65,10 +65,10 @@ export async function findNoteHandle(
       for (const treeItem of notesTree.querySelectorAll<HTMLElement>(
         '[role="treeitem"][data-tree-node-id]'
       )) {
-        const noteId = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
-        if (!noteId || noteId.startsWith('folder-')) continue
+        const noteIdArg = treeItem.dataset.treeNodeId ?? treeItem.getAttribute('data-tree-node-id')
+        if (!noteIdArg || noteIdArg.startsWith('folder-')) continue
         if (treeItem.textContent?.trim() !== expectedTitle) continue
-        return { id: noteId, title: expectedTitle, emoji: null }
+        return { id: noteIdArg, title: expectedTitle, emoji: null }
       }
 
       return null
@@ -204,7 +204,7 @@ export async function waitForNoteById(page: Page, id: string, title: string): Pr
 
 export async function openNoteByTitle(page: Page, title: string): Promise<void> {
   const tab = page.locator(SELECTORS.tab).filter({ hasText: title }).first()
-  if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+  if (await tab.isVisible().catch(() => false)) {
     await tab.click()
     await expect(page.locator(SELECTORS.noteTitle).first()).toHaveValue(title)
     return
@@ -264,7 +264,7 @@ export async function getCrdtDocBodyById(
   electronApp: ElectronApplication,
   noteId: string
 ): Promise<string | null> {
-  const body = await electronApp.evaluate(async (_context, noteId) => {
+  const body = await electronApp.evaluate(async (_context, noteIdArg) => {
     const hooks = (
       globalThis as typeof globalThis & {
         __memryTestHooks?: MemryNoteTestHooks
@@ -275,7 +275,7 @@ export async function getCrdtDocBodyById(
       throw new Error('Memry test hooks are not registered')
     }
 
-    return hooks.getCrdtDocMarkdown(noteId)
+    return hooks.getCrdtDocMarkdown(noteIdArg)
   }, noteId)
 
   return body === null ? null : normalizeBodyText(body)
@@ -304,14 +304,14 @@ export async function getCrdtMarkdownSourceById(
   electronApp: ElectronApplication,
   noteId: string
 ): Promise<{ source: string; current: string | null } | null> {
-  return electronApp.evaluate(async (_context, noteId) => {
+  return electronApp.evaluate(async (_context, noteIdArg) => {
     const hooks = (
       globalThis as typeof globalThis & {
         __memryTestHooks?: MemryNoteTestHooks
       }
     ).__memryTestHooks
     if (!hooks) throw new Error('Memry test hooks are not registered')
-    return hooks.getCrdtMarkdownSourceState(noteId)
+    return hooks.getCrdtMarkdownSourceState(noteIdArg)
   }, noteId)
 }
 
@@ -326,7 +326,7 @@ export async function getWritebackDebugById(
   lastError: string | null
   sourceRestore: SourceRestoreOutcome | null
 } | null> {
-  const state = await electronApp.evaluate(async (_context, noteId) => {
+  const state = await electronApp.evaluate(async (_context, noteIdArg) => {
     const hooks = (
       globalThis as typeof globalThis & {
         __memryTestHooks?: MemryNoteTestHooks
@@ -337,7 +337,7 @@ export async function getWritebackDebugById(
       throw new Error('Memry test hooks are not registered')
     }
 
-    return hooks.getWritebackDebugState(noteId)
+    return hooks.getWritebackDebugState(noteIdArg)
   }, noteId)
 
   if (!state) return null

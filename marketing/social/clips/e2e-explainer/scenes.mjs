@@ -17,10 +17,12 @@ const LINE = "Nervous about Friday's pitch."
 const OTHERS = ['Lisbon in May?', 'Call Lea about the brand workshop', 'Book tram 28 tickets']
 
 async function encrypt(text) {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   await sodium.ready
   const key = sodium.crypto_aead_xchacha20poly1305_ietf_keygen()
   const nonce = sodium.randombytes_buf(sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES)
   const sealed = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(text, null, null, nonce, key)
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium populates its named exports only after `ready`; the default export is the instance the tests mock
   return sodium.to_base64(new Uint8Array([...nonce, ...sealed]), sodium.base64_variants.ORIGINAL)
 }
 
@@ -32,9 +34,9 @@ export async function setup({ page }) {
   const sealed = await encrypt(LINE)
   const others = await Promise.all(OTHERS.map(encrypt))
   stations = await page.evaluate(
-    ([slow, line, sealed, others]) => {
+    ([slow, line, sealedText, otherItems]) => {
       window.SLOW = slow
-      window.e2e.init(line, sealed, others)
+      window.e2e.init(line, sealedText, otherItems)
       return Object.fromEntries(['laptop', 'server', 'phone'].map((n) => [n, window.e2e.focus(n)]))
     },
     [SLOW, LINE, sealed, others]

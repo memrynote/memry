@@ -87,8 +87,8 @@ export const scenes = {
         throw new Error(
           JSON.stringify(
             await page.evaluate(() => {
-              const v = document.querySelector('video')
-              return [v.currentTime, v.paused, v.readyState, v.error?.message]
+              const vid = document.querySelector('video')
+              return [vid.currentTime, vid.paused, vid.readyState, vid.error?.message]
             })
           ) + JSON.stringify(b)
         )

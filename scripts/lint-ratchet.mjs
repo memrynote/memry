@@ -81,10 +81,10 @@ export function toBaselineFiles(warnings) {
 
 /** One file per line keeps baseline diffs reviewable. */
 export function serializeBaseline(files) {
-  const sorted = Object.keys(files).sort()
+  const sorted = Object.keys(files).toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
   const lines = sorted.map((file) => {
     const rules = Object.fromEntries(
-      Object.entries(files[file]).sort(([a], [b]) => (a < b ? -1 : 1))
+      Object.entries(files[file]).toSorted(([a], [b]) => (a < b ? -1 : 1))
     )
     return `    ${JSON.stringify(file)}: ${JSON.stringify(rules)}`
   })

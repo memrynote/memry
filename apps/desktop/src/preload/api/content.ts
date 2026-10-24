@@ -49,11 +49,13 @@ export const templatesApi = {
   create: (input: TemplateCreateInput) =>
     invoke(
       TemplatesChannels.invoke.CREATE,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TemplateProperty.type is a plain string here; the main handler's zod schema validates the property type enum
       input as MainIpcInvokeArgs<typeof TemplatesChannels.invoke.CREATE>[0]
     ),
   update: (input: TemplateUpdateInput) =>
     invoke(
       TemplatesChannels.invoke.UPDATE,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TemplateProperty.type is a plain string here; the main handler's zod schema validates the property type enum
       input as MainIpcInvokeArgs<typeof TemplatesChannels.invoke.UPDATE>[0]
     ),
   delete: (id: string) => invoke(TemplatesChannels.invoke.DELETE, id),
@@ -66,11 +68,13 @@ export const savedFiltersApi = {
   create: (input: { name: string; config: unknown }) =>
     invoke(
       SavedFiltersChannels.invoke.CREATE,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- config is unknown at the preload boundary; the main handler's zod schema validates it
       input as MainIpcInvokeArgs<typeof SavedFiltersChannels.invoke.CREATE>[0]
     ),
   update: (input: { id: string; name?: string; config?: unknown; position?: number }) =>
     invoke(
       SavedFiltersChannels.invoke.UPDATE,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- config is unknown at the preload boundary; the main handler's zod schema validates it
       input as MainIpcInvokeArgs<typeof SavedFiltersChannels.invoke.UPDATE>[0]
     ),
   delete: (id: string) => invoke(SavedFiltersChannels.invoke.DELETE, { id }),

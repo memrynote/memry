@@ -19,32 +19,33 @@ export const test = base.extend<{
   page: Page
   testVaultPath: string
 }>({
-  testVaultPath: async ({}, use) => {
+  // oxlint-disable-next-line no-empty-pattern -- Playwright reads the fixture deps from the first-argument destructuring, so it must stay a pattern
+  testVaultPath: async ({}, provide) => {
     const vaultPath = fs.mkdtempSync(path.join(os.tmpdir(), 'memry-e2e-'))
 
     fs.mkdirSync(path.join(vaultPath, '.memry'), { recursive: true })
     fs.mkdirSync(path.join(vaultPath, 'notes'), { recursive: true })
     fs.mkdirSync(path.join(vaultPath, 'journal'), { recursive: true })
 
-    await use(vaultPath)
+    await provide(vaultPath)
 
     fs.rmSync(vaultPath, { recursive: true, force: true })
   },
 
-  electronApp: async ({ testVaultPath }, use) => {
+  electronApp: async ({ testVaultPath }, provide) => {
     const launched = await launchElectronWithWindow({ testVaultPath })
 
     ;(launched.app as unknown as { __launched?: LaunchedElectron }).__launched = launched
 
-    await use(launched.app)
+    await provide(launched.app)
 
     await destroyLaunchedElectron(launched)
   },
 
-  page: async ({ electronApp }, use) => {
+  page: async ({ electronApp }, provide) => {
     const launched = (electronApp as unknown as { __launched?: LaunchedElectron }).__launched
     const page = launched?.page ?? (await electronApp.firstWindow({ timeout: 45_000 }))
-    await use(page)
+    await provide(page)
   }
 })
 
