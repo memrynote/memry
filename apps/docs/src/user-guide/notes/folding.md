@@ -30,12 +30,16 @@ The fold icon stays visible on a long note even when you hide the word count.
   Settings → Shortcuts. If you assigned the same keys to a new-note-in-folder shortcut, your
   shortcut wins and the fold command stays available from the pill.
 - Hold **⌘** and scroll, or pinch on a trackpad, over the note to step one level.
+- Scroll over the pill itself, without any key held, to step one level. Scrolling up moves toward
+  Full, scrolling down toward Topic, and one swipe moves one level. A faint line under the pill
+  reminds you of this.
 - Press **Esc** to return to Full.
 
 A level your agent has not written yet shows a dot in the pill and **Writing…** above it. Choosing it shows Brief
 until the level arrives, and each paragraph swaps in as it is ready. Moving between Brief, Key and
-Takeaway slides the words that both levels share. With reduced motion turned on, the level changes
-at once.
+Takeaway slides the words that both levels share. Moving into or out of Topic fades the cards and
+the lines past each other, and the pill's highlight slides to the level you chose. With reduced
+motion turned on, the level changes at once.
 
 ## Reading a Folded Note
 
