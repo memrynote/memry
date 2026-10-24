@@ -291,15 +291,22 @@ pnpm typecheck:web      # renderer only
 ### Typechecking test files
 
 The two configs above compile app source only — they exclude `**/*.test.ts(x)` and `**/*.spec.ts`.
-Test files are compiled by a separate pair of projects:
+Test files are compiled by three more projects:
 
 ```bash
-pnpm --filter @memry/desktop typecheck:test        # both halves
+pnpm --filter @memry/desktop typecheck:test        # all three
 pnpm --filter @memry/desktop typecheck:test:node   # tests/** harness + main/preload tests
 pnpm --filter @memry/desktop typecheck:test:web    # renderer tests
+pnpm --filter @memry/desktop typecheck:test:e2e    # Playwright specs, utils and fixtures in tests/e2e
 ```
 
-`pnpm typecheck` runs all four, and CI has a step per project. Each one runs `scripts/typecheck.mjs`,
+`tsconfig.test.e2e.json` adds the DOM lib so `page.evaluate` callbacks type against the renderer's
+globals. It has no backlog: a spec must compile, and code that is dynamic by nature gets a narrow
+local type, never `@ts-nocheck`. Playwright runs specs without type information, so a removed
+binding or a value import turned type-only passes lint and only fails at run time. This gate is what
+catches it before the e2e job does.
+
+`pnpm typecheck` runs all five, and CI has a step per project. Each one runs `scripts/typecheck.mjs`,
 which hands exactly the files a tsconfig includes to `oxlint --type-check` (TypeScript 7).
 
 `apps/desktop/tsconfig.test.node.json` and `apps/desktop/tsconfig.test.web.json` each carry an
