@@ -53,8 +53,8 @@ describe('bulk note tools', () => {
   })
 
   it('refuses a bulk tag call that names no tag, before approval', async () => {
-    const approve = vi.fn<ApproveArgs>(approveAll)
-    const tools = buildNoteActionTools(handles().full, approve)
+    const approve = vi.fn(approveAll)
+    const tools = buildNoteActionTools(handles().full, approve as ApproveArgs)
 
     await expect(tools.vault_bulk_tag_notes.handler({ ids: ['a'] }, ctx)).rejects.toThrow(
       'Invalid tool input'
