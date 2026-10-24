@@ -210,7 +210,7 @@ describe('Readwise first import', () => {
       journalDateFormat: 'yyyy-MM-dd'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(asClientDb(dataDb.db))
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => vault.path)])
 
@@ -251,7 +251,7 @@ describe('Readwise first import', () => {
     runner.runImport({ importId, importerId: 'readwise', sourcePaths: [] })
   const vaultFiles = (dir: string): string[] => {
     const full = path.join(vault.path, dir)
-    return fs.existsSync(full) ? fs.readdirSync(full).sort() : []
+    return fs.existsSync(full) ? fs.readdirSync(full).toSorted() : []
   }
   const noteFor = async (bookId: number) =>
     (await notes.getNoteById(links.getLinkByBookId(db(), bookId)!.noteId))!
@@ -317,7 +317,7 @@ describe('Readwise first import', () => {
       expect(vaultFiles('Readwise/Supplementals')).toEqual([])
       expect(links.getLinkByBookId(db(), 8)).toBeUndefined()
       expect(
-        summary.skippedReasons?.map((g) => (g.reason as { code: string }).code).sort()
+        summary.skippedReasons?.map((g) => (g.reason as { code: string }).code).toSorted()
       ).toEqual(['readwise.categoryOff', 'readwise.sourceDeleted'])
 
       const deepWork = await noteFor(1)
@@ -493,7 +493,7 @@ describe('Readwise first import', () => {
       await run()
 
       const completed = progress.map((p) => p.completed)
-      expect(completed).toEqual([...completed].sort((a, b) => a - b))
+      expect(completed).toEqual([...completed].toSorted((a, b) => a - b))
       expect(progress.at(-1)).toMatchObject({ completed: 8, total: 8 })
     })
 

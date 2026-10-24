@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { noteCache } from '@memry/db-schema/schema/notes-cache'
 import { noteMetadata } from '@memry/db-schema/schema/note-metadata'
 import { asClientDb, createTestDatabases } from '@tests/utils/test-db'
-import type { IndexDb } from '../database'
 import { getProjectContents, insertProject, insertProjectLink } from '../database/queries/projects'
 import { withoutMissingVaultItems } from './project-contents'
 
@@ -46,7 +45,7 @@ describe('withoutMissingVaultItems', () => {
     link('gone-file', 'image', false)
 
     const contents = withoutMissingVaultItems(
-      dbs.index.db as unknown as IndexDb,
+      dbs.index.db,
       getProjectContents(asClientDb(dbs.data.db), 'p1')
     )
 

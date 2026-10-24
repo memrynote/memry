@@ -34,7 +34,7 @@ function makeDeps(overrides: Partial<MigrateInstallerDeps> = {}) {
       writeFileSync: vi.fn(),
       copyFileSync: vi.fn(),
       createWriteStream: vi.fn()
-    } as unknown as MigrateInstallerDeps['fs'],
+    },
     verify: vi.fn(async () => ({
       ok: true as const,
       subject: 'CN=Open Source Developer Kaan Karaca'

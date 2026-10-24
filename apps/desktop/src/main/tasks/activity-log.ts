@@ -181,6 +181,7 @@ function fieldRows(
           taskId,
           action,
           field,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- field names come from the tracked-field list, which holds Task keys
           lengthDelta(next[field as keyof Task], previous?.[field as keyof Task]),
           actor
         )
@@ -188,7 +189,9 @@ function fieldRows(
       continue
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- field names come from the tracked-field list, which holds Task keys
     const oldValue = encodeValue(previous?.[field as keyof Task])
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- field names come from the tracked-field list, which holds Task keys
     const newValue = encodeValue(next[field as keyof Task])
 
     // `changedFields` on the move and bulk-move paths is built from which
@@ -362,23 +365,15 @@ export function recordExternalTaskUpdate(
     return JSON.stringify(before?.[field] ?? null) !== JSON.stringify(updates[field] ?? null)
   })
 
-  writeRows(
-    fieldRows(
-      taskId,
-      TaskActivityActions.UPDATED,
-      changedFields,
-      updates as Partial<Task>,
-      before as Partial<Task> | undefined,
-      actor
-    )
-  )
+  writeRows(fieldRows(taskId, TaskActivityActions.UPDATED, changedFields, updates, before, actor))
 }
 
 /** Stable JSON — object keys in sorted order, so two devices hash identically. */
 function canonicalJson(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(',')}]`
-  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- typeof object and non-array were checked above
+  const entries = Object.entries(value as Record<string, unknown>).toSorted(([a], [b]) =>
     a < b ? -1 : a > b ? 1 : 0
   )
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`

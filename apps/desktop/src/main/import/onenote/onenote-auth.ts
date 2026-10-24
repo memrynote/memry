@@ -72,7 +72,7 @@ export interface OneNoteAuthStatus {
 type OneNoteSecretKind = 'access-token' | 'refresh-token' | 'profile'
 
 function accountKey(accountId: string, kind: OneNoteSecretKind): string {
-  if (!accountId || !accountId.trim()) {
+  if (!accountId?.trim()) {
     throw new Error('accountKey requires a non-empty accountId')
   }
   const deviceSuffix = process.env.MEMRY_DEVICE
@@ -255,6 +255,7 @@ async function postToken(
   // first would lose the status for any body that is not JSON (a gateway's
   // HTML error page), leaving the user with a bare "sign-in failed".
   if (!response.ok) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fetch JSON body is untyped; shape is fixed by the endpoint this call targets
     const err = ((await response.json().catch(() => ({}))) ?? {}) as TokenErrorBody
     logger.error('Microsoft token request failed', {
       status: response.status,
@@ -537,6 +538,7 @@ export async function getOneNoteAuthStatus(): Promise<OneNoteAuthStatus> {
   const profileRaw = await readSecret(DEFAULT_ACCOUNT_ID, 'profile')
   if (profileRaw) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
       const parsed = JSON.parse(profileRaw) as Partial<OneNoteAccount>
       account = { name: parsed.name ?? '', email: parsed.email ?? '' }
     } catch {

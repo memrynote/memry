@@ -117,7 +117,9 @@ describe('onenote-auth', () => {
       vi.fn(async (url: string | URL, init?: RequestInit) => {
         const href = String(url)
         if (href === MS_TOKEN_URL) {
-          tokenBodies.push(new URLSearchParams(String(init?.body)))
+          tokenBodies.push(
+            new URLSearchParams(init?.body instanceof URLSearchParams ? init.body : undefined)
+          )
           return new Response(
             JSON.stringify({
               access_token: 'access-1',
@@ -176,7 +178,7 @@ describe('onenote-auth', () => {
   it('ignores unrelated requests to the loopback port instead of aborting sign-in', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn(async (url: string | URL, init?: RequestInit) => {
+      vi.fn(async (url: string | URL) => {
         const href = String(url)
         if (href === MS_TOKEN_URL) {
           return new Response(
@@ -188,7 +190,6 @@ describe('onenote-auth', () => {
           status: 200,
           headers: { 'Content-Type': 'application/json' }
         })
-        void init
       })
     )
 
@@ -289,7 +290,9 @@ describe('onenote-auth', () => {
       'fetch',
       vi.fn(async (url: string | URL, init?: RequestInit) => {
         expect(String(url)).toBe(MS_TOKEN_URL)
-        const body = new URLSearchParams(String(init?.body))
+        const body = new URLSearchParams(
+          init?.body instanceof URLSearchParams ? init.body : undefined
+        )
         expect(body.get('grant_type')).toBe('refresh_token')
         expect(body.get('refresh_token')).toBe('refresh-old')
         return new Response(

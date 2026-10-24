@@ -184,7 +184,7 @@ describe('desktop tasks domain commits sync with the write (#2301)', () => {
       .peek(50)
       .filter((row) => row.operation === 'delete')
       .map((row) => `${row.type}:${row.itemId}`)
-      .sort()
+      .toSorted()
   }
 
   // #2301: the old publisher loop enqueued one tombstone per cascaded task
@@ -199,7 +199,7 @@ describe('desktop tasks domain commits sync with the write (#2301)', () => {
     const domain = createDesktopTasksDomain(db, publisher({ taskDeleted }), () => 'unused')
 
     await expect(domain.deleteProject('proj-1')).resolves.toEqual({ success: true })
-    expect(taskDeleted.mock.calls.map(([event]) => event.id).sort()).toEqual([
+    expect(taskDeleted.mock.calls.map(([event]) => event.id).toSorted()).toEqual([
       'task-1',
       'task-2',
       'task-3'

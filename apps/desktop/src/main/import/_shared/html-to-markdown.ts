@@ -118,6 +118,7 @@ const INLINE_TAGS = new Set([
 function isInlineNode(node: ChildNode): boolean {
   if (node.nodeType === TEXT_NODE) return true
   if (node.nodeType !== ELEMENT_NODE) return false
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node was just checked as an element (nodeType) by the caller
   return INLINE_TAGS.has((node as Element).tagName.toLowerCase())
 }
 
@@ -142,8 +143,9 @@ function renderBlocks(ctx: Ctx, parent: Element): string {
     }
     if (node.nodeType !== ELEMENT_NODE) continue
     flushInline()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node was just checked as an element (nodeType) by the caller
     const md = renderBlock(ctx, node as Element)
-    if (md && md.trim()) parts.push(md.trim())
+    if (md?.trim()) parts.push(md.trim())
   }
   flushInline()
   return parts.join('\n\n')
@@ -285,6 +287,8 @@ function renderFigure(ctx: Ctx, fig: Element): string {
   return renderBlocks(ctx, fig)
 }
 
+const toLine = (r: string[]): string => `| ${r.join(' | ')} |`
+
 function renderTable(ctx: Ctx, table: Element): string {
   const rows = Array.from(table.querySelectorAll('tr'))
   if (rows.length === 0) return ''
@@ -298,7 +302,6 @@ function renderTable(ctx: Ctx, table: Element): string {
   const header = pad(matrix[0])
   const divider = Array(cols).fill('---')
   const bodyRows = matrix.slice(1).map(pad)
-  const toLine = (r: string[]): string => `| ${r.join(' | ')} |`
   return [toLine(header), toLine(divider), ...bodyRows.map(toLine)].join('\n')
 }
 
@@ -314,6 +317,7 @@ function renderInline(ctx: Ctx, el: Element): string {
 function renderInlineExcept(ctx: Ctx, el: Element, skip: Element[]): string {
   let out = ''
   for (const node of Array.from(el.childNodes)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node was just checked as an element (nodeType) by the caller
     if (node.nodeType === ELEMENT_NODE && skip.includes(node as Element)) continue
     out += renderInlineNode(ctx, node)
   }
@@ -324,6 +328,7 @@ function renderInlineNode(ctx: Ctx, node: ChildNode): string {
   if (node.nodeType === TEXT_NODE) return node.textContent ?? ''
   if (node.nodeType !== ELEMENT_NODE) return ''
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node was just checked as an element (nodeType) by the caller
   const el = node as Element
   const tag = el.tagName.toLowerCase()
   switch (tag) {

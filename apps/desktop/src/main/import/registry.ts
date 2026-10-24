@@ -29,7 +29,7 @@ export function listImporterMeta(): ImporterMeta[] {
       supportsPreview: typeof i.preview === 'function',
       accountBased: i.accountBased === true
     }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .toSorted((a, b) => a.name.localeCompare(b.name))
 }
 
 /** Test-only: clear the registry between cases. */

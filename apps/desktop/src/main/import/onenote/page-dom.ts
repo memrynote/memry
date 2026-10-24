@@ -148,7 +148,7 @@ export function convertMathToLatex(body: Element): void {
 // ============================================================================
 
 function isHtmlElement(node: Node | null): node is HTMLElement {
-  return node !== null && node.nodeType === 1
+  return node?.nodeType === 1
 }
 
 function isCode(node: Node | null): node is HTMLElement {
@@ -157,14 +157,13 @@ function isCode(node: Node | null): node is HTMLElement {
 }
 
 function isBr(node: Node | null): node is Element {
-  return node !== null && node.nodeName === 'BR'
+  return node?.nodeName === 'BR'
 }
 
 /** True iff node is a paragraph containing only code spans / line breaks. */
 function isCodeParagraph(node: Node | null): node is HTMLElement {
   return (
-    node !== null &&
-    node.nodeName === 'P' &&
+    node?.nodeName === 'P' &&
     node.childNodes.length > 0 &&
     Array.from(node.childNodes).every(
       (child) =>
@@ -240,8 +239,7 @@ export function convertCodeRuns(body: Element): void {
     // but this code block, promote the <pre> to replace it.
     const parent = pre.parentElement
     if (
-      parent &&
-      parent.nodeName === 'P' &&
+      parent?.nodeName === 'P' &&
       Array.from(parent.childNodes).every((child: ChildNode) => {
         if (child === (pre as Node)) return true
         return child.nodeType === 3 && (child.textContent ?? '').trim() === ''

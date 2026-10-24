@@ -172,7 +172,7 @@ describe('locked Apple Notes (synthetic NoteStore.sqlite)', () => {
       attachmentsFolder: 'attachments'
     } satisfies VaultConfig)
     vi.spyOn(database, 'getDatabase').mockReturnValue(dataDb.db as never)
-    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db as never)
+    vi.spyOn(database, 'getIndexDatabase').mockReturnValue(indexDb.db)
     vi.spyOn(database, 'updateFtsContent').mockImplementation(() => {})
     startProjectionRuntime([createNoteDerivedStateProjector(() => tempVault.path)])
 

@@ -331,6 +331,7 @@ export function incrementCaptureCount(itemType: string): void {
       return
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- column is one of the numeric stats columns; || 0 covers a null
     const currentValue = (stats[column] as number) || 0
     db.update(inboxStats)
       .set({ [column]: currentValue + 1 })

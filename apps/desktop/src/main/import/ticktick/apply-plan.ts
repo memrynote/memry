@@ -120,7 +120,7 @@ export async function applyPlan(
 
   // Tasks — parents before children so parentId resolves.
   const tempIdToRealId = new Map<string, string>()
-  const ordered = [...plan.tasks].sort(
+  const ordered = [...plan.tasks].toSorted(
     (a, b) => (a.parentTempId ? 1 : 0) - (b.parentTempId ? 1 : 0)
   )
   const nowMs = Date.now()
@@ -175,10 +175,12 @@ export async function applyPlan(
         try {
           deps.createReminder({ targetType: 'task', targetId: realId, remindAt: reminder.remindAt })
         } catch (err) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- catch binding is unknown; only .message is read for the warning text
           warnings.push({ message: `Reminder for "${t.title}" failed: ${(err as Error).message}` })
         }
       }
     } catch (err) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- catch binding is unknown; only .message is read for the warning text
       warnings.push({ message: `Task "${t.title}" failed: ${(err as Error).message}` })
       ctx?.reportFailed(t.title, err)
     }

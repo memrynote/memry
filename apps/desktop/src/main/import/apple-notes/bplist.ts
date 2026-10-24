@@ -151,11 +151,13 @@ export function parseKeyedArchiveRoot(data: Buffer): { [key: string]: PlistValue
   ) {
     return null
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bplist dictionary values are PlistValue by construction of the decoder; nodes were checked as non-array objects
   const plain = archive as { [key: string]: PlistValue }
   const objects = plain.$objects
   const top = plain.$top
   if (!Array.isArray(objects) || !top || typeof top !== 'object' || Array.isArray(top)) return null
   const rootRef =
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- bplist dictionary values are PlistValue by construction of the decoder; nodes were checked as non-array objects
     (top as { [key: string]: PlistValue }).root ?? (top as { [key: string]: PlistValue }).data
   if (!(rootRef instanceof Uid)) return null
   const root = objects[rootRef.index]
@@ -169,7 +171,7 @@ export function parseKeyedArchiveRoot(data: Buffer): { [key: string]: PlistValue
     return null
   }
   const resolved: { [key: string]: PlistValue } = {}
-  for (const [key, value] of Object.entries(root as { [key: string]: PlistValue })) {
+  for (const [key, value] of Object.entries(root)) {
     if (key === '$class') continue
     resolved[key] = value instanceof Uid ? (objects[value.index] ?? null) : value
   }

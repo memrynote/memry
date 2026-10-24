@@ -58,6 +58,7 @@ export function clearPendingInstallMarker(): void {
 function readPendingInstallMarker(): InstallMarker | null {
   try {
     const raw = readFileSync(markerPath(), 'utf8')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
     const parsed = JSON.parse(raw) as Partial<InstallMarker>
     if (typeof parsed.fromVersion === 'string' && typeof parsed.createdAt === 'number') {
       return { fromVersion: parsed.fromVersion, createdAt: parsed.createdAt }

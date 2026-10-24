@@ -101,6 +101,7 @@ function getItemTags(db: ReturnType<typeof getDatabase>, itemId: string): string
 function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxItem {
   return {
     id: row.id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     type: row.type as InboxItem['type'],
     title: row.title,
     content: row.content,
@@ -108,22 +109,27 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
     modifiedAt: new Date(row.modifiedAt),
     filedAt: row.filedAt ? new Date(row.filedAt) : null,
     filedTo: row.filedTo,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     filedAction: row.filedAction as InboxItem['filedAction'],
     snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : null,
     snoozeReason: row.snoozeReason,
     viewedAt: row.viewedAt ? new Date(row.viewedAt) : null,
     archivedAt: row.archivedAt ? new Date(row.archivedAt) : null,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     processingStatus: (row.processingStatus || 'complete') as InboxItem['processingStatus'],
     processingError: row.processingError,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     metadata: row.metadata as InboxItem['metadata'],
     attachmentPath: row.attachmentPath,
     attachmentUrl: resolveAttachmentUrl(row.attachmentPath),
     thumbnailPath: row.thumbnailPath,
     thumbnailUrl: resolveAttachmentUrl(row.thumbnailPath),
     transcription: row.transcription,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     transcriptionStatus: row.transcriptionStatus as InboxItem['transcriptionStatus'],
     sourceUrl: row.sourceUrl,
     sourceTitle: row.sourceTitle,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     captureSource: row.captureSource as InboxItem['captureSource'],
     tags,
     isStale: false // Snoozed items are not considered stale
@@ -134,10 +140,12 @@ function toInboxItem(row: typeof inboxItems.$inferSelect, tags: string[]): Inbox
  * Convert database row to list item (lighter weight)
  */
 function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxItemListItem {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
   const metadata = row.metadata as Record<string, unknown> | null
 
   return {
     id: row.id,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     type: row.type as InboxItemListItem['type'],
     title: row.title,
     content: row.content,
@@ -146,11 +154,16 @@ function toListItem(row: typeof inboxItems.$inferSelect, tags: string[]): InboxI
     sourceUrl: row.sourceUrl,
     tags,
     isStale: false,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     processingStatus: (row.processingStatus || 'complete') as InboxItemListItem['processingStatus'],
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     duration: metadata?.duration as number | undefined,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     excerpt: metadata?.excerpt as string | undefined,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     pageCount: metadata?.pageCount as number | undefined,
     transcription: row.transcription,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- SQLite text/JSON column is typed string/unknown by drizzle; this module only stores contract-enum values, same widening as the sibling row mappers
     transcriptionStatus: row.transcriptionStatus as InboxItemListItem['transcriptionStatus'],
     // Snooze-specific fields
     snoozedUntil: row.snoozedUntil ? new Date(row.snoozedUntil) : undefined,

@@ -136,7 +136,7 @@ describe('project links domain', () => {
     await d.linkItemToProject({ projectId: 'p1', itemType: 'note', itemId: 'n9' })
 
     const result = d.listForItem('calendar_event', 'e1')
-    expect(result.map((p) => p.id).sort()).toEqual(['p1', 'p2'])
+    expect(result.map((p) => p.id).toSorted()).toEqual(['p1', 'p2'])
     expect(result.find((p) => p.id === 'p1')?.name).toBe('P1')
   })
 
@@ -161,7 +161,7 @@ describe('project links domain', () => {
     await d.cleanupProjectLinksForDeletedNote('n1')
 
     const remaining = t.db.select().from(projectLinks).all()
-    expect(remaining.map((l) => l.itemId).sort()).toEqual(['keep'])
+    expect(remaining.map((l) => l.itemId).toSorted()).toEqual(['keep'])
 
     const homeById = Object.fromEntries(
       t.db

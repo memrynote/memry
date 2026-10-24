@@ -133,12 +133,15 @@ function storeHasCiphertexts(dir: string): boolean {
   const path = join(dir, SECRET_STORE_FILENAME)
   if (!existsSync(path)) return false
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; entries is typed unknown and checked before use
     const entries = (JSON.parse(readFileSync(path, 'utf-8')) as { entries?: unknown })?.entries
     if (!entries || typeof entries !== 'object') return false
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse'd keychain shape; typeof object is checked before this read
     return Object.values(entries as Record<string, unknown>).some(
       (accounts) =>
         Boolean(accounts) &&
         typeof accounts === 'object' &&
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse'd keychain shape; typeof object is checked before this read
         Object.keys(accounts as Record<string, unknown>).length > 0
     )
   } catch {
@@ -176,6 +179,7 @@ function moveProfileInto(from: string, to: string): void {
 
 function readPin(dir: string): IdentityPin | null {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; appName is compared to the two known values and the other fields are read defensively right after
     const raw = JSON.parse(readFileSync(join(dir, IDENTITY_PIN_FILENAME), 'utf-8')) as IdentityPin
     if (raw?.appName !== LEGACY_APP_NAME && raw?.appName !== MEMRYNOTE_APP_NAME) return null
     return { version: 1, appName: raw.appName, flipped: raw.flipped === true }

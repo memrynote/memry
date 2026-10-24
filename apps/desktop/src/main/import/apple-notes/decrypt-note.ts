@@ -125,7 +125,8 @@ function parseEnvelope(zdata: Buffer): Envelope | null {
 function plainDict(data: Buffer): Record<string, unknown> | null {
   const value = tryParseBinaryPlist(data)
   return value && typeof value === 'object' && !Array.isArray(value) && !Buffer.isBuffer(value)
-    ? (value as Record<string, unknown>)
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- typeof object and non-array were checked on the previous lines
+      (value as Record<string, unknown>)
     : null
 }
 

@@ -64,7 +64,7 @@ const W_TAG = 0.15
 
 /** Mean of the top-{@link SUPPORT_CAP} similarities for one folder. */
 function meanTopK(sims: number[]): number {
-  const top = [...sims].sort((a, b) => b - a).slice(0, SUPPORT_CAP)
+  const top = [...sims].toSorted((a, b) => b - a).slice(0, SUPPORT_CAP)
   return top.reduce((sum, s) => sum + s, 0) / top.length
 }
 

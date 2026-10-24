@@ -37,6 +37,7 @@ export function getVoiceTranscriptionSettings(): VoiceTranscriptionSettings {
   }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
     const parsed = JSON.parse(raw) as Partial<VoiceTranscriptionSettings>
     return { ...VOICE_TRANSCRIPTION_SETTINGS_DEFAULTS, ...parsed }
   } catch {

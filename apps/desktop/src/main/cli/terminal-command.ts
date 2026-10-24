@@ -183,6 +183,7 @@ function isNodeErrorCode(error: unknown, code: string): boolean {
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- caught value is unknown; only .code is read and undefined is handled
     (error as NodeJS.ErrnoException).code === code
   )
 }

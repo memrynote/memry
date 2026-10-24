@@ -43,6 +43,7 @@ function safeVersion(): string {
 
 function readGpuGuard(): GpuGuardMarker | null {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse returns any; the cast is a Partial/optional shape and fields are checked before use
     const parsed = JSON.parse(readFileSync(markerPath(), 'utf8')) as Partial<GpuGuardMarker>
     if (typeof parsed.disabledForGpu === 'boolean' && typeof parsed.version === 'string') {
       return { disabledForGpu: parsed.disabledForGpu, version: parsed.version }

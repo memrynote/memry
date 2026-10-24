@@ -104,7 +104,7 @@ describe('task activity write path', () => {
   })
 
   it('writes a created row through the publisher and enqueues it for sync', () => {
-    createTasksPublisher().taskCreated({ task: makeTask({ title: 'Buy milk' }) })
+    void createTasksPublisher().taskCreated({ task: makeTask({ title: 'Buy milk' }) })
 
     const [row] = rows()
     expect(row.taskId).toBe('task-1')
@@ -115,7 +115,7 @@ describe('task activity write path', () => {
   })
 
   it('writes one row per changed field with old and new values', () => {
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask({ priority: 2, dueDate: '2026-08-20' }),
       changes: { priority: 2, dueDate: '2026-08-20' },
@@ -132,7 +132,7 @@ describe('task activity write path', () => {
 
   it('writes one row per changed task field, and only the length of a long text value', () => {
     const notes = 'n'.repeat(501)
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask({ fields: { Owner: 'Deniz', Notes: notes } }),
       changes: { fields: { Owner: 'Deniz', Notes: notes } },
@@ -152,7 +152,7 @@ describe('task activity write path', () => {
 
   it('never stores the description body — only a length delta', () => {
     const body = 'a'.repeat(500)
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask({ description: body }),
       changes: { description: body },
@@ -167,7 +167,7 @@ describe('task activity write path', () => {
   })
 
   it('reports a real delta when the old body is known', () => {
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask({ description: 'a'.repeat(995) }),
       changes: { description: 'a'.repeat(995) },
@@ -180,7 +180,7 @@ describe('task activity write path', () => {
   })
 
   it('logs reopening as its own action even though it arrives as an update', () => {
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask({ completedAt: null }),
       changes: { completedAt: null },
@@ -194,7 +194,7 @@ describe('task activity write path', () => {
   })
 
   it('writes nothing when a move lands on the value the task already had', () => {
-    createTasksPublisher().taskMoved({
+    void createTasksPublisher().taskMoved({
       id: 'task-1',
       task: makeTask({ projectId: 'proj-1' }),
       changedFields: ['projectId', 'position'],
@@ -205,7 +205,7 @@ describe('task activity write path', () => {
   })
 
   it('writes nothing for a position-only change', () => {
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask({ position: 7 }),
       changes: { position: 7 },
@@ -218,7 +218,7 @@ describe('task activity write path', () => {
   })
 
   it('writes nothing when the differ reports a no-op', () => {
-    createTasksPublisher().taskUpdated({
+    void createTasksPublisher().taskUpdated({
       id: 'task-1',
       task: makeTask(),
       changes: {},
@@ -232,7 +232,7 @@ describe('task activity write path', () => {
   it('does not hook taskReordered — a 200-task drag must not write 200 rows', () => {
     const publisher = createTasksPublisher()
     for (let index = 0; index < 200; index += 1) {
-      publisher.taskReordered?.({ id: `task-${index}`, changedFields: ['position'] })
+      void publisher.taskReordered?.({ id: `task-${index}`, changedFields: ['position'] })
     }
 
     expect(rows()).toHaveLength(0)
@@ -240,12 +240,12 @@ describe('task activity write path', () => {
 
   it('distinguishes completed from reopened', () => {
     const publisher = createTasksPublisher()
-    publisher.taskCompleted({
+    void publisher.taskCompleted({
       id: 'task-1',
       task: makeTask({ completedAt: '2026-08-13T10:00:00.000Z' }),
       previous: { completedAt: null }
     })
-    publisher.taskCompleted({
+    void publisher.taskCompleted({
       id: 'task-1',
       task: makeTask({ completedAt: null }),
       previous: { completedAt: '2026-08-13T10:00:00.000Z' }
@@ -255,7 +255,7 @@ describe('task activity write path', () => {
   })
 
   it('writes nothing when completion did not actually flip', () => {
-    createTasksPublisher().taskCompleted({
+    void createTasksPublisher().taskCompleted({
       id: 'task-1',
       task: makeTask({ completedAt: '2026-08-13T10:00:00.000Z' }),
       previous: { completedAt: '2026-08-13T09:00:00.000Z' }
@@ -265,7 +265,7 @@ describe('task activity write path', () => {
   })
 
   it('keeps the deleted entry, which is what outlives the task', () => {
-    createTasksPublisher().taskDeleted({ id: 'task-1', snapshot: makeTask({ title: 'Gone' }) })
+    void createTasksPublisher().taskDeleted({ id: 'task-1', snapshot: makeTask({ title: 'Gone' }) })
 
     const [row] = rows()
     expect(row.action).toBe('deleted')

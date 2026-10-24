@@ -18,6 +18,7 @@ const alternativesSchema = z.object({ alternatives: z.array(z.string()) })
  * One structured-output call per request. The model only ever proposes text:
  * nothing here touches the note.
  */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union: TS rejects a missing case, and a default would invent behavior for kinds that cannot occur
 export async function runWritingAssist(
   settings: AIInlineSettings,
   input: WritingAssistInput
