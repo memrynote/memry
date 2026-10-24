@@ -230,6 +230,19 @@ When to run:
 - Any time you add or rename an IPC channel
 - Before opening a PR that touches the boundary
 
+## Markdown Converter Vectors
+
+The Rust markdown converter in `crates/memry-core` is checked against vectors produced by the Electron converter. Regenerate them after a change to that converter, to the packages it uses, or to the case list in `apps/desktop/scripts/markdown-oracle/`:
+
+```bash
+pnpm --filter @memry/desktop vectors:markdown-convert          # run the oracle, rewrite the class
+pnpm --filter @memry/desktop vectors:markdown-convert:check    # regenerate to a temp dir, diff, write nothing (CI)
+pnpm --filter @memry/contracts test                            # verifier: case counts, coverage list, file digests
+cd crates && cargo test -p memry-core --features markdown      # the Rust side
+```
+
+After regenerating, update the digests in `packages/contracts/src/__tests__/markdown-convert.test.ts` and the table in `packages/contracts/test-vectors/README.md`. The oracle runs in the `markdown-oracle` Vitest project with the time zone set to UTC.
+
 ## I18n Checks
 
 ```bash
