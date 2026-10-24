@@ -79,7 +79,7 @@ function line({ title, count }: JournalBook): string {
 function ordered(books: readonly JournalBook[]): JournalBook[] {
   return books
     .filter((book) => book.count > 0)
-    .sort((a, b) => {
+    .toSorted((a, b) => {
       if (a.first !== b.first) return a.first < b.first ? -1 : 1
       return a.title === b.title ? 0 : a.title < b.title ? -1 : 1
     })

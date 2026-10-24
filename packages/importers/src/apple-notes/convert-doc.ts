@@ -144,6 +144,12 @@ function lineMarkdownPrefix(attr: AttributeRun, listCounter: { n: number }): str
   }
 }
 
+// An attachment placeholder must stand alone as its own block — never carry a
+// heading/list/quote prefix, or the renderer can't parse it as an image/file
+// block (e.g. `# ![](...)` from an attachment in a Title-styled paragraph).
+const isAttachmentOnlyLine = (line: string): boolean =>
+  new RegExp(`^!\\[\\]\\(${ATTACHMENT_TOKEN_PREFIX}[^)]+\\)$`).test(line)
+
 /**
  * Convert a decoded note (text + runs) into markdown, collecting inline
  * attachment identifiers in encounter order.
@@ -159,12 +165,6 @@ export function docToMarkdown(doc: { text: string; runs: AttributeRun[] }): Conv
   let lineAttr: AttributeRun | null = null
   let monospace = false
   const listCounter = { n: 0 }
-
-  // An attachment placeholder must stand alone as its own block — never carry a
-  // heading/list/quote prefix, or the renderer can't parse it as an image/file
-  // block (e.g. `# ![](...)` from an attachment in a Title-styled paragraph).
-  const isAttachmentOnlyLine = (line: string): boolean =>
-    new RegExp(`^!\\[\\]\\(${ATTACHMENT_TOKEN_PREFIX}[^)]+\\)$`).test(line)
 
   const flushLine = (attr: AttributeRun | null) => {
     if (attr && !monospace && !isAttachmentOnlyLine(current)) {

@@ -75,7 +75,7 @@ function extractResources(note: AnyObj): EnexResource[] {
     }
     const base64 = rawBase64.replace(/\s+/g, '')
     const mime = typeof r['mime'] === 'string' ? r['mime'] : ''
-    const attrs = r['resource-attributes'] as AnyObj | undefined
+    const attrs: AnyObj | undefined = r['resource-attributes']
     const fileName =
       attrs && typeof attrs['file-name'] === 'string' ? attrs['file-name'] : undefined
     return { base64, mime, fileName }
@@ -87,8 +87,8 @@ function extractResources(note: AnyObj): EnexResource[] {
  * `<note>` element found.
  */
 export function parseEnex(xml: string): EnexNote[] {
-  const root = parser.parse(xml) as AnyObj
-  const exportNode = root['en-export'] as AnyObj | undefined
+  const root: AnyObj = parser.parse(xml)
+  const exportNode: AnyObj | undefined = root['en-export']
   if (!exportNode) return []
 
   const notes: AnyObj[] = Array.isArray(exportNode['note'])
