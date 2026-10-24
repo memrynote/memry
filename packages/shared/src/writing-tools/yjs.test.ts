@@ -89,8 +89,8 @@ describe('writing tools Yjs helpers', () => {
     expect(readWritingOverflowFromYDoc(doc)).toEqual([
       { id: 'o-1', text: 'kept line', createdAt: 5 }
     ])
-    expect([...doc.arrays.keys()].sort()).toEqual(
-      [WRITING_ALTERNATIVES_ARRAY, WRITING_GHOSTS_ARRAY, WRITING_OVERFLOW_ARRAY].sort()
+    expect([...doc.arrays.keys()].toSorted()).toEqual(
+      [WRITING_ALTERNATIVES_ARRAY, WRITING_GHOSTS_ARRAY, WRITING_OVERFLOW_ARRAY].toSorted()
     )
   })
 

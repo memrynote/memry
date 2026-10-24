@@ -36,6 +36,8 @@
  * build cannot read is shown as invalid and its bytes are left alone.
  */
 
+import { isRecord } from './is-record'
+
 /** The fence info string. Also the `codeBlock` `language` prop value. */
 export const PORTAL_BLOCK_LANGUAGE = 'memry-portal'
 
@@ -79,10 +81,6 @@ export type ParsedPortal =
       reason: 'empty' | 'json' | 'shape'
       raw?: Record<string, unknown>
     }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 // ---------------------------------------------------------------------------
 // Anchors

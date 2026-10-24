@@ -5,6 +5,7 @@ import {
   type CriticMarkupKind,
   type CriticMarkupMark
 } from './parser'
+import { isObject } from '../is-record'
 
 export const CRITIC_MARKUP_MARKS_ARRAY = 'criticMarkupMarks'
 
@@ -20,7 +21,16 @@ interface YDocLike {
   getArray(name: string): YArrayLike
 }
 
-const VALID_KINDS = new Set<CriticMarkupKind>(['addition', 'deletion', 'substitution', 'comment'])
+const VALID_KINDS: ReadonlySet<unknown> = new Set<CriticMarkupKind>([
+  'addition',
+  'deletion',
+  'substitution',
+  'comment'
+])
+
+function isCriticMarkupKind(value: unknown): value is CriticMarkupKind {
+  return VALID_KINDS.has(value)
+}
 
 export function readCriticMarkupMarksFromYDoc(doc: YDocLike): CriticMarkupMark[] {
   const array = doc.getArray(CRITIC_MARKUP_MARKS_ARRAY)
@@ -53,12 +63,10 @@ function readArrayLike(array: YArrayLike): unknown[] {
 }
 
 function normalizeCriticMarkupMark(value: unknown): CriticMarkupMark | null {
-  if (!value || typeof value !== 'object') return null
-  const mark = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const mark = value
   if (typeof mark.id !== 'string') return null
-  if (typeof mark.kind !== 'string' || !VALID_KINDS.has(mark.kind as CriticMarkupKind)) {
-    return null
-  }
+  if (!isCriticMarkupKind(mark.kind)) return null
   if (typeof mark.visibleText !== 'string') return null
   if (typeof mark.start !== 'number' || typeof mark.end !== 'number') return null
   if (!Number.isFinite(mark.start) || !Number.isFinite(mark.end)) return null
@@ -73,7 +81,7 @@ function normalizeCriticMarkupMark(value: unknown): CriticMarkupMark | null {
 
   return {
     id: mark.id,
-    kind: mark.kind as CriticMarkupKind,
+    kind: mark.kind,
     visibleText: mark.visibleText,
     start: mark.start,
     end: mark.end,

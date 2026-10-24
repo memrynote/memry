@@ -268,7 +268,7 @@ function parseWeekdays(text: string): number[] | null {
     if (!days.includes(day)) days.push(day)
   }
   if (days.length === 0) return null
-  return days.sort((a, b) => a - b)
+  return days.toSorted((a, b) => a - b)
 }
 
 // A deliberate subset of the plugin's rrule support: the rules Memry can honour

@@ -79,6 +79,7 @@ export async function parseMarkdownWithNestingMarkers<T extends object>(
 ): Promise<T[]> {
   const blocks: T[] = []
   for (const chunk of splitMarkdownByBlockNestingMarkers(markdown)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the marker is an empty placeholder block; T is unconstrained beyond `object`, so no real T can be built here
     const marker = {} as T
     nestingMarkerLevels.set(marker, chunk.level)
     blocks.push(marker)
@@ -87,6 +88,7 @@ export async function parseMarkdownWithNestingMarkers<T extends object>(
   return blocks
 }
 
+// oxlint-disable-next-line anti-slop/no-object-parameters -- WeakMap key lookup: any block shape, from any editor, can be asked
 export function isBlockNestingMarker(block: object): boolean {
   return nestingMarkerLevels.has(block)
 }

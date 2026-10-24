@@ -15,6 +15,7 @@ export const MAX_NOTE_ALIAS_LENGTH = 200
 export function nameKey(raw: string): NameKey | null {
   const spaced = raw.normalize('NFC').replace(/\p{White_Space}+/gu, ' ')
   const trimmed = spaced.replace(/^ /, '').replace(/ $/, '')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- NameKey is a brand; this is its only constructor
   return trimmed === '' ? null : (foldTag(trimmed) as NameKey)
 }
 

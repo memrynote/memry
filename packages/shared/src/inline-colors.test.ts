@@ -205,7 +205,7 @@ describe('extractInlineColorRuns / restoreInlineColorTokens (serialize side)', (
       }
     ]
 
-    const { blocks: wrapped } = extractInlineColorRuns(blocks as never)
+    const { blocks: wrapped } = extractInlineColorRuns(blocks)
     const cell = (
       wrapped[0] as unknown as {
         content: { rows: Array<{ cells: Array<{ content: unknown[] }> }> }
@@ -400,7 +400,7 @@ describe('maskInlineColorSpans / applyInlineColorTokens (parse side)', () => {
         children: []
       }
     ]
-    const applied = applyInlineColorTokens(parsed as never, spans)
+    const applied = applyInlineColorTokens(parsed, spans)
     const cell = (
       applied[0] as unknown as {
         content: { rows: Array<{ cells: Array<{ content: unknown[] }> }> }

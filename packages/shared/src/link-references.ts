@@ -21,6 +21,7 @@
  */
 
 import { createFenceTracker } from './markdown-fences'
+import { isObject } from './is-record'
 
 export interface LinkReferenceDefinition {
   /** Case-folded, whitespace-collapsed label — the key a usage matches on. */
@@ -216,8 +217,8 @@ export function writeLinkReferencesToYDoc(
   definitions: LinkReferenceDefinition[],
   usages: LinkReferenceUsage[]
 ): void {
-  replaceArray(doc.getArray(LINK_REFERENCE_DEFINITIONS_ARRAY), definitions as unknown[])
-  replaceArray(doc.getArray(LINK_REFERENCE_USAGES_ARRAY), usages as unknown[])
+  replaceArray(doc.getArray(LINK_REFERENCE_DEFINITIONS_ARRAY), definitions)
+  replaceArray(doc.getArray(LINK_REFERENCE_USAGES_ARRAY), usages)
 }
 
 export function readLinkReferencesFromYDoc(doc: YDocLike): {
@@ -388,8 +389,8 @@ function readArray(array: YArrayLike): unknown[] {
 }
 
 function normalizeDefinition(value: unknown): LinkReferenceDefinition | null {
-  if (!value || typeof value !== 'object') return null
-  const record = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const record = value
   if (typeof record.label !== 'string') return null
   if (typeof record.destination !== 'string') return null
   if (typeof record.raw !== 'string') return null
@@ -403,8 +404,8 @@ function normalizeDefinition(value: unknown): LinkReferenceDefinition | null {
 }
 
 function normalizeUsage(value: unknown): LinkReferenceUsage | null {
-  if (!value || typeof value !== 'object') return null
-  const record = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const record = value
   if (typeof record.label !== 'string') return null
   if (typeof record.destination !== 'string') return null
   if (typeof record.text !== 'string') return null
