@@ -84,6 +84,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       {
         authorization: req.headers.authorization,
         origin,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node:http types a header as string | string[] | undefined; validateCaptureRequest only accepts the exact string '1', so an array is refused as before
         'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
       },
       token,
@@ -159,6 +160,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       {
         authorization: req.headers.authorization,
         origin,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node:http types a header as string | string[] | undefined; validateCaptureRequest only accepts the exact string '1', so an array is refused as before
         'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
       },
       token,
@@ -222,6 +224,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       {
         authorization: req.headers.authorization,
         origin,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node:http types a header as string | string[] | undefined; validateCaptureRequest only accepts the exact string '1', so an array is refused as before
         'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
       },
       await getCaptureToken(),
@@ -236,7 +239,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       return
     }
     const tags = getAllTagsWithCounts(getIndexDatabase(), getDatabase())
-      .sort((a, b) => b.count - a.count)
+      .toSorted((a, b) => b.count - a.count)
       .map((t) => t.name)
     json(res, 200, { tags })
     return
@@ -248,6 +251,7 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
       {
         authorization: req.headers.authorization,
         origin,
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- node:http types a header as string | string[] | undefined; validateCaptureRequest only accepts the exact string '1', so an array is refused as before
         'x-memry-capture': req.headers['x-memry-capture'] as string | undefined
       },
       token,
@@ -303,6 +307,7 @@ export async function startCaptureServer(
       try {
         return await listen(DEFAULT_PORT + i)
       } catch (err) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Node fs/net errors carry .code but catch values are typed Error/unknown
         const code = (err as NodeJS.ErrnoException).code
         if (code !== 'EADDRINUSE') throw err
       }

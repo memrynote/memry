@@ -1,7 +1,10 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import { XCHACHA20_PARAMS } from '@memry/contracts/crypto'
 import { CryptoError } from './crypto-errors'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 export const generateNonce = (): Uint8Array => {
   const nonce = sodium.randombytes_buf(XCHACHA20_PARAMS.NONCE_LENGTH)

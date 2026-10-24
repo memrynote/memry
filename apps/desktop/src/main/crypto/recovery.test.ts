@@ -1,5 +1,5 @@
 import * as bip39 from 'bip39'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import { beforeAll, describe, expect, it } from 'vitest'
 
 import { ARGON2_PARAMS } from '@memry/contracts/crypto'
@@ -12,6 +12,9 @@ import {
   validateKeyVerifier,
   validateRecoveryPhrase
 } from './recovery'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 beforeAll(async () => {
   await sodium.ready

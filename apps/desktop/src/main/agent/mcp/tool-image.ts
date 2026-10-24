@@ -31,6 +31,7 @@ export function withoutImageBytes(value: unknown): unknown {
   }
   if (typeof value !== 'object' || value === null) return value
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   const record = value as Record<string, unknown>
   if (isImagePart(record)) {
     return { type: 'image', mimeType: record.mimeType, dataOmitted: true }

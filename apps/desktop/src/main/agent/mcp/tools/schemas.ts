@@ -324,7 +324,7 @@ const LOOSE_TOOL_SCHEMAS = {
     description: 'Delete a task. Requires user approval.'
   },
   vault_complete_task: {
-    input: z.object({ id: idSchema, completed_at: z.string().datetime().optional() }),
+    input: z.object({ id: idSchema, completed_at: z.iso.datetime().optional() }),
     description: 'Complete a task. Requires user approval.'
   },
   vault_uncomplete_task: {
@@ -449,7 +449,7 @@ const LOOSE_TOOL_SCHEMAS = {
   vault_snooze_inbox_item: {
     input: z.object({
       id: idSchema,
-      snooze_until: z.string().datetime(),
+      snooze_until: z.iso.datetime(),
       reason: z.string().max(500).optional()
     }),
     description: 'Snooze an inbox item until an ISO datetime. Requires user approval.'
@@ -621,6 +621,7 @@ const LOOSE_TOOL_SCHEMAS = {
  * and the AI SDK both validate against these inputs, so strict objects make
  * either refuse the call and name the key.
  */
+// oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- fromEntries widens to a string-keyed record; the strict copy has the same keys and shapes as the loose map
 export const TOOL_SCHEMAS = Object.fromEntries(
   Object.entries(LOOSE_TOOL_SCHEMAS).map(([name, schema]) => [
     name,

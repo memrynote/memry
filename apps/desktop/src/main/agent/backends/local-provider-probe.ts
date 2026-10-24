@@ -160,6 +160,7 @@ export async function listOpenAiCompatibleModels(
     headers: authHeaders(apiKey)
   })
   if (!response.ok) throw new Error(`/v1/models returned HTTP ${response.status}`)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is an HTTP response from a user-configured provider; fields are optional and read defensively
   const payload = (await response.json()) as { data?: Array<{ id?: string }> }
   return (payload.data ?? []).flatMap((model) => (model.id ? [model.id] : []))
 }
@@ -240,9 +241,9 @@ async function probeToolCalling(
     toolChoice = 'omit'
     try {
       first = await postChatCompletion(settings, fetchImpl, apiKey, request)
-    } catch (error) {
-      const detail = errorMessage(error)
-      if (isTransientError(error)) return { ok: false, transient: true, detail }
+    } catch (retryError) {
+      const detail = errorMessage(retryError)
+      if (isTransientError(retryError)) return { ok: false, transient: true, detail }
       return {
         ok: false,
         transient: false,
@@ -429,6 +430,7 @@ function isTransientError(error: unknown): boolean {
 // it turns tools off. Anything else (HTML, plain text) is dropped.
 async function providerErrorSuffix(response: Response): Promise<string> {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is an HTTP response from a user-configured provider; fields are optional and read defensively
     const body = (await response.json()) as { error?: { message?: unknown } | string }
     const message = typeof body.error === 'string' ? body.error : body.error?.message
     return typeof message === 'string' && message.trim() ? `: ${message.trim()}` : ''

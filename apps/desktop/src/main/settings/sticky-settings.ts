@@ -36,6 +36,7 @@ export function getStickySettings(): StickySettings {
   if (!raw) return { ...STICKY_SETTINGS_DEFAULTS }
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored sticky settings JSON, spread over defaults so missing keys fall back
     return { ...STICKY_SETTINGS_DEFAULTS, ...(JSON.parse(raw) as Partial<StickySettings>) }
   } catch (err) {
     log.warn('Unreadable sticky settings, using defaults', err)

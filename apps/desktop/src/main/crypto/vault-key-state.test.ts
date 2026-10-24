@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import Database from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 import keytar from 'keytar'
 
 import * as schema from '@memry/db-schema/data-schema'
@@ -16,6 +16,9 @@ import {
   getOrInitializeLocalVaultKey
 } from './vault-key-state'
 import { resetAccountKeyCheckerForTests, setAccountKeyChecker } from './vault-key-policy'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 vi.mock('keytar', () => ({
   default: {

@@ -6,6 +6,9 @@ import type { ConversationStore } from './conversation-store'
 import { initAgentConversationFieldClocks, tickClock, tickFieldClocks } from './conversation-store'
 import type { MessageStore } from './message-store'
 
+const visible = (conversation: Conversation, includeDeleted?: boolean): boolean =>
+  includeDeleted === true || conversation.deletedAt === null
+
 /**
  * Conversation and message stores that never touch the database.
  *
@@ -29,9 +32,6 @@ import type { MessageStore } from './message-store'
 
 export function createEphemeralConversationStore(deviceId: string): ConversationStore {
   const conversations = new Map<string, Conversation>()
-
-  const visible = (conversation: Conversation, includeDeleted?: boolean): boolean =>
-    includeDeleted === true || conversation.deletedAt === null
 
   const store: ConversationStore = {
     create({ vaultId, title, backend, backendModel = null }) {
@@ -67,7 +67,7 @@ export function createEphemeralConversationStore(deviceId: string): Conversation
           (conversation) =>
             conversation.vaultId === vaultId && visible(conversation, opts?.includeDeleted)
         )
-        .sort((a, b) => b.updatedAt - a.updatedAt)
+        .toSorted((a, b) => b.updatedAt - a.updatedAt)
     },
 
     update(id, patch, changedFields) {
@@ -150,7 +150,7 @@ export function createEphemeralMessageStore(deviceId: string): MessageStore {
     listByConversation(conversationId) {
       return [...messages.values()]
         .filter((message) => message.conversationId === conversationId)
-        .sort((a, b) => a.createdAt - b.createdAt)
+        .toSorted((a, b) => a.createdAt - b.createdAt)
     },
 
     updateStreaming(id, patch) {

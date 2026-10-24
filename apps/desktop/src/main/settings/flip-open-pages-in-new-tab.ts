@@ -75,6 +75,7 @@ function hasSyncedChoice(db: DataDb): boolean {
   if (!raw) return false
 
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored settings field-clock JSON in a one-shot settings migration
     const clocks = JSON.parse(raw) as Record<string, unknown>
     return OPEN_PAGES_IN_NEW_TAB_FIELD in clocks
   } catch {

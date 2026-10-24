@@ -221,7 +221,7 @@ describe('sendIncidentReport', () => {
   // the raw value is absent from the exact bytes that would be POSTed to /diagnostics/report.
   it('never lets a raw trigger secret reach the /diagnostics/report POST body', async () => {
     const secretPath = '/Users/victim/Vault/Very Secret Note.md'
-    const report = buildIncidentReport(
+    const incident = buildIncidentReport(
       {
         source: 'tab_error_boundary',
         stack: `Error: opened ${secretPath}\n    at f (/app/src/x.ts:1:1)`
@@ -230,11 +230,11 @@ describe('sendIncidentReport', () => {
     )
     let sentBody = ''
     const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
-      sentBody = String(init?.body ?? '')
+      sentBody = typeof init?.body === 'string' ? init.body : ''
       return { ok: true, status: 202 }
     })
 
-    await sendIncidentReport(report, {
+    await sendIncidentReport(incident, {
       fetch: fetchMock,
       endpoint: 'http://localhost:8787/diagnostics/report'
     })

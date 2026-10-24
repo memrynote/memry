@@ -297,6 +297,7 @@ function readStoreFile(filePath: string): SecretStoreFile {
     return emptyStore()
   }
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the secret store file; its own writer produced it and fields are guarded after parsing
     const parsed = JSON.parse(raw) as SecretStoreFile
     if (
       parsed &&
@@ -730,6 +731,7 @@ export function probeSecretStoreIdentity(): StoreIdentityVerdict {
 
   let entries: Record<string, Record<string, string>>
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the secret store file; its own writer produced it and fields are guarded after parsing
     const parsed = JSON.parse(fs.readFileSync(filePath, 'utf-8')) as SecretStoreFile
     if (!parsed?.entries || typeof parsed.entries !== 'object') return 'unknown'
     entries = parsed.entries

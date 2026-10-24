@@ -105,6 +105,23 @@ const resolveEndpoint = (override: string | undefined, channel: TelemetryBuildCh
 const wrapFetch = (custom?: TelemetryFetch): TelemetryFetch =>
   custom ?? (async (input, init) => boundedNetFetch(input, init))
 
+const buildBody = (lines: DiagnosticLogLine[]): DiagnosticLogBatch => {
+  const context = getTelemetryRuntime()?.context
+  if (!context) throw new Error('LogShip: telemetry runtime unavailable for batch metadata')
+  return {
+    schemaVersion: 1,
+    installId: context.installId,
+    sessionId: context.sessionId,
+    appVersion: context.appVersion,
+    buildChannel: context.buildChannel,
+    platform: context.platform,
+    arch: context.arch,
+    lines
+  }
+}
+
+const enabled = (): boolean => getTelemetryRuntime()?.getSettings().enabled === true
+
 export const installLogShip = (deps: LogShipDeps): LogShip => {
   if (logShipInstance) return logShipInstance
 
@@ -161,29 +178,12 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
     }
   }
 
-  const buildBody = (lines: DiagnosticLogLine[]): DiagnosticLogBatch => {
-    const context = getTelemetryRuntime()?.context
-    if (!context) throw new Error('LogShip: telemetry runtime unavailable for batch metadata')
-    return {
-      schemaVersion: 1,
-      installId: context.installId,
-      sessionId: context.sessionId,
-      appVersion: context.appVersion,
-      buildChannel: context.buildChannel,
-      platform: context.platform,
-      arch: context.arch,
-      lines
-    }
-  }
-
   const queue: ShipQueue<DiagnosticLogLine> = createShipQueue<DiagnosticLogLine>({
     fetch: wrapFetch(deps.fetch),
     endpoint,
     buildBody,
     persistPath: deps.persistPath
   })
-
-  const enabled = (): boolean => getTelemetryRuntime()?.getSettings().enabled === true
 
   // Settle the gate once at install, not only on the next log record: lines a
   // crashed session left in the mirror have to become flushable without waiting
@@ -238,6 +238,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
         // redactFieldValue (redact.ts) only ever returns string/number/boolean;
         // redactLogLine's signature is just wider (Record<string, unknown>) because
         // it is shared with non-typed callers.
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- electron-log transport slots are untyped; the logShip transport is installed and removed only here
         fields: fields as DiagnosticLogLine['fields'],
         origin,
         ...(workerName ? { workerName } : {})
@@ -253,10 +254,12 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
     }
   }
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- electron-log transport slots are untyped; the logShip transport is installed and removed only here
   const transportFn = ((message: RawTransportMessage) => {
     handleRecord({ level: message.level, scope: message.scope, data: message.data }, 'main')
   }) as RawTransportFn
   transportFn.level = transportLevel
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- electron-log's Transports type has no slot for a custom transport
   ;(log.transports as unknown as MutableTransports).logShip = transportFn
 
   let flushTimer: ReturnType<typeof setInterval> | null = null
@@ -276,6 +279,7 @@ export const installLogShip = (deps: LogShipDeps): LogShip => {
         flushTimer = null
       }
       await queue.flush().catch(() => undefined)
+      // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- electron-log's Transports type has no slot for a custom transport
       ;(log.transports as unknown as MutableTransports).logShip = null
       logShipInstance = null
     },

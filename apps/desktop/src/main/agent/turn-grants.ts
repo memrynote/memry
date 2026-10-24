@@ -32,6 +32,7 @@ export function mintTurnWriteGrant(conversationId: string): TurnWriteGrant {
   revokeTurnWriteGrantsFor(conversationId)
   const grant = randomBytes(32).toString('hex')
   active.set(grant, conversationId)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TurnWriteGrant is a branded string minted only here
   return grant as TurnWriteGrant
 }
 

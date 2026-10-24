@@ -18,7 +18,7 @@ import { getFeaturesSettings } from './features'
 describe('getFeaturesSettings', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.getDatabase.mockReturnValue({} as never)
+    mocks.getDatabase.mockReturnValue({})
   })
 
   it('returns defaults when no vault is open', () => {

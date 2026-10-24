@@ -34,6 +34,7 @@ export function createCodexStreamParser(onEvent: (event: BackendEvent) => void):
 
 function parseLine(line: string): BackendEvent {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is one JSONL line from the Codex CLI; every field is checked before use
     const obj = JSON.parse(line) as Record<string, unknown>
     return translate(obj)
   } catch {
@@ -43,6 +44,7 @@ function parseLine(line: string): BackendEvent {
 
 function translate(obj: Record<string, unknown>): BackendEvent {
   if (isMcpToolCallEvent(obj)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     const item = obj.item as Record<string, unknown>
     const toolUseId = typeof item.id === 'string' ? item.id : ''
     const name = typeof item.tool === 'string' ? item.tool : ''

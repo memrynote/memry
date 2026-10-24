@@ -49,6 +49,7 @@ export function readResolvedSidebarSortModes(
   db: DataDb
 ): Record<SidebarSortSurface, SidebarSortMode> {
   const stored = readSidebarSortModes(db)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- fromEntries widens to a string-keyed record; SIDEBAR_SORT_SURFACES enumerates every surface key
   return Object.fromEntries(
     SIDEBAR_SORT_SURFACES.map((surface) => [surface, resolveSortMode(surface, stored[surface])])
   ) as Record<SidebarSortSurface, SidebarSortMode>

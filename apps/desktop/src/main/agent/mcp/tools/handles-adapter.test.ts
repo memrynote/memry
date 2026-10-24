@@ -534,7 +534,7 @@ describe('createVaultServiceHandles', () => {
         path: 'work/scan.pdf',
         fileType: 'pdf'
       })
-      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db })
 
       await expect(handles.notes.read('file-1')).resolves.toMatchObject({
         file_type: 'pdf',
@@ -613,7 +613,7 @@ describe('createVaultServiceHandles', () => {
         frontmatter: {},
         emoji: null
       })
-      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db as never })
+      const handles = createVaultServiceHandles({ ...deps, indexDb: index.db })
 
       const note = await handles.notes.read('note-1')
       expect(note).toMatchObject({

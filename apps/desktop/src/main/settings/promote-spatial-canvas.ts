@@ -41,6 +41,7 @@ export function promoteSpatialCanvas(db: DataDb): void {
   // default, which is now on. Nothing to rewrite.
   if (raw) {
     try {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is the stored features JSON in a one-shot settings migration
       const parsed = JSON.parse(raw) as Partial<FeaturesSettings>
 
       // Only an explicit `false` needs rewriting. A missing key already reads

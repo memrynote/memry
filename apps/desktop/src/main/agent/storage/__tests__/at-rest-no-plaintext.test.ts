@@ -4,11 +4,14 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import sodium from 'libsodium-wrappers-sumo'
+import sodiumModule from 'libsodium-wrappers-sumo'
 
 import * as schema from '@memry/db-schema/data-schema'
 import { createConversationStore } from '../conversation-store'
 import { createMessageStore } from '../message-store'
+
+// Default import kept: tests mock this module with a default-only factory.
+const sodium = sodiumModule
 
 const SECRET = 'this-string-must-not-leak-to-disk-PLAINTEXT-MARKER'
 

@@ -24,6 +24,7 @@ export async function readNoteRetried(id: string): ReturnType<typeof getNoteById
   } catch (error) {
     if (!isReadFailure(error)) throw error
     // The errno only: the NoteError message carries the file path.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Node fs/net errors carry .code but catch values are typed Error/unknown
     const errno = (error.cause as NodeJS.ErrnoException | undefined)?.code ?? 'read error'
     throw new AgentToolError(
       'INTERNAL',

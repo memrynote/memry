@@ -129,7 +129,7 @@ describe('clearAgentMemory', () => {
       await clearAgentMemory({ userDataDir, vaultId, claudeConfigDir })
 
       expect(path.dirname(dir)).toBe(path.join(userDataDir, 'agent-workdirs'))
-      expect((await readdir(userDataDir)).sort()).toEqual(['agent-workdirs', 'memry-data.db'])
+      expect((await readdir(userDataDir)).toSorted()).toEqual(['agent-workdirs', 'memry-data.db'])
     }
   )
 

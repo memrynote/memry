@@ -42,6 +42,7 @@ export function createStreamParser(onEvent: (event: BackendEvent) => void): Stre
 
 function parseLine(line: string, emittedAssistantText: boolean): BackendEvent[] {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON.parse/json() returns any; this is one stream-json line from the CLI; every field is checked before use
     const obj = JSON.parse(line) as Record<string, unknown>
     return translate(obj, emittedAssistantText)
   } catch {
@@ -103,7 +104,8 @@ function toolResultEvent(event: Record<string, unknown>): BackendEvent {
   const isError = Boolean(event.is_error)
   const content = event.content
   const text = Array.isArray(content)
-    ? ((content as Array<{ type?: string; text?: string }>).find((entry) => entry.type === 'text')
+    ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
+      ((content as Array<{ type?: string; text?: string }>).find((entry) => entry.type === 'text')
         ?.text ?? '')
     : typeof content === 'string'
       ? content
@@ -141,6 +143,7 @@ function translateSingle(
   const event = unwrapClaudeCodeEvent(obj)
   const type = event.type
   if (type === 'content_block_delta') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
     const delta = event.delta as { type?: string; text?: string; thinking?: string } | undefined
     if (delta?.type === 'text_delta' && typeof delta.text === 'string') {
       return { kind: 'assistant_delta', text: delta.text }
@@ -157,6 +160,7 @@ function translateSingle(
   }
 
   if (type === 'content_block_start') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrowing at an untyped boundary
     const block = event.content_block as
       | { type?: string; id?: string; name?: string; input?: unknown; thinking?: unknown }
       | undefined

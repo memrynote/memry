@@ -36,7 +36,7 @@ function provider(chatRequests: ChatRequest[], toolRounds = Infinity): typeof fe
   let callId = 0
   return vi.fn(async (url: string | URL, init?: RequestInit) => {
     if (String(url).endsWith('/models')) return json({ data: [{ id: MODEL }] })
-    const body = JSON.parse(String(init?.body)) as ChatRequest
+    const body = JSON.parse(typeof init?.body === 'string' ? init.body : '') as ChatRequest
     if (!body.stream) {
       const afterTool = body.messages.some((message) => message.role === 'tool')
       return json({

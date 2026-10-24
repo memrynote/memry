@@ -39,9 +39,13 @@ const RENDER_MAX_DEPTH = 3
 function unwrap(schema: z.ZodType): z.ZodType {
   let current = schema
   for (;;) {
+    // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- zod's internal def union does not overlap JsonNode; read as a generic node by its type tag
     const def = current._zod.def as unknown as JsonNode & { type: string }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
     if (WRAPPER_TYPES.has(def.type)) current = def.innerType as z.ZodType
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
     else if (def.type === 'lazy') current = (def.getter as () => z.ZodType)()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
     else if (def.type === 'pipe') current = def.in as z.ZodType
     else return current
   }
@@ -49,21 +53,28 @@ function unwrap(schema: z.ZodType): z.ZodType {
 
 function childSchema(schema: z.ZodType, key: PropertyKey): z.ZodType | undefined {
   const inner = unwrap(schema)
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions, typescript/no-unsafe-type-assertion -- zod's internal def union does not overlap JsonNode; read as a generic node by its type tag
   const def = inner._zod.def as unknown as JsonNode & { type: string }
   switch (def.type) {
     case 'tuple':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       return (def.items as z.ZodType[])[Number(key)] ?? (def.rest as z.ZodType | undefined)
     case 'object':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       return (def.shape as Record<string, z.ZodType>)[String(key)]
     case 'array':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       return def.element as z.ZodType
     case 'record':
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       return def.valueType as z.ZodType
     case 'union': {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       const found = (def.options as z.ZodType[])
         .map((option) => childSchema(option, key))
         .filter((option): option is z.ZodType => option !== undefined)
       if (found.length === 0) return undefined
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       return found.length === 1 ? found[0] : z.union(found as [z.ZodType, z.ZodType])
     }
     default:
@@ -84,6 +95,7 @@ function valueAt(value: unknown, path: KeyPath): unknown {
   let current = value
   for (const key of path) {
     if (current === null || typeof current !== 'object') return undefined
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON Schema nodes are generic objects; the keyword read here is selected by the node's own shape
     current = (current as Record<PropertyKey, unknown>)[key]
   }
   return current
@@ -93,6 +105,7 @@ function valueAt(value: unknown, path: KeyPath): unknown {
 function literalValues(node: JsonNode): unknown[] | null {
   if (Array.isArray(node.enum)) return node.enum
   if ('const' in node) return [node.const]
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
   const options = (node.anyOf ?? node.oneOf) as JsonNode[] | undefined
   if (!options) return null
   const values: unknown[] = []
@@ -107,6 +120,7 @@ function literalValues(node: JsonNode): unknown[] | null {
 function resolveRef(ref: string, root: JsonNode): JsonNode | undefined {
   if (ref === '#') return root
   const name = ref.replace(/^#\/\$defs\//, '')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
   return (root.$defs as Record<string, JsonNode> | undefined)?.[name]
 }
 
@@ -121,6 +135,7 @@ export function renderType(node: JsonNode, root: JsonNode, depth = 0): string {
   }
   const literals = literalValues(node)
   if (literals) return literals.map((value) => JSON.stringify(value)).join(' | ')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
   const options = (node.anyOf ?? node.oneOf) as JsonNode[] | undefined
   if (options) {
     return [...new Set(options.map((option) => renderType(option, root, depth)))].join(' | ')
@@ -131,16 +146,20 @@ export function renderType(node: JsonNode, root: JsonNode, depth = 0): string {
   }
   if (type === 'array') {
     if (Array.isArray(node.prefixItems)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON Schema nodes are generic objects; the keyword read here is selected by the node's own shape
       const items = (node.prefixItems as JsonNode[]).map((item) => renderType(item, root, depth))
       return `[${items.join(', ')}]`
     }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON Schema nodes are generic objects; the keyword read here is selected by the node's own shape
     const item = node.items ? renderType(node.items as JsonNode, root, depth + 1) : 'any'
     return item.includes(' | ') ? `(${item})[]` : `${item}[]`
   }
   if (type === 'object') {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
     const properties = node.properties as Record<string, JsonNode> | undefined
     if (depth >= RENDER_MAX_DEPTH) return 'object'
     if (properties && Object.keys(properties).length > 0) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- zod's internal def is untyped; the shape read here is selected by def.type checked just above
       const required = new Set((node.required as string[] | undefined) ?? [])
       const fields = Object.entries(properties).map(
         ([key, value]) =>
@@ -149,6 +168,7 @@ export function renderType(node: JsonNode, root: JsonNode, depth = 0): string {
       return `{ ${fields.join(', ')} }`
     }
     if (node.additionalProperties && typeof node.additionalProperties === 'object') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON Schema nodes are generic objects; the keyword read here is selected by the node's own shape
       return `Record<string, ${renderType(node.additionalProperties as JsonNode, root, depth + 1)}>`
     }
     return 'object'

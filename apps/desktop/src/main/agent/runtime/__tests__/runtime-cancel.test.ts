@@ -135,6 +135,7 @@ describe('AgentRuntime subprocess cancellation', () => {
     let shutdownSettled = false
     const shutdown = agentRuntime.killAll().then(() => {
       shutdownSettled = true
+      return undefined
     })
 
     await Promise.resolve()

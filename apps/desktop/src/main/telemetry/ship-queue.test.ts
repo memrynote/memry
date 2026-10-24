@@ -99,7 +99,7 @@ describe('createShipQueue — crash durability', () => {
     // #when the next launch opens the same mirror
     const bodies: unknown[] = []
     const fetchMock = vi.fn(async (_url: string | URL, init?: RequestInit) => {
-      bodies.push(JSON.parse(String(init?.body)))
+      bodies.push(JSON.parse(typeof init?.body === 'string' ? init.body : ''))
       return { ok: true, status: 202 }
     })
     const revived = makeDurable(fetchMock)

@@ -94,6 +94,7 @@ function parseTextToolCall(body: string, toolNames: ReadonlySet<string>): TextTo
     return null
   }
   if (!parsed || typeof parsed !== 'object') return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the value is a non-null object (checked above); the cast is a key-lookup view of it
   const { name, arguments: args, parameters } = parsed as Record<string, unknown>
   if (typeof name !== 'string' || !toolNames.has(name)) return null
   const input = args ?? parameters ?? {}
