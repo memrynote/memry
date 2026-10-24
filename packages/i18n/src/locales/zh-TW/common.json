@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "無法複製傳送門",
+    "hiddenCount": "已隱藏 {count} 個",
+    "windowFailed": "無法開啟此傳送門。請改為開啟來源筆記。",
+    "noTarget": "此傳送門尚未指定目標。請在定義中加入筆記，或移除此區塊。",
+    "invalidJson": "此傳送門的定義不是有效的 JSON。請在下方修正，或移除此區塊。",
+    "invalidShape": "此傳送門的定義中沒有筆記或搜尋。請在下方修正，或移除此區塊。",
+    "search": {
+      "editQuery": "編輯查詢",
+      "count": "{count, plural, other {# 個區塊}}",
+      "loading": "搜尋中…",
+      "empty": "沒有符合此查詢的區塊。",
+      "failed": "無法執行搜尋。",
+      "retry": "重試",
+      "truncated": "顯示前 {count} 筆符合的結果。"
+    },
+    "copiedContents": "已複製內容",
+    "copiedLink": "已複製連結",
+    "actionFailed": "無法變更此傳送門",
+    "keepsOneBlock": "傳送門至少要保留一個區塊。請改為移除整個傳送門。",
+    "expandChildren": "顯示子項目",
+    "collapseChildren": "隱藏子項目",
+    "toolbar": {
+      "label": "傳送門",
+      "include": "包含「{block}」",
+      "locked": "{note} 已鎖定 · 唯讀",
+      "more": "更多",
+      "openBeside": "在側邊開啟 {note}",
+      "click": "點擊",
+      "copyContents": "複製內容",
+      "copyLink": "複製連結",
+      "remove": "移除傳送門",
+      "removeHint": "{note} 會保留所有區塊"
+    },
+    "states": {
+      "missingNote": {
+        "text": "來源筆記已被刪除。參照仍會保留。",
+        "action": "移除"
+      },
+      "missingBlock": {
+        "text": "該區塊已在 {source} 中被刪除。",
+        "action": "改選其他"
+      },
+      "notSynced": {
+        "text": "正在等待來源筆記同步。",
+        "action": "重試"
+      },
+      "cycle": {
+        "text": "此傳送門會指回它自己。",
+        "action": "開啟來源"
+      },
+      "tooDeep": {
+        "text": "傳送門最多可巢狀 {max} 層。此傳送門會以連結開啟。",
+        "action": "開啟來源"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "聚焦擷取輸入欄",
@@ -43,6 +100,50 @@
     "showInFileManager": "在檔案管理員中顯示",
     "openInDefaultApp": "在預設程式中開啟",
     "revealFailed": "無法在資料夾中顯示"
+  },
+  "commands": {
+    "runFailed": "無法執行該指令。請再試一次。"
+  },
+  "commandsPalette": {
+    "title": "指令",
+    "placeholder": "輸入指令…",
+    "groups": {
+      "navigation": "導覽",
+      "create": "建立",
+      "tabs": "分頁",
+      "editor": "編輯器",
+      "view": "檢視",
+      "app": "應用程式",
+      "note": "筆記",
+      "settings": "設定",
+      "sync": "同步",
+      "help": "說明",
+      "project": "專案",
+      "tasks": "任務",
+      "canvas": "畫布",
+      "folder": "資料夾",
+      "file": "檔案"
+    },
+    "contexts": {
+      "note": "此筆記",
+      "journal": "此日誌",
+      "project": "此專案",
+      "tasks": "這些任務",
+      "canvas": "此畫布",
+      "folder": "此資料夾",
+      "tag": "此標籤",
+      "file": "此檔案"
+    },
+    "recent": "最近使用",
+    "empty": "沒有符合「{query}」的指令",
+    "searchHint": "搜尋筆記：{shortcut}",
+    "status": {
+      "count": "{count, plural, other {# 個指令}}"
+    },
+    "actions": {
+      "run": "執行",
+      "searchNotes": "搜尋筆記"
+    }
   },
   "tabs": {
     "pin": "釘選分頁",
@@ -131,6 +232,20 @@
     "openInTab": "在分頁中開啟對話",
     "stop": "停止",
     "thinking": "代理程式正在思考",
+    "toolsUnavailable": "此模型的儲存庫工具已關閉。它未通過工具檢查，因此只能聊天。",
+    "toolsUnavailableWithDetail": "此模型的儲存庫工具已關閉。它未通過工具檢查，因此只能聊天。{detail}",
+    "toolsOff": {
+      "toolsRejected": "此模型的儲存庫工具已關閉。供應商拒絕了包含工具的測試請求，因此模型只能聊天。",
+      "noToolCall": "此模型的儲存庫工具已關閉。它回覆測試請求時沒有呼叫工具，因此只能聊天。",
+      "toolResultRejected": "此模型的儲存庫工具已關閉。它呼叫了測試工具，但在收到結果後失敗，因此只能聊天。",
+      "streamingUnsupported": "此模型的儲存庫工具已關閉。供應商未以串流方式回傳測試回覆，因此模型只能聊天。",
+      "providerSaid": "供應商表示：{detail}",
+      "wroteToolCall": "模型把工具呼叫寫成了文字，因此沒有執行任何動作。"
+    },
+    "stepLimit": {
+      "notice": "已在步驟上限處停止。",
+      "continue": "繼續"
+    },
     "enable": {
       "title": "啟用 memrynote 代理程式",
       "description": "memrynote 代理程式會使用你選擇的本機代理程式 CLI，針對儲存庫進行對話。Claude 會將每輪對話傳送至 Anthropic；Codex 則傳送至 OpenAI。",
@@ -275,6 +390,15 @@
       "addContext": "新增上下文",
       "addContextWithPermissions": "新增上下文（{permissions}）",
       "mentionContext": "提及筆記、任務或活動",
+      "files": {
+        "attach": "附加文字檔",
+        "refused": {
+          "unsupportedType": "{name} 不是支援的文字檔。請附加 .txt、.md、.log、.csv、.tsv、.json、.yaml 或 .yml 檔案。",
+          "notText": "{name} 不是 UTF-8 文字檔。請改為附加文字檔。",
+          "tooLarge": "加入 {name} 後，此訊息會超過 100 KB 上限。請移除一個檔案，或附加較小的檔案。",
+          "readFailed": "無法讀取 {name}。請確認檔案仍然存在且可開啟，然後重新附加。"
+        }
+      },
       "voice": {
         "start": "開始語音聽寫",
         "stop": "停止語音聽寫",
@@ -340,6 +464,14 @@
           "extraHigh": "超高"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "預設",
+          "default": "預設深度",
+          "high": "高",
+          "max": "最大"
+        }
+      },
       "permissionsLabel": "代理程式權限：{access}，網頁搜尋 {webSearch}",
       "permissions": {
         "label": "權限",
@@ -347,6 +479,17 @@
         "tools": "工具"
       },
       "modelSettingsLabel": "代理程式模型設定：{model}，{settings}",
+      "queue": {
+        "label": "排隊中的訊息",
+        "queueMessage": "加入佇列",
+        "edit": "編輯排隊中的訊息",
+        "editLabel": "排隊中的訊息文字",
+        "remove": "移除排隊中的訊息",
+        "save": "儲存",
+        "cancel": "取消",
+        "sending": "傳送中…",
+        "notSent": "尚未傳送。請編輯後重新傳送，或將其移除。"
+      },
       "unavailable": {
         "vaultToolsOnly": "此模型僅能使用儲存庫工具"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "無法儲存揭露狀態",
       "resolveWindow": "無法解析代理程式來源視窗",
       "detectCli": "無法偵測代理程式後端",
-      "loadDisclosure": "無法載入揭露狀態"
+      "loadDisclosure": "無法載入揭露狀態",
+      "turnFailed": "回覆因錯誤而中止。你的訊息已保留，可以再次傳送。"
     },
     "actions": {
       "copy": "複製",
@@ -576,6 +720,7 @@
       "newFolder2": "新增資料夾",
       "newProject": "新增專案",
       "bookmarks": "書籤",
+      "chart": "圖表",
       "tags": "標籤",
       "reorderSection": "重新排序 {section}",
       "dropFilesToImport": "拖放檔案以匯入",
@@ -863,6 +1008,11 @@
       "cancel": "取消",
       "remove2": "移除",
       "inYourAccount": "在你的帳號中",
+      "trySandbox": "試用沙盒儲存庫",
+      "sandboxVault": "沙盒儲存庫",
+      "sandboxPreparing": "正在準備沙盒…",
+      "sandboxFailed": "無法準備沙盒儲存庫",
+      "resetSandbox": "重設沙盒儲存庫",
       "itemsCount": "{count} 個項目",
       "untitledVault": "儲存庫",
       "downloadVaultTitle": "下載「{name}」",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "你開啟的筆記會顯示在這裡",
       "bookmarks": "書籤",
       "tasks": "任務",
+      "chart": "圖表",
       "calendar": "行事曆",
       "calendarToday": "今天",
       "openCalendar": "開啟行事曆",
@@ -978,6 +1129,9 @@
     "edit": "編輯",
     "done": "完成",
     "addWidget": "新增小工具",
+    "cover": {
+      "add": "新增封面"
+    },
     "empty": {
       "title": "看板目前是空的",
       "body": "小工具能將筆記、任務與書籤集中在一個寧靜的地方。",
@@ -1170,6 +1324,7 @@
     "changeIcon": "變更圖示…",
     "resetIcon": "重設圖示",
     "iconButton": "變更 {name} 的圖示",
+    "leaveSandbox": "返回 {name}",
     "iconFailed": "無法變更儲存庫圖示"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "類型",
     "filterModified": "修改時間",
     "matches": "相符內容",
+    "matchesMore": "{count, plural, other {另有 # 筆符合}}",
+    "matchesHide": "隱藏符合項目",
+    "matchOf": "第 {index} 筆，共 {total} 筆",
     "showMore": "再顯示 {count} 項",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "下一個區段",
       "open": "開啟",
       "openNote": "開啟筆記",
+      "openAtMatch": "在符合處開啟",
       "openFile": "開啟檔案",
       "openJournal": "開啟日誌",
       "openTask": "開啟任務",
@@ -1259,6 +1418,7 @@
       "chooseTag": "選擇標籤",
       "addTag": "新增標籤",
       "showAll": "全部顯示",
+      "hideMatches": "隱藏符合項目",
       "searchEverywhere": "全域搜尋",
       "clearFilters": "清除篩選"
     },

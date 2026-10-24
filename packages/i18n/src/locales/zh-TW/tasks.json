@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, other {已清除 # 項子任務的到期日}}",
       "prioritySet": "{count, plural, other {已設定 # 項子任務的優先順序}}",
       "deleted": "{count, plural, other {已刪除 # 項子任務}}"
-    }
+    },
+    "completedBranch": "已完成 {title} 與 {count, plural, other {# 項未完成的子任務}}",
+    "deletedKeepSubtasks": "已刪除 {title}，並保留其子任務",
+    "deletedBranch": "已刪除 {title} 與 {count, plural, other {# 項子任務}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "狀態",
       "projectIs": "專案為",
       "project": "專案",
+      "locationIs": "位置為",
+      "location": "位置",
+      "unknownNote": "未知的筆記",
       "due": "到期",
       "dueDate": "到期日",
       "search": "搜尋",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "到期日"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "位置",
+      "search": "搜尋資料夾與筆記...",
+      "empty": "沒有含任務的資料夾或筆記"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "優先順序",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "專案檢視",
       "overview": "總覽",
+      "all": "全部",
       "tasks": "任務",
       "notes": "筆記",
       "files": "檔案",
@@ -951,6 +963,25 @@
       "fileError": "無法連結 {name}",
       "fileErrorGeneric": "無法匯入這些檔案",
       "label": "加入 {name}"
+    },
+    "all": {
+      "showDone": "顯示已完成",
+      "empty": "此專案中沒有未完成的項目。",
+      "expand": "顯示 {title} 中的任務",
+      "collapse": "隱藏 {title} 中的任務",
+      "taskSummary": "{open}/{total} 未完成",
+      "daysLeft": "{count} 天",
+      "overdue": "逾期 {count} 天",
+      "columns": {
+        "title": "標題",
+        "daysLeft": "剩餘天數"
+      },
+      "status": {
+        "active": "進行中",
+        "done": "已完成",
+        "upcoming": "即將到來",
+        "past": "已過期"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "靛藍色",
     "purple": "紫色",
     "pink": "粉紅色"
+  },
+  "subtaskTree": {
+    "addSubtask": "新增子任務",
+    "dropInto": "放入 {title}",
+    "dropOut": "移出一層",
+    "draftPlaceholder": "子任務標題",
+    "draftLabel": "{title} 中的新子任務",
+    "draftIn": "位於 {title}",
+    "toggleComplete": "完成 {title}",
+    "moveUnder": {
+      "title": "移到下方",
+      "placeholder": "移到下方…",
+      "empty": "沒有符合的任務",
+      "topLevel": "{project} 的最上層",
+      "thisTask": "此任務",
+      "currentParent": "目前的父任務",
+      "movesOne": "將移動 {title}",
+      "movesBranch": "將移動 {title} 與 {count, plural, other {# 項子任務}}",
+      "keys": "↵ 移到此處 · ⌘↵ 最上層 · esc 關閉"
+    },
+    "zoom": {
+      "path": "任務路徑",
+      "up": "上一層",
+      "upShortcut": "上一層 (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "要刪除 {title} 嗎？",
+      "summary": "{direct, plural, other {有 # 項子任務}}{deeper, plural, =0 {} other {，其下另有 # 項}}{open, plural, =0 {，全部已完成。} other {，仍有 # 項未完成。}}",
+      "cancel": "取消",
+      "deleteAll": "全部刪除",
+      "keepSubtasks": "保留子任務"
+    },
+    "menu": {
+      "open": "開啟",
+      "complete": "完成",
+      "reopen": "重新開啟",
+      "zoom": "放大至子任務",
+      "moveUnder": "移到下方…",
+      "indent": "移到 {title} 下方",
+      "outdent": "移出一層",
+      "topLevel": "設為最上層任務",
+      "delete": "刪除"
+    },
+    "openPath": "開啟 {path}"
   }
 }

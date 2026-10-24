@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "找不到——按一下以建立「{title}」"
   },
+  "wikiLinkMenu": {
+    "aria": "連結動作",
+    "open": "開啟",
+    "openInNewTab": "在新分頁開啟",
+    "openToTheSide": "在側邊開啟",
+    "edit": "編輯連結",
+    "copy": "複製連結",
+    "unlink": "移除連結",
+    "displayRow": "顯示方式…",
+    "sizeNone": "無",
+    "sizeSmall": "小",
+    "sizeMedium": "中",
+    "showCover": "顯示封面",
+    "showPreview": "顯示預覽",
+    "copyFailed": "無法複製連結"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "從 Readwise 重新匯入",
+    "refreshAction": "重新整理書籍資訊",
+    "syncsOn": "Readwise 在 {device} 上同步。",
+    "syncsOnAnotherDevice": "Readwise 在另一部裝置上同步。",
+    "takeOverHint": "請在該裝置上同步，或前往「設定 → 匯入」接手。",
+    "reimport": {
+      "title": "要從 Readwise 重新匯入「{title}」嗎？",
+      "body": "Readwise 區塊會從頭重寫，你在其中寫的內容都會消失。",
+      "note": "區塊以外的文字和筆記屬性不會變動。",
+      "cancel": "取消",
+      "confirm": "重新匯入"
+    },
+    "commands": {
+      "reimported": "已從 Readwise 重新匯入",
+      "refreshed": "書籍資訊已重新整理",
+      "failed": "無法完成 Readwise 指令"
+    }
+  },
   "page": {
     "empty": {
       "title": "未選擇筆記",
@@ -25,6 +61,7 @@
       "willSync": "筆記將同步到雲端",
       "renameFailed": "無法重新命名筆記",
       "titleRequired": "筆記必須有標題",
+      "duplicateTitle": "{folder} 中還有另一則筆記也叫「{title}」。這些筆記的連結會包含資料夾名稱。",
       "toggleLocalOnlyFailed": "無法切換僅限本機",
       "toggleFullWidthFailed": "無法切換全寬",
       "pathCopied": "已複製路徑",
@@ -85,6 +122,10 @@
       "body": "建立一則筆記，開始使用",
       "newNote": "新增筆記"
     },
+    "readwiseSync": {
+      "tooltip": "Readwise 同步",
+      "failed": "Readwise 同步失敗"
+    },
     "syncing": {
       "body": "正在同步筆記——收到後就會顯示在這裡"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "在側邊開啟",
       "newNote": "新增筆記",
       "newFolder": "新增資料夾",
+      "showTasks": "顯示任務",
       "expandSubfolders": "展開所有子資料夾",
       "collapseSubfolders": "收合所有子資料夾",
       "rename": "重新命名",
@@ -138,7 +180,15 @@
       "folderSuffix": "資料夾",
       "moreItems": "…以及另外 {count} 個",
       "deleting": "刪除中…",
-      "deleteCount": "刪除 {count} 個"
+      "deleteCount": "刪除 {count} 個",
+      "journalFolderWarning": "這包含你的日誌資料夾。其中所有日誌都會在你的所有裝置上刪除。"
+    },
+    "journalChange": {
+      "leaveTitle": "要將日誌轉成筆記嗎？",
+      "leaveBody": "移出日誌資料夾，或改名後不再符合日期格式的日誌，會變成一般筆記並從日誌中消失。在你的其他裝置上，這些日期會從日誌中移除，改以筆記呈現。",
+      "joinTitle": "要將筆記轉成日誌嗎？",
+      "joinBody": "日誌資料夾內以日誌日期格式命名的檔案會變成日誌。在你的其他裝置上，這些筆記會被日誌取代。",
+      "confirm": "繼續"
     },
     "toast": {
       "selectionBookmarked": "已將 {count} 項加入書籤",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "標題",
       "listPlaceholder": "清單項目",
       "todoPlaceholder": "待辦事項",
-      "htmlComment": "隱藏的 HTML 註解"
+      "htmlComment": "隱藏的 HTML 註解",
+      "percentComment": "隱藏註解",
+      "readwise": {
+        "noteStart": "Readwise · 自動同步",
+        "noteEnd": "Readwise 區塊結束",
+        "dayStart": "Readwise · 今日標註",
+        "dayEnd": "Readwise 結束",
+        "hint": "在此區塊內編輯後，Readwise 就不再更新它。"
+      }
     },
     "table": {
       "keyboardMenuAria": "第 {row} 列、第 {column} 欄的表格動作",
-      "keyboardMenuTitle": "第 {row} 列 · 第 {column} 欄"
+      "keyboardMenuTitle": "第 {row} 列 · 第 {column} 欄",
+      "sizePicker": {
+        "aria": "表格大小。使用方向鍵選擇列與欄，然後按 Enter。",
+        "size": "{rows, plural, other {# 列}} × {columns, plural, other {# 欄}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, other {刪除 # 列}}",
+        "addRowsAbove": "{count, plural, other {在上方新增 # 列}}",
+        "addRowsBelow": "{count, plural, other {在下方新增 # 列}}",
+        "deleteColumns": "{count, plural, other {刪除 # 欄}}",
+        "addColumnsLeft": "{count, plural, other {在左側新增 # 欄}}",
+        "addColumnsRight": "{count, plural, other {在右側新增 # 欄}}"
+      }
     },
     "list": {
       "bulleted": "項目符號清單",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "隱藏局部圖譜",
       "showLocalGraph": "顯示局部圖譜",
       "moreActions": "更多操作",
+      "searchActions": "搜尋動作...",
+      "noMatchingActions": "沒有符合的動作",
       "find": "尋找…",
       "versionHistory": "版本記錄",
       "export": "匯出",
@@ -215,6 +287,8 @@
       "notSynced": "尚未同步到這部裝置",
       "revealFailed": "無法顯示檔案位置",
       "openFailed": "無法開啟檔案",
+      "showAsLink": "顯示為連結",
+      "showAsEmbed": "顯示為嵌入",
       "missingTitle": "找不到附件檔案",
       "missingExpected": "預期的檔案：{name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "重新命名",
       "renamed": "已重新命名為 {name}",
       "failed": "無法重新命名附件"
+    },
+    "imageLightbox": {
+      "menuItem": "放大檢視",
+      "title": "圖片檢視器",
+      "zoomIn": "放大",
+      "zoomOut": "縮小",
+      "reset": "重設縮放"
+    },
+    "imageCrop": {
+      "menuItem": "裁切…",
+      "title": "裁切圖片",
+      "description": "在圖片上拖曳以選擇筆記要顯示的範圍。原始檔案會保持不變。",
+      "reset": "顯示完整圖片",
+      "cancel": "取消",
+      "apply": "裁切",
+      "unavailable": "圖片尚未載入，無法裁切"
     },
     "attachmentsDialog": {
       "title": "附件",
@@ -248,12 +338,24 @@
       "title": "標註",
       "group": "基本區塊",
       "subtext": "突顯重要資訊",
+      "customSubtext": "你的自訂標註類型",
       "changeType": "更改標註類型",
+      "expand": "展開標註",
+      "collapse": "收合標註",
       "menuLabel": "標註類型",
       "info": "資訊",
       "warning": "警告",
       "error": "錯誤",
-      "success": "成功"
+      "success": "成功",
+      "note": "筆記",
+      "abstract": "摘要",
+      "todo": "待辦",
+      "tip": "提示",
+      "important": "重要",
+      "question": "問題",
+      "example": "範例",
+      "quote": "引用",
+      "bug": "錯誤"
     },
     "columns": {
       "group": "基本區塊",
@@ -332,6 +434,83 @@
       "invalidShape": "這個檢視的定義沒有來源。請在上方選擇一個，或在下方修正。",
       "definition": "定義"
     },
+    "chart": {
+      "title": "圖表",
+      "subtext": "依時間繪製屬性：折線、長條或行事曆熱度圖",
+      "layout": "圖表",
+      "settings": "圖表設定",
+      "chooseProperty": "選擇要繪製的內容",
+      "source": "來源",
+      "headerMeta": "{range} · {type}",
+      "property": "屬性",
+      "noProperties": "還沒有可繪製的內容。請先在日誌或筆記中新增屬性。",
+      "chartType": "圖表",
+      "suggested": "建議",
+      "types": {
+        "line": "折線圖",
+        "bar": "長條圖",
+        "heatmap": "熱度圖"
+      },
+      "range": "範圍",
+      "lastDays": "{count, plural, other {最近 # 天}}",
+      "sameDay": "同日項目",
+      "aggregates": {
+        "average": "平均",
+        "sum": "總和",
+        "min": "最低",
+        "max": "最高",
+        "count": "數量"
+      },
+      "missingDays": "缺少的日期",
+      "missing": {
+        "gap": "留白",
+        "zero": "視為零"
+      },
+      "dateFrom": {
+        "label": "日期依據",
+        "created": "建立時間",
+        "modified": "修改時間"
+      },
+      "propertyTypes": {
+        "text": "文字",
+        "number": "數字",
+        "checkbox": "核取方塊",
+        "date": "日期",
+        "url": "URL",
+        "status": "狀態",
+        "select": "單選",
+        "multiselect": "多選",
+        "relation": "關聯",
+        "project": "專案",
+        "rating": "評分"
+      },
+      "noEntry": "無項目",
+      "done": "完成",
+      "notDone": "未完成",
+      "logged": "已記錄",
+      "valueCount": "{count, plural, other {# 個值}}",
+      "average": "平均",
+      "vsPrevious": "與前一期相比",
+      "lowest": "最低",
+      "currentStreak": "目前連續天數",
+      "longestStreak": "最長連續天數",
+      "dayCount": "{count, plural, other {# 天}}",
+      "doneDays": "完成",
+      "loggedDays": "已記錄",
+      "mostCommon": "最常見",
+      "ofTotal": "{part} / {total}",
+      "aria": "最近 {days} 天的{property}",
+      "noData": "此範圍內尚無記錄。",
+      "loadFailed": "無法載入此圖表。項目本身不受影響。",
+      "sourceJournal": "日誌",
+      "history": {
+        "show": "顯示歷史記錄",
+        "title": "{property}歷史記錄",
+        "range": "最近 13 週",
+        "insert": "複製為圖表區塊",
+        "copied": "已複製圖表區塊。可貼到任何筆記中。"
+      }
+    },
     "slashMenu": {
       "aria": "區塊與動作",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "插入",
         "open": "開啟"
       },
+      "close": "關閉選單",
       "matchesAlias": "符合",
       "noMatch": "沒有符合「{query}」的區塊",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "顯示為",
+        "embed": "嵌入",
+        "link": "連結"
+      },
       "title": {
         "image": "新增圖片",
         "media": "新增媒體",
@@ -525,6 +710,11 @@
       "empty": "輸入以建立新標籤",
       "create": "建立 #{tag}"
     },
+    "pdfDisplay": {
+      "title": "PDF 顯示為",
+      "embed": "嵌入檢視器",
+      "link": "檔案名稱"
+    },
     "pasteLink": {
       "title": "貼上為",
       "url": "URL",
@@ -570,7 +760,18 @@
     "readTime": "閱讀時間 {count} 分鐘",
     "words": "{count} 個字",
     "created": "建立時間",
-    "modified": "修改時間"
+    "modified": "修改時間",
+    "sync": {
+      "label": "同步",
+      "confirmed": "{time}已在伺服器上",
+      "pending": "自 {time}起等待中",
+      "sent": "傳送中",
+      "rejected": "伺服器拒絕了最近一次變更",
+      "notRecorded": "沒有待傳送的內容",
+      "localOnly": "僅限本機",
+      "notSyncing": "未同步",
+      "waiting": "等待傳送"
+    }
   },
   "backlinks": {
     "sortRecent": "最新",
@@ -587,7 +788,18 @@
     "expandSection": "展開反向連結區段",
     "showMore": "再顯示 {count} 個反向連結",
     "more": "還有 {count} 個",
-    "viaProperty": "{property} → {title}"
+    "viaProperty": "{property} → {title}",
+    "viaPortal": "顯示於入口中"
+  },
+  "unlinkedMentions": {
+    "title": "未連結的提及",
+    "summary": "{count, plural, other {# 則未連結的提及}}",
+    "sectionAria": "未連結的提及",
+    "fromAria": "{title} 中未連結的提及",
+    "link": "連結",
+    "linkAria": "連結 {text}",
+    "gone": "自讀取清單後，該提及已變更",
+    "linkFailed": "無法連結該提及"
   },
   "outgoingLinks": {
     "summary": "{count, plural, other {# 個向外連結}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "無法將筆記加入畫布"
   },
   "suggestedTags": {
-    "label": "建議的標籤：",
-    "hint": "與這則筆記最相似的筆記所共用的標籤。在你選擇之前，不會新增任何標籤。",
-    "acceptAria": "新增標籤 {tag}",
-    "support": "{count, plural, other {用於 # 則相似筆記}}",
-    "dismiss": "隱藏建議的標籤"
+    "support": "{count, plural, other {用於 # 則相似筆記}}"
   },
   "comments": {
     "railAria": "留言",
@@ -663,6 +871,7 @@
     "removeAria": "移除標籤：{tag}",
     "inputPlaceholder": "輸入標籤名稱…",
     "recent": "最近使用",
+    "suggested": "建議",
     "matching": "符合項目",
     "all": "所有標籤",
     "none": "找不到標籤",
@@ -755,6 +964,9 @@
     "repositionHint": "拖曳以調整位置",
     "repositionSave": "儲存",
     "repositionCancel": "取消",
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "resize": "拖曳以調整封面大小",
     "credit": "照片由 {name} 拍攝，來自 Unsplash",
     "focusFailed": "無法儲存封面位置",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, other {# 則筆記}}"
+    },
+    "noteTasks": {
+      "expand": "顯示 {title} 的任務",
+      "collapse": "隱藏 {title} 的任務",
+      "list": "{title} 中的任務",
+      "progressOpen": "{open}/{total} 未完成",
+      "progressDone": "{total}/{total} 已完成",
+      "nextDue": "下一個到期",
+      "reminder": "已設定提醒"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "儲存",
     "addToFilterHint": "按住 Ctrl/Cmd 並按一下標籤，即可將它加入篩選條件"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "替代寫法",
+      "overflow": "暫存區",
+      "menu": "寫作工具",
+      "close": "關閉寫作工具"
+    },
+    "menu": {
+      "aria": "編輯器動作",
+      "cut": "剪下",
+      "copy": "複製",
+      "paste": "貼上",
+      "selectAll": "全選",
+      "undo": "復原",
+      "redo": "重做",
+      "comment": "註解",
+      "addAlternative": "新增替代寫法",
+      "suggestAlternatives": "建議替代寫法",
+      "ghost": "淡化",
+      "revive": "恢復",
+      "stash": "移到暫存區",
+      "noSpellingSuggestions": "沒有建議",
+      "addToDictionary": "加入字典",
+      "clipboardFailed": "無法使用剪貼簿"
+    },
+    "alternatives": {
+      "railAria": "替代寫法",
+      "hint": "第 {position} 個，共 {total} 個 ↑ ↓",
+      "original": "原文",
+      "byYou": "你撰寫",
+      "byAI": "AI 建議",
+      "showing": "顯示中",
+      "addPlaceholder": "新增替代寫法…",
+      "removeSuggestions": "移除建議",
+      "removeVariant": "移除替代寫法",
+      "empty": "選取文字並選擇「新增替代寫法」，即可保留其他說法。",
+      "suggesting": "正在建議替代寫法…",
+      "suggestFailed": "無法建議替代寫法",
+      "noSuggestions": "沒有新的替代寫法建議"
+    },
+    "overflow": {
+      "railAria": "暫存區",
+      "addPlaceholder": "寫下想保留的內容…",
+      "empty": "你移到這裡或在此撰寫的行會留在此筆記中，但不在正文內。",
+      "dragHint": "拖曳到筆記中",
+      "copy": "複製",
+      "copied": "已複製",
+      "delete": "刪除"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "鎖定筆記",
+    "unlockNote": "解除鎖定筆記",
+    "lockFolder": "鎖定資料夾",
+    "unlockFolder": "解除鎖定資料夾",
+    "toggleFailed": "無法變更鎖定狀態",
+    "readOnlyIndicator": "已鎖定。對你和代理皆為唯讀。",
+    "externalEditRestored": "「{title}」已鎖定，因此外部的編輯已還原",
+    "externalEditRestoredHint": "編輯後的文字已儲存在筆記的版本記錄中。"
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "人物",
+        "plural": "人物",
+        "fields": {
+          "company": "公司",
+          "role": "職稱",
+          "email": "電子郵件",
+          "phone": "電話"
+        },
+        "inverse": {
+          "company": "人物"
+        },
+        "template": {
+          "name": "人物",
+          "context": "背景",
+          "contextHint": "如何認識、對方關心什麼",
+          "notes": "筆記"
+        }
+      },
+      "company": {
+        "name": "公司",
+        "plural": "公司",
+        "fields": {
+          "website": "網站",
+          "industry": "產業",
+          "location": "地點"
+        },
+        "template": {
+          "name": "公司",
+          "overview": "概覽",
+          "overviewHint": "他們做什麼、我們認識哪些人",
+          "notes": "筆記"
+        }
+      },
+      "meeting": {
+        "name": "會議",
+        "plural": "會議",
+        "fields": {
+          "date": "日期",
+          "attendees": "與會者",
+          "company": "公司"
+        },
+        "inverse": {
+          "attendees": "會議",
+          "company": "會議"
+        },
+        "template": {
+          "name": "會議",
+          "agenda": "議程",
+          "notes": "筆記",
+          "actionItems": "待辦事項"
+        }
+      },
+      "book": {
+        "name": "書籍",
+        "plural": "書籍",
+        "fields": {
+          "author": "作者",
+          "shelf": "書架",
+          "rating": "評分",
+          "finished": "讀完日期"
+        },
+        "shelf": {
+          "toRead": "待讀",
+          "reading": "閱讀中",
+          "read": "已讀"
+        },
+        "template": {
+          "name": "書籍",
+          "highlights": "標註",
+          "thoughts": "心得"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} 現在是{tag}。已新增範本。",
+      "templateChanged": "新增範本後筆記已有變動，因此保留原樣。",
+      "undoFailed": "無法復原",
+      "addFailed": "無法新增標籤",
+      "removeFailed": "無法移除標籤",
+      "removedKept": "已移除 #{tag}，保留 {count} 個值。",
+      "removedKeptOne": "已移除 #{tag}，保留 1 個值。"
+    },
+    "picker": {
+      "create": "建立 #{tag}",
+      "fillsTemplate": "以{tag}範本填入這則空白筆記"
+    },
+    "hub": {
+      "strip": {
+        "title": "現成標籤",
+        "subtitle": "附帶欄位的標籤。在你加上標籤前，筆記都不會變動。",
+        "notNow": "暫時不要",
+        "add": "新增",
+        "addFields": "新增欄位",
+        "added": "已新增",
+        "alreadyOn": "已套用於 {count} 則筆記",
+        "alreadyOnOne": "已套用於 1 則筆記"
+      },
+      "dialog": {
+        "title": "要將{preset}欄位加到 #{tag} 嗎？",
+        "body": "#{tag} 已套用於 {count} 則筆記。這些筆記會保留原有內容並新增這些欄位，欄位在有人填寫前為空白。",
+        "bodyOne": "#{tag} 已套用於 1 則筆記。該筆記會保留原有內容並新增這些欄位，欄位在有人填寫前為空白。",
+        "template": "範本（{sections}）只會填入空白的筆記。",
+        "alsoAddsPrefix": "另外也會新增",
+        "alsoAddsSuffix": "給「{field}」欄位。",
+        "useAnotherName": "使用其他名稱",
+        "nameLabel": "新標籤名稱",
+        "namePlaceholder": "聯絡人",
+        "cancel": "取消",
+        "addFields": "新增欄位"
+      },
+      "toast": {
+        "added": "已新增 #{tag}",
+        "addedFields": "已將{preset}欄位加到 #{tag}"
+      },
+      "hasFields": "有欄位"
+    },
+    "tasks": {
+      "thisTask": "此任務",
+      "viaTag": "{name}(來自 #{via})",
+      "clearValue": "清除{name}",
+      "chipAria": "{field}:{title}"
+    },
+    "panel": {
+      "via": "來自 #{tag}",
+      "groupMenu": "{tag} 選項",
+      "openTag": "開啟 #{tag}",
+      "thisNote": "這則筆記"
+    },
+    "offer": {
+      "text": "在文字下方加入 {tag} 範本",
+      "add": "加入",
+      "dismiss": "略過",
+      "addFailed": "無法加入範本"
+    },
+    "settings": {
+      "title": "#{tag} 的設定",
+      "close": "關閉",
+      "cancel": "取消",
+      "save": "儲存",
+      "onCounts": "用於 {notes, plural, other {# 則筆記}}和 {tasks, plural, other {# 項任務}}",
+      "onNotes": "用於 {count, plural, other {# 則筆記}}",
+      "headerFields": "{count, plural, other {# 個欄位}}",
+      "editTag": "編輯標籤",
+      "syncNote": "變更會同步到你的其他裝置",
+      "newerVersion": "較新版本的 Memry 變更了這個標籤。請更新 Memry 以在此編輯。",
+      "sections": {
+        "appearance": "外觀",
+        "extends": "繼承自",
+        "fields": "欄位 · {count}",
+        "template": "範本"
+      },
+      "appearance": {
+        "icon": "圖示",
+        "color": "顏色",
+        "customColor": "自訂",
+        "category": "分類",
+        "noCategory": "無分類"
+      },
+      "extends": {
+        "nothing": "無",
+        "hint": "沿用另一個標籤的欄位,並顯示在它的表格中。",
+        "hintSet": "{tag} 筆記會沿用 {parent} 的欄位,並顯示在 {parent} 表格中。"
+      },
+      "types": {
+        "text": "文字",
+        "number": "數字",
+        "date": "日期",
+        "url": "URL",
+        "status": "狀態",
+        "select": "單選",
+        "multiselect": "多選",
+        "checkbox": "核取方塊",
+        "relation": "關聯"
+      },
+      "fields": {
+        "empty": "尚無欄位。新增一個,讓每則 #tag 筆記都有相同的屬性。",
+        "fromParent": "來自 #{tag} · 請在該處編輯",
+        "inverseSub": "在{target}上顯示為{inverse}",
+        "anyNoteSub": "連結到任何筆記",
+        "actions": "{field}的操作",
+        "rename": "重新命名…",
+        "relationSettings": "關聯設定",
+        "remove": "移除…"
+      },
+      "addField": {
+        "button": "新增欄位",
+        "namePlaceholder": "欄位名稱",
+        "existing": "現有屬性",
+        "existingSub": "{type} · 用於 {count, plural, other {# 則筆記}} · 重複使用",
+        "newType": "新欄位類型",
+        "relationSub": "連結到具有某個標籤的筆記",
+        "submit": "新增欄位",
+        "reserved": "{name} 為保留名稱,不能作為欄位。",
+        "taken": "#{tag} 已有 {name}。"
+      },
+      "relation": {
+        "target": "指向標有以下標籤的筆記",
+        "pickTag": "選擇標籤",
+        "howMany": "數量",
+        "one": "一個",
+        "many": "多個",
+        "inverseLabel": "在{target}頁面上,將它們列為",
+        "inverseLabelAny": "在連結的頁面上,將它們列為",
+        "inverseHint": "每個{target}上會有一份唯讀清單,不會寫入任何{target}筆記。",
+        "inverseHintAny": "每則連結的筆記上會有一份唯讀清單,不會寫入那些筆記。"
+      },
+      "shared": {
+        "title": "#{tag} 的新欄位",
+        "existsWith": "{name} 已存在於此保險庫,選項為 {options}。",
+        "existsAs": "{name} 已存在於此保險庫,類型為 {type} 屬性。",
+        "shareWith": "#{tag} 將與你的 {others} 筆記共用。",
+        "shareAny": "#{tag} 將與你的其他筆記共用。",
+        "useInstead": "改用 {name}",
+        "share": "共用 {name}"
+      },
+      "template": {
+        "edit": "編輯範本",
+        "none": "尚無範本。筆記加上標籤時,範本會填入空白筆記。",
+        "create": "建立範本",
+        "defaultHeading": "筆記",
+        "inherited": "來自 #{tag}",
+        "autofill": "筆記加上 #{tag} 時填入空白筆記"
+      },
+      "remove": {
+        "title": "要從 #{tag} 移除{field}嗎?",
+        "body": "{field}已在 {filled, plural, other {# 則筆記}}中填寫。這些值會以一般屬性保留在筆記上;{empty, plural, other {# 個空欄位會消失}}。",
+        "confirm": "移除欄位"
+      },
+      "rename": {
+        "title": "將 {from} 重新命名為 {to}",
+        "titleEmpty": "重新命名 {from}",
+        "label": "新名稱",
+        "body": "{count, plural, other {# 則筆記}}有{field}的值。Memry 會重新命名每個檔案及其屬性中的鍵;Obsidian 也會看到新名稱。",
+        "progress": "正在重新命名筆記中的內容",
+        "confirm": "重新命名",
+        "taken": "這個標籤已有 {name}。",
+        "done": "已在 {count, plural, other {# 個項目}}中將 {from} 重新命名為 {to}。",
+        "skipped": "已在 {count, plural, other {# 個項目}}中將 {from} 重新命名為 {to}。{locked, plural, =0 {} other {# 則已鎖定的筆記將在解鎖後完成。}}{existing, plural, =0 {} other {# 則筆記原本就有 {to},將兩者並存。}}"
+      },
+      "delete": {
+        "button": "刪除標籤",
+        "title": "要刪除 #{tag} 嗎?",
+        "body": "#{tag} 將從 {notes, plural, other {# 則筆記}}中移除,標籤會連同其 {fields, plural, other {# 個欄位}}和範本一併消失。",
+        "bodyNoTemplate": "#{tag} 將從 {notes, plural, other {# 則筆記}}中移除,標籤會連同其 {fields, plural, other {# 個欄位}}一併消失。",
+        "bodyPlain": "#{tag} 將從所有標籤中含有它的筆記移除。",
+        "statNotes": "筆記保留其文字",
+        "statValues": "值會保留為屬性",
+        "plainText": "文字中提到 #{tag} 的筆記會將它保留為純文字。",
+        "confirm": "刪除標籤",
+        "done": "已刪除 #{tag}。"
+      },
+      "errors": {
+        "addField": "無法新增欄位。",
+        "removeField": "無法移除欄位。",
+        "renameField": "無法重新命名欄位。",
+        "moveField": "無法移動欄位。",
+        "relation": "無法儲存關聯。",
+        "extends": "無法變更此標籤的繼承對象。",
+        "template": "無法更新範本。",
+        "deleteTag": "無法刪除標籤。",
+        "icon": "無法變更圖示。",
+        "color": "無法變更顏色。",
+        "category": "無法變更分類。"
+      }
+    },
+    "fill": {
+      "action": "從筆記填入",
+      "reading": "正在讀取筆記…",
+      "disclosure": "你的代理模型({model})會讀取這則筆記以建議欄位值,只會傳送這則筆記。在你接受之前不會儲存任何內容。",
+      "disclosureLocal": "你的本機模型({model})會在此裝置上讀取這則筆記以建議欄位值。資料不會離開裝置,在你接受之前也不會儲存任何內容。",
+      "disclosureMany": "你的代理模型({model})會逐一讀取這些筆記以建議欄位值,只會傳送這些筆記。在你接受之前不會儲存任何內容。",
+      "disclosureLocalMany": "你的本機模型({model})會在此裝置上讀取這些筆記以建議欄位值。資料不會離開裝置,在你接受之前也不會儲存任何內容。",
+      "suggest": "建議欄位值",
+      "notNow": "暫時不要",
+      "countOne": "· {count} 項建議",
+      "count": "· {count} 項建議",
+      "dismiss": "略過",
+      "acceptAll": "全部接受",
+      "accept": "接受{field}",
+      "reject": "拒絕{field}",
+      "notInNote": "筆記中沒有",
+      "createHint": "接受後會建立新的 #{tag}",
+      "nothingFound": "這則筆記中沒有可填入空白欄位的內容",
+      "failed": "無法建議欄位值。{message}",
+      "saveFailed": "無法儲存已接受的值",
+      "bulkAction": "填入空白欄位",
+      "bulkTitle": "填入空白欄位",
+      "bulkReading": "{done} / {total} 則筆記 · 正在讀取筆記…",
+      "bulkRead": "已讀取 {done} / {total} 則筆記",
+      "stop": "停止",
+      "name": "名稱",
+      "nothingInRow": "沒有找到內容",
+      "found": "找到 {count} 項",
+      "reviewOneByOne": "逐一檢視",
+      "acceptRow": "接受{title}的值",
+      "rejectRow": "略過{title}",
+      "bulkSavedOne": "已在 {notes} 則筆記中填入 {count} 個欄位",
+      "bulkSaved": "已在 {notes} 則筆記中填入 {count} 個欄位"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "將{title}建立為",
+      "asPrefix": "將",
+      "asSuffix": "建立為",
+      "failed": "無法建立筆記",
+      "lastUsed": "上次使用",
+      "noteWord": "筆記",
+      "plainNote": "一般筆記",
+      "readyMade": "現成標籤",
+      "row": "建立「{title}」",
+      "rowHint": "作為{types}"
+    },
+    "hover": {
+      "at": "於",
+      "lastMet": "上次見面 · {title}",
+      "lastMetOn": "上次見面 {date} · {title}",
+      "mentionedIn": "{count, plural, other {在 # 則筆記中被提及}}",
+      "open": "開啟",
+      "tasks": "{count, plural, other {# 項任務 · {field}}}"
+    },
+    "inline": {
+      "aria": "文字中的 #{tag}",
+      "explain": "在文字中,標籤只是標示。這則筆記會列在 #{tag} 的「提及於」之下。",
+      "made": "已將 #{tag} 加入這則筆記的標籤",
+      "make": "將這則筆記設為{tag}",
+      "makeFailed": "無法加入標籤",
+      "makeHint": "將 #{tag} 加入標頭並顯示其欄位",
+      "meta": "{count, plural, other {# 個物件}} · {fields, plural, other {# 個欄位}}",
+      "metaNamed": "{count, plural, =1 {# {one}} other {# {other}}} · {fields, plural, other {# 個欄位}}",
+      "open": "開啟 #{tag}",
+      "remove": "從文字中移除標籤"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "作為{field}",
+      "due": "到期日 {date}",
+      "inTheText": "在文字中",
+      "mentionedIn": "提及於",
+      "tasks": "任務",
+      "title": "連結到此處"
+    },
+    "mention": {
+      "notes": "筆記"
+    },
+    "picker": {
+      "create": "新增{tag}",
+      "createNamed": "新增{tag}「{title}」",
+      "empty": "沒有符合的項目",
+      "search": "搜尋{tag}",
+      "untitled": "新增{tag}"
+    },
+    "quickFields": {
+      "add": "新增{field}",
+      "aria": "{title}的前幾個欄位",
+      "done": "完成",
+      "later": "稍後",
+      "newObject": "新增{tag}",
+      "saveFailed": "無法儲存欄位"
+    },
+    "table": {
+      "untitled": "新增{tag}",
+      "newInGroup": "在{group}中新增{tag}",
+      "newInGroupHint": "⌘↵ 在新分頁中開啟",
+      "new": "新增{tag}",
+      "includes": "{field}包含",
+      "removeFilter": "移除篩選",
+      "shown": "{shown} / {total}",
+      "saveView": "儲存檢視",
+      "mentionedMeta": "{count, plural, other {# 則筆記的文字中含有 '#'{tag}}}",
+      "saveFailed": "無法儲存欄位",
+      "created": "已建立{title}"
+    },
+    "relationDrop": {
+      "title": "要將 #{tag} 加入「{title}」嗎?",
+      "body": "此欄位只能連結標有 #{tag} 的筆記。Memry 會將 #{tag} 加入「{title}」的標頭,然後在此建立連結。",
+      "confirm": "加入 #{tag} 並連結",
+      "cancel": "取消",
+      "added": "「{title}」現在是 #{tag},且已連結",
+      "notANote": "只有筆記可以在此以 #{tag} 連結",
+      "failed": "無法連結這則筆記"
+    }
+  },
   "names": {
     "also": "又名",
     "add": "新增其他名稱",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "搜尋筆記",
     "pickerEmpty": "沒有相符的筆記",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "新增詳細資料"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "傳送門",
+        "subtext": "即時顯示其他位置的筆記或區塊"
+      },
+      "searchPortal": {
+        "title": "搜尋傳送門",
+        "subtext": "符合查詢條件的區塊即時清單"
+      }
+    },
+    "picker": {
+      "aria": "選擇要建立傳送門的筆記或區塊",
+      "notes": "筆記",
+      "blocks": "區塊",
+      "loading": "搜尋中…",
+      "empty": "沒有符合的筆記或區塊",
+      "hintInsert": "插入傳送門",
+      "hintClose": "關閉",
+      "keyEsc": "Esc",
+      "create": "建立筆記「{query}」",
+      "createFailed": "無法建立該筆記",
+      "stampFailed": "無法為該區塊準備傳送門",
+      "retargetFailed": "無法將傳送門指向該區塊"
+    },
+    "insert": {
+      "cycle": "傳送門不能在筆記內顯示該筆記本身。"
+    },
+    "copy": {
+      "done": "已複製傳送門。可貼到任何筆記中。",
+      "failed": "無法為此區塊複製傳送門"
+    },
+    "menu": {
+      "copyAsPortal": "複製為傳送門",
+      "hideInPortal": "在此傳送門中隱藏"
+    },
+    "usage": {
+      "chipAria": "{count, plural, other {用於其他 # 處}}"
+    },
+    "whereUsed": {
+      "aria": "此區塊的使用位置",
+      "portals": "傳送門",
+      "links": "連結",
+      "openBeside": "並排開啟",
+      "loadFailed": "無法載入此區塊的顯示位置"
+    },
+    "hiddenBlocks": {
+      "title": "已隱藏的區塊",
+      "showAll": "全部顯示",
+      "search": "搜尋已隱藏的區塊",
+      "showFailed": "無法顯示此區塊"
+    },
+    "searchQuery": {
+      "titleNew": "搜尋傳送門",
+      "titleEdit": "編輯查詢",
+      "text": "包含文字",
+      "textPlaceholder": "區塊中的文字",
+      "tag": "標籤",
+      "tagPlaceholder": "exam",
+      "limit": "上限",
+      "footer": "最多顯示 {limit} 筆結果。",
+      "create": "建立",
+      "apply": "套用"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "要在所有位置刪除此區塊嗎?",
+        "note": "要在所有位置刪除這則筆記嗎?"
+      },
+      "description": {
+        "block": "「{title}」也出現在其他 {count, plural, other {# 則筆記}}中。",
+        "note": "「{title}」在其他 {count, plural, other {# 則筆記}}中顯示或連結。"
+      },
+      "manyNotes": "{count} 則筆記",
+      "source": "{title}(來源)",
+      "removeHere": "改為僅在此隱藏",
+      "cancel": "取消",
+      "everywhere": "全部刪除",
+      "undoToast": "{count, plural, other {已刪除的區塊曾顯示於其他 # 則筆記中。}}",
+      "undo": "復原"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "完整",
+      "brief": "簡述",
+      "key": "重點",
+      "takeaway": "結論",
+      "topic": "主題"
+    },
+    "chrome": {
+      "fold": "摺疊筆記",
+      "unfold": "已摺疊為「{level}」。顯示全文",
+      "words": "{count, plural, other {# 字}}",
+      "writing": "撰寫中…",
+      "writtenBy": "由 {agent} 撰寫",
+      "retry": "上次執行失敗 · 重試",
+      "retryAction": "重試",
+      "captionOff": "請在「設定 → AI」中開啟「摘要長筆記」",
+      "captionNoAgent": "未連接代理 · 設定 → AI",
+      "unknownAgent": "AI"
+    },
+    "hint": {
+      "title": "筆記太長?快速瀏覽。",
+      "body": "將筆記摺疊成重點句,再只展開你需要的段落。",
+      "dismiss": "知道了"
+    },
+    "pill": {
+      "opened": "{count, plural, other {已展開 # 個段落}}",
+      "escape": "esc",
+      "copy": "複製為文字",
+      "copied": "已複製",
+      "aria": "摺疊檢視",
+      "hintMac": "在此列上雙指縮放、按住 ⌘ 捲動或捲動即可縮放 · 點擊段落即可展開",
+      "hint": "在此列上雙指縮放、按住 Ctrl 捲動或捲動即可縮放 · 點擊段落即可展開"
+    },
+    "view": {
+      "aria": "摺疊的「{level}」檢視",
+      "paragraphOpen": "已展開為完整 · 再點一次即可摺疊",
+      "paragraphFold": "摺疊此段落",
+      "paragraphOpenAction": "完整展開此段落",
+      "unfoldSection": "展開區段 {heading}",
+      "jumpToParagraph": "完整顯示此段落:{topic}",
+      "untitledSection": "未命名",
+      "skipped": {
+        "code": "… {count, plural, other {# 個程式碼區塊}}",
+        "table": "… {count, plural, other {# 個表格}}",
+        "image": "… {count, plural, other {# 張圖片}}",
+        "callout": "… {count, plural, other {# 個提示框}}",
+        "embed": "… {count, plural, other {# 個嵌入內容}}",
+        "other": "… {count, plural, other {另外 # 個區塊}}"
+      }
+    }
   }
 }

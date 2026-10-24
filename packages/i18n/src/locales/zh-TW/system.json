@@ -29,6 +29,23 @@
       "buttonRestartNow": "立即重新啟動",
       "releaseNotesLabel": "版本更新說明："
     },
+    "dataDbRecovery": {
+      "title": "修復儲存庫資料庫",
+      "message": "Memry 此儲存庫的資料庫已損壞。",
+      "detail": "你的筆記與日誌檔案不受影響。修復會將損壞的資料庫備份到 {path}，建立全新的資料庫，盡可能依據你的儲存庫檔案重建內容，並在下次同步時還原已同步的項目。尚未同步的變更會盡可能復原。",
+      "buttonRecover": "修復",
+      "buttonLater": "暫不處理"
+    },
+    "obsidianVault": {
+      "title": "開啟 Obsidian 儲存庫",
+      "message": "要開啟此 Obsidian 儲存庫的副本嗎？",
+      "detail": "在 memrynote 中開啟 Obsidian 儲存庫，可能會遺失你的 Obsidian 外掛程式所依賴的資料。當 memrynote 將外掛程式的任務行轉為任務時，會改寫該行。像 Tasks 外掛程式的到期日這類欄位會離開檔案，Obsidian 就看不到了。\n\nmemrynote 可以將「{name}」複製為其旁邊的「{copyName}」，並開啟該副本。「{name}」會維持原樣。",
+      "detailExistingCopy": "在 memrynote 中開啟 Obsidian 儲存庫，可能會遺失你的 Obsidian 外掛程式所依賴的資料。當 memrynote 將外掛程式的任務行轉為任務時，會改寫該行。像 Tasks 外掛程式的到期日這類欄位會離開檔案，Obsidian 就看不到了。\n\n其旁邊已有 memrynote 副本「{copyName}」。memrynote 可以開啟該副本。「{name}」會維持原樣。",
+      "buttonCopy": "建立副本",
+      "buttonOpenCopy": "開啟副本",
+      "buttonOpenOriginal": "開啟原始檔",
+      "buttonCancel": "取消"
+    },
     "pair": {
       "title": "配對瀏覽器擴充功能",
       "message": "要允許 Memry 瀏覽器擴充功能將擷取內容傳送到這個應用程式嗎？",

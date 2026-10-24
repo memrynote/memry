@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, other {# 個已延後的項目}}",
     "notificationBody": "{count, plural, other {已延後的項目可以處理了}}",
     "toast": "{count, plural, =1 {「{itemTitle}」已回到收件匣} other {# 個已延後的項目已回到收件匣}}"
+  },
+  "sticky": {
+    "kindLabel": "傳送為",
+    "kinds": {
+      "note": "筆記",
+      "task": "任務",
+      "journal": "日誌"
+    },
+    "placeholders": {
+      "note": "隨手記下…",
+      "task": "Call Ana @tomorrow #home !high",
+      "journal": "加入今天的日誌…"
+    },
+    "saving": "儲存中…",
+    "saved": "已儲存",
+    "saveFailed": "未儲存",
+    "tuck": "收起",
+    "send": "傳送",
+    "hints": "Esc 收起 · {mod}⌫ 刪除",
+    "sendAndCloseHint": "⌥{mod}↵ 傳送並關閉",
+    "deleted": "草稿已刪除",
+    "open": "開啟",
+    "undo": "復原",
+    "sent": {
+      "note": "已儲存到便利貼資料夾",
+      "task": "已新增任務",
+      "journal": "已加入今天的日誌"
+    },
+    "tab": {
+      "label": "{count, plural, other {# 份便利貼草稿}}",
+      "newSticky": "新增便利貼"
+    },
+    "errors": {
+      "empty": "請先寫點內容。",
+      "taskFailed": "無法建立任務。",
+      "tasksOff": "任務功能已在設定中關閉。",
+      "journalOff": "日誌功能已在設定中關閉。",
+      "sendFailed": "無法傳送便利貼。",
+      "undoExpired": "已來不及復原。",
+      "undoFailed": "無法復原傳送。"
+    },
+    "inputLabel": "便利貼文字",
+    "dismissError": "關閉"
   }
 }

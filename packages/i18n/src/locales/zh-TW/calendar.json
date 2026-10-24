@@ -195,6 +195,7 @@
     "complete-task": "完成「{title}」",
     "task-completed": "任務已完成",
     "could-not-complete": "無法完成任務",
+    "could-not-update-status": "無法變更任務狀態",
     "duration-minutes": "{minutes} 分鐘",
     "duration-hours": "{hours} 小時",
     "duration-hours-minutes": "{hours} 小時 {minutes} 分"
@@ -236,6 +237,18 @@
       "could-not-open-note": "無法開啟筆記"
     }
   },
+  "eventNotes": {
+    "heading": "筆記",
+    "create": "新增筆記",
+    "link": "連結筆記",
+    "untitled": "會議筆記",
+    "searchPlaceholder": "搜尋筆記",
+    "noResults": "找不到筆記",
+    "createFailed": "無法為此事件建立筆記。",
+    "linkFailed": "無法將筆記連結到此事件。",
+    "loadFailed": "無法載入連結到此事件的筆記。",
+    "propertyTaken": "此筆記已有一個不是連結的「{name}」屬性。"
+  },
   "notePopover": {
     "kind": "筆記",
     "kindDateReminder": "日期提醒",
@@ -254,6 +267,10 @@
     "overdue": "已逾期",
     "untitled": "未命名",
     "days": "{count, plural, other {# 天}}",
+    "subtasks": {
+      "expand": "顯示 {title} 的 {count, plural, other {# 項子任務}}",
+      "collapse": "隱藏 {title} 的 {count, plural, other {# 項子任務}}"
+    },
     "events": "活動",
     "schedule-hint": "按一下以設定日期，拖曳以設定範圍",
     "empty-title": "這段時間軸上沒有任何項目",
