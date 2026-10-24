@@ -53,10 +53,10 @@ describe('MicrotaskBatchBroadcaster', () => {
       await new Promise<void>((r) => queueMicrotask(r))
 
       // #then
-      const mergedUpdate = broadcastFn.mock.calls[0][1] as Uint8Array
+      const mergedUpdate = broadcastFn.mock.calls[0][1]
       const receiverDoc = new Y.Doc()
       Y.applyUpdate(receiverDoc, mergedUpdate)
-      const received = receiverDoc.getText('content').toString()
+      const received = receiverDoc.getText('content').toJSON()
       expect(received).toBe('alpha-beta-gamma')
     })
   })
@@ -98,7 +98,7 @@ describe('MicrotaskBatchBroadcaster', () => {
       for (const [noteId, merged] of broadcastFn.mock.calls as [string, Uint8Array][]) {
         const receiver = new Y.Doc()
         Y.applyUpdate(receiver, merged)
-        textByNote[noteId] = receiver.getText('content').toString()
+        textByNote[noteId] = receiver.getText('content').toJSON()
       }
       expect(textByNote).toEqual({ 'note-1': 'AAA', 'note-2': 'BBB' })
     })
@@ -115,7 +115,7 @@ describe('MicrotaskBatchBroadcaster', () => {
       await new Promise<void>((r) => queueMicrotask(r))
 
       // #then (single update is returned as-is, no Y.mergeUpdates call)
-      const broadcastedUpdate = broadcastFn.mock.calls[0][1] as Uint8Array
+      const broadcastedUpdate = broadcastFn.mock.calls[0][1]
       expect(broadcastedUpdate).toBe(update)
     })
   })
@@ -135,8 +135,8 @@ describe('MicrotaskBatchBroadcaster', () => {
       // #then
       expect(broadcastFn).toHaveBeenCalledTimes(1)
       const receiver = new Y.Doc()
-      Y.applyUpdate(receiver, broadcastFn.mock.calls[0][1] as Uint8Array)
-      expect(receiver.getText('content').toString()).toBe('first-second')
+      Y.applyUpdate(receiver, broadcastFn.mock.calls[0][1])
+      expect(receiver.getText('content').toJSON()).toBe('first-second')
     })
 
     it('#then subsequent microtask does not double-broadcast', async () => {

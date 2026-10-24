@@ -31,5 +31,5 @@ export function parseTags(body: string): string[] {
     }
   }
 
-  return Array.from(seen).sort()
+  return Array.from(seen).toSorted()
 }

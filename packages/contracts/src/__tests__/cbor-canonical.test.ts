@@ -94,6 +94,8 @@ describe('cbor-canonical vectors', () => {
     const probe = vectors.cases.find((c) => c.fieldOrderName === 'LENGTH_FIRST_PROBE')
     expect(probe, 'the length-first probe case is missing').toBeDefined()
     expect(probe!.expectedDecodedKeyOrder).toEqual(['z', 'aa'])
-    expect([...probe!.expectedDecodedKeyOrder].sort()).not.toEqual(probe!.expectedDecodedKeyOrder)
+    expect([...probe!.expectedDecodedKeyOrder].toSorted()).not.toEqual(
+      probe!.expectedDecodedKeyOrder
+    )
   })
 })

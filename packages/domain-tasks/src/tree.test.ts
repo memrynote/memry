@@ -22,7 +22,7 @@ describe('buildTaskTree', () => {
     ]) {
       const tree = buildTaskTree(rows)
       expect(tree.roots.map((x) => x.id)).toEqual(['x'])
-      expect(tree.descendantIds('x').sort()).toEqual(['w', 'y', 'z'])
+      expect(tree.descendantIds('x').toSorted()).toEqual(['w', 'y', 'z'])
       expect(tree.ancestorIds('w')).toEqual(['z', 'y', 'x'])
     }
   })

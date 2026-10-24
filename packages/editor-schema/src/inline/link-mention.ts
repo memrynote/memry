@@ -70,6 +70,7 @@ const ANY_TOKEN_ALPHABET = /^[A-Za-z0-9.%!'*~_-]+$/
 
 function isUrl(value: string): boolean {
   try {
+    // oxlint-disable-next-line eslint/no-new -- new URL is the validity check; it throws on a malformed value
     new URL(value)
     return true
   } catch {
@@ -206,6 +207,7 @@ export const LinkMention = createLinkMentionSpec((inlineContent) => {
     img.className = 'link-mention-favicon'
     img.src = favicon
     img.alt = ''
+    // oxlint-disable-next-line unicorn/prefer-add-event-listener -- link-mention.test.ts drives the handler through img.onerror
     img.onerror = () => {
       img.style.display = 'none'
     }

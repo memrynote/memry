@@ -30,7 +30,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import sodium from 'libsodium-wrappers-sumo'
+import { ready } from 'libsodium-wrappers-sumo'
 
 import { buildBip39Unlock } from './vectors/bip39-unlock'
 import { buildCborCanonical } from './vectors/cbor-canonical'
@@ -160,7 +160,7 @@ function usage(): never {
 }
 
 async function main(): Promise<void> {
-  await sodium.ready
+  await ready
 
   const args = process.argv.slice(2)
   const check = args.includes('--check')

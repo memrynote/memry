@@ -83,7 +83,8 @@ export function sanitizeCalloutTypeDefinitions(raw: unknown): CalloutTypeDefinit
   for (const [name, entry] of Object.entries(raw)) {
     if (!CALLOUT_TYPE_NAME_REGEX.test(name) || BUILT_IN.has(name)) continue
     if (typeof entry !== 'object' || entry === null) continue
-    const { label, color, icon } = entry as Record<string, unknown>
+    const fields: Record<string, unknown> = entry
+    const { label, color, icon } = fields
     if (typeof color !== 'string' || !COLOR_REGEX.test(color)) continue
     if (typeof icon !== 'string' || icon === '' || icon.length > CALLOUT_ICON_MAX_LENGTH) continue
     definitions.push({
@@ -96,5 +97,5 @@ export function sanitizeCalloutTypeDefinitions(raw: unknown): CalloutTypeDefinit
       icon
     })
   }
-  return definitions.sort((a, b) => a.name.localeCompare(b.name))
+  return definitions.toSorted((a, b) => a.name.localeCompare(b.name))
 }

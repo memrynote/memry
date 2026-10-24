@@ -74,6 +74,28 @@ const STORAGE_CASES = [
   }
 ]
 
+function build(
+  name: string,
+  pins: string,
+  mutate: (doc: Y.Doc) => void,
+  expectedRoots: string[]
+): unknown {
+  const doc = fixedDoc()
+  const fragment = doc.getXmlFragment('prosemirror')
+  const paragraph = new Y.XmlElement('paragraph')
+  paragraph.insert(0, [new Y.XmlText('Body the encoding rides alongside.')])
+  fragment.insert(0, [paragraph])
+  mutate(doc)
+  return {
+    name,
+    pins,
+    updateHex: hex(Y.encodeStateAsUpdate(doc)),
+    expectedRoots,
+    assertion:
+      'apply the update to a fresh document, encode the FULL state back out, and every root here must survive'
+  }
+}
+
 /**
  * The five out-of-band encodings, each as a Y update carrying it.
  *
@@ -82,28 +104,6 @@ const STORAGE_CASES = [
  * until a desktop user loses their suggestion marks.
  */
 function outOfBandCases(): unknown[] {
-  const build = (
-    name: string,
-    pins: string,
-    mutate: (doc: Y.Doc) => void,
-    expectedRoots: string[]
-  ): unknown => {
-    const doc = fixedDoc()
-    const fragment = doc.getXmlFragment('prosemirror')
-    const paragraph = new Y.XmlElement('paragraph')
-    paragraph.insert(0, [new Y.XmlText('Body the encoding rides alongside.')])
-    fragment.insert(0, [paragraph])
-    mutate(doc)
-    return {
-      name,
-      pins,
-      updateHex: hex(Y.encodeStateAsUpdate(doc)),
-      expectedRoots,
-      assertion:
-        'apply the update to a fresh document, encode the FULL state back out, and every root here must survive'
-    }
-  }
-
   return [
     build(
       'out-of-band: inline colours',

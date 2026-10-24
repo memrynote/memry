@@ -132,6 +132,7 @@ function toEpochMs(value: unknown): number | null {
   if (value === null || value === undefined) return null
   if (value instanceof Date) return value.getTime()
   if (typeof value === 'number') return value
+  // oxlint-disable-next-line typescript/no-base-to-string -- String() on a persisted value of unknown shape is the existing parse path; objects stringify to NaN and yield null
   const ms = Date.parse(String(value))
   return Number.isNaN(ms) ? null : ms
 }

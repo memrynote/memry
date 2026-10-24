@@ -26,15 +26,15 @@ describe('FR-040 registry parity', () => {
   })
 
   const actual = {
-    blocks: Object.keys(schema.blockSchema).sort(),
-    inline: Object.keys(schema.inlineContentSchema).sort(),
-    styles: Object.keys(schema.styleSchema).sort()
+    blocks: Object.keys(schema.blockSchema).toSorted(),
+    inline: Object.keys(schema.inlineContentSchema).toSorted(),
+    styles: Object.keys(schema.styleSchema).toSorted()
   }
 
   const declared = {
-    blocks: [...manifest.blocks].sort(),
-    inline: [...manifest.inline].sort(),
-    styles: [...manifest.styles].sort()
+    blocks: manifest.blocks.toSorted(),
+    inline: manifest.inline.toSorted(),
+    styles: manifest.styles.toSorted()
   }
 
   for (const group of ['blocks', 'inline', 'styles'] as const) {

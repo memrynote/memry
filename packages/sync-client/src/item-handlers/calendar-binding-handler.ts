@@ -96,7 +96,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
       if (resolution.skip) {
         log.info('Skipping remote calendar binding delete, local is ahead of the tombstone', {
           itemId
@@ -111,9 +111,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(calendarBindings).where(eq(calendarBindings.id, itemId)).get()
   }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {
@@ -130,7 +128,7 @@ class CalendarBindingHandler extends BaseItemHandler<CalendarBindingSyncPayload>
       remoteVersion: row.remoteVersion ?? null,
       lastLocalSnapshot: row.lastLocalSnapshot ?? null,
       archivedAt: row.archivedAt ?? null,
-      clock: (row.clock as VectorClock) ?? undefined,
+      clock: row.clock ?? undefined,
       createdAt: row.createdAt,
       modifiedAt: row.modifiedAt
     }

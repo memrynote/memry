@@ -65,6 +65,12 @@ export function parseCsv(text: string): string[][] {
 
 const TYPES = new Set(['task', 'note', 'section', 'meta'])
 
+function isRowType(value: string): value is Exclude<TodoistRow['type'], ''> {
+  return TYPES.has(value)
+}
+
+const get = (r: string[], i: number) => (i >= 0 ? (r[i] ?? '').trim() : '')
+
 /** Parse a Todoist project CSV (15 columns) into typed rows, header-mapped. */
 export function parseTodoistCsv(text: string): TodoistRow[] {
   const clean = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
@@ -91,12 +97,11 @@ export function parseTodoistCsv(text: string): TodoistRow[] {
     deadline: col('DEADLINE')
   }
 
-  const get = (r: string[], i: number) => (i >= 0 ? (r[i] ?? '').trim() : '')
   const out: TodoistRow[] = []
   for (let r = headerIdx + 1; r < grid.length; r++) {
     const raw = grid[r]
     const rawType = get(raw, idx.type).toLowerCase()
-    const type = (TYPES.has(rawType) ? rawType : '') as TodoistRow['type']
+    const type = isRowType(rawType) ? rawType : ''
     if (type === '') continue // blank separator / unknown row
     out.push({
       type,

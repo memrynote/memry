@@ -17,6 +17,17 @@
  * concern at the same boundary, so the seam was widened rather than a new one
  * added — the count is still ten.
  */
+import type { SyncHttpClient } from './http-client.ts'
+import type { CertificatePinningAdapter } from './certificate-pinning.ts'
+import type { CrdtPersistenceAdapter } from './crdt-persistence.ts'
+import type { CrdtStorePathAdapter } from './crdt-store-path.ts'
+import type { AttachmentStoreAdapter } from './attachment-store.ts'
+import type { VaultFileSystemAdapter } from './vault-file-system.ts'
+import type { DeviceRegistrationAdapter } from './device-registration.ts'
+import type { CrdtProviderHost } from './crdt-provider.ts'
+import type { CrdtPreflightAdapter } from './crdt-preflight.ts'
+import type { RuntimeAdapter } from './runtime.ts'
+
 export type {
   SyncHttpClient,
   SyncHttpMethod,
@@ -38,17 +49,6 @@ export type { CrdtProviderHost, CrdtTransport } from './crdt-provider.ts'
 export type { CrdtPreflightAdapter, CrdtPreflightResult } from './crdt-preflight.ts'
 export type { RuntimeAdapter } from './runtime.ts'
 export type { SyncLogger } from './logger.ts'
-
-import type { SyncHttpClient } from './http-client.ts'
-import type { CertificatePinningAdapter } from './certificate-pinning.ts'
-import type { CrdtPersistenceAdapter } from './crdt-persistence.ts'
-import type { CrdtStorePathAdapter } from './crdt-store-path.ts'
-import type { AttachmentStoreAdapter } from './attachment-store.ts'
-import type { VaultFileSystemAdapter } from './vault-file-system.ts'
-import type { DeviceRegistrationAdapter } from './device-registration.ts'
-import type { CrdtProviderHost } from './crdt-provider.ts'
-import type { CrdtPreflightAdapter } from './crdt-preflight.ts'
-import type { RuntimeAdapter } from './runtime.ts'
 
 /** Everything a shell must supply for the engine to run. */
 export interface SyncPlatformAdapters {

@@ -1,14 +1,9 @@
 import { eq } from 'drizzle-orm'
 import { projects } from '@memry/db-schema/schema/projects'
 import { statuses } from '@memry/db-schema/schema/statuses'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock, withIncrementedClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
-import {
-  type FieldClocks,
-  initAllFieldClocks,
-  PROJECT_SYNCABLE_FIELDS
-} from '@memry/sync-client/field-merge'
+import { initAllFieldClocks, PROJECT_SYNCABLE_FIELDS } from '@memry/sync-client/field-merge'
 import {
   hasOfflineClockData,
   incrementProjectClocksOffline,
@@ -48,16 +43,13 @@ export class ProjectSyncService {
       type: 'project',
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
-      load: (projectId) =>
-        deps.db.select().from(projects).where(eq(projects.id, projectId)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load: (projectId) => deps.db.select().from(projects).where(eq(projects.id, projectId)).get(),
       applyLocalChange: ({ itemId, local, deviceId, operation, extra }) => {
         const changedFields = extra[0]
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = local.clock ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
-        let fieldClocks = (local.fieldClocks as FieldClocks) ?? null
+        let fieldClocks = local.fieldClocks ?? null
         if (!fieldClocks) {
           fieldClocks = initAllFieldClocks(existingClock, PROJECT_SYNCABLE_FIELDS)
         }
@@ -130,7 +122,7 @@ export class ProjectSyncService {
           return null
         }
 
-        const existingClock = (project.clock as VectorClock) ?? {}
+        const existingClock = project.clock ?? {}
         const existingFieldClocks = project.fieldClocks ?? null
 
         if (!hasOfflineClockData(existingClock, existingFieldClocks)) {

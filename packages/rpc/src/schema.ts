@@ -1,6 +1,9 @@
 export type RpcMode = 'invoke' | 'sync'
 
-export interface RpcMethodSpec<Fn extends (...args: any[]) => any> {
+/** Any function shape: `never` params accept every signature, `unknown` every result. */
+export type AnyRpcFn = (...args: never[]) => unknown
+
+export interface RpcMethodSpec<Fn extends AnyRpcFn> {
   channel: string
   params: readonly string[]
   invokeArgs: readonly string[]
@@ -9,22 +12,22 @@ export interface RpcMethodSpec<Fn extends (...args: any[]) => any> {
   __fn?: Fn
 }
 
-export interface RpcEventSpec<Fn extends (...args: any[]) => any> {
+export interface RpcEventSpec<Fn extends AnyRpcFn> {
   channel: string
   __fn?: Fn
 }
 
 export interface RpcDomainSpec<
   Name extends string,
-  Methods extends Record<string, RpcMethodSpec<any>>,
-  Events extends Record<string, RpcEventSpec<any>>
+  Methods extends Record<string, RpcMethodSpec<AnyRpcFn>>,
+  Events extends Record<string, RpcEventSpec<AnyRpcFn>>
 > {
   name: Name
   methods: Methods
   events: Events
 }
 
-export function defineMethod<Fn extends (...args: any[]) => any>(config: {
+export function defineMethod<Fn extends AnyRpcFn>(config: {
   channel: string
   params?: readonly string[]
   invokeArgs?: readonly string[]
@@ -37,26 +40,30 @@ export function defineMethod<Fn extends (...args: any[]) => any>(config: {
     invokeArgs: config.invokeArgs ?? config.params ?? [],
     mode: config.mode ?? 'invoke',
     implementation: config.implementation
-  } as RpcMethodSpec<Fn>
+  }
 }
 
 // oxlint-disable-next-line typescript/no-unnecessary-type-parameters -- Payload is the subscriber's assertion about an untyped IPC event payload
 export function defineEvent<Payload>(
   channel: string
 ): RpcEventSpec<(callback: (payload: Payload) => void) => () => void> {
-  return { channel } as RpcEventSpec<(callback: (payload: Payload) => void) => () => void>
+  return { channel }
 }
 
 export function defineDomain<
   Name extends string,
-  Methods extends Record<string, RpcMethodSpec<any>>,
-  Events extends Record<string, RpcEventSpec<any>>
+  Methods extends Record<string, RpcMethodSpec<AnyRpcFn>>,
+  Events extends Record<string, RpcEventSpec<AnyRpcFn>>
 >(domain: RpcDomainSpec<Name, Methods, Events>): RpcDomainSpec<Name, Methods, Events> {
   return domain
 }
 
 export type RpcClient<
-  TDomain extends RpcDomainSpec<string, Record<string, RpcMethodSpec<any>>, any>
+  TDomain extends RpcDomainSpec<
+    string,
+    Record<string, RpcMethodSpec<AnyRpcFn>>,
+    Record<string, RpcEventSpec<AnyRpcFn>>
+  >
 > = {
   [K in keyof TDomain['methods']]: TDomain['methods'][K] extends RpcMethodSpec<infer Fn>
     ? Fn
@@ -64,7 +71,11 @@ export type RpcClient<
 }
 
 export type RpcSubscriptions<
-  TDomain extends RpcDomainSpec<string, any, Record<string, RpcEventSpec<any>>>
+  TDomain extends RpcDomainSpec<
+    string,
+    Record<string, RpcMethodSpec<AnyRpcFn>>,
+    Record<string, RpcEventSpec<AnyRpcFn>>
+  >
 > = {
   [K in keyof TDomain['events']]: TDomain['events'][K] extends RpcEventSpec<infer Fn> ? Fn : never
 }

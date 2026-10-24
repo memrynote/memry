@@ -53,10 +53,14 @@ export function scanFootnotes(markdown: string): Footnotes {
   for (const match of masked.matchAll(REFERENCE)) {
     const key = match[1].toLowerCase()
     if (markers.has(match.index) || !defined.has(key)) continue
-    if (!numbers.has(key)) numbers.set(key, numbers.size + 1)
+    let number = numbers.get(key)
+    if (number === undefined) {
+      number = numbers.size + 1
+      numbers.set(key, number)
+    }
     references.push({
       label: match[1],
-      number: numbers.get(key) as number,
+      number,
       start: match.index,
       end: match.index + match[0].length
     })

@@ -23,6 +23,7 @@ const DELIMITERS = { bold: '**', italic: '*', strike: '~~' } as const
 export type EmphasisMark = keyof typeof DELIMITERS
 /** A token's meaning: a mark around a run, or a code span's own bytes. */
 export type Span = EmphasisMark | { code: string }
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys widens to string[]; DELIMITERS is the literal that defines EmphasisMark
 const MARKS = Object.keys(DELIMITERS) as EmphasisMark[]
 
 // Per process, so note text does not hold a token (BBF-30).
@@ -37,7 +38,7 @@ const EDGES = /^((?:\\\n|\s)*)([\s\S]*?)((?:\\\n|\s)*)$/
 
 function holds(item: InlineItem, mark: EmphasisMark): boolean {
   if (Array.isArray(item.content)) {
-    const content = item.content as InlineItem[]
+    const content: InlineItem[] = item.content
     return content.length > 0 && content.every((child) => holds(child, mark))
   }
   if (item.type === 'text') return item.styles?.[mark] === true && item.text !== ''
@@ -46,7 +47,8 @@ function holds(item: InlineItem, mark: EmphasisMark): boolean {
 
 function without(item: InlineItem, mark: EmphasisMark): InlineItem {
   if (Array.isArray(item.content)) {
-    return { ...item, content: (item.content as InlineItem[]).map((c) => without(c, mark)) }
+    const children: InlineItem[] = item.content
+    return { ...item, content: children.map((c) => without(c, mark)) }
   }
   const drop = (styles: Styles | undefined): Styles | undefined => {
     if (!styles) return styles
@@ -65,7 +67,7 @@ function runLength(items: InlineItem[], from: number, mark: EmphasisMark): numbe
 }
 
 const styleKey = (styles: Styles | undefined): string =>
-  JSON.stringify(Object.entries(styles ?? {}).sort(([a], [b]) => a.localeCompare(b)))
+  JSON.stringify(Object.entries(styles ?? {}).toSorted(([a], [b]) => a.localeCompare(b)))
 
 // BlockNote writes each text run of a link as its own link, so the tokens
 // around `*b*` in `[a *b*](u)` would split it into four links (BBF-71).
@@ -92,6 +94,7 @@ function joinTexts(items: InlineItem[]): InlineItem[] {
 function splitLinksAtBreaks(items: InlineItem[]): InlineItem[] {
   const out: InlineItem[] = []
   for (const item of items) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- content is `unknown`; a link's content is always an array, and an Array.isArray guard would turn a malformed item's throw into a silent skip
     const content = item.content as InlineItem[] | undefined
     if (item.type !== 'link' || !content?.some((child) => child.text?.includes('\n'))) {
       out.push(item)
@@ -129,7 +132,8 @@ function splitLinksAtBreaks(items: InlineItem[]): InlineItem[] {
 export function listLinkBreakTokens(items: InlineItem[], marks: Span[]): InlineItem[] {
   return items.map((item) => {
     if (item.type !== 'link' || !Array.isArray(item.content)) return item
-    const content = (item.content as InlineItem[]).map((child) =>
+    const linkChildren: InlineItem[] = item.content
+    const content = linkChildren.map((child) =>
       child.text?.includes('\n')
         ? {
             ...child,
@@ -198,13 +202,12 @@ export function tokenizeEmphasisRuns(items: InlineItem[], marks: Span[]): Inline
     }
     if (!best) {
       const item = items[at++]
+      const children: InlineItem[] = Array.isArray(item.content) ? item.content : []
       out.push(
         Array.isArray(item.content)
           ? {
               ...hrefParenTokens(item, marks),
-              content: joinTexts(
-                tokenizeEmphasisRuns(codeTokens(item.content as InlineItem[], marks), marks)
-              )
+              content: joinTexts(tokenizeEmphasisRuns(codeTokens(children, marks), marks))
             }
           : item
       )

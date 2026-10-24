@@ -15,7 +15,7 @@ export type MarkdownSegment =
  * BlockNote's parser to handle normally.
  */
 export function splitMarkdownPreservingBlanks(markdown: string): MarkdownSegment[] {
-  if (!markdown || !markdown.trim()) return []
+  if (!markdown?.trim()) return []
 
   const regions = splitByCodeFences(markdown)
   let assembled = ''
@@ -31,6 +31,7 @@ export function splitMarkdownPreservingBlanks(markdown: string): MarkdownSegment
     }
   }
 
+  // oxlint-disable-next-line no-control-regex -- NUL is the private gap sentinel written above, kept out of real text
   const parts = assembled.split(/\x00GAP:(\d+)\x00/)
   const segments: MarkdownSegment[] = []
 

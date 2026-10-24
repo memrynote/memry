@@ -10,7 +10,7 @@ export function parseAttachmentToken(content: string): AttachmentRef | null {
   const m = content.trim().match(FILE_TOKEN)
   if (!m) return null
   try {
-    const obj = JSON.parse(m[1]) as { file_name?: string; file_url?: string; image?: string }
+    const obj: { file_name?: string; file_url?: string; image?: string } = JSON.parse(m[1])
     const url = obj.file_url ?? obj.image
     if (!url) return null
     return { name: obj.file_name ?? 'attachment', url }

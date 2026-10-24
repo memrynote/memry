@@ -89,7 +89,7 @@ const parseWeekdayList = (rest: string): number[] | null => {
     if (index === undefined) return null
     days.add(index)
   }
-  return [...days].sort((a, b) => a - b)
+  return [...days].toSorted((a, b) => a - b)
 }
 
 /**

@@ -86,6 +86,7 @@ function highlightListedLanguagesOnly(
   const supported = options.supportedLanguages
   const meta = spec.implementation.meta
   if (!supported || !meta?.highlight) return spec
+  // oxlint-disable-next-line typescript/unbound-method -- highlight is called as a plain function by BlockNote, never through this; the wrapper keeps that calling convention
   const highlight = meta.highlight
   return {
     ...spec,

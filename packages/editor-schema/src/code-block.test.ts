@@ -33,7 +33,7 @@ describe('memryCodeBlockOptions', () => {
     // #then
     expect(names[0]).toBe('Plain Text')
     const rest = names.slice(1)
-    expect(rest).toEqual([...rest].sort((a, b) => a.localeCompare(b)))
+    expect(rest).toEqual(rest.toSorted((a, b) => a.localeCompare(b)))
     expect(rest).toContain('PowerShell')
     expect(rest).toContain('KQL (Kusto)')
   })

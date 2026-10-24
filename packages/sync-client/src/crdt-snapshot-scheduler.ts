@@ -138,7 +138,10 @@ export class CrdtSnapshotScheduler {
  * node's Timeout — platform-free code probes for it structurally.
  */
 function unrefTimer(timer: ReturnType<typeof setTimeout>): ReturnType<typeof setTimeout> {
-  const maybeUnref = timer as unknown as { unref?: () => void }
-  if (typeof maybeUnref.unref === 'function') maybeUnref.unref()
+  // Node's timers are objects with unref(); browser timers are numbers.
+  const handle: unknown = timer
+  if (typeof handle === 'object' && handle !== null && 'unref' in handle) {
+    if (typeof handle.unref === 'function') handle.unref()
+  }
   return timer
 }

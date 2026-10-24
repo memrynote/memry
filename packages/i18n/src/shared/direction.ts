@@ -26,6 +26,7 @@ export function resolveLocaleDirection(loc: LocaleWithTextInfo): 'ltr' | 'rtl' {
  */
 export function localeDirection(locale: string): 'ltr' | 'rtl' {
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Intl.Locale's lib typing omits getTextInfo/textInfo, which LocaleWithTextInfo adds
     return resolveLocaleDirection(new Intl.Locale(locale) as LocaleWithTextInfo)
   } catch {
     return 'ltr'

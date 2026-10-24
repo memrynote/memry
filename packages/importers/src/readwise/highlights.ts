@@ -32,7 +32,7 @@ export function imageHighlightUrl(highlight: ReadwiseHighlight): string | null {
 
 /** Order by location (a missing one last), then id, so equal input renders equal bytes. */
 export function sortHighlights(highlights: ReadwiseHighlight[]): ReadwiseHighlight[] {
-  return [...highlights].sort((a, b) => {
+  return [...highlights].toSorted((a, b) => {
     const la = a.location ?? Number.POSITIVE_INFINITY
     const lb = b.location ?? Number.POSITIVE_INFINITY
     if (la !== lb) return la < lb ? -1 : 1

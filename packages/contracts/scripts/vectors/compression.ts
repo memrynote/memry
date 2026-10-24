@@ -27,6 +27,7 @@ import { compressPayload, decompressPayload } from '../../../sync-client/src/com
 import { meta } from './shared'
 
 const require = createRequire(import.meta.url)
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
 const pakoVersion = (require('pako/package.json') as { version: string }).version
 
 const hex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex')

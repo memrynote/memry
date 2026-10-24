@@ -9,16 +9,17 @@
 
 import { z } from 'zod'
 
-// Import and re-export channels from the contract-local surface.
 import { PropertiesChannels } from './ipc-channels'
+import { PropertyTypes, type PropertyType } from './property-types'
+import type { RelationKind } from './relation-uri'
+
+// Re-export channels from the contract-local surface.
 export { PropertiesChannels }
 
-// Import and re-export canonical persisted property types.
-import { PropertyTypes, type PropertyType } from './property-types'
+// Re-export canonical persisted property types.
 export { PropertyTypes, type PropertyType }
 
-// Import and re-export relation URI types for the resolveRefs response shape.
-import type { RelationKind } from './relation-uri'
+// Re-export relation URI types for the resolveRefs response shape.
 export type { RelationKind }
 
 // ============================================================================

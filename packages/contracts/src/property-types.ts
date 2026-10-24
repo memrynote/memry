@@ -81,6 +81,7 @@ export function parseStatusCategories(options: string | null | undefined): Statu
   if (!options) return DEFAULT_STATUS_CATEGORIES
   try {
     const parsed: unknown = JSON.parse(options)
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted options JSON; shape read optionally and validated by the caller below
     const categories = (parsed as { categories?: StatusCategories } | null)?.categories
     return categories ?? DEFAULT_STATUS_CATEGORIES
   } catch {
@@ -218,6 +219,7 @@ export function parsePropertyDefinitionEntries(
   if (properties === undefined || properties === null) return result
   if (typeof properties !== 'object' || Array.isArray(properties)) return null
   for (const [name, entry] of Object.entries(properties)) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- persisted options JSON; shape read optionally and validated by the caller below
     const type = (entry as { type?: PropertyType } | null)?.type
     if (type && !isPersistableDefinitionType(type)) {
       result.healed = true

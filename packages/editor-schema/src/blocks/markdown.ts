@@ -55,7 +55,8 @@ function foldFromSuffix(suffix: string): CalloutFold {
 
 /** The `[!type]` + fold suffix, shared by the editor path and main's headless twin. */
 export function calloutMarker(type: string, fold: string | undefined): string {
-  return `[!${type}]${FOLD_SUFFIX[fold as CalloutFold] ?? ''}`
+  const suffix = fold === undefined ? undefined : (FOLD_SUFFIX as Record<string, string>)[fold]
+  return `[!${type}]${suffix ?? ''}`
 }
 
 /**

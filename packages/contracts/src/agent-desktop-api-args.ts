@@ -712,6 +712,7 @@ export function desktopOperationArgsSchema(operation: AgentMcpDesktopOperation):
   let schema = argsSchemas.get(operation)
   if (!schema) {
     const items = Object.values(paramsOf(operation))
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- operation params are a non-empty list by construction; generated JSON schema node shape
     schema = strictDeep(z.tuple(items as [z.ZodType, ...z.ZodType[]]))
     argsSchemas.set(operation, schema)
   }
@@ -757,6 +758,7 @@ export function desktopOperationJsonSchema(
     io: 'input',
     unrepresentable: 'any'
   }) as JsonSchemaNode
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- operation params are a non-empty list by construction; generated JSON schema node shape
   const items = Array.isArray(prefixItems) ? (prefixItems as JsonSchemaNode[]) : []
   const required = desktopOperationRequiredCount(operation)
   if (required === items.length) return { ...schema, type: 'array', ...exactTuple(items) }

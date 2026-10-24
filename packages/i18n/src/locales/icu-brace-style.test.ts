@@ -89,6 +89,7 @@ describe('locale brace style', () => {
 
         for (const entry of strings) {
           try {
+            // oxlint-disable-next-line eslint/no-new -- the constructor throwing on a malformed ICU message is the assertion; the instance is unused
             new IntlMessageFormat(entry.value, locale)
           } catch (error) {
             const message = error instanceof Error ? error.message : String(error)

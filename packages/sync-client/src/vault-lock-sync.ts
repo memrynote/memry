@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { vaultLocks } from '@memry/db-schema/schema/vault-locks'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import { recoverOfflineDocClock } from './offline-clock'
 import type { SyncQueueManager } from './queue'
 
@@ -32,9 +32,7 @@ export class VaultLockSyncService {
 
   constructor(deps: VaultLockSyncDeps) {
     const load = (lockId: string): Record<string, unknown> | undefined =>
-      deps.db.select().from(vaultLocks).where(eq(vaultLocks.id, lockId)).get() as
-        | Record<string, unknown>
-        | undefined
+      deps.db.select().from(vaultLocks).where(eq(vaultLocks.id, lockId)).get()
 
     this.controller = new RecordSyncController({
       type: 'vault_lock',
@@ -42,7 +40,7 @@ export class VaultLockSyncService {
       getDeviceId: deps.getDeviceId,
       load,
       applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = clockFromColumn(local.clock) ?? {}
         const newClock = incrementClock(existingClock, deviceId)
 
         deps.db.update(vaultLocks).set({ clock: newClock }).where(eq(vaultLocks.id, itemId)).run()

@@ -7,6 +7,7 @@ import { z } from 'zod'
  */
 export const FeedbackSubmitSchema = z.object({
   message: z.string().trim().min(1).max(5000),
+  // oxlint-disable-next-line typescript/no-deprecated -- z.email() would validate before trim(); this must trim first so padded input still passes
   email: z.string().trim().email().max(320).optional(),
   appVersion: z.string().max(50).optional(),
   platform: z.string().max(50).optional()

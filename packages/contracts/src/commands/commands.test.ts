@@ -68,7 +68,7 @@ describe('COMMANDS', () => {
     const mirrored = entries
       .filter(([, meta]) => meta.keyboard?.owner === 'app' && meta.keyboard.menuAccelerator)
       .map(([id]) => id)
-    expect(mirrored.sort()).toEqual(
+    expect(mirrored.toSorted()).toEqual(
       [
         'tabs.navBack',
         'tabs.navForward',
@@ -77,7 +77,7 @@ describe('COMMANDS', () => {
         'view.zoomIn',
         'view.zoomOut',
         'view.toggleDayPanel'
-      ].sort()
+      ].toSorted()
     )
   })
 
@@ -134,7 +134,7 @@ describe('keyboard phase', () => {
     const capture = entries
       .filter(([, meta]) => meta.keyboard?.owner === 'app' && meta.keyboard.capture)
       .map(([id]) => id)
-    expect(capture.sort()).toEqual(
+    expect(capture.toSorted()).toEqual(
       [
         'nav.search',
         'nav.commands',
@@ -145,7 +145,7 @@ describe('keyboard phase', () => {
         'view.zoomOut',
         'view.actualSize',
         'view.shortcuts'
-      ].sort()
+      ].toSorted()
     )
   })
 })
@@ -166,8 +166,8 @@ describe('the commands palette command', () => {
 describe('settings section commands', () => {
   it('has exactly one command per section, named after it', () => {
     const ids = entries.filter(([, meta]) => meta.owner === 'settings' && meta.group === 'settings')
-    expect(ids.map(([id]) => id).sort()).toEqual(
-      SETTINGS_SECTIONS.map((section) => settingsCommandId(section)).sort()
+    expect(ids.map(([id]) => id).toSorted()).toEqual(
+      SETTINGS_SECTIONS.map((section) => settingsCommandId(section)).toSorted()
     )
   })
 

@@ -26,5 +26,5 @@ export function mapProperties(frontmatter: Record<string, unknown>): {
     properties[key] = value
   }
 
-  return { properties, dropped: dropped.sort() }
+  return { properties, dropped: dropped.toSorted() }
 }

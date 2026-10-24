@@ -42,6 +42,7 @@ export class IcuFormatter {
         fc = new IntlMessageFormat(res, lng, undefined, { ignoreTag: true })
         this.cache.set(cacheKey, fc)
       }
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- format() is typed string | parts, but ignoreTag with plain-string args yields a string
       return fc.format(options) as string
     } catch {
       // On parse failure, return raw template so consumers see the bug

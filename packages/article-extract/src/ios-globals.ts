@@ -6,8 +6,8 @@ import { URL, URLSearchParams } from 'whatwg-url-minimum'
 const scope = globalThis as Record<string, unknown>
 if (typeof scope.URL === 'undefined') scope.URL = URL
 if (typeof scope.URLSearchParams === 'undefined') scope.URLSearchParams = URLSearchParams
+const quiet = (): void => {}
 if (typeof scope.console === 'undefined') {
-  const quiet = (): void => {}
   scope.console = { log: quiet, info: quiet, warn: quiet, error: quiet, debug: quiet }
 }
 // Extraction is synchronous once `useAsync` is off; nothing should wait on a

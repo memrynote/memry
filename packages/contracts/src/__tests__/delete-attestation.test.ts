@@ -5,7 +5,7 @@
  * eligibility rule over it. It never imports the builder (README rule 2).
  */
 import { describe, expect, it } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, { base64_variants, from_base64, ready } from 'libsodium-wrappers-sumo'
 
 import { deleteAttestationMessage } from '../../../sync-client/src/push/record-encrypt.ts'
 import { encodeCbor } from '../../../sync-client/src/pull/cbor.ts'
@@ -41,8 +41,8 @@ const vectors = loadVectorFile<{
   }>
 }>('delete-attestation.json')
 
-await sodium.ready
-const fromB64 = (value: string) => sodium.from_base64(value, sodium.base64_variants.ORIGINAL)
+await ready
+const fromB64 = (value: string) => from_base64(value, base64_variants.ORIGINAL)
 const verifies = (signatureB64: string, message: Uint8Array, publicKeyB64: string) =>
   sodium.crypto_sign_verify_detached(fromB64(signatureB64), message, fromB64(publicKeyB64))
 

@@ -401,16 +401,23 @@ function expectedOf(spec: CaseSpec): Record<string, unknown> {
       return {
         value: stampVersionedMapPatch(
           input.stored,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
           input.patch as Record<string, JsonValue>,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
           input.clockTotal as number
         )
       }
     case 'stamp-value':
       return {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         value: stampVersionedValue(input.previous, input.edited as VersionedObject)
       }
     case 'plain':
       return { plain: plainVersionedMap(input.stored) }
+    default: {
+      const unhandled: never = spec.kind
+      throw new Error(`unhandled versioned-values case kind: ${String(unhandled)}`)
+    }
   }
 }
 

@@ -31,6 +31,9 @@ interface PlainCheckboxInline {
   styles?: Record<string, unknown>
 }
 
+/** A block whose children are of its own kind, so the walk rebuilds the caller's own type. */
+type PlainCheckboxTreeBlock<T> = Omit<PlainCheckboxBlock, 'children'> & { children?: T[] }
+
 export interface PlainCheckboxBlock {
   type?: string
   props?: Record<string, unknown>
@@ -71,7 +74,7 @@ export function hasPlainCheckboxMarker(text: string): boolean {
  * Parse side: every `checkListItem` whose line ends with the marker loses the
  * marker from its text and gains `plain: true`. Walks every depth.
  */
-export function normalizePlainCheckboxes<T extends PlainCheckboxBlock>(
+export function normalizePlainCheckboxes<T extends PlainCheckboxTreeBlock<T>>(
   blocks: T[]
 ): { blocks: T[]; didChange: boolean } {
   let didChange = false
@@ -87,7 +90,7 @@ export function normalizePlainCheckboxes<T extends PlainCheckboxBlock>(
         }
       }
       if (block.children?.length) {
-        const children = walk(block.children as T[])
+        const children = walk(block.children)
         if (children !== block.children) out = { ...out, children }
       }
       if (out !== block) listChanged = true
@@ -107,7 +110,7 @@ export function normalizePlainCheckboxes<T extends PlainCheckboxBlock>(
  * the marker as a last, unstyled run, so the line is written
  * `- [ ] Passport {check}`. Blocks without one come back as they were.
  */
-export function withPlainCheckboxMarkers<T extends PlainCheckboxBlock>(blocks: T[]): T[] {
+export function withPlainCheckboxMarkers<T extends PlainCheckboxTreeBlock<T>>(blocks: T[]): T[] {
   let changed = false
   const next = blocks.map((block) => {
     let out = block
@@ -117,7 +120,7 @@ export function withPlainCheckboxMarkers<T extends PlainCheckboxBlock>(blocks: T
       out = { ...out, content: [...content, { type: 'text', text: marker, styles: {} }] }
     }
     if (block.children?.length) {
-      const children = withPlainCheckboxMarkers(block.children as T[])
+      const children = withPlainCheckboxMarkers(block.children)
       if (children !== block.children) out = { ...out, children }
     }
     if (out !== block) changed = true

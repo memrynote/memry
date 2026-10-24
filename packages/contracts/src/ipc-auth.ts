@@ -109,16 +109,16 @@ export interface LogoutResult {
 // ============================================================================
 
 export const RequestOtpSchema = z.object({
-  email: z.string().email()
+  email: z.email()
 })
 
 export const VerifyOtpSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   code: z.string().regex(/^\d{6}$/)
 })
 
 export const ResendOtpSchema = z.object({
-  email: z.string().email()
+  email: z.email()
 })
 
 export const InitOAuthSchema = z.object({

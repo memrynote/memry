@@ -1,7 +1,6 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { canvases } from '@memry/db-schema/data-schema'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, incrementClock } from '@memry/sync-core'
 import type { SyncQueueManager } from './queue'
 import { recoverOfflineDocClock } from './offline-clock'
@@ -47,12 +46,9 @@ export class CanvasSyncService {
       getDeviceId: deps.getDeviceId,
       // Raw load (no deletedAt filter): the delete path needs the still-present
       // tombstone row to build its delete payload.
-      load: (id) =>
-        deps.db.select().from(canvases).where(eq(canvases.id, id)).get() as
-          | Record<string, unknown>
-          | undefined,
+      load: (id) => deps.db.select().from(canvases).where(eq(canvases.id, id)).get(),
       applyLocalChange: ({ itemId, local, deviceId }) => {
-        const existingClock = (local.clock as VectorClock) ?? {}
+        const existingClock = local.clock ?? {}
         const newClock = incrementClock(existingClock, deviceId)
         deps.db.update(canvases).set({ clock: newClock }).where(eq(canvases.id, itemId)).run()
         return { ...local, clock: newClock }
@@ -61,22 +57,20 @@ export class CanvasSyncService {
       // before the first push (chapter 06 §6.6).
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
-          deps.db.select().from(canvases).where(eq(canvases.id, itemId)).get() as
-            | Record<string, unknown>
-            | undefined,
+          deps.db.select().from(canvases).where(eq(canvases.id, itemId)).get(),
           deviceId,
           (clock) => deps.db.update(canvases).set({ clock }).where(eq(canvases.id, itemId)).run()
         ),
       serialize: (local) => ({
         id: local.id,
         vaultId: local.vaultId,
-        title: (local.title as string | null) ?? null,
+        title: local.title ?? null,
         clock: local.clock,
-        deletedAt: (local.deletedAt as number | null) ?? null
+        deletedAt: local.deletedAt ?? null
       }),
       buildDeletePayload: ({ itemId, local, deviceId }) => {
         if (!local) return null
-        const bumped = incrementClock((local.clock as VectorClock) ?? {}, deviceId)
+        const bumped = incrementClock(local.clock ?? {}, deviceId)
         // Persist the bumped clock on the tombstone so a later concurrent edit
         // resolves against the delete's clock (delete wins over older state).
         deps.db.update(canvases).set({ clock: bumped }).where(eq(canvases.id, itemId)).run()
@@ -84,7 +78,7 @@ export class CanvasSyncService {
           id: itemId,
           vaultId: local.vaultId,
           clock: bumped,
-          deletedAt: (local.deletedAt as number | null) ?? null
+          deletedAt: local.deletedAt ?? null
         })
       }
     })
@@ -122,7 +116,7 @@ export class CanvasSyncService {
       .where(eq(canvases.id, canvasId))
       .get()
     if (!row) return
-    const next = incrementClock((row.clock as VectorClock) ?? {}, deviceId)
+    const next = incrementClock(row.clock ?? {}, deviceId)
     this.deps.db.update(canvases).set({ clock: next }).where(eq(canvases.id, canvasId)).run()
   }
 

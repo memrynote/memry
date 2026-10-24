@@ -304,7 +304,7 @@ interface NoteBucket<T> {
 const orderByNoteBody = <T extends FilterTask>(tasks: T[], taskIds: readonly string[]): T[] => {
   const position = new Map(taskIds.map((id, index) => [id, index]))
   const rank = (task: T): number => position.get(task.id) ?? taskIds.length
-  return [...tasks].sort((a, b) => rank(a) - rank(b))
+  return tasks.toSorted((a, b) => rank(a) - rank(b))
 }
 
 const bucketTasksByNote = <T extends FilterTask>(
@@ -350,7 +350,7 @@ export const groupByFolder = <T extends FilterTask>(
 
   const result: TaskGroup<T>[] = [...byFolder.entries()]
     .filter(([folderPath]) => folderPath !== '')
-    .sort(([a], [b]) => a.localeCompare(b))
+    .toSorted(([a], [b]) => a.localeCompare(b))
     .map(([folderPath, folderTasks]) => ({
       key: `${FOLDER_GROUP_PREFIX}${folderPath}`,
       labelKey: null,
@@ -382,7 +382,7 @@ export const groupByNote = <T extends FilterTask>(
   const { byNote, unfiled } = bucketTasksByNote(tasks, noteIndex)
 
   const result: TaskGroup<T>[] = [...byNote.entries()]
-    .sort(
+    .toSorted(
       ([, a], [, b]) => a.folderPath.localeCompare(b.folderPath) || a.title.localeCompare(b.title)
     )
     .map(([noteId, bucket]) => ({

@@ -19,6 +19,7 @@ if (!NOTE || !DB) {
 }
 
 const db = new Database(DB, { readonly: true })
+// oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
 const title = db.prepare('SELECT title FROM notes WHERE id = ?').get(NOTE) as
   | { title: string }
   | undefined
@@ -34,6 +35,7 @@ if (!title) {
 const doc = new Y.Doc()
 let applied = 0
 for (const ns of [NOTE, `local.${NOTE}`]) {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const snap = db
     .prepare('SELECT snapshot, last_seq FROM yjs_snapshots WHERE doc_id = ?')
     .get(ns) as { snapshot: Buffer; last_seq: number } | undefined
@@ -42,6 +44,7 @@ for (const ns of [NOTE, `local.${NOTE}`]) {
     applied++
   }
   const since = snap?.last_seq ?? 0
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   const rows = db
     .prepare('SELECT update_blob FROM yjs_updates WHERE doc_id = ? AND seq > ? ORDER BY seq')
     .all(ns, since) as Array<{ update_blob: Buffer }>

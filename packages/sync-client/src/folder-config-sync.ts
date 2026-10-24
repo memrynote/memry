@@ -1,8 +1,8 @@
 import type { DrizzleDb } from '@memry/sync-client/drizzle-db'
 import { eq } from 'drizzle-orm'
 import { folderConfigs } from '@memry/db-schema/schema/folder-configs'
-import type { VectorClock } from '@memry/contracts/sync-api'
 import { RecordSyncController, withIncrementedClock } from '@memry/sync-core'
+import { clockFromColumn } from '@memry/sync-client/vector-clock'
 import type { SyncQueueManager } from './queue'
 import { recoverOfflineDocClock } from './offline-clock'
 import { deleteFromLocalRow } from './delete-fallback'
@@ -38,15 +38,13 @@ export class FolderConfigSyncService {
       queue: deps.queue,
       getDeviceId: deps.getDeviceId,
       load: (path) =>
-        deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, path)).get() as
-          | Record<string, unknown>
-          | undefined,
+        deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, path)).get(),
       applyLocalChange: ({ itemId, local, deviceId, operation }) => {
         const newClock = nextLocalClock(
           deps.db,
           'folder_config',
           itemId,
-          local.clock as VectorClock | null,
+          clockFromColumn(local.clock),
           deviceId,
           operation
         )
@@ -63,9 +61,7 @@ export class FolderConfigSyncService {
       // before the first push (chapter 06 §6.6).
       recoverPendingChange: (itemId, deviceId) =>
         recoverOfflineDocClock(
-          deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get() as
-            | Record<string, unknown>
-            | undefined,
+          deps.db.select().from(folderConfigs).where(eq(folderConfigs.path, itemId)).get(),
           deviceId,
           (clock) =>
             deps.db.update(folderConfigs).set({ clock }).where(eq(folderConfigs.path, itemId)).run()

@@ -42,6 +42,8 @@
  * which is what every build before this one wrote.
  */
 
+import { isObject } from './is-record.ts'
+
 /**
  * Re-parses markdown through the same pipeline that produced `canonicalNow`.
  * `null` when the parse fails, which counts as a failed proof.
@@ -114,7 +116,7 @@ export function mergeMarkdownSource(
   const hunks: TaggedHunk[] = [
     ...oursHunks.map((hunk) => ({ ...hunk, side: 'ours' as const })),
     ...theirsHunks.map((hunk) => ({ ...hunk, side: 'theirs' as const }))
-  ].sort((a, b) => a.baseStart - b.baseStart)
+  ].toSorted((a, b) => a.baseStart - b.baseStart)
 
   const out: string[] = []
   let baseCursor = 0
@@ -138,8 +140,9 @@ export function mergeMarkdownSource(
 
     const oursText = sideSlice(ours, region, 'ours', regionStart, regionEnd)
     const theirsText = sideSlice(theirs, region, 'theirs', regionStart, regionEnd)
-    if (oursText === null) out.push(...(theirsText as string[]))
-    else if (theirsText === null) out.push(...oursText)
+    if (oursText === null) {
+      if (theirsText !== null) out.push(...theirsText)
+    } else if (theirsText === null) out.push(...oursText)
     else out.push(...(sameLines(oursText, theirsText) ? theirsText : oursText))
   }
 
@@ -199,8 +202,8 @@ export function readMarkdownSourceRecordFromYDoc(doc: YDocLike): MarkdownSourceR
 }
 
 function readRecord(value: unknown): MarkdownSourceRecord | null {
-  if (!value || typeof value !== 'object') return null
-  const { source, htmlComments } = value as Record<string, unknown>
+  if (!isObject(value)) return null
+  const { source, htmlComments } = value
   return typeof source === 'string' ? { source, htmlComments: htmlComments === true } : null
 }
 

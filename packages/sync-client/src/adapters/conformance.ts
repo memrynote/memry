@@ -26,8 +26,8 @@ export interface ConformanceExpect {
 }
 
 export interface ConformanceTestApi {
-  describe(name: string, body: () => void): void
-  it(name: string, body: () => void | Promise<void>): void
+  describe: (name: string, body: () => void) => void
+  it: (name: string, body: () => void | Promise<void>) => void
   expect: ConformanceExpect
 }
 

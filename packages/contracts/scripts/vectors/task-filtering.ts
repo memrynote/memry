@@ -80,6 +80,7 @@ const toTask = (task: WireTask): FilterTask => ({
 })
 
 const toDue = (wire: WireDueDateFilter): DueDateFilter =>
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
   ({
     type: wire.type,
     customStart: wire.customStart ? parseDateKey(wire.customStart) : null,
@@ -105,6 +106,7 @@ function build() {
     })),
     priorities: [[], ['urgent'], ['high', 'none'], ['low', 'medium']].map((priorities) => ({
       priorities,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       expected: ids(filterByPriorities(tasks, priorities as TaskFilters['priorities']))
     })),
     tags: [[], ['work'], ['WORK', 'home'], ['missing'], ['iş', 'οδος']].map((tags) => ({
@@ -118,15 +120,18 @@ function build() {
     completion: ['active', 'completed', 'all', 'archived', 'bogus'].map((completion) => ({
       completion,
       expected: ids(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
         filterByCompletion(tasks, completion as TaskFilters['completion'], FILTER_PROJECTS)
       )
     })),
     repeatType: ['all', 'repeating', 'one-time', 'bogus'].map((repeatType) => ({
       repeatType,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       expected: ids(filterByRepeatType(tasks, repeatType as TaskFilters['repeatType']))
     })),
     hasTime: ['all', 'with-time', 'without-time', 'bogus'].map((hasTime) => ({
       hasTime,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       expected: ids(filterByHasTime(tasks, hasTime as TaskFilters['hasTime']))
     })),
     dueDate: Object.entries(FILTER_NOWS).flatMap(([nowKey, now]) =>
@@ -146,6 +151,7 @@ function build() {
     (['asc', 'desc'] as const).map((direction) => ({
       field,
       direction,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
       expected: ids(sortTasksAdvanced(tasks, { field, direction } as TaskSort, FILTER_PROJECTS))
     }))
   )
@@ -161,6 +167,7 @@ function build() {
           withNotes,
           expected: groupTasksForSort(
             tasks.filter((task) => task.parentId === null),
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
             field as SortField,
             direction,
             FILTER_PROJECTS,
@@ -186,12 +193,13 @@ function build() {
         const result = applyFiltersAndSortWithContext(
           tasks,
           toFilters(c.filters),
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- vector generator over untyped fixture rows; the fixture literals fix the shape and vectors:check pins the output
           c.sort as TaskSort,
           FILTER_PROJECTS,
           new Date(FILTER_NOWS[c.now]),
           c.weekStartsOn
         )
-        return { taskIds: ids(result.tasks), contextIds: [...result.contextIds].sort() }
+        return { taskIds: ids(result.tasks), contextIds: [...result.contextIds].toSorted() }
       })(),
       hasActiveFilters: hasActiveFilters(toFilters(c.filters)),
       countActiveFilters: countActiveFilters(toFilters(c.filters))

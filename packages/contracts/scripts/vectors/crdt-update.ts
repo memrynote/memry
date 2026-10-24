@@ -159,7 +159,7 @@ export async function buildCrdtUpdate(): Promise<Record<string, unknown>> {
     })
   }
 
-  const first = cases[0].expected.packedHex as string
+  const first = cases[0].expected.packedHex
   const firstBytes = fromHex(first)
 
   const errorCases = [

@@ -104,10 +104,10 @@ describe('payload-schemas vectors', () => {
   })
 
   it('covers exactly the twenty-one subscribed types', () => {
-    expect(vectors.groups.map((g) => g.type).sort()).toEqual(
-      [...vectors.meta.subscribedTypes].sort()
+    expect(vectors.groups.map((g) => g.type).toSorted()).toEqual(
+      [...vectors.meta.subscribedTypes].toSorted()
     )
-    expect(Object.keys(SCHEMAS).sort()).toEqual([...vectors.meta.subscribedTypes].sort())
+    expect(Object.keys(SCHEMAS).toSorted()).toEqual([...vectors.meta.subscribedTypes].toSorted())
   })
 
   for (const group of vectors.groups) {

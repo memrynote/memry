@@ -28,7 +28,7 @@ export function extractYouTubeVideoId(url: string): string | null {
 }
 
 function getValidVideoId(value: string | null | undefined): string | null {
-  if (!value || value.length !== 11) {
+  if (value?.length !== 11) {
     return null
   }
 

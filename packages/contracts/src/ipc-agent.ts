@@ -230,7 +230,7 @@ export type AgentPreferencesUpdate = z.infer<typeof AgentPreferencesUpdateSchema
 export const AgentLocalProviderSettingsSchema = z
   .object({
     preset: AgentLocalProviderPresetSchema,
-    baseUrl: z.string().url(),
+    baseUrl: z.url(),
     model: z.string(),
     apiKeyConfigured: z.boolean(),
     allowNonLoopback: z.boolean(),
@@ -243,7 +243,7 @@ export type AgentLocalProviderSettings = z.infer<typeof AgentLocalProviderSettin
 export const AgentLocalProviderSettingsUpdateSchema = z
   .object({
     preset: AgentLocalProviderPresetSchema,
-    baseUrl: z.string().url(),
+    baseUrl: z.url(),
     model: z.string(),
     allowNonLoopback: z.boolean(),
     apiKey: z.string().optional().nullable(),

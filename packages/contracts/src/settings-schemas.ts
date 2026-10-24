@@ -683,7 +683,7 @@ export const STICKY_SETTINGS_DEFAULTS: StickySettings = {
 // ============================================================================
 
 export const AccountInfoSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   authProvider: z.enum(['email', 'google', 'github']),
   createdAt: z.string(),
   storageUsedBytes: z.number(),

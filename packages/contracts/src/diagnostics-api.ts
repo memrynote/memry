@@ -11,7 +11,7 @@ const SafeToken = z.string().regex(SAFE_TOKEN)
 // bounded record of already-redacted primitive field values.
 const SafeFields = z.record(
   z.string().max(64),
-  z.union([z.string().max(500), z.number().finite(), z.boolean()])
+  z.union([z.string().max(500), z.number(), z.boolean()])
 )
 
 export const DiagnosticTriggerSchema = z.object({
@@ -21,7 +21,7 @@ export const DiagnosticTriggerSchema = z.object({
 })
 
 export const DiagnosticLogLineSchema = z.object({
-  ts: z.string().datetime(),
+  ts: z.iso.datetime(),
   level: z.enum(['warn', 'error']),
   scope: SafeToken,
   action: SafeToken.optional(),
@@ -34,8 +34,8 @@ export const DiagnosticLogLineSchema = z.object({
 
 const clientMeta = {
   schemaVersion: z.literal(1),
-  installId: z.string().uuid(),
-  sessionId: z.string().uuid(),
+  installId: z.uuid(),
+  sessionId: z.uuid(),
   appVersion: z.string().min(1).max(32),
   buildChannel: TelemetryBuildChannelSchema,
   platform: TelemetryPlatformSchema,
@@ -53,7 +53,7 @@ export const DiagnosticSnapshotSchema = z.object({
   platform: TelemetryPlatformSchema,
   arch: z.string().max(32),
   locale: z.string().max(16),
-  uptimeSeconds: z.number().finite().nonnegative(),
+  uptimeSeconds: z.number().nonnegative(),
   syncEnabled: z.boolean(),
   syncState: TelemetrySyncStateSchema,
   queueDepth: z.number().int().nonnegative(),
@@ -78,7 +78,7 @@ export const DiagnosticReportSchema = z.object({
    * field is client-asserted, and it feeds a PostHog `distinct_id`, where an
    * `$identify` merge is permanent. Do not start trusting this.
    */
-  accountId: z.string().uuid().optional()
+  accountId: z.uuid().optional()
 })
 
 export type DiagnosticTrigger = z.infer<typeof DiagnosticTriggerSchema>

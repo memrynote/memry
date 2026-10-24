@@ -55,7 +55,7 @@ const PULL_APPLY_ORDER: Record<string, number> = {
 const applyRank = (type: string): number => PULL_APPLY_ORDER[type] ?? 1
 
 export const sortByApplyOrder = <T extends { type: string }>(items: T[]): T[] =>
-  [...items].sort((a, b) => applyRank(a.type) - applyRank(b.type))
+  items.toSorted((a, b) => applyRank(a.type) - applyRank(b.type))
 
 const PULL_PAGE_LIMIT = 100
 const PULL_BATCH_MAX_IDS = 100
@@ -192,8 +192,9 @@ export class RecordPullEngine {
         this.retryOpts()
       ).then((r) => r.value)
 
-      const envelope = raw as { items?: unknown[] }
-      if (!envelope || !Array.isArray(envelope.items)) {
+      const envelopeItems: unknown =
+        typeof raw === 'object' && raw !== null && 'items' in raw ? raw.items : undefined
+      if (!Array.isArray(envelopeItems)) {
         this.deps.log.error('Pull response is not a pull envelope; page dropped', {
           itemCount: chunk.length
         })
@@ -201,7 +202,7 @@ export class RecordPullEngine {
       }
 
       const validItems = []
-      for (const [index, rawItem] of envelope.items.entries()) {
+      for (const [index, rawItem] of envelopeItems.entries()) {
         const itemParse = RecordPullItemResponseSchema.safeParse(rawItem)
         if (itemParse.success) {
           validItems.push(itemParse.data)
@@ -210,7 +211,10 @@ export class RecordPullEngine {
         counters.corrupt++
         const issue = itemParse.error.issues[0]
         const reason = `schema: ${issue?.path.join('.') ?? '?'} ${issue?.message ?? 'invalid'}`
-        const rawId = (rawItem as { id?: unknown } | null)?.id
+        const rawId =
+          typeof rawItem === 'object' && rawItem !== null && 'id' in rawItem
+            ? rawItem.id
+            : undefined
         if (typeof rawId === 'string' && rawId.length > 0) {
           await this.deps.store.markItemCorrupt(rawId, reason)
         }
@@ -300,9 +304,7 @@ export class RecordPullEngine {
       if (item.operation === 'delete') continue
       if (item.type !== 'note' && item.type !== 'journal') continue
       try {
-        const payload = item.payloadJson
-          ? (JSON.parse(item.payloadJson) as { fileType?: string })
-          : {}
+        const payload: { fileType?: string } = item.payloadJson ? JSON.parse(item.payloadJson) : {}
         // Binary notes (imported PDFs etc.) have no CRDT body — same
         // classification desktop's pull uses when queueing crdtNoteIds.
         if (!payload.fileType || !isBinaryFileType(payload.fileType)) into.add(item.id)
