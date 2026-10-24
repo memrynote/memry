@@ -7,6 +7,42 @@
   "wikiLinkPreview": {
     "notFound": "غير موجودة — انقر لإنشاء «{title}»"
   },
+  "wikiLinkMenu": {
+    "aria": "إجراءات الرابط",
+    "open": "فتح",
+    "openInNewTab": "فتح في علامة تبويب جديدة",
+    "openToTheSide": "فتح على الجانب",
+    "edit": "تحرير الرابط",
+    "copy": "نسخ الرابط",
+    "unlink": "إزالة الرابط",
+    "displayRow": "العرض…",
+    "sizeNone": "بلا",
+    "sizeSmall": "صغير",
+    "sizeMedium": "متوسط",
+    "showCover": "عرض الغلاف",
+    "showPreview": "عرض المعاينة",
+    "copyFailed": "تعذّر نسخ الرابط"
+  },
+  "readwise": {
+    "group": "Readwise",
+    "reimportAction": "إعادة الاستيراد من Readwise",
+    "refreshAction": "تحديث معلومات الكتاب",
+    "syncsOn": "تتم مزامنة Readwise على {device}.",
+    "syncsOnAnotherDevice": "تتم مزامنة Readwise على جهاز آخر.",
+    "takeOverHint": "زامن على ذلك الجهاز، أو تولَّ الأمر من الإعدادات ← الاستيراد.",
+    "reimport": {
+      "title": "إعادة استيراد “{title}” من Readwise؟",
+      "body": "يُعاد كتابة قسم Readwise من الصفر. وكل ما كتبته داخله سيُفقد.",
+      "note": "يبقى النص خارج القسم وخصائص الملاحظة كما هي.",
+      "cancel": "إلغاء",
+      "confirm": "إعادة الاستيراد"
+    },
+    "commands": {
+      "reimported": "تمت إعادة الاستيراد من Readwise",
+      "refreshed": "تم تحديث معلومات الكتاب",
+      "failed": "تعذّر إكمال أمر Readwise"
+    }
+  },
   "page": {
     "empty": {
       "title": "لم يتم تحديد أي ملاحظة",
@@ -25,6 +61,7 @@
       "willSync": "ستتم مزامنة الملاحظة مع السحابة",
       "renameFailed": "تعذّر إعادة تسمية الملاحظة",
       "titleRequired": "تحتاج الملاحظة إلى عنوان",
+      "duplicateTitle": "توجد ملاحظة أخرى في {folder} تحمل الاسم “{title}” أيضًا. ستتضمن الروابط إلى هذه الملاحظات مجلدها.",
       "toggleLocalOnlyFailed": "تعذّر تغيير إعداد «محلية فقط»",
       "toggleFullWidthFailed": "تعذّر تشغيل العرض الكامل أو إيقافه",
       "pathCopied": "تم نسخ المسار",
@@ -85,6 +122,10 @@
       "body": "أنشئ ملاحظة للبدء",
       "newNote": "ملاحظة جديدة"
     },
+    "readwiseSync": {
+      "tooltip": "مزامنة Readwise",
+      "failed": "فشلت مزامنة Readwise"
+    },
     "syncing": {
       "body": "جارٍ مزامنة ملاحظاتك — ستظهر هنا فور وصولها"
     },
@@ -98,6 +139,7 @@
       "openToTheSide": "فتح في جزء جانبي",
       "newNote": "ملاحظة جديدة",
       "newFolder": "مجلد جديد",
+      "showTasks": "عرض المهام",
       "expandSubfolders": "توسيع كل المجلدات الفرعية",
       "collapseSubfolders": "طي كل المجلدات الفرعية",
       "rename": "إعادة تسمية",
@@ -138,7 +180,15 @@
       "folderSuffix": "مجلد",
       "moreItems": "…و{count} أخرى",
       "deleting": "جارٍ الحذف…",
-      "deleteCount": "حذف {count}"
+      "deleteCount": "حذف {count}",
+      "journalFolderWarning": "يتضمن هذا مجلد اليوميات الخاص بك. سيُحذف كل مدخل يوميات فيه، على جميع أجهزتك."
+    },
+    "journalChange": {
+      "leaveTitle": "تحويل مدخلات اليوميات إلى ملاحظات؟",
+      "leaveBody": "عند نقل مدخلات اليوميات خارج مجلد اليوميات، أو تغيير اسمها بعيدًا عن صيغة التاريخ، تصبح ملاحظات عادية وتغادر اليوميات. وعلى أجهزتك الأخرى تُزال تلك الأيام من اليوميات وتظهر الملاحظات بدلًا منها.",
+      "joinTitle": "تحويل الملاحظات إلى مدخلات يوميات؟",
+      "joinBody": "تصبح الملفات المسمّاة بصيغة تاريخ اليوميات داخل مجلد اليوميات مدخلات يوميات. وعلى أجهزتك الأخرى تُستبدل تلك الملاحظات بمدخلات اليوميات.",
+      "confirm": "متابعة"
     },
     "toast": {
       "selectionBookmarked": "تمت إضافة العناصر ({count}) إلى الإشارات المرجعية",
@@ -165,11 +215,31 @@
       "headingPlaceholder": "العنوان",
       "listPlaceholder": "عنصر القائمة",
       "todoPlaceholder": "بند مهمة",
-      "htmlComment": "تعليق HTML مخفي"
+      "htmlComment": "تعليق HTML مخفي",
+      "percentComment": "تعليق مخفي",
+      "readwise": {
+        "noteStart": "Readwise · تتم المزامنة تلقائيًا",
+        "noteEnd": "نهاية قسم Readwise",
+        "dayStart": "Readwise · تمييزات اليوم",
+        "dayEnd": "نهاية Readwise",
+        "hint": "حرّر داخل هذا القسم وسيتوقف Readwise عن تحديثه."
+      }
     },
     "table": {
       "keyboardMenuAria": "إجراءات الجدول للصف {row}، العمود {column}",
-      "keyboardMenuTitle": "الصف {row} · العمود {column}"
+      "keyboardMenuTitle": "الصف {row} · العمود {column}",
+      "sizePicker": {
+        "aria": "حجم الجدول. استخدم مفاتيح الأسهم لاختيار الصفوف والأعمدة، ثم اضغط Enter.",
+        "size": "{rows, plural, zero {# صف} one {صف واحد} two {صفان} few {# صفوف} many {# صفًا} other {# صف}} × {columns, plural, zero {# عمود} one {عمود واحد} two {عمودان} few {# أعمدة} many {# عمودًا} other {# عمود}}"
+      },
+      "lines": {
+        "deleteRows": "{count, plural, zero {حذف # صف} one {حذف الصف} two {حذف الصفين} few {حذف # صفوف} many {حذف # صفًا} other {حذف # صف}}",
+        "addRowsAbove": "{count, plural, zero {إضافة # صف أعلاه} one {إضافة صف أعلاه} two {إضافة صفين أعلاه} few {إضافة # صفوف أعلاه} many {إضافة # صفًا أعلاه} other {إضافة # صف أعلاه}}",
+        "addRowsBelow": "{count, plural, zero {إضافة # صف أدناه} one {إضافة صف أدناه} two {إضافة صفين أدناه} few {إضافة # صفوف أدناه} many {إضافة # صفًا أدناه} other {إضافة # صف أدناه}}",
+        "deleteColumns": "{count, plural, zero {حذف # عمود} one {حذف العمود} two {حذف العمودين} few {حذف # أعمدة} many {حذف # عمودًا} other {حذف # عمود}}",
+        "addColumnsLeft": "{count, plural, zero {إضافة # عمود إلى اليسار} one {إضافة عمود إلى اليسار} two {إضافة عمودين إلى اليسار} few {إضافة # أعمدة إلى اليسار} many {إضافة # عمودًا إلى اليسار} other {إضافة # عمود إلى اليسار}}",
+        "addColumnsRight": "{count, plural, zero {إضافة # عمود إلى اليمين} one {إضافة عمود إلى اليمين} two {إضافة عمودين إلى اليمين} few {إضافة # أعمدة إلى اليمين} many {إضافة # عمودًا إلى اليمين} other {إضافة # عمود إلى اليمين}}"
+      }
     },
     "list": {
       "bulleted": "قائمة نقطية",
@@ -195,6 +265,8 @@
       "hideLocalGraph": "إخفاء الرسم البياني المحلي",
       "showLocalGraph": "إظهار الرسم البياني المحلي",
       "moreActions": "المزيد من الإجراءات",
+      "searchActions": "البحث في الإجراءات...",
+      "noMatchingActions": "لا توجد إجراءات مطابقة",
       "find": "بحث…",
       "versionHistory": "سجل الإصدارات",
       "export": "تصدير",
@@ -215,6 +287,8 @@
       "notSynced": "لم تتم مزامنته مع هذا الجهاز بعد",
       "revealFailed": "تعذّر إظهار الملف",
       "openFailed": "تعذّر فتح الملف",
+      "showAsLink": "عرض كرابط",
+      "showAsEmbed": "عرض مضمّنًا",
       "missingTitle": "ملف المرفق مفقود",
       "missingExpected": "الملف المتوقع: {name}"
     },
@@ -226,6 +300,22 @@
       "confirm": "إعادة تسمية",
       "renamed": "تمّت إعادة التسمية إلى {name}",
       "failed": "تعذّر إعادة تسمية المرفق"
+    },
+    "imageLightbox": {
+      "menuItem": "عرض أكبر",
+      "title": "عارض الصور",
+      "zoomIn": "تكبير",
+      "zoomOut": "تصغير",
+      "reset": "إعادة ضبط التكبير"
+    },
+    "imageCrop": {
+      "menuItem": "اقتصاص…",
+      "title": "اقتصاص الصورة",
+      "description": "اسحب فوق الصورة لاختيار ما تعرضه الملاحظة. يبقى الملف الأصلي كما هو.",
+      "reset": "عرض الصورة كاملة",
+      "cancel": "إلغاء",
+      "apply": "اقتصاص",
+      "unavailable": "لم تُحمَّل الصورة بعد، لذا لا يمكن اقتصاصها"
     },
     "attachmentsDialog": {
       "title": "المرفقات",
@@ -248,12 +338,24 @@
       "title": "وسيلة شرح",
       "group": "الكتل الأساسية",
       "subtext": "تمييز المعلومات المهمة",
+      "customSubtext": "نوع وسيلة الشرح المخصص الخاص بك",
       "changeType": "تغيير نوع وسيلة الشرح",
+      "expand": "توسيع وسيلة الشرح",
+      "collapse": "طي وسيلة الشرح",
       "menuLabel": "نوع وسيلة الشرح",
       "info": "معلومات",
       "warning": "تحذير",
       "error": "خطأ",
-      "success": "نجاح"
+      "success": "نجاح",
+      "note": "ملاحظة",
+      "abstract": "ملخص",
+      "todo": "مهمة",
+      "tip": "نصيحة",
+      "important": "مهم",
+      "question": "سؤال",
+      "example": "مثال",
+      "quote": "اقتباس",
+      "bug": "خلل"
     },
     "columns": {
       "group": "الكتل الأساسية",
@@ -332,6 +434,83 @@
       "invalidShape": "لا يحدد تعريف هذا العرض أي مصدر. اختر مصدرًا أعلاه، أو أصلح التعريف أدناه.",
       "definition": "التعريف"
     },
+    "chart": {
+      "title": "مخطط",
+      "subtext": "ارسم خاصية عبر الزمن: خطًا أو أعمدة أو خريطة حرارية تقويمية",
+      "layout": "مخطط",
+      "settings": "إعدادات المخطط",
+      "chooseProperty": "اختر ما تريد رسمه",
+      "source": "المصدر",
+      "headerMeta": "{range} · {type}",
+      "property": "الخاصية",
+      "noProperties": "لا شيء للرسم بعد. أضف خاصية إلى مدخل يوميات أو ملاحظة أولًا.",
+      "chartType": "المخطط",
+      "suggested": "مقترح",
+      "types": {
+        "line": "خطي",
+        "bar": "أعمدة",
+        "heatmap": "خريطة حرارية"
+      },
+      "range": "النطاق",
+      "lastDays": "{count, plural, zero {آخر # يوم} one {آخر يوم} two {آخر يومين} few {آخر # أيام} many {آخر # يومًا} other {آخر # يوم}}",
+      "sameDay": "مدخلات اليوم نفسه",
+      "aggregates": {
+        "average": "المتوسط",
+        "sum": "المجموع",
+        "min": "الأدنى",
+        "max": "الأعلى",
+        "count": "العدد"
+      },
+      "missingDays": "الأيام الناقصة",
+      "missing": {
+        "gap": "ترك فجوة",
+        "zero": "احتسابها صفرًا"
+      },
+      "dateFrom": {
+        "label": "التاريخ من",
+        "created": "الإنشاء",
+        "modified": "التعديل"
+      },
+      "propertyTypes": {
+        "text": "نص",
+        "number": "رقم",
+        "checkbox": "مربع اختيار",
+        "date": "تاريخ",
+        "url": "URL",
+        "status": "حالة",
+        "select": "اختيار",
+        "multiselect": "اختيار متعدد",
+        "relation": "علاقة",
+        "project": "مشروع",
+        "rating": "تقييم"
+      },
+      "noEntry": "لا مدخل",
+      "done": "منجز",
+      "notDone": "غير منجز",
+      "logged": "مسجّل",
+      "valueCount": "{count, plural, zero {# قيمة} one {قيمة واحدة} two {قيمتان} few {# قيم} many {# قيمة} other {# قيمة}}",
+      "average": "المتوسط",
+      "vsPrevious": "مقابل الفترة السابقة",
+      "lowest": "الأدنى",
+      "currentStreak": "السلسلة الحالية",
+      "longestStreak": "أطول سلسلة",
+      "dayCount": "{count, plural, zero {# يوم} one {يوم واحد} two {يومان} few {# أيام} many {# يومًا} other {# يوم}}",
+      "doneDays": "منجز",
+      "loggedDays": "مسجّل",
+      "mostCommon": "الأكثر شيوعًا",
+      "ofTotal": "{part} / {total}",
+      "aria": "{property} خلال آخر {days} يومًا",
+      "noData": "لم يُسجَّل شيء في هذا النطاق بعد.",
+      "loadFailed": "تعذّر تحميل هذا المخطط. المدخلات نفسها لم تتأثر.",
+      "sourceJournal": "اليوميات",
+      "history": {
+        "show": "عرض السجل",
+        "title": "سجل {property}",
+        "range": "آخر 13 أسبوعًا",
+        "insert": "نسخ ككتلة مخطط",
+        "copied": "تم نسخ كتلة المخطط. الصقها في أي ملاحظة."
+      }
+    },
     "slashMenu": {
       "aria": "الكتل والإجراءات",
       "groups": {
@@ -352,6 +531,7 @@
         "insert": "إدراج",
         "open": "فتح"
       },
+      "close": "إغلاق القائمة",
       "matchesAlias": "يطابق",
       "noMatch": "لا توجد كتل تطابق «{query}»",
       "fallback": {
@@ -432,6 +612,11 @@
       }
     },
     "attachmentPicker": {
+      "display": {
+        "label": "عرض كـ",
+        "embed": "مضمّن",
+        "link": "رابط"
+      },
       "title": {
         "image": "إضافة صورة",
         "media": "إضافة وسائط",
@@ -525,6 +710,11 @@
       "empty": "اكتب لإنشاء وسم جديد",
       "create": "إنشاء #{tag}"
     },
+    "pdfDisplay": {
+      "title": "عرض PDF كـ",
+      "embed": "عارض مضمّن",
+      "link": "اسم الملف"
+    },
     "pasteLink": {
       "title": "لصق على شكل",
       "url": "عنوان URL",
@@ -570,7 +760,18 @@
     "readTime": "مدة القراءة: {count} د",
     "words": "الكلمات: {count}",
     "created": "تاريخ الإنشاء",
-    "modified": "تاريخ التعديل"
+    "modified": "تاريخ التعديل",
+    "sync": {
+      "label": "المزامنة",
+      "confirmed": "على الخادم {time}",
+      "pending": "في الانتظار منذ {time}",
+      "sent": "جارٍ الإرسال",
+      "rejected": "رفض الخادم آخر تغيير",
+      "notRecorded": "لا شيء بانتظار الإرسال",
+      "localOnly": "محلي فقط",
+      "notSyncing": "لا تتم المزامنة",
+      "waiting": "في انتظار الإرسال"
+    }
   },
   "backlinks": {
     "sortRecent": "الأحدث",
@@ -587,7 +788,18 @@
     "expandSection": "توسيع قسم الروابط الخلفية",
     "showMore": "إظهار المزيد من الروابط الخلفية ({count})",
     "more": "{count} أخرى",
-    "viaProperty": "{property} ← {title}"
+    "viaProperty": "{property} ← {title}",
+    "viaPortal": "معروض في بوابة"
+  },
+  "unlinkedMentions": {
+    "title": "إشارات غير مرتبطة",
+    "summary": "{count, plural, zero {# إشارة غير مرتبطة} one {إشارة غير مرتبطة واحدة} two {إشارتان غير مرتبطتين} few {# إشارات غير مرتبطة} many {# إشارة غير مرتبطة} other {# إشارة غير مرتبطة}}",
+    "sectionAria": "إشارات غير مرتبطة",
+    "fromAria": "إشارات غير مرتبطة في {title}",
+    "link": "ربط",
+    "linkAria": "ربط {text}",
+    "gone": "تغيّرت تلك الإشارة منذ قراءة القائمة",
+    "linkFailed": "تعذّر ربط الإشارة"
   },
   "outgoingLinks": {
     "summary": "{count, plural, zero {لا توجد روابط صادرة} one {رابط صادر واحد} two {رابطان صادران} few {# روابط صادرة} many {# رابطًا صادرًا} other {# رابط صادر}}",
@@ -619,11 +831,7 @@
     "addToCanvasFailed": "تعذّر إضافة الملاحظة إلى اللوحة"
   },
   "suggestedTags": {
-    "label": "وسوم مقترحة:",
-    "hint": "وسوم مشتركة بين الملاحظات الأكثر تشابهًا مع هذه الملاحظة. لا يُضاف أي شيء حتى تختار وسمًا.",
-    "acceptAria": "إضافة الوسم {tag}",
-    "support": "{count, plural, zero {مستخدَم في # ملاحظة مشابهة} one {مستخدَم في ملاحظة مشابهة واحدة} two {مستخدَم في ملاحظتين مشابهتين} few {مستخدَم في # ملاحظات مشابهة} many {مستخدَم في # ملاحظة مشابهة} other {مستخدَم في # ملاحظة مشابهة}}",
-    "dismiss": "إخفاء الوسوم المقترحة"
+    "support": "{count, plural, zero {مستخدَم في # ملاحظة مشابهة} one {مستخدَم في ملاحظة مشابهة واحدة} two {مستخدَم في ملاحظتين مشابهتين} few {مستخدَم في # ملاحظات مشابهة} many {مستخدَم في # ملاحظة مشابهة} other {مستخدَم في # ملاحظة مشابهة}}"
   },
   "comments": {
     "railAria": "التعليقات",
@@ -663,6 +871,7 @@
     "removeAria": "إزالة الوسم: {tag}",
     "inputPlaceholder": "اسم الوسم…",
     "recent": "الأخيرة",
+    "suggested": "مقترح",
     "matching": "المطابقة",
     "all": "كل الوسوم",
     "none": "لم يتم العثور على وسوم",
@@ -755,6 +964,9 @@
     "repositionHint": "اسحب لتغيير الموضع",
     "repositionSave": "حفظ",
     "repositionCancel": "إلغاء",
+    "zoomIn": "تكبير",
+    "zoomOut": "تصغير",
+    "resize": "اسحب لتغيير حجم الغلاف",
     "credit": "تصوير {name} على Unsplash",
     "focusFailed": "تعذّر حفظ موضع صورة الغلاف",
     "picker": {
@@ -1412,6 +1624,15 @@
     },
     "groupHeader": {
       "noteCount": "{count, plural, zero {لا توجد ملاحظات} one {ملاحظة واحدة} two {ملاحظتان} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}"
+    },
+    "noteTasks": {
+      "expand": "عرض مهام {title}",
+      "collapse": "إخفاء مهام {title}",
+      "list": "المهام في {title}",
+      "progressOpen": "{open}/{total} مفتوحة",
+      "progressDone": "{total}/{total} منجزة",
+      "nextDue": "الاستحقاق التالي",
+      "reminder": "تم تعيين تذكير"
     }
   },
   "mindMap": {
@@ -1461,6 +1682,455 @@
     "save": "حفظ",
     "addToFilterHint": "انقر على وسم مع الضغط على Ctrl/Cmd لإضافته إلى عامل التصفية"
   },
+  "writingTools": {
+    "chrome": {
+      "alternatives": "البدائل",
+      "overflow": "الفائض",
+      "menu": "أدوات الكتابة",
+      "close": "إغلاق أدوات الكتابة"
+    },
+    "menu": {
+      "aria": "إجراءات المحرر",
+      "cut": "قص",
+      "copy": "نسخ",
+      "paste": "لصق",
+      "selectAll": "تحديد الكل",
+      "undo": "تراجع",
+      "redo": "إعادة",
+      "comment": "تعليق",
+      "addAlternative": "إضافة بديل",
+      "suggestAlternatives": "اقتراح بدائل",
+      "ghost": "تشبيح",
+      "revive": "إحياء",
+      "stash": "وضع في الفائض",
+      "noSpellingSuggestions": "لا توجد اقتراحات",
+      "addToDictionary": "إضافة إلى القاموس",
+      "clipboardFailed": "تعذّر استخدام الحافظة"
+    },
+    "alternatives": {
+      "railAria": "البدائل",
+      "hint": "{position} من {total} ↑ ↓",
+      "original": "الأصل",
+      "byYou": "كتبتَه أنت",
+      "byAI": "اقتراح من الذكاء الاصطناعي",
+      "showing": "المعروض",
+      "addPlaceholder": "إضافة بديل…",
+      "removeSuggestions": "إزالة الاقتراحات",
+      "removeVariant": "إزالة البديل",
+      "empty": "حدّد نصًا واختر «إضافة بديل» للاحتفاظ بطرق أخرى لقوله.",
+      "suggesting": "جارٍ اقتراح البدائل…",
+      "suggestFailed": "تعذّر اقتراح بدائل",
+      "noSuggestions": "لم تُقترح بدائل جديدة"
+    },
+    "overflow": {
+      "railAria": "الفائض",
+      "addPlaceholder": "اكتب شيئًا للاحتفاظ به…",
+      "empty": "الأسطر التي تضعها هنا أو تكتبها تبقى مع هذه الملاحظة، خارج النص.",
+      "dragHint": "اسحب إلى الملاحظة",
+      "copy": "نسخ",
+      "copied": "تم النسخ",
+      "delete": "حذف"
+    }
+  },
+  "vaultLock": {
+    "lockNote": "قفل الملاحظة",
+    "unlockNote": "فتح قفل الملاحظة",
+    "lockFolder": "قفل المجلد",
+    "unlockFolder": "فتح قفل المجلد",
+    "toggleFailed": "تعذّر تغيير القفل",
+    "readOnlyIndicator": "مقفلة. للقراءة فقط لك وللوكلاء.",
+    "externalEditRestored": "“{title}” مقفلة، لذا تم التراجع عن تعديلها من الخارج",
+    "externalEditRestoredHint": "النص المعدَّل محفوظ في سجل إصدارات الملاحظة."
+  },
+  "tagFields": {
+    "presets": {
+      "person": {
+        "name": "شخص",
+        "plural": "أشخاص",
+        "fields": {
+          "company": "الشركة",
+          "role": "الدور",
+          "email": "البريد الإلكتروني",
+          "phone": "الهاتف"
+        },
+        "inverse": {
+          "company": "أشخاص"
+        },
+        "template": {
+          "name": "شخص",
+          "context": "السياق",
+          "contextHint": "كيف تعارفنا، وما الذي يهتم به",
+          "notes": "ملاحظات"
+        }
+      },
+      "company": {
+        "name": "شركة",
+        "plural": "شركات",
+        "fields": {
+          "website": "الموقع الإلكتروني",
+          "industry": "المجال",
+          "location": "الموقع"
+        },
+        "template": {
+          "name": "شركة",
+          "overview": "نظرة عامة",
+          "overviewHint": "ما تعمله، ومن نعرفه هناك",
+          "notes": "ملاحظات"
+        }
+      },
+      "meeting": {
+        "name": "اجتماع",
+        "plural": "اجتماعات",
+        "fields": {
+          "date": "التاريخ",
+          "attendees": "الحضور",
+          "company": "الشركة"
+        },
+        "inverse": {
+          "attendees": "اجتماعات",
+          "company": "اجتماعات"
+        },
+        "template": {
+          "name": "اجتماع",
+          "agenda": "جدول الأعمال",
+          "notes": "ملاحظات",
+          "actionItems": "بنود العمل"
+        }
+      },
+      "book": {
+        "name": "كتاب",
+        "plural": "كتب",
+        "fields": {
+          "author": "المؤلف",
+          "shelf": "الرف",
+          "rating": "التقييم",
+          "finished": "تاريخ الانتهاء"
+        },
+        "shelf": {
+          "toRead": "للقراءة",
+          "reading": "قيد القراءة",
+          "read": "مقروء"
+        },
+        "template": {
+          "name": "كتاب",
+          "highlights": "التمييزات",
+          "thoughts": "أفكار"
+        }
+      }
+    },
+    "toast": {
+      "becameObject": "{title} أصبحت الآن {tag}. تمت إضافة القالب.",
+      "templateChanged": "تغيّرت الملاحظة بعد إضافة القالب، لذا يبقى كما هو.",
+      "undoFailed": "تعذّر التراجع",
+      "addFailed": "تعذّرت إضافة الوسم",
+      "removeFailed": "تعذّرت إزالة الوسم",
+      "removedKept": "تمت إزالة #{tag}. تم الإبقاء على {count} قيمة.",
+      "removedKeptOne": "تمت إزالة #{tag}. تم الإبقاء على قيمة واحدة."
+    },
+    "picker": {
+      "create": "إنشاء #{tag}",
+      "fillsTemplate": "يملأ هذه الملاحظة الفارغة بقالب {tag}"
+    },
+    "hub": {
+      "strip": {
+        "title": "وسوم جاهزة",
+        "subtitle": "وسوم تأتي مع حقول. تبقى الملاحظات كما هي حتى تضع عليها الوسم.",
+        "notNow": "ليس الآن",
+        "add": "إضافة",
+        "addFields": "إضافة حقول",
+        "added": "تمت الإضافة",
+        "alreadyOn": "موجود بالفعل على {count} ملاحظة",
+        "alreadyOnOne": "موجود بالفعل على ملاحظة واحدة"
+      },
+      "dialog": {
+        "title": "إضافة حقول {preset} إلى #{tag}؟",
+        "body": "#{tag} موجود بالفعل على {count} ملاحظة. تحتفظ بكل ما لديها وتحصل على هذه الحقول، فارغة حتى يملأها أحد.",
+        "bodyOne": "#{tag} موجود بالفعل على ملاحظة واحدة. تحتفظ بكل ما لديها وتحصل على هذه الحقول، فارغة حتى يملأها أحد.",
+        "template": "يملأ القالب ({sections}) الملاحظات الفارغة فقط.",
+        "alsoAddsPrefix": "يضيف أيضًا",
+        "alsoAddsSuffix": "للحقل {field}.",
+        "useAnotherName": "استخدام اسم آخر",
+        "nameLabel": "اسم الوسم الجديد",
+        "namePlaceholder": "contact",
+        "cancel": "إلغاء",
+        "addFields": "إضافة حقول"
+      },
+      "toast": {
+        "added": "تمت إضافة #{tag}",
+        "addedFields": "تمت إضافة حقول {preset} إلى #{tag}"
+      },
+      "hasFields": "له حقول"
+    },
+    "tasks": {
+      "thisTask": "هذه المهمة",
+      "viaTag": "{name} عبر #{via}",
+      "clearValue": "مسح {name}",
+      "chipAria": "{field}: {title}"
+    },
+    "panel": {
+      "via": "عبر #{tag}",
+      "groupMenu": "خيارات {tag}",
+      "openTag": "فتح #{tag}",
+      "thisNote": "هذه الملاحظة"
+    },
+    "offer": {
+      "text": "أضف قالب {tag} أسفل نصك",
+      "add": "إضافة",
+      "dismiss": "إغلاق",
+      "addFailed": "تعذّرت إضافة القالب"
+    },
+    "settings": {
+      "title": "إعدادات #{tag}",
+      "close": "إغلاق",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "onCounts": "على {notes, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} و{tasks, plural, zero {# مهمة} one {مهمة واحدة} two {مهمتين} few {# مهام} many {# مهمة} other {# مهمة}}",
+      "onNotes": "على {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}",
+      "headerFields": "{count, plural, zero {# حقل} one {حقل واحد} two {حقلان} few {# حقول} many {# حقلًا} other {# حقل}}",
+      "editTag": "تحرير الوسم",
+      "syncNote": "تتم مزامنة التغييرات مع أجهزتك الأخرى",
+      "newerVersion": "غيّر إصدار أحدث من Memry هذا الوسم. حدّث Memry لتحريره هنا.",
+      "sections": {
+        "appearance": "المظهر",
+        "extends": "يمتد من",
+        "fields": "الحقول · {count}",
+        "template": "القالب"
+      },
+      "appearance": {
+        "icon": "الأيقونة",
+        "color": "اللون",
+        "customColor": "مخصص",
+        "category": "الفئة",
+        "noCategory": "بلا فئة"
+      },
+      "extends": {
+        "nothing": "لا شيء",
+        "hint": "خذ حقول وسم آخر وظهر في جدوله.",
+        "hintSet": "تحصل ملاحظات {tag} على حقول {parent} وتظهر في جدول {parent}."
+      },
+      "types": {
+        "text": "نص",
+        "number": "رقم",
+        "date": "تاريخ",
+        "url": "URL",
+        "status": "حالة",
+        "select": "اختيار",
+        "multiselect": "اختيار متعدد",
+        "checkbox": "مربع اختيار",
+        "relation": "علاقة"
+      },
+      "fields": {
+        "empty": "لا توجد حقول بعد. أضف حقلًا لمنح كل ملاحظة تحمل #الوسم الخصائص نفسها.",
+        "fromParent": "من #{tag} · حرّره هناك",
+        "inverseSub": "يظهر في {target} باسم {inverse}",
+        "anyNoteSub": "يربط بأي ملاحظة",
+        "actions": "إجراءات {field}",
+        "rename": "إعادة تسمية…",
+        "relationSettings": "إعدادات العلاقة",
+        "remove": "إزالة…"
+      },
+      "addField": {
+        "button": "إضافة حقل",
+        "namePlaceholder": "اسم الحقل",
+        "existing": "الخصائص الموجودة",
+        "existingSub": "{type} · على {count, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} · إعادة استخدام",
+        "newType": "نوع الحقل الجديد",
+        "relationSub": "ربط بملاحظات تحمل وسمًا",
+        "submit": "إضافة حقل",
+        "reserved": "{name} محجوز ولا يمكن أن يكون حقلًا.",
+        "taken": "#{tag} لديه بالفعل {name}."
+      },
+      "relation": {
+        "target": "يشير إلى ملاحظات تحمل الوسم",
+        "pickTag": "اختر وسمًا",
+        "howMany": "كم عددها",
+        "one": "واحدة",
+        "many": "عدة",
+        "inverseLabel": "في صفحة {target}، اعرضها باسم",
+        "inverseLabelAny": "في الصفحة المرتبطة، اعرضها باسم",
+        "inverseHint": "قائمة للقراءة فقط في كل {target}. لا يُكتب شيء في ملاحظات {target}.",
+        "inverseHintAny": "قائمة للقراءة فقط في كل ملاحظة مرتبطة. لا يُكتب شيء في تلك الملاحظات."
+      },
+      "shared": {
+        "title": "حقل جديد على #{tag}",
+        "existsWith": "{name} موجود بالفعل في هذه الخزنة مع {options}.",
+        "existsAs": "{name} موجود بالفعل في هذه الخزنة كخاصية من نوع {type}.",
+        "shareWith": "سيشاركه #{tag} مع ملاحظاتك الـ {others}.",
+        "shareAny": "سيشاركه #{tag} مع ملاحظاتك الأخرى.",
+        "useInstead": "استخدام {name} بدلًا من ذلك",
+        "share": "مشاركة {name}"
+      },
+      "template": {
+        "edit": "تحرير القالب",
+        "none": "لا يوجد قالب بعد. يملأ القالب الملاحظات الفارغة عندما تحصل على الوسم.",
+        "create": "إنشاء قالب",
+        "defaultHeading": "ملاحظات",
+        "inherited": "من #{tag}",
+        "autofill": "املأ الملاحظات الفارغة عندما تحصل على #{tag}"
+      },
+      "remove": {
+        "title": "إزالة {field} من #{tag}؟",
+        "body": "{field} معبّأ على {filled, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}}. تبقى تلك القيم على الملاحظات كخاصية عادية؛ و{empty, plural, zero {تختفي # خانة فارغة} one {تختفي خانة فارغة واحدة} two {تختفي خانتان فارغتان} few {تختفي # خانات فارغة} many {تختفي # خانة فارغة} other {تختفي # خانة فارغة}}.",
+        "confirm": "إزالة الحقل"
+      },
+      "rename": {
+        "title": "إعادة تسمية {from} إلى {to}",
+        "titleEmpty": "إعادة تسمية {from}",
+        "label": "الاسم الجديد",
+        "body": "{count, plural, zero {لدى # ملاحظة} one {لدى ملاحظة واحدة} two {لدى ملاحظتين} few {لدى # ملاحظات} many {لدى # ملاحظة} other {لدى # ملاحظة}} قيمة {field}. يعيد Memry تسمية المفتاح في كل ملف وفي خصائصها؛ ويرى Obsidian الاسم الجديد أيضًا.",
+        "progress": "جارٍ إعادة التسمية في الملاحظات",
+        "confirm": "إعادة التسمية",
+        "taken": "هذا الوسم لديه بالفعل {name}.",
+        "done": "تمت إعادة تسمية {from} إلى {to} في {count, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}.",
+        "skipped": "تمت إعادة تسمية {from} إلى {to} في {count, plural, zero {# عنصر} one {عنصر واحد} two {عنصرين} few {# عناصر} many {# عنصرًا} other {# عنصر}}. {locked, plural, =0 {} zero {} one {ستكتمل ملاحظة مقفلة واحدة عند فتح قفلها.} two {ستكتمل ملاحظتان مقفلتان عند فتح قفلهما.} few {ستكتمل # ملاحظات مقفلة عند فتح قفلها.} many {ستكتمل # ملاحظة مقفلة عند فتح قفلها.} other {ستكتمل # ملاحظة مقفلة عند فتح قفلها.}} {existing, plural, =0 {} zero {} one {كان لدى ملاحظة واحدة {to} بالفعل وتحتفظ بالاثنين.} two {كان لدى ملاحظتين {to} بالفعل وتحتفظان بالاثنين.} few {كان لدى # ملاحظات {to} بالفعل وتحتفظ بالاثنين.} many {كان لدى # ملاحظة {to} بالفعل وتحتفظ بالاثنين.} other {كان لدى # ملاحظة {to} بالفعل وتحتفظ بالاثنين.}}"
+      },
+      "delete": {
+        "button": "حذف الوسم",
+        "title": "حذف #{tag}؟",
+        "body": "ستتم إزالة #{tag} من {notes, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} ويزول الوسم مع {fields, plural, zero {# حقل} one {حقله} two {حقليه} few {# حقول} many {# حقلًا} other {# حقل}} وقالبه.",
+        "bodyNoTemplate": "ستتم إزالة #{tag} من {notes, plural, zero {# ملاحظة} one {ملاحظة واحدة} two {ملاحظتين} few {# ملاحظات} many {# ملاحظة} other {# ملاحظة}} ويزول الوسم مع {fields, plural, zero {# حقل} one {حقله} two {حقليه} few {# حقول} many {# حقلًا} other {# حقل}}.",
+        "bodyPlain": "ستتم إزالة #{tag} من كل ملاحظة تحمله في وسومها.",
+        "statNotes": "تحتفظ الملاحظات بنصها",
+        "statValues": "تبقى القيم كخصائص",
+        "plainText": "الملاحظات التي تذكر #{tag} في نصها تحتفظ به كنص عادي.",
+        "confirm": "حذف الوسم",
+        "done": "تم حذف #{tag}."
+      },
+      "errors": {
+        "addField": "تعذّرت إضافة الحقل.",
+        "removeField": "تعذّرت إزالة الحقل.",
+        "renameField": "تعذّرت إعادة تسمية الحقل.",
+        "moveField": "تعذّر نقل الحقل.",
+        "relation": "تعذّر حفظ العلاقة.",
+        "extends": "تعذّر تغيير ما يمتد منه هذا الوسم.",
+        "template": "تعذّر تحديث القالب.",
+        "deleteTag": "تعذّر حذف الوسم.",
+        "icon": "تعذّر تغيير الأيقونة.",
+        "color": "تعذّر تغيير اللون.",
+        "category": "تعذّر تغيير الفئة."
+      }
+    },
+    "fill": {
+      "action": "ملء من الملاحظة",
+      "reading": "جارٍ قراءة الملاحظة…",
+      "disclosure": "يقرأ نموذج وكيلك ({model}) هذه الملاحظة ليقترح قيمًا. تُرسل هذه الملاحظة فقط. لا يُحفظ شيء حتى توافق.",
+      "disclosureLocal": "يقرأ نموذجك المحلي ({model}) هذه الملاحظة على هذا الجهاز ليقترح قيمًا. لا يغادر شيء الجهاز، ولا يُحفظ شيء حتى توافق.",
+      "disclosureMany": "يقرأ نموذج وكيلك ({model}) هذه الملاحظات واحدة تلو الأخرى ليقترح قيمًا. تُرسل تلك الملاحظات فقط. لا يُحفظ شيء حتى توافق.",
+      "disclosureLocalMany": "يقرأ نموذجك المحلي ({model}) هذه الملاحظات على هذا الجهاز ليقترح قيمًا. لا يغادر شيء الجهاز، ولا يُحفظ شيء حتى توافق.",
+      "suggest": "اقتراح قيم",
+      "notNow": "ليس الآن",
+      "countOne": "· {count} اقتراح",
+      "count": "· {count} اقتراحات",
+      "dismiss": "إغلاق",
+      "acceptAll": "قبول الكل",
+      "accept": "قبول {field}",
+      "reject": "رفض {field}",
+      "notInNote": "ليس في الملاحظة",
+      "createHint": "ينشئ #{tag} جديدًا عند القبول",
+      "nothingFound": "لا شيء في هذه الملاحظة يملأ الحقول الفارغة",
+      "failed": "تعذّر اقتراح القيم. {message}",
+      "saveFailed": "تعذّر حفظ القيم المقبولة",
+      "bulkAction": "ملء الحقول الفارغة",
+      "bulkTitle": "ملء الحقول الفارغة",
+      "bulkReading": "{done} من {total} ملاحظة · جارٍ قراءة الملاحظات…",
+      "bulkRead": "تمت قراءة {done} من {total} ملاحظة",
+      "stop": "إيقاف",
+      "name": "الاسم",
+      "nothingInRow": "لم يُعثر على شيء",
+      "found": "تم العثور على {count}",
+      "reviewOneByOne": "المراجعة واحدًا تلو الآخر",
+      "acceptRow": "قبول القيم لـ {title}",
+      "rejectRow": "تخطي {title}",
+      "bulkSavedOne": "تم ملء {count} حقل في {notes} ملاحظة",
+      "bulkSaved": "تم ملء {count} حقول في {notes} ملاحظة"
+    }
+  },
+  "tagObjects": {
+    "create": {
+      "as": "إنشاء {title} كـ",
+      "asPrefix": "إنشاء",
+      "asSuffix": "كـ",
+      "failed": "تعذّر إنشاء الملاحظة",
+      "lastUsed": "آخر ما استُخدم",
+      "noteWord": "ملاحظة",
+      "plainNote": "ملاحظة عادية",
+      "readyMade": "وسم جاهز",
+      "row": "إنشاء “{title}”",
+      "rowHint": "كـ {types}"
+    },
+    "hover": {
+      "at": "في",
+      "lastMet": "آخر لقاء · {title}",
+      "lastMetOn": "آخر لقاء {date} · {title}",
+      "mentionedIn": "{count, plural, zero {مذكور في # ملاحظة} one {مذكور في ملاحظة واحدة} two {مذكور في ملاحظتين} few {مذكور في # ملاحظات} many {مذكور في # ملاحظة} other {مذكور في # ملاحظة}}",
+      "open": "فتح",
+      "tasks": "{count, plural, zero {# مهمة · {field}} one {مهمة واحدة · {field}} two {مهمتان · {field}} few {# مهام · {field}} many {# مهمة · {field}} other {# مهمة · {field}}}"
+    },
+    "inline": {
+      "aria": "#{tag} في النص",
+      "explain": "في النص، الوسم تسمية. تُدرج هذه الملاحظة تحت «مذكور في» على #{tag}.",
+      "made": "تمت إضافة #{tag} إلى وسوم هذه الملاحظة",
+      "make": "اجعل هذه الملاحظة {tag}",
+      "makeFailed": "تعذّرت إضافة الوسم",
+      "makeHint": "يضيف #{tag} إلى الترويسة ويعرض حقوله",
+      "meta": "{count, plural, zero {# كائن} one {كائن واحد} two {كائنان} few {# كائنات} many {# كائنًا} other {# كائن}} · {fields, plural, zero {# حقل} one {حقل واحد} two {حقلان} few {# حقول} many {# حقلًا} other {# حقل}}",
+      "metaNamed": "{count, plural, zero {# {other}} one {# {one}} two {# {other}} few {# {other}} many {# {other}} other {# {other}}} · {fields, plural, zero {# حقل} one {حقل واحد} two {حقلان} few {# حقول} many {# حقلًا} other {# حقل}}",
+      "open": "فتح #{tag}",
+      "remove": "إزالة الوسم من النص"
+    },
+    "keys": {
+      "enter": "↵",
+      "esc": "Esc"
+    },
+    "linkedHere": {
+      "asField": "باسم {field}",
+      "due": "الاستحقاق {date}",
+      "inTheText": "في النص",
+      "mentionedIn": "مذكور في",
+      "tasks": "المهام",
+      "title": "مرتبط هنا"
+    },
+    "mention": {
+      "notes": "ملاحظات"
+    },
+    "picker": {
+      "create": "{tag} جديد",
+      "createNamed": "{tag} جديد “{title}”",
+      "empty": "لا توجد نتائج مطابقة",
+      "search": "البحث في {tag}",
+      "untitled": "{tag} جديد"
+    },
+    "quickFields": {
+      "add": "إضافة {field}",
+      "aria": "الحقول الأولى لـ {title}",
+      "done": "تم",
+      "later": "لاحقًا",
+      "newObject": "{tag} جديد",
+      "saveFailed": "تعذّر حفظ الحقول"
+    },
+    "table": {
+      "untitled": "{tag} جديد",
+      "newInGroup": "{tag} جديد في {group}",
+      "newInGroupHint": "⌘↵ يفتحه في علامة تبويب جديدة",
+      "new": "{tag} جديد",
+      "includes": "{field} يتضمن",
+      "removeFilter": "إزالة عامل التصفية",
+      "shown": "{shown} من {total}",
+      "saveView": "حفظ العرض",
+      "mentionedMeta": "{count, plural, zero {# ملاحظة فيها '#'{tag} في نصها} one {ملاحظة واحدة فيها '#'{tag} في نصها} two {ملاحظتان فيهما '#'{tag} في نصيهما} few {# ملاحظات فيها '#'{tag} في نصوصها} many {# ملاحظة فيها '#'{tag} في نصوصها} other {# ملاحظة فيها '#'{tag} في نصوصها}}",
+      "saveFailed": "تعذّر حفظ الحقل",
+      "created": "تم إنشاء {title}"
+    },
+    "relationDrop": {
+      "title": "إضافة #{tag} إلى “{title}”؟",
+      "body": "يربط هذا الحقل الملاحظات التي تحمل #{tag} فقط. يضيف Memry #{tag} إلى ترويسة “{title}”، ثم يربطها هنا.",
+      "confirm": "إضافة #{tag} وربط",
+      "cancel": "إلغاء",
+      "added": "“{title}” أصبحت الآن #{tag} ومرتبطة",
+      "notANote": "يمكن ربط الملاحظات فقط هنا كـ #{tag}",
+      "failed": "تعذّر ربط هذه الملاحظة"
+    }
+  },
   "names": {
     "also": "أيضًا",
     "add": "إضافة اسم آخر",
@@ -1480,5 +2150,142 @@
     "pickerPlaceholder": "البحث في الملاحظات",
     "pickerEmpty": "لا توجد ملاحظات مطابقة",
     "previewVia": "{name} → {title}"
+  },
+  "details": {
+    "add": "إضافة تفاصيل"
+  },
+  "portalFlows": {
+    "slash": {
+      "portal": {
+        "title": "بوابة",
+        "subtext": "اعرض ملاحظة أو كتلة من مكان آخر بشكل مباشر"
+      },
+      "searchPortal": {
+        "title": "بوابة بحث",
+        "subtext": "قائمة مباشرة بالكتل المطابقة لاستعلام"
+      }
+    },
+    "picker": {
+      "aria": "اختر ملاحظة أو كتلة لعرضها في بوابة",
+      "notes": "ملاحظات",
+      "blocks": "كتل",
+      "loading": "جارٍ البحث…",
+      "empty": "لا توجد ملاحظات أو كتل مطابقة",
+      "hintInsert": "إدراج بوابة",
+      "hintClose": "إغلاق",
+      "keyEsc": "Esc",
+      "create": "إنشاء ملاحظة “{query}”",
+      "createFailed": "تعذّر إنشاء تلك الملاحظة",
+      "stampFailed": "تعذّر تجهيز تلك الكتلة لبوابة",
+      "retargetFailed": "تعذّر توجيه البوابة إلى تلك الكتلة"
+    },
+    "insert": {
+      "cycle": "لا يمكن لبوابة أن تعرض ملاحظة داخل نفسها."
+    },
+    "copy": {
+      "done": "تم نسخ البوابة. الصقها في أي ملاحظة.",
+      "failed": "تعذّر نسخ بوابة إلى هذه الكتلة"
+    },
+    "menu": {
+      "copyAsPortal": "نسخ كبوابة",
+      "hideInPortal": "إخفاء في هذه البوابة"
+    },
+    "usage": {
+      "chipAria": "{count, plural, zero {مستخدمة في # مكان آخر} one {مستخدمة في مكان آخر واحد} two {مستخدمة في مكانين آخرين} few {مستخدمة في # أماكن أخرى} many {مستخدمة في # مكانًا آخر} other {مستخدمة في # مكان آخر}}"
+    },
+    "whereUsed": {
+      "aria": "أين تُستخدم هذه الكتلة",
+      "portals": "البوابات",
+      "links": "الروابط",
+      "openBeside": "فتح بجانبها",
+      "loadFailed": "تعذّر تحميل أماكن عرض هذه الكتلة"
+    },
+    "hiddenBlocks": {
+      "title": "الكتل المخفية",
+      "showAll": "عرض الكل",
+      "search": "البحث في الكتل المخفية",
+      "showFailed": "تعذّر عرض هذه الكتلة"
+    },
+    "searchQuery": {
+      "titleNew": "بوابة بحث",
+      "titleEdit": "تحرير الاستعلام",
+      "text": "يحتوي على كلمات",
+      "textPlaceholder": "كلمات في الكتلة",
+      "tag": "الوسم",
+      "tagPlaceholder": "exam",
+      "limit": "الحد",
+      "footer": "الحد {limit} نتيجة.",
+      "create": "إنشاء",
+      "apply": "تطبيق"
+    },
+    "deleteGuard": {
+      "title": {
+        "block": "حذف هذه الكتلة من كل مكان؟",
+        "note": "حذف هذه الملاحظة من كل مكان؟"
+      },
+      "description": {
+        "block": "تظهر “{title}” أيضًا في {count, plural, zero {# ملاحظة أخرى} one {ملاحظة أخرى واحدة} two {ملاحظتين أخريين} few {# ملاحظات أخرى} many {# ملاحظة أخرى} other {# ملاحظة أخرى}}.",
+        "note": "“{title}” معروضة أو مرتبطة في {count, plural, zero {# ملاحظة أخرى} one {ملاحظة أخرى واحدة} two {ملاحظتين أخريين} few {# ملاحظات أخرى} many {# ملاحظة أخرى} other {# ملاحظة أخرى}}."
+      },
+      "manyNotes": "{count} ملاحظة",
+      "source": "{title} (المصدر)",
+      "removeHere": "الإخفاء هنا بدلًا من ذلك",
+      "cancel": "إلغاء",
+      "everywhere": "الحذف من كل مكان",
+      "undoToast": "{count, plural, zero {كانت الكتلة المحذوفة معروضة في # ملاحظة أخرى.} one {كانت الكتلة المحذوفة معروضة في ملاحظة أخرى واحدة.} two {كانت الكتلة المحذوفة معروضة في ملاحظتين أخريين.} few {كانت الكتلة المحذوفة معروضة في # ملاحظات أخرى.} many {كانت الكتلة المحذوفة معروضة في # ملاحظة أخرى.} other {كانت الكتلة المحذوفة معروضة في # ملاحظة أخرى.}}",
+      "undo": "تراجع"
+    }
+  },
+  "fold": {
+    "level": {
+      "full": "كامل",
+      "brief": "موجز",
+      "key": "رئيسي",
+      "takeaway": "الخلاصة",
+      "topic": "الموضوع"
+    },
+    "chrome": {
+      "fold": "طيّ الملاحظة",
+      "unfold": "مطويّة إلى {level}. عرض النص الكامل",
+      "words": "{count, plural, zero {# كلمة} one {كلمة واحدة} two {كلمتان} few {# كلمات} many {# كلمة} other {# كلمة}}",
+      "writing": "جارٍ الكتابة…",
+      "writtenBy": "كتبه {agent}",
+      "retry": "فشل آخر تشغيل · إعادة المحاولة",
+      "retryAction": "إعادة المحاولة",
+      "captionOff": "فعّل «تلخيص الملاحظات الطويلة» في الإعدادات ← الذكاء الاصطناعي",
+      "captionNoAgent": "لا يوجد وكيل متصل · الإعدادات ← الذكاء الاصطناعي",
+      "unknownAgent": "الذكاء الاصطناعي"
+    },
+    "hint": {
+      "title": "ملاحظة طويلة؟ تصفّحها سريعًا.",
+      "body": "اطوِها إلى جملها الرئيسية، ثم افتح الفقرة التي تحتاجها فقط.",
+      "dismiss": "فهمت"
+    },
+    "pill": {
+      "opened": "{count, plural, zero {# فقرة مفتوحة} one {فقرة واحدة مفتوحة} two {فقرتان مفتوحتان} few {# فقرات مفتوحة} many {# فقرة مفتوحة} other {# فقرة مفتوحة}}",
+      "escape": "esc",
+      "copy": "نسخ كنص",
+      "copied": "تم النسخ",
+      "aria": "العرض المطويّ",
+      "hintMac": "قرّب الإصبعين، أو مرّر مع ⌘، أو مرّر على هذا الشريط للتكبير · انقر فقرة لفتحها",
+      "hint": "قرّب الإصبعين، أو مرّر مع Ctrl، أو مرّر على هذا الشريط للتكبير · انقر فقرة لفتحها"
+    },
+    "view": {
+      "aria": "عرض {level} المطويّ",
+      "paragraphOpen": "مفتوحة على الكامل · انقر مرة أخرى للطي",
+      "paragraphFold": "طيّ هذه الفقرة",
+      "paragraphOpenAction": "فتح هذه الفقرة كاملة",
+      "unfoldSection": "فتح القسم {heading}",
+      "jumpToParagraph": "عرض هذه الفقرة كاملة: {topic}",
+      "untitledSection": "بلا عنوان",
+      "skipped": {
+        "code": "… {count, plural, zero {# كتلة شيفرة} one {كتلة شيفرة واحدة} two {كتلتا شيفرة} few {# كتل شيفرة} many {# كتلة شيفرة} other {# كتلة شيفرة}}",
+        "table": "… {count, plural, zero {# جدول} one {جدول واحد} two {جدولان} few {# جداول} many {# جدولًا} other {# جدول}}",
+        "image": "… {count, plural, zero {# صورة} one {صورة واحدة} two {صورتان} few {# صور} many {# صورة} other {# صورة}}",
+        "callout": "… {count, plural, zero {# وسيلة شرح} one {وسيلة شرح واحدة} two {وسيلتا شرح} few {# وسائل شرح} many {# وسيلة شرح} other {# وسيلة شرح}}",
+        "embed": "… {count, plural, zero {# عنصر مضمّن} one {عنصر مضمّن واحد} two {عنصران مضمّنان} few {# عناصر مضمّنة} many {# عنصرًا مضمّنًا} other {# عنصر مضمّن}}",
+        "other": "… {count, plural, zero {# كتلة أخرى} one {كتلة أخرى واحدة} two {كتلتان أخريان} few {# كتل أخرى} many {# كتلة أخرى} other {# كتلة أخرى}}"
+      }
+    }
   }
 }

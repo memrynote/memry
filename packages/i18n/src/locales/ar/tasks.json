@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, zero {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية} one {تم مسح تاريخ الاستحقاق لمهمة فرعية واحدة} two {تم مسح تاريخ الاستحقاق لمهمتين فرعيتين} few {تم مسح تاريخ الاستحقاق لـ# مهام فرعية} many {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية} other {تم مسح تاريخ الاستحقاق لـ# مهمة فرعية}}",
       "prioritySet": "{count, plural, zero {تم تعيين الأولوية لـ# مهمة فرعية} one {تم تعيين الأولوية لمهمة فرعية واحدة} two {تم تعيين الأولوية لمهمتين فرعيتين} few {تم تعيين الأولوية لـ# مهام فرعية} many {تم تعيين الأولوية لـ# مهمة فرعية} other {تم تعيين الأولوية لـ# مهمة فرعية}}",
       "deleted": "{count, plural, zero {تم حذف # مهمة فرعية} one {تم حذف مهمة فرعية واحدة} two {تم حذف مهمتين فرعيتين} few {تم حذف # مهام فرعية} many {تم حذف # مهمة فرعية} other {تم حذف # مهمة فرعية}}"
-    }
+    },
+    "completedBranch": "تم إكمال {title} و{count, plural, zero {# مهمة فرعية مفتوحة} one {مهمة فرعية مفتوحة واحدة} two {مهمتين فرعيتين مفتوحتين} few {# مهام فرعية مفتوحة} many {# مهمة فرعية مفتوحة} other {# مهمة فرعية مفتوحة}}",
+    "deletedKeepSubtasks": "تم حذف {title} مع الإبقاء على مهامها الفرعية",
+    "deletedBranch": "تم حذف {title} و{count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "الحالة",
       "projectIs": "المشروع هو",
       "project": "المشروع",
+      "locationIs": "الموقع هو",
+      "location": "الموقع",
+      "unknownNote": "ملاحظة غير معروفة",
       "due": "الاستحقاق",
       "dueDate": "تاريخ الاستحقاق",
       "search": "بحث",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "تاريخ الاستحقاق"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "الموقع",
+      "search": "البحث في المجلدات والملاحظات...",
+      "empty": "لا توجد مجلدات أو ملاحظات تحتوي على مهام"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "الأولوية",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "طرق عرض المشروع",
       "overview": "نظرة عامة",
+      "all": "الكل",
       "tasks": "المهام",
       "notes": "الملاحظات",
       "files": "الملفات",
@@ -951,6 +963,25 @@
       "fileError": "تعذّر ربط {name}",
       "fileErrorGeneric": "تعذّر استيراد الملفات",
       "label": "إضافة إلى {name}"
+    },
+    "all": {
+      "showDone": "عرض المنجزة",
+      "empty": "لا شيء مفتوح في هذا المشروع.",
+      "expand": "عرض المهام في {title}",
+      "collapse": "إخفاء المهام في {title}",
+      "taskSummary": "{open}/{total} مفتوحة",
+      "daysLeft": "{count} ي",
+      "overdue": "متأخرة {count} ي",
+      "columns": {
+        "title": "العنوان",
+        "daysLeft": "الأيام المتبقية"
+      },
+      "status": {
+        "active": "نشط",
+        "done": "منجز",
+        "upcoming": "قادم",
+        "past": "سابق"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "نيلي",
     "purple": "بنفسجي",
     "pink": "وردي"
+  },
+  "subtaskTree": {
+    "addSubtask": "إضافة مهمة فرعية",
+    "dropInto": "داخل {title}",
+    "dropOut": "خروج مستوى واحد",
+    "draftPlaceholder": "عنوان المهمة الفرعية",
+    "draftLabel": "مهمة فرعية جديدة في {title}",
+    "draftIn": "في {title}",
+    "toggleComplete": "إكمال {title}",
+    "moveUnder": {
+      "title": "نقل تحت",
+      "placeholder": "نقل تحت…",
+      "empty": "لا توجد مهمة مطابقة",
+      "topLevel": "المستوى الأعلى في {project}",
+      "thisTask": "هذه المهمة",
+      "currentParent": "الأصل الحالي",
+      "movesOne": "ينقل {title}",
+      "movesBranch": "ينقل {title} و{count, plural, zero {# مهمة فرعية} one {مهمة فرعية واحدة} two {مهمتين فرعيتين} few {# مهام فرعية} many {# مهمة فرعية} other {# مهمة فرعية}}",
+      "keys": "↵ نقل إلى هنا · ⌘↵ المستوى الأعلى · esc إغلاق"
+    },
+    "zoom": {
+      "path": "مسار المهمة",
+      "up": "مستوى واحد لأعلى",
+      "upShortcut": "مستوى واحد لأعلى (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "حذف {title}؟",
+      "summary": "{direct, plural, zero {لديها # مهمة فرعية} one {لديها مهمة فرعية واحدة} two {لديها مهمتان فرعيتان} few {لديها # مهام فرعية} many {لديها # مهمة فرعية} other {لديها # مهمة فرعية}}{deeper, plural, =0 {} zero {} one { وواحدة أخرى تحتها} two { واثنتان أخريان تحتها} few { و# أخرى تحتها} many { و# أخرى تحتها} other { و# أخرى تحتها}}{open, plural, =0 {، وكلها منجزة.} zero {، وكلها منجزة.} one {، وواحدة منها لا تزال مفتوحة.} two {، واثنتان منها لا تزالان مفتوحتين.} few {، و# منها لا تزال مفتوحة.} many {، و# منها لا تزال مفتوحة.} other {، و# منها لا تزال مفتوحة.}}",
+      "cancel": "إلغاء",
+      "deleteAll": "حذف الكل",
+      "keepSubtasks": "الإبقاء على المهام الفرعية"
+    },
+    "menu": {
+      "open": "فتح",
+      "complete": "إكمال",
+      "reopen": "إعادة فتح",
+      "zoom": "التكبير إلى المهام الفرعية",
+      "moveUnder": "نقل تحت…",
+      "indent": "نقل تحت {title}",
+      "outdent": "نقل خارجًا مستوى واحدًا",
+      "topLevel": "جعلها مهمة في المستوى الأعلى",
+      "delete": "حذف"
+    },
+    "openPath": "فتح {path}"
   }
 }

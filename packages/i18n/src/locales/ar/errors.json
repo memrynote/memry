@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "يتيح اشتراكك مزامنة عدد من الخزائن أقل مما يحتويه هذا الحساب، لذا تبقى هذه الخزنة على هذا الجهاز. أزل خزنة من حسابك في الإعدادات ← الحساب، أو انتقل إلى اشتراك أعلى.",
     "certificatePinFailed": "فشل الاتصال الآمن. تحقق من اتصال الشبكة الخاصة بك.",
     "deviceKeyMismatch": "لم يعد مفتاح الأمان لهذا الجهاز يطابق المفتاح المسجَّل لحسابك، لذا يرفض الخادم تغييراته. سجّل الدخول مرة أخرى على هذا الجهاز لإعادة تسجيله.",
+    "deviceKeysMissing": "لا يتم رفع التغييرات على هذا الجهاز لأن مفاتيح الجهاز مفقودة. اختر «إصلاح» لاستعادتها. إذا لم يعد هذا الجهاز يحتفظ بمفاتيحه، فستسجّل الدخول مرة أخرى وقد تحتاج إلى عبارة الاسترداد. الملاحظات والمهام والمشاريع غير المزامنة محفوظة.",
     "keychainUnavailable": "المزامنة متوقفة مؤقتًا لأن Memry لا يستطيع حاليًا قراءة مفاتيح المزامنة من سلسلة مفاتيح النظام. افتح قفل سلسلة المفاتيح وستُستأنف المزامنة تلقائيًا؛ وإن لم تُستأنف، فأعد تشغيل Memry. لم يُحذف أي شيء.",
     "unknown": "حدث خطأ غير متوقع في المزامنة. ستتم إعادة المحاولة تلقائيًا.",
     "statusFetchFailed": "تعذّر جلب حالة المزامنة",
@@ -106,6 +107,10 @@
     "triggerFailed": "فشلت المزامنة",
     "pauseFailed": "تعذّر إيقاف المزامنة مؤقتًا",
     "resumeFailed": "تعذّر استئناف المزامنة",
+    "syncNowSignedOut": "تحتاج المزامنة إلى تسجيل دخولك مرة أخرى على هذا الجهاز.",
+    "syncNowBusy": "المزامنة قيد التشغيل بالفعل. حاول مرة أخرى بعد قليل.",
+    "syncNowPaused": "تم إيقاف المزامنة مؤقتًا أثناء تشغيلها. استأنفها من قائمة المزامنة.",
+    "openAccountSettings": "فتح الإعدادات",
     "settingsNotInitialized": "لم تتم تهيئة مزامنة الإعدادات",
     "securityQuarantinePermanent": "تعذّر التحقق من أحد عناصر المزامنة، وتم عزله لأسباب أمنية.",
     "securityQuarantineRetry": "تعذّر التحقق من توقيع أحد عناصر المزامنة، وستتم إعادة المحاولة.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "التحرير المضمّن بالذكاء الاصطناعي معطّل",
-    "listOllamaModelsFailed": "تعذّر سرد نماذج Ollama"
+    "listOllamaModelsFailed": "تعذّر سرد نماذج Ollama",
+    "writingAssistInvalid": "تعذّر إرسال هذا الطلب إلى نموذج الذكاء الاصطناعي.",
+    "apiKeyMissing": "أضف مفتاح API الخاص بـ {provider} في الإعدادات ← الذكاء الاصطناعي لاستخدام أدوات الكتابة.",
+    "apiKeyInvalid": "تم رفض مفتاح API الخاص بـ {provider}. تحقق منه في الإعدادات ← الذكاء الاصطناعي.",
+    "ollamaUnreachable": "Ollama غير قيد التشغيل. شغّله بالأمر \"ollama serve\"، أو اختر مزوّدًا آخر في الإعدادات ← الذكاء الاصطناعي.",
+    "providerUnreachable": "تعذّر الوصول إلى {provider}. تحقق من اتصالك بالإنترنت وحاول مرة أخرى."
   },
   "auth": {
     "notAuthenticated": "لم تتم المصادقة",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "تعذّر تحويل حدث التقويم الخارجي",
     "onlyCalendarSourcesRetryable": "يمكن إعادة المحاولة لمصادر التقويم فقط",
     "invalidProviderSettings": "إعدادات مزوّد التقويم غير صالحة",
-    "getExternalEventFailed": "تعذّر تحميل هذا الحدث. لا يزال في تقويمك؛ حاول فتحه مرة أخرى."
+    "getExternalEventFailed": "تعذّر تحميل هذا الحدث. لا يزال في تقويمك؛ حاول فتحه مرة أخرى.",
+    "listLinkedNotesFailed": "تعذّر تحميل الملاحظات المرتبطة بهذا الحدث."
   },
   "canvasFolder": {
     "exists": "يوجد مجلد لوحات بهذا الاسم هنا بالفعل.",
@@ -209,10 +220,35 @@
     "previewFailed": "فشلت المعاينة",
     "listFailed": "تعذّر سرد أدوات الاستيراد",
     "appleNotesFoldersFailed": "تعذّر قراءة مجلدات Apple Notes",
+    "appleNotesPasswordFailed": "تعذّر التحقق من كلمة مرور Notes.",
     "onenoteStatusFailed": "تعذّر قراءة حالة الاتصال بـOneNote",
     "onenoteConnectFailed": "تعذّر تسجيل الدخول إلى Microsoft",
     "onenoteDisconnectFailed": "تعذّر فصل حساب Microsoft",
-    "onenoteNotebooksFailed": "تعذّر تحميل دفاتر OneNote"
+    "onenoteNotebooksFailed": "تعذّر تحميل دفاتر OneNote",
+    "readwiseStatusFailed": "تعذّرت قراءة حالة اتصال Readwise",
+    "readwiseConnectFailed": "تعذّر الاتصال بـ Readwise",
+    "readwiseInvalidToken": "لم يقبل Readwise هذا الرمز. انسخه مرة أخرى من readwise.io/access_token.",
+    "readwiseRateLimited": "يقيّد Readwise الطلبات حاليًا. حاول مرة أخرى بعد دقيقة.",
+    "readwiseUnreachable": "تعذّر الوصول إلى Readwise. تحقق من اتصالك وحاول مرة أخرى.",
+    "readwiseDisconnectFailed": "تعذّر قطع اتصال Readwise",
+    "readwiseSyncFailed": "تعذّر بدء مزامنة Readwise",
+    "readwiseRunUnavailable": "لا تتم مزامنة Readwise على هذا الجهاز.",
+    "readwiseRunInProgress": "استيراد Readwise قيد التشغيل بالفعل. حاول مرة أخرى عند انتهائه.",
+    "readwiseOptionsFailed": "تعذّر حفظ إعدادات Readwise",
+    "readwiseNotConnected": "Readwise غير متصل. الصق رمز الوصول أولًا.",
+    "readwiseSyncsElsewhere": "تتم مزامنة Readwise على جهاز آخر. شغّل هذا الأمر هناك.",
+    "readwiseBookCommandFailed": "تعذّر إكمال أمر Readwise",
+    "readwiseBookGone": "هذا الكتاب لم يعد في مكتبة Readwise الخاصة بك.",
+    "readwiseNotLinked": "هذه الملاحظة غير مرتبطة بكتاب في Readwise.",
+    "readwiseNotDeleted": "هذا الكتاب ليس في قائمة المحذوفات.",
+    "readwiseBookBusy": "تغيّرت الملاحظة أثناء تشغيل الأمر. حاول مرة أخرى.",
+    "readwiseSyncsOnDevice": "تتم مزامنة Readwise على {device}. استخدم «المزامنة هنا بدلًا من ذلك» لنقلها إلى هنا.",
+    "readwiseAnotherDevice": "جهاز آخر",
+    "readwiseNotReady": "لم ينتهِ Memry من المزامنة مع أجهزتك الأخرى بعد. حاول مرة أخرى بعد قليل.",
+    "readwiseNeedsSync": "فعّل المزامنة لنقل Readwise بين الأجهزة.",
+    "readwiseClaimNotDelivered": "تعذّر إبلاغ أجهزتك الأخرى حتى الآن. تحقق من اتصالك وحاول مرة أخرى.",
+    "readwiseTakeOverFailed": "تعذّر نقل Readwise إلى هذا الجهاز",
+    "readwiseCancelFailed": "تعذّر إلغاء مزامنة Readwise"
   },
   "project": {
     "createFailed": "تعذّر إنشاء المشروع",
@@ -236,7 +272,8 @@
     "renameFailed": "تعذّر إعادة تسمية الخاصية",
     "createDefinitionFailed": "تعذّر إنشاء تعريف الخاصية",
     "updateDefinitionFailed": "تعذّر تحديث تعريف الخاصية",
-    "setCalendarVisibilityFailed": "تعذّر ضبط ظهور خاصية التقويم"
+    "setCalendarVisibilityFailed": "تعذّر ضبط ظهور خاصية التقويم",
+    "definitionsFileUnreadable": "لا يمكن حفظ تغييرات الخصائص لأن الملف .memry/properties.md غير قابل للقراءة. أصلح هذا الملف أو أزله، ثم حاول مرة أخرى."
   },
   "reminder": {
     "notFound": "لم يتم العثور على التذكير",
@@ -262,6 +299,7 @@
     "shortcutInUse": "الاختصار {shortcut} مستخدم بالفعل"
   },
   "tag": {
+    "renameInProgress": "لا تزال إعادة تسمية #{from} إلى #{to} قيد التشغيل. حاول مرة أخرى عند انتهائها.",
     "mergeSameTag": "الوسم المصدر والوسم الهدف متطابقان",
     "categoryNameRequired": "اسم الفئة مطلوب",
     "pinNoteFailed": "تعذّر تثبيت الملاحظة",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "تعذّر حذف المهام",
     "moveManyFailed": "تعذّر نقل المهام",
     "archiveManyFailed": "تعذّر أرشفة المهام",
-    "projectMissing": "لم يعد ذلك المشروع موجودًا"
+    "projectMissing": "لم يعد ذلك المشروع موجودًا",
+    "invalidParent": "لا يمكن وضع المهمة هناك"
   },
   "taskStatus": {
     "createFailed": "تعذّر إنشاء الحالة",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "جعل المالك هذه الملاحظة للقراءة فقط.",
     "folderReadOnly": "جعل المالك هذا المجلد للقراءة فقط."
+  },
+  "ocrLanguages": {
+    "unreachable": "تعذّر الوصول إلى خادم Memry. تبقى اللغات الموجودة تعمل، ويحاول Memry مرة أخرى عند التشغيل التالي.",
+    "unavailable": "لا يوفر خادم Memry هذه اللغة بعد. تبقى اللغات الموجودة تعمل.",
+    "corrupt": "لا تطابق البيانات التي تم تنزيلها ما يتوقعه Memry، لذا لم تُستخدم. أعد المحاولة لتنزيلها مرة أخرى.",
+    "saveFailed": "تعذّر حفظ بيانات اللغة على هذا الكمبيوتر. تحقق من مساحة القرص الحرة، ثم أعد المحاولة."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" محجوز ولا يمكن أن يكون اسم حقل",
+    "duplicateField": "#{definedBy} لديه بالفعل حقل باسم \"{name}\"",
+    "unknownField": "ليس لهذا الوسم حقل باسم \"{name}\"",
+    "inheritedField": "\"{name}\" يأتي من #{definedBy}. حرّره هناك",
+    "cycle": "#{parent} يأخذ حقوله بالفعل من هذا الوسم",
+    "unreadableSchema": "غيّر إصدار أحدث من Memry هذا الوسم. حدّث Memry لتحريره",
+    "relationTargetRequired": "اختر الوسم الذي تشير إليه هذه العلاقة",
+    "editFailed": "تعذّر تغيير حقول الوسم",
+    "previewFailed": "تعذّر حساب ما يؤثر فيه هذا التغيير",
+    "snapshotFailed": "تعذّر تحميل حقول الوسم",
+    "renameRunning": "لا تزال إعادة تسمية حقل أخرى قيد الإنهاء ({from} إلى {to}). حاول مرة أخرى بعد انتهائها."
   }
 }

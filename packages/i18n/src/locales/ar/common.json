@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "تعذّر نسخ البوابة",
+    "hiddenCount": "{count} مخفية",
+    "windowFailed": "تعذّر فتح هذه البوابة. افتح الملاحظة المصدر بدلًا من ذلك.",
+    "noTarget": "ليس لهذه البوابة هدف بعد. أضف ملاحظة إلى التعريف، أو أزل الكتلة.",
+    "invalidJson": "تعريف هذه البوابة ليس JSON صالحًا. أصلحه أدناه، أو أزل الكتلة.",
+    "invalidShape": "لا يحتوي تعريف هذه البوابة على ملاحظة أو بحث. أصلحه أدناه، أو أزل الكتلة.",
+    "search": {
+      "editQuery": "تحرير الاستعلام",
+      "count": "{count, plural, zero {# كتلة} one {كتلة واحدة} two {كتلتان} few {# كتل} many {# كتلة} other {# كتلة}}",
+      "loading": "جارٍ البحث…",
+      "empty": "لا توجد كتل تطابق هذا الاستعلام.",
+      "failed": "تعذّر تنفيذ البحث.",
+      "retry": "حاول مرة أخرى",
+      "truncated": "عرض أول {count} نتيجة مطابقة."
+    },
+    "copiedContents": "تم نسخ المحتوى",
+    "copiedLink": "تم نسخ الرابط",
+    "actionFailed": "تعذّر تغيير هذه البوابة",
+    "keepsOneBlock": "تحتفظ البوابة بكتلة واحدة على الأقل. أزل البوابة بدلًا من ذلك.",
+    "expandChildren": "عرض العناصر الفرعية",
+    "collapseChildren": "إخفاء العناصر الفرعية",
+    "toolbar": {
+      "label": "بوابة",
+      "include": "تضمين “{block}”",
+      "locked": "{note} مقفلة · للقراءة فقط",
+      "more": "المزيد",
+      "openBeside": "فتح {note} بجانبها",
+      "click": "انقر",
+      "copyContents": "نسخ المحتوى",
+      "copyLink": "نسخ الرابط",
+      "remove": "إزالة البوابة",
+      "removeHint": "تحتفظ {note} بكل كتلها"
+    },
+    "states": {
+      "missingNote": {
+        "text": "تم حذف الملاحظة المصدر. المرجع محفوظ.",
+        "action": "إزالة"
+      },
+      "missingBlock": {
+        "text": "تم حذف الكتلة في {source}.",
+        "action": "اختيار كتلة أخرى"
+      },
+      "notSynced": {
+        "text": "في انتظار مزامنة الملاحظة المصدر.",
+        "action": "إعادة المحاولة"
+      },
+      "cycle": {
+        "text": "تعود هذه البوابة إلى نفسها.",
+        "action": "فتح المصدر"
+      },
+      "tooDeep": {
+        "text": "تتداخل البوابات حتى {max} مستويات. تُفتح هذه كرابط.",
+        "action": "فتح المصدر"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "التركيز على حقل الالتقاط",
@@ -43,6 +100,50 @@
     "showInFileManager": "إظهار في مدير الملفات",
     "openInDefaultApp": "فتح في التطبيق الافتراضي",
     "revealFailed": "تعذّر الإظهار في المجلد"
+  },
+  "commands": {
+    "runFailed": "تعذّر تشغيل هذا الأمر. حاول مرة أخرى."
+  },
+  "commandsPalette": {
+    "title": "الأوامر",
+    "placeholder": "اكتب أمرًا…",
+    "groups": {
+      "navigation": "التنقل",
+      "create": "إنشاء",
+      "tabs": "علامات التبويب",
+      "editor": "المحرر",
+      "view": "العرض",
+      "app": "التطبيق",
+      "note": "ملاحظة",
+      "settings": "الإعدادات",
+      "sync": "المزامنة",
+      "help": "المساعدة",
+      "project": "المشروع",
+      "tasks": "المهام",
+      "canvas": "اللوحة",
+      "folder": "المجلد",
+      "file": "الملف"
+    },
+    "contexts": {
+      "note": "هذه الملاحظة",
+      "journal": "هذه اليوميات",
+      "project": "هذا المشروع",
+      "tasks": "هذه المهام",
+      "canvas": "هذه اللوحة",
+      "folder": "هذا المجلد",
+      "tag": "هذا الوسم",
+      "file": "هذا الملف"
+    },
+    "recent": "الأحدث",
+    "empty": "لا توجد أوامر تطابق “{query}”",
+    "searchHint": "البحث في الملاحظات: {shortcut}",
+    "status": {
+      "count": "{count, plural, zero {# أمر} one {أمر واحد} two {أمران} few {# أوامر} many {# أمرًا} other {# أمر}}"
+    },
+    "actions": {
+      "run": "تشغيل",
+      "searchNotes": "البحث في الملاحظات"
+    }
   },
   "tabs": {
     "pin": "تثبيت علامة التبويب",
@@ -131,6 +232,20 @@
     "openInTab": "فتح المحادثة في علامة تبويب",
     "stop": "إيقاف",
     "thinking": "الوكيل يفكّر",
+    "toolsUnavailable": "أدوات الخزنة متوقفة لهذا النموذج. فقد فشل في فحص الأدوات، لذا يمكنه المحادثة فقط.",
+    "toolsUnavailableWithDetail": "أدوات الخزنة متوقفة لهذا النموذج. فقد فشل في فحص الأدوات، لذا يمكنه المحادثة فقط. {detail}",
+    "toolsOff": {
+      "toolsRejected": "أدوات الخزنة متوقفة لهذا النموذج. رفض المزوّد طلب اختبار يتضمن أدوات، لذا يمكن للنموذج المحادثة فقط.",
+      "noToolCall": "أدوات الخزنة متوقفة لهذا النموذج. فقد أجاب عن طلب اختبار دون استدعاء الأداة، لذا يمكنه المحادثة فقط.",
+      "toolResultRejected": "أدوات الخزنة متوقفة لهذا النموذج. فقد استدعى أداة اختبار لكنه فشل بعد استلام النتيجة، لذا يمكنه المحادثة فقط.",
+      "streamingUnsupported": "أدوات الخزنة متوقفة لهذا النموذج. لم يبثّ المزوّد ردًا تجريبيًا، لذا يمكن للنموذج المحادثة فقط.",
+      "providerSaid": "قال المزوّد: {detail}",
+      "wroteToolCall": "كتب النموذج استدعاء أداة كنص، ولم يُنفَّذ شيء."
+    },
+    "stepLimit": {
+      "notice": "توقف عند حدّ الخطوات.",
+      "continue": "متابعة"
+    },
     "enable": {
       "title": "تفعيل وكيل memrynote",
       "description": "يستخدم وكيل memrynote أداة CLI للوكيل المحلي الذي اخترته للدردشة حول خزنتك. يرسل Claude رسائل المحادثة إلى Anthropic، ويرسلها Codex إلى OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "إضافة سياق",
       "addContextWithPermissions": "إضافة سياق ({permissions})",
       "mentionContext": "الإشارة إلى ملاحظة أو مهمة أو حدث",
+      "files": {
+        "attach": "إرفاق ملف نصي",
+        "refused": {
+          "unsupportedType": "{name} ليس ملفًا نصيًا مدعومًا. أرفق ملف .txt أو .md أو .log أو .csv أو .tsv أو .json أو .yaml أو .yml.",
+          "notText": "{name} ليس ملف نص بترميز UTF-8. أرفق ملفًا نصيًا بدلًا منه.",
+          "tooLarge": "سيجعل {name} هذه الرسالة تتجاوز حدّ 100 KB. أزل ملفًا أو أرفق ملفًا أصغر.",
+          "readFailed": "تعذّرت قراءة {name}. تأكد من أن الملف لا يزال موجودًا وأنه يمكنك فتحه، ثم أرفقه مرة أخرى."
+        }
+      },
       "voice": {
         "start": "بدء الإملاء الصوتي",
         "stop": "إيقاف الإملاء الصوتي",
@@ -340,6 +464,14 @@
           "extraHigh": "عالٍ جدًا"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "افتراضي",
+          "default": "العمق الافتراضي",
+          "high": "مرتفع",
+          "max": "أقصى"
+        }
+      },
       "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب: {webSearch}",
       "permissions": {
         "label": "الأذونات",
@@ -347,6 +479,17 @@
         "tools": "الأدوات"
       },
       "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}",
+      "queue": {
+        "label": "الرسائل في قائمة الانتظار",
+        "queueMessage": "وضع الرسالة في قائمة الانتظار",
+        "edit": "تحرير الرسالة في قائمة الانتظار",
+        "editLabel": "نص الرسالة في قائمة الانتظار",
+        "remove": "إزالة الرسالة من قائمة الانتظار",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "sending": "جارٍ الإرسال…",
+        "notSent": "لم تُرسل. حرّرها لإرسالها مرة أخرى، أو أزلها."
+      },
       "unavailable": {
         "vaultToolsOnly": "أدوات الخزنة فقط مع هذا النموذج"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "تعذّر حفظ حالة الإفصاح",
       "resolveWindow": "تعذّر تحديد نافذة مصدر الوكيل",
       "detectCli": "تعذّر اكتشاف الواجهات الخلفية للوكيل",
-      "loadDisclosure": "تعذّر تحميل حالة الإفصاح"
+      "loadDisclosure": "تعذّر تحميل حالة الإفصاح",
+      "turnFailed": "توقف الرد بسبب خطأ. رسالتك محفوظة، يمكنك إرسالها مرة أخرى."
     },
     "actions": {
       "copy": "نسخ",
@@ -576,6 +720,7 @@
       "newFolder2": "مجلد جديد",
       "newProject": "مشروع جديد",
       "bookmarks": "الإشارات المرجعية",
+      "chart": "مخطط",
       "tags": "الوسوم",
       "reorderSection": "إعادة ترتيب {section}",
       "dropFilesToImport": "أفلِت الملفات لاستيرادها",
@@ -863,6 +1008,11 @@
       "cancel": "إلغاء",
       "remove2": "إزالة",
       "inYourAccount": "في حسابك",
+      "trySandbox": "جرّب الخزنة التجريبية",
+      "sandboxVault": "الخزنة التجريبية",
+      "sandboxPreparing": "جارٍ تجهيز البيئة التجريبية…",
+      "sandboxFailed": "تعذّر تجهيز الخزنة التجريبية",
+      "resetSandbox": "إعادة ضبط الخزنة التجريبية",
       "itemsCount": "العناصر: {count}",
       "untitledVault": "خزنة",
       "downloadVaultTitle": "تنزيل «{name}»",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "تظهر هنا الملاحظات التي تفتحها",
       "bookmarks": "الإشارات المرجعية",
       "tasks": "المهام",
+      "chart": "مخطط",
       "calendar": "التقويم",
       "calendarToday": "اليوم",
       "openCalendar": "فتح التقويم",
@@ -978,6 +1129,9 @@
     "edit": "تحرير",
     "done": "تم",
     "addWidget": "إضافة أداة",
+    "cover": {
+      "add": "إضافة غلاف"
+    },
     "empty": {
       "title": "لوحة معلوماتك فارغة",
       "body": "تجمع الأدوات ملاحظاتك ومهامك وإشاراتك المرجعية في مكان هادئ واحد.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "تغيير الأيقونة…",
     "resetIcon": "إعادة تعيين الأيقونة",
     "iconButton": "تغيير أيقونة {name}",
+    "leaveSandbox": "العودة إلى {name}",
     "iconFailed": "تعذّر تغيير أيقونة الخزنة"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "النوع",
     "filterModified": "تاريخ التعديل",
     "matches": "التطابقات",
+    "matchesMore": "{count, plural, zero {# تطابق آخر} one {تطابق واحد آخر} two {تطابقان آخران} few {# تطابقات أخرى} many {# تطابقًا آخر} other {# تطابق آخر}}",
+    "matchesHide": "إخفاء التطابقات",
+    "matchOf": "التطابق {index} من {total}",
     "showMore": "عرض {count} إضافية",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "القسم التالي",
       "open": "فتح",
       "openNote": "فتح الملاحظة",
+      "openAtMatch": "فتح عند التطابق",
       "openFile": "فتح الملف",
       "openJournal": "فتح اليوميات",
       "openTask": "فتح المهمة",
@@ -1259,6 +1418,7 @@
       "chooseTag": "اختيار وسم",
       "addTag": "إضافة الوسم",
       "showAll": "عرض الكل",
+      "hideMatches": "إخفاء التطابقات",
       "searchEverywhere": "البحث في كل مكان",
       "clearFilters": "مسح عوامل التصفية"
     },

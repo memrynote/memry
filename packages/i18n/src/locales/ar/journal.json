@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "حذف إدخال اليوميات",
     "description": "هل تريد بالتأكيد حذف «{title}»؟ لا يمكن التراجع عن هذا الإجراء."
+  },
+  "dayTimeline": {
+    "label": "جدول اليوم",
+    "allDay": "عناصر اليوم كاملًا",
+    "unscheduled": "غير مجدولة",
+    "unscheduledEmpty": "لا توجد مهام غير مجدولة. اسحب كتلة إلى هنا لإزالة وقتها.",
+    "range": "{start} – {end}",
+    "openTask": "{title}، {range}",
+    "completeTask": "إكمال {title}"
   }
 }
