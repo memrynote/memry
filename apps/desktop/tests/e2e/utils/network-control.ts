@@ -8,6 +8,7 @@ interface SyncStatusSnapshot {
 
 interface TriggerSyncResult {
   success: boolean
+  reason?: string
   error?: string
 }
 

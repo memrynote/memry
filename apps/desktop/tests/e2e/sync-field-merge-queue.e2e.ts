@@ -41,7 +41,7 @@ async function readServerNoteTombstone(
 async function triggerSyncOrThrow(page: Page): Promise<void> {
   const result = await triggerSync(page)
   if (!result.success) {
-    throw new Error(result.error || 'Sync trigger failed')
+    throw new Error(result.error || `Sync trigger refused: ${result.reason ?? 'unknown'}`)
   }
 }
 
@@ -162,6 +162,9 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageB)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppA, electronAppB)
+    // Reconnecting aborts a sync already running and only then clears the offline
+    // status, so a Sync Now before that point is cancelled by the reconnect.
+    await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     await expectProjectOnBothDevices(pageA, pageB, seed.projectId, {
       name: 'Project name from A',
@@ -194,6 +197,9 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageB)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppA, electronAppB)
+    // Reconnecting aborts a sync already running and only then clears the offline
+    // status, so a Sync Now before that point is cancelled by the reconnect.
+    await Promise.all([waitForSyncOnline(pageA), waitForSyncOnline(pageB)])
 
     await expectProjectDescriptionConverges(pageA, pageB, seed.projectId, [
       'Same field from A',
@@ -224,6 +230,9 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageA)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppA)
+    // Reconnecting aborts a sync already running and only then clears the offline
+    // status, so a Sync Now before that point is cancelled by the reconnect.
+    await waitForSyncOnline(pageA)
 
     await expect
       .poll(
@@ -313,6 +322,9 @@ test.describe('Sync field merge and queue retry E2E', () => {
     await expect.poll(async () => (await readSyncStatus(pageB)).pendingCount > 0).toBe(true)
 
     await goOnline(electronAppB)
+    // Reconnecting aborts a sync already running and only then clears the offline
+    // status, so a Sync Now before that point is cancelled by the reconnect.
+    await waitForSyncOnline(pageB)
     await expect
       .poll(
         async () => {
