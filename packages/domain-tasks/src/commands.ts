@@ -66,9 +66,7 @@ function publishTasksEvent(
  * `null` is untouched — it still means "clear this field".
  */
 function definedUpdates(updates: Partial<Task>): Partial<Task> {
-  return Object.fromEntries(
-    Object.entries(updates).filter(([, value]) => value !== undefined)
-  ) as Partial<Task>
+  return Object.fromEntries(Object.entries(updates).filter(([, value]) => value !== undefined))
 }
 
 function computeChangedFields(
@@ -83,8 +81,9 @@ function computeChangedFields(
       changedFields.add(key)
     }
   } else {
+    const existingFields: Record<string, unknown> = { ...existingTask }
     for (const [key, value] of Object.entries(updates)) {
-      const previous = existingTask[key as keyof Task] ?? null
+      const previous = existingFields[key] ?? null
       const next = value ?? null
       if (JSON.stringify(previous) !== JSON.stringify(next)) {
         changedFields.add(key)
@@ -115,10 +114,10 @@ function pickPrevious(
 ): Partial<Task> {
   const previous: Partial<Task> = {}
   if (existingTask) {
+    const existingFields: Record<string, unknown> = { ...existingTask }
     for (const field of changedFields) {
-      const key = field as keyof Task
-      if (key in existingTask) {
-        ;(previous as Record<string, unknown>)[field] = existingTask[key]
+      if (field in existingTask) {
+        ;(previous as Record<string, unknown>)[field] = existingFields[field]
       }
     }
   }
@@ -246,6 +245,7 @@ export function createTasksCommands({
           parentId: input.parentId ?? null,
           title: input.title,
           description: input.description ?? null,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- contract priority is a validated number; Task narrows it to the 0-4 union
           priority: (input.priority ?? 0) as Task['priority'],
           position,
           dueDate: input.dueDate ?? null,
@@ -291,6 +291,7 @@ export function createTasksCommands({
 
         const updates: Partial<Task> = definedUpdates({
           ...rawUpdates,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- contract priority is a validated number; Task narrows it to the 0-4 union
           ...(priority !== undefined ? { priority: priority as Task['priority'] } : {})
         })
 

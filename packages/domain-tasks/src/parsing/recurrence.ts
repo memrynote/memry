@@ -53,7 +53,7 @@ export const findNthWeekdayOfMonth = (
 }
 
 const findNextWeekday = (fromDate: Date, daysOfWeek: number[], interval: number): Date => {
-  const sortedDays = [...daysOfWeek].sort((a, b) => a - b)
+  const sortedDays = daysOfWeek.toSorted((a, b) => a - b)
   const currentDay = fromDate.getDay()
 
   // First, check if there's another day in the same week (for interval = 1)

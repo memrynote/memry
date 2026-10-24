@@ -264,7 +264,7 @@ export const sortTasksAdvanced = <T extends FilterTask>(
     none: 4
   } satisfies Record<Priority, number>
 
-  const sorted = [...tasks].sort((a, b) => {
+  const sorted = tasks.toSorted((a, b) => {
     let comparison = 0
 
     switch (sort.field) {
