@@ -1,0 +1,2312 @@
+import { foldTag } from '@memry/shared/tag-fold'
+import { getI18n } from 'react-i18next'
+/**
+ * NotePage Component
+ *
+ * Displays and edits a note from the vault.
+ * Loads real note data via useNotes() hook and saves changes via updateNote().
+ */
+
+import { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo } from 'react'
+import { cn } from '@/lib/utils'
+import { useReducedMotion } from 'motion/react'
+import { useQueryClient } from '@tanstack/react-query'
+import { ExportDialog } from '@/components/note/export-dialog'
+import { VersionHistory } from '@/components/note/version-history'
+import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
+import { EditorErrorBoundary } from '@/components/note/editor-error-boundary'
+import {
+  DeleteNoteTasksOption,
+  deleteNoteTasks,
+  useNoteTasksChoice
+} from '@/components/note/delete-note-tasks'
+import { LargeFileViewer } from '@/components/note/large-file-viewer'
+import type { HeadingItem, HeadingInfo, Block } from '@/components/note'
+import { NoteLayout, ContentArea } from '@/components/note'
+import { isOutsideAllBlocks } from '@/components/note/content-area/marquee-hit-test'
+import { MindMapView, useMindMap, useMindMapNavigation } from '@/components/note/mind-map'
+import { NoteTitle } from '@/components/note/note-title'
+import {
+  NEW_NOTE_TITLE,
+  clearNewNoteTitlePending,
+  isNewNoteTitlePending
+} from '@/lib/new-note-title'
+import type { Tag } from '@/components/note/tags-row'
+import { TagsRow } from '@/components/note/tags-row'
+import { InfoSection, type NewProperty } from '@/components/note/info-section'
+import { GhostAffordanceRow } from '@/components/note/ghost-affordance-row'
+import { NoteNamesLine } from '@/components/note/names/note-names-line'
+import { requestNoteNameInput } from '@/components/note/names/note-name-input-request'
+import { NoteCover } from '@/components/note/note-cover'
+import {
+  CoverPickerDialog,
+  coverPickerAnchorFrom,
+  type CoverPickerAnchor
+} from '@/components/note/cover-picker-dialog'
+import { noteCoverImageTarget } from '@/components/note/cover-image-target'
+import { useVault } from '@/hooks/use-vault'
+import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
+import { useNoteCover } from '@/components/note/use-note-cover'
+import type { Backlink, Mention } from '@/components/note/backlinks'
+import {
+  BacklinksSection,
+  OutgoingLinksSection,
+  UnlinkedMentionsSection,
+  backlinkId
+} from '@/components/note/backlinks'
+import { LinkedTasksSection } from '@/components/note/linked-tasks'
+import { LinkedHereOrBacklinks } from '@/features/tag-fields/linked-here-section'
+import { useOpenTaskDetail } from '@/components/tasks/task-detail-host'
+import { NoteSimilarNotes } from '@/components/note/similar-notes'
+import {
+  useNote,
+  useNoteMutations,
+  useNoteLinksQuery,
+  useNoteTagsQuery,
+  type Note
+} from '@/hooks/use-notes-query'
+import { usePropertySection, type PropertySectionAction } from '@/hooks/use-property-section'
+import { useHeaderTags } from '@/features/tag-fields/use-header-tags'
+import { useTagSchemas } from '@/features/tag-fields/use-tag-schemas'
+import { buildFieldGroups } from '@/features/tag-fields/build-field-groups'
+import { NoteFieldGroups } from '@/features/tag-fields/NoteFieldGroups'
+import { useNoteFieldFill } from '@/features/tag-fields/agent-fill/use-note-field-fill'
+import { TemplateOffers } from '@/features/tag-fields/TemplateOfferRow'
+import { useNoteProjectTaskMove } from '@/hooks/use-note-project-task-move'
+import { usePropertiesCollapsed } from '@/hooks/use-properties-collapsed'
+import { useTasksLinkedToNote } from '@/hooks/use-tasks-linked-to-note'
+import { notesService, onNoteDeleted, onNoteUpdated, onNoteRenamed } from '@/services/notes-service'
+import { resolveWikiLink } from '@/lib/wikilink-resolver'
+import { scrollToHeadingBlock, scrollToHeadingWhenReady } from '@/lib/scroll-to-heading'
+import { RESTORE_MAX_MS } from '@/hooks/use-tab-scroll-restore'
+import { useBlockRefScroll } from '@/hooks/use-block-ref-scroll'
+import type { BlockRef } from '@/lib/block-ref'
+import { splitWikiTarget, normalizeHeading } from '@memry/shared/wiki-target'
+import { useTabs, useActiveTab } from '@/contexts/tabs'
+import { useOpenPage, useOpenTarget } from '@/hooks/use-open-target'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
+import type { WikiLinkOpenTarget } from '@/components/note/content-area/types'
+import { useInlineTagEdits, type InlineTagEdit } from '@/hooks/use-inline-tag-edits'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { ReminderPicker } from '@/components/reminder'
+import { useNoteReminders } from '@/hooks/use-note-reminders'
+import {
+  Bookmark2,
+  MoreVertical,
+  FilePaste,
+  FilePlus,
+  Download,
+  AlarmClock,
+  Monitor,
+  Maximize,
+  Hierarchy,
+  LayoutTemplate,
+  PenLine,
+  Pencil,
+  Save,
+  Search,
+  FolderInput,
+  Copy,
+  FolderOpen,
+  PanelLeft,
+  ExternalLink,
+  Paperclip,
+  Trash2,
+  Lock,
+  Type
+} from '@/lib/icons'
+import { PageGraphIcon } from '@/lib/icons/page-icons'
+import { Button } from '@/components/ui/button'
+import { Picker } from '@/components/ui/picker'
+import { Switch } from '@/components/ui/switch'
+import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
+import { WikiLinkCreateDialog } from '@/components/note/wiki-link-create-dialog'
+import { MoveNoteTasksDialog } from '@/components/note/move-note-tasks-dialog'
+import {
+  NoteAttachmentsDialog,
+  collectOriginalNames
+} from '@/components/note/note-attachments-dialog'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
+} from '@/components/ui/alert-dialog'
+import { toast } from 'sonner'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import { useIsBookmarked } from '@/hooks/use-bookmarks'
+import { useEditorSettings, EDITOR_NORMAL_CONTENT_WIDTH } from '@/hooks/use-editor-settings'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { useHasOwnNoteLock, useIsNoteLocked } from '@/lib/vault-locks-store'
+import { LockedNoteNotice } from '@/components/note/locked-note-notice'
+import { createLogger } from '@/lib/logger'
+import { markLaunchNoteReadable } from '@/lib/launch-restore'
+import { LocalGraphPanel } from '@/components/graph/local-graph-panel'
+import { graphKeys } from '@/hooks/use-graph-data'
+import { NoteBreadcrumb } from '@/components/note/note-breadcrumb'
+import {
+  isCoverCreditUrlValue,
+  isCoverCreditValue,
+  parseCoverFraming,
+  parseCoverValue
+} from '@memry/shared/cover-image'
+import { FindBar } from '@/components/find-bar/find-bar'
+import { useFindInPage } from '@/hooks/use-find-in-page'
+import { FIND_REQUEST_KEY, readFindRequest } from '@/lib/find-request'
+import { ReadwiseMenuGroup } from '@/components/note/readwise-menu-group'
+import { ReadwiseReimportDialog } from '@/components/note/readwise-reimport-dialog'
+import { useNoteCommands, type NoteCommandId, type NoteDialog } from './note/use-note-commands'
+import { useDialogState } from '@/hooks/use-dialog-state'
+import { ReviewBadgeLayer, ReviewRail, useCriticMarkupReview } from '@/components/note/review'
+import { AgentReviewSurface, useAgentBodyReview } from '@/components/note/agent-review'
+import { WritingChrome, WritingRail, useWritingTools } from '@/components/note/writing-tools'
+import { FoldSurface } from '@/components/note/fold/fold-surface'
+import { useNoteFold } from '@/components/note/fold/use-note-fold'
+
+import { useT } from '@memry/i18n/renderer'
+import { getTabIconForFileType } from '@memry/shared/file-types'
+
+const log = createLogger('Page:Note')
+
+// ============================================================================
+// Types
+// ============================================================================
+
+interface NotePageProps {
+  noteId?: string
+}
+
+// ============================================================================
+// Error State Component
+// ============================================================================
+
+function NoteErrorState({ error, onRetry }: { error: string; onRetry?: () => void }) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <p className="text-destructive font-medium">{t('page.error.title')}</p>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        {onRetry && (
+          <button type="button" onClick={onRetry} className="text-sm text-primary hover:underline">
+            {tCommon('button.retry')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Empty State Component
+// ============================================================================
+
+function NoteEmptyState() {
+  const { t } = useT('notes')
+
+  return (
+    <div className="flex items-center justify-center h-full min-h-[400px]">
+      <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
+        <p className="text-sm">{t('page.empty.title')}</p>
+        <p className="text-xs">{t('page.empty.body')}</p>
+      </div>
+    </div>
+  )
+}
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export function NotePage({ noteId }: NotePageProps) {
+  const { t } = useT('notes')
+  // TanStack Query hooks for data fetching with caching
+  const { note, isLoading, error: noteError, refetch: refetchNote } = useNote(noteId ?? null)
+  // The owner locked this note or a folder above it (#2606): read-only here
+  // and for every agent write path.
+  const isLocked = useIsNoteLocked(noteId ?? null, note?.path ?? null)
+  const hasOwnLock = useHasOwnNoteLock(noteId ?? null)
+  const { createNote, updateNote, renameNote, deleteNote } = useNoteMutations()
+  const {
+    incoming: rawBacklinks,
+    outgoing: outgoingLinks,
+    isLoading: backlinksLoading
+  } = useNoteLinksQuery(noteId ?? null)
+  const { tasks: linkedTasks, isLoading: linkedTasksLoading } = useTasksLinkedToNote(noteId ?? null)
+  const { tags: allAvailableTags } = useNoteTagsQuery()
+  const { openTab, setTabDeleted, updateTabTitleByEntityId, closeTab, saveTabState } = useTabs()
+  const openTaskDetail = useOpenTaskDetail()
+  const activeTab = useActiveTab()
+  const { openSidebarItem } = useSidebarNavigation()
+  const queryClient = useQueryClient()
+  const prefersReducedMotion = useReducedMotion()
+
+  // Extract highlight info from tab viewState (from reminder navigation)
+  const initialHighlight = useMemo(() => {
+    const viewState = activeTab?.viewState as
+      | {
+          highlightStart?: number
+          highlightEnd?: number
+          highlightText?: string
+        }
+      | undefined
+
+    if (viewState?.highlightText) {
+      return {
+        text: viewState.highlightText,
+        start: viewState.highlightStart,
+        end: viewState.highlightEnd
+      }
+    }
+    return undefined
+  }, [activeTab?.viewState])
+
+  // Extract inline date pill anchor from tab viewState (from note_date reminder navigation)
+  const initialAnchorId = useMemo(() => {
+    const viewState = activeTab?.viewState as { anchorId?: string } | undefined
+    return viewState?.anchorId
+  }, [activeTab?.viewState])
+
+  // The heading half of the `[[Note#Heading]]` that opened this tab. Carried
+  // as text because that is all the link stores — never a block id, which is
+  // minted per document and means nothing to the note that wrote the link.
+  const initialHeadingText = useMemo(() => {
+    const viewState = activeTab?.viewState as { headingText?: string } | undefined
+    return viewState?.headingText
+  }, [activeTab?.viewState])
+
+  // Convert query error to string
+  const error = noteError?.message ?? null
+
+  // Local state (UI-only, not data loading)
+  const [headings, setHeadings] = useState<HeadingItem[]>([])
+  const [isDeleted, setIsDeleted] = useState(false)
+  const dialog = useDialogState<NoteDialog>()
+  const [isLocalGraphOpen, setIsLocalGraphOpen] = useState(false)
+  // The unresolved wiki-link title awaiting the user's create/cancel (#1716).
+  const [pendingWikiLinkCreate, setPendingWikiLinkCreate] = useState<string | null>(null)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [coverPickerAnchor, setCoverPickerAnchor] = useState<CoverPickerAnchor | null>(null)
+  const { vaultPath } = useVault()
+  const uploadFailedMessage = t('cover.picker.uploadFailed')
+  // `noteId` is always set by the time the picker renders; hooks run before the
+  // empty-state return.
+  const coverImageTarget = useMemo(
+    () => noteCoverImageTarget(noteId ?? '', uploadFailedMessage),
+    [noteId, uploadFailedMessage]
+  )
+  const [isDeleting, setIsDeleting] = useState(false)
+  // External ref to the inline title textarea so the "Rename" menu item can focus it
+  const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
+  // A just-created note opens with an empty, focused title (see new-note-title).
+  // Adjusted during render because this page is reused across preview tabs.
+  const [freshTitleNoteId, setFreshTitleNoteId] = useState<string | null>(null)
+  if (noteId && freshTitleNoteId !== noteId && isNewNoteTitlePending(noteId)) {
+    setFreshTitleNoteId(noteId)
+  }
+  const isFreshTitle = !!noteId && freshTitleNoteId === noteId
+  const hasNote = !!note
+  useEffect(() => {
+    if (!isFreshTitle || !hasNote || !noteId) return undefined
+    clearNewNoteTitlePending(noteId)
+    // Deferred past the tab switch and the editor mount, which focus on their own.
+    const frame = requestAnimationFrame(() => titleInputRef.current?.focus())
+    return () => cancelAnimationFrame(frame)
+  }, [isFreshTitle, hasNote, noteId])
+  const [externalUpdateCount, setExternalUpdateCount] = useState(0)
+  const [eventContentOverride, setEventContentOverride] = useState<{
+    noteId: string
+    content: string
+  } | null>(null)
+  const [storedNoteIdForContent, setStoredNoteIdForContent] = useState(noteId)
+
+  // #800 belt-and-suspenders: a filed binary (image/PDF/…) mis-opened as a note
+  // tab must never mount the markdown editor — raw bytes render as junk tag
+  // pills and a multi-MB blob freezes the app. Probe getFile (null for real
+  // markdown notes); if this id is actually a file, redirect the tab to the
+  // in-app viewer. Render nothing until the probe resolves so the editor never
+  // mounts on a binary. Runs concurrently with the note load, so it adds no
+  // perceptible latency for normal notes. The result is keyed by id so a stale
+  // result for a previous note reads as 'pending' during render (no reset in
+  // the effect).
+  const [fileProbe, setFileProbe] = useState<{ id: string | null; status: 'note' | 'file' }>({
+    id: null,
+    status: 'note'
+  })
+  const fileProbeStatus = fileProbe.id === noteId ? fileProbe.status : 'pending'
+  useEffect(() => {
+    if (!noteId) return undefined
+    let cancelled = false
+    void notesService
+      .getFile(noteId)
+      .then((file) => {
+        if (cancelled) return
+        if (!file) {
+          setFileProbe({ id: noteId, status: 'note' })
+          return
+        }
+        setFileProbe({ id: noteId, status: 'file' })
+        const fileTab = {
+          type: 'file' as const,
+          title: file.title,
+          icon: getTabIconForFileType(file.fileType),
+          path: `/file/${noteId}`,
+          entityId: noteId,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        }
+        // Convert THIS tab in place. openTab dedups by entityId, so a plain
+        // openTab would just re-focus the existing note tab without changing its
+        // type/icon — replaceActive swaps the active tab for the file viewer.
+        // Guard on the active tab being this note (replaceActive replaces the
+        // group's active tab, so an unguarded call in a split/background pane
+        // would clobber an unrelated tab) and skip pinned tabs (replaceActive
+        // no-ops on them); the render gate already prevents the editor from
+        // mounting on the binary in those rare fallthrough cases.
+        if (activeTab?.entityId === noteId && !activeTab.isPinned) {
+          openTab(fileTab, { replaceActive: true })
+        } else {
+          openTab(fileTab)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFileProbe({ id: noteId, status: 'note' })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [noteId, openTab, activeTab?.entityId, activeTab?.isPinned])
+
+  const handlePropertyBlocked = useCallback(
+    (action: PropertySectionAction) => {
+      if (isLocked) {
+        toast.error(t('errors:vaultLock.noteReadOnly'))
+        return
+      }
+      const messages: Record<PropertySectionAction, string> = {
+        update: 'Cannot update property - this note was deleted',
+        add: 'Cannot add property - this note was deleted',
+        remove: 'Cannot delete property - this note was deleted',
+        rename: 'Cannot rename property - this note was deleted',
+        reorder: 'Cannot reorder properties - this note was deleted'
+      }
+      toast.error(messages[action])
+    },
+    [isLocked, t]
+  )
+
+  const {
+    properties,
+    values: propertyValues,
+    handleSetFieldValue,
+    newlyAddedPropertyId,
+    handlePropertyChange,
+    handleAddProperty,
+    handleDeleteProperty,
+    handlePropertyNameChange,
+    handlePropertyOrderChange
+  } = usePropertySection({
+    entityId: noteId ?? null,
+    canEdit: () => !isDeleted && !isLocked,
+    onBlocked: handlePropertyBlocked,
+    includeExplicitType: true
+  })
+
+  // Giving the note a project offers to bring the tasks already written in it
+  // along (#2271); the property write itself is unchanged.
+  const noteTaskMove = useNoteProjectTaskMove(noteId ?? null, note?.content ?? '', properties)
+  const handleNotePropertyChange = useCallback(
+    (propertyId: string, value: unknown) => {
+      handlePropertyChange(propertyId, value)
+      noteTaskMove.handlePropertyChange(propertyId, value)
+    },
+    [handlePropertyChange, noteTaskMove]
+  )
+
+  const [propertiesCollapsed, togglePropertiesCollapsed, setPropertiesCollapsed] =
+    usePropertiesCollapsed(noteId ?? '')
+
+  const handleAddPropertyWithExpand = useCallback(
+    (newProp: NewProperty) => {
+      setPropertiesCollapsed(false)
+      handleAddProperty(newProp)
+    },
+    [handleAddProperty, setPropertiesCollapsed]
+  )
+
+  // Bookmark state
+  const { isBookmarked, toggle: toggleBookmark } = useIsBookmarked('note', noteId ?? '')
+
+  // Reminder state
+  const {
+    activeReminders,
+    hasActiveReminder,
+    actions: reminderActions
+  } = useNoteReminders(noteId ?? null)
+  const handleSetReminder = useCallback(
+    async (date: Date, reminderNote?: string): Promise<void> => {
+      await reminderActions.setReminder(date, reminderNote)
+    },
+    [reminderActions]
+  )
+
+  // Editor settings (toolbar mode, width)
+  const { settings: editorSettings, updateSettings: updateEditorSettings } = useEditorSettings()
+
+  // Width follows the global setting (Normal / Full) unless this note has an
+  // explicit per-note override in frontmatter (`fullWidth`), which wins.
+  const widthOverride = note?.frontmatter.fullWidth
+  const isFullWidth =
+    typeof widthOverride === 'boolean' ? widthOverride : editorSettings.width === 'full'
+  const noteContentWidth = isFullWidth ? undefined : EDITOR_NORMAL_CONTENT_WIDTH
+
+  // Focus editor at end when clicking empty space
+  const focusAtEndRef = useRef<((clickY?: number) => void) | null>(null)
+
+  // Opens the editor's template picker at the caret. The overflow menu used to
+  // apply a template over the whole body behind an overwrite prompt; a template
+  // is now always inserted, never a replacement, so both surfaces run the one
+  // insert-at-cursor path.
+  const openTemplateInsertRef = useRef<(() => void) | null>(null)
+
+  // Find in page (Cmd+F)
+  const editorContainerRef = useRef<HTMLDivElement>(null)
+  // Title, properties, tags and body together — the top of the note, which is
+  // where the mind map's root node lands.
+  const noteBodyRef = useRef<HTMLDivElement>(null)
+  const [marqueeZoneEl, setMarqueeZoneEl] = useState<HTMLDivElement | null>(null)
+
+  // Click anywhere in the marquee zone (full scroll area, minus title/metadata
+  // and editable text) → focus editor at end. Attached imperatively so it
+  // coexists with the marquee hook's own mousedown listener.
+  useEffect(() => {
+    if (!marqueeZoneEl) return undefined
+    const handler = (event: MouseEvent): void => {
+      if (event.button !== 0) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- event.target is an HTMLElement or null for DOM mousedown events
+      const target = event.target as HTMLElement | null
+      if (!target) return
+      if (target.closest('[data-marquee-ignore]')) return
+      if (target.closest('button, a, input, textarea, select, [role="button"]')) return
+      // BlockNote's side menu, drag-handle menu, toolbars and their nested
+      // dropdowns render inside the marquee zone (not portaled). A mousedown on
+      // one must NOT focus the editor: stealing focus unmounts the menu between
+      // mousedown and mouseup, so the item's click never fires (drag-handle
+      // Colors/Delete silently did nothing). Mirror the marquee hook's
+      // exclusion list, plus menu roles for nested submenus.
+      // `listbox` is the toolbar's block type dropdown: it portals into the
+      // editor's portal element, which sits inside this zone, so a press on an
+      // option used to land here, jump the caret to the end and drop the pick.
+      if (
+        target.closest(
+          '.bn-side-menu, .bn-formatting-toolbar, .bn-suggestion-menu, .bn-link-toolbar, .bn-drag-handle-menu, .bn-menu-dropdown, [role="menu"], [role="listbox"]'
+        )
+      )
+        return
+      // "Outside every block" — deliberately NOT the same test as the marquee
+      // start rule's "is there text here". See marquee-hit-test.ts.
+      if (!isOutsideAllBlocks(target)) return
+      event.preventDefault()
+      focusAtEndRef.current?.(event.clientY)
+    }
+    marqueeZoneEl.addEventListener('mousedown', handler)
+    return () => marqueeZoneEl.removeEventListener('mousedown', handler)
+  }, [marqueeZoneEl])
+
+  const isActiveNote = activeTab?.entityId === noteId
+  // A large file has no editor DOM to walk, and what is mounted is a few dozen
+  // virtualized rows out of millions — searching them would answer confidently
+  // about the wrong thing. The viewer owns find on that surface instead.
+  const isLargeFile = note?.sizeClass === 'large-file'
+  const findInPage = useFindInPage(editorContainerRef, isActiveNote && !isLargeFile)
+  const openLargeFileFindRef = useRef<(() => void) | null>(null)
+  const openFind = useCallback((): void => {
+    if (isLargeFile) openLargeFileFindRef.current?.()
+    else findInPage.open()
+  }, [isLargeFile, findInPage])
+
+  // A search-palette hit on this note: open the find bar on its match. Cleared
+  // from the tab once taken, so coming back to the tab does not jump again.
+  const findRequest = useMemo(() => readFindRequest(activeTab?.viewState), [activeTab?.viewState])
+  const openFindAt = findInPage.openAt
+  useEffect(() => {
+    if (!findRequest || !activeTab || !note || !isActiveNote || isLargeFile) return
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-ref-to-parent -- effect only calls openFindAt on a find request; no ref is passed
+    openFindAt(findRequest.query, findRequest.index)
+    saveTabState(activeTab.id, { viewState: { [FIND_REQUEST_KEY]: undefined } })
+  }, [findRequest, activeTab, note, isActiveNote, isLargeFile, openFindAt, saveTabState])
+
+  // Content tracking for change detection
+  if (storedNoteIdForContent !== noteId) {
+    setStoredNoteIdForContent(noteId)
+    setEventContentOverride(null)
+  }
+
+  let editorInitialContent = note?.content ?? ''
+  if (eventContentOverride !== null && eventContentOverride.noteId === noteId) {
+    editorInitialContent = eventContentOverride.content
+  }
+
+  const documentStats = useMemo(() => {
+    if (!note) return undefined
+    return {
+      wordCount: note.wordCount ?? 0,
+      characterCount: editorInitialContent.length,
+      createdAt: note.created ?? null,
+      modifiedAt: note.modified ?? null
+    }
+  }, [editorInitialContent.length, note])
+
+  const lastSavedContent = useRef<string>('')
+
+  // Refs for debouncing
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const pendingMarkdownRef = useRef<string | null>(null)
+  // The note whose save lifecycle is running: registered below, cleared when
+  // its cleanup has flushed. The editor's teardown flush reports its last edit
+  // after that cleanup (#1900), so an edit for a note that is no longer live
+  // must not land in the refs above, which now belong to the next note.
+  const liveNoteIdRef = useRef<string | null>(null)
+
+  // ============================================================================
+  // Sync lastSavedContent with note data from query
+  // ============================================================================
+
+  const noteContentForLastSaved = note?.content
+
+  // Update lastSavedContent when note data changes (from cache or fresh fetch)
+  useEffect(() => {
+    if (noteContentForLastSaved !== undefined) {
+      lastSavedContent.current = noteContentForLastSaved
+    }
+  }, [noteContentForLastSaved])
+
+  // Reset deleted state during render when switching to a new note.
+  const [storedNoteIdForDelete, setStoredNoteIdForDelete] = useState(note?.id)
+  if (storedNoteIdForDelete !== note?.id) {
+    setStoredNoteIdForDelete(note?.id)
+    setIsDeleted(false)
+  }
+
+  // Stable ref so cleanup can always call the latest mutateAsync
+  const updateNoteRef = useRef(updateNote.mutateAsync)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  updateNoteRef.current = updateNote.mutateAsync
+
+  // Register with save registry + flush on unmount
+  useEffect(() => {
+    if (!noteId) return undefined
+
+    const registryKey = `note-page:${noteId}`
+    liveNoteIdRef.current = noteId
+
+    registerPendingSave(registryKey, async () => {
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        await updateNoteRef.current({ id: noteId, content: pending })
+      }
+    })
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+        saveTimeoutRef.current = null
+      }
+
+      const pending = pendingMarkdownRef.current
+      if (pending !== null) {
+        pendingMarkdownRef.current = null
+        void updateNoteRef.current({ id: noteId, content: pending })
+      }
+
+      unregisterPendingSave(registryKey)
+      liveNoteIdRef.current = null
+    }
+  }, [noteId])
+
+  // Listen for note deletion events
+  useEffect(() => {
+    if (!noteId) return undefined
+
+    const handleDeleted = (event: { id: string }) => {
+      if (event.id === noteId) {
+        setIsDeleted(true)
+        // Mark tab as deleted with strikethrough (using entityId)
+        setTabDeleted(noteId, true)
+      }
+    }
+
+    const unsubDeleted = onNoteDeleted(handleDeleted)
+
+    return () => {
+      unsubDeleted()
+    }
+  }, [noteId, setTabDeleted])
+
+  // Listen for sync-driven rename events to update tab title
+  useEffect(() => {
+    if (!noteId) return undefined
+
+    const unsub = onNoteRenamed((event) => {
+      if (event.id === noteId) {
+        updateTabTitleByEntityId(noteId, event.newTitle)
+      }
+    })
+
+    return unsub
+  }, [noteId, updateTabTitleByEntityId])
+
+  // Listen for note updates that did not originate from this editor instance.
+  // Track if we're currently saving to ignore our own updates
+  const isSavingRef = useRef(false)
+
+  useEffect(() => {
+    if (!noteId) return undefined
+
+    const handleUpdated = (event: { id: string; changes: Partial<Note>; source?: string }) => {
+      if (event.id !== noteId) return
+
+      if (isSavingRef.current) return
+
+      // `sync` means the CRDT write-back rewrote the file from the Y.Doc. The
+      // IPC CRDT provider has already applied those bytes to this editor, so a
+      // remount here would add nothing — and write-back also fires for local
+      // typing (500ms debounce, ahead of the 1000ms save), where it would blow
+      // away the editor mid-keystroke.
+      if (event.source === 'sync') return
+
+      // TanStack Query will handle the cache invalidation and refetch.
+      // We just need to update lastSavedContent and force editor remount.
+      if (typeof event.changes.content !== 'string') return
+      if (event.changes.content === lastSavedContent.current) return
+
+      lastSavedContent.current = event.changes.content
+      setEventContentOverride({ noteId, content: event.changes.content })
+
+      setExternalUpdateCount((c) => c + 1)
+    }
+
+    const unsubUpdated = onNoteUpdated(handleUpdated)
+
+    return () => {
+      unsubUpdated()
+    }
+  }, [noteId])
+
+  // ============================================================================
+  // Tags - Convert between string[] and Tag[]
+  // ============================================================================
+
+  const pendingTagColorsRef = useRef(new Map<string, string>())
+
+  // Maps keyed by lowercase: tag identity is case-insensitive, display keeps user casing
+  const tagColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const tagInfo of allAvailableTags) {
+      map.set(foldTag(tagInfo.tag), tagInfo.color)
+    }
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    for (const key of pendingTagColorsRef.current.keys()) {
+      // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+      if (map.has(key)) pendingTagColorsRef.current.delete(key)
+    }
+    // Just-created tags aren't in allAvailableTags until reindex+refetch;
+    // without this the editor pill falls back to the hashed default color
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    for (const [key, color] of pendingTagColorsRef.current) {
+      if (!map.has(key)) map.set(key, color)
+    }
+    return map
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
+  }, [allAvailableTags])
+
+  const tagIconMap = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const tagInfo of allAvailableTags) {
+      if (tagInfo.icon) map.set(foldTag(tagInfo.tag), tagInfo.icon)
+    }
+    return map
+  }, [allAvailableTags])
+
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  const headerTags: Tag[] = useMemo(() => {
+    return (note?.headerTags || []).map((tagName) => ({
+      id: tagName,
+      name: tagName,
+      color:
+        tagColorMap.get(foldTag(tagName)) ??
+        pendingTagColorsRef.current.get(foldTag(tagName)) ??
+        '',
+      icon: tagIconMap.get(foldTag(tagName)) ?? null
+    }))
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
+  }, [note?.headerTags, tagColorMap, tagIconMap])
+
+  const availableTags: Tag[] = useMemo(() => {
+    return allAvailableTags.map((tagInfo) => ({
+      id: tagInfo.tag,
+      name: tagInfo.tag,
+      color: tagInfo.color // Use color from backend
+    }))
+  }, [allAvailableTags])
+
+  const recentTags = useMemo(() => {
+    return availableTags.slice(0, 4)
+  }, [availableTags])
+
+  // ============================================================================
+  // Backlinks - Convert to UI format
+  // ============================================================================
+
+  const backlinks: Backlink[] = useMemo(() => {
+    return rawBacklinks.map((bl) => {
+      const pathParts = bl.sourcePath.split('/')
+      const withoutNotesPrefix = pathParts[0] === 'notes' ? pathParts.slice(1) : pathParts
+      const folderPath = withoutNotesPrefix.slice(0, -1).join('/')
+
+      return {
+        id: backlinkId(bl.sourceId, bl.via),
+        noteId: bl.sourceId,
+        noteTitle: bl.sourceTitle,
+        folder: folderPath,
+        // oxlint-disable-next-line react/purity -- wall-clock read is intentional; recomputed only when memo inputs change
+        date: new Date(),
+        mentions: (bl.contexts ?? []).map((ctx, i) => ({
+          id: `mention-${bl.sourceId}-${i}`,
+          snippet: ctx.snippet,
+          linkStart: ctx.linkStart,
+          linkEnd: ctx.linkEnd
+        })),
+        via: bl.via
+      }
+    })
+  }, [rawBacklinks])
+
+  // ============================================================================
+  // Handlers
+  // ============================================================================
+
+  /**
+   * Scrolls to a heading by TEXT, which is all `[[Note#Heading]]` carries — a
+   * block id is minted per document and means nothing to the note that wrote
+   * the link. Matching is trimmed and case-folded, and the first heading that
+   * matches wins: the link records no level and no ordinal, so there is nothing
+   * to tell two identically-worded headings apart with.
+   */
+  const scrollToHeadingText = useCallback(
+    (headingText: string, smooth: boolean): boolean => {
+      const wanted = normalizeHeading(headingText)
+      const match = headings.find((heading) => normalizeHeading(heading.text) === wanted)
+      if (!match) return false
+      return scrollToHeadingBlock(editorContainerRef.current, match.id, { smooth })
+    },
+    [headings]
+  )
+
+  // A portal or link in this note that refers to one of another note's blocks:
+  // the where-used popover opens the note here and the note scrolls to it.
+  const blockRef = (activeTab?.viewState as { blockRef?: BlockRef } | undefined)?.blockRef
+  const clearBlockRef = useCallback(() => {
+    if (!activeTab?.id) return
+    saveTabState(activeTab.id, { viewState: { blockRef: undefined } })
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memoization intentionally depends on a ref-backed value
+  }, [activeTab?.id, saveTabState])
+  useBlockRefScroll(blockRef, editorContainerRef, clearBlockRef)
+
+  const clearHeadingAnchor = useCallback(() => {
+    if (!activeTab?.id) return
+    // `undefined` deletes a `viewState` key — the only way to drop one now that
+    // writes are merged (see `mergeViewState`). Leaving it set would re-fire the
+    // jump every time the user came back to this tab.
+    saveTabState(activeTab.id, { viewState: { headingText: undefined } })
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memoization intentionally depends on a ref-backed value
+  }, [activeTab?.id, saveTabState])
+
+  // The block id the anchor names, or null until the editor has emitted headings.
+  const headingAnchorId = useMemo(() => {
+    if (!initialHeadingText) return null
+    const wanted = normalizeHeading(initialHeadingText)
+    return headings.find((heading) => normalizeHeading(heading.text) === wanted)?.id ?? null
+  }, [initialHeadingText, headings])
+
+  // Read through a ref so headings arriving late are picked up without
+  // restarting the wait below — restarting it would also restart its deadline.
+  const headingAnchorIdRef = useRef(headingAnchorId)
+  useLayoutEffect(() => {
+    headingAnchorIdRef.current = headingAnchorId
+  }, [headingAnchorId])
+
+  // Consume the heading anchor. This waits rather than looking once: the block's
+  // `[data-id]` node is not in the document at the moment `headings` lands,
+  // because ContentArea holds its render behind a placeholder until the CRDT
+  // binding settles. A single lookup loses that race, and a note nobody edits
+  // emits no second set of headings to retry on.
+  useEffect(() => {
+    if (!initialHeadingText) return undefined
+    // Never smooth: the note has only just appeared, so there is no starting
+    // position for an animation to be relative to.
+    return scrollToHeadingWhenReady({
+      getContainer: () => editorContainerRef.current,
+      getHeadingId: () => headingAnchorIdRef.current,
+      smooth: false,
+      // Same deadline scroll restore uses, so the two can never disagree about
+      // when content has settled — and so a heading that never arrives stops
+      // suppressing restore instead of pinning the anchor to the tab forever.
+      timeoutMs: RESTORE_MAX_MS,
+      onSettled: clearHeadingAnchor
+    })
+  }, [initialHeadingText, clearHeadingAnchor])
+
+  const handleHeadingsChange = useCallback((newHeadings: HeadingInfo[]) => {
+    setHeadings(
+      newHeadings.map((h) => ({
+        id: h.id,
+        level: h.level,
+        text: h.text,
+        position: h.position
+      }))
+    )
+  }, [])
+
+  // Debounced save on markdown content change
+  const handleMarkdownChange = useCallback(
+    (markdown: string) => {
+      if (!noteId || !note) return
+
+      // A late edit from an editor torn down after this note's save lifecycle
+      // ended. Nothing is left to debounce it or flush it on quit, so it is
+      // saved now, to the note it was typed in.
+      if (liveNoteIdRef.current !== noteId) {
+        if (isDeleted) return
+        updateNoteRef.current({ id: noteId, content: markdown }).catch((err: unknown) => {
+          log.error('Failed to save note after its editor closed:', err)
+        })
+        return
+      }
+
+      // Block saves if note was deleted
+      if (isDeleted) {
+        toast.error(t('page.toast.cannotSaveDeleted'))
+        return
+      }
+
+      // Skip if content hasn't changed
+      if (markdown === lastSavedContent.current) return
+
+      pendingMarkdownRef.current = markdown
+
+      // Clear previous timeout
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current)
+      }
+
+      // Debounce save (fixed 1000ms)
+      saveTimeoutRef.current = setTimeout(() => {
+        void (async () => {
+          isSavingRef.current = true
+          try {
+            await updateNote.mutateAsync({ id: noteId, content: markdown })
+            lastSavedContent.current = markdown
+            setEventContentOverride(null)
+            pendingMarkdownRef.current = null
+            if (isLocalGraphOpen) {
+              void queryClient.invalidateQueries({ queryKey: graphKeys.local(noteId) })
+            }
+          } catch (err) {
+            log.error('Failed to save note:', err)
+          } finally {
+            isSavingRef.current = false
+          }
+        })()
+      }, 1000)
+    },
+    [noteId, note, isDeleted, t, updateNote, isLocalGraphOpen, queryClient]
+  )
+
+  const handleContentChange = useCallback((_blocks: Block[]) => {
+    // Content change is handled via onMarkdownChange
+  }, [])
+
+  const review = useCriticMarkupReview({
+    markdown: editorInitialContent,
+    onMarkdownChange: handleMarkdownChange
+  })
+  const hasReviewContent = review.marks.length > 0 || !!review.activeDraft
+  const [reviewRailHidden, setReviewRailHidden] = useState(false)
+
+  // Writing tools: the side rail's Alternatives / Overflow modes
+  // and the editor right-click menu (see writing-tools/).
+  const { session: writingTools, snapshot: writingSnapshot } = useWritingTools()
+  const writingMode = writingSnapshot.mode
+
+  // An agent edit to this note is reviewed here, in place of the editor.
+  const agentReviewTarget = useMemo(
+    () => (noteId ? ({ kind: 'note', id: noteId } as const) : null),
+    [noteId]
+  )
+  const agentReview = useAgentBodyReview(agentReviewTarget)
+
+  // Folding: a read-only level view over the editor (see components/note/fold/).
+  // A locked note, a large file, and an agent edit under review never fold.
+  const fold = useNoteFold(
+    isLargeFile || isLocked || agentReview ? null : noteId,
+    note?.wordCount ?? 0
+  )
+
+  // Mind map. `onEditorReady` is composed rather than replaced so the map reads
+  // the live block tree off the editor that stays mounted behind it, with no
+  // new prop on the content area.
+  const mindMap = useMindMap({
+    noteId: noteId ?? '',
+    noteTitle: note?.title ?? '',
+    onEditorReady: review.handleEditorReady
+  })
+  const {
+    refresh: refreshMindMap,
+    handleEditorReady: mindMapEditorReady,
+    close: closeMindMap
+  } = mindMap
+  // The attachments dialog reads original filenames off the live block tree;
+  // the editor is captured here (composed, not replacing the mind map's hook)
+  // so the dialog needs no new prop on the content area.
+  const attachmentsEditorRef = useRef<unknown>(null)
+  const handleEditorReadyWithAttachments = useCallback(
+    (editor: unknown) => {
+      attachmentsEditorRef.current = editor
+      mindMapEditorReady(editor)
+      // `useCreateBlockNote` renders the editor's blocks synchronously, and
+      // this effect runs after that render commits — the same "block tree is
+      // real" signal the mind map and attachments dialog above already trust.
+      // `editor` is null on teardown, so only a genuine mount counts as the
+      // note becoming readable, never a remount tick.
+      if (editor && noteId) markLaunchNoteReadable(noteId)
+    },
+    [mindMapEditorReady, noteId]
+  )
+  const getAttachmentOriginalNames = useCallback(
+    () => collectOriginalNames(attachmentsEditorRef.current),
+    []
+  )
+  const getAttachmentsEditor = useCallback(() => attachmentsEditorRef.current, [])
+  const getEditorContainer = useCallback(() => editorContainerRef.current, [])
+  const getNoteBody = useCallback(() => noteBodyRef.current, [])
+  // The map is built when it opens, but a restored tab reopens it before the
+  // body has finished loading. The heading set arriving is the signal that the
+  // block tree behind the map is real.
+  //
+  // `refreshMindMap` closes over `mindMap`/`review`, which are built from this
+  // component's `noteId` prop and touch refs and state (e.g. `isDeleted`)
+  // elsewhere in this file. The lint plugin's static reference tracing follows
+  // that chain and misreads it as this effect forwarding a ref or live state
+  // to a parent — it does neither; it only calls `refreshMindMap()`.
+  useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-live-state-to-parent, react-you-might-not-need-an-effect/no-pass-ref-to-parent, react-you-might-not-need-an-effect/no-derived-state
+    refreshMindMap()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- dependency is an intentional re-run trigger (token/identity), not read by the effect
+  }, [headings, refreshMindMap])
+
+  const handleTitleChange = useCallback(
+    async (newTitle: string) => {
+      if (!noteId || !note || newTitle === note.title) return
+
+      if (isDeleted) {
+        toast.error(t('page.toast.cannotRenameDeleted'))
+        return
+      }
+
+      // Clearing the field and blurring used to send `newTitle: ''` straight at
+      // the `min(1)` contract; the rejection was logged and nothing else, so the
+      // title silently snapped back (#1991).
+      if (!newTitle.trim()) {
+        toast.error(t('page.toast.titleRequired'))
+        return
+      }
+
+      // Notes in different folders may share a title (#3164). Looked up before
+      // the rename so the resolver cannot answer with this note itself.
+      const twinLookup = notesService.resolveByTitle(newTitle).catch((err: unknown) => {
+        log.warn('Duplicate-title lookup failed:', err)
+        return null
+      })
+      try {
+        const result = await renameNote.mutateAsync({ id: noteId, newTitle })
+        const twin = await twinLookup
+        // A same-folder clash gets a numbered filename, so no twin then.
+        if (
+          twin &&
+          twin.id !== noteId &&
+          result.note?.title.toLowerCase() === twin.title.toLowerCase()
+        ) {
+          const slash = twin.path.lastIndexOf('/')
+          toast.info(
+            t('page.toast.duplicateTitle', {
+              title: twin.title,
+              folder: slash === -1 ? '/' : twin.path.slice(0, slash)
+            })
+          )
+        }
+        // Note will be updated via TanStack Query cache invalidation
+      } catch (err) {
+        log.error('Failed to rename note:', err)
+        toast.error(extractErrorMessage(err, t('page.toast.renameFailed')))
+      }
+    },
+    [noteId, note, isDeleted, t, renameNote]
+  )
+
+  // Tag handlers
+  const canEditTags = useCallback(
+    (action: 'add' | 'remove') => {
+      if (!isDeleted) return true
+      toast.error(
+        getI18n().getFixedT(
+          null,
+          'notes'
+        )(
+          action === 'add'
+            ? 'phaseI.toasts.cannotAddTagThisNoteWasDeleted'
+            : 'phaseI.toasts.cannotRemoveTagThisNoteWasDeleted'
+        )
+      )
+      return false
+    },
+    [isDeleted]
+  )
+  const headerTagActions = useHeaderTags({
+    noteId: noteId ?? null,
+    noteTitle: note?.title ?? '',
+    headerTags: note?.headerTags ?? [],
+    values: propertyValues,
+    canEdit: () => canEditTags('add'),
+    onFieldTagAdded: () => setPropertiesCollapsed(false)
+  })
+  const { addTag: addHeaderTag, removeTag: removeHeaderTag } = headerTagActions
+
+  const handleAddTag = useCallback(
+    async (tagId: string) => {
+      const tagToAdd = availableTags.find((tg) => tg.id === tagId)
+      if (tagToAdd) await addHeaderTag(tagToAdd.name)
+    },
+    [availableTags, addHeaderTag]
+  )
+
+  const handleCreateTag = useCallback(
+    async (name: string, color: string) => {
+      pendingTagColorsRef.current.set(foldTag(name), color)
+      await addHeaderTag(name)
+    },
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
+    [addHeaderTag]
+  )
+
+  const handleRemoveTag = useCallback(
+    async (tagId: string) => {
+      if (!canEditTags('remove')) return
+      await removeHeaderTag(tagId)
+    },
+    [canEditTags, removeHeaderTag]
+  )
+
+  const { data: tagSchemas } = useTagSchemas()
+  const fieldGroups = useMemo(
+    () => buildFieldGroups(note?.headerTags ?? [], tagSchemas, propertyValues),
+    [note?.headerTags, tagSchemas, propertyValues]
+  )
+  const ownProperties = useMemo(() => {
+    const own = new Set(fieldGroups.rest.map((entry) => entry.name))
+    return properties.filter((property) => own.has(property.name))
+  }, [fieldGroups.rest, properties])
+  const fieldFill = useNoteFieldFill(noteId ?? null, isDeleted || isLocked)
+  const fieldSlotCount = fieldGroups.groups.reduce((sum, group) => sum + group.slots.length, 0)
+  const noteBodyEmpty = !(note?.content ?? '').trim()
+  const tagFieldHints = useMemo(
+    () => ({ bodyEmpty: noteBodyEmpty, tags: tagSchemas?.tags ?? {} }),
+    [noteBodyEmpty, tagSchemas]
+  )
+
+  const handleInlineTagsChange = useInlineTagEdits(
+    useCallback(
+      (edit: InlineTagEdit) => {
+        if (!noteId || isDeleted) return
+        updateNote
+          .mutateAsync({ id: noteId, headerTags: { ...edit, source: 'inline' } })
+          .catch((err: unknown) => log.error('Failed to sync inline tags:', err))
+      },
+      [noteId, isDeleted, updateNote]
+    )
+  )
+
+  // Local-only toggle
+  const handleToggleLocalOnly = useCallback(
+    async (value: boolean) => {
+      if (!noteId) return
+      if (isDeleted) {
+        toast.error(
+          getI18n().getFixedT(
+            null,
+            'notes'
+          )('phaseI.toasts.cannotChangeLocalOnlyThisNoteWasDeleted')
+        )
+        return
+      }
+      try {
+        await notesService.setLocalOnly(noteId, value)
+        refetchNote()
+        void queryClient.invalidateQueries({ queryKey: ['notes', 'localOnlyCount'] })
+        toast.success(value ? t('page.toast.localOnly') : t('page.toast.willSync'))
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('page.toast.toggleLocalOnlyFailed')))
+      }
+    },
+    [noteId, isDeleted, refetchNote, queryClient, t]
+  )
+
+  const { setCover, setCoverFraming, removeCover } = useNoteCover(
+    noteId ?? null,
+    note?.frontmatter ?? null,
+    refetchNote
+  )
+  const cover = note ? parseCoverValue(note.frontmatter.cover) : null
+  const coverFraming = parseCoverFraming(note?.frontmatter ?? {})
+  const coverCredit = isCoverCreditValue(note?.frontmatter.coverCredit)
+    ? note.frontmatter.coverCredit
+    : null
+  const coverCreditUrl = isCoverCreditUrlValue(note?.frontmatter.coverCreditUrl)
+    ? note.frontmatter.coverCreditUrl
+    : null
+  const [isRepositioningCover, setIsRepositioningCover] = useState(false)
+
+  /**
+   * Set or clear the note's icon from the title row. Writes the same `emoji`
+   * field the sidebar and folder-row menus write, so every entry point agrees.
+   */
+  const handleIconChange = useCallback(
+    async (icon: string | null) => {
+      if (!noteId || isDeleted) return
+      try {
+        const result = await notesService.update({ id: noteId, emoji: icon })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Failed to update icon')
+        }
+        refetchNote()
+      } catch (err) {
+        log.error('Failed to update note icon:', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToUpdateIcon')
+          )
+        )
+      }
+    },
+    [noteId, isDeleted, refetchNote]
+  )
+
+  const handleToggleFullWidth = useCallback(
+    async (value: boolean) => {
+      if (!noteId || isDeleted) return
+      try {
+        await notesService.update({ id: noteId, frontmatter: { fullWidth: value } })
+        refetchNote()
+      } catch (err) {
+        toast.error(extractErrorMessage(err, t('page.toast.toggleFullWidthFailed')))
+      }
+    },
+    [noteId, isDeleted, refetchNote, t]
+  )
+
+  const noteDeleteGuard = useNoteDeleteGuard()
+  const deleteTasksChoice = useNoteTasksChoice(dialog.is('delete'), noteId ? [noteId] : [])
+  const carriedTaskIdsToDelete = deleteTasksChoice.taskIdsToDelete
+
+  // Delete the current note, then close its tab
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!noteId || isDeleting) return
+    // Other notes that show or link this one get a say before it goes.
+    const proceed = await noteDeleteGuard.confirmNoteDelete([
+      { id: noteId, title: note?.title ?? '' }
+    ])
+    if (!proceed) return
+    setIsDeleting(true)
+    try {
+      const result = await deleteNote.mutateAsync(noteId)
+      if (result.success) {
+        await deleteNoteTasks(carriedTaskIdsToDelete)
+        dialog.close()
+        closeTab(activeTab?.id ?? `/notes/${noteId}`)
+      } else {
+        toast.error(result.error ?? t('page.toast.deleteFailed'))
+      }
+    } catch (err) {
+      toast.error(extractErrorMessage(err, t('page.toast.deleteFailed')))
+    } finally {
+      setIsDeleting(false)
+    }
+    // oxlint-disable-next-line react/preserve-manual-memoization -- manual memoization intentionally depends on a ref-backed value
+  }, [
+    noteId,
+    note?.title,
+    isDeleting,
+    deleteNote,
+    noteDeleteGuard,
+    carriedTaskIdsToDelete,
+    closeTab,
+    activeTab?.id,
+    t,
+    dialog
+  ])
+
+  // Link handlers
+  const handleLinkClick = useCallback((href: string) => {
+    window.open(href, '_blank', 'noopener,noreferrer')
+  }, [])
+
+  // "Clicking a page opens a new tab" (#1644) covers in-note navigation too:
+  // with it off, following a wiki link or a backlink navigates this tab in
+  // place. Guarded on this note being the active tab — reuse replaces the
+  // active tab of the active group, so a link clicked in a background pane
+  // must not clobber an unrelated tab (same guard as the file conversion
+  // above). Dedup still runs first: a target already open just gets focused.
+  const { reuseActiveTab: reusePreferred } = useOpenPage()
+  const { openInNewTab, openToTheSide } = useOpenTarget()
+  const openLinked = useCallback(
+    (tab: Parameters<typeof openTab>[0], open?: WikiLinkOpenTarget) => {
+      // An explicit gesture (middle-click, the link menu) beats the preference.
+      if (open === 'side') {
+        openToTheSide(tab)
+      } else if (open) {
+        openInNewTab(tab, { background: open === 'backgroundTab' })
+      } else if (
+        reusePreferred &&
+        activeTab != null &&
+        activeTab.entityId === noteId &&
+        !activeTab.isPinned
+      ) {
+        openTab(tab, { reuseActiveTab: true })
+      } else {
+        openTab(tab)
+      }
+    },
+    [openTab, openInNewTab, openToTheSide, reusePreferred, activeTab, noteId]
+  )
+
+  const handleInternalLinkClick = useCallback(
+    async (linkedNoteIdOrTitle: string, open?: WikiLinkOpenTarget) => {
+      const target = linkedNoteIdOrTitle?.trim()
+      if (!target) return
+
+      // `[[#Heading]]` addresses the note it is written in: no tab, no lookup,
+      // just a jump inside content already on screen.
+      const sameNote = splitWikiTarget(target)
+      if (sameNote.heading && !sameNote.note) {
+        scrollToHeadingText(sameNote.heading, !prefersReducedMotion)
+        return
+      }
+
+      try {
+        // Use format-aware resolution to handle notes and files
+        const resolution = await resolveWikiLink(target)
+
+        switch (resolution.type) {
+          case 'file':
+            // Open file in appropriate viewer (image, video, PDF, audio)
+            openLinked(
+              {
+                type: 'file',
+                title: resolution.title,
+                icon: resolution.icon,
+                path: `/file/${resolution.id}`,
+                entityId: resolution.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              },
+              open
+            )
+            break
+
+          case 'note':
+            // Open note in editor, carrying the heading the link named. The
+            // target page consumes it once its own editor has produced headings
+            // — text is all we have, and block ids only exist over there.
+            openLinked(
+              {
+                type: 'note',
+                title: resolution.title,
+                icon: 'file-text',
+                path: `/notes/${resolution.id}`,
+                entityId: resolution.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false,
+                ...(resolution.heading && { viewState: { headingText: resolution.heading } })
+              },
+              open
+            )
+            break
+
+          case 'canvas':
+            // A canvas has no editor to land inside, so there is no heading to
+            // carry: the link opens the board itself (#1983).
+            openLinked(
+              {
+                type: 'canvas',
+                title: resolution.title,
+                icon: 'pen-tool',
+                path: `/canvas/${resolution.id}`,
+                entityId: resolution.id,
+                isPinned: false,
+                isModified: false,
+                isPreview: false,
+                isDeleted: false
+              },
+              open
+            )
+            break
+
+          case 'create':
+            // Ask before creating — a stale `[[Old Title]]` used to silently
+            // mint a duplicate note here (#1716). The dialog carries the
+            // resolution's title, NOT the raw target: for `[[Note#Heading]]`
+            // that is `Note` — a heading separator has no business in a
+            // filename.
+            setPendingWikiLinkCreate(resolution.title)
+            break
+
+          case 'not-found':
+            // File-like target not found - show error instead of creating a note
+            toast.error(t('page.toast.fileNotFound', { target }))
+            break
+        }
+      } catch (err) {
+        log.error('Failed to resolve wiki link:', err)
+        toast.error(t('page.toast.openLinkedFailed'))
+      }
+    },
+    [openLinked, t, scrollToHeadingText, prefersReducedMotion]
+  )
+
+  // The confirmed half of the dialog above: byte-identical to the old
+  // auto-create — default folder, open immediately.
+  const handleWikiLinkCreateConfirm = useCallback(
+    async (title: string) => {
+      try {
+        const result = await createNote.mutateAsync({ title })
+        if (!result.success || !result.note) {
+          toast.error(t('page.toast.createLinkedFailed'))
+          return
+        }
+        openLinked({
+          type: 'note',
+          title: result.note.title,
+          icon: 'file-text',
+          path: `/notes/${result.note.id}`,
+          entityId: result.note.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+      } catch (err) {
+        log.error('Failed to create linked note:', err)
+        toast.error(t('page.toast.createLinkedFailed'))
+      }
+    },
+    [createNote, openLinked, t]
+  )
+
+  const handleOpenMentionSource = useCallback(
+    (sourceId: string, title: string) => {
+      openLinked({
+        type: 'note',
+        title,
+        icon: 'file-text',
+        path: `/notes/${sourceId}`,
+        entityId: sourceId,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openLinked]
+  )
+
+  const handleBacklinkClick = useCallback(
+    (backlinkNoteId: string, mention?: Mention) => {
+      const backlink = backlinks.find((bl) => bl.noteId === backlinkNoteId)
+      const noteTitle = backlink?.noteTitle || 'Note'
+
+      const viewState = mention
+        ? {
+            highlightText: mention.snippet.replace(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g, '$1').trim()
+          }
+        : undefined
+
+      openLinked({
+        type: 'note',
+        title: noteTitle,
+        icon: 'file-text',
+        path: `/notes/${backlinkNoteId}`,
+        entityId: backlinkNoteId,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false,
+        ...(viewState && { viewState })
+      })
+    },
+    [openLinked, backlinks]
+  )
+
+  // The drawer sits under the map's overlay, so the map gives the note back first.
+  const handleLinkedTaskClick = useCallback(
+    (taskId: string) => {
+      closeMindMap()
+      openTaskDetail(taskId)
+    },
+    [closeMindMap, openTaskDetail]
+  )
+
+  // One handler for the outline panel and for both projections of the map, so
+  // a heading click cannot mean two different things depending on what else is
+  // on screen. The map closes first; see the hook for why that is not optional.
+  //
+  // The note and task kinds are handed the page's OWN handlers —
+  // the same `handleInternalLinkClick` a `[[…]]` in the body goes through, and
+  // the same `handleLinkedTaskClick` the linked-tasks panel goes through — so
+  // the map invents no navigation of its own. Declared here rather than
+  // beside the map's own state because both of those handlers are defined
+  // above it.
+  const openLinkedNote = useCallback(
+    (wikiTarget: string) => void handleInternalLinkClick(wikiTarget),
+    [handleInternalLinkClick]
+  )
+  // Both of these are refs rather than state, and for the same reason: they are
+  // read at the instant of a click or a mount and never rendered, so putting
+  // either in state would re-render this page on every scroll tick or every
+  // remount of the drawing surface for nothing.
+  //
+  // `activeHeadingRef` is where the map's camera lands when it opens;
+  // `mindMapFocusRef` is how an outline click moves it while it is open, and it
+  // is null exactly when there is no live map to move.
+  const activeHeadingRef = useRef<string | null>(null)
+  const handleActiveHeadingChange = useCallback((headingId: string | null) => {
+    activeHeadingRef.current = headingId
+  }, [])
+  const mindMapFocusRef = useRef<((blockId: string) => boolean) | null>(null)
+  const handleMindMapFocusChange = useCallback(
+    (focusBlock: ((blockId: string) => boolean) | null) => {
+      mindMapFocusRef.current = focusBlock
+    },
+    []
+  )
+  const focusMindMapBlock = useCallback(
+    (blockId: string) => mindMapFocusRef.current?.(blockId) === true,
+    []
+  )
+  const mindMapNavigation = useMindMapNavigation({
+    close: mindMap.close,
+    expandBranch: mindMap.expandBranch,
+    getContainer: getEditorContainer,
+    getTopElement: getNoteBody,
+    smooth: !prefersReducedMotion,
+    openNote: openLinkedNote,
+    openTask: handleLinkedTaskClick,
+    focusBlock: focusMindMapBlock
+  })
+
+  const {
+    commands: noteCommands,
+    labels: noteLabels,
+    moveToFolder,
+    readwise
+  } = useNoteCommands({
+    note,
+    isDeleted,
+    isLocked,
+    hasOwnLock,
+    isFullWidth,
+    isLocalGraphOpen,
+    setIsLocalGraphOpen,
+    dialog,
+    titleInputRef,
+    openTemplateInsertRef,
+    openFind,
+    isBookmarked,
+    toggleBookmark,
+    mindMap,
+    setLocalOnly: handleToggleLocalOnly,
+    setFullWidth: handleToggleFullWidth
+  })
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  // No note ID - show empty state
+  if (!noteId) {
+    return <NoteEmptyState />
+  }
+
+  // #800: don't mount the markdown editor until we've confirmed this id is not a
+  // filed binary. 'pending' = probe in flight; 'file' = redirecting to the file
+  // viewer. Either way render nothing so a binary never reaches the editor.
+  if (fileProbeStatus !== 'note') {
+    return null
+  }
+
+  // Error
+  if (error) {
+    return <NoteErrorState error={error} onRetry={refetchNote} />
+  }
+
+  // Loading state - show nothing while fetching to avoid flash of error
+  if (isLoading || !note) {
+    return null
+  }
+
+  const actionIcons = (
+    <div className="flex items-center gap-0.5">
+      {!isLargeFile && (
+        <WritingChrome
+          mode={writingMode}
+          onSelectMode={(mode) => writingTools.setMode(mode)}
+          alternativeCount={writingSnapshot.alternatives.length}
+          overflowCount={writingSnapshot.overflow.length}
+          fold={fold.control}
+          disabled={isDeleted || Boolean(agentReview)}
+        />
+      )}
+      <ReminderPicker
+        {...dialog.bind('reminder')}
+        onSelect={(date, reminderNote) => void handleSetReminder(date, reminderNote)}
+        presetType="standard"
+        telemetrySurface="notes"
+        showNote
+        disabled={isDeleted}
+        reminders={activeReminders}
+        onEdit={(id, date, reminderNote) =>
+          void reminderActions.editReminder(id, date, reminderNote)
+        }
+        onDelete={(id) => void reminderActions.deleteReminder(id)}
+        trigger={
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
+            disabled={isDeleted}
+            title={
+              hasActiveReminder ? t('editor.toolbar.reminderSet') : t('editor.toolbar.setReminder')
+            }
+          >
+            <AlarmClock
+              className={cn(
+                'h-3.5 w-3.5',
+                hasActiveReminder ? 'text-amber-500' : 'text-muted-foreground'
+              )}
+            />
+          </Button>
+        }
+      />
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
+        onClick={() => void noteCommands['note.toggleBookmark'].run({ source: 'ui' })}
+        disabled={isDeleted}
+        title={noteLabels['note.toggleBookmark']}
+      >
+        <Bookmark2
+          className={cn(
+            'h-3.5 w-3.5',
+            isBookmarked ? 'fill-accent-orange text-accent-orange' : 'text-muted-foreground'
+          )}
+        />
+      </Button>
+
+      {/* Mind map. Its own actions live inside the map, never in the overflow
+          menu above — the same control doing different work per mode is how
+          people delete things by accident. */}
+      {mindMap.isAvailable && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
+          onClick={mindMap.toggle}
+          disabled={isDeleted}
+          aria-pressed={mindMap.isOpen}
+          data-testid="note-mind-map-toggle"
+          title={mindMap.isOpen ? t('editor.toolbar.hideMindMap') : t('editor.toolbar.showMindMap')}
+          aria-label={
+            mindMap.isOpen ? t('editor.toolbar.hideMindMap') : t('editor.toolbar.showMindMap')
+          }
+        >
+          <Hierarchy
+            className={cn(
+              'h-3.5 w-3.5',
+              mindMap.isOpen ? 'text-accent-orange' : 'text-muted-foreground'
+            )}
+          />
+        </Button>
+      )}
+
+      <Picker
+        value={null}
+        closeOnSelect={false}
+        onValueChange={(id) => {
+          // Full width flips in place: the switch is the feedback.
+          if (id !== 'note.toggleFullWidth') setMoreMenuOpen(false)
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu item ids come from the NoteCommandId-typed command list
+          void noteCommands[id as NoteCommandId].run({ source: 'ui' })
+        }}
+        open={moreMenuOpen}
+        onOpenChange={setMoreMenuOpen}
+      >
+        <Picker.Trigger asChild disabled={isDeleted}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 hover:bg-surface-active transition-all duration-150 ease-out active:scale-95 active:bg-surface-active/70 disabled:active:scale-100"
+            disabled={isDeleted}
+            data-testid="note-more-menu"
+            aria-label={t('editor.toolbar.moreActions')}
+          >
+            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </Picker.Trigger>
+        <Picker.Content align="end">
+          <Picker.Search placeholder={t('editor.toolbar.searchActions')} />
+          <Picker.List filterByLabel emptyMessage={t('editor.toolbar.noMatchingActions')}>
+            <Picker.Item
+              value="note.localGraph"
+              label={noteLabels['note.localGraph']}
+              icon={<PageGraphIcon className="size-4" />}
+            />
+            <Picker.Item
+              value="note.find"
+              label={noteLabels['note.find']}
+              icon={<Search className="size-4" />}
+            />
+            <Picker.Item
+              value="note.versionHistory"
+              label={noteLabels['note.versionHistory']}
+              icon={<FilePaste className="size-4" />}
+            />
+            <Picker.Item
+              value="note.exportPdf"
+              label={noteLabels['note.exportPdf']}
+              icon={<Download className="size-4" />}
+            />
+            {/* A large file reads back with an empty body, so apply would
+                overwrite the whole file without the replace prompt. It also
+                has no block editor, so there is no caret to insert at. */}
+            {!isLargeFile && (
+              <>
+                <Picker.Item
+                  value="note.applyTemplate"
+                  label={noteLabels['note.applyTemplate']}
+                  icon={<LayoutTemplate className="size-4" />}
+                />
+                <Picker.Item
+                  value="note.insertTemplate"
+                  label={noteLabels['note.insertTemplate']}
+                  icon={<PenLine className="size-4" />}
+                />
+              </>
+            )}
+            <Picker.Item
+              value="note.saveAsTemplate"
+              label={noteLabels['note.saveAsTemplate']}
+              icon={<Save className="size-4" />}
+            />
+            <Picker.Item
+              value="note.newFromNote"
+              label={noteLabels['note.newFromNote']}
+              icon={<FilePlus className="size-4" />}
+            />
+            <Picker.Item
+              value="note.toggleFullWidth"
+              label={noteLabels['note.toggleFullWidth']}
+              icon={<Maximize className="size-4" />}
+              trailing={
+                <Switch
+                  checked={isFullWidth}
+                  className="pointer-events-none h-4 w-7"
+                  tabIndex={-1}
+                />
+              }
+            />
+            <Picker.Separator />
+            <Picker.Item
+              value="note.rename"
+              label={noteLabels['note.rename']}
+              icon={<Pencil className="size-4" />}
+            />
+            <Picker.Item
+              value="note.addName"
+              label={noteLabels['note.addName']}
+              icon={<Type className="size-4" />}
+            />
+            <Picker.Item
+              value="note.moveToFolder"
+              label={noteLabels['note.moveToFolder']}
+              icon={<FolderInput className="size-4" />}
+            />
+            <Picker.Item
+              value="note.copyPath"
+              label={noteLabels['note.copyPath']}
+              icon={<Copy className="size-4" />}
+            />
+            <Picker.Separator />
+            <Picker.Item
+              value="note.revealInFinder"
+              label={noteLabels['note.revealInFinder']}
+              icon={<FolderOpen className="size-4" />}
+            />
+            <Picker.Item
+              value="note.revealInSidebar"
+              label={noteLabels['note.revealInSidebar']}
+              icon={<PanelLeft className="size-4" />}
+            />
+            <Picker.Item
+              value="note.openExternal"
+              label={noteLabels['note.openExternal']}
+              icon={<ExternalLink className="size-4" />}
+            />
+            <Picker.Item
+              value="note.attachments"
+              label={noteLabels['note.attachments']}
+              icon={<Paperclip className="size-4" />}
+            />
+            <Picker.Separator />
+            <Picker.Item
+              value="note.toggleLocalOnly"
+              label={noteLabels['note.toggleLocalOnly']}
+              icon={<Monitor className="size-4" />}
+              disabled={isLocked}
+              className="disabled:pointer-events-none disabled:opacity-50"
+            />
+            {(hasOwnLock || !isLocked) && (
+              <Picker.Item
+                value="note.toggleLock"
+                label={noteLabels['note.toggleLock']}
+                icon={<Lock className="size-4" />}
+              />
+            )}
+            {readwise.isLinked && <ReadwiseMenuGroup readwise={readwise} labels={noteLabels} />}
+            <Picker.Separator />
+            <Picker.Item
+              value="note.delete"
+              label={noteLabels['note.delete']}
+              icon={<Trash2 className="size-4" />}
+              destructive
+            />
+          </Picker.List>
+        </Picker.Content>
+      </Picker>
+    </div>
+  )
+
+  return (
+    <NoteLayout
+      suppressScrollRestore={Boolean(initialHeadingText) || findRequest !== null}
+      headings={headings}
+      onHeadingClick={mindMapNavigation.navigateFromOutline}
+      onActiveHeadingChange={handleActiveHeadingChange}
+      actions={actionIcons}
+      fullWidth={isFullWidth}
+      contentWidth={noteContentWidth ?? undefined}
+      sideRail={
+        writingMode && !isLargeFile && !agentReview ? (
+          <WritingRail mode={writingMode} session={writingTools} snapshot={writingSnapshot} />
+        ) : hasReviewContent ? (
+          <ReviewRail review={review} targetId={noteId} />
+        ) : undefined
+      }
+      overlay={
+        mindMap.isOpen && mindMap.map ? (
+          <MindMapView
+            map={mindMap.map}
+            noteId={noteId ?? ''}
+            noteTitle={note.title}
+            onActivateNode={mindMapNavigation.activateNode}
+            // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+            initialFocusBlockId={activeHeadingRef.current}
+            onFocusChange={handleMindMapFocusChange}
+          />
+        ) : undefined
+      }
+      onRailHiddenChange={setReviewRailHidden}
+      marqueeZoneRef={setMarqueeZoneEl}
+      topBar={
+        <FindBar
+          isOpen={findInPage.isOpen}
+          query={findInPage.query}
+          matchCount={findInPage.matchCount}
+          currentIndex={findInPage.currentIndex}
+          inputRef={findInPage.inputRef}
+          onQueryChange={findInPage.setQuery}
+          onNext={findInPage.next}
+          onPrev={findInPage.prev}
+          onClose={findInPage.close}
+        />
+      }
+      breadcrumb={<NoteBreadcrumb notePath={note.path} noteTitle={note.title} />}
+      stats={documentStats}
+      noteId={noteId}
+      cover={
+        cover && (
+          <NoteCover
+            cover={cover}
+            src={
+              cover.kind === 'image'
+                ? resolveNoteRelativeUrl(cover.ref, note.path, vaultPath, noteId)
+                : null
+            }
+            washSeed={noteId}
+            framing={coverFraming}
+            credit={coverCredit}
+            creditUrl={coverCreditUrl}
+            onChange={(event) => setCoverPickerAnchor(coverPickerAnchorFrom(event))}
+            onRemove={() => void removeCover()}
+            onFramingChange={(changes) => void setCoverFraming(changes)}
+            repositioning={isRepositioningCover}
+            onRepositioningChange={setIsRepositioningCover}
+            disabled={isDeleted}
+          />
+        )
+      }
+    >
+      {/* Note content — no entrance animation: a note switch paints immediately */}
+      <div
+        key={noteId}
+        ref={noteBodyRef}
+        data-testid="note-body"
+        // Hidden, never unmounted: unmounting destroys the editor instance and
+        // with it the CRDT undo manager, so a look at the map would cost the
+        // user their undo history. `invisible` also keeps the layout box, which
+        // is what leaves the scroll offset — and the cursor, the selection and
+        // the CRDT binding — exactly where they were.
+        inert={mindMap.isOpen || undefined}
+        aria-hidden={mindMap.isOpen || undefined}
+        className={cn(
+          'flex flex-col flex-1 mx-auto w-full transition-[max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]',
+          mindMap.isOpen && 'invisible pointer-events-none'
+        )}
+        style={{ maxWidth: noteContentWidth ?? '100%' }}
+      >
+        {/* Title + Metadata zone — ghost affordance appears on hover */}
+        <div
+          className="group/metadata flex flex-col gap-2.5 pb-[15px]"
+          data-testid="note-metadata"
+          data-marquee-ignore
+        >
+          {isLocked && <LockedNoteNotice />}
+          <NoteTitle
+            disabled={isLocked}
+            noteId={note.id}
+            emoji={note.emoji ?? null}
+            title={note.title}
+            onTitleChange={(...args) => void handleTitleChange(...args)}
+            onIconChange={(icon) => void handleIconChange(icon)}
+            placeholder={isFreshTitle ? NEW_NOTE_TITLE : t('editor.title.untitled')}
+            inputRef={titleInputRef}
+            fresh={isFreshTitle}
+            onFreshEnd={() => setFreshTitleNoteId(null)}
+          />
+          <NoteNamesLine
+            noteId={note.id}
+            title={note.title}
+            aliases={note.aliases ?? []}
+            disabled={isDeleted || isLocked}
+          />
+
+          {/* Tags: visible when tags exist */}
+          <TagsRow
+            fieldHints={tagFieldHints}
+            noteId={noteId}
+            tags={headerTags}
+            availableTags={availableTags}
+            recentTags={recentTags}
+            onAddTag={(...args) => void handleAddTag(...args)}
+            onCreateTag={(...args) => void handleCreateTag(...args)}
+            onRemoveTag={(...args) => void handleRemoveTag(...args)}
+            onTagClick={(tag) =>
+              openSidebarItem({
+                type: 'tag',
+                title: tag.name,
+                path: '/tags/' + tag.name,
+                entityId: tag.name,
+                color: tag.color
+              })
+            }
+            hideWhenEmpty
+            disabled={isLocked}
+          />
+
+          {(ownProperties.length > 0 || fieldGroups.groups.length > 0) && (
+            <InfoSection
+              properties={ownProperties}
+              fieldSlotCount={fieldSlotCount}
+              fieldGroups={
+                fieldGroups.groups.length > 0 ? (
+                  <NoteFieldGroups
+                    groups={fieldGroups.groups}
+                    onFieldChange={handleSetFieldValue}
+                    {...fieldFill}
+                    onOpenTag={(tag) =>
+                      openSidebarItem({
+                        type: 'tag',
+                        title: tag.name,
+                        path: '/tags/' + tag.name,
+                        entityId: tag.name,
+                        color: tag.color
+                      })
+                    }
+                    disabled={isDeleted || isLocked}
+                  />
+                ) : undefined
+              }
+              newlyAddedPropertyId={newlyAddedPropertyId}
+              isExpanded={!propertiesCollapsed}
+              onToggleExpand={togglePropertiesCollapsed}
+              onPropertyChange={handleNotePropertyChange}
+              onPropertyNameChange={handlePropertyNameChange}
+              onPropertyOrderChange={handlePropertyOrderChange}
+              onAddProperty={handleAddPropertyWithExpand}
+              onDeleteProperty={handleDeleteProperty}
+              disabled={isDeleted || isLocked}
+              variant="embedded"
+            />
+          )}
+
+          {/* Ghost affordance: add tag/property — fades in on hover/focus, placed
+              below the metadata so it never sits above the title */}
+          <TemplateOffers
+            noteId={noteId}
+            noteTitle={note.title}
+            notePath={note.path}
+            headerTags={note.headerTags}
+            getEditor={getAttachmentsEditor}
+            disabled={isDeleted || isLocked}
+          />
+
+          <GhostAffordanceRow
+            tagFieldHints={tagFieldHints}
+            noteId={noteId}
+            availableTags={availableTags}
+            recentTags={recentTags}
+            currentTagIds={headerTags.map((tg) => tg.id)}
+            onAddTag={(...args) => void handleAddTag(...args)}
+            onCreateTag={(...args) => void handleCreateTag(...args)}
+            onAddProperty={handleAddPropertyWithExpand}
+            existingNames={properties.map((p) => p.name)}
+            hideAddTag={headerTags.length > 0}
+            onAddCover={cover ? undefined : setCoverPickerAnchor}
+            onAddName={note.aliases?.length ? undefined : () => requestNoteNameInput(note.id)}
+            disabled={isDeleted || isLocked}
+          />
+        </div>
+
+        {/* Main content - BlockNote Editor */}
+        <div
+          ref={editorContainerRef}
+          role="presentation"
+          className={cn(
+            'editor-click-area flex-1 relative',
+            // The tall bottom padding is an editor affordance — room to click
+            // below the last block. There is no editor here, so it would just
+            // be dead space under the viewer.
+            note.sizeClass !== 'large-file' && 'pb-[30vh]'
+          )}
+        >
+          {note.sizeClass === 'large-file' ? (
+            <LargeFileViewer
+              key={noteId}
+              noteId={noteId}
+              active={isActiveNote}
+              openFindRef={openLargeFileFindRef}
+              reason={note.largeFile?.reason}
+              measuredBytes={
+                note.largeFile?.reason === 'block-bytes'
+                  ? note.largeFile.largestBlockBytes
+                  : note.largeFile?.fileBytes
+              }
+            />
+          ) : (
+            <EditorErrorBoundary
+              noteId={noteId}
+              onRecover={refetchNote}
+              onError={(editorError) => log.error('Editor error:', editorError)}
+            >
+              {agentReview ? (
+                <AgentReviewSurface
+                  review={agentReview}
+                  noteId={noteId}
+                  notePath={note.path}
+                  placeholder={t('editor.content.placeholder')}
+                />
+              ) : null}
+              {/* Hidden, never unmounted, while an agent edit is under review:
+                the editor keeps its Y.Doc binding and undo history, and comes
+                back exactly as it was once the review is settled. */}
+              <FoldSurface fold={fold}>
+                <div
+                  className={cn(agentReview && 'hidden')}
+                  inert={Boolean(agentReview) || undefined}
+                >
+                  {/* `externalUpdateCount` is deliberately NOT part of the key: an
+                update that did not originate here is handed to the live editor
+                via `externalContentRevision` instead of destroying and
+                rebuilding the editor for every remote change. `noteId` stays —
+                a different note in this tab is a genuinely different document. */}
+                  <ContentArea
+                    key={noteId}
+                    noteId={noteId}
+                    editable={!isLocked}
+                    notePath={note.path}
+                    initialContent={review.editorInitialContent}
+                    contentType="markdown"
+                    externalContentRevision={externalUpdateCount}
+                    placeholder={t('editor.content.placeholder')}
+                    stickyToolbar={editorSettings.toolbarMode === 'sticky'}
+                    onStickyToolbarChange={(sticky) =>
+                      void updateEditorSettings({ toolbarMode: sticky ? 'sticky' : 'floating' })
+                    }
+                    spellCheck={editorSettings.spellCheck}
+                    onContentChange={handleContentChange}
+                    onMarkdownChange={handleMarkdownChange}
+                    onHeadingsChange={handleHeadingsChange}
+                    onLinkClick={handleLinkClick}
+                    onInternalLinkClick={(...args) => void handleInternalLinkClick(...args)}
+                    initialHighlight={initialHighlight}
+                    initialAnchorId={initialAnchorId}
+                    noteTags={note.tags}
+                    onInlineTagsChange={handleInlineTagsChange}
+                    tagColorMap={tagColorMap}
+                    tagIconMap={tagIconMap}
+                    focusAtEndRef={focusAtEndRef}
+                    openTemplateInsertRef={openTemplateInsertRef}
+                    marqueeZoneEl={marqueeZoneEl}
+                    writingTools={writingTools}
+                    review={{
+                      plainMarkdown: review.plainMarkdown,
+                      marks: review.marks,
+                      hoveredMarkId: review.hoveredMarkId,
+                      onEditorReady: handleEditorReadyWithAttachments,
+                      onAddComment: review.openCommentComposer,
+                      getMarkdownSourceOffsetForEditorOffset:
+                        review.getMarkdownSourceOffsetForEditorOffset,
+                      getEditorOffsetForMarkdownSourceOffset:
+                        review.getEditorOffsetForMarkdownSourceOffset,
+                      onPersistCurrentMarkdown: review.persistCurrentMarkdown,
+                      onPlainMarkdownChange: review.handlePlainMarkdownChange,
+                      onHoveredMarkChange: review.setHoveredMarkId,
+                      onMarkPositionsChange: review.setMarkPositions,
+                      onReplaceMarksFromYjs: review.replaceMarksFromYjs
+                    }}
+                  />
+                </div>
+              </FoldSurface>
+            </EditorErrorBoundary>
+          )}
+          {agentReview ? null : (
+            <ReviewBadgeLayer
+              review={review}
+              targetId={noteId}
+              containerRef={editorContainerRef}
+              // A writing mode borrows the rail, so comments fall back to badges.
+              active={reviewRailHidden || writingMode !== null}
+            />
+          )}
+        </div>
+
+        {/* Local Graph Panel — excluded from marquee/focus-at-end so graph
+            drags + clicks aren't hijacked by the editor's marquee zone. */}
+        {isLocalGraphOpen && noteId && (
+          <div data-marquee-ignore>
+            <LocalGraphPanel
+              noteId={noteId}
+              onClose={() => setIsLocalGraphOpen(false)}
+              onOpenFullGraph={() => {
+                openTab({
+                  type: 'graph',
+                  title: 'Graph',
+                  icon: 'graph',
+                  path: '/graph',
+                  isPinned: false,
+                  isModified: false,
+                  isPreview: false,
+                  isDeleted: false
+                })
+              }}
+            />
+          </div>
+        )}
+
+        {/* Backlinks, outgoing links & linked tasks — separated from content and excluded
+            from the marquee/focus-at-end zone. */}
+        <div className="mt-10 flex flex-col gap-6" data-marquee-ignore>
+          <LinkedHereOrBacklinks
+            noteId={note.id}
+            fallback={
+              <BacklinksSection
+                backlinks={backlinks}
+                isLoading={backlinksLoading}
+                initialCount={5}
+                onBacklinkClick={handleBacklinkClick}
+              />
+            }
+          />
+
+          <UnlinkedMentionsSection noteId={note.id} onOpen={handleOpenMentionSource} />
+
+          <OutgoingLinksSection
+            links={outgoingLinks}
+            onLinkClick={(title) => void handleInternalLinkClick(title)}
+          />
+
+          <LinkedTasksSection
+            tasks={linkedTasks}
+            isLoading={linkedTasksLoading}
+            onTaskClick={handleLinkedTaskClick}
+          />
+
+          <NoteSimilarNotes
+            noteId={noteId}
+            getEditor={getAttachmentsEditor}
+            largeFile={isLargeFile}
+            reviewing={Boolean(agentReview)}
+            deleted={isDeleted}
+            openLinked={openLinked}
+          />
+        </div>
+      </div>
+
+      {/* Export Dialog */}
+      <ExportDialog {...dialog.bind('export')} noteId={noteId} noteTitle={note.title} />
+
+      {/* Attachments panel (#1713) */}
+      <NoteAttachmentsDialog
+        {...dialog.bind('attachments')}
+        noteId={noteId}
+        getOriginalNames={getAttachmentOriginalNames}
+      />
+
+      <CoverPickerDialog
+        anchor={coverPickerAnchor}
+        onOpenChange={(next) => {
+          if (!next) setCoverPickerAnchor(null)
+        }}
+        target={coverImageTarget}
+        onApply={(value, { reposition, credit }) => {
+          void setCover(value, credit)
+          setIsRepositioningCover(reposition)
+        }}
+      />
+
+      <ApplyTemplateToNoteDialog
+        noteId={noteId}
+        isOpen={dialog.is('applyTemplate')}
+        onClose={dialog.close}
+      />
+
+      <SaveNoteAsTemplateDialog
+        noteId={noteId}
+        isOpen={dialog.is('saveAsTemplate')}
+        onClose={dialog.close}
+      />
+
+      {/* Version History Panel */}
+      <VersionHistory
+        {...dialog.bind('versionHistory')}
+        noteId={noteId}
+        noteTitle={note.title}
+        onRestore={() => {
+          if (saveTimeoutRef.current) {
+            clearTimeout(saveTimeoutRef.current)
+            saveTimeoutRef.current = null
+          }
+          refetchNote()
+        }}
+      />
+
+      {/* Move to Folder Dialog */}
+      <MoveToFolderDialog
+        {...dialog.bind('move')}
+        noteIds={[noteId]}
+        currentFolder={
+          note.path.includes('/') ? note.path.slice(0, note.path.lastIndexOf('/')) : ''
+        }
+        noteTitle={note.title}
+        onMove={(targetFolder) => void moveToFolder(targetFolder)}
+      />
+
+      {/* Bring this note's existing tasks to its new project (#2271) */}
+      <MoveNoteTasksDialog
+        isOpen={noteTaskMove.prompt !== null}
+        taskCount={noteTaskMove.prompt?.taskIds.length ?? 0}
+        projectName={noteTaskMove.prompt?.projectName ?? ''}
+        isMoving={noteTaskMove.isMoving}
+        onConfirm={noteTaskMove.confirmMove}
+        onCancel={noteTaskMove.cancelMove}
+      />
+
+      {/* Broken wiki-link create confirmation (#1716) */}
+      <WikiLinkCreateDialog
+        targetTitle={pendingWikiLinkCreate}
+        onClose={() => setPendingWikiLinkCreate(null)}
+        onConfirm={(title) => void handleWikiLinkCreateConfirm(title)}
+      />
+
+      <ReadwiseReimportDialog
+        {...dialog.bind('readwiseReimport')}
+        title={note.title}
+        onConfirm={() => void readwise.reimport()}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog {...dialog.bind('delete')}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('page.deleteConfirm.title')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t('page.deleteConfirm.description', { title: note.title })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <DeleteNoteTasksOption choice={deleteTasksChoice} disabled={isDeleting} />
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t('page.deleteConfirm.cancel')}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                void handleDeleteConfirm()
+              }}
+              disabled={isDeleting}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              {isDeleting ? t('page.deleteConfirm.deleting') : t('page.deleteConfirm.confirm')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {noteDeleteGuard.dialog}
+    </NoteLayout>
+  )
+}

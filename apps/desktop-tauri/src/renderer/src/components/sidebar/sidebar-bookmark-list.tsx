@@ -1,0 +1,242 @@
+/**
+ * SidebarBookmarkList Component
+ * Displays a list of bookmarked items in the sidebar.
+ * Clicking a bookmark navigates directly to that item.
+ */
+
+import * as React from 'react'
+import { Star, MoreHorizontal, Trash2 } from '@/lib/icons'
+
+import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { SidebarMenuItem, SidebarMenuButton, SidebarMenuAction } from '@/components/ui/sidebar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { useDndMonitor } from '@dnd-kit/core'
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import type { SidebarSortMode } from '@memry/contracts/sidebar-sort'
+import { SortableBookmarkItem } from '@/components/sidebar/sortable-bookmark-item'
+import { BOOKMARK_SORT_DRAG_TYPE } from '@/components/sidebar/sidebar-drag-types'
+import { compareListItems, isReorderable } from '@/components/sidebar/sidebar-list-sort'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { useOpenTarget } from '@/hooks/use-open-target'
+import { createTabFromSidebarItem } from '@/contexts/tabs/helpers'
+import { useBookmarks, type BookmarkWithItem } from '@/hooks/use-bookmarks'
+import { useSidebarNavigation } from '@/hooks/use-sidebar-navigation'
+import { bookmarkIcon, bookmarkSidebarItem } from '@/lib/bookmark-items'
+import type { SidebarItem } from '@/contexts/tabs/types'
+import { useT } from '@memry/i18n/renderer'
+
+interface SidebarBookmarkListProps {
+  /** Maximum number of bookmarks to show before "Show more" */
+  maxVisible?: number
+  /** Custom class name */
+  className?: string
+  /** Which order to show them in; only 'manual' allows drag-to-reorder. */
+  sortMode?: SidebarSortMode
+}
+
+export function SidebarBookmarkList({
+  maxVisible = 8,
+  className,
+  sortMode = 'manual'
+}: SidebarBookmarkListProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
+  const { bookmarks, isLoading, error, removeBookmark, reorderBookmarks } = useBookmarks({
+    sortBy: 'position',
+    sortOrder: 'asc'
+  })
+  const { isActiveItem, openSidebarItem } = useSidebarNavigation()
+  const [showAll, setShowAll] = React.useState(false)
+
+  const reorderable = isReorderable(sortMode)
+
+  // Filter to only existing items
+  const validBookmarks = React.useMemo(() => {
+    return bookmarks
+      .filter((b) => b.itemExists)
+      .map((bookmark) => ({
+        bookmark,
+        name: bookmark.itemTitle ?? '',
+        position: bookmark.position,
+        created: Date.parse(bookmark.createdAt)
+      }))
+      .toSorted(compareListItems(sortMode))
+      .map((entry) => entry.bookmark)
+  }, [bookmarks, sortMode])
+
+  // REQUIRES a surrounding DndContext — useDndMonitor throws without one. The
+  // app's DragProvider wraps the whole tree, so the sidebar's single call site
+  // always satisfies this; any new call site (or test) must provide one too.
+  // Ids here are bookmark ids; a drag that started anywhere else is ignored.
+  useDndMonitor({
+    onDragEnd: ({ active, over }) => {
+      if (!reorderable || !over || active.id === over.id) return
+      if (active.data.current?.type !== BOOKMARK_SORT_DRAG_TYPE) return
+      const from = validBookmarks.findIndex((b) => b.id === active.id)
+      const to = validBookmarks.findIndex((b) => b.id === over.id)
+      if (from === -1 || to === -1) return
+      const next = arrayMove(validBookmarks, from, to)
+      void reorderBookmarks(next.map((b) => b.id))
+    }
+  })
+
+  const visibleBookmarks = showAll ? validBookmarks : validBookmarks.slice(0, maxVisible)
+  const hasMore = validBookmarks.length > maxVisible
+
+  const handleBookmarkClick = (item: SidebarItem) => (e: React.MouseEvent) => {
+    e.preventDefault()
+    openSidebarItem(item)
+  }
+
+  // Middle-click opens the bookmarked item in a background tab — the same tab
+  // the row's "Open in New Tab" menu command builds. Read on mousedown because
+  // a middle click never produces `click`.
+  const { openInNewTab } = useOpenTarget()
+  const handleBookmarkMiddleClick = (item: SidebarItem) => (e: React.MouseEvent) => {
+    if (e.button !== 1) return
+    e.preventDefault()
+    openInNewTab(createTabFromSidebarItem(item), { background: true })
+  }
+
+  const handleRemoveBookmark = (bookmark: BookmarkWithItem) => async (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    await removeBookmark(bookmark.id)
+  }
+
+  if (isLoading) {
+    return (
+      <div className={cn('px-2 py-1.5', className)}>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Star className="size-3 animate-pulse" />
+          <span>{tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.loadingBookmarks')}</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className={cn('px-2 py-1.5', className)}>
+        <span className="text-xs text-destructive">
+          {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.failedToLoadBookmarks')}
+        </span>
+      </div>
+    )
+  }
+
+  if (validBookmarks.length === 0) {
+    return (
+      <div className={cn('px-2 py-1.5', className)}>
+        <span className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.noBookmarksYet')}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={className}>
+      <SortableContext
+        items={visibleBookmarks.map((b) => b.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {visibleBookmarks.map((bookmark) => {
+          const Icon = bookmarkIcon(bookmark.itemType)
+          const sidebarItem = bookmarkSidebarItem(bookmark, t('home.widget.untitled'))
+          const { title, emoji } = sidebarItem
+
+          return (
+            <SortableBookmarkItem key={bookmark.id} id={bookmark.id} disabled={!reorderable}>
+              <ContextMenu>
+                <ContextMenuTrigger asChild>
+                  <SidebarMenuButton
+                    tooltip={title}
+                    onClick={handleBookmarkClick(sidebarItem)}
+                    onMouseDown={handleBookmarkMiddleClick(sidebarItem)}
+                    isActive={isActiveItem(sidebarItem)}
+                    className="group h-7 gap-1.5 rounded-[5px] py-0 ps-1 pe-8"
+                  >
+                    {/* Leading block mirrors the notes tree: expander slot + icon slot */}
+                    <span className="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+                      <span className="size-4" />
+                      <span className="flex size-5 items-center justify-center text-base leading-none">
+                        {emoji ? (
+                          <NoteIconDisplay value={emoji} className="shrink-0" />
+                        ) : (
+                          <Icon className="size-4 shrink-0 text-sidebar-foreground" />
+                        )}
+                      </span>
+                    </span>
+
+                    <span className="sidebar-label-fade flex-1 text-[13px] text-sidebar-text-folder font-medium">
+                      {title}
+                    </span>
+                  </SidebarMenuButton>
+                </ContextMenuTrigger>
+                <ContextMenuContent className="w-48">
+                  <OpenTargetMenuItems tab={createTabFromSidebarItem(sidebarItem)} />
+                </ContextMenuContent>
+              </ContextMenu>
+
+              {/* Actions dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuAction
+                    className="top-1 opacity-0 group-hover/menu-item:opacity-100 transition-opacity"
+                    showOnHover
+                  >
+                    <MoreHorizontal className="size-4" />
+                    <span className="sr-only">
+                      {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.moreOptions')}
+                    </span>
+                  </SidebarMenuAction>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <OpenTargetMenuItems
+                    tab={createTabFromSidebarItem(sidebarItem)}
+                    component={DropdownMenuItem}
+                  />
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={(...args) => void handleRemoveBookmark(bookmark)(...args)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="size-4 me-2" />
+
+                    {tPhaseF('phaseF.componentsSidebarSidebarBookmarkList.remove')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </SortableBookmarkItem>
+          )
+        })}
+      </SortableContext>
+
+      {/* Show more/less button */}
+      {hasMore && (
+        <SidebarMenuItem>
+          <SidebarMenuButton
+            onClick={() => setShowAll(!showAll)}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Star className="size-3.5 opacity-50" />
+            <span className="text-xs">
+              {showAll ? 'Show less' : `+${validBookmarks.length - maxVisible} more`}
+            </span>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      )}
+    </div>
+  )
+}
+
+export default SidebarBookmarkList

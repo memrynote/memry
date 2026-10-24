@@ -1,0 +1,205 @@
+import { Fragment, useMemo, useRef } from 'react'
+import { useT } from '@memry/i18n/renderer'
+import { useTaskWorkspaceData } from '@/features/tasks/use-task-queries'
+import { getTaskCounts } from '@/lib/task-utils/task-view-helpers'
+import { useCalendarRange } from '@/hooks/use-calendar-range'
+import { useToday } from '@/hooks/use-today'
+import { localDayRange } from '@/lib/local-day-range'
+import { filterCalendarWidgetItems } from '@/lib/home/calendar-widget-events'
+import { getGreetingKey, buildHeaderMetrics } from '@/lib/home/header-helpers'
+import type { HomePage, WidgetType } from '@/lib/home/types'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu'
+import { WidgetGallery } from '@/components/home/widget-gallery'
+import { Check, ChevronDown, Image, Plus, Settings2, Trash } from '@/lib/icons/icon-map'
+import {
+  coverPickerAnchorFrom,
+  type CoverPickerAnchor
+} from '@/components/note/cover-picker-dialog'
+
+interface HomeHeaderProps {
+  boards: HomePage[]
+  activeBoardId: string | null
+  onSelectBoard: (id: string) => void
+  onCreateBoard: () => void
+  onDeleteBoard: (id: string) => void
+  onManageBoards: () => void
+  showAddWidget: boolean
+  galleryOpen: boolean
+  onGalleryOpenChange: (open: boolean) => void
+  onAddWidget: (type: WidgetType) => void
+  /** Shown only while the active board has no cover. */
+  onAddCover?: (anchor: CoverPickerAnchor) => void
+}
+
+/**
+ * Home page header: time-of-day greeting, today's date, live metrics
+ * (tasks due today · events), and a layout switcher dropdown.
+ */
+export function HomeHeader({
+  boards,
+  activeBoardId,
+  onSelectBoard,
+  onCreateBoard,
+  onDeleteBoard,
+  onManageBoards,
+  showAddWidget,
+  galleryOpen,
+  onGalleryOpenChange,
+  onAddWidget,
+  onAddCover
+}: HomeHeaderProps): React.JSX.Element {
+  const { t, i18n } = useT('common')
+
+  // A Radix menu restores focus to its trigger when the content UNMOUNTS — after the
+  // exit animation, ~150ms later. The board manager opens an inline rename field, so
+  // that late restore would blur the field and close it (see canvas-row-menu, and the
+  // e2e B7 case). Decline the restore for that one path only.
+  const suppressCloseAutoFocus = useRef(false)
+
+  const { tasks, projects } = useTaskWorkspaceData({ enabled: true })
+  const tasksDue = getTaskCounts(tasks, 'today', 'view', projects).dueToday
+  // Same day, same helper, same query key as the calendar widget on this board, so the two
+  // never report different events and the board pays for one range fetch instead of two.
+  // `useToday` and not `new Date()`, so the count rolls over at midnight with the widget.
+  const today = useToday()
+  const range = useMemo(() => localDayRange(today), [today])
+  const { items } = useCalendarRange(range)
+  // Same filter the calendar widget renders with, so the header count and the widget's rows are
+  // derived from one collection and cannot disagree by construction (see #1956).
+  const events = useMemo(() => filterCalendarWidgetItems(items), [items])
+
+  const activeName = boards.find((b) => b.id === activeBoardId)?.name ?? t('home.board.label')
+
+  // ponytail: greeting/date computed once per render; no timer to roll them at
+  // midnight/hour boundaries — next interaction re-renders them.
+  // oxlint-disable-next-line react/purity -- greeting and date intentionally read the wall clock on each render
+  const now = new Date()
+  const greeting = t(`home.greeting.${getGreetingKey(now.getHours())}`)
+  const date = now.toLocaleDateString(i18n.language, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric'
+  })
+  const metrics = buildHeaderMetrics({ tasksDue, events: events.length })
+
+  return (
+    <div className="flex items-end justify-between px-6 pt-7 pb-5.5 [font-synthesis:none] antialiased">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-serif font-semibold tracking-[-0.022em] text-foreground text-[34px]/10">
+          {greeting}
+        </h1>
+        <div className="flex items-center gap-2.5">
+          <span className="text-text-tertiary text-[13px]/4">{date}</span>
+          {metrics.map((m) => (
+            <Fragment key={m.key}>
+              <span
+                aria-hidden="true"
+                className="size-0.75 shrink-0 rounded-full bg-text-tertiary"
+              />
+              <span className="text-text-secondary text-[13px]/4">
+                {t(`home.header.${m.key}`, { count: m.count })}
+              </span>
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {onAddCover && (
+          <button
+            type="button"
+            data-testid="home-add-cover"
+            aria-label={t('home.cover.add')}
+            title={t('home.cover.add')}
+            onClick={(event) => onAddCover(coverPickerAnchorFrom(event))}
+            className="flex size-7.5 items-center justify-center rounded-full border border-border bg-card text-text-secondary transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
+          >
+            <Image className="size-4" aria-hidden="true" />
+          </button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            data-testid="home-layout-switcher"
+            aria-label={t('home.board.label')}
+            className="flex h-7.5 items-center gap-1.5 rounded-full border border-border bg-card px-2.75 text-text-secondary text-[12px]/4 transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
+          >
+            <span className="max-w-40 truncate font-medium">{activeName}</span>
+            <ChevronDown className="size-3.5 shrink-0 opacity-70" aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="min-w-52"
+            onCloseAutoFocus={(event) => {
+              if (!suppressCloseAutoFocus.current) return
+              suppressCloseAutoFocus.current = false
+              event.preventDefault()
+            }}
+          >
+            {boards.map((b) => (
+              <DropdownMenuItem
+                key={b.id}
+                data-testid="home-layout-item"
+                data-board-id={b.id}
+                onSelect={() => onSelectBoard(b.id)}
+              >
+                <span className="flex-1 truncate">{b.name}</span>
+                {b.id === activeBoardId && (
+                  <Check className="size-4 shrink-0 opacity-70" aria-hidden="true" />
+                )}
+                {boards.length > 1 && (
+                  <button
+                    type="button"
+                    data-testid="home-layout-delete"
+                    aria-label={t('home.board.deleteAria')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onDeleteBoard(b.id)
+                    }}
+                    className="shrink-0 rounded p-0.5 text-text-tertiary transition-colors hover:text-destructive focus-visible:text-destructive focus-visible:outline-none"
+                  >
+                    <Trash className="size-3.5" aria-hidden="true" />
+                  </button>
+                )}
+              </DropdownMenuItem>
+            ))}
+            {boards.length > 0 && <DropdownMenuSeparator />}
+            <DropdownMenuItem data-testid="home-layout-new" onSelect={onCreateBoard}>
+              <Plus className="size-4 shrink-0" aria-hidden="true" />
+              {t('home.board.newName')}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              data-testid="home-layout-manage"
+              onSelect={() => {
+                suppressCloseAutoFocus.current = true
+                onManageBoards()
+              }}
+            >
+              <Settings2 className="size-4 shrink-0" aria-hidden="true" />
+              {t('home.board.manage')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {showAddWidget && (
+          <DropdownMenu open={galleryOpen} onOpenChange={onGalleryOpenChange}>
+            <DropdownMenuTrigger
+              data-testid="add-widget-trigger"
+              aria-label={t('home.addWidget')}
+              title={t('home.addWidget')}
+              className="flex size-7.5 items-center justify-center rounded-full border border-border bg-card text-text-secondary transition-[background-color,transform] duration-100 hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--tint-ring)] motion-safe:active:scale-[0.96]"
+            >
+              <Plus className="size-4" aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent data-testid="widget-gallery" align="end" className="w-56">
+              <WidgetGallery onAdd={onAddWidget} />
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,136 @@
+import * as React from 'react'
+import { useT } from '@memry/i18n/renderer'
+import { Calendar, Repeat } from '@/lib/icons'
+
+import { cn } from '@/lib/utils'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { DatePickerContent } from './date-picker-content'
+
+interface InteractiveDueDateBadgeProps {
+  dateKind?: 'due' | 'start'
+  dueDate: Date | null
+  dueTime: string | null
+  onDateChange: (date: Date | null) => void
+  onTimeChange?: (time: string | null) => void
+  isRepeating?: boolean
+  /**
+   * `property`: the task drawer's label-less property row. The text names the
+   * date kind ("Starts Sep 30" / "Due Sep 25", or "Start date" when empty), and
+   * a set date with no urgency reads as primary text rather than the muted
+   * empty-state colour.
+   */
+  variant?: 'default' | 'compact' | 'property'
+  fixedWidth?: boolean
+  className?: string
+}
+
+const handleTriggerClick = (e: React.MouseEvent): void => {
+  e.stopPropagation()
+}
+
+const badgeStyles: Record<string, string> = {
+  overdue: 'text-task-due-overdue bg-task-due-overdue-bg/60 border-task-due-overdue/40',
+  today: 'text-task-due-today bg-task-due-today-bg/60 border-task-due-today/40',
+  tomorrow: 'text-task-due-tomorrow bg-task-due-tomorrow-bg/60 border-task-due-tomorrow/40',
+  upcoming: 'text-task-due-upcoming bg-task-due-upcoming/[0.06] border-task-due-upcoming/40',
+  later: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10',
+  none: 'text-text-tertiary bg-foreground/[0.03] dark:bg-foreground/[0.06] border-foreground/10'
+}
+
+export const InteractiveDueDateBadge = ({
+  dateKind = 'due',
+  dueDate,
+  dueTime,
+  onDateChange,
+  onTimeChange,
+  isRepeating = false,
+  variant = 'default',
+  fixedWidth = false,
+  className
+}: InteractiveDueDateBadgeProps): React.JSX.Element => {
+  const { t } = useT('tasks')
+  const [isOpen, setIsOpen] = React.useState(false)
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
+
+  const status = formatDueDate(dueDate, dueTime)
+
+  const dateLabel = React.useMemo(() => {
+    if (!dueDate) return 'No date'
+    const short = formatDateShort(dueDate)
+    return dueTime ? `${short} ${formatTime(dueTime, clockFormat)}` : short
+  }, [dueDate, dueTime, clockFormat])
+
+  const handleSelect = React.useCallback(
+    (date: Date | null): void => {
+      onDateChange(date)
+      if (!date) onTimeChange?.(null)
+      setIsOpen(false)
+    },
+    [onDateChange, onTimeChange]
+  )
+
+  const dateStatus = dateKind === 'start' ? 'none' : (status?.status ?? 'none')
+
+  const isProperty = variant === 'property'
+  const visibleLabel = !isProperty
+    ? dateLabel
+    : !dueDate
+      ? t(dateKind === 'start' ? 'task.startDate' : 'task.dueDate')
+      : t(dateKind === 'start' ? 'task.startsOn' : 'task.dueOn', { date: dateLabel })
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild onClick={handleTriggerClick}>
+        <button
+          type="button"
+          className={cn(
+            'flex items-center gap-1.5 cursor-pointer transition-opacity rounded-[5px] py-[3px] px-2 border border-solid',
+            'text-[12px] leading-4',
+            'hover:opacity-80 focus-visible:outline-none',
+            badgeStyles[dateStatus],
+            isProperty &&
+              dueDate &&
+              (dateStatus === 'none' || dateStatus === 'later') &&
+              'text-text-primary',
+            fixedWidth && 'w-[110px] flex justify-end',
+            className
+          )}
+          aria-label={
+            dateKind === 'start'
+              ? t('task.changeStartDate', { date: dateLabel })
+              : `Due: ${dateLabel}. Click to change.`
+          }
+        >
+          {isRepeating && <Repeat className="size-3 shrink-0" />}
+          <Calendar size={12} className="shrink-0" />
+          <div className="min-w-0 truncate">{visibleLabel}</div>
+        </button>
+      </PopoverTrigger>
+      {/* A raw `PopoverContent` has no height management: Radix's popper sets
+          `--radix-popover-content-available-height` but never applies it, and
+          its `shift` runs with `crossAxis: false`, so a panel taller than the
+          room beside its trigger is never pulled back. This badge sits in
+          scrolling task lists, so the trigger can be anywhere in the window.
+          Cap at the height Radix measured and lay out as a column so
+          `DatePickerContent` can shrink and scroll instead of being swallowed
+          by `overflow-clip`. */}
+      <PopoverContent
+        className="w-auto p-0 rounded-md overflow-clip flex flex-col max-h-(--radix-popover-content-available-height)"
+        align="end"
+        onClick={handleTriggerClick}
+      >
+        <DatePickerContent
+          selected={dueDate}
+          onSelect={handleSelect}
+          showRemoveDate={!!dueDate}
+          time={dueTime}
+          onTimeChange={onTimeChange}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}

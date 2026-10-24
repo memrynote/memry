@@ -1,0 +1,1233 @@
+import { useCallback, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { useTabActions } from '@/contexts/tabs'
+import { useSidebarSortMode } from '@/hooks/use-sidebar-sort-mode'
+import { isReorderable } from '@/components/sidebar/sidebar-list-sort'
+import { notesKeys } from '@/hooks/use-notes-query'
+import type { Note } from '@memry/contracts/notes-api'
+import type { NoteListItem, useNoteMutations } from '@/hooks/use-notes-query'
+import type { FolderInfo } from '../../../preload/index.d'
+import { notesService } from '@/services/notes-service'
+import { revealNoteInSidebar } from '@/lib/reveal-in-sidebar'
+import { NEW_NOTE_TITLE, markNewNoteTitlePending } from '@/lib/new-note-title'
+import { toast } from 'sonner'
+import { createLogger } from '@/lib/logger'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { useOpenPage } from '@/hooks/use-open-target'
+import { useCreateNewNote } from '@/hooks/use-create-new-note'
+import { noteTabData } from '@/lib/sidebar-tab-data'
+import {
+  getDisplayName,
+  extractFolderFromPath,
+  getParentFolder,
+  isDescendantOrSelf,
+  getNotesInFolder,
+  getFoldersInParent,
+  type TreeStructure
+} from '@/components/notes-tree-utils'
+import type { MoveOperation, DropPosition } from '@/components/kibo-ui/tree'
+import { deleteNoteTasks } from '@/components/note/delete-note-tasks'
+import { getI18n } from 'react-i18next'
+import { useNoteDeleteGuard } from '@/components/note/content-area/portal-flows/use-note-delete-guard'
+import { journalService } from '@/services/journal-service'
+import { useVaultConfig } from '@/hooks/use-vault-config'
+import { containsJournalFolder, journalDateForPath } from '@/lib/journal-path'
+import { BookmarkItemTypes } from '@memry/contracts/bookmark-types'
+
+const log = createLogger('Hook:NoteTreeActions')
+
+/**
+ * What a rename or move does to the journal, when it does something:
+ * `leave` turns journal entries into notes, `join` turns notes into journal
+ * entries. Either one deletes the old item and creates a new one on every
+ * synced device, so the tree asks first.
+ */
+export type JournalChangeKind = 'leave' | 'join'
+
+type NoteMutations = ReturnType<typeof useNoteMutations>
+
+/** The multi-selection the "Move N items to…" dialog was opened for. */
+export interface SelectionMoveRequest {
+  noteIds: string[]
+  folderPaths: string[]
+  /** Set only when every item shares one parent folder. */
+  currentFolder?: string
+}
+
+function partitionSelection(
+  ids: string[],
+  noteMap: Map<string, NoteListItem>
+): { notes: NoteListItem[]; folderPaths: string[] } {
+  const notes: NoteListItem[] = []
+  const folderPaths: string[] = []
+  for (const id of ids) {
+    if (id.startsWith('folder-')) {
+      folderPaths.push(id.slice('folder-'.length))
+    } else {
+      const note = noteMap.get(id)
+      if (note) notes.push(note)
+    }
+  }
+  return { notes, folderPaths }
+}
+
+/**
+ * The selection minus anything inside a selected folder. The folder carries
+ * those items along, and moving them on their own afterwards would pull them
+ * back out of it.
+ */
+function dropItemsInsideSelectedFolders(
+  ids: string[],
+  noteMap: Map<string, NoteListItem>
+): string[] {
+  const folders = ids.filter((id) => id.startsWith('folder-')).map((id) => id.slice(7))
+  if (folders.length === 0) return ids
+  return ids.filter((id) => {
+    const path = id.startsWith('folder-') ? id.slice(7) : noteMap.get(id)?.path
+    return !path || !folders.some((folder) => path.startsWith(`${folder}/`))
+  })
+}
+
+function selectionParents(notes: NoteListItem[], folderPaths: string[]): string[] {
+  return [
+    ...notes.map((note) => extractFolderFromPath(note.path)),
+    ...folderPaths.map(getParentFolder)
+  ]
+}
+
+function commonAncestorFolder(folders: string[]): string {
+  const [first = [], ...rest] = folders.map((folder) => (folder ? folder.split('/') : []))
+  let length = first.length
+  for (const parts of rest) {
+    let i = 0
+    while (i < length && parts[i] === first[i]) i++
+    length = i
+  }
+  return first.slice(0, length).join('/')
+}
+
+export interface NoteTreeActionsDeps {
+  noteMap: Map<string, NoteListItem>
+  tree: TreeStructure
+  folders: FolderInfo[]
+  notePositions: Record<string, number>
+  setNotePositions: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  folderTemplateNames: Map<string, string>
+  setFolderTemplateNames: React.Dispatch<React.SetStateAction<Map<string, string>>>
+  createFolderMutation: (path: string) => Promise<boolean>
+  refreshFolders: () => Promise<unknown>
+  setFolderIcon: (path: string, icon: string | null) => Promise<boolean>
+  mutations: NoteMutations
+  selectedIds: string[]
+  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>
+  computeTargetFolder: (selectedIds: string[]) => string
+  expandFolderPath: (path: string) => void
+  /** Carry a folder's expanded state over to the path it just moved to. */
+  renameFolderPath: (oldPath: string, newPath: string) => void
+}
+
+export function useNoteTreeActions(deps: NoteTreeActionsDeps) {
+  const { settings: generalSettings } = useGeneralSettings()
+  const { closeTab, updateTabTitleByEntityId } = useTabActions()
+  // Plain opens and note creation go through openPage so the "clicking a page
+  // opens a new tab" preference applies; explicit gestures keep useOpenTarget.
+  const { openPage } = useOpenPage()
+  const queryClient = useQueryClient()
+  const originalRenameTitle = useRef<string>('')
+  const vaultConfig = useVaultConfig()
+
+  // ---- Journal change confirmation ----
+
+  const [journalConfirm, setJournalConfirm] = useState<JournalChangeKind | null>(null)
+  const journalConfirmResolve = useRef<((confirmed: boolean) => void) | null>(null)
+
+  const resolveJournalConfirm = useCallback((confirmed: boolean) => {
+    journalConfirmResolve.current?.(confirmed)
+    journalConfirmResolve.current = null
+    setJournalConfirm(null)
+  }, [])
+
+  /**
+   * Resolves true when nothing changes type or the user confirms. `moves` pairs
+   * each note with the path it would end up at.
+   */
+  const confirmJournalChange = useCallback(
+    (moves: Array<{ note: NoteListItem; newPath: string }>): Promise<boolean> => {
+      if (!vaultConfig) return Promise.resolve(true)
+      let kind: JournalChangeKind | null = null
+      for (const { note, newPath } of moves) {
+        const before = note.journalDate ?? null
+        if (before === journalDateForPath(newPath, vaultConfig)) continue
+        if (before !== null) {
+          kind = 'leave'
+          break
+        }
+        kind = 'join'
+      }
+      if (kind === null) return Promise.resolve(true)
+
+      journalConfirmResolve.current?.(false)
+      return new Promise((resolve) => {
+        journalConfirmResolve.current = resolve
+        setJournalConfirm(kind)
+      })
+    },
+    [vaultConfig]
+  )
+
+  /**
+   * A folder rename or move carries every note inside it along. Moving the
+   * journal folder itself, or a folder above it, is not a change: main points
+   * the journal setting at the new place.
+   */
+  const confirmFolderJournalChange = useCallback(
+    (oldPath: string, newPath: string): Promise<boolean> => {
+      if (vaultConfig && containsJournalFolder(oldPath, vaultConfig.journalFolder)) {
+        return Promise.resolve(true)
+      }
+      const prefix = `${oldPath}/`
+      const moves: Array<{ note: NoteListItem; newPath: string }> = []
+      for (const note of deps.noteMap.values()) {
+        if (note.path.startsWith(prefix)) {
+          moves.push({ note, newPath: `${newPath}/${note.path.slice(prefix.length)}` })
+        }
+      }
+      return confirmJournalChange(moves)
+    },
+    [vaultConfig, deps.noteMap, confirmJournalChange]
+  )
+
+  const [isCreating, setIsCreating] = useState(false)
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [isMoving, setIsMoving] = useState(false)
+  const [selectionMoveRequest, setSelectionMoveRequest] = useState<SelectionMoveRequest | null>(
+    null
+  )
+
+  // Delete dialog state
+  const [notesToDelete, setNotesToDelete] = useState<NoteListItem[]>([])
+  const [foldersToDelete, setFoldersToDelete] = useState<string[]>([])
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const noteDeleteGuard = useNoteDeleteGuard()
+
+  // Inline rename state for notes
+  const [renamingNoteId, setRenamingNoteId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [isRenaming, setIsRenaming] = useState(false)
+
+  // Folder rename state
+  const [renamingFolderPath, setRenamingFolderPath] = useState<string | null>(null)
+  const [folderRenameValue, setFolderRenameValue] = useState('')
+  const [isFolderRenaming, setIsFolderRenaming] = useState(false)
+
+  // Folder template config state
+  const [folderToConfigureTemplate, setFolderToConfigureTemplate] = useState<string | null>(null)
+
+  // Folder icon picker state
+  const [iconPickerFolderPath, setIconPickerFolderPath] = useState<string | null>(null)
+  const [iconPickerNoteId, setIconPickerNoteId] = useState<string | null>(null)
+
+  // ---- Selection handling ----
+
+  const handleSelectionChange = useCallback(
+    (ids: string[]) => {
+      deps.setSelectedIds(ids)
+
+      const noteIds = ids.filter((id) => !id.startsWith('folder-') && id !== 'notes-root')
+      if (noteIds.length === 1) {
+        const note = deps.noteMap.get(noteIds[0])
+        if (note) openPage(noteTabData(note))
+      }
+    },
+    [deps, openPage]
+  )
+
+  const handleOpenFolderView = useCallback(
+    (folderPath: string, icon?: string | null) => {
+      const folderName = folderPath.split('/').pop() || 'Folder'
+      openPage({
+        type: 'folder',
+        title: folderName,
+        icon: 'folder',
+        emoji: icon ?? undefined,
+        path: `/folder/${encodeURIComponent(folderPath)}`,
+        entityId: folderPath,
+        isPinned: false,
+        isModified: false,
+        isPreview: false,
+        isDeleted: false
+      })
+    },
+    [openPage]
+  )
+
+  // ---- Create note ----
+
+  /**
+   * Put a row into inline rename.
+   *
+   * The name is read off the note's own path rather than its title: the two can
+   * differ, and seeding the input with the title would turn a blur with nothing
+   * typed into a real rename.
+   */
+  const startNoteRename = useCallback((note: { id: string; path: string }) => {
+    const displayName = getDisplayName(note.path)
+    originalRenameTitle.current = displayName
+    setRenamingNoteId(note.id)
+    setRenameValue(displayName)
+  }, [])
+
+  const handleCreateNote = useCallback(async () => {
+    if (isCreating) return
+
+    const folder = generalSettings.createInSelectedFolder
+      ? deps.computeTargetFolder(deps.selectedIds)
+      : ''
+    deps.expandFolderPath(folder)
+
+    setIsCreating(true)
+    try {
+      const templateId = folder ? await notesService.getFolderTemplate(folder) : null
+
+      const result = await deps.mutations.createNote.mutateAsync({
+        title: NEW_NOTE_TITLE,
+        folder: folder || undefined,
+        template: templateId ?? undefined
+      })
+
+      if (result.success && result.note) {
+        const newNote = result.note
+        markNewNoteTitlePending(newNote.id)
+        openPage({
+          type: 'note',
+          title: getDisplayName(newNote.path),
+          icon: 'file-text',
+          emoji: newNote.emoji,
+          path: `/notes/${newNote.id}`,
+          entityId: newNote.id,
+          isPinned: false,
+          isModified: false,
+          isPreview: false,
+          isDeleted: false
+        })
+
+        // `expandFolderPath` above only knows the selection, which is empty
+        // whenever "create in selected folder" is off — the note itself is what
+        // says where it landed. Without this the row
+        // stays shut inside a collapsed folder.
+        revealNoteInSidebar(newNote.id)
+      }
+    } catch (err) {
+      trackRendererError('note_create_failed', err)
+      log.error('Failed to create note', err)
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateNote')
+        )
+      )
+    } finally {
+      setIsCreating(false)
+    }
+  }, [isCreating, generalSettings.createInSelectedFolder, deps, openPage])
+
+  // The folder context menu and its row button name their folder, so they go through
+  // the one new-note owner. `isCreating` keeps a second click from creating a second note.
+  const createNewNote = useCreateNewNote()
+  const handleCreateNoteInFolder = useCallback(
+    async (folderPath: string) => {
+      if (isCreating) return
+      setIsCreating(true)
+      try {
+        await createNewNote({ folder: folderPath })
+      } finally {
+        setIsCreating(false)
+      }
+    },
+    // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
+    [isCreating, createNewNote]
+  )
+
+  // ---- Create folder ----
+
+  const handleCreateFolder = useCallback(async () => {
+    if (isCreatingFolder) return
+
+    const folder = generalSettings.createInSelectedFolder
+      ? deps.computeTargetFolder(deps.selectedIds)
+      : ''
+    deps.expandFolderPath(folder)
+
+    setIsCreatingFolder(true)
+    try {
+      const baseName = 'Untitled Folder'
+      let folderName = baseName
+      let counter = 1
+      const targetPath = folder ? `${folder}/` : ''
+
+      while (deps.folders.some((f) => f.path === `${targetPath}${folderName}`)) {
+        folderName = `${baseName} ${counter++}`
+      }
+
+      const fullPath = `${targetPath}${folderName}`
+      const success = await deps.createFolderMutation(fullPath)
+
+      if (success) {
+        await deps.refreshFolders()
+        setRenamingFolderPath(fullPath)
+        setFolderRenameValue(folderName)
+      }
+    } catch (err) {
+      trackRendererError('folder_create_failed', err)
+      log.error('Failed to create folder', err)
+      toast.error(
+        extractErrorMessage(
+          err,
+          getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateFolder')
+        )
+      )
+    } finally {
+      setIsCreatingFolder(false)
+    }
+  }, [isCreatingFolder, generalSettings.createInSelectedFolder, deps])
+
+  /** Resolves to the new folder's path, or null when nothing was created. */
+  const handleCreateSubfolder = useCallback(
+    async (parentPath: string): Promise<string | null> => {
+      if (isCreatingFolder) return null
+
+      // The context menu reaches a folder that is shut, and a collapsed parent
+      // would hide the new row along with its rename input.
+      deps.expandFolderPath(parentPath)
+
+      setIsCreatingFolder(true)
+      try {
+        const baseName = 'Untitled Folder'
+        let folderName = baseName
+        let counter = 1
+        const targetPath = parentPath ? `${parentPath}/` : ''
+
+        while (deps.folders.some((f) => f.path === `${targetPath}${folderName}`)) {
+          folderName = `${baseName} ${counter++}`
+        }
+
+        const fullPath = `${targetPath}${folderName}`
+        const success = await deps.createFolderMutation(fullPath)
+
+        if (!success) return null
+        await deps.refreshFolders()
+        setRenamingFolderPath(fullPath)
+        setFolderRenameValue(folderName)
+        return fullPath
+      } catch (err) {
+        trackRendererError('folder_create_failed', err)
+        log.error('Failed to create folder', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateFolder')
+          )
+        )
+        return null
+      } finally {
+        setIsCreatingFolder(false)
+      }
+    },
+    [isCreatingFolder, deps]
+  )
+
+  // ---- Note rename ----
+
+  const handleRenameClick = startNoteRename
+
+  const handleRenameInputChange = useCallback(
+    (noteId: string, value: string) => {
+      setRenameValue(value)
+      const displayTitle = value || 'Untitled'
+      updateTabTitleByEntityId(noteId, displayTitle)
+      queryClient.setQueryData<Note>(notesKeys.note(noteId), (old) =>
+        old ? { ...old, title: displayTitle } : old
+      )
+    },
+    [updateTabTitleByEntityId, queryClient]
+  )
+
+  const revertOptimisticTitle = useCallback(
+    (noteId: string) => {
+      const title = originalRenameTitle.current
+      updateTabTitleByEntityId(noteId, title)
+      queryClient.setQueryData<Note>(notesKeys.note(noteId), (old) =>
+        old ? { ...old, title } : old
+      )
+    },
+    [updateTabTitleByEntityId, queryClient]
+  )
+
+  const handleRenameSubmit = useCallback(
+    async (noteId: string, originalPath: string) => {
+      if (!renameValue.trim() || isRenaming) {
+        revertOptimisticTitle(noteId)
+        setRenamingNoteId(null)
+        return
+      }
+
+      const currentName = getDisplayName(originalPath)
+      if (renameValue.trim() === currentName) {
+        revertOptimisticTitle(noteId)
+        setRenamingNoteId(null)
+        return
+      }
+
+      setIsRenaming(true)
+      try {
+        const note = deps.noteMap.get(noteId)
+        if (note) {
+          const folder = extractFolderFromPath(originalPath)
+          const ext = originalPath.slice(originalPath.lastIndexOf('.'))
+          const newName = `${renameValue.trim()}${ext}`
+          const newPath = folder ? `${folder}/${newName}` : newName
+          if (!(await confirmJournalChange([{ note, newPath }]))) {
+            revertOptimisticTitle(noteId)
+            return
+          }
+        }
+        await deps.mutations.renameNote.mutateAsync({ id: noteId, newTitle: renameValue.trim() })
+      } catch (err) {
+        trackRendererError('note_rename_failed', err)
+        log.error('Failed to rename note', err)
+        revertOptimisticTitle(noteId)
+        toast.error(
+          extractErrorMessage(err, getI18n().getFixedT(null, 'notes')('page.toast.renameFailed'))
+        )
+      } finally {
+        setIsRenaming(false)
+        setRenamingNoteId(null)
+      }
+    },
+    [
+      renameValue,
+      isRenaming,
+      revertOptimisticTitle,
+      deps.noteMap,
+      deps.mutations.renameNote,
+      confirmJournalChange
+    ]
+  )
+
+  const handleRenameCancel = useCallback(
+    (noteId?: string) => {
+      if (noteId) {
+        revertOptimisticTitle(noteId)
+      }
+      setRenamingNoteId(null)
+      setRenameValue('')
+    },
+    [revertOptimisticTitle]
+  )
+
+  // ---- Folder tree refresh ----
+
+  /**
+   * Refresh both sources the sidebar tree is built from.
+   *
+   * `buildTreeFromNotes` unions the folder list read off disk with the folder
+   * paths it synthesizes from every note's `path`. Renaming, moving or deleting
+   * a folder rewrites those note paths, so refreshing only the folder query
+   * leaves the old path in the tree as a phantom row still carrying every note
+   * — and that row is wired to the same rename and delete handlers as a real
+   * one, so the next click is aimed at a directory that no longer exists.
+   */
+  const refreshFolderTree = useCallback(async () => {
+    await Promise.all([
+      deps.refreshFolders(),
+      queryClient.invalidateQueries({ queryKey: notesKeys.lists() })
+    ])
+  }, [deps, queryClient])
+
+  // ---- Folder rename ----
+
+  const handleRenameFolderClick = useCallback((folderPath: string) => {
+    setRenamingFolderPath(folderPath)
+    const folderName = folderPath.split('/').pop() || folderPath
+    setFolderRenameValue(folderName)
+  }, [])
+
+  const handleFolderRenameSubmit = useCallback(
+    async (oldPath: string) => {
+      if (!folderRenameValue.trim() || isFolderRenaming) {
+        setRenamingFolderPath(null)
+        return
+      }
+
+      const oldName = oldPath.split('/').pop() || oldPath
+      if (folderRenameValue.trim() === oldName) {
+        setRenamingFolderPath(null)
+        return
+      }
+
+      setIsFolderRenaming(true)
+      try {
+        const parentPath = oldPath.includes('/')
+          ? oldPath.substring(0, oldPath.lastIndexOf('/'))
+          : ''
+        const newPath = parentPath
+          ? `${parentPath}/${folderRenameValue.trim()}`
+          : folderRenameValue.trim()
+
+        if (!(await confirmFolderJournalChange(oldPath, newPath))) return
+        await notesService.renameFolder(oldPath, newPath)
+        deps.renameFolderPath(oldPath, newPath)
+        await refreshFolderTree()
+      } catch (err) {
+        trackRendererError('folder_rename_failed', err)
+        log.error('Failed to rename folder', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRenameFolder')
+          )
+        )
+      } finally {
+        setIsFolderRenaming(false)
+        setRenamingFolderPath(null)
+      }
+    },
+    [folderRenameValue, isFolderRenaming, deps, refreshFolderTree, confirmFolderJournalChange]
+  )
+
+  const handleFolderRenameCancel = useCallback(() => {
+    setRenamingFolderPath(null)
+    setFolderRenameValue('')
+  }, [])
+
+  // ---- Delete ----
+
+  const handleDeleteClick = useCallback((note: NoteListItem) => {
+    setNotesToDelete([note])
+    setFoldersToDelete([])
+    setIsDeleteDialogOpen(true)
+  }, [])
+
+  const handleDeleteFolderClick = useCallback((folderPath: string) => {
+    setNotesToDelete([])
+    setFoldersToDelete([folderPath])
+    setIsDeleteDialogOpen(true)
+  }, [])
+
+  const handleBulkDelete = useCallback(() => {
+    const { notes: selectedNotes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)
+
+    if (selectedNotes.length > 0 || folderPaths.length > 0) {
+      setNotesToDelete(selectedNotes)
+      setFoldersToDelete(folderPaths)
+      setIsDeleteDialogOpen(true)
+    }
+  }, [deps.selectedIds, deps.noteMap])
+
+  const handleDeleteConfirm = useCallback(
+    async (taskIds: string[] = []) => {
+      if ((notesToDelete.length === 0 && foldersToDelete.length === 0) || isDeleting) return
+
+      // Other notes that show or link what goes (folders take their notes
+      // with them) get a say first.
+      const inFolders = [...deps.noteMap.values()].filter((note) =>
+        foldersToDelete.some((folder) => note.path.startsWith(`${folder}/`))
+      )
+      const proceed = await noteDeleteGuard.confirmNoteDelete(
+        [...notesToDelete, ...inFolders].map((note) => ({ id: note.id, title: note.title }))
+      )
+      if (!proceed) return
+
+      setIsDeleting(true)
+      try {
+        // The tasks go only if every note they came from did: a note that
+        // survived its delete still shows them.
+        let everyDeleteSucceeded = true
+        for (const note of notesToDelete) {
+          // A journal entry is deleted as a journal: a note delete would push a
+          // `note` tombstone for the journal's id.
+          if (note.journalDate) {
+            const result = await journalService.deleteEntry(note.journalDate)
+            if (!result.success) everyDeleteSucceeded = false
+            continue
+          }
+          const result = await deps.mutations.deleteNote.mutateAsync(note.id)
+          if (result.success) {
+            closeTab(`/notes/${note.id}`)
+          } else {
+            everyDeleteSucceeded = false
+          }
+        }
+
+        for (const folderPath of foldersToDelete) {
+          const result = await notesService.deleteFolder(folderPath)
+          if (!result.success) everyDeleteSucceeded = false
+        }
+
+        if (everyDeleteSucceeded) await deleteNoteTasks(taskIds)
+
+        if (foldersToDelete.length > 0) {
+          await refreshFolderTree()
+        }
+
+        setIsDeleteDialogOpen(false)
+        setNotesToDelete([])
+        setFoldersToDelete([])
+        deps.setSelectedIds([])
+      } catch (err) {
+        log.error('Failed to delete items', err)
+      } finally {
+        setIsDeleting(false)
+      }
+    },
+    [notesToDelete, foldersToDelete, isDeleting, deps, closeTab, refreshFolderTree, noteDeleteGuard]
+  )
+
+  // ---- External / Finder ----
+
+  const handleOpenExternal = useCallback(async (note: NoteListItem) => {
+    try {
+      await notesService.openExternal(note.id)
+    } catch (err) {
+      log.error('Failed to open note externally', err)
+    }
+  }, [])
+
+  const handleRevealInFinder = useCallback(async (note: NoteListItem) => {
+    try {
+      await notesService.revealInFinder(note.id)
+    } catch (err) {
+      log.error('Failed to reveal note in Finder', err)
+    }
+  }, [])
+
+  const handleRevealFolderInFinder = useCallback(async (folderPath: string) => {
+    try {
+      await notesService.revealFolderInFinder(folderPath)
+    } catch (err) {
+      log.error('Failed to reveal folder in Finder', err)
+    }
+  }, [])
+
+  // ---- Folder templates ----
+
+  const handleSetFolderTemplate = useCallback((folderPath: string) => {
+    setFolderToConfigureTemplate(folderPath)
+  }, [])
+
+  const handleFolderTemplateSelect = useCallback(
+    async (templateId: string | null) => {
+      if (folderToConfigureTemplate && templateId) {
+        try {
+          const existing = (await notesService.getFolderConfig(folderToConfigureTemplate)) ?? {}
+          await notesService.setFolderConfig(folderToConfigureTemplate, {
+            ...existing,
+            template: templateId,
+            inherit: true
+          })
+          const templatesResponse = await window.api.templates.list()
+          const template = templatesResponse.templates.find((t) => t.id === templateId)
+          if (template) {
+            deps.setFolderTemplateNames((prev) => {
+              const next = new Map(prev)
+              next.set(folderToConfigureTemplate, template.name)
+              return next
+            })
+          }
+          toast.success(getI18n().getFixedT(null, 'notes')('phaseI.toasts.defaultTemplateSet'))
+        } catch (err) {
+          log.error('Failed to set folder template', err)
+          toast.error(
+            getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToSetDefaultTemplate')
+          )
+        }
+      }
+      setFolderToConfigureTemplate(null)
+    },
+    [folderToConfigureTemplate, deps]
+  )
+
+  const handleClearFolderTemplate = useCallback(
+    async (folderPath: string) => {
+      try {
+        const existing = (await notesService.getFolderConfig(folderPath)) ?? {}
+        const next = { ...existing, inherit: true }
+        delete next.template
+        await notesService.setFolderConfig(folderPath, next)
+        deps.setFolderTemplateNames((prev) => {
+          const nextNames = new Map(prev)
+          nextNames.delete(folderPath)
+          return nextNames
+        })
+        toast.success(getI18n().getFixedT(null, 'notes')('phaseI.toasts.defaultTemplateCleared'))
+      } catch (err) {
+        log.error('Failed to clear folder template', err)
+        toast.error(
+          getI18n().getFixedT(null, 'notes')('phaseI.toasts.failedToClearDefaultTemplate')
+        )
+      }
+    },
+    [deps]
+  )
+
+  // ---- Move / Reorder ----
+
+  const calculateTargetFolder = useCallback(
+    (targetId: string, position: DropPosition): string => {
+      if (targetId === 'notes-root' || targetId === '') return ''
+
+      if (targetId.startsWith('folder-')) {
+        const folderPath = targetId.replace('folder-', '')
+        if (position === 'inside') return folderPath
+        return getParentFolder(folderPath)
+      }
+
+      const targetNote = deps.noteMap.get(targetId)
+      if (targetNote) return extractFolderFromPath(targetNote.path)
+
+      return ''
+    },
+    [deps.noteMap]
+  )
+
+  const handleNoteMove = useCallback(
+    async (noteId: string, targetFolder: string): Promise<boolean> => {
+      const note = deps.noteMap.get(noteId)
+      if (!note) return false
+
+      const currentFolder = extractFolderFromPath(note.path)
+      if (currentFolder === targetFolder) return false
+
+      try {
+        await deps.mutations.moveNote.mutateAsync({ id: noteId, newFolder: targetFolder })
+        return true
+      } catch (err) {
+        log.error('Failed to move note', err)
+        return false
+      }
+    },
+    [deps.noteMap, deps.mutations.moveNote]
+  )
+
+  const handleFolderMove = useCallback(
+    async (
+      sourceFolderPath: string,
+      targetId: string,
+      position: DropPosition
+    ): Promise<boolean> => {
+      const sourceFolderName = sourceFolderPath.split('/').pop() || sourceFolderPath
+
+      let newPath = ''
+
+      if (targetId === 'notes-root' || targetId === '') {
+        newPath = sourceFolderName
+      } else if (targetId.startsWith('folder-')) {
+        const targetPath = targetId.replace('folder-', '')
+
+        if (isDescendantOrSelf(sourceFolderPath, targetPath)) {
+          log.warn('Cannot move folder into itself or its descendants')
+          return false
+        }
+
+        if (position === 'inside') {
+          newPath = `${targetPath}/${sourceFolderName}`
+        } else {
+          const parentFolder = getParentFolder(targetPath)
+          newPath = parentFolder ? `${parentFolder}/${sourceFolderName}` : sourceFolderName
+        }
+      } else {
+        const targetNote = deps.noteMap.get(targetId)
+        if (targetNote) {
+          const targetFolder = extractFolderFromPath(targetNote.path)
+          newPath = targetFolder ? `${targetFolder}/${sourceFolderName}` : sourceFolderName
+        } else {
+          newPath = sourceFolderName
+        }
+      }
+
+      if (newPath === sourceFolderPath) return false
+      if (!(await confirmFolderJournalChange(sourceFolderPath, newPath))) return false
+
+      try {
+        await notesService.renameFolder(sourceFolderPath, newPath)
+        deps.renameFolderPath(sourceFolderPath, newPath)
+        await refreshFolderTree()
+        return true
+      } catch (err) {
+        // A drop that does nothing reads as "this folder cannot be dragged"
+        // (#2206); say it failed, the way a context-menu rename does.
+        trackRendererError('folder_move_failed', err)
+        log.error('Failed to move folder', err)
+        toast.error(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToRenameFolder')
+          )
+        )
+        return false
+      }
+    },
+    [deps, refreshFolderTree, confirmFolderJournalChange]
+  )
+
+  // Reordering writes a stored position, and only the manual mode reads one.
+  // Under a time or name mode the write would land and the list would then be
+  // re-sorted right over it, so the row appears to spring back — better to not
+  // reorder at all than to persist an order the user cannot see.
+  const { mode: collectionsSortMode } = useSidebarSortMode('collections')
+  const reorderAllowed = isReorderable(collectionsSortMode)
+
+  const handleReorderInFolder = useCallback(
+    async (
+      folderPath: string,
+      draggedNoteId: string,
+      targetNoteId: string,
+      position: DropPosition
+    ): Promise<boolean> => {
+      if (!reorderAllowed) return false
+      const folderNotes = getNotesInFolder(deps.tree, folderPath)
+      if (folderNotes.length < 2) return false
+
+      const draggedNote = deps.noteMap.get(draggedNoteId)
+      const targetNote = deps.noteMap.get(targetNoteId)
+      if (!draggedNote || !targetNote) return false
+
+      const currentPaths = folderNotes.map((n) => n.path)
+      const draggedIndex = currentPaths.indexOf(draggedNote.path)
+      const targetIndex = currentPaths.indexOf(targetNote.path)
+
+      if (draggedIndex === -1 || targetIndex === -1) return false
+
+      const newPaths = [...currentPaths]
+      newPaths.splice(draggedIndex, 1)
+
+      let insertIndex = targetIndex
+      if (draggedIndex < targetIndex) insertIndex = targetIndex - 1
+      if (position === 'after') insertIndex += 1
+
+      newPaths.splice(insertIndex, 0, draggedNote.path)
+
+      if (newPaths.every((p, i) => p === currentPaths[i])) return false
+
+      try {
+        await notesService.reorder(folderPath, newPaths)
+        const result = await notesService.getAllPositions()
+        if (result.success) {
+          deps.setNotePositions(result.positions)
+        }
+        return true
+      } catch (err) {
+        log.error('Failed to reorder notes', err)
+        return false
+      }
+    },
+    [deps, reorderAllowed]
+  )
+
+  const handleReorderFoldersInParent = useCallback(
+    async (
+      parentPath: string,
+      draggedFolderPath: string,
+      targetFolderPath: string,
+      position: DropPosition
+    ): Promise<boolean> => {
+      if (!reorderAllowed) return false
+      const siblingFolders = getFoldersInParent(deps.tree, parentPath)
+      if (siblingFolders.length < 2) return false
+
+      const draggedIndex = siblingFolders.indexOf(draggedFolderPath)
+      const targetIndex = siblingFolders.indexOf(targetFolderPath)
+
+      if (draggedIndex === -1 || targetIndex === -1) return false
+
+      const newPaths = [...siblingFolders]
+      newPaths.splice(draggedIndex, 1)
+
+      let insertIndex = targetIndex
+      if (draggedIndex < targetIndex) insertIndex = targetIndex - 1
+      if (position === 'after') insertIndex += 1
+
+      newPaths.splice(insertIndex, 0, draggedFolderPath)
+
+      if (newPaths.every((p, i) => p === siblingFolders[i])) return false
+
+      try {
+        await notesService.reorder(parentPath, newPaths)
+        const result = await notesService.getAllPositions()
+        if (result.success) {
+          deps.setNotePositions(result.positions)
+        }
+        return true
+      } catch (err) {
+        log.error('Failed to reorder folders', err)
+        return false
+      }
+    },
+    [deps, reorderAllowed]
+  )
+
+  const handleMove = useCallback(
+    async (operation: MoveOperation) => {
+      if (isMoving) return
+
+      const { draggedId, targetId, position } = operation
+
+      if (draggedId === targetId) return
+
+      setIsMoving(true)
+
+      try {
+        const isPartOfSelection = deps.selectedIds.includes(draggedId)
+        const itemsToMove =
+          isPartOfSelection && deps.selectedIds.length > 1
+            ? dropItemsInsideSelectedFolders(
+                deps.selectedIds.filter((id) => id !== targetId),
+                deps.noteMap
+              )
+            : [draggedId]
+
+        const notesToMove: string[] = []
+        const foldersToMoveList: string[] = []
+
+        for (const id of itemsToMove) {
+          if (id.startsWith('folder-')) {
+            foldersToMoveList.push(id.replace('folder-', ''))
+          } else {
+            notesToMove.push(id)
+          }
+        }
+
+        const targetFolderPath = calculateTargetFolder(targetId, position)
+
+        const moves = notesToMove.flatMap((noteId) => {
+          const note = deps.noteMap.get(noteId)
+          if (!note || extractFolderFromPath(note.path) === targetFolderPath) return []
+          const name = note.path.split('/').pop() ?? note.path
+          return [{ note, newPath: targetFolderPath ? `${targetFolderPath}/${name}` : name }]
+        })
+        if (!(await confirmJournalChange(moves))) return
+
+        if (
+          foldersToMoveList.length === 1 &&
+          notesToMove.length === 0 &&
+          targetId.startsWith('folder-') &&
+          (position === 'before' || position === 'after')
+        ) {
+          const draggedFolderPath = foldersToMoveList[0]
+          const targetFolderPathFromId = targetId.replace('folder-', '')
+
+          const draggedParent = getParentFolder(draggedFolderPath)
+          const targetParent = getParentFolder(targetFolderPathFromId)
+
+          if (draggedParent === targetParent) {
+            const reordered = await handleReorderFoldersInParent(
+              draggedParent,
+              draggedFolderPath,
+              targetFolderPathFromId,
+              position
+            )
+            if (reordered) return
+          }
+        }
+
+        for (const folderPath of foldersToMoveList) {
+          await handleFolderMove(folderPath, targetId, position)
+        }
+
+        if (
+          notesToMove.length === 1 &&
+          foldersToMoveList.length === 0 &&
+          !targetId.startsWith('folder-') &&
+          targetId !== 'notes-root' &&
+          (position === 'before' || position === 'after')
+        ) {
+          const draggedNote = deps.noteMap.get(notesToMove[0])
+          const targetNoteObj = deps.noteMap.get(targetId)
+
+          if (draggedNote && targetNoteObj) {
+            const draggedFolder = extractFolderFromPath(draggedNote.path)
+            const dropFolder = extractFolderFromPath(targetNoteObj.path)
+
+            if (draggedFolder === dropFolder) {
+              const reordered = await handleReorderInFolder(
+                draggedFolder,
+                notesToMove[0],
+                targetId,
+                position
+              )
+              if (reordered) return
+            }
+          }
+        }
+
+        for (const noteId of notesToMove) {
+          await handleNoteMove(noteId, targetFolderPath)
+        }
+
+        if (itemsToMove.length > 1) {
+          deps.setSelectedIds([])
+        }
+      } finally {
+        setIsMoving(false)
+      }
+    },
+    [
+      isMoving,
+      // oxlint-disable-next-line react/memo-dependencies -- dependency list is intentional; compiler trace misreads indirect closure
+      deps,
+      calculateTargetFolder,
+      handleReorderFoldersInParent,
+      handleFolderMove,
+      handleReorderInFolder,
+      handleNoteMove,
+      confirmJournalChange
+    ]
+  )
+
+  // ---- Multi-selection actions ----
+  // Each one goes through the drag-and-drop move, so a menu move and a drop
+  // share the journal check and the folder-into-itself guard.
+
+  const moveSelectionInto = useCallback(
+    async (targetFolder: string) => {
+      const [draggedId] = deps.selectedIds
+      if (!draggedId) return
+      await handleMove({
+        draggedId,
+        targetId: targetFolder ? `folder-${targetFolder}` : 'notes-root',
+        position: 'inside'
+      })
+    },
+    [deps.selectedIds, handleMove]
+  )
+
+  const handleCreateFolderWithSelection = useCallback(async () => {
+    const { notes, folderPaths } = partitionSelection(
+      dropItemsInsideSelectedFolders(deps.selectedIds, deps.noteMap),
+      deps.noteMap
+    )
+    if (notes.length === 0 && folderPaths.length === 0) return
+    const folderPath = await handleCreateSubfolder(
+      commonAncestorFolder(selectionParents(notes, folderPaths))
+    )
+    if (!folderPath) return
+    await moveSelectionInto(folderPath)
+    deps.expandFolderPath(folderPath)
+  }, [deps, handleCreateSubfolder, moveSelectionInto])
+
+  const openSelectionMoveDialog = useCallback(() => {
+    const { notes, folderPaths } = partitionSelection(
+      dropItemsInsideSelectedFolders(deps.selectedIds, deps.noteMap),
+      deps.noteMap
+    )
+    const parents = new Set(selectionParents(notes, folderPaths))
+    setSelectionMoveRequest({
+      noteIds: notes.map((note) => note.id),
+      folderPaths,
+      currentFolder: parents.size === 1 ? [...parents][0] : undefined
+    })
+  }, [deps.selectedIds, deps.noteMap])
+
+  const closeSelectionMoveDialog = useCallback(() => setSelectionMoveRequest(null), [])
+
+  const handleBookmarkSelection = useCallback(async () => {
+    const { notes, folderPaths } = partitionSelection(deps.selectedIds, deps.noteMap)
+    // Journal entries are bookmarked from the Journal, as the single-row menu does.
+    const items = [
+      ...notes
+        .filter((note) => !note.journalDate)
+        .map((note) => ({ itemType: BookmarkItemTypes.NOTE, itemId: note.id })),
+      ...folderPaths.map((path) => ({ itemType: BookmarkItemTypes.FOLDER, itemId: path }))
+    ]
+    if (items.length === 0) return
+    const t = getI18n().getFixedT(null, 'notes')
+    try {
+      await window.api.bookmarks.bulkCreate(items)
+      toast.success(t('tree.toast.selectionBookmarked', { count: items.length }))
+    } catch (err) {
+      log.error('Failed to bookmark selection', err)
+      toast.error(extractErrorMessage(err, t('tree.toast.selectionBookmarkFailed')))
+    }
+  }, [deps.selectedIds, deps.noteMap])
+
+  return {
+    // Multi-selection
+    handleCreateFolderWithSelection,
+    selectionMoveRequest,
+    openSelectionMoveDialog,
+    closeSelectionMoveDialog,
+    handleMoveSelectionTo: moveSelectionInto,
+    handleBookmarkSelection,
+
+    // Create
+    isCreating,
+    isCreatingFolder,
+    handleCreateNote,
+    handleCreateNoteInFolder,
+    handleCreateFolder,
+    handleCreateSubfolder,
+
+    // Selection
+    handleSelectionChange,
+    handleOpenFolderView,
+
+    // Rename notes
+    renamingNoteId,
+    renameValue,
+    isRenaming,
+    handleRenameClick,
+    handleRenameInputChange,
+    handleRenameSubmit,
+    handleRenameCancel,
+
+    // Rename folders
+    renamingFolderPath,
+    folderRenameValue,
+    setFolderRenameValue,
+    isFolderRenaming,
+    handleRenameFolderClick,
+    handleFolderRenameSubmit,
+    handleFolderRenameCancel,
+
+    // Delete
+    notesToDelete,
+    foldersToDelete,
+    isDeleteDialogOpen,
+    setIsDeleteDialogOpen,
+    isDeleting,
+    handleDeleteClick,
+    handleDeleteFolderClick,
+    handleBulkDelete,
+    handleDeleteConfirm,
+    deleteGuardDialog: noteDeleteGuard.dialog,
+
+    // External
+    handleOpenExternal,
+    handleRevealInFinder,
+    handleRevealFolderInFinder,
+
+    // Templates
+    folderToConfigureTemplate,
+    handleSetFolderTemplate,
+    handleFolderTemplateSelect,
+    handleClearFolderTemplate,
+
+    // Icon picker
+    iconPickerFolderPath,
+    setIconPickerFolderPath,
+    iconPickerNoteId,
+    setIconPickerNoteId,
+
+    // Move / Drag-drop
+    isMoving,
+    handleMove,
+
+    // Journal change confirmation (rename / move across the journal boundary)
+    journalConfirm,
+    resolveJournalConfirm,
+    journalFolder: vaultConfig?.journalFolder ?? null
+  }
+}

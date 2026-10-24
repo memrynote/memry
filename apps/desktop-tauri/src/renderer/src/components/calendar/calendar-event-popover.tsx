@@ -1,0 +1,142 @@
+import * as DialogPrimitive from '@radix-ui/react-dialog'
+import { useT } from '@memry/i18n/renderer'
+import { calendarColorHex } from '@memry/contracts/calendar-colors'
+
+import { X } from '@/lib/icons'
+
+import { useAnchoredPopoverPosition } from './popover-position'
+import { CalendarEventForm } from './calendar-event-form'
+import { CalendarEventNotes } from './calendar-event-notes'
+import { CALENDAR_CARD_CLASS, CARD_ICON_BUTTON_CLASS, CalendarCardHeader } from './calendar-card'
+import type { AnchorRect, CalendarEventDraft } from './types'
+import type {
+  CalendarAttendee,
+  CalendarConferenceData,
+  CalendarReminders,
+  CalendarVisibility
+} from '@memry/db-schema/schema/calendar-events'
+
+export interface CalendarEventReadOnlyMetadata {
+  attendees: CalendarAttendee[] | null
+  reminders: CalendarReminders | null
+  visibility: CalendarVisibility | null
+  conferenceData: CalendarConferenceData | null
+}
+
+interface CalendarEventPopoverProps {
+  anchorRect: AnchorRect
+  mode: 'create' | 'edit'
+  /** Saved event id; absent/null while the popover is drafting a new, unsaved event. */
+  eventId?: string | null
+  draft: CalendarEventDraft
+  isSaving: boolean
+  onDraftChange: (next: CalendarEventDraft) => void
+  onSave: () => void | Promise<void>
+  onDismiss: () => void
+  /** M5: read-only rich metadata (attendees/reminders/visibility/Meet link) shown below the form. */
+  readOnlyMetadata?: CalendarEventReadOnlyMetadata
+  /** Opens a note linked to the saved event. */
+  onOpenNote: (noteId: string) => void
+}
+
+const EVENT_POPOVER_WIDTH = 320
+
+export function CalendarEventPopover({
+  anchorRect,
+  mode,
+  eventId,
+  draft,
+  isSaving,
+  onDraftChange,
+  onSave,
+  onDismiss,
+  readOnlyMetadata,
+  onOpenNote
+}: CalendarEventPopoverProps): React.JSX.Element {
+  const { t } = useT('calendar')
+
+  const position = useAnchoredPopoverPosition(anchorRect, {
+    width: EVENT_POPOVER_WIDTH,
+    estimatedHeight: 420
+  })
+  const title = mode === 'create' ? t('form.create-calendar-event') : t('form.edit-calendar-event')
+  const dotColor = draft.color ? calendarColorHex(draft.color) : 'var(--cal-indigo-rail)'
+
+  return (
+    <DialogPrimitive.Root
+      open
+      onOpenChange={(open) => {
+        if (!open) onDismiss()
+      }}
+      modal={false}
+    >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Content
+          data-testid="event-edit-popover"
+          aria-label={title}
+          onOpenAutoFocus={(e) => {
+            // The form focuses the title input itself on mount.
+            e.preventDefault()
+          }}
+          onPointerDownOutside={(e) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; handler only runs for element targets
+            const target = e.target as HTMLElement | null
+            if (target?.closest('[data-radix-popper-content-wrapper]')) {
+              e.preventDefault()
+            }
+          }}
+          onInteractOutside={(e) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; handler only runs for element targets
+            const target = e.target as HTMLElement | null
+            if (target?.closest('[data-radix-popper-content-wrapper]')) {
+              e.preventDefault()
+            }
+          }}
+          className={CALENDAR_CARD_CLASS}
+          ref={position.ref}
+          // oxlint-disable-next-line react/refs -- position.ref is a callback ref from usePopoverPosition, not a ref object read during render
+          style={position.style}
+        >
+          <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="sr-only">
+            {t('form.event-editor-description')}
+          </DialogPrimitive.Description>
+
+          <CalendarCardHeader
+            dotStyle={{ backgroundColor: dotColor }}
+            label={mode === 'create' ? t('time.new-event') : t('event-card.kind')}
+            actions={
+              <DialogPrimitive.Close
+                className={CARD_ICON_BUTTON_CLASS}
+                aria-label={t('event-card.close')}
+                title={t('event-card.close')}
+              >
+                <X className="size-3.5" />
+              </DialogPrimitive.Close>
+            }
+          />
+
+          <CalendarEventForm
+            mode={mode}
+            eventId={eventId}
+            draft={draft}
+            isSaving={isSaving}
+            onDraftChange={onDraftChange}
+            onSave={onSave}
+            onDismiss={onDismiss}
+            readOnlyMetadata={readOnlyMetadata}
+          />
+
+          {mode === 'edit' && eventId && (
+            <CalendarEventNotes
+              target={{ sourceType: 'event', sourceId: eventId, title: draft.title }}
+              onOpenNote={onOpenNote}
+            />
+          )}
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  )
+}
+
+export default CalendarEventPopover

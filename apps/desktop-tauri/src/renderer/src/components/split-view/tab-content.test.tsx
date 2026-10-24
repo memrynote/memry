@@ -1,0 +1,154 @@
+/**
+ * TabContent canvas keying — regression test for the stale-canvas bug.
+ *
+ * TabPane renders ONE TabContent for the active tab (no key), so switching
+ * between two canvas tabs re-renders the same element tree. Excalidraw only
+ * consumes its scene at mount, so the canvas case must key the page by entity
+ * id to force a remount; without it the previous canvas stays on screen and
+ * its persister saves that scene under the new canvas id.
+ */
+
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+import { TabContent } from './tab-content'
+import type { Tab } from '@/contexts/tabs/types'
+
+const mocks = vi.hoisted(() => {
+  let releaseTagsHubChunk = (): void => {}
+  const tagsHubChunk = new Promise<void>((resolve) => {
+    releaseTagsHubChunk = resolve
+  })
+  return {
+    canvasMounts: [] as string[],
+    closeTab: vi.fn(),
+    tagsHubChunk,
+    releaseTagsHubChunk: () => releaseTagsHubChunk()
+  }
+})
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({ t: (key: string) => key })
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ dispatch: vi.fn(), closeTab: mocks.closeTab })
+}))
+
+vi.mock('@/components/diagnostics/incident-report-provider', () => ({
+  useReportIncident: () => vi.fn()
+}))
+
+vi.mock('@/contexts/tasks', () => ({
+  useTasksOptional: () => null
+}))
+
+// Top-level (non-lazy) import in tab-content; stub so its page graph stays out.
+vi.mock('@/pages/inbox', () => ({
+  InboxPage: () => <div />
+}))
+
+vi.mock('@/pages/canvas', async () => {
+  const React = await import('react')
+  return {
+    CanvasPage: ({ canvasId }: { canvasId?: string }): React.JSX.Element => {
+      // One push per MOUNT (not per render): remount detection is the test.
+      React.useEffect(() => {
+        mocks.canvasMounts.push(canvasId ?? '')
+        // oxlint-disable-next-line react/exhaustive-deps
+      }, [])
+      return <div data-testid="canvas-page-stub" data-canvas-id={canvasId} />
+    }
+  }
+})
+
+// Holds the chunk open until the test releases it, like a cold page download.
+vi.mock('@/pages/tags-hub', async () => {
+  await mocks.tagsHubChunk
+  return { TagsHubPage: () => <div data-testid="tags-hub-page-stub" /> }
+})
+
+vi.mock('@/components/graph/graph-page', () => ({
+  GraphPage: () => {
+    throw new Error('graph renderer failed')
+  }
+}))
+
+const makeCanvasTab = (id: string, entityId: string): Tab => ({
+  id,
+  type: 'canvas',
+  title: entityId,
+  icon: 'pen-tool',
+  path: `/canvas/${entityId}`,
+  entityId,
+  isPinned: false,
+  isModified: false,
+  isPreview: false,
+  isDeleted: false,
+  openedAt: 1,
+  lastAccessedAt: 1
+})
+
+const makeGraphTab = (id: string): Tab => ({
+  ...makeCanvasTab(id, 'graph'),
+  type: 'graph',
+  title: 'Graph',
+  icon: 'network',
+  path: '/graph'
+})
+
+describe('TabContent canvas tabs', () => {
+  beforeEach(() => {
+    mocks.canvasMounts = []
+    mocks.closeTab.mockClear()
+  })
+
+  it('remounts the canvas page when the active canvas tab changes', async () => {
+    const { rerender } = render(
+      <TabContent tab={makeCanvasTab('tab-1', 'istanbul')} groupId="main" />
+    )
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-page-stub')).toHaveAttribute('data-canvas-id', 'istanbul')
+    })
+    expect(mocks.canvasMounts).toEqual(['istanbul'])
+
+    rerender(<TabContent tab={makeCanvasTab('tab-2', 'launch')} groupId="main" />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('canvas-page-stub')).toHaveAttribute('data-canvas-id', 'launch')
+    })
+    // A second MOUNT proves the key swapped the component instance; prop-only
+    // reuse would leave one mount and (in the real page) the old scene.
+    expect(mocks.canvasMounts).toEqual(['istanbul', 'launch'])
+  })
+
+  it('closes a tab when its renderer fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const tab = makeGraphTab('broken-graph')
+
+    render(<TabContent tab={tab} groupId="main" />)
+
+    expect(
+      await screen.findByText('phaseF.componentsTabsTabErrorBoundary.somethingWentWrong')
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'button.close' }))
+
+    expect(mocks.closeTab).toHaveBeenCalledWith('broken-graph', 'main')
+    consoleError.mockRestore()
+  })
+})
+
+describe('TabContent page loading', () => {
+  it('shows a spinner, not a blank pane, while a slow page chunk loads', async () => {
+    render(<TabContent tab={{ ...makeGraphTab('tags-tab'), type: 'tags' }} groupId="main" />)
+
+    // Too early to show it: a prefetched chunk lands inside this window.
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(await screen.findByRole('status', { name: 'state.loading' })).toBeInTheDocument()
+
+    mocks.releaseTagsHubChunk()
+
+    expect(await screen.findByTestId('tags-hub-page-stub')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+})

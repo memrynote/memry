@@ -1,0 +1,198 @@
+import type { Task } from '@/data/task-model'
+import type { Project, Status } from '@/data/tasks-data'
+import { priorityConfig } from '@/data/task-model'
+import { startOfDay, differenceInDays } from './task-date-utils'
+import { isTaskCompleted as isTaskCompletedIn } from '@memry/domain-tasks/parsing'
+
+// ============================================================================
+// TASK STATUS HELPERS
+// ============================================================================
+
+// Status-type completion is pinned for the iOS core by vectors (spec 004 D4).
+export const isTaskCompleted = (task: Task, projects: Project[]): boolean =>
+  isTaskCompletedIn(task, projects)
+
+export const getDefaultTodoStatus = (project: Project): Status | undefined => {
+  return project.statuses.find((s) => s.type === 'todo')
+}
+
+export const getDefaultDoneStatus = (project: Project): Status | undefined => {
+  return project.statuses.find((s) => s.type === 'done')
+}
+
+/**
+ * The status a task reads as. A task holding none of its project's statuses (none
+ * set, a deleted one, or one from another project) reads as the first, the status
+ * groupTasksByStatus files it under.
+ */
+export const resolveTaskStatus = (statusId: string, statuses: Status[]): Status | undefined =>
+  statuses.find((s) => s.id === statusId) ?? [...statuses].toSorted((a, b) => a.order - b.order)[0]
+
+// ============================================================================
+// TASK SORTING
+// ============================================================================
+
+export const sortTasksByPriorityAndDate = (tasks: Task[]): Task[] => {
+  return [...tasks].toSorted((a, b) => {
+    const priorityA = priorityConfig[a.priority].order
+    const priorityB = priorityConfig[b.priority].order
+
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB
+    }
+
+    if (a.dueDate && b.dueDate) {
+      return a.dueDate.getTime() - b.dueDate.getTime()
+    }
+    if (a.dueDate && !b.dueDate) return -1
+    if (!a.dueDate && b.dueDate) return 1
+
+    return 0
+  })
+}
+
+const priorityOrder: Record<string, number> = {
+  urgent: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  none: 4
+}
+
+export const sortTasksByTimeAndPriority = (tasks: Task[]): Task[] => {
+  return [...tasks].toSorted((a, b) => {
+    if (a.dueTime && !b.dueTime) return -1
+    if (!a.dueTime && b.dueTime) return 1
+
+    if (a.dueTime && b.dueTime) {
+      const timeCompare = a.dueTime.localeCompare(b.dueTime)
+      if (timeCompare !== 0) return timeCompare
+    }
+
+    return priorityOrder[a.priority] - priorityOrder[b.priority]
+  })
+}
+
+export const sortOverdueTasks = (tasks: Task[]): Task[] => {
+  return [...tasks].toSorted((a, b) => {
+    if (a.dueDate && b.dueDate) {
+      const dateCompare = a.dueDate.getTime() - b.dueDate.getTime()
+      if (dateCompare !== 0) return dateCompare
+    }
+
+    return priorityOrder[a.priority] - priorityOrder[b.priority]
+  })
+}
+
+// ============================================================================
+// TASK GROUPING - BY DUE DATE
+// ============================================================================
+
+export interface TaskGroupByDate {
+  overdue: Task[]
+  today: Task[]
+  tomorrow: Task[]
+  upcoming: Task[]
+  later: Task[]
+  noDueDate: Task[]
+}
+
+export const groupTasksByDueDate = (
+  tasks: Task[],
+  preserveOrder: boolean = false
+): TaskGroupByDate => {
+  const groups: TaskGroupByDate = {
+    overdue: [],
+    today: [],
+    tomorrow: [],
+    upcoming: [],
+    later: [],
+    noDueDate: []
+  }
+
+  const today = startOfDay(new Date())
+
+  tasks.forEach((task) => {
+    if (!task.dueDate) {
+      groups.noDueDate.push(task)
+    } else {
+      const taskDate = startOfDay(task.dueDate)
+      const daysUntil = differenceInDays(taskDate, today)
+
+      if (daysUntil < 0) groups.overdue.push(task)
+      else if (daysUntil === 0) groups.today.push(task)
+      else if (daysUntil === 1) groups.tomorrow.push(task)
+      else if (daysUntil <= 7) groups.upcoming.push(task)
+      else groups.later.push(task)
+    }
+  })
+
+  if (!preserveOrder) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- `groups` is built above with exactly the TaskGroupByDate keys
+    for (const key of Object.keys(groups) as (keyof TaskGroupByDate)[]) {
+      groups[key] = sortTasksByPriorityAndDate(groups[key])
+    }
+  }
+
+  return groups
+}
+
+// ============================================================================
+// TASK GROUPING - BY STATUS
+// ============================================================================
+
+export interface TaskGroupByStatus {
+  status: Status
+  tasks: Task[]
+}
+
+/**
+ * Buckets tasks into the project's own statuses, in status order.
+ *
+ * Every task lands in exactly one bucket. A task whose `statusId` is not one of
+ * the project's — a status that was deleted, or one carried over from another
+ * project — matches nothing, and dropping it would leave it in no list at all:
+ * invisible, uneditable, but still counted by everything that counts tasks. The
+ * first status adopts those instead, so the user can see and re-file them.
+ */
+export const groupTasksByStatus = (
+  tasks: Task[],
+  projectStatuses: Status[],
+  preserveOrder: boolean = false
+): TaskGroupByStatus[] => {
+  const sortedStatuses = [...projectStatuses].toSorted((a, b) => a.order - b.order)
+  const knownStatusIds = new Set(projectStatuses.map((status) => status.id))
+  const unknownStatusTasks = tasks.filter((t) => !knownStatusIds.has(t.statusId))
+
+  return sortedStatuses.map((status, index) => {
+    const statusTasks = tasks.filter((t) => t.statusId === status.id)
+    const groupTasks = index === 0 ? [...statusTasks, ...unknownStatusTasks] : statusTasks
+    return {
+      status,
+      tasks: preserveOrder ? groupTasks : sortTasksByPriorityAndDate(groupTasks)
+    }
+  })
+}
+
+// ============================================================================
+// GROUP HEADER CONFIGURATION
+// ============================================================================
+
+export type UrgencyLevel = 'critical' | 'high' | 'normal' | 'low'
+
+export interface GroupHeaderConfig {
+  id: string
+  label: string
+  urgency: UrgencyLevel
+  accentColor?: string
+  isMuted?: boolean
+}
+
+export const dueDateGroupConfig: Record<keyof TaskGroupByDate, GroupHeaderConfig> = {
+  overdue: { id: 'overdue', label: 'OVERDUE', urgency: 'critical', accentColor: '#ef4444' },
+  today: { id: 'today', label: 'TODAY', urgency: 'high', accentColor: '#3b82f6' },
+  tomorrow: { id: 'tomorrow', label: 'TOMORROW', urgency: 'normal' },
+  upcoming: { id: 'upcoming', label: 'UPCOMING', urgency: 'normal' },
+  later: { id: 'later', label: 'LATER', urgency: 'low', isMuted: true },
+  noDueDate: { id: 'noDueDate', label: 'NO DUE DATE', urgency: 'low', isMuted: true }
+}

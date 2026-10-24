@@ -24,6 +24,10 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const RULES = [
   { dir: 'crates/memry-core/src', extension: '.rs', max: 600, recursive: true },
   { dir: 'crates/memry-cli/src', extension: '.rs', max: 600, recursive: true },
+  { dir: 'apps/desktop-tauri/src-tauri/src', extension: '.rs', max: 600, recursive: true },
+  { dir: 'crates/memry-desktop/src', extension: '.rs', max: 600, recursive: true },
+  { dir: 'crates/memry-ml/src', extension: '.rs', max: 600, recursive: true },
+  { dir: 'crates/memrynote-cli/src', extension: '.rs', max: 600, recursive: true },
   { dir: 'apps/ios/Memry/Features', extension: '.swift', max: 400, recursive: true },
   { dir: 'packages/contracts/scripts', extension: '.ts', max: 300, recursive: false }
 ]

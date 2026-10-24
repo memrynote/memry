@@ -1,0 +1,524 @@
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
+import { createMockApi } from '@tests/setup-dom'
+import { AISettings } from './ai-section'
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn()
+  }
+}))
+
+vi.mock('./ai-inline-section', () => ({
+  AIInlineSettings: () => <div>Inline AI panel</div>
+}))
+
+vi.mock('./agent-providers-section', () => ({
+  AgentProvidersSection: () => <div data-testid="agent-providers-panel" />
+}))
+
+vi.mock('./command-line-section', () => ({
+  CommandLineSettings: () => <div data-testid="command-line-panel" />
+}))
+vi.mock('./agent-mcp-section', () => ({
+  AgentMcpSection: () => <div data-testid="agent-mcp-panel" />
+}))
+
+type EmbeddingProgressEvent = {
+  phase: string
+  progress?: number
+  current?: number
+  total?: number
+  status?: string
+}
+
+// oxlint-disable-next-line typescript/no-redundant-type-constituents -- test types come from a mock factory or an alias that tsgolint resolves to any; the declared type is intentional
+type SettingsApi = ReturnType<typeof createMockApi> & {
+  onEmbeddingProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
+  onVoiceModelProgress: (callback: (event: EmbeddingProgressEvent) => void) => () => void
+}
+
+describe('AISettings', () => {
+  let api: SettingsApi
+  let embeddingCallbacks: Array<(event: EmbeddingProgressEvent) => void>
+  let voiceCallbacks: Array<(event: EmbeddingProgressEvent) => void>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    embeddingCallbacks = []
+    voiceCallbacks = []
+
+    if (!HTMLElement.prototype.hasPointerCapture) {
+      HTMLElement.prototype.hasPointerCapture = vi.fn(() => false)
+    }
+    if (!HTMLElement.prototype.setPointerCapture) {
+      HTMLElement.prototype.setPointerCapture = vi.fn()
+    }
+    if (!HTMLElement.prototype.releasePointerCapture) {
+      HTMLElement.prototype.releasePointerCapture = vi.fn()
+    }
+    if (!HTMLElement.prototype.scrollIntoView) {
+      HTMLElement.prototype.scrollIntoView = vi.fn()
+    }
+
+    api = createMockApi()
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
+    api.settings.setAISettings = vi.fn().mockResolvedValue({ success: true })
+    api.settings.getAIModelStatus = vi
+      .fn()
+      .mockResolvedValueOnce({
+        name: 'MiniLM',
+        dimension: 384,
+        loaded: false,
+        loading: false,
+        error: null,
+        embeddingCount: 12
+      })
+      .mockResolvedValue({
+        name: 'MiniLM',
+        dimension: 384,
+        loaded: true,
+        loading: false,
+        error: null,
+        embeddingCount: 24
+      })
+    api.settings.loadAIModel = vi.fn().mockResolvedValue({ success: true, message: 'ready' })
+    api.settings.reindexEmbeddings = vi.fn().mockResolvedValue({
+      success: true,
+      computed: 3,
+      skipped: 1
+    })
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({ provider: 'local' })
+    api.settings.setVoiceTranscriptionSettings = vi.fn().mockResolvedValue({ success: true })
+    api.settings.getVoiceModelStatus = vi.fn().mockResolvedValue({
+      name: 'Whisper Small',
+      downloaded: false,
+      loaded: false,
+      loading: false,
+      error: null
+    })
+    api.settings.downloadVoiceModel = vi.fn().mockResolvedValue({ success: true })
+    api.settings.getVoiceTranscriptionOpenAIKeyStatus = vi.fn().mockResolvedValue({
+      hasApiKey: false
+    })
+    api.settings.setVoiceTranscriptionOpenAIKey = vi.fn().mockResolvedValue({ success: true })
+    api.onEmbeddingProgress = vi.fn((callback) => {
+      embeddingCallbacks.push(callback)
+      return () => {}
+    })
+    api.onVoiceModelProgress = vi.fn((callback) => {
+      voiceCallbacks.push(callback)
+      return () => {}
+    })
+    ;(window as Window & { api: unknown }).api = api
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('turns image search off without touching the AI switch', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true, imageEmbeddings: true })
+    render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('Search images by content')).toBeInTheDocument())
+
+    await userEvent.click(screen.getAllByRole('switch')[2])
+
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ imageEmbeddings: false })
+    expect(toast.success).toHaveBeenCalledWith('Image search disabled')
+  })
+
+  it('shows Summarize long notes only while AI is on and saves it on its own', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
+    const { unmount } = render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('Enable AI Features')).toBeInTheDocument())
+    expect(screen.queryByText('Summarize long notes')).not.toBeInTheDocument()
+    unmount()
+
+    api.settings.getAISettings = vi
+      .fn()
+      .mockResolvedValue({ enabled: true, imageEmbeddings: true, summarizeLongNotes: false })
+    render(<AISettings />)
+    const toggle = await screen.findByRole('switch', { name: 'Summarize long notes' })
+    expect(toggle).not.toBeChecked()
+
+    await userEvent.click(toggle)
+
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ summarizeLongNotes: true })
+    expect(toggle).toBeChecked()
+  })
+
+  it('offers only detected agents plus Auto in the summary agent chooser', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'auto'
+    })
+    api.noteFold.getAgentStatus = vi.fn().mockResolvedValue({
+      choice: 'auto',
+      available: [{ id: 'codex_cli', label: 'Codex' }],
+      resolved: 'Codex'
+    })
+    render(<AISettings />)
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: 'Agent that writes summaries' })
+    )
+
+    expect(await screen.findByRole('option', { name: 'Codex' })).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: 'Auto' })).toBeInTheDocument()
+    expect(screen.queryByRole('option', { name: 'Claude' })).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('option', { name: 'Codex' }))
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ summarizeAgent: 'codex_cli' })
+  })
+
+  it('says no agent was found and opens the Agents tab from the link', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({
+      enabled: true,
+      imageEmbeddings: true,
+      summarizeLongNotes: true,
+      summarizeAgent: 'auto'
+    })
+    api.noteFold.getAgentStatus = vi
+      .fn()
+      .mockResolvedValue({ choice: 'auto', available: [], resolved: null })
+    render(<AISettings />)
+
+    expect(await screen.findByText(/No agent found/)).toBeInTheDocument()
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Open Agents' }))
+    expect(await screen.findByTestId('agent-providers-panel')).toBeInTheDocument()
+  })
+
+  it('loads settings, toggles AI, loads the embedding model, and rebuilds embeddings', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: false })
+    render(<AISettings />)
+
+    expect(screen.getByText('Loading settings...')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Enable AI Features')).toBeInTheDocument())
+    expect(screen.queryByTestId('embedding-model-row')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('switch'))
+    expect(api.settings.setAISettings).toHaveBeenCalledWith({ enabled: true })
+    expect(toast.success).toHaveBeenCalledWith('AI features enabled')
+    await waitFor(() => expect(screen.getByTestId('embedding-model-row')).toBeInTheDocument())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))
+    expect(api.settings.loadAIModel).toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByText('Loaded')).toBeInTheDocument())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rebuild Index' }))
+    expect(api.settings.reindexEmbeddings).toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('Embeddings reindexed: 3 computed, 1 skipped')
+  })
+
+  it('splits AI settings into Models, Agents and Connect tabs', async () => {
+    render(<AISettings />)
+
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Models' })).toBeInTheDocument())
+    expect(screen.getByRole('tab', { name: 'Models' })).toHaveAttribute('data-state', 'active')
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Agents' }))
+    expect(screen.getByTestId('agent-providers-panel')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Connect' }))
+    expect(screen.getByTestId('agent-mcp-panel')).toBeInTheDocument()
+    expect(screen.getByTestId('command-line-panel')).toBeInTheDocument()
+  })
+
+  it('opens the requested tab for legacy agent settings sections', async () => {
+    render(<AISettings initialTab="connect" />)
+
+    await waitFor(() => expect(screen.getByTestId('agent-mcp-panel')).toBeInTheDocument())
+    expect(screen.queryByTestId('agent-providers-panel')).not.toBeInTheDocument()
+  })
+
+  it('highlights the voice local model row when focused from voice capture', async () => {
+    render(<AISettings focusTarget="voice-local-model" focusRequestId={1} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('voice-local-model-row')).toHaveClass('settings-focus-heartbeat')
+    )
+  })
+
+  it('handles voice OpenAI key saving, model download, and progress events', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({ provider: 'openai' })
+    api.settings.getVoiceTranscriptionOpenAIKeyStatus = vi.fn().mockResolvedValue({
+      hasApiKey: true
+    })
+    api.settings.getVoiceModelStatus = vi
+      .fn()
+      .mockResolvedValueOnce({
+        name: 'Whisper Small',
+        downloaded: false,
+        loaded: false,
+        loading: false,
+        error: null
+      })
+      .mockResolvedValue({
+        name: 'Whisper Small',
+        downloaded: true,
+        loaded: true,
+        loading: false,
+        error: null
+      })
+
+    render(<AISettings />)
+
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('Replace saved OpenAI key')).toBeInTheDocument()
+    )
+
+    await userEvent.type(screen.getByPlaceholderText('Replace saved OpenAI key'), 'sk-test')
+    await userEvent.click(screen.getByRole('button', { name: 'Save Key' }))
+    expect(api.settings.setVoiceTranscriptionOpenAIKey).toHaveBeenCalledWith('sk-test')
+    expect(toast.success).toHaveBeenCalledWith('OpenAI key saved')
+
+    await act(async () => {
+      voiceCallbacks[0]({ phase: 'downloading', progress: 42, status: 'Fetching model' })
+    })
+    expect(screen.getByText('Fetching model')).toBeInTheDocument()
+    expect(screen.getByText('42%')).toBeInTheDocument()
+
+    await act(async () => {
+      voiceCallbacks[0]({ phase: 'ready' })
+    })
+    await waitFor(() => expect(api.settings.getVoiceModelStatus).toHaveBeenCalledTimes(2))
+  })
+
+  it('saves the voice memo naming mode', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'timestamp'
+    })
+
+    render(<AISettings />)
+
+    await waitFor(() => expect(screen.getByText('Timestamp')).toBeInTheDocument())
+
+    await userEvent.click(screen.getAllByRole('combobox')[0])
+    await userEvent.click(await screen.findByRole('option', { name: 'Transcript title' }))
+
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({
+      memoNameMode: 'transcript'
+    })
+  })
+
+  it('saves the spoken language for voice transcription', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+
+    render(<AISettings />)
+
+    const languageSelect = await screen.findByRole('combobox', { name: 'Spoken language' })
+    expect(languageSelect).toHaveTextContent('Default')
+
+    await userEvent.click(languageSelect)
+    await userEvent.click(await screen.findByRole('option', { name: 'German' }))
+
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ language: 'de' })
+    await waitFor(() => expect(languageSelect).toHaveTextContent('German'))
+  })
+
+  it('turns voice memo sound search off and on, defaulting to on', async () => {
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({
+      provider: 'local',
+      memoNameMode: 'transcript'
+    })
+
+    render(<AISettings />)
+
+    const toggle = await screen.findByRole('switch', { name: 'Search voice memos by sound' })
+    expect(toggle).toBeChecked()
+
+    await userEvent.click(toggle)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ audioSearch: false })
+    await waitFor(() => expect(toggle).not.toBeChecked())
+
+    await userEvent.click(toggle)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenLastCalledWith({
+      audioSearch: true
+    })
+  })
+
+  it('keeps the spoken language and shows an error when saving fails', async () => {
+    api.settings.setVoiceTranscriptionSettings = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, error: 'language rejected' })
+      .mockRejectedValueOnce(new Error('language exploded'))
+
+    render(<AISettings />)
+
+    const languageSelect = await screen.findByRole('combobox', { name: 'Spoken language' })
+    await userEvent.click(languageSelect)
+    await userEvent.click(await screen.findByRole('option', { name: 'German' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('language rejected'))
+
+    await userEvent.click(languageSelect)
+    await userEvent.click(await screen.findByRole('option', { name: 'French' }))
+    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('language exploded'))
+    expect(languageSelect).toHaveTextContent('Default')
+  })
+
+  it('switches the voice provider with the segmented control', async () => {
+    render(<AISettings />)
+
+    const localSegment = await screen.findByRole('button', { pressed: true })
+    const openaiSegment = screen.getByRole('button', { pressed: false })
+
+    await userEvent.click(localSegment)
+    expect(api.settings.setVoiceTranscriptionSettings).not.toHaveBeenCalled()
+
+    await userEvent.click(openaiSegment)
+    expect(api.settings.setVoiceTranscriptionSettings).toHaveBeenCalledWith({ provider: 'openai' })
+    await waitFor(() =>
+      expect(screen.getByPlaceholderText('Enter OpenAI API key')).toBeInTheDocument()
+    )
+    expect(openaiSegment).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('surfaces progress and errors from embedding callbacks', async () => {
+    render(<AISettings />)
+
+    await waitFor(() => expect(screen.getByTestId('embedding-model-row')).toBeInTheDocument())
+
+    await act(async () => {
+      embeddingCallbacks[0]({ phase: 'downloading', progress: 30 })
+    })
+
+    expect(screen.getByText('Downloading model...')).toBeInTheDocument()
+    expect(screen.getByText('30%')).toBeInTheDocument()
+    expect(screen.getByRole('progressbar', { name: 'Downloading model...' })).toHaveAttribute(
+      'aria-valuenow',
+      '30'
+    )
+
+    await act(async () => {
+      embeddingCallbacks[0]({ phase: 'error', status: 'model failed' })
+    })
+
+    expect(screen.getByText('model failed')).toBeInTheDocument()
+  })
+
+  it('surfaces failed setting, model, voice, key, and reindex mutations', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
+    api.settings.getAIModelStatus = vi.fn().mockResolvedValue({
+      name: 'MiniLM',
+      dimension: 384,
+      loaded: false,
+      loading: false,
+      error: 'previous embedding error',
+      embeddingCount: 0
+    })
+    api.settings.setAISettings = vi
+      .fn()
+      .mockResolvedValue({ success: false, error: 'toggle failed' })
+    api.settings.loadAIModel = vi.fn().mockResolvedValue({ success: false, error: 'load failed' })
+    api.settings.reindexEmbeddings = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, error: 'reindex failed' })
+      .mockRejectedValueOnce(new Error('reindex exploded'))
+    api.settings.downloadVoiceModel = vi.fn().mockResolvedValue({
+      success: false,
+      error: 'voice download failed'
+    })
+    api.settings.getVoiceTranscriptionSettings = vi.fn().mockResolvedValue({ provider: 'openai' })
+    api.settings.getVoiceTranscriptionOpenAIKeyStatus = vi
+      .fn()
+      .mockResolvedValue({ hasApiKey: true })
+    api.settings.setVoiceTranscriptionOpenAIKey = vi
+      .fn()
+      .mockResolvedValueOnce({ success: false, error: 'key failed' })
+      .mockRejectedValueOnce(new Error('key exploded'))
+
+    render(<AISettings />)
+    await waitFor(() => expect(screen.getByText('previous embedding error')).toBeInTheDocument())
+
+    await userEvent.click(screen.getAllByRole('switch')[0])
+    expect(toast.error).toHaveBeenCalledWith('toggle failed')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download & Load Model' }))
+    expect(toast.error).toHaveBeenCalledWith('load failed')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Download Whisper Small' }))
+    expect(toast.error).toHaveBeenCalledWith('voice download failed')
+
+    const keyInput = screen.getByPlaceholderText('Replace saved OpenAI key')
+    await userEvent.type(keyInput, 'sk-fail')
+    await userEvent.click(screen.getByRole('button', { name: 'Save Key' }))
+    expect(toast.error).toHaveBeenCalledWith('key failed')
+
+    await userEvent.clear(keyInput)
+    await userEvent.type(keyInput, 'sk-throw')
+    await userEvent.click(screen.getByRole('button', { name: 'Save Key' }))
+    expect(toast.error).toHaveBeenCalledWith('key exploded')
+
+    await waitFor(() =>
+      expect(screen.queryByRole('button', { name: 'Rebuild Index' })).not.toBeInTheDocument()
+    )
+  })
+
+  it('handles reindex progress completion and voice/embedding progress error fallbacks', async () => {
+    api.settings.getAISettings = vi.fn().mockResolvedValue({ enabled: true })
+    api.settings.getAIModelStatus = vi.fn().mockResolvedValue({
+      name: 'MiniLM',
+      dimension: 384,
+      loaded: true,
+      loading: false,
+      error: null,
+      embeddingCount: 1
+    })
+    api.settings.getVoiceModelStatus = vi.fn().mockResolvedValue({
+      name: 'Whisper Small',
+      downloaded: true,
+      loaded: false,
+      loading: false,
+      error: null
+    })
+    let resolveReindex!: (value: { success: boolean; computed: number; skipped: number }) => void
+    api.settings.reindexEmbeddings = vi.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveReindex = resolve
+        })
+    )
+
+    render(<AISettings />)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Rebuild Index' })).toBeEnabled())
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rebuild Index' }))
+    await act(async () => {
+      embeddingCallbacks[0]({ phase: 'embedding', current: 2, total: 5 })
+    })
+    expect(screen.getByText('2 / 5')).toBeInTheDocument()
+
+    vi.useFakeTimers()
+    await act(async () => {
+      embeddingCallbacks[0]({ phase: 'complete', current: 5, total: 5 })
+      vi.advanceTimersByTime(1000)
+    })
+    await waitFor(() => expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(2))
+
+    await act(async () => {
+      embeddingCallbacks[0]({ phase: 'ready' })
+    })
+    await waitFor(() => expect(api.settings.getAIModelStatus).toHaveBeenCalledTimes(3))
+
+    await act(async () => {
+      voiceCallbacks[0]({ phase: 'error' })
+    })
+    expect(screen.getByText('Unknown error')).toBeInTheDocument()
+
+    await act(async () => {
+      resolveReindex({ success: true, computed: 5, skipped: 0 })
+    })
+
+    vi.useRealTimers()
+  })
+})

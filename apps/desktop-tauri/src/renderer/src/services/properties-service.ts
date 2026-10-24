@@ -1,0 +1,83 @@
+/**
+ * Unified Properties Service
+ *
+ * Provides a unified API for property operations that works with
+ * both notes and journal entries via entity ID.
+ *
+ * @module services/properties-service
+ */
+
+import type { ResolvedRelationRef } from '@memry/contracts/properties-api'
+
+export type { ResolvedRelationRef }
+
+export interface PropertyValue {
+  name: string
+  value: unknown
+  type: string
+}
+
+export interface SetPropertiesResponse {
+  success: boolean
+  error?: string
+  /** On success: the record as stored. */
+  properties?: Record<string, unknown>
+  /** On success: the names the set deleted because the call left them out. */
+  removed?: string[]
+}
+
+export interface RenamePropertyResponse {
+  success: boolean
+  error?: string
+}
+
+/**
+ * Unified properties service.
+ * Works with any entity ID (note or journal entry).
+ */
+export const propertiesService = {
+  /**
+   * Get properties for an entity.
+   * @param entityId - Note ID or journal entry ID
+   * @returns Array of property values
+   */
+  get: (entityId: string): Promise<PropertyValue[]> => {
+    return window.api.properties.get(entityId)
+  },
+
+  /**
+   * Set properties for an entity.
+   * @param entityId - Note ID or journal entry ID
+   * @param properties - Properties record to set
+   * @returns Response with success status
+   */
+  set: (entityId: string, properties: Record<string, unknown>): Promise<SetPropertiesResponse> => {
+    return window.api.properties.set(entityId, properties)
+  },
+
+  merge: (entityId: string, values: Record<string, unknown>): Promise<SetPropertiesResponse> => {
+    return window.api.properties.merge(entityId, values)
+  },
+
+  /**
+   * Rename a property for an entity.
+   * Note-only scope: rename only affects this entity's frontmatter.
+   * @param entityId - Note ID or journal entry ID
+   * @param oldName - Current property name
+   * @param newName - New property name
+   * @returns Response with success status
+   */
+  rename: (entityId: string, oldName: string, newName: string): Promise<RenamePropertyResponse> => {
+    return window.api.properties.rename(entityId, oldName, newName)
+  },
+
+  /**
+   * Resolve relation property URIs (memry://<kind>/<id>) to display data.
+   * Preserves the input array's order and length; never throws.
+   * @param uris - Relation URIs to resolve
+   * @returns Resolved refs, 1:1 with the input array
+   */
+  resolveRefs: (uris: string[]): Promise<ResolvedRelationRef[]> => {
+    return window.api.properties.resolveRefs(uris)
+  }
+}

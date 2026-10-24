@@ -1,0 +1,1454 @@
+/**
+ * Folder Table View Component
+ *
+ * TanStack Table-based view for displaying notes in a folder.
+ * Supports column resizing, sorting, property display, keyboard navigation,
+ * and row virtualization for performance with large folders.
+ *
+ * Phase 17: Keyboard Navigation
+ * - Arrow keys: Navigate up/down (with wrap-around)
+ * - Enter / Cmd+Enter: Open selected note in new tab
+ * - Escape: Clear selection
+ * - Cmd/Ctrl+A: Select all rows
+ * - Space: Jump to last row
+ *
+ * Phase 19: Row Virtualization
+ * - Uses @tanstack/react-virtual for efficient rendering of 1000+ notes
+ * - Only renders visible rows + overscan buffer
+ * - Supports dynamic row heights with measureElement
+ * - Shift+click range selection works across virtualized rows
+ */
+
+import { FieldPropertyCell } from './field-property-cell'
+import { useMemo, useCallback, useState, useRef } from 'react'
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getFilteredRowModel,
+  flexRender,
+  type ColumnDef,
+  type SortingState,
+  type CellContext,
+  type FilterFn,
+  type Row
+} from '@tanstack/react-table'
+import { useVirtualizer } from '@tanstack/react-virtual'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates
+} from '@dnd-kit/sortable'
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers'
+import { useT } from '@memry/i18n/renderer'
+import { dragRefsForRow, startCanvasRowsDrag } from '@/pages/canvas/canvas-bulk-add'
+import { Calendar, FileText, Folder, Hash, Sigma, Tag, type AppIcon } from '@/lib/icons'
+import { PROPERTY_TYPE_ICONS } from './column-icons'
+import { cn } from '@/lib/utils'
+import { handleMiddleClick } from '@/lib/middle-click'
+import { getColumnLabel } from '@/lib/contract-display-names'
+import { evaluateFormula } from '@/lib/expression-evaluator'
+import { stringifyUnknown } from '@/lib/stringify-unknown'
+import type {
+  NoteWithProperties,
+  ColumnConfig,
+  SummaryConfig
+} from '@memry/contracts/folder-view-api'
+import {
+  TitleCell,
+  FolderCell,
+  TagsCell,
+  DateCell,
+  WordCountCell,
+  CheckboxCell,
+  NumberCell,
+  TextCell,
+  type PropertyType
+} from './property-cell'
+import type { TagMetaMap } from './note-card-pieces'
+import { SortableColumnHeader } from './sortable-column-header'
+import { RowContextMenu } from './row-context-menu'
+import { FolderViewEmptyState } from './folder-view-empty-state'
+import { SummaryRow } from './summary-row'
+import { SelectionCheckbox, SELECT_COLUMN_WIDTH, type SelectionState } from './selection-checkbox'
+import { isMetadataEditableRow } from './row-metadata-editability'
+import {
+  NOTE_TASK_CHEVRON_WIDTH,
+  NoteTaskChevron,
+  NoteTaskList,
+  NoteTasksBadge
+} from './note-task-rows'
+import type { NoteTasks } from '@/lib/note-tasks'
+
+/**
+ * Sort order configuration (matches .folder.md format)
+ */
+export interface OrderConfig {
+  property: string
+  direction: 'asc' | 'desc'
+}
+
+type DisplayItem =
+  | { kind: 'note'; row: Row<NoteWithProperties>; rowIndex: number }
+  | { kind: 'tasks'; noteId: string; title: string; summary: NoteTasks }
+
+const EMPTY_FORMULAS: Record<string, string> = {}
+const EMPTY_PROPERTY_TYPES: Record<string, PropertyType> = {}
+const EMPTY_HIGHLIGHTED: string[] = []
+const EMPTY_SUMMARIES: Record<string, SummaryConfig> = {}
+const renderEmptyFormulaCell = (): React.JSX.Element => (
+  <span className="text-muted-foreground/50">—</span>
+)
+const EMPTY_ROW_IDS: Set<string> = new Set<string>()
+
+interface FolderTableViewProps {
+  /** Notes to display */
+  notes: NoteWithProperties[]
+  /** Column configuration */
+  columns: ColumnConfig[]
+  /** Formula definitions (name -> expression) for computed columns */
+  formulas?: Record<string, string>
+  /** Property types map (columnId -> PropertyType) for correct cell rendering - T116 */
+  propertyTypes?: Record<string, PropertyType>
+  /** Initial sort order from saved config */
+  initialSorting?: OrderConfig[]
+  /** Global search filter string */
+  globalFilter?: string
+  /** Query string to highlight in cells */
+  highlightQuery?: string
+  /** Selected row IDs (controlled mode - lifted to parent for persistence across views) */
+  selectedRowIds?: Set<string>
+  /**
+   * Tasks each note carries, keyed by note id. When set, a note with tasks gets
+   * a chevron that opens them beneath its row, and a progress badge in its title.
+   */
+  noteTasks?: ReadonlyMap<string, NoteTasks>
+  /** Called when a note is clicked to open it */
+  onNoteOpen?: (noteId: string) => void
+  /** Called when a note should be opened in a new tab */
+  onOpenInNewTab?: (noteId: string) => void
+  /** Middle-click gesture: open the row in a background tab. */
+  onOpenInBackgroundTab?: (noteId: string) => void
+  /** Called when a folder cell is clicked */
+  onFolderClick?: (folderPath: string) => void
+  /** Called when a tag is clicked */
+  onTagClick?: (tag: string) => void
+  /** Called when a tag is removed */
+  onTagRemove?: (noteId: string, tag: string) => void
+  /** Set (or clear, with `null`) a row's icon */
+  onSetIcon?: (noteId: string, icon: string | null) => void
+  /** Tag color + icon, keyed by lowercased tag name */
+  tagMetaMap?: TagMetaMap
+  /** Called when a property value is updated */
+  onPropertyUpdate?: (noteId: string, propertyId: string, value: unknown) => void
+  /** Called when column config changes (resize, reorder) */
+  onColumnsChange?: (columns: ColumnConfig[]) => void
+  /** Called when display name changes for a column */
+  onDisplayNameChange?: (columnId: string, displayName: string) => void
+  /** Called when sort order changes */
+  onSortingChange?: (sorting: OrderConfig[]) => void
+  /** Called when selection changes (for bulk operations) */
+  onSelectionChange?: (selectedIds: Set<string>) => void
+  /** Called when note(s) should be deleted */
+  onDelete?: (noteIds: string[]) => void
+  /** Called when note(s) should be moved to a folder */
+  onMoveToFolder?: (noteIds: string[]) => void
+  /** Called when user wants to create a new note (from empty state) */
+  onCreateNote?: () => void
+  /** Called when user wants to clear all search/filters (from no-results state) */
+  onClearAll?: () => void
+  /** Column IDs to highlight (from column selector search) */
+  highlightedColumns?: string[]
+  /** Loading state */
+  isLoading?: boolean
+  /** Display density (comfortable/compact) - T099 */
+  density?: 'comfortable' | 'compact'
+  /** Show borders between columns - T099 */
+  showColumnBorders?: boolean
+  /** Whether to show summary footer row - Phase 23 */
+  showSummaries?: boolean
+  /** Summary configurations per column - Phase 23 */
+  summaries?: Record<string, SummaryConfig>
+  /** Row IDs that are currently exiting (for T121 animation) */
+  exitingRowIds?: Set<string>
+  /**
+   * Names this scroller inside the owning tab, turning scroll restore on. Left
+   * unset by callers that are not a tab's main content (the Home folder widget),
+   * where there is no per-tab offset to restore.
+   */
+  scrollKey?: string
+  /** Additional CSS classes */
+  className?: string
+}
+
+/**
+ * Custom global filter function that searches across all visible columns.
+ * Case-insensitive substring matching.
+ */
+const globalFilterFn: FilterFn<NoteWithProperties> = (row, columnId, filterValue) => {
+  const value = row.getValue(columnId)
+  if (value === null || value === undefined) return false
+
+  const searchValue = String(filterValue).toLowerCase()
+
+  // Handle arrays (tags)
+  if (Array.isArray(value)) {
+    return value.some((item) => stringifyUnknown(item).toLowerCase().includes(searchValue))
+  }
+
+  return stringifyUnknown(value).toLowerCase().includes(searchValue)
+}
+
+/**
+ * Map column ID to property type for cell rendering
+ */
+function getColumnType(columnId: string): PropertyType {
+  switch (columnId) {
+    case 'created':
+    case 'modified':
+      return 'date'
+    case 'wordCount':
+      return 'number'
+    case 'tags':
+      return 'multiselect'
+    case 'kind':
+      return 'text'
+    default:
+      return 'text'
+  }
+}
+
+const BUILT_IN_COLUMN_ICONS: Record<string, AppIcon> = {
+  title: FileText,
+  folder: Folder,
+  tags: Tag,
+  created: Calendar,
+  modified: Calendar,
+  wordCount: Hash
+}
+
+function getColumnIcon(
+  columnId: string,
+  propertyTypes: Record<string, PropertyType>
+): AppIcon | undefined {
+  const builtInIcon = BUILT_IN_COLUMN_ICONS[columnId]
+  if (builtInIcon) return builtInIcon
+  if (columnId.startsWith('formula.')) return Sigma
+  const type = propertyTypes[columnId] ?? getColumnType(columnId)
+  return PROPERTY_TYPE_ICONS[type]
+}
+
+/**
+ * Convert OrderConfig[] (from .folder.md) to TanStack SortingState
+ */
+function orderConfigToSortingState(order?: OrderConfig[]): SortingState {
+  if (!order || order.length === 0) {
+    return []
+  }
+  return order.map((o) => ({
+    id: o.property,
+    desc: o.direction === 'desc'
+  }))
+}
+
+/**
+ * Convert TanStack SortingState to OrderConfig[] (for .folder.md)
+ */
+function sortingStateToOrderConfig(sorting: SortingState): OrderConfig[] {
+  return sorting.map((s) => ({
+    property: s.id,
+    direction: s.desc ? 'desc' : 'asc'
+  }))
+}
+
+/**
+ * Table view for folder notes using TanStack Table.
+ */
+export function FolderTableView({
+  notes,
+  columns: columnConfig,
+  formulas = EMPTY_FORMULAS,
+  propertyTypes = EMPTY_PROPERTY_TYPES,
+  initialSorting,
+  globalFilter,
+  highlightQuery,
+  selectedRowIds: externalSelectedRowIds,
+  noteTasks,
+  onNoteOpen,
+  onOpenInNewTab,
+  onOpenInBackgroundTab,
+  onFolderClick,
+  onTagClick,
+  onTagRemove,
+  onSetIcon,
+  tagMetaMap,
+  onPropertyUpdate,
+  onColumnsChange,
+  onDisplayNameChange,
+  onSortingChange,
+  onSelectionChange,
+  onDelete,
+  onMoveToFolder,
+  onCreateNote,
+  onClearAll,
+  highlightedColumns = EMPTY_HIGHLIGHTED,
+  isLoading,
+  density = 'comfortable',
+  showColumnBorders = true,
+  showSummaries = false,
+  summaries = EMPTY_SUMMARIES,
+  exitingRowIds = EMPTY_ROW_IDS,
+  scrollKey,
+  className
+}: FolderTableViewProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('notes')
+  const { t } = useT('common')
+
+  // Convert initial sorting from OrderConfig[] to SortingState
+  const [sorting, setSorting] = useState<SortingState>(() =>
+    orderConfigToSortingState(initialSorting)
+  )
+
+  // Sync external sort changes (e.g. the header Sort control writing view.order)
+  // into the internal state. Render-phase to match the no-effect convention;
+  // keyed on a serialized signature so a header-click round-trip back through
+  // view.order doesn't fight the table's own update.
+  const [sortSig, setSortSig] = useState(() => JSON.stringify(initialSorting ?? []))
+  const incomingSortSig = JSON.stringify(initialSorting ?? [])
+  if (sortSig !== incomingSortSig) {
+    setSortSig(incomingSortSig)
+    setSorting(orderConfigToSortingState(initialSorting))
+  }
+
+  // ============================================================================
+  // Keyboard Navigation State (Phase 17) & Selection (Phase 19)
+  // ============================================================================
+
+  /** Currently focused row for keyboard navigation */
+  const [focusedRowId, setFocusedRowId] = useState<string | null>(null)
+
+  /** Notes whose tasks are open beneath their row */
+  const [expandedNoteIds, setExpandedNoteIds] = useState<ReadonlySet<string>>(new Set())
+  const toggleNoteTasks = useCallback((noteId: string) => {
+    setExpandedNoteIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(noteId)) next.delete(noteId)
+      else next.add(noteId)
+      return next
+    })
+  }, [])
+
+  /**
+   * Internal selected rows state (used when not controlled externally).
+   * When externalSelectedRowIds is provided, this is ignored and the external state is used.
+   * This allows selection to be lifted to the page for persistence across view switches.
+   */
+  const [internalSelectedRowIds, setInternalSelectedRowIds] = useState<Set<string>>(new Set())
+
+  /**
+   * Controlled/uncontrolled selection pattern:
+   * - If parent provides selectedRowIds prop, use that (controlled)
+   * - Otherwise, use internal state (uncontrolled)
+   */
+  const selectedRowIds = externalSelectedRowIds ?? internalSelectedRowIds
+
+  // Use refs to avoid recreating setSelectedRowIds on every render
+  const selectedRowIdsRef = useRef(selectedRowIds)
+  selectedRowIdsRef.current = selectedRowIds
+
+  const onSelectionChangeRef = useRef(onSelectionChange)
+  onSelectionChangeRef.current = onSelectionChange
+
+  const externalSelectedRowIdsRef = useRef(externalSelectedRowIds)
+  externalSelectedRowIdsRef.current = externalSelectedRowIds
+
+  /**
+   * Stable setter for selection state.
+   * Uses refs to avoid dependency on selectedRowIds which would cause infinite loops.
+   */
+  const setSelectedRowIds = useCallback(
+    (newSelection: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      const resolved =
+        typeof newSelection === 'function' ? newSelection(selectedRowIdsRef.current) : newSelection
+
+      // Always notify parent if callback provided
+      onSelectionChangeRef.current?.(resolved)
+
+      // Only update internal state if not controlled
+      if (!externalSelectedRowIdsRef.current) {
+        setInternalSelectedRowIds(resolved)
+      }
+    },
+    [] // Stable - no dependencies, uses refs
+  )
+
+  /** Ref to table container for focus management and virtualization */
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+
+  /** Track last selected row index for Shift+click range selection */
+  const lastSelectedIndexRef = useRef<number | null>(null)
+
+  // Create a map of column configs for quick lookup
+  const columnConfigMap = useMemo(() => {
+    const map = new Map<string, ColumnConfig>()
+    columnConfig.forEach((col) => map.set(col.id, col))
+    return map
+  }, [columnConfig])
+
+  // Handle column width change from ColumnHeader
+  const handleWidthChange = useCallback(
+    (columnId: string, width: number) => {
+      if (!onColumnsChange) return
+
+      const updatedColumns = columnConfig.map((col) =>
+        col.id === columnId ? { ...col, width } : col
+      )
+      onColumnsChange(updatedColumns)
+    },
+    [columnConfig, onColumnsChange]
+  )
+
+  // Keep a stable ref to onSortingChange to avoid stale closures
+  const onSortingChangeRef = useRef(onSortingChange)
+  onSortingChangeRef.current = onSortingChange
+
+  // Handle sorting change and notify parent directly in the handler
+  const handleSortingChange = useCallback(
+    (updater: SortingState | ((old: SortingState) => SortingState)) => {
+      setSorting((prevSorting) => {
+        const newSorting = typeof updater === 'function' ? updater(prevSorting) : updater
+        // Notify parent of change directly in the handler, not in useEffect
+        onSortingChangeRef.current?.(sortingStateToOrderConfig(newSorting))
+        return newSorting
+      })
+    },
+    []
+  )
+
+  // Memoized cell renderer for title column
+  const renderTitleCell = useCallback(
+    (info: CellContext<NoteWithProperties, unknown>) => {
+      const note = info.row.original
+      return (
+        <TitleCell
+          title={note.title}
+          emoji={note.emoji}
+          noteId={note.kind === 'task' || note.kind === 'inbox' ? undefined : note.id}
+          viaTag={note.viaTag}
+          onClick={() => onNoteOpen?.(note.id)}
+          highlightQuery={highlightQuery}
+        />
+      )
+    },
+    [onNoteOpen, highlightQuery]
+  )
+
+  // Memoized cell renderer for folder column
+  const renderFolderCell = useCallback(
+    (info: CellContext<NoteWithProperties, unknown>) => {
+      const note = info.row.original
+      return (
+        <FolderCell
+          path={note.folder}
+          onClick={() => {
+            if (note.folder && note.folder !== '/') {
+              onFolderClick?.(note.folder)
+            }
+          }}
+        />
+      )
+    },
+    [onFolderClick]
+  )
+
+  // Memoized cell renderer for tags column
+  const renderTagsCell = useCallback(
+    (info: CellContext<NoteWithProperties, unknown>) => {
+      const note = info.row.original
+      return (
+        <TagsCell
+          tags={note.tags}
+          onTagClick={onTagClick}
+          onTagRemove={
+            onTagRemove && isMetadataEditableRow(note)
+              ? (tag) => {
+                  onTagRemove(note.id, tag)
+                }
+              : undefined
+          }
+          tagMetaMap={tagMetaMap}
+        />
+      )
+    },
+    [onTagClick, onTagRemove, tagMetaMap]
+  )
+
+  // Memoized cell renderer for date columns
+  const renderDateCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
+    const value = info.getValue()
+    if (!value) return <span className="text-muted-foreground/50">—</span>
+    return <DateCell value={stringifyUnknown(value)} />
+  }, [])
+
+  // Memoized cell renderer for word count column
+  const renderWordCountCell = useCallback((info: CellContext<NoteWithProperties, unknown>) => {
+    const value = info.getValue()
+    if (typeof value !== 'number') return <span className="text-muted-foreground/50">—</span>
+    return <WordCountCell value={value} />
+  }, [])
+
+  // Memoized cell renderer for the row kind column (shared table reuse, e.g. tag page).
+  // Absent kind means 'note' — folder views themselves never set it.
+  const renderKindCell = useCallback(
+    (info: CellContext<NoteWithProperties, unknown>) => {
+      const kind = info.row.original.kind ?? 'note'
+      return (
+        <TextCell
+          value={tPhaseF(
+            `phaseF.componentsFolderViewFolderTableView.kind.${capitalizeFirst(kind)}`
+          )}
+        />
+      )
+    },
+    [tPhaseF]
+  )
+
+  // Memoized cell renderer for generic properties
+  // T116: Uses propertyTypes map for correct type rendering
+  const renderPropertyCell = useCallback(
+    (columnId: string) => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
+        const note = info.row.original
+        const value = info.getValue()
+        const type = propertyTypes[columnId] ?? getColumnType(columnId)
+        return (
+          <FieldPropertyCell
+            note={note}
+            columnId={columnId}
+            value={value}
+            type={type}
+            highlightQuery={highlightQuery}
+            onPropertyUpdate={onPropertyUpdate}
+          />
+        )
+      }
+    },
+    [highlightQuery, onPropertyUpdate, propertyTypes]
+  )
+
+  const renderFormulaCell = useCallback(
+    (_formulaName: string, expression: string) => {
+      return (info: CellContext<NoteWithProperties, unknown>): React.JSX.Element => {
+        const note = info.row.original
+        const result = evaluateFormula(expression, note)
+
+        if (result === null || result === undefined) {
+          return <span className="text-muted-foreground/50">—</span>
+        }
+
+        if (typeof result === 'boolean') return <CheckboxCell value={result} />
+        if (typeof result === 'number') return <NumberCell value={result} />
+        if (result instanceof Date) return <DateCell value={result.toISOString()} />
+        if (Array.isArray(result))
+          return (
+            <TextCell
+              value={result.map(stringifyUnknown).join(', ')}
+              highlightQuery={highlightQuery}
+            />
+          )
+        return <TextCell value={stringifyUnknown(result)} highlightQuery={highlightQuery} />
+      }
+    },
+    [highlightQuery]
+  )
+
+  // Get properties used in sorting that aren't in visible columns
+  const sortOnlyColumns = useMemo(() => {
+    const visibleIds = new Set(columnConfig.map((c) => c.id))
+    const sortIds = (initialSorting || []).map((s) => s.property)
+    return sortIds.filter((id) => !visibleIds.has(id))
+  }, [columnConfig, initialSorting])
+
+  // Build TanStack column definitions from config
+  const columns = useMemo<ColumnDef<NoteWithProperties>[]>(() => {
+    // Helper to create accessor for built-in properties
+    const getBuiltInAccessor = (id: string) => {
+      switch (id) {
+        case 'title':
+          return (row: NoteWithProperties) => row.title
+        case 'folder':
+          return (row: NoteWithProperties) => row.folder
+        case 'tags':
+          return (row: NoteWithProperties) => row.tags.join(', ')
+        case 'created':
+          return (row: NoteWithProperties) => row.created
+        case 'modified':
+          return (row: NoteWithProperties) => row.modified
+        case 'wordCount':
+          return (row: NoteWithProperties) => row.wordCount
+        default:
+          return (row: NoteWithProperties) => row.properties[id] ?? ''
+      }
+    }
+
+    // Build visible columns
+    const visibleColumns = columnConfig.map((col) => {
+      const baseColumn = {
+        id: col.id,
+        header: col.displayName ?? getColumnLabel(col.id),
+        size: col.width ?? 150,
+        minSize: 50,
+        maxSize: 800
+      }
+
+      // Built-in columns with specialized renderers
+      switch (col.id) {
+        case 'title':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.title,
+            cell: renderTitleCell,
+            size: col.width ?? 250
+          }
+
+        case 'folder':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.folder,
+            cell: renderFolderCell,
+            size: col.width ?? 120
+          }
+
+        case 'tags':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.tags.join(', '),
+            cell: renderTagsCell,
+            size: col.width ?? 150
+          }
+
+        case 'created':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.created,
+            cell: renderDateCell,
+            size: col.width ?? 130
+          }
+
+        case 'modified':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.modified,
+            cell: renderDateCell,
+            size: col.width ?? 130
+          }
+
+        case 'wordCount':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.wordCount,
+            cell: renderWordCountCell,
+            size: col.width ?? 80
+          }
+
+        case 'kind':
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.kind ?? 'note',
+            cell: renderKindCell,
+            size: col.width ?? 100
+          }
+
+        default:
+          // Check if this is a formula column (id starts with "formula.")
+          if (col.id.startsWith('formula.')) {
+            const formulaName = col.id.slice(8) // Remove "formula." prefix
+            const expression = formulas[formulaName]
+
+            if (!expression) {
+              // Formula not found - show empty
+              return {
+                ...baseColumn,
+                header: col.displayName ?? formulaName,
+                accessorFn: () => null,
+                cell: renderEmptyFormulaCell
+              }
+            }
+
+            return {
+              ...baseColumn,
+              header: col.displayName ?? formulaName,
+              // Accessor evaluates formula for sorting/filtering
+              accessorFn: (row: NoteWithProperties) => {
+                const result = evaluateFormula(expression, row)
+                return result
+              },
+              cell: renderFormulaCell(formulaName, expression)
+            }
+          }
+
+          // Custom property column
+          return {
+            ...baseColumn,
+            accessorFn: (row: NoteWithProperties) => row.properties[col.id] ?? '',
+            cell: renderPropertyCell(col.id)
+          }
+      }
+    })
+
+    // Add hidden accessor-only columns for sorting by non-visible properties
+    const hiddenSortColumns: ColumnDef<NoteWithProperties>[] = sortOnlyColumns.map((id) => ({
+      id,
+      accessorFn: getBuiltInAccessor(id),
+      // These columns won't be rendered, just used for sorting
+      enableHiding: true
+    }))
+
+    return [...visibleColumns, ...hiddenSortColumns]
+  }, [
+    columnConfig,
+    formulas,
+    sortOnlyColumns,
+    renderTitleCell,
+    renderFolderCell,
+    renderTagsCell,
+    renderDateCell,
+    renderWordCountCell,
+    renderKindCell,
+    renderPropertyCell,
+    renderFormulaCell
+  ])
+
+  // Create column visibility state - hide sort-only columns
+  const columnVisibility = useMemo(() => {
+    const visibility: Record<string, boolean> = {}
+    for (const id of sortOnlyColumns) {
+      visibility[id] = false
+    }
+    return visibility
+  }, [sortOnlyColumns])
+
+  const table = useReactTable({
+    data: notes,
+    columns,
+    state: {
+      sorting,
+      globalFilter: globalFilter ?? '',
+      columnVisibility
+    },
+    onSortingChange: handleSortingChange,
+    globalFilterFn: globalFilterFn,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    columnResizeMode: 'onChange'
+  })
+
+  // ============================================================================
+  // Row Virtualization (Phase 19)
+  // ============================================================================
+
+  /** Get filtered/sorted rows from table for virtualization */
+  const { rows } = table.getRowModel()
+
+  /**
+   * What the virtualizer lays out: every note row, with one block of that
+   * note's tasks after each expanded note. Keyboard navigation and selection
+   * keep working on `rows`, so a task block is never a selection target.
+   */
+  const displayItems = useMemo(
+    () =>
+      rows.flatMap((row, rowIndex): DisplayItem[] => {
+        const noteId = row.original.id
+        const tasks = expandedNoteIds.has(noteId) ? noteTasks?.get(noteId) : undefined
+        return tasks
+          ? [
+              { kind: 'note', row, rowIndex },
+              { kind: 'tasks', noteId, title: row.original.title, summary: tasks }
+            ]
+          : [{ kind: 'note', row, rowIndex }]
+      }),
+    [rows, expandedNoteIds, noteTasks]
+  )
+
+  /**
+   * Note-only subset of the current selection, used by the row context menu's
+   * bulk delete/move and by the ⇧⌘M shortcut. Tag scope can select a mix of
+   * notes, tasks, and inbox items; onDelete/onMoveToFolder are notes-only
+   * IPCs, so task/inbox ids must never reach them.
+   *
+   * Derived from `notes` (the full, unnarrowed data) rather than the table row
+   * model: the row model is narrowed by the header search, while selection is
+   * not, so filtering through it would silently shrink which rows a bulk
+   * action affects. Kind is a property of a row, not of its visibility.
+   */
+  const selectedNoteIds = useMemo(
+    () =>
+      notes
+        .filter((n) => selectedRowIds.has(n.id) && (n.kind ?? 'note') === 'note')
+        .map((n) => n.id),
+    [notes, selectedRowIds]
+  )
+
+  /**
+   * Row virtualizer for efficient rendering of large datasets.
+   * Only renders visible rows plus overscan buffer for smooth scrolling.
+   */
+  const rowVirtualizer = useVirtualizer({
+    count: displayItems.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 40, // Estimated row height in px
+    // Dynamic row height measurement (disabled in Firefox due to measurement issues)
+    measureElement:
+      typeof window !== 'undefined' && !navigator.userAgent.includes('Firefox')
+        ? (element) => element?.getBoundingClientRect().height
+        : undefined,
+    overscan: 10 // Render 10 extra rows above/below viewport for smooth scrolling
+  })
+
+  /** Get virtual items to render */
+  // Virtualized: restoring by writing `scrollTop` would land on the wrong row
+  // while the total height is still an estimate, so the offset goes through the
+  // virtualizer and is re-applied until the rows stop measuring.
+  const getScrollElement = useCallback(() => tableContainerRef.current, [])
+  useTabScrollRestore({
+    getScrollElement,
+    virtualizer: rowVirtualizer,
+    key: scrollKey,
+    enabled: scrollKey !== undefined
+  })
+
+  const virtualRows = rowVirtualizer.getVirtualItems()
+
+  /** Total height of all rows (for scroll container sizing) */
+  const totalSize = rowVirtualizer.getTotalSize()
+
+  // ============================================================================
+  // Drag and Drop for Column Reordering
+  // ============================================================================
+
+  // Configure sensors for drag detection
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5 // Require 5px movement before drag starts
+      }
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates
+    })
+  )
+
+  // Get column IDs for SortableContext
+  const columnIds = useMemo(() => columnConfig.map((col) => col.id), [columnConfig])
+
+  /**
+   * Handle drag end - reorder columns and persist
+   */
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
+
+      if (!over || active.id === over.id) {
+        return
+      }
+
+      const oldIndex = columnConfig.findIndex((col) => col.id === active.id)
+      const newIndex = columnConfig.findIndex((col) => col.id === over.id)
+
+      if (oldIndex === -1 || newIndex === -1) {
+        return
+      }
+
+      // Reorder columns using arrayMove
+      const newColumns = arrayMove(columnConfig, oldIndex, newIndex)
+
+      // Persist the new order
+      if (onColumnsChange) {
+        onColumnsChange(newColumns)
+      }
+    },
+    [columnConfig, onColumnsChange]
+  )
+
+  // Get sorted columns count for multi-sort display
+  const sortedColumnsCount = sorting.length
+
+  // Get sort index for a column (1-based)
+  const getSortIndex = useCallback(
+    (columnId: string): number | undefined => {
+      const index = sorting.findIndex((s) => s.id === columnId)
+      return index >= 0 ? index + 1 : undefined
+    },
+    [sorting]
+  )
+
+  // ============================================================================
+  // Keyboard Navigation (Phase 17)
+  // ============================================================================
+
+  /**
+   * Handle row selection (single click on row, not on interactive cells)
+   * - Single click: Select single row, deselect others
+   * - Cmd/Ctrl+click: Toggle selection (multi-select)
+   * - Shift+click: Range selection from last selected to current
+   */
+  const handleRowClick = useCallback(
+    (rowIndex: number, rowId: string, event: React.MouseEvent) => {
+      // Don't handle if clicking on interactive elements (buttons, links)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; bound to element handler
+      const target = event.target as HTMLElement
+      if (target.closest('button, a, [role="button"]')) {
+        return
+      }
+
+      setFocusedRowId(rowId)
+
+      // Shift+click: Range selection
+      if (event.shiftKey && lastSelectedIndexRef.current !== null) {
+        const start = Math.min(lastSelectedIndexRef.current, rowIndex)
+        const end = Math.max(lastSelectedIndexRef.current, rowIndex)
+
+        // Select all rows in range
+        const newSelection = new Set(selectedRowIds)
+        for (let i = start; i <= end; i++) {
+          if (rows[i]) {
+            newSelection.add(rows[i].original.id)
+          }
+        }
+        setSelectedRowIds(newSelection)
+        // Note: setSelectedRowIds already calls onSelectionChange internally
+        // Don't update lastSelectedIndexRef on shift-click to allow extending range
+      } else if (event.metaKey || event.ctrlKey) {
+        // Cmd/Ctrl+click: Toggle selection (multi-select)
+        setSelectedRowIds((prev) => {
+          const newSet = new Set(prev)
+          if (newSet.has(rowId)) {
+            newSet.delete(rowId)
+          } else {
+            newSet.add(rowId)
+          }
+          return newSet
+        })
+        lastSelectedIndexRef.current = rowIndex
+      } else {
+        // Single click: Select single row only
+        const newSelection = new Set([rowId])
+        setSelectedRowIds(newSelection)
+        lastSelectedIndexRef.current = rowIndex
+      }
+    },
+    [rows, selectedRowIds, setSelectedRowIds]
+  )
+
+  const scrollToRowById = useCallback(
+    (rowId: string) => {
+      const itemIndex = displayItems.findIndex(
+        (item) => item.kind === 'note' && item.row.original.id === rowId
+      )
+      if (itemIndex >= 0) {
+        rowVirtualizer.scrollToIndex(itemIndex, { align: 'auto', behavior: 'smooth' })
+      }
+    },
+    [displayItems, rowVirtualizer]
+  )
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const tableRows = table.getRowModel().rows
+      if (tableRows.length === 0) return
+
+      const currentIndex = focusedRowId
+        ? tableRows.findIndex((r) => r.original.id === focusedRowId)
+        : -1
+
+      switch (e.key) {
+        case 'ArrowDown': {
+          e.preventDefault()
+          let nextIndex: number
+          if (currentIndex === -1) {
+            nextIndex = 0
+          } else if (currentIndex >= tableRows.length - 1) {
+            if (e.shiftKey) return
+            nextIndex = 0
+          } else {
+            nextIndex = currentIndex + 1
+          }
+
+          const nextRow = tableRows[nextIndex]
+          setFocusedRowId(nextRow.original.id)
+          scrollToRowById(nextRow.original.id)
+
+          if (e.shiftKey) {
+            setSelectedRowIds((prev) => {
+              const newSet = new Set(prev)
+              newSet.add(nextRow.original.id)
+              return newSet
+            })
+          } else {
+            setSelectedRowIds(new Set([nextRow.original.id]))
+            lastSelectedIndexRef.current = nextIndex
+          }
+          break
+        }
+
+        case 'ArrowUp': {
+          e.preventDefault()
+          let prevIndex: number
+          if (currentIndex === -1) {
+            prevIndex = tableRows.length - 1
+          } else if (currentIndex <= 0) {
+            if (e.shiftKey) return
+            prevIndex = tableRows.length - 1
+          } else {
+            prevIndex = currentIndex - 1
+          }
+
+          const prevRow = tableRows[prevIndex]
+          setFocusedRowId(prevRow.original.id)
+          scrollToRowById(prevRow.original.id)
+
+          if (e.shiftKey) {
+            setSelectedRowIds((prev) => {
+              const newSet = new Set(prev)
+              newSet.add(prevRow.original.id)
+              return newSet
+            })
+          } else {
+            setSelectedRowIds(new Set([prevRow.original.id]))
+            lastSelectedIndexRef.current = prevIndex
+          }
+          break
+        }
+
+        // Space and Enter act only on the grid's own keystrokes. React routes
+        // synthetic events up the component tree, including out of Radix
+        // portals, so a descendant control (a cell editor, a selection
+        // checkbox) would otherwise lose its space bar or open the note.
+        // Arrow keys stay unguarded so row navigation works from a focused
+        // descendant.
+        case ' ': {
+          if (e.target !== e.currentTarget) break
+          e.preventDefault()
+          const lastRow = tableRows[tableRows.length - 1]
+          setFocusedRowId(lastRow.original.id)
+          scrollToRowById(lastRow.original.id)
+          setSelectedRowIds(new Set([lastRow.original.id]))
+          lastSelectedIndexRef.current = tableRows.length - 1
+          break
+        }
+
+        case 'Enter': {
+          if (e.target !== e.currentTarget) break
+          if (focusedRowId) {
+            e.preventDefault()
+            onNoteOpen?.(focusedRowId)
+          }
+          break
+        }
+
+        case 'Escape': {
+          e.preventDefault()
+          setFocusedRowId(null)
+          setSelectedRowIds(new Set())
+          lastSelectedIndexRef.current = null
+          break
+        }
+
+        case 'a': {
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault()
+            const allIds = new Set(tableRows.map((r) => r.original.id))
+            setSelectedRowIds(allIds)
+            if (!focusedRowId && tableRows.length > 0) {
+              setFocusedRowId(tableRows[0].original.id)
+              scrollToRowById(tableRows[0].original.id)
+            }
+          }
+          break
+        }
+
+        case 'm':
+        case 'M': {
+          if ((e.metaKey || e.ctrlKey) && e.shiftKey && selectedRowIds.size > 0) {
+            e.preventDefault()
+            // Notes-only IPC: a selection of only tasks/inbox items has
+            // nothing to move, so there is no dialog to open.
+            if (selectedNoteIds.length > 0) {
+              onMoveToFolder?.(selectedNoteIds)
+            }
+          }
+          break
+        }
+      }
+    },
+    [
+      focusedRowId,
+      table,
+      onNoteOpen,
+      onMoveToFolder,
+      selectedNoteIds,
+      selectedRowIds,
+      setSelectedRowIds,
+      scrollToRowById
+    ]
+  )
+
+  // Calculate total width of all columns for table min-width
+  // (Must be before early returns to satisfy React hook rules)
+  const totalColumnsWidth = useMemo(() => {
+    return columnConfig.reduce((sum, col) => sum + (col.width ?? 150), 0)
+  }, [columnConfig])
+  const leadingWidth = SELECT_COLUMN_WIDTH + (noteTasks ? NOTE_TASK_CHEVRON_WIDTH : 0)
+
+  if (isLoading) {
+    return (
+      <div className={cn('flex items-center justify-center h-64', className)}>
+        <div className="text-muted-foreground">{t('state.loading')}</div>
+      </div>
+    )
+  }
+
+  // Phase 20 (T095): Empty state when folder has no notes
+  if (notes.length === 0) {
+    return (
+      <FolderViewEmptyState
+        variant="empty"
+        onCreateNote={onCreateNote}
+        className={cn('h-full', className)}
+      />
+    )
+  }
+
+  // Phase 20 (T096): Check if global filter or filters resulted in no matches
+  const filteredRowCount = table.getFilteredRowModel().rows.length
+  if (filteredRowCount === 0 && globalFilter) {
+    return (
+      <FolderViewEmptyState
+        variant="no-results"
+        onClearAll={onClearAll}
+        className={cn('h-full', className)}
+      />
+    )
+  }
+
+  // Select-all / per-row checkbox state for the leading selection column.
+  // `rows` here is the filtered + sorted leaf set, so "select all" matches what
+  // the user actually sees.
+  const selectedVisibleCount = rows.reduce(
+    (n, r) => n + (selectedRowIds.has(r.original.id) ? 1 : 0),
+    0
+  )
+  const headerSelectState: SelectionState =
+    selectedVisibleCount === 0
+      ? 'unchecked'
+      : selectedVisibleCount === rows.length
+        ? 'checked'
+        : 'indeterminate'
+  const selectionActive = selectedRowIds.size > 0
+  const toggleSelectAll = (): void => {
+    setSelectedRowIds(
+      headerSelectState === 'checked' ? new Set() : new Set(rows.map((r) => r.original.id))
+    )
+  }
+  const toggleRowSelection = (rowId: string): void => {
+    setSelectedRowIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(rowId)) next.delete(rowId)
+      else next.add(rowId)
+      return next
+    })
+  }
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      modifiers={[restrictToHorizontalAxis]}
+      onDragEnd={handleDragEnd}
+    >
+      {/* Table container with keyboard navigation and virtualization support */}
+      {/* max-w-full ensures container stays within parent bounds while overflow-auto enables independent horizontal scroll */}
+      <div
+        ref={tableContainerRef}
+        role="grid"
+        aria-label={tPhaseF('phaseF.componentsFolderViewFolderTableView.notesTable')}
+        className={cn('w-full max-w-full overflow-auto outline-none', className)}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+      >
+        {/* Table with CSS Grid layout for virtualization compatibility */}
+        {/* Use minWidth to allow horizontal scroll when columns exceed viewport */}
+        {/* width: 100% ensures table fills container when columns are narrower than viewport */}
+        <table
+          style={{
+            display: 'grid',
+            width: '100%',
+            minWidth: Math.max(totalColumnsWidth + leadingWidth, 100)
+          }}
+          className="text-sm"
+        >
+          {/* Sticky header */}
+          <thead
+            style={{
+              display: 'grid',
+              position: 'sticky',
+              top: 0,
+              zIndex: 10
+            }}
+            className="bg-muted border-b border-border/60"
+          >
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} style={{ display: 'flex', width: '100%' }}>
+                {/* Leading select-all checkbox column (not part of resizable columns) */}
+                <th
+                  style={{ width: SELECT_COLUMN_WIDTH }}
+                  className="flex flex-shrink-0 items-center justify-center"
+                >
+                  <SelectionCheckbox
+                    state={headerSelectState}
+                    onToggle={toggleSelectAll}
+                    alwaysVisible
+                    label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectAll')}
+                  />
+                </th>
+                {noteTasks && (
+                  <th
+                    aria-hidden="true"
+                    style={{ width: NOTE_TASK_CHEVRON_WIDTH }}
+                    className="flex-shrink-0"
+                  />
+                )}
+                <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
+                  {headerGroup.headers.map((header) => {
+                    const config = columnConfigMap.get(header.column.id) || {
+                      id: header.column.id
+                    }
+                    const icon = getColumnIcon(header.column.id, propertyTypes)
+                    return (
+                      <SortableColumnHeader
+                        key={header.id}
+                        header={header}
+                        columnConfig={config}
+                        icon={icon}
+                        sortIndex={getSortIndex(header.column.id)}
+                        totalSortedColumns={sortedColumnsCount}
+                        onWidthChange={handleWidthChange}
+                        onDisplayNameChange={onDisplayNameChange}
+                        isHighlighted={highlightedColumns.includes(header.column.id)}
+                        density={density}
+                        showColumnBorders={showColumnBorders}
+                        isLastColumn={
+                          headerGroup.headers.indexOf(header) === headerGroup.headers.length - 1
+                        }
+                      />
+                    )
+                  })}
+                </SortableContext>
+              </tr>
+            ))}
+          </thead>
+
+          {/* Virtualized table body */}
+          <tbody
+            style={{
+              display: 'grid',
+              height: `${totalSize}px`,
+              position: 'relative'
+            }}
+          >
+            {virtualRows.map((virtualRow) => {
+              const item = displayItems[virtualRow.index]
+              if (item.kind === 'tasks') {
+                return (
+                  <tr
+                    key={`tasks:${item.noteId}`}
+                    data-index={virtualRow.index}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      position: 'absolute',
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                    className="border-b border-border/40"
+                  >
+                    <td className="min-w-0 flex-1">
+                      <NoteTaskList
+                        noteTitle={item.title}
+                        summary={item.summary}
+                        startInset={leadingWidth}
+                      />
+                    </td>
+                  </tr>
+                )
+              }
+              const { row, rowIndex } = item
+              const rowNoteTasks = noteTasks?.get(row.original.id)
+              const isSelected = selectedRowIds.has(row.original.id)
+              const isFocused = focusedRowId === row.original.id
+              const isPartOfSelection = isSelected && selectedRowIds.size > 1
+              // T121: Check if this row is currently exiting (being deleted)
+              const isExiting = exitingRowIds.has(row.original.id)
+
+              return (
+                <RowContextMenu
+                  key={row.id}
+                  note={row.original}
+                  isPartOfSelection={isPartOfSelection}
+                  selectedCount={selectedRowIds.size}
+                  selectedNoteIds={selectedNoteIds}
+                  onNoteOpen={onNoteOpen}
+                  onOpenInNewTab={onOpenInNewTab}
+                  onMoveToFolder={onMoveToFolder}
+                  onDelete={onDelete}
+                  onSetIcon={onSetIcon}
+                >
+                  <tr
+                    data-index={virtualRow.index}
+                    data-row-id={row.original.id}
+                    ref={(node) => rowVirtualizer.measureElement(node)}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      position: 'absolute',
+                      transform: `translateY(${virtualRow.start}px)`
+                    }}
+                    className={cn(
+                      'group/row',
+                      'border-b border-border/40',
+                      'transition-colors',
+                      'items-center',
+                      'cursor-pointer',
+                      // Hover styling (only when not selected)
+                      !isSelected && 'hover:bg-muted/50',
+                      // Selected row styling - terracotta accent (tint)
+                      isSelected && 'bg-[var(--tint)]/[0.06] border-s-2 border-s-[var(--tint)]',
+                      // Focused row styling (keyboard navigation cursor)
+                      isFocused && 'ring-2x ring-inset',
+                      // T121: Exit animation - simple opacity fade
+                      isExiting && 'opacity-0 transition-opacity duration-200'
+                    )}
+                    // A row, or the selection it belongs to, drops onto a canvas as cards.
+                    draggable
+                    onDragStart={(e) =>
+                      startCanvasRowsDrag(e, dragRefsForRow(notes, row.original.id, selectedRowIds))
+                    }
+                    onClick={(e) => handleRowClick(rowIndex, row.original.id, e)}
+                    onDoubleClick={() => onNoteOpen?.(row.original.id)}
+                    onMouseDown={(e) =>
+                      handleMiddleClick(e, () => onOpenInBackgroundTab?.(row.original.id))
+                    }
+                  >
+                    {/* Leading per-row checkbox (reveals on hover or while a selection is active) */}
+                    <td
+                      style={{ width: SELECT_COLUMN_WIDTH }}
+                      className="flex flex-shrink-0 items-center justify-center"
+                    >
+                      <SelectionCheckbox
+                        state={isSelected ? 'checked' : 'unchecked'}
+                        onToggle={() => toggleRowSelection(row.original.id)}
+                        alwaysVisible={selectionActive}
+                        label={tPhaseF('phaseF.componentsFolderViewFolderTableView.selectRow')}
+                      />
+                    </td>
+                    {noteTasks && (
+                      <td
+                        style={{ width: NOTE_TASK_CHEVRON_WIDTH }}
+                        className="flex flex-shrink-0 items-center justify-center"
+                      >
+                        {rowNoteTasks && (
+                          <NoteTaskChevron
+                            noteTitle={row.original.title}
+                            isExpanded={expandedNoteIds.has(row.original.id)}
+                            onToggle={() => toggleNoteTasks(row.original.id)}
+                          />
+                        )}
+                      </td>
+                    )}
+                    {row.getVisibleCells().map((cell, cellIndex) => {
+                      const isLastCell = cellIndex === row.getVisibleCells().length - 1
+                      return (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            'flex-shrink-0 overflow-hidden',
+                            // T099: Density-aware padding
+                            density === 'compact' ? 'px-2 py-1' : 'px-3 py-2',
+                            // T099: Column borders (not on last column)
+                            showColumnBorders && !isLastCell && 'border-e border-border/30'
+                          )}
+                          style={
+                            isLastCell
+                              ? {
+                                  minWidth: cell.column.getSize(),
+                                  flex: 1
+                                }
+                              : {
+                                  width: cell.column.getSize(),
+                                  maxWidth: cell.column.getSize()
+                                }
+                          }
+                        >
+                          {rowNoteTasks && cell.column.id === 'title' ? (
+                            <div className="flex items-center gap-2">
+                              <div className="min-w-0 flex-1">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </div>
+                              <NoteTasksBadge summary={rowNoteTasks} />
+                            </div>
+                          ) : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
+                        </td>
+                      )
+                    })}
+                  </tr>
+                </RowContextMenu>
+              )
+            })}
+          </tbody>
+
+          {/* Summary Row - Phase 23 */}
+          {showSummaries && Object.keys(summaries).length > 0 && (
+            <SummaryRow
+              columns={columnConfig}
+              notes={notes}
+              summaries={summaries}
+              formulas={formulas}
+              density={density}
+              showColumnBorders={showColumnBorders}
+              hasLeadingColumn
+              columnWidths={Object.fromEntries(
+                table.getAllColumns().map((col) => [col.id, col.getSize()])
+              )}
+            />
+          )}
+        </table>
+      </div>
+    </DndContext>
+  )
+}
+
+/**
+ * Capitalize first letter of a string
+ */
+function capitalizeFirst(str: string): string {
+  if (!str) return str
+  // Handle camelCase by adding space before capitals
+  const spaced = str.replace(/([A-Z])/g, ' $1').trim()
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
+export default FolderTableView

@@ -1,0 +1,182 @@
+import { useCallback } from 'react'
+import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { CalloutTypesGroup } from './callout-types-group'
+import { useEditorSettings } from '@/hooks/use-editor-settings'
+import { toast } from 'sonner'
+import { useT } from '@memry/i18n/renderer'
+import {
+  SettingsHeader,
+  SettingsGroup,
+  SettingRow,
+  ACCENT_SWITCH,
+  SEGMENTED,
+  SEGMENT_ITEM
+} from '@/components/settings/settings-primitives'
+
+export function EditorSettings() {
+  const { t } = useT('settings')
+  const { settings, isLoading, updateSettings } = useEditorSettings()
+
+  const handleWidthChange = useCallback(
+    async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
+      const success = await updateSettings({ width: value as 'normal' | 'full' })
+      if (!success) toast.error(t('editor.width.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleToolbarModeChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ toolbarMode: enabled ? 'sticky' : 'floating' })
+      if (!success) toast.error(t('editor.toolbarMode.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleSpellCheckChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ spellCheck: enabled })
+      if (!success) toast.error(t('editor.spellCheck.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handlePdfDisplayModeChange = useCallback(
+    async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Radix onValueChange yields string; the rendered options are exactly this union
+      const success = await updateSettings({ pdfDisplayMode: value as 'embed' | 'link' })
+      if (!success) toast.error(t('editor.pdfDisplayMode.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleConvertChecklistsChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ convertChecklistsToTasks: enabled })
+      if (!success) toast.error(t('editor.convertChecklists.error'))
+    },
+    [t, updateSettings]
+  )
+
+  const handleConvertAgentChecklistsChange = useCallback(
+    async (enabled: boolean) => {
+      const success = await updateSettings({ convertAgentChecklistsToTasks: enabled })
+      if (!success) toast.error(t('editor.convertAgentChecklists.error'))
+    },
+    [t, updateSettings]
+  )
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col">
+        <SettingsHeader title={t('editor.header.title')} subtitle={t('editor.header.loading')} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col text-xs/4">
+      <SettingsHeader title={t('editor.header.title')} subtitle={t('editor.header.subtitle')} />
+
+      <SettingsGroup label={t('editor.groups.layout')}>
+        <SettingRow label={t('editor.v2.width')} description={t('editor.width.description')}>
+          <ToggleGroup
+            type="single"
+            value={settings.width}
+            onValueChange={(value) => {
+              if (value) void handleWidthChange(value)
+            }}
+            aria-label={t('editor.v2.width')}
+            className={SEGMENTED}
+          >
+            <ToggleGroupItem value="normal" className={SEGMENT_ITEM}>
+              {t('editor.width.options.normal')}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="full" className={SEGMENT_ITEM}>
+              {t('editor.width.options.full')}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </SettingRow>
+
+        <SettingRow
+          label={t('editor.v2.toolbarMode')}
+          description={t('editor.toolbarMode.description')}
+        >
+          <Switch
+            checked={settings.toolbarMode === 'sticky'}
+            onCheckedChange={(...args) => void handleToolbarModeChange(...args)}
+            aria-label={t('editor.v2.toolbarMode')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('editor.groups.spelling')}>
+        <SettingRow
+          label={t('editor.v2.spellCheck')}
+          description={t('editor.spellCheck.description')}
+        >
+          <Switch
+            checked={settings.spellCheck}
+            onCheckedChange={(...args) => void handleSpellCheckChange(...args)}
+            aria-label={t('editor.v2.spellCheck')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('editor.groups.attachments')}>
+        <SettingRow
+          label={t('editor.v2.pdfDisplayMode')}
+          description={t('editor.pdfDisplayMode.description')}
+        >
+          <ToggleGroup
+            type="single"
+            value={settings.pdfDisplayMode}
+            onValueChange={(value) => {
+              if (value) void handlePdfDisplayModeChange(value)
+            }}
+            aria-label={t('editor.v2.pdfDisplayMode')}
+            className={SEGMENTED}
+          >
+            <ToggleGroupItem value="embed" className={SEGMENT_ITEM}>
+              {t('editor.pdfDisplayMode.options.embed')}
+            </ToggleGroupItem>
+            <ToggleGroupItem value="link" className={SEGMENT_ITEM}>
+              {t('editor.pdfDisplayMode.options.link')}
+            </ToggleGroupItem>
+          </ToggleGroup>
+        </SettingRow>
+      </SettingsGroup>
+
+      <SettingsGroup label={t('editor.groups.checklists')}>
+        <SettingRow
+          label={t('editor.v2.convertChecklists')}
+          description={t('editor.convertChecklists.description')}
+        >
+          <Switch
+            checked={settings.convertChecklistsToTasks}
+            onCheckedChange={(...args) => void handleConvertChecklistsChange(...args)}
+            aria-label={t('editor.v2.convertChecklists')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+        <SettingRow
+          label={t('editor.v2.convertAgentChecklists')}
+          description={t('editor.convertAgentChecklists.description')}
+        >
+          <Switch
+            checked={settings.convertAgentChecklistsToTasks}
+            onCheckedChange={(...args) => void handleConvertAgentChecklistsChange(...args)}
+            aria-label={t('editor.v2.convertAgentChecklists')}
+            className={ACCENT_SWITCH}
+          />
+        </SettingRow>
+      </SettingsGroup>
+
+      <CalloutTypesGroup />
+    </div>
+  )
+}

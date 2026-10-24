@@ -1,0 +1,403 @@
+import React, { useState } from 'react'
+import { toast } from 'sonner'
+import { Cloud, CloudOff, RefreshCw, Settings } from '@/lib/icons'
+import type { AppIcon } from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+import { useSyncStatus } from '@/hooks/use-sync-status'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { SidebarMenuButton } from '@/components/ui/sidebar'
+import { DockButton, type DockBadgeTone } from '@/components/sidebar/footer-dock'
+import { useT } from '@memry/i18n/renderer'
+import { useSyncOptional } from '@/contexts/sync-context'
+import { useAuth } from '@/contexts/auth-context'
+import type { VaultBindingState } from '@memry/contracts/ipc-sync-ops'
+
+const log = createLogger('SyncStatus')
+
+/**
+ * What the popover offers an account with no active sync plan: nothing here is
+ * retryable and nothing failed, so it sells the upgrade rather than showing a
+ * Retry whose only outcome is another 402 (#2201).
+ */
+function UnpaidSyncPanel({ onOpenSettings }: { onOpenSettings: () => void }): React.JSX.Element {
+  const { t } = useT('settings')
+
+  return (
+    <div className="space-y-2 px-3 py-2.5">
+      <p className="text-muted-foreground text-xs">{t('account.sync.upsell.description')}</p>
+      <Button size="sm" onClick={onOpenSettings} className="h-7 w-full text-xs">
+        {t('account.billing.actions.unlockSync')}
+      </Button>
+    </div>
+  )
+}
+
+type HeldBindingStatus = Extract<
+  VaultBindingState['status'],
+  'local-only' | 'foreign' | 'needs-decision'
+>
+
+/** The open vault's binding when it keeps sync off, else null. */
+function useHeldVaultBinding(): HeldBindingStatus | null {
+  const status = useSyncOptional()?.vaultBinding.status
+  return status === 'local-only' || status === 'foreign' || status === 'needs-decision'
+    ? status
+    : null
+}
+
+/**
+ * The open vault does not sync with this account, by the user's choice or
+ * because it is someone else's. Retry and Pause mean nothing here, so the
+ * popover explains why and offers the one action that applies.
+ */
+function VaultBindingPanel({ status }: { status: HeldBindingStatus }): React.JSX.Element {
+  const { t } = useT('settings')
+  const sync = useSyncOptional()
+
+  const message =
+    status === 'local-only'
+      ? t('vault.binding.status.localOnly')
+      : status === 'foreign'
+        ? t('vault.binding.status.foreign')
+        : t('vault.binding.status.needsDecision')
+
+  return (
+    <div className="space-y-2 px-3 py-2.5">
+      <p className="text-muted-foreground text-xs">{message}</p>
+      {status === 'local-only' && (
+        <Button
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => void sync?.resolveVaultBinding('sync')}
+        >
+          {t('vault.binding.status.startSync')}
+        </Button>
+      )}
+      {status === 'needs-decision' && (
+        <Button
+          size="sm"
+          className="h-7 w-full text-xs"
+          onClick={() => sync?.openVaultBindingPrompt()}
+        >
+          {t('vault.binding.status.choose')}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Popover footer: the sync actions, unless sync is off. The vault's binding
+ * wins over the plan, which is account-wide.
+ */
+function SyncPopoverFooter({
+  binding,
+  unpaid,
+  onOpenSettings,
+  children
+}: {
+  binding: HeldBindingStatus | null
+  unpaid: boolean
+  onOpenSettings: () => void
+  children: React.ReactNode
+}): React.JSX.Element {
+  if (binding) return <VaultBindingPanel status={binding} />
+  if (unpaid) return <UnpaidSyncPanel onOpenSettings={onOpenSettings} />
+  return <>{children}</>
+}
+
+/**
+ * Footer-dock glyph: one cloud whose corner dot carries the state, so the dock
+ * never flips between five unrelated icons. Syncing swaps to the spinning arrows
+ * and a plan-less or unknown account shows the struck cloud with no dot. A
+ * stalled idle is not green: its changes are not leaving (#3382).
+ */
+function dockGlyph(
+  status: string,
+  hasIssues: boolean,
+  bindingHeld: boolean,
+  stalled: boolean
+): { Icon: AppIcon; badge: DockBadgeTone | null; spin: boolean } {
+  if (bindingHeld) return { Icon: CloudOff, badge: null, spin: false }
+  if (hasIssues || status === 'error') return { Icon: Cloud, badge: 'destructive', spin: false }
+  switch (status) {
+    case 'syncing':
+      return { Icon: RefreshCw, badge: null, spin: true }
+    case 'idle':
+      return { Icon: Cloud, badge: stalled ? 'warning' : 'success', spin: false }
+    case 'offline':
+    case 'paused':
+      return { Icon: Cloud, badge: 'warning', spin: false }
+    case 'local_only':
+      return { Icon: CloudOff, badge: null, spin: false }
+    default:
+      return { Icon: Cloud, badge: null, spin: false }
+  }
+}
+
+interface SyncStatusProps {
+  onOpenSettings: () => void
+  /** Renders the trigger as the sidebar footer-dock button. */
+  iconOnly?: boolean
+}
+
+export function SyncStatus({ onOpenSettings, iconOnly }: SyncStatusProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('settings')
+  const {
+    status,
+    label,
+    lastSyncLabel,
+    dotColor,
+    IconComponent,
+    isAnimating,
+    hasIssues,
+    stalled,
+    pendingCount,
+    localOnlyCount,
+    error,
+    sessionExpired,
+    deviceKeysMissing,
+    clockSkewDetected,
+    initialSyncProgress,
+    syncActivity,
+    triggerSync,
+    pause,
+    resume,
+    clearError
+  } = useSyncStatus()
+  const { resetAuthState } = useAuth()
+
+  const isSyncing = status === 'syncing'
+  const isOffline = status === 'offline'
+  // No plan, no sync runtime — nothing here is retryable and nothing failed.
+  // The popover sells the upgrade instead of showing a dead Retry (#2201).
+  const isLocalOnly = status === 'local_only'
+  const heldBinding = useHeldVaultBinding()
+  const glyph = dockGlyph(status, hasIssues, heldBinding !== null, stalled)
+
+  const handleSync = async (): Promise<void> => {
+    try {
+      await triggerSync()
+    } catch (err) {
+      log.error('Manual sync trigger failed', err)
+    }
+  }
+
+  // Main restores the device row when the keychain key is still registered,
+  // and otherwise signs out keeping queued changes (#2866). Never logout():
+  // that drops the sync queue and the vault key.
+  const [repairing, setRepairing] = useState(false)
+  const handleRepairDeviceKeys = async (): Promise<void> => {
+    if (repairing) return
+    setRepairing(true)
+    try {
+      const result = await window.api.syncOps.repairDeviceKeys()
+      if (result.status === 'repaired') return
+      if (result.status === 'sync-not-started') {
+        toast.info(tPhaseF(`phaseF.componentsSyncSyncStatus.syncNotStarted.${result.reason}`), {
+          duration: 10000
+        })
+        return
+      }
+      resetAuthState()
+      toast.info(tPhaseF('phaseF.componentsSyncSyncStatus.signInToRepair'), { duration: 10000 })
+      onOpenSettings()
+    } catch (err) {
+      log.error('Device key repair failed', err)
+      toast.error(tPhaseF('phaseF.componentsSyncSyncStatus.repairFailed'))
+    } finally {
+      setRepairing(false)
+    }
+  }
+
+  const handlePauseResume = async (): Promise<void> => {
+    try {
+      if (status === 'paused') {
+        await resume('popover')
+      } else {
+        await pause('popover')
+      }
+    } catch (err) {
+      log.error('Pause/resume failed', err)
+    }
+  }
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        {iconOnly ? (
+          <DockButton
+            data-tour="sync-status"
+            aria-label={`Sync status: ${label}`}
+            title={label}
+            badge={glyph.badge}
+          >
+            <glyph.Icon
+              aria-hidden="true"
+              className={cn(
+                glyph.spin && 'animate-spin text-[var(--tint)] motion-reduce:animate-none'
+              )}
+            />
+          </DockButton>
+        ) : (
+          <SidebarMenuButton
+            size="sm"
+            data-tour="sync-status"
+            tooltip={label}
+            aria-label={`Sync status: ${label}`}
+            className={cn('text-muted-foreground', hasIssues && 'text-destructive')}
+          >
+            <IconComponent
+              className={cn('size-4', isAnimating && 'animate-spin')}
+              aria-hidden="true"
+            />
+            <span className="text-xs">{label}</span>
+          </SidebarMenuButton>
+        )}
+      </PopoverTrigger>
+
+      <PopoverContent side="top" align="start" className="w-72 p-0">
+        {/* Status header */}
+        <output className="flex items-center gap-2 px-3 py-2.5" aria-live="polite">
+          <span className={cn('size-2 shrink-0 rounded-full', dotColor)} aria-hidden="true" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium">{label}</p>
+            <p className="text-muted-foreground text-xs">
+              {tPhaseF('phaseF.componentsSyncSyncStatus.lastSynced')}
+              {lastSyncLabel}
+            </p>
+          </div>
+        </output>
+
+        {/* Info rows */}
+        {(pendingCount > 0 ||
+          localOnlyCount > 0 ||
+          clockSkewDetected ||
+          (isSyncing && initialSyncProgress) ||
+          (isSyncing && (syncActivity.pushCount > 0 || syncActivity.pullCount > 0))) && (
+          <>
+            <Separator />
+            <div className="space-y-1 px-3 py-2">
+              {isSyncing && (syncActivity.pushCount > 0 || syncActivity.pullCount > 0) && (
+                <p className="text-muted-foreground text-xs">
+                  {[
+                    syncActivity.pushCount > 0 && `${syncActivity.pushCount} pushed`,
+                    syncActivity.pullCount > 0 && `${syncActivity.pullCount} pulled`
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+              )}
+              {pendingCount > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {pendingCount} {pendingCount === 1 ? 'change' : 'changes'}{' '}
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.pending')}
+                </p>
+              )}
+              {localOnlyCount > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {localOnlyCount} {tPhaseF('phaseF.componentsSyncSyncStatus.localOnly')}{' '}
+                  {localOnlyCount === 1 ? 'note' : 'notes'}
+                </p>
+              )}
+              {clockSkewDetected && (
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.clockSkewDetected')}
+                </p>
+              )}
+              {isSyncing && initialSyncProgress && (
+                <p className="text-muted-foreground text-xs">
+                  {initialSyncProgress.current}/{initialSyncProgress.total}{' '}
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.items')}
+                </p>
+              )}
+              {isOffline && pendingCount > 0 && (
+                <p className="text-muted-foreground text-xs">
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.willSyncWhenBackOnline')}
+                </p>
+              )}
+              {stalled && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  {tPhaseF('phaseF.componentsSyncSyncStatus.stalled')}
+                </p>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Error display */}
+        {error && (
+          <>
+            <Separator />
+            <div className="bg-destructive/10 px-3 py-2" role="alert">
+              <p className="text-destructive text-xs">
+                {sessionExpired ? 'Session expired — sign in again' : error}
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* Actions, or the upgrade path when there is no plan to act on */}
+        <Separator />
+        <SyncPopoverFooter
+          binding={heldBinding}
+          unpaid={isLocalOnly}
+          onOpenSettings={onOpenSettings}
+        >
+          <div className="flex items-center gap-1 px-2 py-1.5">
+            {deviceKeysMissing ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => void handleRepairDeviceKeys()}
+                disabled={repairing}
+                className="h-7 text-xs"
+              >
+                {tPhaseF('phaseF.componentsSyncSyncStatus.repairDeviceKeys')}
+              </Button>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={
+                  error
+                    ? () => {
+                        clearError()
+                        void handleSync()
+                      }
+                    : () => void handleSync()
+                }
+                disabled={isSyncing || isOffline}
+                className="h-7 text-xs"
+              >
+                {error ? 'Retry' : 'Sync Now'}
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void handlePauseResume()}
+              disabled={isOffline}
+              className="h-7 text-xs"
+            >
+              {status === 'paused' ? 'Resume' : 'Pause'}
+            </Button>
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onOpenSettings}
+              className="size-7"
+              aria-label={tPhaseF('phaseF.componentsSyncSyncStatus.openSyncSettings')}
+            >
+              <Settings className="size-3.5" aria-hidden="true" />
+            </Button>
+          </div>
+        </SyncPopoverFooter>
+      </PopoverContent>
+    </Popover>
+  )
+}

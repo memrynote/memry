@@ -1,0 +1,581 @@
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { createLogger } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { registerPendingSave, unregisterPendingSave } from '@/lib/save-registry'
+import {
+  useVaultWorkspaceLifecycle,
+  type VaultWorkspaceLifecycle
+} from '@/lib/vault-workspace-lifecycle'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import { getCachedVaultStatus } from '@/lib/vault-status-cache'
+import { useVaultScope } from '@/contexts/vault-scope'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { JournalEntry } from '../../../preload/index.d'
+import {
+  journalService,
+  onJournalEntryUpdated,
+  onJournalEntryDeleted,
+  onJournalExternalChange,
+  onJournalEntryCreated
+} from '@/services/journal-service'
+import { getTemplate, type Template } from '@/services/templates-service'
+import { addDays, formatDateToISO, parseISODate } from '@/lib/journal-utils'
+import { resolveJournalTemplateId } from '@/lib/journal-template-resolution'
+import { resolveRandomLines } from '@/lib/journal-random-line'
+import {
+  applyJournalTemplate as applyTemplateTokens,
+  type AppliedJournalTemplate
+} from '@memry/domain-notes/journal'
+import {
+  journalKeys,
+  ENTRY_STALE_TIME,
+  ENTRY_GC_TIME,
+  AUTO_SAVE_DELAY_MS,
+  PREFETCH_DAYS
+} from './journal-query-keys'
+import { mergeInlineTagEdits, type InlineTagEdit } from './use-inline-tag-edits'
+import { getI18n } from 'react-i18next'
+
+const log = createLogger('Hook:JournalEntry')
+
+interface PendingTagsEdit {
+  tags?: string[]
+  inlineTags?: InlineTagEdit
+}
+
+type JournalSaveInput = { date: string; content?: string } & PendingTagsEdit
+
+/**
+ * Whether the vault this journal renders is no longer the open one. Saves are
+ * addressed by date only, so a save issued from a hidden workspace's cleanup
+ * (which runs after main has opened the next vault) would overwrite that
+ * vault's entry for the same day. Outside any workspace (scope null) the
+ * journal always belongs to the open vault.
+ */
+function hasLeftVault(lifecycle: VaultWorkspaceLifecycle | null, vaultScope: string | null) {
+  if (lifecycle?.hidden) return true
+  if (vaultScope === null) return false
+  const pending = getVaultSwitchState().pending
+  if (pending && pending.path !== vaultScope) return true
+  const openPath = getCachedVaultStatus()?.path ?? null
+  return openPath !== null && openPath !== vaultScope
+}
+
+/**
+ * Seed text for a day from its template. The token substitution is
+ * `@memry/domain-notes/journal`'s, shared with the iOS core through vectors;
+ * only the locale formatting (`Intl`) happens here.
+ */
+function applyJournalTemplate(template: Template, date: string): AppliedJournalTemplate {
+  const locale = getI18n().language || 'en-US'
+  const dateObj = parseISODate(date)
+  return applyTemplateTokens(template, date, {
+    longDate: new Intl.DateTimeFormat(locale, {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    }).format(dateObj),
+    time: new Intl.DateTimeFormat(locale, {
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(new Date()),
+    dayOfWeek: new Intl.DateTimeFormat(locale, { weekday: 'long' }).format(dateObj)
+  })
+}
+
+export interface UseJournalEntryResult {
+  entry: JournalEntry | null
+  isLoading: boolean
+  loadedForDate: string | null
+  error: string | null
+  isSaving: boolean
+  isDirty: boolean
+  saveError: string | null
+  externalUpdateCount: number
+  updateContent: (content: string) => void
+  updateTags: (tags: string[]) => void
+  updateInlineTags: (edit: InlineTagEdit) => void
+  saveNow: () => Promise<void>
+  reload: () => Promise<void>
+  forceReload: () => Promise<void>
+  deleteEntry: () => Promise<boolean>
+  retrySave: () => Promise<void>
+  dismissSaveError: () => void
+}
+
+export function useJournalEntry(date: string): UseJournalEntryResult {
+  const queryClient = useQueryClient()
+  const lifecycle = useVaultWorkspaceLifecycle()
+  const vaultScope = useVaultScope()
+
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [externalUpdateCount, setExternalUpdateCount] = useState(0)
+
+  const pendingContentRef = useRef<string | null>(null)
+  const pendingTagsRef = useRef<PendingTagsEdit | null>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const currentDateRef = useRef(date)
+  // The date whose save lifecycle is running: set by the registry effect below,
+  // cleared by its cleanup once that date's pending save has been flushed.
+  const liveDateRef = useRef<string | null>(null)
+  const isDirtyRef = useRef(isDirty)
+  const isSavingRef = useRef(false)
+  // The running performSave, so the pre-switch flush can wait for it instead
+  // of returning while its edits (or newer ones) are still unsaved.
+  const inFlightSaveRef = useRef<Promise<void> | null>(null)
+  const templateSeedKeyRef = useRef<string | null>(null)
+  // Separate from the success latch above: the latch must only be set once an
+  // entry actually exists, but the effect can re-run while the async seed is
+  // still in flight and must not start a second one.
+  const templateSeedInFlightRef = useRef<string | null>(null)
+  const performSaveRef = useRef<() => Promise<void>>(async () => {})
+  const [isSeedingFromTemplate, setIsSeedingFromTemplate] = useState(false)
+
+  useEffect(() => {
+    isDirtyRef.current = isDirty
+  }, [isDirty])
+
+  const previousDateRef = useRef<string | null>(null)
+
+  // Reset per-date state during render when date prop changes (React-recommended pattern
+  // for "adjusting state when a prop changes", avoids no-adjust-state-on-prop-change).
+  const [storedDate, setStoredDate] = useState(date)
+  if (date !== storedDate) {
+    setStoredDate(date)
+    setIsDirty(false)
+    setSaveError(null)
+  }
+
+  // Save pending content for old date before switching, and update tracking refs.
+  useEffect(() => {
+    const oldDate = previousDateRef.current
+    const pendingContent = pendingContentRef.current
+    const pendingTags = pendingTagsRef.current
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+
+    if (oldDate && oldDate !== date && (pendingContent !== null || pendingTags !== null)) {
+      const saveInput: JournalSaveInput = { date: oldDate, ...pendingTags }
+      if (pendingContent !== null) saveInput.content = pendingContent
+
+      journalService.updateEntry(saveInput).catch((err: unknown) => {
+        // The user has already navigated away — this is silent data loss.
+        trackRendererError('journal_pending_save_failed', err)
+        log.error(`Failed to save pending changes for ${oldDate}:`, err)
+      })
+    }
+
+    currentDateRef.current = date
+    previousDateRef.current = date
+    pendingContentRef.current = null
+    pendingTagsRef.current = null
+  }, [date])
+
+  const {
+    data: entry = null,
+    isLoading,
+    error: queryError,
+    refetch
+  } = useQuery({
+    queryKey: journalKeys.entry(date),
+    queryFn: () => journalService.getEntry(date),
+    staleTime: ENTRY_STALE_TIME,
+    gcTime: ENTRY_GC_TIME
+  })
+
+  // Prefetch adjacent dates for smooth navigation
+  useEffect(() => {
+    const dateObj = parseISODate(date)
+
+    for (let i = 1; i <= PREFETCH_DAYS; i++) {
+      const prevDate = formatDateToISO(addDays(dateObj, -i))
+      void queryClient.prefetchQuery({
+        queryKey: journalKeys.entry(prevDate),
+        queryFn: () => journalService.getEntry(prevDate),
+        staleTime: ENTRY_STALE_TIME
+      })
+
+      const nextDate = formatDateToISO(addDays(dateObj, i))
+      void queryClient.prefetchQuery({
+        queryKey: journalKeys.entry(nextDate),
+        queryFn: () => journalService.getEntry(nextDate),
+        staleTime: ENTRY_STALE_TIME
+      })
+    }
+  }, [date, queryClient])
+
+  const updateMutation = useMutation({
+    mutationFn: async (input: JournalSaveInput) => {
+      return journalService.updateEntry(input)
+    },
+    onSuccess: (updatedEntry) => {
+      queryClient.setQueryData(journalKeys.entry(updatedEntry.date), updatedEntry)
+      const year = parseInt(updatedEntry.date.slice(0, 4), 10)
+      void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+    }
+  })
+
+  useEffect(() => {
+    if (isLoading || queryError || entry !== null) return undefined
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const settings = await window.api.settings.getJournalSettings()
+        const templateId = resolveJournalTemplateId(settings, date)
+        if (!templateId) return
+
+        const seedKey = `${date}:${templateId}`
+        if (templateSeedKeyRef.current === seedKey) return
+        if (templateSeedInFlightRef.current === seedKey) return
+        templateSeedInFlightRef.current = seedKey
+        setIsSeedingFromTemplate(true)
+
+        // A template synced from another device can land after the settings
+        // that point at it, so a miss here is transient. Leaving the success
+        // latch unset lets the next effect run retry instead of stranding the
+        // day blank for the rest of the session.
+        const template = await getTemplate(templateId)
+        if (!template) return
+        if (cancelled || currentDateRef.current !== date) return
+
+        const content = await resolveRandomLines(template.content, async (title) => {
+          const target = await window.api.notes.resolveByTitle(title)
+          if (!target) return null
+          return (await window.api.notes.get(target.id))?.content ?? null
+        })
+        if (cancelled || currentDateRef.current !== date) return
+
+        const applied = applyJournalTemplate({ ...template, content }, date)
+        const createdEntry = await journalService.createEntry({
+          date,
+          content: applied.content,
+          tags: applied.tags,
+          properties: applied.properties
+        })
+
+        if (cancelled) return
+
+        templateSeedKeyRef.current = seedKey
+        queryClient.setQueryData(journalKeys.entry(createdEntry.date), createdEntry)
+        const year = parseInt(createdEntry.date.slice(0, 4), 10)
+        void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+      } catch (err) {
+        trackRendererError('journal_template_seed_failed', err)
+        log.error('Failed to seed journal entry from template:', err)
+      } finally {
+        templateSeedInFlightRef.current = null
+        if (!cancelled) {
+          setIsSeedingFromTemplate(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [date, entry, isLoading, queryClient, queryError])
+
+  const deleteMutation = useMutation({
+    mutationFn: async (dateToDelete: string) => {
+      return journalService.deleteEntry(dateToDelete)
+    },
+    onSuccess: (_, dateToDelete) => {
+      queryClient.setQueryData(journalKeys.entry(dateToDelete), null)
+      const year = parseInt(dateToDelete.slice(0, 4), 10)
+      void queryClient.invalidateQueries({ queryKey: journalKeys.heatmap(year) })
+    }
+  })
+
+  const performSave = useCallback(async () => {
+    const content = pendingContentRef.current
+    const tags = pendingTagsRef.current
+    const currentDate = currentDateRef.current
+
+    if (content === null && tags === null) return
+    if (isSavingRef.current) return
+
+    isSavingRef.current = true
+    setIsSaving(true)
+
+    let settle: () => void = () => {}
+    inFlightSaveRef.current = new Promise<void>((resolve) => {
+      settle = resolve
+    })
+
+    try {
+      const updateInput: JournalSaveInput = { date: currentDate, ...tags }
+      if (content !== null) updateInput.content = content
+
+      await updateMutation.mutateAsync(updateInput)
+
+      if (currentDateRef.current === currentDate) {
+        setSaveError(null)
+        // Edits made while this save was in flight are newer than what it
+        // wrote; they stay pending for the next save.
+        if (pendingContentRef.current === content) pendingContentRef.current = null
+        if (pendingTagsRef.current === tags) pendingTagsRef.current = null
+        if (pendingContentRef.current === null && pendingTagsRef.current === null) {
+          setIsDirty(false)
+        }
+      }
+    } catch (err) {
+      trackRendererError('journal_save_failed', err)
+      log.error('Failed to save journal entry:', err)
+      const errorMessage = extractErrorMessage(
+        err,
+        getI18n().getFixedT(null, 'journal')('phaseI.errors.failedToSaveJournalEntry')
+      )
+      const isDiskError =
+        errorMessage.includes('ENOSPC') ||
+        errorMessage.includes('disk') ||
+        errorMessage.includes('space') ||
+        errorMessage.includes('write')
+      if (currentDateRef.current === currentDate) {
+        setSaveError(isDiskError ? 'Unable to save: disk may be full' : errorMessage)
+      }
+    } finally {
+      isSavingRef.current = false
+      inFlightSaveRef.current = null
+      settle()
+      if (currentDateRef.current === currentDate) {
+        setIsSaving(false)
+      }
+    }
+  }, [updateMutation])
+
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  performSaveRef.current = performSave
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+    }
+    saveTimerRef.current = setTimeout(() => {
+      void performSave()
+    }, AUTO_SAVE_DELAY_MS)
+  }, [performSave])
+
+  const updateContent = useCallback(
+    (content: string) => {
+      // The editor's teardown flush reports its last edit after the journal
+      // has switched dates or unmounted, and after that date's pending save
+      // was flushed (#1900). Queued here it would save under whatever date is
+      // open now, or sit in a timer the save registry cannot see, so it is
+      // saved now, to the date it was typed on.
+      if (liveDateRef.current !== date) {
+        if (hasLeftVault(lifecycle, vaultScope)) {
+          log.warn(`Dropped a late journal edit for ${date}: its vault closed before it arrived`)
+          return
+        }
+        updateMutation.mutateAsync({ date, content }).catch((err: unknown) => {
+          trackRendererError('journal_pending_save_failed', err)
+          log.error(`Failed to save late changes for ${date}:`, err)
+        })
+        return
+      }
+      pendingContentRef.current = content
+      setIsDirty(true)
+      scheduleSave()
+    },
+    [date, lifecycle, scheduleSave, updateMutation, vaultScope]
+  )
+
+  const updateTags = useCallback(
+    (tags: string[]) => {
+      queryClient.setQueryData(
+        journalKeys.entry(currentDateRef.current),
+        (old: JournalEntry | undefined) => (old ? { ...old, tags } : old)
+      )
+      pendingTagsRef.current = { ...pendingTagsRef.current, tags }
+      setIsDirty(true)
+      void performSave()
+    },
+    [queryClient, performSave]
+  )
+
+  const updateInlineTags = useCallback(
+    (edit: InlineTagEdit) => {
+      const pending = pendingTagsRef.current
+      const inlineTags = pending?.inlineTags ? mergeInlineTagEdits(pending.inlineTags, edit) : edit
+      pendingTagsRef.current = { ...pending, inlineTags }
+      setIsDirty(true)
+      void performSave()
+    },
+    [performSave]
+  )
+
+  const saveNow = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    await performSave()
+  }, [performSave])
+
+  const reload = useCallback(async () => {
+    if (isDirtyRef.current) {
+      await saveNow()
+    }
+    await refetch()
+  }, [saveNow, refetch])
+
+  const forceReload = useCallback(async () => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+    pendingContentRef.current = null
+    pendingTagsRef.current = null
+    setIsDirty(false)
+    await refetch()
+  }, [refetch])
+
+  const deleteEntry = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await deleteMutation.mutateAsync(date)
+      if (result.success) {
+        setIsDirty(false)
+        pendingContentRef.current = null
+        pendingTagsRef.current = null
+      }
+      return result.success
+    } catch (err) {
+      trackRendererError('journal_delete_failed', err)
+      log.error('Failed to delete journal entry:', err)
+      return false
+    }
+  }, [date, deleteMutation])
+
+  const retrySave = useCallback(async () => {
+    setSaveError(null)
+    await performSave()
+  }, [performSave])
+
+  const dismissSaveError = useCallback(() => {
+    setSaveError(null)
+  }, [])
+
+  // Save registry + unmount flush
+  useEffect(() => {
+    const registryKey = `journal:${date}`
+    liveDateRef.current = date
+
+    // The vault switch runs this before main closes the vault, so it must
+    // leave nothing pending: a save already in flight would make performSave
+    // return early, and edits typed during it would stay unsaved.
+    registerPendingSave(registryKey, async () => {
+      while (inFlightSaveRef.current) await inFlightSaveRef.current
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        await performSaveRef.current()
+      }
+    })
+
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+      if (pendingContentRef.current !== null || pendingTagsRef.current !== null) {
+        if (hasLeftVault(lifecycle, vaultScope)) {
+          // Hiding a vault's workspace runs this after the next vault is open;
+          // a date-addressed save now would land in that vault's journal.
+          // Pending stays set: if the workspace is shown again, the next save
+          // still writes it to this vault.
+          log.warn(
+            `Skipped saving journal edits for ${date}: its vault closed before they were flushed`
+          )
+        } else {
+          void performSaveRef.current()
+        }
+      }
+      unregisterPendingSave(registryKey)
+      liveDateRef.current = null
+    }
+  }, [date, lifecycle, vaultScope])
+
+  // External update subscriptions
+  useEffect(() => {
+    const unsubscribeCreated = onJournalEntryCreated((event) => {
+      if (event.date === currentDateRef.current) {
+        queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
+      }
+    })
+
+    const unsubscribeUpdated = onJournalEntryUpdated((event) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- journal event payload carries an optional source tag outside the declared event type
+      const isExternal = (event as { source?: string }).source === 'external'
+
+      if (!isExternal && isSavingRef.current) return
+
+      if (event.date === currentDateRef.current) {
+        if (isExternal) {
+          queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
+          setIsDirty(false)
+          pendingContentRef.current = null
+          pendingTagsRef.current = null
+          setExternalUpdateCount((c) => c + 1)
+        } else if (!isDirtyRef.current) {
+          queryClient.setQueryData(journalKeys.entry(event.date), event.entry)
+        }
+      }
+    })
+
+    const unsubscribeDeleted = onJournalEntryDeleted((event) => {
+      if (event.date === currentDateRef.current) {
+        queryClient.setQueryData(journalKeys.entry(event.date), null)
+        setIsDirty(false)
+        pendingContentRef.current = null
+        pendingTagsRef.current = null
+      }
+    })
+
+    const unsubscribeExternal = onJournalExternalChange((event) => {
+      if (event.date === currentDateRef.current) {
+        if (event.type === 'deleted') {
+          queryClient.setQueryData(journalKeys.entry(event.date), null)
+          setIsDirty(false)
+        } else if (event.type === 'modified' && !isDirtyRef.current) {
+          void queryClient.invalidateQueries({ queryKey: journalKeys.entry(event.date) })
+        }
+      }
+    })
+
+    return () => {
+      unsubscribeCreated()
+      unsubscribeUpdated()
+      unsubscribeDeleted()
+      unsubscribeExternal()
+    }
+  }, [queryClient])
+
+  const loadedForDateResult = isLoading || isSeedingFromTemplate ? null : date
+
+  return {
+    entry,
+    isLoading: isLoading || isSeedingFromTemplate,
+    loadedForDate: loadedForDateResult,
+    error: queryError ? extractErrorMessage(queryError) : null,
+    isSaving,
+    isDirty,
+    saveError,
+    externalUpdateCount,
+    updateContent,
+    updateTags,
+    updateInlineTags,
+    saveNow,
+    reload,
+    forceReload,
+    deleteEntry,
+    retrySave,
+    dismissSaveError
+  }
+}

@@ -232,6 +232,7 @@ function unifiedSidebar() {
         { text: 'Setting Up', link: '/contributing' },
         { text: 'Repo Workflow', link: '/contribute/workflow' },
         { text: 'Testing', link: '/contribute/testing' },
+        { text: 'Desktop on Tauri', link: '/contribute/desktop-tauri' },
         { text: 'Releasing', link: '/contribute/releasing' },
         { text: 'Common Gotchas', link: '/contribute/gotchas' }
       ]

@@ -1,0 +1,279 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  CALENDAR_SCROLL_KEYS,
+  CALENDAR_VIEW_STATE_KEYS,
+  isLiveNavigationToken,
+  parseAnchorDate,
+  parseCalendarBoolean,
+  parseCalendarView,
+  parseImportedSourceIds,
+  parseTimelineSettings,
+  parseVisualTypes,
+  resolveAnchorSync,
+  resolveSelectedSourceIds,
+  resolveSourceToggle
+} from './calendar-view-state'
+
+describe('calendar view-state keys', () => {
+  it('uses a distinct key per persisted value', () => {
+    const keys = Object.values(CALENDAR_VIEW_STATE_KEYS)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+
+  it('never collides with the navigation nonces other surfaces write', () => {
+    // Agent Chat and the sidebar write `focusCalendarEventId`, `focusDate`,
+    // `focusedAt` and `createEventAt` into a calendar tab's viewState. Reusing
+    // one of those names would make a filter toggle re-fire a navigation.
+    const nonces = ['focusCalendarEventId', 'focusDate', 'focusedAt', 'createEventAt']
+    for (const key of Object.values(CALENDAR_VIEW_STATE_KEYS)) {
+      expect(nonces).not.toContain(key)
+    }
+  })
+
+  it('gives every scrolling view its own pane', () => {
+    const keys = Object.values(CALENDAR_SCROLL_KEYS)
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+})
+
+describe('parseCalendarView', () => {
+  it('accepts the five views and nothing else', () => {
+    expect(parseCalendarView('week')).toBe('week')
+    expect(parseCalendarView('year')).toBe('year')
+    expect(parseCalendarView('timeline')).toBe('timeline')
+    expect(parseCalendarView('agenda')).toBeUndefined()
+    expect(parseCalendarView(null)).toBeUndefined()
+    expect(parseCalendarView(2)).toBeUndefined()
+  })
+})
+
+describe('parseAnchorDate', () => {
+  it('accepts only a plain calendar date', () => {
+    // The week virtualizer turns this into a day index and the range query into
+    // a local-midnight ISO string; anything else silently lands centuries away.
+    expect(parseAnchorDate('2026-08-17')).toBe('2026-08-17')
+    expect(parseAnchorDate('2026-08-17T09:00:00.000Z')).toBeUndefined()
+    expect(parseAnchorDate('17/08/2026')).toBeUndefined()
+    expect(parseAnchorDate('2026-8-7')).toBeUndefined()
+    expect(parseAnchorDate(20260817)).toBeUndefined()
+  })
+
+  it('keeps `null`, which means "this tab has no anchor yet"', () => {
+    expect(parseAnchorDate(null)).toBeNull()
+    expect(parseAnchorDate(undefined)).toBeUndefined()
+  })
+})
+
+describe('isLiveNavigationToken', () => {
+  const mountedAt = 1_700_000_000_000
+
+  it('rejects a nonce from a previous app run', () => {
+    // The reported bug: a persisted `createEventAt` opened the event dialog on a
+    // page the user had only navigated to.
+    expect(isLiveNavigationToken(mountedAt - 86_400_000, mountedAt)).toBe(false)
+  })
+
+  it('accepts the click that opened this page', () => {
+    // The intent is written just before the tab renders, so the token is a shade
+    // older than mount.
+    expect(isLiveNavigationToken(mountedAt - 40, mountedAt)).toBe(true)
+  })
+
+  it('accepts a click made while the page is already open', () => {
+    expect(isLiveNavigationToken(mountedAt + 90_000, mountedAt)).toBe(true)
+  })
+
+  it('treats nothing-stored and garbage as no intent', () => {
+    expect(isLiveNavigationToken(null, mountedAt)).toBe(false)
+    expect(isLiveNavigationToken(Number.NaN, mountedAt)).toBe(false)
+  })
+})
+
+describe('parseCalendarBoolean / parseVisualTypes', () => {
+  it('takes only real booleans', () => {
+    expect(parseCalendarBoolean(false)).toBe(false)
+    expect(parseCalendarBoolean('false')).toBeUndefined()
+    expect(parseCalendarBoolean(0)).toBeUndefined()
+  })
+
+  it('drops unknown visual types instead of rejecting the whole filter', () => {
+    expect(parseVisualTypes(['event', 'wormhole', 'task'])).toEqual(['event', 'task'])
+    // An empty array is a real filter — the user turned everything off.
+    expect(parseVisualTypes([])).toEqual([])
+    expect(parseVisualTypes('event')).toBeUndefined()
+  })
+})
+
+describe('parseImportedSourceIds', () => {
+  it('tells "has not chosen" apart from "chose nothing"', () => {
+    expect(parseImportedSourceIds(null)).toBeNull()
+    expect(parseImportedSourceIds([])).toEqual([])
+    expect(parseImportedSourceIds(undefined)).toBeUndefined()
+    expect(parseImportedSourceIds('src-1')).toBeUndefined()
+  })
+
+  it('keeps ids it does not recognise', () => {
+    // A source can be absent because its account has not loaded yet; dropping
+    // it here would quietly deselect a calendar the user had switched on.
+    expect(parseImportedSourceIds(['src-1', 7, 'src-2'])).toEqual(['src-1', 'src-2'])
+  })
+})
+
+describe('resolveSelectedSourceIds', () => {
+  const synced = (id: string) => ({ id, isSelected: true })
+  const unsynced = (id: string) => ({ id, isSelected: false })
+
+  it('shows every synced source until the user picks a subset', () => {
+    expect(resolveSelectedSourceIds(null, [synced('a'), synced('b')])).toEqual(['a', 'b'])
+  })
+
+  it('honours "chose nothing" rather than falling back to everything', () => {
+    expect(resolveSelectedSourceIds([], [synced('a'), synced('b')])).toEqual([])
+  })
+
+  it('drops a source that has since disappeared', () => {
+    expect(resolveSelectedSourceIds(['a', 'gone'], [synced('a'), synced('b')])).toEqual(['a'])
+  })
+
+  it('does not add a source connected after the user chose', () => {
+    // Deriving "all" only applies to a tab that never chose. Once there is a
+    // choice, a newly connected calendar stays off until it is switched on.
+    expect(resolveSelectedSourceIds(['a'], [synced('a'), synced('b')])).toEqual(['a'])
+  })
+
+  it('never pre-selects a source nothing polls', () => {
+    // Discovery only pre-selects the primary calendar. Every other calendar on
+    // the account arrives unselected, and used to be handed back here as if it
+    // were on — the tick the user saw next to a calendar that never produced a
+    // single event.
+    expect(resolveSelectedSourceIds(null, [synced('a'), unsynced('b')])).toEqual(['a'])
+  })
+
+  it('drops a stored source that has since been switched off', () => {
+    expect(resolveSelectedSourceIds(['a', 'b'], [synced('a'), unsynced('b')])).toEqual(['a'])
+  })
+})
+
+describe('resolveSourceToggle', () => {
+  const synced = { id: 'primary', isSelected: true }
+  const unsynced = { id: 'personal', isSelected: false }
+  const sources = [synced, unsynced]
+
+  it('subscribes a source the sweep never polls', () => {
+    // The reported bug: ticking here only filtered events that were never
+    // fetched, so the calendar stayed empty and the tick looked broken.
+    expect(resolveSourceToggle('personal', ['primary'], sources)).toEqual({
+      nextSelectedIds: ['primary', 'personal'],
+      subscribeSourceId: 'personal'
+    })
+  })
+
+  it('does not re-subscribe a source that is already syncing', () => {
+    expect(resolveSourceToggle('primary', [], sources)).toEqual({
+      nextSelectedIds: ['primary'],
+      subscribeSourceId: null
+    })
+  })
+
+  it('switching one off is a view filter, never an unsubscribe', () => {
+    // Unsubscribing purges the mirrored events. That belongs to the Settings
+    // picker, not to a checkbox that reads as "show this on the calendar".
+    expect(resolveSourceToggle('primary', ['primary', 'personal'], sources)).toEqual({
+      nextSelectedIds: ['personal'],
+      subscribeSourceId: null
+    })
+  })
+
+  it('does not subscribe a source that is no longer listed', () => {
+    expect(resolveSourceToggle('gone', ['primary'], sources)).toEqual({
+      nextSelectedIds: ['primary', 'gone'],
+      subscribeSourceId: null
+    })
+  })
+})
+
+describe('resolveAnchorSync', () => {
+  it('writes the live anchor when the tab has none', () => {
+    expect(
+      resolveAnchorSync({ awaitingSeed: null, anchorDate: '2026-08-17', storedAnchor: null })
+    ).toEqual({ clearAwaiting: false, write: '2026-08-17' })
+  })
+
+  it('writes nothing when the tab already agrees', () => {
+    expect(
+      resolveAnchorSync({
+        awaitingSeed: null,
+        anchorDate: '2026-08-17',
+        storedAnchor: '2026-08-17'
+      })
+    ).toEqual({ clearAwaiting: false, write: null })
+  })
+
+  it('holds the write while a restore is still in flight', () => {
+    // Both effects run in the same commit: the seed has been pushed into the
+    // shared context but this pass still sees the context holding today.
+    // Writing here would overwrite the restored anchor with today, every launch.
+    expect(
+      resolveAnchorSync({
+        awaitingSeed: '2026-01-05',
+        anchorDate: '2026-08-17',
+        storedAnchor: '2026-01-05'
+      })
+    ).toEqual({ clearAwaiting: false, write: null })
+  })
+
+  it('stops waiting once the context carries the seeded anchor', () => {
+    expect(
+      resolveAnchorSync({
+        awaitingSeed: '2026-01-05',
+        anchorDate: '2026-01-05',
+        storedAnchor: '2026-01-05'
+      })
+    ).toEqual({ clearAwaiting: true, write: null })
+  })
+
+  it('resumes mirroring in the same pass the seed lands, if they differ', () => {
+    // The day panel can move the anchor while the seed is still in flight; the
+    // handshake must end, not strand the mirror.
+    expect(
+      resolveAnchorSync({
+        awaitingSeed: '2026-01-05',
+        anchorDate: '2026-01-05',
+        storedAnchor: '2025-12-31'
+      })
+    ).toEqual({ clearAwaiting: true, write: '2026-01-05' })
+  })
+
+  it('mirrors a change the day panel made, which is not in a tab at all', () => {
+    expect(
+      resolveAnchorSync({
+        awaitingSeed: null,
+        anchorDate: '2026-03-02',
+        storedAnchor: '2026-01-05'
+      })
+    ).toEqual({ clearAwaiting: false, write: '2026-03-02' })
+  })
+})
+
+describe('parseTimelineSettings', () => {
+  it('rejects anything that is not a settings object', () => {
+    expect(parseTimelineSettings(null)).toBeUndefined()
+    expect(parseTimelineSettings('months')).toBeUndefined()
+    expect(parseTimelineSettings([])).toBeUndefined()
+  })
+
+  it('keeps valid fields and defaults unknown or missing ones', () => {
+    expect(
+      parseTimelineSettings({ zoom: 'weeks', groupBy: 'galaxy', showCompleted: true, extra: 1 })
+    ).toEqual({
+      zoom: 'weeks',
+      groupBy: 'project',
+      orderBy: 'start',
+      showEvents: true,
+      showUndated: true,
+      showCompleted: true,
+      showSubtasks: true
+    })
+  })
+})

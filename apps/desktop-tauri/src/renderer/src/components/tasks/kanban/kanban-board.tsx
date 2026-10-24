@@ -1,0 +1,192 @@
+import React, { useEffect, useMemo, useState, useCallback, useRef } from 'react'
+
+import { buildTaskTree } from '@memry/domain-tasks/tree'
+import { useT } from '@memry/i18n/renderer'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
+import type { Task } from '@/data/task-model'
+import type { Project, SortField } from '@/data/tasks-data'
+import { KanbanColumn } from './kanban-column'
+import { KanbanDragOverlay } from './kanban-drag-overlay'
+import { buildColumnConfig } from './kanban-columns'
+
+interface KanbanBoardProps {
+  tasks: Task[]
+  projects: Project[]
+  selectedId: string
+  selectedType: 'view' | 'project'
+  selectedProjectId: string | null
+  sortField: SortField
+  getOrderedTasks?: (sectionId: string, tasks: Task[]) => Task[]
+  onUpdateTask: (taskId: string, updates: Partial<Task>) => void
+  onToggleComplete: (taskId: string) => void
+  onTaskClick?: (taskId: string) => void
+  onQuickAdd?: (title: string, columnId: string) => void
+  isSelectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (taskId: string) => void
+}
+
+export const KanbanBoard = ({
+  tasks,
+  projects,
+  selectedType,
+  selectedProjectId,
+  sortField,
+  getOrderedTasks,
+  onToggleComplete,
+  onTaskClick,
+  onQuickAdd,
+  isSelectionMode = false,
+  selectedIds,
+  onToggleSelect
+}: KanbanBoardProps): React.JSX.Element => {
+  const { t } = useT('tasks')
+  const showProjectBadge = !selectedProjectId
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null)
+  const boardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    boardRef.current?.focus()
+  }, [])
+
+  // Cards are top-level tasks; a card carries its branch as progress.
+  const { columns, tasksByColumn: rawTasksByColumn } = useMemo(
+    () =>
+      buildColumnConfig(
+        buildTaskTree(tasks).roots,
+        projects,
+        selectedType,
+        selectedProjectId,
+        sortField
+      ),
+    [tasks, projects, selectedType, selectedProjectId, sortField]
+  )
+
+  const tasksByColumn = useMemo(() => {
+    if (!getOrderedTasks) return rawTasksByColumn
+    const ordered = new Map<string, Task[]>()
+    rawTasksByColumn.forEach((colTasks, colId) => {
+      ordered.set(colId, getOrderedTasks(colId, colTasks))
+    })
+    return ordered
+  }, [rawTasksByColumn, getOrderedTasks])
+
+  const flatTaskList = useMemo(() => {
+    const result: { taskId: string; columnIndex: number }[] = []
+    columns.forEach((col, colIdx) => {
+      const colTasks = tasksByColumn.get(col.id) || []
+      colTasks.forEach((colTask) => result.push({ taskId: colTask.id, columnIndex: colIdx }))
+    })
+    return result
+  }, [columns, tasksByColumn])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mouse/keyboard event target is a DOM element in this handler; only closest()/tagName are read
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
+
+      if (!focusedTaskId && flatTaskList.length > 0) {
+        const navKeys = ['j', 'k', 'ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight']
+        if (navKeys.includes(e.key)) {
+          e.preventDefault()
+          setFocusedTaskId(flatTaskList[0].taskId)
+          return
+        }
+      }
+
+      const currentIndex = flatTaskList.findIndex((item) => item.taskId === focusedTaskId)
+
+      switch (e.key) {
+        case 'j':
+        case 'ArrowDown': {
+          e.preventDefault()
+          const nextIndex = currentIndex < flatTaskList.length - 1 ? currentIndex + 1 : 0
+          setFocusedTaskId(flatTaskList[nextIndex]?.taskId ?? null)
+          break
+        }
+        case 'k':
+        case 'ArrowUp': {
+          e.preventDefault()
+          const prevIndex = currentIndex > 0 ? currentIndex - 1 : flatTaskList.length - 1
+          setFocusedTaskId(flatTaskList[prevIndex]?.taskId ?? null)
+          break
+        }
+        case 'ArrowLeft': {
+          e.preventDefault()
+          if (currentIndex < 0 || flatTaskList.length === 0) break
+          const currentColIdx = flatTaskList[currentIndex].columnIndex
+          const prevColIdx = currentColIdx > 0 ? currentColIdx - 1 : columns.length - 1
+          const firstInPrevCol = flatTaskList.find((item) => item.columnIndex === prevColIdx)
+          if (firstInPrevCol) setFocusedTaskId(firstInPrevCol.taskId)
+          break
+        }
+        case 'ArrowRight': {
+          e.preventDefault()
+          if (currentIndex < 0 || flatTaskList.length === 0) break
+          const currentColIdx = flatTaskList[currentIndex].columnIndex
+          const nextColIdx = currentColIdx < columns.length - 1 ? currentColIdx + 1 : 0
+          const firstInNextCol = flatTaskList.find((item) => item.columnIndex === nextColIdx)
+          if (firstInNextCol) setFocusedTaskId(firstInNextCol.taskId)
+          break
+        }
+        case ' ': {
+          e.preventDefault()
+          if (focusedTaskId) onToggleComplete(focusedTaskId)
+          break
+        }
+        case 'Enter': {
+          e.preventDefault()
+          if (focusedTaskId) onTaskClick?.(focusedTaskId)
+          break
+        }
+        case 'Escape': {
+          e.preventDefault()
+          setFocusedTaskId(null)
+          break
+        }
+      }
+    },
+    [focusedTaskId, flatTaskList, columns, onToggleComplete, onTaskClick]
+  )
+
+  const _showProjectOnCards = (selectedType as string) === 'weekday'
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
+    <div
+      ref={boardRef}
+      className="flex h-full flex-col outline-none"
+      // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scroll container must be keyboard focusable to scroll with arrow keys
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onClick={() => boardRef.current?.focus()}
+      aria-label={t('kanban.board')}
+    >
+      <ScrollArea className="h-full">
+        <div className="flex gap-3 p-4 pb-8 h-full">
+          {columns.map((column) => (
+            <KanbanColumn
+              key={column.id}
+              column={column}
+              tasks={tasksByColumn.get(column.id) || []}
+              allTasks={tasks}
+              projects={projects}
+              focusedTaskId={focusedTaskId}
+              isSelectionMode={isSelectionMode}
+              selectedIds={selectedIds}
+              onTaskClick={onTaskClick}
+              onToggleComplete={onToggleComplete}
+              onToggleSelect={onToggleSelect}
+              onQuickAdd={onQuickAdd}
+              showProjectBadge={showProjectBadge}
+            />
+          ))}
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+
+      <KanbanDragOverlay projects={projects} allTasks={tasks} />
+    </div>
+  )
+}

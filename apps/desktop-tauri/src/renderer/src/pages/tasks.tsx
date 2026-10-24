@@ -1,0 +1,1701 @@
+import { useState, useMemo, useCallback, useEffect, useId } from 'react'
+import { useToday } from '@/hooks/use-today'
+import { LayoutGroup, motion, useReducedMotion } from 'motion/react'
+
+import { useT } from '@memry/i18n/renderer'
+import { toast } from 'sonner'
+import { TaskList } from '@/components/tasks/task-list'
+import {
+  TasksTabBar,
+  type TasksInternalTab,
+  type TasksTabCounts
+} from '@/components/tasks/tasks-tab-bar'
+
+import { AddTaskModal } from '@/components/tasks/add-task-modal'
+import { ProjectModal } from '@/components/tasks/project-modal'
+import { KanbanBoard } from '@/components/tasks/kanban'
+import { CaptureBar, type CaptureBarParsed } from '@/components/capture-bar'
+import { useCreateReminder } from '@/hooks/use-reminders'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer'
+import {
+  FilterBar,
+  FilterDropdown,
+  FilterEmptyState,
+  GroupByDropdown
+} from '@/components/tasks/filters'
+import { cn } from '@/lib/utils'
+import { PageToolbar } from '@/components/ui/page-toolbar'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  getFilteredTasks,
+  getDefaultTodoStatus,
+  startOfDay,
+  getCompletedTasks,
+  getCompletedTasksInDueWindow,
+  getCompletedTodayTasks,
+  getTasksInDueWindow,
+  countActiveFilters,
+  scopeTasksByProject,
+  applyFiltersAndSort,
+  addDays // used by handleBulkChangeDueDate
+} from '@/lib/task-utils'
+import { getTaskTabCounts } from '@memry/domain-tasks/parsing'
+import {
+  defaultFilters,
+  type Project,
+  type ViewMode,
+  type TaskFilters,
+  type TaskSort,
+  type SavedFilter
+} from '@/data/tasks-data'
+import { useTaskNoteIndex } from '@/hooks/use-task-note-index'
+import { hasLocationFilter } from '@/lib/task-note-index'
+import { SHOW_TASKS_LOCATION_KEY, parseShowTasksLocation } from '@/lib/tasks-location-tab'
+import { createDefaultTask, type Task, type Priority, type RepeatConfig } from '@/data/task-model'
+import {
+  useFilterState,
+  useSavedFilters,
+  useFilteredAndSortedTasks,
+  useTaskSelection,
+  useBulkActions,
+  useSubtaskManagement,
+  useUndoTracker
+} from '@/hooks'
+import { useUndoableTaskActions } from '@/hooks/use-undoable-task-actions'
+import { useTasksContext } from '@/contexts/tasks'
+import { useSaveFilterShortcut } from '@/hooks/use-save-filter-shortcut'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
+import {
+  resolveModalDefaultProject,
+  resolveInitialViewProject,
+  resolveQuickAddProject
+} from '@/lib/default-project-resolution'
+import {
+  BulkActionToolbar,
+  BulkDeleteDialog,
+  BulkDueDatePicker
+} from '@/components/tasks/bulk-actions'
+import {
+  AllSubtasksCompleteDialog,
+  BulkDueDateDialog,
+  BulkPriorityDialog,
+  DeleteAllSubtasksDialog,
+  DeleteParentDialog
+} from '@/components/tasks/dialogs'
+import { describeBranch, getSubtasks } from '@/lib/subtask-utils'
+import { SubtaskTreeContext } from '@/components/tasks/subtask-tree/subtask-tree-context'
+import { MoveUnderDialog } from '@/components/tasks/subtask-tree/move-under-dialog'
+import { ZoomedBranchView } from '@/components/tasks/subtask-tree/zoomed-branch-view'
+import { DateViewContext, useDateViewValue } from '@/components/tasks/date-view-context'
+import { useSubtaskTreeController } from '@/hooks/use-subtask-tree-controller'
+import { tasksService } from '@/services/tasks-service'
+import type { TaskSelectionType } from '@/App'
+import { createLogger } from '@/lib/logger'
+import { useTabActions, useActiveTab } from '@/contexts/tabs'
+import { useTabViewState } from '@/hooks/use-tab-view-state'
+import { useResolvedEntityId } from '@/hooks/use-resolved-entity-id'
+import {
+  TASKS_VIEW_STATE_KEYS,
+  parseInternalTab,
+  parseNullableId,
+  parseViewMode
+} from './tasks-view-state'
+import { openRelatedVaultItem } from '@/lib/open-related-vault-item'
+import { canvasTabData } from '@/lib/sidebar-tab-data'
+import { useTasksCommands } from './tasks/use-tasks-commands'
+
+const log = createLogger('Page:Tasks')
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface TasksPageProps {
+  className?: string
+  selectedId: string
+  selectedType: TaskSelectionType
+  tasks: Task[]
+  projects: Project[]
+  onTasksChange: (tasks: Task[]) => void
+  onSelectionChange: (id: string, type: TaskSelectionType) => void
+  /** Task IDs currently selected for multi-drag (passed from App level) */
+  selectedTaskIds?: Set<string>
+  /** Callback to sync selection state with App level */
+  onSelectedTaskIdsChange?: (ids: Set<string>) => void
+}
+
+// ============================================================================
+// MAIN TASKS PAGE COMPONENT
+// ============================================================================
+
+const _handleProjectSettings = (): void => {
+  // Project settings are now handled in AppSidebar
+  // This is kept for the settings button in the header
+  // We could emit an event or use a context here
+}
+
+export const TasksPage = ({
+  className,
+  selectedId,
+  selectedType,
+  tasks,
+  projects,
+  onTasksChange,
+  onSelectionChange,
+  selectedTaskIds: externalSelectedIds,
+  onSelectedTaskIdsChange
+}: TasksPageProps): React.JSX.Element => {
+  const todayKey = useToday()
+  const currentDay = useMemo(() => new Date(`${todayKey}T00:00:00`), [todayKey])
+  const { t } = useT('tasks')
+  const { t: tCommon } = useT('common')
+  const { t: tSettings } = useT('settings')
+
+  // Get database-aware task operations from context
+  const {
+    addTask: contextAddTask,
+    updateTask: contextUpdateTask,
+    deleteTask: contextDeleteTask,
+    addProject: contextAddProject,
+    updateProject: contextUpdateProject,
+    deleteProject: contextDeleteProject,
+    getOrderedTasks
+  } = useTasksContext()
+
+  // T051-T054: Undo tracking for Cmd+Z support
+  const { registerUndo, removeUndoEntry } = useUndoTracker()
+
+  const undoable = useUndoableTaskActions({
+    tasks,
+    projects,
+    addTask: (...args) => contextAddTask(...args),
+    updateTask: (...args) => void contextUpdateTask(...args),
+    deleteTask: (...args) => void contextDeleteTask(...args),
+    registerUndo,
+    removeUndoEntry
+  })
+
+  const { settings: taskPrefs, updateSettings: updateTaskPrefs } = useTaskPreferences()
+  const { openTab, saveTabState } = useTabActions()
+  const activeTab = useActiveTab()
+
+  const handleNoteClick = useCallback(
+    async (noteId: string) => {
+      await openRelatedVaultItem(noteId, openTab)
+    },
+    [openTab]
+  )
+
+  const handleCanvasClick = useCallback(
+    (canvasId: string, title: string | null) => {
+      openTab(canvasTabData({ id: canvasId, title }, tCommon('canvas.untitled')))
+    },
+    [openTab, tCommon]
+  )
+
+  // Local setter that updates via parent callback
+  const setTasks = useCallback(
+    (updater: Task[] | ((prev: Task[]) => Task[])) => {
+      if (typeof updater === 'function') {
+        onTasksChange(updater(tasks))
+      } else {
+        onTasksChange(updater)
+      }
+    },
+    [tasks, onTasksChange]
+  )
+
+  const taskTabViewState = activeTab?.viewState ?? {}
+
+  // These read and write the tab this page is rendered IN, not the globally
+  // active tab. Same keys and same reader fallbacks as before, so sessions
+  // already on disk keep restoring.
+  const [storedInternalTab, setStoredInternalTab] = useTabViewState<TasksInternalTab | undefined>({
+    key: TASKS_VIEW_STATE_KEYS.activeInternalTab,
+    aliasKeys: [TASKS_VIEW_STATE_KEYS.activeInternalTabLegacy],
+    defaultValue: undefined,
+    parse: parseInternalTab
+  })
+  // Left absent until the user picks one, so the preference — which loads
+  // asynchronously — stays live instead of being frozen at first render.
+  // The preference is read back through the same parser as the tab state: a
+  // value this build does not know (written by a newer one, or by a hand-edited
+  // settings row) would otherwise match no render branch and paint nothing.
+  const activeInternalTab = storedInternalTab ?? parseInternalTab(taskPrefs.defaultView) ?? 'all'
+
+  const defaultProjectId = useMemo(
+    () => resolveInitialViewProject(selectedType, taskPrefs.defaultProjectId, projects),
+    [selectedType, taskPrefs.defaultProjectId, projects]
+  )
+  const [storedProjectId, setStoredProjectId] = useTabViewState<string | null | undefined>({
+    key: TASKS_VIEW_STATE_KEYS.selectedProjectId,
+    defaultValue: undefined,
+    parse: parseNullableId
+  })
+  const requestedProjectId = storedProjectId === undefined ? defaultProjectId : storedProjectId
+
+  // Kanban groups by status, which only reads straight on the unwindowed list;
+  // the due-date windows stay list-only.
+  const availableViews = useMemo((): ViewMode[] => {
+    if (activeInternalTab === 'all') {
+      return ['list', 'kanban']
+    }
+    return ['list']
+  }, [activeInternalTab])
+
+  const [requestedActiveView, setActiveView] = useTabViewState<ViewMode>({
+    key: TASKS_VIEW_STATE_KEYS.activeView,
+    defaultValue: 'list',
+    parse: parseViewMode
+  })
+  const activeView = availableViews.includes(requestedActiveView) ? requestedActiveView : 'list'
+  const [storedDetailTaskId, setDetailTaskId] = useTabViewState<string | null>({
+    key: TASKS_VIEW_STATE_KEYS.openTaskId,
+    defaultValue: null,
+    parse: parseNullableId
+  })
+
+  // Both ids outlive what they point at — a task gets deleted, a project gets
+  // archived — and neither failure is recoverable from the UI: the drawer's
+  // close button lives inside its `task &&` branch, and a dead project id keeps
+  // filtering tasks out while the picker cheerfully reports "All projects".
+  // An empty list is not proof on its own, hence the shared readiness signal.
+  const isTaskDataReady = tasks.length > 0 || projects.length > 0
+
+  const storedDetailTask = useMemo(
+    () =>
+      storedDetailTaskId ? (tasks.find((task) => task.id === storedDetailTaskId) ?? null) : null,
+    [storedDetailTaskId, tasks]
+  )
+  const clearDetailTaskId = useCallback(() => setDetailTaskId(null), [setDetailTaskId])
+  const detailTaskId = useResolvedEntityId({
+    id: storedDetailTaskId,
+    exists: storedDetailTask !== null,
+    ready: isTaskDataReady,
+    onMissing: clearDetailTaskId
+  })
+  const detailTask = detailTaskId === null ? null : storedDetailTask
+
+  const clearSelectedProjectId = useCallback(() => setStoredProjectId(null), [setStoredProjectId])
+  const selectedProjectId = useResolvedEntityId({
+    id: requestedProjectId,
+    exists: projects.some((project) => project.id === requestedProjectId),
+    ready: isTaskDataReady,
+    onMissing: clearSelectedProjectId
+  })
+
+  // Modal states
+  const [isAddTaskModalOpen, setIsAddTaskModalOpen] = useState(false)
+  const [addTaskPrefillTitle, setAddTaskPrefillTitle] = useState('')
+  const [addTaskPrefillDueDate, setAddTaskPrefillDueDate] = useState<Date | null>(null)
+  const [addTaskPrefillProjectId, setAddTaskPrefillProjectId] = useState<string | null>(null)
+
+  const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
+  // Scroll-edge state for the toolbar chrome: hairline materializes only once
+  // content inside <main> has actually scrolled
+  const [isScrolled, setIsScrolled] = useState(false)
+  const prefersReducedMotion = useReducedMotion()
+  const viewModeGroupId = useId()
+  const handleScrollCapture = useCallback((e: React.UIEvent<HTMLElement>) => {
+    const target = e.target
+    if (!(target instanceof HTMLElement)) return
+    setIsScrolled(target.scrollTop > 0)
+  }, [])
+
+  // Filter state with persistence
+  const {
+    filters,
+    sort,
+    updateFilters,
+    updateSort,
+    clearFilters,
+    hasActiveFilters: filtersActive
+  } = useFilterState({
+    selectedType,
+    selectedId,
+    activeView,
+    persistFilters: true
+  })
+
+  const setActiveInternalTab = setStoredInternalTab
+  const setSelectedProjectId = setStoredProjectId
+
+  // Quick-add focus: viewState.focusQuickAddAt is the single source of truth, fed to
+  // CaptureBar.focusSignal. Both the sidebar "Tasks" click and the empty-state
+  // "Add task" button stamp a fresh timestamp, so the input refocuses each time.
+  const focusQuickAddSignal =
+    typeof taskTabViewState.focusQuickAddAt === 'number'
+      ? taskTabViewState.focusQuickAddAt
+      : undefined
+
+  // Saved filters
+  const {
+    savedFilters,
+    saveFilter,
+    deleteFilter: deleteSavedFilter,
+    toggleStar: toggleStarFilter
+  } = useSavedFilters()
+  // Which saved filter is applied belongs to the tab; the filter values it
+  // applied are already persisted by `useFilterState`.
+  const [storedSavedFilterId, setActiveSavedFilterId] = useTabViewState<string | null>({
+    key: TASKS_VIEW_STATE_KEYS.activeSavedFilterId,
+    defaultValue: null,
+    parse: parseNullableId
+  })
+  const clearSavedFilterId = useCallback(
+    () => setActiveSavedFilterId(null),
+    [setActiveSavedFilterId]
+  )
+  // A saved filter deleted on another device leaves the toolbar highlighting a
+  // filter that no longer exists.
+  const activeSavedFilterId = useResolvedEntityId({
+    id: storedSavedFilterId,
+    exists: savedFilters.some((filter) => filter.id === storedSavedFilterId),
+    ready: savedFilters.length > 0,
+    onMissing: clearSavedFilterId
+  })
+
+  const starredFilters = useMemo(() => savedFilters.filter((f) => f.starred), [savedFilters])
+
+  useSaveFilterShortcut({
+    onSave: () => setIsFilterDropdownOpen(true),
+    hasActiveFilters: filtersActive
+  })
+
+  const updateFiltersAndClearSaved = useCallback(
+    (updates: Partial<TaskFilters>) => {
+      setActiveSavedFilterId(null)
+      updateFilters(updates)
+    },
+    [updateFilters, setActiveSavedFilterId]
+  )
+
+  const clearFiltersAndClearSaved = useCallback(() => {
+    setActiveSavedFilterId(null)
+    clearFilters()
+  }, [clearFilters, setActiveSavedFilterId])
+
+  // "Show tasks" from a sidebar folder or note. The request replaces every
+  // filter, not just the location: a leftover priority or tag would hide tasks
+  // that live there. It is cleared once applied, so a restored session does not
+  // re-apply it over whatever the user changed since.
+  const showLocationRequest = parseShowTasksLocation(taskTabViewState[SHOW_TASKS_LOCATION_KEY])
+  const showLocationToken = showLocationRequest?.requestedAt ?? null
+  useEffect(() => {
+    if (!showLocationRequest || !activeTab?.id) return
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-pass-data-to-parent -- applies a one-shot request stamped on the tab by another surface, then clears it
+    updateFiltersAndClearSaved({
+      ...defaultFilters,
+      folderPaths: showLocationRequest.folderPaths,
+      noteIds: showLocationRequest.noteIds
+    })
+    saveTabState(activeTab.id, { viewState: { [SHOW_TASKS_LOCATION_KEY]: null } })
+    // The token is the identity of a request; the parsed object is new every render.
+    // oxlint-disable-next-line react/exhaustive-deps
+  }, [showLocationToken, activeTab?.id])
+
+  // Also loaded while the filter menu is open: its Location panel lists folders
+  // and notes from it. The query shares the sidebar tree's cache entry.
+  const noteIndex = useTaskNoteIndex(isFilterDropdownOpen || hasLocationFilter(filters))
+
+  const handleTabChange = useCallback(
+    (tab: TasksInternalTab) => {
+      if (activeSavedFilterId) {
+        setActiveSavedFilterId(null)
+        clearFilters()
+      }
+      setActiveInternalTab(tab)
+    },
+    [activeSavedFilterId, clearFilters, setActiveInternalTab, setActiveSavedFilterId]
+  )
+
+  // Bulk delete dialog state
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false)
+
+  // Bulk due date picker state
+  const [isBulkDueDatePickerOpen, setIsBulkDueDatePickerOpen] = useState(false)
+
+  // Project modal states
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+
+  // ========== DERIVED STATE ==========
+
+  // Derived: get the selected project (if any)
+  const selectedProject = useMemo(() => {
+    if (selectedType === 'project') {
+      return projects.find((p) => p.id === selectedId) || null
+    }
+    return null
+  }, [selectedId, selectedType, projects])
+
+  // The archived scope is the one view that must NOT go through
+  // `getFilteredTasks`: that helper drops archived tasks before anything else
+  // runs, so the archived list would always come back empty. Feed the raw list
+  // instead and let `filterByCompletion('archived')` do the selecting.
+  const isArchivedScope = filters.completion === 'archived'
+
+  // Kanban groups by status, which the archived list has no use for. The stored
+  // view is left untouched so leaving the scope restores the user's choice.
+  const effectiveView: ViewMode = isArchivedScope ? 'list' : activeView
+
+  // Derived: filtered tasks for current selection, scoped by dropdown project
+  const baseFilteredTasks = useMemo(() => {
+    const base = isArchivedScope
+      ? tasks
+      : getFilteredTasks(tasks, selectedId, selectedType, projects, false, currentDay)
+    return scopeTasksByProject(base, selectedProjectId)
+  }, [isArchivedScope, tasks, selectedId, selectedType, projects, selectedProjectId, currentDay])
+
+  // Apply advanced filters and sort to base filtered tasks
+  const { filteredTasks, contextIds, totalCount, filteredCount } = useFilteredAndSortedTasks({
+    tasks: baseFilteredTasks,
+    filters,
+    sort,
+    projects,
+    noteIndex
+  })
+
+  // Kanban needs completed tasks for the Done column — filteredTasks excludes them
+  const kanbanTasks = useMemo(() => {
+    if (effectiveView !== 'kanban') return filteredTasks
+    const nonArchived = tasks.filter((task) => !task.archivedAt)
+    const scoped = scopeTasksByProject(nonArchived, selectedProjectId)
+    return applyFiltersAndSort(
+      scoped,
+      { ...filters, completion: 'all' },
+      sort,
+      projects,
+      new Date(),
+      noteIndex
+    )
+  }, [effectiveView, filteredTasks, tasks, selectedProjectId, filters, sort, projects, noteIndex])
+
+  // Derived: the tasks of the selected due-date window (flat, overdue first).
+  // Null on the "all" tab, which has no window.
+  const windowFilteredTasks = useMemo(() => {
+    if (activeInternalTab === 'all' || isArchivedScope) return null
+    return getTasksInDueWindow(filteredTasks, projects, activeInternalTab, currentDay)
+  }, [activeInternalTab, isArchivedScope, filteredTasks, projects, currentDay])
+
+  // Counted off what is actually on screen, so a window empties for the same
+  // reason the "all" list does. A filter and a window can contradict each other
+  // outright, and without this the
+  // page just goes blank with nothing saying the filters did it.
+  const visibleCount = windowFilteredTasks?.length ?? filteredCount
+  const showFilterEmptyState = filtersActive && visibleCount === 0 && totalCount > 0
+
+  const selectionScopeTasks = windowFilteredTasks ?? filteredTasks
+
+  const visibleTaskIds = useMemo(
+    () => selectionScopeTasks.map((task) => task.id),
+    [selectionScopeTasks]
+  )
+
+  // Task selection hook
+  const {
+    selection,
+    selectedCount,
+    hasSelection,
+    selectedTaskIds,
+    toggleTask,
+    selectRange,
+    selectAll,
+    deselectAll,
+    enterSelectionMode,
+    exitSelectionMode
+  } = useTaskSelection(visibleTaskIds, {
+    controlledSelectedIds: externalSelectedIds,
+    onSelectionChange: onSelectedTaskIdsChange
+  })
+
+  // Bulk actions hook - use context functions to persist to database
+  const bulkActions = useBulkActions({
+    selectedIds: selectedTaskIds,
+    tasks,
+    projects,
+    onUpdateTask: (...args) => void contextUpdateTask(...args),
+    onDeleteTask: (...args) => void contextDeleteTask(...args),
+    onComplete: deselectAll,
+    registerUndo,
+    onAddTask: (...args) => void contextAddTask(...args)
+  })
+
+  const { focusQuickAdd } = useTasksCommands({
+    hasSelection,
+    bulkComplete: bulkActions.bulkComplete,
+    openBulkDelete: () => setIsBulkDeleteDialogOpen(true)
+  })
+
+  // Toggle selection mode handler
+  const _handleToggleSelectionMode = useCallback(() => {
+    if (selection.isSelectionMode) {
+      exitSelectionMode()
+    } else {
+      enterSelectionMode()
+    }
+  }, [selection.isSelectionMode, enterSelectionMode, exitSelectionMode])
+
+  // Subtask management hook - T038-T042: Wire to database via context operations
+  const subtaskManagement = useSubtaskManagement({
+    tasks,
+    projects,
+    onTasksChange: setTasks,
+    onAddTask: (...args) => void contextAddTask(...args),
+    onUpdateTask: (...args) => void contextUpdateTask(...args),
+    onDeleteTask: (...args) => void contextDeleteTask(...args),
+    onReorderTasks: (taskIds, positions) => {
+      void (async () => {
+        try {
+          await tasksService.reorder(taskIds, positions)
+        } catch (error) {
+          log.error('Failed to reorder subtasks:', error)
+        }
+      })()
+    }
+  })
+
+  // Zoom: the list scoped to one task's branch (A2). Tab state, so it restores.
+  const [zoomedTaskId, setZoomedTaskId] = useTabViewState<string | null>({
+    key: TASKS_VIEW_STATE_KEYS.zoomedTaskId,
+    defaultValue: null,
+    parse: parseNullableId
+  })
+  const zoomedTask = useMemo(
+    () =>
+      zoomedTaskId
+        ? (tasks.find((task) => task.id === zoomedTaskId && !task.archivedAt) ?? null)
+        : null,
+    [tasks, zoomedTaskId]
+  )
+  const zoomedProject = zoomedTask
+    ? (projects.find((p) => p.id === zoomedTask.projectId) ?? null)
+    : null
+
+  // A subtask's path in a date view opens its parent's branch, with it selected.
+  const openPath = useCallback(
+    (task: Task) => {
+      if (!task.parentId) return
+      setZoomedTaskId(task.parentId)
+      setDetailTaskId(task.id)
+    },
+    [setZoomedTaskId, setDetailTaskId]
+  )
+  const dateView = useDateViewValue(tasks, projects, openPath)
+
+  // Derived: tab counts for TasksTabBar (scoped by dropdown project).
+  // Date tabs count the rows their list draws.
+  // `getTaskTabCounts` is pinned for the iOS core by vectors (spec 004 D4).
+  const tabCounts = useMemo(
+    (): TasksTabCounts => getTaskTabCounts(tasks, projects, selectedProjectId, currentDay),
+    [tasks, projects, selectedProjectId, currentDay]
+  )
+
+  // Done section per scope. "Today" keeps its completed-today rule — that is the
+  // day's progress, and it is what the celebration counts. The other windows
+  // show what is already done *in* the window, by due date.
+  const doneTasks = useMemo(() => {
+    // The archived list is complete on its own: a Done section under it would
+    // show non-archived tasks the scope is meant to be hiding.
+    if (isArchivedScope) return []
+    const completed =
+      activeInternalTab === 'all'
+        ? getCompletedTasks(tasks)
+        : activeInternalTab === 'today'
+          ? getCompletedTodayTasks(tasks)
+          : getCompletedTasksInDueWindow(tasks, activeInternalTab)
+    // A task the list above already shows stays out of Done: one task rendered
+    // twice shares its row key and leaves ghost rows in the virtual list (#3372).
+    // That happens under a non-active completion filter, and for parents older
+    // builds auto-completed with `completedAt` but left on an open status.
+    const listed = new Set(selectionScopeTasks.map((task) => task.id))
+    return scopeTasksByProject(completed, selectedProjectId).filter((task) => !listed.has(task.id))
+  }, [isArchivedScope, activeInternalTab, tasks, selectedProjectId, selectionScopeTasks])
+
+  // Visibility constants
+  const showFilterBar = true
+
+  // ========== HANDLERS ==========
+
+  const handleTaskClick = useCallback(
+    (taskId: string) => {
+      setDetailTaskId(detailTaskId === taskId ? null : taskId)
+    },
+    [detailTaskId, setDetailTaskId]
+  )
+
+  /**
+   * Archived is a scope on the completion filter, not a due window, so the tab
+   * stays where it was and only the filter moves. Leaving the scope puts the
+   * completion filter back on its default rather than guessing a previous one.
+   */
+  const handleArchivedScopeChange = useCallback(
+    (isArchived: boolean) => {
+      updateFiltersAndClearSaved({ completion: isArchived ? 'archived' : 'active' })
+    },
+    [updateFiltersAndClearSaved]
+  )
+
+  const handleCloseDetail = useCallback(() => {
+    setDetailTaskId(null)
+  }, [setDetailTaskId])
+
+  // Selection change handler (kept for interface compatibility)
+  const _handleSelectView = (id: string): void => {
+    onSelectionChange(id, 'view')
+  }
+
+  // ========== PROJECT HANDLERS ==========
+
+  const _handleCreateProject = useCallback(() => {
+    setEditingProject(null)
+    setIsProjectModalOpen(true)
+  }, [])
+
+  const handleEditProject = useCallback((project: Project) => {
+    setEditingProject(project)
+    setIsProjectModalOpen(true)
+  }, [])
+
+  const handleDefaultProjectChange = useCallback(
+    async (projectId: string | null) => {
+      // A tab that never picked a project follows the default. Pin its current
+      // view first so choosing a default from the dropdown does not switch it.
+      if (storedProjectId === undefined) setStoredProjectId(selectedProjectId)
+      const saved = await updateTaskPrefs({ defaultProjectId: projectId })
+      if (!saved) toast.error(tSettings('tasks.defaultProject.error'))
+    },
+    [storedProjectId, setStoredProjectId, selectedProjectId, updateTaskPrefs, tSettings]
+  )
+
+  const handleSaveProject = useCallback(
+    async (project: Project) => {
+      try {
+        if (editingProject) {
+          await contextUpdateProject(project.id, project)
+          toast.success(t('toasts.projectUpdated'))
+        } else {
+          await contextAddProject(project)
+          toast.success(t('toasts.projectCreated'))
+        }
+        setIsProjectModalOpen(false)
+        setEditingProject(null)
+      } catch (error) {
+        log.error('Failed to save project:', error)
+        toast.error(t('toasts.projectSaveError'))
+      }
+    },
+    [editingProject, contextAddProject, contextUpdateProject, t]
+  )
+
+  const _handleArchiveProject = useCallback(
+    async (project: Project) => {
+      try {
+        await contextUpdateProject(project.id, { isArchived: true })
+        toast.success(t('toasts.projectArchived'))
+      } catch (error) {
+        log.error('Failed to archive project:', error)
+        toast.error(t('toasts.projectArchiveError'))
+      }
+    },
+    [contextUpdateProject, t]
+  )
+
+  const handleDeleteProject = useCallback(
+    async (projectId: string) => {
+      try {
+        await contextDeleteProject(projectId)
+        toast.success(t('toasts.projectDeleted'))
+        // If we were viewing the deleted project, reset selection
+        if (selectedProjectId === projectId) {
+          setSelectedProjectId(null)
+        }
+      } catch (error) {
+        log.error('Failed to delete project:', error)
+        toast.error(t('toasts.projectDeleteError'))
+      }
+    },
+    [contextDeleteProject, selectedProjectId, setSelectedProjectId, t]
+  )
+
+  // Keyboard shortcuts for filter operations and selection
+  useEffect(() => {
+    const isInputFocused = (): boolean => {
+      const activeElement = document.activeElement
+      return (
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- activeElement is an Element; isContentEditable is read defensively via optional chaining
+        (activeElement as HTMLElement)?.isContentEditable === true
+      )
+    }
+
+    const handler = (e: KeyboardEvent): void => {
+      // Shift+F to clear all filters
+      if (e.key === 'F' && e.shiftKey && !isInputFocused() && showFilterBar) {
+        e.preventDefault()
+        clearFilters()
+        toast.success(t('toasts.filtersCleared'))
+      }
+
+      // Cmd/Ctrl+A to select all visible tasks
+      if ((e.metaKey || e.ctrlKey) && e.key === 'a' && !isInputFocused()) {
+        e.preventDefault()
+        selectAll()
+      }
+
+      // Escape to clear selection, unless an overlay (the commands palette) took it
+      if (e.key === 'Escape' && hasSelection && !e.defaultPrevented) {
+        e.preventDefault()
+        deselectAll()
+      }
+
+      // Cmd/Ctrl+Enter to complete selected tasks
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && hasSelection) {
+        e.preventDefault()
+        void bulkActions.bulkComplete()
+      }
+
+      // Cmd/Ctrl+Backspace to delete selected tasks
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Backspace' && hasSelection) {
+        e.preventDefault()
+        setIsBulkDeleteDialogOpen(true)
+      }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [showFilterBar, clearFilters, hasSelection, selectAll, deselectAll, bulkActions, t])
+
+  const _handleAddTask = (): void => {
+    setAddTaskPrefillTitle('')
+    setAddTaskPrefillDueDate(null)
+    setAddTaskPrefillProjectId(null)
+    setIsAddTaskModalOpen(true)
+  }
+
+  // The modal takes a title, project and due date; presets set in the capture
+  // bar carry over for those.
+  const handleOpenAddTaskModal = useCallback(
+    (prefillTitle: string, parsed?: CaptureBarParsed): void => {
+      setAddTaskPrefillTitle(prefillTitle)
+      setAddTaskPrefillDueDate(parsed?.dueDate ?? null)
+      setAddTaskPrefillProjectId(parsed?.projectId ?? null)
+      setIsAddTaskModalOpen(true)
+    },
+    []
+  )
+
+  const handleAddTaskModalClose = (): void => {
+    setIsAddTaskModalOpen(false)
+    setAddTaskPrefillTitle('')
+    setAddTaskPrefillDueDate(null)
+    setAddTaskPrefillProjectId(null)
+  }
+
+  const handleAddTaskFromModal = useCallback(
+    (newTask: Task): void => {
+      void undoable.createTask(newTask)
+    },
+    [undoable]
+  )
+
+  // Get default project and due date for the modal based on current selection
+  const modalDefaultProjectId = useMemo(
+    () =>
+      resolveModalDefaultProject(
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        selectedProjectId
+      ),
+    [selectedType, selectedProject, taskPrefs.defaultProjectId, selectedProjectId]
+  )
+
+  const quickAddDefaultProjectId = useMemo(
+    (): string =>
+      resolveQuickAddProject(
+        null,
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        projects,
+        selectedProjectId
+      ),
+    [selectedType, selectedProject, taskPrefs.defaultProjectId, projects, selectedProjectId]
+  )
+  const quickAddProjectColor =
+    projects.find((p) => p.id === quickAddDefaultProjectId)?.color || '#6B7280'
+  const quickAddPresets = useMemo(
+    () => ({ defaultProjectId: quickAddDefaultProjectId }),
+    [quickAddDefaultProjectId]
+  )
+
+  const { mutateAsync: createReminderAsync } = useCreateReminder()
+
+  const modalDefaultDueDate = useMemo((): Date | null => {
+    if (selectedId === 'today') {
+      return startOfDay(new Date())
+    }
+    return null
+  }, [selectedId])
+
+  const handleQuickAdd = useCallback(
+    (
+      title: string,
+      parsedData?: {
+        dueDate: Date | null
+        dueTime?: string | null
+        priority: Priority
+        projectId: string | null
+        statusId?: string | null
+        repeat?: RepeatConfig | null
+        tags?: string[]
+        linkedNoteIds?: string[]
+      } & Pick<CaptureBarParsed, 'fromPresets' | 'startDate' | 'reminderAt'>
+    ): void => {
+      const projectId = resolveQuickAddProject(
+        parsedData?.projectId,
+        { selectedType, selectedProject },
+        taskPrefs.defaultProjectId,
+        projects,
+        selectedProjectId
+      )
+      let dueDate = parsedData?.dueDate || null
+      const priority = parsedData?.priority || 'none'
+
+      // Presets always carry a final due date (null = the user chose no date).
+      if (!parsedData?.dueDate && !parsedData?.fromPresets) {
+        if (selectedId === 'today') {
+          dueDate = startOfDay(new Date())
+        }
+      }
+
+      const project = projects.find((p) => p.id === projectId)
+
+      let statusId: string
+      if (parsedData?.statusId && project?.statuses.some((s) => s.id === parsedData.statusId)) {
+        statusId = parsedData.statusId
+      } else {
+        const defaultStatus = project ? getDefaultTodoStatus(project) : null
+        statusId = defaultStatus?.id || project?.statuses[0]?.id || 'p-todo'
+      }
+
+      const newTask = createDefaultTask(projectId, statusId, title, dueDate)
+      newTask.priority = priority
+      newTask.dueTime = parsedData?.dueTime ?? null
+      if (parsedData?.repeat) {
+        newTask.isRepeating = true
+        newTask.repeatConfig = parsedData.repeat
+      }
+      newTask.tags = parsedData?.tags ?? []
+      newTask.linkedNoteIds = parsedData?.linkedNoteIds ?? []
+      newTask.startDate = parsedData?.startDate ?? null
+      const doneStatus = project?.statuses.find((s) => s.id === statusId)
+      if (doneStatus?.type === 'done') newTask.completedAt = new Date()
+
+      const created = undoable.createTask(newTask)
+
+      // Reminders are keyed by the stored task id, so they wait for the create.
+      const reminderAt = parsedData?.reminderAt
+      if (reminderAt) {
+        void created.then(async (taskId) => {
+          if (!taskId) return
+          try {
+            const result = await createReminderAsync({
+              targetType: 'task',
+              targetId: taskId,
+              remindAt: reminderAt.toISOString()
+            })
+            if (!result.success) {
+              toast.error(extractErrorMessage(result.error, t('reminders.toast.setFailed')))
+            }
+          } catch (err) {
+            log.error('Failed to set quick-add reminder:', err)
+            toast.error(extractErrorMessage(err, t('reminders.toast.setFailed')))
+          }
+        })
+      }
+    },
+    [
+      createReminderAsync,
+      t,
+      selectedId,
+      selectedType,
+      selectedProject,
+      selectedProjectId,
+      projects,
+      undoable,
+      taskPrefs.defaultProjectId
+    ]
+  )
+
+  const handleKanbanQuickAdd = useCallback(
+    (title: string, columnId: string): void => {
+      const project = selectedProject || projects[0]
+      if (!project) return
+
+      const status = project.statuses.find((s) => s.id === columnId)
+      const statusId = status?.id || getDefaultTodoStatus(project)?.id || project.statuses[0]?.id
+      if (!statusId) return
+
+      const newTask = createDefaultTask(project.id, statusId, title)
+
+      if (status?.type === 'done') {
+        newTask.completedAt = new Date()
+      }
+
+      void undoable.createTask(newTask)
+    },
+    [selectedProject, projects, undoable]
+  )
+
+  const handleToggleComplete = useCallback(
+    (taskId: string): void => {
+      const task = tasks.find((candidate) => candidate.id === taskId)
+      if (!task) return
+
+      const project = projects.find((p) => p.id === task.projectId)
+      if (!project) return
+
+      const currentStatus = project.statuses.find((s) => s.id === task.statusId)
+      if (!currentStatus) return
+
+      if (currentStatus.type === 'done') {
+        undoable.uncompleteTask(taskId)
+      } else {
+        undoable.completeTask(taskId)
+      }
+    },
+    [tasks, projects, undoable]
+  )
+
+  // A subtask with its own subtasks completes its whole branch, and reopening a
+  // subtask reopens its done ancestors — both through the undoable path (E1).
+  // A plain leaf keeps the "all subtasks done" behaviour of the subtask hook.
+  const handleToggleSubtaskComplete = useCallback(
+    (taskId: string): void => {
+      const task = tasks.find((candidate) => candidate.id === taskId)
+      if (!task) return
+      if (task.completedAt !== null) {
+        undoable.uncompleteTask(taskId)
+        return
+      }
+      if (task.subtaskIds.length > 0) {
+        undoable.completeTask(taskId)
+        return
+      }
+      subtaskManagement.handleCompleteSubtask(taskId)
+    },
+    [tasks, undoable, subtaskManagement]
+  )
+
+  const handleUpdateTask = useCallback(
+    (taskId: string, updates: Partial<Task>): void => {
+      undoable.updateTaskWithUndo(taskId, updates)
+    },
+    [undoable]
+  )
+
+  const _handleDeleteTask = useCallback(
+    (taskId: string): void => {
+      undoable.deleteTask(taskId)
+    },
+    [undoable]
+  )
+
+  // A task with subtasks asks once what happens to them (E2).
+  const [pendingDeleteParentId, setPendingDeleteParentId] = useState<string | null>(null)
+  const pendingDeleteParent = pendingDeleteParentId
+    ? (tasks.find((task) => task.id === pendingDeleteParentId) ?? null)
+    : null
+  const pendingDeleteBranch = useMemo(
+    () => describeBranch(pendingDeleteParentId, tasks),
+    [pendingDeleteParentId, tasks]
+  )
+
+  const handleDeleteTaskFromDrawer = useCallback(
+    (taskId: string): void => {
+      undoable.deleteTask(taskId)
+      setDetailTaskId(null)
+    },
+    [setDetailTaskId, undoable]
+  )
+
+  const confirmDeleteParent = useCallback(
+    (keepSubtasks: boolean): void => {
+      if (!pendingDeleteParentId) return
+      undoable.deleteTask(pendingDeleteParentId, keepSubtasks ? 'keep' : 'delete')
+      setPendingDeleteParentId(null)
+      setDetailTaskId(null)
+    },
+    [pendingDeleteParentId, setDetailTaskId, undoable]
+  )
+
+  const subtaskTree = useSubtaskTreeController({
+    tasks,
+    allowNested: taskPrefs.nestedSubtasks,
+    contextIds,
+    createTask: (task) => void undoable.createTask(task),
+    updateTask: undoable.updateTaskWithUndo,
+    onZoom: setZoomedTaskId,
+    openTask: handleTaskClick,
+    toggleComplete: (taskId) => {
+      const task = tasks.find((candidate) => candidate.id === taskId)
+      if (task?.parentId) handleToggleSubtaskComplete(taskId)
+      else handleToggleComplete(taskId)
+    },
+    // A task with subtasks asks first (E2); a plain one deletes with Undo.
+    deleteTask: (taskId) => {
+      const task = tasks.find((candidate) => candidate.id === taskId)
+      if (task && task.subtaskIds.length > 0) setPendingDeleteParentId(taskId)
+      else handleDeleteTaskFromDrawer(taskId)
+    }
+  })
+
+  // ========== BULK ACTION HANDLERS ==========
+
+  const handleBulkChangePriority = useCallback(
+    (priority: Priority): void => {
+      bulkActions.bulkChangePriority(priority)
+    },
+    [bulkActions]
+  )
+
+  const handleBulkChangeDueDate = useCallback(
+    (option: string): void => {
+      if (option === 'pick-date') {
+        setIsBulkDueDatePickerOpen(true)
+        return
+      }
+
+      if (option === 'remove') {
+        bulkActions.bulkChangeDueDate(null)
+        return
+      }
+
+      const today = startOfDay(new Date())
+      let newDate: Date | null = null
+
+      switch (option) {
+        case 'today':
+          newDate = today
+          break
+        case 'tomorrow':
+          newDate = addDays(today, 1)
+          break
+        case 'next-week':
+          newDate = addDays(today, 7)
+          break
+        case 'next-month':
+          newDate = addDays(today, 30)
+          break
+      }
+
+      if (newDate) {
+        bulkActions.bulkChangeDueDate(newDate)
+      }
+    },
+    [bulkActions]
+  )
+
+  const handleBulkDueDateConfirm = useCallback(
+    (date: Date, _time: string | null): void => {
+      bulkActions.bulkChangeDueDate(date)
+    },
+    [bulkActions]
+  )
+
+  const handleBulkMoveToProject = useCallback(
+    (projectId: string): void => {
+      void bulkActions.bulkMoveToProject(projectId)
+    },
+    [bulkActions]
+  )
+
+  const handleBulkChangeStatus = useCallback(
+    (statusId: string): void => {
+      bulkActions.bulkChangeStatus(statusId)
+    },
+    [bulkActions]
+  )
+
+  const handleBulkDeleteConfirm = useCallback((): void => {
+    void bulkActions.bulkDelete()
+    setIsBulkDeleteDialogOpen(false)
+  }, [bulkActions])
+
+  // ========== FILTER HANDLERS ==========
+
+  const handleSaveFilter = useCallback(
+    (name: string, filterState: TaskFilters, sortState?: TaskSort): void => {
+      saveFilter(name, filterState, sortState)
+      toast.success(t('toasts.filterSaved'), {
+        description: `"${name}" has been saved to your filters.`
+      })
+    },
+    [saveFilter, t]
+  )
+
+  const handleDeleteSavedFilter = useCallback(
+    (filterId: string): void => {
+      deleteSavedFilter(filterId)
+      if (activeSavedFilterId === filterId) {
+        setActiveSavedFilterId(null)
+        clearFilters()
+      }
+      toast.success(t('toasts.filterDeleted'))
+    },
+    [deleteSavedFilter, activeSavedFilterId, clearFilters, setActiveSavedFilterId, t]
+  )
+
+  const handleApplySavedFilter = useCallback(
+    (savedFilter: SavedFilter): void => {
+      if (activeSavedFilterId === savedFilter.id) {
+        clearFilters()
+        setActiveSavedFilterId(null)
+        return
+      }
+      updateFilters(savedFilter.filters)
+      if (savedFilter.sort) {
+        updateSort(savedFilter.sort)
+      }
+      setActiveSavedFilterId(savedFilter.id)
+      toast.success(t('toasts.filterApplied', { name: savedFilter.name }))
+    },
+    [activeSavedFilterId, updateFilters, updateSort, clearFilters, setActiveSavedFilterId, t]
+  )
+
+  const currentProjectStatuses = useMemo(() => {
+    if (selectedType === 'project' && selectedProject) {
+      return selectedProject.statuses
+    }
+    if (selectedProjectId) {
+      const proj = projects.find((p) => p.id === selectedProjectId)
+      if (proj) return proj.statuses
+    }
+    return []
+  }, [selectedType, selectedProject, selectedProjectId, projects])
+
+  return (
+    <SubtaskTreeContext.Provider value={subtaskTree.value}>
+      <div className={cn('relative h-full flex overflow-hidden', className)}>
+        {/* Main Content Area */}
+        <main
+          className="relative flex-1 min-w-0 flex flex-col overflow-hidden"
+          onScrollCapture={handleScrollCapture}
+        >
+          {/* Page Header — compact single-row toolbar */}
+          <PageToolbar
+            data-scrolled={isScrolled || undefined}
+            className="page-chrome z-30 px-2 py-1 min-h-[38px] border-b-0"
+          >
+            <TasksTabBar
+              activeTab={activeInternalTab}
+              onTabChange={handleTabChange}
+              isArchivedScope={isArchivedScope}
+              onArchivedScopeChange={handleArchivedScopeChange}
+              counts={tabCounts}
+              projects={projects}
+              selectedProjectId={selectedProjectId}
+              onProjectChange={setSelectedProjectId}
+              onProjectEdit={handleEditProject}
+              defaultProjectId={taskPrefs.defaultProjectId}
+              onDefaultProjectChange={(projectId) => void handleDefaultProjectChange(projectId)}
+              savedFilters={starredFilters}
+              activeSavedFilterId={activeSavedFilterId}
+              onApplySavedFilter={handleApplySavedFilter}
+              onUnstarSavedFilter={toggleStarFilter}
+            />
+
+            {/* Inline Quick-Add Input */}
+            <CaptureBar
+              className="grow shrink basis-0 min-w-0"
+              ariaLabel={t('quickAdd.label')}
+              placeholder={t('quickAdd.placeholder')}
+              accentColor={quickAddProjectColor}
+              quickAdd={{ projects }}
+              presets={quickAddPresets}
+              onSubmit={handleQuickAdd}
+              onOpenDetail={handleOpenAddTaskModal}
+              focusSignal={focusQuickAddSignal}
+            />
+
+            {/* Filter Button */}
+            <TooltipProvider delayDuration={0}>
+              <Tooltip>
+                <FilterDropdown
+                  open={isFilterDropdownOpen}
+                  onOpenChange={setIsFilterDropdownOpen}
+                  filters={filters}
+                  onUpdateFilters={updateFiltersAndClearSaved}
+                  onClearFilters={clearFiltersAndClearSaved}
+                  tasks={baseFilteredTasks}
+                  projects={projects}
+                  noteIndex={noteIndex}
+                  savedFilters={savedFilters}
+                  activeSavedFilterId={activeSavedFilterId}
+                  hasActiveFilters={filtersActive}
+                  onDeleteSavedFilter={handleDeleteSavedFilter}
+                  onApplySavedFilter={handleApplySavedFilter}
+                  onSaveFilter={(name) => handleSaveFilter(name, filters, sort)}
+                  onToggleStarFilter={toggleStarFilter}
+                  statuses={currentProjectStatuses}
+                >
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={t('filters.filter')}
+                      className={cn(
+                        'flex items-center justify-center shrink-0 rounded-[5px] p-1.5 gap-1',
+                        'transition-all duration-150 ease-out active:scale-95',
+                        isFilterDropdownOpen || filtersActive
+                          ? 'bg-foreground/5 text-foreground/90'
+                          : 'text-muted-foreground hover:bg-surface-active/50'
+                      )}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 13 13" fill="none">
+                        <path
+                          d="M2 3h9M3.5 6.5h6M5 10h3"
+                          stroke="currentColor"
+                          strokeWidth="1.1"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      {filtersActive && (
+                        <span className="flex items-center justify-center size-[14px] rounded-full bg-foreground text-background text-[9px] font-bold">
+                          {countActiveFilters(filters)}
+                        </span>
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                </FilterDropdown>
+                <TooltipContent side="bottom">{t('filters.filter')}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+
+            {/* Group By Button */}
+            <GroupByDropdown sort={sort} onChange={updateSort} />
+
+            {/* View Mode Switcher */}
+            {availableViews.length > 1 && !isArchivedScope && (
+              <LayoutGroup id={viewModeGroupId}>
+                <div
+                  className="flex items-center shrink-0 rounded-[5px] overflow-clip border border-border"
+                  role="radiogroup"
+                  aria-label={t('page.viewMode.label')}
+                >
+                  <button
+                    type="button"
+                    // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
+                    role="radio"
+                    aria-checked={activeView === 'list'}
+                    aria-label={t('page.viewMode.list')}
+                    onClick={() => setActiveView('list')}
+                    className={cn(
+                      'relative flex items-center justify-center w-[26px] h-6 shrink-0',
+                      'transition-colors duration-150 active:scale-[0.97]',
+                      activeView === 'list'
+                        ? 'text-foreground'
+                        : 'text-text-tertiary hover:text-text-secondary'
+                    )}
+                  >
+                    {activeView === 'list' && (
+                      <motion.span
+                        layoutId="tasks-view-mode-pill"
+                        aria-hidden="true"
+                        transition={
+                          prefersReducedMotion
+                            ? { duration: 0 }
+                            : { type: 'spring', bounce: 0, duration: 0.3 }
+                        }
+                        className="absolute inset-0 bg-foreground/10"
+                      />
+                    )}
+                    <svg
+                      className="relative z-10"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 13 13"
+                      fill="none"
+                    >
+                      <path
+                        d="M2 3.5h9M2 6.5h9M2 9.5h9"
+                        stroke="currentColor"
+                        strokeWidth="1.1"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                  {availableViews.includes('kanban') && (
+                    <button
+                      type="button"
+                      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA radio segmented control; native radio input would change the visuals
+                      role="radio"
+                      aria-checked={activeView === 'kanban'}
+                      aria-label={t('page.viewMode.kanban')}
+                      onClick={() => setActiveView('kanban')}
+                      className={cn(
+                        'relative flex items-center justify-center w-[26px] h-6 shrink-0',
+                        'transition-colors duration-150 active:scale-[0.97]',
+                        activeView === 'kanban'
+                          ? 'text-foreground'
+                          : 'text-text-tertiary hover:text-text-secondary'
+                      )}
+                    >
+                      {activeView === 'kanban' && (
+                        <motion.span
+                          layoutId="tasks-view-mode-pill"
+                          aria-hidden="true"
+                          transition={
+                            prefersReducedMotion
+                              ? { duration: 0 }
+                              : { type: 'spring', bounce: 0, duration: 0.3 }
+                          }
+                          className="absolute inset-0 bg-foreground/10"
+                        />
+                      )}
+                      <svg
+                        className="relative z-10"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 13 13"
+                        fill="none"
+                      >
+                        <rect
+                          x="1.5"
+                          y="2"
+                          width="2.5"
+                          height="9"
+                          rx="0.75"
+                          stroke="currentColor"
+                        />
+                        <rect
+                          x="5.25"
+                          y="2"
+                          width="2.5"
+                          height="6.5"
+                          rx="0.75"
+                          stroke="currentColor"
+                        />
+                        <rect
+                          x="9"
+                          y="2"
+                          width="2.5"
+                          height="4.5"
+                          rx="0.75"
+                          stroke="currentColor"
+                        />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </LayoutGroup>
+            )}
+          </PageToolbar>
+
+          {/* Active Filter Chips */}
+          {showFilterBar && (
+            <FilterBar
+              filters={filters}
+              projects={projects}
+              noteIndex={noteIndex}
+              onUpdateFilters={updateFiltersAndClearSaved}
+              onClearFilters={clearFiltersAndClearSaved}
+              onSaveFilter={() => setIsFilterDropdownOpen(true)}
+              isSaved={activeSavedFilterId !== null}
+            />
+          )}
+
+          {/* Bulk Action Toolbar - floating bottom-center bar (folder-view style) */}
+          {hasSelection && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-4">
+              <BulkActionToolbar
+                className="pointer-events-auto"
+                selectedCount={selectedCount}
+                onComplete={(...args) => void bulkActions.bulkComplete(...args)}
+                onChangePriority={handleBulkChangePriority}
+                onChangeDueDate={handleBulkChangeDueDate}
+                onMoveToProject={handleBulkMoveToProject}
+                onChangeStatus={handleBulkChangeStatus}
+                onArchive={(...args) => void bulkActions.bulkArchive(...args)}
+                onUnarchive={(...args) => void bulkActions.bulkUnarchive(...args)}
+                isArchivedScope={isArchivedScope}
+                onDelete={() => setIsBulkDeleteDialogOpen(true)}
+                onCancel={deselectAll}
+                projects={projects}
+                statuses={currentProjectStatuses}
+                showStatusAction={false}
+              />
+            </div>
+          )}
+
+          {/* Zoomed into one branch (A2): replaces the list until the user zooms out */}
+          {zoomedTask && zoomedProject && (
+            <ZoomedBranchView
+              task={zoomedTask}
+              tasks={tasks.filter((task) => !task.archivedAt)}
+              project={zoomedProject}
+              onZoom={setZoomedTaskId}
+              onToggleComplete={handleToggleComplete}
+              onToggleSubtaskComplete={handleToggleSubtaskComplete}
+              onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+              onTaskClick={handleTaskClick}
+            />
+          )}
+
+          {/* No entrance animation: a tab/view switch paints immediately */}
+          <div
+            key={`${activeInternalTab}:${isArchivedScope ? 'archived' : ''}:${effectiveView}`}
+            className={cn(
+              'flex flex-1 min-h-0 flex-col overflow-hidden',
+              zoomedTask && zoomedProject && 'hidden'
+            )}
+          >
+            {/* Content Body - due-date window (flat listing, overdue first) */}
+            {windowFilteredTasks !== null && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {showFilterEmptyState ? (
+                  <FilterEmptyState
+                    filters={filters}
+                    projects={projects}
+                    onClearFilters={clearFiltersAndClearSaved}
+                  />
+                ) : (
+                  <DateViewContext.Provider value={dateView}>
+                    <TaskList
+                      tasks={windowFilteredTasks}
+                      projects={projects}
+                      // Doubles as the scroll-position key, so each window scrolls
+                      // independently.
+                      selectedId={activeInternalTab}
+                      selectedType="view"
+                      onToggleComplete={handleToggleComplete}
+                      onUpdateTask={handleUpdateTask}
+                      onToggleSubtaskComplete={handleToggleSubtaskComplete}
+                      onQuickAdd={handleQuickAdd}
+                      onFocusQuickAdd={focusQuickAdd}
+                      onTaskClick={handleTaskClick}
+                      onNoteClick={(...args) => void handleNoteClick(...args)}
+                      selectedTaskId={detailTaskId}
+                      isSelectionMode={selection.isSelectionMode}
+                      selectedIds={selection.selectedIds}
+                      onToggleSelect={toggleTask}
+                      onShiftSelect={selectRange}
+                      onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                      onAddSubtask={subtaskManagement.handleAddSubtask}
+                      sortField={sort.field}
+                      sortDirection={sort.direction}
+                      showProjectBadge={!selectedProjectId}
+                      doneTasks={doneTasks}
+                      getOrderedTasks={getOrderedTasks}
+                    />
+                  </DateViewContext.Provider>
+                )}
+              </div>
+            )}
+
+            {/* Content Body - All Tab (List View), and the archived scope */}
+            {(activeInternalTab === 'all' || isArchivedScope) && effectiveView === 'list' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                {showFilterEmptyState ? (
+                  <FilterEmptyState
+                    filters={filters}
+                    projects={projects}
+                    onClearFilters={clearFiltersAndClearSaved}
+                  />
+                ) : (
+                  <TaskList
+                    tasks={filteredTasks}
+                    projects={projects}
+                    selectedId="all"
+                    selectedType="view"
+                    onToggleComplete={handleToggleComplete}
+                    onUpdateTask={handleUpdateTask}
+                    onToggleSubtaskComplete={handleToggleSubtaskComplete}
+                    onQuickAdd={handleQuickAdd}
+                    onFocusQuickAdd={focusQuickAdd}
+                    onTaskClick={handleTaskClick}
+                    onNoteClick={(...args) => void handleNoteClick(...args)}
+                    selectedTaskId={detailTaskId}
+                    isSelectionMode={selection.isSelectionMode}
+                    selectedIds={selection.selectedIds}
+                    onToggleSelect={toggleTask}
+                    onShiftSelect={selectRange}
+                    onReorderSubtasks={subtaskManagement.handleReorderSubtasks}
+                    onAddSubtask={subtaskManagement.handleAddSubtask}
+                    sortField={sort.field}
+                    sortDirection={sort.direction}
+                    showProjectBadge={!selectedProjectId}
+                    doneTasks={doneTasks}
+                    getOrderedTasks={getOrderedTasks}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Kanban View - All Tab */}
+            {activeInternalTab === 'all' && !isArchivedScope && effectiveView === 'kanban' && (
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <KanbanBoard
+                  tasks={kanbanTasks}
+                  projects={projects}
+                  selectedId="all"
+                  selectedType="view"
+                  selectedProjectId={selectedProjectId}
+                  sortField={sort.field}
+                  getOrderedTasks={getOrderedTasks}
+                  onUpdateTask={handleUpdateTask}
+                  onToggleComplete={handleToggleComplete}
+                  onTaskClick={handleTaskClick}
+                  onQuickAdd={handleKanbanQuickAdd}
+                  isSelectionMode={selection.isSelectionMode}
+                  selectedIds={selection.selectedIds}
+                  onToggleSelect={toggleTask}
+                />
+              </div>
+            )}
+          </div>
+        </main>
+
+        {/* Task Detail Drawer */}
+        <TaskDetailDrawer
+          key={detailTask?.id ?? 'none'}
+          task={detailTask}
+          // Opened off the RESOLVED task, not the id. `detailTask` is found
+          // synchronously in `tasks`, so an id with no task behind it is always
+          // a dead id — and the drawer's close button lives inside its `task &&`
+          // branch, so opening on one paints a full-width blank panel the user
+          // cannot dismiss. `useResolvedEntityId` clears such an id, but only
+          // once the task list has loaded; this closes the window before that.
+          isOpen={detailTask !== null}
+          onClose={handleCloseDetail}
+          tasks={tasks}
+          projects={projects}
+          onToggleComplete={handleToggleComplete}
+          onUpdateTask={handleUpdateTask}
+          onAddSubtask={subtaskTree.value.addSubtask}
+          onNoteClick={(...args) => void handleNoteClick(...args)}
+          onCanvasClick={handleCanvasClick}
+          onDeleteTask={handleDeleteTaskFromDrawer}
+          onDeleteParentTask={setPendingDeleteParentId}
+          onOpenTask={handleTaskClick}
+        />
+      </div>
+
+      {/* Add Task Modal */}
+      <AddTaskModal
+        isOpen={isAddTaskModalOpen}
+        onClose={handleAddTaskModalClose}
+        onAddTask={handleAddTaskFromModal}
+        projects={projects}
+        defaultProjectId={addTaskPrefillProjectId || modalDefaultProjectId}
+        defaultDueDate={addTaskPrefillDueDate || modalDefaultDueDate}
+        prefillTitle={addTaskPrefillTitle}
+      />
+
+      {/* Project Modal */}
+      <ProjectModal
+        isOpen={isProjectModalOpen}
+        onClose={() => {
+          setIsProjectModalOpen(false)
+          setEditingProject(null)
+        }}
+        onSave={(...args) => void handleSaveProject(...args)}
+        onDelete={() => {
+          if (editingProject) {
+            void handleDeleteProject(editingProject.id)
+          }
+        }}
+        project={editingProject}
+      />
+
+      {/* Bulk Delete Dialog */}
+      <BulkDeleteDialog
+        open={isBulkDeleteDialogOpen}
+        onClose={() => setIsBulkDeleteDialogOpen(false)}
+        tasks={bulkActions.getSelectedTasks()}
+        onConfirm={handleBulkDeleteConfirm}
+      />
+
+      {/* Bulk Due Date Picker */}
+      <BulkDueDatePicker
+        open={isBulkDueDatePickerOpen}
+        onClose={() => setIsBulkDueDatePickerOpen(false)}
+        taskCount={selectedCount}
+        onConfirm={handleBulkDueDateConfirm}
+      />
+
+      {/* All Subtasks Complete Dialog */}
+      <AllSubtasksCompleteDialog
+        isOpen={subtaskManagement.allSubtasksCompleteDialogOpen}
+        parentTitle={subtaskManagement.pendingAutoCompleteParent?.title || ''}
+        subtaskCount={
+          subtaskManagement.pendingAutoCompleteParent
+            ? getSubtasks(subtaskManagement.pendingAutoCompleteParent.id, tasks).length
+            : 0
+        }
+        onClose={subtaskManagement.closeAllSubtasksCompleteDialog}
+        onKeepOpen={subtaskManagement.keepParentOpen}
+        onCompleteParent={subtaskManagement.autoCompleteParent}
+      />
+
+      {/* Bulk Due Date Dialog for Subtasks */}
+      <BulkDueDateDialog
+        isOpen={subtaskManagement.bulkDueDateDialogOpen}
+        parentTitle={subtaskManagement.pendingBulkOperationParent?.title || ''}
+        subtaskCount={subtaskManagement.pendingBulkOperationSubtasks.length}
+        completedCount={
+          subtaskManagement.pendingBulkOperationSubtasks.filter((s) => s.completedAt !== null)
+            .length
+        }
+        onClose={subtaskManagement.closeBulkDueDateDialog}
+        onApply={subtaskManagement.confirmBulkDueDate}
+      />
+
+      {/* Bulk Priority Dialog for Subtasks */}
+      <BulkPriorityDialog
+        isOpen={subtaskManagement.bulkPriorityDialogOpen}
+        parentTitle={subtaskManagement.pendingBulkOperationParent?.title || ''}
+        subtaskCount={subtaskManagement.pendingBulkOperationSubtasks.length}
+        completedCount={
+          subtaskManagement.pendingBulkOperationSubtasks.filter((s) => s.completedAt !== null)
+            .length
+        }
+        onClose={subtaskManagement.closeBulkPriorityDialog}
+        onApply={subtaskManagement.confirmBulkPriority}
+      />
+
+      {/* Delete All Subtasks Dialog */}
+      <DeleteAllSubtasksDialog
+        isOpen={subtaskManagement.deleteAllSubtasksDialogOpen}
+        parentTitle={subtaskManagement.pendingBulkOperationParent?.title || ''}
+        subtasks={subtaskManagement.pendingBulkOperationSubtasks}
+        onClose={subtaskManagement.closeDeleteAllSubtasksDialog}
+        onConfirm={subtaskManagement.confirmDeleteAllSubtasks}
+      />
+
+      {/* Delete a task that has subtasks (E2) */}
+      <DeleteParentDialog
+        open={pendingDeleteParent !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteParentId(null)
+        }}
+        parent={pendingDeleteParent}
+        branch={pendingDeleteBranch}
+        onConfirm={confirmDeleteParent}
+      />
+
+      {/* Move under… picker (B2) */}
+      <MoveUnderDialog
+        task={
+          subtaskTree.moveUnderTaskId
+            ? (tasks.find((task) => task.id === subtaskTree.moveUnderTaskId) ?? null)
+            : null
+        }
+        tasks={tasks}
+        projects={projects}
+        onClose={subtaskTree.closeMoveUnder}
+      />
+    </SubtaskTreeContext.Provider>
+  )
+}

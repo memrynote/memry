@@ -1,0 +1,250 @@
+import { type FC, useState, useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
+import { Popover, PopoverContent, PopoverAnchor } from '@/components/ui/popover'
+import { Button } from '@/components/ui/button'
+import { useTasksOptional } from '@/contexts/tasks'
+import { tasksService, type TaskCreateInput } from '@/services/tasks-service'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import { resolveProjectIdForNoteTask } from '@/lib/note-task-project'
+import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
+import { getI18n } from 'react-i18next'
+
+interface TaskCreationPopoverProps {
+  isOpen: boolean
+  anchorRef: RefObject<HTMLElement | null>
+  title: string
+  noteId?: string
+  onCreated: (taskId: string, title: string) => void
+  onCancel: () => void
+}
+
+const PRIORITY_OPTIONS = [
+  { value: 0, label: 'None', color: 'bg-stone-300 dark:bg-stone-600' },
+  { value: 1, label: 'Low', color: 'bg-sky-400' },
+  { value: 2, label: 'Medium', color: 'bg-amber-400' },
+  { value: 3, label: 'High', color: 'bg-orange-500' },
+  { value: 4, label: 'Urgent', color: 'bg-red-500' }
+] as const
+
+export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
+  isOpen,
+  anchorRef,
+  title,
+  noteId,
+  onCreated,
+  onCancel
+}) => {
+  const tasksCtx = useTasksOptional()
+  const projects = useMemo(
+    () => tasksCtx?.projects?.filter((p) => !p.isArchived) ?? [],
+    [tasksCtx?.projects]
+  )
+  // The note's own project decides the pre-selected one (#2271). Null until
+  // that read settles, so the form mounts once with the right project instead
+  // of showing the inbox and swapping under the user. Cleared on close too:
+  // otherwise the next open mounts the form against the previous note's
+  // answer and then remounts on the new one, throwing away a priority or due
+  // date the user had already picked.
+  const [defaultProjectId, setDefaultProjectId] = useState<string | null>(null)
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    if (!isOpen) setDefaultProjectId(null)
+  }
+
+  useEffect(() => {
+    if (!isOpen) return undefined
+    let cancelled = false
+    void resolveProjectIdForNoteTask({ noteId, projects }).then((projectId) => {
+      if (!cancelled) setDefaultProjectId(projectId ?? '')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [isOpen, noteId, projects])
+
+  return (
+    <Popover open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+      {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- radix `virtualRef` takes a non-null RefObject; the popover opens only once the anchor element exists */}
+      <PopoverAnchor virtualRef={anchorRef as RefObject<HTMLElement>} />
+      <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-3">
+        {isOpen && defaultProjectId !== null && (
+          <TaskCreationPopoverForm
+            key={`${title}-${noteId ?? ''}-${defaultProjectId}`}
+            title={title}
+            noteId={noteId}
+            projects={projects}
+            defaultProjectId={defaultProjectId}
+            onCreated={onCreated}
+            onCancel={onCancel}
+          />
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
+interface TaskCreationPopoverFormProps {
+  title: string
+  noteId?: string
+  projects: Array<{ id: string; name: string }>
+  defaultProjectId: string
+  onCreated: (taskId: string, title: string) => void
+  onCancel: () => void
+}
+
+const TaskCreationPopoverForm: FC<TaskCreationPopoverFormProps> = ({
+  title,
+  noteId,
+  projects,
+  defaultProjectId,
+  onCreated,
+  onCancel
+}) => {
+  const { t: tPhaseF } = useT('notes')
+  const [projectId, setProjectId] = useState(defaultProjectId)
+  const [priority, setPriority] = useState(0)
+  const [dueDate, setDueDate] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const createBtnRef = useRef<HTMLButtonElement>(null)
+
+  // The block's text is the title, and a task block can be empty. Creating from
+  // it would fail the `min(1)` contract with a message the user cannot act on.
+  const trimmedTitle = title.trim()
+
+  const handleCreate = useCallback((): void => {
+    if (!projectId || !trimmedTitle || isSubmitting) return
+    setIsSubmitting(true)
+    setError(null)
+
+    const input: TaskCreateInput = {
+      projectId,
+      title: trimmedTitle,
+      priority,
+      dueDate: dueDate || null,
+      linkedNoteIds: noteId ? [noteId] : []
+    }
+
+    void (async () => {
+      try {
+        const res = await tasksService.create(input)
+        if (res.success && res.task) {
+          onCreated(res.task.id, res.task.title)
+        } else {
+          setError(res.error ?? 'Failed to create task')
+          setIsSubmitting(false)
+        }
+      } catch (err) {
+        setError(
+          extractErrorMessage(
+            err,
+            getI18n().getFixedT(null, 'notes')('phaseI.errors.failedToCreateTask')
+          )
+        )
+        setIsSubmitting(false)
+      }
+    })()
+  }, [projectId, trimmedTitle, priority, dueDate, noteId, isSubmitting, onCreated])
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault()
+        handleCreate()
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onCancel()
+      }
+    },
+    [handleCreate, onCancel]
+  )
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- delegating wrapper: handlers observe events bubbling from interactive children; the element is not itself a control
+    <div className="space-y-3" onKeyDown={handleKeyDown}>
+      <div className="truncate text-sm font-medium">{title}</div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.project')}
+        </label>
+        <select
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className={cn(
+            'w-full rounded-md border bg-transparent px-2 py-1.5 text-sm',
+            'focus:outline-none focus:ring-1 focus:ring-ring'
+          )}
+        >
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.priority')}
+        </label>
+        <div className="flex items-center gap-1.5">
+          {PRIORITY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setPriority(opt.value)}
+              title={opt.label}
+              aria-label={opt.label}
+              className={cn(
+                'size-5 rounded-full transition-all',
+                opt.color,
+                priority === opt.value
+                  ? 'ring-2 ring-ring ring-offset-1 ring-offset-background scale-110'
+                  : 'opacity-50 hover:opacity-80'
+              )}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-xs text-muted-foreground">
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.dueDate')}
+        </label>
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+          aria-label={tPhaseF(
+            'phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.dueDate'
+          )}
+          className={cn(
+            'w-full rounded-md border bg-transparent px-2 py-1.5 text-sm',
+            'focus:outline-none focus:ring-1 focus:ring-ring'
+          )}
+        />
+      </div>
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
+
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSubmitting}>
+          {tPhaseF('phaseF.componentsNoteContentAreaTaskBlockTaskCreationPopover.cancel')}
+        </Button>
+        <Button
+          ref={createBtnRef}
+          size="sm"
+          onClick={handleCreate}
+          disabled={!projectId || !trimmedTitle || isSubmitting}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- input opens inside a popover/dialog the user just invoked, so focus must land here
+          autoFocus
+        >
+          {isSubmitting ? 'Creating...' : 'Create'}
+        </Button>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,21 @@
+import type { CalendarEventColor } from '@memry/contracts/calendar-colors'
+
+export interface CalendarEventDraft {
+  title: string
+  description: string
+  isAllDay: boolean
+  startAt: string
+  endAt: string
+  /** M2: Google calendar this event should be pushed to. Null = fall through to default. */
+  targetCalendarId: string | null
+  /** Create mode only: project to link the event to once it has an id. */
+  projectId: string | null
+  color: CalendarEventColor | null
+}
+
+export interface AnchorRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}

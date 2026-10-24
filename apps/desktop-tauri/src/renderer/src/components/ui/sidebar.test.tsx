@@ -1,0 +1,374 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Activity } from 'react'
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import { useCommandDispatcher } from '@/commands'
+import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
+import { __setShortcutOverridesForTests } from '@/lib/shortcut-bindings'
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInput,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSkeleton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarSeparator,
+  SidebarTrigger,
+  useSidebar
+} from './sidebar'
+
+const mocks = vi.hoisted(() => ({
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() }
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => mocks.logger
+}))
+
+function SidebarStateProbe(): React.JSX.Element {
+  const { state } = useSidebar()
+  return <div data-testid="sidebar-state">{state}</div>
+}
+
+function SidebarWidthProbe(): React.JSX.Element {
+  const { sidebarWidth } = useSidebar()
+  return <div data-testid="sidebar-width">{sidebarWidth}</div>
+}
+
+function sidebarToggleShortcutInit(): KeyboardEventInit {
+  return isMac ? { metaKey: true } : { ctrlKey: true }
+}
+
+function setWindowWidth(width: number): void {
+  Object.defineProperty(window, 'innerWidth', {
+    configurable: true,
+    value: width
+  })
+}
+
+// The keystrokes reach the sidebar through the app's one command dispatcher.
+let dispatcher: { unmount: () => void }
+
+describe('SidebarProvider shortcuts', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setWindowWidth(1024)
+    dispatcher = renderHook(() => useCommandDispatcher())
+  })
+
+  afterEach(() => {
+    dispatcher.unmount()
+    act(() => {
+      __setShortcutOverridesForTests({})
+    })
+  })
+
+  it('toggles the desktop sidebar with Meta/Ctrl+B', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+  })
+
+  it('leaves Meta/Ctrl+B to the editor while the caret is in rich text', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+        <div
+          data-testid="rich-text"
+          contentEditable="true"
+          suppressContentEditableWarning
+          tabIndex={-1}
+        />
+      </SidebarProvider>
+    )
+
+    const editor = screen.getByTestId('rich-text')
+    editor.focus()
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    // Bold owns the chord here — the sidebar must not move too.
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+
+    editor.blur()
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('toggles on a rebound chord and ignores the replaced one', () => {
+    __setShortcutOverridesForTests({
+      'view.toggleSidebar': { key: 'b', modifiers: { alt: true } }
+    })
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+
+    fireEvent.keyDown(window, { key: 'b', altKey: true })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('collapses the desktop sidebar when a resize drag passes below the minimum width', () => {
+    const { container } = render(
+      <SidebarProvider defaultOpen>
+        <Sidebar side="left">
+          <SidebarRail />
+        </Sidebar>
+        <SidebarStateProbe />
+        <SidebarWidthProbe />
+      </SidebarProvider>
+    )
+
+    const rail = container.querySelector<HTMLButtonElement>('[data-sidebar="rail"]')
+    expect(rail).not.toBeNull()
+
+    fireEvent.mouseDown(rail!, { clientX: 256 })
+    fireEvent.mouseMove(document, { clientX: 10 })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+    expect(screen.getByTestId('sidebar-width')).toHaveTextContent('171')
+
+    fireEvent.mouseUp(document)
+  })
+
+  it('renders the exported desktop sidebar building blocks', () => {
+    const { container } = render(
+      <SidebarProvider defaultOpen={false}>
+        <Sidebar side="right" variant="floating" collapsible="icon">
+          <SidebarHeader>
+            <SidebarInput aria-label="Search" />
+          </SidebarHeader>
+          <SidebarSeparator />
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel asChild>
+                <span>Group</span>
+              </SidebarGroupLabel>
+              <SidebarGroupAction asChild aria-label="Add">
+                <button type="button">+</button>
+              </SidebarGroupAction>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton tooltip="Open notes" isActive size="lg" variant="outline">
+                      <span>Notes</span>
+                    </SidebarMenuButton>
+                    <SidebarMenuAction showOnHover aria-label="More" />
+                    <SidebarMenuBadge>2</SidebarMenuBadge>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuSkeleton showIcon />
+                  </SidebarMenuItem>
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton href="#sub" size="sm" isActive>
+                        Sub
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>Footer</SidebarFooter>
+          <SidebarRail />
+        </Sidebar>
+        <SidebarInset>Inset</SidebarInset>
+        <SidebarTrigger aria-label="Toggle" />
+      </SidebarProvider>
+    )
+
+    expect(container.querySelector('[data-slot="sidebar-input"]')).not.toBeNull()
+    expect(container.querySelector('[data-slot="sidebar-separator"]')).not.toBeNull()
+    expect(container.querySelector('[data-slot="sidebar-menu-badge"]')).toHaveTextContent('2')
+    expect(container.querySelector('[data-slot="sidebar-menu-skeleton"]')).not.toBeNull()
+    expect(container.querySelector('[data-slot="sidebar-menu-sub-button"]')).toHaveTextContent(
+      'Sub'
+    )
+    expect(container.querySelector('[data-slot="sidebar-inset"]')).toHaveTextContent('Inset')
+
+    fireEvent.click(screen.getByLabelText('Toggle'))
+    expect(container.querySelector('[data-slot="sidebar"]')).toHaveAttribute(
+      'data-state',
+      'expanded'
+    )
+  })
+
+  it('throws when useSidebar is read outside a provider', () => {
+    expect(() => render(<SidebarStateProbe />)).toThrow(
+      'useSidebar must be used within a SidebarProvider.'
+    )
+  })
+})
+
+describe('SidebarProvider open-state persistence', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setWindowWidth(1024)
+    mocks.logger.error.mockClear()
+    dispatcher = renderHook(() => useCommandDispatcher())
+  })
+
+  afterEach(() => {
+    dispatcher.unmount()
+    vi.restoreAllMocks()
+  })
+
+  it('restores a collapsed sidebar from localStorage on mount', () => {
+    localStorage.setItem('sidebar_open', 'false')
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('falls back to defaultOpen when the key was never written', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+    expect(localStorage.getItem('sidebar_open')).toBeNull()
+  })
+
+  it('writes the open state to localStorage on toggle', () => {
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+    expect(localStorage.getItem('sidebar_open')).toBe('false')
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(localStorage.getItem('sidebar_open')).toBe('true')
+  })
+
+  it('stays collapsed across a remount, which is what a vault switch does', () => {
+    // App.tsx keys SidebarProvider by vaultPath, so switching vaults remounts it.
+    const first = render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+
+    first.unmount()
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+  })
+
+  it('logs and falls back to defaultOpen when the read throws', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation((key: string) => {
+      if (key === 'sidebar_open') throw new Error('storage blocked')
+      return null
+    })
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('expanded')
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('sidebar open state'),
+      expect.any(Error)
+    )
+  })
+
+  it('shares one open state across providers, so a kept vault workspace comes back current', () => {
+    // Two vault workspaces: the second is kept mounted but hidden.
+    const view = (hideSecond: boolean) => (
+      <>
+        <SidebarProvider defaultOpen>
+          <SidebarStateProbe />
+        </SidebarProvider>
+        <Activity mode={hideSecond ? 'hidden' : 'visible'}>
+          <SidebarProvider defaultOpen>
+            <SidebarStateProbe />
+          </SidebarProvider>
+        </Activity>
+      </>
+    )
+    const { rerender } = render(view(true))
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+    rerender(view(false))
+
+    const states = screen.getAllByTestId('sidebar-state').map((el) => el.textContent)
+    expect(states).toEqual(['collapsed', 'collapsed'])
+  })
+
+  it('logs and keeps toggling when the write throws', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation((key: string) => {
+      if (key === 'sidebar_open') throw new Error('storage blocked')
+    })
+
+    render(
+      <SidebarProvider defaultOpen>
+        <SidebarStateProbe />
+      </SidebarProvider>
+    )
+
+    fireEvent.keyDown(window, { key: 'b', ...sidebarToggleShortcutInit() })
+
+    expect(screen.getByTestId('sidebar-state')).toHaveTextContent('collapsed')
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('sidebar open state'),
+      expect.any(Error)
+    )
+  })
+})

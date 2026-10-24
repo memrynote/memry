@@ -1,0 +1,229 @@
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode
+} from 'react'
+import {
+  tasksService,
+  onProjectUpdated,
+  onTaskCreated,
+  onTaskMoved,
+  onTaskUpdated,
+  type Task
+} from '@/services/tasks-service'
+import type { TaskParents } from '../hooks/task-block-marquee-indent'
+import { useTasksOptional } from '@/contexts/tasks'
+import {
+  loadNoteTaskProjectContext,
+  resolveNoteTaskProjectId,
+  type NoteTaskProjectContext
+} from '@/lib/note-task-project'
+import { createLogger } from '@/lib/logger'
+import { ACTIVE_TASK_REMINDERS, useReminders } from '@/hooks/use-reminders'
+import { useTaskPreferences } from '@/hooks/use-task-preferences'
+
+const log = createLogger('TaskPrefetch')
+
+const EMPTY_REMINDER_TASK_IDS: ReadonlySet<string> = new Set()
+
+const EMPTY_PROJECT_CONTEXT: NoteTaskProjectContext = {
+  noteProjectIds: [],
+  settingsDefaultProjectId: null
+}
+
+interface TaskPrefetchValue {
+  /** 'loading' until the note's linked tasks have been fetched (or failed). */
+  status: 'loading' | 'ready'
+  /** Returns a prefetched task by id, or undefined if not in the batch. */
+  getCached: (taskId: string) => Task | undefined
+  /**
+   * The project a task block drafted in this note would be created in, so a
+   * draft row shows the project badge and statuses it is about to get rather
+   * than the inbox's (#2271). Null outside a note or before it resolves.
+   */
+  draftProjectId: string | null
+  /**
+   * The note these blocks live in. A task written in a note is linked to it,
+   * so the block's related-items chip leaves it out: pointing a row at the
+   * page it already sits on is noise, and unlinking it would detach the task
+   * from the note that holds its line.
+   */
+  noteId: string | null
+  /** Whether the task has a reminder still to fire. */
+  hasActiveReminder: (taskId: string) => boolean
+  /**
+   * The `tasks.nestedSubtasks` setting, false until it loads: main refuses a
+   * parent below one level with it off, so an edit made before then stays
+   * within what main accepts either way.
+   */
+  nestedSubtasks: boolean
+  /**
+   * Each task's DB parent, which owns the hierarchy: the note's block tree
+   * lists tasks below the first level flat (see `MAX_NOTE_TASK_DEPTH`), and
+   * the rows read their depth from here. A new value re-renders the rows.
+   */
+  taskParents: TaskParents
+}
+
+// Default used when a taskBlock renders outside a provider (e.g. unit tests):
+// behaves as an always-empty, already-settled cache so blocks fall back to
+// their own fetch.
+const DEFAULT_VALUE: TaskPrefetchValue = {
+  status: 'ready',
+  getCached: () => undefined,
+  draftProjectId: null,
+  noteId: null,
+  hasActiveReminder: () => false,
+  nestedSubtasks: false,
+  taskParents: { get: () => undefined, set: () => {} }
+}
+
+const TaskPrefetchContext = createContext<TaskPrefetchValue>(DEFAULT_VALUE)
+
+export function useTaskPrefetch(): TaskPrefetchValue {
+  return useContext(TaskPrefetchContext)
+}
+
+/**
+ * Fetches every task linked to the note in a single IPC call and exposes them
+ * as a synchronous cache. Without this, each taskBlock independently calls
+ * `tasksService.get`, so N tasks resolve at different times and the rows fill in
+ * "line by line". With it, all blocks read from the one batch and render their
+ * status/priority/project together.
+ */
+export function TaskPrefetchProvider({
+  noteId,
+  children
+}: {
+  noteId?: string
+  children: ReactNode
+}): ReactElement {
+  const [tasksById, setTasksById] = useState<Map<string, Task>>(() => new Map())
+  const [status, setStatus] = useState<'loading' | 'ready'>('loading')
+  const [projectContext, setProjectContext] =
+    useState<NoteTaskProjectContext>(EMPTY_PROJECT_CONTEXT)
+  const [prevNoteId, setPrevNoteId] = useState(noteId)
+  const tasksCtx = useTasksOptional()
+  // A ref so Tab over several rows in one pass reads the parents it just set.
+  const parentsRef = useRef<Map<string, string | null>>(new Map())
+  const [parentsVersion, setParentsVersion] = useState(0)
+  const taskParents = useMemo<TaskParents>(
+    () => ({
+      get: (taskId) => parentsRef.current.get(taskId),
+      set: (taskId, parentId) => {
+        if (parentsRef.current.get(taskId) === parentId) return
+        parentsRef.current.set(taskId, parentId)
+        setParentsVersion((version) => version + 1)
+      }
+    }),
+    // A new object per change, so the rows reading it re-render.
+    // oxlint-disable-next-line react/exhaustive-deps
+    [parentsVersion]
+  )
+
+  useEffect(() => {
+    const record = ({ task }: { task: Task }): void => taskParents.set(task.id, task.parentId)
+    const unsubscribers = [onTaskCreated(record), onTaskUpdated(record), onTaskMoved(record)]
+    return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+  }, [taskParents])
+
+  // Clear the cache synchronously when the note changes, at render time rather
+  // than in an effect, so blocks never read another note's tasks for a frame.
+  if (noteId !== prevNoteId) {
+    setPrevNoteId(noteId)
+    setTasksById(new Map())
+    setProjectContext(EMPTY_PROJECT_CONTEXT)
+    setStatus(noteId ? 'loading' : 'ready')
+  }
+
+  // Data-fetch effect: linked tasks are re-fetched whenever the note changes;
+  // the cache they populate isn't derivable during render. Only the async
+  // callbacks set state here, so this is not a synchronous prop-driven reset.
+  useEffect(() => {
+    if (!noteId) return undefined
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const tasks = await tasksService.getLinkedTasks(noteId)
+        if (cancelled) return
+        setTasksById(new Map(tasks.map((t) => [t.id, t])))
+        for (const t of tasks) parentsRef.current.set(t.id, t.parentId)
+        setParentsVersion((version) => version + 1)
+      } catch (err) {
+        // Non-fatal: blocks fall back to their own fetch on a cache miss.
+        log.warn('Failed to prefetch linked tasks', err)
+      } finally {
+        if (!cancelled) setStatus('ready')
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [noteId])
+
+  // The note's project links and the settings default, the two note-scoped
+  // halves of where a new task block would land. Read here rather than per
+  // block so N drafts cost one pair of IPC calls.
+  useEffect(() => {
+    if (!noteId) return undefined
+
+    let cancelled = false
+    const load = (): void => {
+      void loadNoteTaskProjectContext(noteId).then((context) => {
+        if (!cancelled) setProjectContext(context)
+      })
+    }
+    load()
+
+    // The `project` property is stored as project links, so editing it lands
+    // here as a project update. Without this subscription a draft row keeps
+    // showing the project the note had when it was opened.
+    const unsubscribe = onProjectUpdated(load)
+
+    return () => {
+      cancelled = true
+      unsubscribe()
+    }
+  }, [noteId])
+
+  const projects = tasksCtx?.projects
+  const draftProjectId = useMemo(
+    () =>
+      noteId ? resolveNoteTaskProjectId({ ...projectContext, projects: projects ?? [] }) : null,
+    [noteId, projectContext, projects]
+  )
+
+  const { reminders } = useReminders(ACTIVE_TASK_REMINDERS)
+  const reminderTaskIds = useMemo(
+    () =>
+      reminders.length
+        ? new Set(reminders.map((reminder) => reminder.targetId))
+        : EMPTY_REMINDER_TASK_IDS,
+    [reminders]
+  )
+
+  const { settings: taskSettings, isLoading: taskSettingsLoading } = useTaskPreferences()
+  const nestedSubtasks = !taskSettingsLoading && taskSettings.nestedSubtasks
+
+  const value = useMemo<TaskPrefetchValue>(
+    () => ({
+      status,
+      getCached: (taskId: string) => tasksById.get(taskId),
+      draftProjectId,
+      noteId: noteId ?? null,
+      hasActiveReminder: (taskId: string) => reminderTaskIds.has(taskId),
+      nestedSubtasks,
+      taskParents
+    }),
+    [status, tasksById, draftProjectId, noteId, reminderTaskIds, nestedSubtasks, taskParents]
+  )
+
+  return <TaskPrefetchContext.Provider value={value}>{children}</TaskPrefetchContext.Provider>
+}

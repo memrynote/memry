@@ -1,0 +1,184 @@
+import { useState, useEffect, useCallback } from 'react'
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp'
+import { Loader2, Clock } from '@/lib/icons'
+import { useT } from '@memry/i18n/renderer'
+
+interface OtpInputProps {
+  onComplete: (code: string) => void
+  onResend: () => void
+  onBack: () => void
+  isVerifying: boolean
+  isResending: boolean
+  error: string | null
+  expiresIn: number
+}
+
+function formatCountdown(s: number): string {
+  const mins = Math.floor(s / 60)
+  const secs = s % 60
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+function useCountdown(
+  initialSeconds: number,
+  onResend: () => void
+): {
+  seconds: number
+  canResend: boolean
+  reset: () => void
+} {
+  const [seconds, setSeconds] = useState(initialSeconds)
+
+  useEffect(() => {
+    if (seconds <= 0) return undefined
+
+    const countdownTimeout = setTimeout(() => {
+      setSeconds((prev) => Math.max(prev - 1, 0))
+    }, 1000)
+
+    return () => clearTimeout(countdownTimeout)
+  }, [seconds])
+
+  const reset = useCallback(() => {
+    onResend()
+    setSeconds(60)
+  }, [onResend])
+
+  return { seconds, canResend: seconds === 0, reset }
+}
+
+export function OtpInput({
+  onComplete,
+  onResend,
+  onBack,
+  isVerifying,
+  isResending,
+  error,
+  expiresIn
+}: OtpInputProps): React.JSX.Element {
+  const { t } = useT('settings')
+  const [value, setValue] = useState('')
+  const { seconds, canResend, reset } = useCountdown(expiresIn, onResend)
+
+  useEffect(() => {
+    // oxlint-disable-next-line react-you-might-not-need-an-effect/no-adjust-state-on-prop-change, react/set-state-in-effect -- genuine external sync: the verification result arrives as props from the parent, not from an event this component sees. The rule's suggested key-remount is exactly what broke here: the key included the per-second `expiresIn`, so every countdown tick remounted the input and wiped half-typed codes. Keying on a failed attempt instead leaves typing untouched.
+    if (error && !isVerifying) setValue('')
+  }, [error, isVerifying])
+
+  useEffect(() => {
+    const unsubscribe = window.api.onOtpDetected((event) => {
+      if (event.code && /^\d{6}$/.test(event.code)) {
+        setValue(event.code)
+        onComplete(event.code)
+      }
+    })
+    return unsubscribe
+  }, [onComplete])
+
+  const handleChange = useCallback(
+    (newValue: string) => {
+      setValue(newValue)
+      if (newValue.length === 6) {
+        onComplete(newValue)
+      }
+    },
+    [onComplete]
+  )
+
+  const slotClassName =
+    'h-14 w-12 rounded-lg bg-foreground/[0.03] border border-foreground/10 data-[filled]:border-[var(--tint)]/40 font-mono font-medium text-[22px]/7 shadow-none'
+
+  return (
+    <div className="space-y-5">
+      <div className="flex justify-center pb-1">
+        <InputOTP
+          maxLength={6}
+          value={value}
+          onChange={handleChange}
+          disabled={isVerifying}
+          // oxlint-disable-next-line jsx-a11y/no-autofocus -- deliberate: focus moves here when this field/dialog appears (keyboard users land on the primary input)
+          autoFocus
+          aria-label={t('setup.otp.aria')}
+        >
+          <InputOTPGroup className="gap-1.5">
+            {[0, 1, 2].map((i) => (
+              <InputOTPSlot
+                key={`otp-${i}`}
+                index={i}
+                className={slotClassName}
+                style={{ animationDelay: `${i * 60}ms` }}
+              />
+            ))}
+          </InputOTPGroup>
+
+          {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA role kept: the semantic tag (output/progress/fieldset/etc.) brings default styling/semantics that would change the layout */}
+          <div className="flex items-center justify-center w-5" role="separator" aria-hidden="true">
+            <div className="size-1 rounded-xs bg-muted-foreground/50" />
+          </div>
+
+          <InputOTPGroup className="gap-1.5">
+            {[3, 4, 5].map((i) => (
+              <InputOTPSlot
+                key={`otp-${i}`}
+                index={i}
+                className={slotClassName}
+                style={{ animationDelay: `${(i + 1) * 60}ms` }}
+              />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
+      </div>
+
+      {isVerifying && (
+        <output
+          className="flex items-center justify-center gap-2 text-sm text-muted-foreground"
+          aria-label={t('setup.otp.verifying')}
+        >
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+          {t('setup.otp.verifying')}
+        </output>
+      )}
+
+      {error && (
+        <p className="text-sm text-destructive text-center" role="alert">
+          {error}
+        </p>
+      )}
+
+      <div className="flex flex-col items-center gap-3">
+        {isResending ? (
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            <span className="text-xs">{t('setup.otp.resending')}</span>
+          </div>
+        ) : canResend ? (
+          <button
+            type="button"
+            onClick={() => {
+              setValue('')
+              reset()
+            }}
+            disabled={isVerifying}
+            className="text-[var(--tint)] text-[13px] hover:underline disabled:opacity-50"
+          >
+            {t('setup.otp.resend')}
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 text-muted-foreground/70">
+            <Clock className="w-3 h-3" />
+            <span className="text-xs tabular-nums">
+              {t('setup.otp.resendIn', { time: formatCountdown(seconds) })}
+            </span>
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[var(--tint)] text-[13px] hover:underline"
+        >
+          {t('setup.otp.differentEmail')}
+        </button>
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,284 @@
+/**
+ * WikiLink suggestion menu for BlockNote.
+ */
+
+import type { SuggestionMenuProps } from '@blocknote/react'
+import { FileAudio, FileText, Hash, PenTool, Plus, Type } from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { useT } from '@memry/i18n/renderer'
+import { NoteMenuIcon } from './note-menu-icon'
+
+type WikiLinkFileType = 'markdown' | 'pdf' | 'image' | 'audio' | 'video'
+type WikiLinkInsertMode = 'wikiLink' | 'embed'
+
+interface SuggestionBase {
+  id: string
+  title: string
+  target: string
+  alias?: string
+  exists: boolean
+  insertMode?: WikiLinkInsertMode
+}
+
+interface NoteFields {
+  /** The note's own icon: an emoji, `icon:<Name>` or `custom:<id>`. */
+  emoji?: string | null
+  lastEdited?: string
+  fileType?: WikiLinkFileType
+  mimeType?: string | null
+  fileSize?: number | null
+  /** A title or name another note shares: the folder that tells them apart. */
+  folder?: string
+}
+
+/**
+ * `heading` is a heading inside the note the query already named exactly.
+ * `headingEmpty` is that note having no heading to offer — a row rather than
+ * a separate empty state so the menu stays open while the user backspaces
+ * over the `#`, and it carries no target, so picking it does nothing.
+ * `alias` is the whole menu once both halves of `[[target|alias]]` are
+ * settled: one row that commits the display name.
+ * `canvas` is a spatial canvas — a vault item with no headings and no
+ * embed form, so it is a plain row with the canvas icon (#1983).
+ */
+export type WikiLinkSuggestionItem = SuggestionBase &
+  (
+    | ({ type: 'note' } & NoteFields)
+    | ({ type: 'noteName'; noteTitle: string } & NoteFields)
+    | { type: 'canvas' | 'create' | 'alias' | 'addName' }
+    /** `headingLevel` indents the row so the note's outline is readable. */
+    | { type: 'heading'; headingLevel: 1 | 2 | 3 | 4 | 5 | 6 }
+    /** `filtered`: whether a heading filter is what emptied the list. */
+    | { type: 'headingEmpty'; filtered: boolean }
+  )
+
+const HEADING_INDENTS = ['', 'ms-2', 'ms-4', 'ms-6', 'ms-6', 'ms-6'] as const
+
+function headingIndent(level: 1 | 2 | 3 | 4 | 5 | 6): string {
+  return HEADING_INDENTS[level - 1] ?? ''
+}
+
+export function WikiLinkMenu({
+  items,
+  loadingState,
+  selectedIndex,
+  onItemClick
+}: SuggestionMenuProps<WikiLinkSuggestionItem>) {
+  const { t } = useT('notes')
+  const embedLabel = t('menus.wiki.embed')
+  const wikiLinkLabel = t('menus.wiki.wikiLink')
+
+  if (items.length === 0 && loadingState !== 'loaded') {
+    return (
+      <div className="wiki-link-menu min-w-[220px] rounded-md border bg-popover p-2 text-sm text-muted-foreground shadow-md">
+        {t('menus.wiki.loading')}
+      </div>
+    )
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="wiki-link-menu min-w-[220px] rounded-md border bg-popover p-3 text-sm text-muted-foreground shadow-md">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 opacity-70" />
+          <span>{t('menus.wiki.empty')}</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'wiki-link-menu z-50 min-w-[220px] max-w-[360px] max-h-[300px]',
+        'overflow-y-auto rounded-md border bg-popover p-1',
+        'shadow-md animate-in fade-in-0 zoom-in-95'
+      )}
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+      role="listbox"
+      aria-label={t('menus.wiki.aria')}
+    >
+      {items.map((item, index) => {
+        const isSelected = selectedIndex === index
+        const isAudio = item.type === 'note' && item.fileType === 'audio'
+        const itemClassName = cn(
+          'wiki-link-menu-item',
+          'relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none',
+          'hover:bg-accent hover:text-accent-foreground',
+          isSelected && 'bg-accent text-accent-foreground'
+        )
+
+        if (item.type === 'headingEmpty') {
+          return (
+            <div
+              key={`${item.type}-${item.id}`}
+              className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground"
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+              role="option"
+              aria-selected={false}
+              aria-disabled
+            >
+              <Hash className="h-4 w-4 shrink-0 opacity-70" />
+              <span className="truncate">
+                {item.filtered
+                  ? t('menus.wiki.noMatchingHeadings', { title: item.title })
+                  : t('menus.wiki.noHeadings', { title: item.title })}
+              </span>
+            </div>
+          )
+        }
+
+        if (item.type === 'alias') {
+          return (
+            <button
+              type="button"
+              key={`${item.type}-${item.id}`}
+              className={itemClassName}
+              onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+              role="option"
+              aria-selected={isSelected}
+            >
+              <Type className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
+                <div className="font-medium">{t('menus.wiki.displayAs')}</div>
+                <div className="truncate text-xs text-muted-foreground">
+                  {item.alias} → {item.target}
+                </div>
+              </div>
+            </button>
+          )
+        }
+
+        if (item.type === 'heading') {
+          return (
+            <button
+              type="button"
+              key={`${item.type}-${item.id}`}
+              className={itemClassName}
+              onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+              role="option"
+              aria-selected={isSelected}
+            >
+              <Hash className="h-4 w-4 shrink-0 opacity-70" />
+              {/* Indent on the label, not the row: the row's own `px-2` and a
+                  logical `ps-*` would be two competing padding rules. */}
+              <span className={cn('truncate text-start', headingIndent(item.headingLevel))}>
+                {item.title}
+              </span>
+            </button>
+          )
+        }
+
+        if (isAudio) {
+          return (
+            <div
+              key={`${item.type}-${item.id}-${item.target}`}
+              className={itemClassName}
+              // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+              role="option"
+              aria-selected={isSelected}
+            >
+              <button
+                type="button"
+                className="flex min-w-0 flex-1 items-center gap-2 text-start outline-none"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+              >
+                <FileAudio className="h-4 w-4 shrink-0 opacity-70" />
+                <span className="truncate font-medium">{item.title}</span>
+              </button>
+              <div className="ms-2 flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-background hover:text-foreground"
+                  aria-label={t('menus.wiki.embedAria', { title: item.title })}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onItemClick?.({ ...item, insertMode: 'embed' })
+                  }}
+                >
+                  {embedLabel}
+                </button>
+                <button
+                  type="button"
+                  className="rounded border border-border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:bg-background hover:text-foreground"
+                  aria-label={t('menus.wiki.wikiLinkAria', { title: item.title })}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={(event) => {
+                    event.stopPropagation()
+                    onItemClick?.({ ...item, insertMode: 'wikiLink' })
+                  }}
+                >
+                  {wikiLinkLabel}
+                </button>
+              </div>
+            </div>
+          )
+        }
+
+        return (
+          <button
+            type="button"
+            key={`${item.type}-${item.id}-${item.target}`}
+            className={itemClassName}
+            onClick={() => onItemClick?.({ ...item, insertMode: 'wikiLink' })}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- ARIA widget pattern; native tag would change styling or behavior
+            role="option"
+            aria-selected={isSelected}
+          >
+            {item.type === 'create' || item.type === 'addName' ? (
+              <Plus className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : null}
+            {item.type === 'canvas' ? (
+              <PenTool className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+            ) : null}
+            {item.type === 'note' || item.type === 'noteName' ? (
+              <NoteMenuIcon icon={item.emoji} className="size-4" />
+            ) : null}
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-start">
+              {item.type === 'create' ? (
+                <>
+                  <div className="font-medium">{t('menus.wiki.create')}</div>
+                  <div className="text-xs text-muted-foreground">{item.target}</div>
+                </>
+              ) : item.type === 'addName' ? (
+                <div className="truncate font-medium">
+                  {t('names.addAsNameOf', { name: item.title })}
+                </div>
+              ) : item.type === 'noteName' ? (
+                <>
+                  <div className="truncate font-semibold">{item.title}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {item.folder
+                      ? t('names.menuTargetInFolder', {
+                          title: item.noteTitle,
+                          folder: item.folder
+                        })
+                      : t('names.menuTarget', { title: item.noteTitle })}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="truncate font-medium">{item.title}</div>
+                  {item.type === 'note' && item.folder ? (
+                    <div className="truncate text-xs text-muted-foreground">{item.folder}</div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </button>
+        )
+      })}
+      {/* The `|` grammar works and always has, but nothing ever said so — a
+          heading link's label was only reachable by knowing to type it. One
+          quiet footer line rather than a hint per row, which would turn the
+          list into noise. */}
+      <div className="mt-1 border-t px-2 pb-0.5 pt-1.5 text-[11px] text-muted-foreground">
+        {t('menus.wiki.aliasHint')}
+      </div>
+    </div>
+  )
+}

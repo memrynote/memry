@@ -1,0 +1,215 @@
+/**
+ * Tab Pane with Drop Zones
+ * Enhanced TabPane with drag-to-split functionality
+ */
+
+import { useState } from 'react'
+import { useDndMonitor } from '@dnd-kit/core'
+import { useTabGroup, useTabs } from '@/contexts/tabs'
+import { useDayPanel } from '@/contexts/day-panel-context'
+import { TabBarWithDrag } from '@/components/tabs'
+import { TabContent } from './tab-content'
+import { EmptyPaneState } from './empty-pane-state'
+import { SplitDropZones } from './split-drop-zones'
+import { NativeSplitDropZones } from './native-split-drop-zones'
+import { SplitPreview } from './split-preview'
+import type { DropZonePosition } from './drop-zone'
+import { cn } from '@/lib/utils'
+
+interface TabPaneWithDropZonesProps {
+  /** Group ID for this pane */
+  groupId: string
+  /** Whether this is the active/focused pane */
+  isActive: boolean
+  /** Whether this pane should reserve space for the fixed day panel */
+  reserveDayPanelSpace?: boolean
+  /** Whether this pane is the top-right one that shows the day-panel toggle */
+  showDayPanelToggle?: boolean
+  /** Whether this is the top-start pane whose tab bar hosts the window controls */
+  reserveWindowControls?: boolean
+  /** Whether this pane touches the window top (see SplitLayoutRenderer) */
+  inTitleRow?: boolean
+  /** Additional CSS classes */
+  className?: string
+}
+
+/**
+ * Tab pane with integrated drop zones for drag-to-split
+ */
+export const TabPaneWithDropZones = ({
+  groupId,
+  isActive,
+  reserveDayPanelSpace = true,
+  showDayPanelToggle = true,
+  reserveWindowControls = true,
+  inTitleRow = true,
+  className
+}: TabPaneWithDropZonesProps): React.JSX.Element | null => {
+  const { dispatch } = useTabs()
+  const group = useTabGroup(groupId)
+  const {
+    isOpen: isDayPanelOpen,
+    width: dayPanelWidth,
+    isResizing: dayPanelResizing
+  } = useDayPanel()
+
+  // Drag state
+  const [isDraggingTab, setIsDraggingTab] = useState(false)
+  const [draggedTabInfo, setDraggedTabInfo] = useState<{
+    tabId: string
+    fromGroupId: string
+  } | null>(null)
+  const [hoveredZone, setHoveredZone] = useState<DropZonePosition | null>(null)
+
+  // Listen for drag events
+  useDndMonitor({
+    onDragStart: (event) => {
+      const { active } = event
+      if (active.data.current?.type === 'tab') {
+        setIsDraggingTab(true)
+        setDraggedTabInfo({
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- tab draggables are registered with the tab id string
+          tabId: active.id as string,
+          fromGroupId: active.data.current.groupId
+        })
+      }
+    },
+    onDragOver: (event) => {
+      const { over } = event
+      if (over?.data.current?.type === 'split-zone') {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
+        const zone = over.data.current.zone as DropZonePosition
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
+        const targetGroupId = over.data.current.groupId as string
+        if (targetGroupId === groupId) {
+          setHoveredZone(zone)
+        }
+      } else {
+        setHoveredZone(null)
+      }
+    },
+    onDragEnd: (event) => {
+      const { over } = event
+
+      // Handle drop on split zone
+      if (
+        over?.data.current?.type === 'split-zone' &&
+        draggedTabInfo &&
+        over.data.current.groupId === groupId
+      ) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit `data.current` is `any`; it is the object this component attached to the draggable/droppable
+        const zone = over.data.current.zone as DropZonePosition
+        handleZoneDrop(zone, draggedTabInfo.tabId, draggedTabInfo.fromGroupId)
+      }
+
+      // Reset drag state
+      setIsDraggingTab(false)
+      setDraggedTabInfo(null)
+      setHoveredZone(null)
+    },
+    onDragCancel: () => {
+      setIsDraggingTab(false)
+      setDraggedTabInfo(null)
+      setHoveredZone(null)
+    }
+  })
+
+  if (!group) return null
+
+  // Find active tab
+  const activeTab = group.tabs.find((t) => t.id === group.activeTabId)
+
+  // Handle focus when clicking on pane
+  const handleFocus = (): void => {
+    if (!isActive) {
+      dispatch({
+        type: 'SET_ACTIVE_GROUP',
+        payload: { groupId }
+      })
+    }
+  }
+
+  // Handle drop on zone
+  const handleZoneDrop = (zone: DropZonePosition, tabId: string, fromGroupId: string): void => {
+    if (zone === 'center') {
+      // Move tab to this group (no split)
+      if (fromGroupId !== groupId) {
+        dispatch({
+          type: 'MOVE_TAB',
+          payload: {
+            tabId,
+            fromGroupId,
+            toGroupId: groupId,
+            toIndex: group.tabs.length
+          }
+        })
+      }
+    } else {
+      const directionMap = { left: 'left', right: 'right', top: 'up', bottom: 'down' } as const
+      const dir = directionMap[zone]
+      dispatch({
+        type: 'MOVE_TAB_TO_NEW_SPLIT',
+        payload: {
+          tabId,
+          fromGroupId,
+          targetGroupId: groupId,
+          direction: dir,
+          position: zone === 'left' || zone === 'top' ? 'first' : 'second'
+        }
+      })
+    }
+  }
+
+  // Show drop zones when dragging a tab
+  const showDropZones = isDraggingTab && draggedTabInfo !== null
+
+  return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the focusable children
+    <div
+      className={cn('relative flex flex-col h-full w-full', className)}
+      onClick={handleFocus}
+      data-testid="tab-pane"
+      data-pane-id={groupId}
+      data-pane-active={isActive}
+    >
+      {/* Tab bar */}
+      <TabBarWithDrag
+        groupId={groupId}
+        reserveDayPanelSpace={reserveDayPanelSpace}
+        showDayPanelToggle={showDayPanelToggle}
+        reserveWindowControls={reserveWindowControls}
+        inTitleRow={inTitleRow}
+      />
+
+      {/* Content area. data-window-controls-pane: the top-start pane's content takes the
+          surface's rounded corner while the sidebar is collapsed (main.css). */}
+      <div
+        data-window-controls-pane={reserveWindowControls || undefined}
+        className={cn(
+          'flex-1 overflow-hidden relative',
+          !dayPanelResizing && 'transition-[margin] duration-200 ease-linear'
+        )}
+        style={{
+          marginInlineEnd: reserveDayPanelSpace && isDayPanelOpen ? `${dayPanelWidth}px` : 0
+        }}
+      >
+        {activeTab ? (
+          <TabContent tab={activeTab} groupId={groupId} />
+        ) : (
+          <EmptyPaneState groupId={groupId} />
+        )}
+
+        {/* Split preview */}
+        <SplitPreview zone={hoveredZone} />
+
+        {/* Drop zones overlay */}
+        <SplitDropZones groupId={groupId} isActive={showDropZones} />
+
+        {/* Same zones for a sidebar row dragged in (native drag and drop) */}
+        <NativeSplitDropZones groupId={groupId} editorOwnsCenter={activeTab?.type === 'note'} />
+      </div>
+    </div>
+  )
+}
+
+export default TabPaneWithDropZones

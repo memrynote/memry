@@ -1,0 +1,146 @@
+/**
+ * Runtime shortcut bindings
+ *
+ * Settings → Shortcuts writes rebinds into `keyboard.overrides`. This store is
+ * the other half of that contract: every runtime shortcut owner resolves its
+ * chord through `useShortcutBinding(id)`, so a rebind takes effect immediately
+ * and the settings screen can never advertise a shortcut it cannot deliver.
+ *
+ * Module-level (not React context) so `components/ui/sidebar.tsx` and the tab
+ * hooks can read it wherever they are mounted, and so tests without a settings
+ * IPC bridge simply fall back to catalog defaults.
+ */
+
+import { useSyncExternalStore } from 'react'
+import type { FolderNoteShortcut, ShortcutBinding } from '@memry/contracts/settings-schemas'
+import { SHORTCUT_ENTRIES, type ShortcutId } from './shortcut-catalog'
+
+const DEFAULT_BINDINGS = new Map<string, ShortcutBinding>(
+  SHORTCUT_ENTRIES.map((entry) => [entry.id, entry.defaultBinding])
+)
+
+/** A chord no keystroke can match — used if an id ever leaves the catalog. */
+const NEVER_MATCHES: ShortcutBinding = { key: '', modifiers: {} }
+
+let overrides: Record<string, ShortcutBinding> = {}
+let folderNoteShortcuts: FolderNoteShortcut[] = []
+/** Cached per id so `useSyncExternalStore` sees a stable snapshot. */
+let resolved = new Map<string, ShortcutBinding>()
+const listeners = new Set<() => void>()
+let started = false
+
+function setOverrides(next: Record<string, ShortcutBinding>): void {
+  overrides = next
+  resolved = new Map()
+  for (const listener of listeners) listener()
+}
+
+function setFolderNoteShortcuts(next: FolderNoteShortcut[]): void {
+  folderNoteShortcuts = next
+  for (const listener of listeners) listener()
+}
+
+function start(): void {
+  if (started) return
+  started = true
+
+  const api = typeof window !== 'undefined' ? window.api : undefined
+  if (!api) return
+
+  const getKeyboardSettings = api.settings?.getKeyboardSettings
+  let latestLoad = 0
+  const load = (): void => {
+    if (typeof getKeyboardSettings !== 'function') return
+    const request = ++latestLoad
+    void Promise.resolve(getKeyboardSettings.call(api.settings))
+      .then((settings) => {
+        // A slower read from the vault we just left must not win.
+        if (request !== latestLoad) return
+        setOverrides(settings.overrides ?? {})
+        setFolderNoteShortcuts(settings.folderNoteShortcuts ?? [])
+      })
+      .catch(() => {
+        // Settings unavailable — catalog defaults stay in effect.
+      })
+  }
+  load()
+
+  // Rebinds live in the vault's database, and a vault switch keeps this
+  // renderer (and this store) alive. Without a reload here the previous
+  // vault's chords would stay in effect until the next launch.
+  let vaultPath: string | null = null
+  api.onVaultStatusChanged?.((status) => {
+    if (!status.isOpen || status.path === vaultPath) return
+    vaultPath = status.path
+    load()
+  })
+
+  api.onSettingsChanged?.((event) => {
+    if (event.key !== 'keyboard') return
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed event value is untyped IPC payload for the keyboard group; fields are defaulted below
+    const value = event.value as
+      | { overrides?: Record<string, ShortcutBinding>; folderNoteShortcuts?: FolderNoteShortcut[] }
+      | undefined
+    if (value && 'overrides' in value) setOverrides(value.overrides ?? {})
+    if (value && 'folderNoteShortcuts' in value) {
+      setFolderNoteShortcuts(value.folderNoteShortcuts ?? [])
+    }
+  })
+}
+
+function subscribe(listener: () => void): () => void {
+  start()
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+/**
+ * Effective binding for a shortcut: the user's override, else the default.
+ */
+export function getShortcutBinding(id: ShortcutId): ShortcutBinding {
+  const cached = resolved.get(id)
+  if (cached) return cached
+  const binding = overrides[id] ?? DEFAULT_BINDINGS.get(id) ?? NEVER_MATCHES
+  resolved.set(id, binding)
+  return binding
+}
+
+/**
+ * The user's rebinds, keyed by command id. `resolveChord` reads them to let a
+ * rebind win over a default, so it needs to know which ids are overridden at all.
+ * Subscribing (not just reading) is what loads them from settings.
+ */
+export function useShortcutOverrides(): Readonly<Record<string, ShortcutBinding>> {
+  return useSyncExternalStore(
+    subscribe,
+    () => overrides,
+    () => overrides
+  )
+}
+
+/**
+ * Subscribe to the effective binding for a shortcut. Re-renders the caller when
+ * the user rebinds it in settings.
+ */
+export function useShortcutBinding(id: ShortcutId): ShortcutBinding {
+  return useSyncExternalStore(
+    subscribe,
+    () => getShortcutBinding(id),
+    () => getShortcutBinding(id)
+  )
+}
+
+/** The open vault's "new note in folder" chords. */
+export function useFolderNoteShortcuts(): FolderNoteShortcut[] {
+  return useSyncExternalStore(
+    subscribe,
+    () => folderNoteShortcuts,
+    () => folderNoteShortcuts
+  )
+}
+
+/** Test seam: apply overrides without an IPC round trip. */
+export function __setShortcutOverridesForTests(next: Record<string, ShortcutBinding> = {}): void {
+  started = true
+  setOverrides(next)
+}

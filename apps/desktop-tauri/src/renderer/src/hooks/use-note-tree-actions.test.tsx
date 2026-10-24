@@ -1,0 +1,759 @@
+import type React from 'react'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { toast } from 'sonner'
+
+import { useNoteTreeActions, type NoteTreeActionsDeps } from './use-note-tree-actions'
+import type { NoteListItem } from './use-notes-query'
+import { buildTreeFromNotes } from '@/components/notes-tree-utils'
+import { notesService } from '@/services/notes-service'
+import { SelectedFolderProvider } from '@/contexts/selected-folder-context'
+import { clearNewNoteTitlePending, isNewNoteTitlePending } from '@/lib/new-note-title'
+
+const mocks = vi.hoisted(() => ({
+  createInSelectedFolder: true,
+  openPagesInNewTab: true,
+  openTab: vi.fn(),
+  closeTab: vi.fn(),
+  updateTabTitleByEntityId: vi.fn(),
+  vaultConfig: null as null | Record<string, unknown>,
+  deleteJournalEntry: vi.fn(),
+  confirmNoteDelete: vi.fn()
+}))
+
+vi.mock('@/components/note/content-area/portal-flows/use-note-delete-guard', () => ({
+  useNoteDeleteGuard: () => ({ confirmNoteDelete: mocks.confirmNoteDelete, dialog: null })
+}))
+
+vi.mock('@/hooks/use-vault-config', () => ({
+  useVaultConfig: () => mocks.vaultConfig
+}))
+
+vi.mock('@/services/journal-service', () => ({
+  journalService: { deleteEntry: mocks.deleteJournalEntry }
+}))
+
+vi.mock('sonner', () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn()
+  }
+}))
+
+vi.mock('react-i18next', () => ({
+  getI18n: () => ({
+    getFixedT: () => (key: string) => key
+  })
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({
+    error: vi.fn(),
+    warn: vi.fn()
+  })
+}))
+
+vi.mock('@/lib/ipc-error', () => ({
+  extractErrorMessage: (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback
+}))
+
+vi.mock('@/hooks/use-general-settings', () => ({
+  useGeneralSettings: () => ({
+    settings: {
+      createInSelectedFolder: mocks.createInSelectedFolder,
+      openPagesInNewTab: mocks.openPagesInNewTab
+    }
+  })
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({
+    openTab: mocks.openTab,
+    closeTab: mocks.closeTab,
+    updateTabTitleByEntityId: mocks.updateTabTitleByEntityId
+  })
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    create: vi.fn(),
+    getFolderTemplate: vi.fn(),
+    renameFolder: vi.fn(),
+    deleteFolder: vi.fn(),
+    getFolderConfig: vi.fn(),
+    setFolderConfig: vi.fn(),
+    reorder: vi.fn(),
+    getAllPositions: vi.fn(),
+    openExternal: vi.fn(),
+    revealInFinder: vi.fn(),
+    revealFolderInFinder: vi.fn()
+  }
+}))
+
+const createNote = (id: string, path: string, overrides: Partial<NoteListItem> = {}) =>
+  ({
+    id,
+    path,
+    title:
+      path
+        .split('/')
+        .pop()
+        ?.replace(/\.[^.]+$/, '') ?? id,
+    emoji: null,
+    fileType: 'markdown',
+    created: new Date('2026-01-01T00:00:00.000Z'),
+    modified: new Date(`2026-01-0${id.endsWith('a') ? 1 : id.endsWith('b') ? 2 : 3}T00:00:00.000Z`),
+    tags: [],
+    properties: {},
+    ...overrides
+  }) as NoteListItem
+
+const rootNote = createNote('root', 'Root.md')
+const workA = createNote('work-a', 'Work/A.md')
+const workB = createNote('work-b', 'Work/B.md')
+const otherNote = createNote('other', 'Other/C.pdf', { fileType: 'pdf' })
+
+const folders = [{ path: 'Work' }, { path: 'Other' }, { path: 'Work/Nested' }] as any[]
+const allNotes = [rootNote, workA, workB, otherNote]
+const noteMap = new Map(allNotes.map((note) => [note.id, note]))
+const tree = buildTreeFromNotes(allNotes, folders, {
+  'Work/A.md': 1,
+  'Work/B.md': 2,
+  Work: 1,
+  Other: 2
+})
+
+const createMutations = () =>
+  ({
+    createNote: {
+      mutateAsync: vi.fn().mockResolvedValue({
+        success: true,
+        note: createNote('new-note', 'Work/Untitled.md')
+      })
+    },
+    renameNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true }) },
+    deleteNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true }) },
+    moveNote: { mutateAsync: vi.fn().mockResolvedValue({ success: true }) }
+  }) as any
+
+const renderActions = (overrides: Partial<NoteTreeActionsDeps> = {}) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 }
+    }
+  })
+  const mutations = overrides.mutations ?? createMutations()
+  const deps: NoteTreeActionsDeps = {
+    noteMap,
+    tree,
+    folders,
+    notePositions: {},
+    setNotePositions: vi.fn(),
+    folderTemplateNames: new Map(),
+    setFolderTemplateNames: vi.fn(),
+    createFolderMutation: vi.fn().mockResolvedValue(true),
+    refreshFolders: vi.fn().mockResolvedValue(undefined),
+    setFolderIcon: vi.fn().mockResolvedValue(true),
+    mutations,
+    selectedIds: ['folder-Work'],
+    setSelectedIds: vi.fn(),
+    computeTargetFolder: vi.fn().mockReturnValue('Work'),
+    expandFolderPath: vi.fn(),
+    renameFolderPath: vi.fn(),
+    ...overrides
+  }
+
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <SelectedFolderProvider>{children}</SelectedFolderProvider>
+    </QueryClientProvider>
+  )
+
+  return {
+    ...renderHook(() => useNoteTreeActions(deps), { wrapper }),
+    deps,
+    mutations,
+    queryClient
+  }
+}
+
+describe('useNoteTreeActions', () => {
+  beforeEach(() => {
+    mocks.confirmNoteDelete.mockResolvedValue(true)
+    vi.clearAllMocks()
+    mocks.createInSelectedFolder = true
+    mocks.openPagesInNewTab = true
+    window.api.templates.list.mockResolvedValue({
+      success: true,
+      templates: [{ id: 'tpl-1', name: 'Meeting note' }]
+    })
+    vi.mocked(notesService.getFolderTemplate).mockResolvedValue('tpl-1')
+    vi.mocked(notesService.create).mockResolvedValue({
+      success: true,
+      note: createNote('created', 'Other/New note.md')
+    })
+    vi.mocked(notesService.renameFolder).mockResolvedValue(true)
+    vi.mocked(notesService.deleteFolder).mockResolvedValue(true)
+    vi.mocked(notesService.setFolderConfig).mockResolvedValue({ success: true })
+    vi.mocked(notesService.reorder).mockResolvedValue({ success: true })
+    vi.mocked(notesService.getAllPositions).mockResolvedValue({
+      success: true,
+      positions: { 'Work/B.md': 1 }
+    })
+    vi.mocked(notesService.openExternal).mockResolvedValue(undefined)
+    vi.mocked(notesService.revealInFinder).mockResolvedValue(undefined)
+  })
+
+  it('opens selected notes, folders, and creates notes/folders in the selected folder', async () => {
+    const { result, deps, mutations } = renderActions()
+
+    act(() => result.current.handleSelectionChange(['work-a']))
+    expect(deps.setSelectedIds).toHaveBeenCalledWith(['work-a'])
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        title: 'A',
+        path: '/notes/work-a',
+        entityId: 'work-a'
+      })
+    )
+
+    act(() => result.current.handleSelectionChange(['other']))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: 'file',
+        title: 'C',
+        path: '/file/other',
+        entityId: 'other'
+      })
+    )
+
+    act(() => result.current.handleOpenFolderView('Work/Nested'))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: 'folder', title: 'Nested', path: '/folder/Work%2FNested' })
+    )
+
+    await act(async () => {
+      await result.current.handleCreateNote()
+    })
+    expect(deps.expandFolderPath).toHaveBeenCalledWith('Work')
+    expect(notesService.getFolderTemplate).toHaveBeenCalledWith('Work')
+    expect(mutations.createNote.mutateAsync).toHaveBeenCalledWith({
+      title: 'New note',
+      folder: 'Work',
+      template: 'tpl-1'
+    })
+    // The note page names it from its own title field, not the sidebar row.
+    expect(result.current.renamingNoteId).toBeNull()
+    expect(isNewNoteTitlePending('new-note')).toBe(true)
+    clearNewNoteTitlePending('new-note')
+
+    await act(async () => {
+      await result.current.handleCreateFolder()
+    })
+    expect(deps.createFolderMutation).toHaveBeenCalledWith('Work/Untitled Folder')
+    expect(deps.refreshFolders).toHaveBeenCalled()
+    expect(result.current.renamingFolderPath).toBe('Work/Untitled Folder')
+
+    await act(async () => {
+      await result.current.handleCreateSubfolder('Work')
+    })
+    expect(deps.createFolderMutation).toHaveBeenCalledWith('Work/Untitled Folder')
+  })
+
+  it('handles optimistic note rename, cancel, submit, and failure rollback', async () => {
+    const mutations = createMutations()
+    const { result, queryClient } = renderActions({ mutations })
+    queryClient.setQueryData(['notes', 'note', 'work-a'], { id: 'work-a', title: 'A' })
+
+    act(() => result.current.handleRenameClick(workA))
+    expect(result.current.renamingNoteId).toBe('work-a')
+    expect(result.current.renameValue).toBe('A')
+
+    act(() => result.current.handleRenameInputChange('work-a', 'Renamed'))
+    expect(mocks.updateTabTitleByEntityId).toHaveBeenLastCalledWith('work-a', 'Renamed')
+    expect(queryClient.getQueryData<any>(['notes', 'note', 'work-a'])?.title).toBe('Renamed')
+
+    await act(async () => {
+      await result.current.handleRenameSubmit('work-a', workA.path)
+    })
+    expect(mutations.renameNote.mutateAsync).toHaveBeenCalledWith({
+      id: 'work-a',
+      newTitle: 'Renamed'
+    })
+    expect(result.current.renamingNoteId).toBeNull()
+
+    mutations.renameNote.mutateAsync.mockRejectedValueOnce(new Error('rename failed'))
+    act(() => result.current.handleRenameClick(workA))
+    act(() => result.current.handleRenameInputChange('work-a', 'Broken'))
+    await act(async () => {
+      await result.current.handleRenameSubmit('work-a', workA.path)
+    })
+    expect(mocks.updateTabTitleByEntityId).toHaveBeenLastCalledWith('work-a', 'A')
+    expect(toast.error).toHaveBeenCalledWith('rename failed')
+
+    act(() => result.current.handleRenameClick(workA))
+    act(() => result.current.handleRenameCancel('work-a'))
+    expect(result.current.renamingNoteId).toBeNull()
+    expect(result.current.renameValue).toBe('')
+  })
+
+  it('renames folders, deletes notes and folders, and invokes external file actions', async () => {
+    const { result, deps, mutations } = renderActions({
+      selectedIds: ['work-a', 'folder-Work/Nested']
+    })
+
+    act(() => result.current.handleRenameFolderClick('Work/Nested'))
+    act(() => result.current.setFolderRenameValue('Ideas'))
+    await act(async () => {
+      await result.current.handleFolderRenameSubmit('Work/Nested')
+    })
+    expect(notesService.renameFolder).toHaveBeenCalledWith('Work/Nested', 'Work/Ideas')
+    expect(deps.refreshFolders).toHaveBeenCalled()
+
+    act(() => result.current.handleDeleteClick(workA))
+    expect(result.current.notesToDelete).toEqual([workA])
+    expect(result.current.foldersToDelete).toEqual([])
+
+    act(() => result.current.handleBulkDelete())
+    expect(result.current.notesToDelete).toEqual([workA])
+    expect(result.current.foldersToDelete).toEqual(['Work/Nested'])
+
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+    expect(mutations.deleteNote.mutateAsync).toHaveBeenCalledWith('work-a')
+    expect(notesService.deleteFolder).toHaveBeenCalledWith('Work/Nested')
+    expect(mocks.closeTab).toHaveBeenCalledWith('/notes/work-a')
+    expect(deps.setSelectedIds).toHaveBeenLastCalledWith([])
+
+    await act(async () => {
+      await result.current.handleOpenExternal(workA)
+      await result.current.handleRevealInFinder(workA)
+    })
+    expect(notesService.openExternal).toHaveBeenCalledWith('work-a')
+    expect(notesService.revealInFinder).toHaveBeenCalledWith('work-a')
+  })
+
+  it('reveals a folder in the OS file manager and swallows a failed reveal (#2205)', async () => {
+    const { result } = renderActions()
+
+    await act(async () => {
+      await result.current.handleRevealFolderInFinder('Work')
+    })
+    expect(notesService.revealFolderInFinder).toHaveBeenCalledWith('Work')
+
+    vi.mocked(notesService.revealFolderInFinder).mockRejectedValueOnce(new Error('gone'))
+    await act(async () => {
+      await expect(result.current.handleRevealFolderInFinder('Work')).resolves.toBeUndefined()
+    })
+  })
+
+  it('sets and clears folder templates preserving the existing folder config', async () => {
+    const setFolderTemplateNames = vi.fn(
+      (updater: (prev: Map<string, string>) => Map<string, string>) => updater(new Map())
+    )
+    vi.mocked(notesService.getFolderConfig).mockResolvedValue({ icon: '📁', template: 'old-tpl' })
+    const { result } = renderActions({ setFolderTemplateNames })
+
+    act(() => result.current.handleSetFolderTemplate('Work'))
+    expect(result.current.folderToConfigureTemplate).toBe('Work')
+
+    await act(async () => {
+      await result.current.handleFolderTemplateSelect('tpl-1')
+    })
+    expect(notesService.setFolderConfig).toHaveBeenCalledWith('Work', {
+      icon: '📁',
+      template: 'tpl-1',
+      inherit: true
+    })
+    expect(setFolderTemplateNames).toHaveBeenCalled()
+    expect(toast.success).toHaveBeenCalledWith('phaseI.toasts.defaultTemplateSet')
+    expect(result.current.folderToConfigureTemplate).toBeNull()
+
+    await act(async () => {
+      await result.current.handleClearFolderTemplate('Work')
+    })
+    const clearArg = vi.mocked(notesService.setFolderConfig).mock.lastCall?.[1]
+    expect(clearArg).toEqual({ icon: '📁', inherit: true })
+    expect(clearArg && 'template' in clearArg).toBe(false)
+    expect(toast.success).toHaveBeenCalledWith('phaseI.toasts.defaultTemplateCleared')
+  })
+
+  it('handles note reorders, folder reorders, folder moves, and multi-selection moves', async () => {
+    const { result, deps, mutations } = renderActions()
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'work-a',
+        targetId: 'work-b',
+        position: 'after'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenCalledWith('Work', ['Work/B.md', 'Work/A.md'])
+    expect(deps.setNotePositions).toHaveBeenCalledWith({ 'Work/B.md': 1 })
+    expect(mutations.moveNote.mutateAsync).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Work',
+        targetId: 'folder-Other',
+        position: 'after'
+      })
+    })
+    expect(notesService.reorder).toHaveBeenLastCalledWith('', ['Other', 'Work'])
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Other',
+        targetId: 'folder-Work',
+        position: 'inside'
+      })
+    })
+    expect(notesService.renameFolder).toHaveBeenCalledWith('Other', 'Work/Other')
+
+    const selected = renderActions({
+      selectedIds: ['work-a', 'work-b'],
+      mutations: createMutations()
+    })
+    await act(async () => {
+      await selected.result.current.handleMove({
+        draggedId: 'work-a',
+        targetId: 'folder-Other',
+        position: 'inside'
+      })
+    })
+    expect(selected.mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+      id: 'work-a',
+      newFolder: 'Other'
+    })
+    expect(selected.mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+      id: 'work-b',
+      newFolder: 'Other'
+    })
+    expect(selected.deps.setSelectedIds).toHaveBeenCalledWith([])
+
+    await waitFor(() => expect(result.current.isMoving).toBe(false))
+  })
+
+  it('says so when a dropped folder cannot be moved (#2206)', async () => {
+    vi.mocked(notesService.renameFolder).mockRejectedValueOnce(new Error('Failed to rename folder'))
+    const { result, deps } = renderActions()
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Other',
+        targetId: 'folder-Work',
+        position: 'inside'
+      })
+    })
+
+    expect(notesService.renameFolder).toHaveBeenCalledWith('Other', 'Work/Other')
+    expect(toast.error).toHaveBeenCalledWith('Failed to rename folder')
+    expect(deps.renameFolderPath).not.toHaveBeenCalled()
+  })
+
+  // Issue #1644 — the preference is what the sidebar passes down; the reducer's
+  // own behaviour is covered in tab-crud-reducer.test.ts.
+  it('asks the reducer to reuse the active tab when new-tab opening is off', async () => {
+    mocks.openPagesInNewTab = false
+    const { result, mutations: _mutations } = renderActions()
+
+    act(() => result.current.handleSelectionChange(['work-a']))
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entityId: 'work-a' }),
+      {
+        reuseActiveTab: true
+      }
+    )
+
+    vi.mocked(notesService.create).mockResolvedValueOnce({
+      success: true,
+      note: { id: 'created', title: 'Created', path: 'Work/Created.md' }
+    })
+    await act(async () => {
+      await result.current.handleCreateNoteInFolder('Work')
+    })
+    expect(mocks.openTab).toHaveBeenLastCalledWith(
+      expect.objectContaining({ entityId: 'created' }),
+      {
+        reuseActiveTab: true
+      }
+    )
+  })
+
+  it('handles no-op and failure paths without leaving transient state stuck', async () => {
+    mocks.createInSelectedFolder = false
+    const mutations = createMutations()
+    const { result, deps } = renderActions({
+      folders: [
+        ...folders,
+        { path: 'Untitled Folder' },
+        { path: 'Untitled Folder 1' },
+        { path: 'Work/Untitled Folder' }
+      ] as any,
+      mutations
+    })
+
+    mutations.createNote.mutateAsync.mockRejectedValueOnce(new Error('create failed'))
+    await act(async () => {
+      await result.current.handleCreateNote()
+    })
+    expect(toast.error).toHaveBeenCalledWith('create failed')
+    expect(deps.expandFolderPath).toHaveBeenCalledWith('')
+
+    await act(async () => {
+      await result.current.handleCreateNoteInFolder('Other')
+    })
+    expect(notesService.create).toHaveBeenLastCalledWith({
+      title: 'New note',
+      content: '',
+      folder: 'Other'
+    })
+
+    await act(async () => {
+      await result.current.handleCreateFolder()
+    })
+    expect(deps.createFolderMutation).toHaveBeenCalledWith('Untitled Folder 2')
+
+    act(() => result.current.handleRenameClick(workA))
+    act(() => result.current.handleRenameInputChange('work-a', '   '))
+    await act(async () => {
+      await result.current.handleRenameSubmit('work-a', workA.path)
+    })
+    expect(result.current.renamingNoteId).toBeNull()
+
+    act(() => result.current.handleRenameFolderClick('Work/Nested'))
+    act(() => result.current.setFolderRenameValue('Nested'))
+    await act(async () => {
+      await result.current.handleFolderRenameSubmit('Work/Nested')
+    })
+    expect(notesService.renameFolder).not.toHaveBeenCalledWith('Work/Nested', 'Work/Nested')
+
+    act(() => result.current.handleRenameFolderClick('Work/Nested'))
+    act(() => result.current.handleFolderRenameCancel())
+    expect(result.current.renamingFolderPath).toBeNull()
+
+    await act(async () => {
+      await result.current.handleDeleteConfirm()
+    })
+    expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+  })
+
+  it('surfaces folder template and drag move failures without throwing', async () => {
+    const setFolderTemplateNames = vi.fn(
+      (updater: (prev: Map<string, string>) => Map<string, string>) =>
+        updater(new Map([['Work', 'Meeting note']]))
+    )
+    const mutations = createMutations()
+    const { result } = renderActions({
+      setFolderTemplateNames,
+      mutations,
+      selectedIds: ['folder-Work']
+    })
+
+    act(() => result.current.handleSetFolderTemplate('Work'))
+    await act(async () => {
+      await result.current.handleFolderTemplateSelect(null)
+    })
+    expect(result.current.folderToConfigureTemplate).toBeNull()
+
+    vi.mocked(notesService.setFolderConfig).mockRejectedValueOnce(new Error('template failed'))
+    act(() => result.current.handleSetFolderTemplate('Work'))
+    await act(async () => {
+      await result.current.handleFolderTemplateSelect('tpl-1')
+    })
+    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToSetDefaultTemplate')
+
+    vi.mocked(notesService.setFolderConfig).mockRejectedValueOnce(new Error('clear failed'))
+    await act(async () => {
+      await result.current.handleClearFolderTemplate('Work')
+    })
+    expect(toast.error).toHaveBeenCalledWith('phaseI.toasts.failedToClearDefaultTemplate')
+
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'folder-Work',
+        targetId: 'folder-Work/Nested',
+        position: 'inside'
+      })
+    })
+    expect(notesService.renameFolder).not.toHaveBeenCalledWith('Work', 'Work/Nested/Work')
+
+    mutations.moveNote.mutateAsync.mockRejectedValueOnce(new Error('move failed'))
+    await act(async () => {
+      await result.current.handleMove({
+        draggedId: 'work-a',
+        targetId: 'folder-Other',
+        position: 'inside'
+      })
+    })
+    expect(result.current.isMoving).toBe(false)
+  })
+
+  it('hands a note created from a folder menu to the note title, and renames a new subfolder inline', async () => {
+    const { result, deps } = renderActions()
+
+    vi.mocked(notesService.create).mockResolvedValueOnce({
+      success: true,
+      note: createNote('created', 'Work/New note 1.md')
+    })
+    await act(async () => {
+      await result.current.handleCreateNoteInFolder('Work')
+    })
+    expect(result.current.renamingNoteId).toBeNull()
+    expect(isNewNoteTitlePending('created')).toBe(true)
+    clearNewNoteTitlePending('created')
+
+    await act(async () => {
+      await result.current.handleCreateSubfolder('Work')
+    })
+    expect(deps.expandFolderPath).toHaveBeenLastCalledWith('Work')
+    expect(result.current.renamingFolderPath).toBe('Work/Untitled Folder')
+    expect(result.current.folderRenameValue).toBe('Untitled Folder')
+  })
+
+  describe('journal entries in the tree', () => {
+    const journalConfig = {
+      excludePatterns: [],
+      defaultNoteFolder: '',
+      journalFolder: 'Daily',
+      journalDateFormat: 'YYYY-MM-DD',
+      attachmentsFolder: 'attachments',
+      journalShowInSidebar: true
+    }
+    const entry = createNote('j-entry', 'Daily/2026-10-01.md', { journalDate: '2026-10-01' })
+    const dated = createNote('dated', 'Work/2026-10-02.md')
+    const journalNotes = [entry, dated, workA]
+    const journalNoteMap = new Map(journalNotes.map((note) => [note.id, note]))
+    const journalTree = buildTreeFromNotes(
+      journalNotes,
+      [{ path: 'Daily' }, { path: 'Work' }] as any[],
+      {}
+    )
+
+    const renderJournalActions = (overrides: Partial<NoteTreeActionsDeps> = {}) =>
+      renderActions({ noteMap: journalNoteMap, tree: journalTree, selectedIds: [], ...overrides })
+
+    beforeEach(() => {
+      mocks.vaultConfig = journalConfig
+      mocks.deleteJournalEntry.mockResolvedValue({ success: true })
+    })
+
+    afterEach(() => {
+      mocks.vaultConfig = null
+    })
+
+    it('asks before a rename takes an entry off the date format, and stops on cancel', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      act(() => result.current.handleRenameClick(entry))
+      act(() => result.current.handleRenameInputChange('j-entry', 'Retro'))
+      let submit!: Promise<void>
+      act(() => {
+        submit = result.current.handleRenameSubmit('j-entry', entry.path)
+      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('leave'))
+
+      await act(async () => {
+        result.current.resolveJournalConfirm(false)
+        await submit
+      })
+      expect(mutations.renameNote.mutateAsync).not.toHaveBeenCalled()
+      expect(result.current.journalConfirm).toBeNull()
+
+      act(() => result.current.handleRenameClick(entry))
+      act(() => result.current.handleRenameInputChange('j-entry', 'Retro'))
+      act(() => {
+        submit = result.current.handleRenameSubmit('j-entry', entry.path)
+      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('leave'))
+      await act(async () => {
+        result.current.resolveJournalConfirm(true)
+        await submit
+      })
+      expect(mutations.renameNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'j-entry',
+        newTitle: 'Retro'
+      })
+    })
+
+    it('asks before a date-named note is dropped into the journal folder', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      let move!: Promise<void>
+      act(() => {
+        move = result.current.handleMove({
+          draggedId: 'dated',
+          targetId: 'folder-Daily',
+          position: 'inside'
+        })
+      })
+      await waitFor(() => expect(result.current.journalConfirm).toBe('join'))
+      await act(async () => {
+        result.current.resolveJournalConfirm(true)
+        await move
+      })
+      expect(mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'dated',
+        newFolder: 'Daily'
+      })
+    })
+
+    it('moves a plain note without asking', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      await act(async () => {
+        await result.current.handleMove({
+          draggedId: 'work-a',
+          targetId: 'folder-Daily',
+          position: 'inside'
+        })
+      })
+      expect(result.current.journalConfirm).toBeNull()
+      expect(mutations.moveNote.mutateAsync).toHaveBeenCalledWith({
+        id: 'work-a',
+        newFolder: 'Daily'
+      })
+    })
+
+    it('renames the journal folder without asking: main follows it', async () => {
+      const { result } = renderJournalActions()
+
+      act(() => result.current.handleRenameFolderClick('Daily'))
+      act(() => result.current.setFolderRenameValue('Diary'))
+      await act(async () => {
+        await result.current.handleFolderRenameSubmit('Daily')
+      })
+      expect(result.current.journalConfirm).toBeNull()
+      expect(notesService.renameFolder).toHaveBeenCalledWith('Daily', 'Diary')
+    })
+
+    it('keeps a note when the delete guard is declined', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      mocks.confirmNoteDelete.mockResolvedValueOnce(false)
+      act(() => result.current.handleDeleteClick(entry))
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(mocks.confirmNoteDelete).toHaveBeenCalledWith([{ id: entry.id, title: entry.title }])
+      expect(mocks.deleteJournalEntry).not.toHaveBeenCalled()
+      expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+    })
+
+    it('deletes a journal entry as a journal, by date', async () => {
+      const { result, mutations } = renderJournalActions()
+
+      act(() => result.current.handleDeleteClick(entry))
+      await act(async () => {
+        await result.current.handleDeleteConfirm()
+      })
+      expect(mocks.deleteJournalEntry).toHaveBeenCalledWith('2026-10-01')
+      expect(mutations.deleteNote.mutateAsync).not.toHaveBeenCalled()
+      expect(result.current.journalFolder).toBe('Daily')
+    })
+  })
+})

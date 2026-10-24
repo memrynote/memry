@@ -1,0 +1,287 @@
+import { cn } from '@/lib/utils'
+import { formatDueDate, formatDateShort, formatTime } from '@/lib/task-utils'
+import { useGeneralSettings } from '@/hooks/use-general-settings'
+import { InlineStatusPopover } from '@/components/tasks/inline-status-popover'
+import { InlinePriorityPopover } from '@/components/tasks/inline-priority-popover'
+import { InteractiveProjectBadge } from '@/components/tasks/interactive-project-badge'
+import { TaskTagsBadge } from '@/components/tasks/task-badges'
+import { TaskRelationChip } from '@/features/tag-fields/tasks/TaskRelationChip'
+import { SelectionCheckbox } from '@/components/tasks/bulk-actions'
+import { RepeatIndicator } from '@/components/tasks/repeat-indicator'
+import { TaskPathTitle, useTaskPath } from '@/components/tasks/date-view-context'
+import { TaskRowReminder, TaskRowStartDate } from '@/components/tasks/task-row-schedule'
+import type { Task } from '@/data/task-model'
+import type { Project, Status } from '@/data/tasks-data'
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface TaskRowProps {
+  task: Task
+  project: Project
+  projects: Project[]
+  isCompleted: boolean
+  isSelected?: boolean
+  showProjectBadge?: boolean
+  onToggleComplete: (taskId: string) => void
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void
+  onClick?: (taskId: string) => void
+  className?: string
+  isSelectionMode?: boolean
+  isCheckedForSelection?: boolean
+  onToggleSelect?: (taskId: string) => void
+  onShiftSelect?: (taskId: string) => void
+  onProjectChange?: (projectId: string) => void
+  actions?: React.ReactNode
+  renderTitle?: () => React.ReactNode
+  /**
+   * False while the row stands in for a task that has not resolved to a
+   * `tasks` row. The status, priority and project controls then render as
+   * static displays: a control that cannot reach a row must not look
+   * clickable (#1907).
+   */
+  interactive?: boolean
+  /**
+   * Replaces the read-only repeat, tag and due-date badges with the caller's
+   * own controls, placed between the title and the project badge. The note's
+   * task block uses it for its editable property chips; the Tasks page leaves
+   * it unset and keeps the badges.
+   */
+  meta?: React.ReactNode
+  /**
+   * Controls which of the row's own pickers is open, so a host can open them
+   * from the keyboard. Unset, each picker keeps its own state.
+   */
+  pickerControl?: TaskRowPickerControl
+}
+
+export type TaskRowPickerId = 'status' | 'priority' | 'project'
+
+export interface TaskRowPickerControl {
+  open: string | null
+  onOpenChange: (id: TaskRowPickerId, open: boolean) => void
+}
+
+const pickerProps = (
+  control: TaskRowPickerControl | undefined,
+  id: TaskRowPickerId
+): { open?: boolean; onOpenChange?: (open: boolean) => void } =>
+  control
+    ? {
+        open: control.open === id,
+        onOpenChange: (open) => control.onOpenChange(id, open)
+      }
+    : {}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+const resolveStatus = (
+  task: Task,
+  statuses: Status[]
+): { type: 'todo' | 'in_progress' | 'done'; color: string } => {
+  const status = statuses.find((s) => s.id === task.statusId)
+  return {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- status.type is user-extensible StatusType; the icon draws only the three base types, and `|| 'todo'` keeps the fallback
+    type: (status?.type as 'todo' | 'in_progress' | 'done') || 'todo',
+    color: status?.color || 'var(--text-tertiary)'
+  }
+}
+
+// ============================================================================
+// TASK ROW — Linear-style flat row
+// ============================================================================
+
+export const TaskRow = ({
+  task,
+  project,
+  projects,
+  isCompleted,
+  isSelected = false,
+  showProjectBadge = false,
+  onToggleComplete,
+  onUpdateTask,
+  onClick,
+  className,
+  isSelectionMode = false,
+  isCheckedForSelection = false,
+  onToggleSelect,
+  onShiftSelect,
+  onProjectChange,
+  actions,
+  renderTitle,
+  interactive = true,
+  meta,
+  pickerControl
+}: TaskRowProps): React.JSX.Element => {
+  const {
+    settings: { clockFormat }
+  } = useGeneralSettings()
+  const path = useTaskPath(task)
+  const formattedDate = formatDueDate(task.dueDate, task.dueTime)
+  const isOverdue = formattedDate?.status === 'overdue' && !isCompleted
+  const { color: statusColor } = resolveStatus(task, project.statuses)
+
+  const handleRowClick = (e: React.MouseEvent): void => {
+    if (e.shiftKey && isSelectionMode && onShiftSelect) {
+      e.preventDefault()
+      onShiftSelect(task.id)
+      return
+    }
+    if ((e.metaKey || e.ctrlKey) && onToggleSelect) {
+      e.preventDefault()
+      onToggleSelect(task.id)
+      return
+    }
+    if (isSelectionMode && onToggleSelect) {
+      onToggleSelect(task.id)
+      return
+    }
+    onClick?.(task.id)
+  }
+
+  const handleRowKeyDown = (e: React.KeyboardEvent): void => {
+    if (e.key === 'Enter' && onClick) {
+      e.preventDefault()
+      onClick(task.id)
+    }
+  }
+
+  const showSelection = !!onToggleSelect
+
+  const compactDateLabel = (() => {
+    if (!task.dueDate) return null
+    const date = formatDateShort(task.dueDate)
+    return task.dueTime ? `${date}, ${formatTime(task.dueTime, clockFormat)}` : date
+  })()
+
+  const dueDateDisplay = (() => {
+    if (isCompleted) return { text: 'Done', colorStyle: statusColor }
+    if (!compactDateLabel) return null
+    if (isOverdue) return { text: compactDateLabel, colorClass: 'text-destructive' }
+    return { text: compactDateLabel, colorClass: 'text-text-tertiary' }
+  })()
+
+  return (
+    <div
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- semantic tag would change default styles/behavior; ARIA role kept to preserve visuals and semantics
+      role="button"
+      tabIndex={onClick && interactive ? 0 : -1}
+      onClick={interactive ? handleRowClick : undefined}
+      onKeyDown={onClick && interactive ? handleRowKeyDown : undefined}
+      className={cn(
+        'group flex items-center py-[7px] px-6 gap-3 transition-colors',
+        'rounded-md hover:bg-muted',
+        onClick && 'cursor-pointer focus-visible:outline-none',
+        isCheckedForSelection && 'bg-primary/10 hover:bg-primary/15',
+        isSelected && !isCheckedForSelection && 'bg-primary/10 ring-1 ring-inset ring-primary/30',
+        className
+      )}
+      aria-label={`Task: ${task.title}${isCompleted ? ', completed' : ''}`}
+      aria-busy={!interactive || undefined}
+    >
+      {isSelectionMode && showSelection && (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <SelectionCheckbox
+            checked={isCheckedForSelection}
+            onChange={() => onToggleSelect?.(task.id)}
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            aria-label={`Select ${task.title}`}
+          />
+        </div>
+      )}
+
+      <InlineStatusPopover
+        statusId={task.statusId}
+        statuses={project.statuses}
+        isCompleted={isCompleted}
+        onStatusChange={(statusId) => onUpdateTask?.(task.id, { statusId })}
+        onToggleComplete={() => onToggleComplete(task.id)}
+        disabled={!interactive}
+        {...pickerProps(pickerControl, 'status')}
+      />
+
+      <InlinePriorityPopover
+        priority={task.priority}
+        onPriorityChange={(priority) => onUpdateTask?.(task.id, { priority })}
+        disabled={!interactive}
+        {...pickerProps(pickerControl, 'priority')}
+      />
+
+      {renderTitle ? (
+        renderTitle()
+      ) : (
+        <TaskPathTitle task={task} path={path}>
+          <span
+            className={cn(
+              'text-[13px] font-medium grow shrink min-w-0 truncate',
+              isCompleted
+                ? 'text-muted-foreground/60 line-through decoration-1 [text-underline-position:from-font]'
+                : 'text-foreground/90'
+            )}
+          >
+            {task.title}
+          </span>
+        </TaskPathTitle>
+      )}
+
+      {meta ?? (
+        <>
+          {task.isRepeating && task.repeatConfig && (
+            <RepeatIndicator config={task.repeatConfig} size="sm" />
+          )}
+
+          {task.fields && Object.keys(task.fields).length > 0 && (
+            <TaskRelationChip tags={task.tags} fields={task.fields} />
+          )}
+
+          {task.tags.length > 0 && <TaskTagsBadge tags={task.tags} className="shrink-0" />}
+        </>
+      )}
+
+      {path ? null : showProjectBadge && onProjectChange && interactive ? (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only wrapper; keyboard access is provided by the inner controls
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <InteractiveProjectBadge
+            projectId={task.projectId}
+            projects={projects}
+            onProjectChange={onProjectChange}
+            {...pickerProps(pickerControl, 'project')}
+          />
+        </div>
+      ) : showProjectBadge ? (
+        <div className="flex items-center shrink-0 gap-[5px]">
+          <div className="rounded-xs shrink-0 size-2" style={{ backgroundColor: project.color }} />
+          <div className="text-[11px] text-text-tertiary leading-3.5 truncate max-w-[100px]">
+            {project.name}
+          </div>
+        </div>
+      ) : null}
+
+      {!meta && <TaskRowReminder taskId={task.id} />}
+
+      {!meta && !isCompleted && (
+        <TaskRowStartDate startDate={task.startDate} hasDueDisplay={!!dueDateDisplay} />
+      )}
+
+      {!meta && dueDateDisplay && (
+        <div
+          className={cn(
+            'text-[11px] shrink-0 text-end leading-3.5 whitespace-nowrap',
+            'colorClass' in dueDateDisplay && dueDateDisplay.colorClass
+          )}
+          style={'colorStyle' in dueDateDisplay ? { color: dueDateDisplay.colorStyle } : undefined}
+        >
+          {dueDateDisplay.text}
+        </div>
+      )}
+
+      {actions}
+    </div>
+  )
+}
+
+export default TaskRow

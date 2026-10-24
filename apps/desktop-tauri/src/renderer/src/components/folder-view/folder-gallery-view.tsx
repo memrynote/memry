@@ -1,0 +1,251 @@
+/**
+ * Folder Gallery (Grid) View
+ *
+ * Notes as cards with a tinted cover (theme-aware --card-* pastels), large emoji,
+ * title, tags, and folder + modified metadata.
+ *
+ * ponytail: no virtualization yet — fine for typical folders; add windowing if
+ * a folder routinely exceeds ~500 notes.
+ */
+
+import { foldTag } from '@memry/shared/tag-fold'
+import {
+  coverWashForSeed,
+  coverWashGradient,
+  parseCoverValue,
+  type CoverValue
+} from '@memry/shared/cover-image'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { useT } from '@memry/i18n/renderer'
+import { useVault } from '@/hooks/use-vault'
+import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
+import { Folder } from '@/lib/icons'
+import { cn } from '@/lib/utils'
+import { NoteIconDisplay } from '@/lib/render-note-icon'
+import { handleMiddleClick } from '@/lib/middle-click'
+import { useTabScrollRestore } from '@/hooks/use-tab-scroll-restore'
+import type { NoteWithProperties } from '@memry/contracts/folder-view-api'
+import { refFromViewRow, startCanvasRowsDrag } from '@/pages/canvas/canvas-bulk-add'
+import { FolderViewEmptyState } from './folder-view-empty-state'
+import { TagChip } from '@/components/note/tags-row/TagChip'
+import {
+  toTagChip,
+  pastelFor,
+  formatRelative,
+  NoteCardKindIcon,
+  type TagMetaMap
+} from './note-card-pieces'
+import { RowContextMenu, type RowMenuActions } from './row-context-menu'
+
+export interface FolderGalleryViewProps {
+  notes: NoteWithProperties[]
+  searchQuery?: string
+  tagMetaMap: TagMetaMap
+  onNoteOpen: (noteId: string) => void
+  /** Middle-click gesture: open the card in a background tab. */
+  onOpenInBackgroundTab?: (noteId: string) => void
+  onTagClick?: (tag: string) => void
+  onCreateNote?: () => void
+  onClearAll?: () => void
+  /**
+   * Right-click actions for each card. Without them a card has no context
+   * menu, which is what the Home folder widget wants.
+   */
+  rowActions?: RowMenuActions
+  /**
+   * Names this scroller inside the owning tab, turning scroll restore on. Left
+   * unset by callers that are not a tab's main content (the Home folder widget),
+   * where there is no per-tab offset to restore.
+   */
+  scrollKey?: string
+  className?: string
+}
+
+interface GalleryCardCoverProps {
+  cover: CoverValue
+  note: NoteWithProperties
+  vaultPath: string | null
+}
+
+/**
+ * The note's own cover in the card band. A photo that fails to load falls back
+ * to the wash keyed off the note id, as the note's cover band does.
+ */
+function GalleryCardCover({ cover, note, vaultPath }: GalleryCardCoverProps): React.JSX.Element {
+  const { t } = useT('notes')
+  const src =
+    cover.kind === 'image' ? resolveNoteRelativeUrl(cover.ref, note.path, vaultPath, note.id) : null
+  const [failedSrc, setFailedSrc] = useState<string | null>(null)
+
+  if (src === null || failedSrc === src) {
+    const washId = cover.kind === 'wash' ? cover.id : coverWashForSeed(note.id)
+    return (
+      <div
+        data-testid="gallery-card-cover-wash"
+        className="h-[90px]"
+        style={{ backgroundImage: coverWashGradient(washId) }}
+      />
+    )
+  }
+  return (
+    <img
+      src={src}
+      alt={t('cover.alt')}
+      draggable={false}
+      loading="lazy"
+      onError={() => setFailedSrc(src)}
+      data-testid="gallery-card-cover-image"
+      className="h-[90px] w-full bg-muted object-cover"
+    />
+  )
+}
+
+export function FolderGalleryView({
+  notes,
+  searchQuery,
+  tagMetaMap,
+  onNoteOpen,
+  onOpenInBackgroundTab,
+  onTagClick,
+  onCreateNote,
+  onClearAll,
+  rowActions,
+  scrollKey,
+  className
+}: FolderGalleryViewProps): React.JSX.Element {
+  const { status } = useVault()
+  const vaultPath = status?.path ?? null
+  const q = searchQuery?.trim().toLowerCase() ?? ''
+  const visible = useMemo(() => {
+    if (!q) return notes
+    return notes.filter(
+      (n) => n.title.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))
+    )
+  }, [notes, q])
+
+  // Called before the empty-state early return, as hooks must be. The empty
+  // state renders no scroller at all, so restore stays off until cards exist —
+  // and flipping `enabled` back on is what re-runs it when they arrive.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const getScrollElement = useCallback(() => scrollRef.current, [])
+  useTabScrollRestore({
+    getScrollElement,
+    key: scrollKey,
+    enabled: scrollKey !== undefined && visible.length > 0
+  })
+
+  if (visible.length === 0) {
+    return (
+      <FolderViewEmptyState
+        variant={q ? 'no-results' : 'empty'}
+        onCreateNote={onCreateNote}
+        onClearAll={onClearAll}
+        className={cn('h-full', className)}
+      />
+    )
+  }
+
+  return (
+    <div
+      ref={scrollRef}
+      className={cn('flex h-full flex-wrap content-start gap-4 overflow-auto p-[18px]', className)}
+    >
+      {visible.map((note) => {
+        const cover = parseCoverValue(note.cover)
+        const card = (
+          <div
+            key={note.id}
+            // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- whole-card target with nested interactive children; a nested <button> would be invalid HTML
+            role="button"
+            tabIndex={0}
+            // Drops onto a canvas as a card; this view has no multi-select.
+            draggable
+            onDragStart={(e) => {
+              const ref = refFromViewRow(note)
+              startCanvasRowsDrag(e, ref ? [ref] : [])
+            }}
+            onClick={() => onNoteOpen(note.id)}
+            onMouseDown={(e) => handleMiddleClick(e, () => onOpenInBackgroundTab?.(note.id))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                onNoteOpen(note.id)
+              }
+            }}
+            className="flex w-[272px] cursor-pointer flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm outline-none transition-shadow hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
+            {cover ? (
+              <GalleryCardCover cover={cover} note={note} vaultPath={vaultPath} />
+            ) : (
+              <div
+                className={cn(
+                  'flex h-[90px] items-center justify-center',
+                  pastelFor(note.emoji || note.title || note.id)
+                )}
+              >
+                {note.emoji ? (
+                  <NoteIconDisplay
+                    value={note.emoji}
+                    className="size-[34px] text-[34px] leading-none"
+                  />
+                ) : (
+                  <span className="text-[34px] leading-none">📄</span>
+                )}
+              </div>
+            )}
+            <div className="flex flex-col gap-2 p-3">
+              {note.kind === 'task' || note.kind === 'inbox' ? (
+                <div className="flex items-center gap-1.5">
+                  <NoteCardKindIcon kind={note.kind} />
+                  <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
+                    {note.title || 'Untitled'}
+                  </span>
+                </div>
+              ) : (
+                <span className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-foreground">
+                  {note.title || 'Untitled'}
+                </span>
+              )}
+              {note.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {note.tags.slice(0, 3).map((tag) => (
+                    <TagChip
+                      key={tag}
+                      tag={toTagChip(tag, tagMetaMap.get(foldTag(tag)))}
+                      onClick={onTagClick ? () => onTagClick(tag) : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/70">
+                <Folder className="size-3 shrink-0" />
+                <span className="truncate">
+                  {note.folder ? note.folder.replace(/^\//, '') : '—'}
+                </span>
+                <div className="flex-1" />
+                <span className="tabular-nums">{formatRelative(note.modified)}</span>
+              </div>
+            </div>
+          </div>
+        )
+        return rowActions ? (
+          <RowContextMenu
+            key={note.id}
+            note={note}
+            isPartOfSelection={false}
+            selectedCount={0}
+            selectedNoteIds={[]}
+            onNoteOpen={onNoteOpen}
+            {...rowActions}
+          >
+            {card}
+          </RowContextMenu>
+        ) : (
+          card
+        )
+      })}
+    </div>
+  )
+}
+
+export default FolderGalleryView

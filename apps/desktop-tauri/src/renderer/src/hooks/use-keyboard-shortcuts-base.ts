@@ -1,0 +1,279 @@
+/**
+ * Base Keyboard Shortcuts Hook
+ * Handles keyboard event binding and shortcut matching
+ */
+
+import { useEffect, useRef } from 'react'
+import { hintModeActiveRef } from '@/contexts/hint-mode'
+import { getVaultSwitchState } from '@/lib/vault-switch-state'
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import type { ShortcutBinding } from '@memry/contracts/settings-schemas'
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+export interface ShortcutModifiers {
+  /** Meta on Mac, Ctrl on Windows/Linux */
+  meta?: boolean
+  /** Always Ctrl (e.g., Ctrl+Tab) */
+  ctrl?: boolean
+  /** Shift key */
+  shift?: boolean
+  /** Alt/Option key */
+  alt?: boolean
+}
+
+export interface KeyboardShortcut {
+  /** Key to match (e.g., 'w', 'Tab', 'ArrowRight') */
+  key: string
+  /** Modifier keys */
+  modifiers?: ShortcutModifiers
+  /** Action to execute */
+  action: () => void
+  /** Human-readable description */
+  description: string
+  /** Condition for shortcut to be active */
+  when?: () => boolean
+  /** Allow in input fields */
+  allowInInput?: boolean
+}
+
+// =============================================================================
+// PLATFORM DETECTION
+// =============================================================================
+
+/**
+ * Detect if running on Mac
+ */
+export const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform)
+
+/**
+ * Get platform-specific modifier key label
+ */
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union with no default; falls through to undefined only for off-type input, kept to preserve that
+export const getModifierSymbol = (modifier: 'meta' | 'ctrl' | 'shift' | 'alt'): string => {
+  switch (modifier) {
+    case 'meta':
+      return isMac ? '⌘' : 'Ctrl'
+    case 'ctrl':
+      return 'Ctrl'
+    case 'shift':
+      return isMac ? '⇧' : 'Shift'
+    case 'alt':
+      return isMac ? '⌥' : 'Alt'
+  }
+}
+
+// =============================================================================
+// MATCHING
+// =============================================================================
+
+const PUNCTUATION_BY_CODE: Record<string, string> = {
+  Backslash: '\\',
+  BracketLeft: '[',
+  BracketRight: ']',
+  Minus: '-',
+  Equal: '=',
+  Slash: '/',
+  Comma: ',',
+  Period: '.',
+  Semicolon: ';',
+  Quote: "'",
+  Backquote: '`'
+}
+
+/** The US-layout character printed on a physical key, e.g. `KeyW` -> `w`. */
+export const physicalKey = (code: string): string | null => {
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase()
+  if (/^Digit\d$/.test(code)) return code.slice(5)
+  return PUNCTUATION_BY_CODE[code] ?? null
+}
+
+/**
+ * `e.key` that no chord could name: an Option-composed character on macOS
+ * (⌥⌘W reports `∑`), a dead key, or a letter from a non-Latin layout.
+ */
+export const isComposedKey = (key: string): boolean =>
+  key === 'Dead' || (key.length === 1 && (key < ' ' || key > '~'))
+
+/**
+ * The key a recorded chord should store: `e.key`, unless the layout composed
+ * it into a character that would only ever match on the same layout.
+ */
+export const chordKeyFromEvent = (e: KeyboardEvent): string =>
+  isComposedKey(e.key) ? (physicalKey(e.code) ?? e.key) : e.key
+
+/**
+ * The chord a keystroke records in Settings → Shortcuts. `meta` is the
+ * platform's command key (⌘ on macOS, Ctrl elsewhere), exactly as
+ * `matchesShortcut` reads it back. On macOS Ctrl is its own modifier, so ⌃⌘→
+ * does not collapse into ⌘→ (line end).
+ */
+export const bindingFromKeyboardEvent = (e: KeyboardEvent): ShortcutBinding => ({
+  key: chordKeyFromEvent(e),
+  modifiers: {
+    meta: (isMac ? e.metaKey : e.ctrlKey) || undefined,
+    ctrl: (isMac && e.ctrlKey) || undefined,
+    shift: e.shiftKey || undefined,
+    alt: e.altKey || undefined
+  }
+})
+
+const keyMatches = (e: KeyboardEvent, key: string, modifiers: ShortcutModifiers): boolean => {
+  const wanted = key.toLowerCase()
+  if (e.key.toLowerCase() === wanted) return true
+  const physical = physicalKey(e.code)
+  if (physical !== wanted) return false
+  // Fall back to the physical key only where `e.key` cannot carry the chord's
+  // key: a composed character, or a Shift-ed punctuation key (⌘⇧\ reports `|`).
+  // A plain ASCII letter always wins, so ⌘Z on AZERTY (physical W) stays undo.
+  if (isComposedKey(e.key)) return true
+  return Boolean(modifiers.shift) && e.shiftKey && !/^[a-z]$/.test(wanted)
+}
+
+/**
+ * Whether a chord may fire while the caret is in a text field or the note
+ * editor. Only chords held with ⌘/Ctrl qualify: they never type a character,
+ * and the editor's own ⌘ keys (B, I, U, E, Z, ⇧S, ...) do not overlap the
+ * app's. A plain key, or ⌥ alone (which types ∑, å, ... on macOS), would eat
+ * what the user is typing.
+ */
+export const chordAllowedInInput = (binding: ShortcutBinding): boolean =>
+  Boolean(binding.modifiers.meta || binding.modifiers.ctrl)
+
+let shortcutRecording = false
+
+/**
+ * Settings → Shortcuts is recording a keystroke. Every app shortcut stands down
+ * meanwhile, so pressing ⌘K to record it does not also open search.
+ */
+export const setShortcutRecording = (recording: boolean): void => {
+  shortcutRecording = recording
+}
+
+export const isShortcutRecording = (): boolean => shortcutRecording
+
+/**
+ * Does this keydown match the given chord?
+ *
+ * Shared with the raw-listener shortcut owners (new note, search, shortcuts
+ * help) so every surface resolves a rebindable binding the same way.
+ */
+export const matchesShortcut = (
+  e: KeyboardEvent,
+  key: string,
+  modifiers: ShortcutModifiers = {},
+  mac: boolean = isMac
+): boolean => {
+  if (!key || shortcutRecording) return false
+  if (!keyMatches(e, key, modifiers)) return false
+
+  // Meta modifier (Cmd on Mac, Ctrl on Windows)
+  const metaOrCtrl = mac ? e.metaKey : e.ctrlKey
+  if (modifiers.meta && !metaOrCtrl) return false
+  if (!modifiers.meta && metaOrCtrl && !modifiers.ctrl) return false
+
+  // Ctrl modifier (always Ctrl, e.g., Ctrl+Tab). On macOS it is a distinct
+  // key, so a held Ctrl the chord does not ask for is a different chord
+  // (⌃⌘→ switches vaults; ⌘→ is line end).
+  if (modifiers.ctrl && !e.ctrlKey) return false
+  if (mac && !modifiers.ctrl && e.ctrlKey) return false
+
+  // Shift modifier
+  if (modifiers.shift !== undefined) {
+    if (modifiers.shift && !e.shiftKey) return false
+    if (!modifiers.shift && e.shiftKey) return false
+  } else if (e.shiftKey) {
+    return false
+  }
+
+  // Alt modifier
+  if (modifiers.alt !== undefined) {
+    if (modifiers.alt && !e.altKey) return false
+    if (!modifiers.alt && e.altKey) return false
+  } else if (e.altKey) {
+    return false
+  }
+
+  return true
+}
+
+// =============================================================================
+// HOOK
+// =============================================================================
+
+export interface UseKeyboardShortcutsOptions {
+  /**
+   * Listen in the capture phase so matched shortcuts fire before input/editor
+   * keydown handlers that may call stopPropagation (e.g. the tasks quick-add
+   * input, inbox composer, or the note editor). Only matched shortcuts are
+   * intercepted; all other keystrokes pass through untouched.
+   */
+  capture?: boolean
+}
+
+/**
+ * Hook to handle keyboard shortcuts
+ */
+export const useKeyboardShortcuts = (
+  shortcuts: KeyboardShortcut[],
+  options: UseKeyboardShortcutsOptions = {}
+): void => {
+  const { capture = false } = options
+  // Callers rebuild the shortcut array whenever their state changes. Read it
+  // from a ref at keypress time so the window listener binds once per mount
+  // instead of detaching/reattaching on every render.
+  const shortcutsRef = useRef(shortcuts)
+
+  useEffect(() => {
+    shortcutsRef.current = shortcuts
+  }, [shortcuts])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if (hintModeActiveRef.current) return
+      // The leaving workspace stays on screen while main opens the next vault.
+      // `inert` does not stop window listeners, so its shortcuts would act on a
+      // half-open vault.
+      if (getVaultSwitchState().pending) return
+
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
+      const target = e.target as HTMLElement
+
+      // Check if typing in input/textarea
+      const isInputField =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable ||
+        isInputFocused()
+
+      for (const shortcut of shortcutsRef.current) {
+        const { key, modifiers = {}, action, when, allowInInput } = shortcut
+
+        // Skip if in input and not allowed
+        if (isInputField && !allowInInput) {
+          // Allow Escape in inputs
+          if (e.key !== 'Escape') continue
+        }
+
+        // Check condition
+        if (when && !when()) continue
+
+        // Check key and modifiers
+        if (!matchesShortcut(e, key, modifiers)) continue
+
+        // All checks passed - execute action
+        e.preventDefault()
+        e.stopPropagation()
+        action()
+        return
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, capture)
+    return () => window.removeEventListener('keydown', handleKeyDown, capture)
+  }, [capture])
+}
+
+export default useKeyboardShortcuts

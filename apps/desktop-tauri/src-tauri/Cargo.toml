@@ -1,0 +1,45 @@
+[package]
+name = "memry-tauri"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+workspace = "../../../crates"
+description = "MemryNote desktop shell on Tauri v2"
+default-run = "memry-tauri"
+
+[lib]
+name = "memry_tauri"
+
+[[bin]]
+name = "memry-tauri"
+path = "src/main.rs"
+
+[[bin]]
+name = "export-bindings"
+path = "src/bin/export_bindings.rs"
+
+[features]
+# Step 03 (#3520) fills it.
+e2e = []
+
+[build-dependencies]
+tauri-build = { version = "2.7", features = [] }
+
+[dependencies]
+memry-desktop = { path = "../../../crates/memry-desktop" }
+tauri = { version = "2.12", features = ["specta"] }
+# tauri-specta rc.26 requires exactly these versions.
+tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
+specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
+specta-typescript = "=0.0.13"
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+# `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+
+[dev-dependencies]
+tauri = { version = "2.12", features = ["specta", "test"] }
+tempfile = "3"

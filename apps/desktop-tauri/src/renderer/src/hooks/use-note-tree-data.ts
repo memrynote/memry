@@ -1,0 +1,230 @@
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react'
+import { useSidebarSortMode } from './use-sidebar-sort-mode'
+import { useSidebarTreeViewOptions } from './use-sidebar-tree-view-options'
+import {
+  useNotesList,
+  useNoteFoldersQuery,
+  useNoteMutations,
+  type NoteListItem
+} from '@/hooks/use-notes-query'
+import { notesService } from '@/services/notes-service'
+import {
+  buildTreeFromNotes,
+  hideVaultFiles,
+  type TreeStructure
+} from '@/components/notes-tree-utils'
+import { createLogger } from '@/lib/logger'
+import { trackWorkspaceLoad } from '@/lib/workspace-load-tracker'
+import { useVaultConfig } from './use-vault-config'
+
+const log = createLogger('Hook:NoteTreeData')
+
+/**
+ * How many notes one sidebar page pulls.
+ *
+ * The ceiling stays deliberately bounded: the tree needs the whole array in the
+ * renderer to build folder structure, and this list is invalidated and refetched
+ * on every note create/update/rename/move, so an unbounded fetch would make a
+ * huge vault pay for the entire note set on every keystroke-driven write. What
+ * changes here is that the overflow is now reported and reachable on demand
+ * instead of being dropped without a trace.
+ */
+export const NOTE_TREE_PAGE_SIZE = 10000
+
+interface LoadedPage {
+  notes: NoteListItem[]
+  total: number
+  hasMore: boolean
+}
+
+const EMPTY_PAGE: LoadedPage = { notes: [], total: 0, hasMore: false }
+
+export interface NoteTreeData {
+  notes: NoteListItem[]
+  isLoading: boolean
+  error: Error | null
+  folders: ReturnType<typeof useNoteFoldersQuery>['folders']
+  createFolder: ReturnType<typeof useNoteFoldersQuery>['createFolder']
+  setFolderIcon: ReturnType<typeof useNoteFoldersQuery>['setFolderIcon']
+  refreshFolders: ReturnType<typeof useNoteFoldersQuery>['refetch']
+  mutations: ReturnType<typeof useNoteMutations>
+  /** What the tree draws: view options applied. */
+  tree: TreeStructure
+  /**
+   * Same order as `tree`, but with the files `sidebar.showFiles` hides still in
+   * it. Reordering writes positions over this list, so a hidden file keeps its
+   * slot between the notes the user did drag.
+   */
+  unfilteredTree: TreeStructure
+  /** `sidebar.showFiles`: false means `tree` leaves non-markdown files out. */
+  showFiles: boolean
+  noteMap: Map<string, NoteListItem>
+  notePositions: Record<string, number>
+  setNotePositions: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  folderTemplateNames: Map<string, string>
+  setFolderTemplateNames: React.Dispatch<React.SetStateAction<Map<string, string>>>
+  computeTargetFolder: (selectedIds: string[]) => string
+  /** Notes in the vault that the pages fetched so far do not cover. */
+  hiddenNoteCount: number
+  /** True while a `loadMore()` page is in flight and the current tree is still shown. */
+  isLoadingMore: boolean
+  /** Pull one more page into the tree. No-op once nothing is hidden. */
+  loadMore: () => void
+}
+
+export function useNoteTreeData(): NoteTreeData {
+  const [limit, setLimit] = useState(NOTE_TREE_PAGE_SIZE)
+  const { mode: sortMode } = useSidebarSortMode('collections')
+  const { notesFirst, showFiles } = useSidebarTreeViewOptions()
+  // Journal entries join the tree only when the user shows the journal folder.
+  const includeJournals = useVaultConfig()?.journalShowInSidebar === true
+
+  // `fields: 'tree'` — the sidebar renders path/title/modified/tags/emoji/
+  // localOnly/fileType and nothing else, so main skips the snippet and the
+  // mime/size pair. At a 10k-note ceiling those are the bulk of the payload,
+  // and this list is refetched on every note create/update/rename/move.
+  const {
+    notes: fetchedNotes,
+    total,
+    hasMore,
+    isLoading: isPageLoading,
+    error
+  } = useNotesList({ limit, fields: 'tree', ...(includeJournals ? { includeJournals } : {}) })
+
+  // Raising the ceiling changes the query key, so TanStack starts a fresh entry
+  // with no data and `isLoading` flips back to true. Hold the page already on
+  // screen so "load more" grows the tree instead of collapsing it to a skeleton.
+  const loadedPageRef = useRef<LoadedPage>(EMPTY_PAGE)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  if (!isPageLoading && loadedPageRef.current.notes !== fetchedNotes) {
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    loadedPageRef.current = { notes: fetchedNotes, total, hasMore }
+  }
+  const page = loadedPageRef.current
+  const notes = page.notes
+
+  const loadMore = useCallback(() => {
+    setLimit((current) => current + NOTE_TREE_PAGE_SIZE)
+  }, [])
+
+  const mutations = useNoteMutations()
+  const { folders, createFolder, setFolderIcon, refetch: refreshFolders } = useNoteFoldersQuery()
+
+  const [folderTemplateNames, setFolderTemplateNames] = useState<Map<string, string>>(new Map())
+  const [notePositions, setNotePositions] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    const loadFolderTemplateNames = async () => {
+      if (folders.length === 0) return
+
+      try {
+        const templatesResponse = await window.api.templates.list()
+        const templatesMap = new Map(templatesResponse.templates.map((t) => [t.id, t.name]))
+
+        const namesMap = new Map<string, string>()
+        await Promise.all(
+          folders.map(async (f) => {
+            try {
+              const config = await notesService.getFolderConfig(f.path)
+              if (config?.template) {
+                const templateName = templatesMap.get(config.template)
+                if (templateName) {
+                  namesMap.set(f.path, templateName)
+                }
+              }
+            } catch {
+              // Ignore errors for individual folders
+            }
+          })
+        )
+
+        setFolderTemplateNames(namesMap)
+      } catch (err) {
+        log.error('Failed to load folder template names', err)
+      }
+    }
+
+    void loadFolderTemplateNames()
+  }, [folders])
+
+  useEffect(() => {
+    const fetchPositions = async () => {
+      try {
+        const result = await trackWorkspaceLoad(notesService.getAllPositions())
+        if (result.success) {
+          setNotePositions(result.positions)
+        }
+      } catch (err) {
+        log.error('Failed to fetch positions', err)
+      }
+    }
+    void fetchPositions()
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies, react/refs -- dependency is an intentional re-run trigger (token/identity), not read by the effect; latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  }, [notes])
+
+  const unfilteredTree = useMemo(() => {
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    return buildTreeFromNotes(notes, folders, notePositions, sortMode, notesFirst)
+  }, [notes, folders, notePositions, sortMode, notesFirst])
+
+  const tree = useMemo(
+    () => (showFiles ? unfilteredTree : hideVaultFiles(unfilteredTree)),
+    [unfilteredTree, showFiles]
+  )
+
+  const noteMap = useMemo(() => {
+    const map = new Map<string, NoteListItem>()
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    notes.forEach((note) => map.set(note.id, note))
+    return map
+  }, [notes])
+
+  const computeTargetFolder = useMemo(() => {
+    return (selectedIds: string[]): string => {
+      if (selectedIds.length === 0) return ''
+
+      const selectedId = selectedIds[0]
+
+      if (selectedId.startsWith('folder-')) {
+        return selectedId.replace('folder-', '')
+      }
+
+      const note = noteMap.get(selectedId)
+      if (note) {
+        const parts = note.path.split('/')
+        parts.pop()
+        return parts.join('/')
+      }
+
+      return ''
+    }
+  }, [noteMap])
+
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  return {
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    notes,
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    isLoading: isPageLoading && notes.length === 0,
+    error,
+    folders,
+    createFolder,
+    setFolderIcon,
+    refreshFolders,
+    mutations,
+    tree,
+    unfilteredTree,
+    showFiles,
+    noteMap,
+    notePositions,
+    setNotePositions,
+    folderTemplateNames,
+    setFolderTemplateNames,
+    computeTargetFolder,
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    hiddenNoteCount: page.hasMore ? Math.max(page.total - notes.length, 0) : 0,
+    // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+    isLoadingMore: isPageLoading && notes.length > 0,
+    loadMore
+  }
+}

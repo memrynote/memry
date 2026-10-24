@@ -47,6 +47,7 @@ cargo test -p <touched crates>   # CI runs the full workspace
 node ../scripts/check-line-ceilings.mjs
 ```
 
+- `memry-cli` does not build on Windows: `crates/memry-cli/src/session.rs` imports `std::os::unix`. The `windows-2022` and `windows-11-arm` legs of `rust-ci.yml` run clippy with `--exclude memry-cli`, and `cargo test -p memry-cli` runs on the Ubuntu leg only.
 - 600 lines per Rust source file in every crate, `apps/desktop-tauri/src-tauri` included. The repo-wide oxlint `max-lines` limit of 800 applies to `apps/desktop-tauri/src`.
 
 - A file at its ceiling is split along an existing module boundary before it gains behavior.

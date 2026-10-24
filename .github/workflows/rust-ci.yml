@@ -10,6 +10,8 @@ on:
   pull_request:
     paths:
       - 'crates/**'
+      - 'apps/desktop-tauri/**'
+      - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
@@ -18,6 +20,8 @@ on:
       - main
     paths:
       - 'crates/**'
+      - 'apps/desktop-tauri/**'
+      - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
@@ -36,16 +40,29 @@ env:
 
 jobs:
   lint-and-test:
-    name: fmt, clippy, test
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+    name: fmt, clippy, test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-15, macos-15-intel, windows-2022, windows-11-arm]
     defaults:
       run:
+        shell: bash
         working-directory: crates
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      # Tauri's webview and the keyring need these system libraries on Linux.
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -59,15 +76,28 @@ jobs:
           workspaces: crates
 
       - name: Format
+        if: runner.os == 'Linux'
         run: cargo fmt --all --check
 
       - name: Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        if: runner.os != 'Windows'
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # `crates/memry-cli/src/session.rs` imports `std::os::unix`, so memry-cli never builds on
+      # Windows. The exclusion is recorded in crates/AGENTS.md.
+      - name: Clippy (Windows, without memry-cli)
+        if: runner.os == 'Windows'
+        run: cargo clippy --workspace --exclude memry-cli --all-targets -- -D warnings
 
       - name: Test
-        run: cargo test -p memry-core
+        run: cargo test -p memry-core -p memry-desktop -p memry-tauri
+
+      - name: Test memry-cli
+        if: runner.os == 'Linux'
+        run: cargo test -p memry-cli
 
       - name: Line ceilings
+        if: runner.os == 'Linux'
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
 

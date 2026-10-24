@@ -1,0 +1,52 @@
+import { createLogger } from './logger'
+
+const log = createLogger('NotPorted')
+const SUBSCRIBE_NAME = /^on[A-Z]/
+
+export class NotPortedError extends Error {
+  constructor(callPath: string) {
+    super(`${callPath} is not ported`)
+    this.name = 'NotPortedError'
+  }
+}
+
+const loggedSubscriptions = new Set<string>()
+
+const noopUnsubscribe = (): void => undefined
+
+// A function target, so a leaf can be called; `get` hands out the next level.
+function createLevel(callPath: string, name: string): unknown {
+  return new Proxy(() => undefined, {
+    get(_target, property) {
+      // Symbols and `then` must stay undefined, or `await window.api` would treat the proxy
+      // as a thenable and never settle.
+      if (typeof property === 'symbol' || property === 'then') return undefined
+      return createLevel(`${callPath}.${property}`, property)
+    },
+    apply() {
+      if (SUBSCRIBE_NAME.test(name)) {
+        if (!loggedSubscriptions.has(callPath)) {
+          loggedSubscriptions.add(callPath)
+          log.info(`${callPath} subscribed; no events arrive until it is ported`)
+        }
+        return noopUnsubscribe
+      }
+      throw new NotPortedError(callPath)
+    }
+  })
+}
+
+/**
+ * Defines `window.api` and `window.electron` as nested proxies for the development build.
+ * Calling a leaf throws `NotPortedError`; an `onXxx` leaf returns a no-op unsubscribe function
+ * and logs once per name. Step 43 (#3560) deletes this file.
+ */
+export function installNotPortedShim(): void {
+  for (const root of ['api', 'electron']) {
+    Object.defineProperty(window, root, {
+      value: createLevel(`window.${root}`, root),
+      configurable: true,
+      writable: true
+    })
+  }
+}

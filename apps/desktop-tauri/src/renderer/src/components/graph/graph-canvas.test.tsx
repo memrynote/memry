@@ -1,0 +1,1271 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { GraphDataResponse, GraphSettings } from '@memry/contracts/graph-api'
+import type { GraphFilterState } from '@/hooks/use-graph-filters'
+
+const graphCanvasMocks = vi.hoisted(() => ({
+  sigma: {
+    setSetting: vi.fn(),
+    refresh: vi.fn(),
+    // Sigma retains its graph reference even after kill(). The live instance is
+    // the one holding the graph the container was rendered with; a stale
+    // instance returns something else. Overridden per-test to model the race.
+    // jsdom does no layout, so a real element measures 0 and the refresh guard
+    // would skip every repaint. Hand it one that measures.
+    getContainer: (): HTMLElement =>
+      Object.defineProperty(document.createElement('div'), 'offsetWidth', { value: 800 }),
+    getGraph: (): unknown => graphCanvasMocks.sigmaContainerProps?.graph
+  },
+  sigmaContainerProps: null as null | Record<string, any>,
+  layoutStart: vi.fn(),
+  layoutStop: vi.fn(),
+  openTab: vi.fn(),
+  createNote: vi.fn(),
+  graphEdits: {
+    linkNotes: vi.fn(),
+    unlinkNotes: vi.fn(),
+    addTag: vi.fn()
+  },
+  toast: vi.fn(),
+  canStartLink: null as null | ((nodeId: string) => boolean)
+}))
+
+vi.mock('@react-sigma/core', () => ({
+  SigmaContainer: (props: Record<string, any>) => {
+    graphCanvasMocks.sigmaContainerProps = props
+    return <div data-testid="sigma">{props.children}</div>
+  },
+  useSigma: () => graphCanvasMocks.sigma
+}))
+
+vi.mock('@react-sigma/layout-forceatlas2', () => ({
+  useWorkerLayoutForceAtlas2: () => ({
+    start: graphCanvasMocks.layoutStart,
+    stop: graphCanvasMocks.layoutStop
+  })
+}))
+
+vi.mock('next-themes', () => ({
+  useTheme: () => ({ resolvedTheme: 'light' })
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  useTabActions: () => ({ openTab: graphCanvasMocks.openTab })
+}))
+
+vi.mock('@/hooks/use-notes-query', () => ({
+  useNoteMutations: () => ({
+    createNote: { mutateAsync: graphCanvasMocks.createNote }
+  })
+}))
+
+vi.mock('@/hooks/use-graph-edits', () => ({
+  useGraphEdits: () => graphCanvasMocks.graphEdits
+}))
+
+vi.mock('sonner', () => ({
+  toast: graphCanvasMocks.toast
+}))
+
+vi.mock('./graph-events', () => ({
+  GraphEvents: ({
+    onHoverNode,
+    onTooltipMove,
+    onFocusNode,
+    onContextMenu,
+    onNodeGrab,
+    onNodeDrag,
+    onNodeRelease,
+    canStartLink,
+    onLinkDrag,
+    onLinkDrop
+  }: {
+    onHoverNode: (id: string | null) => void
+    onTooltipMove: (pos: { x: number; y: number } | null) => void
+    onFocusNode: (id: string) => void
+    onContextMenu?: (menu: { nodeId: string; x: number; y: number } | null) => void
+    onNodeGrab?: (id: string) => void
+    onNodeDrag?: (id: string, x: number, y: number) => void
+    onNodeRelease?: (id: string, moved: boolean) => void
+    canStartLink?: (id: string) => boolean
+    onLinkDrag?: (
+      drag: { sourceId: string; fromX: number; fromY: number; x: number; y: number } | null
+    ) => void
+    onLinkDrop?: (sourceId: string, targetId: string) => void
+  }) => {
+    graphCanvasMocks.canStartLink = canStartLink ?? null
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            onHoverNode('note-a')
+            onTooltipMove({ x: 10, y: 20 })
+          }}
+        >
+          hover note
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onHoverNode(null)
+            onTooltipMove(null)
+          }}
+        >
+          unhover note
+        </button>
+        <button type="button" onClick={() => onFocusNode('note-b')}>
+          focus note
+        </button>
+        <button type="button" onClick={() => onContextMenu?.({ nodeId: 'note-a', x: 1, y: 2 })}>
+          context note
+        </button>
+        <button
+          type="button"
+          onClick={() => onContextMenu?.({ nodeId: 'group:alpha-cat', x: 5, y: 6 })}
+        >
+          context group
+        </button>
+        <button type="button" onClick={() => onContextMenu?.({ nodeId: 'ghost', x: 3, y: 4 })}>
+          context ghost
+        </button>
+        <button type="button" onClick={() => onNodeGrab?.('note-a')}>
+          grab note
+        </button>
+        <button type="button" onClick={() => onNodeDrag?.('note-a', 777, -321)}>
+          drag note
+        </button>
+        <button type="button" onClick={() => onNodeRelease?.('note-a', false)}>
+          release note
+        </button>
+        <button type="button" onClick={() => onNodeRelease?.('note-a', true)}>
+          drop note
+        </button>
+        <button
+          type="button"
+          onClick={() => onLinkDrag?.({ sourceId: 'note-a', fromX: 1, fromY: 2, x: 30, y: 40 })}
+        >
+          link drag
+        </button>
+        <button type="button" onClick={() => onLinkDrag?.(null)}>
+          link end
+        </button>
+        <button type="button" onClick={() => onLinkDrop?.('note-a', 'note-b')}>
+          link drop note
+        </button>
+        <button type="button" onClick={() => onLinkDrop?.('note-a', 'task-1')}>
+          link drop task
+        </button>
+      </div>
+    )
+  }
+}))
+
+// A 2D overlay drawn through sigma's canvas API, which the sigma mock does not model.
+vi.mock('./graph-pin-markers', () => ({
+  GraphPinMarkers: () => null
+}))
+
+vi.mock('./graph-tooltip', () => ({
+  GraphTooltip: ({ nodeId, x, y }: { nodeId: string; x: number; y: number }) => (
+    <div data-testid="tooltip">
+      {nodeId}:{x}:{y}
+    </div>
+  )
+}))
+
+vi.mock('./graph-context-menu', () => ({
+  GraphContextMenu: ({
+    menu,
+    categoryAction,
+    onToggleCategory,
+    onFocusNode,
+    onOpenInTab,
+    onCreateNote,
+    onUnpin,
+    onLinkTo,
+    onAddTag,
+    onUnlink,
+    onClose
+  }: {
+    menu: { nodeId: string }
+    categoryAction?: { categoryId: string; label: string; collapsed: boolean } | null
+    onToggleCategory?: (categoryId: string) => void
+    onFocusNode: (nodeId: string) => void
+    onOpenInTab: (nodeId: string) => void
+    onCreateNote?: (title: string) => void
+    onUnpin?: (nodeId: string) => void
+    onLinkTo?: (sourceId: string, targetId: string) => void
+    onAddTag?: (nodeId: string, tag: string) => void
+    onUnlink?: (link: {
+      sourceId: string
+      targetId: string
+      otherId: string
+      otherLabel: string
+    }) => void
+    onClose: () => void
+  }) => (
+    <div data-testid="context-menu">
+      {categoryAction && (
+        <button type="button" onClick={() => onToggleCategory?.(categoryAction.categoryId)}>
+          {categoryAction.collapsed ? 'menu expand' : 'menu collapse'} {categoryAction.label}
+        </button>
+      )}
+      <button type="button" onClick={() => onFocusNode(menu.nodeId)}>
+        menu focus
+      </button>
+      <button type="button" onClick={() => onOpenInTab(menu.nodeId)}>
+        menu open
+      </button>
+      <button type="button" onClick={() => onCreateNote?.('Created from graph')}>
+        menu create
+      </button>
+      <button type="button" onClick={() => onUnpin?.(menu.nodeId)}>
+        menu unpin
+      </button>
+      <button type="button" onClick={() => onLinkTo?.(menu.nodeId, 'note-b')}>
+        menu link
+      </button>
+      <button type="button" onClick={() => onAddTag?.(menu.nodeId, 'reading')}>
+        menu tag
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onUnlink?.({
+            sourceId: 'note-a',
+            targetId: 'note-b',
+            otherId: 'note-b',
+            otherLabel: 'Beta'
+          })
+        }
+      >
+        menu unlink
+      </button>
+      <button type="button" onClick={onClose}>
+        menu close
+      </button>
+    </div>
+  )
+}))
+
+import { GraphCanvas } from './graph-canvas'
+import { buildGraphCategoryIndex } from '@/lib/graph-categories'
+
+const data: GraphDataResponse = {
+  nodes: [
+    {
+      id: 'note-a',
+      type: 'note',
+      label: 'Alpha',
+      tags: ['alpha'],
+      wordCount: 100,
+      connectionCount: 2,
+      emoji: 'A',
+      color: '#111111',
+      isOrphan: false,
+      isUnresolved: false
+    },
+    {
+      id: 'note-b',
+      type: 'note',
+      label: 'Beta',
+      tags: ['beta'],
+      wordCount: 25,
+      connectionCount: 1,
+      emoji: null,
+      color: '#222222',
+      isOrphan: false,
+      isUnresolved: false
+    },
+    {
+      id: 'task-1',
+      type: 'task',
+      label: 'Task',
+      tags: [],
+      wordCount: 0,
+      connectionCount: 1,
+      emoji: null,
+      color: '#333333',
+      isOrphan: false,
+      isUnresolved: false
+    },
+    {
+      id: 'ghost',
+      type: 'note',
+      label: 'Ghost',
+      tags: [],
+      wordCount: 0,
+      connectionCount: 0,
+      emoji: null,
+      color: '#444444',
+      isOrphan: true,
+      isUnresolved: true
+    }
+  ],
+  edges: [
+    { id: 'edge-a-b', source: 'note-a', target: 'note-b', type: 'wikilink', weight: 2 },
+    { id: 'edge-a-task', source: 'note-a', target: 'task-1', type: 'task-note', weight: 1 }
+  ]
+}
+
+const filters: GraphFilterState = {
+  showNotes: true,
+  showTasks: true,
+  showJournals: true,
+  showProjects: true,
+  showTags: true,
+  showOrphans: true,
+  showCanvasEdges: true,
+  selectedTags: [],
+  focusNodeId: null,
+  focusDepth: 1,
+  searchQuery: ''
+}
+
+const settings: GraphSettings = {
+  layout: 'circular',
+  showLabels: true,
+  showEdgeLabels: false,
+  animateLayout: false,
+  showTagEdges: true
+}
+
+describe('GraphCanvas', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.clearAllMocks()
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () =>
+        ({
+          getExtension: vi.fn()
+        }) as unknown as RenderingContext
+    )
+    graphCanvasMocks.sigmaContainerProps = null
+    graphCanvasMocks.sigma.getGraph = () => graphCanvasMocks.sigmaContainerProps?.graph
+    graphCanvasMocks.createNote.mockResolvedValue({
+      success: true,
+      note: { id: 'created-note', title: 'Created from graph' }
+    })
+    document.documentElement.style.setProperty('--graph-dimmed-node', '#eeeeee')
+    document.documentElement.style.setProperty('--graph-edge-soft', '#dddddd')
+    document.documentElement.style.setProperty('--graph-label-color', '#111111')
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  describe('tag categories', () => {
+    const categoryIndex = buildGraphCategoryIndex([
+      { id: 'alpha-cat', name: 'Alpha cat', tags: [{ tag: 'alpha' }] },
+      { id: 'beta-cat', name: 'Beta cat', tags: [{ tag: 'beta' }] }
+    ])
+    const latestNodeReducer = () =>
+      graphCanvasMocks.sigma.setSetting.mock.calls.findLast(([key]) => key === 'nodeReducer')?.[1]
+
+    beforeEach(() => {
+      document.documentElement.style.setProperty('--graph-group-1', '#aa0000')
+      document.documentElement.style.setProperty('--graph-group-2', '#00aa00')
+      document.documentElement.style.setProperty('--graph-group-none', '#999999')
+    })
+
+    it('colours nodes by their tag category', () => {
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{ ...settings, showTagEdges: false }}
+          viewState={{ colorBy: 'tag-category', collapsedCategoryIds: [] }}
+          categoryIndex={categoryIndex}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const reducer = latestNodeReducer()
+      const node = (id: string, tags: string[], nodeType = 'note') =>
+        reducer(id, { nodeType, tags, label: id, isOrphan: false, color: '#000000' })
+      expect(node('note-a', ['alpha']).color).toBe('#aa0000')
+      expect(node('note-b', ['beta']).color).toBe('#00aa00')
+      expect(node('task-1', [], 'task').color).toBe('#999999')
+      expect(node('tag:beta', [], 'tag').color).toBe('#00aa00')
+    })
+
+    it('collapses a category, focuses its super-node, and expands it from the menu', () => {
+      const onToggleCategory = vi.fn()
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={{ ...filters, focusNodeId: 'note-a' }}
+          graphSettings={{ ...settings, showTagEdges: false }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: ['alpha-cat'] }}
+          categoryIndex={categoryIndex}
+          onFocusNode={vi.fn()}
+          onToggleCategory={onToggleCategory}
+        />
+      )
+      const graph = graphCanvasMocks.sigmaContainerProps?.graph
+      expect(graph.hasNode('note-a')).toBe(false)
+      expect(graph.getNodeAttribute('group:alpha-cat', 'color')).toBe('#aa0000')
+
+      // note-a is folded away; its focus lands on the super-node, not an empty graph.
+      const reducer = latestNodeReducer()
+      expect(
+        reducer('group:alpha-cat', { nodeType: 'group', tags: [], label: 'x' }).hidden
+      ).toBeUndefined()
+      expect(
+        reducer('note-b', { nodeType: 'note', tags: ['beta'], label: 'Beta' }).hidden
+      ).toBeUndefined()
+      expect(reducer('ghost', { nodeType: 'note', tags: [], label: 'Ghost' }).hidden).toBe(true)
+
+      fireEvent.click(screen.getByText('context group'))
+      fireEvent.click(screen.getByText('menu expand Alpha cat'))
+      expect(onToggleCategory).toHaveBeenCalledWith('alpha-cat')
+
+      fireEvent.click(screen.getByText('context note'))
+      expect(screen.queryByText(/menu (expand|collapse)/)).not.toBeInTheDocument()
+    })
+
+    it('saves collapsed members with the layout and restores them from it', () => {
+      const onLayoutChange = vi.fn()
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{
+            ...settings,
+            layout: 'forceatlas2',
+            animateLayout: false,
+            showTagEdges: false
+          }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: ['alpha-cat'] }}
+          categoryIndex={categoryIndex}
+          savedLayout={{ 'note-a': { x: 7, y: 8, pinned: true }, 'note-b': { x: 1, y: 1 } }}
+          onLayoutChange={onLayoutChange}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const graph = graphCanvasMocks.sigmaContainerProps?.graph
+      expect(graph.hasNode('note-a')).toBe(false)
+
+      // The settled layout covers only what is on screen; the folded member
+      // rides along from where it was saved.
+      const saved = onLayoutChange.mock.calls.at(-1)?.[0]
+      expect(saved['note-a']).toEqual({ x: 7, y: 8, pinned: true })
+      expect(saved['group:alpha-cat']).toBeDefined()
+      expect(saved['note-b']).toBeDefined()
+    })
+
+    it('offers collapse on a node whose category is expanded', () => {
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{ ...settings, showTagEdges: false }}
+          viewState={{ colorBy: 'type', collapsedCategoryIds: [] }}
+          categoryIndex={categoryIndex}
+          onFocusNode={vi.fn()}
+          onToggleCategory={vi.fn()}
+        />
+      )
+      fireEvent.click(screen.getByText('context note'))
+      expect(screen.getByText('menu collapse Alpha cat')).toBeInTheDocument()
+    })
+  })
+
+  it('renders a safe fallback when WebGL is unavailable', () => {
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue(null)
+
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText("Graph isn't available on this device")).toBeInTheDocument()
+    expect(screen.queryByTestId('sigma')).not.toBeInTheDocument()
+  })
+
+  it('hides canvas edges when the canvas filter is off, and keeps their own colour when on', () => {
+    const withCanvas: GraphDataResponse = {
+      ...data,
+      edges: [
+        ...data.edges,
+        { id: 'edge-canvas', source: 'note-a', target: 'note-b', type: 'canvas', weight: 1 }
+      ]
+    }
+    const canvasAttrs = { edgeType: 'canvas', color: '#123456', size: 1.5 }
+
+    const reduceWith = (filterState: GraphFilterState) => {
+      const { unmount } = render(
+        <GraphCanvas
+          data={withCanvas}
+          filterState={filterState}
+          graphSettings={settings}
+          onFocusNode={vi.fn()}
+        />
+      )
+      const result = graphCanvasMocks.sigmaContainerProps?.settings.edgeReducer(
+        'note-a-note-b-canvas',
+        canvasAttrs
+      )
+      unmount()
+      return result
+    }
+
+    const shown = reduceWith(filters)
+    expect(shown).toMatchObject({ color: '#123456' })
+    expect(shown.hidden).toBeUndefined()
+    expect(reduceWith({ ...filters, showCanvasEdges: false }).hidden).toBe(true)
+  })
+
+  it('builds sigma settings, applies reducers, and handles hover/context menu actions', async () => {
+    const onFocusNode = vi.fn()
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={{ ...filters, selectedTags: ['alpha'], searchQuery: 'alp' }}
+        graphSettings={settings}
+        onFocusNode={onFocusNode}
+      />
+    )
+
+    const settingsFromSigma = graphCanvasMocks.sigmaContainerProps?.settings
+    expect(settingsFromSigma.labelRenderedSizeThreshold).toBe(2.5)
+    expect(settingsFromSigma.labelColor).toEqual({ color: '#111111' })
+
+    const graph = graphCanvasMocks.sigmaContainerProps?.graph
+    expect(graph.hasNode('note-a')).toBe(true)
+
+    const hiddenTask = settingsFromSigma.nodeReducer('task-1', {
+      nodeType: 'task',
+      label: 'Task',
+      tags: [],
+      isOrphan: false
+    })
+    expect(hiddenTask.hidden).toBe(true)
+
+    const hiddenByTag = settingsFromSigma.nodeReducer('note-b', {
+      nodeType: 'note',
+      label: 'Beta',
+      tags: ['beta'],
+      isOrphan: false
+    })
+    expect(hiddenByTag.hidden).toBe(true)
+
+    const highlighted = settingsFromSigma.nodeReducer('note-a', {
+      nodeType: 'note',
+      label: 'Alpha',
+      tags: ['alpha'],
+      isOrphan: false
+    })
+    expect(highlighted).toMatchObject({ highlighted: true, forceLabel: true, zIndex: 1 })
+
+    const softEdge = settingsFromSigma.edgeReducer('note-a-note-b-wikilink', {
+      color: '#000000',
+      size: 1
+    })
+    expect(softEdge).toMatchObject({ color: '#dddddd', size: 1 })
+
+    fireEvent.click(screen.getByText('hover note'))
+    expect(screen.getByTestId('tooltip')).toHaveTextContent('note-a:10:20')
+    vi.runOnlyPendingTimers()
+
+    fireEvent.click(screen.getByText('focus note'))
+    expect(onFocusNode).toHaveBeenCalledWith('note-b')
+
+    fireEvent.click(screen.getByText('context note'))
+    fireEvent.click(screen.getByText('menu open'))
+    expect(graphCanvasMocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        title: 'Alpha',
+        entityId: 'note-a',
+        isPreview: false
+      })
+    )
+
+    fireEvent.click(screen.getByText('context ghost'))
+    fireEvent.click(screen.getByText('menu create'))
+    await vi.waitFor(() =>
+      expect(graphCanvasMocks.createNote).toHaveBeenCalledWith({ title: 'Created from graph' })
+    )
+    expect(graphCanvasMocks.openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        title: 'Created from graph',
+        entityId: 'created-note',
+        isPreview: false
+      })
+    )
+  })
+
+  it('links notes by Alt-drag and draws a preview while dragging', () => {
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(graphCanvasMocks.canStartLink?.('note-a')).toBe(true)
+    expect(graphCanvasMocks.canStartLink?.('task-1')).toBe(false)
+    expect(graphCanvasMocks.canStartLink?.('ghost')).toBe(false)
+
+    fireEvent.click(screen.getByText('hover note'))
+    fireEvent.click(screen.getByText('link drag'))
+    const preview = screen.getByTestId('graph-link-preview')
+    expect(preview.querySelector('line')).toHaveAttribute('x2', '30')
+    // The tooltip would sit under the pointer and hide the drop target.
+    expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('link end'))
+    expect(screen.queryByTestId('graph-link-preview')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('link drop note'))
+    expect(graphCanvasMocks.graphEdits.linkNotes).toHaveBeenCalledWith('note-a', 'note-b', {
+      source: 'Alpha',
+      target: 'Beta'
+    })
+
+    fireEvent.click(screen.getByText('link drop task'))
+    expect(graphCanvasMocks.graphEdits.linkNotes).toHaveBeenCalledTimes(1)
+    expect(graphCanvasMocks.toast).toHaveBeenCalledTimes(1)
+  })
+
+  it('routes context menu edits to the graph edit hook', () => {
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByText('context note'))
+    fireEvent.click(screen.getByText('menu link'))
+    expect(graphCanvasMocks.graphEdits.linkNotes).toHaveBeenCalledWith('note-a', 'note-b', {
+      source: 'Alpha',
+      target: 'Beta'
+    })
+
+    fireEvent.click(screen.getByText('menu tag'))
+    expect(graphCanvasMocks.graphEdits.addTag).toHaveBeenCalledWith('note-a', 'reading')
+
+    fireEvent.click(screen.getByText('menu unlink'))
+    expect(graphCanvasMocks.graphEdits.unlinkNotes).toHaveBeenCalledWith('note-a', 'note-b', {
+      source: 'Alpha',
+      target: 'Beta'
+    })
+  })
+
+  it('does not push settings into a sigma instance that does not own our graph', () => {
+    // SigmaContainer kills and recreates Sigma whenever the `graph` prop changes.
+    // React runs child effects before the container's create effect, so useSigma()
+    // can still hand SigmaSettingsSync the OLD, killed instance. kill() empties
+    // nodePrograms but keeps the graph, so pushing settings there schedules a
+    // render that throws on the next frame. Model that by having the instance
+    // report a graph that is not the one we rendered with.
+    graphCanvasMocks.sigma.getGraph = () => ({ stale: true })
+
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={settings}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(graphCanvasMocks.sigma.setSetting).not.toHaveBeenCalled()
+  })
+
+  it('re-applies settings once the committed instance owns our graph (recovery)', () => {
+    // Guard the recovery half of the fix: skipping the stale instance must not
+    // leave settings permanently unapplied. First render sees a foreign instance
+    // (guard bails, nothing pushed); once the container commits the instance that
+    // owns the rendered graph, a later settings change must re-run the effect and
+    // actually apply -- proving the guard skips the zombie without stranding
+    // settings on the live instance (a silent visual regression otherwise).
+    graphCanvasMocks.sigma.getGraph = () => ({ stale: true })
+    const { rerender } = render(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={{ ...settings, showLabels: false }}
+        onFocusNode={vi.fn()}
+      />
+    )
+    expect(graphCanvasMocks.sigma.setSetting).not.toHaveBeenCalled()
+
+    graphCanvasMocks.sigma.getGraph = () => graphCanvasMocks.sigmaContainerProps?.graph
+    rerender(
+      <GraphCanvas
+        data={data}
+        filterState={filters}
+        graphSettings={{ ...settings, showLabels: true }}
+        onFocusNode={vi.fn()}
+      />
+    )
+    expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith(
+      'labelRenderedSizeThreshold',
+      2.5
+    )
+  })
+
+  it('syncs sigma settings and hides nodes outside the focus set', () => {
+    render(
+      <GraphCanvas
+        data={data}
+        filterState={{ ...filters, focusNodeId: 'note-a', focusDepth: 1 }}
+        graphSettings={{
+          ...settings,
+          layout: 'forceatlas2',
+          animateLayout: true,
+          showLabels: false
+        }}
+        onFocusNode={vi.fn()}
+      />
+    )
+
+    expect(graphCanvasMocks.sigma.setSetting).toHaveBeenCalledWith(
+      'labelRenderedSizeThreshold',
+      Infinity
+    )
+
+    const settingsFromSigma = graphCanvasMocks.sigmaContainerProps?.settings
+    const focusedOut = settingsFromSigma.nodeReducer('ghost', {
+      nodeType: 'note',
+      label: 'Ghost',
+      tags: [],
+      isOrphan: true
+    })
+    expect(focusedOut.hidden).toBe(true)
+  })
+
+  describe('live simulation', () => {
+    const livePhysics: GraphSettings = {
+      ...settings,
+      layout: 'forceatlas2',
+      animateLayout: true
+    }
+
+    function renderLive(
+      overrides: Partial<GraphSettings> = {},
+      props: Partial<React.ComponentProps<typeof GraphCanvas>> = {}
+    ): {
+      graph: any
+      unmount: () => void
+    } {
+      const { unmount } = render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={{ ...livePhysics, ...overrides }}
+          onFocusNode={vi.fn()}
+          {...props}
+        />
+      )
+      return { graph: graphCanvasMocks.sigmaContainerProps?.graph, unmount }
+    }
+
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('moves nodes and repaints on every animation frame', () => {
+      const { graph } = renderLive()
+      const before = graph.getNodeAttribute('note-a', 'x')
+      graphCanvasMocks.sigma.refresh.mockClear()
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(before)
+      expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+    })
+
+    it('pins a node to the pointer while it is being dragged', () => {
+      const { graph } = renderLive()
+
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(777)
+      expect(graph.getNodeAttribute('note-a', 'y')).toBe(-321)
+    })
+
+    it('lets a released node settle back into the layout', () => {
+      const { graph } = renderLive()
+
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      vi.advanceTimersToNextFrame()
+      fireEvent.click(screen.getByText('release note'))
+      for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(777)
+    })
+
+    it('pins a dropped node where it landed and saves the layout right away', () => {
+      const onLayoutChange = vi.fn()
+      const { graph } = renderLive({}, { onLayoutChange })
+
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      vi.advanceTimersToNextFrame()
+      fireEvent.click(screen.getByText('drop note'))
+
+      expect(onLayoutChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ 'note-a': { x: 777, y: -321, pinned: true } })
+      )
+
+      for (let i = 0; i < 40; i++) vi.advanceTimersToNextFrame()
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(777)
+      expect(graph.getNodeAttribute('note-a', 'pinned')).toBe(true)
+    })
+
+    it('starts from a saved layout, pins included', () => {
+      const { graph } = renderLive(
+        {},
+        {
+          savedLayout: { 'note-a': { x: 300, y: 200, pinned: true }, 'note-b': { x: 280, y: 190 } }
+        }
+      )
+
+      for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(300)
+      expect(graph.getNodeAttribute('note-a', 'y')).toBe(200)
+    })
+
+    it('saves the layout once the simulation comes to rest', () => {
+      const onLayoutChange = vi.fn()
+      renderLive({}, { onLayoutChange })
+
+      for (let i = 0; i < 400 && onLayoutChange.mock.calls.length === 0; i++) {
+        vi.advanceTimersToNextFrame()
+      }
+
+      expect(onLayoutChange).toHaveBeenCalledTimes(1)
+      expect(
+        Object.keys(onLayoutChange.mock.calls[0][0]).toSorted((a, b) =>
+          a < b ? -1 : a > b ? 1 : 0
+        )
+      ).toEqual(
+        graphCanvasMocks.sigmaContainerProps?.graph
+          .nodes()
+          .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
+      )
+    })
+
+    it('unpins from the context menu and saves the change', () => {
+      const onLayoutChange = vi.fn()
+      const { graph } = renderLive({}, { onLayoutChange })
+      fireEvent.click(screen.getByText('grab note'))
+      fireEvent.click(screen.getByText('drag note'))
+      fireEvent.click(screen.getByText('drop note'))
+
+      fireEvent.click(screen.getByText('context note'))
+      fireEvent.click(screen.getByText('menu unpin'))
+
+      expect(graph.hasNodeAttribute('note-a', 'pinned')).toBe(false)
+      expect(onLayoutChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ 'note-a': expect.not.objectContaining({ pinned: true }) })
+      )
+    })
+
+    it('unpins a restored pin with live motion off and re-settles', () => {
+      const onLayoutChange = vi.fn()
+      const { graph } = renderLive(
+        { animateLayout: false },
+        { savedLayout: { 'note-a': { x: 300, y: 200, pinned: true } }, onLayoutChange }
+      )
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(300)
+      onLayoutChange.mockClear()
+
+      fireEvent.click(screen.getByText('context note'))
+      fireEvent.click(screen.getByText('menu unpin'))
+
+      expect(graph.hasNodeAttribute('note-a', 'pinned')).toBe(false)
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(300)
+      expect(onLayoutChange).toHaveBeenCalledTimes(1)
+    })
+
+    it('leaves positions alone for static layouts', () => {
+      const { graph } = renderLive({ layout: 'random' })
+      const before = graph.getNodeAttribute('note-a', 'x')
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
+    })
+
+    it('leaves positions alone when live motion is switched off', () => {
+      const { graph } = renderLive({ animateLayout: false })
+      const before = graph.getNodeAttribute('note-a', 'x')
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
+    })
+
+    it('stops the animation loop on unmount', () => {
+      const { graph, unmount } = renderLive()
+      unmount()
+      const before = graph.getNodeAttribute('note-a', 'x')
+
+      vi.advanceTimersToNextFrame()
+
+      expect(graph.getNodeAttribute('note-a', 'x')).toBe(before)
+    })
+
+    describe('repaint scope', () => {
+      /**
+       * Enough of sigma@3.0.3's `refresh` contract to observe what one repaint
+       * costs. A refresh with no `partialGraph` re-runs both reducers over every
+       * node and every edge (`Sigma#refresh` -> `addNode`/`addEdge`); a partial
+       * one only re-runs them for the items it lists. Either way the indexation
+       * pass (`Sigma#process`) re-reads x/y straight off the graph for every
+       * node and re-feeds the node *and* edge programs, which is what stops a
+       * repaint from being a frame behind. `skipIndexation` is what turns that
+       * pass off.
+       *
+       * TRIPWIRE, read this before bumping sigma. This is a hand-written *model*
+       * of that contract, not real Sigma — driving the real renderer needs WebGL.
+       * It is pinned to sigma@3.0.3, where the source of truth is two lines of
+       * `Sigma#refresh`: `fullRefresh = !opts || !opts.partialGraph` (so `{}`
+       * takes the partial branch and reduces nothing) and
+       * `if (fullRefresh || !skipIndexation) this.needToProcess = true` (so
+       * omitting `skipIndexation` keeps the position pass). Sigma's own docstring
+       * scopes `skipIndexation` to "if you haven't modify x, y, zIndex & size".
+       *
+       * A model cannot notice sigma changing underneath it: if an upgrade alters
+       * either mechanism, this file keeps asserting the OLD contract, stays green,
+       * and the graph silently renders a frame behind. A sigma major or minor bump
+       * must therefore re-read `refresh` in the new dist and re-confirm both lines
+       * by hand — the suite will not do it for you.
+       *
+       * Scope, concretely. What is counted here is the reducer work driven by
+       * `LivePhysics.step()`'s own `refresh` call, and nothing else. The model
+       * binds no graphology listeners, so it cannot observe the reducer work the
+       * real renderer does around that call: sigma's `bindGraphHandlers`
+       * subscribes to `nodeAttributesUpdated` independently, and every
+       * `setNodeAttribute` therefore costs a `refresh({partialGraph:{nodes:[key]}})`
+       * -> `updateNode` -> one more `nodeReducer` pass. Before #1045,
+       * `GraphPhysics.syncPositions()` wrote x and y as two separate
+       * `setNodeAttribute` calls per node, so those events contributed ~2N
+       * `updateNode` calls per frame on top of whatever `step()` asked for. A zero
+       * here means `step()` reduces nothing; it does not by itself mean a frame
+       * reduces nothing.
+       */
+      function recordRepaints(): {
+        nodeReducerCalls: string[]
+        edgeReducerCalls: string[]
+        painted: Map<string, { x: number; y: number }>
+      } {
+        const record = {
+          nodeReducerCalls: [] as string[],
+          edgeReducerCalls: [] as string[],
+          painted: new Map<string, { x: number; y: number }>()
+        }
+
+        // Sigma reduces with whatever reducer was last pushed into its settings.
+        const reducer = (key: 'nodeReducer' | 'edgeReducer'): any => {
+          const pushed = graphCanvasMocks.sigma.setSetting.mock.calls.filter(
+            ([setting]) => setting === key
+          )
+          return pushed.length > 0
+            ? pushed[pushed.length - 1][1]
+            : graphCanvasMocks.sigmaContainerProps?.settings[key]
+        }
+
+        graphCanvasMocks.sigma.refresh.mockImplementation((opts?: any) => {
+          const graph = graphCanvasMocks.sigmaContainerProps?.graph
+          if (!graph) return
+          const partial = opts?.partialGraph
+
+          for (const node of partial ? (partial.nodes ?? []) : graph.nodes()) {
+            record.nodeReducerCalls.push(node)
+            reducer('nodeReducer')(node, graph.getNodeAttributes(node))
+          }
+          for (const edge of partial ? (partial.edges ?? []) : graph.edges()) {
+            record.edgeReducerCalls.push(edge)
+            reducer('edgeReducer')(edge, graph.getEdgeAttributes(edge))
+          }
+
+          if (!partial || !opts?.skipIndexation) {
+            for (const node of graph.nodes()) {
+              record.painted.set(node, {
+                x: graph.getNodeAttribute(node, 'x'),
+                y: graph.getNodeAttribute(node, 'y')
+              })
+            }
+          }
+        })
+
+        return record
+      }
+
+      afterEach(() => {
+        graphCanvasMocks.sigma.refresh.mockReset()
+      })
+
+      it('repaints a physics frame without re-running the reducers over the whole graph', () => {
+        const record = recordRepaints()
+        renderLive()
+        record.nodeReducerCalls.length = 0
+        record.edgeReducerCalls.length = 0
+
+        vi.advanceTimersToNextFrame()
+
+        expect(record.nodeReducerCalls).toEqual([])
+        expect(record.edgeReducerCalls).toEqual([])
+      })
+
+      it('paints every physics frame at the positions that frame just produced', () => {
+        const record = recordRepaints()
+        const { graph } = renderLive()
+
+        for (let i = 0; i < 3; i++) {
+          vi.advanceTimersToNextFrame()
+
+          for (const node of graph.nodes()) {
+            expect(record.painted.get(node)).toEqual({
+              x: graph.getNodeAttribute(node, 'x'),
+              y: graph.getNodeAttribute(node, 'y')
+            })
+          }
+        }
+      })
+
+      it('still re-reduces the whole graph when hover changes the dimming', () => {
+        const record = recordRepaints()
+        const { graph } = renderLive()
+        record.nodeReducerCalls.length = 0
+        record.edgeReducerCalls.length = 0
+
+        fireEvent.click(screen.getByText('hover note'))
+        vi.advanceTimersToNextFrame()
+
+        expect(new Set(record.nodeReducerCalls)).toEqual(new Set(graph.nodes()))
+        expect(new Set(record.edgeReducerCalls)).toEqual(new Set(graph.edges()))
+      })
+    })
+
+    it('leaves no graph listeners behind on unmount', () => {
+      const { graph, unmount } = renderLive()
+      unmount()
+
+      for (const event of ['nodeAdded', 'nodeDropped', 'edgeAdded', 'edgeDropped']) {
+        expect(graph.listenerCount(event)).toBe(0)
+      }
+    })
+  })
+
+  describe('incremental data updates', () => {
+    const noteC: GraphDataResponse['nodes'][number] = {
+      id: 'note-c',
+      type: 'note',
+      label: 'Gamma',
+      tags: [],
+      wordCount: 10,
+      connectionCount: 1,
+      emoji: null,
+      color: '#555555',
+      isOrphan: false,
+      isUnresolved: false
+    }
+
+    function renderWith(
+      next: GraphDataResponse,
+      graphSettings: GraphSettings = settings
+    ): { rerender: (data: GraphDataResponse) => void; unmount: () => void } {
+      const { rerender, unmount } = render(
+        <GraphCanvas
+          data={next}
+          filterState={filters}
+          graphSettings={graphSettings}
+          onFocusNode={vi.fn()}
+        />
+      )
+      return {
+        rerender: (updated) =>
+          rerender(
+            <GraphCanvas
+              data={updated}
+              filterState={filters}
+              graphSettings={graphSettings}
+              onFocusNode={vi.fn()}
+            />
+          ),
+        unmount
+      }
+    }
+
+    function liveGraph(): any {
+      return graphCanvasMocks.sigmaContainerProps?.graph
+    }
+
+    it('keeps the same graph instance so sigma is never recreated', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+
+      rerender({ nodes: [...data.nodes, noteC], edges: data.edges })
+
+      expect(liveGraph()).toBe(graph)
+      expect(graph.hasNode('note-c')).toBe(true)
+    })
+
+    it('removes a deleted note and its edges from the live graph', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+      expect(graph.hasEdge('note-a-task-1-task-note')).toBe(true)
+
+      rerender({
+        nodes: data.nodes.filter((node) => node.id !== 'task-1'),
+        edges: data.edges.filter((edge) => edge.target !== 'task-1')
+      })
+
+      expect(liveGraph()).toBe(graph)
+      expect(graph.hasNode('task-1')).toBe(false)
+      expect(graph.hasEdge('note-a-task-1-task-note')).toBe(false)
+    })
+
+    it('renames a node in the live graph', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+
+      rerender({
+        nodes: data.nodes.map((node) =>
+          node.id === 'note-a' ? { ...node, label: 'Renamed' } : node
+        ),
+        edges: data.edges
+      })
+
+      expect(liveGraph()).toBe(graph)
+      expect(graph.getNodeAttribute('note-a', 'label')).toBe('Renamed')
+    })
+
+    it('adds and removes links in the live graph', () => {
+      const { rerender } = renderWith(data)
+      const graph = liveGraph()
+
+      rerender({
+        nodes: data.nodes,
+        edges: [
+          ...data.edges,
+          { id: 'edge-b-ghost', source: 'note-b', target: 'ghost', type: 'wikilink', weight: 1 }
+        ]
+      })
+      expect(graph.hasEdge('note-b-ghost-wikilink')).toBe(true)
+
+      rerender({ nodes: data.nodes, edges: data.edges })
+      expect(graph.hasEdge('note-b-ghost-wikilink')).toBe(false)
+      expect(liveGraph()).toBe(graph)
+    })
+
+    it('does not re-simulate when a save changes nothing structural', () => {
+      const live: GraphSettings = { ...settings, layout: 'forceatlas2', animateLayout: true }
+      const { rerender } = renderWith(data, live)
+      for (let i = 0; i < 400; i++) vi.advanceTimersToNextFrame()
+      const settledX = liveGraph().getNodeAttribute('note-a', 'x')
+
+      rerender({
+        nodes: data.nodes.map((node) => ({ ...node, tags: [...node.tags] })),
+        edges: data.edges.map((edge) => ({ ...edge }))
+      })
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame()
+
+      expect(liveGraph().getNodeAttribute('note-a', 'x')).toBe(settledX)
+    })
+
+    it('reheats the settled simulation when a node appears', () => {
+      const live: GraphSettings = { ...settings, layout: 'forceatlas2', animateLayout: true }
+      const { rerender } = renderWith(data, live)
+      for (let i = 0; i < 400; i++) vi.advanceTimersToNextFrame()
+      const graph = liveGraph()
+      const settledX = graph.getNodeAttribute('note-a', 'x')
+
+      rerender({
+        nodes: [...data.nodes, noteC],
+        edges: [
+          ...data.edges,
+          { id: 'edge-a-c', source: 'note-a', target: 'note-c', type: 'wikilink', weight: 1 }
+        ]
+      })
+      vi.advanceTimersToNextFrame()
+      const afterFirstFrame = graph.getNodeAttribute('note-a', 'x')
+      for (let i = 0; i < 20; i++) vi.advanceTimersToNextFrame()
+
+      expect(afterFirstFrame).not.toBe(settledX)
+      // Without the reheat the loop parks itself again after that single tick.
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(afterFirstFrame)
+    })
+
+    it('re-settles and repaints a static forceatlas2 layout when a node appears', () => {
+      const staticPhysics: GraphSettings = {
+        ...settings,
+        layout: 'forceatlas2',
+        animateLayout: false
+      }
+      const { rerender } = renderWith(data, staticPhysics)
+      const graph = liveGraph()
+      const settledX = graph.getNodeAttribute('note-a', 'x')
+      graphCanvasMocks.sigma.refresh.mockClear()
+
+      rerender({
+        nodes: [...data.nodes, noteC],
+        edges: [
+          ...data.edges,
+          { id: 'edge-a-c', source: 'note-a', target: 'note-c', type: 'wikilink', weight: 1 }
+        ]
+      })
+
+      expect(graph.hasNode('note-c')).toBe(true)
+      expect(graph.getNodeAttribute('note-a', 'x')).not.toBe(settledX)
+      expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+    })
+  })
+
+  describe('hover fade', () => {
+    function renderCanvas(): void {
+      render(
+        <GraphCanvas
+          data={data}
+          filterState={filters}
+          graphSettings={settings}
+          onFocusNode={vi.fn()}
+        />
+      )
+    }
+
+    it('repaints through the fade-out and then parks', () => {
+      renderCanvas()
+      fireEvent.click(screen.getByText('hover note'))
+      for (let i = 0; i < 40; i++) vi.advanceTimersToNextFrame()
+
+      fireEvent.click(screen.getByText('unhover note'))
+      graphCanvasMocks.sigma.refresh.mockClear()
+      for (let i = 0; i < 40; i++) vi.advanceTimersToNextFrame()
+
+      expect(graphCanvasMocks.sigma.refresh).toHaveBeenCalled()
+
+      // A finished fade schedules no further frame, so the graph stops repainting.
+      graphCanvasMocks.sigma.refresh.mockClear()
+      for (let i = 0; i < 5; i++) vi.advanceTimersToNextFrame()
+
+      expect(graphCanvasMocks.sigma.refresh).not.toHaveBeenCalled()
+    })
+  })
+})

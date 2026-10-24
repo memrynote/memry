@@ -13,6 +13,7 @@ import {
 // `i18nKey`/`labelKey` constants and domain-tasks returns `errors:` codes that the renderer translates.
 const DEFAULT_SCAN_PATHS = [
   'apps/desktop/src/renderer/src',
+  'apps/desktop-tauri/src/renderer/src',
   'apps/desktop/src/main',
   'packages/contracts/src',
   'packages/domain-tasks/src'

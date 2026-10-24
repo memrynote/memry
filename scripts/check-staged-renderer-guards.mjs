@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 
-const rendererSourcePattern = /^apps\/desktop\/src\/renderer\/src\/.*\.[cm]?[jt]sx?$/
+const rendererSourcePattern = /^apps\/desktop(?:-tauri)?\/src\/renderer\/src\/.*\.[cm]?[jt]sx?$/
+// Step 09 (#3526) owns forwarding renderer logs to Rust; until then the logger wraps console.
+const ignoredPathPattern = /^apps\/desktop-tauri\/src\/renderer\/src\/lib\/logger\.ts$/
 const ignoredTestPattern = /(?:\.test|\.spec)\.[cm]?[jt]sx?$/
 const rawConsolePattern = /\bconsole\.(?:debug|error|info|log|trace|warn)\s*\(/g
 const physicalTailwindPattern =
@@ -15,7 +18,11 @@ const COMMENT = 1
 const STRING = 2
 
 function shouldScanPath(filePath) {
-  return rendererSourcePattern.test(filePath) && !ignoredTestPattern.test(filePath)
+  return (
+    rendererSourcePattern.test(filePath) &&
+    !ignoredTestPattern.test(filePath) &&
+    !ignoredPathPattern.test(filePath)
+  )
 }
 
 function lineNumberAt(text, index) {
@@ -268,6 +275,19 @@ function readStagedFile(filePath) {
   return execFileSync('git', ['show', `:${filePath}`], { encoding: 'utf8' })
 }
 
+// The Tauri renderer is a copy of the Electron one until the cutover. A file that is still
+// byte-identical to its Electron original carries that file's debt, which the guard never
+// flagged because nobody staged it; only an edited copy is held to the rules.
+function isVerbatimElectronCopy(filePath, text) {
+  const original = filePath.replace(/^apps\/desktop-tauri\//, 'apps/desktop/')
+  if (original === filePath) return false
+  try {
+    return readFileSync(original, 'utf8') === text
+  } catch {
+    return false
+  }
+}
+
 function runCli() {
   const findings = []
 
@@ -276,7 +296,12 @@ function runCli() {
       continue
     }
 
-    findings.push(...scanRendererText(filePath, readStagedFile(filePath)))
+    const text = readStagedFile(filePath)
+    if (isVerbatimElectronCopy(filePath, text)) {
+      continue
+    }
+
+    findings.push(...scanRendererText(filePath, text))
   }
 
   if (findings.length === 0) {

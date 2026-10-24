@@ -1,0 +1,207 @@
+'use client'
+
+import * as React from 'react'
+import { useT } from '@memry/i18n/renderer'
+import { runCommand } from '@/commands'
+import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
+import { TrafficLights } from '@/components/traffic-lights'
+import { TabIcon } from '@/components/tabs/tab-icon'
+import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
+import { APP_RAIL_WIDTH_PX } from '@/components/sidebar/app-rail'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger
+} from '@/components/ui/context-menu'
+import { useTabs } from '@/contexts/tabs/context'
+import { buildHistoryEntries, type HistoryEntry } from '@/contexts/tabs/helpers'
+import { cn } from '@/lib/utils'
+
+interface WindowControlsProps {
+  className?: string
+}
+
+/**
+ * Viewport-fixed h-9 title row. On macOS the native traffic lights sit at its
+ * start and the buttons follow them; elsewhere the buttons take that slot. Same
+ * in both sidebar states. The sidebar panel and, when
+ * collapsed, the workspace card start below this row.
+ */
+export function WindowControls({ className }: WindowControlsProps): React.JSX.Element {
+  const { t: tPhaseF } = useT('common')
+  const { t } = useT('common')
+  const { state: sidebarState } = useSidebar()
+  const sidebarTooltip = sidebarState === 'expanded' ? 'Collapse sidebar' : 'Expand sidebar'
+
+  const { state, navBack, navForward, canNavBack, canNavForward, openTab } = useTabs()
+
+  const backEntries = React.useMemo(
+    () => buildHistoryEntries(state, state.activeGroupId, 'back'),
+    [state]
+  )
+  const forwardEntries = React.useMemo(
+    () => buildHistoryEntries(state, state.activeGroupId, 'forward'),
+    [state]
+  )
+
+  // ponytail: N (<=10) sequential dispatches; React's useReducer applies a queue in order.
+  const goBackSteps = (n: number): void => {
+    for (let i = 0; i < n; i++) navBack()
+  }
+  const goForwardSteps = (n: number): void => {
+    for (let i = 0; i < n; i++) navForward()
+  }
+
+  // Read on mousedown: a middle click never produces a `click` event. Opens the
+  // page a plain click would land on, in a new background tab.
+  const openEntryInNewTab =
+    (entry: HistoryEntry | undefined) =>
+    (e: React.MouseEvent): void => {
+      if (e.button !== 1) return
+      e.preventDefault()
+      if (!entry) return
+      // oxlint-disable-next-line no-unused-vars -- identity and timestamps are minted by openTab
+      const { id, openedAt, lastAccessedAt, ...tab } = entry.tab
+      openTab({ ...tab, isPinned: false, isPreview: false }, { background: true, forceNew: true })
+    }
+
+  return (
+    <>
+      <div
+        className={cn(
+          'fixed top-0 start-0 drag-region flex items-center justify-center h-9',
+          className
+        )}
+        style={{ width: APP_RAIL_WIDTH_PX }}
+      >
+        <TrafficLights />
+      </div>
+      {/* Opaque backing for the Windows caption buttons (transparent overlay, 0px
+          wide elsewhere): the right panel slides through this corner when it opens
+          or closes, and would otherwise show behind minimize/maximize/close. */}
+      <div
+        aria-hidden="true"
+        className={cn('fixed top-0 end-0 drag-region h-9 bg-sidebar-rail', className)}
+        style={{ width: 'var(--caption-reserve-end)' }}
+      />
+      <div
+        className={cn(
+          'fixed drag-region flex items-center gap-2 shrink-0 h-9 ps-1 pe-2',
+          className
+        )}
+        style={{
+          top: 0,
+          // main.css: after the macOS traffic lights, near the edge elsewhere, and past
+          // Windows caption buttons when those sit on the start side (RTL).
+          insetInlineStart: 'calc(var(--window-controls-start) + var(--caption-reserve-start))',
+          width: 'var(--chrome-buttons-width)'
+        }}
+      >
+        <div className="no-drag flex items-center gap-0.5 ms-1">
+          <ContextMenu>
+            <ContextMenuTrigger asChild disabled={!canNavBack}>
+              <button
+                type="button"
+                onClick={() => navBack()}
+                onMouseDown={openEntryInNewTab(backEntries[0])}
+                disabled={!canNavBack}
+                aria-disabled={!canNavBack}
+                aria-label={tPhaseF('phaseF.componentsWindowControls.browserBack')}
+                title={tPhaseF('phaseF.componentsWindowControls.back')}
+                className={cn(
+                  'flex items-center justify-center size-7 rounded transition-colors duration-150',
+                  canNavBack
+                    ? 'text-text-tertiary hover:text-foreground hover:bg-sidebar-accent'
+                    : 'text-text-tertiary/40 cursor-default'
+                )}
+              >
+                <ChevronLeft className="size-4" />
+              </button>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="z-[70] w-64">
+              {backEntries.map((e) => (
+                <ContextMenuItem
+                  key={`${e.tab.id}-${e.steps}`}
+                  onSelect={() => goBackSteps(e.steps)}
+                >
+                  <TabIcon
+                    type={e.tab.type}
+                    icon={e.tab.icon}
+                    emoji={e.tab.emoji}
+                    className="size-4 me-2"
+                  />
+                  <span className="truncate">{e.tab.title}</span>
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
+
+          <ContextMenu>
+            <ContextMenuTrigger asChild disabled={!canNavForward}>
+              <button
+                type="button"
+                onClick={() => navForward()}
+                onMouseDown={openEntryInNewTab(forwardEntries[0])}
+                disabled={!canNavForward}
+                aria-disabled={!canNavForward}
+                aria-label={tPhaseF('phaseF.componentsWindowControls.browserForward')}
+                title={tPhaseF('phaseF.componentsWindowControls.forward')}
+                className={cn(
+                  'flex items-center justify-center size-7 rounded transition-colors duration-150',
+                  canNavForward
+                    ? 'text-text-tertiary hover:text-foreground hover:bg-sidebar-accent'
+                    : 'text-text-tertiary/40 cursor-default'
+                )}
+              >
+                <ChevronRight className="size-4" />
+              </button>
+            </ContextMenuTrigger>
+            <ContextMenuContent className="z-[70] w-64">
+              {forwardEntries.map((e) => (
+                <ContextMenuItem
+                  key={`${e.tab.id}-${e.steps}`}
+                  onSelect={() => goForwardSteps(e.steps)}
+                >
+                  <TabIcon
+                    type={e.tab.type}
+                    icon={e.tab.icon}
+                    emoji={e.tab.emoji}
+                    className="size-4 me-2"
+                  />
+                  <span className="truncate">{e.tab.title}</span>
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          </ContextMenu>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <SidebarTrigger className="text-text-tertiary hover:text-foreground transition-colors duration-150" />
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {sidebarTooltip}
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                onClick={() => void runCommand('nav.search', 'ui')}
+                aria-label={t('action.search')}
+                className="flex items-center justify-center size-7 rounded text-text-tertiary hover:text-foreground hover:bg-sidebar-accent transition-colors duration-150"
+              >
+                <Search className="size-4" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="text-xs">
+              {tPhaseF('phaseF.componentsWindowControls.searchK')}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </div>
+    </>
+  )
+}

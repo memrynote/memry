@@ -1,0 +1,202 @@
+/**
+ * Broken wiki-link detection for one mounted editor (#1716).
+ *
+ * On mount — and debounced on every document change, since notes load their
+ * content asynchronously after the editor exists — the document's wiki targets
+ * are deduped and resolved in ONE batch IPC call (`notes:resolve-titles`).
+ * Targets that resolve to nothing become the plugin's broken set, painted as
+ * `.wiki-link-broken` (see `wiki-link-broken-plugin.ts`).
+ *
+ * A target no note claims is asked of the canvas list before it is called
+ * broken, because a canvas is a link target too (#1983).
+ *
+ * Resolution order per target matches the click path: the note half of
+ * `[[Note#Heading]]` first, the raw string second — so a note literally named
+ * `Sprint #4` is not marked broken. `[[#Heading]]` addresses the note it is
+ * written in and is never broken here; heading-level misses keep today's
+ * behavior by design.
+ *
+ * Titles resolve through a session cache so a keystroke only re-asks about
+ * titles it has not seen. A note being created, renamed, or deleted anywhere
+ * (this window or another device) drops the cache and re-resolves, which is
+ * what restyles an open editor without a reload.
+ *
+ * The same pass paints object links (#tags with fields): a resolved note that
+ * the schema snapshot lists as an object gets the chip attrs. A snapshot change
+ * (a tag gains fields, a note joins a tag) repaints from the cache.
+ */
+
+import { useEffect, useRef } from 'react'
+import type { EditorView } from '@tiptap/pm/view'
+import { splitWikiTarget } from '@memry/shared/wiki-target'
+import {
+  notesService,
+  onNoteCreated,
+  onNoteDeleted,
+  onNoteLinksChanged,
+  onNoteRenamed
+} from '@/services/notes-service'
+import { clearCanvasLookupCache, resolveCanvasByTitle } from '@/lib/canvas-lookup'
+import { onCanvasCreated, onCanvasDeleted, onCanvasUpdated } from '@/services/canvas-service'
+import { registerEditorPlugin } from '../register-editor-plugin'
+import { getLiveTiptapView } from '../live-prosemirror-view'
+import {
+  collectWikiLinkTargets,
+  createWikiLinkBrokenPlugin,
+  setBrokenWikiTargets
+} from '../wiki-link-broken-plugin'
+import type { ObjectLook } from '@/features/tag-fields/object-avatar'
+import { loadChipIcons, objectChipAttrs } from '@/features/tag-fields/object-chip-style'
+
+const REFRESH_DEBOUNCE_MS = 400
+
+interface TiptapLike {
+  view?: EditorView
+  editorView?: EditorView
+  on?: (event: string, handler: () => void) => void
+  off?: (event: string, handler: () => void) => void
+}
+
+type Resolution = string | boolean
+
+export function useWikiLinkBroken(
+  editor: unknown,
+  objectOf: (noteId: string) => ObjectLook | null = () => null
+): void {
+  useEffect(() => registerEditorPlugin(editor, createWikiLinkBrokenPlugin()), [editor])
+  const objectOfRef = useRef(objectOf)
+  const repaintRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    objectOfRef.current = objectOf
+    repaintRef.current?.()
+  }, [objectOf])
+
+  useEffect(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote exposes its tiptap editor only as an underscore field
+    const tiptap = (editor as { _tiptapEditor?: TiptapLike } | undefined)?._tiptapEditor
+    if (!tiptap?.on || !tiptap?.off) return undefined
+
+    let cancelled = false
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const resolvedCache = new Map<string, Resolution>()
+    let lastBroken = new Set<string>()
+    let lastObjectsKey = ''
+
+    const refresh = async (): Promise<void> => {
+      const view = tiptap.view
+      if (!view || cancelled) return
+
+      // Raw target → the titles whose resolution decides its brokenness.
+      const perTarget = new Map<string, string[]>()
+      for (const target of collectWikiLinkTargets(view.state.doc)) {
+        const { note, heading } = splitWikiTarget(target)
+        if (heading !== null && !note) continue
+        perTarget.set(target, heading !== null && note ? [note, target] : [target])
+      }
+
+      const unknown: string[] = []
+      const queued = new Set<string>()
+      for (const candidates of perTarget.values()) {
+        for (const title of candidates) {
+          const key = title.toLowerCase()
+          if (resolvedCache.has(key) || queued.has(key)) continue
+          queued.add(key)
+          unknown.push(title)
+        }
+      }
+
+      if (unknown.length > 0) {
+        try {
+          const resolved = await notesService.resolveTitles(unknown)
+          for (const title of unknown) {
+            resolvedCache.set(title.toLowerCase(), resolved[title]?.id ?? false)
+          }
+        } catch {
+          // IPC failed — keep the current styling rather than guessing.
+          return
+        }
+        if (cancelled) return
+
+        // A canvas is a link target too (#1983), and the note index has never
+        // heard of one — without this pass every working `[[My Canvas]]` would
+        // be painted broken. Asked only about titles no note claimed, so the
+        // common case costs nothing.
+        for (const title of unknown) {
+          if (resolvedCache.get(title.toLowerCase()) !== false) continue
+          const canvas = await resolveCanvasByTitle(title)
+          if (canvas) resolvedCache.set(title.toLowerCase(), true)
+        }
+        if (cancelled) return
+      }
+
+      const broken = new Set<string>()
+      const objectLooks = new Map<string, { look: ObjectLook; title: string }>()
+      for (const [target, candidates] of perTarget) {
+        const resolution = candidates
+          .map((title) => resolvedCache.get(title.toLowerCase()))
+          .find((value) => value !== undefined && value !== false)
+        if (resolution === undefined) {
+          broken.add(target.toLowerCase())
+          continue
+        }
+        const look = typeof resolution === 'string' ? objectOfRef.current(resolution) : null
+        if (look)
+          objectLooks.set(target.toLowerCase(), {
+            look,
+            title: splitWikiTarget(target).note || target
+          })
+      }
+      const iconsAdded = await loadChipIcons([...objectLooks.values()].map(({ look }) => look.icon))
+      if (cancelled) return
+      const objects = new Map(
+        [...objectLooks].map(([key, { look, title }]) => [key, objectChipAttrs(look, title)])
+      )
+      const objectsKey = JSON.stringify([...objects])
+
+      if (
+        !iconsAdded &&
+        objectsKey === lastObjectsKey &&
+        broken.size === lastBroken.size &&
+        [...broken].every((key) => lastBroken.has(key))
+      ) {
+        return
+      }
+      lastBroken = broken
+      lastObjectsKey = objectsKey
+      const liveView = getLiveTiptapView(tiptap)
+      if (liveView) setBrokenWikiTargets(liveView, broken, objects)
+    }
+
+    const scheduleRefresh = (): void => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => void refresh(), REFRESH_DEBOUNCE_MS)
+    }
+
+    const forceRefresh = (): void => {
+      resolvedCache.clear()
+      clearCanvasLookupCache()
+      scheduleRefresh()
+    }
+
+    repaintRef.current = scheduleRefresh
+    void refresh()
+    tiptap.on('update', scheduleRefresh)
+    const unsubscribes = [
+      onNoteCreated(forceRefresh),
+      onNoteRenamed(forceRefresh),
+      onNoteDeleted(forceRefresh),
+      onNoteLinksChanged(forceRefresh),
+      onCanvasCreated(forceRefresh),
+      onCanvasUpdated(forceRefresh),
+      onCanvasDeleted(forceRefresh)
+    ]
+
+    return () => {
+      cancelled = true
+      repaintRef.current = null
+      if (timer) clearTimeout(timer)
+      tiptap.off?.('update', scheduleRefresh)
+      unsubscribes.forEach((unsubscribe) => unsubscribe())
+    }
+  }, [editor])
+}

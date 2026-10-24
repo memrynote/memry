@@ -1,0 +1,197 @@
+import type {
+  AccountVaultInfo,
+  VaultClientAPI,
+  VaultStatus,
+  VaultConfig,
+  SelectVaultResponse,
+  GetVaultsResponse,
+  IndexRecoveredEvent
+} from '../../../preload/index.d'
+
+/**
+ * Vault service - thin wrapper around window.api.vault
+ * Provides a typed interface for vault operations in the renderer process.
+ */
+export const vaultService: VaultClientAPI = {
+  /**
+   * Select a vault folder. If no path provided, shows folder picker dialog.
+   */
+  select: (path?: string): Promise<SelectVaultResponse> => {
+    return window.api.vault.select(path)
+  },
+
+  /**
+   * Create `<parentPath>/<name>` as a new folder and open it as the vault.
+   */
+  create: (parentPath: string, name: string): Promise<SelectVaultResponse> => {
+    return window.api.vault.create(parentPath, name)
+  },
+
+  getDefaultParent: (): Promise<string> => {
+    return window.api.vault.getDefaultParent()
+  },
+
+  /**
+   * Get all known vaults and current vault path.
+   */
+  getAll: (): Promise<GetVaultsResponse> => {
+    return window.api.vault.getAll()
+  },
+
+  /**
+   * Get current vault status.
+   */
+  getStatus: (): Promise<VaultStatus> => {
+    return window.api.vault.getStatus()
+  },
+
+  /**
+   * The vault this window was created for, read synchronously. Null on the picker.
+   */
+  getStartupPath: (): string | null => {
+    return window.api.vault.getStartupPath()
+  },
+
+  /**
+   * Get current vault configuration.
+   */
+  getConfig: (): Promise<VaultConfig> => {
+    return window.api.vault.getConfig()
+  },
+
+  /**
+   * Update vault configuration.
+   */
+  updateConfig: (config: Partial<VaultConfig>): Promise<VaultConfig> => {
+    return window.api.vault.updateConfig(config)
+  },
+
+  /**
+   * Close the current vault.
+   */
+  close: (): Promise<void> => {
+    return window.api.vault.close()
+  },
+
+  /**
+   * Switch to a different vault.
+   */
+  switch: (vaultPath: string): Promise<SelectVaultResponse> => {
+    return window.api.vault.switch(vaultPath)
+  },
+
+  /**
+   * Remove a vault from the known list (doesn't delete files).
+   */
+  remove: (vaultPath: string): Promise<void> => {
+    return window.api.vault.remove(vaultPath)
+  },
+
+  /**
+   * Trigger manual reindex of current vault.
+   */
+  reindex: (): Promise<void> => {
+    return window.api.vault.reindex()
+  },
+
+  reveal: (): Promise<void> => {
+    return window.api.vault.reveal()
+  },
+
+  /**
+   * List all vaults in the signed-in account (local + cloud-only).
+   */
+  listAccount: (): Promise<AccountVaultInfo[]> => {
+    return window.api.vault.listAccount()
+  },
+
+  /**
+   * Provision + open a cloud-only vault locally.
+   */
+  downloadRemote: (vaultUuid: string, parentPath?: string): Promise<SelectVaultResponse> => {
+    return window.api.vault.downloadRemote(vaultUuid, parentPath)
+  },
+
+  /**
+   * Purge a vault from the signed-in account. Never touches local files.
+   */
+  deleteFromAccount: (vaultUuid: string): Promise<void> => {
+    return window.api.vault.deleteFromAccount(vaultUuid)
+  },
+
+  /**
+   * Map Obsidian image embed targets (`![[photo.png]]`) to loadable
+   * `memry-file://` URLs. Targets not found in the vault are omitted.
+   */
+  resolveEmbeds: (input: {
+    refs: string[]
+    notePath?: string
+  }): Promise<Record<string, string>> => {
+    return window.api.vault.resolveEmbeds(input)
+  },
+
+  /**
+   * Set a listed vault's icon, or reset it to the default with null. Synced
+   * account-wide once the vault syncs.
+   */
+  setIcon: (path: string, icon: string | null): Promise<void> => {
+    return window.api.vault.setIcon(path, icon)
+  },
+
+  /**
+   * Generate the sandbox vault when missing, stale or `reset`; resolves to its path.
+   */
+  prepareSandbox: (reset?: boolean): Promise<{ path: string }> => {
+    return window.api.vault.prepareSandbox(reset)
+  }
+}
+
+/**
+ * Subscribe to vault list display changes (an icon set here or synced in).
+ * Returns unsubscribe function.
+ */
+export function onVaultListChanged(callback: () => void): () => void {
+  return window.api.onVaultListChanged(callback)
+}
+
+/**
+ * Subscribe to vault status changes.
+ * Returns unsubscribe function.
+ */
+export function onVaultStatusChanged(callback: (status: VaultStatus) => void): () => void {
+  return window.api.onVaultStatusChanged(callback)
+}
+
+/**
+ * Subscribe to vault index progress updates.
+ * Returns unsubscribe function.
+ */
+export function onVaultIndexProgress(callback: (progress: number) => void): () => void {
+  return window.api.onVaultIndexProgress(callback)
+}
+
+/**
+ * Subscribe to vault errors.
+ * Returns unsubscribe function.
+ */
+export function onVaultError(callback: (error: string) => void): () => void {
+  return window.api.onVaultError(callback)
+}
+
+/**
+ * Subscribe to config changes of the open vault: a settings save in any window,
+ * or main following a journal folder that was renamed.
+ * Returns unsubscribe function.
+ */
+export function onVaultConfigChanged(callback: (config: VaultConfig) => void): () => void {
+  return window.api.onVaultConfigChanged(callback)
+}
+
+/**
+ * Subscribe to vault index recovery events.
+ * Fired when index database is automatically rebuilt from source files.
+ * Returns unsubscribe function.
+ */
+export function onVaultIndexRecovered(callback: (event: IndexRecoveredEvent) => void): () => void {
+  return window.api.onVaultIndexRecovered(callback)
+}

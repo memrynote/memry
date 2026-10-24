@@ -1,0 +1,272 @@
+/**
+ * Sidebar Navigation Hook
+ * Handles opening sidebar items in tabs with proper behavior
+ *
+ * PERFORMANCE: This hook has been optimized to prevent cascade re-renders:
+ * 1. Uses useTabActions instead of useTabs for stable action references
+ * 2. Uses optimized useIsItemActive hook for active state checking
+ * 3. State access is done via refs to keep callbacks stable
+ */
+
+import { useCallback, useRef, useEffect } from 'react'
+import { useTabs, useTabActions } from '@/contexts/tabs'
+import {
+  findExistingTab,
+  findTabByEntityId,
+  createTabFromSidebarItem
+} from '@/contexts/tabs/helpers'
+import { SINGLETON_TAB_TYPES } from '@/contexts/tabs/types'
+import type { Tab, TabSystemState, SidebarItem } from '@/contexts/tabs/types'
+import { useIsItemActive } from './use-is-item-active'
+import { useOpenTarget } from './use-open-target'
+import { useGeneralSettings } from './use-general-settings'
+import { useFeatureFlags } from './use-feature-flags'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { featureForTabType } from '@memry/contracts/feature-flags'
+import type { FeaturesSettings } from '@memry/contracts/settings-schemas'
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+/**
+ * Options for opening a sidebar item
+ */
+export interface OpenSidebarItemOptions {
+  /** Force open in new tab */
+  inNewTab?: boolean
+  /** Don't focus the new tab */
+  inBackground?: boolean
+  /** Open in split view */
+  toTheSide?: boolean
+}
+
+/**
+ * Result of finding an existing tab for an item
+ */
+interface FoundTabResult {
+  tab: Tab
+  groupId: string
+}
+
+// =============================================================================
+// PURE HELPERS
+// =============================================================================
+
+/**
+ * Returns true when the given tab type maps to a feature that is currently
+ * disabled, meaning navigation should redirect to Settings → Features instead.
+ */
+export function shouldRedirectToFeatures(type: string, flags: FeaturesSettings): boolean {
+  const feature = featureForTabType(type)
+  return feature !== null && !flags[feature]
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Find existing tab for a sidebar item
+ * Checks singletons by type, content items by entityId
+ */
+export const findExistingTabForItem = (
+  state: TabSystemState,
+  item: SidebarItem
+): FoundTabResult | null => {
+  // For singletons, check by type
+  if (SINGLETON_TAB_TYPES.includes(item.type)) {
+    return findExistingTab(state, item.type)
+  }
+
+  // For content items, check by entityId
+  if (item.entityId) {
+    return findTabByEntityId(state, item.entityId)
+  }
+
+  // Fallback: check by path
+  for (const [groupId, group] of Object.entries(state.tabGroups)) {
+    const tab = group.tabs.find((t) => t.path === item.path)
+    if (tab) {
+      return { tab, groupId }
+    }
+  }
+
+  return null
+}
+
+/**
+ * Check if a sidebar item is currently open in any tab
+ */
+export const isItemOpenInTab = (state: TabSystemState, item: SidebarItem): boolean => {
+  return findExistingTabForItem(state, item) !== null
+}
+
+/**
+ * Check if a sidebar item matches the active tab
+ */
+export const isItemActiveTab = (state: TabSystemState, item: SidebarItem): boolean => {
+  const activeGroup = state.tabGroups[state.activeGroupId]
+  if (!activeGroup?.activeTabId) return false
+
+  const activeTab = activeGroup.tabs.find((t) => t.id === activeGroup.activeTabId)
+  if (!activeTab) return false
+
+  // For singletons, match by type
+  if (SINGLETON_TAB_TYPES.includes(item.type)) {
+    return activeTab.type === item.type
+  }
+
+  // For content items, match by entityId
+  if (item.entityId) {
+    return activeTab.entityId === item.entityId
+  }
+
+  // Fallback to path match
+  return activeTab.path === item.path
+}
+
+// =============================================================================
+// HOOK
+// =============================================================================
+
+/**
+ * Hook for sidebar navigation with tab integration
+ *
+ * PERFORMANCE OPTIMIZATION:
+ * - Uses useTabActions for stable action references (no re-renders on state change)
+ * - Uses useIsItemActive for optimized active state checking
+ * - State ref pattern keeps openSidebarItem callback stable
+ */
+export const useSidebarNavigation = () => {
+  // PERFORMANCE: useTabActions returns stable references - doesn't trigger re-renders
+  const { openTab, setActiveTab } = useTabActions()
+  // Shared with the note/canvas/tag rows, which never build a SidebarItem
+  const { openToTheSide } = useOpenTarget()
+  // We still need state for finding existing tabs, but access it via ref
+  const { state } = useTabs()
+  // PERFORMANCE: Optimized active item checking - stable callback reference
+  const isActiveItem = useIsItemActive()
+
+  // Feature flags + settings modal for the disabled-feature redirect guard
+  const { flags } = useFeatureFlags()
+  const { open: openSettings } = useSettingsModal()
+
+  // "Clicking a page opens a new tab" (#1644). Read through a ref so the
+  // preference never destabilises openSidebarItem — the callback stability is
+  // what this hook exists for (see the PERFORMANCE notes above).
+  const { settings: generalSettings } = useGeneralSettings()
+  const reuseActiveTabRef = useRef(!generalSettings.openPagesInNewTab)
+  // oxlint-disable-next-line react/refs -- latest-value ref (callbacks/state mirrored for stable handlers); not render output
+  reuseActiveTabRef.current = !generalSettings.openPagesInNewTab
+
+  // Use refs for state to avoid recreating callbacks
+  const stateRef = useRef(state)
+  useEffect(() => {
+    stateRef.current = state
+  })
+
+  /**
+   * Open a sidebar item in a tab
+   */
+  const openSidebarItem = useCallback(
+    (item: SidebarItem, options: OpenSidebarItemOptions = {}) => {
+      // Guard: redirect disabled features to Settings → Features instead of opening a tab
+      if (shouldRedirectToFeatures(item.type, flags)) {
+        openSettings('features')
+        return
+      }
+
+      const { inNewTab, inBackground, toTheSide } = options
+      const currentState = stateRef.current
+
+      // "Open in New Tab" / Cmd-click / middle-click earn a genuinely new tab.
+      // Since #1644 that includes the singletons (Home, Inbox, Calendar, …):
+      // an explicit gesture mints a real second copy rather than being quietly
+      // downgraded to "focus the one that exists".
+      const forceNewTab = inNewTab === true
+
+      // Check for existing tab
+      const existingTab = findExistingTabForItem(currentState, item)
+
+      if (existingTab && !toTheSide && !forceNewTab) {
+        // Re-open singletons that carry per-view intent so the reducer merges
+        // the fresh viewState (nonce) into the existing tab and refocuses it.
+        // Passing the found groupId keeps the merge in the right split-view pane.
+        if (item.viewState) {
+          openTab(createTabFromSidebarItem(item, false), {
+            groupId: existingTab.groupId,
+            background: inBackground
+          })
+          return
+        }
+        // Focus existing tab — unless the caller asked to stay put (middle-click
+        // or Shift+Cmd-click on an item we just declined to duplicate). Stealing
+        // focus is the one thing `inBackground` exists to prevent.
+        if (!inBackground) {
+          setActiveTab(existingTab.tab.id, existingTab.groupId)
+        }
+        return
+      }
+
+      // Create tab data from sidebar item
+      const tabData = createTabFromSidebarItem(item, false)
+
+      if (toTheSide) {
+        // Reuse the sibling pane when there is one, split when there is not, and
+        // never let the new pane arrive holding a clone of what we are opening
+        // away from. useOpenTarget owns all three details so the note, canvas
+        // and tag rows get identical behaviour without repeating them.
+        openToTheSide(tabData, { background: inBackground })
+      } else {
+        // reuseActiveTab is a no-op beside forceNew/background — the reducer
+        // only honours it for a plain, focused open (#1644).
+        openTab(tabData, {
+          background: inBackground,
+          forceNew: forceNewTab,
+          reuseActiveTab: reuseActiveTabRef.current
+        })
+      }
+    },
+    [openTab, setActiveTab, openToTheSide, flags, openSettings]
+  )
+
+  /**
+   * Open a sidebar item as a pinned tab
+   */
+  const openAsPin = useCallback(
+    (item: SidebarItem) => {
+      const tabData = createTabFromSidebarItem(item, false)
+      openTab({ ...tabData, isPinned: true })
+    },
+    [openTab]
+  )
+
+  /**
+   * Copy internal link for a sidebar item
+   */
+  const copyItemLink = useCallback((item: SidebarItem) => {
+    const link = `memry://${item.path}`
+    void navigator.clipboard.writeText(link)
+  }, [])
+
+  /**
+   * Check if item is open in any tab
+   * Note: This reads from state ref for accurate results without callback instability
+   */
+  const isOpenInTab = useCallback((item: SidebarItem): boolean => {
+    return isItemOpenInTab(stateRef.current, item)
+  }, [])
+
+  // isActiveItem is now provided by useIsItemActive hook (optimized, stable reference)
+
+  return {
+    openSidebarItem,
+    openAsPin,
+    copyItemLink,
+    isOpenInTab,
+    isActiveItem // From useIsItemActive - stable reference
+  }
+}
+
+export default useSidebarNavigation

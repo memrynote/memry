@@ -1,0 +1,173 @@
+@import './base.css';
+@import './emoji-font.css';
+
+:root {
+  /* Window-control buttons in the h-9 title row, after the native traffic lights:
+     ps-1 + ms-1 + 4 icon buttons (4x28 + 3x2 gap) + pe-2. */
+  --chrome-buttons-width: 136px;
+  /* Where those buttons start. macOS: after the native traffic lights (main/index.ts
+     trafficLightPosition x: 12, ~54px wide, overflowing the 52px rail). Elsewhere
+     the slot is empty, so they start near the window edge. */
+  --window-controls-start: 68px;
+  /* Native caption buttons drawn over the title row (Windows Window Controls
+     Overlay, main/title-bar-overlay.ts). The env() values exist only while the
+     overlay is visible, so both reserves are 0 on macOS, Linux and in fullscreen.
+     The buttons sit at a physical edge, so start/end swap in RTL below. */
+  --caption-reserve-left: env(titlebar-area-x, 0px);
+  --caption-reserve-right: calc(
+    100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
+  );
+  --caption-reserve-start: var(--caption-reserve-left);
+  --caption-reserve-end: var(--caption-reserve-right);
+  --direction: 1;
+
+  /* Tab strip sizing — tabs share the strip evenly, growing to --tab-w-max and
+     compressing to --tab-w-min (icon-only) before the strip starts scrolling. */
+  --tab-w-min: 52px;
+  --tab-w-max: 240px;
+}
+
+:root[data-platform='win32'],
+:root[data-platform='linux'] {
+  /* The buttons' own ps-1 + ms-1 (8px) then line the first one up with the rail
+     icons below it (app-rail.tsx, 8px from the edge). */
+  --window-controls-start: 0px;
+}
+
+[dir='rtl'] {
+  --caption-reserve-start: var(--caption-reserve-right);
+  --caption-reserve-end: var(--caption-reserve-left);
+}
+
+/* One surface below the h-9 title row: the sidebar panel (rounded top-start,
+   inline-end divider; app-sidebar.tsx) plus the workspace card, flush with the
+   window's end and bottom edges. The card itself spans the full height with no
+   surface of its own, so the tab bars touching the window top sit in the title
+   row; its visible surface is drawn by ::before from the title row down. Split
+   panes further down keep their tab bars inside that surface.
+   `.peer` is the shadcn Sidebar root carrying data-state; the card is its sibling. */
+[data-workspace-card] {
+  isolation: isolate;
+  background-color: transparent;
+}
+
+[data-workspace-card]::before {
+  content: '';
+  position: absolute;
+  inset: 36px 0 0;
+  z-index: -1;
+  border-top: 1px solid var(--border);
+  background-color: var(--background);
+  pointer-events: none;
+}
+
+/* Collapsed: the card owns the surface's start edge and rounded corner. The 1px
+   padding keeps pane content off that border. */
+.peer[data-state='collapsed'] ~ [data-workspace-card] {
+  padding-inline-start: 1px;
+}
+
+.peer[data-state='collapsed'] ~ [data-workspace-card]::before {
+  border-inline-start: 1px solid var(--border);
+  border-start-start-radius: var(--radius-xl);
+}
+
+.peer[data-state='collapsed'] ~ [data-workspace-card] [data-window-controls-pane] {
+  border-start-start-radius: calc(var(--radius-xl) - 1px);
+}
+
+/* Title-row tab bars: the surface's top border replaces their bottom border. */
+[data-workspace-card] [data-title-row] {
+  border-bottom-color: transparent;
+}
+
+/* Collapsed, the top-start tab bar starts at the rail edge (52px + 1px padding);
+   its tabs follow the window-control buttons, which end at their start offset +
+   their width. See window-controls.tsx. */
+.peer[data-state='collapsed'] ~ * [data-reserve-window-controls] {
+  padding-inline-start: max(
+    0px,
+    calc(
+      var(--window-controls-start) + var(--caption-reserve-start) + var(--chrome-buttons-width) -
+        53px
+    )
+  );
+}
+
+/* Below 768px (useIsMobile) the sidebar renders as a sheet and there is no `.peer`
+   element, so the rule above never matches. The rail still holds the card's start
+   edge at 52px, so the tabs must still clear the window-control buttons. */
+@media (max-width: 767px) {
+  [data-workspace-card] [data-reserve-window-controls] {
+    padding-inline-start: max(
+      0px,
+      calc(
+        var(--window-controls-start) + var(--caption-reserve-start) + var(--chrome-buttons-width) -
+          53px
+      )
+    );
+  }
+}
+
+/* The Day Panel spans the card's full height so its h-9 header sits in the title
+   row like the tab bars. Its body takes the card's surface (::before above), so
+   the panel has no fill of its own and its start border only runs below the
+   title row. */
+[data-workspace-card] [data-slot='day-panel-container'] {
+  background-color: transparent;
+  border-inline-start-color: transparent;
+}
+
+[data-workspace-card] [data-slot='day-panel-container']::after {
+  content: '';
+  position: absolute;
+  top: 36px;
+  bottom: 0;
+  inset-inline-start: -1px;
+  width: 1px;
+  background-color: var(--border);
+  pointer-events: none;
+}
+
+[dir='rtl'] {
+  --direction: -1;
+}
+
+body {
+}
+
+*:focus-visible {
+  outline: none;
+}
+
+/* Agent fill: the sentence a proposed field value came from */
+::highlight(field-fill-source) {
+  background-color: color-mix(in srgb, var(--tint) 16%, transparent);
+  color: inherit;
+}
+
+/* Find in page — CSS Custom Highlight API */
+::highlight(find-matches) {
+  background-color: #fde68a;
+  color: inherit;
+}
+
+::highlight(find-current) {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.dark ::highlight(find-matches) {
+  background-color: rgba(251, 191, 36, 0.35);
+  color: inherit;
+}
+
+.dark ::highlight(find-current) {
+  background-color: rgba(245, 158, 11, 0.75);
+  color: white;
+}
+
+/* RTL icon mirroring - opt-in for direction-pointing icons only. */
+[dir='rtl'] .mirror-rtl {
+  transform: scaleX(-1);
+}

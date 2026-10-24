@@ -1,0 +1,1227 @@
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { FolderTableView } from './folder-table-view'
+import { GroupedTable } from './grouped-table'
+
+// Renders `<key leaf> <param values…>` so assertions can still verify
+// interpolated values (counts, names) that ICU messages would render.
+vi.mock('@/hooks/use-property-options', () => ({
+  usePropertyOptions: () => ({ options: [], categories: {}, statusOptions: [] })
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string, params?: Record<string, unknown>) =>
+      [key.split('.').at(-1) ?? key, ...Object.values(params ?? {})].join(' ')
+  })
+}))
+
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({ count }: { count: number }) => ({
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, index) => ({
+        index,
+        key: index,
+        start: index * 40,
+        size: 40
+      })),
+    getTotalSize: () => count * 40,
+    measureElement: vi.fn(),
+    scrollToIndex: vi.fn()
+  })
+}))
+
+vi.mock('@dnd-kit/core', () => ({
+  DndContext: ({ children, onDragEnd }: { children: React.ReactNode; onDragEnd: any }) => (
+    <div>
+      {children}
+      <button
+        type="button"
+        onClick={() => onDragEnd({ active: { id: 'title' }, over: { id: 'score' } })}
+      >
+        mock drag
+      </button>
+      <button
+        type="button"
+        onClick={() => onDragEnd({ active: { id: 'title' }, over: { id: 'title' } })}
+      >
+        mock drag same
+      </button>
+      <button type="button" onClick={() => onDragEnd({ active: { id: 'missing' }, over: null })}>
+        mock drag none
+      </button>
+      <button
+        type="button"
+        onClick={() => onDragEnd({ active: { id: 'missing' }, over: { id: 'score' } })}
+      >
+        mock drag invalid
+      </button>
+    </div>
+  ),
+  closestCenter: vi.fn(),
+  KeyboardSensor: vi.fn(),
+  PointerSensor: vi.fn(),
+  useSensor: vi.fn(() => ({})),
+  useSensors: vi.fn(() => [])
+}))
+
+vi.mock('@dnd-kit/sortable', () => ({
+  SortableContext: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  arrayMove: <T,>(items: T[], from: number, to: number) => {
+    const next = [...items]
+    const [item] = next.splice(from, 1)
+    next.splice(to, 0, item)
+    return next
+  },
+  horizontalListSortingStrategy: vi.fn(),
+  sortableKeyboardCoordinates: vi.fn()
+}))
+
+vi.mock('@dnd-kit/modifiers', () => ({
+  restrictToHorizontalAxis: vi.fn()
+}))
+
+vi.mock('./sortable-column-header', () => ({
+  SortableColumnHeader: ({ header, columnConfig, onWidthChange, onDisplayNameChange }: any) => (
+    <th style={{ width: header.getSize() }}>
+      <button type="button" onClick={() => header.column.toggleSorting(false)}>
+        {String(header.column.columnDef.header)}
+      </button>
+      <button type="button" onClick={() => onWidthChange(columnConfig.id, 220)}>
+        resize {columnConfig.id}
+      </button>
+      <button type="button" onClick={() => onDisplayNameChange?.(columnConfig.id, 'Renamed')}>
+        rename {columnConfig.id}
+      </button>
+    </th>
+  )
+}))
+
+// Captures every RowContextMenu render's props so tests can assert on the
+// `selectedNoteIds` wiring without opening a real (jsdom-unsupported) Radix
+// context menu.
+const rowContextMenuCalls = vi.hoisted(() => [] as any[])
+
+vi.mock('./row-context-menu', () => ({
+  RowContextMenu: (props: { children: React.ReactNode; note: { id: string } }) => {
+    rowContextMenuCalls.push(props)
+    return <>{props.children}</>
+  }
+}))
+
+vi.mock('./folder-view-empty-state', () => ({
+  FolderViewEmptyState: ({ variant, onCreateNote, onClearAll }: any) => (
+    <div>
+      <span>{variant}</span>
+      {onCreateNote && (
+        <button type="button" onClick={onCreateNote}>
+          create empty
+        </button>
+      )}
+      {onClearAll && (
+        <button type="button" onClick={onClearAll}>
+          clear empty
+        </button>
+      )}
+    </div>
+  )
+}))
+
+const taskMocks = vi.hoisted(() => ({
+  updateTask: vi.fn(),
+  openTaskDetail: vi.fn(),
+  reminderTaskIds: new Set<string>()
+}))
+
+vi.mock('@/contexts/tasks', () => ({
+  useTasksContext: () => ({
+    tasks: [
+      { id: 't1', completedAt: null },
+      { id: 't2', completedAt: null }
+    ],
+    projects: [{ id: 'p1', name: 'Inbox' }],
+    updateTask: taskMocks.updateTask
+  })
+}))
+
+vi.mock('@/components/tasks/task-detail-host', () => ({
+  useOpenTaskDetail: () => taskMocks.openTaskDetail
+}))
+
+vi.mock('@/hooks/use-reminders', () => ({
+  useRemindersForTarget: (_type: string, taskId: string) => ({
+    reminders: taskMocks.reminderTaskIds.has(taskId) ? [{ id: 'r1', status: 'pending' }] : []
+  })
+}))
+
+vi.mock('@/components/tasks/task-row', () => ({
+  TaskRow: ({
+    task,
+    project,
+    isCompleted,
+    onToggleComplete,
+    onClick,
+    renderTitle,
+    actions
+  }: any) => (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/prefer-tag-over-role, jsx-a11y/interactive-supports-focus -- test double; keyboard behaviour is not under test; test double mirrors the real widget ARIA role; test double; focus is not under test
+    <div role="button" onClick={() => onClick(task.id)}>
+      <button
+        type="button"
+        aria-label="Mark as complete"
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleComplete(task.id)
+        }}
+      />
+      {renderTitle()}
+      <span>{project.name}</span>
+      <span>{isCompleted ? 'completed' : 'open'}</span>
+      {actions}
+    </div>
+  )
+}))
+
+vi.mock('./summary-row', () => ({
+  SummaryRow: ({ notes }: { notes: unknown[] }) => (
+    <tfoot>
+      <tr>
+        <td>summary {notes.length}</td>
+      </tr>
+    </tfoot>
+  )
+}))
+
+const notes = [
+  {
+    id: 'note-1',
+    title: 'Alpha plan',
+    emoji: '*',
+    folder: 'Work',
+    tags: ['work', 'alpha'],
+    created: '2026-01-01T00:00:00.000Z',
+    modified: '2026-01-02T00:00:00.000Z',
+    wordCount: 100,
+    properties: { score: 3, status: 'Open' }
+  },
+  {
+    id: 'note-2',
+    title: 'Beta brief',
+    emoji: null,
+    folder: 'Home',
+    tags: ['home'],
+    created: '2026-01-03T00:00:00.000Z',
+    modified: '2026-01-04T00:00:00.000Z',
+    wordCount: 200,
+    properties: { score: 7, status: 'Done' }
+  }
+] as any[]
+
+const columns = [
+  { id: 'title', displayName: 'Title', width: 220 },
+  { id: 'folder', displayName: 'Folder', width: 120 },
+  { id: 'tags', displayName: 'Tags', width: 150 },
+  { id: 'score', displayName: 'Score', width: 100 },
+  { id: 'formula.double', displayName: 'Double', width: 100 },
+  { id: 'missingFormula', displayName: 'Missing', width: 100 }
+] as any[]
+
+describe('FolderTableView', () => {
+  it('renders rows, cells, sorting, column changes, selection, keyboard actions, and summaries', () => {
+    const onNoteOpen = vi.fn()
+    const onOpenInNewTab = vi.fn()
+    const onFolderClick = vi.fn()
+    const onTagClick = vi.fn()
+    const onTagRemove = vi.fn()
+    const onPropertyUpdate = vi.fn()
+    const onColumnsChange = vi.fn()
+    const onDisplayNameChange = vi.fn()
+    const onSortingChange = vi.fn()
+    const onSelectionChange = vi.fn()
+    const onMoveToFolder = vi.fn()
+
+    render(
+      <FolderTableView
+        notes={notes}
+        columns={columns}
+        formulas={{ double: 'score * 2' }}
+        propertyTypes={{ score: 'number' }}
+        initialSorting={[{ property: 'modified', direction: 'desc' }]}
+        highlightQuery="plan"
+        onNoteOpen={onNoteOpen}
+        onOpenInNewTab={onOpenInNewTab}
+        onFolderClick={onFolderClick}
+        onTagClick={onTagClick}
+        onTagRemove={onTagRemove}
+        onPropertyUpdate={onPropertyUpdate}
+        onColumnsChange={onColumnsChange}
+        onDisplayNameChange={onDisplayNameChange}
+        onSortingChange={onSortingChange}
+        onSelectionChange={onSelectionChange}
+        onMoveToFolder={onMoveToFolder}
+        showSummaries
+        summaries={{ score: { type: 'sum' } as any }}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /Alpha plan/ }))
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Work' }))
+    expect(onFolderClick).toHaveBeenCalledWith('Work')
+
+    fireEvent.click(screen.getByRole('option', { name: 'work' }))
+    expect(onTagClick).toHaveBeenCalledWith('work')
+
+    const alphaTag = screen.getByRole('option', { name: 'alpha' })
+    fireEvent.mouseEnter(alphaTag)
+    // The remove button's label interpolates the tag it targets ("alpha").
+    fireEvent.click(screen.getByRole('button', { name: 'removeAria alpha' }))
+    expect(onTagRemove).toHaveBeenCalledWith('note-1', 'alpha')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Title' }))
+    expect(onSortingChange).toHaveBeenCalledWith([{ property: 'title', direction: 'asc' }])
+
+    fireEvent.click(screen.getByRole('button', { name: 'resize title' }))
+    expect(onColumnsChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'title', width: 220 }),
+      ...columns.slice(1)
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: 'rename score' }))
+    expect(onDisplayNameChange).toHaveBeenCalledWith('score', 'Renamed')
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag' }))
+    expect(onColumnsChange).toHaveBeenCalledWith([
+      columns[1],
+      columns[2],
+      columns[3],
+      columns[0],
+      columns[4],
+      columns[5]
+    ])
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    const firstRow = grid.querySelector('[data-row-id="note-1"]')
+    expect(firstRow).not.toBeNull()
+    fireEvent.click(firstRow as HTMLElement)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+
+    fireEvent.click(firstRow as HTMLElement, { shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    fireEvent.keyDown(grid, { key: 'a', metaKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+
+    fireEvent.keyDown(grid, { key: 'Enter' })
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+
+    expect(screen.getByText('summary 2')).toBeInTheDocument()
+  })
+
+  it('drives selection from the select-all header and per-row checkboxes', () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <FolderTableView notes={notes} columns={columns} onSelectionChange={onSelectionChange} />
+    )
+
+    const selectAll = screen.getByRole('checkbox', { name: 'selectAll' })
+    fireEvent.click(selectAll)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    // Clicking again while fully checked clears the selection.
+    fireEvent.click(selectAll)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+
+    const rowBoxes = screen.getAllByRole('checkbox', { name: 'selectRow' })
+    expect(rowBoxes).toHaveLength(2)
+    fireEvent.click(rowBoxes[1])
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.click(rowBoxes[1])
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+  })
+
+  it('renders loading, empty, and no-results states', () => {
+    const onCreateNote = vi.fn()
+    const onClearAll = vi.fn()
+    const { rerender } = render(<FolderTableView notes={notes} columns={columns} isLoading />)
+    expect(screen.getByText('loading')).toBeInTheDocument()
+
+    rerender(<FolderTableView notes={[]} columns={columns} onCreateNote={onCreateNote} />)
+    fireEvent.click(screen.getByRole('button', { name: 'create empty' }))
+    expect(onCreateNote).toHaveBeenCalled()
+
+    rerender(
+      <FolderTableView
+        notes={notes}
+        columns={columns}
+        globalFilter="missing"
+        onClearAll={onClearAll}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'clear empty' }))
+    expect(onClearAll).toHaveBeenCalled()
+  })
+
+  it('covers built-in columns, formula result variants, drag no-ops, and selection edges', () => {
+    const onNoteOpen = vi.fn()
+    const onColumnsChange = vi.fn()
+    const onSelectionChange = vi.fn()
+    const branchNotes = [
+      {
+        ...notes[0],
+        created: null,
+        modified: '',
+        wordCount: 'many',
+        properties: { score: 3, status: 'Open', customDate: '2026-02-03T00:00:00.000Z' }
+      },
+      {
+        ...notes[1],
+        folder: '/',
+        tags: ['review', 'later'],
+        properties: { score: 7, status: 'Done', customDate: '2026-02-04T00:00:00.000Z' }
+      }
+    ] as any[]
+    const branchColumns = [
+      { id: 'title' },
+      { id: 'folder' },
+      { id: 'tags' },
+      { id: 'created' },
+      { id: 'modified' },
+      { id: 'wordCount' },
+      { id: 'customDate' },
+      { id: 'formula.date', displayName: 'Date Formula' },
+      { id: 'formula.tags', displayName: 'Tags Formula' },
+      { id: 'formula.empty', displayName: 'Empty Formula' },
+      { id: 'formula.bool', displayName: 'Bool Formula' }
+    ] as any[]
+
+    render(
+      <FolderTableView
+        notes={branchNotes}
+        columns={branchColumns}
+        formulas={{
+          date: 'dateAdd("2026-01-14", 1, "days")',
+          tags: 'tags',
+          empty: 'null',
+          bool: 'score > 5'
+        }}
+        propertyTypes={{ customDate: 'date' }}
+        initialSorting={[
+          { property: 'folder', direction: 'asc' },
+          { property: 'hiddenScore', direction: 'desc' }
+        ]}
+        selectedRowIds={new Set(['note-1'])}
+        onNoteOpen={onNoteOpen}
+        onColumnsChange={onColumnsChange}
+        onSelectionChange={onSelectionChange}
+        exitingRowIds={new Set(['note-2'])}
+        density="compact"
+        showColumnBorders={false}
+        highlightedColumns={['customDate']}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /Alpha plan/ })).toBeInTheDocument()
+    expect(screen.getByText('Date Formula')).toBeInTheDocument()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag same' }))
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag none' }))
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag invalid' }))
+    expect(onColumnsChange).not.toHaveBeenCalled()
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    const secondRow = grid.querySelector('[data-row-id="note-2"]') as HTMLElement
+
+    fireEvent.doubleClick(secondRow)
+    expect(onNoteOpen).toHaveBeenCalledWith('note-2')
+
+    fireEvent.click(firstRow, { ctrlKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+
+    fireEvent.click(secondRow, { ctrlKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    fireEvent.keyDown(grid, { key: 'ArrowUp', shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    fireEvent.keyDown(grid, { key: ' ', code: 'Space' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    fireEvent.keyDown(grid, { key: 'Escape' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+
+    fireEvent.keyDown(grid, { key: 'Enter' })
+    expect(onNoteOpen).toHaveBeenCalledWith('note-2')
+  })
+
+  it('filters array property values and handles keyboard wrap edges without optional callbacks', () => {
+    const originalUserAgent = navigator.userAgent
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: 'Firefox'
+    })
+
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+    const arrayNotes = [
+      {
+        ...notes[0],
+        properties: { ...notes[0].properties, keywords: ['review', 'plan'] }
+      },
+      {
+        ...notes[1],
+        properties: { ...notes[1].properties, keywords: ['archive'] }
+      }
+    ] as any[]
+    const arrayColumns = [
+      { id: 'title', displayName: 'Title', width: 200 },
+      { id: 'keywords', displayName: 'Keywords', width: 120 }
+    ] as any[]
+
+    render(
+      <FolderTableView
+        notes={arrayNotes}
+        columns={arrayColumns}
+        propertyTypes={{ keywords: 'multiselect' }}
+        initialSorting={[
+          { property: 'folder', direction: 'asc' },
+          { property: 'tags', direction: 'asc' },
+          { property: 'created', direction: 'asc' },
+          { property: 'modified', direction: 'desc' },
+          { property: 'wordCount', direction: 'desc' },
+          { property: 'missingProperty', direction: 'asc' }
+        ]}
+        onNoteOpen={onNoteOpen}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+
+    expect(screen.getByRole('button', { name: /Alpha plan/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Beta brief/ })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'resize title' }))
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'ArrowDown', shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'ArrowUp' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: 'ArrowUp', shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: ' ', code: 'Space' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'a', ctrlKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+    fireEvent.keyDown(grid, { key: 'm', ctrlKey: true, shiftKey: true })
+    fireEvent.keyDown(grid, { key: 'Enter' })
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+
+    Object.defineProperty(navigator, 'userAgent', {
+      configurable: true,
+      value: originalUserAgent
+    })
+  })
+
+  it('renders the kind column when configured', () => {
+    render(
+      <FolderTableView
+        notes={
+          [
+            { ...notes[0], id: 'n1', title: 'A note', kind: 'note' },
+            { ...notes[1], id: 't1', title: 'A task', kind: 'task' }
+          ] as any[]
+        }
+        columns={[
+          { id: 'title', width: 300 },
+          { id: 'kind', width: 100 }
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Task')).toBeInTheDocument()
+  })
+
+  it('treats a row without a kind as a note', () => {
+    render(
+      <FolderTableView
+        notes={[{ ...notes[0], id: 'n1', title: 'A note' }] as any[]}
+        columns={[
+          { id: 'title', width: 300 },
+          { id: 'kind', width: 100 }
+        ]}
+      />
+    )
+
+    expect(screen.getByText('Note')).toBeInTheDocument()
+  })
+
+  it('filters task/inbox ids out of the row context menu selection and the move-selected shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    const mixedNotes = [
+      { ...notes[0], id: 'note-1', kind: undefined },
+      { ...notes[1], id: 'task-1', kind: 'task' },
+      { ...notes[1], id: 'inbox-1', title: 'Inbox item', kind: 'inbox' }
+    ] as any[]
+
+    rowContextMenuCalls.length = 0
+
+    render(
+      <FolderTableView
+        notes={mixedNotes}
+        columns={columns}
+        selectedRowIds={new Set(['note-1', 'task-1', 'inbox-1'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    // RowContextMenu wiring: the note row's selectedNoteIds must exclude the
+    // task/inbox ids even though all three are selected.
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1'])
+
+    // ⇧⌘M keyboard shortcut (bypasses RowContextMenu entirely) must apply
+    // the same note-only filter before calling onMoveToFolder.
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
+  })
+
+  it('passes the whole selection with no search and no grouping (folder scope unchanged)', () => {
+    const onMoveToFolder = vi.fn()
+    rowContextMenuCalls.length = 0
+
+    render(
+      <FolderTableView
+        notes={notes}
+        columns={columns}
+        selectedRowIds={new Set(['note-1', 'note-2'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2'])
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('keeps search-hidden selected notes in the bulk selection and the move shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    const searchNotes = [
+      { ...notes[0], id: 'note-1', title: 'Alpha plan' },
+      { ...notes[1], id: 'note-2', title: 'Beta brief' },
+      { ...notes[1], id: 'note-3', title: 'Gamma memo' }
+    ] as any[]
+
+    rowContextMenuCalls.length = 0
+
+    render(
+      <FolderTableView
+        notes={searchNotes}
+        columns={columns}
+        globalFilter="Alpha"
+        selectedRowIds={new Set(['note-1', 'note-2', 'note-3'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    // Only the matching row is rendered, but selection is not pruned by search.
+    expect(screen.queryByRole('button', { name: /Beta brief/ })).not.toBeInTheDocument()
+
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2', 'note-3'])
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2', 'note-3'])
+  })
+
+  it('opens a row in a background tab on middle click, and ignores other buttons', () => {
+    const onOpenInBackgroundTab = vi.fn()
+    const onNoteOpen = vi.fn()
+
+    render(
+      <FolderTableView
+        notes={notes}
+        columns={columns}
+        onNoteOpen={onNoteOpen}
+        onOpenInBackgroundTab={onOpenInBackgroundTab}
+      />
+    )
+
+    const grid = screen.getByRole('grid', { name: 'notesTable' })
+    const row = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+
+    fireEvent.mouseDown(row, { button: 0 })
+    expect(onOpenInBackgroundTab).not.toHaveBeenCalled()
+
+    const middle = fireEvent.mouseDown(row, { button: 1 })
+    expect(onOpenInBackgroundTab).toHaveBeenCalledWith('note-1')
+    // Suppressed so Chromium does not start autoscrolling the table.
+    expect(middle).toBe(false)
+    expect(onNoteOpen).not.toHaveBeenCalled()
+  })
+})
+
+describe('GroupedTable', () => {
+  it('renders group headers, group summaries, row actions, and keyboard selection', () => {
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        formulas={{ double: 'score * 2' }}
+        propertyTypes={{ score: 'number' }}
+        groupBy={{ property: 'status', showSummary: true } as any}
+        onNoteOpen={onNoteOpen}
+        onSelectionChange={onSelectionChange}
+        showSummaries
+        summaries={{ score: { type: 'sum' } as any }}
+      />
+    )
+
+    expect(screen.getAllByText('Status:')).toHaveLength(2)
+    expect(screen.getByText('Open')).toBeInTheDocument()
+    // Each group holds exactly one note — the interpolated count must render.
+    expect(screen.getAllByText('noteCount 1')).toHaveLength(2)
+    expect(screen.getAllByText(/Score:/)).toHaveLength(2)
+
+    fireEvent.click(screen.getByRole('button', { name: /Alpha plan/ }))
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const firstRow = grid.querySelector('[data-row-id="note-1"]')
+    fireEvent.click(firstRow as HTMLElement)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+  })
+
+  it('drives grouped selection from the select-all header and per-row checkboxes', () => {
+    const onSelectionChange = vi.fn()
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        groupBy={{ property: 'status' } as any}
+        onSelectionChange={onSelectionChange}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'selectAll' }))
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+
+    expect(screen.getAllByRole('checkbox', { name: 'selectRow' })).toHaveLength(2)
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const note1Box = grid
+      .querySelector('[data-row-id="note-1"]')!
+      .querySelector('[role="checkbox"]') as HTMLElement
+    fireEvent.click(note1Box)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+  })
+
+  it('renders grouped loading, empty, and no-results states', () => {
+    const onCreateNote = vi.fn()
+    const onClearAll = vi.fn()
+    const { rerender } = render(<GroupedTable notes={notes} columns={columns} isLoading />)
+    expect(screen.getByText('loading')).toBeInTheDocument()
+
+    rerender(<GroupedTable notes={[]} columns={columns} onCreateNote={onCreateNote} />)
+    fireEvent.click(screen.getByRole('button', { name: 'create empty' }))
+    expect(onCreateNote).toHaveBeenCalled()
+
+    rerender(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        globalFilter="missing"
+        onClearAll={onClearAll}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'clear empty' }))
+    expect(onClearAll).toHaveBeenCalled()
+  })
+
+  it('covers grouped table built-in cells, collapsed groups, formulas, and selection variants', () => {
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+    const onColumnsChange = vi.fn()
+    const onMoveToFolder = vi.fn()
+    const branchNotes = [
+      {
+        ...notes[0],
+        id: 'note-1',
+        title: 'Alpha plan',
+        properties: { score: 3, done: false, status: '' }
+      },
+      {
+        ...notes[1],
+        id: 'note-2',
+        title: 'Beta brief',
+        properties: { score: 7, done: true, status: ['Done', 'Reviewed'] }
+      }
+    ] as any[]
+    const branchColumns = [
+      { id: 'title', displayName: 'Title', width: 220 },
+      { id: 'score', displayName: 'Score', width: 100 },
+      { id: 'created', displayName: 'Created', width: 130 },
+      { id: 'modified', displayName: 'Modified', width: 130 },
+      { id: 'wordCount', displayName: 'Words', width: 80 },
+      { id: 'done', displayName: 'Done', width: 80 },
+      { id: 'formula.isLarge', displayName: 'Large?', width: 100 },
+      { id: 'formula.missing', displayName: 'Missing Formula', width: 100 }
+    ] as any[]
+
+    const { rerender } = render(
+      <GroupedTable
+        notes={branchNotes}
+        columns={branchColumns}
+        formulas={{ isLarge: 'score > 5' }}
+        propertyTypes={{ done: 'checkbox' }}
+        groupBy={{ property: 'status', collapsed: true, showSummary: true } as any}
+        initialSorting={[{ property: 'score', direction: 'asc' }]}
+        onNoteOpen={onNoteOpen}
+        onSelectionChange={onSelectionChange}
+        onColumnsChange={onColumnsChange}
+        onMoveToFolder={onMoveToFolder}
+        showColumnBorders
+        density="compact"
+        exitingRowIds={new Set(['note-2'])}
+        showSummaries
+        summaries={{
+          score: { type: 'sum' } as any,
+          wordCount: { type: 'avg' } as any,
+          done: { type: 'count' } as any,
+          title: { type: 'count' } as any
+        }}
+      />
+    )
+
+    expect(screen.getByText('(Empty)')).toBeInTheDocument()
+    expect(screen.getByText('Done,Reviewed')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Alpha plan/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('(Empty)').closest('tr')!)
+    fireEvent.click(screen.getByRole('button', { name: /Alpha plan/ }))
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    fireEvent.click(firstRow)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.click(screen.getByText('Done,Reviewed').closest('tr')!)
+    const secondRow = grid.querySelector('[data-row-id="note-2"]') as HTMLElement
+    fireEvent.click(secondRow, { shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+    fireEvent.click(firstRow, { metaKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+
+    fireEvent.keyDown(grid, { key: 'ArrowUp' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: ' ', code: 'Space' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: 'Escape' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set())
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag' }))
+    expect(onColumnsChange).toHaveBeenCalled()
+
+    rerender(
+      <GroupedTable
+        notes={branchNotes}
+        columns={branchColumns}
+        formulas={{ isLarge: 'score > 5' }}
+        propertyTypes={{ done: 'checkbox' }}
+        groupBy={{ property: 'folder', collapsed: false }}
+        selectedRowIds={new Set(['note-1', 'note-2'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    fireEvent.keyDown(screen.getByRole('grid', { name: 'groupedNotesTable' }), {
+      key: 'm',
+      ctrlKey: true,
+      shiftKey: true
+    })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('handles grouped keyboard wrap edges, hidden grouping columns, and no-op callbacks', () => {
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+    const branchNotes = [
+      {
+        ...notes[0],
+        folder: '/',
+        properties: { ...notes[0].properties, keywords: ['review', 'plan'] }
+      },
+      {
+        ...notes[1],
+        properties: { ...notes[1].properties, keywords: [] }
+      }
+    ] as any[]
+    const branchColumns = [{ id: 'title', displayName: 'Title', width: 180 }] as any[]
+
+    render(
+      <GroupedTable
+        notes={branchNotes}
+        columns={branchColumns}
+        propertyTypes={{ keywords: 'multiselect' }}
+        groupBy={{ property: 'keywords', collapsed: false, showSummary: true } as any}
+        initialSorting={[
+          { property: 'folder', direction: 'asc' },
+          { property: 'tags', direction: 'asc' },
+          { property: 'created', direction: 'asc' },
+          { property: 'modified', direction: 'desc' },
+          { property: 'wordCount', direction: 'desc' }
+        ]}
+        onNoteOpen={onNoteOpen}
+        onSelectionChange={onSelectionChange}
+        showSummaries
+        summaries={{ title: { type: 'count' } as any }}
+      />
+    )
+
+    expect(screen.getByText('review,plan')).toBeInTheDocument()
+    expect(screen.getByText('(Empty)')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'resize title' }))
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag' }))
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: 'ArrowUp' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'ArrowUp', shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2', 'note-1']))
+    fireEvent.keyDown(grid, { key: ' ', code: 'Space' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'a', ctrlKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1', 'note-2']))
+    fireEvent.keyDown(grid, { key: 'm', ctrlKey: true, shiftKey: true })
+    fireEvent.keyDown(grid, { key: 'Enter' })
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+  })
+
+  it('covers grouped row click guards, double-click open, no-op drags, and chevron toggles', () => {
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+    const onColumnsChange = vi.fn()
+
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        formulas={{ double: 'score * 2' }}
+        propertyTypes={{ score: 'number' }}
+        groupBy={{ property: 'status', collapsed: false } as any}
+        onNoteOpen={onNoteOpen}
+        onSelectionChange={onSelectionChange}
+        onColumnsChange={onColumnsChange}
+      />
+    )
+
+    const titleButton = screen.getByRole('button', { name: /Alpha plan/ })
+    fireEvent.click(titleButton)
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+    expect(onSelectionChange).not.toHaveBeenCalled()
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    fireEvent.doubleClick(firstRow)
+    expect(onNoteOpen).toHaveBeenCalledWith('note-1')
+
+    fireEvent.click(firstRow)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'ArrowUp', shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+    fireEvent.keyDown(grid, { key: 'ArrowDown', shiftKey: true })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag same' }))
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag none' }))
+    fireEvent.click(screen.getByRole('button', { name: 'mock drag invalid' }))
+    expect(onColumnsChange).not.toHaveBeenCalled()
+
+    const groupToggle = screen.getByText('Open').closest('tr')?.querySelector('button')
+    fireEvent.click(groupToggle as HTMLButtonElement)
+    expect(screen.queryByRole('button', { name: /Alpha plan/ })).not.toBeInTheDocument()
+  })
+
+  it('filters task/inbox ids out of the row context menu selection and the move-selected shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    const mixedNotes = [
+      { ...notes[0], id: 'note-1', kind: undefined },
+      { ...notes[1], id: 'task-1', kind: 'task' },
+      { ...notes[1], id: 'inbox-1', title: 'Inbox item', kind: 'inbox' }
+    ] as any[]
+
+    rowContextMenuCalls.length = 0
+
+    render(
+      <GroupedTable
+        notes={mixedNotes}
+        columns={columns}
+        selectedRowIds={new Set(['note-1', 'task-1', 'inbox-1'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1'])
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1'])
+  })
+
+  it('keeps selected notes inside a collapsed group in the bulk selection and the move shortcut', () => {
+    const onMoveToFolder = vi.fn()
+    rowContextMenuCalls.length = 0
+
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        groupBy={{ property: 'status', collapsed: true } as any}
+        selectedRowIds={new Set(['note-1', 'note-2'])}
+        onMoveToFolder={onMoveToFolder}
+      />
+    )
+
+    // Expand only the "Open" group; note-2 stays inside the collapsed "Done" group.
+    fireEvent.click(screen.getByText('Open').closest('tr')!)
+    expect(screen.getByRole('button', { name: /Alpha plan/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Beta brief/ })).not.toBeInTheDocument()
+
+    const noteRowCall = rowContextMenuCalls.findLast((call) => call.note.id === 'note-1')
+    expect(noteRowCall.selectedNoteIds).toEqual(['note-1', 'note-2'])
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    fireEvent.keyDown(grid, { key: 'm', metaKey: true, shiftKey: true })
+    expect(onMoveToFolder).toHaveBeenCalledWith(['note-1', 'note-2'])
+  })
+
+  it('opens a grouped row in a background tab on middle click', () => {
+    const onOpenInBackgroundTab = vi.fn()
+
+    render(
+      <GroupedTable
+        notes={notes}
+        columns={columns}
+        groupBy={{ property: 'status' }}
+        onOpenInBackgroundTab={onOpenInBackgroundTab}
+      />
+    )
+
+    const grid = screen.getByRole('grid', { name: 'groupedNotesTable' })
+    const row = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+
+    fireEvent.mouseDown(row, { button: 1 })
+    expect(onOpenInBackgroundTab).toHaveBeenCalledWith('note-1')
+  })
+})
+
+// #2073: a folder holds PDFs and images next to notes. Their rows have no
+// frontmatter to write, and the tag write path used to overwrite the binary
+// with markdown, so the remove affordance must not be offered at all.
+describe('binary file rows (#2073)', () => {
+  const mixedNotes = [
+    { ...notes[0], tags: ['alpha'], fileType: 'markdown' },
+    { ...notes[1], id: 'pdf-1', title: 'Invoice.pdf', tags: ['billing'], fileType: 'pdf' }
+  ] as any[]
+
+  it.each([
+    ['FolderTableView', FolderTableView],
+    ['GroupedTable', GroupedTable]
+  ])('%s offers tag removal on the note row but not on the PDF row', (_name, Component) => {
+    const onTagRemove = vi.fn()
+
+    render(
+      <Component
+        notes={mixedNotes}
+        columns={columns}
+        formulas={{ double: 'score * 2' }}
+        propertyTypes={{ score: 'number' }}
+        onTagClick={vi.fn()}
+        onTagRemove={onTagRemove}
+      />
+    )
+
+    fireEvent.mouseEnter(screen.getByRole('option', { name: 'alpha' }))
+    expect(screen.getByRole('button', { name: 'removeAria alpha' })).toBeTruthy()
+
+    fireEvent.mouseEnter(screen.getByRole('option', { name: 'billing' }))
+    expect(screen.queryByRole('button', { name: 'removeAria billing' })).toBeNull()
+  })
+})
+
+// Regression for #1897: the grid container's keydown handler receives every
+// keystroke from its React descendants, including real cell editors and
+// selection checkboxes. Space and Enter must act only on the grid itself;
+// arrow navigation must still work from a focused descendant.
+describe.each([
+  ['FolderTableView', 'notesTable'],
+  ['GroupedTable', 'groupedNotesTable']
+] as const)('%s grid keydown target guard', (component, gridName) => {
+  const statusColumns = [
+    { id: 'title', displayName: 'Title', width: 220 },
+    { id: 'status', displayName: 'Status', width: 120 }
+  ] as any[]
+
+  function renderTable(props: {
+    onNoteOpen: (id: string) => void
+    onSelectionChange: (ids: Set<string>) => void
+    onPropertyUpdate: (id: string, property: string, value: unknown) => void
+  }): HTMLElement {
+    const shared = {
+      notes,
+      columns: statusColumns,
+      propertyTypes: { status: 'text' } as any,
+      ...props
+    }
+    render(
+      component === 'FolderTableView' ? (
+        <FolderTableView {...shared} />
+      ) : (
+        <GroupedTable {...shared} groupBy={{ property: 'status' } as any} />
+      )
+    )
+    return screen.getByRole('grid', { name: gridName })
+  }
+
+  it('ignores Space and Enter from a descendant but keeps arrow navigation', () => {
+    const onNoteOpen = vi.fn()
+    const onSelectionChange = vi.fn()
+    const grid = renderTable({ onNoteOpen, onSelectionChange, onPropertyUpdate: vi.fn() })
+
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    fireEvent.click(firstRow)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    const rowCheckbox = firstRow.querySelector('[role="checkbox"]') as HTMLElement
+    // fireEvent returns false when a handler called preventDefault().
+    expect(fireEvent.keyDown(rowCheckbox, { key: ' ', code: 'Space' })).toBe(true)
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-1']))
+
+    fireEvent.keyDown(rowCheckbox, { key: 'Enter' })
+    expect(onNoteOpen).not.toHaveBeenCalled()
+
+    fireEvent.keyDown(rowCheckbox, { key: 'ArrowDown' })
+    expect(onSelectionChange).toHaveBeenLastCalledWith(new Set(['note-2']))
+
+    fireEvent.keyDown(grid, { key: 'Enter' })
+    expect(onNoteOpen).toHaveBeenCalledWith('note-2')
+  })
+
+  it('keeps the space bar in a real cell editor', () => {
+    const onSelectionChange = vi.fn()
+    const grid = renderTable({ onNoteOpen: vi.fn(), onSelectionChange, onPropertyUpdate: vi.fn() })
+
+    const firstRow = grid.querySelector('[data-row-id="note-1"]') as HTMLElement
+    fireEvent.click(within(firstRow).getByRole('button', { name: 'Open' }))
+    const input = firstRow.querySelector('input[type="text"]') as HTMLInputElement
+    expect(input).not.toBeNull()
+
+    onSelectionChange.mockClear()
+    expect(fireEvent.keyDown(input, { key: ' ', code: 'Space' })).toBe(true)
+    expect(onSelectionChange).not.toHaveBeenCalled()
+  })
+})
+
+describe('FolderTableView note tasks', () => {
+  const task = (overrides: Record<string, unknown>) => ({
+    id: 't1',
+    projectId: 'p1',
+    title: 'Dig post holes',
+    description: '## 60 cm deep\nsix holes',
+    startDate: new Date('2026-04-06T12:00:00'),
+    dueDate: new Date('2026-04-07T12:00:00'),
+    completedAt: null,
+    tags: ['structure'],
+    ...overrides
+  })
+  const noteTasks = new Map([
+    [
+      'note-1',
+      {
+        tasks: [
+          task({}),
+          task({
+            id: 't2',
+            title: 'Pour footings',
+            startDate: null,
+            dueDate: null,
+            description: '',
+            tags: []
+          })
+        ],
+        total: 3,
+        open: 2,
+        nextDue: new Date('2026-04-07T12:00:00')
+      }
+    ]
+  ] as any)
+
+  const renderTable = () =>
+    render(<FolderTableView notes={notes} columns={columns} noteTasks={noteTasks as any} />)
+
+  it("opens a note's tasks beneath its row and shows their details", () => {
+    taskMocks.reminderTaskIds = new Set(['t1'])
+    renderTable()
+
+    expect(screen.getByText('progressOpen 2 3')).toBeTruthy()
+    expect(screen.queryByText('Dig post holes')).toBeNull()
+    expect(screen.queryByLabelText(/expand Beta brief/)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /expand Alpha plan/ }))
+
+    expect(screen.getByText('Dig post holes')).toBeTruthy()
+    expect(screen.getByText('60 cm deep')).toBeTruthy()
+    expect(screen.getAllByText('Inbox')).toHaveLength(2)
+    expect(screen.getByRole('img', { name: /reminder/ })).toBeTruthy()
+    expect(screen.getAllByRole('img', { name: /reminder/ })).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /collapse Alpha plan/ }))
+    expect(screen.queryByText('Dig post holes')).toBeNull()
+  })
+
+  it('opens the task detail on a task row and completes in place from its checkbox', () => {
+    taskMocks.openTaskDetail.mockClear()
+    taskMocks.updateTask.mockClear()
+    renderTable()
+    fireEvent.click(screen.getByRole('button', { name: /expand Alpha plan/ }))
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Mark as complete' })[0])
+    expect(taskMocks.updateTask).toHaveBeenCalledWith('t1', { completedAt: expect.any(Date) })
+    expect(taskMocks.openTaskDetail).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByText('Pour footings'))
+    expect(taskMocks.openTaskDetail).toHaveBeenCalledWith('t2')
+  })
+})

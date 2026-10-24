@@ -1,0 +1,879 @@
+import React from 'react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { QueryObserver } from '@tanstack/react-query'
+import type * as ReactQuery from '@tanstack/react-query'
+import App from './App'
+import { runCommand } from '@/commands'
+import { isNewNoteTitlePending } from '@/lib/new-note-title'
+import { isMac } from '@/hooks/use-keyboard-shortcuts-base'
+import { beginVaultSwitch, endVaultSwitch, resetVaultSwitchState } from '@/lib/vault-switch-state'
+import { useVaultScope } from '@/contexts/vault-scope'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+
+/** Every QueryClient VaultStack created, in creation order. */
+const { createdQueryClients } = vi.hoisted(() => ({
+  createdQueryClients: [] as ReactQuery.QueryClient[]
+}))
+
+/** Render tallies for the app tree, used to prove updater ticks do not fan out. */
+const treeRenders = { appSidebar: 0, splitView: 0, taskDragOverlay: 0 }
+
+const openTab = vi.fn()
+// `useTabActions` is a separate subscription from `useTabs` (actions only, so
+// tab-state changes don't re-render the caller), so the mock has to publish it
+// too or every consumer under App throws at render.
+const tabActions = {
+  openTab,
+  closeTab: vi.fn(),
+  closeTabsByEntityId: vi.fn(),
+  updateTabTitleByEntityId: vi.fn(),
+  setActiveTab: vi.fn(),
+  setActiveGroup: vi.fn(),
+  splitView: vi.fn(),
+  dispatch: vi.fn()
+}
+const openSettings = vi.fn()
+const trackTelemetry = vi.fn()
+const setProjects = vi.fn()
+const taskDragEnd = vi.fn()
+const updateSelectedTaskIds = vi.fn()
+const reorderProjects = vi.fn()
+const createNote = vi.fn()
+
+let vaultState = {
+  status: { isOpen: true, path: '/vault/a' },
+  isLoading: false
+}
+let activeTab: { type: string } | null = { type: 'inbox' }
+let tasks = [
+  { id: 'task-1', projectId: 'project-a', statusId: 'todo', archivedAt: null },
+  { id: 'task-2', projectId: 'project-b', statusId: 'done', archivedAt: null }
+]
+let projects = [
+  {
+    id: 'project-a',
+    name: 'Alpha',
+    statuses: [
+      { id: 'todo', type: 'todo' },
+      { id: 'done', type: 'done' }
+    ]
+  },
+  {
+    id: 'project-b',
+    name: 'Beta',
+    statuses: [
+      { id: 'todo', type: 'todo' },
+      { id: 'done', type: 'done' }
+    ]
+  }
+]
+let settingsOpenListener: ((section?: string) => void) | undefined
+let selectedFolder = ''
+/** Rendered inside every vault workspace's (mocked) sidebar. */
+let sidebarSlot: React.ReactNode = null
+
+/** Vault A's vault menu, open on the row for vault B. */
+function VaultAMenu(): React.JSX.Element | null {
+  if (useVaultScope() !== '/vault/a') return null
+  return (
+    <Popover open>
+      <PopoverTrigger>Vault A</PopoverTrigger>
+      <PopoverContent>Vault B</PopoverContent>
+    </Popover>
+  )
+}
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof ReactQuery>()
+  return {
+    ...actual,
+    useQueryClient: () => ({ clear: vi.fn() }),
+    // App keeps one real client per vault workspace (VaultStack); recorded so
+    // tests can drive each vault's cache directly.
+    QueryClient: class extends actual.QueryClient {
+      constructor(...args: ConstructorParameters<typeof actual.QueryClient>) {
+        super(...args)
+        createdQueryClients.push(this)
+      }
+    },
+    QueryClientProvider: ({ children }: { children: React.ReactNode }) => children
+  }
+})
+
+vi.mock('@/components/tabs/home-tab-title-sync', () => ({
+  // Owns a react-query subscription; `@tanstack/react-query` is fully mocked
+  // here. Its own suite covers it (`home-tab-title-sync.test.tsx`).
+  HomeTabTitleSync: () => null
+}))
+
+vi.mock('next-themes', () => ({
+  ThemeProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="theme-provider">{children}</div>
+  ),
+  useTheme: () => ({ setTheme: vi.fn() })
+}))
+
+vi.mock('@/lib/icons', () => ({
+  Loader2: ({ className }: { className?: string }) => (
+    <div data-testid="loader" className={className} />
+  )
+}))
+
+vi.mock('@/lib/startup-theme', () => ({
+  THEME_STORAGE_KEY: 'theme',
+  getStartupTheme: () => 'system'
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => ({
+    info: vi.fn(),
+    error: vi.fn()
+  })
+}))
+
+vi.mock('@/lib/telemetry', () => ({
+  trackTelemetry: (...args: unknown[]) => trackTelemetry(...args)
+}))
+
+vi.mock('@/data/tasks-data', () => ({
+  taskViews: [{ id: 'all' }, { id: 'today' }]
+}))
+
+vi.mock('@/lib/task-utils', () => ({
+  getTaskWorkspaceCounts: (allTasks: unknown[], _projects: unknown[], viewIds: string[]) => ({
+    viewCounts: Object.fromEntries(viewIds.map((id) => [id, allTasks.length])),
+    projectTaskCounts: {}
+  })
+}))
+
+vi.mock('@/services/tasks-service', () => ({
+  tasksService: {
+    reorderProjects: (...args: unknown[]) => reorderProjects(...args)
+  },
+  queueTaskReorder: vi.fn()
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    create: (...args: unknown[]) => createNote(...args)
+  }
+}))
+
+vi.mock('@/hooks', () => ({
+  useMouseNavButtons: vi.fn(),
+  useChordShortcuts: () => true,
+  useUndoKeyboardShortcut: vi.fn(),
+  useReminderNotifications: vi.fn(),
+  useInboxReviewNotifications: vi.fn(),
+  useHintActivation: vi.fn(),
+  useFolderViewEvents: vi.fn(),
+  useFlushOnQuit: vi.fn(),
+  useVault: () => vaultState,
+  useTaskOrder: () => ({
+    applyOrderUpdates: vi.fn(),
+    getOrder: vi.fn(),
+    getOrderedTasks: vi.fn((input) => input)
+  }),
+  useDragHandlers: () => ({
+    handleDragEnd: taskDragEnd,
+    droppedPriorities: new Map([['task-1', 3]])
+  })
+}))
+
+vi.mock('@/hooks/use-folder-view-events', () => ({
+  useFolderViewEvents: vi.fn()
+}))
+
+vi.mock('@/hooks/use-flush-on-quit', () => ({
+  useFlushOnQuit: vi.fn()
+}))
+
+vi.mock('@/hooks/use-theme-sync', () => ({
+  useThemeSync: vi.fn(() => ({ reduceMotion: 'system' }))
+}))
+
+vi.mock('@/features/tasks/use-task-queries', () => ({
+  useTaskWorkspaceData: () => ({ tasks, projects }),
+  useTaskWorkspaceMutations: () => ({
+    setProjects,
+    updateTask: vi.fn(),
+    deleteTask: vi.fn()
+  })
+}))
+
+vi.mock('@/features/tasks/use-task-ui-store', () => ({
+  useTaskUiStore: () => ({
+    selectedTaskIds: new Set(['task-1']),
+    setSelectedTaskIds: updateSelectedTaskIds
+  })
+}))
+
+vi.mock('@/contexts/tabs', () => ({
+  TabProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tab-provider">{children}</div>
+  ),
+  useTabs: () => ({ openTab }),
+  useTabActions: () => tabActions,
+  useActiveTab: () => activeTab
+}))
+
+vi.mock('@/contexts/tabs/tabs-command-bridge', () => ({
+  // Owns the tabs commands; its own suite drives it through a real TabProvider.
+  TabsCommandBridge: () => null
+}))
+
+vi.mock('@/commands/workspace-command-owners', () => ({
+  // Owns the page and sync commands; its own suite drives it through real providers.
+  WorkspaceCommandOwners: () => null
+}))
+
+vi.mock('@/contexts/tabs/persistence', () => ({
+  STORAGE_KEY: 'tabs-state',
+  useTabPersistence: vi.fn(),
+  useSessionRestore: vi.fn(),
+  useTabSessionPersistence: vi.fn(() => ({ isRestoring: false }))
+}))
+
+vi.mock('@/contexts/tasks', () => ({
+  TasksProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tasks-provider">{children}</div>
+  )
+}))
+
+vi.mock('@/contexts/drag-context', () => ({
+  DragProvider: ({
+    children,
+    onDragEnd
+  }: {
+    children: React.ReactNode
+    onDragEnd: (event: unknown, state: { isDragging: boolean }) => void
+  }) => (
+    <div data-testid="drag-provider">
+      <button
+        type="button"
+        onClick={() =>
+          onDragEnd(
+            {
+              // Mirrors what SortableProjectItem actually emits: a typed drag,
+              // and an `over` that is the row's TASK drop target (`row-<id>`),
+              // which is what wins the collision in the real sidebar. The old
+              // fixture sent an untyped drag onto a bare id — a shape the app
+              // never produces — so it passed while the feature was broken.
+              active: {
+                id: 'project-b',
+                data: { current: { type: 'project-sort', projectId: 'project-b' } }
+              },
+              over: { id: 'project-project-a' }
+            },
+            { isDragging: false }
+          )
+        }
+      >
+        project drag
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          onDragEnd(
+            {
+              active: { id: 'task-1', data: { current: { type: 'task' } } },
+              over: { id: 'today' }
+            },
+            { isDragging: true }
+          )
+        }
+      >
+        task drag
+      </button>
+      {children}
+    </div>
+  )
+}))
+
+vi.mock('@/contexts/dropped-priority-context', () => ({
+  DroppedPriorityProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="dropped-priority-provider">{children}</div>
+  )
+}))
+
+vi.mock('@/contexts/ai-inline-context', () => ({
+  AIInlineProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
+vi.mock('@/contexts/day-panel-context', () => ({
+  DayPanelProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useDayPanel: () => ({
+    isOpen: false
+  })
+}))
+
+vi.mock('@/contexts/calendar-view-context', () => ({
+  CalendarViewProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
+vi.mock('@/contexts/sidebar-drill-down', () => ({
+  SidebarDrillDownProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
+vi.mock('@/contexts/selected-folder-context', () => ({
+  SelectedFolderProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSelectedFolder: () => ({ selectedFolder, setSelectedFolder: vi.fn() })
+}))
+
+vi.mock('@/contexts/hint-mode', () => ({
+  HintModeProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  // Every keydown this suite dispatches now reaches the app-wide shortcut
+  // listener, which reads this ref before matching. Omitting it made the mock
+  // throw out of an event handler, where it surfaced as an unhandled error
+  // rather than a failing test.
+  hintModeActiveRef: { current: false }
+}))
+
+vi.mock('@/contexts/settings-modal-context', () => ({
+  SettingsModalProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  useSettingsModal: () => ({ open: openSettings })
+}))
+
+vi.mock('@/components/app-sidebar', () => ({
+  AppSidebar: ({ viewCounts }: { viewCounts: Record<string, number> }) => {
+    treeRenders.appSidebar += 1
+    return (
+      <aside data-testid="app-sidebar">
+        all:{viewCounts.all}
+        {sidebarSlot}
+      </aside>
+    )
+  }
+}))
+
+vi.mock('@/components/ui/sidebar', () => ({
+  SidebarProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sidebar-provider">{children}</div>
+  ),
+  SidebarInset: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <main data-testid="sidebar-inset" className={className}>
+      {children}
+    </main>
+  ),
+  useSidebar: () => ({ toggleSidebar: vi.fn() })
+}))
+
+vi.mock('@/components/window-controls', () => ({
+  WindowControls: ({ className }: { className?: string }) => (
+    <div data-testid="window-controls" className={className} />
+  )
+}))
+
+vi.mock('@/components/ui/sonner', () => ({
+  Toaster: () => <div data-testid="toaster" />
+}))
+
+vi.mock('@/components/day-panel', () => ({
+  GlobalDayPanel: () => <div data-testid="global-day-panel" />
+}))
+
+vi.mock('@/components/tasks/drag-drop', () => ({
+  TaskDragOverlay: ({ projects: overlayProjects }: { projects: unknown[] }) => {
+    treeRenders.taskDragOverlay += 1
+    return <div data-testid="task-drag-overlay">{overlayProjects.length}</div>
+  }
+}))
+
+vi.mock('@/components/tabs', () => ({
+  TabDragProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="tab-drag-provider">{children}</div>
+  ),
+  TabErrorBoundary: ({ children }: { children: React.ReactNode }) => <>{children}</>
+}))
+
+vi.mock('@/components/split-view', () => ({
+  SplitViewContainer: () => {
+    treeRenders.splitView += 1
+    return <div data-testid="split-view" />
+  }
+}))
+
+vi.mock('@/components/keyboard', () => ({
+  ChordIndicator: ({ isActive }: { isActive: boolean }) => (
+    <div data-testid="chord-indicator">{String(isActive)}</div>
+  )
+}))
+
+vi.mock('@/components/keyboard/keyboard-shortcuts-dialog', () => ({
+  KeyboardShortcutsDialog: ({ isOpen }: { isOpen: boolean }) => (
+    <div data-testid="shortcuts-dialog">{String(isOpen)}</div>
+  )
+}))
+
+vi.mock('@/components/hint-overlay', () => ({
+  HintOverlay: () => <div data-testid="hint-overlay" />,
+  HintIndicator: () => <div data-testid="hint-indicator" />
+}))
+
+vi.mock('@/components/commands/commands-palette', () => ({
+  CommandsPalette: ({ open }: { open: boolean }) => (
+    <div data-testid="commands-palette">{String(open)}</div>
+  )
+}))
+
+vi.mock('@/components/search/command-palette', () => ({
+  CommandPalette: ({ open }: { open: boolean }) => (
+    <div data-testid="command-palette">{String(open)}</div>
+  )
+}))
+
+vi.mock('@/components/settings-view', () => ({
+  SettingsView: () => <div data-testid="settings-view" />
+}))
+
+vi.mock('@/components/onboarding-wizard/first-run-gate', () => ({
+  FirstRunGate: () => <div data-testid="vault-onboarding" />
+}))
+
+describe('App', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    createdQueryClients.length = 0
+    resetVaultSwitchState()
+    vaultState = {
+      status: { isOpen: true, path: '/vault/a' },
+      isLoading: false
+    }
+    activeTab = { type: 'inbox' }
+    tasks = [
+      { id: 'task-1', projectId: 'project-a', statusId: 'todo', archivedAt: null },
+      { id: 'task-2', projectId: 'project-b', statusId: 'done', archivedAt: null }
+    ]
+    projects = [
+      {
+        id: 'project-a',
+        name: 'Alpha',
+        statuses: [
+          { id: 'todo', type: 'todo' },
+          { id: 'done', type: 'done' }
+        ]
+      },
+      {
+        id: 'project-b',
+        name: 'Beta',
+        statuses: [
+          { id: 'todo', type: 'todo' },
+          { id: 'done', type: 'done' }
+        ]
+      }
+    ]
+    settingsOpenListener = undefined
+    selectedFolder = ''
+    sidebarSlot = null
+    createNote.mockResolvedValue({
+      success: true,
+      note: { id: 'note-1', title: 'Created note' }
+    })
+    setProjects.mockImplementation((updater: (current: typeof projects) => typeof projects) => {
+      projects = updater(projects)
+    })
+    ;(
+      window as Window & { api: { onSettingsOpenRequested?: unknown } }
+    ).api.onSettingsOpenRequested = vi.fn((callback: (section?: string) => void) => {
+      settingsOpenListener = callback
+      return vi.fn()
+    })
+  })
+
+  it('renders the vault loading state', () => {
+    vaultState = {
+      status: { isOpen: false, path: null },
+      isLoading: true
+    }
+
+    render(<App />)
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument()
+  })
+
+  it('renders vault onboarding when no vault is open', async () => {
+    vaultState = {
+      status: { isOpen: false, path: null },
+      isLoading: false
+    }
+
+    render(<App />)
+
+    expect(await screen.findByTestId('vault-onboarding')).toBeInTheDocument()
+    expect(screen.getByTestId('toaster')).toBeInTheDocument()
+  })
+
+  it('renders the app shell without first-run onboarding', () => {
+    render(<App />)
+
+    expect(screen.getByTestId('app-sidebar')).toHaveTextContent('all:2')
+    expect(screen.getByTestId('split-view')).toBeInTheDocument()
+    expect(screen.getByTestId('window-controls')).toBeInTheDocument()
+    expect(trackTelemetry).toHaveBeenCalledWith('page_viewed', {
+      surface: 'inbox',
+      action: 'viewed',
+      objectType: 'inbox'
+    })
+    expect(screen.queryByText('complete onboarding')).not.toBeInTheDocument()
+    expect(trackTelemetry).not.toHaveBeenCalledWith('onboarding_started', expect.anything())
+    expect(trackTelemetry).not.toHaveBeenCalledWith('onboarding_completed', expect.anything())
+  })
+
+  it('keeps a vault the user left mounted, and shows the same tree on the way back', () => {
+    const view = render(<App />)
+    const first = screen.getByTestId('sidebar-provider')
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
+    view.rerender(<App />)
+    expect(screen.getAllByTestId('sidebar-provider')).toHaveLength(2)
+    expect(first).not.toBeVisible()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/a' } }
+    view.rerender(<App />)
+    expect(screen.getAllByTestId('sidebar-provider')).toContain(first)
+    expect(first).toBeVisible()
+  })
+
+  it('hides a menu the leaving vault has open along with its workspace, and brings it back', () => {
+    // Menus portal to <body>, outside the hidden workspace. The reported case
+    // (#2504) is the vault menu still fading out when the switch lands. That
+    // menu stayed on screen, invisible, and its rows switched vaults on click.
+    // jsdom plays no animations, so here the menu is simply left open.
+    sidebarSlot = <VaultAMenu />
+    const view = render(<App />)
+    const row = screen.getByText('Vault B')
+    expect(row).toBeVisible()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
+    view.rerender(<App />)
+    expect(row).not.toBeVisible()
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/a' } }
+    view.rerender(<App />)
+    expect(row).toBeVisible()
+  })
+
+  it('keeps the rows a leaving vault has, and never takes the next vault reads as its own', async () => {
+    const view = render(<App />)
+    const [clientA] = createdQueryClients
+    const rowsKey = ['rows']
+
+    await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-a-rows' })
+    expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
+
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
+    // A refetch from the still-visible vault A workspace, answered by main
+    // after it moved to vault B: cancelled, A's own rows stay for the way back.
+    await expect(
+      clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    ).resolves.toBe('vault-a-rows')
+    expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
+    expect(clientA.getQueryState(rowsKey)?.isInvalidated).toBe(true)
+
+    vaultState = { ...vaultState, status: { isOpen: true, path: '/vault/b' } }
+    view.rerender(<App />)
+    act(() => {
+      endVaultSwitch(true)
+    })
+    const clientB = createdQueryClients[1]
+    expect(clientB).not.toBe(clientA)
+
+    // Still fenced once main reports vault B: A is hidden, not open.
+    await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows')
+
+    // The open vault's own client caches normally.
+    await clientB.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    expect(clientB.getQueryData(rowsKey)).toBe('vault-b-rows')
+    expect(clientB.getQueryState(rowsKey)?.isInvalidated).toBe(false)
+  })
+
+  it('does not keep rows the leaving vault fetches after main switched but before the reveal', async () => {
+    render(<App />)
+    const [clientA] = createdQueryClients
+    const rowsKey = ['rows']
+
+    // Pager flow: the switch ends while the reveal is held, so App still has
+    // vault A as the active path and its workspace keeps running effects.
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
+    act(() => {
+      endVaultSwitch(true)
+    })
+
+    await clientA.fetchQuery({ queryKey: rowsKey, queryFn: async () => 'vault-b-rows' })
+    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+  })
+
+  it('refetches what the cache fence emptied when a switch fails and the vault stays open', async () => {
+    render(<App />)
+    const [clientA] = createdQueryClients
+    const rowsKey = ['rows']
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
+    // A first read that starts mid-switch has nothing cached to keep: it runs,
+    // main answers for vault B, and the fence empties the query.
+    let answer = 'vault-b-rows'
+    const observer = new QueryObserver(clientA, {
+      queryKey: rowsKey,
+      queryFn: async () => answer
+    })
+    const unsubscribe = observer.subscribe(() => {})
+    await waitFor(() => expect(clientA.getQueryState(rowsKey)?.fetchStatus).toBe('idle'))
+    expect(clientA.getQueryData(rowsKey)).toBeUndefined()
+
+    answer = 'vault-a-rows'
+    act(() => {
+      endVaultSwitch(false)
+    })
+    await waitFor(() => expect(clientA.getQueryData(rowsKey)).toBe('vault-a-rows'))
+    unsubscribe()
+  })
+
+  /** ⌘ is the Meta key on macOS and Ctrl elsewhere. Returns false when a listener consumed the key. */
+  const pressMod = (key: string, init: KeyboardEventInit = {}): boolean =>
+    fireEvent.keyDown(window, { key, ...(isMac ? { metaKey: true } : { ctrlKey: true }), ...init })
+
+  it('opens and toggles the search palette from ⌘K, the menu and buttons', async () => {
+    render(<App />)
+
+    // Lazy: the palette mounts closed once the window is idle, before any ⌘K.
+    const palette = await screen.findByTestId('command-palette')
+    expect(palette).toHaveTextContent('false')
+
+    expect(pressMod('k')).toBe(false)
+    await waitFor(() => expect(palette).toHaveTextContent('true'))
+    pressMod('k')
+    await waitFor(() => expect(palette).toHaveTextContent('false'))
+
+    // Anything but a key only ever opens: Open Quickly and the search buttons.
+    await act(() => runCommand('nav.search', 'menu'))
+    await act(() => runCommand('nav.search', 'ui'))
+    expect(palette).toHaveTextContent('true')
+  })
+
+  it('opens the commands palette from ⌘P, and never together with search', async () => {
+    render(<App />)
+    const search = await screen.findByTestId('command-palette')
+    const commands = await screen.findByTestId('commands-palette')
+    expect(commands).toHaveTextContent('false')
+
+    // ⌘P no longer opens search.
+    expect(pressMod('p')).toBe(false)
+    await waitFor(() => expect(commands).toHaveTextContent('true'))
+    expect(search).toHaveTextContent('false')
+
+    pressMod('k')
+    await waitFor(() => expect(search).toHaveTextContent('true'))
+    expect(commands).toHaveTextContent('false')
+
+    pressMod('p')
+    await waitFor(() => expect(commands).toHaveTextContent('true'))
+    expect(search).toHaveTextContent('false')
+    pressMod('p')
+    await waitFor(() => expect(commands).toHaveTextContent('false'))
+
+    await act(() => runCommand('nav.commands', 'menu'))
+    await act(() => runCommand('nav.commands', 'menu'))
+    expect(commands).toHaveTextContent('true')
+  })
+
+  it('toggles the shortcuts dialog from ⌘/ and ?, and opens it from the menu', async () => {
+    render(<App />)
+    expect(screen.queryByTestId('shortcuts-dialog')).not.toBeInTheDocument()
+
+    expect(pressMod('/')).toBe(false)
+    await waitFor(() => expect(screen.getByTestId('shortcuts-dialog')).toHaveTextContent('true'))
+
+    fireEvent.keyDown(window, { key: '?' })
+    await waitFor(() => expect(screen.getByTestId('shortcuts-dialog')).toHaveTextContent('false'))
+
+    await act(() => runCommand('view.shortcuts', 'menu'))
+    expect(screen.getByTestId('shortcuts-dialog')).toHaveTextContent('true')
+  })
+
+  it('leaves ? to a text field instead of opening the shortcuts dialog', async () => {
+    render(<App />)
+    await screen.findByTestId('command-palette')
+    const input = document.createElement('input')
+    document.body.appendChild(input)
+    input.focus()
+
+    const notConsumed = fireEvent.keyDown(input, { key: '?' })
+
+    expect(notConsumed).toBe(true)
+    expect(screen.queryByTestId('shortcuts-dialog')).not.toBeInTheDocument()
+    input.remove()
+  })
+
+  it('handles the settings section and test-open-note events', () => {
+    render(<App />)
+
+    settingsOpenListener?.('general')
+    expect(openSettings).toHaveBeenCalledWith('general')
+
+    window.dispatchEvent(
+      new CustomEvent('memry:test-open-note', {
+        detail: { id: 'note-test', title: 'Test note', emoji: 'x' }
+      })
+    )
+    expect(openTab).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'note',
+        entityId: 'note-test',
+        title: 'Test note'
+      })
+    )
+  })
+
+  it('creates a note from ⌘N in the selected folder, titled for typing, and reveals it', async () => {
+    selectedFolder = 'Projects'
+    render(<App />)
+    // The new note must also show itself in the sidebar. Where it landed is
+    // only knowable from the created note: with "create in selected folder"
+    // off, main resolves the destination from `defaultNoteFolder`.
+    const revealed: string[] = []
+    const onReveal = (event: Event): void => {
+      revealed.push((event as CustomEvent<{ entityId?: string }>).detail.entityId ?? '')
+    }
+    window.addEventListener('reveal-in-sidebar', onReveal)
+
+    expect(pressMod('n')).toBe(false)
+
+    await waitFor(() =>
+      expect(createNote).toHaveBeenCalledWith({
+        title: 'New note',
+        content: '',
+        folder: 'Projects'
+      })
+    )
+    await waitFor(() =>
+      expect(openTab).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'note',
+          title: 'Created note',
+          entityId: 'note-1'
+        }),
+        expect.anything()
+      )
+    )
+    expect(isNewNoteTitlePending('note-1')).toBe(true)
+    await waitFor(() => expect(revealed).toEqual(['note-1']))
+    window.removeEventListener('reveal-in-sidebar', onReveal)
+  })
+
+  it('ignores new-note and search commands while a vault switch is pending', async () => {
+    let menuCommandListener: ((event: { command: string }) => void) | undefined
+    ;(window as Window & { api: { onMenuCommand?: unknown } }).api.onMenuCommand = vi.fn(
+      (callback: (event: { command: string }) => void) => {
+        menuCommandListener = callback
+        return vi.fn()
+      }
+    )
+    render(<App />)
+    const palette = await screen.findByTestId('command-palette')
+
+    act(() => {
+      beginVaultSwitch({ path: '/vault/b', name: 'b' }, 'next')
+    })
+
+    // A key is held back by the runtime; the menu and buttons by the owners.
+    expect(pressMod('n')).toBe(true)
+    act(() => menuCommandListener?.({ command: 'nav.newNote' }))
+    act(() => menuCommandListener?.({ command: 'nav.search' }))
+    act(() => menuCommandListener?.({ command: 'nav.commands' }))
+    await act(() => runCommand('nav.search', 'ui'))
+    await Promise.resolve()
+
+    expect(createNote).not.toHaveBeenCalled()
+    expect(openTab).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'note' }))
+    expect(palette).toHaveTextContent('false')
+    expect(screen.getByTestId('commands-palette')).toHaveTextContent('false')
+
+    // A failed switch leaves the vault open, and the commands work again.
+    act(() => {
+      endVaultSwitch(false)
+    })
+    pressMod('n')
+    await waitFor(() => expect(createNote).toHaveBeenCalledTimes(1))
+  })
+
+  it('keeps one updater subscription and does not re-render the tree per progress tick', async () => {
+    const updaterListeners: Array<(state: Record<string, unknown>) => void> = []
+    ;(window as Window & { api: { onUpdaterStateChanged?: unknown } }).api.onUpdaterStateChanged =
+      vi.fn((callback: (state: Record<string, unknown>) => void) => {
+        updaterListeners.push(callback)
+        return vi.fn()
+      })
+
+    const downloading = {
+      currentVersion: '1.0.0',
+      status: 'downloading',
+      updateSupported: true,
+      availableVersion: '2.0.0',
+      releaseName: null,
+      releaseDate: null,
+      releaseNotes: null,
+      releaseNotesHtml: null,
+      downloadProgressPercent: 0,
+      lastCheckedAt: null,
+      error: null,
+      autoDownloadEnabled: true,
+      autoCheckEnabled: true
+    }
+
+    await act(async () => {
+      render(<App />)
+    })
+
+    // App and the install-failed dialog share one subscription.
+    expect(updaterListeners).toHaveLength(1)
+
+    const push = async (percent: number): Promise<void> => {
+      await act(async () => {
+        for (const listener of updaterListeners) {
+          listener({ ...downloading, downloadProgressPercent: percent })
+        }
+      })
+    }
+
+    await push(0)
+    const baseline = { ...treeRenders }
+
+    await push(10)
+    await push(55)
+    await push(100)
+
+    expect(treeRenders.splitView - baseline.splitView).toBe(0)
+    expect(treeRenders.appSidebar - baseline.appSidebar).toBe(0)
+    expect(treeRenders.taskDragOverlay - baseline.taskDragOverlay).toBe(0)
+
+    // The installing screen still replaces the tree when main says so.
+    await act(async () => {
+      for (const listener of updaterListeners) {
+        listener({ ...downloading, status: 'installing', downloadProgressPercent: 100 })
+      }
+    })
+    expect(screen.queryByTestId('split-view')).not.toBeInTheDocument()
+  })
+
+  it('handles project drag reordering and delegates task drags', async () => {
+    render(<App />)
+
+    await userEvent.click(screen.getByText('project drag'))
+
+    expect(reorderProjects).toHaveBeenCalledWith(['project-b', 'project-a'], [0, 1])
+
+    await userEvent.click(screen.getByText('task drag'))
+
+    expect(taskDragEnd).toHaveBeenCalled()
+    expect(updateSelectedTaskIds).toHaveBeenCalledWith(new Set<string>())
+  })
+})

@@ -1,0 +1,77 @@
+import { useEffect } from 'react'
+import { hintModeActiveRef, useHintModeActions } from '@/contexts/hint-mode'
+import { isInputFocused } from '@/hooks/use-keyboard-shortcuts'
+import { isShortcutRecording } from '@/hooks/use-keyboard-shortcuts-base'
+
+export const useHintActivation = (): void => {
+  // Actions only: the hint state object changes on every typed character, and
+  // subscribing to it here would re-render the whole app shell and tear the
+  // capture-phase window listener down and back up per keystroke. Active-ness is
+  // read from hintModeActiveRef, the same gate use-keyboard-shortcuts-base,
+  // use-chord-shortcuts and use-modifier-held already read at keypress time.
+  const { activate, deactivate, typeChar, backspace } = useHintModeActions()
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // oxlint-disable-next-line typescript/no-deprecated -- keyCode 229 is the only IME-composition marker WebKit sets on the keydown that follows compositionend; KeyboardEvent.key is "Process" or the raw key there
+      if (e.isComposing || e.keyCode === 229 || isShortcutRecording()) return
+
+      if (hintModeActiveRef.current) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          e.stopPropagation()
+          deactivate()
+          return
+        }
+
+        if (e.key === 'Backspace') {
+          e.preventDefault()
+          e.stopPropagation()
+          backspace()
+          return
+        }
+
+        if (e.key.length === 1 && !e.metaKey && !e.ctrlKey && !e.altKey) {
+          e.preventDefault()
+          e.stopPropagation()
+          typeChar(e.key)
+          return
+        }
+
+        return
+      }
+
+      if (e.code === 'KeyF' && e.altKey && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        activate()
+        return
+      }
+
+      if (e.code === 'KeyF' && !e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey) {
+        if (!isInputFocused()) {
+          e.preventDefault()
+          e.stopPropagation()
+          activate()
+          return
+        }
+      }
+
+      // Escape leaves a text field so F can start hint mode. A field holding an open popup
+      // (slash, wiki-link or date menu, capture suggestions) marks it with aria-expanded; that
+      // Escape only closes the popup, or the keys typed next run as app shortcuts.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM events type target as EventTarget|null; the listener is bound where the target is an element
+      const focused = document.activeElement as HTMLElement | null
+      if (
+        e.key === 'Escape' &&
+        isInputFocused() &&
+        focused?.getAttribute('aria-expanded') !== 'true'
+      ) {
+        focused?.blur()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true })
+    return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [activate, deactivate, typeChar, backspace])
+}

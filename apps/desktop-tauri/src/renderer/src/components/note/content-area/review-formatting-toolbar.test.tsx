@@ -1,0 +1,461 @@
+import { fireEvent, render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  ReviewFormattingToolbar,
+  ReviewFormattingToolbarController
+} from './review-formatting-toolbar'
+import { openWikiLinkForSelection } from './wiki-link-edit-plugin'
+
+const toolbarMocks = vi.hoisted(() => ({
+  remountKey: 0,
+  editor: {
+    prosemirrorState: {
+      selection: { empty: false, from: 2, to: 15 },
+      doc: { textBetween: vi.fn(() => 'selected text') }
+    },
+    schema: {
+      blockSchema: {
+        paragraph: { content: 'inline' },
+        bulletListItem: { content: 'inline' },
+        numberedListItem: { content: 'inline' },
+        checkListItem: { content: 'inline' }
+      }
+    },
+    selectedBlocks: [
+      { id: 'b1', type: 'paragraph' },
+      { id: 'b2', type: 'paragraph' }
+    ] as Array<{ id: string; type: string }>,
+    getSelection: vi.fn(() => ({ blocks: toolbarMocks.editor.selectedBlocks })),
+    getTextCursorPosition: vi.fn(() => ({ block: toolbarMocks.editor.selectedBlocks[0] })),
+    focus: vi.fn(),
+    transact: vi.fn((fn: () => void) => fn()),
+    updateBlock: vi.fn()
+  }
+}))
+
+const listLabels: Record<string, string> = {
+  'editor.list.bulleted': 'Bulleted list',
+  'editor.list.numbered': 'Numbered list',
+  'editor.list.checklist': 'Check list',
+  'editor.toolbar.linkToNote': 'Link to note'
+}
+
+// The link itself is covered against a real ProseMirror state in
+// `wiki-link-edit-plugin.test.ts`; what this file owns is the wiring — whether
+// the button is offered, and whether it acts while the selection still exists.
+vi.mock('./wiki-link-edit-plugin', () => ({
+  openWikiLinkForSelection: vi.fn(() => true)
+}))
+
+vi.mock('./toolbar-more-menu', () => ({
+  ToolbarMoreMenu: ({ isPinned }: { isPinned: boolean }) => (
+    <button type="button" data-pinned={String(isPinned)}>
+      more
+    </button>
+  )
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string) => {
+      if (key === 'comments.toolbarComment') return 'Comment'
+      return listLabels[key] ?? key
+    }
+  })
+}))
+
+vi.mock('@/lib/icons', () => ({
+  Link2: () => <span data-testid="link-to-note-icon" />,
+  MessageCircle: () => <span data-testid="comment-icon" />,
+  List: () => <span data-testid="bulleted-icon" />,
+  ListOrdered: () => <span data-testid="numbered-icon" />,
+  ListChecks: () => <span data-testid="checklist-icon" />
+}))
+
+vi.mock('./toolbar-block-type-select', () => ({
+  ToolbarBlockTypeSelect: () => <button type="button">block type</button>
+}))
+
+vi.mock('@blocknote/react', () => ({
+  FormattingToolbar: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="formatting-toolbar">{children}</div>
+  ),
+  // Keyed so a test can force the remount BlockNote performs mid-interaction:
+  // the toolbar below is torn down and rebuilt while the controller stays put.
+  FormattingToolbarController: ({
+    formattingToolbar
+  }: {
+    formattingToolbar: (props: Record<string, unknown>) => React.ReactNode
+  }) => <div key={toolbarMocks.remountKey}>{formattingToolbar({})}</div>,
+  BasicTextStyleButton: ({ basicTextStyle }: { basicTextStyle: string }) => (
+    <button type="button">{basicTextStyle}</button>
+  ),
+  ColorStyleButton: () => <button type="button">color</button>,
+  CreateLinkButton: () => <button type="button">link</button>,
+  useBlockNoteEditor: () => toolbarMocks.editor,
+  useEditorState: ({ selector }: { selector: (payload: { editor: unknown }) => unknown }) =>
+    selector({ editor: toolbarMocks.editor }),
+  useComponentsContext: () => ({
+    FormattingToolbar: {
+      Button: ({
+        label,
+        icon,
+        onClick,
+        isDisabled,
+        children,
+        ...props
+      }: {
+        label: string
+        icon?: React.ReactNode
+        onClick?: () => void
+        isDisabled?: boolean
+        children?: React.ReactNode
+      }) => (
+        <button
+          type="button"
+          aria-label={label}
+          data-test={props['data-test' as keyof typeof props] as string}
+          disabled={isDisabled}
+          onClick={onClick}
+        >
+          {icon}
+          {children}
+        </button>
+      )
+    }
+  })
+}))
+
+describe('ReviewFormattingToolbar', () => {
+  beforeEach(() => {
+    toolbarMocks.editor.prosemirrorState.selection.empty = false
+    ;(toolbarMocks.editor.prosemirrorState.selection as { node?: unknown }).node = undefined
+    toolbarMocks.editor.prosemirrorState.doc.textBetween.mockClear()
+    toolbarMocks.editor.selectedBlocks = [
+      { id: 'b1', type: 'paragraph' },
+      { id: 'b2', type: 'paragraph' }
+    ]
+    toolbarMocks.editor.updateBlock.mockClear()
+    ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = undefined
+    ;(toolbarMocks.editor as { prosemirrorView?: unknown }).prosemirrorView = undefined
+    toolbarMocks.remountKey = 0
+    fireEvent.pointerDown(document.body, { button: 0 })
+    const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
+    delete selection.$from
+    delete selection.$to
+    vi.mocked(openWikiLinkForSelection).mockClear()
+  })
+
+  describe('native context menu', () => {
+    function mountEditorDom(): HTMLElement {
+      const dom = document.createElement('div')
+      document.body.appendChild(dom)
+      ;(toolbarMocks.editor as { prosemirrorView?: unknown }).prosemirrorView = { dom }
+      return dom
+    }
+
+    it('yields the floating toolbar to the native menu on right-click', () => {
+      const editorDom = mountEditorDom()
+
+      render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      fireEvent.contextMenu(editorDom)
+      expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()
+
+      // A second right-click keeps it hidden; only an ordinary interaction restores it.
+      fireEvent.pointerDown(editorDom, { button: 2 })
+      expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()
+
+      fireEvent.pointerDown(editorDom, { button: 0 })
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      fireEvent.contextMenu(editorDom)
+      fireEvent.keyDown(editorDom, { key: 'Escape' })
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      editorDom.remove()
+    })
+
+    // The first attempt at this fix held the state inside the toolbar and passed
+    // its unit tests while failing in the real app: BlockNote rebuilds the
+    // toolbar during the right-click, so the state died with the old instance.
+    it('stays suppressed when BlockNote rebuilds the toolbar mid-right-click', () => {
+      const editorDom = mountEditorDom()
+
+      const { rerender } = render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+      fireEvent.contextMenu(editorDom)
+
+      toolbarMocks.remountKey += 1
+      rerender(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+
+      expect(screen.queryByTestId('formatting-toolbar')).not.toBeInTheDocument()
+
+      editorDom.remove()
+    })
+
+    it('ignores right-clicks outside the editor', () => {
+      mountEditorDom()
+
+      render(<ReviewFormattingToolbarController onAddComment={vi.fn()} />)
+
+      fireEvent.contextMenu(document.body)
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+    })
+
+    it('leaves the sticky toolbar alone', () => {
+      const editorDom = mountEditorDom()
+
+      render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
+
+      fireEvent.contextMenu(editorDom)
+      expect(screen.getByTestId('formatting-toolbar')).toBeInTheDocument()
+
+      editorDom.remove()
+    })
+  })
+
+  it('offers Link to note only once a single-block selection exists', () => {
+    const { rerender } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    // Resolved positions absent: nothing to read a single block off yet.
+    expect(screen.getByLabelText('Link to note')).toBeDisabled()
+
+    const parent = { name: 'paragraph' }
+    const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
+    selection.$from = { parent }
+    selection.$to = { parent: { name: 'other' } }
+    rerender(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    // Two blocks: a selection crossing a block boundary has no single place to
+    // put the link.
+    expect(screen.getByLabelText('Link to note')).toBeDisabled()
+
+    selection.$to = { parent }
+    rerender(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    expect(screen.getByLabelText('Link to note')).toBeEnabled()
+  })
+
+  // Same reason the Comment button captures pointer events: by the time `click`
+  // fires the toolbar button has taken focus and ProseMirror's selection is gone.
+  it('links the selection on pointer-down, not on click', () => {
+    const parent = { name: 'paragraph' }
+    const selection = toolbarMocks.editor.prosemirrorState.selection as Record<string, unknown>
+    selection.$from = { parent }
+    selection.$to = { parent }
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    fireEvent.pointerDown(screen.getByLabelText('Link to note'))
+
+    expect(openWikiLinkForSelection).toHaveBeenCalledTimes(1)
+  })
+
+  it('adds Comment to the selected text toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('bold')).toBeInTheDocument()
+    expect(screen.getByLabelText('Comment')).toBeInTheDocument()
+  })
+
+  // The comment action used to render its icon only, with the text living in
+  // the aria-label and tooltip — an unlabelled glyph in the popup's corner.
+  it('spells out the comment action instead of showing a bare icon', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    const button = screen.getByTestId('comment-icon').closest('button')
+    expect(button).toHaveTextContent('Comment')
+  })
+
+  // Inline code had no button anywhere; backticks were the only entry point.
+  it('offers an inline code toggle in the floating toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('code')).toBeInTheDocument()
+  })
+
+  // The floating toolbar is what every note gets by default (note.tsx always
+  // passes `review`, so BlockNote's stock toolbar never renders). Block type
+  // controls used to appear only in the sticky variant, which meant turning
+  // "Sticky Formatting Toolbar" off silently removed the only way to switch a
+  // block to a heading/list from the selection popup.
+  it('offers block type controls in the floating toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByText('block type')).toBeInTheDocument()
+  })
+
+  // Issue #1206: the block type dropdown could already retype a whole
+  // selection, but it is labelled with the current type ("Paragraph"), so
+  // nobody hunting for bullets opened it. The toggles make that transform
+  // visible in both toolbar variants.
+  it('offers bulleted, numbered and check list toggles in the floating toolbar', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByLabelText('Bulleted list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numbered list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Check list')).toBeInTheDocument()
+  })
+
+  // The floating panel and the pinned row arrange the actions differently, but
+  // pinning never changes which actions exist.
+  it('renders the same actions in the sticky and floating variants', () => {
+    const { unmount } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    const floating = screen.getAllByRole('button').map((button) => button.textContent)
+    unmount()
+
+    render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
+    const sticky = screen.getAllByRole('button').map((button) => button.textContent)
+
+    expect(sticky.toSorted()).toEqual(floating.toSorted())
+    expect(screen.getByText('more')).toHaveAttribute('data-pinned', 'true')
+  })
+
+  it('offers the list toggles in the sticky toolbar too', () => {
+    render(<ReviewFormattingToolbar variant="sticky" onAddComment={vi.fn()} />)
+
+    expect(screen.getByLabelText('Bulleted list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numbered list')).toBeInTheDocument()
+    expect(screen.getByLabelText('Check list')).toBeInTheDocument()
+  })
+
+  it('converts every selected block, not just the first', () => {
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    fireEvent.click(screen.getByLabelText('Bulleted list'))
+
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledTimes(2)
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(
+      1,
+      { id: 'b1', type: 'paragraph' },
+      { type: 'bulletListItem' }
+    )
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(
+      2,
+      { id: 'b2', type: 'paragraph' },
+      { type: 'bulletListItem' }
+    )
+  })
+
+  it('toggles a fully bulleted selection back to paragraphs', () => {
+    toolbarMocks.editor.selectedBlocks = [
+      { id: 'b1', type: 'bulletListItem' },
+      { id: 'b2', type: 'bulletListItem' }
+    ]
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    fireEvent.click(screen.getByLabelText('Bulleted list'))
+
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenNthCalledWith(1, expect.anything(), {
+      type: 'paragraph'
+    })
+  })
+
+  it('leaves blocks without inline content out of the conversion', () => {
+    toolbarMocks.editor.selectedBlocks = [
+      { id: 'b1', type: 'paragraph' },
+      { id: 'task', type: 'taskBlock' }
+    ]
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+    fireEvent.click(screen.getByLabelText('Bulleted list'))
+
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledTimes(1)
+    expect(toolbarMocks.editor.updateBlock).toHaveBeenCalledWith(
+      { id: 'b1', type: 'paragraph' },
+      { type: 'bulletListItem' }
+    )
+  })
+
+  it('captures selected text before clicking Comment collapses selection', () => {
+    const onAddComment = vi.fn()
+
+    const { rerender } = render(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+
+    toolbarMocks.editor.prosemirrorState.selection.empty = true
+    rerender(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+    expect(screen.getByLabelText('Comment')).toBeEnabled()
+
+    fireEvent.click(screen.getByLabelText('Comment'))
+    expect(onAddComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'selected text',
+        isEmpty: false,
+        from: 2,
+        to: 15
+      })
+    )
+  })
+
+  it('uses cached selected text when click-time selection has no readable text', () => {
+    const onAddComment = vi.fn()
+
+    const { rerender } = render(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+
+    toolbarMocks.editor.prosemirrorState.doc.textBetween.mockReturnValue('')
+    rerender(<ReviewFormattingToolbar onAddComment={onAddComment} />)
+    expect(screen.getByLabelText('Comment')).toBeEnabled()
+
+    fireEvent.click(screen.getByLabelText('Comment'))
+    expect(onAddComment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'selected text',
+        isEmpty: false,
+        from: 2,
+        to: 15
+      })
+    )
+  })
+
+  it('suppresses the floating toolbar for a block (node) selection', () => {
+    ;(toolbarMocks.editor.prosemirrorState.selection as { node?: unknown }).node = {
+      type: 'bookmark'
+    }
+
+    const { container } = render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.queryByText('Comment')).not.toBeInTheDocument()
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('disables Comment without a selection', () => {
+    toolbarMocks.editor.prosemirrorState.selection.empty = true
+
+    render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+
+    expect(screen.getByLabelText('Comment')).toBeDisabled()
+  })
+
+  // Regression for #541: TipTap 3.x `editor.view` returns a Proxy that throws
+  // on any property access (e.g. `.dom`) until the ProseMirror view is mounted.
+  // The toolbar reads `view.dom` while reading the selection; before the guard,
+  // that threw "[tiptap error]: ... Cannot access view['dom']" and crashed the
+  // editor into its error boundary ("Editor Error") on note open.
+  it('does not crash when the ProseMirror view is not mounted yet', () => {
+    const unmountedView = new Proxy(
+      {},
+      {
+        get(_target, key) {
+          throw new Error(
+            `[tiptap error]: The editor view is not available. Cannot access view['${String(key)}']. The editor may not be mounted yet.`
+          )
+        }
+      }
+    )
+    ;(toolbarMocks.editor as { _tiptapEditor?: unknown })._tiptapEditor = {
+      state: { selection: { empty: true } },
+      view: unmountedView,
+      // editorView is the real mounted view — absent until the PM view mounts.
+      editorView: undefined
+    }
+
+    vi.useFakeTimers()
+    try {
+      expect(() => {
+        render(<ReviewFormattingToolbar onAddComment={vi.fn()} />)
+        // Flush the deferred selection read in ReviewToolbarButton's effect,
+        // which also routes through `view.dom`.
+        vi.runOnlyPendingTimers()
+      }).not.toThrow()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+})

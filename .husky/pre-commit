@@ -17,7 +17,7 @@ if git diff --cached --name-only --diff-filter=ACMR -- \
 fi
 
 if git diff --cached --name-only --diff-filter=ACMR | grep -E \
-  '^(packages/(contracts|rpc)/|apps/desktop/src/preload/|apps/desktop/src/main/ipc/|apps/desktop/src/main/.+-handlers\.ts$|apps/desktop/scripts/generate-(rpc-bindings|ipc-invoke-map)\.(ts|js)$)' \
+  '^(packages/(contracts|rpc)/|apps/desktop/src/preload/|apps/desktop/src/main/ipc/|apps/desktop/src/main/.+-handlers\.ts$|apps/desktop/scripts/generate-(rpc-bindings|ipc-invoke-map)\.(ts|js)$|apps/desktop-tauri/src-tauri/src/(commands|events|registry|startup)|crates/memry-desktop/src)' \
   >/dev/null; then
   pnpm ipc:check
 fi

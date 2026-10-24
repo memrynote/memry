@@ -1,0 +1,105 @@
+import { defaultBlockSpecs } from '@blocknote/core'
+import { createMemrySchema } from '@memry/editor-schema'
+import { withImageWidthInAlt } from '@memry/editor-schema/blocks'
+import { withImageCornerHandles } from './image-corner-handles'
+import { withImageCropView } from './image-crop-view'
+import { memryCodeBlockOptions } from '@memry/editor-schema/code-block'
+import { createReactDiagramBlockSpec } from '@blocknote/diagram-block'
+import { ColumnBlock } from '@blocknote/xl-multi-column'
+import { createFileBlock } from './file-block'
+import { createCalloutBlock } from './callout-block'
+import { createMathBlock } from './math-block'
+import { createWhiteboardBlock } from './whiteboard-block'
+import { createViewBlockSpec } from './view-block'
+import { VIEW_BLOCK_LANGUAGE } from '@memry/shared/view-block'
+import { createPortalBlockSpec } from './portal'
+import { PORTAL_BLOCK_LANGUAGE } from '@memry/shared/portal-block'
+import { createYoutubeEmbedBlock } from './youtube-embed-block'
+import { createBookmarkBlock } from './bookmark-block'
+import { createTaskBlock } from './task-block'
+import { createToggleListItemBlock } from './toggle-list-item-block'
+import { HashTag } from './hash-tag'
+import { WikiLinkWithCard } from './wiki-link-card'
+import { LinkMention } from './link-mention'
+import { DateMention } from './date-mention'
+import { InlineImage } from './inline-image'
+import { InlineCheckbox } from './inline-checkbox'
+import { HtmlComment } from './html-comment'
+
+// Built through the shared factory so the main process gets a schema with the
+// same node types. Main converts the shared Y.Doc through y-prosemirror, which
+// DELETES any element its schema cannot build — a spec registered on one side
+// only replicates as data loss, not as a missing style. The inline specs come
+// from the factory; only the two whose presentation needs renderer state
+// (tag palette, clock/week-start settings) are passed in.
+export const editorSchema = createMemrySchema({
+  // Shiki, explicitly. The factory no longer imports it, so the bytes are a
+  // per-surface choice; mobile's WebView cannot afford them (#2032).
+  codeBlock: memryCodeBlockOptions,
+  // A ```` ```memry-view ```` fence is drawn as a live list of notes (#2488).
+  // Presentation only: the node stays a code block, which is what lets main,
+  // mobile and older builds carry it without knowing it exists.
+  // A ```` ```memry-portal ```` fence is drawn as a live window onto another
+  // note or block, the same way.
+  codeBlockViews: {
+    [VIEW_BLOCK_LANGUAGE]: createViewBlockSpec().implementation.render,
+    [PORTAL_BLOCK_LANGUAGE]: createPortalBlockSpec().implementation.render
+  },
+  // No `...defaultBlockSpecs` here: the factory already spreads them, and
+  // respreading them after it would put BlockNote's plain `codeBlock` back over
+  // the syntax-highlighting one the factory installs. Pass overrides only.
+  blocks: {
+    file: createFileBlock(),
+    // The factory's image (width carried in the alt) plus corner grips that
+    // drive BlockNote's side grips (#2696), shown through its crop (#3170).
+    // Same node, same props.
+    image: withImageCornerHandles(withImageCropView(withImageWidthInAlt(defaultBlockSpecs.image))),
+    callout: createCalloutBlock(),
+    youtubeEmbed: createYoutubeEmbedBlock(),
+    bookmark: createBookmarkBlock(),
+    taskBlock: createTaskBlock(),
+    mathBlock: createMathBlock(),
+    whiteboard: createWhiteboardBlock(),
+    // A default block overridden, not a new one: BlockNote's own toggle keeps
+    // its fold in localStorage, which is per-device and keyed by an id that is
+    // regenerated on every parse (#1847).
+    toggleListItem: createToggleListItemBlock(),
+    // Mermaid, upstream's own: the source popup, the live preview and the
+    // ```` ```mermaid ```` parse rule all come from `@blocknote/diagram-block`
+    // rather than a Memry reimplementation (#1870).
+    //
+    // This is the one block whose config is NOT imported from
+    // `@memry/editor-schema` — it cannot be, because that package is also the
+    // headless main process's and the mobile WebView's, and this package's
+    // entry point pulls React and ~3 MB of mermaid. `diagramConfig` restates it
+    // for those two, and the parity gate in `editor-schema.test.ts` compares
+    // the two configs field by field, so an upstream prop added here and
+    // missing there fails the suite instead of being stripped on write-back.
+    diagram: createReactDiagramBlockSpec(),
+    // Upstream's column, for its resize handles and its drag-to-the-edge drop
+    // handler. Same node as the factory's headless one (blocks/column-specs.ts);
+    // `columnList` stays the factory's, which carries the MCM id and settings.
+    column: ColumnBlock
+  },
+  inline: {
+    // The editor flavour of wikiLink: same node as main's, plus the `parse`
+    // rule that turns pasted `[[X]]` text into a link, and the row or card a
+    // link alone on its line can draw as (#2845). Presentation only.
+    wikiLink: WikiLinkWithCard,
+    linkMention: LinkMention,
+    hashTag: HashTag,
+    dateMention: DateMention,
+    // A picture inside a table cell (#1640). Same node as main's; only the
+    // note-relative `src` resolution is added here, for display.
+    inlineImage: InlineImage,
+    // A tickable checkbox inside a table cell — `checkListItem` is a block and
+    // a cell holds inline content only. Same node as main's; only the click
+    // handler that flips it is added here.
+    inlineCheckbox: InlineCheckbox,
+    // An HTML comment kept in the note (AF-015). Same node as main's; only the
+    // marker shown in its place is added here.
+    htmlComment: HtmlComment
+  }
+})
+
+export type EditorSchema = typeof editorSchema

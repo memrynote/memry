@@ -1,0 +1,380 @@
+/* oxlint-disable typescript/no-explicit-any */
+
+import { foldTag } from '@memry/shared/tag-fold'
+import { type Block } from '@blocknote/core'
+import { createHashTagSpec } from '@memry/editor-schema/inline'
+import { findInlineTags } from '@memry/shared/inline-tags'
+import { getTagColors, withAlpha } from '@/components/note/tags-row/tag-colors'
+import {
+  isCustomIconValue,
+  isIconValue,
+  parseCustomIconId,
+  parseIconName
+} from '@/components/note/note-title/emoji-icon-utils'
+import { loadAllIcons } from '@/lib/hugeicon-renderer'
+import { readCustomIcon } from '@/lib/custom-icons-store'
+
+export function createHashTagInlineContent(tag: string, color: string = '', icon: string = '') {
+  return {
+    type: 'hashTag' as const,
+    props: { tag, color, icon }
+  }
+}
+
+const SVG_NS = 'http://www.w3.org/2000/svg'
+
+/** Build a HugeIcon SVG (vanilla DOM — the inline content render isn't React). */
+function buildHugeIconSvg(
+  data: Array<[string, Record<string, string>]>,
+  colorHex: string
+): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg')
+  svg.setAttribute('viewBox', '0 0 24 24')
+  svg.setAttribute('width', '1em')
+  svg.setAttribute('height', '1em')
+  svg.setAttribute('fill', 'none')
+  svg.style.color = colorHex
+  svg.style.flexShrink = '0'
+  for (const [tagName, attrs] of data) {
+    const el = document.createElementNS(SVG_NS, tagName)
+    for (const [key, value] of Object.entries(attrs)) el.setAttribute(key, value)
+    svg.appendChild(el)
+  }
+  return svg
+}
+
+/** The box a library or uploaded icon is drawn into once it has loaded. */
+function prependIconHolder(dom: HTMLElement): HTMLSpanElement {
+  const holder = document.createElement('span')
+  holder.style.display = 'inline-flex'
+  holder.style.alignItems = 'center'
+  // An inline-flex box baselines at its bottom edge, so the icon rides high
+  // above the text — center it on the line instead.
+  holder.style.verticalAlign = 'middle'
+  holder.style.marginInlineEnd = '3px'
+  holder.setAttribute('aria-hidden', 'true')
+  dom.insertBefore(holder, dom.firstChild)
+  return holder
+}
+
+/** Prepend a tag's emoji/icon to its inline #tag chip. */
+function prependTagIcon(dom: HTMLElement, iconValue: string, colorHex: string): void {
+  if (isIconValue(iconValue)) {
+    const holder = prependIconHolder(dom)
+    const name = parseIconName(iconValue)
+    void loadAllIcons().then((mod) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- hugeicons module exports are untyped icon arrays keyed by name
+      const data = mod[name] as Array<[string, Record<string, string>]> | undefined
+      if (data) holder.appendChild(buildHugeIconSvg(data, colorHex))
+    })
+  } else if (isCustomIconValue(iconValue)) {
+    // An uploaded image. The reference is not text: an id the library does not
+    // have (deleted on another device) leaves the box empty instead.
+    const holder = prependIconHolder(dom)
+    void readCustomIcon(parseCustomIconId(iconValue)).then((icon) => {
+      if (!icon) return
+      const img = document.createElement('img')
+      img.src = icon.url
+      img.alt = ''
+      img.draggable = false
+      img.style.width = '1em'
+      img.style.height = '1em'
+      img.style.objectFit = 'contain'
+      holder.appendChild(img)
+    })
+  } else {
+    const span = document.createElement('span')
+    span.className = 'font-emoji'
+    span.textContent = iconValue
+    span.style.marginInlineEnd = '3px'
+    span.setAttribute('aria-hidden', 'true')
+    dom.insertBefore(span, dom.firstChild)
+  }
+}
+
+// Presentation only. The config, `parse` and `toExternalHTML` — everything that
+// decides what reaches the vault file — live in @memry/editor-schema, so the
+// main process registers the identical node instead of deleting it.
+export const HashTag = createHashTagSpec((inlineContent) => {
+  const tag = inlineContent.props.tag || ''
+  const colorName = inlineContent.props.color || ''
+  const icon = inlineContent.props.icon || ''
+  const colors = getTagColors(colorName, tag)
+
+  const dom = document.createElement('span')
+  dom.className = 'inline-hash-tag'
+  dom.setAttribute('data-hash-tag', tag)
+  dom.setAttribute('data-hash-tag-color', colorName)
+  if (icon) dom.setAttribute('data-hash-tag-icon', icon)
+  dom.setAttribute('contenteditable', 'false')
+  dom.textContent = `#${tag}`
+  if (icon) prependTagIcon(dom, icon, colors.text)
+
+  dom.style.backgroundColor = withAlpha(colors.text, 0.12)
+  dom.style.setProperty('--hash-tag-color', colors.text)
+  dom.style.padding = '1px 8px'
+  dom.style.borderRadius = '10px'
+  dom.style.fontSize = '0.9em'
+  dom.style.fontWeight = '500'
+  dom.style.cursor = 'pointer'
+  dom.style.whiteSpace = 'nowrap'
+  dom.style.display = 'inline'
+  dom.style.margin = '0 1px'
+  dom.style.userSelect = 'none'
+  dom.style.transition = 'opacity 150ms ease'
+
+  return { dom }
+})
+
+// =============================================================================
+// HASH TAG TEXT SPLITTING (for normalization on load)
+// =============================================================================
+
+function createStyledText(
+  text: string,
+  styles: Record<string, boolean | string>
+): { type: string; text: string; styles: Record<string, boolean | string> } {
+  return { type: 'text', text, styles }
+}
+
+function splitTextWithHashTags(
+  text: string,
+  noteTags: Set<string>,
+  tagColorMap: Map<string, string>,
+  tagIconMap?: Map<string, string>,
+  styles?: Record<string, boolean | string>
+): { segments: Array<string | Record<string, unknown>>; didChange: boolean } {
+  const segments: Array<string | Record<string, unknown>> = []
+  let didChange = false
+  let lastIndex = 0
+
+  for (const { index, tag: tagName } of findInlineTags(text)) {
+    const normalizedTag = foldTag(tagName)
+    if (!noteTags.has(normalizedTag)) continue
+
+    if (index > lastIndex) {
+      const before = text.slice(lastIndex, index)
+      segments.push(styles ? createStyledText(before, styles) : before)
+    }
+
+    const color = tagColorMap.get(normalizedTag) || ''
+    const icon = tagIconMap?.get(normalizedTag) || ''
+    segments.push(createHashTagInlineContent(tagName, color, icon))
+
+    didChange = true
+    lastIndex = index + 1 + tagName.length
+  }
+
+  if (!didChange) {
+    return { segments: [styles ? createStyledText(text, styles) : text], didChange: false }
+  }
+
+  const trailing = text.slice(lastIndex)
+  if (trailing) {
+    segments.push(styles ? createStyledText(trailing, styles) : trailing)
+  }
+
+  return { segments, didChange: true }
+}
+
+export interface NormalizeHashTagsOptions {
+  /**
+   * Promote only in text runs that carry no mark at all.
+   *
+   * A `hashTag` node has no `styles`, so promoting inside a marked run drops
+   * the mark: `**Nested #work**` serializes back as `**Nested** #work`. On the
+   * collaborative open path that change would reach the vault file through
+   * main's write-back, and opening a note must not rewrite it (#1434). An
+   * unmarked run is the byte-neutral case: the node serializes to the exact
+   * `#tag` it was promoted from.
+   */
+  unmarkedRunsOnly?: boolean
+}
+
+function hasAnyMark(styles: Record<string, unknown>): boolean {
+  return Object.values(styles).some(Boolean)
+}
+
+function normalizeInlineContentHashTags(
+  content: string | Array<any>,
+  noteTags: Set<string>,
+  tagColorMap: Map<string, string>,
+  tagIconMap?: Map<string, string>,
+  options?: NormalizeHashTagsOptions
+): { content: string | Array<any>; didChange: boolean } {
+  if (typeof content === 'string') {
+    const { segments, didChange } = splitTextWithHashTags(
+      content,
+      noteTags,
+      tagColorMap,
+      tagIconMap
+    )
+    if (!didChange) return { content, didChange: false }
+    return { content: segments, didChange: true }
+  }
+
+  if (!Array.isArray(content)) return { content, didChange: false }
+
+  let didChange = false
+  const next: Array<any> = []
+
+  for (const item of content) {
+    if (typeof item === 'string') {
+      const { segments, didChange: itemChanged } = splitTextWithHashTags(
+        item,
+        noteTags,
+        tagColorMap,
+        tagIconMap
+      )
+      if (itemChanged) {
+        didChange = true
+        next.push(...segments)
+      } else {
+        next.push(item)
+      }
+      continue
+    }
+
+    if (item?.type === 'text') {
+      const itemStyles = item.styles ?? {}
+      // Inline code is literal: a chip would lose the backticks on save.
+      if (itemStyles.code || (options?.unmarkedRunsOnly && hasAnyMark(itemStyles))) {
+        next.push(item)
+        continue
+      }
+      const { segments, didChange: itemChanged } = splitTextWithHashTags(
+        item.text ?? '',
+        noteTags,
+        tagColorMap,
+        tagIconMap,
+        itemStyles
+      )
+      if (itemChanged) {
+        didChange = true
+        next.push(...segments)
+      } else {
+        next.push(item)
+      }
+      continue
+    }
+
+    if (item?.type === 'hashTag') {
+      next.push(item)
+      continue
+    }
+
+    next.push(item)
+  }
+
+  return { content: didChange ? next : content, didChange }
+}
+
+export function normalizeHashTags(
+  blocks: Block[],
+  noteTags: Set<string>,
+  tagColorMap: Map<string, string>,
+  tagIconMap?: Map<string, string>,
+  options?: NormalizeHashTagsOptions
+): { blocks: Block[]; didChange: boolean } {
+  if (noteTags.size === 0) return { blocks, didChange: false }
+
+  const blockStr = JSON.stringify(blocks)
+  if (!blockStr.includes('#')) return { blocks, didChange: false }
+
+  let didChange = false
+
+  const nextBlocks = blocks.map((block) => {
+    let blockChanged = false
+    let nextBlock: Block = block
+
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (
+      block.type !== 'codeBlock' &&
+      block.content &&
+      (typeof block.content === 'string' || Array.isArray(block.content))
+    ) {
+      const normalized = normalizeInlineContentHashTags(
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        block.content as any,
+        noteTags,
+        tagColorMap,
+        tagIconMap,
+        options
+      )
+      if (normalized.didChange) {
+        blockChanged = true
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+        nextBlock = { ...nextBlock, content: normalized.content as any }
+      }
+    }
+
+    if (block.children?.length) {
+      const normalizedChildren = normalizeHashTags(
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
+        block.children as Block[],
+        noteTags,
+        tagColorMap,
+        tagIconMap,
+        options
+      )
+      if (normalizedChildren.didChange) {
+        blockChanged = true
+        nextBlock = { ...nextBlock, children: normalizedChildren.blocks }
+      }
+    }
+
+    if (blockChanged) didChange = true
+    return blockChanged ? nextBlock : block
+  })
+
+  return { blocks: didChange ? nextBlocks : blocks, didChange }
+}
+
+// =============================================================================
+// INLINE TAG EXTRACTION (for syncing editor -> note tags)
+// =============================================================================
+
+export function extractInlineTags(blocks: Block[]): string[] {
+  // Case preserved; deduplicated case-insensitively (first occurrence wins)
+  const tagsByKey = new Map<string, string>()
+
+  function addTag(tag: string): void {
+    const key = foldTag(tag)
+    if (!tagsByKey.has(key)) tagsByKey.set(key, tag)
+  }
+
+  function extractFromText(text: string): void {
+    for (const { tag } of findInlineTags(text)) addTag(tag)
+  }
+
+  function walkBlock(block: Block): void {
+    // A code block's own text is literal; blocks nested under it are not code.
+    if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
+      for (const item of block.content as any[]) {
+        if (item?.type === 'hashTag' && item.props?.tag) {
+          // A chip saves as `#tag`; read it as the indexer reads that text, so
+          // an older chip the grammar rejects stays visible but is not a tag.
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inline-content items are any-typed; hashTag props.tag and text items' text are strings by schema
+          extractFromText(`#${item.props.tag as string}`)
+        } else if (item?.type === 'text' && item.text) {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inline-content items are any-typed; hashTag props.tag and text items' text are strings by schema
+          extractFromText(item.text as string)
+        } else if (typeof item === 'string') {
+          extractFromText(item)
+        }
+      }
+    }
+    if (block.children) {
+      for (const child of block.children) {
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
+        walkBlock(child as Block)
+      }
+    }
+  }
+
+  for (const block of blocks) {
+    walkBlock(block)
+  }
+  return Array.from(tagsByKey.values())
+}

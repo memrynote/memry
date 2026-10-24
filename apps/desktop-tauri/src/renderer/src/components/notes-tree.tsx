@@ -1,0 +1,858 @@
+'use client'
+
+import {
+  forwardRef,
+  useCallback,
+  useState,
+  useRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  type ReactNode
+} from 'react'
+import { getI18n } from 'react-i18next'
+import { toast } from 'sonner'
+import { extractErrorMessage } from '@/lib/ipc-error'
+import {
+  TreeLabel,
+  TreeNode,
+  TreeNodeContent,
+  TreeNodeTrigger,
+  TreeProvider,
+  TreeView
+} from '@/components/kibo-ui/tree'
+import { useNoteTreeData } from '@/hooks/use-note-tree-data'
+import { useNoteTreeActions } from '@/hooks/use-note-tree-actions'
+import { useCreateNoteFromNote } from '@/hooks/use-create-note-from-note'
+import {
+  NoteTreeDeleteDialog,
+  NoteTreeJournalChangeDialog,
+  NoteTreeTemplateSelector
+} from '@/components/note-tree-dialogs'
+import { ApplyTemplateToNoteDialog } from '@/components/note/apply-template-to-note-dialog'
+import { SaveNoteAsTemplateDialog } from '@/components/note/save-note-as-template-dialog'
+import {
+  NotesTreeSkeleton,
+  NotesTreeEmpty,
+  NotesTreeError,
+  NotesTreeSyncing,
+  NotesTreeTruncationNotice
+} from '@/components/note-tree-states'
+import { InitialSyncProgress } from '@/components/sync/initial-sync-progress'
+import { useSyncOptional } from '@/contexts/sync-context'
+import { useVaultScope } from '@/contexts/vault-scope'
+import { sidebarTreeExpandedKey } from '@/lib/sidebar-tree-expanded-key'
+import {
+  TreeFolderIcon,
+  RevealHandler,
+  FolderRevealHandler,
+  TreeActionsExposer,
+  type TreeActionsHandle
+} from '@/components/note-tree-internal'
+import {
+  extractFolderFromPath,
+  getDisplayName,
+  getFileExtensionLabel,
+  getFileIcon,
+  collectAllFolderIds,
+  collectFolderSubtreeIds,
+  isVaultFile,
+  type FolderNode
+} from '@/components/notes-tree-utils'
+import { FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import { handleInlineRenameBlur, stopInlineRenameKeyPropagation } from '@/lib/inline-rename-focus'
+import { cn } from '@/lib/utils'
+import { IconPickerButton } from '@/components/icon-picker-button'
+import type { NoteListItem } from '@/hooks/use-notes-query'
+import {
+  Pencil,
+  Trash2,
+  FolderOpen,
+  FilePlus,
+  FolderPlus,
+  LayoutTemplate,
+  LayoutGrid,
+  X,
+  Monitor,
+  Smile,
+  ChevronsDown,
+  ChevronsUp
+} from '@/lib/icons'
+import { ContextMenuItem, ContextMenuSeparator } from '@/components/ui/context-menu'
+import { BookmarkMenuItem } from '@/components/sidebar/bookmark-menu-item'
+import { NoteContextMenuItems } from '@/components/notes-tree-note-menu'
+import {
+  TreeSelectionMenuItems,
+  type TreeSelectionActions
+} from '@/components/sidebar/tree-selection-menu-items'
+import { MoveToFolderDialog } from '@/components/folder-view/move-to-folder-dialog'
+import { VaultLockMenuItem } from '@/components/sidebar/vault-lock-menu-item'
+import { OpenTargetMenuItems } from '@/components/sidebar/open-target-menu-items'
+import { ShowTasksMenuItem } from '@/components/sidebar/show-tasks-menu-item'
+import { noteTabData, folderTabData } from '@/lib/sidebar-tab-data'
+import { useOpenTarget } from '@/hooks/use-open-target'
+import {
+  orderFolderEntries,
+  shouldVirtualize,
+  type FolderEntry
+} from '@/lib/virtualized-tree-utils'
+import {
+  VirtualizedNotesTree,
+  type VirtualizedTreeActions
+} from '@/components/virtualized-notes-tree'
+import { useT } from '@memry/i18n/renderer'
+import { useFileActionLabels } from '@/hooks/use-file-action-labels'
+
+const LEADING_SPACER = <div className="h-4 w-4" />
+
+// ============================================================================
+// Main Component
+// ============================================================================
+
+export interface NotesTreeActions {
+  createNote: () => void
+  createFolder: () => void
+  collapseAll: () => void
+  expandAll: () => void
+}
+
+interface NotesTreeProps {
+  onTargetFolderChange?: (folder: string) => void
+  scrollContainerRef?: React.RefObject<HTMLElement>
+  /**
+   * Vault-relative folder an in-flight external file drag is aimed at, or null
+   * when no file is being dragged. Highlight only — the drop reads its own
+   * destination off `FILE_DROP_FOLDER_ATTR` in the DOM.
+   */
+  fileDropFolder?: string | null
+}
+
+export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function NotesTree(
+  { onTargetFolderChange, scrollContainerRef, fileDropFolder = null }: NotesTreeProps,
+  ref
+) {
+  const { t } = useT('notes')
+  const { t: tCommon } = useT('common')
+  const fileActions = useFileActionLabels()
+  const data = useNoteTreeData()
+  const vaultScope = useVaultScope()
+  // Resolved once, before TreeProvider reads it: the workspace never changes vault.
+  const [expandedKey] = useState(() => sidebarTreeExpandedKey(vaultScope))
+  // Optional on purpose: canvas embeds and unit tests mount the tree without a
+  // SyncProvider, and "no provider" must read as "no initial sync running".
+  const initialSyncInProgress = useSyncOptional()?.state.initialSyncProgress != null
+  const [storedSelectedIds, setSelectedIds] = useState<string[]>([])
+  // A file hidden by "Show files" off leaves the selection with it. Otherwise a
+  // file selected before the toggle would ride along, unseen, with the next
+  // drag or bulk delete of the notes that are still visible.
+  const { showFiles, noteMap } = data
+  const selectedIds = useMemo(() => {
+    if (showFiles) return storedSelectedIds
+    return storedSelectedIds.filter((id) => {
+      const note = noteMap.get(id)
+      return !note || !isVaultFile(note)
+    })
+  }, [storedSelectedIds, showFiles, noteMap])
+
+  const treeContainerRef = useRef<HTMLDivElement>(null)
+  const treeActionsRef = useRef<TreeActionsHandle | null>(null)
+  const virtualTreeActionsRef = useRef<VirtualizedTreeActions | null>(null)
+  const isTreeFocusedRef = useRef(false)
+
+  // Middle-click opens rows in a background tab — read on mousedown because a
+  // middle click never produces `click`. Always a genuinely new tab.
+  const { openInNewTab } = useOpenTarget()
+  const middleClickOpen = useCallback(
+    (tab: Parameters<typeof openInNewTab>[0]) => (e: React.MouseEvent) => {
+      if (e.button !== 1) return
+      e.preventDefault()
+      openInNewTab(tab, { background: true })
+    },
+    [openInNewTab]
+  )
+
+  const renameCallbackRef = useCallback((el: HTMLInputElement | null) => {
+    if (el) {
+      requestAnimationFrame(() => {
+        el.focus()
+        el.select()
+      })
+    }
+  }, [])
+
+  const expandFolderPath = useCallback((folderPath: string) => {
+    if (!folderPath) return
+    const parts = folderPath.split('/')
+    let current = ''
+    for (const part of parts) {
+      current = current ? `${current}/${part}` : part
+      const nodeId = `folder-${current}`
+      treeActionsRef.current?.expandNode(nodeId)
+      virtualTreeActionsRef.current?.expandNode(nodeId)
+    }
+  }, [])
+
+  // Expansion is keyed by folder path, so a folder that moves would otherwise
+  // come back collapsed — along with everything open inside it.
+  const renameFolderPath = useCallback((oldPath: string, newPath: string) => {
+    const oldNodeId = `folder-${oldPath}`
+    const newNodeId = `folder-${newPath}`
+    treeActionsRef.current?.renameNode(oldNodeId, newNodeId)
+    virtualTreeActionsRef.current?.renameNode(oldNodeId, newNodeId)
+  }, [])
+
+  const actions = useNoteTreeActions({
+    noteMap: data.noteMap,
+    // Reordering only: positions are written over the list that still holds
+    // the files `showFiles` hides, so they keep their slots.
+    tree: data.unfilteredTree,
+    folders: data.folders,
+    notePositions: data.notePositions,
+    setNotePositions: data.setNotePositions,
+    folderTemplateNames: data.folderTemplateNames,
+    setFolderTemplateNames: data.setFolderTemplateNames,
+    createFolderMutation: data.createFolder,
+    refreshFolders: data.refreshFolders,
+    setFolderIcon: data.setFolderIcon,
+    mutations: data.mutations,
+    selectedIds,
+    setSelectedIds,
+    computeTargetFolder: data.computeTargetFolder,
+    expandFolderPath,
+    renameFolderPath
+  })
+
+  const notifyTargetFolderChange = useCallback(
+    (ids: string[]) => {
+      onTargetFolderChange?.(data.computeTargetFolder(ids))
+    },
+    [data, onTargetFolderChange]
+  )
+
+  const handleCollapseAll = useCallback(() => {
+    treeActionsRef.current?.collapseAll()
+    virtualTreeActionsRef.current?.collapseAll()
+  }, [])
+
+  const handleExpandAll = useCallback(() => {
+    const allIds = collectAllFolderIds(data.tree)
+    treeActionsRef.current?.expandNodes(allIds)
+    virtualTreeActionsRef.current?.expandAll()
+  }, [data.tree])
+
+  // One folder and everything below it, from its context menu or Alt+click.
+  const getSubtreeIds = useCallback(
+    (folderPath: string) => collectFolderSubtreeIds(data.tree, folderPath),
+    [data.tree]
+  )
+  const setSubtreeExpanded = useCallback(
+    (folderPath: string, expanded: boolean) => {
+      treeActionsRef.current?.setNodesExpanded(getSubtreeIds(folderPath), expanded)
+    },
+    [getSubtreeIds]
+  )
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      createNote: actions.handleCreateNote,
+      createFolder: actions.handleCreateFolder,
+      collapseAll: handleCollapseAll,
+      expandAll: handleExpandAll
+    }),
+    [actions.handleCreateNote, actions.handleCreateFolder, handleCollapseAll, handleExpandAll]
+  )
+
+  const handleSelectionChange = useCallback(
+    (ids: string[]) => {
+      actions.handleSelectionChange(ids)
+      notifyTargetFolderChange(ids)
+    },
+    [actions, notifyTargetFolderChange]
+  )
+
+  useEffect(() => {
+    const container = treeContainerRef.current
+    if (!container) return undefined
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (actions.renamingNoteId) return
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedIds.length > 0) {
+        const activeElement = document.activeElement
+        if (activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA') return
+        e.preventDefault()
+        actions.handleBulkDelete()
+      }
+    }
+
+    container.addEventListener('keydown', handleKeyDown)
+    return () => container.removeEventListener('keydown', handleKeyDown)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- effect re-runs on this trigger by design; the value is not read in the effect
+  }, [selectedIds, actions.renamingNoteId, actions.handleBulkDelete, actions])
+
+  const [pendingRevealNoteId, setPendingRevealNoteId] = useState<string | null>(null)
+  const [applyTemplateNote, setApplyTemplateNote] = useState<NoteListItem | null>(null)
+  const [saveAsTemplateNote, setSaveAsTemplateNote] = useState<NoteListItem | null>(null)
+  const createNoteFromNote = useCreateNoteFromNote()
+  // Mirrors `pendingRevealNoteId` for the virtualized-tree effect below, which
+  // needs a non-state read of the pending id so it isn't itself reactive state
+  // driving an effect (see the effect's comment).
+  const pendingRevealNoteIdRef = useRef<string | null>(null)
+
+  const handleRevealComplete = useCallback(
+    (noteId: string) => {
+      setSelectedIds([noteId])
+      notifyTargetFolderChange([noteId])
+      setTimeout(() => {
+        const element = document.querySelector(`[data-tree-node-id="${noteId}"]`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          element.classList.add('bg-accent')
+          setTimeout(() => element.classList.remove('bg-accent'), 2000)
+        }
+      }, 100)
+      pendingRevealNoteIdRef.current = null
+      setPendingRevealNoteId(null)
+    },
+    [notifyTargetFolderChange]
+  )
+
+  useEffect(() => {
+    const handleRevealInSidebar = (event: CustomEvent<{ path: string; entityId?: string }>) => {
+      const { entityId } = event.detail
+      if (!entityId) return
+
+      // A PDF or image tab asking to be revealed while "Show files" is off has
+      // no row to land on; say why instead of silently doing nothing.
+      const target = data.noteMap.get(entityId)
+      if (!data.showFiles && target && isVaultFile(target)) {
+        toast.info(tCommon('toast.filesHiddenInSidebar'))
+        return
+      }
+      // Deliberately not checked against `noteMap`: a note created a moment ago
+      // is not in the tree query yet, and dropping the request here is what used
+      // to make a brand-new note impossible to reveal. RevealHandler waits.
+
+      try {
+        localStorage.setItem('sidebar-section-collections-expanded', 'true')
+        window.dispatchEvent(
+          new StorageEvent('storage', {
+            key: 'sidebar-section-collections-expanded',
+            newValue: 'true'
+          })
+        )
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      pendingRevealNoteIdRef.current = entityId
+      setPendingRevealNoteId(entityId)
+
+      // The virtualized tree has no RevealHandler (see below) — if the note is
+      // already in the tree, reveal it now instead of waiting on a later
+      // data change to trigger the effect.
+      if (shouldVirtualize(data.tree) && data.noteMap.has(entityId)) {
+        virtualTreeActionsRef.current?.revealNote(entityId)
+        handleRevealComplete(entityId)
+      }
+    }
+
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
+    window.addEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
+    return () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
+      window.removeEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
+    }
+  }, [data.tree, data.noteMap, data.showFiles, handleRevealComplete, tCommon])
+
+  // The virtualized tree has no RevealHandler — that lives inside TreeProvider,
+  // which only the plain tree renders — so drive it through its imperative
+  // handle instead. Waits for the note to reach the tree, the same way
+  // RevealHandler does, because a just-created note is not there yet.
+  useEffect(() => {
+    const target = pendingRevealNoteIdRef.current
+    if (!target || !shouldVirtualize(data.tree)) return
+    if (!data.noteMap.has(target)) return
+
+    virtualTreeActionsRef.current?.revealNote(target)
+    handleRevealComplete(target)
+  }, [data.tree, data.noteMap, handleRevealComplete])
+
+  if (data.isLoading) return <NotesTreeSkeleton />
+
+  if (data.error) {
+    return (
+      <NotesTreeError
+        error={extractErrorMessage(
+          data.error,
+          getI18n().getFixedT(null, 'notes')('tree.loadingError')
+        )}
+      />
+    )
+  }
+
+  if (data.notes.length === 0 && data.folders.length === 0) {
+    // Progressive open (#1830): vault open no longer waits for the first full
+    // sync, so a fresh device lands here with an empty tree while pages are
+    // still applying. Show the sync progress instead of the "create your first
+    // note" call to action — the tree fills in live as note events invalidate
+    // the list query.
+    if (initialSyncInProgress) {
+      return (
+        <NotesTreeSyncing>
+          <InitialSyncProgress className="px-1" />
+        </NotesTreeSyncing>
+      )
+    }
+    return (
+      <NotesTreeEmpty
+        onCreateNote={(...args) => void actions.handleCreateNote(...args)}
+        isCreating={actions.isCreating}
+      />
+    )
+  }
+
+  const useVirtualizedTree = shouldVirtualize(data.tree)
+
+  const selectionActions: TreeSelectionActions = {
+    onCreateFolderWithSelection: () => void actions.handleCreateFolderWithSelection(),
+    onMoveSelection: actions.openSelectionMoveDialog,
+    onBookmarkSelection: () => void actions.handleBookmarkSelection(),
+    onDeleteSelection: actions.handleBulkDelete
+  }
+
+  const renderNote = (note: NoteListItem, level: number, isLast: boolean, hideLines = false) => {
+    const isBeingRenamed = actions.renamingNoteId === note.id
+    const isSelected = selectedIds.includes(note.id)
+    const isPartOfSelection = isSelected && selectedIds.length > 1
+    // Journal entries belong to the Journal: note-only actions (templates,
+    // icons, bookmarks) would write to the journal as if it were a note.
+    const isJournal = !!note.journalDate
+
+    return (
+      <TreeNode
+        key={note.id}
+        nodeId={note.id}
+        level={level}
+        isLast={isLast}
+        hideLines={hideLines}
+        canvasNoteId={note.id}
+        dragTab={noteTabData(note)}
+      >
+        <TreeNodeTrigger
+          // A file dropped on a note belongs in the folder that note lives in.
+          {...{ [FILE_DROP_FOLDER_ATTR]: extractFolderFromPath(note.path) }}
+          onMouseDown={middleClickOpen(noteTabData(note))}
+          contextMenuContent={
+            <>
+              {!isPartOfSelection && (
+                <NoteContextMenuItems
+                  note={note}
+                  onRename={actions.handleRenameClick}
+                  onApplyTemplate={setApplyTemplateNote}
+                  onSaveAsTemplate={setSaveAsTemplateNote}
+                  onNewNoteFromNote={(n) => void createNoteFromNote(n.id)}
+                  onSetIcon={(n) => actions.setIconPickerNoteId(n.id)}
+                  onRemoveIcon={(n) =>
+                    void data.mutations.updateNote.mutateAsync({ id: n.id, emoji: null })
+                  }
+                  onOpenExternal={(n) => void actions.handleOpenExternal(n)}
+                  onRevealInFinder={(n) => void actions.handleRevealInFinder(n)}
+                  onDelete={actions.handleDeleteClick}
+                />
+              )}
+              {isPartOfSelection && (
+                <TreeSelectionMenuItems count={selectedIds.length} actions={selectionActions} />
+              )}
+            </>
+          }
+        >
+          {isJournal ? (
+            <div className="shrink-0 flex items-center gap-0.5">
+              {LEADING_SPACER}
+              <span className="flex h-5 w-5 items-center justify-center text-base leading-none">
+                {getFileIcon(note)}
+              </span>
+            </div>
+          ) : (
+            <IconPickerButton
+              leading={LEADING_SPACER}
+              hasIcon={!!note.emoji}
+              onIconChange={(icon) =>
+                void data.mutations.updateNote.mutateAsync({ id: note.id, emoji: icon })
+              }
+              ariaLabel={t('tree.actions.setIcon')}
+              pickerOpen={actions.iconPickerNoteId === note.id}
+              onPickerOpenChange={(open) => actions.setIconPickerNoteId(open ? note.id : null)}
+            >
+              {getFileIcon(note)}
+            </IconPickerButton>
+          )}
+          {isBeingRenamed ? (
+            <input
+              ref={renameCallbackRef}
+              type="text"
+              aria-label={t('tree.actions.rename')}
+              value={actions.renameValue}
+              onChange={(e) => actions.handleRenameInputChange(note.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void actions.handleRenameSubmit(note.id, note.path)
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  actions.handleRenameCancel(note.id)
+                }
+                stopInlineRenameKeyPropagation(e)
+              }}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => void actions.handleRenameSubmit(note.id, note.path))
+              }
+              onClick={(e) => e.stopPropagation()}
+              disabled={actions.isRenaming}
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
+            />
+          ) : (
+            <>
+              <TreeLabel>{getDisplayName(note.path)}</TreeLabel>
+              {getFileExtensionLabel(note) && (
+                <span className="ms-2 shrink-0 text-[10px] font-medium uppercase tracking-wide text-muted-foreground/50">
+                  {getFileExtensionLabel(note)}
+                </span>
+              )}
+            </>
+          )}
+          {note.localOnly && <Monitor className="ms-1 h-3 w-3 shrink-0 text-muted-foreground/60" />}
+        </TreeNodeTrigger>
+      </TreeNode>
+    )
+  }
+
+  const renderFolder = (folder: FolderNode, level: number, isLast: boolean): ReactNode => {
+    const hasChildren = folder.children.length > 0 || folder.notes.length > 0
+    const isBeingRenamed = actions.renamingFolderPath === folder.path
+    const isPartOfSelection =
+      selectedIds.length > 1 && selectedIds.includes(`folder-${folder.path}`)
+
+    return (
+      <TreeNode
+        key={folder.path}
+        nodeId={`folder-${folder.path}`}
+        level={level}
+        isLast={isLast}
+        acceptsDropInside
+        hasChildren={hasChildren}
+      >
+        <TreeNodeTrigger
+          {...{ [FILE_DROP_FOLDER_ATTR]: folder.path }}
+          onMouseDown={middleClickOpen(folderTabData(folder.path, folder.icon))}
+          getSubtreeNodeIds={() => getSubtreeIds(folder.path)}
+          className={cn(
+            fileDropFolder === folder.path &&
+              'border-2 border-dashed border-primary bg-primary/10 hover:bg-primary/10'
+          )}
+          contextMenuContent={
+            isPartOfSelection ? (
+              <TreeSelectionMenuItems count={selectedIds.length} actions={selectionActions} />
+            ) : (
+              <>
+                <OpenTargetMenuItems tab={folderTabData(folder.path, folder.icon)} />
+                <ShowTasksMenuItem location={{ folderPath: folder.path }} />
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => void actions.handleCreateNoteInFolder(folder.path)}>
+                  <FilePlus className="me-2 h-4 w-4" />
+                  {t('tree.actions.newNote')}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => void actions.handleCreateSubfolder(folder.path)}>
+                  <FolderPlus className="me-2 h-4 w-4" />
+                  {t('tree.actions.newFolder')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, true)}>
+                  <ChevronsUp className="me-2 h-4 w-4" />
+                  {t('tree.actions.expandSubfolders')}
+                </ContextMenuItem>
+                <ContextMenuItem onClick={() => setSubtreeExpanded(folder.path, false)}>
+                  <ChevronsDown className="me-2 h-4 w-4" />
+                  {t('tree.actions.collapseSubfolders')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => actions.handleSetFolderTemplate(folder.path)}>
+                  <LayoutTemplate className="me-2 h-4 w-4" />
+                  {t('tree.actions.setDefaultTemplate')}
+                  {data.folderTemplateNames.get(folder.path) && (
+                    <span className="ms-1 text-muted-foreground">
+                      ({data.folderTemplateNames.get(folder.path)})
+                    </span>
+                  )}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onClick={() => void actions.handleClearFolderTemplate(folder.path)}
+                >
+                  <X className="me-2 h-4 w-4" />
+                  {t('tree.actions.clearDefaultTemplate')}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => actions.setIconPickerFolderPath(folder.path)}>
+                  <Smile className="me-2 h-4 w-4" />
+                  {t('tree.actions.setIcon')}
+                </ContextMenuItem>
+                {folder.icon && (
+                  <ContextMenuItem onClick={() => void data.setFolderIcon(folder.path, null)}>
+                    <X className="me-2 h-4 w-4" />
+                    {t('tree.actions.removeIcon')}
+                  </ContextMenuItem>
+                )}
+                <ContextMenuSeparator />
+                <BookmarkMenuItem itemType="folder" itemId={folder.path} />
+                <VaultLockMenuItem kind="folder" target={folder.path} />
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onClick={() => void actions.handleRevealFolderInFinder(folder.path)}
+                >
+                  <FolderOpen className="me-2 h-4 w-4" />
+                  {fileActions.revealInFolder}
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem onClick={() => actions.handleRenameFolderClick(folder.path)}>
+                  <Pencil className="me-2 h-4 w-4" />
+                  {t('tree.actions.rename')}
+                </ContextMenuItem>
+                <ContextMenuItem
+                  variant="destructive"
+                  onClick={() => actions.handleDeleteFolderClick(folder.path)}
+                >
+                  <Trash2 className="me-2 h-4 w-4" />
+                  {tCommon('button.delete')}
+                </ContextMenuItem>
+              </>
+            )
+          }
+        >
+          <TreeFolderIcon
+            nodeId={`folder-${folder.path}`}
+            icon={folder.icon ?? null}
+            hasChildren={hasChildren}
+            onIconChange={(icon) => void data.setFolderIcon(folder.path, icon)}
+            pickerOpen={actions.iconPickerFolderPath === folder.path}
+            onPickerOpenChange={(open) =>
+              actions.setIconPickerFolderPath(open ? folder.path : null)
+            }
+          />
+          {isBeingRenamed ? (
+            <input
+              ref={renameCallbackRef}
+              type="text"
+              aria-label={t('tree.actions.rename')}
+              value={actions.folderRenameValue}
+              onChange={(e) => actions.setFolderRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void actions.handleFolderRenameSubmit(folder.path)
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  actions.handleFolderRenameCancel()
+                }
+                stopInlineRenameKeyPropagation(e)
+              }}
+              onBlur={(e) =>
+                handleInlineRenameBlur(e, () => void actions.handleFolderRenameSubmit(folder.path))
+              }
+              onClick={(e) => e.stopPropagation()}
+              disabled={actions.isFolderRenaming}
+              className="flex-1 h-5 px-1 text-sm bg-background border border-input rounded focus:outline-none"
+            />
+          ) : (
+            <div className="group/folder flex flex-1 items-center min-w-0">
+              <TreeLabel className="flex-1">{folder.name}</TreeLabel>
+              {/* The button inside is in the tab order, so focus has to reveal
+                  it too — hover-only would land a keyboard user on a control
+                  painted at `opacity-0` (WCAG 2.4.7). */}
+              <div className="flex items-center opacity-0 group-hover/folder:opacity-100 group-focus-within/folder:opacity-100 transition-opacity ms-auto">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    actions.handleOpenFolderView(folder.path, folder.icon)
+                  }}
+                  className="p-1 cursor-pointer rounded"
+                  aria-label={t('tree.aria.openFolderView')}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                </button>
+              </div>
+            </div>
+          )}
+        </TreeNodeTrigger>
+        {hasChildren && (
+          <TreeNodeContent>
+            {renderEntries(
+              orderFolderEntries(folder.children, folder.notes, data.tree.notesFirst),
+              level + 1
+            )}
+          </TreeNodeContent>
+        )}
+      </TreeNode>
+    )
+  }
+
+  // One level of the tree in display order (see `orderFolderEntries`); the
+  // last row is last whichever group it belongs to.
+  const renderEntries = (entries: FolderEntry[], level: number, hideNoteLines = false) =>
+    entries.map((entry, index) => {
+      const isLast = index === entries.length - 1
+      return entry.type === 'folder'
+        ? renderFolder(entry.folder, level, isLast)
+        : renderNote(entry.note, level, isLast, hideNoteLines)
+    })
+
+  return (
+    <div
+      ref={treeContainerRef}
+      className="flex flex-col"
+      tabIndex={-1}
+      onFocus={() => {
+        isTreeFocusedRef.current = true
+      }}
+      onBlur={(e) => {
+        if (!treeContainerRef.current?.contains(e.relatedTarget)) {
+          isTreeFocusedRef.current = false
+        }
+      }}
+    >
+      {useVirtualizedTree ? (
+        <VirtualizedNotesTree
+          expandedKey={expandedKey}
+          actionsRef={virtualTreeActionsRef}
+          tree={data.tree}
+          selectedIds={selectedIds}
+          onSelectionChange={handleSelectionChange}
+          onMove={(...args) => void actions.handleMove(...args)}
+          onBulkDelete={actions.handleBulkDelete}
+          selectionActions={selectionActions}
+          onRenameNote={actions.handleRenameClick}
+          renamingNoteId={actions.renamingNoteId}
+          renameValue={actions.renameValue}
+          onRenameValueChange={actions.handleRenameInputChange}
+          onRenameSubmit={(...args) => void actions.handleRenameSubmit(...args)}
+          onRenameCancel={actions.handleRenameCancel}
+          isRenaming={actions.isRenaming}
+          onApplyTemplateToNote={setApplyTemplateNote}
+          onSaveNoteAsTemplate={setSaveAsTemplateNote}
+          onNewNoteFromNote={(note) => void createNoteFromNote(note.id)}
+          onDeleteNote={actions.handleDeleteClick}
+          onOpenExternal={(...args) => void actions.handleOpenExternal(...args)}
+          onRevealInFinder={(...args) => void actions.handleRevealInFinder(...args)}
+          onDeleteFolder={actions.handleDeleteFolderClick}
+          onCreateNote={(...args) => void actions.handleCreateNoteInFolder(...args)}
+          onCreateFolder={(...args) => void actions.handleCreateSubfolder(...args)}
+          onRenameFolder={actions.handleRenameFolderClick}
+          renamingFolderPath={actions.renamingFolderPath}
+          folderRenameValue={actions.folderRenameValue}
+          onFolderRenameValueChange={actions.setFolderRenameValue}
+          onFolderRenameSubmit={(...args) => void actions.handleFolderRenameSubmit(...args)}
+          onFolderRenameCancel={actions.handleFolderRenameCancel}
+          isFolderRenaming={actions.isFolderRenaming}
+          onSetFolderTemplate={actions.handleSetFolderTemplate}
+          onClearFolderTemplate={(...args) => void actions.handleClearFolderTemplate(...args)}
+          folderTemplateNames={data.folderTemplateNames}
+          onSetFolderIcon={(path, icon) => void data.setFolderIcon(path, icon)}
+          onRevealFolderInFinder={(path) => void actions.handleRevealFolderInFinder(path)}
+          onSetNoteIcon={(id, icon) =>
+            void data.mutations.updateNote.mutateAsync({ id, emoji: icon })
+          }
+          noteMap={data.noteMap}
+          isDragDisabled={
+            !!actions.renamingNoteId || !!actions.renamingFolderPath || actions.isMoving
+          }
+          fileDropFolder={fileDropFolder}
+          scrollContainerRef={scrollContainerRef}
+        />
+      ) : (
+        <TreeProvider
+          persistKey={expandedKey}
+          selectedIds={selectedIds}
+          onSelectionChange={handleSelectionChange}
+          draggable={!actions.renamingNoteId && !actions.renamingFolderPath && !actions.isMoving}
+          onMove={(...args) => void actions.handleMove(...args)}
+          animateExpand={false}
+          multiSelect={true}
+          indent={26}
+        >
+          <TreeActionsExposer actionsRef={treeActionsRef} />
+          <RevealHandler
+            pendingRevealNoteId={pendingRevealNoteId}
+            noteMap={data.noteMap}
+            onReveal={handleRevealComplete}
+            onClear={() => setPendingRevealNoteId(null)}
+          />
+          <FolderRevealHandler />
+          <TreeView>
+            {renderEntries(
+              orderFolderEntries(data.tree.folders, data.tree.rootNotes, data.tree.notesFirst),
+              0,
+              true
+            )}
+          </TreeView>
+        </TreeProvider>
+      )}
+
+      {data.hiddenNoteCount > 0 && (
+        <NotesTreeTruncationNotice
+          hiddenCount={data.hiddenNoteCount}
+          isLoadingMore={data.isLoadingMore}
+          onLoadMore={data.loadMore}
+        />
+      )}
+
+      <NoteTreeDeleteDialog
+        open={actions.isDeleteDialogOpen}
+        onOpenChange={actions.setIsDeleteDialogOpen}
+        notesToDelete={actions.notesToDelete}
+        foldersToDelete={actions.foldersToDelete}
+        isDeleting={actions.isDeleting}
+        onConfirm={(...args) => void actions.handleDeleteConfirm(...args)}
+        journalFolder={actions.journalFolder}
+      />
+
+      {actions.deleteGuardDialog}
+
+      <MoveToFolderDialog
+        open={actions.selectionMoveRequest !== null}
+        onOpenChange={(open) => !open && actions.closeSelectionMoveDialog()}
+        noteIds={actions.selectionMoveRequest?.noteIds ?? []}
+        folderPaths={actions.selectionMoveRequest?.folderPaths}
+        currentFolder={actions.selectionMoveRequest?.currentFolder}
+        onMove={(folder) => void actions.handleMoveSelectionTo(folder)}
+      />
+
+      <NoteTreeJournalChangeDialog
+        kind={actions.journalConfirm}
+        onResolve={actions.resolveJournalConfirm}
+      />
+
+      <NoteTreeTemplateSelector
+        isOpen={actions.folderToConfigureTemplate !== null}
+        onClose={() => void actions.handleFolderTemplateSelect(null)}
+        onSelect={(...args) => void actions.handleFolderTemplateSelect(...args)}
+      />
+
+      <ApplyTemplateToNoteDialog
+        noteId={applyTemplateNote?.id ?? null}
+        isOpen={applyTemplateNote !== null}
+        onClose={() => setApplyTemplateNote(null)}
+      />
+
+      <SaveNoteAsTemplateDialog
+        noteId={saveAsTemplateNote?.id ?? null}
+        isOpen={saveAsTemplateNote !== null}
+        onClose={() => setSaveAsTemplateNote(null)}
+      />
+    </div>
+  )
+})
+
+NotesTree.displayName = 'NotesTree'
+
+export default NotesTree

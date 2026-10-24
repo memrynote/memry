@@ -29,7 +29,7 @@ has_changes() {
   printf '%s\n' "$changed_files" | grep -E "$1" >/dev/null
 }
 
-code_changed='^(apps/desktop|apps/sync-server|packages|scripts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|oxlint.config.mts|scripts/lint-baseline.json|lint-staged.config.mjs|tsconfig|turbo.json)'
+code_changed='^(apps/desktop|apps/desktop-tauri|crates|apps/sync-server|packages|scripts|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|oxlint.config.mts|scripts/lint-baseline.json|lint-staged.config.mjs|tsconfig|turbo.json)'
 
 if ! has_changes "$code_changed"; then
   exit 0

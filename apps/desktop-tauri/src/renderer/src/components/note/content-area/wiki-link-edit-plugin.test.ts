@@ -1,0 +1,839 @@
+/**
+ * The un-promote/re-promote round trip, driven through a real ProseMirror state.
+ *
+ * A hand-built schema rather than BlockNote's: the plugin only ever asks for a
+ * `wikiLink` node type, the mark types it carries, and text — and a real state
+ * is what makes `appendTransaction` (the re-promotion) run for real, which is
+ * the half no assertion on a helper could reach.
+ */
+
+import { Schema } from '@tiptap/pm/model'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import { EditorState, TextSelection } from '@tiptap/pm/state'
+import type { Transaction } from '@tiptap/pm/state'
+import type { EditorView } from '@tiptap/pm/view'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  activeRunWikiLink,
+  createWikiLinkEditPlugin,
+  findWikiLinkRunAt,
+  isEditingWikiLinkText,
+  openWikiLinkForSelection,
+  replaceActiveRunWithWikiLink
+} from './wiki-link-edit-plugin'
+
+const schema = new Schema({
+  nodes: {
+    doc: { content: 'block+' },
+    paragraph: { group: 'block', content: 'inline*', toDOM: () => ['p', 0] },
+    wikiLink: {
+      group: 'inline',
+      inline: true,
+      atom: true,
+      attrs: {
+        target: { default: '' },
+        alias: { default: '' },
+        bold: { default: false },
+        textColor: { default: 'default' }
+      },
+      toDOM: () => ['span']
+    },
+    text: { group: 'inline' }
+  },
+  marks: {
+    bold: { toDOM: () => ['strong', 0] },
+    textColor: { attrs: { stringValue: { default: 'default' } }, toDOM: () => ['span', 0] }
+  }
+})
+
+function stateWith(nodes: ProseMirrorNode[], cursorAt: number): EditorState {
+  const doc = schema.node('doc', null, [schema.node('paragraph', null, nodes)])
+  const state = EditorState.create({ doc, plugins: [createWikiLinkEditPlugin()] })
+  return state.apply(state.tr.setSelection(TextSelection.create(state.doc, cursorAt)))
+}
+
+/**
+ * A plugin whose mounted view reports focus.
+ *
+ * `decorations` paints only for a focused editor — the caret it exists for is
+ * an editing caret, and a document that has merely been opened still carries a
+ * selection (see `mountedView` in the plugin). Every case below is about where
+ * that caret is, so the harness supplies the focus rather than each test.
+ */
+function focusedPlugin(): ReturnType<typeof createWikiLinkEditPlugin> {
+  const plugin = createWikiLinkEditPlugin()
+  // oxlint-disable-next-line typescript/no-explicit-any
+  ;(plugin.spec as any).view({ hasFocus: () => true })
+  return plugin
+}
+
+function chip(attrs: Record<string, unknown>): ProseMirrorNode {
+  return schema.node('wikiLink', attrs)
+}
+
+/** A stand-in for `EditorView` carrying only what the plugin touches. */
+function viewOf(state: EditorState) {
+  const view = {
+    state,
+    dispatch(tr: Transaction) {
+      view.state = view.state.apply(tr)
+    }
+  }
+  return view
+}
+
+function keyDown(state: EditorState, key: string, modifiers: Partial<KeyboardEvent> = {}) {
+  const plugin = createWikiLinkEditPlugin()
+  const view = viewOf(state)
+  const handled = plugin.props.handleKeyDown!.call(
+    plugin,
+    // oxlint-disable-next-line typescript/no-explicit-any
+    view as any,
+    { key, shiftKey: false, metaKey: false, ctrlKey: false, altKey: false, ...modifiers } as any
+  )
+  return { handled, state: view.state }
+}
+
+function paragraphText(state: EditorState): string {
+  return state.doc.firstChild!.textBetween(0, state.doc.firstChild!.content.size, undefined, '￼')
+}
+
+function firstWikiLink(state: EditorState): ProseMirrorNode | null {
+  let found: ProseMirrorNode | null = null
+  state.doc.descendants((node) => {
+    if (!found && node.type.name === 'wikiLink') found = node
+  })
+  return found
+}
+
+describe('findWikiLinkRunAt', () => {
+  it('finds the run the offset is strictly inside', () => {
+    //          0123456789
+    const text = 'a [[Note]] b'
+    expect(findWikiLinkRunAt(text, 5)).toEqual({ start: 2, end: 10 })
+    expect(findWikiLinkRunAt(text, 3)).toEqual({ start: 2, end: 10 })
+    expect(findWikiLinkRunAt(text, 9)).toEqual({ start: 2, end: 10 })
+  })
+
+  it('treats both outer edges as outside, which is what re-promotes the run', () => {
+    const text = 'a [[Note]] b'
+    expect(findWikiLinkRunAt(text, 2)).toBeNull()
+    expect(findWikiLinkRunAt(text, 10)).toBeNull()
+  })
+
+  it('handles targets with spaces, headings and aliases', () => {
+    const text = '[[Toplantı Notları#Kararlar|dün]]'
+    expect(findWikiLinkRunAt(text, 20)).toEqual({ start: 0, end: text.length })
+  })
+
+  it('finds nothing in unbracketed or half-deleted text', () => {
+    expect(findWikiLinkRunAt('[[Note', 3)).toBeNull()
+    expect(findWikiLinkRunAt('Note]]', 3)).toBeNull()
+    expect(findWikiLinkRunAt('plain text', 3)).toBeNull()
+  })
+
+  it('picks the run the caret is in when a block holds several', () => {
+    const text = '[[A]] and [[B]]'
+    expect(findWikiLinkRunAt(text, 2)).toEqual({ start: 0, end: 5 })
+    expect(findWikiLinkRunAt(text, 12)).toEqual({ start: 10, end: 15 })
+    expect(findWikiLinkRunAt(text, 7)).toBeNull()
+  })
+})
+
+describe('wiki-link edit plugin', () => {
+  it('un-promotes the chip before the caret on Backspace, caret before the `]]`', () => {
+    const { handled, state } = keyDown(stateWith([chip({ target: 'Toplantı' })], 2), 'Backspace')
+
+    expect(handled).toBe(true)
+    expect(paragraphText(state)).toBe('[[Toplantı]]')
+    expect(firstWikiLink(state)).toBeNull()
+    // `[[Toplantı]]` is 12 characters; the caret sits at 10, before the `]]`.
+    expect(state.selection.from).toBe(1 + 10)
+  })
+
+  // The bug this pins: the menu anchors its query window wherever the caret is
+  // when it opens. Opened at the END of the target, the query starts empty, so
+  // typing `#` yields the query `#`, the note half is empty, heading mode never
+  // engages and the picker reports "no notes found" for a note that plainly
+  // exists. Only the ORDER was wrong — the caret ends up in the same place
+  // either way, which is why every other assertion here stayed green.
+  it('opens the menu while the caret is still just after the `[[`', () => {
+    const caretAtOpen: number[] = []
+    const view = viewOf(stateWith([chip({ target: 'Toplantı' })], 2))
+    const plugin = createWikiLinkEditPlugin({
+      openMenu: () => caretAtOpen.push(view.state.selection.from)
+    })
+
+    plugin.props.handleKeyDown!.call(
+      plugin,
+      // oxlint-disable-next-line typescript/no-explicit-any
+      view as any,
+      {
+        key: 'Backspace',
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        altKey: false
+        // oxlint-disable-next-line typescript/no-explicit-any
+      } as any
+    )
+
+    // Right after the `[[`, so the menu's query window starts where a
+    // hand-typed link's would.
+    expect(caretAtOpen).toEqual([1 + 2])
+    // And only then to the end of the target, which makes the query the target.
+    expect(view.state.selection.from).toBe(1 + 2 + 'Toplantı'.length)
+  })
+
+  it('un-promotes on ArrowLeft too', () => {
+    const { handled, state } = keyDown(stateWith([chip({ target: 'Toplantı' })], 2), 'ArrowLeft')
+
+    expect(handled).toBe(true)
+    expect(paragraphText(state)).toBe('[[Toplantı]]')
+  })
+
+  it('leaves modified keys alone', () => {
+    for (const modifiers of [{ shiftKey: true }, { altKey: true }, { metaKey: true }]) {
+      const { handled } = keyDown(stateWith([chip({ target: 'A' })], 2), 'ArrowLeft', modifiers)
+      expect(handled).toBe(false)
+    }
+  })
+
+  it('does nothing when the node before the caret is not a wiki link', () => {
+    const { handled } = keyDown(stateWith([schema.text('plain')], 6), 'Backspace')
+    expect(handled).toBe(false)
+  })
+
+  it('round-trips an alias: open, edit, and close back into one chip', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A', alias: 'B' })], 2), 'Backspace').state
+    expect(paragraphText(opened)).toBe('[[A|B]]')
+    // The caret lands at the end of the TARGET, not after the alias, so a typed
+    // `#` names a heading rather than becoming part of the alias.
+    expect(opened.selection.from).toBe(1 + 3)
+
+    const typed = opened.apply(opened.tr.insertText('#Kararlar', opened.selection.from))
+    expect(paragraphText(typed)).toBe('[[A#Kararlar|B]]')
+    expect(firstWikiLink(typed)).toBeNull()
+
+    // Move the caret out of the run: the plugin's appendTransaction closes it.
+    const closed = typed.apply(
+      typed.tr.setSelection(TextSelection.create(typed.doc, typed.doc.content.size - 1))
+    )
+    const link = firstWikiLink(closed)
+    expect(link?.attrs).toMatchObject({ target: 'A#Kararlar', alias: 'B' })
+    expect(paragraphText(closed)).toBe('￼')
+  })
+
+  it('keeps the caret inside the run from promoting it', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A' })], 2), 'Backspace').state
+    const typed = opened.apply(opened.tr.insertText('#H', opened.selection.from))
+
+    expect(isEditingWikiLinkText(typed)).toBe(true)
+    expect(firstWikiLink(typed)).toBeNull()
+    expect(paragraphText(typed)).toBe('[[A#H]]')
+  })
+
+  it('carries the chip marks out into the text and back in again', () => {
+    const opened = keyDown(
+      stateWith([chip({ target: 'A', bold: true, textColor: 'red' })], 2),
+      'Backspace'
+    ).state
+
+    const marks = opened.doc.resolve(3).marks()
+    expect(marks.map((mark) => mark.type.name).toSorted()).toEqual(['bold', 'textColor'])
+
+    const closed = opened.apply(
+      opened.tr.setSelection(TextSelection.create(opened.doc, opened.doc.content.size - 1))
+    )
+    expect(firstWikiLink(closed)?.attrs).toMatchObject({
+      target: 'A',
+      bold: true,
+      textColor: 'red'
+    })
+  })
+
+  it('leaves brackets the user deleted as prose instead of restoring the chip', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A' })], 2), 'Backspace').state
+    // Delete the leading `[[` — a deliberate "this is not a link any more".
+    const stripped = opened.apply(opened.tr.delete(1, 3))
+    const moved = stripped.apply(
+      stripped.tr.setSelection(TextSelection.create(stripped.doc, stripped.doc.content.size - 1))
+    )
+
+    expect(firstWikiLink(moved)).toBeNull()
+    expect(paragraphText(moved)).toBe('A]]')
+  })
+
+  it('dims both bracket pairs while the caret is inside the run', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A' })], 2), 'Backspace').state
+    const plugin = focusedPlugin()
+
+    const decorations = plugin.props.decorations!.call(plugin, opened)
+    // oxlint-disable-next-line typescript/no-explicit-any
+    const found = (decorations as any).find().map((d: any) => [d.from, d.to, d.type.attrs.class])
+
+    // `[[A]]` occupies 1..6, so the bracket pairs are 1..3 and 4..6.
+    expect(found).toEqual([
+      [1, 3, 'wiki-link-bracket'],
+      [4, 6, 'wiki-link-bracket']
+    ])
+  })
+
+  it('paints nothing in an editor nobody is typing in', () => {
+    // #given a note that merely opened. Promoting its wiki links replaces the
+    // whole document, and ProseMirror leaves the selection at the end of it —
+    // beside the chip, when the last thing in the note is a wiki link.
+    //
+    // Up to BlockNote 0.50 every document carried a trailing empty paragraph,
+    // so that position was beside nothing. 0.51 made the trailing block a
+    // widget rather than a node, and the note opened showing raw `[[…]]` over
+    // a hidden chip without the user touching it.
+    const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
+    const unfocused = createWikiLinkEditPlugin()
+    // oxlint-disable-next-line typescript/no-explicit-any
+    ;(unfocused.spec as any).view({ hasFocus: () => false })
+
+    // #then nothing is painted, and the same caret in a focused editor is
+    // still the editing affordance it has always been.
+    expect(unfocused.props.decorations!.call(unfocused, state)).toBeNull()
+    const focused = focusedPlugin()
+    expect(focused.props.decorations!.call(focused, state)).not.toBeNull()
+  })
+
+  it('paints nothing again once the view it was mounted on is gone', () => {
+    // #given a pane that unmounts. Nothing else clears the captured view, and
+    // a stale one would answer `hasFocus` for an editor that no longer exists.
+    const state = stateWith([schema.text('a '), chip({ target: 'A' })], 4)
+    const plugin = createWikiLinkEditPlugin()
+    // oxlint-disable-next-line typescript/no-explicit-any
+    const mounted = (plugin.spec as any).view({ hasFocus: () => true })
+    expect(plugin.props.decorations!.call(plugin, state)).not.toBeNull()
+
+    // #when
+    mounted.destroy()
+
+    // #then
+    expect(plugin.props.decorations!.call(plugin, state)).toBeNull()
+  })
+
+  it('asks ProseMirror to repaint on focus and on blur', () => {
+    // #given focus changes what `decorations` answers but changes no document
+    // state, so ProseMirror would never recompute on its own \u2014 the chip would
+    // stay hidden until the next keystroke.
+    const dispatched: Transaction[] = []
+    const plugin = createWikiLinkEditPlugin()
+    const tr = stateWith([chip({ target: 'A' })], 2).tr
+    const view = {
+      hasFocus: () => true,
+      state: { tr },
+      dispatch: (next: Transaction) => dispatched.push(next)
+    } as unknown as EditorView
+
+    // #when
+    const onFocus = plugin.props.handleDOMEvents!.focus!
+    const onBlur = plugin.props.handleDOMEvents!.blur!
+
+    // #then the event is not claimed \u2014 ProseMirror's own focus handling has to
+    // keep running \u2014 and an empty transaction asks for the repaint.
+    expect(onFocus.call(plugin, view, new Event('focus') as FocusEvent)).toBe(false)
+    expect(onBlur.call(plugin, view, new Event('blur') as FocusEvent)).toBe(false)
+    expect(dispatched).toEqual([tr, tr])
+  })
+
+  it('paints nothing once the caret leaves the run', () => {
+    const state = stateWith([schema.text('[[A]] tail')], 8)
+    const plugin = focusedPlugin()
+
+    expect(isEditingWikiLinkText(state)).toBe(false)
+    expect(plugin.props.decorations!.call(plugin, state)).toBeNull()
+  })
+
+  // The label a heading link carries is written when the link is, so editing one
+  // starts from `[[A#B|B]]` with the caret at the end of the TARGET — typing a
+  // new label there necessarily leaves the old one trailing behind it.
+  it('drops the stale label when a new one is typed in front of it', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A#B', alias: 'B' })], 2), 'Backspace').state
+    expect(paragraphText(opened)).toBe('[[A#B|B]]')
+
+    const typed = opened.apply(opened.tr.insertText('|Yeni', opened.selection.from))
+    expect(paragraphText(typed)).toBe('[[A#B|Yeni|B]]')
+
+    const closed = typed.apply(
+      typed.tr.setSelection(TextSelection.create(typed.doc, typed.doc.content.size - 1))
+    )
+    expect(firstWikiLink(closed)?.attrs).toMatchObject({ target: 'A#B', alias: 'Yeni' })
+  })
+})
+
+/**
+ * A chip reads as its markdown while the caret is parked beside it — either
+ * side, arrow key or mouse click, since this keys off the SELECTION and not off
+ * a keystroke.
+ *
+ * Every assertion here is about decorations, and that is the point: the document
+ * is untouched. Swapping the node for text on caret movement would push a Y.Doc
+ * update to every device and put the cursor move on the Yjs undo stack, so the
+ * next Cmd+Z would undo the caret instead of the paragraph the user deleted.
+ */
+describe('markdown shown beside the caret', () => {
+  // oxlint-disable-next-line typescript/no-explicit-any
+  function decorationsOf(state: EditorState): any[] {
+    const plugin = focusedPlugin()
+    const set = plugin.props.decorations!.call(plugin, state)
+    if (!set) return []
+    // oxlint-disable-next-line typescript/no-explicit-any
+    return (
+      (set as any)
+        .find()
+        // oxlint-disable-next-line typescript/no-explicit-any
+        .map((d: any) => ({
+          from: d.from,
+          to: d.to,
+          class: d.type.attrs?.class,
+          // `sourceText`, not `raw`: `raw` is ProseMirror's own widget flag.
+          raw: d.spec?.sourceText
+        }))
+    )
+  }
+
+  // `a ` is 1..3, the chip 3..4, ` b` 4..6.
+  function sentence(attrs: Record<string, unknown>, cursorAt: number): EditorState {
+    return stateWith([schema.text('a '), chip(attrs), schema.text(' b')], cursorAt)
+  }
+
+  it('shows the markdown when the caret sits on the right of the chip', () => {
+    const found = decorationsOf(sentence({ target: 'Toplantı' }, 4))
+
+    // The widget sorts ahead of the node decoration: it sits at the chip's
+    // start with `side: -1`, so the markdown renders where the chip was.
+    expect(found).toEqual([
+      { from: 3, to: 3, class: undefined, raw: '[[Toplantı]]' },
+      { from: 3, to: 4, class: 'wiki-link-hidden', raw: undefined }
+    ])
+  })
+
+  it('shows it on the left of the chip too — the old flow only worked from the right', () => {
+    const found = decorationsOf(sentence({ target: 'Toplantı' }, 3))
+
+    expect(found.map((d) => d.raw ?? d.class)).toEqual(['[[Toplantı]]', 'wiki-link-hidden'])
+  })
+
+  it('writes the alias out, exactly as the vault file holds it', () => {
+    const found = decorationsOf(
+      sentence({ target: 'Continent#North America', alias: 'the north' }, 4)
+    )
+
+    expect(found.find((d) => d.raw)?.raw).toBe('[[Continent#North America|the north]]')
+  })
+
+  it('paints nothing once the caret is a character away', () => {
+    expect(decorationsOf(sentence({ target: 'Toplantı' }, 2))).toEqual([])
+    expect(decorationsOf(sentence({ target: 'Toplantı' }, 5))).toEqual([])
+  })
+
+  it('paints nothing while text is selected — that is a selection, not a caret', () => {
+    const state = sentence({ target: 'Toplantı' }, 4)
+    const selected = state.apply(state.tr.setSelection(TextSelection.create(state.doc, 1, 4)))
+
+    expect(decorationsOf(selected)).toEqual([])
+  })
+
+  it('shows both when the caret sits between two chips', () => {
+    const state = stateWith([chip({ target: 'A' }), chip({ target: 'B' })], 2)
+    const raws = decorationsOf(state)
+      .map((d) => d.raw)
+      .filter(Boolean)
+
+    expect(raws).toEqual(['[[A]]', '[[B]]'])
+  })
+
+  /**
+   * The one caret position this must NOT paint: the one a menu pick just left
+   * behind. `replaceActiveRunWithWikiLink` writes no trailing space — a link
+   * picked inside a sentence must not add a character to it — so the caret ends
+   * up against the new chip, and painting there would show the user the raw
+   * `[[Toplantı]]` of the link they just made. The markdown belongs to the
+   * gesture of moving TO a link, which is why the paint returns the moment the
+   * caret is placed there rather than left there.
+   */
+  it('leaves the chip a chip in the instant the menu writes it', () => {
+    const opened = keyDown(stateWith([chip({ target: 'A' })], 2), 'Backspace').state
+    const view = viewOf(opened)
+
+    expect(
+      replaceActiveRunWithWikiLink({ _tiptapEditor: { view } } as never, { target: 'Toplantı' })
+    ).toBe(true)
+
+    // The caret really is beside it — without that this test would pass on the
+    // chip simply not being adjacent.
+    const caret = view.state.selection.from
+    expect(view.state.doc.resolve(caret).nodeBefore?.type.name).toBe('wikiLink')
+    expect(decorationsOf(view.state)).toEqual([])
+
+    // Move away and come back: now it is a caret movement like any other.
+    const away = view.state.apply(
+      view.state.tr.setSelection(TextSelection.create(view.state.doc, 0))
+    )
+    const back = away.apply(away.tr.setSelection(TextSelection.create(away.doc, caret)))
+
+    expect(decorationsOf(back).map((d) => d.raw ?? d.class)).toEqual([
+      '[[Toplantı]]',
+      'wiki-link-hidden'
+    ])
+  })
+})
+
+describe('openWikiLinkForSelection', () => {
+  function selectionState(text: string, from: number, to: number): EditorState {
+    const doc = schema.node('doc', null, [schema.node('paragraph', null, [schema.text(text)])])
+    const state = EditorState.create({ doc, plugins: [createWikiLinkEditPlugin()] })
+    return state.apply(state.tr.setSelection(TextSelection.create(state.doc, from, to)))
+  }
+
+  function editorOf(view: ReturnType<typeof viewOf>) {
+    return {
+      _tiptapEditor: {
+        view,
+        get state() {
+          return view.state
+        }
+      }
+    }
+  }
+
+  it('turns the selection into a link whose target is still unchosen', () => {
+    // `Kuzey Amerika` is characters 3..16 of the paragraph (doc offsets 4..17).
+    const view = viewOf(selectionState('bkz Kuzey Amerika ve', 5, 18))
+    expect(openWikiLinkForSelection(editorOf(view) as never)).toBe(true)
+
+    expect(paragraphText(view.state)).toBe('bkz [[|Kuzey Amerika]] ve')
+    // The caret is right after the `[[`, which is where the suggestion menu
+    // anchors its query window — the `|alias` sits behind it, invisible to the
+    // query and untouched by typing.
+    expect(view.state.selection.from).toBe(5 + 2)
+    expect(activeRunWikiLink(editorOf(view) as never)).toEqual({
+      target: '',
+      alias: 'Kuzey Amerika'
+    })
+  })
+
+  it('opens the menu only after the text and caret are in place', () => {
+    const view = viewOf(selectionState('bir cümle', 1, 4))
+    const seen: Array<{ text: string; caret: number }> = []
+
+    openWikiLinkForSelection(editorOf(view) as never, {
+      openMenu: () =>
+        seen.push({ text: paragraphText(view.state), caret: view.state.selection.from })
+    })
+
+    expect(seen).toEqual([{ text: '[[|bir]] cümle', caret: 3 }])
+  })
+
+  it('strips the characters that would break the grammar out of the label', () => {
+    const view = viewOf(selectionState('a [x|y] b', 3, 8))
+    expect(openWikiLinkForSelection(editorOf(view) as never)).toBe(true)
+    expect(paragraphText(view.state)).toBe('a [[|xy]] b')
+  })
+
+  it('declines a collapsed selection and one that is only syntax characters', () => {
+    const collapsed = viewOf(selectionState('metin', 2, 2))
+    expect(openWikiLinkForSelection(editorOf(collapsed) as never)).toBe(false)
+
+    const unusable = viewOf(selectionState('a || b', 3, 5))
+    expect(openWikiLinkForSelection(editorOf(unusable) as never)).toBe(false)
+    expect(paragraphText(unusable.state)).toBe('a || b')
+  })
+
+  it('carries the selection marks so the finished chip keeps them', () => {
+    const doc = schema.node('doc', null, [
+      schema.node('paragraph', null, [schema.text('kalın', [schema.marks.bold.create()])])
+    ])
+    const base = EditorState.create({ doc, plugins: [createWikiLinkEditPlugin()] })
+    const view = viewOf(base.apply(base.tr.setSelection(TextSelection.create(base.doc, 1, 6))))
+
+    expect(openWikiLinkForSelection(editorOf(view) as never)).toBe(true)
+    expect(
+      view.state.doc
+        .resolve(3)
+        .marks()
+        .map((mark) => mark.type.name)
+    ).toEqual(['bold'])
+  })
+
+  // Abandoning the picker must not leave `[[|Kuzey Amerika]]` behind: that text
+  // is what would be written to the vault file, verbatim.
+  it('unwraps back to the plain text when no target is ever picked', () => {
+    const view = viewOf(selectionState('bkz Kuzey Amerika ve', 5, 18))
+    openWikiLinkForSelection(editorOf(view) as never)
+
+    const closed = view.state.apply(
+      view.state.tr.setSelection(
+        TextSelection.create(view.state.doc, view.state.doc.content.size - 1)
+      )
+    )
+
+    expect(firstWikiLink(closed)).toBeNull()
+    expect(paragraphText(closed)).toBe('bkz Kuzey Amerika ve')
+  })
+})
+
+/**
+ * Following a link, driven through the two DOM handlers ProseMirror actually
+ * calls — and at the moment it calls them.
+ *
+ * The press is claimed at MOUSEDOWN, which is the whole fix. Anything that runs
+ * at mouseup is already too late: the caret has been parked beside the chip,
+ * the chip has been hidden and the raw `[[Target]]` painted in its place, and
+ * the user sits looking at markdown until the target note replaces the view.
+ * Preventing the default on the mousedown makes ProseMirror skip its own
+ * `handlers.mousedown` (`runCustomHandler` returns
+ * `handler(view, event) || event.defaultPrevented`), so the caret never moves
+ * and the paint never happens — which is also why `handleClickOn` cannot be
+ * where navigation lives: PM calls that from the `MouseDown` this suppresses.
+ */
+describe('pressing a chip follows the link', () => {
+  /**
+   * One editor's worth of plugin, view and events.
+   *
+   * `inside` is what the hit test finds under the pointer — the handler reads
+   * `posAtCoords`, never the coordinates themselves, so a test says WHAT was
+   * pressed rather than where. The chip sits at 3 in `a ␣chip␣ b`, the text at
+   * 1, and -1 is a pointer between nodes.
+   */
+  function harness(
+    options: {
+      attrs?: Record<string, unknown>
+      inside?: number
+      onNavigate?: boolean
+    } = {}
+  ) {
+    const { attrs = { target: 'Toplantı' }, inside = 3, onNavigate: wantsCallback = true } = options
+    const onNavigate = vi.fn()
+    const plugin = createWikiLinkEditPlugin(wantsCallback ? { onNavigate } : {})
+    const dispatched: Transaction[] = []
+    const view = {
+      state: stateWith([schema.text('a '), chip(attrs), schema.text(' b')], 1),
+      dispatch: (tr: Transaction) => dispatched.push(tr),
+      posAtCoords: () => (inside < 0 ? null : { pos: inside, inside }),
+      // Focused: this describes a user pressing a chip in the editor they are
+      // working in, and `decorations` paints only for a focused editor.
+      hasFocus: () => true
+    }
+    // oxlint-disable-next-line typescript/no-explicit-any
+    ;(plugin.spec as any).view(view)
+
+    function fire(type: 'mousedown' | 'mouseup' | 'auxclick', props: Partial<MouseEvent> = {}) {
+      let prevented = false
+      const event = {
+        button: 0,
+        shiftKey: false,
+        altKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        clientX: 100,
+        clientY: 40,
+        ...props,
+        preventDefault: () => {
+          prevented = true
+        }
+      }
+      const handled = plugin.props.handleDOMEvents![type]!.call(
+        plugin,
+        // oxlint-disable-next-line typescript/no-explicit-any
+        view as any,
+        // oxlint-disable-next-line typescript/no-explicit-any
+        event as any
+      )
+      return { handled, prevented }
+    }
+
+    return { fire, onNavigate, plugin, view, dispatched }
+  }
+
+  it('takes the mousedown, and follows the link when the button comes back up', () => {
+    const { fire, onNavigate } = harness()
+
+    const down = fire('mousedown')
+    // Preventing the default is what stops PM placing the caret, which is what
+    // stops the markdown paint. Nothing has navigated yet — the press could
+    // still turn into a drag.
+    expect(down).toEqual({ handled: true, prevented: true })
+    expect(onNavigate).not.toHaveBeenCalled()
+
+    const up = fire('mouseup')
+
+    expect(up).toEqual({ handled: true, prevented: true })
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı')
+  })
+
+  it('trims the target, exactly as the DOM handler it replaces did', () => {
+    const { fire, onNavigate } = harness({ attrs: { target: '  Launch Plan  ' } })
+
+    fire('mousedown')
+    fire('mouseup')
+
+    expect(onNavigate).toHaveBeenCalledWith('Launch Plan')
+  })
+
+  it('carries the heading through — the link points at the heading, not the note', () => {
+    const { fire, onNavigate } = harness({
+      attrs: { target: 'Continent#North America', alias: 'the north' }
+    })
+
+    fire('mousedown')
+    fire('mouseup')
+
+    expect(onNavigate).toHaveBeenCalledWith('Continent#North America')
+  })
+
+  // A modified press follows the link like a plain one: other tabs and panes
+  // are middle-click and the link menu. Excluding them (which the handler this
+  // replaces did) only made ⌘/⌥+click on a link do nothing at all.
+  const navigating: Array<[string, Partial<MouseEvent>]> = [
+    ['meta', { metaKey: true }],
+    ['ctrl', { ctrlKey: true }],
+    ['alt', { altKey: true }]
+  ]
+
+  it.each(navigating)('follows the link on a %s press too', (_label, eventProps) => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', eventProps).prevented).toBe(true)
+    fire('mouseup', eventProps)
+
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı')
+  })
+
+  // The one modifier that is left alone: shift extends a selection, and a
+  // selection that reaches across a link has to be able to start on it.
+  it('leaves a shift press to ProseMirror', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', { shiftKey: true })).toEqual({ handled: false, prevented: false })
+    expect(fire('mouseup', { shiftKey: true }).handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('leaves a right button press alone', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', { button: 2 })).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // Middle-click is "open in a new tab" everywhere else in the app (the sidebar
+  // trees), in the background like a browser. The press is claimed so PM does
+  // not move the caret onto the chip, which would paint its markdown.
+  it('opens the link in a background tab on a middle click', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mousedown', { button: 1 })).toEqual({ handled: true, prevented: true })
+    expect(fire('auxclick', { button: 1 })).toEqual({ handled: true, prevented: true })
+
+    expect(onNavigate).toHaveBeenCalledTimes(1)
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı', 'backgroundTab')
+  })
+
+  it('leaves a middle click beside a chip alone', () => {
+    const { fire, onNavigate } = harness({ inside: 1 })
+
+    expect(fire('mousedown', { button: 1 })).toEqual({ handled: false, prevented: false })
+    expect(fire('auxclick', { button: 1 }).handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['the text beside a chip', 1],
+    ['a point between nodes', -1]
+  ])('ignores a press on %s', (_label, inside) => {
+    const { fire, onNavigate } = harness({ inside })
+
+    expect(fire('mousedown')).toEqual({ handled: false, prevented: false })
+    expect(fire('mouseup').handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('does nothing on a chip with no target', () => {
+    const { fire, onNavigate } = harness({ attrs: { target: '   ' } })
+
+    expect(fire('mousedown')).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // Surfaces that mount the plugin only for its editing behaviour must keep
+  // ProseMirror's own mouse handling rather than swallowing the press — so this
+  // one must NOT prevent the default.
+  it('falls through when no navigation callback is configured', () => {
+    const { fire } = harness({ onNavigate: false })
+
+    expect(fire('mousedown')).toEqual({ handled: false, prevented: false })
+    expect(fire('mouseup').handled).toBe(false)
+  })
+
+  it('does not follow a press that turned into a drag', () => {
+    const { fire, onNavigate } = harness()
+
+    fire('mousedown', { clientX: 100, clientY: 40 })
+    const up = fire('mouseup', { clientX: 100, clientY: 60 })
+
+    expect(up).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  it('still follows a press that wobbled inside the slop ProseMirror allows', () => {
+    const { fire, onNavigate } = harness()
+
+    fire('mousedown', { clientX: 100, clientY: 40 })
+    fire('mouseup', { clientX: 104, clientY: 36 })
+
+    expect(onNavigate).toHaveBeenCalledWith('Toplantı')
+  })
+
+  it('does nothing on a mouseup with no press behind it', () => {
+    const { fire, onNavigate } = harness()
+
+    expect(fire('mouseup')).toEqual({ handled: false, prevented: false })
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  // The press is consumed by the NEXT mousedown as well as by its own mouseup,
+  // so a press abandoned outside the editor cannot navigate later.
+  it('forgets a press as soon as another one starts', () => {
+    const { fire, onNavigate } = harness()
+
+    fire('mousedown')
+    fire('mousedown', { shiftKey: true })
+
+    expect(fire('mouseup').handled).toBe(false)
+    expect(onNavigate).not.toHaveBeenCalled()
+  })
+
+  /**
+   * The flash, which is the whole reason this moved to mousedown.
+   *
+   * The handler dispatches nothing and moves no caret, so the state the paint
+   * is derived from is the state the press started in — and `decorations`
+   * paints nothing for it. The second half is what keeps that from being a
+   * vacuous assertion: park the caret where ProseMirror's own mousedown would
+   * have put it and the markdown appears immediately.
+   */
+  it('paints no markdown for a press on a chip', () => {
+    const { fire, plugin, view, dispatched } = harness()
+
+    fire('mousedown')
+    fire('mouseup')
+
+    expect(dispatched).toEqual([])
+    expect(plugin.props.decorations!.call(plugin, view.state)).toBeNull()
+
+    const parked = view.state.apply(
+      view.state.tr.setSelection(TextSelection.create(view.state.doc, 4))
+    )
+    // oxlint-disable-next-line typescript/no-explicit-any
+    const painted = plugin.props.decorations!.call(plugin, parked) as any
+    expect(painted?.find().map((d: any) => d.spec?.sourceText ?? d.type.attrs?.class)).toEqual([
+      '[[Toplantı]]',
+      'wiki-link-hidden'
+    ])
+  })
+})

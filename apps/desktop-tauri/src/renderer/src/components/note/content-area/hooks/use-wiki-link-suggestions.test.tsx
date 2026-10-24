@@ -1,0 +1,690 @@
+import { act, renderHook } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useWikiLinkSuggestions } from './use-wiki-link-suggestions'
+
+const mocks = vi.hoisted(() => ({
+  listNotes: vi.fn(),
+  getFile: vi.fn(),
+  getByPath: vi.fn(),
+  listCanvases: vi.fn(),
+  linksChanged: [] as Array<() => void>,
+  logger: {
+    error: vi.fn()
+  }
+}))
+
+vi.mock('@/services/notes-service', () => ({
+  notesService: {
+    list: (...args: unknown[]) => mocks.listNotes(...args),
+    getFile: (...args: unknown[]) => mocks.getFile(...args),
+    getByPath: (...args: unknown[]) => mocks.getByPath(...args)
+  },
+  onNoteLinksChanged: (callback: () => void) => {
+    mocks.linksChanged.push(callback)
+    return () => {}
+  }
+}))
+
+vi.mock('@/services/canvas-service', () => ({
+  canvasService: { list: (...args: unknown[]) => mocks.listCanvases(...args) }
+}))
+
+vi.mock('@/lib/logger', () => ({
+  createLogger: () => mocks.logger
+}))
+
+import { clearCanvasLookupCache } from '@/lib/canvas-lookup'
+
+describe('useWikiLinkSuggestions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.linksChanged.length = 0
+    clearCanvasLookupCache()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
+    mocks.listCanvases.mockResolvedValue({ canvases: [] })
+    mocks.listNotes.mockResolvedValue({
+      notes: [
+        {
+          id: 'note-1',
+          title: 'Daily Note',
+          path: 'notes/Daily Note.md',
+          modified: new Date('2026-05-09T00:00:00.000Z')
+        },
+        {
+          id: 'note-2',
+          title: 'Roadmap',
+          path: 'notes/Roadmap.md',
+          modified: '2026-05-08T00:00:00.000Z'
+        }
+      ]
+    })
+  })
+
+  it('carries a note’s own emoji onto its suggestion row', async () => {
+    mocks.listNotes.mockResolvedValue({
+      notes: [{ id: 'note-9', title: 'Genome', path: 'notes/Genome.md', emoji: '🧬' }]
+    })
+    const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+    let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      items = await result.current.getWikiLinkItems('Genome')
+    })
+    expect(items.find((item) => item.id === 'note-9')).toMatchObject({ type: 'note', emoji: '🧬' })
+  })
+
+  it('loads, caches, filters, aliases, and creates missing wiki-link suggestions', async () => {
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+    let exact = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      exact = await result.current.getWikiLinkItems('Daily Note | today')
+    })
+    expect(mocks.listNotes).toHaveBeenCalledWith({ limit: 500, sortBy: 'modified' })
+    // Both halves are settled — the target names a note exactly and a label was
+    // typed after the `|` — so the menu is the one row that commits the label
+    // rather than a note list with nothing left to choose from.
+    expect(exact).toEqual([
+      {
+        id: 'alias:Daily Note',
+        title: 'today',
+        target: 'Daily Note',
+        alias: 'today',
+        exists: true,
+        type: 'alias'
+      }
+    ])
+
+    let missing = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      missing = await result.current.getWikiLinkItems('Missing | alias')
+    })
+    expect(mocks.listNotes).toHaveBeenCalledTimes(1)
+    expect(missing).toEqual([
+      {
+        id: 'create:Missing',
+        title: 'Missing',
+        target: 'Missing',
+        alias: 'alias',
+        exists: false,
+        type: 'create'
+      }
+    ])
+
+    act(() => {
+      void result.current.handleWikiLinkSelect(missing[0])
+      void result.current.handleWikiLinkSelect({ ...missing[0], target: '' })
+    })
+    expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+      1,
+      [{ type: 'wikiLink', props: { target: 'Missing', alias: 'alias' } }],
+      { updateSelection: true }
+    )
+    expect(editor.insertInlineContent).toHaveBeenNthCalledWith(2, [' '], { updateSelection: true })
+    expect(editor.insertInlineContent).toHaveBeenCalledTimes(2)
+  })
+
+  it('embeds audio wiki-link suggestions as playable file blocks', async () => {
+    mocks.listNotes.mockResolvedValueOnce({
+      notes: [
+        {
+          id: 'voice-1',
+          title: 'Voice memo',
+          modified: '2026-05-10T11:00:00.000Z',
+          fileType: 'audio',
+          mimeType: 'audio/wav',
+          fileSize: 4096
+        }
+      ]
+    })
+    mocks.getFile.mockResolvedValueOnce({
+      id: 'voice-1',
+      absolutePath: '/Users/kaan/vault/notes/Voice memo.wav',
+      title: 'Voice memo',
+      fileType: 'audio',
+      mimeType: 'audio/wav',
+      fileSize: 4096
+    })
+
+    const currentBlock = { id: 'block-1', type: 'paragraph', content: [] }
+    const editor = {
+      insertInlineContent: vi.fn(),
+      getTextCursorPosition: vi.fn(() => ({ block: currentBlock })),
+      getBlock: vi.fn(() => currentBlock),
+      updateBlock: vi.fn(),
+      insertBlocks: vi.fn()
+    }
+    const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+    let suggestions = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      suggestions = await result.current.getWikiLinkItems('Voice')
+    })
+
+    expect(suggestions[0]).toMatchObject({
+      id: 'voice-1',
+      title: 'Voice memo',
+      target: 'Voice memo',
+      fileType: 'audio',
+      mimeType: 'audio/wav',
+      fileSize: 4096
+    })
+
+    await act(async () => {
+      await result.current.handleWikiLinkSelect({ ...suggestions[0], insertMode: 'embed' })
+    })
+
+    expect(mocks.getFile).toHaveBeenCalledWith('voice-1')
+    expect(editor.updateBlock).toHaveBeenCalledWith(currentBlock, {
+      type: 'file',
+      props: {
+        url: 'memry-file://local/Users/kaan/vault/notes/Voice%20memo.wav',
+        name: 'Voice memo',
+        size: 4096,
+        mimeType: 'audio/wav'
+      }
+    })
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+    expect(editor.insertBlocks).not.toHaveBeenCalled()
+  })
+
+  describe('# heading mode', () => {
+    const body = [
+      '# Daily Note',
+      '',
+      '## **Kararlar** alındı',
+      '',
+      '```md',
+      '## not a heading',
+      '```',
+      '',
+      '### Sonraki adımlar'
+    ].join('\n')
+
+    it('lists the target note headings once the note half matches exactly', async () => {
+      mocks.getByPath.mockResolvedValue({ content: body })
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note#')
+      })
+
+      // By path, so the id lookup's `note_opened` telemetry never fires.
+      expect(mocks.getByPath).toHaveBeenCalledWith('notes/Daily Note.md')
+      expect(items).toEqual([
+        {
+          id: 'heading:note-1:0',
+          title: 'Daily Note',
+          target: 'Daily Note#Daily Note',
+          alias: '',
+          exists: true,
+          type: 'heading',
+          headingLevel: 1
+        },
+        {
+          id: 'heading:note-1:1',
+          title: 'Kararlar alındı',
+          target: 'Daily Note#Kararlar alındı',
+          alias: '',
+          exists: true,
+          type: 'heading',
+          headingLevel: 2
+        },
+        {
+          id: 'heading:note-1:2',
+          title: 'Sonraki adımlar',
+          target: 'Daily Note#Sonraki adımlar',
+          alias: '',
+          exists: true,
+          type: 'heading',
+          headingLevel: 3
+        }
+      ])
+    })
+
+    // #1563 D2. The chip renders `alias || target`, and the alias is the only
+    // channel a display name survives a markdown round trip in — so the label is
+    // decided here, when the link is written, and never derived at render time
+    // (where `[[Sprint #4]]`, a real title, is indistinguishable from a split).
+    it('labels a picked heading with the heading text instead of `Note#Heading`', async () => {
+      mocks.getByPath.mockResolvedValue({ content: body })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note#Sonraki')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [
+          {
+            type: 'wikiLink',
+            props: { target: 'Daily Note#Sonraki adımlar', alias: 'Sonraki adımlar' }
+          }
+        ],
+        { updateSelection: true }
+      )
+    })
+
+    it('does not label a note whose own title carries a `#`', async () => {
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [{ type: 'wikiLink', props: { target: 'Daily Note', alias: '' } }],
+        { updateSelection: true }
+      )
+    })
+
+    it('filters headings, keeps the alias, and caches the body for 5 seconds', async () => {
+      mocks.getByPath.mockResolvedValue({ content: body })
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        await result.current.getWikiLinkItems('Daily Note#')
+        items = await result.current.getWikiLinkItems('Daily Note#Kararlar|dün')
+      })
+
+      expect(mocks.getByPath).toHaveBeenCalledTimes(1)
+      expect(items).toEqual([
+        {
+          id: 'heading:note-1:0',
+          title: 'Kararlar alındı',
+          target: 'Daily Note#Kararlar alındı',
+          alias: 'dün',
+          exists: true,
+          type: 'heading',
+          headingLevel: 2
+        }
+      ])
+    })
+
+    it('keeps listing notes while the note half is only a prefix', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily#')
+      })
+
+      expect(mocks.getByPath).not.toHaveBeenCalled()
+      expect(items.map((item) => item.type)).toEqual(['create'])
+      // The row names the note that would actually be created, and the trailing
+      // `#` — a half-typed separator, not a heading — is dropped rather than
+      // written into the link as `[[Daily#]]`.
+      expect(items[0]).toMatchObject({ title: 'Daily', target: 'Daily' })
+    })
+
+    it('keeps a real heading on the create row while naming only the note', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily#Standup')
+      })
+
+      expect(items.map((item) => item.type)).toEqual(['create'])
+      expect(items[0]).toMatchObject({ title: 'Daily', target: 'Daily#Standup' })
+    })
+
+    it('does not offer headings for a block reference', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      await act(async () => {
+        await result.current.getWikiLinkItems('Daily Note#^abc123')
+      })
+
+      expect(mocks.getByPath).not.toHaveBeenCalled()
+    })
+
+    it('says so when the note has no headings, and when none match', async () => {
+      mocks.getByPath.mockResolvedValue({ content: 'Just a paragraph.' })
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let empty = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        empty = await result.current.getWikiLinkItems('Daily Note#')
+      })
+      expect(empty).toEqual([
+        {
+          id: 'headings:note-1',
+          title: 'Daily Note',
+          target: '',
+          alias: '',
+          exists: true,
+          type: 'headingEmpty',
+          filtered: false
+        }
+      ])
+
+      vi.setSystemTime(new Date('2026-05-10T12:00:06.000Z'))
+      mocks.getByPath.mockResolvedValue({ content: body })
+
+      let noMatch = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        noMatch = await result.current.getWikiLinkItems('Daily Note#zzz')
+      })
+      expect(noMatch).toEqual([
+        {
+          id: 'headings:note-1',
+          title: 'Daily Note',
+          target: '',
+          alias: '',
+          exists: true,
+          type: 'headingEmpty',
+          filtered: true
+        }
+      ])
+    })
+
+    it('logs and shows the empty row when the body cannot be read', async () => {
+      mocks.getByPath.mockRejectedValueOnce(new Error('read failed'))
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note#')
+      })
+
+      expect(mocks.logger.error).toHaveBeenCalledWith(
+        'Failed to load wiki link heading suggestions',
+        expect.any(Error)
+      )
+      expect(items).toEqual([expect.objectContaining({ type: 'headingEmpty' })])
+    })
+
+    it('inserts one wiki link node carrying the note#heading target', async () => {
+      mocks.getByPath.mockResolvedValue({ content: body })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Daily Note#Kararlar|dün')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [{ type: 'wikiLink', props: { target: 'Daily Note#Kararlar alındı', alias: 'dün' } }],
+        { updateSelection: true }
+      )
+    })
+  })
+
+  describe('canvases (#1983)', () => {
+    it('offers canvases below notes and drops the create row on an exact canvas', async () => {
+      mocks.listCanvases.mockResolvedValue({
+        canvases: [
+          { id: 'canvas-1', title: 'Roadmap Board' },
+          { id: 'canvas-2', title: null }
+        ]
+      })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Roadmap')
+      })
+
+      // The note keeps the top of the list; the canvas is a row of its own, and
+      // the untitled canvas has no target so it is never offered.
+      expect(items.map((item) => [item.type, item.target])).toEqual([
+        ['note', 'Roadmap'],
+        ['canvas', 'Roadmap Board']
+      ])
+
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Roadmap Board')
+      })
+      expect(items.map((item) => item.type)).toEqual(['canvas'])
+    })
+
+    it('commits an alias against an exact canvas name', async () => {
+      mocks.listCanvases.mockResolvedValue({
+        canvases: [{ id: 'canvas-1', title: 'Sprint Board' }]
+      })
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Sprint Board | the board')
+      })
+
+      expect(items).toEqual([
+        expect.objectContaining({ type: 'alias', target: 'Sprint Board', alias: 'the board' })
+      ])
+    })
+  })
+
+  it('writes the path for notes that share a title, and shows their folder (#2562)', async () => {
+    mocks.listNotes.mockResolvedValue({
+      notes: [
+        { id: 'plan-work', title: 'Plan', path: 'Work/Plan.md' },
+        { id: 'plan-root', title: 'plan', path: 'plan.md' },
+        { id: 'roadmap', title: 'Roadmap', path: 'notes/Roadmap.md' }
+      ]
+    })
+    mocks.getByPath.mockResolvedValue({ content: '# Goals\n' })
+    const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+    let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      items = await result.current.getWikiLinkItems('')
+    })
+    expect(
+      items.map((item) => ({
+        id: item.id,
+        target: item.target,
+        folder: 'folder' in item ? item.folder : undefined
+      }))
+    ).toEqual([
+      { id: 'plan-work', target: 'Work/Plan', folder: 'Work' },
+      { id: 'plan-root', target: '/plan', folder: '/' },
+      { id: 'roadmap', target: 'Roadmap', folder: undefined }
+    ])
+
+    await act(async () => {
+      items = await result.current.getWikiLinkItems('Work/Plan#Go')
+    })
+    expect(mocks.getByPath).toHaveBeenCalledWith('Work/Plan.md')
+    expect(items.map((item) => item.target)).toEqual(['Work/Plan#Goals'])
+  })
+
+  it('refreshes stale cache and falls back to create suggestions on list failures', async () => {
+    const editor = { insertInlineContent: vi.fn() }
+    const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+    await act(async () => {
+      await result.current.getWikiLinkItems('')
+    })
+    vi.setSystemTime(new Date('2026-05-10T12:00:06.000Z'))
+    mocks.listNotes.mockRejectedValueOnce(new Error('notes failed'))
+
+    let suggestions = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+    await act(async () => {
+      suggestions = await result.current.getWikiLinkItems('Fresh')
+    })
+
+    expect(mocks.listNotes).toHaveBeenCalledTimes(2)
+    expect(mocks.logger.error).toHaveBeenCalledWith(
+      'Failed to load wiki link suggestions',
+      expect.any(Error)
+    )
+    expect(suggestions).toEqual([
+      {
+        id: 'create:Fresh',
+        title: 'Fresh',
+        target: 'Fresh',
+        alias: '',
+        exists: false,
+        type: 'create'
+      }
+    ])
+  })
+
+  describe('other names (#2580)', () => {
+    beforeEach(() => {
+      mocks.listNotes.mockResolvedValue({
+        notes: [
+          {
+            id: 'note-ai',
+            title: 'Artificial Intelligence',
+            path: 'Artificial Intelligence.md',
+            aliases: ['AI', 'Yapay Zeka']
+          },
+          { id: 'note-ail', title: 'Ailments', path: 'Ailments.md', aliases: [] },
+          {
+            id: 'note-ml-a',
+            title: 'Machine learning',
+            path: 'A/Machine learning.md',
+            aliases: ['ML']
+          },
+          { id: 'note-ml-b', title: 'Metric list', path: 'B/Metric list.md', aliases: ['ML'] }
+        ]
+      })
+    })
+
+    it('lists a name match as one row per note and offers no create row on an exact name', async () => {
+      const { result } = renderHook(() =>
+        useWikiLinkSuggestions({ insertInlineContent: vi.fn() }, vi.fn())
+      )
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('ai')
+      })
+
+      expect(
+        items.map((item) => ({
+          id: item.id,
+          type: item.type,
+          title: item.title,
+          target: item.target,
+          alias: item.alias,
+          noteTitle: 'noteTitle' in item ? item.noteTitle : undefined
+        }))
+      ).toEqual([
+        {
+          id: 'note-ai',
+          type: 'noteName',
+          title: 'AI',
+          target: 'Artificial Intelligence',
+          alias: 'AI',
+          noteTitle: 'Artificial Intelligence'
+        },
+        {
+          id: 'note-ail',
+          type: 'note',
+          title: 'Ailments',
+          target: 'Ailments',
+          alias: '',
+          noteTitle: undefined
+        },
+        {
+          id: 'note-ml-a',
+          type: 'note',
+          title: 'Machine learning',
+          target: 'Machine learning',
+          alias: '',
+          noteTitle: undefined
+        }
+      ])
+    })
+
+    it('shows the folder when two notes share a name', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('ML')
+      })
+
+      expect(
+        items.map((item) => ({
+          id: item.id,
+          type: item.type,
+          folder: 'folder' in item ? item.folder : undefined
+        }))
+      ).toEqual([
+        { id: 'note-ml-a', type: 'noteName', folder: 'A' },
+        { id: 'note-ml-b', type: 'noteName', folder: 'B' }
+      ])
+    })
+
+    it('offers to add an unmatched query as a name, and hands the name over when picked', async () => {
+      const onAddName = vi.fn()
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor, onAddName))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Deep learning')
+      })
+      const addName = items.find((item) => item.type === 'addName')
+
+      expect(items.slice(-2).map(({ type, title }) => ({ type, title }))).toEqual([
+        { type: 'create', title: 'Deep learning' },
+        { type: 'addName', title: 'Deep learning' }
+      ])
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(addName!)
+      })
+      expect(onAddName).toHaveBeenCalledWith('Deep learning')
+      expect(editor.insertInlineContent).not.toHaveBeenCalled()
+    })
+
+    it('writes [[Title|name]] when a name row is picked', async () => {
+      const editor = { insertInlineContent: vi.fn() }
+      const { result } = renderHook(() => useWikiLinkSuggestions(editor))
+
+      let items = [] as Awaited<ReturnType<typeof result.current.getWikiLinkItems>>
+      await act(async () => {
+        items = await result.current.getWikiLinkItems('Yapay')
+      })
+      await act(async () => {
+        await result.current.handleWikiLinkSelect(items[0])
+      })
+
+      expect(editor.insertInlineContent).toHaveBeenNthCalledWith(
+        1,
+        [{ type: 'wikiLink', props: { target: 'Artificial Intelligence', alias: 'Yapay Zeka' } }],
+        { updateSelection: true }
+      )
+    })
+
+    it('reloads the note list when links change', async () => {
+      const { result } = renderHook(() => useWikiLinkSuggestions({ insertInlineContent: vi.fn() }))
+      await act(async () => {
+        await result.current.getWikiLinkItems('')
+      })
+      mocks.linksChanged.forEach((callback) => callback())
+      await act(async () => {
+        await result.current.getWikiLinkItems('')
+      })
+
+      expect(mocks.listNotes).toHaveBeenCalledTimes(2)
+    })
+  })
+})

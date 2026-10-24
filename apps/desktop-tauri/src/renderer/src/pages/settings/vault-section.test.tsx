@@ -1,0 +1,164 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { SelectVaultResponse } from '../../../../preload/index.d'
+import { getVaultSwitchState, resetVaultSwitchState } from '@/lib/vault-switch-state'
+
+const mocks = vi.hoisted(() => ({
+  accountVaults: [
+    {
+      vaultUuid: 'uuid-active',
+      name: 'Active',
+      itemCount: 3,
+      localPath: '/vaults/Active',
+      createdAt: null
+    },
+    { vaultUuid: 'uuid-old', name: 'Old', itemCount: 9, localPath: null, createdAt: null }
+  ],
+  refresh: vi.fn()
+}))
+
+vi.mock('@memry/i18n/renderer', () => ({
+  useT: () => ({
+    t: (key: string, vars?: Record<string, string | number | undefined>) =>
+      vars?.name ? `${key}:${vars.name}` : key
+  })
+}))
+vi.mock('@/hooks/use-storage-usage', () => ({
+  useStorageUsage: () => ({ data: null, loading: false, refresh: vi.fn() })
+}))
+vi.mock('@/hooks/use-account-vaults', () => ({
+  useAccountVaults: () => ({ accountVaults: mocks.accountVaults, refresh: mocks.refresh })
+}))
+
+// The activity log has its own tests; it needs a query client this suite does not build.
+vi.mock('@/components/settings/vault-activity', () => ({
+  VaultActivitySettings: () => null
+}))
+
+import { VaultSettings } from './vault-section'
+
+describe('VaultSettings account vaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    resetVaultSwitchState()
+    mocks.accountVaults = [
+      {
+        vaultUuid: 'uuid-active',
+        name: 'Active',
+        itemCount: 3,
+        localPath: '/vaults/Active',
+        createdAt: null
+      },
+      { vaultUuid: 'uuid-old', name: 'Old', itemCount: 9, localPath: null, createdAt: null }
+    ]
+    window.api.vault.getStatus = vi.fn().mockResolvedValue({ path: '/vaults/Active' })
+    window.api.vault.getAll = vi.fn().mockResolvedValue({
+      vaults: [{ path: '/vaults/Active', vaultUuid: 'uuid-active' }],
+      currentVault: '/vaults/Active'
+    })
+    window.api.vault.switch = vi.fn().mockResolvedValue({ success: true, vault: null })
+    const api = window.api as typeof window.api & {
+      syncOps?: { getLargeNotes?: ReturnType<typeof vi.fn> }
+    }
+    api.syncOps = api.syncOps ?? {}
+    api.syncOps.getLargeNotes = vi.fn().mockResolvedValue({ maxBytes: 3_826_189, notes: [] })
+  })
+
+  it('lists every vault in the account', async () => {
+    render(<VaultSettings />)
+    expect(await screen.findByText('Active')).toBeInTheDocument()
+    expect(screen.getByText('Old')).toBeInTheDocument()
+  })
+
+  it('deletes a non-active vault after confirmation', async () => {
+    render(<VaultSettings />)
+    fireEvent.click(await screen.findByLabelText('Delete Old from account'))
+    fireEvent.click(screen.getByText('vault.accountVaults.deleteConfirm'))
+    await waitFor(() => expect(window.api.vault.deleteFromAccount).toHaveBeenCalledWith('uuid-old'))
+  })
+
+  it('disables delete for the active vault', async () => {
+    render(<VaultSettings />)
+    await screen.findByText('Active')
+    expect(screen.getByLabelText('Delete Active from account')).toBeDisabled()
+  })
+
+  it('does not delete when cancelled', async () => {
+    render(<VaultSettings />)
+    fireEvent.click(await screen.findByLabelText('Delete Old from account'))
+    fireEvent.click(screen.getByText('button.cancel'))
+    expect(window.api.vault.deleteFromAccount).not.toHaveBeenCalled()
+  })
+
+  it('loads the account vault list on mount', async () => {
+    render(<VaultSettings />)
+    await waitFor(() => expect(mocks.refresh).toHaveBeenCalled())
+  })
+
+  it('stays quiet when the open vault is in the account', async () => {
+    render(<VaultSettings />)
+    await screen.findByText('Active')
+    expect(screen.queryByText('vault.accountVaults.unsyncedTitle')).not.toBeInTheDocument()
+  })
+
+  it('warns and offers to open the account vault when the open vault is not synced', async () => {
+    mocks.accountVaults = [
+      {
+        vaultUuid: 'uuid-account',
+        name: 'Memry Note Vault',
+        itemCount: 798,
+        localPath: '/vaults/Memry Note Vault',
+        createdAt: null
+      }
+    ]
+    window.api.vault.getAll = vi.fn().mockResolvedValue({
+      vaults: [{ path: '/vaults/Unregistered', vaultUuid: 'uuid-unregistered' }],
+      currentVault: '/vaults/Unregistered'
+    })
+    let finishSwitch: (result: SelectVaultResponse) => void = () => {}
+    window.api.vault.switch = vi.fn(
+      () =>
+        new Promise<SelectVaultResponse>((resolve) => {
+          finishSwitch = resolve
+        })
+    )
+
+    render(<VaultSettings />)
+
+    expect(await screen.findByText('vault.accountVaults.unsyncedTitle')).toBeInTheDocument()
+    expect(
+      screen.getByText('vault.accountVaults.unsyncedBodyOne:Memry Note Vault')
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByText('vault.accountVaults.unsyncedOpen'))
+    await waitFor(() =>
+      expect(window.api.vault.switch).toHaveBeenCalledWith('/vaults/Memry Note Vault')
+    )
+    // An in-app switch, so the app keeps its shell up and fences the leaving
+    // vault's reads while main swaps vaults.
+    expect(getVaultSwitchState().pending?.path).toBe('/vaults/Memry Note Vault')
+
+    finishSwitch({ success: true, vault: null })
+    await waitFor(() => expect(getVaultSwitchState().pending).toBeNull())
+  })
+
+  it('offers download when the account vault is not on this device', async () => {
+    mocks.accountVaults = [
+      {
+        vaultUuid: 'uuid-account',
+        name: 'Cloud',
+        itemCount: 12,
+        localPath: null,
+        createdAt: null
+      }
+    ]
+    window.api.vault.getAll = vi.fn().mockResolvedValue({
+      vaults: [{ path: '/vaults/Unregistered', vaultUuid: 'uuid-unregistered' }],
+      currentVault: '/vaults/Unregistered'
+    })
+
+    render(<VaultSettings />)
+
+    expect(await screen.findByText('vault.accountVaults.unsyncedDownload')).toBeInTheDocument()
+    expect(screen.queryByText('vault.accountVaults.unsyncedOpen')).not.toBeInTheDocument()
+  })
+})

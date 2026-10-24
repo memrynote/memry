@@ -9,6 +9,10 @@ const docsPathPattern = /^apps\/docs\//
 const docsRelevantPatterns = [
   /^apps\/desktop\/(?:src|config|scripts)\//,
   /^apps\/desktop\/package\.json$/,
+  /^apps\/desktop-tauri\/(?:src|scripts)\//,
+  /^apps\/desktop-tauri\/src-tauri\/src\//,
+  /^apps\/desktop-tauri\/package\.json$/,
+  /^crates\/memry-desktop\/src\//,
   /^apps\/sync-server\/(?:src|schema)\//,
   /^apps\/sync-server\/(?:package\.json|wrangler\.toml)$/,
   /^packages\/(?:contracts|db-schema|rpc|shared|sync-client|sync-core)\//
@@ -16,6 +20,7 @@ const docsRelevantPatterns = [
 
 const ignoredRelevantPatterns = [
   /^apps\/desktop\/tests\//,
+  /^apps\/desktop-tauri\/e2e\//,
   /(?:^|\/)(?:__fixtures__|fixtures|mocks)\//,
   /(?:\.test|\.spec)\.[cm]?[jt]sx?$/,
   // Native/build shell tooling under scripts/ has no user-facing docs to update.

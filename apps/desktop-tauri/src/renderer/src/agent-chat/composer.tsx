@@ -1,0 +1,762 @@
+import { type Ref, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react'
+
+import type {
+  AgentAccessMode,
+  AgentBackendModelList,
+  AgentCliBackendId,
+  AgentBackendOptions,
+  AgentLocalProviderSettings,
+  AttachmentInput,
+  BackendStatusesResponse,
+  CodexReasoningEffort,
+  ClaudeEffort,
+  LocalReasoningEffort
+} from '@memry/contracts/ipc-agent'
+import { DEFAULT_CLAUDE_EFFORT, effectiveTurnPermissions } from '@memry/contracts/ipc-agent'
+import { useT } from '@memry/i18n/renderer'
+
+import { Button } from '@/components/ui/button'
+import { useActiveTab } from '@/contexts/tabs'
+import { useSettingsModal } from '@/contexts/settings-modal-context'
+import { ArrowUp, AtSign, Square } from '@/lib/icons'
+import { ConnectedToolsTray } from './connected-tools-tray'
+import {
+  ComposerSettingsMenu,
+  claudeReasoningOptions,
+  codexReasoningOptions,
+  localReasoningOptions,
+  type ReasoningOption,
+  type ReasoningValue
+} from './composer-settings-menu'
+import { VoiceDictationButton } from './voice-dictation-button'
+import { AttachFileButton, ComposerFileChips, useComposerFiles } from './composer-files'
+import { appendMemryFileBlocks } from './memry-file-block'
+import {
+  AgentPromptEditor,
+  type AgentPromptEditorHandle,
+  type AgentPromptValue
+} from './agent-prompt-editor'
+import { useAgentOptional } from './agent-context'
+import { isConversationBusy } from './agent-context.reducer'
+import type { MentionAttachment } from './mention-icons'
+import { QueuedTurns } from './queued-turns'
+import { RefPicker } from './ref-picker'
+import {
+  type AgentProvider,
+  persistAgentModelPreference,
+  readAgentModelPreference
+} from './agent-model-preference'
+import {
+  DEFAULT_SELECTED_MODELS,
+  EMPTY_MODEL_OPTIONS,
+  MODEL_LABEL_FALLBACKS,
+  catalogFor,
+  defaultModelForProvider,
+  isCliProvider
+} from './composer-models'
+
+export interface ComposerHandle {
+  /** Sends `text` as a new turn with the current settings, leaving the draft alone. */
+  send: (text: string) => Promise<void>
+}
+
+interface ComposerProps {
+  conversationId: string | null
+  sourceWindowId: string | null
+  ref?: Ref<ComposerHandle>
+}
+
+const DEFAULT_CODEX_REASONING: CodexReasoningEffort = 'medium'
+const DEFAULT_ACCESS_MODE: AgentAccessMode = 'vault_only'
+
+/**
+ * Antigravity model ids already name their reasoning tier, so the composer
+ * shows no separate effort control for that backend. The Ollama preset ignores
+ * the built-in backend's depth, so it gets none either.
+ */
+function hasEffortControl(
+  provider: AgentProvider,
+  localSettings: AgentLocalProviderSettings | null
+): boolean {
+  if (provider === 'local_openai_compatible') {
+    return localSettings !== null && localSettings.preset !== 'ollama'
+  }
+  return provider === 'claude_cli' || provider === 'codex_cli'
+}
+
+/**
+ * Which CLI backends the picker may offer, and whether the runtime itself is
+ * down.
+ *
+ * Every backend is read through `?.` rather than assumed present: the map is
+ * typed as complete, but a status payload shaped by a different build would
+ * otherwise take the whole composer down on a missing key. An absent status is
+ * read as "not yet known" (permissive) so rows do not flicker during bootstrap.
+ */
+function cliAvailability(statuses: BackendStatusesResponse | null | undefined): {
+  claude: boolean
+  codex: boolean
+  antigravity: boolean
+  runtimeUnavailable: boolean
+} {
+  const backends: AgentCliBackendId[] = ['claude_cli', 'codex_cli', 'antigravity_cli']
+  return {
+    claude: statuses?.claude_cli?.available !== false,
+    codex: statuses?.codex_cli?.available !== false,
+    antigravity: statuses?.antigravity_cli?.available !== false,
+    runtimeUnavailable: backends.some(
+      (backend) => statuses?.[backend]?.reason === 'agent_unavailable'
+    )
+  }
+}
+
+function dedupeAttachments(attachments: AttachmentInput[]): AttachmentInput[] {
+  const seen = new Set<string>()
+  return attachments.filter((attachment) => {
+    const key = `${attachment.kind}:${attachment.ref_id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+export function Composer({
+  conversationId,
+  sourceWindowId,
+  ref
+}: ComposerProps): React.JSX.Element {
+  const { t } = useT('common')
+  const agent = useAgentOptional()
+  const activeTab = useActiveTab()
+  const { open: openSettings } = useSettingsModal()
+  const promptEditorRef = useRef<AgentPromptEditorHandle>(null)
+  const composerBoxRef = useRef<HTMLDivElement>(null)
+  const [promptValue, setPromptValue] = useState<AgentPromptValue>({
+    text: '',
+    attachments: [],
+    formatRanges: []
+  })
+  const [currentNoteAttachment, setCurrentNoteAttachment] = useState<AttachmentInput | null>(null)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerItems, setPickerItems] = useState<MentionAttachment[]>([])
+  const [selectedPickerIndex, setSelectedPickerIndex] = useState(-1)
+  const [submitting, setSubmitting] = useState(false)
+  const [storedPreference] = useState(readAgentModelPreference)
+  const [selectedProvider, setSelectedProvider] = useState<AgentProvider>(
+    storedPreference?.provider ?? 'claude_cli'
+  )
+  const [accessMode, setAccessMode] = useState<AgentAccessMode>(DEFAULT_ACCESS_MODE)
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false)
+  const [includeCurrentNote, setIncludeCurrentNote] = useState(true)
+  const [dictationBusy, setDictationBusy] = useState(false)
+  const promptFiles = useComposerFiles(submitting || !agent)
+  const [selectedModels, setSelectedModels] = useState<Record<AgentCliBackendId, string | null>>({
+    ...DEFAULT_SELECTED_MODELS,
+    ...storedPreference?.models
+  })
+  const [localModel, setLocalModel] = useState<string | null>(storedPreference?.localModel ?? null)
+  const [modelOptions, setModelOptions] =
+    useState<Record<AgentCliBackendId, AgentBackendModelList | null>>(EMPTY_MODEL_OPTIONS)
+  const [localSettings, setLocalSettings] = useState<AgentLocalProviderSettings | null>(null)
+  const [localModels, setLocalModels] = useState<string[] | null>(null)
+  const [claudeReasoning, setClaudeReasoning] = useState<ClaudeEffort>(
+    storedPreference?.efforts?.claude_cli ?? DEFAULT_CLAUDE_EFFORT
+  )
+  const [codexReasoning, setCodexReasoning] = useState<CodexReasoningEffort>(
+    storedPreference?.efforts?.codex_cli ?? DEFAULT_CODEX_REASONING
+  )
+  const [localReasoning, setLocalReasoning] = useState<LocalReasoningEffort>(
+    storedPreference?.efforts?.local_openai_compatible ?? 'default'
+  )
+
+  useEffect(() => {
+    let cancelled = false
+    void window.api.agent
+      .getPreferences()
+      .then((preferences) => {
+        if (cancelled) return
+        setAccessMode(preferences.accessMode)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (activeTab?.type !== 'note' || !activeTab.entityId) return
+    const label = activeTab.title || t('agentChat.composer.currentNote')
+    // oxlint-disable-next-line react/set-state-in-effect -- seeds the removable current-note chip from the active tab
+    setCurrentNoteAttachment({
+      kind: 'current_note',
+      ref_id: '__current__',
+      label
+    })
+  }, [activeTab?.entityId, activeTab?.title, activeTab?.type, t])
+
+  const conversations = agent?.state.conversations
+  const activeConversation = conversationId ? conversations?.[conversationId] : null
+  const [syncedConversation, setSyncedConversation] = useState<{
+    conversations: typeof conversations
+    conversationId: typeof conversationId
+  } | null>(null)
+  if (
+    syncedConversation?.conversations !== conversations ||
+    syncedConversation?.conversationId !== conversationId
+  ) {
+    setSyncedConversation({ conversations, conversationId })
+    if (activeConversation) {
+      setSelectedProvider(activeConversation.backend)
+      if (isCliProvider(activeConversation.backend)) {
+        setSelectedModels((current) => ({
+          ...current,
+          [activeConversation.backend]: activeConversation.backendModel
+        }))
+      } else if (activeConversation.backendModel) {
+        setLocalModel(activeConversation.backendModel)
+      }
+    }
+  }
+
+  useEffect(() => {
+    const focusTimer = window.setTimeout(() => promptEditorRef.current?.focus(), 0)
+
+    return () => window.clearTimeout(focusTimer)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- conversationId is an intentional trigger: refocus the prompt on conversation switch
+  }, [conversationId])
+
+  const selectedModelOptions = isCliProvider(selectedProvider)
+    ? modelOptions[selectedProvider]
+    : null
+
+  const backendStatuses = agent?.state.backendStatuses
+  const {
+    claude: claudeAvailable,
+    codex: codexAvailable,
+    antigravity: antigravityAvailable,
+    runtimeUnavailable: agentRuntimeUnavailable
+  } = cliAvailability(backendStatuses)
+  const turnInFlight =
+    agent && conversationId ? isConversationBusy(agent.state, conversationId) : false
+  const queuedTurns = (conversationId && agent?.state.queuedTurns?.[conversationId]) || []
+  // Anything still queued, even a message that was not sent, keeps new
+  // messages behind it so the queue goes out in order.
+  const queueing = turnInFlight || queuedTurns.length > 0
+  // A CLI backend needs a positive detection, not merely the absence of a
+  // negative one. `!== false` also passed while backendStatuses was still
+  // undefined, so send stayed live through the bootstrap window and the turn
+  // died on `Install Claude Code CLI …` — a configuration state reported as an
+  // error because the button was offered before anything had been checked.
+  //
+  // The picker keeps the permissive `!== false` above: muting a row mid-load
+  // would flicker, and picking an unavailable provider is recoverable.
+  const providerReady = isCliProvider(selectedProvider)
+    ? backendStatuses?.[selectedProvider]?.available === true
+    : true
+  const hasText = promptValue.text.trim().length > 0
+  const canSend =
+    Boolean(agent) && Boolean(sourceWindowId) && hasText && !submitting && providerReady
+  const pickerQuery = pickerOpen ? (mentionQuery ?? '') : ''
+  const localProviderLabel = t('agentChat.composer.providers.local')
+  const selectedBackendModel = isCliProvider(selectedProvider)
+    ? (selectedModels[selectedProvider] ??
+      defaultModelForProvider(selectedProvider, selectedModelOptions))
+    : null
+  const cliModelLabel = (backend: AgentCliBackendId, modelId: string): string =>
+    modelOptions[backend]?.models.find((model) => model.id === modelId)?.label ??
+    MODEL_LABEL_FALLBACKS[backend][modelId] ??
+    modelId
+  const effectiveLocalModel =
+    localModel ?? (localSettings?.model.trim() ? localSettings.model : null)
+  const localConfigured =
+    localSettings !== null &&
+    (localSettings.model.trim().length > 0 || (localModels?.length ?? 0) > 0)
+  const isLocal = selectedProvider === 'local_openai_compatible'
+  // Each value is validated on read, so `find` always hits; the fallback is the default.
+  const [selectedReasoningOptions, selectedReasoningValue, defaultReasoningIndex] = isLocal
+    ? [localReasoningOptions, localReasoning, 0]
+    : selectedProvider === 'codex_cli'
+      ? [codexReasoningOptions, codexReasoning, 1]
+      : [claudeReasoningOptions, claudeReasoning, 3]
+  const selectedReasoning =
+    (selectedReasoningOptions as ReadonlyArray<ReasoningOption<ReasoningValue>>).find(
+      (option) => option.value === selectedReasoningValue
+    ) ?? selectedReasoningOptions[defaultReasoningIndex]
+  const showEffort = hasEffortControl(selectedProvider, localSettings)
+  const effortSummary = t(selectedReasoning.summaryKey)
+  const currentModelValueLabel = isCliProvider(selectedProvider)
+    ? selectedBackendModel
+      ? cliModelLabel(selectedProvider, selectedBackendModel)
+      : t('agentChat.composer.models.default')
+    : (effectiveLocalModel ?? localProviderLabel)
+  const summaryLabel = !providerReady
+    ? t('agentChat.composer.chooseModel')
+    : showEffort
+      ? `${currentModelValueLabel} · ${effortSummary}`
+      : currentModelValueLabel
+  const modelSettingsAriaLabel = t('agentChat.composer.modelSettingsLabel', {
+    model: currentModelValueLabel,
+    settings: showEffort ? effortSummary : localProviderLabel
+  })
+  const backendOptions = (): AgentBackendOptions => {
+    if (selectedProvider === 'local_openai_compatible') {
+      return {
+        backend: 'local_openai_compatible',
+        toolsEnabled: true,
+        // The backend owns whether the preset can use it, so this does not wait on settings.
+        ...(localReasoning !== 'default' ? { reasoningEffort: localReasoning } : {}),
+        ...(effectiveLocalModel ? { model: effectiveLocalModel } : {})
+      }
+    }
+    if (selectedProvider === 'codex_cli') {
+      return {
+        backend: 'codex_cli',
+        reasoningEffort: codexReasoning,
+        ...(selectedBackendModel ? { model: selectedBackendModel } : {})
+      }
+    }
+    if (selectedProvider === 'antigravity_cli') {
+      return {
+        backend: 'antigravity_cli',
+        ...(selectedBackendModel ? { model: selectedBackendModel } : {})
+      }
+    }
+    return {
+      backend: 'claude_cli',
+      claudeEffort: claudeReasoning,
+      ...(selectedBackendModel ? { model: selectedBackendModel } : {})
+    }
+  }
+  const turnPermissions = () => {
+    const effective = effectiveTurnPermissions(selectedProvider, { accessMode, webSearchEnabled })
+    return effective.accessMode !== DEFAULT_ACCESS_MODE || effective.webSearchEnabled
+      ? effective
+      : undefined
+  }
+  const persistPreference = (overrides: {
+    provider?: AgentProvider
+    models?: Record<AgentCliBackendId, string | null>
+    claudeEffort?: ClaudeEffort
+    codexEffort?: CodexReasoningEffort
+    localEffort?: LocalReasoningEffort
+    localModel?: string | null
+  }): void => {
+    persistAgentModelPreference({
+      provider: overrides.provider ?? selectedProvider,
+      models: overrides.models ?? selectedModels,
+      efforts: {
+        claude_cli: overrides.claudeEffort ?? claudeReasoning,
+        codex_cli: overrides.codexEffort ?? codexReasoning,
+        local_openai_compatible: overrides.localEffort ?? localReasoning
+      },
+      localModel: overrides.localModel !== undefined ? overrides.localModel : localModel
+    })
+  }
+  const selectCliModel = (backend: AgentCliBackendId, model: string): void => {
+    const nextModels = { ...selectedModels, [backend]: model }
+    setSelectedProvider(backend)
+    setSelectedModels(nextModels)
+    persistPreference({ provider: backend, models: nextModels })
+  }
+  const selectLocalModel = (model: string): void => {
+    setSelectedProvider('local_openai_compatible')
+    setLocalModel(model)
+    persistPreference({ provider: 'local_openai_compatible', localModel: model })
+  }
+  const selectReasoning = (value: ReasoningValue): void => {
+    // The settings menu offers only the active provider's options, so `value` is that provider's effort.
+    if (isLocal) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu options are per-provider; value is a LocalReasoningEffort here
+      const effort = value as LocalReasoningEffort
+      setLocalReasoning(effort)
+      persistPreference({ localEffort: effort })
+      return
+    }
+    if (selectedProvider === 'codex_cli') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu options are per-provider; value is a CodexReasoningEffort here
+      const effort = value as CodexReasoningEffort
+      setCodexReasoning(effort)
+      persistPreference({ codexEffort: effort })
+      return
+    }
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- menu options are per-provider; value is a ClaudeEffort here
+    const effort = value as ClaudeEffort
+    setClaudeReasoning(effort)
+    persistPreference({ claudeEffort: effort })
+  }
+  const loadModelOptions = async (provider: AgentCliBackendId): Promise<void> => {
+    if (modelOptions[provider]) return
+    try {
+      const result = await window.api.agent.listBackendModels({ backend: provider })
+      setModelOptions((current) => ({ ...current, [provider]: result }))
+    } catch {
+      setModelOptions((current) => ({
+        ...current,
+        [provider]: {
+          backend: provider,
+          supportsCustomModel: true,
+          models: []
+        }
+      }))
+    }
+  }
+  const loadLocalProviderData = async (): Promise<void> => {
+    if (localSettings !== null && localModels !== null) return
+    try {
+      const settings = await window.api.agent.getLocalProviderSettings()
+      setLocalSettings(settings)
+    } catch {
+      setLocalSettings(null)
+    }
+    try {
+      const list = await window.api.agent.listLocalModels()
+      setLocalModels(list.models)
+    } catch {
+      setLocalModels([])
+    }
+  }
+  const handleSettingsMenuOpenChange = (open: boolean): void => {
+    if (!open) return
+    if (claudeAvailable) void loadModelOptions('claude_cli')
+    if (codexAvailable) void loadModelOptions('codex_cli')
+    if (antigravityAvailable) void loadModelOptions('antigravity_cli')
+    void loadLocalProviderData()
+  }
+  const insertTranscript = useCallback((text: string): void => {
+    const editor = promptEditorRef.current
+    if (!editor) return
+
+    const existing = editor.getValue().text
+    const needsSpace = existing.length > 0 && !/\s$/.test(existing)
+    editor.insertText(needsSpace ? ` ${text}` : text)
+    editor.focus()
+  }, [])
+  const triggerMention = useCallback((): void => {
+    promptEditorRef.current?.focus()
+    promptEditorRef.current?.insertMentionTrigger()
+  }, [])
+  const closePicker = useCallback(() => {
+    setMentionQuery(null)
+    setPickerOpen(false)
+    setPickerItems([])
+    setSelectedPickerIndex(-1)
+  }, [])
+  const pickMention = useCallback((attachment: MentionAttachment): void => {
+    promptEditorRef.current?.insertMention(attachment)
+    setMentionQuery(null)
+    setPickerOpen(false)
+    setPickerItems([])
+    setSelectedPickerIndex(-1)
+  }, [])
+  const handleMentionKeyDown = useCallback(
+    (event: KeyboardEvent): boolean => {
+      if (!pickerOpen) return false
+
+      if (event.key === 'ArrowDown' && pickerItems.length > 0) {
+        event.preventDefault()
+        setSelectedPickerIndex((current) => (current < 0 ? 0 : (current + 1) % pickerItems.length))
+        return true
+      }
+
+      if (event.key === 'ArrowUp' && pickerItems.length > 0) {
+        event.preventDefault()
+        setSelectedPickerIndex((current) =>
+          current < 0
+            ? pickerItems.length - 1
+            : (current - 1 + pickerItems.length) % pickerItems.length
+        )
+        return true
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey && pickerItems.length > 0) {
+        event.preventDefault()
+        const index = selectedPickerIndex >= 0 ? selectedPickerIndex : 0
+        const attachment = pickerItems[index]
+        if (attachment) {
+          pickMention(attachment)
+          return true
+        }
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        closePicker()
+        return true
+      }
+
+      return false
+    },
+    [closePicker, pickMention, pickerItems, pickerOpen, selectedPickerIndex]
+  )
+
+  async function submit(): Promise<void> {
+    const editorValue = promptEditorRef.current?.getValue() ?? promptValue
+    const promptText = editorValue.text.trimEnd()
+    if (!agent || !sourceWindowId || !promptText.trim() || submitting) return
+    const currentText = appendMemryFileBlocks(promptText, promptFiles.files)
+    const currentAttachments = dedupeAttachments([
+      ...editorValue.attachments,
+      ...(includeCurrentNote && currentNoteAttachment ? [currentNoteAttachment] : [])
+    ])
+    if (queueing && conversationId) {
+      agent.dispatch({
+        type: 'queue_turn',
+        turn: {
+          id: crypto.randomUUID(),
+          conversationId,
+          sourceWindowId,
+          text: currentText,
+          attachments: currentAttachments,
+          backendOptions: backendOptions(),
+          permissions: turnPermissions(),
+          status: 'queued'
+        }
+      })
+      promptEditorRef.current?.clear()
+      promptFiles.clear()
+      setPromptValue({ text: '', attachments: [], formatRanges: [] })
+      closePicker()
+      return
+    }
+    setSubmitting(true)
+    try {
+      const selectedTurnModel = isCliProvider(selectedProvider)
+        ? selectedBackendModel
+        : effectiveLocalModel
+      const targetConversationId =
+        conversationId ??
+        (
+          await agent.createConversation({
+            backend: selectedProvider,
+            ...(selectedTurnModel ? { backendModel: selectedTurnModel } : {})
+          })
+        ).id
+      await agent.sendTurn({
+        conversationId: targetConversationId,
+        sourceWindowId,
+        text: currentText,
+        backendOptions: backendOptions(),
+        permissions: turnPermissions(),
+        attachments: currentAttachments
+      })
+      promptEditorRef.current?.clear()
+      promptFiles.clear()
+      setPromptValue({ text: '', attachments: [], formatRanges: [] })
+      closePicker()
+    } catch {
+      // Agent context owns the user-facing error; leave the draft text in place.
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  useImperativeHandle(ref, () => ({
+    send: async (text) => {
+      if (!agent || !conversationId || !sourceWindowId) return
+      try {
+        await agent.sendTurn({
+          conversationId,
+          sourceWindowId,
+          text,
+          backendOptions: backendOptions(),
+          permissions: turnPermissions(),
+          attachments: []
+        })
+      } catch {
+        // Agent context owns the user-facing error.
+      }
+    }
+  }))
+
+  function cancelTurn(): void {
+    if (!agent || !conversationId || !turnInFlight) return
+
+    promptEditorRef.current?.focus()
+    void agent.cancelTurn(conversationId)
+  }
+
+  const claudeCatalog = catalogFor(modelOptions, 'claude_cli')
+  const codexCatalog = catalogFor(modelOptions, 'codex_cli')
+  const antigravityCatalog = catalogFor(modelOptions, 'antigravity_cli')
+  const localModelIds = (() => {
+    const ids = [...(localModels ?? [])]
+    const configuredModel = localSettings?.model.trim()
+    if (configuredModel && !ids.includes(configuredModel)) ids.unshift(configuredModel)
+    return ids
+  })()
+
+  return (
+    <div className="relative p-2">
+      {pickerOpen && (
+        <RefPicker
+          query={pickerQuery}
+          selectedIndex={selectedPickerIndex}
+          anchorRef={composerBoxRef}
+          onItemsChange={setPickerItems}
+          onPick={pickMention}
+          onSelectedIndexChange={setSelectedPickerIndex}
+          onClose={closePicker}
+        />
+      )}
+      {agent?.state.error && (
+        <p
+          role="alert"
+          className="mb-2 rounded-md border border-destructive/30 bg-destructive/10 px-2.5 py-2 text-xs text-destructive"
+        >
+          {agent.state.error}
+        </p>
+      )}
+      {conversationId && (
+        <QueuedTurns
+          turns={queuedTurns}
+          onEditingChange={(id, editing) =>
+            agent?.dispatch({ type: 'set_queued_turn_editing', conversationId, id, editing })
+          }
+          onEdit={(id, text) =>
+            agent?.dispatch({ type: 'edit_queued_turn', conversationId, id, text })
+          }
+          onRemove={(id) => agent?.dispatch({ type: 'remove_queued_turn', conversationId, id })}
+          onSettled={() => promptEditorRef.current?.focus()}
+        />
+      )}
+      <div className="relative flex flex-col">
+        <ConnectedToolsTray />
+        <div
+          ref={composerBoxRef}
+          data-testid="agent-composer-box"
+          {...promptFiles.dropHandlers}
+          className="relative flex min-h-[102px] cursor-text flex-col justify-between gap-4 rounded-2xl border border-border bg-card px-2.5 pb-2.5 pt-3"
+        >
+          <div
+            className="relative max-h-[180px] flex-1 overflow-y-auto"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return
+              if (
+                event.target instanceof HTMLElement &&
+                event.target.closest('[contenteditable="true"]')
+              ) {
+                return
+              }
+              event.preventDefault()
+              promptEditorRef.current?.focus()
+            }}
+          >
+            <AgentPromptEditor
+              ref={promptEditorRef}
+              disabled={submitting || !agent}
+              editorClassName="!min-h-9 max-h-[180px] p-1 text-[13px] leading-[18px] [&_.is-editor-empty:first-child::before]:text-[13px]"
+              placeholder={t('agentChat.composer.placeholder')}
+              onEscape={closePicker}
+              onMentionKeyDown={handleMentionKeyDown}
+              onMentionQueryChange={(query) => {
+                setMentionQuery(query)
+                setPickerOpen(query !== null)
+                if (query === null) {
+                  setPickerItems([])
+                  setSelectedPickerIndex(-1)
+                }
+              }}
+              onSubmit={() => void submit()}
+              onValueChange={setPromptValue}
+            />
+          </div>
+          <ComposerFileChips
+            files={promptFiles.files}
+            refusal={promptFiles.refusal}
+            onRemove={promptFiles.remove}
+          />
+          <div className="flex w-full items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <ComposerSettingsMenu
+                ariaLabel={modelSettingsAriaLabel}
+                summaryLabel={summaryLabel}
+                providerReady={providerReady}
+                webSearchEnabled={webSearchEnabled}
+                includeCurrentNote={includeCurrentNote}
+                accessMode={accessMode}
+                selectedProvider={selectedProvider}
+                selectedBackendModel={selectedBackendModel}
+                effectiveLocalModel={effectiveLocalModel}
+                showEffort={showEffort}
+                effortSummary={effortSummary}
+                reasoningOptions={selectedReasoningOptions}
+                selectedReasoningValue={selectedReasoningValue}
+                currentModelValueLabel={currentModelValueLabel}
+                claudeAvailable={claudeAvailable}
+                codexAvailable={codexAvailable}
+                antigravityAvailable={antigravityAvailable}
+                agentRuntimeUnavailable={agentRuntimeUnavailable}
+                claudeCatalog={claudeCatalog}
+                codexCatalog={codexCatalog}
+                antigravityCatalog={antigravityCatalog}
+                localSettingsLoaded={localSettings !== null}
+                localConfigured={localConfigured}
+                localModelIds={localModelIds}
+                onOpenChange={handleSettingsMenuOpenChange}
+                onToggleWebSearch={() => setWebSearchEnabled((value) => !value)}
+                onToggleIncludeCurrentNote={() => setIncludeCurrentNote((value) => !value)}
+                onSelectAccessMode={setAccessMode}
+                onSelectReasoning={selectReasoning}
+                onSelectCliModel={selectCliModel}
+                onSelectLocalModel={selectLocalModel}
+                onOpenProviderSettings={() => openSettings('agent-providers')}
+              />
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <AttachFileButton
+                disabled={submitting || !agent}
+                onFiles={(files) => void promptFiles.add(files)}
+              />
+              <button
+                type="button"
+                aria-label={t('agentChat.composer.mentionContext')}
+                disabled={submitting || !agent}
+                onClick={triggerMention}
+                className="inline-flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <AtSign className="size-3.5" aria-hidden="true" />
+              </button>
+              {hasText && !dictationBusy ? (
+                <Button
+                  type="button"
+                  aria-label={
+                    queueing
+                      ? t('agentChat.composer.queue.queueMessage')
+                      : t('agentChat.composer.send')
+                  }
+                  disabled={!canSend}
+                  onPointerDown={(event) => {
+                    event.preventDefault()
+                    void submit()
+                  }}
+                  onClick={() => void submit()}
+                  className="size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
+                >
+                  <ArrowUp className="size-3.5" aria-hidden="true" />
+                </Button>
+              ) : (
+                <VoiceDictationButton
+                  disabled={submitting || !agent}
+                  onTranscript={insertTranscript}
+                  onBusyChange={setDictationBusy}
+                />
+              )}
+              {turnInFlight && (
+                <Button
+                  type="button"
+                  aria-label={t('agentChat.stop')}
+                  disabled={!agent}
+                  onClick={cancelTurn}
+                  className="size-7 rounded-md bg-tint p-0 text-tint-foreground hover:bg-tint-hover"
+                >
+                  <Square className="size-3" aria-hidden="true" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
