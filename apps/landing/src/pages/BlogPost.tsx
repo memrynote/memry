@@ -19,7 +19,6 @@ import {
   type BlogSection,
   type BlogCallout
 } from '@/lib/blog'
-import type { PAGE_META } from '@/lib/seo'
 import { TINT_CLASSES } from '@/lib/site-tints'
 import { cn } from '@/lib/utils'
 import { trackLandingEvent } from '@/lib/analytics'
@@ -171,7 +170,7 @@ export function BlogPostView({ post }: { post: BlogPost }) {
 
   return (
     <>
-      <PageHead page={post.pageKey as keyof typeof PAGE_META} article={post} />
+      <PageHead page={post.pageKey} article={post} />
 
       <main className="pt-28 pb-28 sm:pt-36">
         <Container size="md">

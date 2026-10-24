@@ -197,6 +197,8 @@ function FeatureVisual({ tile }: { tile: FeatureTile }) {
       return <FolderShot />
     case 'clipper':
       return <ClipperStack />
+    default:
+      return null
   }
 }
 

@@ -28,7 +28,7 @@ export function AccountLayout() {
     }
     signOutLocal()
     trackLandingEvent('landing_account_signout', 'account:logout')
-    navigate('/')
+    void navigate('/')
   }
 
   return (
@@ -44,7 +44,7 @@ export function AccountLayout() {
             <div className="mt-6 border-t border-border pt-4 space-y-1">
               <button
                 type="button"
-                onClick={logout}
+                onClick={() => void logout()}
                 className="block w-full rounded-lg px-3 py-2 text-start text-sm font-medium text-muted hover:text-ink"
               >
                 Log out

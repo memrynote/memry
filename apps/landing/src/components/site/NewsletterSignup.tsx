@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { trackLandingEvent } from '@/lib/analytics'
 import { cn } from '@/lib/utils'
@@ -15,7 +15,7 @@ export function NewsletterSignup({ location }: { location: string }) {
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState('')
 
-  const handleSubmit = async (event: FormEvent) => {
+  const handleSubmit = async (event: SyntheticEvent) => {
     event.preventDefault()
     if (!email || status === 'loading') return
 
@@ -57,7 +57,7 @@ export function NewsletterSignup({ location }: { location: string }) {
       {status === 'success' ? (
         <p className="mt-3 text-[15px] font-medium text-ink">You&rsquo;re subscribed.</p>
       ) : (
-        <form onSubmit={handleSubmit} className="relative mt-3">
+        <form onSubmit={(event) => void handleSubmit(event)} className="relative mt-3">
           <input
             id="newsletter-email"
             type="email"

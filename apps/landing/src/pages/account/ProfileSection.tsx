@@ -68,7 +68,7 @@ export function ProfileSection() {
       // best-effort
     }
     signOutLocal()
-    navigate('/')
+    void navigate('/')
   }
 
   async function requestDeleteCode() {
@@ -98,7 +98,7 @@ export function ProfileSection() {
         body: JSON.stringify({ code: deleteCode })
       })
       signOutLocal()
-      navigate('/')
+      void navigate('/')
     } catch {
       setMsg('Deletion failed. Try again.')
     }
@@ -128,7 +128,11 @@ export function ProfileSection() {
               value={newEmail}
               onChange={(e) => setNewEmail(e.target.value)}
             />
-            <Button variant="outline" disabled={!newEmail} onClick={requestEmailChange}>
+            <Button
+              variant="outline"
+              disabled={!newEmail}
+              onClick={() => void requestEmailChange()}
+            >
               Change
             </Button>
           </div>
@@ -140,7 +144,7 @@ export function ProfileSection() {
               value={emailCode}
               onChange={(e) => setEmailCode(e.target.value)}
             />
-            <Button disabled={emailCode.length !== 6} onClick={verifyEmailChange}>
+            <Button disabled={emailCode.length !== 6} onClick={() => void verifyEmailChange()}>
               Confirm
             </Button>
           </div>
@@ -153,7 +157,7 @@ export function ProfileSection() {
           <Button variant="outline" asChild>
             <a href={`mailto:${SUPPORT_EMAIL}`}>Contact support</a>
           </Button>
-          <Button variant="outline" onClick={logoutEverywhere}>
+          <Button variant="outline" onClick={() => void logoutEverywhere()}>
             Log out everywhere
           </Button>
         </div>
@@ -165,7 +169,7 @@ export function ProfileSection() {
           This permanently erases your account and synced data. It cannot be undone.
         </p>
         <div className="mt-4 space-y-2">
-          <Button variant="outline" disabled={!email} onClick={requestDeleteCode}>
+          <Button variant="outline" disabled={!email} onClick={() => void requestDeleteCode()}>
             Email me a confirmation code
           </Button>
           <Input
@@ -182,7 +186,7 @@ export function ProfileSection() {
           <Button
             className="bg-red-500 text-white hover:bg-red-600"
             disabled={confirmText !== 'DELETE' || deleteCode.length !== 6}
-            onClick={deleteAccount}
+            onClick={() => void deleteAccount()}
           >
             Delete my account
           </Button>

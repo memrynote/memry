@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { FormEvent, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import type { SyntheticEvent, KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { ChevronDown, FileText, Globe, Send, Shield, Sparkles, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -211,7 +211,7 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
     startReply()
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault()
     sendMessage()
   }
@@ -224,8 +224,8 @@ export function AgentChatWidget({ className }: AgentChatWidgetProps) {
   }
 
   const focusComposer = (event: ReactPointerEvent<HTMLFormElement>) => {
-    const target = event.target as HTMLElement
-    if (!target.closest('button')) inputRef.current?.focus()
+    const target = event.target
+    if (!(target instanceof Element && target.closest('button'))) inputRef.current?.focus()
   }
 
   const canSend = input.trim().length > 0

@@ -52,6 +52,7 @@ export async function registerWebDevice({
     const msg = await res.text().catch(() => '')
     throw new Error(msg || `Device registration failed: ${res.status}`)
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: our own sync-server device-registration route
   const data = (await res.json()) as { deviceId: string; accessToken: string; refreshToken: string }
   storage.setSession({
     accessToken: data.accessToken,

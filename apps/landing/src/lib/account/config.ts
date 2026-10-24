@@ -11,7 +11,9 @@ export function resolveSyncServerUrl(override: string | undefined, isProd: boole
 }
 
 export const SYNC_SERVER_URL: string = resolveSyncServerUrl(
-  import.meta.env?.VITE_SYNC_SERVER_URL as string | undefined,
+  typeof import.meta.env?.VITE_SYNC_SERVER_URL === 'string'
+    ? import.meta.env.VITE_SYNC_SERVER_URL
+    : undefined,
   import.meta.env?.PROD
 )
 

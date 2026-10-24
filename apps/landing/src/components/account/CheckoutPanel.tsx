@@ -89,15 +89,14 @@ export function CheckoutPanel({
   onPreviewPlanChange,
   onApplyPlanChange
 }: CheckoutPanelProps) {
-  const isChangeMode = Boolean(
-    current && current.plan !== 'free' && onPreviewPlanChange && onApplyPlanChange
-  )
+  const currentPaidPlan = current && current.plan !== 'free' ? current.plan : null
+  const isChangeMode = Boolean(currentPaidPlan && onPreviewPlanChange && onApplyPlanChange)
   const [plan, setPlan] = useState<CheckoutPlanId>(() =>
-    isChangeMode && current ? (current.plan as CheckoutPlanId) : initialPlan
+    isChangeMode && currentPaidPlan ? currentPaidPlan : initialPlan
   )
   const [cadence, setCadence] = useState<PaddleCheckoutCadence>(() =>
-    isChangeMode && current?.cadence
-      ? normalizeCadenceForPlan(current.plan as CheckoutPlanId, current.cadence)
+    isChangeMode && currentPaidPlan && current?.cadence
+      ? normalizeCadenceForPlan(currentPaidPlan, current.cadence)
       : normalizeCadenceForPlan(initialPlan, initialCadence)
   )
   const [status, setStatus] = useState<CheckoutStatus>('idle')
@@ -113,7 +112,7 @@ export function CheckoutPanel({
 
   const selectPlan = (next: CheckoutPlanId) => {
     setPlan(next)
-    setCadence((current) => normalizeCadenceForPlan(next, current))
+    setCadence((prev) => normalizeCadenceForPlan(next, prev))
   }
 
   const proceed = async () => {
@@ -134,7 +133,7 @@ export function CheckoutPanel({
           setStatus('failed')
         }
       })
-      setStatus((current) => (current === 'starting' ? 'pending' : current))
+      setStatus((prev) => (prev === 'starting' ? 'pending' : prev))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not start checkout')
       setStatus('idle')
@@ -142,9 +141,8 @@ export function CheckoutPanel({
   }
 
   const changeTarget = isChangeMode ? isChangeTarget(plan, effectiveCadence) : null
-  const isCurrentSelection = Boolean(
-    current && current.plan === plan && (current.cadence ?? 'monthly') === effectiveCadence
-  )
+  const isCurrentSelection =
+    current?.plan === plan && (current.cadence ?? 'monthly') === effectiveCadence
 
   if (!token) {
     return onTokenMissing != null ? <>{onTokenMissing}</> : null
@@ -224,7 +222,12 @@ export function CheckoutPanel({
             onApply={onApplyPlanChange}
           />
         ) : (
-          <OrderSummary summary={summary} status={status} error={error} onProceed={proceed} />
+          <OrderSummary
+            summary={summary}
+            status={status}
+            error={error}
+            onProceed={() => void proceed()}
+          />
         )}
       </div>
 
@@ -570,7 +573,7 @@ function ChangeQuote({
         type="button"
         className="mt-5 w-full"
         disabled={loading || !preview || status !== 'idle'}
-        onClick={apply}
+        onClick={() => void apply()}
       >
         {quoteButtonLabel(status, preview, { plan, cadence })}
       </Button>

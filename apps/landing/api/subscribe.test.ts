@@ -17,8 +17,8 @@ let calls: ResendCall[] = []
 function stubResend(): void {
   calls = []
   globalThis.fetch = async (input, init) => {
-    const url = String(input)
-    calls.push({ url, body: init?.body ? JSON.parse(String(init.body)) : null })
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+    calls.push({ url, body: typeof init?.body === 'string' ? JSON.parse(init.body) : null })
     const payload = url.endsWith('/contacts') ? { id: 'contact_1' } : {}
     return new Response(JSON.stringify(payload), { status: 200 })
   }

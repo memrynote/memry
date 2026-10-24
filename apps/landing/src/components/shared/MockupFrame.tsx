@@ -33,7 +33,7 @@ export function MockupFrame({
   }, [])
 
   useEffect(() => {
-    if (!lightboxOpen) return
+    if (!lightboxOpen) return undefined
 
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeLightbox()

@@ -65,6 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       throw new Error(`GitHub API returned ${response.status}`)
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- JSON boundary: GitHub releases API response, only `assets` is read
     const release = (await response.json()) as { assets?: ReleaseAsset[] }
     const url = resolveAssetUrl(platform, release.assets ?? [])
 
