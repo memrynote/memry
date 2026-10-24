@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Η ημερομηνία λήξης αφαιρέθηκε από # υποεργασία} other {Η ημερομηνία λήξης αφαιρέθηκε από # υποεργασίες}}",
       "prioritySet": "{count, plural, one {Ορίστηκε προτεραιότητα για # υποεργασία} other {Ορίστηκε προτεραιότητα για # υποεργασίες}}",
       "deleted": "{count, plural, one {# υποεργασία διαγράφηκε} other {# υποεργασίες διαγράφηκαν}}"
-    }
+    },
+    "completedBranch": "Ολοκληρώθηκε η εργασία «{title}» και {count, plural, one {# ανοιχτή υποεργασία} other {# ανοιχτές υποεργασίες}}",
+    "deletedKeepSubtasks": "Η εργασία «{title}» διαγράφηκε και οι υποεργασίες της διατηρήθηκαν",
+    "deletedBranch": "Διαγράφηκε η εργασία «{title}» και {count, plural, one {# υποεργασία} other {# υποεργασίες}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "κατάσταση",
       "projectIs": "Το έργο είναι",
       "project": "έργο",
+      "locationIs": "Η τοποθεσία είναι",
+      "location": "τοποθεσία",
+      "unknownNote": "Άγνωστη σημείωση",
       "due": "Λήξη",
       "dueDate": "ημερομηνία λήξης",
       "search": "αναζήτηση",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Ημερομηνία λήξης"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Τοποθεσία",
+      "search": "Αναζήτηση φακέλων και σημειώσεων...",
+      "empty": "Δεν υπάρχουν φάκελοι ή σημειώσεις με εργασίες"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Προτεραιότητα",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Προβολές έργου",
       "overview": "Επισκόπηση",
+      "all": "Όλα",
       "tasks": "Εργασίες",
       "notes": "Σημειώσεις",
       "files": "Αρχεία",
@@ -951,6 +963,25 @@
       "fileError": "Δεν ήταν δυνατή η σύνδεση του αρχείου «{name}»",
       "fileErrorGeneric": "Δεν ήταν δυνατή η εισαγωγή των αρχείων",
       "label": "Προσθήκη στο «{name}»"
+    },
+    "all": {
+      "showDone": "Εμφάνιση ολοκληρωμένων",
+      "empty": "Τίποτα ανοιχτό σε αυτό το έργο.",
+      "expand": "Εμφάνιση εργασιών στο «{title}»",
+      "collapse": "Απόκρυψη εργασιών στο «{title}»",
+      "taskSummary": "{open}/{total} ανοιχτές",
+      "daysLeft": "{count}ημ.",
+      "overdue": "{count}ημ. καθυστέρηση",
+      "columns": {
+        "title": "Τίτλος",
+        "daysLeft": "Ημέρες που απομένουν"
+      },
+      "status": {
+        "active": "Ενεργό",
+        "done": "Ολοκληρωμένο",
+        "upcoming": "Επερχόμενο",
+        "past": "Παρελθόν"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Λουλακί",
     "purple": "Μοβ",
     "pink": "Ροζ"
+  },
+  "subtaskTree": {
+    "addSubtask": "Προσθήκη υποεργασίας",
+    "dropInto": "Μέσα στο «{title}»",
+    "dropOut": "Ένα επίπεδο έξω",
+    "draftPlaceholder": "Τίτλος υποεργασίας",
+    "draftLabel": "Νέα υποεργασία στο «{title}»",
+    "draftIn": "στο «{title}»",
+    "toggleComplete": "Ολοκλήρωση: {title}",
+    "moveUnder": {
+      "title": "Μετακίνηση κάτω από",
+      "placeholder": "Μετακίνηση κάτω από…",
+      "empty": "Καμία αντίστοιχη εργασία",
+      "topLevel": "Ανώτατο επίπεδο του «{project}»",
+      "thisTask": "Αυτή η εργασία",
+      "currentParent": "Τρέχων γονέας",
+      "movesOne": "Μετακινεί το «{title}»",
+      "movesBranch": "Μετακινεί το «{title}» και {count, plural, one {# υποεργασία} other {# υποεργασίες}}",
+      "keys": "↵ Μετακίνηση εδώ · ⌘↵ Ανώτατο επίπεδο · esc Κλείσιμο"
+    },
+    "zoom": {
+      "path": "Διαδρομή εργασίας",
+      "up": "Ένα επίπεδο πάνω",
+      "upShortcut": "Ένα επίπεδο πάνω (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Διαγραφή του «{title}»;",
+      "summary": "{direct, plural, one {Έχει # υποεργασία} other {Έχει # υποεργασίες}}{deeper, plural, =0 {} one { και # ακόμη κάτω από αυτήν} other { και # ακόμη κάτω από αυτές}}{open, plural, =0 {, όλες ολοκληρωμένες.} other {, # ακόμη ανοιχτές.}}",
+      "cancel": "Ακύρωση",
+      "deleteAll": "Διαγραφή όλων",
+      "keepSubtasks": "Διατήρηση υποεργασιών"
+    },
+    "menu": {
+      "open": "Άνοιγμα",
+      "complete": "Ολοκλήρωση",
+      "reopen": "Εκ νέου άνοιγμα",
+      "zoom": "Μεγέθυνση στις υποεργασίες",
+      "moveUnder": "Μετακίνηση κάτω από…",
+      "indent": "Μετακίνηση κάτω από «{title}»",
+      "outdent": "Μετακίνηση ένα επίπεδο έξω",
+      "topLevel": "Μετατροπή σε εργασία ανώτατου επιπέδου",
+      "delete": "Διαγραφή"
+    },
+    "openPath": "Άνοιγμα {path}"
   }
 }
