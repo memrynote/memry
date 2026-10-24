@@ -72,7 +72,7 @@ export function GraphFilters({
               <Toggle
                 key={type}
                 size="sm"
-                pressed={filterState[TYPE_TO_STATE_KEY[type]] as boolean}
+                pressed={Boolean(filterState[TYPE_TO_STATE_KEY[type]])}
                 onPressedChange={() => dispatch({ type: 'TOGGLE_ENTITY_TYPE', entityType: type })}
                 aria-label={t('filter.toggle-entity', { label })}
               >

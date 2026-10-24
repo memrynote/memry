@@ -14,6 +14,7 @@ import { useTabs } from '@/contexts/tabs'
 import { toast } from 'sonner'
 import { createLogger } from '@/lib/logger'
 import { buildReminderTargetTab } from '@/lib/open-reminder-target'
+import { metadataAs } from './item-metadata'
 import type { InboxItem, InboxItemListItem } from '@/types'
 import type { ReminderMetadata } from '@memry/contracts/inbox-api'
 
@@ -51,7 +52,7 @@ function TargetIcon({ targetType }: { targetType: string }): React.JSX.Element {
 
 export function ReminderDetail({ item }: ReminderDetailProps): React.JSX.Element {
   const { t } = useT('inbox')
-  const metadata = item.metadata as ReminderMetadata | undefined
+  const metadata = metadataAs<ReminderMetadata | undefined>(item.metadata)
   const queryClient = useQueryClient()
   const { openTab } = useTabs()
   const { archiveWithUndo } = useUndoableAction()

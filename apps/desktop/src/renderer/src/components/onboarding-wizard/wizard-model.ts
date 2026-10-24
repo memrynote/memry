@@ -144,6 +144,7 @@ function move(state: WizardState, delta: 1 | -1): WizardState {
   return target ? { ...state, step: target } : state
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over WizardAction; every member returns
 export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
     case 'start':

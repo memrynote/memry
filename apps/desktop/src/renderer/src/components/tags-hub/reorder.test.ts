@@ -42,7 +42,7 @@ describe('moveTag', () => {
   it('emits contiguous sort orders for every touched category', () => {
     const result = moveTag(state, 'idea', 'work', 0)
     const work = result.filter((a) => a.categoryId === 'work').map((a) => a.sortOrder)
-    expect(work.sort()).toEqual([0, 1, 2])
+    expect(work.toSorted((a, b) => a - b)).toEqual([0, 1, 2])
   })
 
   it('returns an empty list when the tag is unknown', () => {

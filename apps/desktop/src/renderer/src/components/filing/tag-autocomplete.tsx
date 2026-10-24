@@ -211,6 +211,7 @@ export const TagAutocomplete = ({
   // Close on click outside
   useEffect(() => {
     const handler = (e: MouseEvent): void => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; mousedown on document always targets a Node
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsDropdownOpen(false)
       }
@@ -220,7 +221,7 @@ export const TagAutocomplete = ({
   }, [])
 
   useEffect(() => {
-    if (!autoFocus) return
+    if (!autoFocus) return undefined
 
     const focusTimeout = setTimeout(() => inputRef.current?.focus(), 100)
     return () => clearTimeout(focusTimeout)

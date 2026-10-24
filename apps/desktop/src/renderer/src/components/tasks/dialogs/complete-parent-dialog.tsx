@@ -103,6 +103,7 @@ export const CompleteParentDialog = ({
         <div className="py-4">
           <RadioGroup
             value={option}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- radio values come from the closed CompleteOption list rendered below
             onValueChange={(value) => setOption(value as CompleteOption)}
             className="space-y-3"
           >

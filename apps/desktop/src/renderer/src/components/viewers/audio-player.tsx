@@ -88,7 +88,7 @@ const AudioProgress = memo(function AudioProgress({ audioRef, duration }: AudioP
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) return undefined
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime)
 
@@ -169,7 +169,7 @@ export function AudioPlayer({
   // Sync audio element with state
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) return undefined
 
     const commitPosition = (): void => {
       const next = livePositionRef.current

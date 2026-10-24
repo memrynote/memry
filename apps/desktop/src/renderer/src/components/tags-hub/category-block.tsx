@@ -158,7 +158,7 @@ export function CategoryBlock({
     transition
   }
 
-  const tagIds = useMemo(() => tags.map((t) => t.tag), [tags])
+  const tagIds = useMemo(() => tags.map((entry) => entry.tag), [tags])
 
   // Focuses the rename input as soon as it mounts, instead of reacting to
   // `isRenaming` in an effect (same pattern as notes-tree.tsx's

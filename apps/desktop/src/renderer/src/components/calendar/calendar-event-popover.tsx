@@ -79,12 +79,14 @@ export function CalendarEventPopover({
             e.preventDefault()
           }}
           onPointerDownOutside={(e) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; handler only runs for element targets
             const target = e.target as HTMLElement | null
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
               e.preventDefault()
             }
           }}
           onInteractOutside={(e) => {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; handler only runs for element targets
             const target = e.target as HTMLElement | null
             if (target?.closest('[data-radix-popper-content-wrapper]')) {
               e.preventDefault()

@@ -17,6 +17,7 @@ const NoteIcon = ({ color }: { color: string }): React.JSX.Element => (
   </svg>
 )
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over a closed union; a default branch would hide new members from the compiler
 const RelatedFileIcon = ({
   fileType,
   color

@@ -23,9 +23,7 @@ export const SubtaskRow = ({
   const isCompleted = !!subtask.completedAt
   const status = statuses.find((s) => s.id === subtask.statusId)
   const doneStatus = statuses.find((s) => s.type === 'done')
-  const statusType = isCompleted
-    ? 'done'
-    : ((status?.type ?? 'todo') as 'todo' | 'in_progress' | 'done')
+  const statusType = isCompleted ? 'done' : (status?.type ?? 'todo')
   const statusColor = isCompleted
     ? (doneStatus?.color ?? status?.color ?? 'var(--text-tertiary)')
     : (status?.color ?? 'var(--text-tertiary)')

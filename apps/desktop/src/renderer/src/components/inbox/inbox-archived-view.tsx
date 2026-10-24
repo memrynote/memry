@@ -202,7 +202,7 @@ export function InboxArchivedView({
     if (!items || items.length === 0) return []
 
     const archivedItems = items as ArchivedInboxItem[]
-    return [...archivedItems].sort((a, b) => {
+    return [...archivedItems].toSorted((a, b) => {
       const dateA = a.archivedAt ? new Date(a.archivedAt) : new Date(a.createdAt)
       const dateB = b.archivedAt ? new Date(b.archivedAt) : new Date(b.createdAt)
       return dateB.getTime() - dateA.getTime()

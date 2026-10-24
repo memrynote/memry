@@ -48,10 +48,6 @@ export function StickyEdgeTab(): React.JSX.Element {
     void window.api.sticky.peek(open)
   }
 
-  const unfold = (draftId: string | null): void => {
-    void window.api.sticky.unfold(draftId)
-  }
-
   const tab = (
     <button
       type="button"
@@ -111,4 +107,8 @@ export function StickyEdgeTab(): React.JSX.Element {
       )}
     </div>
   )
+}
+
+function unfold(draftId: string | null): void {
+  void window.api.sticky.unfold(draftId)
 }

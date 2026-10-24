@@ -71,6 +71,7 @@ export const InteractivePriorityBadge = ({
   )
 
   return (
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the picker's option list is the closed Priority set; its onValueChange types the value as string
     <Picker value={priority} onValueChange={(v) => onPriorityChange(v as Priority)}>
       <Picker.Trigger asChild>
         <button

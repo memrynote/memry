@@ -128,6 +128,7 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
   // Open link clicks externally, like the note editor (window.open is routed
   // to the OS browser by the main-process openExternal allowlist).
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mouse/keyboard event target is a DOM element in this handler; only closest()/tagName are read
     const link = (e.target as HTMLElement).closest('a')
     const href = link?.getAttribute('href')
     if (href && !href.startsWith('#')) {

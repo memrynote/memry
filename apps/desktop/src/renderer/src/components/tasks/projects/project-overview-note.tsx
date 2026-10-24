@@ -58,7 +58,7 @@ export const ProjectOverviewNote = ({
     if (!homeNoteId) {
       // oxlint-disable-next-line react/set-state-in-effect -- resets the loaded note when the home note id clears; the effect owns the load lifecycle (IPC)
       setNote(null)
-      return
+      return undefined
     }
 
     let cancelled = false
@@ -91,7 +91,7 @@ export const ProjectOverviewNote = ({
   // Mirrors note.tsx's registerPendingSave/unregisterPendingSave pattern so
   // app-quit (useFlushOnQuit) and tab-close don't silently drop an edit.
   useEffect(() => {
-    if (!homeNoteId) return
+    if (!homeNoteId) return undefined
 
     const registryKey = `project-overview:${homeNoteId}`
     liveNoteIdRef.current = homeNoteId

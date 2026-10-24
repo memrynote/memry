@@ -595,7 +595,7 @@ function ColumnItem({
         <Checkbox
           id={`col-${id}`}
           checked={checked}
-          onCheckedChange={(checked) => onCheckedChange(checked === true)}
+          onCheckedChange={(next) => onCheckedChange(next === true)}
           className="shrink-0"
         />
       )}
@@ -643,6 +643,7 @@ function SummarySelect({
       if (selectedType === 'none') {
         onChange(undefined)
       } else {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Select value is string; options come from getSummaryTypesForColumn
         onChange({ type: selectedType as SummaryConfig['type'] })
       }
     },
@@ -695,7 +696,7 @@ function FormulaItem({
       <Checkbox
         id={`col-formula-${formula.id}`}
         checked={checked}
-        onCheckedChange={(checked) => onCheckedChange(checked === true)}
+        onCheckedChange={(next) => onCheckedChange(next === true)}
       />
       <label htmlFor={`col-formula-${formula.id}`} className="flex-1 min-w-0 cursor-pointer">
         <span className="text-sm truncate block" title={formula.id}>

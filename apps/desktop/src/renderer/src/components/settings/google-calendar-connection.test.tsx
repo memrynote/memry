@@ -255,7 +255,7 @@ describe('Google Calendar connection (Settings → Calendar)', () => {
       createdAt: '2026-04-12T08:00:00.000Z',
       modifiedAt: '2026-04-12T08:00:00.000Z',
       ...overrides
-    } as CalendarSourceRecord
+    }
   }
 
   const TWO_ACCOUNT_SOURCES: CalendarSourceRecord[] = [

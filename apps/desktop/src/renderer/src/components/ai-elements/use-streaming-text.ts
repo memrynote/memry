@@ -26,9 +26,9 @@ export function useStreamingText(text: string): { shown: string; typing: boolean
   const [length, setLength] = useState(target)
 
   useEffect(() => {
-    if (reducedMotion) return
+    if (reducedMotion) return undefined
     positionRef.current = Math.min(positionRef.current, target)
-    if (positionRef.current >= target) return
+    if (positionRef.current >= target) return undefined
 
     let frame = 0
     let last = performance.now()

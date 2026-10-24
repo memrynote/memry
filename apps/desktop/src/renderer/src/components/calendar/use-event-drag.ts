@@ -17,8 +17,8 @@ export function snapMinutes(minutes: number, snap: number): number {
 
 /** Keep a moved event fully inside its day (no multi-day spill). */
 // ponytail: clamp within day; multi-day spill not supported.
-export function clampStartWithinDay(startMinutes: number, durationMinutes: number): number {
-  return clamp(startMinutes, 0, MINUTES_IN_DAY - durationMinutes)
+export function clampStartWithinDay(startMinutes: number, eventDurationMinutes: number): number {
+  return clamp(startMinutes, 0, MINUTES_IN_DAY - eventDurationMinutes)
 }
 
 export function isoFromDayMinutes(date: string, minutesFromMidnight: number): string {
@@ -272,7 +272,7 @@ export function useEventDrag({
   }, [onCommit])
 
   useEffect(() => {
-    if (!active) return
+    if (!active) return undefined
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
     return () => {

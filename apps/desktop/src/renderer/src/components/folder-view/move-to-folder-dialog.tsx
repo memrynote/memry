@@ -213,7 +213,7 @@ function MoveToFolderDialogSession({
         if (query && !path.toLowerCase().includes(query)) return false
         return !isMovedFolder(path)
       })
-      .sort()
+      .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 
     // Build the "All Folders" list
     const allFolderItems: FolderItem[] = []

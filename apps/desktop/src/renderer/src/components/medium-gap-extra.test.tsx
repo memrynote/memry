@@ -144,18 +144,17 @@ const makeTask = (overrides: Partial<Task> = {}): Task => ({
   ...overrides
 })
 
-const rect = (top: number, bottom: number): DOMRect =>
-  ({
-    top,
-    bottom,
-    left: 0,
-    right: 0,
-    width: 0,
-    height: bottom - top,
-    x: 0,
-    y: top,
-    toJSON: () => ({})
-  }) as DOMRect
+const rect = (top: number, bottom: number): DOMRect => ({
+  top,
+  bottom,
+  left: 0,
+  right: 0,
+  width: 0,
+  height: bottom - top,
+  x: 0,
+  y: top,
+  toJSON: () => ({})
+})
 
 describe('medium gap renderer surfaces', () => {
   const originalDateNow = Date.now
@@ -226,7 +225,7 @@ describe('medium gap renderer surfaces', () => {
       [makeItem({ id: 'y', type: 'link', title: 'Roadmap planning memo' })]
     )
     expect(generic?.reason).toBe('1 more related items')
-    expect(getClusterKey(generic!)).toBe('1 more related items:y')
+    expect(getClusterKey(generic)).toBe('1 more related items:y')
   })
 
   it('matches hash tags and completes typed tags through the plugin append transaction', () => {

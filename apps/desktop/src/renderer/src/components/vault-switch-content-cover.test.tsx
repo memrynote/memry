@@ -28,10 +28,10 @@ describe('VaultSwitchContentCover', () => {
     act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
 
     // A quick switch never shows it.
-    act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS - 1))
+    void act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS - 1))
     expect(screen.queryByTestId('vault-switch-content-cover')).toBeNull()
 
-    act(() => vi.advanceTimersByTime(1))
+    void act(() => vi.advanceTimersByTime(1))
     expect(screen.getByTestId('vault-switch-content-cover')).toHaveTextContent('Switching to Beta')
 
     act(() => endVaultSwitch(true))
@@ -41,14 +41,14 @@ describe('VaultSwitchContentCover', () => {
   it('does not cover the vault being entered', () => {
     renderIn('/b')
     act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
-    act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS))
+    void act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS))
     expect(screen.queryByTestId('vault-switch-content-cover')).toBeNull()
   })
 
   it('waits out the delay again on a later switch to the same vault', () => {
     renderIn('/a')
     act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))
-    act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS))
+    void act(() => vi.advanceTimersByTime(VAULT_SWITCH_COVER_DELAY_MS))
     act(() => endVaultSwitch(false))
 
     act(() => beginVaultSwitch({ path: '/b', name: 'Beta' }, 'next'))

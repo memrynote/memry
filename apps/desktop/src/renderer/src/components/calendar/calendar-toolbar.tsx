@@ -19,7 +19,7 @@ const VIEW_LABEL_KEYS: Record<CalendarWorkspaceView, `view.${CalendarWorkspaceVi
   timeline: 'view.timeline'
 }
 
-const VIEW_OPTIONS = Object.keys(VIEW_LABEL_KEYS) as CalendarWorkspaceView[]
+const VIEW_OPTIONS: CalendarWorkspaceView[] = ['day', 'week', 'month', 'year', 'timeline']
 
 interface CalendarToolbarProps {
   view: CalendarWorkspaceView

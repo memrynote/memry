@@ -38,9 +38,10 @@ interface BillingSnapshot {
 
 function paidPlanOf(status: unknown): PlanId | null {
   if (!status || typeof status !== 'object' || !('plan' in status)) return null
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC payload; shape is only partially checked above
   const { plan, status: state, expiresAt } = status as BillingSnapshot
   const active = state === 'active' && (expiresAt === null || expiresAt > Date.now())
-  return active && PLANS.includes(plan as PlanId) ? (plan as PlanId) : null
+  return active ? (PLANS.find((id) => id === plan) ?? null) : null
 }
 
 export function PlanStep({ state, dispatch }: StepProps): React.JSX.Element {

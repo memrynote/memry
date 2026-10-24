@@ -160,7 +160,7 @@ function CommandsPaletteBody({ onRun }: { onRun: (id: CommandId) => void }): Rea
   const values = sections.flatMap((section) => section.commands.map((command) => command.id))
   // cmdk selects only when nothing is selected, so a value that left the list
   // (the query changed) falls back to the first row here.
-  const selectedValue = values.includes(selected as CommandId) ? selected : (values[0] ?? '')
+  const selectedValue = values.some((id) => id === selected) ? selected : (values[0] ?? '')
 
   const searchKeys = bindingText('nav.search')
   const runSelected = (): void =>
@@ -253,7 +253,7 @@ function sectionHeading(
       return <SearchGroupHeading label={t('commandsPalette.recent')} />
     case 'group':
       return <SearchGroupHeading label={t(`commandsPalette.groups.${section.group}`)} />
-    case 'results':
+    default:
       return undefined
   }
 }

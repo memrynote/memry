@@ -332,7 +332,7 @@ export const VirtualizedProjectTaskList = ({
       const finalData = {
         ...parsedData,
         dueDate: parsedData?.dueDate ?? null,
-        priority: parsedData?.priority ?? ('none' as Priority),
+        priority: parsedData?.priority ?? 'none',
         projectId: project.id
       }
       onQuickAdd(title, finalData)

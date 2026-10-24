@@ -139,16 +139,12 @@ beforeEach(() => {
     delete: vi.fn(),
     reorder: vi.fn()
   } as unknown as typeof window.api.homePages
-  window.api.onHomePageCreated = vi.fn(
-    () => () => {}
-  ) as unknown as typeof window.api.onHomePageCreated
+  window.api.onHomePageCreated = vi.fn(() => () => {})
   window.api.onHomePageUpdated = vi.fn((callback: (event: { id: string }) => void) => {
     emitHomePageUpdated = () => callback({ id: 'b1' })
     return () => {}
-  }) as unknown as typeof window.api.onHomePageUpdated
-  window.api.onHomePageDeleted = vi.fn(
-    () => () => {}
-  ) as unknown as typeof window.api.onHomePageDeleted
+  })
+  window.api.onHomePageDeleted = vi.fn(() => () => {})
 })
 
 describe('HomeTabTitleSync', () => {

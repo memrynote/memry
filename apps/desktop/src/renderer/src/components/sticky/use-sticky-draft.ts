@@ -41,7 +41,11 @@ export function useStickyDraft(): StickyDraftState {
   const [draftId, setDraftId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
 
-  const latest = useRef({ content: '', kind: 'note' as StickyKind, draftId: null as string | null })
+  const latest = useRef<{ content: string; kind: StickyKind; draftId: string | null }>({
+    content: '',
+    kind: 'note',
+    draftId: null
+  })
   const timer = useRef<number | null>(null)
   const writing = useRef<Promise<void>>(Promise.resolve())
 
@@ -78,6 +82,7 @@ export function useStickyDraft(): StickyDraftState {
 
   /** One write at a time, in order, so an id from a create reaches the next save. */
   const write = useCallback((): Promise<void> => {
+    // oxlint-disable-next-line promise/always-return -- queue step resolves void; callers only await completion
     const run = writing.current.then(async () => {
       const { content: text, kind: k, draftId: id } = latest.current
       try {

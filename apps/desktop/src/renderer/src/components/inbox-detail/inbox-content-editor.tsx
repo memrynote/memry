@@ -137,6 +137,7 @@ export const InboxContentEditor = memo(function InboxContentEditor({
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!editable) return
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mousedown on a div is dispatched on an element, never a bare Node
       const target = e.target as HTMLElement
 
       if (
@@ -150,9 +151,9 @@ export const InboxContentEditor = memo(function InboxContentEditor({
         return
       }
 
-      const editorElement = (e.currentTarget as HTMLElement).querySelector(
+      const editorElement = e.currentTarget.querySelector<HTMLElement>(
         '.bn-editor [contenteditable="true"]'
-      ) as HTMLElement
+      )
 
       if (editorElement) {
         e.preventDefault()

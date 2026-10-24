@@ -87,7 +87,9 @@ describe('CalendarYearView', () => {
     )
 
     fireEvent.click(dayButton(/Sunday, May 10/i))
-    act(() => vi.advanceTimersByTime(250))
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
     expect(screen.getByText('Planning block')).toBeInTheDocument()
     expect(screen.getByText('All day task')).toBeInTheDocument()
     expect(screen.getByText('time.all-day-lower')).toBeInTheDocument()
@@ -116,12 +118,16 @@ describe('CalendarYearView', () => {
 
     const emptyDay = dayButton(/Tuesday, May 12/i)
     fireEvent.click(emptyDay)
-    act(() => vi.advanceTimersByTime(250))
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
     expect(screen.getByText('empty.no-events')).toBeInTheDocument()
 
     fireEvent.click(dayButton(/Wednesday, May 13/i))
     fireEvent.doubleClick(dayButton(/Wednesday, May 13/i))
-    act(() => vi.advanceTimersByTime(250))
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
     expect(onViewChange).toHaveBeenCalledWith('month')
   })
 })

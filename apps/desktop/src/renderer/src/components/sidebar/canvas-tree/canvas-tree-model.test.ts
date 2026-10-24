@@ -16,8 +16,16 @@ import {
   type CanvasTreeNode
 } from './canvas-tree-model'
 
-function canvas(id: string, title: string | null, folder: string | null = null): CanvasSummary {
-  return { id, title, folder, icon: null, ownerNoteId: null, createdAt: 0, updatedAt: 0 }
+function canvas(id: string, title: string | null, folderPath: string | null = null): CanvasSummary {
+  return {
+    id,
+    title,
+    folder: folderPath,
+    icon: null,
+    ownerNoteId: null,
+    createdAt: 0,
+    updatedAt: 0
+  }
 }
 
 function folder(path: string, icon: string | null = null): CanvasFolder {
@@ -30,7 +38,7 @@ function label(node: CanvasTreeNode): string {
 
 /** Narrows a node to a folder so `children` is reachable without `any`. */
 function asFolder(node: CanvasTreeNode | undefined): Extract<CanvasTreeNode, { kind: 'folder' }> {
-  if (!node || node.kind !== 'folder') {
+  if (node?.kind !== 'folder') {
     throw new Error(`expected a folder node, got ${node ? node.kind : 'nothing'}`)
   }
   return node
@@ -362,19 +370,19 @@ describe('filterCanvasTree', () => {
 describe('collectFolderPaths', () => {
   it('returns every folder path in the tree, at any depth', () => {
     const built = buildCanvasTree([canvas('a', 'Plan', 'Work/Q3')], [folder('Personal')])
-    expect([...collectFolderPaths(built)].sort()).toEqual(['Personal', 'Work', 'Work/Q3'])
+    expect([...collectFolderPaths(built)].toSorted()).toEqual(['Personal', 'Work', 'Work/Q3'])
   })
 })
 
 describe('rewriteExpandedFolderPaths', () => {
   it('re-keys the renamed folder and its descendants', () => {
     const next = rewriteExpandedFolderPaths(new Set(['Work', 'Work/Q3']), 'Work', 'Studio')
-    expect([...next].sort()).toEqual(['Studio', 'Studio/Q3'])
+    expect([...next].toSorted()).toEqual(['Studio', 'Studio/Q3'])
   })
 
   it('leaves prefix lookalikes and unrelated folders alone', () => {
     const next = rewriteExpandedFolderPaths(new Set(['Workshop', 'Personal']), 'Work', 'Studio')
-    expect([...next].sort()).toEqual(['Personal', 'Workshop'])
+    expect([...next].toSorted()).toEqual(['Personal', 'Workshop'])
   })
 
   it('re-keys a move onto a new parent', () => {
@@ -390,7 +398,7 @@ describe('childFolderNames', () => {
   )
 
   it('names the folders sitting at the root', () => {
-    expect(childFolderNames(built, null).sort()).toEqual(['Personal', 'Work'])
+    expect(childFolderNames(built, null).toSorted()).toEqual(['Personal', 'Work'])
   })
 
   it('names only the direct children of a folder', () => {

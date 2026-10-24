@@ -76,11 +76,11 @@ describe('sync onboarding components', () => {
     mocks.syncState.initialSyncProgress = null
     mocks.clipboardWrite.mockResolvedValue(undefined)
     const navigatorWithClipboard = new Proxy(window.navigator, {
-      get(target, property, receiver) {
+      get(target, property) {
         if (property === 'clipboard') {
           return { writeText: mocks.clipboardWrite }
         }
-        const value = Reflect.get(target, property, receiver)
+        const value: unknown = target[property as keyof Navigator]
         return typeof value === 'function' ? value.bind(target) : value
       }
     })
@@ -140,7 +140,7 @@ describe('sync onboarding components', () => {
     await user.type(screen.getByLabelText('setup.otp.aria'), '123456')
     expect(complete).toHaveBeenCalledWith('123456')
 
-    act(() => vi.advanceTimersByTime(1000))
+    void act(() => vi.advanceTimersByTime(1000))
     await user.click(screen.getByRole('button', { name: 'setup.otp.resend' }))
     expect(resend).toHaveBeenCalledTimes(1)
 
@@ -204,7 +204,7 @@ describe('sync onboarding components', () => {
     expect(mocks.clipboardWrite).toHaveBeenCalledWith(phrase)
     expect(screen.getByRole('button', { name: 'setup.recovery.copiedAria' })).toBeInTheDocument()
 
-    act(() => vi.advanceTimersByTime(2000))
+    void act(() => vi.advanceTimersByTime(2000))
     expect(screen.getByRole('button', { name: 'setup.recovery.copyAria' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'setup.recovery.saved' }))
@@ -268,9 +268,9 @@ describe('sync onboarding components', () => {
     expect(createUrl).toHaveBeenCalledTimes(1)
     const text = await new Promise<string>((resolve) => {
       const reader = new FileReader()
-      reader.onload = () => {
-        resolve(String(reader.result))
-      }
+      reader.addEventListener('load', () => {
+        resolve(typeof reader.result === 'string' ? reader.result : '')
+      })
       reader.readAsText(saved as unknown as Blob)
     })
     const words = phrase.split(' ')
@@ -330,7 +330,7 @@ describe('sync onboarding components', () => {
 
     rerender(<RecoveryPhraseInput onSubmit={submit} isLoading error={null} onBack={vi.fn()} />)
     expect(screen.getByText('setup.recovery.progress.deriving')).toBeInTheDocument()
-    act(() => vi.advanceTimersByTime(4000))
+    void act(() => vi.advanceTimersByTime(4000))
     expect(screen.getByText('setup.recovery.progress.registering')).toBeInTheDocument()
 
     rerender(

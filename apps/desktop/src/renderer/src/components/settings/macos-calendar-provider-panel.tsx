@@ -161,6 +161,8 @@ function MacosCalendarNotice({
   )
 }
 
+const metadataOf = (source: CalendarSourceRecord): Record<string, unknown> => source.metadata ?? {}
+
 /**
  * Settings → Calendar → This Mac (#2374). macOS only: main lists this
  * provider only on darwin, so on Windows and Linux this never renders.
@@ -180,8 +182,6 @@ export function MacosCalendarProviderPanel({
     if (id === 'caldav') return t('calendar.providers.caldav.name')
     return id
   }
-  const metadataOf = (source: CalendarSourceRecord): Record<string, unknown> =>
-    source.metadata ?? {}
 
   return (
     <GenericCalendarProviderPanel

@@ -152,7 +152,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
       setFilters({
         ...filters,
         types: filters.types.includes(type)
-          ? filters.types.filter((t) => t !== type)
+          ? filters.types.filter((other) => other !== type)
           : [...filters.types, type]
       }),
     [filters, setFilters]
@@ -160,7 +160,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   const toggleDate = (id: DatePresetId): void =>
     setFilters({ ...filters, dateRange: activeDate === id ? null : datePresetRange(id) })
   const removeTag = (tag: string): void =>
-    setFilters({ ...filters, tags: filters.tags.filter((t) => t !== tag) })
+    setFilters({ ...filters, tags: filters.tags.filter((other) => other !== tag) })
   const pickTag = (tag: string): void => {
     setFilters({ ...filters, tags: [...filters.tags, tag] })
     back()
@@ -214,6 +214,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
 
   // ---- What the body shows, and the cmdk values in render order ----------
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- filterMenuEntries passes i18n keys the typed t() cannot see through a generic callback
   const menuEntries = filterMenuEntries(menuQuery, (key) => t(key as never))
   const tagMatches = mode === 'tags' ? matchingTags(tags, menuQuery, filters.tags) : []
   const view =
@@ -345,7 +346,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps): Rea
   )
 
   useEffect(() => {
-    if (!open) return
+    if (!open) return undefined
     const handleKeyDown = (e: KeyboardEvent): void => {
       const isMac = navigator.platform.toUpperCase().includes('MAC')
       if ((isMac ? e.metaKey : e.ctrlKey) && e.key in TYPE_BY_SHORTCUT) {

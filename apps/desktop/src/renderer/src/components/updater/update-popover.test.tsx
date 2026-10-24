@@ -38,7 +38,7 @@ vi.mock('@/components/ui/dropdown-menu', () => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, opts?: Record<string, unknown>) => {
+    t: (key: string, opts?: Record<string, string | number>) => {
       const leaf = key.split('.').at(-1) ?? key
       const arg = opts?.version ?? opts?.current
       return arg ? `${leaf}-${arg}` : leaf

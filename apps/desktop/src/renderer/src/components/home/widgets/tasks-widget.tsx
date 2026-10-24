@@ -75,6 +75,7 @@ export function TasksWidget({ config, size }: WidgetComponentProps): React.JSX.E
         {rows.map((task) => {
           const project =
             projects.find((p) => p.id === task.projectId) ??
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- placeholder for a task whose project is not loaded; fabricating the missing icon/description/dates would change what consumers see
             ({
               id: task.projectId,
               name: '',

@@ -197,7 +197,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     })
 
     useEffect(() => {
-      if (!stream) return
+      if (!stream) return undefined
 
       startWaveformAnalysis(stream)
 
@@ -234,7 +234,7 @@ export const VoiceRecorder = forwardRef<VoiceRecorderHandle, VoiceRecorderProps>
     // stop unless the user is typing in an input. Capture phase so list-level
     // shortcuts (quick-file Escape etc.) don't race the recorder.
     useEffect(() => {
-      if (state !== 'recording') return
+      if (state !== 'recording') return undefined
       const onKeyDown = (e: KeyboardEvent): void => {
         if (e.key === 'Escape') {
           e.preventDefault()

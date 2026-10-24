@@ -106,7 +106,7 @@ describe('IconPickerButton opened from a row context menu', () => {
     expect(await screen.findByRole('dialog', { name: 'Emoji and icon picker' })).toBeTruthy()
     expect(screen.getByRole('menu', { hidden: true }).getAttribute('data-state')).toBe('closed')
 
-    act(() => afterClick(item))
+    void act(() => afterClick(item))
 
     expect(screen.queryByRole('dialog', { name: 'Emoji and icon picker' })).not.toBeNull()
   })

@@ -436,15 +436,15 @@ vi.mock('@/components/ui/primary-action-button', () => ({
 }))
 
 vi.mock('@/components/tasks/drag-drop', () => ({
-  SortableTaskRow: ({ task, onToggleComplete, onClick }: any) => (
+  SortableTaskRow: ({ task: rowTask, onToggleComplete, onClick }: any) => (
     <button
       type="button"
       onClick={() => {
-        onToggleComplete(task.id)
-        onClick?.(task.id)
+        onToggleComplete(rowTask.id)
+        onClick?.(rowTask.id)
       }}
     >
-      sortable {task.title}
+      sortable {rowTask.title}
     </button>
   )
 }))
@@ -512,7 +512,7 @@ vi.mock('@/components/tasks/repeat-indicator', () => ({
 
 vi.mock('@/components/tasks/sortable-subtask-list', () => ({
   SortableSubtaskList: ({ subtasks }: any) => (
-    <div>{subtasks.map((task: Task) => `sub ${task.title}`).join(',')}</div>
+    <div>{subtasks.map((subtask: Task) => `sub ${subtask.title}`).join(',')}</div>
   ),
   nestedListClass: () => ''
 }))
@@ -526,8 +526,8 @@ vi.mock('@/components/tasks/subtask-progress-indicator', () => ({
 }))
 
 vi.mock('@/components/tasks/task-linked-note-indicator', () => ({
-  TaskLinkedNoteIndicator: ({ task, onNoteClick }: any) => (
-    <button type="button" onClick={() => onNoteClick?.(task.linkedNoteIds[0])}>
+  TaskLinkedNoteIndicator: ({ task: linkedTask, onNoteClick }: any) => (
+    <button type="button" onClick={() => onNoteClick?.(linkedTask.linkedNoteIds[0])}>
       linked
     </button>
   )
@@ -1085,7 +1085,7 @@ describe('cold major renderer components', () => {
         refreshFolders
       })
     )
-    act(() => failing.result.current.handleDeleteClick({ id: 'note-2', title: 'Bad' } as never))
+    act(() => failing.result.current.handleDeleteClick({ id: 'note-2', title: 'Bad' }))
     await act(async () => {
       await failing.result.current.handleDeleteConfirm()
     })

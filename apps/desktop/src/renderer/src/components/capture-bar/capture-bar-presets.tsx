@@ -187,7 +187,7 @@ export const CapturePresets = ({
     [projects, presets.projectId]
   )
   const statuses = useMemo(
-    () => [...(effectiveProject?.statuses ?? [])].sort((a, b) => a.order - b.order),
+    () => [...(effectiveProject?.statuses ?? [])].toSorted((a, b) => a.order - b.order),
     [effectiveProject]
   )
   const pickedStatus = statuses.find((s) => s.id === merged.statusId) ?? null
@@ -208,7 +208,7 @@ export const CapturePresets = ({
   // Every view change lands focus on its first control, so the keyboard never
   // has to hunt for where the menu went.
   useEffect(() => {
-    if (!panel) return
+    if (!panel) return undefined
     const frame = requestAnimationFrame(() => {
       const root = contentRef.current
       if (!root) return
@@ -244,7 +244,7 @@ export const CapturePresets = ({
         )
         if (items.length === 0) return
         e.preventDefault()
-        const current = items.indexOf(document.activeElement as HTMLElement)
+        const current = items.findIndex((el) => el === document.activeElement)
         const step = e.key === 'ArrowDown' ? 1 : -1
         const next = current === -1 ? 0 : (current + step + items.length) % items.length
         items[next].focus()
@@ -252,9 +252,10 @@ export const CapturePresets = ({
       }
 
       if (e.key === 'ArrowRight' && view === 'root') {
-        const target = (document.activeElement as HTMLElement | null)?.dataset.presetView
+        const target = document.activeElement?.getAttribute('data-preset-view')
         if (target) {
           e.preventDefault()
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- data-preset-view attributes are rendered from PresetsMenuView values
           onPanelChange(target as PresetsMenuView)
         }
         return
@@ -757,6 +758,7 @@ export const CapturePresets = ({
         // The chips toggle the panel themselves; letting the outside-press
         // close it first would reopen it on the same click.
         onInteractOutside={(e) => {
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; pointer-down-outside always targets a Node
           if (anchorRef.current?.contains(e.target as Node)) e.preventDefault()
         }}
       >

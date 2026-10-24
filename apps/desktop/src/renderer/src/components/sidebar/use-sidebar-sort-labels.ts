@@ -24,8 +24,10 @@ export function useSidebarSortLabels(): SidebarSortLabels {
   const { t } = useT('common')
 
   return useMemo(() => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.fromEntries returns a string-keyed record; the keys are the sort modes this hook enumerates
     const labels = Object.fromEntries(
       Object.entries(LABEL_KEYS).map(([mode, key]) => [mode, t(key)])
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.entries(LABEL_KEYS) covers every SidebarSortMode key, but Object.fromEntries widens to a string-keyed record
     ) as Record<SidebarSortMode, string>
 
     return {

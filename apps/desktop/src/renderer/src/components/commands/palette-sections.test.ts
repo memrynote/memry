@@ -34,7 +34,7 @@ describe('palette headings', () => {
   it('names every tab context a command acts on, and a tag tab', () => {
     const tabContexts = new Set(metas.map((meta) => meta.context).filter((c) => c !== 'app'))
     for (const context of [...tabContexts, 'tag'] as const) {
-      expect(contexts[context as keyof typeof contexts], context).toEqual(expect.any(String))
+      expect(contexts[context], context).toEqual(expect.any(String))
     }
   })
 })

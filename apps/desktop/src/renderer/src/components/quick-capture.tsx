@@ -129,10 +129,10 @@ export function QuickCapture(): React.JSX.Element {
       setLinkPreview(null)
       setPreviewLoading(false)
       previewUrlRef.current = null
-      return
+      return undefined
     }
     const url = normalizeUrl(value.trim())
-    if (url === previewUrlRef.current) return
+    if (url === previewUrlRef.current) return undefined
 
     setPreviewLoading(true)
     const timer = setTimeout(() => {
@@ -490,6 +490,7 @@ export function QuickCapture(): React.JSX.Element {
 
   const handleFileSelected = useCallback(
     (e: Event) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
       const file = (e as CustomEvent<File>).detail
       if (!file) return
 
@@ -534,7 +535,7 @@ export function QuickCapture(): React.JSX.Element {
 
   useEffect(() => {
     const el = containerRef.current
-    if (!el) return
+    if (!el) return undefined
     const observer = new ResizeObserver((entries) => {
       const height = entries[0]?.contentRect.height
       if (height && height > 0) {

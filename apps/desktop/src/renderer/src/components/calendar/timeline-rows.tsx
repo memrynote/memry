@@ -59,7 +59,7 @@ export function useDescribeShape(
           return t('timeline.due', { date: formatDay(shape.date) })
         case 'start':
           return t('timeline.starts', { date: formatDay(shape.date) })
-        case 'none':
+        default:
           return t('timeline.no-date')
       }
     })()

@@ -118,8 +118,10 @@ export function ReadwiseFirstImportPreview({
       if (category === 'reader') continue
       books += value.books
       highlights += value.highlights
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- category is a key of the preview groups, which are keyed by ReadwiseCategory plus the handled `other`
       const enabled = category === 'other' || options.categories[category as ReadwiseCategory]
       if (enabled) willImport += value.books
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- category is a key of the preview groups, which are keyed by ReadwiseCategory plus the handled `other`
       else if (value.books > 0) off.push(category as ReadwiseCategory)
     }
     const documents = options.readerDocuments ? (counts?.get('reader')?.documents ?? 0) : 0

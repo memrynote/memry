@@ -144,6 +144,7 @@ export function JournalHeaderActions({
     if (action === 'version-history') onVersionHistory()
     else if (action === 'export') onExport()
     else if (action === 'settings') onOpenSettings()
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the dropdown radio group reports its item value as string; every item value is a JournalMenuAction
     else onMenuAction?.(action as JournalMenuAction)
   }
 

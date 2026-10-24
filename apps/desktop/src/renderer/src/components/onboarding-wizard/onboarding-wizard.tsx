@@ -67,7 +67,15 @@ const CHOICE_HINTS: Partial<Record<StepId, [string[], string][]>> = {
 
 /** Steps that show the mini app window under their content. Import and Ready
  * have long lists, so the window would only show as a sliver. */
-const STAGED: StepId[] = ['welcome', 'theme', 'modules', 'agent', 'storage', 'account', 'vault']
+const STAGED: ReadonlySet<StepId> = new Set<StepId>([
+  'welcome',
+  'theme',
+  'modules',
+  'agent',
+  'storage',
+  'account',
+  'vault'
+])
 
 function isTyping(target: EventTarget | null): boolean {
   return (
@@ -87,6 +95,7 @@ function useWizardKeys(state: WizardState, back: () => void): void {
       }
       if (event.key !== 'Enter' || SELF_KEYED.has(state.step)) return
       // Enter on an option or on nothing focused continues, as the hint says.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- keydown target is an element or null
       const target = event.target as HTMLElement | null
       if (target && target !== document.body && !target.hasAttribute('data-wizard-option')) return
       const next = document.querySelector<HTMLButtonElement>(
@@ -160,7 +169,7 @@ export function OnboardingWizard(): React.JSX.Element {
       authStep === 'recovery-confirm' ||
       authStep === 'recovery-input')
   const stage =
-    STAGED.includes(state.step) && !phraseOnScreen ? (
+    STAGED.has(state.step) && !phraseOnScreen ? (
       <StagePreview
         features={state.draft.features}
         aiEnabled={state.draft.aiEnabled}

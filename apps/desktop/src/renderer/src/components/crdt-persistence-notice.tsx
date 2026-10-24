@@ -35,7 +35,7 @@ export function CrdtPersistenceNotice(): null {
   const announced = useRef(false)
 
   useEffect(() => {
-    if (announced.current) return
+    if (announced.current) return undefined
     announced.current = true
 
     let cancelled = false

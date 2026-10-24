@@ -67,6 +67,7 @@ export function takeReleaseNotesTabPlan(currentVersion: string): ReleaseNotesTab
 
   let stash: Partial<StashedNotes> | null = null
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- localStorage JSON boundary; fields are validated before use below
     stash = JSON.parse(raw) as Partial<StashedNotes>
   } catch {
     localStorage.removeItem(STORAGE_KEY)

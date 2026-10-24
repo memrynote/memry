@@ -8,7 +8,7 @@ export function useMeasuredWidth<T extends HTMLElement>(): [RefObject<T | null>,
   const [width, setWidth] = useState(0)
   useLayoutEffect(() => {
     const element = ref.current
-    if (!element) return
+    if (!element) return undefined
     setWidth(element.clientWidth)
     const observer = new ResizeObserver(([entry]) => {
       setWidth(Math.floor(entry.contentRect.width))

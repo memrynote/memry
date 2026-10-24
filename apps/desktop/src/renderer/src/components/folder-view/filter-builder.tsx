@@ -250,6 +250,7 @@ export function FilterBuilder({
     return availableProperties.map((p) => ({
       id: p.name,
       name: p.name,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- IPC property type is a string; falls back to text
       type: (p.type || 'text') as PropertyInfo['type']
     }))
   }, [availableProperties])
@@ -559,6 +560,7 @@ export function FilterBuilder({
                   </span>
                   <Select
                     value={group.logic}
+                    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Select emits only the and/or items it renders
                     onValueChange={(v) => handleGroupLogicChange(group.id, v as 'and' | 'or')}
                   >
                     <SelectTrigger className="flex h-[22px] w-auto items-center justify-start gap-1 rounded-md border-0 bg-muted px-1.5 text-[11px] font-semibold text-foreground [&>svg:last-child]:h-2.5 [&>svg:last-child]:w-2.5">

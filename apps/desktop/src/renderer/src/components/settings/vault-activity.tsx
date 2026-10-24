@@ -111,6 +111,7 @@ export function VaultActivitySettings({ focusTarget, focusRequestId }: VaultActi
 
   const handleRetentionChange = useCallback(
     async (value: string) => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the control only offers members of this union, so its string value is always one of them
       const days = Number(value) as VaultActivityRetentionDays
       try {
         await window.api.vaultActivity.setRetention(days)

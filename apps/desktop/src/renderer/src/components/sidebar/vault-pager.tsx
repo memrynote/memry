@@ -94,6 +94,7 @@ function animateTo(
     .then(() => {
       apply()
       animation.cancel()
+      return undefined
     })
     .catch(() => apply())
 }
@@ -223,14 +224,14 @@ export function VaultPager({
   const uncover = useCallback((animate: boolean) => {
     if (!coveringRef.current) return
     coveringRef.current = false
-    const done = (): void => {
+    const lift = (): void => {
       setCover(null)
     }
     if (!animate || prefersReducedMotion()) {
-      done()
+      lift()
       return
     }
-    void animateTo(coverRef.current, { opacity: 1 }, { opacity: 0 }, REVEAL_MS, 'linear').then(done)
+    void animateTo(coverRef.current, { opacity: 1 }, { opacity: 0 }, REVEAL_MS, 'linear').then(lift)
   }, [])
 
   const isRtl = useCallback((): boolean => {
@@ -387,7 +388,7 @@ export function VaultPager({
   // the browser from also scrolling.
   useEffect(() => {
     const viewport = viewportRef.current
-    if (!viewport) return
+    if (!viewport) return undefined
 
     const onIdle = (): void => {
       idleTimerRef.current = null
@@ -485,7 +486,7 @@ export function VaultPager({
   // alone showed the list at its defaults, then reordering.
   // The cover is pointer-transparent, so the live list is usable underneath.
   useEffect(() => {
-    if (!coveringRef.current) return
+    if (!coveringRef.current) return undefined
     coveredArrival = getVaultSwitchState().arrival
     const idle = (): boolean => queryClient.isFetching() === 0 && pendingWorkspaceLoads() === 0
     // Checking starts two frames in: the list's reads start in its own mount

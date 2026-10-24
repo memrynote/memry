@@ -273,7 +273,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
 
   useEffect(() => {
     const container = treeContainerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (actions.renamingNoteId) return
@@ -357,8 +357,10 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
       }
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
     window.addEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
     return () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- custom window event name has no entry in WindowEventMap
       window.removeEventListener('reveal-in-sidebar', handleRevealInSidebar as EventListener)
     }
   }, [data.tree, data.noteMap, data.showFiles, handleRevealComplete, tCommon])
@@ -714,7 +716,7 @@ export const NotesTree = forwardRef<NotesTreeActions, NotesTreeProps>(function N
         isTreeFocusedRef.current = true
       }}
       onBlur={(e) => {
-        if (!treeContainerRef.current?.contains(e.relatedTarget as Node)) {
+        if (!treeContainerRef.current?.contains(e.relatedTarget)) {
           isTreeFocusedRef.current = false
         }
       }}

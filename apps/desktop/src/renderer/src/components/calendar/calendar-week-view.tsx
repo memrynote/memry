@@ -116,15 +116,15 @@ export function CalendarWeekView({
   const getScrollEl = useCallback(() => scrollContainerRef.current, [scrollContainerRef])
 
   useEffect(() => {
-    if (anchorDate === lastEmittedAnchorRef.current) return
+    if (anchorDate === lastEmittedAnchorRef.current) return undefined
     const anchorIndex = dayIndexFromDate(anchorDate)
-    if (anchorIndex >= visibleDayStart && anchorIndex < visibleDayStart + 7) return
+    if (anchorIndex >= visibleDayStart && anchorIndex < visibleDayStart + 7) return undefined
     scrollToDate(anchorDate, { smooth: true })
     return () => {}
   }, [anchorDate, visibleDayStart, scrollToDate])
 
   useEffect(() => {
-    if (todayRequestKey === lastTodayRequestKeyRef.current) return
+    if (todayRequestKey === lastTodayRequestKeyRef.current) return undefined
     lastTodayRequestKeyRef.current = todayRequestKey
     scrollToDate(anchorDate, { smooth: false })
     return () => {}
@@ -132,7 +132,7 @@ export function CalendarWeekView({
 
   useEffect(() => {
     const body = scrollContainerRef.current
-    if (!body) return
+    if (!body) return undefined
     const sync = (): void => {
       if (headerScrollRef.current) {
         headerScrollRef.current.scrollLeft = body.scrollLeft

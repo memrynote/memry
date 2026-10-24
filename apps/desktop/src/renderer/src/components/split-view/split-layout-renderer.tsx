@@ -22,6 +22,7 @@ interface SplitLayoutRendererProps {
 const getLayoutDirection = (layout: SplitLayout): SplitDirection => {
   if (layout.type === 'split') return layout.direction
   // Legacy fallback: type itself was the direction name
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- legacy persisted layouts stored the direction in `type`; compared to string literals below
   const raw = (layout as Record<string, unknown>).type as string
   return raw === 'vertical' ? 'vertical' : 'horizontal'
 }

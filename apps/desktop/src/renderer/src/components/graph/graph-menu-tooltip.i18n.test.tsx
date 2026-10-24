@@ -2,6 +2,7 @@ import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import type { i18n as I18nInstance } from 'i18next'
+// oxlint-disable-next-line import/no-named-as-default -- graphology's typings declare Graph only as the default export; the named runtime export has no types
 import Graph from 'graphology'
 import { createRendererI18n } from '@memry/i18n/renderer'
 import { GraphContextMenu } from './graph-context-menu'

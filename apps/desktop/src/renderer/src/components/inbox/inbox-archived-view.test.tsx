@@ -135,7 +135,9 @@ describe('InboxArchivedView', () => {
     expect(screen.getByText(/archived/i)).toBeInTheDocument()
 
     rerender(<InboxArchivedView searchQuery="missing" />)
-    act(() => vi.advanceTimersByTime(250))
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
     expect(screen.getByText(/matching archived/i)).toBeInTheDocument()
   })
 
@@ -148,7 +150,9 @@ describe('InboxArchivedView', () => {
     mocks.detailState.item = makeItem('newer', 'Loaded detail')
 
     render(<InboxArchivedView searchQuery="new" />)
-    act(() => vi.advanceTimersByTime(250))
+    act(() => {
+      vi.advanceTimersByTime(250)
+    })
 
     const listItems = screen.getAllByRole('listitem')
     expect(within(listItems[0]).getByText('Newer item')).toBeInTheDocument()
@@ -177,7 +181,7 @@ describe('InboxArchivedView', () => {
       function TestIntersectionObserver(callback: IntersectionObserverCallback) {
         observerCallback = callback
         return { observe, unobserve, disconnect: vi.fn() } as unknown as IntersectionObserver
-      } as unknown as typeof IntersectionObserver
+      }
     )
     mocks.archivedState.items = [makeItem('one', 'One')]
     mocks.archivedState.hasMore = true

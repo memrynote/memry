@@ -128,7 +128,7 @@ export function applyCategoryOrder(
   const nextSortOrder = new Map(order.map((o) => [o.id, o.sortOrder]))
   return categories
     .map((c) => (nextSortOrder.has(c.id) ? { ...c, sortOrder: nextSortOrder.get(c.id)! } : c))
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .toSorted((a, b) => a.sortOrder - b.sortOrder)
 }
 
 /**
@@ -172,10 +172,12 @@ export function applyTagAssignments(
     buckets.set(assignment.categoryId, list)
   }
 
-  const byOrder = (list: HubTag[]): HubTag[] => [...list].sort((a, b) => a.sortOrder - b.sortOrder)
-
   return {
     categories: categories.map((c) => ({ ...c, tags: byOrder(buckets.get(c.id) ?? c.tags) })),
     uncategorized: byOrder(buckets.get(null) ?? uncategorized)
   }
+}
+
+function byOrder(list: HubTag[]): HubTag[] {
+  return list.toSorted((a, b) => a.sortOrder - b.sortOrder)
 }

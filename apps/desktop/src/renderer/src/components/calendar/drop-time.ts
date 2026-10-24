@@ -88,6 +88,7 @@ export function resolveDropOptions(
     }
   }
   if (overData && 'dueTime' in overData) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit droppable data is Record<string, unknown>; slot-less date cells carry a string or null dueTime
     return { dueTime: overData.dueTime as string | null }
   }
   return undefined

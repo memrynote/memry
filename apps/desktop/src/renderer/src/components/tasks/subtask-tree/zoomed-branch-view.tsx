@@ -122,9 +122,7 @@ export const ZoomedBranchView = ({
 
         <div className="flex items-center gap-2.5 pb-4">
           <InteractiveStatusIcon
-            type={
-              isCompleted ? 'done' : ((status?.type ?? 'todo') as 'todo' | 'in_progress' | 'done')
-            }
+            type={isCompleted ? 'done' : (status?.type ?? 'todo')}
             color={status?.color ?? 'var(--text-tertiary)'}
             isCompleted={isCompleted}
             onClick={() => onToggleComplete(task.id)}

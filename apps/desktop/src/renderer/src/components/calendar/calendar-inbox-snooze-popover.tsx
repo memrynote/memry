@@ -49,6 +49,7 @@ export function CalendarInboxSnoozePopover({
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
       if (!containerRef.current) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event.target is typed EventTarget; outside-click on document always targets a Node
       if (containerRef.current.contains(event.target as Node)) return
       // SnoozePicker's Radix DropdownMenu/Dialog render in a portal outside this
       // tree. Treat clicks on those as inside so the popover doesn't dismiss

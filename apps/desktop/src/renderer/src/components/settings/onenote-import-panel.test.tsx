@@ -75,7 +75,7 @@ describe('OneNoteImportPanel', () => {
     await waitFor(() => {
       const last = states[states.length - 1]
       expect(last.ready).toBe(true)
-      expect(last.options.sectionIds?.sort()).toEqual(['s1', 's2'])
+      expect(last.options.sectionIds?.toSorted()).toEqual(['s1', 's2'])
       expect(last.options.includeIncompatibleAttachments).toBe(false)
       expect(last.options.skipPreviouslyImported).toBe(true)
     })

@@ -21,7 +21,7 @@ export function filterCalendarItems(
       const desc = item.descriptionPreview?.toLowerCase() ?? ''
       return title.includes(q) || desc.includes(q)
     })
-    .sort(
+    .toSorted(
       (a, b) =>
         Math.abs(new Date(a.startAt).getTime() - nowMs) -
         Math.abs(new Date(b.startAt).getTime() - nowMs)

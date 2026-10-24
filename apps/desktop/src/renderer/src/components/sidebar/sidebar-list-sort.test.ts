@@ -10,7 +10,7 @@ const ITEMS: SortableListItem[] = [
 ]
 
 const order = (mode: Parameters<typeof compareListItems>[0]): string[] =>
-  [...ITEMS].sort(compareListItems(mode)).map((i) => i.name)
+  [...ITEMS].toSorted(compareListItems(mode)).map((i) => i.name)
 
 describe('sidebar list sort', () => {
   it('uses the stored position in manual mode', () => {
@@ -39,7 +39,10 @@ describe('sidebar list sort', () => {
       { name: 'zeta', position: 0 },
       { name: 'apple', position: 0 }
     ]
-    expect([...tied].sort(compareListItems('manual')).map((i) => i.name)).toEqual(['apple', 'zeta'])
+    expect([...tied].toSorted(compareListItems('manual')).map((i) => i.name)).toEqual([
+      'apple',
+      'zeta'
+    ])
   })
 
   // Dragging a row that a sort mode placed would write a position the mode then

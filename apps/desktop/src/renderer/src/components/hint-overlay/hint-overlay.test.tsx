@@ -21,18 +21,17 @@ const wrapper = ({ children }: { children: ReactNode }): React.JSX.Element => (
 const addTarget = (text: string, rect: Partial<DOMRect>): HTMLButtonElement => {
   const button = document.createElement('button')
   button.textContent = text
-  button.getBoundingClientRect = () =>
-    ({
-      x: rect.x ?? 0,
-      y: rect.y ?? 0,
-      top: rect.top ?? 0,
-      left: rect.left ?? 0,
-      bottom: rect.bottom ?? 20,
-      right: rect.right ?? 80,
-      width: rect.width ?? 80,
-      height: rect.height ?? 20,
-      toJSON: () => ({})
-    }) as DOMRect
+  button.getBoundingClientRect = () => ({
+    x: rect.x ?? 0,
+    y: rect.y ?? 0,
+    top: rect.top ?? 0,
+    left: rect.left ?? 0,
+    bottom: rect.bottom ?? 20,
+    right: rect.right ?? 80,
+    width: rect.width ?? 80,
+    height: rect.height ?? 20,
+    toJSON: () => ({})
+  })
   Object.defineProperty(button, 'offsetParent', { value: document.body, configurable: true })
   document.body.appendChild(button)
   return button

@@ -26,7 +26,7 @@ import { cn } from '@/lib/utils'
 import { reorderSidebarSections } from '@/components/sidebar/sidebar-section-order'
 import type { PageIconProps } from '@/lib/icons/page-icons'
 import type { AppPage } from '@/App'
-import type { SidebarItem, TabType } from '@/contexts/tabs/types'
+import type { SidebarItem } from '@/contexts/tabs/types'
 
 /**
  * Width of the rail column. The sidebar provider holds this much room at the
@@ -194,7 +194,7 @@ export function AppRail({
         <SortableContext items={ids} strategy={verticalListSortingStrategy}>
           {items.map((item, index) => {
             const sidebarItem: SidebarItem = {
-              type: item.page as TabType,
+              type: item.page,
               title: item.title,
               path: `/${item.page}`
             }

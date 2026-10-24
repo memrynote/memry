@@ -67,8 +67,8 @@ function mockDiagnosticsApi(overrides?: {
 }
 
 async function openPreview() {
-  const trigger = await screen.findByRole('button', { name: /preview/i })
-  await userEvent.click(trigger)
+  const previewTrigger = await screen.findByRole('button', { name: /preview/i })
+  await userEvent.click(previewTrigger)
 }
 
 describe('ReportIncidentDialog', () => {

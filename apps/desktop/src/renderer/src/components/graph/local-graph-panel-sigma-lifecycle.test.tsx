@@ -45,7 +45,7 @@ vi.mock('sigma', () => {
       public container: HTMLElement,
       public settings: Record<string, unknown>
     ) {
-      mocks.instances.push(this as unknown as FakeSigmaLike)
+      mocks.instances.push(this)
     }
 
     getGraph(): Graph {
@@ -133,11 +133,11 @@ function currentSigma(): FakeSigmaLike {
 }
 
 function nodeIds(graph: Graph): string[] {
-  return graph.nodes().sort()
+  return graph.nodes().toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 function edgeKeys(graph: Graph): string[] {
-  return graph.edges().sort()
+  return graph.edges().toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 /**

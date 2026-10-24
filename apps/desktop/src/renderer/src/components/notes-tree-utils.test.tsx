@@ -270,7 +270,7 @@ describe('setFoldersExpanded', () => {
   it('opens and closes only the listed ids', () => {
     const start = new Set(['folder-Other', 'folder-A'])
 
-    expect([...setFoldersExpanded(start, ['folder-A', 'folder-A/B'], true)].sort()).toEqual([
+    expect([...setFoldersExpanded(start, ['folder-A', 'folder-A/B'], true)].toSorted()).toEqual([
       'folder-A',
       'folder-A/B',
       'folder-Other'
@@ -329,7 +329,7 @@ describe('hideVaultFiles', () => {
 
     expect(visible.rootNotes).toEqual([])
     expect(visible.folders.map((f) => f.path)).toEqual(['Docs', 'Media'])
-    expect(visible.folders[0].notes.map((n) => n.id).sort()).toEqual(['legacy', 'md'])
+    expect(visible.folders[0].notes.map((n) => n.id).toSorted()).toEqual(['legacy', 'md'])
     expect(visible.folders[1].children.map((f) => f.path)).toEqual(['Media/Audio'])
     expect(visible.folders[1].children[0].notes).toEqual([])
     expect(visible.notesFirst).toBe(true)
@@ -340,7 +340,7 @@ describe('hideVaultFiles', () => {
     hideVaultFiles(full)
 
     expect(full.rootNotes.map((n) => n.id)).toEqual(['png'])
-    expect(full.folders[0].notes.map((n) => n.id).sort()).toEqual(['md', 'pdf'])
+    expect(full.folders[0].notes.map((n) => n.id).toSorted()).toEqual(['md', 'pdf'])
   })
 })
 

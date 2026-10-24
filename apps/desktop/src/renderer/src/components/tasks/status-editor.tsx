@@ -267,7 +267,7 @@ export const StatusEditor = ({
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
 
   // Sort statuses by order
-  const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order)
+  const sortedStatuses = statuses.toSorted((a, b) => a.order - b.order)
 
   const handleUpdate = useCallback(
     (id: string, updates: Partial<Status>): void => {

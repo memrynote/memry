@@ -43,7 +43,7 @@ describe.each(pickers)('%s', (_, renderPicker) => {
     ['no status', '', 'Backlog'],
     ['a deleted status', 'status-gone', 'Backlog'],
     ['its own status', 'review', 'Review']
-  ])('names the status of a task with %s', (_, statusId, shown) => {
+  ])('names the status of a task with %s', (_label, statusId, shown) => {
     renderPicker(statusId)
 
     expect(screen.getByRole('button', { name: `Status: ${shown}. Click to change.` })).toBeTruthy()

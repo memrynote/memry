@@ -327,7 +327,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         // stored position instead of crashing the whole section.
         created: project.createdAt?.getTime?.()
       }))
-      .sort(compareListItems(projectsSortMode))
+      .toSorted(compareListItems(projectsSortMode))
       .map((entry) => entry.project)
   }, [tasksContext?.projects, projectsSortMode])
 
@@ -492,6 +492,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           ref={notesActionsRef}
           onTargetFolderChange={setSelectedFolder}
           fileDropFolder={isDraggingFiles ? dropFolder : null}
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- RefObject is invariant; the ref is attached to an HTMLElement subtype
           scrollContainerRef={sidebarScrollRef as React.RefObject<HTMLElement>}
         />
       </SidebarSection>

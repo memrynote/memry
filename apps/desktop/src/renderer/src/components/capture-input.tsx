@@ -53,8 +53,6 @@ const ALLOWED_ATTACHMENT_TYPES = [
   'application/pdf'
 ] as const
 
-type AllowedAttachmentType = (typeof ALLOWED_ATTACHMENT_TYPES)[number]
-
 interface CaptureInputProps {
   onCaptureSuccess?: () => void
   onCaptureError?: (error: string) => void
@@ -220,7 +218,7 @@ export function CaptureInput({
         fileInputRef.current.value = ''
       }
 
-      if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type as AllowedAttachmentType)) {
+      if (!(ALLOWED_ATTACHMENT_TYPES as readonly string[]).includes(file.type)) {
         onCaptureError?.(`Unsupported file type: ${file.type}`)
         return
       }

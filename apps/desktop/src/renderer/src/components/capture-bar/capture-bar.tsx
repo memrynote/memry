@@ -260,6 +260,7 @@ export const CaptureBar = ({
   // A pick in the menu came after anything typed, so the token that would
   // contradict it leaves the text.
   const changePresets = useCallback((patch: Partial<TaskPresets>): void => {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Object.keys returns string[]; patch keys are TaskPresets fields
     const kinds = (Object.keys(patch) as TaskPresetField[]).flatMap(
       (field): QuickAddSpanKind[] => CONFLICTING_TOKENS[field] ?? []
     )

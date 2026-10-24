@@ -3,6 +3,7 @@ import { SigmaContainer, useSigma } from '@react-sigma/core'
 import { useTheme } from 'next-themes'
 import '@react-sigma/core/lib/style.css'
 import { X, Maximize2, Pin } from '@/lib/icons'
+// oxlint-disable-next-line import/no-named-as-default -- graphology's typings declare Graph only as the default export; the named runtime export has no types
 import Graph from 'graphology'
 import type { NodeDisplayData, EdgeDisplayData } from 'sigma/types'
 import type { GraphDataResponse } from '@memry/contracts/graph-api'
@@ -21,6 +22,7 @@ import type { GraphPhysicsOptions } from '@/lib/graph-physics'
 import { useT } from '@memry/i18n/renderer'
 import { GraphEvents } from './graph-events'
 import { GraphTooltip } from './graph-tooltip'
+import { readEdgeAttrs } from './graph-node-attrs'
 import { GraphRenderUnavailable } from './graph-render-unavailable'
 import { LivePhysics, type PhysicsHandle } from './physics-layout'
 
@@ -112,7 +114,7 @@ export function LocalGraphPanel({
       if (isCenter) {
         return {
           ...baseAttrs,
-          size: ((baseAttrs.size as number) ?? 6) * 1.6,
+          size: (baseAttrs.size ?? 6) * 1.6,
           color: CENTER_HIGHLIGHT_COLOR,
           highlighted: true,
           zIndex: 2,
@@ -140,7 +142,7 @@ export function LocalGraphPanel({
 
   const edgeReducer = useCallback(
     (edge: string, attrs: Record<string, unknown>): Partial<EdgeDisplayData> => {
-      if (!graph?.hasEdge(edge)) return attrs as Partial<EdgeDisplayData>
+      if (!graph?.hasEdge(edge)) return attrs
 
       const activeHover = hoverTargetRef.current
       const fade = fadeRef.current
@@ -148,7 +150,7 @@ export function LocalGraphPanel({
       if (!activeHover || fade === 0 || !graph.hasNode(activeHover)) {
         return {
           ...(attrs as Partial<EdgeDisplayData>),
-          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
+          color: keepsOwnEdgeColor(attrs) ? readEdgeAttrs(attrs).color : softEdgeColor,
           size: 1
         }
       }
@@ -156,10 +158,10 @@ export function LocalGraphPanel({
       const [source, target] = graph.extremities(edge)
       const connected = source === activeHover || target === activeHover
       if (connected) {
-        const targetSize = ((attrs.size as number) ?? 1) + 2
+        const targetSize = (readEdgeAttrs(attrs).size ?? 1) + 2
         return {
           ...(attrs as Partial<EdgeDisplayData>),
-          color: keepsOwnEdgeColor(attrs) ? (attrs.color as string) : softEdgeColor,
+          color: keepsOwnEdgeColor(attrs) ? readEdgeAttrs(attrs).color : softEdgeColor,
           size: 1 + (targetSize - 1) * fade
         }
       }
@@ -293,6 +295,7 @@ function useLiveLocalGraph(
     const applied = appliedRef.current
     // `themeKey` takes part because a theme flip re-resolves the CSS colour
     // variables every node and edge attribute was built from.
+    // oxlint-disable-next-line typescript/prefer-optional-chain -- data may be undefined, so `applied?.data === data` would match a null ref and skip the first apply
     if (applied && applied.data === data && applied.themeKey === themeKey) return
     appliedRef.current = { data, themeKey }
     /* oxlint-disable react-you-might-not-need-an-effect/no-event-handler,
@@ -456,8 +459,8 @@ function LocalHoverFadeAnimator({
   hoverTargetRef
 }: {
   hoveredNode: string | null
-  fadeRef: React.MutableRefObject<number>
-  hoverTargetRef: React.MutableRefObject<string | null>
+  fadeRef: React.RefObject<number>
+  hoverTargetRef: React.RefObject<string | null>
 }): null {
   const sigma = useSigma()
   const animRef = useRef<number | null>(null)
@@ -472,7 +475,7 @@ function LocalHoverFadeAnimator({
 
     if (startFade === goal) {
       refreshSigmaIfMeasurable(sigma)
-      return
+      return undefined
     }
 
     const startTime = performance.now()

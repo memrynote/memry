@@ -98,7 +98,7 @@ describe('AppleNotesFolderPanel', () => {
     fireEvent.click(checkboxFor('Personal'))
     await waitFor(() => {
       const last = states[states.length - 1]
-      expect(last.options.folderIds?.slice().sort()).toEqual(['f-clients', 'f-work'])
+      expect(last.options.folderIds?.toSorted()).toEqual(['f-clients', 'f-work'])
       expect(last.options.includeUnfiledNotes).toBe(true)
     })
 
@@ -115,7 +115,7 @@ describe('AppleNotesFolderPanel', () => {
 
     await waitFor(() => {
       const last = states[states.length - 1]
-      expect(last.options.folderIds?.slice().sort()).toEqual(['f-personal'])
+      expect(last.options.folderIds?.toSorted()).toEqual(['f-personal'])
     })
     expect(checkboxFor('Clients')).toHaveAttribute('data-state', 'unchecked')
   })

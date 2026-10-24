@@ -72,7 +72,7 @@ export function VaultOnboarding(): React.JSX.Element {
 
   // Home-view shortcuts mirror the hints shown on each action row.
   useEffect(() => {
-    if (view !== 'home') return
+    if (view !== 'home') return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
       const mod = isMac ? event.metaKey : event.ctrlKey
       if (!mod || event.shiftKey || event.altKey || isLoading) return

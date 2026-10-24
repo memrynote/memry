@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, options?: Record<string, unknown>) =>
+    t: (key: string, options?: Record<string, string | number | undefined>) =>
       options?.calendar ? `${key}:${options.calendar}` : key,
     i18n: { language: 'en-US' }
   })

@@ -160,6 +160,7 @@ describe('UpdateInstallFailedDialog', () => {
       error: 'EPERM: operation not permitted, rename'
     })
     const writeText = vi.fn().mockResolvedValue(undefined)
+    // oxlint-disable-next-line typescript/no-misused-spread -- test stub: copy navigator's own props, then override clipboard
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } })
 
     render(<UpdateInstallFailedDialog />)

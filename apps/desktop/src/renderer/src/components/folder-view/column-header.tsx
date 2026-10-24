@@ -262,7 +262,9 @@ export function ColumnHeader({
         {dragHandleProps && (
           // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- pointer-only affordance; the sortable header exposes the same action through its own keyboard handler; pointer-only drag/resize affordance; column reorder and sort have keyboard paths elsewhere
           <div
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit SyntheticListenerMap spreads as div event props
             {...(dragHandleProps.listeners as React.HTMLAttributes<HTMLDivElement>)}
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- dnd-kit attributes are a plain object that spreads as div props
             {...(dragHandleProps.attributes as React.HTMLAttributes<HTMLDivElement>)}
             onClick={(e) => e.stopPropagation()}
             className={cn(

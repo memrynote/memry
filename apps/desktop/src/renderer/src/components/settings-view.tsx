@@ -66,7 +66,7 @@ function useExpandSidebarWhileMounted(): void {
   const setSidebarOpen = useEffectEvent((value: boolean) => setOpen(value))
 
   useEffect(() => {
-    if (!wasCollapsed) return
+    if (!wasCollapsed) return undefined
     setSidebarOpen(true)
     return () => setSidebarOpen(false)
   }, [wasCollapsed])

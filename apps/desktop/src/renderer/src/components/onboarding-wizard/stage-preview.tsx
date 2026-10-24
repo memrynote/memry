@@ -67,11 +67,6 @@ export function StagePreview({
       : focus === 'canvas'
         ? p('canvasName')
         : t(`onboardingWizard.modules.${focus}`)
-  const railItem = (selected: boolean): string =>
-    cn(
-      'flex size-7 items-center justify-center rounded-[7px] [&_svg]:size-3.5',
-      selected && 'bg-sidebar-rail-active text-sidebar-rail-active-foreground'
-    )
   return (
     <div
       aria-hidden="true"
@@ -176,6 +171,7 @@ function PreviewItem({
   )
 }
 
+// oxlint-disable-next-line typescript/consistent-return -- exhaustive switch over StageFocus; every member returns
 function StagePane({
   focus,
   p,
@@ -205,4 +201,11 @@ function StagePane({
     case 'agent':
       return <AgentPane p={p} />
   }
+}
+
+function railItem(selected: boolean): string {
+  return cn(
+    'flex size-7 items-center justify-center rounded-[7px] [&_svg]:size-3.5',
+    selected && 'bg-sidebar-rail-active text-sidebar-rail-active-foreground'
+  )
 }

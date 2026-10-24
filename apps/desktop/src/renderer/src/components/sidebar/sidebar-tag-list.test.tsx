@@ -52,7 +52,7 @@ vi.mock('@/hooks/use-open-target', () => ({
 
 vi.mock('@memry/i18n/renderer', () => ({
   useT: () => ({
-    t: (key: string, params?: Record<string, unknown>) =>
+    t: (key: string, params?: Record<string, string | number>) =>
       String(params?.count ?? key.split('.').at(-1) ?? key)
   })
 }))
@@ -85,7 +85,7 @@ vi.mock('@/hooks/use-tag-categories', () => ({
     }
 
     const sortTags = (tags: typeof mocks.query.tags) =>
-      [...tags].sort(
+      [...tags].toSorted(
         (a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0) || a.tag.localeCompare(b.tag)
       )
 
@@ -104,7 +104,7 @@ vi.mock('@/hooks/use-tag-categories', () => ({
         sortOrder: row.sortOrder,
         tags: sortTags(buckets.get(row.id) ?? []).map(toHubTag)
       }))
-      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .toSorted((a, b) => a.sortOrder - b.sortOrder)
 
     return {
       categories,

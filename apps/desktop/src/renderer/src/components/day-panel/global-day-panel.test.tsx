@@ -87,7 +87,7 @@ function renderPanel() {
 
 function renderPanelWithAISettings(aiEnabled: boolean) {
   const queryClient = createTestQueryClient()
-  const api = window.api as typeof window.api
+  const api = window.api
   vi.mocked(api.settings.getAISettings).mockResolvedValue({
     enabled: aiEnabled,
     imageEmbeddings: true,

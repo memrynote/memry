@@ -62,7 +62,7 @@ const resolveSelectedProject = (
 const buildStatusColumns = (
   project: Project
 ): { columns: KanbanColumnDef[]; tasksByColumn: Map<string, Task[]> } => {
-  const sortedStatuses = [...project.statuses].sort((a, b) => a.order - b.order)
+  const sortedStatuses = project.statuses.toSorted((a, b) => a.order - b.order)
   const columns: KanbanColumnDef[] = sortedStatuses.map((s) => ({
     id: s.id,
     title: s.name,
