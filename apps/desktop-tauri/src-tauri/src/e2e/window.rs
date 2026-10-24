@@ -54,7 +54,8 @@ pub fn e2e_windows<R: Runtime>(app: AppHandle<R>) -> Result<Vec<E2eWindow>, Comm
     Ok(windows)
 }
 
-/// Moves the window and sets its inner size, both in logical pixels, on the main thread.
+/// Restores the window, then moves it and sets its inner size, both in logical pixels, on the
+/// main thread.
 #[tauri::command]
 pub async fn e2e_set_window_rect<R: Runtime>(
     app: AppHandle<R>,
@@ -73,8 +74,11 @@ pub async fn e2e_set_window_rect<R: Runtime>(
     })?;
     let (done, result) = mpsc::channel();
     app.run_on_main_thread(move || {
+        // A window manager that maximizes a window larger than the screen (XFCE on a small
+        // display) ignores `set_size` until the window is restored.
         let applied = window
-            .set_size(LogicalSize::new(width, height))
+            .unmaximize()
+            .and_then(|()| window.set_size(LogicalSize::new(width, height)))
             .and_then(|()| window.set_position(LogicalPosition::new(x, y)));
         // The receiver outlives the call unless it timed out, in which case nobody reads it.
         let _ = done.send(applied.map_err(|error| error.to_string()));

@@ -22,8 +22,8 @@ test('a window rect set through e2e_set_window_rect reaches the renderer', async
     label: 'main',
     x: 0,
     y: 0,
-    width: 1100,
-    height: 700
+    width: 900,
+    height: 600
   })
 
   // The native frame is exactly the rect. The page is as wide, and as tall minus a native title
@@ -33,11 +33,11 @@ test('a window rect set through e2e_set_window_rect reaches the renderer', async
       const [main] = await invokeTest<E2eWindow[]>(app, 'e2e_windows')
       const [width, height] = await page.evaluate(() => [window.innerWidth, window.innerHeight])
       return (
-        Math.abs(main.width - 1100) <= 2 &&
-        Math.abs(main.height - 700) <= 2 &&
-        Math.abs(width - 1100) <= 2 &&
-        height <= 702 &&
-        height >= 700 - 60
+        Math.abs(main.width - 900) <= 2 &&
+        Math.abs(main.height - 600) <= 2 &&
+        Math.abs(width - 900) <= 2 &&
+        height <= 602 &&
+        height >= 600 - 60
       )
     })
     .toBe(true)

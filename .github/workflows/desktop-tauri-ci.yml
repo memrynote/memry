@@ -254,10 +254,10 @@ jobs:
       - name: E2E specs (Linux)
         if: runner.os == 'Linux'
         run: |
-          dbus-run-session -- bash -c '
-            echo "" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
-            xvfb-run -a bash -c "pnpm --filter @memry/desktop-tauri test:e2e && pnpm --filter @memry/desktop-tauri test:e2e:multi"
-          '
+          dbus-run-session -- bash -c "
+            echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            xvfb-run -a -s '-screen 0 1920x1080x24' bash -c 'pnpm --filter @memry/desktop-tauri test:e2e && pnpm --filter @memry/desktop-tauri test:e2e:multi'
+          "
 
       - name: Purge leaked e2e keychain items
         if: always()
