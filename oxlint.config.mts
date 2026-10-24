@@ -152,7 +152,15 @@ export default defineConfig({
       'typescript/no-array-delete',
       'typescript/no-base-to-string',
       'typescript/no-duplicate-type-constituents',
-      'typescript/no-floating-promises',
+      // node:test's `test()`/`describe()` return promises the runner tracks itself.
+      [
+        'typescript/no-floating-promises',
+        {
+          allowForKnownSafeCalls: [
+            { from: 'package', package: 'node:test', name: ['test', 'describe', 'it', 'suite'] }
+          ]
+        }
+      ],
       'typescript/no-for-in-array',
       'typescript/no-implied-eval',
       'no-implied-eval',
@@ -216,12 +224,7 @@ export default defineConfig({
       'typescript/no-meaningless-void-operator',
       'typescript/no-useless-default-assignment',
       'typescript/use-unknown-in-catch-callback-variable',
-      'typescript/strict-boolean-expressions',
-      'typescript/no-confusing-void-expression',
       'typescript/no-unsafe-type-assertion',
-      'typescript/promise-function-async',
-      'typescript/no-unnecessary-condition',
-      'typescript/prefer-nullish-coalescing',
       'typescript/prefer-optional-chain',
       'typescript/consistent-return',
       'typescript/no-unnecessary-template-expression',
@@ -257,26 +260,57 @@ export default defineConfig({
       // Types describe current writers, not data older builds persisted: `settings.flag !== false`
       // reads a missing key as the shipped default `true`. The rule's fix (`settings.flag`) flips
       // that to false, and its autofix shipped exactly that regression in capture and settings.
-      'typescript/no-unnecessary-boolean-literal-compare'
+      'typescript/no-unnecessary-boolean-literal-compare',
+      // Same root cause: `x || fallback` and `if (x)` guards read values older builds wrote,
+      // or IPC/frontmatter values the types call non-nullable. Removing a "redundant" guard,
+      // or turning `||` into `??` (which keeps '' and 0), changes what the code does.
+      'typescript/no-unnecessary-condition',
+      'typescript/prefer-nullish-coalescing',
+      'typescript/strict-boolean-expressions',
+      // `() => voidFn()` still returns what voidFn returns at runtime (a promise, a mock's
+      // value); its fix dropped those values and broke 40+ sync tests (601c89f85).
+      'typescript/no-confusing-void-expression',
+      // Marking every promise-returning function `async` changes when sync throws surface
+      // (thrown vs rejected); the codebase relies on both.
+      'typescript/promise-function-async',
+      // Sequential awaits in loops are deliberate here: ordered vault writes, rate-limited
+      // sync rounds, SQLite transactions. Promise.all would change concurrency, not style.
+      'no-await-in-loop',
+      // No React Compiler, and memoizing every inline prop is noise: these rules flag every
+      // `onClick={() => ...}`, and memoization only pays where a profile shows it.
+      'react-perf/jsx-no-new-function-as-prop',
+      'react-perf/jsx-no-new-object-as-prop',
+      'react-perf/jsx-no-new-array-as-prop',
+      'react-perf/jsx-no-jsx-as-prop',
+      // vi.fn() infers its signature from the implementation or the vi.mocked() target.
+      'vitest/require-mock-type-parameters',
+      // anti-slop rules that contradict AGENTS.md ("use real types or `unknown`"): `unknown`
+      // parameters/returns/dictionary values plus a `typeof` check are how boundaries parse.
+      'anti-slop/no-unknown-parameters',
+      'anti-slop/no-unknown-returns',
+      'anti-slop/no-unsafe-dictionary-type',
+      'anti-slop/no-runtime-typeof',
+      // anti-slop style rules: explicit annotations, naming, and the `...(c ? { x } : {})`
+      // idiom are repo conventions; rewriting them changes no behavior.
+      'anti-slop/no-known-value-widening',
+      'anti-slop/no-shape-in-symbol-names',
+      'anti-slop/no-conditional-empty-object-spread',
+      // vi.mock is the repo's module-boundary test seam; replacing it with DI means new
+      // production signatures across thousands of tests.
+      'anti-slop/no-module-mocking',
+      // Assertions are checked by typescript/no-unsafe-type-assertion in production code; a
+      // comment on each of 13k casts adds no checking.
+      'anti-slop/require-safety-comment-for-type-assertion'
     ),
 
     // --- Repo guards ---
     ...enableAll(
       'anti-slop/no-chained-type-assertions',
-      'anti-slop/no-conditional-empty-object-spread',
-      'anti-slop/no-known-value-widening',
-      'anti-slop/no-module-mocking',
       'anti-slop/no-object-parameters',
       'anti-slop/no-reflect-apply',
       'anti-slop/no-reflect-get',
-      'anti-slop/no-runtime-typeof',
-      'anti-slop/no-shape-in-symbol-names',
-      'anti-slop/no-unknown-parameters',
-      'anti-slop/no-unknown-returns',
       'anti-slop/no-unknown-type-aliases',
-      'anti-slop/no-unsafe-dictionary-type',
-      'anti-slop/no-widen-then-assert',
-      'anti-slop/require-safety-comment-for-type-assertion'
+      'anti-slop/no-widen-then-assert'
     )
   },
   overrides: [
@@ -284,7 +318,18 @@ export default defineConfig({
       files: TEST_FILES,
       rules: {
         // The 800-line cap was never applied to tests.
-        'max-lines': 'off'
+        'max-lines': 'off',
+        // Fixtures and doubles are built with casts and `any` on purpose (partial objects,
+        // deliberately wrong payloads); `vi.mock` must precede the imports it replaces; and
+        // `expect(obj.method).toHaveBeenCalled()` passes a method without calling it.
+        ...disable(
+          'typescript/no-unsafe-type-assertion',
+          'anti-slop/no-chained-type-assertions',
+          'typescript/no-explicit-any',
+          'typescript/unbound-method',
+          'import/first',
+          'unicorn/consistent-function-scoping'
+        )
       }
     },
     {
