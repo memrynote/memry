@@ -106,19 +106,21 @@ jobs:
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
   build:
-    name: Build ${{ matrix.variant }} (${{ matrix.artifact_os }})
+    name: Build ${{ matrix.variant }} (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         variant: [debug, e2e]
+        platform: [macos-arm64, macos-x64, windows-x64, windows-arm64, linux-x64]
+        # Entries that name an existing `platform` add their keys to that platform's legs.
         include:
-          - { os: macos-15, triple: aarch64-apple-darwin, artifact_os: macos-arm64 }
-          - { os: macos-15-intel, triple: x86_64-apple-darwin, artifact_os: macos-x64 }
-          - { os: windows-2022, triple: x86_64-pc-windows-msvc, artifact_os: windows-x64 }
-          - { os: windows-11-arm, triple: aarch64-pc-windows-msvc, artifact_os: windows-arm64 }
-          - { os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu, artifact_os: linux-x64 }
+          - { platform: macos-arm64, os: macos-15, triple: aarch64-apple-darwin }
+          - { platform: macos-x64, os: macos-15-intel, triple: x86_64-apple-darwin }
+          - { platform: windows-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
+          - { platform: windows-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
+          - { platform: linux-x64, os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu }
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
@@ -183,6 +185,6 @@ jobs:
       - name: Upload app
         uses: actions/upload-artifact@v4
         with:
-          name: memry-tauri-${{ matrix.variant }}-${{ matrix.artifact_os }}
+          name: memry-tauri-${{ matrix.variant }}-${{ matrix.platform }}
           path: ${{ steps.binary.outputs.path }}
           retention-days: 14
