@@ -2026,7 +2026,6 @@
     "marketing/tutorials/engine/thumb.mjs": {"unicorn/consistent-function-scoping":1},
     "marketing/tutorials/getting-started/scenes.mjs": {"typescript/consistent-return":6,"typescript/prefer-optional-chain":1},
     "marketing/tutorials/tasks-projects/scenes.mjs": {"typescript/consistent-return":8,"typescript/prefer-optional-chain":1},
-    "packages/contracts/src/strict-schema.ts": {"typescript/no-unsafe-type-assertion":2},
     "scripts/check-architecture-boundaries.js": {"typescript/require-array-sort-compare":1,"typescript/use-unknown-in-catch-callback-variable":1,"unicorn/consistent-function-scoping":1,"unicorn/no-array-sort":2},
     "scripts/check-contract-boundaries.js": {"typescript/use-unknown-in-catch-callback-variable":1},
     "scripts/check-line-ceilings.mjs": {"unicorn/no-array-sort":1},
