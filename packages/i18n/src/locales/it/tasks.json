@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Data di scadenza rimossa da # sottoattività} other {Data di scadenza rimossa da # sottoattività}}",
       "prioritySet": "{count, plural, one {Priorità impostata per # sottoattività} other {Priorità impostata per # sottoattività}}",
       "deleted": "{count, plural, one {# sottoattività eliminata} other {# sottoattività eliminate}}"
-    }
+    },
+    "completedBranch": "Completata {title} e {count, plural, one {# sottoattività aperta} other {# sottoattività aperte}}",
+    "deletedKeepSubtasks": "Eliminata {title}, sottoattività mantenute",
+    "deletedBranch": "Eliminata {title} e {count, plural, one {# sottoattività} other {# sottoattività}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "stato",
       "projectIs": "Il progetto è",
       "project": "progetto",
+      "locationIs": "La posizione è",
+      "location": "posizione",
+      "unknownNote": "Nota sconosciuta",
       "due": "Scadenza",
       "dueDate": "data di scadenza",
       "search": "ricerca",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Data di scadenza"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Posizione",
+      "search": "Cerca cartelle e note...",
+      "empty": "Nessuna cartella o nota con attività"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priorità",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Viste del progetto",
       "overview": "Panoramica",
+      "all": "Tutte",
       "tasks": "Attività",
       "notes": "Note",
       "files": "File",
@@ -951,6 +963,25 @@
       "fileError": "Impossibile collegare {name}",
       "fileErrorGeneric": "Impossibile importare i file",
       "label": "Aggiungi a {name}"
+    },
+    "all": {
+      "showDone": "Mostra completate",
+      "empty": "Niente di aperto in questo progetto.",
+      "expand": "Mostra le attività in {title}",
+      "collapse": "Nascondi le attività in {title}",
+      "taskSummary": "{open}/{total} aperte",
+      "daysLeft": "{count}g",
+      "overdue": "{count}g di ritardo",
+      "columns": {
+        "title": "Titolo",
+        "daysLeft": "Giorni rimasti"
+      },
+      "status": {
+        "active": "Attivo",
+        "done": "Completato",
+        "upcoming": "In arrivo",
+        "past": "Passato"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indaco",
     "purple": "Viola",
     "pink": "Rosa"
+  },
+  "subtaskTree": {
+    "addSubtask": "Aggiungi sottoattività",
+    "dropInto": "Dentro {title}",
+    "dropOut": "Esci di un livello",
+    "draftPlaceholder": "Titolo della sottoattività",
+    "draftLabel": "Nuova sottoattività in {title}",
+    "draftIn": "in {title}",
+    "toggleComplete": "Completa {title}",
+    "moveUnder": {
+      "title": "Sposta sotto",
+      "placeholder": "Sposta sotto…",
+      "empty": "Nessuna attività corrispondente",
+      "topLevel": "Livello principale di {project}",
+      "thisTask": "Questa attività",
+      "currentParent": "Genitore attuale",
+      "movesOne": "Sposta {title}",
+      "movesBranch": "Sposta {title} e {count, plural, one {# sottoattività} other {# sottoattività}}",
+      "keys": "↵ Sposta qui · ⌘↵ Livello principale · esc Chiudi"
+    },
+    "zoom": {
+      "path": "Percorso dell’attività",
+      "up": "Su di un livello",
+      "upShortcut": "Su di un livello (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Eliminare {title}?",
+      "summary": "{direct, plural, one {Ha # sottoattività} other {Ha # sottoattività}}{deeper, plural, =0 {} one { e # altra al suo interno} other { e altre # al loro interno}}{open, plural, =0 {, tutte completate.} other {, # ancora aperte.}}",
+      "cancel": "Annulla",
+      "deleteAll": "Elimina tutto",
+      "keepSubtasks": "Mantieni sottoattività"
+    },
+    "menu": {
+      "open": "Apri",
+      "complete": "Completa",
+      "reopen": "Riapri",
+      "zoom": "Entra nelle sottoattività",
+      "moveUnder": "Sposta sotto…",
+      "indent": "Sposta sotto {title}",
+      "outdent": "Sposta fuori di un livello",
+      "topLevel": "Rendi attività principale",
+      "delete": "Elimina"
+    },
+    "openPath": "Apri {path}"
   }
 }

@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, one {# elemento posticipato} other {# elementi posticipati}}",
     "notificationBody": "{count, plural, one {Il tuo elemento posticipato è pronto per la revisione} other {I tuoi elementi posticipati sono pronti}}",
     "toast": "{count, plural, =1 {“{itemTitle}” è tornato nella posta in arrivo} one {“{itemTitle}” è tornato nella posta in arrivo} other {# elementi posticipati sono tornati nella posta in arrivo}}"
+  },
+  "sticky": {
+    "kindLabel": "Invia come",
+    "kinds": {
+      "note": "Nota",
+      "task": "Attività",
+      "journal": "Diario"
+    },
+    "placeholders": {
+      "note": "Annota qui…",
+      "task": "Chiama Ana @tomorrow #home !high",
+      "journal": "Aggiungi al diario di oggi…"
+    },
+    "saving": "Salvataggio…",
+    "saved": "Salvato",
+    "saveFailed": "Non salvato",
+    "tuck": "Metti da parte",
+    "send": "Invia",
+    "hints": "Esc metti da parte · {mod}⌫ elimina",
+    "sendAndCloseHint": "⌥{mod}↵ invia e chiude",
+    "deleted": "Bozza eliminata",
+    "open": "Apri",
+    "undo": "Annulla",
+    "sent": {
+      "note": "Salvata nella cartella Sticky",
+      "task": "Attività aggiunta",
+      "journal": "Aggiunto al diario di oggi"
+    },
+    "tab": {
+      "label": "{count, plural, one {# bozza sticky} other {# bozze sticky}}",
+      "newSticky": "Nuovo sticky"
+    },
+    "errors": {
+      "empty": "Scrivi prima qualcosa.",
+      "taskFailed": "Impossibile creare l’attività.",
+      "tasksOff": "Le attività sono disattivate nelle Impostazioni.",
+      "journalOff": "Il diario è disattivato nelle Impostazioni.",
+      "sendFailed": "Impossibile inviare lo sticky.",
+      "undoExpired": "È troppo tardi per annullare.",
+      "undoFailed": "Impossibile annullare l’invio."
+    },
+    "inputLabel": "Testo dello sticky",
+    "dismissError": "Chiudi"
   }
 }

@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Elimina pagina del diario",
     "description": "Vuoi eliminare “{title}”? Questa azione non può essere annullata."
+  },
+  "dayTimeline": {
+    "label": "Programma del giorno",
+    "allDay": "Elementi di tutto il giorno",
+    "unscheduled": "Non pianificate",
+    "unscheduledEmpty": "Nessuna attività non pianificata. Trascina un blocco qui per rimuoverne l’orario.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Completa {title}"
   }
 }
