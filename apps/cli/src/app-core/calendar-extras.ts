@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { and, asc, eq, inArray } from 'drizzle-orm'
-import type { CalendarService } from '@memry/app-core/calendar'
+import type { CalendarService } from '@memry/app-core/calendar-types'
 import type { CalendarSourceRecord } from '@memry/app-core/calendar-types'
 import type { IcsFeedErrorCode } from '@memry/contracts/calendar-api'
 import { calendarColorHex, CalendarEventColorSchema } from '@memry/contracts/calendar-colors'
