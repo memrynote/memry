@@ -107,6 +107,7 @@ describe('buildChangePreview', () => {
   it('produces a preview for every write tool', async () => {
     const args: Record<string, unknown> = {
       id: 'note-1',
+      ids: ['note-1'],
       task_id: 'task-1',
       canvas_id: 'canvas-1',
       date: '2026-09-18',
@@ -125,7 +126,8 @@ describe('buildChangePreview', () => {
       snooze_until: '2026-10-01',
       operation: 'calendar.create',
       args: [],
-      items: [],
+      items: [{ type: 'text', text: 'hi' }],
+      add: ['work'],
       elements: [],
       edits: [],
       task_ids: ['task-1'],

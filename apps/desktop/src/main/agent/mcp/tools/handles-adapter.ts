@@ -30,7 +30,7 @@ import { AgentToolError } from '../errors'
 import { saveAttachment } from '../../../vault/attachments'
 import { emitNoteAttachmentSaved } from '../../../notes/runtime-effects'
 import { serializeFileBlockMarker } from '../../../import/_shared/attachment-markdown'
-import { snapshotCurrentNoteFromWindow } from './current-note'
+import { insertAtCursorInWindow, snapshotCurrentNoteFromWindow } from './current-note'
 import { assertSpatialCanvasEnabled, isCanvasOperation } from './canvas-flag'
 import { createCanvasHandles } from './canvas-handles'
 import { createJournalHandles } from './journal-handles'
@@ -284,6 +284,28 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
         const createdFolders = await foldersToCreate(folder)
         await moveNoteCommand(id, folder)
         return createdFoldersReply(createdFolders)
+      },
+      async copy({ id, folder_path }) {
+        const fileType = getNoteCacheById(indexDb, id)?.fileType ?? 'markdown'
+        if (fileType !== 'markdown') {
+          throw new AgentToolError(
+            'VALIDATION',
+            `Note ${id} is a filed ${fileType} file, not a markdown note. Only markdown notes can be copied.`,
+            { id, file_type: fileType }
+          )
+        }
+        const source = await readNoteRetried(id)
+        if (!source) throw new Error(`Note not found: ${id}`)
+        const folder = internalFolderFromToolPath(folder_path) ?? ''
+        const createdFolders = await foldersToCreate(folder)
+        const copy = await createNoteCommand({
+          id: generateNoteId(),
+          title: source.title,
+          content: source.content,
+          folder,
+          tags: source.tags
+        })
+        return { id: copy.id, ...createdFoldersReply(createdFolders) }
       },
       async stored(id) {
         return readStoredNote(indexDb, id, folderPathFromNotePath)
@@ -663,7 +685,8 @@ export function createVaultServiceHandles({ dataDb, indexDb }: AdapterDeps): Vau
     windows: {
       async snapshotCurrentNote(windowId) {
         return snapshotCurrentNoteFromWindow(windowId)
-      }
+      },
+      insertAtCursor: insertAtCursorInWindow
     },
     sync: {
       crdtStoreAvailable: async () => getCrdtProvider().isPersistent(),

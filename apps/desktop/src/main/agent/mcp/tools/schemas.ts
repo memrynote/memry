@@ -15,6 +15,7 @@ import { NoteFileTypeEnum } from '@memry/contracts/search-api'
 import { strictDeep } from '@memry/contracts/strict-schema'
 
 import { HELP_TOOL_SCHEMAS } from './help-schemas'
+import { NOTE_ACTION_TOOL_SCHEMAS } from './note-action-schemas'
 import { CANVAS_ID_HINT, CHECKLIST_HINT, CREATED_FOLDERS_HINT } from './tool-hints'
 
 const idSchema = z.string().min(1)
@@ -532,6 +533,7 @@ const LOOSE_TOOL_SCHEMAS = {
     input: z.object({ id: idSchema, folder_path: z.string().min(1) }),
     description: `Move a note to a folder. ${CREATED_FOLDERS_HINT} Requires user approval.`
   },
+  ...NOTE_ACTION_TOOL_SCHEMAS,
   vault_add_canvas_item: {
     input: z.object({
       canvas_id: idSchema,
@@ -700,6 +702,10 @@ export const WRITE_TOOL_NAMES = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder',
+  'vault_bulk_tag_notes',
+  'vault_bulk_move_notes',
+  'vault_copy_notes',
+  'vault_insert_at_cursor',
   'vault_add_canvas_item',
   'vault_remove_canvas_item',
   'vault_create_canvas',
@@ -756,6 +762,10 @@ export const UPDATE_TOOL_NAMES = [
   'vault_add_tag',
   'vault_remove_tag',
   'vault_move_to_folder',
+  'vault_bulk_tag_notes',
+  'vault_bulk_move_notes',
+  'vault_copy_notes',
+  'vault_insert_at_cursor',
   'vault_add_canvas_item',
   'vault_remove_canvas_item',
   'vault_draw_on_canvas',

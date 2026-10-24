@@ -4199,6 +4199,151 @@ Reply:
 }
 ```
 
+#### vault_bulk_tag_notes
+
+Add and/or remove tags on up to 100 notes in one call. Replies with a results list, one entry per id: ok, or the error that note hit. A failure on one note does not stop the rest. Requires one user approval for the whole batch.
+
+Write tool; needs approval.
+
+| Argument | Type       | Required | Allowed values                 |
+| -------- | ---------- | -------- | ------------------------------ |
+| `ids`    | `string[]` | yes      | min items `1`; max items `100` |
+| `add`    | `string[]` | no       | max items `20`                 |
+| `remove` | `string[]` | no       | max items `20`                 |
+
+Example call:
+
+```json
+{
+  "ids": ["<note2Id>", "<bulkNoteId>"],
+  "add": ["reviewed"],
+  "remove": ["obsolete"]
+}
+```
+
+Reply:
+
+```json
+{
+  "succeeded": 2,
+  "failed": 0,
+  "results": [
+    {
+      "id": "<note2Id>",
+      "ok": true
+    },
+    {
+      "id": "<bulkNoteId>",
+      "ok": true
+    }
+  ]
+}
+```
+
+#### vault_bulk_move_notes
+
+Move up to 100 notes to one folder. The reply lists the folders the call created in created_folders. Replies with a results list, one entry per id. A failure on one note does not stop the rest. Requires one user approval for the whole batch.
+
+Write tool; needs approval.
+
+| Argument      | Type       | Required | Allowed values                 |
+| ------------- | ---------- | -------- | ------------------------------ |
+| `ids`         | `string[]` | yes      | min items `1`; max items `100` |
+| `folder_path` | `string`   | yes      | min length `1`                 |
+
+Example call:
+
+```json
+{
+  "ids": ["<bulkNoteId>"],
+  "folder_path": "Archive/2026"
+}
+```
+
+Reply:
+
+```json
+{
+  "succeeded": 1,
+  "failed": 0,
+  "results": [
+    {
+      "id": "<bulkNoteId>",
+      "ok": true,
+      "created_folders": ["Archive/2026"]
+    }
+  ]
+}
+```
+
+#### vault_copy_notes
+
+Copy up to 100 markdown notes into one folder of this vault. Each copy gets a new id and keeps the title, body and tags; custom properties are not copied, and links to the original are not rewritten. The originals stay where they are. The reply lists the folders the call created in created_folders. Replies with a results list, one entry per id with the new id. A failure on one note does not stop the rest. Requires one user approval for the whole batch.
+
+Write tool; needs approval.
+
+| Argument      | Type       | Required | Allowed values                 |
+| ------------- | ---------- | -------- | ------------------------------ |
+| `ids`         | `string[]` | yes      | min items `1`; max items `100` |
+| `folder_path` | `string`   | yes      | min length `1`                 |
+
+Example call:
+
+```json
+{
+  "ids": ["<note2Id>"],
+  "folder_path": "Projects/Drafts"
+}
+```
+
+Reply:
+
+```json
+{
+  "succeeded": 1,
+  "failed": 0,
+  "results": [
+    {
+      "id": "<note2Id>",
+      "ok": true,
+      "copy_id": "<copiedNoteId>",
+      "created_folders": ["Projects/Drafts"]
+    }
+  ]
+}
+```
+
+#### vault_insert_at_cursor
+
+Insert text and [[wiki-links]] to other notes at the cursor of the note open in the editor. Use note_link with a note id from vault_search_notes; the link shows that note's title. Fails when the note is not open in an editor, so call vault_get_current_note first. Does not write the file directly: the editor saves the change like a keystroke. Requires user approval.
+
+Write tool; needs approval.
+
+| Argument | Type                                                                           | Required | Allowed values                | Notes                                                           |
+| -------- | ------------------------------------------------------------------------------ | -------- | ----------------------------- | --------------------------------------------------------------- |
+| `id`     | `string`                                                                       | yes      | min length `1`                | Id of the note open in the editor, from vault_get_current_note. |
+| `items`  | `({ type: "text", text: string } \| { type: "note_link", note_id: string })[]` | yes      | min items `1`; max items `50` |                                                                 |
+
+Example call:
+
+```json
+{
+  "id": "<noteId>",
+  "items": [
+    {
+      "type": "text",
+      "text": "See "
+    },
+    {
+      "type": "note_link",
+      "note_id": "<note2Id>"
+    }
+  ]
+}
+```
+
+No example reply: it needs the note open in an editor with a cursor, so the example is not run.
+
 #### vault_add_canvas_item
 
 Put existing notes/tasks/events on a canvas as cards. Applies to the open editor when the user has that canvas open. Takes the canvas id or its folder-qualified name ("Work/Plan") from vault_list_canvases; a bare title matching more than one canvas is refused with the candidates listed. Requires user approval.

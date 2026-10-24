@@ -431,3 +431,29 @@ export const AgentMcpStatusSchema = z.object({
 })
 
 export type AgentMcpStatus = z.infer<typeof AgentMcpStatusSchema>
+
+// ============================================================================
+// Insert at the editor cursor
+// ============================================================================
+
+/**
+ * Main→renderer channel for `vault_insert_at_cursor`. Only the renderer knows
+ * the cursor, and the open note's Y.Doc is edited through its editor, so a file
+ * write from main would race the editor's own save.
+ */
+export const AgentMcpInsertAtCursorChannel = 'agent_mcp:insert_at_cursor'
+
+export const AgentMcpInsertAtCursorRequestSchema = z.object({
+  noteId: z.string().min(1),
+  items: z
+    .array(
+      z.discriminatedUnion('type', [
+        z.object({ type: z.literal('text'), text: z.string().min(1) }),
+        z.object({ type: z.literal('wikilink'), title: z.string().min(1) })
+      ])
+    )
+    .min(1)
+})
+export type AgentMcpInsertAtCursorRequest = z.infer<typeof AgentMcpInsertAtCursorRequestSchema>
+
+export type AgentMcpInsertAtCursorResponse = { ok: true } | { ok: false; reason: 'not-open' }

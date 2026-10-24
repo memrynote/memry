@@ -42,6 +42,7 @@ const mocks = vi.hoisted(() => ({
   listTagCategories: vi.fn(),
   generateId: vi.fn(),
   snapshotCurrentNoteFromWindow: vi.fn(),
+  insertAtCursorInWindow: vi.fn<() => Promise<void>>(),
   invokeDesktopApiFromWindow: vi.fn(),
   settleWriteback: vi.fn(),
   isPersistent: vi.fn(),
@@ -147,7 +148,8 @@ vi.mock('../../../lib/id', () => ({
 }))
 
 vi.mock('./current-note', () => ({
-  snapshotCurrentNoteFromWindow: mocks.snapshotCurrentNoteFromWindow
+  snapshotCurrentNoteFromWindow: mocks.snapshotCurrentNoteFromWindow,
+  insertAtCursorInWindow: mocks.insertAtCursorInWindow
 }))
 
 vi.mock('./desktop-api', () => ({
@@ -523,6 +525,43 @@ describe('createVaultServiceHandles', () => {
     })
     expect(note).not.toHaveProperty('extracted_text')
     expect(mocks.getNoteById).not.toHaveBeenCalled()
+  })
+
+  it('copies a markdown note into the target folder with its body and tags as stored', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.getNoteCacheById.mockReturnValue({ fileType: 'markdown' })
+    mocks.getNoteById.mockResolvedValueOnce({
+      id: 'source',
+      title: 'Plan',
+      content: '- [ ] keep this checkbox\n',
+      tags: ['work'],
+      path: 'inbox/plan.md',
+      frontmatter: {}
+    })
+    mocks.createNoteCommand.mockResolvedValue({ id: 'copy-1' })
+
+    await expect(handles.notes.copy({ id: 'source', folder_path: '/Backup' })).resolves.toEqual({
+      id: 'copy-1',
+      created_folders: ['Backup']
+    })
+    expect(mocks.createNoteCommand).toHaveBeenCalledWith({
+      id: 'note-1',
+      title: 'Plan',
+      content: '- [ ] keep this checkbox\n',
+      folder: 'Backup',
+      tags: ['work']
+    })
+  })
+
+  it('refuses to copy a filed binary', async () => {
+    const handles = createVaultServiceHandles(deps)
+    mocks.getNoteCacheById.mockReturnValue({ fileType: 'pdf' })
+    mocks.createNoteCommand.mockClear()
+
+    await expect(handles.notes.copy({ id: 'file-1', folder_path: 'Backup' })).rejects.toMatchObject(
+      { code: 'VALIDATION' }
+    )
+    expect(mocks.createNoteCommand).not.toHaveBeenCalled()
   })
 
   it('reads a filed PDF as the text extracted from it, from the page asked for', async () => {

@@ -17,6 +17,7 @@ import {
   mergeContent,
   optionalField
 } from './format'
+import { NOTE_ACTION_PREVIEW_BUILDERS } from './note-action-previews'
 
 /**
  * Builds the preview the approval card draws for one pending write.
@@ -43,7 +44,7 @@ export async function buildChangePreview(
   return builder(args, handles)
 }
 
-type Builder = (
+export type Builder = (
   args: Record<string, unknown>,
   handles: VaultServiceHandles
 ) => Promise<ChangePreview>
@@ -814,6 +815,7 @@ const desktopWrite: Builder = async (args) =>
   })
 
 const BUILDERS: Record<string, Builder | undefined> = {
+  ...NOTE_ACTION_PREVIEW_BUILDERS,
   vault_create_note: createNote,
   vault_update_note: updateNote,
   vault_add_html_artifact: addHtmlArtifact,

@@ -3,7 +3,8 @@
 
 import type {
   AgentMcpDesktopReadOperation,
-  AgentMcpDesktopWriteOperation
+  AgentMcpDesktopWriteOperation,
+  AgentMcpInsertAtCursorRequest
 } from '@memry/contracts/agent-mcp-channels'
 import type {
   CanvasDrawElement,
@@ -322,6 +323,12 @@ export interface VaultServiceHandles {
       html: string
     }): Promise<{ marker: string; url: string }>
     moveToFolder(input: { id: string; folder_path: string }): Promise<CreatedFoldersReply>
+    /**
+     * A new markdown note with the title, body and tags of note `id`, filed in
+     * `folder_path`. The body is copied as stored: checkbox lines are not
+     * re-marked or turned into tasks the way an agent-written body is.
+     */
+    copy(input: { id: string; folder_path: string }): Promise<{ id: string } & CreatedFoldersReply>
     /** Null when no markdown note reads back under `id`. */
     stored(id: string): Promise<StoredNote | null>
     /** What a read of note `id` returns once its armed write-back has run. */
@@ -534,6 +541,8 @@ export interface VaultServiceHandles {
   }
   windows: {
     snapshotCurrentNote(windowId: string): Promise<CurrentNoteSnapshot | null>
+    /** Insert at the cursor of the open editor for the note; throws when it is not open. */
+    insertAtCursor(windowId: string | null, request: AgentMcpInsertAtCursorRequest): Promise<void>
   }
   sync: {
     /** False while this device runs without its CRDT store (#2519). */

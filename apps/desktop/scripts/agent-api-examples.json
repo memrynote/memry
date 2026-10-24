@@ -979,6 +979,60 @@
         ]
       }
     },
+    "vault_bulk_tag_notes": {
+      "arguments": {
+        "ids": ["<note2Id>", "<bulkNoteId>"],
+        "add": ["reviewed"],
+        "remove": ["obsolete"]
+      },
+      "reply": {
+        "succeeded": 2,
+        "failed": 0,
+        "results": [
+          { "id": "<note2Id>", "ok": true },
+          { "id": "<bulkNoteId>", "ok": true }
+        ]
+      }
+    },
+    "vault_bulk_move_notes": {
+      "arguments": {
+        "ids": ["<bulkNoteId>"],
+        "folder_path": "Archive/2026"
+      },
+      "reply": {
+        "succeeded": 1,
+        "failed": 0,
+        "results": [{ "id": "<bulkNoteId>", "ok": true, "created_folders": ["Archive/2026"] }]
+      }
+    },
+    "vault_copy_notes": {
+      "arguments": {
+        "ids": ["<note2Id>"],
+        "folder_path": "Projects/Drafts"
+      },
+      "reply": {
+        "succeeded": 1,
+        "failed": 0,
+        "results": [
+          {
+            "id": "<note2Id>",
+            "ok": true,
+            "copy_id": "<copiedNoteId>",
+            "created_folders": ["Projects/Drafts"]
+          }
+        ]
+      }
+    },
+    "vault_insert_at_cursor": {
+      "arguments": {
+        "id": "<noteId>",
+        "items": [
+          { "type": "text", "text": "See " },
+          { "type": "note_link", "note_id": "<note2Id>" }
+        ]
+      },
+      "not_run": "it needs the note open in an editor with a cursor, so the example is not run."
+    },
     "vault_add_tag": {
       "arguments": {
         "id": "<noteId>",

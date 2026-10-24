@@ -35,6 +35,7 @@ const handles: VaultServiceHandles = {
     removeTag: async () => {},
     saveHtmlAttachment: async () => ({ marker: '<!-- file:{} -->', url: 'a.html' }),
     moveToFolder: async () => {},
+    copy: async () => ({ id: 'copied-note' }),
     stored: async (id) => storedNote(id)
   },
   folders: {
@@ -122,7 +123,7 @@ const handles: VaultServiceHandles = {
     prepareWrite: async (input) => input,
     write: async ({ operation, args }, windowId) => ({ operation, args, windowId })
   },
-  windows: { snapshotCurrentNote: async () => null },
+  windows: { snapshotCurrentNote: async () => null, insertAtCursor: async () => {} },
   sync: { crdtStoreAvailable: async () => true }
 }
 
@@ -193,6 +194,10 @@ describe('Write tools — P1 deny-by-default', () => {
       vault_add_tag: { id: 'x', kind: 'note', tag: 'a' },
       vault_remove_tag: { id: 'x', kind: 'note', tag: 'a' },
       vault_move_to_folder: { id: 'x', folder_path: '/Inbox' },
+      vault_bulk_tag_notes: { ids: ['x'], add: ['a'] },
+      vault_bulk_move_notes: { ids: ['x'], folder_path: '/Inbox' },
+      vault_copy_notes: { ids: ['x'], folder_path: '/Inbox' },
+      vault_insert_at_cursor: { id: 'x', items: [{ type: 'text', text: 'hi' }] },
       vault_add_canvas_item: {
         canvas_id: 'c1',
         items: [{ entity_type: 'note', entity_id: 'n1' }]

@@ -109,6 +109,7 @@ import { useTaskWorkspaceData, useTaskWorkspaceMutations } from '@/features/task
 import { useTaskUiStore } from '@/features/tasks/use-task-ui-store'
 import { getTaskWorkspaceCounts } from '@/lib/task-utils'
 import { useAgentMcpCurrentNoteResponder } from '@/agent-mcp/current-note-handler'
+import { useAgentMcpInsertAtCursorResponder } from '@/agent-mcp/insert-at-cursor-handler'
 import { useAgentMcpDesktopApiResponder } from '@/agent-mcp/desktop-api-handler'
 import { useAgentMcpCanvasWriteResponder } from '@/agent-mcp/canvas-write-handler'
 import { AgentFeatureProvider } from '@/agent-chat/agent-feature-provider'
@@ -250,6 +251,7 @@ const AppContent = (): React.JSX.Element => {
   const activeTab = useActiveTab()
   const { enabled: aiEnabled } = useAISettingsContext()
   useAgentMcpCurrentNoteResponder({ enabled: aiEnabled })
+  useAgentMcpInsertAtCursorResponder({ enabled: aiEnabled })
   useAgentMcpDesktopApiResponder({ enabled: aiEnabled })
   useAgentMcpCanvasWriteResponder({ enabled: aiEnabled })
   useRecordRecentlyOpened()

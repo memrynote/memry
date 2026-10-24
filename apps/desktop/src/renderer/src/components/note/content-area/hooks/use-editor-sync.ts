@@ -313,6 +313,18 @@ export async function extractMarkdownFromActiveEditor(noteId?: string): Promise<
   return serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 }
 
+/**
+ * Insert inline content at the selection of the editor open for `noteId`.
+ * False when no editor holds the note, so the caller can say so instead of
+ * writing the file under an editor that would overwrite it.
+ */
+export function insertInlineContentInActiveEditor(noteId: string, content: unknown[]): boolean {
+  if (!activeNoteEditors.has(noteId)) return false
+
+  activeNoteEditors.get(noteId).insertInlineContent(content, { updateSelection: true })
+  return true
+}
+
 function hydrateLinkMentionFavicons(editor: any): void {
   const mentions: { block: any; index: number; url: string }[] = []
 

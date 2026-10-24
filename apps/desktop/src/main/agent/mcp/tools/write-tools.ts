@@ -1,5 +1,6 @@
 import { AgentToolError } from '../errors'
 import type { ToolRegistration } from '../server'
+import { buildNoteActionTools } from './note-action-tools'
 import { assertDesktopApiArgs } from './desktop-api-params'
 import { DESKTOP_API_REPLY_CAP } from './desktop-api-reply'
 import type { VaultServiceHandles } from './handles'
@@ -77,6 +78,9 @@ export function buildWriteTools(
   const storedStatus = (id: string) => afterWrite(() => handles.statuses.get(id), { id })
 
   const factories: Record<(typeof WRITE_TOOL_NAMES)[number], ToolRegistration> = {
+    ...buildNoteActionTools(handles, async (toolName, parsedArgs, ctx) =>
+      approvedArgs(gate, toolName, parsedArgs, ctx)
+    ),
     vault_create_note: {
       name: 'vault_create_note',
       description: TOOL_SCHEMAS.vault_create_note.description,

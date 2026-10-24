@@ -329,6 +329,27 @@ const CALLS = [
   ],
   ['vault_move_to_folder', 'tool', W, { id: T('moveNoteId'), folder_path: 'Archive' }],
   ['vault_add_tag', 'tool', W, { id: T('noteId'), kind: 'note', tag: 'q4' }],
+  [
+    'vault_bulk_tag_notes',
+    'tool',
+    W,
+    { ids: [T('note2Id'), T('bulkNoteId')], add: ['reviewed'], remove: ['obsolete'] }
+  ],
+  ['vault_bulk_move_notes', 'tool', W, { ids: [T('bulkNoteId')], folder_path: 'Archive/2026' }],
+  ['vault_copy_notes', 'tool', W, { ids: [T('note2Id')], folder_path: 'Projects/Drafts' }],
+  [
+    'vault_insert_at_cursor',
+    'tool',
+    W,
+    {
+      id: T('noteId'),
+      items: [
+        { type: 'text', text: 'See ' },
+        { type: 'note_link', note_id: T('note2Id') }
+      ]
+    },
+    'it needs the note open in an editor with a cursor, so the example is not run.'
+  ],
   ['vault_remove_tag', 'tool', W, { id: T('noteId'), kind: 'note', tag: 'q4' }],
   ['vault_create_folder', 'tool', W, { path: 'Projects/Research' }],
   [
@@ -1062,6 +1083,12 @@ const seed = await page.evaluate(
       title: 'Old pricing ideas',
       folder: 'Projects',
       content: 'Three tiers.\n'
+    })
+    await note('bulkNoteId', {
+      title: 'Standup notes',
+      folder: 'Projects',
+      tags: ['obsolete'],
+      content: 'Blockers: none.\n'
     })
     await note('deleteNoteId', { title: 'Scratch', folder: 'Projects', content: 'temp\n' })
     await note('deleteNote2Id', { title: 'Scratch 2', folder: 'Projects', content: 'temp\n' })

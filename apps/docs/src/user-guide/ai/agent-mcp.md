@@ -572,6 +572,21 @@ counts only matching rows. Omit `file_types` to search every file type.
 Notes indexed by older memrynote versions have no recorded file type; those are always treated as
 markdown, so upgrading never hides existing notes.
 
+### Acting on several notes
+
+`vault_bulk_tag_notes`, `vault_bulk_move_notes` and `vault_copy_notes` take up to 100 note ids and
+ask for approval once for the whole batch. The approval card names the first notes and the count,
+and shows the tags added or removed, or the destination folder. The reply lists one result per id,
+`ok` or the error that note hit, and a failure on one note does not stop the rest.
+
+`vault_copy_notes` copies markdown notes inside the open vault. Each copy has a new id and keeps the
+title, body and tags. Custom properties are not copied, and links to the original are not rewritten.
+The originals stay where they are. Copying into another vault is not supported.
+
+`vault_insert_at_cursor` puts text and `[[wiki links]]` to other notes at the cursor of the note open
+in the editor. It fails when that note is not open, and it does not write the file directly: the
+editor saves the change like a keystroke.
+
 ### Write replies
 
 A write reply can carry a `warnings` list of plain sentences:
@@ -668,6 +683,10 @@ inline approval unless you set the Agent Permissions confirmation to **Always al
 - `vault_add_tag`
 - `vault_remove_tag`
 - `vault_move_to_folder`
+- `vault_bulk_tag_notes`
+- `vault_bulk_move_notes`
+- `vault_copy_notes`
+- `vault_insert_at_cursor`
 - `vault_add_canvas_item`
 - `vault_remove_canvas_item`
 - `vault_create_canvas`
