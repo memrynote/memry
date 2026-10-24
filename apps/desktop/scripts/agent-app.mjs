@@ -269,7 +269,7 @@ if (!run) {
   console.error('Usage: agent-app.mjs <start|stop|status|eval "<expression>">')
   process.exit(1)
 }
-Promise.resolve(run()).catch((err) => {
+Promise.resolve(run()).catch((/** @type {unknown} */ err) => {
   console.error(err instanceof Error ? err.message : err)
   process.exit(1)
 })

@@ -15,15 +15,15 @@ console.log(`Connecting to ${hostname}:${port}...\n`)
 
 const socket = tls.connect({ host: hostname, port, servername: hostname }, () => {
   const cert = socket.getPeerCertificate(true)
-  if (!cert || !cert.raw) {
+  if (!cert?.raw) {
     console.error('Failed to get peer certificate')
     process.exit(1)
   }
 
-  let current: tls.DetailedPeerCertificate | undefined = cert as tls.DetailedPeerCertificate
+  let current: tls.DetailedPeerCertificate | undefined = cert
   let depth = 0
 
-  while (current && current.raw) {
+  while (current?.raw) {
     const hash = computeSpkiHash(current)
     const label =
       depth === 0 ? 'LEAF' : current.issuer?.CN === current.subject?.CN ? 'ROOT' : 'INTERMEDIATE'
@@ -35,7 +35,7 @@ const socket = tls.connect({ host: hostname, port, servername: hostname }, () =>
     console.log(`  SPKI:     ${hash}`)
     console.log()
 
-    const next = (current as tls.DetailedPeerCertificate).issuerCertificate
+    const next = current.issuerCertificate
     if (!next || next === current || next.raw?.equals(current.raw)) break
     current = next
     depth++

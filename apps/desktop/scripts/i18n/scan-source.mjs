@@ -90,7 +90,7 @@ export function resolveSourceFiles(
   for (const inputPath of paths.length === 0 ? DEFAULT_SCAN_PATHS : paths) {
     collectSourceFiles(inputPath, workspaceRoot, files)
   }
-  return [...new Set(files)].sort()
+  return [...new Set(files)].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 function getLineAndColumn(sourceFile, position) {
@@ -359,7 +359,7 @@ function expandDynamicTranslationKeys(keyNode, boundNamespace, englishKeys) {
     .filter(
       (key) => fullPrefixes.some((prefix) => key.startsWith(prefix)) && key.endsWith(rawSuffix)
     )
-    .sort()
+    .toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 function createFinding(sourceFile, workspaceRoot, filePath, node, type, extras = {}) {
@@ -558,7 +558,7 @@ export function scanSourceFiles(options = {}) {
   return {
     workspaceRoot,
     files: files.map((file) => relativePath(workspaceRoot, file)),
-    usedKeys: [...usedKeys].sort(),
+    usedKeys: [...usedKeys].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
     missingKeys,
     unknownNamespaces,
     dynamicKeyWarnings,

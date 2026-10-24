@@ -58,8 +58,8 @@ describe('writing tools demo note', () => {
     ).toBe(true)
 
     const alternatives = readWritingAlternativesFromYDoc(doc)
-    expect(alternatives.map((record) => record.id).sort()).toEqual(
-      Object.keys(WRITING_DRAFTS_WRITING.alternatives).sort()
+    expect(alternatives.map((record) => record.id).toSorted()).toEqual(
+      Object.keys(WRITING_DRAFTS_WRITING.alternatives).toSorted()
     )
     expect(alternatives.filter((record) => record.activeVariantId !== null)).toHaveLength(1)
     expect(readWritingGhostsFromYDoc(doc)).toHaveLength(2)

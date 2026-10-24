@@ -124,7 +124,7 @@ function writeMinimalConfig(vaultPath: string): void {
       { encoding: 'utf8', flag: 'wx' }
     )
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+    if (!(error instanceof Error && 'code' in error && error.code === 'EEXIST')) {
       throw error
     }
   }

@@ -33,18 +33,16 @@ if (!baseUrl || !model) {
   process.exit(2)
 }
 
-function redact(text: string): string {
-  return apiKey ? text.split(apiKey).join('[key]') : text
+function redact(value: string): string {
+  return apiKey ? value.split(apiKey).join('[key]') : value
 }
 
 // Every write, not just the PASS/FAIL lines: the AI SDK dumps a failed request's error to
 // stderr, and a provider may echo the Authorization header in its error body.
 for (const stream of [process.stdout, process.stderr]) {
-  const write = stream.write.bind(stream) as (chunk: string) => boolean
-  stream.write = ((chunk: string | Uint8Array) =>
-    write(
-      redact(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString())
-    )) as typeof stream.write
+  const write = stream.write.bind(stream)
+  stream.write = (chunk: string | Uint8Array) =>
+    write(redact(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString()))
 }
 
 function settings(thinking: AgentLocalThinking = 'default'): AgentLocalProviderSettings {
@@ -70,6 +68,7 @@ async function turn(input: {
   const backend = new LocalOpenAICompatibleBackend({
     getSettings: async () => settings(input.thinking),
     getApiKey: async () => apiKey,
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- partial tool-bridge double: the smoke run only exercises execute()
     toolBridge: {
       execute: async ({ name }: { name: string }) => {
         toolCalls.push(name)
@@ -79,6 +78,7 @@ async function turn(input: {
   })
   const run = await backend.runTurn({
     conversationId: 'smoke',
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- TurnWriteGrant is a branded string minted by the app; the smoke run has no grant issuer
     writeGrant: 'smoke-grant' as TurnWriteGrant,
     windowId: 'smoke',
     prompt: input.prompt,

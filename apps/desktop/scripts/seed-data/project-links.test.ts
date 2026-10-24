@@ -48,7 +48,7 @@ describe('project links seed data', () => {
       groups.set(key, [...(groups.get(key) ?? []), link.position])
     }
     for (const positions of groups.values()) {
-      expect([...positions].sort((a, b) => a - b)).toEqual(positions.map((_, i) => i))
+      expect([...positions].toSorted((a, b) => a - b)).toEqual(positions.map((_, i) => i))
     }
   })
 

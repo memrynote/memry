@@ -116,7 +116,7 @@ test('an unmapped platform-arch leaves every velopack binary in place', async ()
 
     await prunePackagedApp(createContext(appOutDir, 'linux', 'armv7l'))
 
-    assert.deepEqual(fs.readdirSync(nativeDir).sort(), [...VELOPACK_BINARIES].sort())
+    assert.deepEqual(fs.readdirSync(nativeDir).toSorted(), [...VELOPACK_BINARIES].toSorted())
   } finally {
     fs.rmSync(appOutDir, { force: true, recursive: true })
   }
@@ -214,7 +214,7 @@ test('keeps only the tesseract.js-core builds that tesseract.js loads under Node
 
     await prunePackagedApp(createContext(appOutDir, 'linux', 'x64'))
 
-    assert.deepEqual(fs.readdirSync(coreDir).sort(), [
+    assert.deepEqual(fs.readdirSync(coreDir).toSorted(), [
       'index.js',
       'package.json',
       'tesseract-core-relaxedsimd.js',

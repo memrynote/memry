@@ -108,8 +108,12 @@ describe('iOS Parity Test seed note', () => {
     // The editor never writes BlockNote's own audio/video blocks: the picker
     // and drag-drop insert a `file` block whose mimeType picks the player.
     const written = manifest.blocks.filter((type) => type !== 'audio' && type !== 'video')
-    expect([...seen.blocks].sort()).toEqual(expect.arrayContaining(written))
-    expect([...seen.fileMimeTypes].sort()).toEqual(['application/pdf', 'audio/mp4', 'video/mp4'])
+    expect([...seen.blocks].toSorted()).toEqual(expect.arrayContaining(written))
+    expect([...seen.fileMimeTypes].toSorted()).toEqual([
+      'application/pdf',
+      'audio/mp4',
+      'video/mp4'
+    ])
     for (const type of manifest.inline) {
       expect(INLINE_SYNTAX[type], `no syntax check for inline type ${type}`).toBeDefined()
       expect(IOS_PARITY_BODY, type).toMatch(INLINE_SYNTAX[type])

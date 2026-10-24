@@ -91,7 +91,7 @@ for (const [specifier, from] of externals) {
 if (offenders.length > 0) {
   console.error(
     'check-main-startup-set: out/main/index.js loads on-demand packages at startup.\n' +
-      offenders.sort().join('\n') +
+      offenders.toSorted().join('\n') +
       '\nFix: reach the module that imports them through `await import()` of a bundled ' +
       'module (see ipc/ai-inline-handlers.ts, sync/blocknote-converter-loader.ts, ' +
       'import/_shared/lazy-jsdom.ts).'

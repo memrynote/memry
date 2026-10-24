@@ -58,7 +58,7 @@ function importedNames() {
       }
     }
   }
-  return [...names].sort()
+  return [...names].toSorted((a, b) => (a < b ? -1 : a > b ? 1 : 0))
 }
 
 function render(names) {
