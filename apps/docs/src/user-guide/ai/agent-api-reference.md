@@ -11,7 +11,7 @@ reach, with each argument's type, whether it is required, the values it takes, a
 with the reply a running Memry gave. It is written for agents and the people who set them up, so an
 agent never has to read the app's own files to find out how to call it.
 
-**Describes Memry `2026.928.1+main`.** A version ending in `+main` means the reference
+**Describes Memry `2026.1024.1`.** A version ending in `+main` means the reference
 was regenerated from the source after that release, and the next release ships it. The reference
 is generated from the schemas Memry checks every call against, the same schemas behind
 `vault_desktop_describe` and the `VALIDATION` errors, and is regenerated for each release.
