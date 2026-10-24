@@ -3,7 +3,9 @@ use memry_tauri::commands::error::CommandError;
 use memry_tauri::registry::dispatcher;
 use serde::Deserialize;
 use tauri::ipc::{CallbackFn, InvokeBody, InvokeResponseBody, Request, Response};
-use tauri::test::{INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder};
+use tauri::test::{
+    INVOKE_KEY, MockRuntime, get_ipc_response, mock_builder, mock_context, noop_assets,
+};
 use tauri::webview::InvokeRequest;
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 
@@ -55,7 +57,7 @@ fn app_webview() -> tauri::WebviewWindow<MockRuntime> {
             tauri::generate_handler![binary_echo],
             tauri::generate_handler![typed_ping],
         ))
-        .build(tauri::generate_context!())
+        .build(mock_context(noop_assets()))
         .expect("mock app");
     let window = WebviewWindowBuilder::new(&app, "main", WebviewUrl::default())
         .build()
