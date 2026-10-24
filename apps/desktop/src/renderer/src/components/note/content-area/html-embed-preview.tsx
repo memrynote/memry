@@ -113,10 +113,10 @@ export function HtmlPreview({
 
   useLayoutEffect(() => {
     const el = viewRef.current
-    if (!el) return
+    if (!el) return undefined
     const measure = () => setColumnWidth(el.clientWidth)
     measure()
-    if (typeof ResizeObserver === 'undefined') return
+    if (typeof ResizeObserver === 'undefined') return undefined
     const observer = new ResizeObserver(measure)
     observer.observe(el)
     return () => observer.disconnect()

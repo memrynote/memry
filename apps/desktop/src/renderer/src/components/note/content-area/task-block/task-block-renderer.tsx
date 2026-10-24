@@ -156,6 +156,7 @@ const makePlaceholderTask = (
 })
 
 export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: editorInput }) => {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote hands the renderer its editor as `unknown`; this is the structural subset the block reads
   const editor = editorInput as TaskBlockEditor
   const { t: tPhaseF } = useT('notes')
   const { t: tCommon } = useT('common')
@@ -274,7 +275,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
 
   // Focus title input when editing starts (double-rAF to beat ProseMirror focus restoration)
   useEffect(() => {
-    if (!isEditingTitle) return
+    if (!isEditingTitle) return undefined
     let cancelled = false
     const rafId = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -297,7 +298,7 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   // microtask deferral keep the parent-callback work out of the synchronous
   // render path.
   useEffect(() => {
-    if (!task || syncingRef.current) return
+    if (!task || syncingRef.current) return undefined
     const needsUpdate =
       task.title !== block.props.title || Boolean(task.completedAt) !== block.props.checked
     if (!needsUpdate) return () => {}
@@ -470,16 +471,16 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
         e.preventDefault()
         const edit = parseQuickAddEdit(editTitle, task?.title ?? '', displayTask, projects)
         const trimmedTitle = edit ? edit.title : editTitle.trim()
-        const title = trimmedTitle || block.props.title
+        const nextTitle = trimmedTitle || block.props.title
 
         // The move re-renders this block, and the input's blur must not commit
         // the edit a second time.
         skipBlurRef.current = true
         const outcome = e.shiftKey
-          ? outdentTaskBlock(editor, block.id, { title, parents: taskParents })
+          ? outdentTaskBlock(editor, block.id, { title: nextTitle, parents: taskParents })
           : indentTaskBlock(editor, block.id, {
               nested: nestedSubtasks,
-              title,
+              title: nextTitle,
               parents: taskParents
             })
         if (outcome.kind === 'skipped') {
@@ -728,8 +729,8 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
   const handleRowKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (!task) return
-      const target = e.target as HTMLElement
-      if (!e.currentTarget.contains(target)) return
+      const target = e.target
+      if (!(target instanceof Element) || !e.currentTarget.contains(target)) return
       if (target.closest('input, textarea, [contenteditable="true"]')) return
 
       const onBlock = target === e.currentTarget
@@ -765,8 +766,9 @@ export const TaskBlockRenderer: FC<TaskBlockRendererProps> = ({ block, editor: e
       // React bubbles clicks out of portals too: a pick in the `+` menu or a
       // click inside a chip's picker arrives here. Focusing the row then would
       // pull focus out of the picker that just opened and close it.
-      if (!e.currentTarget.contains(e.target as Node)) return
-      const interactive = (e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)
+      const target = e.target
+      if (!(target instanceof Element) || !e.currentTarget.contains(target)) return
+      const interactive = target.closest(INTERACTIVE_SELECTOR)
       if (interactive && interactive !== e.currentTarget.firstElementChild) return
       focusRowSoon()
     },

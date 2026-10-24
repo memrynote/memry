@@ -54,7 +54,7 @@ function mountEditor(initialContent: any[]): BlockNoteEditor {
   const editor = BlockNoteEditor.create({
     pasteHandler: handleEditorPaste,
     initialContent
-  }) as BlockNoteEditor
+  })
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)

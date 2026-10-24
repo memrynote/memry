@@ -28,10 +28,12 @@
 
 import { tasksService } from '@/services/tasks-service'
 
-const handledRemovals = new WeakMap<object, Set<string>>()
+type EditorKey = WeakKey
+
+const handledRemovals = new WeakMap<EditorKey, Set<string>>()
 
 /** The caller removes these tasks' blocks and deals with the tasks itself. */
-export function markTaskRemovalsHandled(editor: object, taskIds: Iterable<string>): void {
+export function markTaskRemovalsHandled(editor: EditorKey, taskIds: Iterable<string>): void {
   let handled = handledRemovals.get(editor)
   if (!handled) {
     handled = new Set()
@@ -41,7 +43,7 @@ export function markTaskRemovalsHandled(editor: object, taskIds: Iterable<string
 }
 
 /** True (once) when `taskId`'s removal was already dealt with. */
-export function takeHandledTaskRemoval(editor: object, taskId: string): boolean {
+export function takeHandledTaskRemoval(editor: EditorKey, taskId: string): boolean {
   return handledRemovals.get(editor)?.delete(taskId) ?? false
 }
 

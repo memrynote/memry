@@ -12,13 +12,11 @@ import {
   type MarkdownSegment
 } from '@memry/shared/empty-lines'
 import {
-  type BlockColors,
   hasNonDefaultColors,
   parseBlockColorsMarker,
   serializeBlockColorsMarker
 } from '@memry/shared/block-colors'
 import {
-  type MarkedBlock,
   type SidecarPatch,
   parseSidecarMarkerLine,
   sidecarMarkerLines
@@ -58,6 +56,7 @@ import {
   serializeColumnListBlock,
   type ToggleBlockSegment
 } from '@memry/editor-schema/blocks'
+import { markedBlock, propsFor, schemaBlock, schemaBlocks } from './block-casts'
 import { serializeYoutubeEmbed } from './youtube-embed-block'
 import { serializeBookmark } from './bookmark-block'
 import { extractDomain } from '@/lib/url-metadata'
@@ -81,7 +80,7 @@ const CHECKBOX_MARKER = /^[-*+] \[[ xX]\] ?/
  */
 export function checkboxLineMarkdown(editor: any, block: { content?: unknown }): string {
   const line = { type: 'checkListItem', props: { checked: false }, content: block.content }
-  const { blocks, replacements } = extractInlineColorRuns([line] as never[])
+  const { blocks, replacements } = extractInlineColorRuns([line])
   const md = normalizeSerializedMarkdown(
     writeHtmlCommentTokens(blocks, (b) => editor.blocksToMarkdownLossy(b))
   )
@@ -113,10 +112,7 @@ function whiteboardMarkdown(block: Block): string {
 const MARKDOWN_LIST_BLOCK_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
 
 function canSerializeChildNatively(parent: Block, child: Block): boolean {
-  return (
-    MARKDOWN_LIST_BLOCK_TYPES.has(parent.type as string) &&
-    MARKDOWN_LIST_BLOCK_TYPES.has(child.type as string)
-  )
+  return MARKDOWN_LIST_BLOCK_TYPES.has(parent.type) && MARKDOWN_LIST_BLOCK_TYPES.has(child.type)
 }
 
 function hasMarkerSerializedChildren(block: Block): boolean {
@@ -146,9 +142,7 @@ function parseMarkdown(editor: any, markdown: string): Promise<Block[]> {
 // text/background colors would be dropped by blocksToMarkdownLossy, so colored
 // runs are wrapped in tokens first and re-emitted as `<span style="…">` after.
 async function serializeBlocks(editor: any, blocks: Block[]): Promise<string> {
-  const { blocks: wrapped, replacements } = extractInlineColorRuns(
-    withPlainCheckboxMarkers(blocks) as never[]
-  )
+  const { blocks: wrapped, replacements } = extractInlineColorRuns(withPlainCheckboxMarkers(blocks))
   const md = normalizeSerializedMarkdown(
     // oxlint-disable-next-line typescript/await-thenable -- `editor` is untyped, so TS picks the sync overload; serializers may be async
     await writeHtmlCommentTokens(wrapped, (b) => editor.blocksToMarkdownLossy(b))
@@ -208,7 +202,7 @@ async function serializeToggle(editor: any, block: Block): Promise<string> {
   // `open` comes off with the type: BlockNote compares every prop against the
   // target block's propSchema, and a paragraph has no `open` to compare with —
   // it throws there, which loses the whole document's serialization.
-  const { open: isOpen, ...summaryProps } = block.props as { open?: boolean }
+  const { open: isOpen, ...summaryProps } = propsFor(block, 'toggleListItem')
   // SAFETY: `Block` is a union discriminated on the schema's block types with
   // `props` keyed per type, so no hand-written literal is assignable without
   // naming the whole schema. Every literal cast in this file is that same
@@ -216,16 +210,16 @@ async function serializeToggle(editor: any, block: Block): Promise<string> {
   // tests against the main-process twin are what actually check them. Here:
   // a paragraph holding the toggle's content, minus the `open` prop a
   // paragraph's propSchema has no slot for.
-  const summaryBlock = {
+  const summaryBlock = schemaBlock({
     ...block,
     type: 'paragraph',
     props: summaryProps,
     children: []
-  } as unknown as Block
+  })
   const summary = (await serializeBlocks(editor, [summaryBlock])).trim()
   const children = (block.children ?? []) as Block[]
   const body = children.length > 0 ? await serializeBlocksPreservingBlanks(editor, children) : ''
-  const colors = block.props as BlockColors
+  const colors = propsFor(block, 'toggleListItem')
   const colorsMarker = hasNonDefaultColors(colors) ? serializeBlockColorsMarker(colors) : null
 
   return serializeToggleBlock(summary, body, colorsMarker, isOpen === true)
@@ -245,7 +239,7 @@ function isStructuredQuote(block: Block): boolean {
 async function serializeQuote(editor: any, block: Block): Promise<string> {
   // SAFETY: the quote's own inline content as a bare paragraph, so it is
   // serialized without the `> ` that `serializeQuoteBlock` adds.
-  const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
+  const own = schemaBlock({ ...block, type: 'paragraph', props: {}, children: [] })
   const children = (block.children ?? []) as Block[]
   const inner = await serializeBlocksPreservingBlanks(editor, [own, ...children])
   return serializeQuoteBlock(inner.trim())
@@ -259,8 +253,8 @@ export function sanitizeBlockIds(blocks: Block[]): Block[] {
     const id = (block as { id?: unknown }).id
 
     if (id !== undefined && (typeof id !== 'string' || id.length === 0)) {
-      const { id: _removedId, ...rest } = block as Block & { id: unknown }
-      nextBlock = rest as Block
+      const { id: _removedId, ...rest } = block
+      nextBlock = schemaBlock(rest)
       didChange = true
     }
 
@@ -268,7 +262,7 @@ export function sanitizeBlockIds(blocks: Block[]): Block[] {
       const nextChildren = block.children.map((child) => sanitizeBlock(child as Block))
       const childrenChanged = nextChildren.some((child, index) => child !== block.children[index])
       if (childrenChanged) {
-        nextBlock = { ...nextBlock, children: nextChildren } as Block
+        nextBlock = { ...nextBlock, children: nextChildren }
         didChange = true
       }
     }
@@ -326,7 +320,7 @@ export async function parseMarkdownPreservingBlanks(
   // not optional: a token left in a block is written into the vault as text.
   restoreDetailsMarkupInBlocks(blocks)
 
-  return applyInlineColorTokens(blocks as never[], spans) as Block[]
+  return schemaBlocks(applyInlineColorTokens(blocks, spans))
 }
 
 function restoreDetailsMarkupInBlocks(blocks: Block[]): void {
@@ -338,7 +332,7 @@ function restoreDetailsMarkupInBlocks(blocks: Block[]): void {
         }
       }
     }
-    if (Array.isArray(block.children)) restoreDetailsMarkupInBlocks(block.children as Block[])
+    if (Array.isArray(block.children)) restoreDetailsMarkupInBlocks(block.children)
   }
 }
 
@@ -407,17 +401,17 @@ async function parseToggleSegment(editor: any, segment: ToggleBlockSegment): Pro
 
   // SAFETY: `toggleListItem` as its spec declares it — block colours plus
   // `open`, summary as inline content, body as children.
-  return {
+  return schemaBlock({
     type: 'toggleListItem' as const,
     props: { ...colors, open: segment.open },
     content: parsedSummary[0]?.content ?? [],
     children: segment.body ? await parseMaskedMarkdown(editor, segment.body) : []
-  } as unknown as Block
+  })
 }
 
 function emptyParagraph(): Block {
   // SAFETY: an empty paragraph, the schema's own default block.
-  return { type: 'paragraph', content: [], children: [], props: {} } as unknown as Block
+  return schemaBlock({ type: 'paragraph', content: [], children: [], props: {} })
 }
 
 function pushEmptyParagraphs(blocks: Block[], count: number): void {
@@ -437,17 +431,17 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
       const claimed = await resolveQuoteRun(
         cseg.run,
         async (md) => parseMarkdown(editor, md),
-        async (parsed) => serializeBlocks(editor, parsed as Block[])
+        async (parsed) => serializeBlocks(editor, schemaBlocks(parsed))
       )
       if (claimed) {
         // SAFETY: `quote` as its spec declares it, with the run's parsed
         // content and children.
-        const quote = {
+        const quote = schemaBlock({
           type: 'quote' as const,
           props: {},
           content: claimed.content,
           children: claimed.children
-        } as unknown as Block
+        })
         applyMarkers(cseg.markers, quote)
         blocks.push(quote)
       } else {
@@ -460,12 +454,12 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
       const claimed = await resolveCalloutRun(
         cseg.run,
         async (md) => parseMarkdown(editor, md),
-        async (parsed) => serializeBlocks(editor, parsed as Block[])
+        async (parsed) => serializeBlocks(editor, schemaBlocks(parsed))
       )
       if (claimed) {
         // SAFETY: `callout` as its spec declares it; `claimed.type` is one of
         // the callout kinds `resolveCalloutRun` recognises.
-        const callout = {
+        const callout = schemaBlock({
           type: 'callout' as const,
           props:
             claimed.fold === 'none'
@@ -473,7 +467,7 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
               : { type: claimed.type, fold: claimed.fold },
           content: claimed.content,
           children: claimed.children
-        } as unknown as Block
+        })
         applyMarkers(cseg.markers, callout)
         blocks.push(callout)
       } else {
@@ -494,7 +488,7 @@ async function parseMarkdownWithoutToggles(editor: any, markdown: string): Promi
 function applyMarkers(markers: string[], block: Block): void {
   // SAFETY: `MarkedBlock` is the `{ type, props }` subset the sidecar patches
   // read and write; every `Block` has both.
-  const marked = block as unknown as MarkedBlock
+  const marked = markedBlock(block)
   for (const line of markers) parseSidecarMarkerLine(line)?.(marked)
 }
 
@@ -506,36 +500,46 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
       for (const part of embedParts) {
         if (part.kind === 'embed') {
           // SAFETY: `youtubeEmbed`'s declared props, all strings.
-          blocks.push({
-            type: 'youtubeEmbed' as const,
-            props: { videoId: part.videoId, videoUrl: part.url, alt: part.alt }
-          } as unknown as Block)
+          blocks.push(
+            schemaBlock({
+              type: 'youtubeEmbed' as const,
+              props: { videoId: part.videoId, videoUrl: part.url, alt: part.alt }
+            })
+          )
         } else if (part.kind === 'bookmark') {
           // SAFETY: `bookmark`'s two required props; the rest of its
           // propSchema has defaults and is rehydrated at render time.
-          blocks.push({
-            type: 'bookmark' as const,
-            props: { url: part.url, domain: extractDomain(part.url) }
-          } as unknown as Block)
+          blocks.push(
+            schemaBlock({
+              type: 'bookmark' as const,
+              props: { url: part.url, domain: extractDomain(part.url) }
+            })
+          )
         } else if (part.kind === 'file') {
           // SAFETY: `part.props` came from `parseFileBlockMarker`, which
           // returns exactly the `file` spec's props.
-          blocks.push({
-            type: 'file' as const,
-            props: part.props
-          } as unknown as Block)
+          blocks.push(
+            schemaBlock({
+              type: 'file' as const,
+              props: part.props
+            })
+          )
         } else if (part.kind === 'math') {
           // SAFETY: `mathBlock`'s one declared prop, a string.
-          blocks.push({
-            type: 'mathBlock' as const,
-            props: { latex: part.latex }
-          } as unknown as Block)
+          blocks.push(
+            schemaBlock({
+              type: 'mathBlock' as const,
+              props: { latex: part.latex }
+            })
+          )
         } else if (part.kind === 'whiteboard') {
           // SAFETY: `whiteboard`'s one declared prop, a string.
-          blocks.push({
-            type: 'whiteboard' as const,
-            props: { canvasId: part.canvasId }
-          } as unknown as Block)
+          blocks.push(
+            schemaBlock({
+              type: 'whiteboard' as const,
+              props: { canvasId: part.canvasId }
+            })
+          )
         } else {
           const parsed = await parseMarkdownWithNestingMarkers(part.text, (md) =>
             parseMarkdown(editor, md)
@@ -543,7 +547,7 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
           const first = parsed.find((block) => !isBlockNestingMarker(block))
           if (first) {
             // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
-            const marked = first as unknown as MarkedBlock
+            const marked = markedBlock(first)
             for (const apply of part.patches ?? []) apply(marked)
           }
           blocks.push(...parsed)
@@ -552,12 +556,7 @@ async function parseMarkdownSegmentText(editor: any, text: string, blocks: Block
     } else {
       for (let i = 0; i < seg.extraLines; i++) {
         // SAFETY: an empty paragraph, the schema's own default block.
-        blocks.push({
-          type: 'paragraph',
-          content: [],
-          children: [],
-          props: {}
-        } as unknown as Block)
+        blocks.push(emptyParagraph())
       }
     }
   }
@@ -593,7 +592,7 @@ export async function serializeBlocksPreservingBlanks(
     if (isEmptyWhiteboard(block)) continue
 
     // SAFETY: as in `applyMarkers` — the `{ type, props }` subset.
-    const markers = sidecarMarkerLines(block as unknown as MarkedBlock)
+    const markers = sidecarMarkerLines(markedBlock(block))
 
     if ((block.type as string) === 'taskBlock') {
       await flushContent()
@@ -603,12 +602,12 @@ export async function serializeBlocksPreservingBlanks(
     } else if ((block.type as string) === 'youtubeEmbed') {
       await flushContent()
       flushGap()
-      const { videoUrl, alt } = block.props as { videoUrl: string; alt?: string }
+      const { videoUrl, alt } = propsFor(block, 'youtubeEmbed')
       segments.push({ type: 'content', text: serializeYoutubeEmbed(videoUrl, alt) })
     } else if ((block.type as string) === 'bookmark') {
       await flushContent()
       flushGap()
-      segments.push({ type: 'content', text: serializeBookmark((block.props as any).url) })
+      segments.push({ type: 'content', text: serializeBookmark(propsFor(block, 'bookmark').url) })
     } else if ((block.type as string) === 'whiteboard' && !block.children?.length) {
       // With children it falls through to the nesting-marker path below, which
       // is where main's content-group serialization sends it too.
@@ -618,12 +617,11 @@ export async function serializeBlocksPreservingBlanks(
     } else if ((block.type as string) === 'file') {
       await flushContent()
       flushGap()
-      segments.push({ type: 'content', text: serializeFileBlock(block.props as FileBlockProps) })
+      segments.push({ type: 'content', text: serializeFileBlock(propsFor(block, 'file')) })
     } else if ((block.type as string) === 'callout') {
       await flushContent()
       flushGap()
-      const calloutType = (block.props as any).type as string
-      const calloutFold = (block.props as { fold?: string }).fold
+      const { type: calloutType, fold: calloutFold } = propsFor(block, 'callout')
       // Serialized as a PARAGRAPH holding the callout's inline content, the
       // same way `serializeQuote` above does it, rather than as the callout
       // block itself. This block's React render puts its content in a plain
@@ -634,7 +632,7 @@ export async function serializeBlocksPreservingBlanks(
       // is cleared because a paragraph's propSchema has no `type` key.
       // Children are written inside the blockquote after the own line, the
       // shape `resolveCalloutRun` reads back (#3186).
-      const own = { ...block, type: 'paragraph', props: {}, children: [] } as unknown as Block
+      const own = schemaBlock({ ...block, type: 'paragraph', props: {}, children: [] })
       const children = (block.children ?? []) as Block[]
       const contentMd =
         children.length > 0
@@ -648,7 +646,7 @@ export async function serializeBlocksPreservingBlanks(
     } else if ((block.type as string) === 'mathBlock') {
       await flushContent()
       flushGap()
-      const latex = (block.props as { latex?: string }).latex ?? ''
+      const latex = propsFor(block, 'mathBlock').latex ?? ''
       const mathMd = serializeMathBlock(latex)
       segments.push({
         type: 'content',
@@ -710,7 +708,7 @@ export async function serializeBlocksPreservingBlanks(
   const endsInPortal =
     lastBlock !== undefined &&
     (lastBlock.type as string) === 'codeBlock' &&
-    (lastBlock.props as { language?: string }).language === PORTAL_BLOCK_LANGUAGE
+    propsFor(lastBlock, 'codeBlock').language === PORTAL_BLOCK_LANGUAGE
   if (emptyCount > 0 && !endsInPortal) {
     segments.push({ type: 'gap', extraLines: emptyCount })
   }

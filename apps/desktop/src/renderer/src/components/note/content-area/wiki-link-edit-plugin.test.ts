@@ -240,7 +240,7 @@ describe('wiki-link edit plugin', () => {
     ).state
 
     const marks = opened.doc.resolve(3).marks()
-    expect(marks.map((mark) => mark.type.name).sort()).toEqual(['bold', 'textColor'])
+    expect(marks.map((mark) => mark.type.name).toSorted()).toEqual(['bold', 'textColor'])
 
     const closed = opened.apply(
       opened.tr.setSelection(TextSelection.create(opened.doc, opened.doc.content.size - 1))

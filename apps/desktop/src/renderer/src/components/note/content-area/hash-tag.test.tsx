@@ -185,7 +185,7 @@ describe('hash tag inline content', () => {
       { id: 'code', type: 'codeBlock', content: '#ignored' }
     ] as any)
 
-    expect(tags.sort()).toEqual(['Nested', 'Personal', 'Work'])
+    expect(tags.toSorted()).toEqual(['Nested', 'Personal', 'Work'])
   })
 })
 

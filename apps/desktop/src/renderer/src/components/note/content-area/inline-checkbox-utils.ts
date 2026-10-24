@@ -157,7 +157,7 @@ export function normalizeInlineCheckboxes(blocks: Block[]): {
     let blockChanged = false
     let nextBlock: Block = block
 
-    const content = block.content as any
+    const content: any = block.content
     if (content && !Array.isArray(content) && content.type === 'tableContent') {
       const promoted = promoteTableContent(content)
       if (promoted.didChange) {
@@ -167,7 +167,7 @@ export function normalizeInlineCheckboxes(blocks: Block[]): {
     }
 
     if (block.children?.length) {
-      const promotedChildren = normalizeInlineCheckboxes(block.children as Block[])
+      const promotedChildren = normalizeInlineCheckboxes(block.children)
       if (promotedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: promotedChildren.blocks }

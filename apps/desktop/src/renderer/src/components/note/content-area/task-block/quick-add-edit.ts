@@ -54,7 +54,7 @@ const doesSomething = (span: string, projects: Project[], now: Date): boolean =>
 const stripSpans = (input: string, spans: QuickAddSpan[]): string => {
   let out = ''
   let cursor = 0
-  for (const span of [...spans].sort((a, b) => a.start - b.start)) {
+  for (const span of spans.toSorted((a, b) => a.start - b.start)) {
     out += input.slice(cursor, span.start)
     cursor = span.end
   }

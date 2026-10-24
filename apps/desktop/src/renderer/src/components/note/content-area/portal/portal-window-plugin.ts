@@ -377,7 +377,7 @@ export function createPortalWindowPlugin(
     state: {
       init: (_config, state) => computePortalWindow(state.doc, initial),
       apply(tr, value, oldState) {
-        const next = tr.getMeta(portalWindowKey) as PortalWindowSpec | undefined
+        const next: PortalWindowSpec | undefined = tr.getMeta(portalWindowKey)
         let created = value.created
         // A block a local edit creates from inside the window is pending: the
         // fence does not list it yet, and it must stay visible meanwhile.

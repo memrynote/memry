@@ -34,7 +34,9 @@ export const createToggleListItemBlock = createBlockSpec(
   {
     render(block, editor) {
       const paragraph = document.createElement('p')
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- createToggleWrapper's generics are the stock schema's; this editor runs the app schema, so neither side unifies
       const wrapper = createToggleWrapper(block as never, editor as never, paragraph, {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- `toggle` is typed never by the wrapper's generics; props.open is the only field read
         get: (toggle) => (toggle as unknown as ToggleBlock).props.open === true,
         set: (toggle, isToggled) =>
           editor.transact(() => editor.updateBlock(toggle, { props: { open: isToggled } }))
@@ -56,5 +58,6 @@ export const createToggleListItemBlock = createBlockSpec(
   // BlockNote hangs the Enter and Mod-Shift-6 handlers off its own spec, and an
   // override replaces the whole spec object. Reused rather than reimplemented:
   // the handler they call (`handleEnter`) is not part of the public surface.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the stock spec types its extensions loosely; they are BlockNote's own factory instances
   defaultSpec.extensions as ExtensionFactoryInstance[] | undefined
 )

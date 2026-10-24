@@ -65,7 +65,11 @@ export function TagSuggestionPopover({
 
     try {
       const result = await notesService.getTags()
-      const tags = result.map((t) => ({ tag: t.tag, color: t.color, count: t.count }))
+      const tags = result.map((entry) => ({
+        tag: entry.tag,
+        color: entry.color,
+        count: entry.count
+      }))
       cacheRef.current = { tags, fetchedAt: now }
       return tags
     } catch (error) {
@@ -76,7 +80,7 @@ export function TagSuggestionPopover({
 
   useEffect(() => {
     const tiptap = editor?._tiptapEditor
-    if (!tiptap) return
+    if (!tiptap) return undefined
 
     const handleUpdate = () => {
       const { state } = tiptap
@@ -88,12 +92,13 @@ export function TagSuggestionPopover({
       }
 
       const nodeBefore = $from.nodeBefore
-      if (!nodeBefore || nodeBefore.type.name !== 'hashTag') {
+      if (nodeBefore?.type.name !== 'hashTag') {
         setVisible(false)
         return
       }
 
-      const tagName = nodeBefore.attrs.tag as string
+      const rawTag: unknown = nodeBefore.attrs.tag
+      const tagName = typeof rawTag === 'string' ? rawTag : ''
       const tagPos = $from.pos - nodeBefore.nodeSize
 
       setActiveTagName(tagName)
@@ -101,8 +106,8 @@ export function TagSuggestionPopover({
 
       void fetchTags().then((allTags) => {
         const filtered = allTags
-          .filter((t) => t.tag.includes(tagName) && t.tag !== tagName)
-          .sort((a, b) => {
+          .filter((entry) => entry.tag.includes(tagName) && entry.tag !== tagName)
+          .toSorted((a, b) => {
             const aStarts = a.tag.startsWith(tagName)
             const bStarts = b.tag.startsWith(tagName)
             if (aStarts && !bStarts) return -1
@@ -145,7 +150,7 @@ export function TagSuggestionPopover({
   }, [editor, editorContainerRef, fetchTags])
 
   useEffect(() => {
-    if (!visible) return
+    if (!visible) return undefined
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {

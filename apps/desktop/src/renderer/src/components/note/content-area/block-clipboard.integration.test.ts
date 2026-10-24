@@ -62,12 +62,12 @@ beforeEach(() => {
 function readBlob(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
-      resolve(String(reader.result))
-    }
-    reader.onerror = () => {
-      reject(reader.error)
-    }
+    reader.addEventListener('load', () => {
+      resolve(typeof reader.result === 'string' ? reader.result : '')
+    })
+    reader.addEventListener('error', () => {
+      reject(reader.error ?? new Error('FileReader failed'))
+    })
     reader.readAsText(blob)
   })
 }
@@ -112,7 +112,7 @@ function mountEditor(initialContent?: PartialBlock[], schema?: any): BlockNoteEd
     pasteHandler: handleEditorPaste,
     ...(schema ? { schema } : {}),
     ...(initialContent ? { initialContent: initialContent as any } : {})
-  }) as BlockNoteEditor
+  })
   const el = document.createElement('div')
   document.body.appendChild(el)
   editor.mount(el)
@@ -299,6 +299,7 @@ describe('writeBlockClipboard', () => {
     }
     const write = vi.fn(async (_items: StubClipboardItem[]) => {})
     vi.stubGlobal('ClipboardItem', StubClipboardItem)
+    // oxlint-disable-next-line typescript/no-misused-spread -- jsdom's navigator has own enumerable props only; the stub keeps them and swaps clipboard
     vi.stubGlobal('navigator', { ...navigator, clipboard: { write } })
     execCommand.mockReturnValue(false)
 
@@ -315,6 +316,7 @@ describe('writeBlockClipboard', () => {
     // oxlint-disable-next-line typescript/no-extraneous-class -- test double: the code under test calls it with new
     vi.stubGlobal('ClipboardItem', class {})
     vi.stubGlobal('navigator', {
+      // oxlint-disable-next-line typescript/no-misused-spread -- jsdom's navigator has own enumerable props only; the stub keeps them and swaps clipboard
       ...navigator,
       clipboard: { write: vi.fn(async () => Promise.reject(new Error('denied'))) }
     })

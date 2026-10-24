@@ -19,13 +19,12 @@ import { mountTestEditor, para, unmountTestEditors } from './portal-test-editor'
 afterEach(unmountTestEditors)
 
 const FENCE = '{"v":1,"note":"src"}'
-const portal = (children?: PartialBlock[]): PartialBlock =>
-  ({
-    type: 'codeBlock',
-    props: { language: 'memry-portal' },
-    content: FENCE,
-    children
-  }) as PartialBlock
+const portal = (children?: PartialBlock[]): PartialBlock => ({
+  type: 'codeBlock',
+  props: { language: 'memry-portal' },
+  content: FENCE,
+  children
+})
 
 const types = (editor: ReturnType<typeof mountTestEditor>['editor']): string[] =>
   editor.document.map((block) =>

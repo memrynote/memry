@@ -59,7 +59,7 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
         const tagInfo = getHashTagBeforeCursor(view.state)
         if (!tagInfo) return false
 
-        const currentTag = tagInfo.node.attrs.tag as string
+        const currentTag: string = tagInfo.node.attrs.tag
         const newTag = shrinkTagName(currentTag)
 
         const hashTagNodeType = view.state.schema.nodes.hashTag
@@ -129,7 +129,7 @@ export function createHashTagInlinePlugin(getTagColor: GetTagColor): Plugin {
 
         if (nodeAtPos?.type.name !== 'hashTag') return null
 
-        const currentTag = nodeAtPos.attrs.tag as string
+        const currentTag: string = nodeAtPos.attrs.tag
         const newTag = extendTagName(currentTag, trailing.chars)
         if (newTag === null) return null
         const color = getTagColor(newTag)

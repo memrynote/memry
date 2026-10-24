@@ -76,11 +76,11 @@ export function useResolvedFileUrl(url: string): string | null {
     if (isResolved || !resolve) {
       // oxlint-disable-next-line react/set-state-in-effect -- state resets when its input changes; render-time derivation would need previous-value tracking
       setResolved(url)
-      return
+      return undefined
     }
     let cancelled = false
-    void resolve(url).then((next) => {
-      if (!cancelled) setResolved(next)
+    void resolve(url).then((nextUrl) => {
+      if (!cancelled) setResolved(nextUrl)
     })
     return () => {
       cancelled = true

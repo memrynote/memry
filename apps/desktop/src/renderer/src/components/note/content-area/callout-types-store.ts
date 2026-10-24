@@ -33,6 +33,7 @@ export function startCalloutTypesSync(): void {
     .catch((err: unknown) => log.warn('Failed to load callout types', err))
   window.api.onSettingsChanged((event) => {
     if (event.key === 'editor.calloutTypes') {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- settings-changed `value` is unknown by contract; this key is only written by the callout-types setter
       publishCalloutTypes(event.value as CalloutTypeDefinition[])
     }
   })

@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { BlockNoteEditor, type Block } from '@blocknote/core'
+import { BlockNoteEditor } from '@blocknote/core'
 import { renderHtmlComment } from './html-comment'
 import { editorSchema } from './editor-schema'
 import { parseMarkdownPreservingBlanks, serializeBlocksPreservingBlanks } from './markdown-utils'
@@ -81,7 +81,7 @@ describe('Readwise section round trip', () => {
 
   it('saves the exact bytes it opened', async () => {
     const parsed = await parseMarkdownPreservingBlanks(editor, note)
-    const blocks = normalizeNoteBlocks(parsed as Block[], note) as Block[]
+    const blocks = normalizeNoteBlocks(parsed, note)
     const canonical = await serializeBlocksPreservingBlanks(editor, blocks)
     expect(
       await serializeMarkdownPreservingSource(editor, blocks, canonical === note ? null : note)

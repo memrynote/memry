@@ -20,7 +20,7 @@ export function BookmarkBlockRender({ block }: { block: { props: BookmarkProps }
   // on mount when the block has no title. Never writes back to the block.
   const [fetched, setFetched] = useState<UrlPreviewData | null>(null)
   useEffect(() => {
-    if (title || !url) return
+    if (title || !url) return undefined
     let cancelled = false
     fetchLinkPreview(url)
       .then((data) => {
@@ -75,7 +75,7 @@ export function BookmarkBlockRender({ block }: { block: { props: BookmarkProps }
                 alt=""
                 className="size-3.5 shrink-0 rounded-[3px] object-cover"
                 onError={(e) => {
-                  ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                  e.currentTarget.style.display = 'none'
                 }}
               />
             )}

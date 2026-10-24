@@ -138,7 +138,7 @@ describe('parseMarkdownPreservingBlanks', () => {
       undefined
     ])
 
-    const markdown = await serializeBlocksPreservingBlanks(editor, callouts as any[])
+    const markdown = await serializeBlocksPreservingBlanks(editor, callouts)
     expect(markdown).toBe('> [!tip]-\n> Hidden\n\n> [!tip]+\n> Shown\n\n> [!tip]\n> Plain')
   })
 

@@ -66,9 +66,8 @@ export const portalBoundaryKey = new PluginKey<LocalDeletion>('portalBoundary')
 
 function isLocalDeletion(tr: Transaction): boolean {
   if (!tr.docChanged) return false
-  const sync = tr.getMeta(ySyncPluginKey) as
-    | { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean }
-    | undefined
+  const sync: { isChangeOrigin?: boolean; isUndoRedoOperation?: boolean } | undefined =
+    tr.getMeta(ySyncPluginKey)
   if (sync?.isChangeOrigin && !sync.isUndoRedoOperation) return false
   return tr.mapping.maps.some((map) => {
     let deleted = false
@@ -219,6 +218,48 @@ function definitionOf(view: EditorView): PortalDefinition | null {
   return window ? { v: 1, target: window.spec, raw: {} } : null
 }
 
+const onEnter = (view: EditorView, here: { id: string; container: PMNode }): boolean => {
+  const window = getPortalWindowState(view)
+  if (!window || currentIndex(window.visible, here.id) < 0) return false
+  const block = window.visible[currentIndex(window.visible, here.id)]
+  if (block.text === '' && block.blockId === window.visible[window.visible.length - 1].blockId) {
+    // An empty line made here and never used leaves no stray block behind.
+    const { $head } = view.state.selection
+    if (
+      window.pending.has(here.id) &&
+      here.container.childCount === 1 &&
+      $head.node($head.depth - 2).childCount > 1
+    ) {
+      const from = $head.before($head.depth - 1)
+      view.dispatch(view.state.tr.delete(from, from + here.container.nodeSize))
+    }
+    exitWindow(view, 'after')
+    return true
+  }
+  const { $head } = view.state.selection
+  if ($head.pos === anchorVisibleEnd($head)) {
+    return insertBelowParent(view, here.container, new Set(window.visible.map((b) => b.blockId)))
+  }
+  return false
+}
+
+const onShiftTab = (view: EditorView, here: { id: string }): boolean => {
+  const window = getPortalWindowState(view)
+  if (!window || currentIndex(window.visible, here.id) < 0) return false
+  // blockContainer > blockGroup > textblock's container: two levels up is the parent block.
+  const { $head } = view.state.selection
+  const parent = $head.depth >= 3 ? $head.node($head.depth - 3) : null
+  const parentId = parent?.type.name === 'blockContainer' ? String(parent.attrs.id) : null
+  // A block whose parent is not shown sits at the window's top level: nowhere to lift to.
+  return !window.visible.some((b) => b.blockId === parentId)
+}
+
+/** Tab with no previous sibling to nest under does nothing; it must not move focus out of the window. */
+const onTab = (view: EditorView): boolean => {
+  const { $head } = view.state.selection
+  return $head.depth >= 2 && $head.index($head.depth - 2) === 0
+}
+
 export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Plugin {
   let pending: PendingRemove | null = null
   const expect = (next: PendingRemove): void => {
@@ -227,31 +268,6 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
     setTimeout(() => {
       if (pending === next) pending = null
     }, 0)
-  }
-
-  const onEnter = (view: EditorView, here: { id: string; container: PMNode }): boolean => {
-    const window = getPortalWindowState(view)
-    if (!window || currentIndex(window.visible, here.id) < 0) return false
-    const block = window.visible[currentIndex(window.visible, here.id)]
-    if (block.text === '' && block.blockId === window.visible[window.visible.length - 1].blockId) {
-      // An empty line made here and never used leaves no stray block behind.
-      const { $head } = view.state.selection
-      if (
-        window.pending.has(here.id) &&
-        here.container.childCount === 1 &&
-        $head.node($head.depth - 2).childCount > 1
-      ) {
-        const from = $head.before($head.depth - 1)
-        view.dispatch(view.state.tr.delete(from, from + here.container.nodeSize))
-      }
-      exitWindow(view, 'after')
-      return true
-    }
-    const { $head } = view.state.selection
-    if ($head.pos === anchorVisibleEnd($head)) {
-      return insertBelowParent(view, here.container, new Set(window.visible.map((b) => b.blockId)))
-    }
-    return false
   }
 
   const onBackspace = (view: EditorView, here: { id: string }): boolean => {
@@ -269,21 +285,19 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
     return false
   }
 
-  const onShiftTab = (view: EditorView, here: { id: string }): boolean => {
+  // A local deletion (or undo) took blocks out of the source: the fence stops naming them.
+  const pruneGone = (view: EditorView, before: PMNode): void => {
+    if (!portalBoundaryKey.getState(view.state)?.tr) return
     const window = getPortalWindowState(view)
-    if (!window || currentIndex(window.visible, here.id) < 0) return false
-    // blockContainer > blockGroup > textblock's container: two levels up is the parent block.
-    const { $head } = view.state.selection
-    const parent = $head.depth >= 3 ? $head.node($head.depth - 3) : null
-    const parentId = parent?.type.name === 'blockContainer' ? String(parent.attrs.id) : null
-    // A block whose parent is not shown sits at the window's top level: nowhere to lift to.
-    return !window.visible.some((b) => b.blockId === parentId)
-  }
-
-  /** Tab with no previous sibling to nest under does nothing; it must not move focus out of the window. */
-  const onTab = (view: EditorView): boolean => {
-    const { $head } = view.state.selection
-    return $head.depth >= 2 && $head.index($head.depth - 2) === 0
+    if (!window) return
+    const def: PortalDefinition = { v: 1, target: window.spec, raw: {} }
+    const listed = listedAnchors(def)
+    if (listed.size === 0) return
+    const was = docAnchors(before)
+    const now = docAnchors(view.state.doc)
+    const gone = new Set([...listed].filter((anchor) => was.has(anchor) && !now.has(anchor)))
+    const plan = gone.size > 0 ? planPrune(def, gone) : null
+    if (plan) void callbacks.onPlan(plan)
   }
 
   return new Plugin({
@@ -330,20 +344,6 @@ export function createPortalBoundaryPlugin(callbacks: PortalWindowCallbacks): Pl
           dirty = false
           schedule(view)
         })
-      }
-      // A local deletion (or undo) took blocks out of the source: the fence stops naming them.
-      const pruneGone = (view: EditorView, before: PMNode): void => {
-        if (!portalBoundaryKey.getState(view.state)?.tr) return
-        const window = getPortalWindowState(view)
-        if (!window) return
-        const def: PortalDefinition = { v: 1, target: window.spec, raw: {} }
-        const listed = listedAnchors(def)
-        if (listed.size === 0) return
-        const was = docAnchors(before)
-        const now = docAnchors(view.state.doc)
-        const gone = new Set([...listed].filter((anchor) => was.has(anchor) && !now.has(anchor)))
-        const plan = gone.size > 0 ? planPrune(def, gone) : null
-        if (plan) void callbacks.onPlan(plan)
       }
       const schedule = (view: EditorView): void => {
         clearTimeout(timer)

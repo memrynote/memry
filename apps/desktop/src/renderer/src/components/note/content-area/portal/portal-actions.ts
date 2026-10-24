@@ -17,8 +17,7 @@ import {
   planIncludeParent,
   planShow,
   planShowAllSiblings,
-  type PortalPlan,
-  type StampedAnchors
+  type PortalPlan
 } from './portal-plans'
 import type { PortalHandle } from './portal-slots'
 import { getPortalWindowState } from './portal-window-plugin'
@@ -62,7 +61,7 @@ export async function commitPortalPlan(
       log.error('Failed to stamp an anchor', { sourceNoteId, error: err })
       return false
     }
-    next = next.resolve(anchors as StampedAnchors)
+    next = next.resolve(anchors)
     if (next.stamp?.length) return false
   }
   const target = next.definition.target

@@ -81,7 +81,7 @@ export function PortalPicker({
   })
   useEffect(() => {
     const root = editor.domElement
-    if (!root) return
+    if (!root) return undefined
     const listener = (event: KeyboardEvent): void => handleKeyDown(event)
     root.addEventListener('keydown', listener, true)
     return () => root.removeEventListener('keydown', listener, true)

@@ -76,7 +76,7 @@ const MENTION = '((mention:https%3A%2F%2Fexample.com%2Fplain))'
 /** Parsed and promoted the way every note surface does it. */
 async function promotedBlocks(markdown: string): Promise<Block[]> {
   const parsed = await parseMarkdownPreservingBlanks(wrapped, markdown)
-  return normalizeNoteBlocks(parsed as Block[], markdown) as Block[]
+  return normalizeNoteBlocks(parsed, markdown)
 }
 
 /** BlockNote's own exporter, nothing of ours in between. */

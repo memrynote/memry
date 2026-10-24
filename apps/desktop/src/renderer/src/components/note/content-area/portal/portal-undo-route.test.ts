@@ -87,7 +87,7 @@ function setup() {
     return {
       blockId: portalId,
       instanceId: 'i1',
-      editor: host.editor as unknown as PortalHandle['editor'],
+      editor: host.editor,
       definition: parsed.definition,
       sourceNoteId: 'src',
       hostNoteId: undefined

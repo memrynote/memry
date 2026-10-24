@@ -64,11 +64,11 @@ export async function buildBlockClipboard(
   editor: any,
   blockIds: readonly string[]
 ): Promise<BlockClipboardData | null> {
-  const view = editor.prosemirrorView as ClipboardView | undefined
+  const view: ClipboardView | undefined = editor.prosemirrorView
   if (!view) return null
 
   const blocks = blockIds
-    .map((id) => editor.getBlock(id) as Block | undefined)
+    .map((id): Block | undefined => editor.getBlock(id))
     .filter((block): block is Block => block !== undefined)
   const nodes = blockIds
     .map((id) => getNodeById(id, view.state.doc)?.node)
@@ -114,6 +114,7 @@ export async function writeBlockClipboard(data: BlockClipboardData): Promise<voi
 
   window.addEventListener('copy', onCopy, true)
   try {
+    // oxlint-disable-next-line typescript/no-deprecated -- only a synchronous copy command fires the copy event that carries the blocknote/html flavour; the async clipboard API rejects custom types
     document.execCommand('copy')
   } finally {
     window.removeEventListener('copy', onCopy, true)

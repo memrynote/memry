@@ -325,7 +325,9 @@ describe('TaskBlockRenderer', () => {
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
     fireEvent.change(titleInput, { target: { value: 'Renamed task' } })
-    act(() => vi.advanceTimersByTime(600))
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     await act(async () => Promise.resolve())
     expect(mocks.update).toHaveBeenCalledWith({ id: 'task-1', title: 'Renamed task' })
 
@@ -561,7 +563,9 @@ describe('TaskBlockRenderer', () => {
     fireEvent.click(screen.getByText('Loaded task'))
     const titleInput = screen.getByDisplayValue('Draft task')
     fireEvent.change(titleInput, { target: { value: 'Ship it !high #launch' } })
-    act(() => vi.advanceTimersByTime(600))
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
     await act(async () => Promise.resolve())
 
     // #then the half-parsed line is never written as the title

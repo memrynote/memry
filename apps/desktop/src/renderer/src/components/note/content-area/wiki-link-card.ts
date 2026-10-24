@@ -59,6 +59,7 @@ export function fillWikiLinkCard(chip: HTMLElement, content: WikiLinkCardContent
 
 export const renderWikiLinkWithCard: WikiLinkRender = (inlineContent) => {
   const rendered = renderWikiLink(inlineContent)
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- inline content props are typed per spec; the display helper reads them as a bag
   const display = wikiLinkDisplayProps(inlineContent.props as Record<string, unknown>)
   if (display.size === 'none' && !display.preview) return rendered
 

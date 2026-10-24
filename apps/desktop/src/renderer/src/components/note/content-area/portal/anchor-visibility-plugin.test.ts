@@ -397,22 +397,19 @@ describe('Enter through the real BlockNote keymap', () => {
     { name: 'paragraph', make: para },
     {
       name: 'heading',
-      make: (text, children) =>
-        ({ type: 'heading', props: { level: 2 }, content: text, children }) as PartialBlock
+      make: (text, children) => ({ type: 'heading', props: { level: 2 }, content: text, children })
     },
     {
       name: 'bullet list item',
-      make: (text, children) =>
-        ({ type: 'bulletListItem', content: text, children }) as PartialBlock
+      make: (text, children) => ({ type: 'bulletListItem', content: text, children })
     },
     {
       name: 'numbered list item',
-      make: (text, children) =>
-        ({ type: 'numberedListItem', content: text, children }) as PartialBlock
+      make: (text, children) => ({ type: 'numberedListItem', content: text, children })
     },
     {
       name: 'checklist item',
-      make: (text, children) => ({ type: 'checkListItem', content: text, children }) as PartialBlock
+      make: (text, children) => ({ type: 'checkListItem', content: text, children })
     }
   ]
 
@@ -434,6 +431,7 @@ describe('Enter through the real BlockNote keymap', () => {
             .trim(),
           parent
         ])
+        // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the compiler needs it: removing it fails typecheck because BlockNote's generic block types differ from what lint infers
         walk(b.children as typeof editor.document, b.id)
       }
     }

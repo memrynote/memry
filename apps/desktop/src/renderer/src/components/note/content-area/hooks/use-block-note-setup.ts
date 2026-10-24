@@ -42,13 +42,13 @@ export function useBlockNoteSetup({
 
   // AI extension registration
   useEffect(() => {
-    if (!aiPort) return
+    if (!aiPort) return undefined
 
     if (!editor.getExtension('ai')) {
       const transport = new DefaultChatTransport({
         api: `http://127.0.0.1:${aiPort}/api/ai/chat`
       })
-      const aiExtension = AIExtension({ transport: transport as any })
+      const aiExtension = AIExtension({ transport })
       editor.registerExtension(aiExtension)
     }
 
@@ -88,9 +88,9 @@ export function useBlockNoteSetup({
 
   // SpellCheck DOM sync
   useEffect(() => {
-    if (spellCheck === undefined) return
+    if (spellCheck === undefined) return undefined
     const container = editorContainerRef.current
-    if (!container) return
+    if (!container) return undefined
     const applySpellCheck = (): void => {
       const ce = container.querySelector<HTMLElement>('[contenteditable="true"]')
       if (ce) ce.spellcheck = spellCheck
@@ -161,13 +161,15 @@ export function useBlockNoteSetup({
   // caret is never parked beside the chip and that paint never appears. Do not
   // restore a branch here: with both in place a click opens the note twice.
   useEffect(() => {
-    if (!onLinkClick) return
+    if (!onLinkClick) return undefined
 
     const handleClick = (e: Event): void => {
       // A link on a whiteboard is opened by the board's own handler; answering
       // it here too opened every such link twice.
       if (isFromWhiteboard(e)) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the listener is registered for mouse events only
       const mouseEvent = e as globalThis.MouseEvent
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- DOM event targets are typed EventTarget; this handler is bound to elements, so the target is the Element/Node
       const target = mouseEvent.target as HTMLElement
       const link = target.closest('a')
       if (link) {
@@ -195,7 +197,7 @@ export function useBlockNoteSetup({
 
   // Scroll to highlight on mount
   useEffect(() => {
-    if (!initialHighlight?.text || !editorContainerRef.current) return
+    if (!initialHighlight?.text || !editorContainerRef.current) return undefined
 
     const scrollToHighlight = (): void => {
       const container = editorContainerRef.current
@@ -205,6 +207,7 @@ export function useBlockNoteSetup({
       const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null)
       let node: Text | null
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the TreeWalker is created with SHOW_TEXT
       while ((node = walker.nextNode() as Text | null)) {
         const nodeText = node.textContent || ''
         const index = nodeText.toLowerCase().indexOf(searchText.toLowerCase())
@@ -237,7 +240,7 @@ export function useBlockNoteSetup({
   // until the anchor is found (or give up after ~2s) instead of a lone 500ms
   // shot that silently misses.
   useEffect(() => {
-    if (!initialAnchorId || !editorContainerRef.current) return
+    if (!initialAnchorId || !editorContainerRef.current) return undefined
 
     let attempts = 0
     let timeoutId: ReturnType<typeof setTimeout>

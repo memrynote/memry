@@ -80,7 +80,7 @@ export interface BulletCollapseLabels {
 
 function headingLevel(container: ProseMirrorNode): number | null {
   const content = container.firstChild
-  if (!content || content.type.name !== 'heading') return null
+  if (content?.type.name !== 'heading') return null
   if (content.attrs.isToggleable === true) return null
   const level = Number(content.attrs.level)
   return Number.isFinite(level) ? level : null
@@ -105,9 +105,7 @@ export function findCollapsibleBlocks(doc: ProseMirrorNode): CollapsibleBlock[] 
     const togglePos = pos + 1 + content.nodeSize
     const group = node.lastChild
     const ownGroup: NodeRange[] =
-      group && group.type.name === 'blockGroup'
-        ? [{ from: togglePos, to: togglePos + group.nodeSize }]
-        : []
+      group?.type.name === 'blockGroup' ? [{ from: togglePos, to: togglePos + group.nodeSize }] : []
 
     if (content.type.name === 'bulletListItem') {
       if (ownGroup.length > 0) blocks.push({ id, kind: 'bullet', togglePos, hidden: ownGroup })
@@ -245,7 +243,8 @@ export function createBulletCollapsePlugin(labels: BulletCollapseLabels): Plugin
       },
 
       apply(tr, value, _oldState, newState) {
-        const toggledId = tr.getMeta(TOGGLE_META) as string | undefined
+        const toggleMeta: unknown = tr.getMeta(TOGGLE_META)
+        const toggledId = typeof toggleMeta === 'string' ? toggleMeta : undefined
         if (toggledId !== undefined) {
           const collapsed = new Set(value.collapsed)
           if (!collapsed.delete(toggledId)) collapsed.add(toggledId)
@@ -273,8 +272,8 @@ export function createBulletCollapsePlugin(labels: BulletCollapseLabels): Plugin
         // letting the default run first would put the caret in the block and
         // scroll it into view before the fold is applied.
         mousedown(view, event) {
-          const target = event.target as HTMLElement | null
-          const button = target?.closest?.(`.${BULLET_TOGGLE_CLASS}`)
+          const target = event.target instanceof Element ? event.target : null
+          const button = target?.closest(`.${BULLET_TOGGLE_CLASS}`)
           const blockId = button?.getAttribute('data-block-id')
           if (!blockId) return false
           event.preventDefault()

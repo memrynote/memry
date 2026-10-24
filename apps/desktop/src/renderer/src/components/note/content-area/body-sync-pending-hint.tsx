@@ -37,7 +37,7 @@ export function BodySyncPendingHint({ fragment }: { fragment: Y.XmlFragment }) {
   useEffect(() => {
     // Only observed while the hint could show — the observer is torn down for
     // the whole steady-state life of the editor.
-    if (!initialSyncActive) return
+    if (!initialSyncActive) return undefined
 
     const update = (): void => setIsEmpty(fragment.length === 0)
     update()

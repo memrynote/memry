@@ -91,7 +91,7 @@ export function usePortalWindowPlugin(options: {
 
   useEffect(() => {
     const host = container.current
-    if (!enabled || !host) return
+    if (!enabled || !host) return undefined
 
     let attached: { tiptap: TiptapLike; detach: () => void } | null = null
 

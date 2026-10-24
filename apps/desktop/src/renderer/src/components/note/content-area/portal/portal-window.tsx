@@ -45,7 +45,7 @@ function useMountedNearViewport(ref: React.RefObject<HTMLElement | null>): boole
   const [near, setNear] = useState(() => typeof IntersectionObserver === 'undefined')
   useEffect(() => {
     const node = ref.current
-    if (near || !node) return
+    if (near || !node) return undefined
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) setNear(true)
@@ -116,7 +116,7 @@ export function PortalWindow({
   // Without its plugin the editor would show the whole source, so it stays out
   // of sight until the plugin is on, and is dropped if it never gets one.
   useEffect(() => {
-    if (!near || attached) return
+    if (!near || attached) return undefined
     const timer = setTimeout(() => {
       log.error('Portal window never attached', { portalBlockId, note: target.note })
       setFailed(true)

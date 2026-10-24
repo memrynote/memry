@@ -30,7 +30,7 @@ describe('rearmUndoManager', () => {
     expect(undoManager.undoStack).toHaveLength(1)
 
     undoManager.undo()
-    expect(text.toString()).toBe('after destroy')
+    expect(text.toJSON()).toBe('after destroy')
   })
 
   it('captures a live manager exactly once, so re-arming twice is safe', () => {
@@ -43,7 +43,7 @@ describe('rearmUndoManager', () => {
     expect(undoManager.undoStack).toHaveLength(1)
 
     undoManager.undo()
-    expect(text.toString()).toBe('')
+    expect(text.toJSON()).toBe('')
   })
 
   it('restores the manager to its own tracked origins so redo is captured', () => {
@@ -53,10 +53,10 @@ describe('rearmUndoManager', () => {
 
     type(doc, text, 'hello')
     undoManager.undo()
-    expect(text.toString()).toBe('')
+    expect(text.toJSON()).toBe('')
 
     undoManager.redo()
-    expect(text.toString()).toBe('hello')
+    expect(text.toJSON()).toBe('hello')
   })
 
   it('reports nothing to do when there is no manager', () => {

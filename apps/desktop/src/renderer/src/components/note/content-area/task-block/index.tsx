@@ -48,6 +48,7 @@ export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
   return {
     title: 'Task',
     onItemClick: async () => {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote's slash-menu callback hands over an editor typed against its own schema; tests pass hand-built editors
       const taskEditor = editor as TaskBlockEditor & {
         getBlock: (id: string) => TaskBlock | undefined
       }
@@ -81,6 +82,7 @@ export function getTaskSlashMenuItem(editor: unknown, noteId?: string) {
       // SAFETY: the parser only reads `id` and `name` off each project, which
       // the IPC shape and the renderer view model spell identically; the rest
       // of the view model (statuses, counts) is never touched.
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion, anti-slop/no-chained-type-assertions -- IPC project rows are not the view model; the parser reads only id and name
       const parsed = parseQuickAdd(text, projects as unknown as Project[])
       // Quick-add lifts its own tokens off the line, so a line of nothing but
       // tokens ("#tag", "!!high") leaves no title behind. Same draft handoff as

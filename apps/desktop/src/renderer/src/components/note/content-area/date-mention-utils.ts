@@ -67,15 +67,16 @@ export function normalizeDateMentions(blocks: Block[]): { blocks: Block[]; didCh
 
     // A code block's own text is literal; blocks nested under it are not code.
     if (block.type !== 'codeBlock' && Array.isArray(block.content)) {
-      const normalized = normalizeInlineContent(block.content as any)
+      const normalized = normalizeInlineContent(block.content)
       if (normalized.didChange) {
         blockChanged = true
-        nextBlock = { ...nextBlock, content: normalized.content as any }
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- Block.content is typed per block type; the normalizer returns the same content kind it was given
+        nextBlock = { ...nextBlock, content: normalized.content } as Block
       }
     }
 
     if (block.children?.length) {
-      const normalizedChildren = normalizeDateMentions(block.children as Block[])
+      const normalizedChildren = normalizeDateMentions(block.children)
       if (normalizedChildren.didChange) {
         blockChanged = true
         nextBlock = { ...nextBlock, children: normalizedChildren.blocks }

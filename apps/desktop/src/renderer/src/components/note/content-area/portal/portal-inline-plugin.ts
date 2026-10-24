@@ -173,7 +173,7 @@ export function createPortalInlinePlugin(handlers: {
         // mousedown, not click: the widgets sit in a contenteditable, and the
         // default would move the caret first.
         mousedown(_view, event) {
-          const target = event.target as HTMLElement | null
+          const target = event.target instanceof Element ? event.target : null
           const fold = target?.closest<HTMLElement>(`[${PORTAL_FOLD_ATTR}]`)
           if (fold) {
             event.preventDefault()

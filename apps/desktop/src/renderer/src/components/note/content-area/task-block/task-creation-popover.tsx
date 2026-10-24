@@ -53,7 +53,7 @@ export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
   }
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) return undefined
     let cancelled = false
     void resolveProjectIdForNoteTask({ noteId, projects }).then((projectId) => {
       if (!cancelled) setDefaultProjectId(projectId ?? '')
@@ -65,6 +65,7 @@ export const TaskCreationPopover: FC<TaskCreationPopoverProps> = ({
 
   return (
     <Popover open={isOpen} onOpenChange={(open) => !open && onCancel()}>
+      {/* oxlint-disable-next-line typescript/no-unsafe-type-assertion -- radix `virtualRef` takes a non-null RefObject; the popover opens only once the anchor element exists */}
       <PopoverAnchor virtualRef={anchorRef as RefObject<HTMLElement>} />
       <PopoverContent side="bottom" align="start" sideOffset={6} className="w-72 p-3">
         {isOpen && defaultProjectId !== null && (

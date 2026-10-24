@@ -23,16 +23,16 @@ export interface PortalFlowsApi {
   pickAnotherBlock: (portalBlockId: string) => void
 }
 
-const registry = new WeakMap<object, PortalFlowsApi>()
+const registry = new WeakMap<WeakKey, PortalFlowsApi>()
 
 /** Returns the unregister function. */
-export function registerPortalFlowsApi(editor: object, api: PortalFlowsApi): () => void {
+export function registerPortalFlowsApi(editor: WeakKey, api: PortalFlowsApi): () => void {
   registry.set(editor, api)
   return () => {
     if (registry.get(editor) === api) registry.delete(editor)
   }
 }
 
-export function getPortalFlowsApi(editor: object): PortalFlowsApi | undefined {
+export function getPortalFlowsApi(editor: WeakKey): PortalFlowsApi | undefined {
   return registry.get(editor)
 }

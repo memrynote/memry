@@ -126,6 +126,7 @@ export function renderInlineImage(
   img.setAttribute('draggable', 'false')
   img.contentEditable = 'false'
 
+  // oxlint-disable-next-line oxc/no-this-in-exported-function -- BlockNote invokes the render with the extension as `this` (renderType), and the test calls it through this reference with its own `this`
   if (this?.renderType !== 'nodeView') {
     // Serialization and the clipboard: the alt carries the width, and there is
     // no wrapper or grip to serialize into the cell.

@@ -23,10 +23,8 @@ export function portalBlockText(content: unknown): string {
   if (!Array.isArray(content)) return ''
   return content
     .map((run) =>
-      typeof run === 'object' &&
-      run !== null &&
-      typeof (run as { text?: unknown }).text === 'string'
-        ? (run as { text: string }).text
+      typeof run === 'object' && run !== null && 'text' in run && typeof run.text === 'string'
+        ? run.text
         : ''
     )
     .join('')

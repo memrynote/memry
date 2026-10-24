@@ -33,9 +33,10 @@ import {
   isPortalBlocked,
   resolvePortalStatus,
   withHostFrame,
+  type PortalViewStatus,
   type PortalWindowTarget
 } from './portal-state'
-import { PortalStateCard } from './portal-state-card'
+import { PortalStateCard, type PortalCardStatus } from './portal-state-card'
 import { PortalToolbar } from './portal-toolbar'
 import { usePortalSourceNote } from './use-portal-source-note'
 import { PortalWindow } from './portal-window'
@@ -62,6 +63,10 @@ interface HiddenRequest {
  * Whether hiding `blockId` would leave the portal with nothing: the one root a
  * blocks portal has left, or the last visible subtree of a note portal.
  */
+function isBlockedStatus(status: PortalViewStatus): status is PortalCardStatus {
+  return isPortalBlocked(status)
+}
+
 function isOnlyRoot(
   target: PortalWindowTarget,
   state: ReturnType<typeof usePortalWindowState>,
@@ -170,10 +175,10 @@ export function PortalNoteView({
   )
 
   const writeClipboard = useCallback(
-    (text: string, done: string) => {
+    (text: string, message: string) => {
       navigator.clipboard
         .writeText(text)
-        .then(() => toast.success(done))
+        .then(() => toast.success(message))
         .catch((err: unknown) => {
           log.error('Failed to copy from the portal', err)
           toast.error(t('portalBlock.copyFailed'))
@@ -211,8 +216,8 @@ export function PortalNoteView({
 
   const title = note?.title ?? ''
 
-  if (isPortalBlocked(status)) {
-    const card = status as Parameters<typeof PortalStateCard>[0]['status']
+  if (isBlockedStatus(status)) {
+    const card = status
     const action = (): void => {
       if (card === 'missing-note') editor.removeBlocks([blockId])
       else if (card === 'missing-block') getPortalActionHandlers().pickAnotherBlock?.(handle)

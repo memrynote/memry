@@ -49,9 +49,9 @@ export function ListTypeButtons() {
   const editor = useBlockNoteEditor()
   const state = useEditorState({
     editor,
-    selector: ({ editor }) => ({
-      canToggle: canToggleListType(editor),
-      active: LIST_BUTTONS.filter((button) => isListTypeActive(editor, button.type)).map(
+    selector: ({ editor: current }) => ({
+      canToggle: canToggleListType(current),
+      active: LIST_BUTTONS.filter((button) => isListTypeActive(current, button.type)).map(
         (button) => button.type
       )
     })

@@ -11,13 +11,13 @@ import {
 import { toHtmlEmbedUrl } from './html-embed-preview'
 import { NoteFileUrlProvider } from './note-file-url-context'
 
-const mocks = vi.hoisted(() => ({
-  syncState: {
-    uploadProgress: {} as Record<string, { progress: number; status: string }>,
-    downloadProgress: {} as Record<string, { progress: number; status: string }>
-  },
-  pdfPageCount: 2
-}))
+const mocks = vi.hoisted(() => {
+  const emptyProgress = (): Record<string, { progress: number; status: string }> => ({})
+  return {
+    syncState: { uploadProgress: emptyProgress(), downloadProgress: emptyProgress() },
+    pdfPageCount: 2
+  }
+})
 
 interface PdfViewport {
   width: number
@@ -597,9 +597,9 @@ describe('FileBlock missing attachment card (#1713)', () => {
 
   function renderWithNoteId(resolveAttachment: ReturnType<typeof vi.fn>) {
     // The global test setup owns `window.api`; overlay the notes surface.
-    const api = window.api as unknown as Record<string, unknown>
+    const api = window.api as unknown as Record<string, Record<string, unknown> | undefined>
     savedNotesApi = api.notes
-    api.notes = { ...((api.notes as Record<string, unknown>) ?? {}), resolveAttachment }
+    api.notes = { ...api.notes, resolveAttachment }
     const Render = (createFileBlock as any).render
     const block = {
       props: { url: RELATIVE, name: 'manual.pdf', size: 2048, mimeType: 'application/pdf' }
@@ -665,10 +665,10 @@ describe('FileBlock rename (#1714)', () => {
   })
 
   it('records the renamed url and name on the block', async () => {
-    const api = window.api as unknown as Record<string, unknown>
+    const api = window.api as unknown as Record<string, Record<string, unknown> | undefined>
     savedNotesApi = api.notes
     api.notes = {
-      ...((api.notes as Record<string, unknown>) ?? {}),
+      ...api.notes,
       resolveAttachment: vi.fn().mockResolvedValue({
         absolutePath: '/vault/attachments/note1/abc123-manual.txt',
         storedFilename: 'abc123-manual.txt',

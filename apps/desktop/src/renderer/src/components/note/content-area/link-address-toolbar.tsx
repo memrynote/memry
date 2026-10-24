@@ -14,7 +14,7 @@ import {
   type LinkToolbarProps
 } from '@blocknote/react'
 import { linkDestination, withLinkDestination } from '@memry/editor-schema/inline'
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { Link, Type } from 'lucide-react'
 
 /**
@@ -40,7 +40,8 @@ export function LinkAddressToolbar(props: LinkToolbarProps): React.JSX.Element {
  * BlockNote's default opened the whole `href`, title included (BBF-112).
  */
 export function openLinkAddress(event: MouseEvent): boolean {
-  const href = (event.target as Element | null)?.closest('a')?.getAttribute('href')
+  const href =
+    event.target instanceof Element ? event.target.closest('a')?.getAttribute('href') : undefined
   if (href) window.open(linkDestination(href), '_blank')
   return true
 }
@@ -111,7 +112,7 @@ function EditLinkAddressForm(props: LinkToolbarProps): React.JSX.Element {
         placeholder={dict.link_toolbar.form.url_placeholder}
         value={url}
         onKeyDown={onKeyDown}
-        onChange={(event: FormEvent<HTMLInputElement>) => setUrl(event.currentTarget.value)}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => setUrl(event.currentTarget.value)}
         onSubmit={submit}
       />
       <Components.Generic.Form.TextInput
@@ -121,7 +122,7 @@ function EditLinkAddressForm(props: LinkToolbarProps): React.JSX.Element {
         placeholder={dict.link_toolbar.form.title_placeholder}
         value={text}
         onKeyDown={onKeyDown}
-        onChange={(event: FormEvent<HTMLInputElement>) => setText(event.currentTarget.value)}
+        onChange={(event: ChangeEvent<HTMLInputElement>) => setText(event.currentTarget.value)}
         onSubmit={submit}
       />
     </Components.Generic.Form.Root>

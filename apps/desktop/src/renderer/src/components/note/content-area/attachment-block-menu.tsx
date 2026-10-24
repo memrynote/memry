@@ -544,17 +544,17 @@ export function useImageHoverMenu(
 
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container) return undefined
 
     const BUTTON_SIZE = 24
     const INSET = 8
 
     const handleOver = (e: MouseEvent) => {
       if (menuOpenRef.current) return
-      const element = e.target as HTMLElement
-      if (element.closest?.('[data-attachment-hover-menu]')) return
+      const element = e.target instanceof Element ? e.target : null
+      if (element?.closest('[data-attachment-hover-menu]')) return
 
-      const img = element.closest?.('img')
+      const img = element?.closest('img')
       if (img instanceof HTMLElement) {
         const info = resolveImage(img)
         if (info) {

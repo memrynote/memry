@@ -44,12 +44,12 @@ export function useTaskBlockData(taskId: string): UseTaskBlockDataResult {
   }, [])
 
   useEffect(() => {
-    if (!taskId) return
+    if (!taskId) return undefined
     // Covered by the batch prefetch (read above as cachedTask) — no IPC needed.
-    if (prefetch.getCached(taskId)) return
+    if (prefetch.getCached(taskId)) return undefined
     // Batch still loading: wait for it (this effect re-runs when it settles)
     // instead of each block firing its own request — the "line by line" fill.
-    if (prefetch.status === 'loading') return
+    if (prefetch.status === 'loading') return undefined
 
     let cancelled = false
     void (async () => {
@@ -62,7 +62,7 @@ export function useTaskBlockData(taskId: string): UseTaskBlockDataResult {
   }, [taskId, loadTask, prefetch])
 
   useEffect(() => {
-    if (!taskId) return
+    if (!taskId) return undefined
 
     const unsubUpdated = onTaskUpdated((event) => {
       if (event.id === taskId) {

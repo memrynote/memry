@@ -49,6 +49,7 @@ function editingWikiLinkBlockId(editor: any): string | undefined {
   const state = editor?._tiptapEditor?.state
   if (!state || !isEditingWikiLinkText(state)) return undefined
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the any-typed editor's block ids are strings
     return editor.getTextCursorPosition?.()?.block?.id as string | undefined
   } catch {
     return undefined
@@ -82,6 +83,7 @@ function isYSyncRender(editor: any): boolean {
  */
 function promoteSyncedWikiLinks(editor: any): void {
   if (editor?._tiptapEditor?.isDestroyed) return
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const normalized = normalizeWikiLinks(editor.document as Block[], {
     skipBlockId: editingWikiLinkBlockId(editor)
   })
@@ -104,6 +106,7 @@ function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void 
     return removeAndInsertBlocks(
       tr,
       editor.document,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the preview editor's block parameter type is the default schema; the diff blocks are valid members
       blocks as Parameters<typeof removeAndInsertBlocks>[2]
     )
   })
@@ -141,6 +144,7 @@ function replaceInitialBlocksWithoutHistory(editor: any, blocks: Block[]): void 
  * `promoteHashTagsInSharedDoc`, because they need the note's tag list.
  */
 function promoteWikiLinksInSharedDoc(editor: any): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const normalized = normalizeWikiLinks(editor.document as Block[], {
     skipBlockId: editingWikiLinkBlockId(editor)
   })
@@ -174,6 +178,7 @@ function promoteWikiLinksInSharedDoc(editor: any): void {
  * since the node serializes back to the token it was promoted from.
  */
 function promoteInlineCheckboxesInSharedDoc(editor: any): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const normalized = normalizeInlineCheckboxes(editor.document as Block[])
   if (!normalized.didChange) return
 
@@ -201,6 +206,7 @@ function promoteInlineCheckboxesInSharedDoc(editor: any): void {
  * once, on a note that was already unreadable.
  */
 function promoteDateMentionsInSharedDoc(editor: any): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const normalized = normalizeDateMentions(editor.document as Block[])
   if (!normalized.didChange) return
 
@@ -229,6 +235,7 @@ function promoteDateMentionsInSharedDoc(editor: any): void {
  * here renders its domain, which is what the token carries.
  */
 function promoteLinkMentionsInSharedDoc(editor: any): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const normalized = normalizeLinkMentions(editor.document as Block[])
   if (!normalized.didChange) return
 
@@ -244,6 +251,7 @@ function promoteLinkMentionsInSharedDoc(editor: any): void {
  * image to convert. See `normalizeYoutubeImages`.
  */
 function promoteYoutubeImagesInSharedDoc(editor: any): void {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const normalized = normalizeYoutubeImages(editor.document as Block[])
   if (!normalized.didChange) return
 
@@ -278,6 +286,7 @@ function promoteHashTagsInSharedDoc(
 ): void {
   const tagSet = new Set(noteTags.map((t) => foldTag(t)))
   const options = { unmarkedRunsOnly: true }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   const blocks = editor.document as Block[]
   const normalized = normalizeHashTags(blocks, tagSet, tagColorMap, tagIconMap, options)
   if (!normalized.didChange) return
@@ -300,6 +309,7 @@ export async function extractMarkdownFromActiveEditor(noteId?: string): Promise<
   const editor = activeNoteEditors.get(noteId)
   if (!editor) return null
 
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
   return serializeBlocksPreservingBlanks(editor, editor.document as Block[])
 }
 
@@ -387,8 +397,8 @@ interface EditorSyncResult {
    */
   flushPendingMarkdown: (deliver?: (markdown: string) => void) => Promise<void>
   isContentReadyRef: React.RefObject<boolean>
-  prevInlineTagsRef: React.MutableRefObject<string[]>
-  lastNormalizedTagsRef: React.MutableRefObject<string>
+  prevInlineTagsRef: React.RefObject<string[]>
+  lastNormalizedTagsRef: React.RefObject<string>
 }
 
 export function useEditorSync({
@@ -435,7 +445,7 @@ export function useEditorSync({
   }, [])
 
   useEffect(() => {
-    if (!noteId) return
+    if (!noteId) return undefined
 
     activeNoteEditors.set(noteId, editor)
     return () => {
@@ -453,7 +463,7 @@ export function useEditorSync({
   useEffect(() => {
     const revision = externalContentRevision ?? 0
     if (loadedContentRevisionRef.current === revision) {
-      return
+      return undefined
     }
     const isExternalReload = loadedContentRevisionRef.current !== null
     loadedContentRevisionRef.current = revision
@@ -468,6 +478,7 @@ export function useEditorSync({
      */
     const reportLoadedInlineTags = (): void => {
       if (!onInlineTagsChange) return
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
       const tags = extractInlineTags(editor.document as Block[])
       prevInlineTagsRef.current = tags
       onInlineTagsChange(tags, 'load')
@@ -479,7 +490,7 @@ export function useEditorSync({
     // the blocks from `initialContent` would clobber that merge — including any
     // edit the user is making concurrently.
     if (isExternalReload && yjsFragment) {
-      return
+      return undefined
     }
 
     if (yjsFragment) {
@@ -493,11 +504,12 @@ export function useEditorSync({
       promoteYoutubeImagesInSharedDoc(editor)
       if (noteTags?.length && tagColorMap) {
         promoteHashTagsInSharedDoc(editor, noteTags, tagColorMap, tagIconMap)
-        lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
+        lastNormalizedTagsRef.current = noteTags.toSorted().join(',')
       }
       clearYjsUndoHistory(editor)
       isContentReadyRef.current = true
       if (onHeadingsChange) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         const headings = extractHeadings(editor.document as Block[])
         if (!cancelled) onHeadingsChange(headings)
       }
@@ -542,7 +554,7 @@ export function useEditorSync({
                 tagIconMap
               )
               normalizedBlocks = hashNormalized.blocks
-              lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
+              lastNormalizedTagsRef.current = noteTags.toSorted().join(',')
             }
 
             normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
@@ -569,7 +581,7 @@ export function useEditorSync({
               tagIconMap
             )
             normalizedBlocks = hashNormalized.blocks
-            lastNormalizedTagsRef.current = noteTags.slice().sort().join(',')
+            lastNormalizedTagsRef.current = noteTags.toSorted().join(',')
           }
 
           normalizedBlocks = sanitizeBlockIds(normalizedBlocks)
@@ -585,6 +597,7 @@ export function useEditorSync({
         }
         if (!cancelled && loadedSuccessfully) {
           if (onHeadingsChange) {
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
             const headings = extractHeadings(editor.document as Block[])
             onHeadingsChange(headings)
           }
@@ -606,6 +619,7 @@ export function useEditorSync({
     // The block under the caret is exempt from wiki-link promotion while the
     // user is editing a link's raw `[[…]]` text — see `wiki-link-edit-plugin.ts`
     // and `NormalizeWikiLinksOptions`.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     const normalized = normalizeWikiLinks(blocks as Block[], {
       skipBlockId: editingWikiLinkBlockId(editor)
     })
@@ -621,6 +635,7 @@ export function useEditorSync({
       return
     }
 
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
     onContentChange?.(blocks as Block[])
 
     if (isRemoteUpdateRef?.current) return
@@ -639,6 +654,7 @@ export function useEditorSync({
         try {
           const markdown = await serializeMarkdownPreservingSource(
             editor,
+            // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
             editor.document as Block[],
             markdownSourceRef.current,
             notePath
@@ -663,6 +679,7 @@ export function useEditorSync({
         clearTimeout(headingsDebounceRef.current)
       }
       headingsDebounceRef.current = setTimeout(() => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         const headings = extractHeadings(editor.document as Block[])
         onHeadingsChange(headings)
       }, 200)
@@ -671,10 +688,12 @@ export function useEditorSync({
     if (onInlineTagsChange) {
       if (inlineTagsDebounceRef.current) clearTimeout(inlineTagsDebounceRef.current)
       inlineTagsDebounceRef.current = setTimeout(() => {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- BlockNote types blocks against its custom schema generics; this helper takes the structural shape and the editor is any-typed at this seam
         const currentBlocks = editor.document as Block[]
         const tags = extractInlineTags(currentBlocks)
+        // oxlint-disable-next-line unicorn/no-array-sort -- in-place on purpose: the sorted `tags` array is what prevInlineTagsRef stores and onInlineTagsChange receives
         const tagsKey = tags.sort().join(',')
-        const prevKey = [...prevInlineTagsRef.current].sort().join(',')
+        const prevKey = prevInlineTagsRef.current.toSorted().join(',')
         if (tagsKey !== prevKey) {
           prevInlineTagsRef.current = tags
           onInlineTagsChange(tags, 'edit')

@@ -57,6 +57,7 @@ export function tableLineCount(range: TableRect, axis: TableAxis): number {
 
 function freshRect(tr: Transaction, range: TableRect): TableRect {
   // Every edit here lands inside the table, so its start never moves.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- nodeAt returns null off-table; the range was just built from this table, so a null here is an invariant break that should surface as it always did
   const table = tr.doc.nodeAt(range.tableStart - 1) as PMNode
   return { ...range, table, map: TableMap.get(table) }
 }
