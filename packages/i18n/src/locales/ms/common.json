@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
-    "nothingToUndo": "Tiada apa yang perlu dibuat asal",
     "undone": "Dibuat asal: {description}",
     "undoFailed": "Gagal membuat asal tindakan",
     "filesImported": "{count, plural, other {# fail diimport}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Ejen ingin mencipta {title}. Semak perubahan sebelum menggunakannya.",
       "descriptionDelete": "Ejen ingin memadam {title}. Semak perubahan sebelum menggunakannya.",
       "fallbackTitle": "item ini",
-      "current": "Semasa",
       "candidate": "Cadangan",
       "loading": "Memuatkan…",
       "apply": "Gunakan",
@@ -383,12 +381,8 @@
       "removeAttachment": "Alih keluar {label}",
       "placeholder": "Lakukan apa-apa sahaja dengan memrynote… @ untuk menyebut nota, tugas dan acara",
       "send": "Hantar",
-      "providerLabel": "Penyedia ejen: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Alat yang disambungkan",
       "connectTool": "Sambungkan {tool}",
-      "addContext": "Tambah konteks",
-      "addContextWithPermissions": "Tambah konteks ({permissions})",
       "mentionContext": "Sebut nota, tugas atau acara",
       "files": {
         "attach": "Lampirkan fail teks",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Tidak dapat mentranskripsikan input suara"
         }
       },
-      "modelLabel": "Model ejen: {provider} {model}",
-      "reasoningLabel": "Penaakulan ejen: {reasoning}",
       "providers": {
-        "label": "Penyedia",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Akses komputer"
       },
       "webSearch": {
-        "on": "Hidup",
-        "off": "Mati",
         "label": "Carian web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Ejen tidak tersedia — buka Tetapan…"
       },
       "settings": {
-        "reasoning": "Penaakulan",
         "effort": "Usaha"
       },
       "includeCurrentNote": "Sertakan nota semasa",
@@ -472,11 +460,8 @@
           "max": "Maksimum"
         }
       },
-      "permissionsLabel": "Kebenaran ejen: {access}, carian web {webSearch}",
       "permissions": {
-        "label": "Kebenaran",
-        "access": "Akses",
-        "tools": "Alat"
+        "access": "Akses"
       },
       "modelSettingsLabel": "Tetapan model ejen: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Folder baharu",
       "newProject": "Projek baharu",
       "bookmarks": "Penanda halaman",
-      "chart": "Carta",
       "tags": "Teg",
       "reorderSection": "Susun semula {section}",
       "dropFilesToImport": "Lepaskan fail untuk diimport",
       "dropFilesIntoVaultRoot": "Akar bilik kebal",
       "newNoteN": "Nota baharu (⌘N)",
-      "new": "Baharu",
       "newItemMenu": "Buat baharu…",
       "feedbackButton": "Hantar maklum balas",
       "feedbackTitle": "Hantar maklum balas",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Cari, ganti, tanya…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Langkau pengenalan",
-      "welcomeToMemry": "Selamat datang ke memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Pangkalan pengetahuan peribadi anda. Mari luangkan masa 2 minit untuk anda bermula.",
-      "getStarted": "Mulakan ",
-      "createYourFirstNote": "Buat nota pertama anda",
-      "markdownBasedStoredLocallyAsPlainFiles": "Berasaskan Markdown, disimpan secara setempat sebagai fail biasa.",
-      "eGMeetingNotesIdeasAnything": "cth. Nota mesyuarat, idea, apa sahaja…",
-      "skip": "Langkau",
-      "createNote": "Buat nota ",
-      "addYourFirstTask": "Tambah tugas pertama anda",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tugas dipautkan ke nota anda, dengan keutamaan dan tarikh akhir.",
-      "eGReviewProjectProposal": "cth. Semak cadangan projek…",
-      "skip2": "Langkau",
-      "createTask": "Buat tugas ",
-      "syncAcrossDevices": "Segerakkan merentas peranti",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Pastikan nota dan tugas anda segerak merentas semua peranti anda. Anda sentiasa boleh menyediakannya kemudian.",
-      "skipForNow": "Langkau buat masa ini",
-      "doneLetSGo": "Selesai — mari bermula! "
+      "skip": "Langkau"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Tetapkan ikon folder",
@@ -852,8 +818,7 @@
       "unknownTabType": "Jenis tab tidak diketahui: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "perubahan yang belum disimpan",
-      "preview": "pratonton"
+      "unsavedChanges": "perubahan yang belum disimpan"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Tab baharu",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Seret untuk mengubah saiz · Klik dua kali untuk menetapkan semula"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Selamat datang ke memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Sistem pengurusan pengetahuan peribadi anda.",
-      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan nota dan tugas anda.",
       "opening": "Membuka…",
-      "selectVaultFolder": "Pilih folder bilik kebal",
-      "plainMarkdown": "Markdown biasa",
-      "yourNotesStayPortable": "Nota anda kekal mudah alih",
-      "syncAnywhere": "Segerakkan di mana-mana",
-      "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
       "recentVaults": "Bilik kebal terkini",
-      "notesLastOpened": "nota · Terakhir dibuka",
-      "preRelease": "Beta",
       "createNewVault": "Buat bilik kebal baharu",
-      "createNewVaultDesc": "Mulakan bilik kebal baharu dalam folder pilihan anda.",
-      "openExistingVault": "Buka bilik kebal sedia ada",
-      "openExistingVaultDesc": "Pilih folder fail Markdown yang sudah anda simpan.",
-      "signInToSync": "Log masuk untuk menyegerakkan",
-      "signInToSyncDesc": "Bilik kebal yang disulitkan hujung ke hujung merentas peranti anda.",
-      "create": "Buat",
       "open": "Buka",
-      "signIn": "Log masuk",
       "helpAndDocs": "Bantuan & dokumentasi",
-      "signInRequiresVault": "Buka atau buat bilik kebal dahulu untuk menyediakan penyegerakan.",
       "addVault": "Tambah bilik kebal",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Belum ada bilik kebal",
       "openVault": "Buka bilik kebal",
       "settings": "Tetapan",
-      "logOut": "Log keluar",
-      "signInToSync": "Log masuk untuk menyegerakkan",
       "remove": "Alih keluar “",
       "removeVaultTitle": "Alih keluar “{name}” daripada senarai?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Bilik kebal ini akan dialih keluar daripada apl, tetapi fail anda akan kekal pada cakera. Anda sentiasa boleh menambahkannya semula kemudian.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Tukar…",
       "download": "Muat turun",
       "downloadFailed": "Tidak dapat memuat turun bilik kebal",
-      "deleteFromAccount": "Padam daripada akaun",
       "deleteVaultTitle": "Padam “{name}” daripada akaun anda?",
       "deleteVaultBody": "Tindakan ini mengalih keluar semua data yang disegerakkan bagi bilik kebal ini daripada pelayan Memry secara kekal dan tidak boleh dibuat asal. Fail anda pada cakera tidak dipadam.",
       "deleteVaultConfirm": "Padam daripada akaun",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Alih keluar widget",
       "dragAria": "Seret widget",
-      "configAria": "Konfigurasikan widget",
-      "resizeAria": "Ubah saiz kepada {size}",
       "menuAria": "Pilihan widget",
-      "resize": "Saiz",
       "remove": "Alih keluar",
       "filter": {
         "all": "Semua",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Pilih folder",
       "folderEmpty": "Belum ada folder",
       "folderNoSelection": "Tiada folder dipilih",
-      "folderView_list": "Senarai",
-      "folderView_gallery": "Galeri",
       "folderViewSelect": "Paparan",
       "project": "Projek",
       "projectNoSelection": "Tiada projek dipilih",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Susun atur laman utama",
       "deleteAria": "Padam susun atur",
-      "newAria": "Papan baharu",
       "newName": "Papan baharu",
       "defaultName": "Laman utama",
       "manage": "Urus papan",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, other {# tugas perlu disiapkan hari ini}}",
       "events": "{count, plural, other {# acara}}"
     },
-    "edit": "Edit",
-    "done": "Selesai",
     "addWidget": "Tambah widget",
     "cover": {
       "add": "Tambah kulit"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Pengenalan selesai",
-      "body": "Sila beri bintang kepada kami di GitHub — ia membantu orang lain menemui MemryNote.",
-      "action": "Beri bintang di GitHub"
+      "body": "Sila beri bintang kepada kami di GitHub — ia membantu orang lain menemui MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Kemas kini sedia",
     "failed": "Kemas kini gagal",
     "downloadAction": "Muat turun",
-    "restartAction": "Mulakan semula",
     "detailsAction": "Butiran",
     "popover": {
       "readyTitle": "MemryNote {version} sudah sedia",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Bilik kebal",
     "position": "{name}, bilik kebal {index} daripada {count}",
-    "openList": "{position}. Buka senarai bilik kebal",
     "switchTo": "Tukar ke {name}",
     "switchingTo": "Menukar ke {name}",
     "changeIcon": "Tukar ikon…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Pada {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {# bilik kebal ditemui}}",
-      "notion": "Notion",
       "otherApps": "Aplikasi dan fail lain",
       "otherAppsHint": "dan {count} lagi",
       "detectedFootnote": "Ditemui dengan menyemak aplikasi yang dipasang. Tiada apa-apa yang keluar dari {device}.",

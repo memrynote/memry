@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Handlingen mislykkedes",
-    "nothingToUndo": "Intet at fortryde",
     "undone": "Fortrudt: {description}",
     "undoFailed": "Kunne ikke fortryde handlingen",
     "filesImported": "{count, plural, one {# fil importeret} other {# filer importeret}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agenten vil oprette {title}. Gennemgå ændringen, før du anvender den.",
       "descriptionDelete": "Agenten vil slette {title}. Gennemgå ændringen, før du anvender den.",
       "fallbackTitle": "dette element",
-      "current": "Aktuel",
       "candidate": "Forslag",
       "loading": "Indlæser…",
       "apply": "Anvend",
@@ -383,12 +381,8 @@
       "removeAttachment": "Fjern {label}",
       "placeholder": "Gør hvad som helst med memrynote… @ for at nævne noter, opgaver og begivenheder",
       "send": "Send",
-      "providerLabel": "Agentudbyder: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Forbundne værktøjer",
       "connectTool": "Forbind {tool}",
-      "addContext": "Tilføj kontekst",
-      "addContextWithPermissions": "Tilføj kontekst ({permissions})",
       "mentionContext": "Nævn en note, opgave eller begivenhed",
       "files": {
         "attach": "Vedhæft en tekstfil",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Kunne ikke transskribere talen"
         }
       },
-      "modelLabel": "Agentmodel: {provider} {model}",
-      "reasoningLabel": "Agentens ræsonnering: {reasoning}",
       "providers": {
-        "label": "Udbyder",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Computeradgang"
       },
       "webSearch": {
-        "on": "Til",
-        "off": "Fra",
         "label": "Websøgning"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agenten er ikke tilgængelig – åbn Indstillinger…"
       },
       "settings": {
-        "reasoning": "Ræsonnering",
         "effort": "Indsats"
       },
       "includeCurrentNote": "Medtag aktuel note",
@@ -472,11 +460,8 @@
           "max": "Maks."
         }
       },
-      "permissionsLabel": "Agenttilladelser: {access}, websøgning {webSearch}",
       "permissions": {
-        "label": "Tilladelser",
-        "access": "Adgang",
-        "tools": "Værktøjer"
+        "access": "Adgang"
       },
       "modelSettingsLabel": "Agentens modelindstillinger: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Ny mappe",
       "newProject": "Nyt projekt",
       "bookmarks": "Bogmærker",
-      "chart": "Diagram",
       "tags": "Tags",
       "reorderSection": "Skift rækkefølge for {section}",
       "dropFilesToImport": "Slip filer for at importere",
       "dropFilesIntoVaultRoot": "Boksens øverste niveau",
       "newNoteN": "Ny note (⌘N)",
-      "new": "Ny",
       "newItemMenu": "Opret ny…",
       "feedbackButton": "Send feedback",
       "feedbackTitle": "Send feedback",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Find, erstat, spørg…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Spring introduktionen over",
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Din personlige vidensbase. Lad os bruge 2 minutter på at komme i gang.",
-      "getStarted": "Kom i gang ",
-      "createYourFirstNote": "Opret din første note",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-baseret, gemt lokalt som almindelige filer.",
-      "eGMeetingNotesIdeasAnything": "f.eks. Mødenoter, idéer, hvad som helst…",
-      "skip": "Spring over",
-      "createNote": "Opret note ",
-      "addYourFirstTask": "Tilføj din første opgave",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Opgaver linker til dine noter og har prioriteter og forfaldsdatoer.",
-      "eGReviewProjectProposal": "f.eks. Gennemgå projektforslag…",
-      "skip2": "Spring over",
-      "createTask": "Opret opgave ",
-      "syncAcrossDevices": "Synkronisér på tværs af enheder",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Hold dine noter og opgaver synkroniseret på tværs af alle dine enheder. Du kan altid konfigurere dette senere.",
-      "skipForNow": "Spring over for nu",
-      "doneLetSGo": "Færdig – lad os komme i gang! "
+      "skip": "Spring over"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Angiv mappeikon",
@@ -852,8 +818,7 @@
       "unknownTabType": "Ukendt fanetype: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "ikke-gemte ændringer",
-      "preview": "forhåndsvisning"
+      "unsavedChanges": "ikke-gemte ændringer"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Ny fane",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Træk for at ændre størrelse · Dobbeltklik for at nulstille"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Dit personlige videnstyringssystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Vælg en mappe, hvor dine noter og opgaver skal gemmes.",
       "opening": "Åbner…",
-      "selectVaultFolder": "Vælg mappe til boksen",
-      "plainMarkdown": "Almindelig Markdown",
-      "yourNotesStayPortable": "Dine noter kan altid tages med",
-      "syncAnywhere": "Synkronisér hvor som helst",
-      "useDropboxIcloudGit": "Brug Dropbox, iCloud, Git",
       "recentVaults": "Seneste bokse",
-      "notesLastOpened": "noter · Sidst åbnet",
-      "preRelease": "Beta",
       "createNewVault": "Opret ny boks",
-      "createNewVaultDesc": "Start en ny boks i en mappe efter eget valg.",
-      "openExistingVault": "Åbn eksisterende boks",
-      "openExistingVaultDesc": "Vælg en mappe med Markdown-filer, du allerede bruger.",
-      "signInToSync": "Log ind for at synkronisere",
-      "signInToSyncDesc": "End-to-end-krypterede bokse på tværs af dine enheder.",
-      "create": "Opret",
       "open": "Åbn",
-      "signIn": "Log ind",
       "helpAndDocs": "Hjælp og dokumentation",
-      "signInRequiresVault": "Åbn eller opret først en boks for at konfigurere synkronisering.",
       "addVault": "Tilføj boks",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Ingen bokse endnu",
       "openVault": "Åbn boks",
       "settings": "Indstillinger",
-      "logOut": "Log ud",
-      "signInToSync": "Log ind for at synkronisere",
       "remove": "Fjern \"",
       "removeVaultTitle": "Vil du fjerne »{name}« fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Denne boks fjernes fra appen, men dine filer bliver på disken. Du kan altid tilføje den igen senere.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Skift…",
       "download": "Hent",
       "downloadFailed": "Kunne ikke hente boksen",
-      "deleteFromAccount": "Slet fra konto",
       "deleteVaultTitle": "Vil du slette »{name}« fra din konto?",
       "deleteVaultBody": "Alle synkroniserede data for denne boks fjernes permanent fra Memrys servere. Denne handling kan ikke fortrydes. Dine filer på disken bliver ikke slettet.",
       "deleteVaultConfirm": "Slet fra konto",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Fjern widget",
       "dragAria": "Træk widget",
-      "configAria": "Konfigurér widget",
-      "resizeAria": "Tilpas til {size}",
       "menuAria": "Widgetindstillinger",
-      "resize": "Størrelse",
       "remove": "Fjern",
       "filter": {
         "all": "Alle",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Vælg en mappe",
       "folderEmpty": "Ingen mapper endnu",
       "folderNoSelection": "Ingen mappe valgt",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galleri",
       "folderViewSelect": "Visning",
       "project": "Projekt",
       "projectNoSelection": "Intet projekt valgt",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Layout for Hjem",
       "deleteAria": "Slet layout",
-      "newAria": "Ny tavle",
       "newName": "Ny tavle",
       "defaultName": "Hjem",
       "manage": "Administrér tavler",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# opgave forfalder i dag} other {# opgaver forfalder i dag}}",
       "events": "{count, plural, one {# begivenhed} other {# begivenheder}}"
     },
-    "edit": "Redigér",
-    "done": "Færdig",
     "addWidget": "Tilføj widget",
     "cover": {
       "add": "Tilføj omslag"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introduktionen er fuldført",
-      "body": "Giv os en stjerne på GitHub – det hjælper andre med at finde MemryNote.",
-      "action": "Giv en stjerne på GitHub"
+      "body": "Giv os en stjerne på GitHub – det hjælper andre med at finde MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Opdateringen er klar",
     "failed": "Opdateringen mislykkedes",
     "downloadAction": "Hent",
-    "restartAction": "Genstart",
     "detailsAction": "Detaljer",
     "popover": {
       "readyTitle": "MemryNote {version} er klar",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Bokse",
     "position": "{name}, boks {index} af {count}",
-    "openList": "{position}. Åbn listen over bokse",
     "switchTo": "Skift til {name}",
     "switchingTo": "Skifter til {name}",
     "changeIcon": "Skift ikon…",
@@ -1501,7 +1433,6 @@
       "onDevice": "På {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# boks fundet} other {# bokse fundet}}",
-      "notion": "Notion",
       "otherApps": "Andre apps og filer",
       "otherAppsHint": "og {count} mere",
       "detectedFootnote": "Fundet ved at tjekke, hvilke apps der er installeret. Intet forlader {device}.",

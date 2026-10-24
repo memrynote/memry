@@ -17,18 +17,6 @@
       "filterAll": "Wszystkie pliki"
     },
     "exportCancelled": "Anulowano eksport",
-    "update": {
-      "availableTitle": "Dostępna aktualizacja",
-      "availableMessage": "Dostępna jest wersja {version} aplikacji memrynote.",
-      "availableDetailFallback": "Pobrać aktualizację teraz?",
-      "buttonDownload": "Pobierz",
-      "buttonLater": "Później",
-      "readyTitle": "Aktualizacja gotowa",
-      "readyMessage": "Pobrano wersję {version} aplikacji memrynote.",
-      "readyDetailFallback": "Uruchom ponownie aplikację memrynote, aby zakończyć instalację aktualizacji.",
-      "buttonRestartNow": "Uruchom ponownie teraz",
-      "releaseNotesLabel": "Informacje o wydaniu:"
-    },
     "dataDbRecovery": {
       "title": "Napraw bazę danych sejfu",
       "message": "Baza danych Memry dla tego sejfu jest uszkodzona.",

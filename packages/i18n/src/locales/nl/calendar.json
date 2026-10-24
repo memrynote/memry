@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "“{title}” afvinken",
     "task-completed": "Taak voltooid",
-    "could-not-complete": "Kan taak niet voltooien",
     "could-not-update-status": "Kan taakstatus niet wijzigen",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} u",
@@ -215,12 +213,9 @@
     "next-week": "Volgende week",
     "open-task": "Taak openen",
     "source-note": "Bronnotitie",
-    "reschedule": "Opnieuw plannen",
     "mark-done": "Als voltooid markeren",
     "mark-not-done": "Als niet voltooid markeren",
-    "later-today": "Later vandaag",
     "tomorrow": "Morgen",
-    "next-week-mon": "Volgende week · ma",
     "pick-date-time": "Datum en tijd kiezen…",
     "remove-due-date": "Vervaldatum verwijderen",
     "subtasks-prefix": "Subtaken",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Geabonneerde agenda’s"
     },
     "caldav": {
       "name": "CalDAV"

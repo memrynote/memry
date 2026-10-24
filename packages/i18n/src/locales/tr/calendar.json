@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Tamamla: {title}",
     "task-completed": "Görev tamamlandı",
-    "could-not-complete": "Görev tamamlanamadı",
     "could-not-update-status": "Görev durumu değiştirilemedi",
     "duration-minutes": "{minutes} dk",
     "duration-hours": "{hours} sa",
@@ -215,12 +213,9 @@
     "next-week": "Gelecek hafta",
     "open-task": "Görevi aç",
     "source-note": "Kaynak not",
-    "reschedule": "Yeniden planla",
     "mark-done": "Tamamla",
     "mark-not-done": "Tamamlanmadı olarak işaretle",
-    "later-today": "Bugün daha sonra",
     "tomorrow": "Yarın",
-    "next-week-mon": "Gelecek hafta · Pazartesi",
     "pick-date-time": "Tarih ve saat seç…",
     "remove-due-date": "Son tarihi kaldır",
     "subtasks-prefix": "Alt görevler",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Abone olunan takvimler"
     },
     "caldav": {
       "name": "CalDAV"

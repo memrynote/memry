@@ -122,10 +122,6 @@
       "body": "Створіть нотатку, щоб почати",
       "newNote": "Нова нотатка"
     },
-    "readwiseSync": {
-      "tooltip": "Синхронізація Readwise",
-      "failed": "Не вдалося синхронізувати Readwise"
-    },
     "syncing": {
       "body": "Синхронізація нотаток — вони з’являтимуться тут у міру надходження"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Додати в закладки",
       "removeFromBookmarks": "Прибрати із закладок",
       "journalSettings": "Налаштування щоденника…"
-    },
-    "nav": {
-      "label": "Навігація",
-      "ariaExpanded": "Розділ навігації, розгорнуто",
-      "ariaCollapsed": "Розділ навігації, згорнуто",
-      "saveFailed": "Не вдалося зберегти стан розділу навігації"
     },
     "viewOptions": {
       "label": "Параметри вигляду",
@@ -523,13 +513,8 @@
         "ai": "ШІ"
       },
       "secondary": {
-        "asToggleHeading": "Як згортуваний",
         "asLinkedTask": "Як пов’язане завдання",
         "asReminder": "Як нагадування"
-      },
-      "actions": {
-        "insert": "Вставити",
-        "open": "Відкрити"
       },
       "close": "Закрити меню",
       "matchesAlias": "збігається з",
@@ -607,7 +592,6 @@
         "title": "Перемістити блок до нотатки",
         "searchPlaceholder": "Шукати нотатки…",
         "noResults": "Немає відповідних нотаток",
-        "moved": "Блок переміщено до «{title}»",
         "failed": "Не вдалося перемістити блок"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Структура",
     "aria": "Структура документа",
-    "emptyYet": "Заголовків ще немає",
     "readTime": "{count} хв читання",
     "words": "Слів: {count}",
     "created": "Створено",
@@ -839,11 +822,9 @@
     "toolbarComment": "Коментувати",
     "commentPlaceholder": "Додати коментар…",
     "createdTooltip": "Створено {date} о {time}",
-    "cancel": "Скасувати",
     "resolve": "Вирішити",
     "edit": "Редагувати коментар",
     "delete": "Видалити коментар",
-    "replyPlaceholder": "Відповісти…",
     "attachAria": "Прикріпити файл",
     "mentionAria": "Згадати особу, сторінку або дату",
     "sendAria": "Надіслати коментар",
@@ -856,13 +837,7 @@
       "code": "Код"
     },
     "openImageAria": "Відкрити зображення {name}",
-    "openAttachmentAria": "Відкрити вкладення {name}",
-    "kind": {
-      "comment": "Коментар",
-      "addition": "Доповнення",
-      "deletion": "Видалення",
-      "substitution": "Заміна"
-    }
+    "openAttachmentAria": "Відкрити вкладення {name}"
   },
   "tagsRow": {
     "aria": "Теги",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Властивості",
     "noteAria": "Властивості нотатки",
-    "workspaceAria": "Властивості робочого простору",
     "listAria": "Список властивостей",
     "add": "Додати властивість",
     "addDescription": "Додати нову властивість до цієї нотатки",
@@ -932,7 +906,6 @@
       "inProgress": "У роботі",
       "done": "Виконано"
     },
-    "projectAlreadySet": "Ця нотатка вже має властивість проєкту",
     "projectPlaceholder": "Без проєкту",
     "projectSearch": "Шукати проєкти",
     "projectEmpty": "Немає проєктів",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Фільтр",
-      "filters": "Фільтри",
-      "clearAll": "Очистити все",
-      "noFiltersApplied": "Фільтри не застосовано",
-      "addFiltersToNarrowDownYourNotes": "Додайте фільтри, щоб звузити коло нотаток",
       "match": "Умови",
-      "allAnd": "Усі (І)",
-      "anyOr": "Будь-яка (АБО)",
-      "ofTheFollowing": "з наступних:",
       "match2": "Умови",
       "all": "Усі",
       "any": "Будь-яка",
-      "of": "з:",
       "addCondition": "Додати умову",
       "addFilter": "Додати фільтр",
       "addGroup": "Додати групу",
@@ -1207,7 +1172,6 @@
       "available": "Доступні: ",
       "preview": "Попередній перегляд",
       "fixExpressionErrorsToSeePreview": "Виправте помилки у виразі, щоб побачити попередній перегляд",
-      "usingNote": "Використовується нотатка: «",
       "cancel": "Скасувати",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Завантаження папок…",
       "suggested": "Пропоновані",
       "bestMatch": "Найкращий збіг",
-      "current": "поточна)",
       "allFolders": "Усі папки",
-      "noFoldersMatch": "Немає папок, що відповідають \"",
-      "create": "Створити \"",
       "cancel": "Скасувати",
       "currentFolderBadge": "(поточна)",
       "noFoldersMatchQuery": "Немає папок, що відповідають «{query}»",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "за замовчуванням",
       "viewActions": "Дії з виглядом",
-      "rename": "Перейменувати",
       "duplicate": "Дублювати",
       "setAsDefault": "Встановити за замовчуванням",
       "delete": "Видалити",
-      "createNewView": "Створити новий вигляд",
-      "createNewView2": "Створити новий вигляд",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Створіть новий вигляд із власними стовпцями, фільтрами й сортуванням.",
-      "viewName": "Назва вигляду",
       "myCustomView": "Мій вигляд",
-      "baseConfiguration": "Базова конфігурація",
-      "copyFromCurrentView": "Скопіювати з поточного вигляду",
-      "startFreshDefaultColumns": "Почати з нуля (стовпці за замовчуванням)",
       "cancel": "Скасувати",
-      "renameView": "Перейменувати вигляд",
-      "enterANewNameForThisView": "Введіть нову назву для цього вигляду.",
-      "viewName2": "Назва вигляду",
-      "viewName3": "Назва вигляду",
-      "cancel2": "Скасувати",
       "deleteView": "Видалити вигляд",
       "areYouSureYouWantToDelete": "Ви впевнені, що хочете видалити вигляд \"",
       "thisActionCannotBeUndone": "Цю дію неможливо скасувати.",
@@ -1289,22 +1237,17 @@
       "layout": "Макет",
       "table": "Таблиця",
       "list": "Список",
-      "gallery": "Галерея",
-      "createView": "Створити вигляд",
-      "save": "Зберегти"
+      "gallery": "Галерея"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Не вдалося завантажити PDF: ",
-      "download": "Завантажити",
       "download2": "Завантажити",
       "noFileAttached": "Файл не прикріплено",
       "resizePdf": "Змінити розмір PDF",
       "resizeHtml": "Змінити розмір вбудованого HTML",
       "alignLeft": "Вирівняти ліворуч",
       "alignCenter": "Вирівняти по центру",
-      "alignRight": "Вирівняти праворуч",
-      "previousPage": "Попередня сторінка",
-      "nextPage": "Наступна сторінка"
+      "alignRight": "Вирівняти праворуч"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Відкрити в панелі завдань",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 дюймів)",
       "legal85X14In": "Legal (8,5 x 14 дюймів)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "дд.мм.рррр"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Синхронізовано"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Слова",
       "characters": "Символи",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Поки що немає закладок",
       "moreOptions": "Інші параметри",
       "remove": "Прибрати"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Відкрити",
-      "openToTheSide": "Відкрити збоку",
-      "pinToTabs": "Закріпити у вкладках",
-      "edit": "Редагувати",
-      "delete": "Видалити",
-      "copyLink": "Скопіювати посилання"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Завантаження тегів…",
@@ -1380,26 +1309,9 @@
       "cancel": "Скасувати"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Назад",
-      "notes": "нотатки",
-      "loadingNotes": "Завантаження нотаток…",
-      "noNotesWithThisTag": "Немає нотаток з цим тегом",
-      "addThisTagToANoteToSeeItHere": "Додайте цей тег до нотатки, щоб побачити її тут",
-      "pinned": "Закріплені",
-      "allNotes": "Усі нотатки",
-      "allNotesArePinned": "Усі нотатки закріплені",
-      "tasks": "Завдання",
-      "unpinFromTag": "Відкріпити від тегу",
-      "unpin": "Відкріпити",
-      "pinToTag": "Закріпити за тегом",
-      "pin": "Закріпити",
       "tagActions": "Дії з тегом",
-      "editTagName": "Редагувати назву тегу",
       "changeColor": "Змінити колір",
-      "deleteTag": "Видалити тег",
-      "recent": "Недавні",
-      "created": "Створено",
-      "alphabetical": "За алфавітом"
+      "deleteTag": "Видалити тег"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Перейменувати тег",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Створити нову нотатку",
-      "viewSettings": "Налаштування вигляду",
-      "displayDensity": "Щільність відображення",
-      "comfortable": "Комфортна",
-      "compact": "Компактна",
-      "showSummaries": "Показувати підсумки",
       "cancel": "Скасувати"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Відкрити сторінку тегів"
   },
   "tagView": {
-    "moreActions": "Більше дій",
     "pin": {
       "action": "Закріпити {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}} за тегом",
       "success": "Закріплено {count, plural, one {# нотатку} few {# нотатки} many {# нотаток} other {# нотатки}} за тегом",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Назвіть цей пошук",
     "saveDialogPlaceholder": "Напр., робочі зустрічі",
     "cancel": "Скасувати",
-    "save": "Зберегти",
-    "addToFilterHint": "Утримуючи Ctrl/Cmd, клацніть тег, щоб додати його до фільтра"
+    "save": "Зберегти"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Пишу…",
       "writtenBy": "Автор: {agent}",
       "retry": "Останній запуск не вдався · Повторити",
-      "retryAction": "Повторити",
       "captionOff": "Увімкніть «Стисле викладення довгих нотаток» у Налаштування → ШІ",
       "captionNoAgent": "Агента не підключено · Налаштування → ШІ",
       "unknownAgent": "ШІ"

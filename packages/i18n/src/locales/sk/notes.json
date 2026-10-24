@@ -122,10 +122,6 @@
       "body": "Vytvorte poznámku a môžete začať",
       "newNote": "Nová poznámka"
     },
-    "readwiseSync": {
-      "tooltip": "Synchronizácia Readwise",
-      "failed": "Synchronizácia Readwise zlyhala"
-    },
     "syncing": {
       "body": "Synchronizujú sa poznámky – zobrazia sa tu hneď, ako prídu"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Pridať do záložiek",
       "removeFromBookmarks": "Odstrániť zo záložiek",
       "journalSettings": "Nastavenia denníka…"
-    },
-    "nav": {
-      "label": "Navigácia",
-      "ariaExpanded": "Sekcia navigácie, rozbalená",
-      "ariaCollapsed": "Sekcia navigácie, zbalená",
-      "saveFailed": "Nepodarilo sa uložiť stav sekcie navigácie"
     },
     "viewOptions": {
       "label": "Možnosti zobrazenia",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Ako rozbaľovací",
         "asLinkedTask": "Ako prepojená úloha",
         "asReminder": "Ako pripomienka"
-      },
-      "actions": {
-        "insert": "Vložiť",
-        "open": "Otvoriť"
       },
       "close": "Zavrieť ponuku",
       "matchesAlias": "zodpovedá",
@@ -607,7 +592,6 @@
         "title": "Presunúť blok do poznámky",
         "searchPlaceholder": "Hľadať poznámky…",
         "noResults": "Žiadne zodpovedajúce poznámky",
-        "moved": "Blok presunutý do poznámky „{title}“",
         "failed": "Blok sa nepodarilo presunúť"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Osnova",
     "aria": "Osnova dokumentu",
-    "emptyYet": "Zatiaľ žiadne nadpisy",
     "readTime": "{count} min čítania",
     "words": "{count, plural, one {# slovo} few {# slová} other {# slov}}",
     "created": "Vytvorené",
@@ -839,11 +822,9 @@
     "toolbarComment": "Komentovať",
     "commentPlaceholder": "Pridajte komentár…",
     "createdTooltip": "Vytvorené {date} o {time}",
-    "cancel": "Zrušiť",
     "resolve": "Vyriešiť",
     "edit": "Upraviť komentár",
     "delete": "Odstrániť komentár",
-    "replyPlaceholder": "Napíšte odpoveď…",
     "attachAria": "Priložiť súbor",
     "mentionAria": "Zmieniť sa o osobe, stránke alebo dátume",
     "sendAria": "Odoslať komentár",
@@ -856,13 +837,7 @@
       "code": "Kód"
     },
     "openImageAria": "Otvoriť obrázok {name}",
-    "openAttachmentAria": "Otvoriť prílohu {name}",
-    "kind": {
-      "comment": "Komentár",
-      "addition": "Pridanie",
-      "deletion": "Odstránenie",
-      "substitution": "Nahradenie"
-    }
+    "openAttachmentAria": "Otvoriť prílohu {name}"
   },
   "tagsRow": {
     "aria": "Značky",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Vlastnosti",
     "noteAria": "Vlastnosti poznámky",
-    "workspaceAria": "Vlastnosti pracovného priestoru",
     "listAria": "Zoznam vlastností",
     "add": "Pridať vlastnosť",
     "addDescription": "Pridať novú vlastnosť do tejto poznámky",
@@ -932,7 +906,6 @@
       "inProgress": "Prebieha",
       "done": "Dokončené"
     },
-    "projectAlreadySet": "Táto poznámka už má vlastnosť Projekt",
     "projectPlaceholder": "Bez projektu",
     "projectSearch": "Hľadať projekty",
     "projectEmpty": "Žiadne projekty",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
-      "filters": "Filtre",
-      "clearAll": "Vymazať všetko",
-      "noFiltersApplied": "Žiadne filtre",
-      "addFiltersToNarrowDownYourNotes": "Pridajte filtre a zúžte zoznam poznámok",
       "match": "Zhoda",
-      "allAnd": "Všetky (AND)",
-      "anyOr": "Ktorákoľvek (OR)",
-      "ofTheFollowing": "z nasledujúcich:",
       "match2": "Zhoda",
       "all": "Všetky",
       "any": "Ktorákoľvek",
-      "of": "z:",
       "addCondition": "Pridať podmienku",
       "addFilter": "Pridať filter",
       "addGroup": "Pridať skupinu",
@@ -1207,7 +1172,6 @@
       "available": "Dostupné: ",
       "preview": "Náhľad",
       "fixExpressionErrorsToSeePreview": "Opravte chyby vo výraze, aby sa zobrazil náhľad",
-      "usingNote": "Použitá poznámka: „",
       "cancel": "Zrušiť",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Načítavajú sa priečinky…",
       "suggested": "ODPORÚČANÉ",
       "bestMatch": "Najlepšia zhoda",
-      "current": "aktuálny)",
       "allFolders": "VŠETKY PRIEČINKY",
-      "noFoldersMatch": "Žiadny priečinok nezodpovedá výrazu \"",
-      "create": "Vytvoriť \"",
       "cancel": "Zrušiť",
       "currentFolderBadge": "(aktuálny)",
       "noFoldersMatchQuery": "Výrazu „{query}“ nezodpovedá žiadny priečinok",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "predvolené",
       "viewActions": "Akcie zobrazenia",
-      "rename": "Premenovať",
       "duplicate": "Duplikovať",
       "setAsDefault": "Nastaviť ako predvolené",
       "delete": "Odstrániť",
-      "createNewView": "Vytvoriť nové zobrazenie",
-      "createNewView2": "Vytvoriť nové zobrazenie",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Vytvorte nové zobrazenie s vlastnými stĺpcami, filtrami a zoradením.",
-      "viewName": "Názov zobrazenia",
       "myCustomView": "Moje vlastné zobrazenie",
-      "baseConfiguration": "Základná konfigurácia",
-      "copyFromCurrentView": "Kopírovať z aktuálneho zobrazenia",
-      "startFreshDefaultColumns": "Začať od začiatku (predvolené stĺpce)",
       "cancel": "Zrušiť",
-      "renameView": "Premenovať zobrazenie",
-      "enterANewNameForThisView": "Zadajte nový názov tohto zobrazenia.",
-      "viewName2": "Názov zobrazenia",
-      "viewName3": "Názov zobrazenia",
-      "cancel2": "Zrušiť",
       "deleteView": "Odstrániť zobrazenie",
       "areYouSureYouWantToDelete": "Naozaj chcete odstrániť \"",
       "thisActionCannotBeUndone": "Túto akciu nemožno vrátiť späť.",
@@ -1289,22 +1237,17 @@
       "layout": "Rozloženie",
       "table": "Tabuľka",
       "list": "Zoznam",
-      "gallery": "Galéria",
-      "createView": "Vytvoriť zobrazenie",
-      "save": "Uložiť"
+      "gallery": "Galéria"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Nepodarilo sa načítať PDF: ",
-      "download": "Stiahnuť",
       "download2": "Stiahnuť",
       "noFileAttached": "Nie je priložený žiadny súbor",
       "resizePdf": "Zmeniť veľkosť PDF",
       "resizeHtml": "Zmeniť veľkosť vloženého HTML",
       "alignLeft": "Zarovnať doľava",
       "alignCenter": "Zarovnať na stred",
-      "alignRight": "Zarovnať doprava",
-      "previousPage": "Predchádzajúca strana",
-      "nextPage": "Ďalšia strana"
+      "alignRight": "Zarovnať doprava"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Otvoriť v paneli úloh",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 palcov)",
       "legal85X14In": "Legal (8,5 x 14 palcov)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.rrrr"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Synchronizované"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Slová",
       "characters": "Znaky",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Zatiaľ žiadne záložky",
       "moreOptions": "Viac možností",
       "remove": "Odstrániť"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Otvoriť",
-      "openToTheSide": "Otvoriť vedľa",
-      "pinToTabs": "Pripnúť ku kartám",
-      "edit": "Upraviť",
-      "delete": "Odstrániť",
-      "copyLink": "Kopírovať odkaz"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Načítavajú sa značky…",
@@ -1380,26 +1309,9 @@
       "cancel": "Zrušiť"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Späť",
-      "notes": "poznámky",
-      "loadingNotes": "Načítavajú sa poznámky…",
-      "noNotesWithThisTag": "Žiadne poznámky s touto značkou",
-      "addThisTagToANoteToSeeItHere": "Pridajte túto značku do poznámky, aby sa zobrazila tu",
-      "pinned": "PRIPNUTÉ",
-      "allNotes": "VŠETKY POZNÁMKY",
-      "allNotesArePinned": "Všetky poznámky sú pripnuté",
-      "tasks": "ÚLOHY",
-      "unpinFromTag": "Odopnúť od značky",
-      "unpin": "Odopnúť",
-      "pinToTag": "Pripnúť na značku",
-      "pin": "Pripnúť",
       "tagActions": "Akcie so značkou",
-      "editTagName": "Upraviť názov značky",
       "changeColor": "Zmeniť farbu",
-      "deleteTag": "Odstrániť značku",
-      "recent": "Nedávne",
-      "created": "Vytvorené",
-      "alphabetical": "Abecedne"
+      "deleteTag": "Odstrániť značku"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Premenovať značku",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Vytvoriť novú poznámku",
-      "viewSettings": "Nastavenia zobrazenia",
-      "displayDensity": "Hustota zobrazenia",
-      "comfortable": "Komfortné",
-      "compact": "Kompaktné",
-      "showSummaries": "Zobraziť súhrny",
       "cancel": "Zrušiť"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Otvoriť centrum značiek"
   },
   "tagView": {
-    "moreActions": "Ďalšie akcie",
     "pin": {
       "action": "Pripnúť {count, plural, one {# poznámku} few {# poznámky} many {# poznámky} other {# poznámok}} na značku",
       "success": "{count, plural, one {Na značku bola pripnutá # poznámka} few {Na značku boli pripnuté # poznámky} many {Na značku bolo pripnutých # poznámky} other {Na značku bolo pripnutých # poznámok}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Pomenujte toto vyhľadávanie",
     "saveDialogPlaceholder": "napr. Pracovné stretnutia",
     "cancel": "Zrušiť",
-    "save": "Uložiť",
-    "addToFilterHint": "Kliknutím na značku so stlačeným Ctrl/Cmd ju pridáte do filtra"
+    "save": "Uložiť"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Píše sa…",
       "writtenBy": "Napísal {agent}",
       "retry": "Posledné spustenie zlyhalo · Skúsiť znova",
-      "retryAction": "Skúsiť znova",
       "captionOff": "Zapnite Zhrnúť dlhé poznámky v Nastavenia → AI",
       "captionNoAgent": "Nie je pripojený žiadny agent · Nastavenia → AI",
       "unknownAgent": "AI"

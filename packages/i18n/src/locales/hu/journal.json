@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "MI-kapcsolatok",
     "todaysNotes": "Mai jegyzetek",
-    "todaysSchedule": "Mai napirend",
-    "todaysTasks": "Mai feladatok",
     "tasks": "Feladatok",
     "technicalDetails": "Műszaki részletek"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Jó napot",
       "evening": "Jó estét",
       "night": "Jó éjszakát"
-    },
-    "allDay": "Egész napos"
+    }
   },
   "nav": {
     "previousDay": "Előző nap",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "További lehetőségek",
     "documentStatistics": "Dokumentumstatisztika",
-    "dayContext": "Napi kontextus: feladatok és napirend",
-    "scheduleEvents": "Napirend eseményei",
-    "tasks": "Feladatok",
     "notesCreatedToday": "{count} jegyzet készült ma"
   },
   "empty": {
     "noEntry": "Nincs bejegyzés",
     "noDaysInMonth": "Ebben a hónapban nincs nap",
-    "noEventsScheduled": "Nincsenek ütemezett események",
-    "noEventsScheduledToday": "A mai napra nincs betervezve esemény",
-    "noEventsWereScheduled": "Nem volt ütemezett esemény",
-    "noTasksDue": "Nincs esedékes feladat",
-    "noTasksDueToday": "Ma nincs esedékes feladat",
-    "noTasksWereDue": "Nem volt esedékes feladat",
     "noNotesToday": "Ma nem készült jegyzet",
     "startDocumenting": "Kezdje el dokumentálni gondolatait és ötleteit"
   },
@@ -155,9 +143,7 @@
     "day": "nap",
     "days": "nap",
     "event": "esemény",
-    "events": "esemény",
     "task": "feladat",
-    "todo": "teendő",
     "moreConnections": "+ {count} további kapcsolat",
     "moreConnections_plural": "+ {count} további kapcsolat",
     "moreNotes": "+ {count} további jegyzet",
@@ -166,7 +152,6 @@
     "charactersWritten": "leírt karakter",
     "words": "{count} szó",
     "characters": "{count} karakter",
-    "completed": "{count} kész",
     "overdue": "{count} lejárt"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Módosítva: {date}"
   },
   "task": {
-    "completed": "Befejezve",
-    "notCompleted": "Nem fejeződött be",
-    "priority": "Prioritás: {priority}",
-    "overdue": "lejárt",
-    "markComplete": "A(z) „{title}” megjelölése befejezettként",
-    "markNotComplete": "A(z) „{title}” megjelölése befejezetlenként"
+    "priority": "Prioritás: {priority}"
   },
   "template": {
     "using": "Használt sablon: „{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "A tartalma még mindig a memóriában van. Kattintson a mentés újrapróbálásához.",
-    "noteNotFound": "A(z) „{target}” jegyzet nem található",
     "createLinkedFailed": "Nem sikerült létrehozni a hivatkozott jegyzetet",
     "fileNotFound": "A fájl nem található: {target}",
     "openLinkedItemFailed": "Nem sikerült megnyitni a hivatkozott elemet",

@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI veze",
     "todaysNotes": "Današnje bilješke",
-    "todaysSchedule": "Današnji raspored",
-    "todaysTasks": "Današnji zadaci",
     "tasks": "Zadaci",
     "technicalDetails": "Tehnički detalji"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Dobar dan",
       "evening": "Dobra večer",
       "night": "Dobra večer"
-    },
-    "allDay": "Cijeli dan"
+    }
   },
   "nav": {
     "previousDay": "Prethodni dan",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Više mogućnosti",
     "documentStatistics": "Statistika dokumenta",
-    "dayContext": "Kontekst dana: zadaci i raspored",
-    "scheduleEvents": "Događaji u rasporedu",
-    "tasks": "Zadaci",
     "notesCreatedToday": "{count, plural, one {Danas je stvorena # bilješka} few {Danas su stvorene # bilješke} other {Danas je stvoreno # bilješki}}"
   },
   "empty": {
     "noEntry": "Nema zapisa",
     "noDaysInMonth": "Nema dana u ovom mjesecu",
-    "noEventsScheduled": "Nema zakazanih događaja",
-    "noEventsScheduledToday": "Danas nema zakazanih događaja",
-    "noEventsWereScheduled": "Nije bilo zakazanih događaja",
-    "noTasksDue": "Nema zadataka s rokom",
-    "noTasksDueToday": "Danas nema zadataka s rokom",
-    "noTasksWereDue": "Nije bilo zadataka s rokom",
     "noNotesToday": "Danas nije stvorena nijedna bilješka",
     "startDocumenting": "Počnite dokumentirati svoje misli i ideje"
   },
@@ -155,9 +143,7 @@
     "day": "dan",
     "days": "dana",
     "event": "događaj",
-    "events": "događaja",
     "task": "zadatak",
-    "todo": "otvoreno",
     "moreConnections": "{count, plural, one {+ još # veza} few {+ još # veze} other {+ još # veza}}",
     "moreConnections_plural": "{count, plural, one {+ još # veza} few {+ još # veze} other {+ još # veza}}",
     "moreNotes": "{count, plural, one {+ još # bilješka} few {+ još # bilješke} other {+ još # bilješki}}",
@@ -166,7 +152,6 @@
     "charactersWritten": "napisanih znakova",
     "words": "{count, plural, one {# riječ} few {# riječi} other {# riječi}}",
     "characters": "{count, plural, one {# znak} few {# znaka} other {# znakova}}",
-    "completed": "Dovršeno: {count}",
     "overdue": "Zakašnjelo: {count}"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Izmijenjen {date}"
   },
   "task": {
-    "completed": "Dovršeno",
-    "notCompleted": "Nije dovršeno",
-    "priority": "Prioritet: {priority}",
-    "overdue": "zakašnjelo",
-    "markComplete": "Označi „{title}” kao dovršeno",
-    "markNotComplete": "Označi „{title}” kao nedovršeno"
+    "priority": "Prioritet: {priority}"
   },
   "template": {
     "using": "Koristi se predložak „{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Vaš je sadržaj još uvijek u memoriji. Kliknite za ponovni pokušaj spremanja.",
-    "noteNotFound": "Bilješka „{target}” nije pronađena",
     "createLinkedFailed": "Stvaranje povezane bilješke nije uspjelo",
     "fileNotFound": "Datoteka nije pronađena: {target}",
     "openLinkedItemFailed": "Otvaranje povezane stavke nije uspjelo",

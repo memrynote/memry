@@ -15,19 +15,13 @@
       "showWithCount": "Tampilkan item yang ditunda ({count})",
       "hide": "Sembunyikan item yang ditunda"
     },
-    "density": {
-      "toComfortable": "Tampilan nyaman",
-      "toCompact": "Tampilan ringkas"
-    },
     "filter": {
-      "button": "Filter",
       "byType": "Filter berdasarkan jenis",
       "active": "{count, plural, other {Memfilter berdasarkan # jenis}}",
       "clearAll": "Hapus semuanya"
     },
     "jobs": {
-      "running": "{count, plural, other {# proses latar belakang berjalan}}",
-      "failed": "{count} gagal"
+      "running": "{count, plural, other {# proses latar belakang berjalan}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Buat “{name}”",
     "addTags": "Tambahkan tag…",
     "linkToNote": "Tautkan ke catatan",
-    "linkANote": "Tautkan catatan",
-    "suggestedCount": "{count} disarankan",
-    "linkNotesPlaceholder": "Tautkan catatan…",
     "linkOrCreateNotePlaceholder": "Cari atau buat catatan…",
     "createNote": "Buat “{title}”",
     "pendingNote": "Catatan baru",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Data pengingat tidak tersedia.",
     "triggered": "Pengingat dipicu",
-    "noteLabel": "Catatan pengingat",
     "source": "Sumber",
     "journalTitle": "Jurnal — {date}",
     "noteFallback": "Catatan",
@@ -514,9 +504,7 @@
       "settings": "Pengaturan",
       "processing": "Memproses…",
       "cancelRecording": "Batalkan perekaman",
-      "cancel": "Batal",
       "stopRecording": "Berhenti merekam",
-      "stop": "Berhenti",
       "recordingError": "Terjadi kesalahan perekaman",
       "microphoneAccessDenied": "Akses mikrofon ditolak",
       "noMicrophoneFound": "Mikrofon tidak ditemukan",

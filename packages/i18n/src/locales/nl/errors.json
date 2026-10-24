@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Niet ingelogd",
-    "sessionExpired": "Je sessie is verlopen. Log opnieuw in.",
     "setupSessionExpired": "Je inlogsessie is verlopen voordat dit klaar was. Log opnieuw in en voer daarna je herstelzin in.",
     "setupSessionExpiredLinking": "Je inlogsessie is verlopen voordat dit apparaat klaar was met koppelen. Log opnieuw in en scan de code nog een keer.",
     "invalidRecoveryPhraseFormat": "Ongeldige indeling van de herstelzin",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Kan het model niet laden",
     "voiceModelDownloadFailed": "Kan het spraakmodel niet downloaden",
     "terminalCommandInstallFailed": "Kan de terminalopdracht niet installeren",
-    "terminalCommandUninstallFailed": "Kan de terminalopdracht niet verwijderen",
-    "shortcutInUse": "Sneltoets {shortcut} is al in gebruik"
+    "terminalCommandUninstallFailed": "Kan de terminalopdracht niet verwijderen"
   },
   "tag": {
     "renameInProgress": "Het hernoemen van #{from} naar #{to} loopt nog. Probeer het opnieuw als het klaar is.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} neemt zijn velden al over van deze tag",
     "unreadableSchema": "Een nieuwere versie van Memry heeft deze tag gewijzigd. Werk Memry bij om hem te bewerken",
     "relationTargetRequired": "Kies naar welke tag deze relatie verwijst",
-    "editFailed": "Kan de velden van de tag niet wijzigen",
-    "previewFailed": "Kan niet tellen wat deze wijziging raakt",
-    "snapshotFailed": "Kan tagvelden niet laden",
     "renameRunning": "Een andere veldhernoeming wordt nog afgerond ({from} naar {to}). Probeer het opnieuw als ze klaar is."
   }
 }

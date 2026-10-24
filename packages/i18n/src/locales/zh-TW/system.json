@@ -17,18 +17,6 @@
       "filterAll": "所有檔案"
     },
     "exportCancelled": "匯出已取消",
-    "update": {
-      "availableTitle": "有可用的更新",
-      "availableMessage": "memrynote {version} 現已推出。",
-      "availableDetailFallback": "要立即下載更新嗎？",
-      "buttonDownload": "下載",
-      "buttonLater": "稍後",
-      "readyTitle": "更新已就緒",
-      "readyMessage": "memrynote {version} 已下載完成。",
-      "readyDetailFallback": "重新啟動 memrynote 以完成更新安裝。",
-      "buttonRestartNow": "立即重新啟動",
-      "releaseNotesLabel": "版本更新說明："
-    },
     "dataDbRecovery": {
       "title": "修復儲存庫資料庫",
       "message": "Memry 此儲存庫的資料庫已損壞。",

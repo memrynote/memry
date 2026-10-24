@@ -17,18 +17,6 @@
       "filterAll": "جميع الملفات"
     },
     "exportCancelled": "تم إلغاء التصدير",
-    "update": {
-      "availableTitle": "يتوفر تحديث",
-      "availableMessage": "يتوفر memrynote {version}.",
-      "availableDetailFallback": "هل تريد تنزيل التحديث الآن؟",
-      "buttonDownload": "تنزيل",
-      "buttonLater": "لاحقًا",
-      "readyTitle": "التحديث جاهز",
-      "readyMessage": "تم تنزيل memrynote {version}.",
-      "readyDetailFallback": "أعد تشغيل memrynote لإنهاء تثبيت التحديث.",
-      "buttonRestartNow": "إعادة التشغيل الآن",
-      "releaseNotesLabel": "ملاحظات الإصدار:"
-    },
     "dataDbRecovery": {
       "title": "إصلاح قاعدة بيانات الخزنة",
       "message": "قاعدة بيانات Memry لهذا الخزنة تالفة.",

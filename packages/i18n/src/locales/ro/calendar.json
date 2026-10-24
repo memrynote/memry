@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Finalizează {title}",
     "task-completed": "Sarcină finalizată",
-    "could-not-complete": "Nu s-a putut finaliza sarcina",
     "could-not-update-status": "Nu s-a putut schimba starea sarcinii",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
@@ -215,12 +213,9 @@
     "next-week": "Săptămâna viitoare",
     "open-task": "Deschide sarcina",
     "source-note": "Notiță sursă",
-    "reschedule": "Reprogramează",
     "mark-done": "Marchează ca finalizată",
     "mark-not-done": "Marchează ca nefinalizată",
-    "later-today": "Mai târziu astăzi",
     "tomorrow": "Mâine",
-    "next-week-mon": "Săptămâna viitoare · lun.",
     "pick-date-time": "Alege data și ora…",
     "remove-due-date": "Elimină termenul",
     "subtasks-prefix": "Subsarcini",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Calendare abonate"
     },
     "caldav": {
       "name": "CalDAV"

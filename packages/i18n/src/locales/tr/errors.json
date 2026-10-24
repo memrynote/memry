@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Kimlik doğrulanmadı",
-    "sessionExpired": "Oturumunuzun süresi doldu. Lütfen tekrar oturum açın.",
     "setupSessionExpired": "Bu işlem bitmeden oturum açma süreniz doldu. Tekrar oturum açın, ardından kurtarma ifadenizi girin.",
     "setupSessionExpiredLinking": "Bu cihazın bağlanması tamamlanmadan oturum açma süreniz doldu. Tekrar oturum açın, ardından kodu yeniden tarayın.",
     "invalidRecoveryPhraseFormat": "Geçersiz kurtarma ifadesi biçimi",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Model yüklenemedi",
     "voiceModelDownloadFailed": "Ses modeli indirilemedi",
     "terminalCommandInstallFailed": "Terminal komutu kurulamadı",
-    "terminalCommandUninstallFailed": "Terminal komutu kaldırılamadı",
-    "shortcutInUse": "{shortcut} kısayolu zaten kullanılıyor"
+    "terminalCommandUninstallFailed": "Terminal komutu kaldırılamadı"
   },
   "tag": {
     "renameInProgress": "#{from} etiketinin #{to} olarak yeniden adlandırılması sürüyor. Bitince tekrar deneyin.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} alanlarını zaten bu etiketten alıyor",
     "unreadableSchema": "Bu etiketi Memry'nin daha yeni bir sürümü değiştirdi. Düzenlemek için Memry'yi güncelleyin",
     "relationTargetRequired": "Bu ilişkinin hangi etikete bağlanacağını seçin",
-    "editFailed": "Etiketin alanları değiştirilemedi",
-    "previewFailed": "Bu değişikliğin neyi etkileyeceği sayılamadı",
-    "snapshotFailed": "Etiket alanları yüklenemedi",
     "renameRunning": "Başka bir alan yeniden adlandırması hâlâ sürüyor ({from} → {to}). Bitince yeniden dene."
   }
 }

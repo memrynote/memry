@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "{title} erledigen",
     "task-completed": "Aufgabe erledigt",
-    "could-not-complete": "Aufgabe konnte nicht als erledigt markiert werden",
     "could-not-update-status": "Aufgabenstatus konnte nicht geändert werden",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
@@ -215,12 +213,9 @@
     "next-week": "Nächste Woche",
     "open-task": "Aufgabe öffnen",
     "source-note": "Quellnotiz",
-    "reschedule": "Neu planen",
     "mark-done": "Als erledigt markieren",
     "mark-not-done": "Als nicht erledigt markieren",
-    "later-today": "Später heute",
     "tomorrow": "Morgen",
-    "next-week-mon": "Nächste Woche · Mo",
     "pick-date-time": "Datum und Uhrzeit auswählen…",
     "remove-due-date": "Fälligkeitsdatum entfernen",
     "subtasks-prefix": "Teilaufgaben",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Abonnierte Kalender"
     },
     "caldav": {
       "name": "CalDAV"

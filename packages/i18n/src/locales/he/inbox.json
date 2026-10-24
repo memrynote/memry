@@ -15,19 +15,13 @@
       "showWithCount": "הצגת פריטים מושהים ({count})",
       "hide": "הסתרת פריטים מושהים"
     },
-    "density": {
-      "toComfortable": "תצוגה מרווחת",
-      "toCompact": "תצוגה קומפקטית"
-    },
     "filter": {
-      "button": "סינון",
       "byType": "סינון לפי סוג",
       "active": "{count, plural, one {סינון לפי סוג אחד} other {סינון לפי # סוגים}}",
       "clearAll": "ניקוי הכול"
     },
     "jobs": {
-      "running": "{count, plural, one {תהליך רקע אחד פועל} other {# תהליכי רקע פועלים}}",
-      "failed": "{count} נכשלו"
+      "running": "{count, plural, one {תהליך רקע אחד פועל} other {# תהליכי רקע פועלים}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "יצירת \"{name}\"",
     "addTags": "הוספת תגיות…",
     "linkToNote": "קישור לפתק",
-    "linkANote": "קישור פתק",
-    "suggestedCount": "{count} מוצעים",
-    "linkNotesPlaceholder": "קישור פתקים…",
     "linkOrCreateNotePlaceholder": "חיפוש או יצירה של פתק…",
     "createNote": "יצירת \"{title}\"",
     "pendingNote": "פתק חדש",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "נתוני תזכורת אינם זמינים.",
     "triggered": "התזכורת הופעלה",
-    "noteLabel": "הערת תזכורת",
     "source": "מקור",
     "journalTitle": "יומן — {date}",
     "noteFallback": "פתק",
@@ -514,9 +504,7 @@
       "settings": "הגדרות",
       "processing": "מעבד…",
       "cancelRecording": "ביטול ההקלטה",
-      "cancel": "ביטול",
       "stopRecording": "עצירת ההקלטה",
-      "stop": "עצירה",
       "recordingError": "אירעה שגיאה בהקלטה",
       "microphoneAccessDenied": "הגישה למיקרופון נדחתה",
       "noMicrophoneFound": "לא נמצא מיקרופון",

@@ -17,18 +17,6 @@
       "filterAll": "Todos los archivos"
     },
     "exportCancelled": "Exportación cancelada",
-    "update": {
-      "availableTitle": "Actualización disponible",
-      "availableMessage": "memrynote {version} está disponible.",
-      "availableDetailFallback": "¿Descargar la actualización ahora?",
-      "buttonDownload": "Descargar",
-      "buttonLater": "Más tarde",
-      "readyTitle": "Actualización lista",
-      "readyMessage": "Se ha descargado memrynote {version}.",
-      "readyDetailFallback": "Reinicia memrynote para terminar de instalar la actualización.",
-      "buttonRestartNow": "Reiniciar ahora",
-      "releaseNotesLabel": "Notas de la versión:"
-    },
     "dataDbRecovery": {
       "title": "Reparar la base de datos de la bóveda",
       "message": "La base de datos de Memry para esta bóveda está dañada.",

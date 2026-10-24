@@ -17,18 +17,6 @@
       "filterAll": "Все файлы"
     },
     "exportCancelled": "Экспорт отменён",
-    "update": {
-      "availableTitle": "Доступно обновление",
-      "availableMessage": "Доступна версия memrynote {version}.",
-      "availableDetailFallback": "Скачать обновление сейчас?",
-      "buttonDownload": "Скачать",
-      "buttonLater": "Позже",
-      "readyTitle": "Обновление готово",
-      "readyMessage": "Обновление memrynote {version} скачано.",
-      "readyDetailFallback": "Перезапустите memrynote, чтобы завершить установку обновления.",
-      "buttonRestartNow": "Перезапустить сейчас",
-      "releaseNotesLabel": "Примечания к выпуску:"
-    },
     "dataDbRecovery": {
       "title": "Восстановление базы данных хранилища",
       "message": "База данных Memry для этого хранилища повреждена.",

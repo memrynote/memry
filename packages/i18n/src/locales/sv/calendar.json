@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Markera ”{title}” som klar",
     "task-completed": "Uppgift slutförd",
-    "could-not-complete": "Det gick inte att slutföra uppgiften",
     "could-not-update-status": "Det gick inte att ändra uppgiftens status",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
@@ -215,12 +213,9 @@
     "next-week": "Nästa vecka",
     "open-task": "Öppna uppgift",
     "source-note": "Källanteckning",
-    "reschedule": "Planera om",
     "mark-done": "Markera som klar",
     "mark-not-done": "Markera som inte klar",
-    "later-today": "Senare idag",
     "tomorrow": "Imorgon",
-    "next-week-mon": "Nästa vecka · mån",
     "pick-date-time": "Välj datum & tid…",
     "remove-due-date": "Ta bort förfallodatum",
     "subtasks-prefix": "Deluppgifter",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Prenumererade kalendrar"
     },
     "caldav": {
       "name": "CalDAV"

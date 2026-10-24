@@ -122,10 +122,6 @@
       "body": "Maak een notitie om aan de slag te gaan",
       "newNote": "Nieuwe notitie"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise-synchronisatie",
-      "failed": "Readwise-synchronisatie mislukt"
-    },
     "syncing": {
       "body": "Je notities worden gesynchroniseerd – ze verschijnen hier zodra ze binnenkomen"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Bladwijzer toevoegen",
       "removeFromBookmarks": "Uit bladwijzers verwijderen",
       "journalSettings": "Dagboekinstellingen…"
-    },
-    "nav": {
-      "label": "Navigatie",
-      "ariaExpanded": "Navigatiesectie, uitgevouwen",
-      "ariaCollapsed": "Navigatiesectie, samengevouwen",
-      "saveFailed": "Kan de status van de navigatiesectie niet opslaan"
     },
     "viewOptions": {
       "label": "Weergaveopties",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Als uitklapbare kop",
         "asLinkedTask": "Als gekoppelde taak",
         "asReminder": "Als herinnering"
-      },
-      "actions": {
-        "insert": "Invoegen",
-        "open": "Openen"
       },
       "close": "Menu sluiten",
       "matchesAlias": "via",
@@ -607,7 +592,6 @@
         "title": "Blok naar notitie verplaatsen",
         "searchPlaceholder": "Notities zoeken…",
         "noResults": "Geen overeenkomende notities",
-        "moved": "Blok verplaatst naar “{title}”",
         "failed": "Kan het blok niet verplaatsen"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Structuur",
     "aria": "Documentstructuur",
-    "emptyYet": "Nog geen koppen",
     "readTime": "{count} min. leestijd",
     "words": "{count} woorden",
     "created": "Gemaakt",
@@ -839,11 +822,9 @@
     "toolbarComment": "Opmerking toevoegen",
     "commentPlaceholder": "Opmerking toevoegen…",
     "createdTooltip": "Gemaakt op {date} om {time}",
-    "cancel": "Annuleren",
     "resolve": "Oplossen",
     "edit": "Opmerking bewerken",
     "delete": "Opmerking verwijderen",
-    "replyPlaceholder": "Antwoorden…",
     "attachAria": "Bestand bijvoegen",
     "mentionAria": "Een persoon, pagina of datum vermelden",
     "sendAria": "Opmerking verzenden",
@@ -856,13 +837,7 @@
       "code": "Code"
     },
     "openImageAria": "Afbeelding {name} openen",
-    "openAttachmentAria": "Bijlage {name} openen",
-    "kind": {
-      "comment": "Opmerking",
-      "addition": "Toevoeging",
-      "deletion": "Verwijdering",
-      "substitution": "Vervanging"
-    }
+    "openAttachmentAria": "Bijlage {name} openen"
   },
   "tagsRow": {
     "aria": "Tags",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Eigenschappen",
     "noteAria": "Notitie-eigenschappen",
-    "workspaceAria": "Eigenschappen van de werkruimte",
     "listAria": "Lijst met eigenschappen",
     "add": "Eigenschap toevoegen",
     "addDescription": "Voeg een nieuwe eigenschap toe aan deze notitie",
@@ -932,7 +906,6 @@
       "inProgress": "Bezig",
       "done": "Voltooid"
     },
-    "projectAlreadySet": "Deze notitie heeft al een projecteigenschap",
     "projectPlaceholder": "Geen project",
     "projectSearch": "Projecten zoeken",
     "projectEmpty": "Geen projecten",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filteren",
-      "filters": "Filters",
-      "clearAll": "Alles wissen",
-      "noFiltersApplied": "Geen filters toegepast",
-      "addFiltersToNarrowDownYourNotes": "Voeg filters toe om je notities te verfijnen",
       "match": "Voldoet aan",
-      "allAnd": "Alle (EN)",
-      "anyOr": "Minstens één (OF)",
-      "ofTheFollowing": "van de volgende:",
       "match2": "Voldoet aan",
       "all": "Alle",
       "any": "Minstens één",
-      "of": "van:",
       "addCondition": "Voorwaarde toevoegen",
       "addFilter": "Filter toevoegen",
       "addGroup": "Groep toevoegen",
@@ -1207,7 +1172,6 @@
       "available": "Beschikbaar: ",
       "preview": "Voorbeeld",
       "fixExpressionErrorsToSeePreview": "Herstel de fouten in de expressie om een voorbeeld te zien",
-      "usingNote": "Gebruikte notitie: “",
       "cancel": "Annuleren",
       "namePlaceholder": "dagen_tot_vervaldatum",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Mappen laden…",
       "suggested": "VOORGESTELD",
       "bestMatch": "Beste overeenkomst",
-      "current": "huidig)",
       "allFolders": "ALLE MAPPEN",
-      "noFoldersMatch": "Geen mappen gevonden voor \"",
-      "create": "Maken: \"",
       "cancel": "Annuleren",
       "currentFolderBadge": "(huidige)",
       "noFoldersMatchQuery": "Geen mappen gevonden voor “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "standaard",
       "viewActions": "Weergaveacties",
-      "rename": "Hernoemen",
       "duplicate": "Dupliceren",
       "setAsDefault": "Instellen als standaard",
       "delete": "Verwijderen",
-      "createNewView": "Nieuwe weergave maken",
-      "createNewView2": "Nieuwe weergave maken",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Maak een nieuwe weergave met aangepaste kolommen, filters en sortering.",
-      "viewName": "Naam van weergave",
       "myCustomView": "Mijn aangepaste weergave",
-      "baseConfiguration": "Basisconfiguratie",
-      "copyFromCurrentView": "Kopiëren van huidige weergave",
-      "startFreshDefaultColumns": "Nieuw beginnen (standaardkolommen)",
       "cancel": "Annuleren",
-      "renameView": "Weergave hernoemen",
-      "enterANewNameForThisView": "Voer een nieuwe naam in voor deze weergave.",
-      "viewName2": "Naam van weergave",
-      "viewName3": "Naam van weergave",
-      "cancel2": "Annuleren",
       "deleteView": "Weergave verwijderen",
       "areYouSureYouWantToDelete": "Weet je zeker dat je deze weergave wilt verwijderen: \"",
       "thisActionCannotBeUndone": "Deze actie kan niet ongedaan worden gemaakt.",
@@ -1289,22 +1237,17 @@
       "layout": "Indeling",
       "table": "Tabel",
       "list": "Lijst",
-      "gallery": "Galerij",
-      "createView": "Weergave maken",
-      "save": "Opslaan"
+      "gallery": "Galerij"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kan PDF niet laden: ",
-      "download": "Downloaden",
       "download2": "Downloaden",
       "noFileAttached": "Geen bestand bijgevoegd",
       "resizePdf": "Formaat van PDF wijzigen",
       "resizeHtml": "Formaat van HTML-insluiting wijzigen",
       "alignLeft": "Links uitlijnen",
       "alignCenter": "Centreren",
-      "alignRight": "Rechts uitlijnen",
-      "previousPage": "Vorige pagina",
-      "nextPage": "Volgende pagina"
+      "alignRight": "Rechts uitlijnen"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Openen in taakpaneel",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 inch)",
       "legal85X14In": "Legal (8,5 x 14 inch)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.jjjj"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Gesynchroniseerd"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Woorden",
       "characters": "Tekens",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Nog geen bladwijzers",
       "moreOptions": "Meer opties",
       "remove": "Verwijderen"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Openen",
-      "openToTheSide": "Openen aan de zijkant",
-      "pinToTabs": "Vastzetten als tabblad",
-      "edit": "Bewerken",
-      "delete": "Verwijderen",
-      "copyLink": "Link kopiëren"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Tags laden…",
@@ -1380,26 +1309,9 @@
       "cancel": "Annuleren"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Terug",
-      "notes": "notities",
-      "loadingNotes": "Notities laden…",
-      "noNotesWithThisTag": "Geen notities met deze tag",
-      "addThisTagToANoteToSeeItHere": "Voeg deze tag toe aan een notitie om deze hier te zien",
-      "pinned": "VASTGEZET",
-      "allNotes": "ALLE NOTITIES",
-      "allNotesArePinned": "Alle notities zijn vastgezet",
-      "tasks": "TAKEN",
-      "unpinFromTag": "Losmaken van tag",
-      "unpin": "Losmaken",
-      "pinToTag": "Aan tag vastzetten",
-      "pin": "Vastzetten",
       "tagActions": "Tagacties",
-      "editTagName": "Tagnaam bewerken",
       "changeColor": "Kleur wijzigen",
-      "deleteTag": "Tag verwijderen",
-      "recent": "Recent",
-      "created": "Gemaakt",
-      "alphabetical": "Alfabetisch"
+      "deleteTag": "Tag verwijderen"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Naam van tag wijzigen",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Nieuwe notitie maken",
-      "viewSettings": "Weergave-instellingen",
-      "displayDensity": "Weergavedichtheid",
-      "comfortable": "Comfortabel",
-      "compact": "Compact",
-      "showSummaries": "Samenvattingen tonen",
       "cancel": "Annuleren"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Tagoverzicht openen"
   },
   "tagView": {
-    "moreActions": "Meer acties",
     "pin": {
       "action": "{count, plural, one {# notitie aan tag vastzetten} other {# notities aan tag vastzetten}}",
       "success": "{count, plural, one {# notitie} other {# notities}} vastgezet aan tag",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Geef deze zoekopdracht een naam",
     "saveDialogPlaceholder": "bijv. Werkoverleggen",
     "cancel": "Annuleren",
-    "save": "Opslaan",
-    "addToFilterHint": "Ctrl/Cmd-klik op een tag om deze aan het filter toe te voegen"
+    "save": "Opslaan"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Schrijven…",
       "writtenBy": "Geschreven door {agent}",
       "retry": "Laatste poging mislukt · Opnieuw proberen",
-      "retryAction": "Opnieuw proberen",
       "captionOff": "Zet Lange notities samenvatten aan in Instellingen → AI",
       "captionNoAgent": "Geen agent verbonden · Instellingen → AI",
       "unknownAgent": "AI"

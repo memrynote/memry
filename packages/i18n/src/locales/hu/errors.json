@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Nincs bejelentkezve",
-    "sessionExpired": "A munkamenet lejárt. Jelentkezzen be újra.",
     "setupSessionExpired": "A bejelentkezés lejárt, mielőtt ez befejeződött volna. Jelentkezzen be újra, majd adja meg a helyreállítási kifejezését.",
     "setupSessionExpiredLinking": "A bejelentkezés lejárt, mielőtt az eszköz társítása befejeződött volna. Jelentkezzen be újra, majd olvassa be ismét a kódot.",
     "invalidRecoveryPhraseFormat": "A helyreállítási kifejezés formátuma érvénytelen",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Nem sikerült betölteni a modellt",
     "voiceModelDownloadFailed": "Nem sikerült letölteni a hangmodellt",
     "terminalCommandInstallFailed": "Nem sikerült telepíteni a terminálparancsot",
-    "terminalCommandUninstallFailed": "Nem sikerült eltávolítani a terminálparancsot",
-    "shortcutInUse": "A(z) {shortcut} billentyűparancs már használatban van"
+    "terminalCommandUninstallFailed": "Nem sikerült eltávolítani a terminálparancsot"
   },
   "tag": {
     "renameInProgress": "A(z) #{from} átnevezése erre: #{to} még folyamatban van. Próbálja újra, amikor befejeződött.",
@@ -373,9 +371,6 @@
     "cycle": "A(z) #{parent} már ebből a címkéből veszi a mezőit",
     "unreadableSchema": "A Memry egy újabb verziója módosította ezt a címkét. A szerkesztéséhez frissítse a Memryt",
     "relationTargetRequired": "Válassza ki, melyik címkére mutasson ez a kapcsolat",
-    "editFailed": "Nem sikerült módosítani a címke mezőit",
-    "previewFailed": "Nem sikerült megszámolni, mire hat ez a módosítás",
-    "snapshotFailed": "Nem sikerült betölteni a címkemezőket",
     "renameRunning": "Egy másik mező átnevezése még folyamatban van ({from} → {to}). Próbálja újra, ha elkészült."
   }
 }

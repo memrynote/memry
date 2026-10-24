@@ -15,19 +15,13 @@
       "showWithCount": "Prikaži odgođene stavke ({count})",
       "hide": "Sakrij odgođene stavke"
     },
-    "density": {
-      "toComfortable": "Udoban prikaz",
-      "toCompact": "Kompaktan prikaz"
-    },
     "filter": {
-      "button": "Filtar",
       "byType": "Filtriraj po vrsti",
       "active": "{count, plural, one {# vrsta u filtru} few {# vrste u filtru} other {# vrsta u filtru}}",
       "clearAll": "Očisti sve"
     },
     "jobs": {
-      "running": "{count, plural, one {# pozadinski posao u tijeku} few {# pozadinska posla u tijeku} other {# pozadinskih poslova u tijeku}}",
-      "failed": "Neuspjelo: {count}"
+      "running": "{count, plural, one {# pozadinski posao u tijeku} few {# pozadinska posla u tijeku} other {# pozadinskih poslova u tijeku}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Stvori „{name}”",
     "addTags": "Dodaj oznake…",
     "linkToNote": "Poveži s bilješkom",
-    "linkANote": "Poveži bilješku",
-    "suggestedCount": "Predloženo: {count}",
-    "linkNotesPlaceholder": "Poveži bilješke…",
     "linkOrCreateNotePlaceholder": "Pronađi ili stvori bilješku…",
     "createNote": "Stvori „{title}”",
     "pendingNote": "Nova bilješka",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Podaci podsjetnika nisu dostupni.",
     "triggered": "Podsjetnik aktiviran",
-    "noteLabel": "Napomena podsjetnika",
     "source": "Izvor",
     "journalTitle": "Dnevnik – {date}",
     "noteFallback": "Bilješka",
@@ -514,9 +504,7 @@
       "settings": "Postavke",
       "processing": "Obrada…",
       "cancelRecording": "Otkaži snimanje",
-      "cancel": "Odustani",
       "stopRecording": "Zaustavi snimanje",
-      "stop": "Zaustavi",
       "recordingError": "Došlo je do pogreške pri snimanju",
       "microphoneAccessDenied": "Pristup mikrofonu je odbijen",
       "noMicrophoneFound": "Mikrofon nije pronađen",

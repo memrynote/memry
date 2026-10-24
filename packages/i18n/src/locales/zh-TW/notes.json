@@ -122,10 +122,6 @@
       "body": "建立一則筆記，開始使用",
       "newNote": "新增筆記"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise 同步",
-      "failed": "Readwise 同步失敗"
-    },
     "syncing": {
       "body": "正在同步筆記——收到後就會顯示在這裡"
     },
@@ -157,12 +153,6 @@
       "bookmark": "加入書籤",
       "removeFromBookmarks": "從書籤移除",
       "journalSettings": "日誌設定…"
-    },
-    "nav": {
-      "label": "導覽",
-      "ariaExpanded": "導覽區段，已展開",
-      "ariaCollapsed": "導覽區段，已收合",
-      "saveFailed": "無法儲存導覽區段的狀態"
     },
     "viewOptions": {
       "label": "檢視選項",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "可收合",
         "asLinkedTask": "作為連結的任務",
         "asReminder": "作為提醒"
-      },
-      "actions": {
-        "insert": "插入",
-        "open": "開啟"
       },
       "close": "關閉選單",
       "matchesAlias": "符合",
@@ -607,7 +592,6 @@
         "title": "將區塊移至筆記",
         "searchPlaceholder": "搜尋筆記…",
         "noResults": "沒有符合的筆記",
-        "moved": "區塊已移至「{title}」",
         "failed": "無法移動區塊"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "大綱",
     "aria": "文件大綱",
-    "emptyYet": "尚無標題",
     "readTime": "閱讀時間 {count} 分鐘",
     "words": "{count} 個字",
     "created": "建立時間",
@@ -839,11 +822,9 @@
     "toolbarComment": "留言",
     "commentPlaceholder": "新增留言…",
     "createdTooltip": "建立於 {date} {time}",
-    "cancel": "取消",
     "resolve": "解決",
     "edit": "編輯留言",
     "delete": "刪除留言",
-    "replyPlaceholder": "回覆…",
     "attachAria": "附加檔案",
     "mentionAria": "提及人員、頁面或日期",
     "sendAria": "傳送留言",
@@ -856,13 +837,7 @@
       "code": "程式碼"
     },
     "openImageAria": "開啟圖片 {name}",
-    "openAttachmentAria": "開啟附件 {name}",
-    "kind": {
-      "comment": "留言",
-      "addition": "新增",
-      "deletion": "刪除",
-      "substitution": "取代"
-    }
+    "openAttachmentAria": "開啟附件 {name}"
   },
   "tagsRow": {
     "aria": "標籤",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "屬性",
     "noteAria": "筆記屬性",
-    "workspaceAria": "工作區屬性",
     "listAria": "屬性清單",
     "add": "新增屬性",
     "addDescription": "為這則筆記新增屬性",
@@ -932,7 +906,6 @@
       "inProgress": "進行中",
       "done": "已完成"
     },
-    "projectAlreadySet": "這則筆記已有專案屬性",
     "projectPlaceholder": "無專案",
     "projectSearch": "搜尋專案",
     "projectEmpty": "沒有專案",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "篩選",
-      "filters": "篩選條件",
-      "clearAll": "清除全部",
-      "noFiltersApplied": "未套用篩選條件",
-      "addFiltersToNarrowDownYourNotes": "新增篩選條件以縮小筆記範圍",
       "match": "符合",
-      "allAnd": "全部（且）",
-      "anyOr": "任一（或）",
-      "ofTheFollowing": "以下項目：",
       "match2": "符合",
       "all": "全部",
       "any": "任一",
-      "of": "以下條件：",
       "addCondition": "新增條件",
       "addFilter": "新增篩選條件",
       "addGroup": "新增群組",
@@ -1207,7 +1172,6 @@
       "available": "可用：",
       "preview": "預覽",
       "fixExpressionErrorsToSeePreview": "修正公式錯誤以查看預覽",
-      "usingNote": "使用筆記：",
       "cancel": "取消",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "正在載入資料夾…",
       "suggested": "建議",
       "bestMatch": "最相符",
-      "current": "目前)",
       "allFolders": "所有資料夾",
-      "noFoldersMatch": "沒有符合的資料夾",
-      "create": "建立",
       "cancel": "取消",
       "currentFolderBadge": "（目前）",
       "noFoldersMatchQuery": "沒有符合「{query}」的資料夾",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "預設",
       "viewActions": "檢視操作",
-      "rename": "重新命名",
       "duplicate": "製作副本",
       "setAsDefault": "設為預設",
       "delete": "刪除",
-      "createNewView": "建立新檢視",
-      "createNewView2": "建立新檢視",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "建立具有自訂欄位、篩選條件及排序的新檢視。",
-      "viewName": "檢視名稱",
       "myCustomView": "我的自訂檢視",
-      "baseConfiguration": "基本設定",
-      "copyFromCurrentView": "從目前檢視複製",
-      "startFreshDefaultColumns": "從頭開始（預設欄位）",
       "cancel": "取消",
-      "renameView": "重新命名檢視",
-      "enterANewNameForThisView": "輸入此檢視的新名稱。",
-      "viewName2": "檢視名稱",
-      "viewName3": "檢視名稱",
-      "cancel2": "取消",
       "deleteView": "刪除檢視",
       "areYouSureYouWantToDelete": "確定要刪除 \"",
       "thisActionCannotBeUndone": "此動作無法復原。",
@@ -1289,22 +1237,17 @@
       "layout": "版面",
       "table": "表格",
       "list": "清單",
-      "gallery": "圖庫",
-      "createView": "建立檢視",
-      "save": "儲存"
+      "gallery": "圖庫"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "無法載入 PDF：",
-      "download": "下載",
       "download2": "下載",
       "noFileAttached": "未附加檔案",
       "resizePdf": "調整 PDF 大小",
       "resizeHtml": "調整 HTML 嵌入內容大小",
       "alignLeft": "靠左對齊",
       "alignCenter": "置中對齊",
-      "alignRight": "靠右對齊",
-      "previousPage": "上一頁",
-      "nextPage": "下一頁"
+      "alignRight": "靠右對齊"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "在任務面板中開啟",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter（8.5 x 11 英吋）",
       "legal85X14In": "Legal（8.5 x 14 英吋）"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "已同步"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "字數",
       "characters": "字元數",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "尚未有書籤",
       "moreOptions": "更多選項",
       "remove": "移除"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "開啟",
-      "openToTheSide": "在側邊開啟",
-      "pinToTabs": "釘選到分頁",
-      "edit": "編輯",
-      "delete": "刪除",
-      "copyLink": "複製連結"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "正在載入標籤…",
@@ -1380,26 +1309,9 @@
       "cancel": "取消"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "返回",
-      "notes": "筆記",
-      "loadingNotes": "正在載入筆記…",
-      "noNotesWithThisTag": "沒有使用此標籤的筆記",
-      "addThisTagToANoteToSeeItHere": "為筆記加上此標籤，即可在這裡看到",
-      "pinned": "已釘選",
-      "allNotes": "所有筆記",
-      "allNotesArePinned": "所有筆記都已釘選",
-      "tasks": "任務",
-      "unpinFromTag": "從標籤取消釘選",
-      "unpin": "取消釘選",
-      "pinToTag": "釘選到標籤",
-      "pin": "釘選",
       "tagActions": "標籤操作",
-      "editTagName": "編輯標籤名稱",
       "changeColor": "更改顏色",
-      "deleteTag": "刪除標籤",
-      "recent": "最近使用",
-      "created": "建立於",
-      "alphabetical": "按字母順序"
+      "deleteTag": "刪除標籤"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "重新命名標籤",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "建立新筆記",
-      "viewSettings": "檢視設定",
-      "displayDensity": "顯示密度",
-      "comfortable": "寬鬆",
-      "compact": "精簡",
-      "showSummaries": "顯示摘要",
       "cancel": "取消"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "開啟標籤總覽"
   },
   "tagView": {
-    "moreActions": "更多操作",
     "pin": {
       "action": "將 {count, plural, other {# 則筆記}}釘選到標籤",
       "success": "已將 {count, plural, other {# 則筆記}}釘選到標籤",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "為這個搜尋命名",
     "saveDialogPlaceholder": "例如：工作會議",
     "cancel": "取消",
-    "save": "儲存",
-    "addToFilterHint": "按住 Ctrl/Cmd 並按一下標籤，即可將它加入篩選條件"
+    "save": "儲存"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "撰寫中…",
       "writtenBy": "由 {agent} 撰寫",
       "retry": "上次執行失敗 · 重試",
-      "retryAction": "重試",
       "captionOff": "請在「設定 → AI」中開啟「摘要長筆記」",
       "captionNoAgent": "未連接代理 · 設定 → AI",
       "unknownAgent": "AI"

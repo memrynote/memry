@@ -7,11 +7,6 @@
     "backToApp": "חזרה לאפליקציה",
     "nav": {
       "groups": {
-        "account": "חשבון",
-        "application": "אפליקציה",
-        "editing": "עריכה",
-        "modules": "מודולים",
-        "services": "שירותים",
         "data": "נתונים",
         "workspace": "סביבת עבודה",
         "features": "תכונות"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "הגדרת {module}"
-    },
-    "vaultImport": {
-      "label": "ייבוא מאפליקציה אחרת",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist ועוד",
-      "action": "ייבוא…"
     },
     "search": {
       "placeholder": "חיפוש בהגדרות",
@@ -102,12 +92,8 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "startup": "הפעלה",
       "updates": "עדכונים",
       "languageRegion": "שפה ואזור",
-      "tabBehavior": "התנהגות כרטיסיות",
-      "window": "התנהגות החלון",
-      "fileCreation": "יצירת קבצים",
       "privacy": "פרטיות",
       "startupWindows": "הפעלה וחלונות",
       "newNotes": "פתקים חדשים",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "הפעלה בכניסה למערכת",
-        "description": "פתיחת memrynote בכל כניסה למערכת",
         "error": "עדכון ההפעלה בכניסה למערכת נכשל"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "בדיקת עדכונים אוטומטית",
-        "description": "בדיקת מהדורות חדשות בעת ההפעלה ומדי פעם כשהאפליקציה פתוחה.",
         "error": "עדכון הגדרת הבדיקה האוטומטית נכשל"
       },
       "autoDownload": {
         "label": "הורדת עדכונים אוטומטית",
-        "description": "הורדה והתקנה של מהדורות חדשות ברקע, ללא בקשת אישור.",
         "error": "עדכון הגדרת ההורדה האוטומטית נכשל"
       },
-      "appUpdates": "עדכוני אפליקציה",
-      "installedVersion": "גרסה מותקנת {version}",
-      "availableVersion": "גרסה זמינה {version}",
-      "unsupported": "בגרסאות ארוזות אפשר לבדוק, להוריד ולהתקין עדכונים מ-GitHub Releases",
       "available": "memrynote {version} זמין להורדה",
       "downloadingLatest": "מוריד את המהדורה האחרונה",
-      "downloadingLatestPercent": "מוריד את המהדורה האחרונה ({percent}%)",
       "downloaded": "memrynote {version} מוכן להתקנה",
-      "upToDate": "ההתקנה הזו מעודכנת למהדורה האחרונה שפורסמה",
-      "checking": "מחפש גרסה חדשה יותר ב-GitHub Releases",
-      "idle": "אפשר לבדוק אם יש מהדורות חדשות ולהתקין אותן בלי לצאת מהאפליקציה",
       "unsupportedToast": "עדכונים אוטומטיים זמינים במהדורות ארוזות בלבד",
       "upToDateToast": "memrynote {version} מעודכן",
       "actionFailed": "פעולת העדכון נכשלה",
@@ -164,17 +139,10 @@
         "downloading": "מוריד…",
         "downloadingPercent": "מוריד {percent}%",
         "downloaded": "גרסה {version} מוכנה להתקנה"
-      },
-      "mode": {
-        "label": "מצב עדכון",
-        "off": "לא לבדוק",
-        "notify": "התראה בלבד",
-        "auto": "הורדה אוטומטית"
       }
     },
     "language": {
       "label": "שפה",
-      "helper": "רוב האפליקציה מתעדכנת מיד. חלק מהטקסט ברמת המערכת — התראות שכבר הוצגו, התווית ב-Dock, שורת הכותרת של החלון — יתרענן אחרי ההפעלה הבאה.",
       "changed": "השפה שונתה ל-{nativeName}",
       "failed": "שינוי השפה נכשל. אפשר לנסות שוב."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "פורמט זמן",
-      "description": "שעון 12 שעות או 24 שעות",
       "options": {
         "12h": "12 שעות",
         "24h": "24 שעות"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "פורמט תאריך",
-      "description": "אופן הצגת התאריכים",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (ארה״ב)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "פתיחת דפים בכרטיסייה חדשה",
-        "description": "לחיצה על דף או יצירת דף — פתקים, תיקיות, פרויקטים, קנבסים, תגיות, סימניות — פותחת אותו בכרטיסייה חדשה. כשההגדרה כבויה, נעשה שימוש חוזר בכרטיסייה הנוכחית, גם במעבר לקישורים בתוך פתק; כרטיסיות מוצמדות אף פעם לא מוחלפות. \"פתיחה בכרטיסייה חדשה\", \"פתיחה בצד\" ולחיצה על גלגלת העכבר תמיד פותחות כרטיסייה חדשה."
+        "label": "פתיחת דפים בכרטיסייה חדשה"
       },
       "restoreSession": {
         "label": "שחזור כרטיסיות בהפעלה",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "כפתור סגירה בכרטיסיות",
-        "description": "מתי להציג את כפתור הסגירה",
         "options": {
           "always": "תמיד גלוי",
           "hover": "בריחוף",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "המשך פעולה בשורת התפריטים אחרי סגירה",
-        "description": "סגירת החלון מסתירה את memrynote במגש המערכת במקום לסגור אותו. לחיצה על הסמל במגש מחזירה אותו. ב-macOS האפליקציה נשארת גם ב-Dock; בשולחנות עבודה של Linux ללא מגש מערכת החלון נסגר כרגיל.",
         "error": "עדכון הגדרת המזעור למגש נכשל"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "יצירה בתוך התיקייה שנבחרה",
-        "description": "פתקים ותיקיות חדשים נוצרים בתוך התיקייה שנבחרה כעת. כשההגדרה כבויה, פריטים תמיד נוצרים בשורש הכספת."
+        "label": "יצירה בתוך התיקייה שנבחרה"
       },
       "defaultNoteFolder": {
         "label": "מיקום ברירת מחדל",
         "description": "משמש כשלא נבחרה תיקייה בסרגל הצד.",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "שליחת דוח האבחון נכשלה",
         "sendReport": {
           "label": "דוח אבחון",
-          "description": "שליחת דוח חד-פעמי של יומנים טכניים ללא פרטים מזהים, כדי לעזור לנו לאתר תקלה שנתקלת בה.",
           "button": "שליחת דוח…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "theme": "ערכת נושא",
-      "accentColor": "צבע הדגשה",
-      "typography": "טיפוגרפיה",
-      "zoom": "זום"
+      "theme": "ערכת נושא"
     },
     "theme": {
       "colorMode": {
-        "label": "מצב צבע",
-        "description": "בחירת ערכת הנושא המועדפת",
         "aria": "מצב צבע"
       },
       "options": {
         "light": "בהיר",
-        "white": "לבן",
         "dark": "כהה",
         "system": "לפי המערכת"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "הלוח לא מכיל ערכת נושא של memrynote"
     },
     "accent": {
-      "pick": "בחירת צבע הדגשה",
       "custom": {
-        "label": "צבע מותאם אישית",
-        "description": "הזנת ערך הקסדצימלי",
-        "placeholder": "#000000"
+        "label": "צבע מותאם אישית"
       },
       "presets": {
         "indigo": "אינדיגו",
@@ -348,7 +299,6 @@
         "pink": "ורוד",
         "orange": "כתום"
       },
-      "error": "עדכון צבע ההדגשה נכשל",
       "aria": "צבע הדגשה מוגדר מראש",
       "options": {
         "theme": "ערכת נושא",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "רמת זום",
-      "description": "שינוי קנה המידה של הממשק כולו",
       "decrease": "הקטנת הזום",
       "increase": "הגדלת הזום",
       "reset": "איפוס הזום לברירת המחדל",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "גודל גופן",
-        "description": "גודל הטקסט הבסיסי בממשק, בפיקסלים",
         "decrease": "הקטנת גודל הגופן",
         "increase": "הגדלת גודל הגופן",
         "reset": "איפוס גודל הגופן לברירת המחדל"
       },
       "fontFamily": {
         "label": "משפחת גופנים",
-        "description": "גופן ראשי עבור הממשק",
         "options": {
           "system": "ברירת המחדל של המערכת",
           "sansSerif": "סנסריף",
@@ -428,13 +373,9 @@
       "fontFamilyError": "עדכון משפחת הגופנים נכשל"
     },
     "v2": {
-      "groups": {
-        "text": "טקסט וזום"
-      },
       "colorMode": "מצב צבע",
       "colorTheme": "ערכת נושא",
       "accent": "צבע הדגשה",
-      "customColor": "צבע מותאם אישית",
       "fontFamily": "משפחת גופנים",
       "fontSize": "גודל גופן",
       "zoom": "זום"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "פריסה",
-      "toolbar": "סרגל כלים",
       "spelling": "איות",
       "checklists": "רשימות סימון",
       "attachments": "קבצים מצורפים",
@@ -473,7 +413,6 @@
       "error": "עדכון סוגי ההדגשות נכשל"
     },
     "width": {
-      "label": "רוחב העורך",
       "description": "חל על כל פתק ועל כל דף ביומן",
       "options": {
         "normal": "רגיל",
@@ -482,12 +421,10 @@
       "error": "עדכון רוחב העורך נכשל"
     },
     "toolbarMode": {
-      "label": "סרגל עיצוב קבוע",
       "description": "הצגת סרגל הכלים תמיד מעל העורך",
       "error": "עדכון מצב סרגל הכלים נכשל"
     },
     "spellCheck": {
-      "label": "בדיקת איות",
       "description": "סימון מילים עם שגיאות כתיב בקו תחתון, בפתקים וביומן",
       "error": "עדכון בדיקת האיות נכשל"
     },
@@ -522,14 +459,12 @@
       "subtitle": "ניהול תבניות פתקים ליצירה מהירה"
     },
     "actions": {
-      "new": "תבנית חדשה",
       "edit": "עריכה",
       "duplicate": "שכפול",
       "delete": "מחיקה"
     },
     "groups": {
-      "builtIn": "מובנות",
-      "myTemplates": "התבניות שלי"
+      "builtIn": "מובנות"
     },
     "loading": "טוען תבניות…",
     "newTemplateTitle": "תבנית חדשה",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "עדיין אין תבניות מותאמות אישית",
       "description": "כדי להתחיל, אפשר ליצור תבנית"
-    },
-    "preview": {
-      "notFound": "לא ניתן היה לטעון תבנית זו."
     },
     "toasts": {
       "deleted": "התבנית נמחקה",
@@ -572,11 +504,7 @@
       "loading": "טוען הגדרות…"
     },
     "groups": {
-      "defaultTemplate": "תבנית ברירת מחדל",
-      "location": "מיקום ופורמט",
-      "sidebarVisibility": "נראות בסרגל הצד",
-      "footer": "כותרת תחתונה",
-      "weekdayTemplates": "תבניות לפי יום"
+      "footer": "כותרת תחתונה"
     },
     "template": {
       "label": "תבנית",
@@ -588,18 +516,6 @@
       "updated": "תבנית ברירת המחדל עודכנה",
       "cleared": "תבנית ברירת המחדל הוסרה",
       "error": "עדכון תבנית ברירת המחדל נכשל"
-    },
-    "showSchedule": {
-      "label": "הצגת לוח הזמנים",
-      "description": "הצגת האירועים ולוח השנה של היום"
-    },
-    "showTasks": {
-      "label": "הצגת משימות",
-      "description": "הצגת משימות שתאריך היעד שלהן ביום שנבחר"
-    },
-    "showAIConnections": {
-      "label": "הצגת חיבורי AI",
-      "description": "הצגת חיבורים מבוססי AI לרשומות קשורות"
     },
     "showStatsFooter": {
       "label": "הצגת סטטיסטיקות בתחתית",
@@ -632,7 +548,6 @@
       "inheritWith": "ברירת מחדל · {name}",
       "inheritNone": "ברירת מחדל · ללא",
       "missing": "תבנית שנמחקה",
-      "clear": "ניקוי",
       "updated": "התבנית עבור {day} עודכנה",
       "cleared": "התבנית עבור {day} הוסרה",
       "error": "עדכון התבנית עבור {day} נכשל",
@@ -751,11 +666,6 @@
       "subtitle": "הגדרת ההתנהגות של תאי היום בחלונית היום",
       "loading": "טוען הגדרות…"
     },
-    "groups": {
-      "weekStart": "שבוע",
-      "dayCellClick": "לחיצה על תא יום",
-      "notes": "פתקים"
-    },
     "weekStart": {
       "label": "השבוע מתחיל ביום",
       "description": "היום הראשון של השבוע בכל לוחות השנה",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "חיבור מחדש ל-Google",
       "addAccount": "הוספת חשבון",
-      "importedCalendars": "לוחות שנה מיובאים",
-      "selected": "נבחרו: {count}",
       "syncNow": "סנכרון עכשיו",
       "disconnect": "ניתוק",
       "reconnect": "חיבור מחדש ל-Google",
@@ -1025,10 +933,8 @@
       "loading": "טוען…"
     },
     "groups": {
-      "identity": "זהות",
       "sync": "סנכרון",
       "billing": "חיוב",
-      "storage": "אחסון",
       "devices": "מכשירים"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "התנתקות",
         "description": "ניתוק המכשיר הזה מהסנכרון",
         "action": "התנתקות"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "חיפוש התמונות כובה"
     },
     "unknownError": "שגיאה לא ידועה",
-    "groups": {
-      "voice": "תמלול קולי",
-      "embeddingModel": "מודל הטמעה מקומי",
-      "embeddingIndex": "אינדקס וקטורי ההטמעה",
-      "inline": "עריכת AI בתוך הטקסט"
-    },
     "voice": {
-      "provider": "ספק",
       "providerDescription": "ספק דיבור לטקסט עבור תזכירים קוליים",
-      "providers": {
-        "local": "מקומי (ברירת מחדל)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "שמות תזכירים",
       "memoNameModeDescription": "כיצד תזכירים קוליים מקבלים שם לאחר תמלול",
       "naming": {
         "transcript": "כותרת תמלול",
@@ -1432,8 +1325,6 @@
       "languageDescription": "השפה שבה אתה מדבר בתזכורות קוליות",
       "languageDefault": "ברירת מחדל",
       "languageError": "עדכון שפת התמלול נכשל",
-      "localModel": "מודל מקומי",
-      "localModelDescription": "Whisper Small יורד לפי דרישה ונשמר במטמון מקומי",
       "status": {
         "ready": "מוכן",
         "downloading": "מוריד",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "טעון",
       "loading": "טוען",
-      "cacheHint": "~210MB · נשמר במטמון מקומי · הכול במכשיר",
-      "dimensions": "ממדים",
-      "embeddings": "וקטורי הטמעה",
       "downloadLoad": "הורדה וטעינה של המודל",
       "downloadingModel": "מוריד מודל…",
       "loadingModel": "טוען מודל…",
       "loadSuccess": "המודל נטען בהצלחה",
       "loadFailed": "טעינת המודל נכשלה",
       "rebuildIndex": "בניית אינדקס מחדש",
-      "rebuildDescription": "יצירה מחדש של וקטורי ההטמעה לכל הפתקים",
-      "rebuild": "בנייה מחדש",
       "scanning": "סורק פתקים…",
       "generating": "יוצר וקטורי הטמעה…",
       "complete": "הושלם!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "טוען…",
-      "title": "עריכת AI בתוך הטקסט",
-      "enable": "הפעלת AI בתוך הטקסט",
       "enableDescription": "הצגת תפריט AI בעת עריכת פתקים",
       "enabled": "עריכת AI בתוך הטקסט הופעלה",
       "disabled": "עריכת AI בתוך הטקסט הושבתה",
       "provider": "ספק",
-      "providerDescription": "שירות AI לפעולות טקסט",
       "providers": {
         "ollama": "Ollama (מקומי)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "פעיל ביציאה {port}",
       "notConnected": "לא מחובר",
       "test": "בדיקה",
-      "stopFailed": "עצירת השרת הקיים נכשלה",
       "connected": "החיבור הצליח! השרת פועל ביציאה {port}",
       "connectFailed": "החיבור נכשל",
       "testFailed": "בדיקת החיבור נכשלה",
@@ -1566,8 +1448,6 @@
       "onenote": "ייבוא מחברות OneNote (נדרש חשבון Microsoft)",
       "readwise": "ייבוא ההדגשות שלך מ-Readwise (נדרש אסימון גישה)"
     },
-    "action": "ייבוא",
-    "select": "בחירת אפליקציה לייבוא ממנה…",
     "stats": {
       "notes": "{count, plural, one {פתק אחד} other {# פתקים}}",
       "projects": "{count, plural, one {פרויקט אחד} other {# פרויקטים}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "בחירת תיקיית Apple Notes…",
       "chooseDirectory": "בחירת תיקייה…",
       "folderKeepsAssets": "יש לבחור את התיקייה כשהתמונות נמצאות מחוץ לתיקייה של הפתקים עצמם — בייצוא, המדיה נשמרת לרוב בתיקייה משותפת.",
-      "chooseHint": "בחירת {label}",
       "folderHint": "יש ללחוץ למטה ולבחור את התיקייה \"group.com.apple.notes\" כשהבורר נפתח (הוא נפתח בה). כך Memry יכול לקרוא את הפתקים והקבצים המצורפים שלך — בלי צורך בגישה מלאה לדיסק.",
       "noteplanFolderHint": "יש לבחור את תיקיית NotePlan — תיקיית הנתונים של האפליקציה או אחד מעותקי הגיבוי שלה (Backups). Memry קורא את התיקיות Calendar, Notes ו-@Archive שבתוכה.",
       "selected": "{count, plural, one {נבחר קובץ אחד} other {נבחרו # קבצים}}",
       "start": "התחלת הייבוא",
       "cancel": "ביטול",
-      "close": "סגירה",
       "done": "סיום",
       "running": "מייבא…",
       "progress": "{completed} מתוך {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "מתחבר…",
         "connectFailed": "לא ניתן להתחבר ל-Readwise",
         "takeOver": {
-          "syncsOn": "Readwise מסתנכרן ב-{device}.",
-          "syncsOnAnother": "Readwise מסתנכרן במכשיר אחר.",
           "explain": "רק מכשיר אחד מושך מ-Readwise, כך שאותה הדגשה לא נכתבת פעמיים. כדי למשוך מהמכשיר הזה במקום, יש להדביק שוב את האסימון: הוא לא עובר בין מכשירים. המכשיר השני נעצר בספר הבא שלו, וכל הפתקים נשארים.",
           "button": "סנכרון כאן במקום",
           "working": "מעביר את Readwise לכאן…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "חיפוש אפליקציה או סוג קובץ…",
       "noMatch": "אין מקורות שתואמים ל-\"{query}\"",
       "formatAccount": "חשבון",
-      "showMore": "{count, plural, one {הצגת עוד אחד} other {הצגת עוד #}}",
-      "showLess": "הצגת פחות",
       "groups": {
         "reading": "קריאה",
         "noteApps": "אפליקציות פתקים",
@@ -1968,8 +1842,6 @@
       "subtitle": "תצורה ואחסון של הכספת"
     },
     "groups": {
-      "storageUsage": "שימוש באחסון",
-      "location": "מיקום",
       "accountVaults": "כספות בחשבון שלך",
       "largeNotes": "פתקים שקרובים למגבלת הסנכרון",
       "activity": "פעילות"
@@ -2229,8 +2101,6 @@
       "loading": "טוען הגדרות…"
     },
     "searchPlaceholder": "חיפוש קיצורי מקלדת…",
-    "resetAll": "איפוס הכול",
-    "custom": "מותאם אישית",
     "pressShortcut": "הקשת צירוף המקשים…",
     "cancelTitle": "ביטול",
     "rebindTitle": "לחיצה להקצאה מחדש",
@@ -2241,7 +2111,6 @@
     "noMatch": "אין קיצורי מקלדת שתואמים לחיפוש שלך",
     "conflict": "מתנגש עם: {labels}",
     "globalCapture": {
-      "title": "לכידה מכל מקום",
       "description": "לכידת פתק מכל מקום",
       "active": "פעיל",
       "inUse": "{shortcut} נמצא בשימוש של אפליקציה אחרת. יש לבחור צירוף אחר.",
@@ -2458,7 +2327,6 @@
       "systemWide": "בכל המערכת",
       "globalCapture": "לכידה מכל מקום",
       "recordingHint": "הקשת מקשים… esc לביטול",
-      "reset": "איפוס",
       "resetAll": "איפוס הכול לברירות המחדל",
       "sticky": "פתק דביק"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "השליחה מחדש של הקוד נכשלה",
       "failedToSetUpDevice": "הגדרת המכשיר נכשלה",
       "failedToConfirmRecoveryPhrase": "אימות ביטוי השחזור נכשל",
-      "failedToAnalyzeContent": "ניתוח התוכן נכשל",
       "failedToLoadUpdaterState": "טעינת מצב העדכון נכשלה",
       "failedToCheckForUpdates": "בדיקת העדכונים נכשלה",
       "failedToDownloadUpdate": "הורדת העדכון נכשלה",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "טעינת הגדרות עורך הפתקים נכשלה",
       "failedToUpdateSettings": "עדכון ההגדרות נכשל",
       "failedToLoadTabSettings": "טעינת הגדרות הכרטיסיות נכשלה",
-      "failedToLoadNotes": "טעינת הפתקים נכשלה",
       "failedToLoadTags": "טעינת התגיות נכשלה",
-      "failedToLoadTasks": "טעינת המשימות נכשלה",
       "failedToLoadVaultStatus": "טעינת מצב הכספת נכשלה",
       "failedToSelectVault": "בחירת הכספת נכשלה",
       "failedToCloseVault": "סגירת הכספת נכשלה",
@@ -2565,18 +2430,12 @@
       "title": "MCP לסוכנים",
       "subtitle": "גישת שרת מקומי עבור לקוחות MCP חיצוניים."
     },
-    "groups": {
-      "connection": "חיבור",
-      "access": "גישה"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "אפשר להשתמש בנקודת הקצה המקומית הזו מתוך Cursor, Claude Desktop או Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "אסימון Bearer",
-        "description": "פרטי גישה בזיכרון, לאורך הפעלה זו של האפליקציה."
+        "label": "אסימון Bearer"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "הרשאות הסוכן",
       "subtitle": "בחירת גישת ברירת המחדל, האישורים והספקים המקומיים עבור צ׳אט הסוכן."
     },
-    "groups": {
-      "cliAgents": "סוכני CLI",
-      "local": "ספק מקומי תואם OpenAI",
-      "actions": "בדיקות חיבור"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "הרשאות הסוכן",
       "access": {
-        "label": "גישת ברירת מחדל",
         "description": "קובע את מצב הגישה ההתחלתי בכל פנייה חדשה לסוכן.",
         "vaultOnly": "כספת בלבד",
         "computerAccess": "גישה למחשב",
         "builtInNote": "חיבור המודל המובנה פועל תמיד עם כלי הכספת בלבד."
       },
       "confirm": {
-        "label": "אישור פעולות",
         "description": "בחירה אם קריאות לכלים יפעלו אוטומטית או ימתינו לאישור בצ׳אט. פתקים ותיקיות נעולים נשארים לקריאה בלבד בשני המצבים.",
         "alwaysAllow": "לאפשר תמיד",
         "askBeforeChanges": "לשאול לפני שינויים"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "שמירה",
-      "models": "מודלים",
-      "test": "בדיקת החיבור",
-      "probe": "בדיקת הכלים"
+      "test": "בדיקת החיבור"
     },
     "status": {
       "label": "חיבור",
       "checking": "בודק…",
       "connected": "מחובר",
-      "disconnected": "מנותק",
-      "toolsDisabled": "כלים מושבתים",
-      "fullTools": "כל הכלים מופעלים"
+      "disconnected": "מנותק"
     },
     "alwaysAllowed": {
-      "group": "מותרים תמיד",
       "description": "כלים שנתת להם אישור קבוע בכספת הזו. אי אפשר לתת אישור קבוע למחיקות.",
       "empty": "אין כלים שמותרים תמיד. כל שינוי עדיין דורש אישור.",
       "revoke": "ביטול",

@@ -7,11 +7,6 @@
     "backToApp": "アプリに戻る",
     "nav": {
       "groups": {
-        "account": "アカウント",
-        "application": "アプリケーション",
-        "editing": "編集",
-        "modules": "モジュール",
-        "services": "サービス",
         "data": "データ",
         "workspace": "ワークスペース",
         "features": "機能"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "{module} を設定"
-    },
-    "vaultImport": {
-      "label": "他のアプリからインポート",
-      "description": "Notion、Evernote、Bear、Apple Notes、Todoist など",
-      "action": "インポート…"
     },
     "search": {
       "placeholder": "設定を検索",
@@ -102,12 +92,8 @@
       "loading": "設定を読み込み中…"
     },
     "groups": {
-      "startup": "スタートアップ",
       "updates": "アップデート",
       "languageRegion": "言語と地域",
-      "tabBehavior": "タブの動作",
-      "window": "ウィンドウの動作",
-      "fileCreation": "ファイルの作成",
       "privacy": "プライバシー",
       "startupWindows": "起動とウィンドウ",
       "newNotes": "新規ノート",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "ログイン時に起動",
-        "description": "ログイン時に memrynote を起動します",
         "error": "ログイン時の起動設定を更新できませんでした"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "アップデートを自動的に確認",
-        "description": "起動時と、アプリを開いている間は定期的に、新しいリリースを確認します。",
         "error": "自動確認の設定を更新できませんでした"
       },
       "autoDownload": {
         "label": "アップデートを自動的にダウンロード",
-        "description": "確認なしで、新しいリリースをバックグラウンドでダウンロードしてインストールします。",
         "error": "自動ダウンロードの設定を更新できませんでした"
       },
-      "appUpdates": "アプリのアップデート",
-      "installedVersion": "インストールされているバージョン {version}",
-      "availableVersion": "利用可能なバージョン {version}",
-      "unsupported": "パッケージ化されたビルドは、GitHub リリースからアップデートを確認、ダウンロード、インストールできます",
       "available": "memrynote {version} をダウンロードできます",
       "downloadingLatest": "最新リリースをダウンロード中",
-      "downloadingLatestPercent": "最新リリースをダウンロード中（{percent}%）",
       "downloaded": "memrynote {version} をインストールする準備ができました",
-      "upToDate": "最新の公開リリースがインストールされています",
-      "checking": "GitHub リリースで新しいバージョンを確認中",
-      "idle": "新しいリリースを確認し、アプリを終了せずにインストールします",
       "unsupportedToast": "自動更新はパッケージ化されたリリースでのみ利用可能です",
       "upToDateToast": "memrynote {version} は最新です",
       "actionFailed": "アップデートを実行できませんでした",
@@ -164,17 +139,10 @@
         "downloading": "ダウンロード中…",
         "downloadingPercent": "ダウンロード中（{percent}%）",
         "downloaded": "バージョン {version} のインストール準備ができました"
-      },
-      "mode": {
-        "label": "アップデート方法",
-        "off": "確認しない",
-        "notify": "通知のみ",
-        "auto": "自動的にダウンロード"
       }
     },
     "language": {
       "label": "言語",
-      "helper": "アプリの大部分はすぐに切り替わります。一部のシステムレベルのテキスト（表示済みの通知、Dock のラベル、ウィンドウのタイトルバー）は、次回の起動後に更新されます。",
       "changed": "言語を {nativeName} に変更しました",
       "failed": "言語を変更できませんでした。もう一度お試しください。"
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "時刻の形式",
-      "description": "12 時間制または 24 時間制",
       "options": {
         "12h": "12 時間制",
         "24h": "24 時間制"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "日付の形式",
-      "description": "カレンダーの日付の表示方法",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY（US）",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "ページを新しいタブで開く",
-        "description": "ページ（ノート、フォルダー、プロジェクト、キャンバス、タグ、ブックマーク）をクリックまたは作成すると、新しいタブで開きます。オフの場合は、ノート内のリンクをたどるときも含めて現在のタブを再利用します。ピン留めしたタブが置き換えられることはありません。「新しいタブで開く」「横に並べて開く」と中クリックでは常に新しいタブで開きます。"
+        "label": "ページを新しいタブで開く"
       },
       "restoreSession": {
         "label": "起動時にタブを復元",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "タブを閉じるボタン",
-        "description": "閉じるボタンを表示するタイミング",
         "options": {
           "always": "常に表示",
           "hover": "ホバー時に表示",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "閉じてもメニューバーに常駐",
-        "description": "ウィンドウを閉じると、memrynote は終了せずにシステムトレイに隠れます。トレイアイコンをクリックすると再表示されます。macOS ではアプリは Dock にも残ります。システムトレイのない Linux デスクトップでは、通常どおりウィンドウが閉じます。",
         "error": "トレイへの最小化の設定を更新できませんでした"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "選択したフォルダーに作成",
-        "description": "新しいノートとフォルダーを、現在選択しているフォルダー内に作成します。オフの場合、項目は常にルートに作成されます。"
+        "label": "選択したフォルダーに作成"
       },
       "defaultNoteFolder": {
         "label": "新しいノートのデフォルトの場所",
         "description": "サイドバーでフォルダーが選択されていないときに使用します。",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "診断レポートを送信できませんでした",
         "sendReport": {
           "label": "診断レポート",
-          "description": "発生した問題の調査に役立てるため、伏せ字処理された技術ログを 1 回だけ送信します。",
           "button": "レポートを送信…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "設定を読み込み中…"
     },
     "groups": {
-      "theme": "テーマ",
-      "accentColor": "アクセントカラー",
-      "typography": "タイポグラフィー",
-      "zoom": "ズーム"
+      "theme": "テーマ"
     },
     "theme": {
       "colorMode": {
-        "label": "カラーモード",
-        "description": "好みのテーマを選択してください",
         "aria": "カラーモード"
       },
       "options": {
         "light": "ライト",
-        "white": "ホワイト",
         "dark": "ダーク",
         "system": "システム"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "クリップボードに memrynote のテーマがありません"
     },
     "accent": {
-      "pick": "アクセントカラーを選ぶ",
       "custom": {
-        "label": "カスタムカラー",
-        "description": "16 進数値を入力してください",
-        "placeholder": "#000000"
+        "label": "カスタムカラー"
       },
       "presets": {
         "indigo": "インディゴ",
@@ -348,7 +299,6 @@
         "pink": "ピンク",
         "orange": "オレンジ"
       },
-      "error": "アクセントカラーを更新できませんでした",
       "aria": "アクセントカラーのプリセット",
       "options": {
         "theme": "テーマ",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "ズームレベル",
-      "description": "インターフェイス全体を拡大・縮小します",
       "decrease": "ズームアウト",
       "increase": "ズームイン",
       "reset": "ズームをデフォルトに戻す",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "フォントサイズ",
-        "description": "インターフェイスの基本テキストサイズ（ピクセル）",
         "decrease": "フォントサイズを縮小",
         "increase": "フォントサイズを拡大",
         "reset": "フォントサイズをデフォルトに戻す"
       },
       "fontFamily": {
         "label": "フォントファミリー",
-        "description": "インターフェイスの主な書体",
         "options": {
           "system": "システムのデフォルト",
           "sansSerif": "サンセリフ",
@@ -428,13 +373,9 @@
       "fontFamilyError": "フォントファミリーを更新できませんでした"
     },
     "v2": {
-      "groups": {
-        "text": "テキストとズーム"
-      },
       "colorMode": "カラーモード",
       "colorTheme": "テーマ",
       "accent": "アクセントカラー",
-      "customColor": "カスタムカラー",
       "fontFamily": "フォントファミリー",
       "fontSize": "フォントサイズ",
       "zoom": "ズーム"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "レイアウト",
-      "toolbar": "ツールバー",
       "spelling": "スペルチェック",
       "checklists": "チェックリスト",
       "attachments": "添付ファイル",
@@ -473,7 +413,6 @@
       "error": "コールアウトの種類を更新できませんでした"
     },
     "width": {
-      "label": "エディターの幅",
       "description": "すべてのノートとジャーナルのページに適用されます",
       "options": {
         "normal": "標準",
@@ -482,12 +421,10 @@
       "error": "エディターの幅を更新できませんでした"
     },
     "toolbarMode": {
-      "label": "書式ツールバーを常に表示",
       "description": "ツールバーを常にエディターの上に表示します",
       "error": "ツールバーモードを更新できませんでした"
     },
     "spellCheck": {
-      "label": "スペルをチェック",
       "description": "ノートやジャーナルのスペルミスに下線を表示します",
       "error": "スペルチェックの設定を更新できませんでした"
     },
@@ -522,14 +459,12 @@
       "subtitle": "ノートをすばやく作成するためのテンプレートを管理します"
     },
     "actions": {
-      "new": "新しいテンプレート",
       "edit": "編集",
       "duplicate": "複製",
       "delete": "削除"
     },
     "groups": {
-      "builtIn": "組み込み",
-      "myTemplates": "マイテンプレート"
+      "builtIn": "組み込み"
     },
     "loading": "テンプレートを読み込み中…",
     "newTemplateTitle": "新しいテンプレート",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "カスタムテンプレートはまだありません",
       "description": "始めるにはテンプレートを作成してください"
-    },
-    "preview": {
-      "notFound": "このテンプレートを読み込めませんでした。"
     },
     "toasts": {
       "deleted": "テンプレートを削除しました",
@@ -572,11 +504,7 @@
       "loading": "設定を読み込み中…"
     },
     "groups": {
-      "defaultTemplate": "デフォルトのテンプレート",
-      "location": "場所と形式",
-      "sidebarVisibility": "サイドバーの表示",
-      "footer": "フッター",
-      "weekdayTemplates": "曜日ごとのテンプレート"
+      "footer": "フッター"
     },
     "template": {
       "label": "テンプレート",
@@ -588,18 +516,6 @@
       "updated": "デフォルトのテンプレートを更新しました",
       "cleared": "デフォルトのテンプレートをクリアしました",
       "error": "デフォルトのテンプレートを更新できませんでした"
-    },
-    "showSchedule": {
-      "label": "スケジュールを表示",
-      "description": "今日の予定とカレンダーを表示します"
-    },
-    "showTasks": {
-      "label": "タスクを表示",
-      "description": "選択した日が期限のタスクを表示します"
-    },
-    "showAIConnections": {
-      "label": "AI によるつながりを表示",
-      "description": "関連するジャーナルへの AI によるつながりを表示します"
     },
     "showStatsFooter": {
       "label": "統計フッターを表示",
@@ -632,7 +548,6 @@
       "inheritWith": "デフォルト · {name}",
       "inheritNone": "デフォルト · なし",
       "missing": "削除されたテンプレート",
-      "clear": "クリア",
       "updated": "{day} のテンプレートを更新しました",
       "cleared": "{day} のテンプレートをクリアしました",
       "error": "{day} のテンプレートを更新できませんでした",
@@ -751,11 +666,6 @@
       "subtitle": "デイパネルの日付セルの動作を設定",
       "loading": "設定を読み込み中…"
     },
-    "groups": {
-      "weekStart": "週",
-      "dayCellClick": "日付セルのクリック",
-      "notes": "ノート"
-    },
     "weekStart": {
       "label": "週の始まり",
       "description": "すべてのカレンダーでの週の最初の曜日",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Google に再接続",
       "addAccount": "アカウントを追加",
-      "importedCalendars": "インポートされたカレンダー",
-      "selected": "{count} 件を選択中",
       "syncNow": "今すぐ同期",
       "disconnect": "切断",
       "reconnect": "Google に再接続",
@@ -1025,10 +933,8 @@
       "loading": "読み込み中…"
     },
     "groups": {
-      "identity": "アイデンティティ",
       "sync": "同期",
       "billing": "請求",
-      "storage": "ストレージ",
       "devices": "デバイス"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "サインアウト",
         "description": "このデバイスを同期から切断します",
         "action": "サインアウト"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "画像検索をオフにしました"
     },
     "unknownError": "不明なエラー",
-    "groups": {
-      "voice": "音声文字起こし",
-      "embeddingModel": "ローカル埋め込みモデル",
-      "embeddingIndex": "埋め込みインデックス",
-      "inline": "インライン AI 編集"
-    },
     "voice": {
-      "provider": "プロバイダー",
       "providerDescription": "ボイスメモ用の音声認識プロバイダー",
-      "providers": {
-        "local": "ローカル（デフォルト）",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "ボイスメモの名前",
       "memoNameModeDescription": "文字起こし後のボイスメモの命名方法",
       "naming": {
         "transcript": "文字起こしのタイトル",
@@ -1432,8 +1325,6 @@
       "languageDescription": "ボイスメモで話す言語",
       "languageDefault": "デフォルト",
       "languageError": "文字起こしの言語を更新できませんでした",
-      "localModel": "ローカルモデル",
-      "localModelDescription": "Whisper Small は必要なときにダウンロードされ、ローカルにキャッシュされます",
       "status": {
         "ready": "準備完了",
         "downloading": "ダウンロード中",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "読み込み済み",
       "loading": "読み込み中",
-      "cacheHint": "約 210MB · ローカルにキャッシュ · すべてデバイス上で処理",
-      "dimensions": "次元数",
-      "embeddings": "埋め込み",
       "downloadLoad": "モデルをダウンロードして読み込む",
       "downloadingModel": "モデルをダウンロード中…",
       "loadingModel": "モデルを読み込み中…",
       "loadSuccess": "モデルを読み込みました",
       "loadFailed": "モデルを読み込めませんでした",
       "rebuildIndex": "インデックスの再構築",
-      "rebuildDescription": "すべてのノートの埋め込みを再生成します",
-      "rebuild": "再構築",
       "scanning": "ノートをスキャン中…",
       "generating": "埋め込みを生成中…",
       "complete": "完了しました",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "読み込み中…",
-      "title": "インライン AI 編集",
-      "enable": "インライン AI を有効化",
       "enableDescription": "ノートの編集時に AI メニューを表示します",
       "enabled": "インライン AI 編集を有効にしました",
       "disabled": "インライン AI 編集を無効にしました",
       "provider": "プロバイダー",
-      "providerDescription": "テキスト操作用の AI サービス",
       "providers": {
         "ollama": "Ollama（ローカル）",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "ポート {port} でアクティブです",
       "notConnected": "接続されていません",
       "test": "テスト",
-      "stopFailed": "既存のサーバーを停止できませんでした",
       "connected": "接続しました。サーバーはポート {port} で実行中です",
       "connectFailed": "接続できませんでした",
       "testFailed": "接続を確認できませんでした",
@@ -1566,8 +1448,6 @@
       "onenote": "OneNote のノートブックをインポート（Microsoft アカウントが必要）",
       "readwise": "Readwise からハイライトをインポートします（アクセストークンが必要です）"
     },
-    "action": "インポート",
-    "select": "インポート元のアプリを選択…",
     "stats": {
       "notes": "{count, plural, other {# 件のノート}}",
       "projects": "{count, plural, other {# 件のプロジェクト}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Apple Notes のフォルダーを選択…",
       "chooseDirectory": "フォルダーを選択…",
       "folderKeepsAssets": "画像がノート自体のフォルダーの外にある場合は、フォルダーを選択してください。エクスポートでは、メディアが共有フォルダーにまとめられていることがよくあります。",
-      "chooseHint": "{label} を選択してください",
       "folderHint": "下をクリックし、ピッカーが開いたら「group.com.apple.notes」フォルダーを選択してください（最初からそこが開きます）。これで Memry がノートと添付ファイルを読み取れます。フルディスクアクセスは不要です。",
       "noteplanFolderHint": "NotePlan のフォルダーを選択してください（アプリのデータフォルダー、またはその Backups 内のコピーのいずれか）。Memry はその中の Calendar、Notes、@Archive フォルダーを読み取ります。",
       "selected": "{count, plural, other {# 件のファイルを選択中}}",
       "start": "インポートを開始",
       "cancel": "キャンセル",
-      "close": "閉じる",
       "done": "完了",
       "running": "インポート中…",
       "progress": "{total} 件中 {completed} 件",
@@ -1660,8 +1538,6 @@
         "connecting": "接続中…",
         "connectFailed": "Readwise に接続できませんでした",
         "takeOver": {
-          "syncsOn": "Readwise は {device} で同期されます。",
-          "syncsOnAnother": "Readwise は別のデバイスで同期されます。",
           "explain": "Readwise から取得するのは 1 台のデバイスだけなので、同じハイライトが二重に書き込まれることはありません。代わりにこのデバイスから取得するには、トークンをもう一度貼り付けてください。トークンがデバイス間で送られることはありません。もう一方のデバイスは次の本で停止し、ノートはすべて残ります。",
           "button": "代わりにここで同期",
           "working": "Readwise をここに移動中…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "アプリまたはファイル形式を検索…",
       "noMatch": "「{query}」に一致するインポート元はありません",
       "formatAccount": "アカウント",
-      "showMore": "{count, plural, other {さらに # 件表示}}",
-      "showLess": "表示を減らす",
       "groups": {
         "reading": "読書",
         "noteApps": "ノートアプリ",
@@ -1968,8 +1842,6 @@
       "subtitle": "保管庫の設定とストレージ"
     },
     "groups": {
-      "storageUsage": "ストレージの使用量",
-      "location": "場所",
       "accountVaults": "アカウント内の保管庫",
       "largeNotes": "同期の上限に近いノート",
       "activity": "アクティビティ"
@@ -2229,8 +2101,6 @@
       "loading": "設定を読み込み中…"
     },
     "searchPlaceholder": "ショートカットを検索…",
-    "resetAll": "すべてリセット",
-    "custom": "カスタム",
     "pressShortcut": "キーを押してください…",
     "cancelTitle": "キャンセル",
     "rebindTitle": "クリックして割り当てを変更",
@@ -2241,7 +2111,6 @@
     "noMatch": "検索に一致するショートカットはありません",
     "conflict": "競合：{labels}",
     "globalCapture": {
-      "title": "グローバルキャプチャ",
       "description": "どこからでもノートをキャプチャ",
       "active": "アクティブ",
       "inUse": "{shortcut} は他のアプリで使用されています。別の組み合わせを選んでください。",
@@ -2458,7 +2327,6 @@
       "systemWide": "システム全体",
       "globalCapture": "グローバルキャプチャ",
       "recordingHint": "キーを押してください… esc でキャンセル",
-      "reset": "リセット",
       "resetAll": "すべてデフォルトに戻す",
       "sticky": "付箋"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "コードを再送信できませんでした",
       "failedToSetUpDevice": "デバイスをセットアップできませんでした",
       "failedToConfirmRecoveryPhrase": "リカバリーフレーズを確認できませんでした",
-      "failedToAnalyzeContent": "コンテンツを分析できませんでした",
       "failedToLoadUpdaterState": "アップデーターの状態を読み込めませんでした",
       "failedToCheckForUpdates": "アップデートを確認できませんでした",
       "failedToDownloadUpdate": "アップデートをダウンロードできませんでした",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "ノートエディターの設定を読み込めませんでした",
       "failedToUpdateSettings": "設定を更新できませんでした",
       "failedToLoadTabSettings": "タブの設定を読み込めませんでした",
-      "failedToLoadNotes": "ノートを読み込めませんでした",
       "failedToLoadTags": "タグを読み込めませんでした",
-      "failedToLoadTasks": "タスクを読み込めませんでした",
       "failedToLoadVaultStatus": "保管庫の状態を読み込めませんでした",
       "failedToSelectVault": "保管庫を選択できませんでした",
       "failedToCloseVault": "保管庫を閉じられませんでした",
@@ -2565,18 +2430,12 @@
       "title": "エージェント MCP",
       "subtitle": "外部の MCP クライアント向けのローカルサーバーアクセス。"
     },
-    "groups": {
-      "connection": "接続",
-      "access": "アクセス"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Cursor、Claude Desktop、Zed からこの localhost エンドポイントを使用します。"
+        "label": "URL"
       },
       "bearer": {
-        "label": "Bearer トークン",
-        "description": "このアプリの起動中だけメモリ上に保持される認証情報。"
+        "label": "Bearer トークン"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "エージェントの権限",
       "subtitle": "エージェントチャットのデフォルトのアクセス、確認方法、ローカルプロバイダーを選択します。"
     },
-    "groups": {
-      "cliAgents": "CLI エージェント",
-      "local": "ローカルの OpenAI 互換プロバイダー",
-      "actions": "接続の確認"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "エージェントの権限",
       "access": {
-        "label": "デフォルトのアクセス",
         "description": "新しいエージェントのターンで最初に使うアクセスモードを設定します。",
         "vaultOnly": "保管庫のみ",
         "computerAccess": "コンピューターへのアクセス",
         "builtInNote": "内蔵モデル接続では常に保管庫ツールのみを使用します。"
       },
       "confirm": {
-        "label": "操作の確認",
         "description": "ツール呼び出しを自動的に実行するか、チャットで承認を待つかを選択します。ロックしたノートとフォルダは、どちらのモードでも読み取り専用のままです。",
         "alwaysAllow": "常に許可",
         "askBeforeChanges": "変更前に確認"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "保存",
-      "models": "モデルを取得",
-      "test": "接続をテスト",
-      "probe": "ツールを検出"
+      "test": "接続をテスト"
     },
     "status": {
       "label": "接続",
       "checking": "確認中…",
       "connected": "接続済み",
-      "disconnected": "未接続",
-      "toolsDisabled": "ツールは無効",
-      "fullTools": "すべてのツールが有効"
+      "disconnected": "未接続"
     },
     "alwaysAllowed": {
-      "group": "常に許可",
       "description": "この保管庫で常時承認したツールです。削除操作は常時承認できません。",
       "empty": "常に許可されている項目はありません。変更のたびに確認します。",
       "revoke": "取り消し",

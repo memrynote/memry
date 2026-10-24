@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Nie je prihlásený žiadny účet",
-    "sessionExpired": "Relácia vypršala. Prihláste sa znova.",
     "setupSessionExpired": "Prihlásenie vypršalo skôr, ako sa to dokončilo. Prihláste sa znova a potom zadajte obnovovaciu frázu.",
     "setupSessionExpiredLinking": "Prihlásenie vypršalo skôr, ako sa dokončilo prepojenie tohto zariadenia. Prihláste sa znova a potom znova naskenujte kód.",
     "invalidRecoveryPhraseFormat": "Neplatný formát obnovovacej frázy",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Nepodarilo sa načítať model",
     "voiceModelDownloadFailed": "Nepodarilo sa stiahnuť hlasový model",
     "terminalCommandInstallFailed": "Nepodarilo sa nainštalovať terminálový príkaz",
-    "terminalCommandUninstallFailed": "Nepodarilo sa odinštalovať terminálový príkaz",
-    "shortcutInUse": "Skratka {shortcut} sa už používa"
+    "terminalCommandUninstallFailed": "Nepodarilo sa odinštalovať terminálový príkaz"
   },
   "tag": {
     "renameInProgress": "Premenovanie #{from} na #{to} ešte beží. Skúste to znova, keď skončí.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} už preberá polia z tejto značky",
     "unreadableSchema": "Novšia verzia Memry zmenila túto značku. Ak ju chcete upraviť, aktualizujte Memry",
     "relationTargetRequired": "Vyberte, na ktorú značku táto relácia odkazuje",
-    "editFailed": "Polia značky sa nepodarilo zmeniť",
-    "previewFailed": "Nepodarilo sa spočítať, čo táto zmena ovplyvní",
-    "snapshotFailed": "Polia značky sa nepodarilo načítať",
     "renameRunning": "Ďalšie premenovanie poľa ešte dobieha ({from} na {to}). Skúste to znova, keď skončí."
   }
 }

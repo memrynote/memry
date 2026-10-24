@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Η ενέργεια απέτυχε",
-    "nothingToUndo": "Δεν υπάρχει τίποτα για αναίρεση",
     "undone": "Αναιρέθηκε: {description}",
     "undoFailed": "Η αναίρεση της ενέργειας απέτυχε",
     "filesImported": "{count, plural, one {Εισήχθη # αρχείο} other {Εισήχθησαν # αρχεία}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Ο πράκτορας θέλει να δημιουργήσει: {title}. Ελέγξτε την αλλαγή πριν την εφαρμόσετε.",
       "descriptionDelete": "Ο πράκτορας θέλει να διαγράψει: {title}. Ελέγξτε την αλλαγή πριν την εφαρμόσετε.",
       "fallbackTitle": "αυτό το στοιχείο",
-      "current": "Τρέχον",
       "candidate": "Προτεινόμενο",
       "loading": "Φόρτωση…",
       "apply": "Εφαρμογή",
@@ -383,12 +381,8 @@
       "removeAttachment": "Αφαίρεση του «{label}»",
       "placeholder": "Κάντε οτιδήποτε με το memrynote… @ για αναφορά σε σημειώσεις, εργασίες και συμβάντα",
       "send": "Αποστολή",
-      "providerLabel": "Πάροχος πράκτορα: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Συνδεδεμένα εργαλεία",
       "connectTool": "Σύνδεση του {tool}",
-      "addContext": "Προσθήκη πλαισίου",
-      "addContextWithPermissions": "Προσθήκη πλαισίου ({permissions})",
       "mentionContext": "Αναφορά σε σημείωση, εργασία ή συμβάν",
       "files": {
         "attach": "Επισύναψη αρχείου κειμένου",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Δεν ήταν δυνατή η μεταγραφή φωνής"
         }
       },
-      "modelLabel": "Μοντέλο πράκτορα: {provider} {model}",
-      "reasoningLabel": "Συλλογισμός πράκτορα: {reasoning}",
       "providers": {
-        "label": "Πάροχος",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Πρόσβαση στον υπολογιστή"
       },
       "webSearch": {
-        "on": "Ενεργή",
-        "off": "Ανενεργή",
         "label": "Αναζήτηση στον ιστό"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Ο πράκτορας δεν είναι διαθέσιμος — άνοιγμα Ρυθμίσεων…"
       },
       "settings": {
-        "reasoning": "Συλλογισμός",
         "effort": "Προσπάθεια"
       },
       "includeCurrentNote": "Συμπερίληψη τρέχουσας σημείωσης",
@@ -472,11 +460,8 @@
           "max": "Μέγιστο"
         }
       },
-      "permissionsLabel": "Δικαιώματα πράκτορα: {access}, αναζήτηση στον ιστό {webSearch}",
       "permissions": {
-        "label": "Δικαιώματα",
-        "access": "Πρόσβαση",
-        "tools": "Εργαλεία"
+        "access": "Πρόσβαση"
       },
       "modelSettingsLabel": "Ρυθμίσεις μοντέλου πράκτορα: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Νέος φάκελος",
       "newProject": "Νέο έργο",
       "bookmarks": "Σελιδοδείκτες",
-      "chart": "Γράφημα",
       "tags": "Ετικέτες",
       "reorderSection": "Αναδιάταξη ενότητας «{section}»",
       "dropFilesToImport": "Απόθεση αρχείων για εισαγωγή",
       "dropFilesIntoVaultRoot": "Ρίζα θησαυροφυλακίου",
       "newNoteN": "Νέα σημείωση (⌘N)",
-      "new": "Νέο",
       "newItemMenu": "Δημιουργία νέου…",
       "feedbackButton": "Αποστολή σχολίων",
       "feedbackTitle": "Αποστολή σχολίων",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Εύρεση, αντικατάσταση, ερώτηση…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Παράλειψη περιήγησης",
-      "welcomeToMemry": "Καλώς ήρθατε στο memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Η προσωπική σας βάση γνώσεων. Ας αφιερώσουμε 2 λεπτά για να ξεκινήσετε.",
-      "getStarted": "Έναρξη ",
-      "createYourFirstNote": "Δημιουργήστε την πρώτη σας σημείωση",
-      "markdownBasedStoredLocallyAsPlainFiles": "Βασισμένο σε Markdown, αποθηκευμένο τοπικά ως απλά αρχεία.",
-      "eGMeetingNotesIdeasAnything": "π.χ. Σημειώσεις συνάντησης, ιδέες, οτιδήποτε…",
-      "skip": "Παράλειψη",
-      "createNote": "Δημιουργία σημείωσης ",
-      "addYourFirstTask": "Προσθέστε την πρώτη σας εργασία",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Οι εργασίες συνδέονται με τις σημειώσεις σας, με προτεραιότητες και ημερομηνίες λήξης.",
-      "eGReviewProjectProposal": "π.χ. Εξέταση πρότασης έργου…",
-      "skip2": "Παράλειψη",
-      "createTask": "Δημιουργία εργασίας ",
-      "syncAcrossDevices": "Συγχρονισμός μεταξύ συσκευών",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Διατηρήστε τις σημειώσεις και τις εργασίες σας συγχρονισμένες σε όλες τις συσκευές σας. Μπορείτε πάντα να το ρυθμίσετε αργότερα.",
-      "skipForNow": "Παράλειψη προς το παρόν",
-      "doneLetSGo": "Τέλος — πάμε! "
+      "skip": "Παράλειψη"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Ορισμός εικονιδίου φακέλου",
@@ -852,8 +818,7 @@
       "unknownTabType": "Άγνωστος τύπος καρτέλας: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "μη αποθηκευμένες αλλαγές",
-      "preview": "προεπισκόπηση"
+      "unsavedChanges": "μη αποθηκευμένες αλλαγές"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Νέα καρτέλα",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Σύρετε για αλλαγή μεγέθους · Κάντε διπλό κλικ για επαναφορά"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Καλώς ήρθατε στο memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Το προσωπικό σας σύστημα διαχείρισης γνώσεων.",
-      "selectAFolderToStoreYourNotesAndTasks": "Επιλέξτε έναν φάκελο για να αποθηκεύσετε τις σημειώσεις και τις εργασίες σας.",
       "opening": "Άνοιγμα…",
-      "selectVaultFolder": "Επιλογή φακέλου θησαυροφυλακίου",
-      "plainMarkdown": "Απλό Markdown",
-      "yourNotesStayPortable": "Οι σημειώσεις σας παραμένουν φορητές",
-      "syncAnywhere": "Συγχρονισμός οπουδήποτε",
-      "useDropboxIcloudGit": "Χρησιμοποιήστε Dropbox, iCloud, Git",
       "recentVaults": "Πρόσφατα θησαυροφυλάκια",
-      "notesLastOpened": "σημειώσεις · Τελευταίο άνοιγμα",
-      "preRelease": "Beta",
       "createNewVault": "Δημιουργία νέου θησαυροφυλακίου",
-      "createNewVaultDesc": "Ξεκινήστε ένα νέο θησαυροφυλάκιο σε φάκελο της επιλογής σας.",
-      "openExistingVault": "Άνοιγμα υπάρχοντος θησαυροφυλακίου",
-      "openExistingVaultDesc": "Επιλέξτε έναν φάκελο με αρχεία Markdown που ήδη κρατάτε.",
-      "signInToSync": "Σύνδεση για συγχρονισμό",
-      "signInToSyncDesc": "Θησαυροφυλάκια με κρυπτογράφηση από άκρο σε άκρο σε όλες τις συσκευές σας.",
-      "create": "Δημιουργία",
       "open": "Άνοιγμα",
-      "signIn": "Σύνδεση",
       "helpAndDocs": "Βοήθεια και τεκμηρίωση",
-      "signInRequiresVault": "Ανοίξτε ή δημιουργήστε πρώτα ένα θησαυροφυλάκιο για να ρυθμίσετε τον συγχρονισμό.",
       "addVault": "Προσθήκη θησαυροφυλακίου",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Δεν υπάρχουν ακόμη θησαυροφυλάκια",
       "openVault": "Άνοιγμα θησαυροφυλακίου",
       "settings": "Ρυθμίσεις",
-      "logOut": "Αποσύνδεση",
-      "signInToSync": "Σύνδεση για συγχρονισμό",
       "remove": "Αφαίρεση \"",
       "removeVaultTitle": "Αφαίρεση του «{name}» από τη λίστα;",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Αυτό το θησαυροφυλάκιο θα αφαιρεθεί από την εφαρμογή, αλλά τα αρχεία σας θα παραμείνουν στον δίσκο. Μπορείτε πάντα να το προσθέσετε ξανά αργότερα.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Αλλαγή…",
       "download": "Λήψη",
       "downloadFailed": "Δεν ήταν δυνατή η λήψη του θησαυροφυλακίου",
-      "deleteFromAccount": "Διαγραφή από τον λογαριασμό",
       "deleteVaultTitle": "Διαγραφή του «{name}» από τον λογαριασμό σας;",
       "deleteVaultBody": "Αυτό αφαιρεί οριστικά όλα τα συγχρονισμένα δεδομένα αυτού του θησαυροφυλακίου από τους διακομιστές του Memry και δεν μπορεί να αναιρεθεί. Τα αρχεία σας στον δίσκο δεν διαγράφονται.",
       "deleteVaultConfirm": "Διαγραφή από τον λογαριασμό",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Αφαίρεση γραφικού στοιχείου",
       "dragAria": "Μετακίνηση γραφικού στοιχείου",
-      "configAria": "Διαμόρφωση γραφικού στοιχείου",
-      "resizeAria": "Αλλαγή μεγέθους σε {size}",
       "menuAria": "Επιλογές γραφικού στοιχείου",
-      "resize": "Μέγεθος",
       "remove": "Αφαίρεση",
       "filter": {
         "all": "Όλες",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Επιλέξτε φάκελο",
       "folderEmpty": "Δεν υπάρχουν ακόμη φάκελοι",
       "folderNoSelection": "Δεν έχει επιλεγεί φάκελος",
-      "folderView_list": "Λίστα",
-      "folderView_gallery": "Γκαλερί",
       "folderViewSelect": "Προβολή",
       "project": "Έργο",
       "projectNoSelection": "Δεν έχει επιλεγεί έργο",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Διάταξη αρχικής",
       "deleteAria": "Διαγραφή διάταξης",
-      "newAria": "Νέος πίνακας",
       "newName": "Νέος πίνακας",
       "defaultName": "Αρχική",
       "manage": "Διαχείριση πινάκων",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# εργασία λήγει σήμερα} other {# εργασίες λήγουν σήμερα}}",
       "events": "{count, plural, one {# συμβάν} other {# συμβάντα}}"
     },
-    "edit": "Επεξεργασία",
-    "done": "Τέλος",
     "addWidget": "Προσθήκη γραφικού στοιχείου",
     "cover": {
       "add": "Προσθήκη εξωφύλλου"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Η περιήγηση γνωριμίας ολοκληρώθηκε",
-      "body": "Δώστε μας ένα αστέρι στο GitHub — βοηθά και άλλους να ανακαλύψουν το MemryNote.",
-      "action": "Προσθήκη αστεριού στο GitHub"
+      "body": "Δώστε μας ένα αστέρι στο GitHub — βοηθά και άλλους να ανακαλύψουν το MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Η ενημέρωση είναι έτοιμη",
     "failed": "Η ενημέρωση απέτυχε",
     "downloadAction": "Λήψη",
-    "restartAction": "Επανεκκίνηση",
     "detailsAction": "Λεπτομέρειες",
     "popover": {
       "readyTitle": "Το MemryNote {version} είναι έτοιμο",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Θησαυροφυλάκια",
     "position": "{name}, θησαυροφυλάκιο {index} από {count}",
-    "openList": "{position}. Άνοιγμα λίστας θησαυροφυλακίων",
     "switchTo": "Μετάβαση στο «{name}»",
     "switchingTo": "Γίνεται μετάβαση στο «{name}»",
     "changeIcon": "Αλλαγή εικονιδίου…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Σε {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Βρέθηκε # θησαυροφυλάκιο} other {Βρέθηκαν # θησαυροφυλάκια}}",
-      "notion": "Notion",
       "otherApps": "Άλλες εφαρμογές και αρχεία",
       "otherAppsHint": "και {count} ακόμη",
       "detectedFootnote": "Εντοπίστηκαν ελέγχοντας ποιες εφαρμογές είναι εγκατεστημένες. Τίποτα δεν φεύγει από {device}.",

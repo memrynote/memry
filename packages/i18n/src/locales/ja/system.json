@@ -17,18 +17,6 @@
       "filterAll": "すべてのファイル"
     },
     "exportCancelled": "エクスポートをキャンセルしました",
-    "update": {
-      "availableTitle": "アップデートがあります",
-      "availableMessage": "memrynote {version} を利用できます。",
-      "availableDetailFallback": "今すぐアップデートをダウンロードしますか？",
-      "buttonDownload": "ダウンロード",
-      "buttonLater": "後で",
-      "readyTitle": "アップデートの準備ができました",
-      "readyMessage": "memrynote {version} をダウンロードしました。",
-      "readyDetailFallback": "アップデートのインストールを完了するには、memrynote を再起動してください。",
-      "buttonRestartNow": "今すぐ再起動",
-      "releaseNotesLabel": "リリースノート："
-    },
     "dataDbRecovery": {
       "title": "Vault データベースを修復",
       "message": "この Vault の Memry データベースが破損しています。",

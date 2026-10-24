@@ -17,18 +17,6 @@
       "filterAll": "Sve datoteke"
     },
     "exportCancelled": "Izvoz otkazan",
-    "update": {
-      "availableTitle": "Ažuriranje dostupno",
-      "availableMessage": "memrynote {version} je dostupan.",
-      "availableDetailFallback": "Želite li sada preuzeti ažuriranje?",
-      "buttonDownload": "Preuzmi",
-      "buttonLater": "Kasnije",
-      "readyTitle": "Ažuriranje spremno",
-      "readyMessage": "memrynote {version} je preuzet.",
-      "readyDetailFallback": "Ponovno pokrenite memrynote kako biste dovršili instalaciju ažuriranja.",
-      "buttonRestartNow": "Ponovno pokreni sada",
-      "releaseNotesLabel": "Napomene o izdanju:"
-    },
     "dataDbRecovery": {
       "title": "Popravi bazu podataka trezora",
       "message": "Memryjeva baza podataka za ovaj trezor je oštećena.",

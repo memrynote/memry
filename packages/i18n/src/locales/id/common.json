@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Tindakan gagal",
-    "nothingToUndo": "Tidak ada yang dapat diurungkan",
     "undone": "Diurungkan: {description}",
     "undoFailed": "Gagal mengurungkan tindakan",
     "filesImported": "{count, plural, other {# file diimpor}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agen ingin membuat {title}. Tinjau perubahannya sebelum menerapkannya.",
       "descriptionDelete": "Agen ingin menghapus {title}. Tinjau perubahannya sebelum menerapkannya.",
       "fallbackTitle": "item ini",
-      "current": "Saat ini",
       "candidate": "Kandidat",
       "loading": "Memuat…",
       "apply": "Terapkan",
@@ -383,12 +381,8 @@
       "removeAttachment": "Hapus {label}",
       "placeholder": "Lakukan apa saja dengan memrynote… @ untuk menyebut catatan, tugas, dan acara",
       "send": "Kirim",
-      "providerLabel": "Penyedia agen: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Alat terhubung",
       "connectTool": "Hubungkan {tool}",
-      "addContext": "Tambahkan konteks",
-      "addContextWithPermissions": "Tambahkan konteks ({permissions})",
       "mentionContext": "Sebut catatan, tugas, atau acara",
       "files": {
         "attach": "Lampirkan file teks",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Tidak dapat mentranskripsikan input suara"
         }
       },
-      "modelLabel": "Model agen: {provider} {model}",
-      "reasoningLabel": "Penalaran agen: {reasoning}",
       "providers": {
-        "label": "Penyedia",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Akses komputer"
       },
       "webSearch": {
-        "on": "Aktif",
-        "off": "Nonaktif",
         "label": "Pencarian web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agen tidak tersedia — buka Pengaturan…"
       },
       "settings": {
-        "reasoning": "Penalaran",
         "effort": "Upaya"
       },
       "includeCurrentNote": "Sertakan catatan saat ini",
@@ -472,11 +460,8 @@
           "max": "Maks"
         }
       },
-      "permissionsLabel": "Izin agen: {access}, pencarian web {webSearch}",
       "permissions": {
-        "label": "Izin",
-        "access": "Akses",
-        "tools": "Alat"
+        "access": "Akses"
       },
       "modelSettingsLabel": "Pengaturan model agen: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Folder baru",
       "newProject": "Proyek baru",
       "bookmarks": "Markah",
-      "chart": "Bagan",
       "tags": "Tag",
       "reorderSection": "Ubah urutan {section}",
       "dropFilesToImport": "Letakkan file untuk mengimpor",
       "dropFilesIntoVaultRoot": "Akar brankas",
       "newNoteN": "Catatan baru (⌘N)",
-      "new": "Baru",
       "newItemMenu": "Buat baru…",
       "feedbackButton": "Kirim masukan",
       "feedbackTitle": "Kirim masukan",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Temukan, ganti, tanyakan…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Lewati pengenalan",
-      "welcomeToMemry": "Selamat datang di memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Basis pengetahuan pribadi Anda. Mari kita luangkan waktu 2 menit untuk memulai.",
-      "getStarted": "Mulai ",
-      "createYourFirstNote": "Buat catatan pertama Anda",
-      "markdownBasedStoredLocallyAsPlainFiles": "Berbasis Markdown, disimpan secara lokal sebagai file biasa.",
-      "eGMeetingNotesIdeasAnything": "mis. catatan rapat, ide, apa saja…",
-      "skip": "Lewati",
-      "createNote": "Buat catatan ",
-      "addYourFirstTask": "Tambahkan tugas pertama Anda",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Tugas tertaut ke catatan Anda, lengkap dengan prioritas dan tenggat.",
-      "eGReviewProjectProposal": "mis. tinjau proposal proyek…",
-      "skip2": "Lewati",
-      "createTask": "Buat tugas ",
-      "syncAcrossDevices": "Sinkronisasi antarperangkat",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronkan catatan dan tugas Anda di semua perangkat Anda. Anda selalu dapat mengaturnya nanti.",
-      "skipForNow": "Lewati untuk saat ini",
-      "doneLetSGo": "Selesai — ayo mulai! "
+      "skip": "Lewati"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Atur ikon folder",
@@ -852,8 +818,7 @@
       "unknownTabType": "Jenis tab tidak dikenal: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "perubahan yang belum disimpan",
-      "preview": "pratinjau"
+      "unsavedChanges": "perubahan yang belum disimpan"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Tab baru",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Seret untuk mengubah ukuran · Klik dua kali untuk mengatur ulang"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Selamat datang di memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Sistem manajemen pengetahuan pribadi Anda.",
-      "selectAFolderToStoreYourNotesAndTasks": "Pilih folder untuk menyimpan catatan dan tugas Anda.",
       "opening": "Membuka…",
-      "selectVaultFolder": "Pilih folder brankas",
-      "plainMarkdown": "Markdown biasa",
-      "yourNotesStayPortable": "Catatan Anda tetap portabel",
-      "syncAnywhere": "Sinkronkan di mana saja",
-      "useDropboxIcloudGit": "Gunakan Dropbox, iCloud, Git",
       "recentVaults": "Brankas terbaru",
-      "notesLastOpened": "catatan · Terakhir dibuka",
-      "preRelease": "Beta",
       "createNewVault": "Buat brankas baru",
-      "createNewVaultDesc": "Mulai brankas baru di folder pilihan Anda.",
-      "openExistingVault": "Buka brankas yang ada",
-      "openExistingVaultDesc": "Pilih folder berisi file Markdown yang sudah Anda simpan.",
-      "signInToSync": "Masuk untuk sinkronisasi",
-      "signInToSyncDesc": "Brankas terenkripsi ujung ke ujung di semua perangkat Anda.",
-      "create": "Buat",
       "open": "Buka",
-      "signIn": "Masuk",
       "helpAndDocs": "Bantuan & dokumentasi",
-      "signInRequiresVault": "Buka atau buat brankas terlebih dahulu untuk menyiapkan sinkronisasi.",
       "addVault": "Tambahkan brankas",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Belum ada brankas",
       "openVault": "Buka brankas",
       "settings": "Pengaturan",
-      "logOut": "Keluar",
-      "signInToSync": "Masuk untuk menyinkronkan",
       "remove": "Hapus “",
       "removeVaultTitle": "Hapus “{name}” dari daftar?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Brankas ini akan dihapus dari aplikasi, tetapi file Anda tetap ada di disk. Anda dapat menambahkannya kembali kapan saja.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Ubah…",
       "download": "Unduh",
       "downloadFailed": "Brankas tidak dapat diunduh",
-      "deleteFromAccount": "Hapus dari akun",
       "deleteVaultTitle": "Hapus “{name}” dari akun Anda?",
       "deleteVaultBody": "Semua data brankas ini yang sudah disinkronkan akan dihapus permanen dari server Memry, dan tindakan ini tidak dapat dibatalkan. File Anda di disk tidak ikut terhapus.",
       "deleteVaultConfirm": "Hapus dari akun",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Hapus widget",
       "dragAria": "Seret widget",
-      "configAria": "Konfigurasi widget",
-      "resizeAria": "Ubah ukuran ke {size}",
       "menuAria": "Opsi widget",
-      "resize": "Ukuran",
       "remove": "Hapus",
       "filter": {
         "all": "Semua",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Pilih folder",
       "folderEmpty": "Belum ada folder",
       "folderNoSelection": "Tidak ada folder dipilih",
-      "folderView_list": "Daftar",
-      "folderView_gallery": "Galeri",
       "folderViewSelect": "Tampilan",
       "project": "Proyek",
       "projectNoSelection": "Tidak ada proyek dipilih",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Tata letak beranda",
       "deleteAria": "Hapus tata letak",
-      "newAria": "Papan baru",
       "newName": "Papan baru",
       "defaultName": "Beranda",
       "manage": "Kelola papan",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, other {# tugas dengan tenggat hari ini}}",
       "events": "{count, plural, one {# acara} other {# acara}}"
     },
-    "edit": "Edit",
-    "done": "Selesai",
     "addWidget": "Tambahkan widget",
     "cover": {
       "add": "Tambahkan sampul"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Pengenalan selesai",
-      "body": "Mohon beri bintang di GitHub — ini membantu orang lain menemukan MemryNote.",
-      "action": "Beri bintang di GitHub"
+      "body": "Mohon beri bintang di GitHub — ini membantu orang lain menemukan MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Pembaruan siap",
     "failed": "Pembaruan gagal",
     "downloadAction": "Unduh",
-    "restartAction": "Mulai ulang",
     "detailsAction": "Detail",
     "popover": {
       "readyTitle": "MemryNote {version} siap",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Brankas",
     "position": "{name}, brankas {index} dari {count}",
-    "openList": "{position}. Buka daftar brankas",
     "switchTo": "Beralih ke {name}",
     "switchingTo": "Sedang beralih ke {name}",
     "changeIcon": "Ubah ikon…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Di {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {# brankas ditemukan}}",
-      "notion": "Notion",
       "otherApps": "Aplikasi dan file lain",
       "otherAppsHint": "dan {count} lainnya",
       "detectedFootnote": "Ditemukan dengan memeriksa aplikasi yang terpasang. Tidak ada yang keluar dari {device}.",

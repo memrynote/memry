@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "A művelet sikertelen",
-    "nothingToUndo": "Nincs mit visszavonni",
     "undone": "Visszavonva: {description}",
     "undoFailed": "Nem sikerült visszavonni a műveletet",
     "filesImported": "{count, plural, one {# fájl importálva} other {# fájl importálva}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Az ügynök létre szeretné hozni a következőt: {title}. Alkalmazás előtt nézze át a módosítást.",
       "descriptionDelete": "Az ügynök törölni szeretné a következőt: {title}. Alkalmazás előtt nézze át a módosítást.",
       "fallbackTitle": "ez az elem",
-      "current": "Aktuális",
       "candidate": "Javasolt",
       "loading": "Betöltés…",
       "apply": "Alkalmazás",
@@ -383,12 +381,8 @@
       "removeAttachment": "Eltávolítás: {label}",
       "placeholder": "Bármit elvégezhet a memrynote-ban… @ jegyzetek, feladatok és események említéséhez",
       "send": "Küldés",
-      "providerLabel": "Ügynök szolgáltatója: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Csatlakoztatott eszközök",
       "connectTool": "Csatlakoztatás: {tool}",
-      "addContext": "Kontextus hozzáadása",
-      "addContextWithPermissions": "Kontextus hozzáadása ({permissions})",
       "mentionContext": "Jegyzet, feladat vagy esemény említése",
       "files": {
         "attach": "Szövegfájl csatolása",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Nem sikerült átírni a hangbevitelt"
         }
       },
-      "modelLabel": "Ügynök modellje: {provider} {model}",
-      "reasoningLabel": "Ügynök gondolkodási szintje: {reasoning}",
       "providers": {
-        "label": "Szolgáltató",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Számítógép-hozzáférés"
       },
       "webSearch": {
-        "on": "Be",
-        "off": "Ki",
         "label": "Webes keresés"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Az ügynök nem érhető el – Beállítások megnyitása…"
       },
       "settings": {
-        "reasoning": "Gondolkodás",
         "effort": "Ráfordítás"
       },
       "includeCurrentNote": "Aktuális jegyzet bevonása",
@@ -472,11 +460,8 @@
           "max": "Maximális"
         }
       },
-      "permissionsLabel": "Ügynök jogosultságai: {access}, webes keresés: {webSearch}",
       "permissions": {
-        "label": "Jogosultságok",
-        "access": "Hozzáférés",
-        "tools": "Eszközök"
+        "access": "Hozzáférés"
       },
       "modelSettingsLabel": "Ügynök modellbeállításai: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Új mappa",
       "newProject": "Új projekt",
       "bookmarks": "Könyvjelzők",
-      "chart": "Diagram",
       "tags": "Címkék",
       "reorderSection": "Átrendezés: {section}",
       "dropFilesToImport": "Az importáláshoz ejtse ide a fájlokat",
       "dropFilesIntoVaultRoot": "A széf gyökérmappája",
       "newNoteN": "Új jegyzet (⌘N)",
-      "new": "Új",
       "newItemMenu": "Új létrehozása…",
       "feedbackButton": "Visszajelzés küldése",
       "feedbackTitle": "Visszajelzés küldése",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Keresés, csere, kérdés…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Bevezető kihagyása",
-      "welcomeToMemry": "Üdvözöljük a memrynote-ban",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Az Ön személyes tudásbázisa. Szánjunk rá 2 percet az induláshoz.",
-      "getStarted": "Kezdés ",
-      "createYourFirstNote": "Készítse el első jegyzetét",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-alapú, helyben, egyszerű fájlokként tárolva.",
-      "eGMeetingNotesIdeasAnything": "pl. megbeszélési jegyzetek, ötletek, bármi…",
-      "skip": "Kihagyás",
-      "createNote": "Jegyzet létrehozása ",
-      "addYourFirstTask": "Adja hozzá első feladatát",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "A feladatok a jegyzeteihez kapcsolódnak, prioritásokkal és határidőkkel.",
-      "eGReviewProjectProposal": "pl. projektjavaslat áttekintése…",
-      "skip2": "Kihagyás",
-      "createTask": "Feladat létrehozása ",
-      "syncAcrossDevices": "Szinkronizálás az eszközök között",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Tartsa szinkronban jegyzeteit és feladatait minden eszközén. Ezt később bármikor beállíthatja.",
-      "skipForNow": "Kihagyás egyelőre",
-      "doneLetSGo": "Kész – gyerünk! "
+      "skip": "Kihagyás"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Mappaikon beállítása",
@@ -852,8 +818,7 @@
       "unknownTabType": "Ismeretlen laptípus: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "nem mentett módosítások",
-      "preview": "előnézet"
+      "unsavedChanges": "nem mentett módosítások"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Új lap",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Húzza az átméretezéshez · Kattintson duplán a visszaállításhoz"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Üdvözöljük a memrynote-ban",
-      "yourPersonalKnowledgeManagementSystem": "Az Ön személyes tudáskezelő rendszere.",
-      "selectAFolderToStoreYourNotesAndTasks": "Válasszon mappát a jegyzetek és feladatok tárolására.",
       "opening": "Megnyitás…",
-      "selectVaultFolder": "Széfmappa kiválasztása",
-      "plainMarkdown": "Sima Markdown",
-      "yourNotesStayPortable": "A jegyzetei hordozhatóak maradnak",
-      "syncAnywhere": "Szinkronizálás bárhol",
-      "useDropboxIcloudGit": "Dropbox, iCloud, Git használata",
       "recentVaults": "Legutóbbi széfek",
-      "notesLastOpened": "jegyzet · Utoljára megnyitva",
-      "preRelease": "Béta",
       "createNewVault": "Új széf létrehozása",
-      "createNewVaultDesc": "Hozzon létre új széfet egy tetszőleges mappában.",
-      "openExistingVault": "Meglévő széf megnyitása",
-      "openExistingVaultDesc": "Válasszon egy mappát, amelyben már Markdown-fájlokat tárol.",
-      "signInToSync": "Bejelentkezés a szinkronizáláshoz",
-      "signInToSyncDesc": "Végpontok között titkosított széfek az összes eszközén.",
-      "create": "Létrehozás",
       "open": "Megnyitás",
-      "signIn": "Bejelentkezés",
       "helpAndDocs": "Súgó és dokumentáció",
-      "signInRequiresVault": "A szinkronizálás beállításához előbb nyisson meg vagy hozzon létre egy széfet.",
       "addVault": "Széf hozzáadása",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Még nincsenek széfek",
       "openVault": "Széf megnyitása",
       "settings": "Beállítások",
-      "logOut": "Kijelentkezés",
-      "signInToSync": "Bejelentkezés a szinkronizáláshoz",
       "remove": "Eltávolítás: „",
       "removeVaultTitle": "Eltávolítja a(z) „{name}” széfet a listáról?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "A széf lekerül az alkalmazásból, de a fájljai a lemezen maradnak. Később bármikor újra hozzáadhatja.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Módosítás…",
       "download": "Letöltés",
       "downloadFailed": "Nem sikerült letölteni a széfet",
-      "deleteFromAccount": "Törlés a fiókból",
       "deleteVaultTitle": "Törli a(z) „{name}” széfet a fiókjából?",
       "deleteVaultBody": "Ez véglegesen eltávolítja a széf összes szinkronizált adatát a Memry szervereiről. Ez a művelet nem vonható vissza. A lemezen lévő fájljai nem törlődnek.",
       "deleteVaultConfirm": "Törlés a fiókból",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Widget eltávolítása",
       "dragAria": "Widget húzása",
-      "configAria": "Widget beállítása",
-      "resizeAria": "Átméretezés erre: {size}",
       "menuAria": "Widget beállításai",
-      "resize": "Méret",
       "remove": "Eltávolítás",
       "filter": {
         "all": "Mind",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Mappa kiválasztása",
       "folderEmpty": "Még nincsenek mappák",
       "folderNoSelection": "Nincs kiválasztott mappa",
-      "folderView_list": "Lista",
-      "folderView_gallery": "Galéria",
       "folderViewSelect": "Nézet",
       "project": "Projekt",
       "projectNoSelection": "Nincs kiválasztott projekt",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Kezdőlap elrendezése",
       "deleteAria": "Elrendezés törlése",
-      "newAria": "Új tábla",
       "newName": "Új tábla",
       "defaultName": "Kezdőlap",
       "manage": "Táblák kezelése",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# feladat ma esedékes} other {# feladat ma esedékes}}",
       "events": "{count, plural, one {# esemény} other {# esemény}}"
     },
-    "edit": "Szerkesztés",
-    "done": "Kész",
     "addWidget": "Widget hozzáadása",
     "cover": {
       "add": "Borító hozzáadása"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Bevezető befejezve",
-      "body": "Kérjük, adjon nekünk csillagot a GitHubon – ezzel segít, hogy mások is megtalálják a MemryNote-ot.",
-      "action": "Csillagozás a GitHubon"
+      "body": "Kérjük, adjon nekünk csillagot a GitHubon – ezzel segít, hogy mások is megtalálják a MemryNote-ot."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Frissítés telepítésre kész",
     "failed": "A frissítés sikertelen",
     "downloadAction": "Letöltés",
-    "restartAction": "Újraindítás",
     "detailsAction": "Részletek",
     "popover": {
       "readyTitle": "A MemryNote {version} telepítésre kész",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Széfek",
     "position": "{name}, {index}. széf a(z) {count} közül",
-    "openList": "{position}. Széflista megnyitása",
     "switchTo": "Váltás erre: {name}",
     "switchingTo": "Váltás folyamatban erre: {name}",
     "changeIcon": "Ikon módosítása…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Itt: {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# széf található} other {# széf található}}",
-      "notion": "Notion",
       "otherApps": "Más alkalmazások és fájlok",
       "otherAppsHint": "és még {count}",
       "detectedFootnote": "A telepített alkalmazások ellenőrzésével találtuk meg. Semmi nem kerül ki innen: {device}.",

@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI 關聯",
     "todaysNotes": "今日筆記",
-    "todaysSchedule": "今日行程",
-    "todaysTasks": "今日任務",
     "tasks": "任務",
     "technicalDetails": "技術細節"
   },
@@ -102,8 +100,7 @@
       "afternoon": "午安",
       "evening": "晚安",
       "night": "晚安"
-    },
-    "allDay": "全天"
+    }
   },
   "nav": {
     "previousDay": "前一天",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "更多選項",
     "documentStatistics": "文件統計",
-    "dayContext": "當日情境：任務與行程",
-    "scheduleEvents": "排定的活動",
-    "tasks": "任務",
     "notesCreatedToday": "今天建立了 {count} 則筆記"
   },
   "empty": {
     "noEntry": "沒有日誌",
     "noDaysInMonth": "本月沒有日期",
-    "noEventsScheduled": "沒有排定的活動",
-    "noEventsScheduledToday": "今天沒有排定的活動",
-    "noEventsWereScheduled": "當天沒有排定的活動",
-    "noTasksDue": "沒有到期任務",
-    "noTasksDueToday": "今天沒有到期任務",
-    "noTasksWereDue": "當天沒有到期任務",
     "noNotesToday": "今天沒有建立筆記",
     "startDocumenting": "開始記錄你的想法和點子"
   },
@@ -155,9 +143,7 @@
     "day": "天",
     "days": "天",
     "event": "活動",
-    "events": "活動",
     "task": "任務",
-    "todo": "待辦",
     "moreConnections": "+ {count} 個關聯",
     "moreConnections_plural": "+ {count} 個關聯",
     "moreNotes": "+ {count} 則筆記",
@@ -166,7 +152,6 @@
     "charactersWritten": "已寫字元數",
     "words": "{count} 個字",
     "characters": "{count} 字元",
-    "completed": "已完成 {count} 項",
     "overdue": "{count} 項已逾期"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "修改於 {date}"
   },
   "task": {
-    "completed": "已完成",
-    "notCompleted": "未完成",
-    "priority": "優先順序：{priority}",
-    "overdue": "已逾期",
-    "markComplete": "將「{title}」標記為已完成",
-    "markNotComplete": "將「{title}」標記為未完成"
+    "priority": "優先順序：{priority}"
   },
   "template": {
     "using": "使用「{templateName}」"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "內容仍保留在記憶體中。按一下以重試儲存。",
-    "noteNotFound": "找不到筆記「{target}」",
     "createLinkedFailed": "無法建立連結的筆記",
     "fileNotFound": "找不到檔案：{target}",
     "openLinkedItemFailed": "無法開啟連結的項目",

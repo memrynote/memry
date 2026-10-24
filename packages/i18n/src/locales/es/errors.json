@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "No has iniciado sesión",
-    "sessionExpired": "Tu sesión ha caducado. Inicia sesión de nuevo.",
     "setupSessionExpired": "Tu inicio de sesión caducó antes de que esto terminara. Vuelve a iniciar sesión y después introduce tu frase de recuperación.",
     "setupSessionExpiredLinking": "Tu inicio de sesión caducó antes de que este dispositivo terminara de vincularse. Vuelve a iniciar sesión y escanea el código otra vez.",
     "invalidRecoveryPhraseFormat": "El formato de la frase de recuperación no es válido",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "No se pudo cargar el modelo",
     "voiceModelDownloadFailed": "No se pudo descargar el modelo de voz",
     "terminalCommandInstallFailed": "No se pudo instalar el comando de terminal",
-    "terminalCommandUninstallFailed": "No se pudo desinstalar el comando de terminal",
-    "shortcutInUse": "El atajo {shortcut} ya está en uso"
+    "terminalCommandUninstallFailed": "No se pudo desinstalar el comando de terminal"
   },
   "tag": {
     "renameInProgress": "Aún se está renombrando #{from} a #{to}. Inténtalo de nuevo cuando termine.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} ya toma sus campos de esta etiqueta",
     "unreadableSchema": "Una versión más reciente de Memry cambió esta etiqueta. Actualiza Memry para editarla",
     "relationTargetRequired": "Elige a qué etiqueta apunta esta relación",
-    "editFailed": "No se pudieron modificar los campos de la etiqueta",
-    "previewFailed": "No se pudo contar qué afecta este cambio",
-    "snapshotFailed": "No se pudieron cargar los campos de la etiqueta",
     "renameRunning": "Otro cambio de nombre de campo aún está terminando ({from} a {to}). Inténtalo de nuevo cuando acabe."
   }
 }

@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "לא בוצעה התחברות",
-    "sessionExpired": "פג תוקף ההתחברות. יש להתחבר שוב.",
     "setupSessionExpired": "תוקף ההתחברות פג לפני שהתהליך הסתיים. יש להתחבר שוב ואז להזין את ביטוי השחזור.",
     "setupSessionExpiredLinking": "תוקף ההתחברות פג לפני שקישור המכשיר הזה הסתיים. יש להתחבר שוב ואז לסרוק את הקוד פעם נוספת.",
     "invalidRecoveryPhraseFormat": "ביטוי השחזור אינו בפורמט תקין",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "טעינת המודל נכשלה",
     "voiceModelDownloadFailed": "הורדת מודל הקול נכשלה",
     "terminalCommandInstallFailed": "התקנת פקודת הטרמינל נכשלה",
-    "terminalCommandUninstallFailed": "הסרת פקודת הטרמינל נכשלה",
-    "shortcutInUse": "הקיצור {shortcut} כבר בשימוש"
+    "terminalCommandUninstallFailed": "הסרת פקודת הטרמינל נכשלה"
   },
   "tag": {
     "renameInProgress": "שינוי השם של #{from} ל-#{to} עדיין מתבצע. כדאי לנסות שוב כשיסתיים.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} כבר לוקח את השדות שלו מהתגית הזו",
     "unreadableSchema": "גרסה חדשה יותר של Memry שינתה את התגית הזו. יש לעדכן את Memry כדי לערוך אותה",
     "relationTargetRequired": "יש לבחור לאיזו תגית הקשר הזה מצביע",
-    "editFailed": "לא ניתן לשנות את שדות התגית",
-    "previewFailed": "לא ניתן לספור מה השינוי הזה משפיע עליו",
-    "snapshotFailed": "לא ניתן לטעון את שדות התגית",
     "renameRunning": "שינוי שם אחר של שדה עדיין מסתיים ({from} ל-{to}). כדאי לנסות שוב כשיסתיים."
   }
 }

@@ -7,11 +7,6 @@
     "backToApp": "Volver a la app",
     "nav": {
       "groups": {
-        "account": "Cuenta",
-        "application": "Aplicación",
-        "editing": "Edición",
-        "modules": "Módulos",
-        "services": "Servicios",
         "data": "Datos",
         "workspace": "Espacio de trabajo",
         "features": "Funciones"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Configurar {module}"
-    },
-    "vaultImport": {
-      "label": "Importar desde otra app",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist y más",
-      "action": "Importar…"
     },
     "search": {
       "placeholder": "Buscar ajustes",
@@ -102,12 +92,8 @@
       "loading": "Cargando ajustes…"
     },
     "groups": {
-      "startup": "Inicio",
       "updates": "Actualizaciones",
       "languageRegion": "Idioma y región",
-      "tabBehavior": "Comportamiento de las pestañas",
-      "window": "Comportamiento de la ventana",
-      "fileCreation": "Creación de archivos",
       "privacy": "Privacidad",
       "startupWindows": "Inicio y ventanas",
       "newNotes": "Notas nuevas",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Abrir al iniciar sesión",
-        "description": "Abre memrynote automáticamente al iniciar sesión",
         "error": "No se pudo actualizar el inicio automático"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Buscar actualizaciones automáticamente",
-        "description": "Busca versiones nuevas al iniciar y cada cierto tiempo mientras la app está abierta.",
         "error": "No se pudo actualizar la opción de búsqueda automática"
       },
       "autoDownload": {
         "label": "Descargar actualizaciones automáticamente",
-        "description": "Descarga e instala las versiones nuevas en segundo plano, sin preguntar.",
         "error": "No se pudo actualizar la opción de descarga automática"
       },
-      "appUpdates": "Actualizaciones de la app",
-      "installedVersion": "Versión instalada {version}",
-      "availableVersion": "Versión disponible {version}",
-      "unsupported": "Las versiones empaquetadas pueden buscar, descargar e instalar actualizaciones desde GitHub Releases",
       "available": "memrynote {version} está disponible para descargar",
       "downloadingLatest": "Descargando la última versión",
-      "downloadingLatestPercent": "Descargando la última versión ({percent} %)",
       "downloaded": "memrynote {version} está listo para instalar",
-      "upToDate": "Esta instalación tiene la última versión publicada",
-      "checking": "Buscando una versión más reciente en GitHub Releases",
-      "idle": "Busca versiones nuevas e instálalas sin salir de la app",
       "unsupportedToast": "Las actualizaciones automáticas solo están disponibles en versiones empaquetadas",
       "upToDateToast": "memrynote {version} está actualizado",
       "actionFailed": "No se pudo completar la acción de actualización",
@@ -164,17 +139,10 @@
         "downloading": "Descargando…",
         "downloadingPercent": "Descargando {percent} %",
         "downloaded": "Versión {version} lista para instalar"
-      },
-      "mode": {
-        "label": "Modo de actualización",
-        "off": "No comprobar",
-        "notify": "Solo notificar",
-        "auto": "Descargar automáticamente"
       }
     },
     "language": {
       "label": "Idioma",
-      "helper": "Casi toda la app se actualiza al instante. Algunos textos del sistema (notificaciones ya mostradas, etiqueta del Dock, barra de título de la ventana) se actualizan en el próximo inicio.",
       "changed": "Idioma cambiado a {nativeName}",
       "failed": "No se pudo cambiar el idioma. Inténtalo de nuevo."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Formato de hora",
-      "description": "Reloj de 12 o 24 horas",
       "options": {
         "12h": "12 horas",
         "24h": "24 horas"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Formato de fecha",
-      "description": "Cómo se muestran las fechas del calendario",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (EE. UU.)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Abrir páginas en una pestaña nueva",
-        "description": "Al hacer clic en una página o crearla (notas, carpetas, proyectos, lienzos, etiquetas, marcadores), se abre en una pestaña nueva. Si está desactivado, se reutiliza la pestaña actual, también al seguir enlaces dentro de una nota; las pestañas fijadas nunca se reemplazan. «Abrir en una pestaña nueva», «Abrir al lado» y el clic central siempre abren una pestaña nueva."
+        "label": "Abrir páginas en una pestaña nueva"
       },
       "restoreSession": {
         "label": "Restaurar pestañas al iniciar",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Botón de cerrar pestaña",
-        "description": "Cuándo mostrar el botón de cerrar",
         "options": {
           "always": "Siempre visible",
           "hover": "Al pasar el cursor",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Seguir en la barra de menús al cerrar",
-        "description": "Al cerrar la ventana, memrynote se oculta en la bandeja del sistema en lugar de cerrarse. Haz clic en el icono de la bandeja para volver a mostrarlo. En macOS la app también permanece en el Dock; en escritorios Linux sin bandeja del sistema, la ventana se cierra como siempre.",
         "error": "No se pudo actualizar la opción de minimizar a la bandeja"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Crear en la carpeta seleccionada",
-        "description": "Las notas y carpetas nuevas se crean dentro de la carpeta seleccionada. Si está desactivado, los elementos se crean siempre en la raíz."
+        "label": "Crear en la carpeta seleccionada"
       },
       "defaultNoteFolder": {
         "label": "Ubicación predeterminada",
         "description": "Se usa cuando no hay ninguna carpeta seleccionada en la barra lateral.",
-        "placeholder": "notas",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "No se pudo enviar el informe de diagnóstico",
         "sendReport": {
           "label": "Informe de diagnóstico",
-          "description": "Envía un informe puntual con registros técnicos anonimizados para ayudarnos a resolver un problema que hayas encontrado.",
           "button": "Enviar informe…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Cargando ajustes…"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Color de acento",
-      "typography": "Tipografía",
-      "zoom": "Zoom"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Modo de color",
-        "description": "Elige tu tema preferido",
         "aria": "Modo de color"
       },
       "options": {
         "light": "Claro",
-        "white": "Blanco",
         "dark": "Oscuro",
         "system": "Sistema"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "El portapapeles no contiene un tema de memrynote"
     },
     "accent": {
-      "pick": "Elige un color de acento",
       "custom": {
-        "label": "Color personalizado",
-        "description": "Introduce un valor hexadecimal",
-        "placeholder": "#000000"
+        "label": "Color personalizado"
       },
       "presets": {
         "indigo": "Índigo",
@@ -348,7 +299,6 @@
         "pink": "Rosa",
         "orange": "Naranja"
       },
-      "error": "No se pudo actualizar el color de acento",
       "aria": "Color de acento predefinido",
       "options": {
         "theme": "Tema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Nivel de zoom",
-      "description": "Escala toda la interfaz",
       "decrease": "Reducir zoom",
       "increase": "Aumentar zoom",
       "reset": "Restablecer el zoom predeterminado",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Tamaño de fuente",
-        "description": "Tamaño base del texto de la interfaz, en píxeles",
         "decrease": "Reducir el tamaño de fuente",
         "increase": "Aumentar el tamaño de fuente",
         "reset": "Restablecer el tamaño de fuente predeterminado"
       },
       "fontFamily": {
         "label": "Familia de fuentes",
-        "description": "Tipo de letra principal para la interfaz",
         "options": {
           "system": "Valor predeterminado del sistema",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "No se pudo actualizar la familia de fuentes"
     },
     "v2": {
-      "groups": {
-        "text": "Texto y zoom"
-      },
       "colorMode": "Modo de color",
       "colorTheme": "Tema",
       "accent": "Color de acento",
-      "customColor": "Color personalizado",
       "fontFamily": "Familia de fuentes",
       "fontSize": "Tamaño de fuente",
       "zoom": "Zoom"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Disposición",
-      "toolbar": "Barra de herramientas",
       "spelling": "Ortografía",
       "checklists": "Listas de verificación",
       "attachments": "Archivos adjuntos",
@@ -473,7 +413,6 @@
       "error": "No se pudieron actualizar los tipos de destacado"
     },
     "width": {
-      "label": "Ancho del editor",
       "description": "Se aplica a todas las notas y páginas del diario",
       "options": {
         "normal": "Normal",
@@ -482,12 +421,10 @@
       "error": "No se pudo actualizar el ancho del editor"
     },
     "toolbarMode": {
-      "label": "Barra de herramientas de formato fija",
       "description": "Mostrar siempre la barra de herramientas encima del editor",
       "error": "No se pudo actualizar el modo de la barra de herramientas"
     },
     "spellCheck": {
-      "label": "Corrección ortográfica",
       "description": "Subraya las palabras mal escritas en las notas y el diario",
       "error": "No se pudo actualizar la corrección ortográfica"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Gestiona las plantillas de notas para crear notas rápidamente"
     },
     "actions": {
-      "new": "Nueva plantilla",
       "edit": "Editar",
       "duplicate": "Duplicar",
       "delete": "Eliminar"
     },
     "groups": {
-      "builtIn": "Integradas",
-      "myTemplates": "Mis plantillas"
+      "builtIn": "Integradas"
     },
     "loading": "Cargando plantillas…",
     "newTemplateTitle": "Nueva plantilla",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Aún no hay plantillas personalizadas",
       "description": "Crea una plantilla para comenzar"
-    },
-    "preview": {
-      "notFound": "No se pudo cargar esta plantilla."
     },
     "toasts": {
       "deleted": "Plantilla eliminada",
@@ -572,11 +504,7 @@
       "loading": "Cargando ajustes…"
     },
     "groups": {
-      "defaultTemplate": "Plantilla predeterminada",
-      "location": "Ubicación y formato",
-      "sidebarVisibility": "Visibilidad de la barra lateral",
-      "footer": "Pie de página",
-      "weekdayTemplates": "Plantillas por día"
+      "footer": "Pie de página"
     },
     "template": {
       "label": "Plantilla",
@@ -588,18 +516,6 @@
       "updated": "Plantilla predeterminada actualizada",
       "cleared": "Se ha quitado la plantilla predeterminada",
       "error": "No se pudo actualizar la plantilla predeterminada"
-    },
-    "showSchedule": {
-      "label": "Mostrar agenda",
-      "description": "Mostrar los eventos y el calendario de hoy"
-    },
-    "showTasks": {
-      "label": "Mostrar tareas",
-      "description": "Mostrar tareas que vencen el día seleccionado"
-    },
-    "showAIConnections": {
-      "label": "Mostrar conexiones de IA",
-      "description": "Mostrar conexiones con entradas relacionadas sugeridas por IA"
     },
     "showStatsFooter": {
       "label": "Mostrar pie de página de estadísticas",
@@ -632,7 +548,6 @@
       "inheritWith": "Predeterminada · {name}",
       "inheritNone": "Predeterminada · ninguna",
       "missing": "Plantilla eliminada",
-      "clear": "Quitar",
       "updated": "Plantilla actualizada para el {day}",
       "cleared": "Plantilla quitada para el {day}",
       "error": "No se pudo actualizar la plantilla del {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Configura el comportamiento de las celdas del día en el panel del día",
       "loading": "Cargando ajustes…"
     },
-    "groups": {
-      "weekStart": "Semana",
-      "dayCellClick": "Clic en la celda del día",
-      "notes": "Notas"
-    },
     "weekStart": {
       "label": "La semana empieza el",
       "description": "Primer día de la semana en todos los calendarios",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Volver a conectar Google",
       "addAccount": "Añadir cuenta",
-      "importedCalendars": "Calendarios importados",
-      "selected": "{count, plural, one {# seleccionado} other {# seleccionados}}",
       "syncNow": "Sincronizar ahora",
       "disconnect": "Desconectar",
       "reconnect": "Volver a conectar Google",
@@ -1025,10 +933,8 @@
       "loading": "Cargando…"
     },
     "groups": {
-      "identity": "Identidad",
       "sync": "Sincronización",
       "billing": "Facturación",
-      "storage": "Almacenamiento",
       "devices": "Dispositivos"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Cerrar sesión",
         "description": "Desconecta este dispositivo de la sincronización",
         "action": "Cerrar sesión"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Búsqueda de imágenes desactivada"
     },
     "unknownError": "Error desconocido",
-    "groups": {
-      "voice": "Transcripción de voz",
-      "embeddingModel": "Modelo de embeddings local",
-      "embeddingIndex": "Índice de embeddings",
-      "inline": "Edición con IA en el editor"
-    },
     "voice": {
-      "provider": "Proveedor",
       "providerDescription": "Proveedor de voz a texto para notas de voz",
-      "providers": {
-        "local": "Local (predeterminado)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Nombres de las notas de voz",
       "memoNameModeDescription": "Cómo se nombran las notas de voz tras la transcripción",
       "naming": {
         "transcript": "Título de la transcripción",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Idioma en el que hablas en las notas de voz",
       "languageDefault": "Predeterminado",
       "languageError": "No se pudo actualizar el idioma de transcripción",
-      "localModel": "Modelo local",
-      "localModelDescription": "Whisper Small se descarga bajo demanda y permanece almacenado en caché localmente",
       "status": {
         "ready": "Listo",
         "downloading": "Descargando",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Cargado",
       "loading": "Cargando",
-      "cacheHint": "~210 MB · Caché local · Todo en el dispositivo",
-      "dimensions": "Dimensiones",
-      "embeddings": "Embeddings",
       "downloadLoad": "Descargar y cargar modelo",
       "downloadingModel": "Descargando modelo…",
       "loadingModel": "Cargando modelo…",
       "loadSuccess": "Modelo cargado correctamente",
       "loadFailed": "No se pudo cargar el modelo",
       "rebuildIndex": "Reconstruir índice",
-      "rebuildDescription": "Regenera los embeddings de todas las notas",
-      "rebuild": "Reconstruir",
       "scanning": "Escaneando notas…",
       "generating": "Generando embeddings…",
       "complete": "Completado",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Cargando…",
-      "title": "Edición con IA en el editor",
-      "enable": "Activar IA en el editor",
       "enableDescription": "Muestra el menú de IA al editar notas",
       "enabled": "Edición con IA en el editor activada",
       "disabled": "Edición con IA en el editor desactivada",
       "provider": "Proveedor",
-      "providerDescription": "Servicio de IA para operaciones de texto",
       "providers": {
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Activo en el puerto {port}",
       "notConnected": "No conectado",
       "test": "Probar",
-      "stopFailed": "No se pudo detener el servidor existente",
       "connected": "¡Conectado! Servidor ejecutándose en el puerto {port}",
       "connectFailed": "No se pudo conectar",
       "testFailed": "La prueba de conexión falló",
@@ -1566,8 +1448,6 @@
       "onenote": "Importa cuadernos de OneNote (requiere una cuenta de Microsoft)",
       "readwise": "Importa tus resaltados desde Readwise (requiere un token de acceso)"
     },
-    "action": "Importar",
-    "select": "Seleccionar una app desde la que importar…",
     "stats": {
       "notes": "{count, plural, one {# nota} other {# notas}}",
       "projects": "{count, plural, one {# proyecto} other {# proyectos}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Seleccionar carpeta de Apple Notes…",
       "chooseDirectory": "Elegir carpeta…",
       "folderKeepsAssets": "Elige la carpeta cuando las imágenes estén fuera de la carpeta de las propias notas: las exportaciones suelen guardar los archivos multimedia en una carpeta común.",
-      "chooseHint": "Selecciona tu {label}",
       "folderHint": "Haz clic abajo y selecciona la carpeta «group.com.apple.notes» cuando se abra el selector (empieza ahí). Así Memry puede leer tus notas y adjuntos, sin necesidad de acceso total al disco.",
       "noteplanFolderHint": "Elige tu carpeta de NotePlan: la carpeta de datos de la app o una de sus copias en Backups. Memry lee las carpetas Calendar, Notes y @Archive que contiene.",
       "selected": "{count, plural, one {# archivo seleccionado} other {# archivos seleccionados}}",
       "start": "Iniciar importación",
       "cancel": "Cancelar",
-      "close": "Cerrar",
       "done": "Listo",
       "running": "Importando…",
       "progress": "{completed} de {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Conectando…",
         "connectFailed": "No se pudo conectar con Readwise",
         "takeOver": {
-          "syncsOn": "Readwise se sincroniza en {device}.",
-          "syncsOnAnother": "Readwise se sincroniza en otro dispositivo.",
           "explain": "Solo un dispositivo descarga de Readwise, así que el mismo resaltado nunca se escribe dos veces. Para descargar desde este dispositivo, pega tu token de nuevo: nunca viaja entre dispositivos. El otro dispositivo se detiene en su próximo libro y todas las notas se conservan.",
           "button": "Sincronizar aquí en su lugar",
           "working": "Moviendo Readwise aquí…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Buscar una app o un tipo de archivo…",
       "noMatch": "Ningún origen coincide con «{query}»",
       "formatAccount": "Cuenta",
-      "showMore": "{count, plural, one {Mostrar # más} other {Mostrar # más}}",
-      "showLess": "Mostrar menos",
       "groups": {
         "reading": "Lectura",
         "noteApps": "Apps de notas",
@@ -1968,8 +1842,6 @@
       "subtitle": "Configuración y almacenamiento de la bóveda"
     },
     "groups": {
-      "storageUsage": "Uso de almacenamiento",
-      "location": "Ubicación",
       "accountVaults": "Bóvedas de tu cuenta",
       "largeNotes": "Notas cerca del límite de sincronización",
       "activity": "Actividad"
@@ -2229,8 +2101,6 @@
       "loading": "Cargando ajustes…"
     },
     "searchPlaceholder": "Buscar atajos…",
-    "resetAll": "Restablecer todo",
-    "custom": "Personalizado",
     "pressShortcut": "Pulsa el atajo…",
     "cancelTitle": "Cancelar",
     "rebindTitle": "Haz clic para reasignar",
@@ -2241,7 +2111,6 @@
     "noMatch": "Ningún atajo coincide con tu búsqueda",
     "conflict": "En conflicto con: {labels}",
     "globalCapture": {
-      "title": "Captura global",
       "description": "Captura una nota desde cualquier lugar",
       "active": "Activo",
       "inUse": "Otra app está usando {shortcut}. Elige otra combinación.",
@@ -2458,7 +2327,6 @@
       "systemWide": "En todo el sistema",
       "globalCapture": "Captura global",
       "recordingHint": "Pulsa las teclas… esc para cancelar",
-      "reset": "Restablecer",
       "resetAll": "Restablecer todo a los valores predeterminados",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "No se pudo reenviar el código",
       "failedToSetUpDevice": "No se pudo configurar el dispositivo",
       "failedToConfirmRecoveryPhrase": "No se pudo confirmar la frase de recuperación",
-      "failedToAnalyzeContent": "No se pudo analizar el contenido",
       "failedToLoadUpdaterState": "No se pudo cargar el estado del actualizador",
       "failedToCheckForUpdates": "No se pudieron buscar actualizaciones",
       "failedToDownloadUpdate": "No se pudo descargar la actualización",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "No se pudieron cargar los ajustes del editor de notas",
       "failedToUpdateSettings": "No se pudieron actualizar los ajustes",
       "failedToLoadTabSettings": "No se pudieron cargar los ajustes de las pestañas",
-      "failedToLoadNotes": "No se pudieron cargar las notas",
       "failedToLoadTags": "No se pudieron cargar las etiquetas",
-      "failedToLoadTasks": "No se pudieron cargar las tareas",
       "failedToLoadVaultStatus": "No se pudo cargar el estado de la bóveda",
       "failedToSelectVault": "No se pudo seleccionar la bóveda",
       "failedToCloseVault": "No se pudo cerrar la bóveda",
@@ -2565,18 +2430,12 @@
       "title": "MCP del agente",
       "subtitle": "Acceso al servidor local para clientes MCP externos."
     },
-    "groups": {
-      "connection": "Conexión",
-      "access": "Acceso"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Usa este endpoint de localhost desde Cursor, Claude Desktop o Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Token Bearer",
-        "description": "Credencial en memoria para esta ejecución de la app."
+        "label": "Token Bearer"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Permisos del agente",
       "subtitle": "Elige el acceso predeterminado, las confirmaciones y los proveedores locales del chat del agente."
     },
-    "groups": {
-      "cliAgents": "Agentes de CLI",
-      "local": "Proveedor local compatible con OpenAI",
-      "actions": "Comprobaciones de conexión"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Permisos del agente",
       "access": {
-        "label": "Acceso predeterminado",
         "description": "Define el modo de acceso inicial de los nuevos turnos del agente.",
         "vaultOnly": "Solo la bóveda",
         "computerAccess": "Acceso al equipo",
         "builtInNote": "La conexión de modelo integrada siempre usa solo herramientas de la bóveda."
       },
       "confirm": {
-        "label": "Confirmar acciones",
         "description": "Elige si las llamadas a herramientas se ejecutan automáticamente o esperan aprobación en el chat. Las notas y carpetas bloqueadas siguen siendo de solo lectura en ambos modos.",
         "alwaysAllow": "Permitir siempre",
         "askBeforeChanges": "Preguntar antes de hacer cambios"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Guardar",
-      "models": "Modelos",
-      "test": "Probar conexión",
-      "probe": "Detectar herramientas"
+      "test": "Probar conexión"
     },
     "status": {
       "label": "Conexión",
       "checking": "Comprobando…",
       "connected": "Conectado",
-      "disconnected": "Desconectado",
-      "toolsDisabled": "Herramientas desactivadas",
-      "fullTools": "Todas las herramientas activadas"
+      "disconnected": "Desconectado"
     },
     "alwaysAllowed": {
-      "group": "Siempre permitidas",
       "description": "Herramientas a las que diste una aprobación permanente en esta bóveda. Las eliminaciones nunca pueden recibirla.",
       "empty": "No hay nada siempre permitido. Cada cambio sigue pidiendo aprobación.",
       "revoke": "Revocar",

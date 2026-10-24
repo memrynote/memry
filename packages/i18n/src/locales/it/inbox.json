@@ -15,19 +15,13 @@
       "showWithCount": "Mostra elementi posticipati ({count})",
       "hide": "Nascondi gli elementi posticipati"
     },
-    "density": {
-      "toComfortable": "Vista comoda",
-      "toCompact": "Vista compatta"
-    },
     "filter": {
-      "button": "Filtra",
       "byType": "Filtra per tipo",
       "active": "{count, plural, one {Filtro su # tipo} other {Filtro su # tipi}}",
       "clearAll": "Azzera tutto"
     },
     "jobs": {
-      "running": "{count, plural, one {# processo in background in esecuzione} other {# processi in background in esecuzione}}",
-      "failed": "{count} non riusciti"
+      "running": "{count, plural, one {# processo in background in esecuzione} other {# processi in background in esecuzione}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Crea “{name}”",
     "addTags": "Aggiungi tag…",
     "linkToNote": "Collega a una nota",
-    "linkANote": "Collega una nota",
-    "suggestedCount": "{count} suggerite",
-    "linkNotesPlaceholder": "Collega note…",
     "linkOrCreateNotePlaceholder": "Trova o crea una nota…",
     "createNote": "Crea “{title}”",
     "pendingNote": "Nuova nota",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Dati del promemoria non disponibili.",
     "triggered": "Promemoria attivato",
-    "noteLabel": "Nota di promemoria",
     "source": "Fonte",
     "journalTitle": "Diario – {date}",
     "noteFallback": "Nota",
@@ -514,9 +504,7 @@
       "settings": "Impostazioni",
       "processing": "Elaborazione…",
       "cancelRecording": "Annulla la registrazione",
-      "cancel": "Annulla",
       "stopRecording": "Interrompi la registrazione",
-      "stop": "Interrompi",
       "recordingError": "Si è verificato un errore di registrazione",
       "microphoneAccessDenied": "Accesso al microfono negato",
       "noMicrophoneFound": "Nessun microfono trovato",

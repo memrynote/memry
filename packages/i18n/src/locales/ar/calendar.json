@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "إكمال {title}",
     "task-completed": "اكتملت المهمة",
-    "could-not-complete": "تعذّر إكمال المهمة",
     "could-not-update-status": "تعذّر تغيير حالة المهمة",
     "duration-minutes": "{minutes} د",
     "duration-hours": "{hours} س",
@@ -215,12 +213,9 @@
     "next-week": "الأسبوع القادم",
     "open-task": "فتح المهمة",
     "source-note": "الملاحظة المصدر",
-    "reschedule": "إعادة جدولة",
     "mark-done": "تحديد كمكتملة",
     "mark-not-done": "تحديد كغير مكتملة",
-    "later-today": "في وقت لاحق اليوم",
     "tomorrow": "غدًا",
-    "next-week-mon": "الأسبوع القادم · الاثنين",
     "pick-date-time": "اختيار التاريخ والوقت…",
     "remove-due-date": "إزالة تاريخ الاستحقاق",
     "subtasks-prefix": "المهام الفرعية",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "التقويمات المشترك فيها"
     },
     "caldav": {
       "name": "CalDAV"

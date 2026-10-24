@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Ikke logget ind",
-    "sessionExpired": "Din session er udløbet. Log ind igen.",
     "setupSessionExpired": "Dit login udløb, før dette blev færdigt. Log ind igen, og indtast derefter din gendannelsessætning.",
     "setupSessionExpiredLinking": "Dit login udløb, før denne enhed blev tilknyttet. Log ind igen, og scan derefter koden en gang til.",
     "invalidRecoveryPhraseFormat": "Ugyldigt format på gendannelsessætningen",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Kunne ikke indlæse modellen",
     "voiceModelDownloadFailed": "Kunne ikke hente stemmemodellen",
     "terminalCommandInstallFailed": "Kunne ikke installere terminalkommandoen",
-    "terminalCommandUninstallFailed": "Kunne ikke afinstallere terminalkommandoen",
-    "shortcutInUse": "Genvejen {shortcut} er allerede i brug"
+    "terminalCommandUninstallFailed": "Kunne ikke afinstallere terminalkommandoen"
   },
   "tag": {
     "renameInProgress": "Omdøbningen af #{from} til #{to} kører stadig. Prøv igen, når den er færdig.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} henter allerede sine felter fra dette tag",
     "unreadableSchema": "En nyere version af Memry har ændret dette tag. Opdatér Memry for at redigere det",
     "relationTargetRequired": "Vælg, hvilket tag denne relation peger på",
-    "editFailed": "Kunne ikke ændre tagets felter",
-    "previewFailed": "Kunne ikke tælle, hvad denne ændring berører",
-    "snapshotFailed": "Kunne ikke indlæse tagfelter",
     "renameRunning": "En anden omdøbning af felt er stadig ved at blive færdig ({from} til {to}). Prøv igen, når den er færdig."
   }
 }

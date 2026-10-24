@@ -17,18 +17,6 @@
       "filterAll": "Усі файли"
     },
     "exportCancelled": "Експорт скасовано",
-    "update": {
-      "availableTitle": "Доступне оновлення",
-      "availableMessage": "Доступна версія memrynote {version}.",
-      "availableDetailFallback": "Завантажити оновлення зараз?",
-      "buttonDownload": "Завантажити",
-      "buttonLater": "Пізніше",
-      "readyTitle": "Оновлення готове",
-      "readyMessage": "memrynote {version} було завантажено.",
-      "readyDetailFallback": "Перезапустіть memrynote, щоб завершити встановлення оновлення.",
-      "buttonRestartNow": "Перезапустити зараз",
-      "releaseNotesLabel": "Примітки до версії:"
-    },
     "dataDbRecovery": {
       "title": "Відновлення бази даних сховища",
       "message": "База даних Memry для цього сховища пошкоджена.",

@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Radnja nije uspjela",
-    "nothingToUndo": "Nema ničega za poništavanje",
     "undone": "Poništeno: {description}",
     "undoFailed": "Poništavanje radnje nije uspjelo",
     "filesImported": "{count, plural, one {# datoteka uvezena} few {# datoteke uvezene} other {# datoteka uvezeno}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agent želi stvoriti {title}. Pregledajte promjenu prije nego što je primijenite.",
       "descriptionDelete": "Agent želi izbrisati {title}. Pregledajte promjenu prije nego što je primijenite.",
       "fallbackTitle": "ovu stavku",
-      "current": "Trenutno",
       "candidate": "Predloženo",
       "loading": "Učitavanje…",
       "apply": "Primijeni",
@@ -383,12 +381,8 @@
       "removeAttachment": "Ukloni {label}",
       "placeholder": "Zatražite bilo što od aplikacije memrynote… @ za spominjanje bilješki, zadataka i događaja",
       "send": "Pošalji",
-      "providerLabel": "Pružatelj agenta: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Povezani alati",
       "connectTool": "Poveži {tool}",
-      "addContext": "Dodaj kontekst",
-      "addContextWithPermissions": "Dodaj kontekst ({permissions})",
       "mentionContext": "Spomeni bilješku, zadatak ili događaj",
       "files": {
         "attach": "Priloži tekstualnu datoteku",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Nije moguće pretvoriti glasovni unos u tekst"
         }
       },
-      "modelLabel": "Model agenta: {provider} {model}",
-      "reasoningLabel": "Razmišljanje agenta: {reasoning}",
       "providers": {
-        "label": "Pružatelj usluge",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Pristup računalu"
       },
       "webSearch": {
-        "on": "Uključeno",
-        "off": "Isključeno",
         "label": "Pretraživanje weba"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent nije dostupan – otvori Postavke…"
       },
       "settings": {
-        "reasoning": "Razmišljanje",
         "effort": "Razina truda"
       },
       "includeCurrentNote": "Uključi trenutnu bilješku",
@@ -472,11 +460,8 @@
           "max": "Maksimalna"
         }
       },
-      "permissionsLabel": "Dopuštenja agenta: {access}, pretraživanje weba {webSearch}",
       "permissions": {
-        "label": "Dopuštenja",
-        "access": "Pristup",
-        "tools": "Alati"
+        "access": "Pristup"
       },
       "modelSettingsLabel": "Postavke modela agenta: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nova mapa",
       "newProject": "Novi projekt",
       "bookmarks": "Favoriti",
-      "chart": "Grafikon",
       "tags": "Oznake",
       "reorderSection": "Promijeni redoslijed odjeljka {section}",
       "dropFilesToImport": "Ispustite datoteke za uvoz",
       "dropFilesIntoVaultRoot": "Korijen trezora",
       "newNoteN": "Nova bilješka (⌘N)",
-      "new": "Novo",
       "newItemMenu": "Stvori novo…",
       "feedbackButton": "Pošalji povratne informacije",
       "feedbackTitle": "Pošalji povratne informacije",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Pronađi, zamijeni, pitaj…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Preskoči uvod",
-      "welcomeToMemry": "Dobro došli u memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Vaša osobna baza znanja. Za početak su vam potrebne samo 2 minute.",
-      "getStarted": "Započni ",
-      "createYourFirstNote": "Stvorite svoju prvu bilješku",
-      "markdownBasedStoredLocallyAsPlainFiles": "Temelji se na Markdownu i sprema lokalno kao obične datoteke.",
-      "eGMeetingNotesIdeasAnything": "npr. bilješke sa sastanka, ideje, bilo što…",
-      "skip": "Preskoči",
-      "createNote": "Stvori bilješku ",
-      "addYourFirstTask": "Dodajte svoj prvi zadatak",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Zadaci s prioritetima i rokovima povezuju se s vašim bilješkama.",
-      "eGReviewProjectProposal": "npr. pregled prijedloga projekta…",
-      "skip2": "Preskoči",
-      "createTask": "Stvori zadatak ",
-      "syncAcrossDevices": "Sinkronizacija na svim uređajima",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Sinkronizirajte svoje bilješke i zadatke na svim svojim uređajima. To uvijek možete postaviti kasnije.",
-      "skipForNow": "Preskoči za sada",
-      "doneLetSGo": "Gotovo – krenimo! "
+      "skip": "Preskoči"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Postavi ikonu mape",
@@ -852,8 +818,7 @@
       "unknownTabType": "Nepoznata vrsta kartice: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "nespremljene promjene",
-      "preview": "pretpregled"
+      "unsavedChanges": "nespremljene promjene"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nova kartica",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Povucite za promjenu veličine · Dvaput kliknite za vraćanje na zadano"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Dobro došli u memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Vaš osobni sustav upravljanja znanjem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Odaberite mapu za pohranjivanje bilješki i zadataka.",
       "opening": "Otvaranje…",
-      "selectVaultFolder": "Odaberi mapu trezora",
-      "plainMarkdown": "Običan Markdown",
-      "yourNotesStayPortable": "Vaše bilješke ostaju prenosive",
-      "syncAnywhere": "Sinkronizirajte bilo gdje",
-      "useDropboxIcloudGit": "Koristite Dropbox, iCloud, Git",
       "recentVaults": "Nedavni trezori",
-      "notesLastOpened": "bilješke · Zadnje otvaranje",
-      "preRelease": "Beta",
       "createNewVault": "Stvori novi trezor",
-      "createNewVaultDesc": "Stvorite novi trezor u mapi po vlastitom izboru.",
-      "openExistingVault": "Otvori postojeći trezor",
-      "openExistingVaultDesc": "Odaberite mapu s Markdown datotekama koje već imate.",
-      "signInToSync": "Prijavi se za sinkronizaciju",
-      "signInToSyncDesc": "Sveobuhvatno šifrirani trezori na svim vašim uređajima.",
-      "create": "Stvori",
       "open": "Otvori",
-      "signIn": "Prijavi se",
       "helpAndDocs": "Pomoć i dokumentacija",
-      "signInRequiresVault": "Da biste postavili sinkronizaciju, najprije otvorite ili stvorite trezor.",
       "addVault": "Dodaj trezor",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Još nema trezora",
       "openVault": "Otvori trezor",
       "settings": "Postavke",
-      "logOut": "Odjavi se",
-      "signInToSync": "Prijavi se za sinkronizaciju",
       "remove": "Ukloni „",
       "removeVaultTitle": "Ukloniti „{name}” s popisa?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ovaj će trezor biti uklonjen iz aplikacije, ali će vaše datoteke ostati na disku. Uvijek ga možete ponovno dodati kasnije.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Promijeni…",
       "download": "Preuzmi",
       "downloadFailed": "Nije moguće preuzeti trezor",
-      "deleteFromAccount": "Izbriši s računa",
       "deleteVaultTitle": "Izbrisati „{name}” s vašeg računa?",
       "deleteVaultBody": "Ovime se svi sinkronizirani podaci ovog trezora trajno uklanjaju s poslužitelja aplikacije Memry i to se ne može poništiti. Vaše datoteke na disku neće biti izbrisane.",
       "deleteVaultConfirm": "Izbriši s računa",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Ukloni widget",
       "dragAria": "Povuci widget",
-      "configAria": "Konfiguriraj widget",
-      "resizeAria": "Promijeni veličinu na {size}",
       "menuAria": "Mogućnosti widgeta",
-      "resize": "Veličina",
       "remove": "Ukloni",
       "filter": {
         "all": "Sve",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Odaberi mapu",
       "folderEmpty": "Još nema mapa",
       "folderNoSelection": "Nijedna mapa nije odabrana",
-      "folderView_list": "Popis",
-      "folderView_gallery": "Galerija",
       "folderViewSelect": "Prikaz",
       "project": "Projekt",
       "projectNoSelection": "Nijedan projekt nije odabran",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Raspored početne stranice",
       "deleteAria": "Izbriši raspored",
-      "newAria": "Nova ploča",
       "newName": "Nova ploča",
       "defaultName": "Početna",
       "manage": "Upravljaj pločama",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# zadatak s rokom danas} few {# zadatka s rokom danas} other {# zadataka s rokom danas}}",
       "events": "{count, plural, one {# događaj} few {# događaja} other {# događaja}}"
     },
-    "edit": "Uredi",
-    "done": "Gotovo",
     "addWidget": "Dodaj widget",
     "cover": {
       "add": "Dodaj naslovnicu"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Uvod završen",
-      "body": "Dajte nam zvjezdicu na GitHubu – tako i drugi lakše pronalaze MemryNote.",
-      "action": "Dodaj zvjezdicu na GitHubu"
+      "body": "Dajte nam zvjezdicu na GitHubu – tako i drugi lakše pronalaze MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Ažuriranje spremno",
     "failed": "Ažuriranje nije uspjelo",
     "downloadAction": "Preuzmi",
-    "restartAction": "Ponovno pokreni",
     "detailsAction": "Pojedinosti",
     "popover": {
       "readyTitle": "MemryNote {version} je spreman",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Trezori",
     "position": "{name}, trezor {index} od {count}",
-    "openList": "{position}. Otvori popis trezora",
     "switchTo": "Prijeđi na trezor {name}",
     "switchingTo": "Prelazak na trezor {name}",
     "changeIcon": "Promijeni ikonu…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Na {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Pronađen # trezor} few {Pronađena # trezora} other {Pronađeno # trezora}}",
-      "notion": "Notion",
       "otherApps": "Ostale aplikacije i datoteke",
       "otherAppsHint": "i još {count}",
       "detectedFootnote": "Pronađeno provjerom instaliranih aplikacija. Ništa ne napušta uređaj: sve ostaje na {device}.",

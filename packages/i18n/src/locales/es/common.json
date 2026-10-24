@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "La acción falló",
-    "nothingToUndo": "Nada que deshacer",
     "undone": "Deshecho: {description}",
     "undoFailed": "No se pudo deshacer la acción",
     "filesImported": "{count, plural, one {Se importó # archivo} other {Se importaron # archivos}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "El agente quiere crear {title}. Revisa el cambio antes de aplicarlo.",
       "descriptionDelete": "El agente quiere eliminar {title}. Revisa el cambio antes de aplicarlo.",
       "fallbackTitle": "este elemento",
-      "current": "Actual",
       "candidate": "Propuesta",
       "loading": "Cargando…",
       "apply": "Aplicar",
@@ -383,12 +381,8 @@
       "removeAttachment": "Quitar {label}",
       "placeholder": "Haz cualquier cosa con memrynote… Usa @ para mencionar notas, tareas y eventos",
       "send": "Enviar",
-      "providerLabel": "Proveedor del agente: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Herramientas conectadas",
       "connectTool": "Conectar {tool}",
-      "addContext": "Añadir contexto",
-      "addContextWithPermissions": "Añadir contexto ({permissions})",
       "mentionContext": "Mencionar una nota, tarea o evento",
       "files": {
         "attach": "Adjuntar un archivo de texto",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "No se pudo transcribir la entrada de voz"
         }
       },
-      "modelLabel": "Modelo del agente: {provider} {model}",
-      "reasoningLabel": "Razonamiento del agente: {reasoning}",
       "providers": {
-        "label": "Proveedor",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Acceso al equipo"
       },
       "webSearch": {
-        "on": "Activada",
-        "off": "Desactivada",
         "label": "Búsqueda web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agente no disponible: abre Ajustes…"
       },
       "settings": {
-        "reasoning": "Razonamiento",
         "effort": "Esfuerzo"
       },
       "includeCurrentNote": "Incluir la nota actual",
@@ -472,11 +460,8 @@
           "max": "Máxima"
         }
       },
-      "permissionsLabel": "Permisos del agente: {access}, búsqueda web {webSearch}",
       "permissions": {
-        "label": "Permisos",
-        "access": "Acceso",
-        "tools": "Herramientas"
+        "access": "Acceso"
       },
       "modelSettingsLabel": "Ajustes del modelo del agente: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nueva carpeta",
       "newProject": "Nuevo proyecto",
       "bookmarks": "Marcadores",
-      "chart": "Gráfico",
       "tags": "Etiquetas",
       "reorderSection": "Reordenar {section}",
       "dropFilesToImport": "Soltar archivos para importar",
       "dropFilesIntoVaultRoot": "Raíz de la bóveda",
       "newNoteN": "Nueva nota (⌘N)",
-      "new": "Nuevo",
       "newItemMenu": "Crear nuevo…",
       "feedbackButton": "Enviar comentarios",
       "feedbackTitle": "Enviar comentarios",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Buscar, reemplazar, preguntar…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Omitir la introducción",
-      "welcomeToMemry": "Te damos la bienvenida a memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Tu base de conocimiento personal. En 2 minutos te ayudamos a empezar.",
-      "getStarted": "Empezar ",
-      "createYourFirstNote": "Crea tu primera nota",
-      "markdownBasedStoredLocallyAsPlainFiles": "Basadas en Markdown y guardadas localmente como archivos de texto plano.",
-      "eGMeetingNotesIdeasAnything": "p. ej., notas de reuniones, ideas, lo que quieras…",
-      "skip": "Omitir",
-      "createNote": "Crear nota ",
-      "addYourFirstTask": "Añade tu primera tarea",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Las tareas se enlazan con tus notas, con prioridades y fechas de vencimiento.",
-      "eGReviewProjectProposal": "p. ej., revisar la propuesta del proyecto…",
-      "skip2": "Omitir",
-      "createTask": "Crear tarea ",
-      "syncAcrossDevices": "Sincronización entre dispositivos",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Mantén tus notas y tareas sincronizadas en todos tus dispositivos. Puedes configurarlo más tarde cuando quieras.",
-      "skipForNow": "Omitir por ahora",
-      "doneLetSGo": "Listo, ¡vamos! "
+      "skip": "Omitir"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Establecer icono de carpeta",
@@ -852,8 +818,7 @@
       "unknownTabType": "Tipo de pestaña desconocido: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "cambios no guardados",
-      "preview": "vista previa"
+      "unsavedChanges": "cambios no guardados"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nueva pestaña",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Arrastra para cambiar el tamaño · Haz doble clic para restablecer"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Te damos la bienvenida a memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Tu sistema personal de gestión del conocimiento.",
-      "selectAFolderToStoreYourNotesAndTasks": "Selecciona una carpeta para guardar tus notas y tareas.",
       "opening": "Abriendo…",
-      "selectVaultFolder": "Seleccionar carpeta de la bóveda",
-      "plainMarkdown": "Markdown plano",
-      "yourNotesStayPortable": "Tus notas se pueden llevar a cualquier parte",
-      "syncAnywhere": "Sincronizar en cualquier lugar",
-      "useDropboxIcloudGit": "Usa Dropbox, iCloud o Git",
       "recentVaults": "Bóvedas recientes",
-      "notesLastOpened": "notas · Última apertura",
-      "preRelease": "Beta",
       "createNewVault": "Crear nueva bóveda",
-      "createNewVaultDesc": "Crea una bóveda nueva en la carpeta que elijas.",
-      "openExistingVault": "Abrir bóveda existente",
-      "openExistingVaultDesc": "Elige una carpeta con archivos Markdown que ya tengas.",
-      "signInToSync": "Iniciar sesión para sincronizar",
-      "signInToSyncDesc": "Bóvedas cifradas de extremo a extremo en tus dispositivos.",
-      "create": "Crear",
       "open": "Abrir",
-      "signIn": "Iniciar sesión",
       "helpAndDocs": "Ayuda y documentación",
-      "signInRequiresVault": "Abre o crea una bóveda primero para configurar la sincronización.",
       "addVault": "Añadir bóveda",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Aún no hay bóvedas",
       "openVault": "Abrir bóveda",
       "settings": "Ajustes",
-      "logOut": "Cerrar sesión",
-      "signInToSync": "Iniciar sesión para sincronizar",
       "remove": "Quitar “",
       "removeVaultTitle": "¿Quitar «{name}» de la lista?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Esta bóveda se quitará de la app, pero tus archivos seguirán en el disco. Puedes volver a añadirla cuando quieras.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Cambiar…",
       "download": "Descargar",
       "downloadFailed": "No se pudo descargar la bóveda",
-      "deleteFromAccount": "Eliminar de la cuenta",
       "deleteVaultTitle": "¿Eliminar «{name}» de tu cuenta?",
       "deleteVaultBody": "Esto elimina de forma permanente todos los datos sincronizados de esta bóveda que hay en los servidores de Memry y no se puede deshacer. Los archivos de tu disco no se eliminan.",
       "deleteVaultConfirm": "Eliminar de la cuenta",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Quitar widget",
       "dragAria": "Arrastrar widget",
-      "configAria": "Configurar widget",
-      "resizeAria": "Redimensionar a {size}",
       "menuAria": "Opciones del widget",
-      "resize": "Tamaño",
       "remove": "Quitar",
       "filter": {
         "all": "Todas",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Elige una carpeta",
       "folderEmpty": "Aún no hay carpetas",
       "folderNoSelection": "No hay ninguna carpeta seleccionada",
-      "folderView_list": "Lista",
-      "folderView_gallery": "Galería",
       "folderViewSelect": "Vista",
       "project": "Proyecto",
       "projectNoSelection": "No hay ningún proyecto seleccionado",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Tablero de Inicio",
       "deleteAria": "Eliminar tablero",
-      "newAria": "Nuevo tablero",
       "newName": "Nuevo tablero",
       "defaultName": "Inicio",
       "manage": "Gestionar tableros",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# tarea vence hoy} other {# tareas vencen hoy}}",
       "events": "{count, plural, one {# evento} other {# eventos}}"
     },
-    "edit": "Editar",
-    "done": "Listo",
     "addWidget": "Añadir widget",
     "cover": {
       "add": "Añadir portada"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introducción completada",
-      "body": "Por favor, danos una estrella en GitHub: ayuda a que otras personas encuentren MemryNote.",
-      "action": "Dar una estrella en GitHub"
+      "body": "Por favor, danos una estrella en GitHub: ayuda a que otras personas encuentren MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Actualización lista",
     "failed": "No se pudo actualizar",
     "downloadAction": "Descargar",
-    "restartAction": "Reiniciar",
     "detailsAction": "Detalles",
     "popover": {
       "readyTitle": "MemryNote {version} está listo",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Bóvedas",
     "position": "{name}, bóveda {index} de {count}",
-    "openList": "{position}. Abrir la lista de bóvedas",
     "switchTo": "Cambiar a {name}",
     "switchingTo": "Cambiando a {name}",
     "changeIcon": "Cambiar icono…",
@@ -1501,7 +1433,6 @@
       "onDevice": "En {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# bóveda encontrada} many {# de bóvedas encontradas} other {# bóvedas encontradas}}",
-      "notion": "Notion",
       "otherApps": "Otras apps y archivos",
       "otherAppsHint": "y {count} más",
       "detectedFootnote": "Se encontraron comprobando qué apps están instaladas. Nada sale de {device}.",

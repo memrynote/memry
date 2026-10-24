@@ -17,18 +17,6 @@
       "filterAll": "Semua fail"
     },
     "exportCancelled": "Eksport dibatalkan",
-    "update": {
-      "availableTitle": "Kemas kini tersedia",
-      "availableMessage": "memrynote {version} tersedia.",
-      "availableDetailFallback": "Muat turun kemas kini sekarang?",
-      "buttonDownload": "Muat turun",
-      "buttonLater": "Nanti",
-      "readyTitle": "Kemas kini sedia",
-      "readyMessage": "memrynote {version} telah dimuat turun.",
-      "readyDetailFallback": "Mulakan semula memrynote untuk menyelesaikan pemasangan kemas kini.",
-      "buttonRestartNow": "Mulakan semula sekarang",
-      "releaseNotesLabel": "Nota keluaran:"
-    },
     "dataDbRecovery": {
       "title": "Baiki pangkalan data peti besi",
       "message": "Pangkalan data Memry untuk peti besi ini rosak.",

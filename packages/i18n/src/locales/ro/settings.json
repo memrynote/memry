@@ -7,11 +7,6 @@
     "backToApp": "Înapoi la aplicație",
     "nav": {
       "groups": {
-        "account": "Cont",
-        "application": "Aplicație",
-        "editing": "Editare",
-        "modules": "Module",
-        "services": "Servicii",
         "data": "Date",
         "workspace": "Spațiu de lucru",
         "features": "Funcții"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Configurează {module}"
-    },
-    "vaultImport": {
-      "label": "Importă din altă aplicație",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist și altele",
-      "action": "Importă…"
     },
     "search": {
       "placeholder": "Caută în setări",
@@ -102,12 +92,8 @@
       "loading": "Se încarcă setările…"
     },
     "groups": {
-      "startup": "Pornire",
       "updates": "Actualizări",
       "languageRegion": "Limbă și regiune",
-      "tabBehavior": "Comportamentul filelor",
-      "window": "Comportamentul ferestrei",
-      "fileCreation": "Crearea fișierelor",
       "privacy": "Confidențialitate",
       "startupWindows": "Pornire și ferestre",
       "newNotes": "Notițe noi",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Pornire la autentificare",
-        "description": "memrynote pornește când vă autentificați în sistem",
         "error": "Nu s-a putut actualiza pornirea automată"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Verifică automat actualizările",
-        "description": "Verifică versiunile noi la pornire și periodic, cât timp aplicația este deschisă.",
         "error": "Nu s-a putut actualiza setarea de verificare automată"
       },
       "autoDownload": {
         "label": "Descarcă automat actualizările",
-        "description": "Descarcă și instalează versiunile noi în fundal, fără să vă întrebe.",
         "error": "Nu s-a putut actualiza setarea de descărcare automată"
       },
-      "appUpdates": "Actualizări ale aplicației",
-      "installedVersion": "Versiunea instalată {version}",
-      "availableVersion": "Versiunea disponibilă {version}",
-      "unsupported": "Versiunile împachetate pot verifica, descărca și instala actualizări din GitHub Releases",
       "available": "memrynote {version} este disponibil pentru descărcare",
       "downloadingLatest": "Se descarcă cea mai recentă versiune",
-      "downloadingLatestPercent": "Se descarcă cea mai recentă versiune ({percent}%)",
       "downloaded": "memrynote {version} este gata de instalare",
-      "upToDate": "Această instalare rulează cea mai recentă versiune publicată",
-      "checking": "Se caută o versiune mai nouă în GitHub Releases",
-      "idle": "Verificați dacă există versiuni noi și instalați-le fără a părăsi aplicația",
       "unsupportedToast": "Actualizările automate sunt disponibile numai în versiunile împachetate",
       "upToDateToast": "memrynote {version} este actualizat",
       "actionFailed": "Acțiunea de actualizare a eșuat",
@@ -164,17 +139,10 @@
         "downloading": "Se descarcă…",
         "downloadingPercent": "Se descarcă {percent}%",
         "downloaded": "Versiunea {version} este gata de instalare"
-      },
-      "mode": {
-        "label": "Mod de actualizare",
-        "off": "Nu verifica",
-        "notify": "Doar notifică",
-        "auto": "Descarcă automat"
       }
     },
     "language": {
       "label": "Limba",
-      "helper": "Cea mai mare parte a aplicației se actualizează imediat. Unele texte de sistem – notificările deja afișate, eticheta din Dock, bara de titlu a ferestrei – se reîmprospătează după următoarea lansare.",
       "changed": "Limba a fost schimbată în {nativeName}",
       "failed": "Nu s-a putut schimba limba. Vă rugăm să încercați din nou."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Format oră",
-      "description": "Ceas de 12 sau 24 de ore",
       "options": {
         "12h": "12 ore",
         "24h": "24 de ore"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Format dată",
-      "description": "Cum sunt afișate datele din calendar",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (SUA)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Deschide paginile într-o filă nouă",
-        "description": "Când faceți clic pe o pagină sau o creați – notițe, dosare, proiecte, canvasuri, etichete, marcaje –, aceasta se deschide într-o filă nouă. Când este dezactivată, fila curentă este reutilizată, inclusiv când urmați linkuri dintr-o notiță; filele fixate nu sunt înlocuite niciodată. „Deschide într-o filă nouă”, „Deschide în lateral” și clicul pe butonul din mijloc deschid întotdeauna o filă nouă."
+        "label": "Deschide paginile într-o filă nouă"
       },
       "restoreSession": {
         "label": "Restaurează filele la pornire",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Butonul de închidere a filei",
-        "description": "Când se afișează butonul de închidere",
         "options": {
           "always": "Întotdeauna vizibil",
           "hover": "La trecerea cursorului",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Rămâne în bara de meniu la închidere",
-        "description": "Închiderea ferestrei ascunde memrynote în zona de notificare, în loc să îl închidă. Faceți clic pe pictograma din zona de notificare pentru a-l readuce. Pe macOS, aplicația rămâne și în Dock; pe desktopurile Linux fără zonă de notificare, fereastra se închide ca de obicei.",
         "error": "Nu s-a putut actualiza minimizarea în zona de notificare"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Creează în dosarul selectat",
-        "description": "Notițele și dosarele noi sunt create în dosarul selectat. Când este dezactivată, elementele sunt create întotdeauna în rădăcina seifului."
+        "label": "Creează în dosarul selectat"
       },
       "defaultNoteFolder": {
         "label": "Locația implicită pentru notițe noi",
         "description": "Se folosește când nu este selectat niciun dosar în bara laterală.",
-        "placeholder": "notițe",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Nu s-a putut trimite raportul de diagnosticare",
         "sendReport": {
           "label": "Raport de diagnosticare",
-          "description": "Trimiteți o singură dată un raport cu jurnale tehnice anonimizate, pentru a ne ajuta să depanăm o problemă întâlnită.",
           "button": "Trimite raportul…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Se încarcă setările…"
     },
     "groups": {
-      "theme": "Temă",
-      "accentColor": "Culoare de accent",
-      "typography": "Tipografie",
-      "zoom": "Zoom"
+      "theme": "Temă"
     },
     "theme": {
       "colorMode": {
-        "label": "Mod de culoare",
-        "description": "Alegeți tema preferată",
         "aria": "Mod de culoare"
       },
       "options": {
         "light": "Luminos",
-        "white": "Alb",
         "dark": "Întunecat",
         "system": "Sistem"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Clipboardul nu conține o temă memrynote"
     },
     "accent": {
-      "pick": "Alegeți o culoare de accent",
       "custom": {
-        "label": "Culoare personalizată",
-        "description": "Introduceți o valoare hexazecimală",
-        "placeholder": "#000000"
+        "label": "Culoare personalizată"
       },
       "presets": {
         "indigo": "Indigo",
@@ -348,7 +299,6 @@
         "pink": "Roz",
         "orange": "Portocaliu"
       },
-      "error": "Nu s-a putut actualiza culoarea de accent",
       "aria": "Presetare pentru culoarea de accent",
       "options": {
         "theme": "Din temă",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Nivel de zoom",
-      "description": "Scalează întreaga interfață",
       "decrease": "Micșorează",
       "increase": "Mărește",
       "reset": "Resetează zoomul la valoarea implicită",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Dimensiunea fontului",
-        "description": "Dimensiunea de bază a textului din interfață, în pixeli",
         "decrease": "Micșorează fontul",
         "increase": "Mărește fontul",
         "reset": "Resetează dimensiunea fontului la valoarea implicită"
       },
       "fontFamily": {
         "label": "Familia de fonturi",
-        "description": "Font principal pentru interfață",
         "options": {
           "system": "Fontul sistemului",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Nu s-a putut actualiza familia de fonturi"
     },
     "v2": {
-      "groups": {
-        "text": "Text și zoom"
-      },
       "colorMode": "Mod de culoare",
       "colorTheme": "Temă",
       "accent": "Culoare de accent",
-      "customColor": "Culoare personalizată",
       "fontFamily": "Familie de fonturi",
       "fontSize": "Dimensiunea fontului",
       "zoom": "Zoom"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Aspect",
-      "toolbar": "Bara de instrumente",
       "spelling": "Ortografie",
       "checklists": "Liste de verificare",
       "attachments": "Atașamente",
@@ -473,7 +413,6 @@
       "error": "Tipurile de casete explicative nu au putut fi actualizate"
     },
     "width": {
-      "label": "Lățimea editorului",
       "description": "Se aplică tuturor notițelor și paginilor de jurnal",
       "options": {
         "normal": "Normală",
@@ -482,12 +421,10 @@
       "error": "Nu s-a putut actualiza lățimea editorului"
     },
     "toolbarMode": {
-      "label": "Bară de formatare fixă",
       "description": "Afișați întotdeauna bara de instrumente deasupra editorului",
       "error": "Nu s-a putut actualiza modul barei de instrumente"
     },
     "spellCheck": {
-      "label": "Verifică ortografia",
       "description": "Subliniază cuvintele scrise greșit în notițe și jurnale",
       "error": "Nu s-a putut actualiza verificarea ortografică"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Gestionați șabloanele de notițe pentru creare rapidă"
     },
     "actions": {
-      "new": "Șablon nou",
       "edit": "Editează",
       "duplicate": "Duplică",
       "delete": "Șterge"
     },
     "groups": {
-      "builtIn": "Integrate",
-      "myTemplates": "Șabloanele mele"
+      "builtIn": "Integrate"
     },
     "loading": "Se încarcă șabloanele…",
     "newTemplateTitle": "Șablon nou",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Nu există încă șabloane personalizate",
       "description": "Creați un șablon pentru a începe"
-    },
-    "preview": {
-      "notFound": "Nu s-a putut încărca acest șablon."
     },
     "toasts": {
       "deleted": "Șablon șters",
@@ -572,11 +504,7 @@
       "loading": "Se încarcă setările…"
     },
     "groups": {
-      "defaultTemplate": "Șablon implicit",
-      "location": "Locație și format",
-      "sidebarVisibility": "Vizibilitatea barei laterale",
-      "footer": "Subsol",
-      "weekdayTemplates": "Șabloane pentru fiecare zi"
+      "footer": "Subsol"
     },
     "template": {
       "label": "Șablon",
@@ -588,18 +516,6 @@
       "updated": "Șablon implicit actualizat",
       "cleared": "Șablon implicit eliminat",
       "error": "Nu s-a putut actualiza șablonul implicit"
-    },
-    "showSchedule": {
-      "label": "Afișează programul",
-      "description": "Afișează evenimentele și calendarul de astăzi"
-    },
-    "showTasks": {
-      "label": "Afișează sarcinile",
-      "description": "Afișează sarcinile cu termen în ziua selectată"
-    },
-    "showAIConnections": {
-      "label": "Afișează conexiunile AI",
-      "description": "Afișează conexiunile generate de AI către înregistrările asociate"
     },
     "showStatsFooter": {
       "label": "Afișează subsolul cu statistici",
@@ -632,7 +548,6 @@
       "inheritWith": "Implicit · {name}",
       "inheritNone": "Implicit · niciunul",
       "missing": "Șablon șters",
-      "clear": "Elimină",
       "updated": "Șablon actualizat pentru {day}",
       "cleared": "Șablon eliminat pentru {day}",
       "error": "Nu s-a putut actualiza șablonul pentru {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Configurați comportamentul celulelor de zi în Panoul zilei",
       "loading": "Se încarcă setările…"
     },
-    "groups": {
-      "weekStart": "Săptămână",
-      "dayCellClick": "Clic pe celula zilei",
-      "notes": "Notițe"
-    },
     "weekStart": {
       "label": "Săptămâna începe cu",
       "description": "Prima zi a săptămânii în toate calendarele",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Reconectează Google",
       "addAccount": "Adaugă un cont",
-      "importedCalendars": "Calendare importate",
-      "selected": "Selectate: {count}",
       "syncNow": "Sincronizează acum",
       "disconnect": "Deconectează",
       "reconnect": "Reconectează Google",
@@ -1025,10 +933,8 @@
       "loading": "Se încarcă…"
     },
     "groups": {
-      "identity": "Identitate",
       "sync": "Sincronizare",
       "billing": "Facturare",
-      "storage": "Stocare",
       "devices": "Dispozitive"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Deconectare",
         "description": "Deconectați acest dispozitiv de la sincronizare",
         "action": "Deconectare"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Căutarea de imagini este dezactivată"
     },
     "unknownError": "Eroare necunoscută",
-    "groups": {
-      "voice": "Transcrierea vocii",
-      "embeddingModel": "Model de embedding local",
-      "embeddingIndex": "Index de embeddinguri",
-      "inline": "Editare AI în linie"
-    },
     "voice": {
-      "provider": "Furnizor",
       "providerDescription": "Furnizor de transcriere pentru memourile vocale",
-      "providers": {
-        "local": "Local (implicit)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Numele memourilor",
       "memoNameModeDescription": "Cum sunt denumite memourile vocale după transcriere",
       "naming": {
         "transcript": "Titlu din transcriere",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Limba în care vorbești în notele vocale",
       "languageDefault": "Implicit",
       "languageError": "Nu s-a putut actualiza limba transcrierii",
-      "localModel": "Model local",
-      "localModelDescription": "Whisper Small se descarcă la cerere și rămâne în cache local",
       "status": {
         "ready": "Gata",
         "downloading": "Se descarcă",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Încărcat",
       "loading": "Se încarcă",
-      "cacheHint": "~210 MB · În cache local · Totul pe dispozitiv",
-      "dimensions": "Dimensiuni",
-      "embeddings": "Embeddinguri",
       "downloadLoad": "Descarcă și încarcă modelul",
       "downloadingModel": "Se descarcă modelul…",
       "loadingModel": "Se încarcă modelul…",
       "loadSuccess": "Modelul a fost încărcat cu succes",
       "loadFailed": "Nu s-a putut încărca modelul",
       "rebuildIndex": "Reconstruiește indexul",
-      "rebuildDescription": "Regenerați embeddingurile pentru toate notițele",
-      "rebuild": "Reconstruiește",
       "scanning": "Se scanează notițele…",
       "generating": "Se generează embeddingurile…",
       "complete": "Finalizat!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Se încarcă…",
-      "title": "Editare AI în linie",
-      "enable": "Activează AI în linie",
       "enableDescription": "Afișează meniul AI la editarea notițelor",
       "enabled": "Editare AI în linie activată",
       "disabled": "Editare AI în linie dezactivată",
       "provider": "Furnizor",
-      "providerDescription": "Serviciu AI pentru operațiuni cu text",
       "providers": {
         "ollama": "Ollama (local)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Activ pe portul {port}",
       "notConnected": "Nu este conectat",
       "test": "Testează",
-      "stopFailed": "Nu s-a putut opri serverul existent",
       "connected": "Conectat! Serverul rulează pe portul {port}",
       "connectFailed": "Nu s-a putut conecta",
       "testFailed": "Testul de conectare a eșuat",
@@ -1566,8 +1448,6 @@
       "onenote": "Importă blocnotesuri OneNote (necesită un cont Microsoft)",
       "readwise": "Importă-ți evidențierile din Readwise (necesită un token de acces)"
     },
-    "action": "Importă",
-    "select": "Selectează o aplicație pentru import…",
     "stats": {
       "notes": "{count, plural, one {# notiță} few {# notițe} other {# de notițe}}",
       "projects": "{count, plural, one {# proiect} few {# proiecte} other {# de proiecte}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Selectează dosarul Apple Notes…",
       "chooseDirectory": "Alege dosarul…",
       "folderKeepsAssets": "Alegeți dosarul când imaginile se află în afara dosarului notițelor – exporturile păstrează adesea fișierele media într-un dosar comun.",
-      "chooseHint": "Selectați {label}",
       "folderHint": "Faceți clic mai jos și selectați dosarul „group.com.apple.notes” când se deschide selectorul (pornește de acolo). Astfel, Memry poate citi notițele și atașamentele – fără Acces complet la disc.",
       "noteplanFolderHint": "Alegeți dosarul NotePlan – fie dosarul de date al aplicației, fie una dintre copiile sale din Backups. Memry citește dosarele Calendar, Notes și @Archive din interiorul acestuia.",
       "selected": "{count, plural, one {# fișier selectat} few {# fișiere selectate} other {# de fișiere selectate}}",
       "start": "Începe importul",
       "cancel": "Anulează",
-      "close": "Închide",
       "done": "Gata",
       "running": "Se importă…",
       "progress": "{completed} din {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Se conectează…",
         "connectFailed": "Nu s-a putut face conectarea la Readwise",
         "takeOver": {
-          "syncsOn": "Readwise se sincronizează pe {device}.",
-          "syncsOnAnother": "Readwise se sincronizează pe alt dispozitiv.",
           "explain": "Doar un dispozitiv preia date din Readwise, astfel încât aceeași evidențiere nu este scrisă niciodată de două ori. Pentru a prelua de pe acest dispozitiv, lipește din nou tokenul: nu călătorește niciodată între dispozitive. Celălalt dispozitiv se oprește la următoarea carte, iar toate notițele rămân.",
           "button": "Sincronizează aici în schimb",
           "working": "Se mută Readwise aici…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Caută o aplicație sau un tip de fișier…",
       "noMatch": "Nicio sursă nu corespunde cu „{query}”",
       "formatAccount": "Cont",
-      "showMore": "{count, plural, one {Afișează încă #} few {Afișează încă #} other {Afișează încă #}}",
-      "showLess": "Afișează mai puțin",
       "groups": {
         "reading": "Lectură",
         "noteApps": "Aplicații de notițe",
@@ -1968,8 +1842,6 @@
       "subtitle": "Configurarea și stocarea seifului"
     },
     "groups": {
-      "storageUsage": "Utilizarea spațiului de stocare",
-      "location": "Locație",
       "accountVaults": "Seifurile din cont",
       "largeNotes": "Notițe aproape de limita de sincronizare",
       "activity": "Activitate"
@@ -2229,8 +2101,6 @@
       "loading": "Se încarcă setările…"
     },
     "searchPlaceholder": "Caută comenzi rapide…",
-    "resetAll": "Resetează tot",
-    "custom": "Personalizat",
     "pressShortcut": "Apăsați combinația de taste…",
     "cancelTitle": "Anulează",
     "rebindTitle": "Faceți clic pentru a reatribui",
@@ -2241,7 +2111,6 @@
     "noMatch": "Nicio comandă rapidă nu corespunde căutării",
     "conflict": "Intră în conflict cu: {labels}",
     "globalCapture": {
-      "title": "Captură globală",
       "description": "Capturați o notiță de oriunde",
       "active": "Activ",
       "inUse": "{shortcut} este folosită de altă aplicație. Alegeți o altă combinație.",
@@ -2458,7 +2327,6 @@
       "systemWide": "La nivel de sistem",
       "globalCapture": "Captură globală",
       "recordingHint": "Apăsați tastele… esc pentru a anula",
-      "reset": "Resetează",
       "resetAll": "Resetează tot la valorile implicite",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Nu s-a putut retrimite codul",
       "failedToSetUpDevice": "Nu s-a putut configura dispozitivul",
       "failedToConfirmRecoveryPhrase": "Nu s-a putut confirma fraza de recuperare",
-      "failedToAnalyzeContent": "Nu s-a putut analiza conținutul",
       "failedToLoadUpdaterState": "Nu s-a putut încărca starea actualizărilor",
       "failedToCheckForUpdates": "Nu s-au putut verifica actualizările",
       "failedToDownloadUpdate": "Nu s-a putut descărca actualizarea",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Nu s-au putut încărca setările editorului de notițe",
       "failedToUpdateSettings": "Nu s-au putut actualiza setările",
       "failedToLoadTabSettings": "Nu s-au putut încărca setările filelor",
-      "failedToLoadNotes": "Nu s-au putut încărca notițele",
       "failedToLoadTags": "Nu s-au putut încărca etichetele",
-      "failedToLoadTasks": "Nu s-au putut încărca sarcinile",
       "failedToLoadVaultStatus": "Nu s-a putut încărca starea seifului",
       "failedToSelectVault": "Nu s-a putut selecta seiful",
       "failedToCloseVault": "Nu s-a putut închide seiful",
@@ -2565,18 +2430,12 @@
       "title": "Agent MCP",
       "subtitle": "Acces la serverul local pentru clienții MCP externi."
     },
-    "groups": {
-      "connection": "Conexiune",
-      "access": "Acces"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Folosiți acest endpoint localhost din Cursor, Claude Desktop sau Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Token Bearer",
-        "description": "Credențială păstrată în memorie pentru această pornire a aplicației."
+        "label": "Token Bearer"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Permisiunile agentului",
       "subtitle": "Alegeți accesul implicit, confirmările și furnizorii locali pentru chatul cu agentul."
     },
-    "groups": {
-      "cliAgents": "Agenți CLI",
-      "local": "Furnizor local compatibil OpenAI",
-      "actions": "Verificări ale conexiunii"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Permisiunile agentului",
       "access": {
-        "label": "Acces implicit",
         "description": "Stabilește modul de acces inițial pentru fiecare nouă interacțiune cu agentul.",
         "vaultOnly": "Doar seiful",
         "computerAccess": "Acces la computer",
         "builtInNote": "Conexiunea de model integrată folosește mereu doar instrumentele seifului."
       },
       "confirm": {
-        "label": "Confirmă acțiunile",
         "description": "Alegeți dacă apelurile de instrumente rulează automat sau așteaptă aprobarea în chat. Notițele și folderele blocate rămân doar pentru citire în ambele moduri.",
         "alwaysAllow": "Permite întotdeauna",
         "askBeforeChanges": "Întreabă înainte de modificări"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Salvează",
-      "models": "Modele",
-      "test": "Testează conexiunea",
-      "probe": "Detectează instrumentele"
+      "test": "Testează conexiunea"
     },
     "status": {
       "label": "Conexiune",
       "checking": "Se verifică…",
       "connected": "Conectat",
-      "disconnected": "Deconectat",
-      "toolsDisabled": "Instrumente dezactivate",
-      "fullTools": "Toate instrumentele activate"
+      "disconnected": "Deconectat"
     },
     "alwaysAllowed": {
-      "group": "Permise întotdeauna",
       "description": "Instrumentele pentru care ați acordat o aprobare permanentă în acest seif. Ștergerile nu pot primi niciodată o astfel de aprobare.",
       "empty": "Nimic nu este permis întotdeauna. Fiecare modificare cere în continuare confirmare.",
       "revoke": "Revocă",

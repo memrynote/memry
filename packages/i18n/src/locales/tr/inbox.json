@@ -15,19 +15,13 @@
       "showWithCount": "Ertelenen öğeleri göster ({count})",
       "hide": "Ertelenen öğeleri gizle"
     },
-    "density": {
-      "toComfortable": "Ferah görünüm",
-      "toCompact": "Kompakt görünüm"
-    },
     "filter": {
-      "button": "Filtre",
       "byType": "Türe göre filtrele",
       "active": "{count, plural, one {# türe göre filtreleniyor} other {# türe göre filtreleniyor}}",
       "clearAll": "Tümünü temizle"
     },
     "jobs": {
-      "running": "{count, plural, one {# arka plan işi çalışıyor} other {# arka plan işi çalışıyor}}",
-      "failed": "{count} başarısız oldu"
+      "running": "{count, plural, one {# arka plan işi çalışıyor} other {# arka plan işi çalışıyor}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "“{name}” klasörünü oluştur",
     "addTags": "Etiket ekle…",
     "linkToNote": "Nota bağla",
-    "linkANote": "Bir not bağla",
-    "suggestedCount": "{count} önerilen",
-    "linkNotesPlaceholder": "Not bağla…",
     "linkOrCreateNotePlaceholder": "Not bul ya da oluştur…",
     "createNote": "“{title}” notunu oluştur",
     "pendingNote": "Yeni not",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Hatırlatma verileri kullanılamıyor.",
     "triggered": "Hatırlatıcı tetiklendi",
-    "noteLabel": "Hatırlatıcı notu",
     "source": "Kaynak",
     "journalTitle": "Günlük — {date}",
     "noteFallback": "Not",
@@ -514,9 +504,7 @@
       "settings": "Ayarlar",
       "processing": "İşleniyor…",
       "cancelRecording": "Kaydı iptal et",
-      "cancel": "İptal",
       "stopRecording": "Kaydı durdur",
-      "stop": "Durdur",
       "recordingError": "Kayıt sırasında bir hata oluştu",
       "microphoneAccessDenied": "Mikrofon erişimi reddedildi",
       "noMicrophoneFound": "Mikrofon bulunamadı",

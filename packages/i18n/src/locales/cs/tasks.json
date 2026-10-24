@@ -53,8 +53,7 @@
       "high": "Vysoká",
       "urgent": "Naléhavá"
     },
-    "unarchive": "Zrušit archivaci úkolu",
-    "archivedOn": "Archivováno {date}"
+    "unarchive": "Zrušit archivaci úkolu"
   },
   "reminders": {
     "summary": "Připomenutí: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "Přidat dílčí úkol",
     "subIssuePlaceholder": "Přidat dílčí úkol…",
     "noSubIssues": "Zatím žádné dílčí úkoly",
-    "linkedNotes": "Související",
-    "linkNote": "Přidat související položku",
     "loading": "Načítání…",
-    "searchNotes": "Hledat související…",
-    "noMatchingNotes": "Žádné odpovídající položky",
-    "noNotesAvailable": "Žádné dostupné položky",
-    "noLinkedNotes": "Zatím žádné související položky",
-    "removeLinkTo": "Odebrat související položku {title}",
-    "removeLinkFallback": "položka",
     "related": "Související",
     "addRelatedItem": "Přidat související položku",
     "searchRelated": "Hledat související…",
     "noMatchingRelated": "Žádné odpovídající položky",
     "noRelatedAvailable": "Žádné dostupné položky",
-    "noRelatedItems": "Zatím žádné související položky",
     "removeRelatedItem": "Odebrat související položku {title}",
     "relatedItemFallback": "položka",
     "relatedItemMissing": "Tato související položka už v tomto trezoru není.",
@@ -251,7 +241,6 @@
     "deleted": "Úkol smazán",
     "deletedSeries": "Všechna opakování dokončena!",
     "completed": "Úkol dokončen!",
-    "archived": "Úkol archivován",
     "undoNotAvailableForDelete": "Smazání nelze vrátit zpět",
     "alreadyAllComplete": "Všechny vybrané úkoly jsou již dokončeny",
     "noCompletedSelected": "Nejsou vybrány žádné dokončené úkoly",
@@ -331,7 +320,6 @@
       "archive": "Archivovat",
       "delete": "Smazat",
       "cancelSelection": "Zrušit výběr",
-      "cancel": "Zrušit",
       "unarchive": "Zrušit archivaci"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "Smazat projekt \"",
       "thisProjectHas": "Tento projekt má ",
       "task": "úkol",
-      "whatWouldYouLikeToDoWithThem": "Co byste s nimi chtěli dělat?",
-      "moveTasksToPersonalProject": "Přesunout úkoly do Osobního projektu",
-      "deleteAllTasksPermanently": "Trvale smazat všechny úkoly",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "Tento projekt nemá žádné úkoly a bude trvale smazán.",
       "notesEventsAndFilesStayNotice": "Úkoly v tomto projektu budou smazány. Vaše poznámky, události a soubory zůstanou v trezoru.",
       "thisActionCannotBeUndone": "Tuto akci nelze vrátit zpět.",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "Nastavit termín pro všechny dílčí úkoly",
-      "setDueDateFor": "Nastavit termín pro ",
-      "alsoApplyToCompletedSubtasks": "Použít i na dokončené dílčí úkoly (",
       "clearDate": "Vymazat datum",
       "cancel": "Zrušit",
       "apply": "Použít",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "Nastavit prioritu pro všechny dílčí úkoly",
-      "setPriorityFor": "Nastavit prioritu pro ",
-      "alsoApplyToCompletedSubtasks": "Použít i na dokončené dílčí úkoly (",
       "cancel": "Zrušit",
       "apply": "Použít",
       "setPriorityForSubtasksIn": "Nastavit prioritu u {count, plural, one {# dílčího úkolu} few {# dílčích úkolů} many {# dílčího úkolu} other {# dílčích úkolů}} v „{title}“",
@@ -464,36 +445,13 @@
       "deleteAll": "Smazat vše",
       "deleteSubtasksConfirmation": "Tím se z „{title}“ {count, plural, one {smaže # dílčí úkol} few {smažou # dílčí úkoly} many {smaže # dílčího úkolu} other {smaže # dílčích úkolů}}."
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "Smazat úkol s dílčími úkoly?",
-      "has": "má ",
-      "subtask": "dílčí úkol",
-      "whatWouldYouLikeToDo": "Co chcete udělat?",
-      "deleteTaskAndAllSubtasks": "Smazat úkol a všechny dílčí úkoly",
-      "permanentlyRemovesEverything": "Trvale odstraní vše",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "Smazat úkol, ponechat dílčí úkoly jako samostatné úkoly",
-      "subtasksBecomeTopLevelTasks": "Dílčí úkoly se stanou úkoly nejvyšší úrovně",
-      "cancel": "Zrušit",
-      "delete": "Smazat"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "Duplikovat úkol",
-      "createACopyOf": "Vytvořit kopii „",
-      "alsoDuplicateSubtasks": "Duplikovat i dílčí úkoly (",
       "cancel": "Zrušit",
-      "duplicate": "Duplikovat ",
       "createACopyOfTitle": "Vytvořit kopii „{title}“",
       "alsoDuplicateSubtasksCount": "Duplikovat i dílčí úkoly ({count})",
       "duplicateWithItems": "Duplikovat ({count, plural, one {# položka} few {# položky} many {# položky} other {# položek}})",
       "duplicateTaskOnly": "Duplikovat úkol"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "Převést na dílčí úkol…",
-      "selectATaskToMake": "Vyberte úkol, pod který chcete přesunout \"",
-      "aSubtaskOf": "jako dílčí úkol.",
-      "searchTasks": "Hledat úkoly…",
-      "sameProject": "Stejný projekt",
-      "otherProjects": "Jiné projekty"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "Puštěním přeplánujete na "
@@ -575,12 +533,6 @@
       "search": "hledání",
       "clearAll": "Vymazat vše"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "Filtrovat podle termínu",
-      "customRange": "Vlastní rozsah",
-      "clear": "Vymazat",
-      "apply": "Použít"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "Filtrovat podle…"
     },
@@ -619,23 +571,9 @@
       "search": "Hledat…",
       "selected": "vybráno"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "Více filtrů",
-      "more": "Více",
-      "status": "Stav",
-      "hasTimeSet": "Má nastavený čas",
-      "recurringOnly": "Pouze opakující se",
-      "status2": "Stav"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "Filtrovat podle priority",
       "priority": "Priorita"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "Filtrovat podle projektu",
-      "project": "Projekt",
-      "allProjects": "Všechny projekty",
-      "clear": "Vymazat"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "Rychlé filtry:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "Čas: s časem",
       "summaryTimeWithout": "Čas: bez času",
       "nameRequired": "Zadejte prosím název tohoto filtru"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "Uložené filtry",
-      "saved": "Uloženo",
-      "noSavedFiltersYet": "Zatím žádné uložené filtry",
-      "saveCurrentFilters": "Uložit aktuální filtry",
-      "saveCurrentFilters2": "Uložit aktuální filtry"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "Název filtru",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "Úkoly se otevřou v tomto projektu"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "Vybrat projekt",
-      "selectProject2": "Vybrat projekt"
+      "selectProject": "Vybrat projekt"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "Upravit projekt",
@@ -725,11 +655,6 @@
       "selectProject": "Vybrat projekt",
       "noProjectsYet": "Zatím žádné projekty",
       "createProject": "Vytvořit projekt"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "Není vybrán žádný projekt",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "Vyberte projekt z rozbalovací nabídky nebo vytvořte nový",
-      "createYourFirstProject": "Vytvořte svůj první projekt"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "Nápověda ke zkratkám pro rychlé přidání",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "Vybrat čas",
-      "selectTime2": "Vybrat čas",
       "clearTime": "Vymazat čas"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "Není vybrán žádný projekt",
     "emptyBody": "Vyberte projekt v bočním panelu a otevřete jeho stránku.",
-    "loadError": "Podrobnosti projektu se nepodařilo načíst",
     "overview": {
       "sectionTitle": "Přehled",
       "create": "Vytvořit poznámku s přehledem",
@@ -969,18 +892,11 @@
       "empty": "V tomto projektu není nic otevřeného.",
       "expand": "Zobrazit úkoly v {title}",
       "collapse": "Skrýt úkoly v {title}",
-      "taskSummary": "Otevřeno: {open}/{total}",
       "daysLeft": "{count} d",
       "overdue": "po termínu {count} d",
       "columns": {
         "title": "Název",
         "daysLeft": "Zbývá dní"
-      },
-      "status": {
-        "active": "Aktivní",
-        "done": "Hotovo",
-        "upcoming": "Nadcházející",
-        "past": "Minulé"
       }
     }
   },

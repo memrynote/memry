@@ -17,18 +17,6 @@
       "filterAll": "Alle Dateien"
     },
     "exportCancelled": "Export abgebrochen",
-    "update": {
-      "availableTitle": "Update verfügbar",
-      "availableMessage": "memrynote {version} ist verfügbar.",
-      "availableDetailFallback": "Update jetzt herunterladen?",
-      "buttonDownload": "Herunterladen",
-      "buttonLater": "Später",
-      "readyTitle": "Update bereit",
-      "readyMessage": "memrynote {version} wurde heruntergeladen.",
-      "readyDetailFallback": "Starte memrynote neu, um die Installation des Updates abzuschließen.",
-      "buttonRestartNow": "Jetzt neu starten",
-      "releaseNotesLabel": "Versionshinweise:"
-    },
     "dataDbRecovery": {
       "title": "Tresor-Datenbank reparieren",
       "message": "Die Datenbank von Memry für diesen Tresor ist beschädigt.",

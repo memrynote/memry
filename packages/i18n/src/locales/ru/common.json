@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Действие не выполнено",
-    "nothingToUndo": "Нечего отменять",
     "undone": "Отменено: {description}",
     "undoFailed": "Не удалось отменить действие",
     "filesImported": "{count, plural, one {Импортирован # файл} few {Импортировано # файла} many {Импортировано # файлов} other {Импортировано # файла}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Агент хочет создать {title}. Проверьте изменение, прежде чем применять его.",
       "descriptionDelete": "Агент хочет удалить {title}. Проверьте изменение, прежде чем применять его.",
       "fallbackTitle": "этот элемент",
-      "current": "Текущая версия",
       "candidate": "Предлагаемая версия",
       "loading": "Загрузка…",
       "apply": "Применить",
@@ -383,12 +381,8 @@
       "removeAttachment": "Убрать {label}",
       "placeholder": "Поручите memrynote что угодно… @ — упомянуть заметку, задачу или событие",
       "send": "Отправить",
-      "providerLabel": "Провайдер агента: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Подключённые инструменты",
       "connectTool": "Подключить {tool}",
-      "addContext": "Добавить контекст",
-      "addContextWithPermissions": "Добавить контекст ({permissions})",
       "mentionContext": "Упомянуть заметку, задачу или событие",
       "files": {
         "attach": "Прикрепить текстовый файл",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Не удалось распознать речь"
         }
       },
-      "modelLabel": "Модель агента: {provider} {model}",
-      "reasoningLabel": "Рассуждение агента: {reasoning}",
       "providers": {
-        "label": "Провайдер",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Доступ к компьютеру"
       },
       "webSearch": {
-        "on": "Вкл.",
-        "off": "Выкл.",
         "label": "Веб-поиск"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Агент недоступен — открыть настройки…"
       },
       "settings": {
-        "reasoning": "Рассуждение",
         "effort": "Уровень усилий"
       },
       "includeCurrentNote": "Добавить текущую заметку",
@@ -472,11 +460,8 @@
           "max": "Максимальная"
         }
       },
-      "permissionsLabel": "Разрешения агента: {access}, веб-поиск: {webSearch}",
       "permissions": {
-        "label": "Разрешения",
-        "access": "Доступ",
-        "tools": "Инструменты"
+        "access": "Доступ"
       },
       "modelSettingsLabel": "Настройки модели агента: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Новая папка",
       "newProject": "Новый проект",
       "bookmarks": "Закладки",
-      "chart": "График",
       "tags": "Теги",
       "reorderSection": "Изменить порядок: {section}",
       "dropFilesToImport": "Перетащите файлы для импорта",
       "dropFilesIntoVaultRoot": "Корневая папка хранилища",
       "newNoteN": "Новая заметка (⌘N)",
-      "new": "Создать",
       "newItemMenu": "Создать…",
       "feedbackButton": "Отправить отзыв",
       "feedbackTitle": "Отправить отзыв",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Найти, заменить, спросить…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Пропустить знакомство",
-      "welcomeToMemry": "Добро пожаловать в memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Ваша личная база знаний. Настройка займёт всего 2 минуты.",
-      "getStarted": "Начать ",
-      "createYourFirstNote": "Создайте свою первую заметку",
-      "markdownBasedStoredLocallyAsPlainFiles": "На основе Markdown, хранятся локально в виде простых файлов.",
-      "eGMeetingNotesIdeasAnything": "Например: заметки со встреч, идеи, что угодно…",
-      "skip": "Пропустить",
-      "createNote": "Создать заметку ",
-      "addYourFirstTask": "Добавьте свою первую задачу",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Задачи связаны с заметками, у них есть приоритеты и сроки.",
-      "eGReviewProjectProposal": "Например: изучить предложение по проекту…",
-      "skip2": "Пропустить",
-      "createTask": "Создать задачу ",
-      "syncAcrossDevices": "Синхронизация между устройствами",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Синхронизируйте заметки и задачи на всех своих устройствах. Вы всегда можете настроить это позже.",
-      "skipForNow": "Не сейчас",
-      "doneLetSGo": "Готово — поехали! "
+      "skip": "Пропустить"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Установить значок папки",
@@ -852,8 +818,7 @@
       "unknownTabType": "Неизвестный тип вкладки: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "несохранённые изменения",
-      "preview": "предпросмотр"
+      "unsavedChanges": "несохранённые изменения"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Новая вкладка",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Перетащите, чтобы изменить размер · Дважды щёлкните, чтобы сбросить"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Добро пожаловать в memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Ваша персональная система управления знаниями.",
-      "selectAFolderToStoreYourNotesAndTasks": "Выберите папку для хранения ваших заметок и задач.",
       "opening": "Открытие…",
-      "selectVaultFolder": "Выбрать папку хранилища",
-      "plainMarkdown": "Обычный Markdown",
-      "yourNotesStayPortable": "Заметки легко перенести куда угодно",
-      "syncAnywhere": "Синхронизация где угодно",
-      "useDropboxIcloudGit": "Через Dropbox, iCloud, Git",
       "recentVaults": "Недавние хранилища",
-      "notesLastOpened": "заметки · Последнее открытие",
-      "preRelease": "Бета",
       "createNewVault": "Создать новое хранилище",
-      "createNewVaultDesc": "Создайте новое хранилище в любой папке.",
-      "openExistingVault": "Открыть существующее хранилище",
-      "openExistingVaultDesc": "Выберите папку с Markdown-файлами, которые у вас уже есть.",
-      "signInToSync": "Войдите, чтобы включить синхронизацию",
-      "signInToSyncDesc": "Хранилища со сквозным шифрованием на всех ваших устройствах.",
-      "create": "Создать",
       "open": "Открыть",
-      "signIn": "Войти",
       "helpAndDocs": "Справка и документация",
-      "signInRequiresVault": "Сначала откройте или создайте хранилище, чтобы настроить синхронизацию.",
       "addVault": "Добавить хранилище",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Хранилищ пока нет",
       "openVault": "Открыть хранилище",
       "settings": "Настройки",
-      "logOut": "Выйти",
-      "signInToSync": "Войдите, чтобы включить синхронизацию",
       "remove": "Убрать «",
       "removeVaultTitle": "Убрать «{name}» из списка?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Хранилище будет убрано из приложения, но файлы останутся на диске. Его всегда можно добавить снова.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Изменить…",
       "download": "Скачать",
       "downloadFailed": "Не удалось скачать хранилище",
-      "deleteFromAccount": "Удалить из аккаунта",
       "deleteVaultTitle": "Удалить «{name}» из вашего аккаунта?",
       "deleteVaultBody": "Все синхронизированные данные этого хранилища будут навсегда удалены с серверов Memry. Это действие нельзя отменить. Ваши файлы останутся на диске.",
       "deleteVaultConfirm": "Удалить из аккаунта",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Убрать виджет",
       "dragAria": "Перетащить виджет",
-      "configAria": "Настроить виджет",
-      "resizeAria": "Изменить размер до {size}",
       "menuAria": "Параметры виджета",
-      "resize": "Размер",
       "remove": "Убрать",
       "filter": {
         "all": "Все",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Выберите папку",
       "folderEmpty": "Папок пока нет",
       "folderNoSelection": "Папка не выбрана",
-      "folderView_list": "Список",
-      "folderView_gallery": "Галерея",
       "folderViewSelect": "Вид",
       "project": "Проект",
       "projectNoSelection": "Проект не выбран",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Макет главной",
       "deleteAria": "Удалить макет",
-      "newAria": "Новая доска",
       "newName": "Новая доска",
       "defaultName": "Главная",
       "manage": "Управление досками",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# задача на сегодня} few {# задачи на сегодня} many {# задач на сегодня} other {# задачи на сегодня}}",
       "events": "{count, plural, one {# событие} few {# события} many {# событий} other {# события}}"
     },
-    "edit": "Изменить",
-    "done": "Готово",
     "addWidget": "Добавить виджет",
     "cover": {
       "add": "Добавить обложку"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Знакомство завершено",
-      "body": "Пожалуйста, поставьте нам звезду на GitHub — так другие люди смогут узнать о MemryNote.",
-      "action": "Поставить звезду на GitHub"
+      "body": "Пожалуйста, поставьте нам звезду на GitHub — так другие люди смогут узнать о MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Обновление готово",
     "failed": "Ошибка обновления",
     "downloadAction": "Скачать",
-    "restartAction": "Перезапустить",
     "detailsAction": "Подробнее",
     "popover": {
       "readyTitle": "MemryNote {version} готов к установке",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Хранилища",
     "position": "{name}, хранилище {index} из {count}",
-    "openList": "{position}. Открыть список хранилищ",
     "switchTo": "Переключиться на «{name}»",
     "switchingTo": "Переключение на «{name}»",
     "changeIcon": "Изменить значок…",
@@ -1501,7 +1433,6 @@
       "onDevice": "На {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {Найдено # хранилище} few {Найдено # хранилища} many {Найдено # хранилищ} other {Найдено # хранилища}}",
-      "notion": "Notion",
       "otherApps": "Другие приложения и файлы",
       "otherAppsHint": "и ещё {count}",
       "detectedFootnote": "Найдено по списку установленных приложений. Ничего не покидает устройство: всё остаётся на {device}.",

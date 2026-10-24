@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "ดำเนินการไม่สำเร็จ",
-    "nothingToUndo": "ไม่มีอะไรให้เลิกทำ",
     "undone": "เลิกทำแล้ว: {description}",
     "undoFailed": "เลิกทำไม่สำเร็จ",
     "filesImported": "{count, plural, other {นำเข้า # ไฟล์แล้ว}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "เอเจนต์ต้องการสร้าง {title} ตรวจทานการเปลี่ยนแปลงก่อนนำไปใช้",
       "descriptionDelete": "เอเจนต์ต้องการลบ {title} ตรวจทานการเปลี่ยนแปลงก่อนนำไปใช้",
       "fallbackTitle": "รายการนี้",
-      "current": "ปัจจุบัน",
       "candidate": "ฉบับที่เสนอ",
       "loading": "กำลังโหลด…",
       "apply": "นำไปใช้",
@@ -383,12 +381,8 @@
       "removeAttachment": "นำ {label} ออก",
       "placeholder": "สั่ง memrynote ได้ทุกเรื่อง… พิมพ์ @ เพื่อกล่าวถึงโน้ต งาน และกิจกรรม",
       "send": "ส่ง",
-      "providerLabel": "ผู้ให้บริการเอเจนต์: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "เครื่องมือที่เชื่อมต่อ",
       "connectTool": "เชื่อมต่อ {tool}",
-      "addContext": "เพิ่มบริบท",
-      "addContextWithPermissions": "เพิ่มบริบท ({permissions})",
       "mentionContext": "กล่าวถึงโน้ต งาน หรือกิจกรรม",
       "files": {
         "attach": "แนบไฟล์ข้อความ",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "ถอดเสียงพูดไม่สำเร็จ"
         }
       },
-      "modelLabel": "โมเดลเอเจนต์: {provider} {model}",
-      "reasoningLabel": "การใช้เหตุผลของเอเจนต์: {reasoning}",
       "providers": {
-        "label": "ผู้ให้บริการ",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "เข้าถึงคอมพิวเตอร์"
       },
       "webSearch": {
-        "on": "เปิด",
-        "off": "ปิด",
         "label": "ค้นหาเว็บ"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "เอเจนต์ใช้งานไม่ได้ เปิดการตั้งค่า…"
       },
       "settings": {
-        "reasoning": "การใช้เหตุผล",
         "effort": "ระดับความพยายาม"
       },
       "includeCurrentNote": "รวมโน้ตปัจจุบัน",
@@ -472,11 +460,8 @@
           "max": "สูงสุด"
         }
       },
-      "permissionsLabel": "สิทธิ์ของเอเจนต์: {access} ค้นหาเว็บ {webSearch}",
       "permissions": {
-        "label": "สิทธิ์",
-        "access": "การเข้าถึง",
-        "tools": "เครื่องมือ"
+        "access": "การเข้าถึง"
       },
       "modelSettingsLabel": "การตั้งค่าโมเดลของเอเจนต์: {model} {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "โฟลเดอร์ใหม่",
       "newProject": "โปรเจกต์ใหม่",
       "bookmarks": "บุ๊กมาร์ก",
-      "chart": "แผนภูมิ",
       "tags": "แท็ก",
       "reorderSection": "จัดลำดับ {section} ใหม่",
       "dropFilesToImport": "วางไฟล์เพื่อนำเข้า",
       "dropFilesIntoVaultRoot": "ระดับบนสุดของคลังข้อมูล",
       "newNoteN": "โน้ตใหม่ (⌘N)",
-      "new": "ใหม่",
       "newItemMenu": "สร้างใหม่…",
       "feedbackButton": "ส่งความคิดเห็น",
       "feedbackTitle": "ส่งความคิดเห็น",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "ค้นหา แทนที่ ถาม…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "ข้ามการเริ่มต้นใช้งาน",
-      "welcomeToMemry": "ยินดีต้อนรับสู่ memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "ฐานความรู้ส่วนตัว ใช้เวลาเพียง 2 นาทีเพื่อเริ่มต้นใช้งาน",
-      "getStarted": "เริ่มต้นใช้งาน ",
-      "createYourFirstNote": "สร้างโน้ตแรก",
-      "markdownBasedStoredLocallyAsPlainFiles": "อิงตาม Markdown เก็บไว้ในเครื่องเป็นไฟล์ธรรมดา",
-      "eGMeetingNotesIdeasAnything": "เช่น บันทึกการประชุม ไอเดีย อะไรก็ได้…",
-      "skip": "ข้าม",
-      "createNote": "สร้างโน้ต ",
-      "addYourFirstTask": "เพิ่มงานแรก",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "งานลิงก์กับโน้ตได้ พร้อมลำดับความสำคัญและวันครบกำหนด",
-      "eGReviewProjectProposal": "เช่น ตรวจทานข้อเสนอโปรเจกต์…",
-      "skip2": "ข้าม",
-      "createTask": "สร้างงาน ",
-      "syncAcrossDevices": "ซิงค์ข้ามอุปกรณ์",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "ซิงค์โน้ตและงานในทุกอุปกรณ์ ตั้งค่าภายหลังได้เสมอ",
-      "skipForNow": "ข้ามไปก่อน",
-      "doneLetSGo": "เรียบร้อย ไปกันเลย "
+      "skip": "ข้าม"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "ตั้งไอคอนโฟลเดอร์",
@@ -852,8 +818,7 @@
       "unknownTabType": "ประเภทแท็บที่ไม่รู้จัก: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก",
-      "preview": "ตัวอย่าง"
+      "unsavedChanges": "การเปลี่ยนแปลงที่ยังไม่ได้บันทึก"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "แท็บใหม่",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "ลากเพื่อปรับขนาด · ดับเบิลคลิกเพื่อรีเซ็ต"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "ยินดีต้อนรับสู่ memrynote",
-      "yourPersonalKnowledgeManagementSystem": "ระบบจัดการความรู้ส่วนบุคคล",
-      "selectAFolderToStoreYourNotesAndTasks": "เลือกโฟลเดอร์สำหรับเก็บโน้ตและงาน",
       "opening": "กำลังเปิด…",
-      "selectVaultFolder": "เลือกโฟลเดอร์คลังข้อมูล",
-      "plainMarkdown": "Markdown ธรรมดา",
-      "yourNotesStayPortable": "ย้ายโน้ตไปใช้ที่อื่นได้เสมอ",
-      "syncAnywhere": "ซิงค์ได้ทุกที่",
-      "useDropboxIcloudGit": "ใช้ Dropbox iCloud หรือ Git",
       "recentVaults": "คลังข้อมูลล่าสุด",
-      "notesLastOpened": "โน้ต · เปิดล่าสุด",
-      "preRelease": "Beta",
       "createNewVault": "สร้างคลังข้อมูลใหม่",
-      "createNewVaultDesc": "เริ่มคลังข้อมูลใหม่ในโฟลเดอร์ที่เลือก",
-      "openExistingVault": "เปิดคลังข้อมูลที่มีอยู่",
-      "openExistingVaultDesc": "เลือกโฟลเดอร์ไฟล์ Markdown ที่มีอยู่แล้ว",
-      "signInToSync": "ลงชื่อเข้าใช้เพื่อซิงค์",
-      "signInToSyncDesc": "คลังข้อมูลที่เข้ารหัสแบบต้นทางถึงปลายทางในทุกอุปกรณ์",
-      "create": "สร้าง",
       "open": "เปิด",
-      "signIn": "ลงชื่อเข้าใช้",
       "helpAndDocs": "วิธีใช้และเอกสาร",
-      "signInRequiresVault": "เปิดหรือสร้างคลังข้อมูลก่อนเพื่อตั้งค่าการซิงค์",
       "addVault": "เพิ่มคลังข้อมูล",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "ยังไม่มีคลังข้อมูล",
       "openVault": "เปิดคลังข้อมูล",
       "settings": "การตั้งค่า",
-      "logOut": "ออกจากระบบ",
-      "signInToSync": "ลงชื่อเข้าใช้เพื่อซิงค์",
       "remove": "นำออก “",
       "removeVaultTitle": "นำ “{name}” ออกจากรายการหรือไม่?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ระบบจะนำคลังข้อมูลนี้ออกจากแอป แต่ไฟล์จะยังอยู่ในดิสก์ เพิ่มกลับมาภายหลังได้เสมอ",
@@ -1020,7 +965,6 @@
       "changeLocation": "เปลี่ยน…",
       "download": "ดาวน์โหลด",
       "downloadFailed": "ดาวน์โหลดคลังข้อมูลไม่สำเร็จ",
-      "deleteFromAccount": "ลบออกจากบัญชี",
       "deleteVaultTitle": "ลบ “{name}” ออกจากบัญชีหรือไม่?",
       "deleteVaultBody": "การดำเนินการนี้จะลบข้อมูลที่ซิงค์ไว้ทั้งหมดของคลังข้อมูลนี้ออกจากเซิร์ฟเวอร์ของ Memry อย่างถาวรและเลิกทำไม่ได้ ไฟล์ในดิสก์จะยังอยู่",
       "deleteVaultConfirm": "ลบออกจากบัญชี",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "นำวิดเจ็ตออก",
       "dragAria": "ลากวิดเจ็ต",
-      "configAria": "ตั้งค่าวิดเจ็ต",
-      "resizeAria": "ปรับขนาดเป็น {size}",
       "menuAria": "ตัวเลือกวิดเจ็ต",
-      "resize": "ขนาด",
       "remove": "นำออก",
       "filter": {
         "all": "ทั้งหมด",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "เลือกโฟลเดอร์",
       "folderEmpty": "ยังไม่มีโฟลเดอร์",
       "folderNoSelection": "ยังไม่ได้เลือกโฟลเดอร์",
-      "folderView_list": "รายการ",
-      "folderView_gallery": "แกลเลอรี",
       "folderViewSelect": "มุมมอง",
       "project": "โปรเจกต์",
       "projectNoSelection": "ยังไม่ได้เลือกโปรเจกต์",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "เค้าโครงหน้าหลัก",
       "deleteAria": "ลบเค้าโครง",
-      "newAria": "บอร์ดใหม่",
       "newName": "บอร์ดใหม่",
       "defaultName": "หน้าหลัก",
       "manage": "จัดการบอร์ด",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, other {งานครบกำหนดวันนี้ # รายการ}}",
       "events": "{count, plural, other {กิจกรรม # รายการ}}"
     },
-    "edit": "แก้ไข",
-    "done": "เสร็จสิ้น",
     "addWidget": "เพิ่มวิดเจ็ต",
     "cover": {
       "add": "เพิ่มภาพปก"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "การเริ่มต้นใช้งานเสร็จสิ้น",
-      "body": "โปรดให้ดาวเราบน GitHub เพื่อช่วยให้คนอื่นค้นพบ MemryNote",
-      "action": "ให้ดาวบน GitHub"
+      "body": "โปรดให้ดาวเราบน GitHub เพื่อช่วยให้คนอื่นค้นพบ MemryNote"
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "อัปเดตพร้อมแล้ว",
     "failed": "อัปเดตไม่สำเร็จ",
     "downloadAction": "ดาวน์โหลด",
-    "restartAction": "เริ่มใหม่",
     "detailsAction": "รายละเอียด",
     "popover": {
       "readyTitle": "MemryNote {version} พร้อมแล้ว",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "คลังข้อมูล",
     "position": "{name} คลังข้อมูล {index} จาก {count}",
-    "openList": "{position} เปิดรายการคลังข้อมูล",
     "switchTo": "สลับไปที่ {name}",
     "switchingTo": "กำลังสลับไปที่ {name}",
     "changeIcon": "เปลี่ยนไอคอน…",
@@ -1501,7 +1433,6 @@
       "onDevice": "บน{device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {พบคลังข้อมูล # รายการ}}",
-      "notion": "Notion",
       "otherApps": "แอปและไฟล์อื่นๆ",
       "otherAppsHint": "และอีก {count} รายการ",
       "detectedFootnote": "ตรวจพบจากแอปที่ติดตั้งไว้ ไม่มีข้อมูลออกจาก{device}",

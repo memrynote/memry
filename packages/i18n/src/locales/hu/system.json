@@ -17,18 +17,6 @@
       "filterAll": "Minden fájl"
     },
     "exportCancelled": "Exportálás megszakítva",
-    "update": {
-      "availableTitle": "Frissítés elérhető",
-      "availableMessage": "A memrynote {version} elérhető.",
-      "availableDetailFallback": "Letölti most a frissítést?",
-      "buttonDownload": "Letöltés",
-      "buttonLater": "Később",
-      "readyTitle": "Frissítés telepítésre kész",
-      "readyMessage": "A memrynote {version} letöltődött.",
-      "readyDetailFallback": "A frissítés telepítésének befejezéséhez indítsa újra a memrynote-ot.",
-      "buttonRestartNow": "Újraindítás most",
-      "releaseNotesLabel": "Kiadási megjegyzések:"
-    },
     "dataDbRecovery": {
       "title": "Széf-adatbázis javítása",
       "message": "A Memry ehhez a széfhez tartozó adatbázisa sérült.",

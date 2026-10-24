@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Tapusin ang {title}",
     "task-completed": "Tapos na ang gawain",
-    "could-not-complete": "Hindi mamarkahang tapos na ang gawain",
     "could-not-update-status": "Hindi mabago ang katayuan ng gawain",
     "duration-minutes": "{minutes}m",
     "duration-hours": "{hours}h",
@@ -215,12 +213,9 @@
     "next-week": "Sa susunod na linggo",
     "open-task": "Buksan ang gawain",
     "source-note": "Pinagmulang tala",
-    "reschedule": "Mag-reschedule",
     "mark-done": "Markahang tapos na",
     "mark-not-done": "Markahang hindi pa tapos",
-    "later-today": "Mamaya ngayong araw",
     "tomorrow": "Bukas",
-    "next-week-mon": "Sa susunod na linggo · Lun",
     "pick-date-time": "Pumili ng petsa at oras…",
     "remove-due-date": "Alisin ang takdang petsa",
     "subtasks-prefix": "Mga subtask",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Mga naka-subscribe na kalendaryo"
     },
     "caldav": {
       "name": "CalDAV"

@@ -122,10 +122,6 @@
       "body": "Crie uma nota para começar",
       "newNote": "Nova nota"
     },
-    "readwiseSync": {
-      "tooltip": "Sincronização do Readwise",
-      "failed": "Falha na sincronização do Readwise"
-    },
     "syncing": {
       "body": "Sincronizando suas notas — elas aparecerão aqui à medida que chegarem"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Adicionar aos favoritos",
       "removeFromBookmarks": "Remover dos favoritos",
       "journalSettings": "Configurações do diário…"
-    },
-    "nav": {
-      "label": "Navegação",
-      "ariaExpanded": "Seção de navegação, expandida",
-      "ariaCollapsed": "Seção de navegação, recolhida",
-      "saveFailed": "Não foi possível salvar o estado da seção de navegação"
     },
     "viewOptions": {
       "label": "Opções de visualização",
@@ -523,13 +513,8 @@
         "ai": "IA"
       },
       "secondary": {
-        "asToggleHeading": "Como recolhível",
         "asLinkedTask": "Como tarefa vinculada",
         "asReminder": "Como lembrete"
-      },
-      "actions": {
-        "insert": "Inserir",
-        "open": "Abrir"
       },
       "close": "Fechar menu",
       "matchesAlias": "corresponde a",
@@ -607,7 +592,6 @@
         "title": "Mover bloco para nota",
         "searchPlaceholder": "Pesquisar notas…",
         "noResults": "Nenhuma nota correspondente",
-        "moved": "Bloco movido para “{title}”",
         "failed": "Não foi possível mover o bloco"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Estrutura",
     "aria": "Estrutura do documento",
-    "emptyYet": "Ainda não há títulos",
     "readTime": "{count} min de leitura",
     "words": "{count} palavras",
     "created": "Criado",
@@ -839,11 +822,9 @@
     "toolbarComment": "Comentar",
     "commentPlaceholder": "Adicionar um comentário…",
     "createdTooltip": "Criado em {date} às {time}",
-    "cancel": "Cancelar",
     "resolve": "Resolver",
     "edit": "Editar comentário",
     "delete": "Excluir comentário",
-    "replyPlaceholder": "Responder…",
     "attachAria": "Anexar arquivo",
     "mentionAria": "Mencionar uma pessoa, página ou data",
     "sendAria": "Enviar comentário",
@@ -856,13 +837,7 @@
       "code": "Código"
     },
     "openImageAria": "Abrir imagem {name}",
-    "openAttachmentAria": "Abrir anexo {name}",
-    "kind": {
-      "comment": "Comentário",
-      "addition": "Adição",
-      "deletion": "Exclusão",
-      "substitution": "Substituição"
-    }
+    "openAttachmentAria": "Abrir anexo {name}"
   },
   "tagsRow": {
     "aria": "Tags",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Propriedades",
     "noteAria": "Propriedades da nota",
-    "workspaceAria": "Propriedades do espaço de trabalho",
     "listAria": "Lista de propriedades",
     "add": "Adicionar propriedade",
     "addDescription": "Adicione uma nova propriedade a esta nota",
@@ -932,7 +906,6 @@
       "inProgress": "Em andamento",
       "done": "Concluído"
     },
-    "projectAlreadySet": "Esta nota já tem uma propriedade de projeto",
     "projectPlaceholder": "Sem projeto",
     "projectSearch": "Pesquisar projetos",
     "projectEmpty": "Nenhum projeto",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtrar",
-      "filters": "Filtros",
-      "clearAll": "Limpar tudo",
-      "noFiltersApplied": "Nenhum filtro aplicado",
-      "addFiltersToNarrowDownYourNotes": "Adicione filtros para refinar suas notas",
       "match": "Corresponder a",
-      "allAnd": "Todos (E)",
-      "anyOr": "Qualquer (OU)",
-      "ofTheFollowing": "dos seguintes:",
       "match2": "Corresponder a",
       "all": "Todos",
       "any": "Qualquer",
-      "of": "de:",
       "addCondition": "Adicionar condição",
       "addFilter": "Adicionar filtro",
       "addGroup": "Adicionar grupo",
@@ -1207,7 +1172,6 @@
       "available": "Disponíveis: ",
       "preview": "Pré-visualização",
       "fixExpressionErrorsToSeePreview": "Corrija os erros da expressão para ver a pré-visualização",
-      "usingNote": "Usando nota: \"",
       "cancel": "Cancelar",
       "namePlaceholder": "dias_ate_prazo",
       "expressionPlaceholder": "dateDiff(prazo, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Carregando pastas…",
       "suggested": "SUGERIDAS",
       "bestMatch": "Melhor correspondência",
-      "current": "atual)",
       "allFolders": "TODAS AS PASTAS",
-      "noFoldersMatch": "Nenhuma pasta corresponde a \"",
-      "create": "Criar \"",
       "cancel": "Cancelar",
       "currentFolderBadge": "(atual)",
       "noFoldersMatchQuery": "Nenhuma pasta corresponde a “{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "padrão",
       "viewActions": "Ações da visualização",
-      "rename": "Renomear",
       "duplicate": "Duplicar",
       "setAsDefault": "Definir como padrão",
       "delete": "Excluir",
-      "createNewView": "Criar nova visualização",
-      "createNewView2": "Criar nova visualização",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Crie uma nova visualização com colunas, filtros e ordenação personalizados.",
-      "viewName": "Nome da visualização",
       "myCustomView": "Minha visualização personalizada",
-      "baseConfiguration": "Configuração inicial",
-      "copyFromCurrentView": "Copiar da visualização atual",
-      "startFreshDefaultColumns": "Começar do zero (colunas padrão)",
       "cancel": "Cancelar",
-      "renameView": "Renomear visualização",
-      "enterANewNameForThisView": "Digite um novo nome para esta visualização.",
-      "viewName2": "Nome da visualização",
-      "viewName3": "Nome da visualização",
-      "cancel2": "Cancelar",
       "deleteView": "Excluir visualização",
       "areYouSureYouWantToDelete": "Tem certeza de que deseja excluir \"",
       "thisActionCannotBeUndone": "Esta ação não pode ser desfeita.",
@@ -1289,22 +1237,17 @@
       "layout": "Layout",
       "table": "Tabela",
       "list": "Lista",
-      "gallery": "Galeria",
-      "createView": "Criar visualização",
-      "save": "Salvar"
+      "gallery": "Galeria"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Não foi possível carregar o PDF: ",
-      "download": "Baixar",
       "download2": "Baixar",
       "noFileAttached": "Nenhum arquivo anexado",
       "resizePdf": "Redimensionar PDF",
       "resizeHtml": "Redimensionar HTML incorporado",
       "alignLeft": "Alinhar à esquerda",
       "alignCenter": "Alinhar ao centro",
-      "alignRight": "Alinhar à direita",
-      "previousPage": "Página anterior",
-      "nextPage": "Próxima página"
+      "alignRight": "Alinhar à direita"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Abrir no painel de tarefas",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Carta (8,5 x 11 pol.)",
       "legal85X14In": "Ofício (8,5 x 14 pol.)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.aaaa"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Sincronizado"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Palavras",
       "characters": "Caracteres",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Ainda não há favoritos",
       "moreOptions": "Mais opções",
       "remove": "Remover"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Abrir",
-      "openToTheSide": "Abrir ao lado",
-      "pinToTabs": "Fixar nas abas",
-      "edit": "Editar",
-      "delete": "Excluir",
-      "copyLink": "Copiar link"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Carregando tags…",
@@ -1380,26 +1309,9 @@
       "cancel": "Cancelar"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Voltar",
-      "notes": "notas",
-      "loadingNotes": "Carregando notas…",
-      "noNotesWithThisTag": "Nenhuma nota com esta tag",
-      "addThisTagToANoteToSeeItHere": "Adicione esta tag a uma nota para vê-la aqui",
-      "pinned": "FIXADAS",
-      "allNotes": "TODAS AS NOTAS",
-      "allNotesArePinned": "Todas as notas estão fixadas",
-      "tasks": "TAREFAS",
-      "unpinFromTag": "Desafixar da tag",
-      "unpin": "Desafixar",
-      "pinToTag": "Fixar na tag",
-      "pin": "Fixar",
       "tagActions": "Ações da tag",
-      "editTagName": "Editar nome da tag",
       "changeColor": "Alterar cor",
-      "deleteTag": "Excluir tag",
-      "recent": "Recente",
-      "created": "Criado",
-      "alphabetical": "Alfabético"
+      "deleteTag": "Excluir tag"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Renomear tag",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Criar nova nota",
-      "viewSettings": "Configurações da visualização",
-      "displayDensity": "Densidade de exibição",
-      "comfortable": "Confortável",
-      "compact": "Compacto",
-      "showSummaries": "Mostrar resumos",
       "cancel": "Cancelar"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Abrir página de tags"
   },
   "tagView": {
-    "moreActions": "Mais ações",
     "pin": {
       "action": "Fixar {count, plural, one {# nota} many {# notas} other {# notas}} na tag",
       "success": "{count, plural, one {# nota fixada} many {# notas fixadas} other {# notas fixadas}} na tag",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Nomear esta pesquisa",
     "saveDialogPlaceholder": "ex.: Reuniões de trabalho",
     "cancel": "Cancelar",
-    "save": "Salvar",
-    "addToFilterHint": "Clique com Ctrl/Cmd em uma tag para adicioná-la ao filtro"
+    "save": "Salvar"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Escrevendo…",
       "writtenBy": "Escrito por {agent}",
       "retry": "A última execução falhou · Tentar novamente",
-      "retryAction": "Tentar novamente",
       "captionOff": "Ative Resumir notas longas em Configurações → IA",
       "captionNoAgent": "Nenhum agente conectado · Configurações → IA",
       "unknownAgent": "IA"

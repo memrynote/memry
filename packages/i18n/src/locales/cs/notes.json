@@ -122,10 +122,6 @@
       "body": "Začněte vytvořením poznámky",
       "newNote": "Nová poznámka"
     },
-    "readwiseSync": {
-      "tooltip": "Synchronizace Readwise",
-      "failed": "Synchronizace Readwise selhala"
-    },
     "syncing": {
       "body": "Synchronizace poznámek – zobrazí se zde, jakmile dorazí"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Přidat do záložek",
       "removeFromBookmarks": "Odebrat ze záložek",
       "journalSettings": "Nastavení deníku…"
-    },
-    "nav": {
-      "label": "Navigace",
-      "ariaExpanded": "Sekce navigace, rozbalená",
-      "ariaCollapsed": "Sekce navigace, sbalená",
-      "saveFailed": "Stav sekce navigace se nepodařilo uložit"
     },
     "viewOptions": {
       "label": "Možnosti zobrazení",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Jako rozbalovací",
         "asLinkedTask": "Jako propojený úkol",
         "asReminder": "Jako připomenutí"
-      },
-      "actions": {
-        "insert": "Vložit",
-        "open": "Otevřít"
       },
       "close": "Zavřít nabídku",
       "matchesAlias": "odpovídá",
@@ -607,7 +592,6 @@
         "title": "Přesunout blok do poznámky",
         "searchPlaceholder": "Hledat poznámky…",
         "noResults": "Žádné odpovídající poznámky",
-        "moved": "Blok přesunut do poznámky „{title}“",
         "failed": "Blok se nepodařilo přesunout"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Osnova",
     "aria": "Osnova dokumentu",
-    "emptyYet": "Zatím žádné nadpisy",
     "readTime": "{count} min čtení",
     "words": "{count, plural, one {# slovo} few {# slova} other {# slov}}",
     "created": "Vytvořeno",
@@ -839,11 +822,9 @@
     "toolbarComment": "Komentovat",
     "commentPlaceholder": "Přidat komentář…",
     "createdTooltip": "Vytvořeno {date} v {time}",
-    "cancel": "Zrušit",
     "resolve": "Vyřešit",
     "edit": "Upravit komentář",
     "delete": "Smazat komentář",
-    "replyPlaceholder": "Odpovědět…",
     "attachAria": "Připojit soubor",
     "mentionAria": "Zmínit osobu, stránku nebo datum",
     "sendAria": "Odeslat komentář",
@@ -856,13 +837,7 @@
       "code": "Kód"
     },
     "openImageAria": "Otevřít obrázek {name}",
-    "openAttachmentAria": "Otevřít přílohu {name}",
-    "kind": {
-      "comment": "Komentář",
-      "addition": "Přidání",
-      "deletion": "Smazání",
-      "substitution": "Nahrazení"
-    }
+    "openAttachmentAria": "Otevřít přílohu {name}"
   },
   "tagsRow": {
     "aria": "Štítky",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Vlastnosti",
     "noteAria": "Vlastnosti poznámky",
-    "workspaceAria": "Vlastnosti pracovního prostoru",
     "listAria": "Seznam vlastností",
     "add": "Přidat vlastnost",
     "addDescription": "Přidejte do této poznámky novou vlastnost",
@@ -932,7 +906,6 @@
       "inProgress": "Probíhá",
       "done": "Dokončeno"
     },
-    "projectAlreadySet": "Tato poznámka už má vlastnost projektu",
     "projectPlaceholder": "Bez projektu",
     "projectSearch": "Hledat projekty",
     "projectEmpty": "Žádné projekty",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtr",
-      "filters": "Filtry",
-      "clearAll": "Vymazat vše",
-      "noFiltersApplied": "Nejsou použity žádné filtry",
-      "addFiltersToNarrowDownYourNotes": "Přidáním filtrů zúžíte výběr poznámek",
       "match": "Splnit",
-      "allAnd": "Všechny (A)",
-      "anyOr": "Kteroukoli (NEBO)",
-      "ofTheFollowing": "z následujících:",
       "match2": "Splnit",
       "all": "Všechny",
       "any": "Kteroukoli",
-      "of": "z:",
       "addCondition": "Přidat podmínku",
       "addFilter": "Přidat filtr",
       "addGroup": "Přidat skupinu",
@@ -1207,7 +1172,6 @@
       "available": "K dispozici: ",
       "preview": "Náhled",
       "fixExpressionErrorsToSeePreview": "Chcete-li zobrazit náhled, opravte chyby výrazu",
-      "usingNote": "Použitá poznámka: „",
       "cancel": "Zrušit",
       "namePlaceholder": "dny_do_terminu",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Načítání složek…",
       "suggested": "NAVRHOVANÉ",
       "bestMatch": "Nejlepší shoda",
-      "current": "aktuální)",
       "allFolders": "VŠECHNY SLOŽKY",
-      "noFoldersMatch": "Žádné složky neodpovídají \"",
-      "create": "Vytvořit \"",
       "cancel": "Zrušit",
       "currentFolderBadge": "(aktuální)",
       "noFoldersMatchQuery": "Dotazu „{query}“ neodpovídají žádné složky",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "výchozí",
       "viewActions": "Akce zobrazení",
-      "rename": "Přejmenovat",
       "duplicate": "Duplikovat",
       "setAsDefault": "Nastavit jako výchozí",
       "delete": "Smazat",
-      "createNewView": "Vytvořit nové zobrazení",
-      "createNewView2": "Vytvořit nové zobrazení",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Vytvořte nové zobrazení s vlastními sloupci, filtry a řazením.",
-      "viewName": "Název zobrazení",
       "myCustomView": "Moje vlastní zobrazení",
-      "baseConfiguration": "Základní konfigurace",
-      "copyFromCurrentView": "Kopírovat z aktuálního zobrazení",
-      "startFreshDefaultColumns": "Začít od nuly (výchozí sloupce)",
       "cancel": "Zrušit",
-      "renameView": "Přejmenovat zobrazení",
-      "enterANewNameForThisView": "Zadejte nový název tohoto zobrazení.",
-      "viewName2": "Název zobrazení",
-      "viewName3": "Název zobrazení",
-      "cancel2": "Zrušit",
       "deleteView": "Smazat zobrazení",
       "areYouSureYouWantToDelete": "Opravdu chcete smazat \"",
       "thisActionCannotBeUndone": "Tuto akci nelze vrátit zpět.",
@@ -1289,22 +1237,17 @@
       "layout": "Rozložení",
       "table": "Tabulka",
       "list": "Seznam",
-      "gallery": "Galerie",
-      "createView": "Vytvořit zobrazení",
-      "save": "Uložit"
+      "gallery": "Galerie"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Soubor PDF se nepodařilo načíst: ",
-      "download": "Stáhnout",
       "download2": "Stáhnout",
       "noFileAttached": "Není připojen žádný soubor",
       "resizePdf": "Změnit velikost PDF",
       "resizeHtml": "Změnit velikost vloženého HTML",
       "alignLeft": "Zarovnat doleva",
       "alignCenter": "Zarovnat na střed",
-      "alignRight": "Zarovnat doprava",
-      "previousPage": "Předchozí stránka",
-      "nextPage": "Další stránka"
+      "alignRight": "Zarovnat doprava"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Otevřít v panelu úkolu",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 palců)",
       "legal85X14In": "Legal (8,5 x 14 palců)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Synchronizováno"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Slova",
       "characters": "Znaky",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Zatím žádné záložky",
       "moreOptions": "Více možností",
       "remove": "Odebrat"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Otevřít",
-      "openToTheSide": "Otevřít vedle",
-      "pinToTabs": "Připnout jako kartu",
-      "edit": "Upravit",
-      "delete": "Smazat",
-      "copyLink": "Kopírovat odkaz"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Načítání štítků…",
@@ -1380,26 +1309,9 @@
       "cancel": "Zrušit"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Zpět",
-      "notes": "poznámky",
-      "loadingNotes": "Načítání poznámek…",
-      "noNotesWithThisTag": "Žádné poznámky s tímto štítkem",
-      "addThisTagToANoteToSeeItHere": "Přidejte tento štítek k poznámce a zobrazí se zde",
-      "pinned": "PŘIPNUTÉ",
-      "allNotes": "VŠECHNY POZNÁMKY",
-      "allNotesArePinned": "Všechny poznámky jsou připnuté",
-      "tasks": "ÚKOLY",
-      "unpinFromTag": "Odepnout od štítku",
-      "unpin": "Odepnout",
-      "pinToTag": "Připnout ke štítku",
-      "pin": "Připnout",
       "tagActions": "Akce štítku",
-      "editTagName": "Upravit název štítku",
       "changeColor": "Změnit barvu",
-      "deleteTag": "Smazat štítek",
-      "recent": "Nedávné",
-      "created": "Vytvořeno",
-      "alphabetical": "Abecedně"
+      "deleteTag": "Smazat štítek"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Přejmenovat štítek",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Vytvořit novou poznámku",
-      "viewSettings": "Nastavení zobrazení",
-      "displayDensity": "Hustota zobrazení",
-      "comfortable": "Pohodlné",
-      "compact": "Kompaktní",
-      "showSummaries": "Zobrazit souhrny",
       "cancel": "Zrušit"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Otevřít stránku štítků"
   },
   "tagView": {
-    "moreActions": "Další akce",
     "pin": {
       "action": "Připnout {count, plural, one {# poznámku} few {# poznámky} other {# poznámek}} ke štítku",
       "success": "{count, plural, one {# poznámka připnuta ke štítku} few {# poznámky připnuty ke štítku} other {# poznámek připnuto ke štítku}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Pojmenujte toto hledání",
     "saveDialogPlaceholder": "např. Pracovní schůzky",
     "cancel": "Zrušit",
-    "save": "Uložit",
-    "addToFilterHint": "Kliknutím se stisknutou klávesou Ctrl/Cmd přidáte štítek do filtru"
+    "save": "Uložit"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Psaní…",
       "writtenBy": "Napsal {agent}",
       "retry": "Poslední běh selhal · Zkusit znovu",
-      "retryAction": "Zkusit znovu",
       "captionOff": "Zapněte Shrnovat dlouhé poznámky v Nastavení → AI",
       "captionNoAgent": "Není připojen žádný agent · Nastavení → AI",
       "unknownAgent": "AI"

@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Dokončit úkol {title}",
     "task-completed": "Úkol dokončen",
-    "could-not-complete": "Úkol se nepodařilo dokončit",
     "could-not-update-status": "Stav úkolu se nepodařilo změnit",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} h",
@@ -215,12 +213,9 @@
     "next-week": "Příští týden",
     "open-task": "Otevřít úkol",
     "source-note": "Zdrojová poznámka",
-    "reschedule": "Přeplánovat",
     "mark-done": "Označit jako dokončený",
     "mark-not-done": "Označit jako nedokončený",
-    "later-today": "Později dnes",
     "tomorrow": "Zítra",
-    "next-week-mon": "Příští týden · Po",
     "pick-date-time": "Vybrat datum a čas…",
     "remove-due-date": "Odebrat termín",
     "subtasks-prefix": "Dílčí úkoly",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Odebírané kalendáře"
     },
     "caldav": {
       "name": "CalDAV"

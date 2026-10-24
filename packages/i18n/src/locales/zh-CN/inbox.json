@@ -15,19 +15,13 @@
       "showWithCount": "显示已延后的条目（{count}）",
       "hide": "隐藏已延后的条目"
     },
-    "density": {
-      "toComfortable": "宽松视图",
-      "toCompact": "紧凑视图"
-    },
     "filter": {
-      "button": "筛选",
       "byType": "按类型筛选",
       "active": "{count, plural, other {按 # 种类型筛选}}",
       "clearAll": "全部清除"
     },
     "jobs": {
-      "running": "{count, plural, other {# 个后台任务正在运行}}",
-      "failed": "{count} 个失败"
+      "running": "{count, plural, other {# 个后台任务正在运行}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "创建“{name}”",
     "addTags": "添加标签…",
     "linkToNote": "链接到笔记",
-    "linkANote": "关联一篇笔记",
-    "suggestedCount": "{count} 个建议",
-    "linkNotesPlaceholder": "链接笔记…",
     "linkOrCreateNotePlaceholder": "查找或创建笔记…",
     "createNote": "创建“{title}”",
     "pendingNote": "新建笔记",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "提醒数据不可用。",
     "triggered": "提醒已触发",
-    "noteLabel": "提醒备注",
     "source": "来源",
     "journalTitle": "日记——{date}",
     "noteFallback": "笔记",
@@ -514,9 +504,7 @@
       "settings": "设置",
       "processing": "正在处理…",
       "cancelRecording": "取消录制",
-      "cancel": "取消",
       "stopRecording": "停止录制",
-      "stop": "停止",
       "recordingError": "录音时出错",
       "microphoneAccessDenied": "麦克风访问被拒绝",
       "noMicrophoneFound": "未找到麦克风",

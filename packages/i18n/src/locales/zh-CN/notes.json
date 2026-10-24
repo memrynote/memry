@@ -122,10 +122,6 @@
       "body": "创建一篇笔记即可开始",
       "newNote": "新建笔记"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise 同步",
-      "failed": "Readwise 同步失败"
-    },
     "syncing": {
       "body": "正在同步笔记——笔记同步后会陆续显示在这里"
     },
@@ -157,12 +153,6 @@
       "bookmark": "添加书签",
       "removeFromBookmarks": "从书签中移除",
       "journalSettings": "日记设置…"
-    },
-    "nav": {
-      "label": "导航",
-      "ariaExpanded": "导航部分，已展开",
-      "ariaCollapsed": "导航部分，已折叠",
-      "saveFailed": "无法保存导航部分的状态"
     },
     "viewOptions": {
       "label": "视图选项",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "可折叠",
         "asLinkedTask": "作为关联任务",
         "asReminder": "作为提醒"
-      },
-      "actions": {
-        "insert": "插入",
-        "open": "打开"
       },
       "close": "关闭菜单",
       "matchesAlias": "匹配",
@@ -607,7 +592,6 @@
         "title": "将块移动到笔记",
         "searchPlaceholder": "搜索笔记…",
         "noResults": "没有匹配的笔记",
-        "moved": "已将块移动到“{title}”",
         "failed": "无法移动块"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "大纲",
     "aria": "文档大纲",
-    "emptyYet": "尚无标题",
     "readTime": "阅读约 {count} 分钟",
     "words": "{count} 字",
     "created": "创建时间",
@@ -839,11 +822,9 @@
     "toolbarComment": "评论",
     "commentPlaceholder": "添加评论…",
     "createdTooltip": "创建于 {date} {time}",
-    "cancel": "取消",
     "resolve": "解决",
     "edit": "编辑评论",
     "delete": "删除评论",
-    "replyPlaceholder": "回复…",
     "attachAria": "附加文件",
     "mentionAria": "提及人物、页面或日期",
     "sendAria": "发送评论",
@@ -856,13 +837,7 @@
       "code": "代码"
     },
     "openImageAria": "打开图片 {name}",
-    "openAttachmentAria": "打开附件 {name}",
-    "kind": {
-      "comment": "评论",
-      "addition": "新增",
-      "deletion": "删除",
-      "substitution": "替换"
-    }
+    "openAttachmentAria": "打开附件 {name}"
   },
   "tagsRow": {
     "aria": "标签",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "属性",
     "noteAria": "笔记属性",
-    "workspaceAria": "工作区属性",
     "listAria": "属性列表",
     "add": "添加属性",
     "addDescription": "为此笔记添加新属性",
@@ -932,7 +906,6 @@
       "inProgress": "进行中",
       "done": "已完成"
     },
-    "projectAlreadySet": "此笔记已有项目属性",
     "projectPlaceholder": "无项目",
     "projectSearch": "搜索项目",
     "projectEmpty": "没有项目",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "筛选",
-      "filters": "筛选条件",
-      "clearAll": "全部清除",
-      "noFiltersApplied": "未应用筛选条件",
-      "addFiltersToNarrowDownYourNotes": "添加筛选条件以缩小笔记范围",
       "match": "匹配",
-      "allAnd": "全部（与）",
-      "anyOr": "任意（或）",
-      "ofTheFollowing": "以下条件：",
       "match2": "匹配",
       "all": "全部",
       "any": "任意",
-      "of": "条件：",
       "addCondition": "添加条件",
       "addFilter": "添加筛选条件",
       "addGroup": "添加分组",
@@ -1207,7 +1172,6 @@
       "available": "可用函数：",
       "preview": "预览",
       "fixExpressionErrorsToSeePreview": "修复表达式错误以查看预览",
-      "usingNote": "使用笔记：“",
       "cancel": "取消",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "正在加载文件夹…",
       "suggested": "建议",
       "bestMatch": "最佳匹配",
-      "current": "当前）",
       "allFolders": "所有文件夹",
-      "noFoldersMatch": "没有匹配的文件夹",
-      "create": "创建",
       "cancel": "取消",
       "currentFolderBadge": "（当前）",
       "noFoldersMatchQuery": "没有与“{query}”匹配的文件夹",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "默认",
       "viewActions": "视图操作",
-      "rename": "重命名",
       "duplicate": "创建副本",
       "setAsDefault": "设为默认",
       "delete": "删除",
-      "createNewView": "新建视图",
-      "createNewView2": "新建视图",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "新建一个包含自定义列、筛选条件和排序的视图。",
-      "viewName": "视图名称",
       "myCustomView": "我的自定义视图",
-      "baseConfiguration": "基础配置",
-      "copyFromCurrentView": "从当前视图复制",
-      "startFreshDefaultColumns": "全新开始（默认列）",
       "cancel": "取消",
-      "renameView": "重命名视图",
-      "enterANewNameForThisView": "为此视图输入新名称。",
-      "viewName2": "视图名称",
-      "viewName3": "视图名称",
-      "cancel2": "取消",
       "deleteView": "删除视图",
       "areYouSureYouWantToDelete": "确定要删除 \"",
       "thisActionCannotBeUndone": "此操作无法撤销。",
@@ -1289,22 +1237,17 @@
       "layout": "布局",
       "table": "表格",
       "list": "列表",
-      "gallery": "画廊",
-      "createView": "创建视图",
-      "save": "保存"
+      "gallery": "画廊"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "无法加载 PDF：",
-      "download": "下载",
       "download2": "下载",
       "noFileAttached": "没有附加文件",
       "resizePdf": "调整 PDF 大小",
       "resizeHtml": "调整 HTML 嵌入大小",
       "alignLeft": "左对齐",
       "alignCenter": "居中对齐",
-      "alignRight": "右对齐",
-      "previousPage": "上一页",
-      "nextPage": "下一页"
+      "alignRight": "右对齐"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "在任务面板中打开",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "美国信纸（8.5 x 11 英寸）",
       "legal85X14In": "美国法律用纸（8.5 x 14 英寸）"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "日.月.年"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "已同步"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "字数",
       "characters": "字符数",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "尚无书签",
       "moreOptions": "更多选项",
       "remove": "移除"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "打开",
-      "openToTheSide": "在侧边打开",
-      "pinToTabs": "固定到标签页",
-      "edit": "编辑",
-      "delete": "删除",
-      "copyLink": "复制链接"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "正在加载标签…",
@@ -1380,26 +1309,9 @@
       "cancel": "取消"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "返回",
-      "notes": "笔记",
-      "loadingNotes": "正在加载笔记…",
-      "noNotesWithThisTag": "没有带有此标签的笔记",
-      "addThisTagToANoteToSeeItHere": "为笔记添加此标签后，笔记会显示在这里",
-      "pinned": "已置顶",
-      "allNotes": "所有笔记",
-      "allNotesArePinned": "所有笔记均已置顶",
-      "tasks": "任务",
-      "unpinFromTag": "取消置顶",
-      "unpin": "取消置顶",
-      "pinToTag": "在标签中置顶",
-      "pin": "置顶",
       "tagActions": "标签操作",
-      "editTagName": "编辑标签名称",
       "changeColor": "更改颜色",
-      "deleteTag": "删除标签",
-      "recent": "最近",
-      "created": "创建时间",
-      "alphabetical": "按字母顺序"
+      "deleteTag": "删除标签"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "重命名标签",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "新建笔记",
-      "viewSettings": "视图设置",
-      "displayDensity": "显示密度",
-      "comfortable": "舒适",
-      "compact": "紧凑",
-      "showSummaries": "显示汇总",
       "cancel": "取消"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "打开标签主页"
   },
   "tagView": {
-    "moreActions": "更多操作",
     "pin": {
       "action": "在标签中置顶 {count, plural, other {# 篇笔记}}",
       "success": "已在标签中置顶 {count, plural, other {# 篇笔记}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "为此搜索命名",
     "saveDialogPlaceholder": "例如：工作会议",
     "cancel": "取消",
-    "save": "保存",
-    "addToFilterHint": "按住 Ctrl/Cmd 点击标签，即可将其加入筛选"
+    "save": "保存"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "正在撰写…",
       "writtenBy": "由 {agent} 撰写",
       "retry": "上次运行失败 · 重试",
-      "retryAction": "重试",
       "captionOff": "请在“设置 → AI”中开启“总结长笔记”",
       "captionNoAgent": "未连接智能体 · 设置 → AI",
       "unknownAgent": "AI"

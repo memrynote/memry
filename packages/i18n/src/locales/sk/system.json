@@ -17,18 +17,6 @@
       "filterAll": "Všetky súbory"
     },
     "exportCancelled": "Export zrušený",
-    "update": {
-      "availableTitle": "Aktualizácia dostupná",
-      "availableMessage": "memrynote {version} je k dispozícii.",
-      "availableDetailFallback": "Stiahnuť aktualizáciu teraz?",
-      "buttonDownload": "Stiahnuť",
-      "buttonLater": "Neskôr",
-      "readyTitle": "Aktualizácia pripravená",
-      "readyMessage": "Verzia memrynote {version} je stiahnutá.",
-      "readyDetailFallback": "Reštartujte aplikáciu memrynote, aby sa dokončila inštalácia aktualizácie.",
-      "buttonRestartNow": "Reštartovať teraz",
-      "releaseNotesLabel": "Poznámky k vydaniu:"
-    },
     "dataDbRecovery": {
       "title": "Oprava databázy trezora",
       "message": "Databáza Memry pre tento trezor je poškodená.",

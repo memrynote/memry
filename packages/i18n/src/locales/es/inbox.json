@@ -15,19 +15,13 @@
       "showWithCount": "Mostrar elementos pospuestos ({count})",
       "hide": "Ocultar elementos pospuestos"
     },
-    "density": {
-      "toComfortable": "Vista cómoda",
-      "toCompact": "Vista compacta"
-    },
     "filter": {
-      "button": "Filtrar",
       "byType": "Filtrar por tipo",
       "active": "{count, plural, one {Filtrando por # tipo} other {Filtrando por # tipos}}",
       "clearAll": "Quitar todo"
     },
     "jobs": {
-      "running": "{count, plural, one {# proceso en segundo plano en ejecución} other {# procesos en segundo plano en ejecución}}",
-      "failed": "{count} fallidos"
+      "running": "{count, plural, one {# proceso en segundo plano en ejecución} other {# procesos en segundo plano en ejecución}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Crear «{name}»",
     "addTags": "Añadir etiquetas…",
     "linkToNote": "Enlazar a una nota",
-    "linkANote": "Enlazar una nota",
-    "suggestedCount": "{count} sugeridas",
-    "linkNotesPlaceholder": "Enlazar notas…",
     "linkOrCreateNotePlaceholder": "Buscar o crear una nota…",
     "createNote": "Crear «{title}»",
     "pendingNote": "Nueva nota",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Los datos del recordatorio no están disponibles.",
     "triggered": "Recordatorio activado",
-    "noteLabel": "Nota del recordatorio",
     "source": "Origen",
     "journalTitle": "Diario: {date}",
     "noteFallback": "Nota",
@@ -514,9 +504,7 @@
       "settings": "Ajustes",
       "processing": "Procesando…",
       "cancelRecording": "Cancelar grabación",
-      "cancel": "Cancelar",
       "stopRecording": "Detener grabación",
-      "stop": "Detener",
       "recordingError": "Se produjo un error de grabación",
       "microphoneAccessDenied": "Acceso al micrófono denegado",
       "noMicrophoneFound": "No se encontró ningún micrófono",

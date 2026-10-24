@@ -53,8 +53,7 @@
       "high": "สูง",
       "urgent": "ด่วน"
     },
-    "unarchive": "นำงานออกจากที่เก็บถาวร",
-    "archivedOn": "เก็บถาวรเมื่อ {date}"
+    "unarchive": "นำงานออกจากที่เก็บถาวร"
   },
   "reminders": {
     "summary": "การเตือน: {date}",
@@ -151,21 +150,12 @@
     "addSubIssue": "เพิ่มงานย่อย",
     "subIssuePlaceholder": "เพิ่มงานย่อย…",
     "noSubIssues": "ยังไม่มีงานย่อย",
-    "linkedNotes": "ที่เกี่ยวข้อง",
-    "linkNote": "เพิ่มรายการที่เกี่ยวข้อง",
     "loading": "กำลังโหลด…",
-    "searchNotes": "ค้นหารายการที่เกี่ยวข้อง…",
-    "noMatchingNotes": "ไม่มีรายการที่ตรงกัน",
-    "noNotesAvailable": "ไม่มีรายการที่พร้อมใช้งาน",
-    "noLinkedNotes": "ยังไม่มีรายการที่เกี่ยวข้อง",
-    "removeLinkTo": "นำรายการที่เกี่ยวข้อง {title} ออก",
-    "removeLinkFallback": "รายการ",
     "related": "ที่เกี่ยวข้อง",
     "addRelatedItem": "เพิ่มรายการที่เกี่ยวข้อง",
     "searchRelated": "ค้นหารายการที่เกี่ยวข้อง…",
     "noMatchingRelated": "ไม่มีรายการที่ตรงกัน",
     "noRelatedAvailable": "ไม่มีรายการที่พร้อมใช้งาน",
-    "noRelatedItems": "ยังไม่มีรายการที่เกี่ยวข้อง",
     "removeRelatedItem": "นำรายการที่เกี่ยวข้อง {title} ออก",
     "relatedItemFallback": "รายการ",
     "relatedItemMissing": "รายการที่เกี่ยวข้องนั้นไม่อยู่ในคลังข้อมูลนี้แล้ว",
@@ -251,7 +241,6 @@
     "deleted": "ลบงานแล้ว",
     "deletedSeries": "ทำครบทุกรอบแล้ว",
     "completed": "งานเสร็จแล้ว",
-    "archived": "เก็บถาวรงานแล้ว",
     "undoNotAvailableForDelete": "เลิกทำการลบไม่ได้",
     "alreadyAllComplete": "งานที่เลือกทั้งหมดเสร็จแล้ว",
     "noCompletedSelected": "ไม่ได้เลือกงานที่เสร็จแล้ว",
@@ -331,7 +320,6 @@
       "archive": "เก็บถาวร",
       "delete": "ลบ",
       "cancelSelection": "ยกเลิกการเลือก",
-      "cancel": "ยกเลิก",
       "unarchive": "นำออกจากที่เก็บถาวร"
     },
     "componentsTasksBulkActionsBulkDeleteDialog": {
@@ -403,9 +391,6 @@
       "delete": "ลบ \"",
       "thisProjectHas": "โปรเจกต์นี้มี ",
       "task": "งาน",
-      "whatWouldYouLikeToDoWithThem": "ต้องการจัดการงานเหล่านี้อย่างไร?",
-      "moveTasksToPersonalProject": "ย้ายงานไปที่โปรเจกต์ส่วนตัว",
-      "deleteAllTasksPermanently": "ลบงานทั้งหมดอย่างถาวร",
       "thisProjectHasNoTasksAndWillBePermanentlyDeleted": "โปรเจกต์นี้ไม่มีงานและจะถูกลบอย่างถาวร",
       "notesEventsAndFilesStayNotice": "งานในโปรเจกต์นี้จะถูกลบ ส่วนโน้ต กิจกรรม และไฟล์จะยังอยู่ในคลังข้อมูล",
       "thisActionCannotBeUndone": "การกระทำนี้เลิกทำไม่ได้",
@@ -426,8 +411,6 @@
     },
     "componentsTasksDialogsBulkDueDateDialog": {
       "setDueDateForAllSubtasks": "ตั้งวันครบกำหนดให้งานย่อยทั้งหมด",
-      "setDueDateFor": "ตั้งวันครบกำหนดให้ ",
-      "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จแล้วด้วย (",
       "clearDate": "ล้างวันที่",
       "cancel": "ยกเลิก",
       "apply": "ใช้",
@@ -436,8 +419,6 @@
     },
     "componentsTasksDialogsBulkPriorityDialog": {
       "setPriorityForAllSubtasks": "ตั้งลำดับความสำคัญให้งานย่อยทั้งหมด",
-      "setPriorityFor": "ตั้งลำดับความสำคัญให้ ",
-      "alsoApplyToCompletedSubtasks": "ใช้กับงานย่อยที่เสร็จแล้วด้วย (",
       "cancel": "ยกเลิก",
       "apply": "ใช้",
       "setPriorityForSubtasksIn": "ตั้งลำดับความสำคัญให้งานย่อย {count, plural, other {# รายการ}} ใน “{title}”",
@@ -464,36 +445,13 @@
       "deleteAll": "ลบทั้งหมด",
       "deleteSubtasksConfirmation": "การดำเนินการนี้จะลบงานย่อย {count, plural, other {# รายการ}} ออกจาก “{title}”"
     },
-    "componentsTasksDialogsDeleteParentDialog": {
-      "deleteTaskWithSubtasks": "ลบงานพร้อมงานย่อยหรือไม่?",
-      "has": "มี ",
-      "subtask": "งานย่อย",
-      "whatWouldYouLikeToDo": "ต้องการทำอย่างไร?",
-      "deleteTaskAndAllSubtasks": "ลบงานและงานย่อยทั้งหมด",
-      "permanentlyRemovesEverything": "ลบทุกอย่างอย่างถาวร",
-      "deleteTaskKeepSubtasksAsStandaloneTasks": "ลบงาน แต่เก็บงานย่อยไว้เป็นงานแยก",
-      "subtasksBecomeTopLevelTasks": "งานย่อยจะกลายเป็นงานระดับบนสุด",
-      "cancel": "ยกเลิก",
-      "delete": "ลบ"
-    },
     "componentsTasksDialogsDuplicateWithSubtasksDialog": {
       "duplicateTask": "ทำสำเนางาน",
-      "createACopyOf": "สร้างสำเนาของ “",
-      "alsoDuplicateSubtasks": "ทำสำเนางานย่อยด้วย (",
       "cancel": "ยกเลิก",
-      "duplicate": "ทำสำเนา ",
       "createACopyOfTitle": "สร้างสำเนาของ “{title}”",
       "alsoDuplicateSubtasksCount": "ทำสำเนางานย่อยด้วย ({count})",
       "duplicateWithItems": "ทำสำเนา ({count, plural, other {# รายการ}})",
       "duplicateTaskOnly": "ทำสำเนางาน"
-    },
-    "componentsTasksDialogsParentPickerDialog": {
-      "makeSubtaskOf": "ทำเป็นงานย่อยของ…",
-      "selectATaskToMake": "เลือกงานที่จะให้ \"",
-      "aSubtaskOf": "เป็นงานย่อย",
-      "searchTasks": "ค้นหางาน…",
-      "sameProject": "โปรเจกต์เดียวกัน",
-      "otherProjects": "โปรเจกต์อื่น"
     },
     "componentsTasksDragDropInsertionIndicator": {
       "dropToRescheduleTo": "วางเพื่อเปลี่ยนกำหนดเป็น "
@@ -575,12 +533,6 @@
       "search": "ค้นหา",
       "clearAll": "ล้างทั้งหมด"
     },
-    "componentsTasksFiltersDueDateFilter": {
-      "filterByDueDate": "กรองตามวันครบกำหนด",
-      "customRange": "ช่วงที่กำหนดเอง",
-      "clear": "ล้าง",
-      "apply": "ใช้"
-    },
     "componentsTasksFiltersFilterDropdown": {
       "filterBy": "กรองตาม…"
     },
@@ -619,23 +571,9 @@
       "search": "ค้นหา…",
       "selected": "รายการที่เลือก"
     },
-    "componentsTasksFiltersMoreFiltersDropdown": {
-      "moreFilters": "ตัวกรองเพิ่มเติม",
-      "more": "เพิ่มเติม",
-      "status": "สถานะ",
-      "hasTimeSet": "ตั้งเวลาไว้",
-      "recurringOnly": "เฉพาะงานที่ทำซ้ำ",
-      "status2": "สถานะ"
-    },
     "componentsTasksFiltersPriorityFilter": {
       "filterByPriority": "กรองตามลำดับความสำคัญ",
       "priority": "ลำดับความสำคัญ"
-    },
-    "componentsTasksFiltersProjectFilter": {
-      "filterByProject": "กรองตามโปรเจกต์",
-      "project": "โปรเจกต์",
-      "allProjects": "ทุกโปรเจกต์",
-      "clear": "ล้าง"
     },
     "componentsTasksFiltersQuickFilters": {
       "quickFilters": "ตัวกรองด่วน:"
@@ -659,13 +597,6 @@
       "summaryTimeWith": "เวลา: ตั้งเวลาไว้",
       "summaryTimeWithout": "เวลา: ไม่ได้ตั้งเวลา",
       "nameRequired": "โปรดใส่ชื่อสำหรับตัวกรองนี้"
-    },
-    "componentsTasksFiltersSavedFiltersDropdown": {
-      "savedFilters": "ตัวกรองที่บันทึกไว้",
-      "saved": "บันทึกแล้ว",
-      "noSavedFiltersYet": "ยังไม่มีตัวกรองที่บันทึกไว้",
-      "saveCurrentFilters": "บันทึกตัวกรองปัจจุบัน",
-      "saveCurrentFilters2": "บันทึกตัวกรองปัจจุบัน"
     },
     "componentsTasksFiltersSavedFiltersSection": {
       "filterName": "ชื่อตัวกรอง",
@@ -715,8 +646,7 @@
       "openTasksOnThisProject": "หน้างานจะเปิดที่โปรเจกต์นี้"
     },
     "componentsTasksProjectSelect": {
-      "selectProject": "เลือกโปรเจกต์",
-      "selectProject2": "เลือกโปรเจกต์"
+      "selectProject": "เลือกโปรเจกต์"
     },
     "componentsTasksProjectsProjectSelector": {
       "editProject": "แก้ไขโปรเจกต์",
@@ -725,11 +655,6 @@
       "selectProject": "เลือกโปรเจกต์",
       "noProjectsYet": "ยังไม่มีโปรเจกต์",
       "createProject": "สร้างโปรเจกต์"
-    },
-    "componentsTasksProjectsProjectsTabContent": {
-      "noProjectSelected": "ยังไม่ได้เลือกโปรเจกต์",
-      "selectAProjectFromTheDropdownOrCreateANewOne": "เลือกโปรเจกต์จากเมนูแบบเลื่อนลงหรือสร้างโปรเจกต์ใหม่",
-      "createYourFirstProject": "สร้างโปรเจกต์แรก"
     },
     "componentsTasksQuickAddQuickAddHelp": {
       "quickAddShortcutsHelp": "วิธีใช้คำย่อสำหรับเพิ่มงานอย่างรวดเร็ว",
@@ -815,7 +740,6 @@
     },
     "componentsTasksTimePicker": {
       "selectTime": "เลือกเวลา",
-      "selectTime2": "เลือกเวลา",
       "clearTime": "ล้างเวลา"
     },
     "componentsTasksTodayEmptyState": {
@@ -880,7 +804,6 @@
   "projectHome": {
     "emptyTitle": "ยังไม่ได้เลือกโปรเจกต์",
     "emptyBody": "เลือกโปรเจกต์จากแถบด้านข้างเพื่อเปิดหน้าหลักโปรเจกต์",
-    "loadError": "โหลดรายละเอียดโปรเจกต์ไม่สำเร็จ",
     "overview": {
       "sectionTitle": "ภาพรวม",
       "create": "สร้างโน้ตภาพรวม",
@@ -969,18 +892,11 @@
       "empty": "ไม่มีงานค้างในโปรเจกต์นี้",
       "expand": "แสดงงานใน {title}",
       "collapse": "ซ่อนงานใน {title}",
-      "taskSummary": "ค้าง {open}/{total}",
       "daysLeft": "{count} วัน",
       "overdue": "เลยกำหนด {count} วัน",
       "columns": {
         "title": "ชื่อ",
         "daysLeft": "เหลืออีก (วัน)"
-      },
-      "status": {
-        "active": "กำลังดำเนินการ",
-        "done": "เสร็จแล้ว",
-        "upcoming": "กำลังจะมาถึง",
-        "past": "ผ่านไปแล้ว"
       }
     }
   },

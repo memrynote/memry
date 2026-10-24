@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Handlingen mislyktes",
-    "nothingToUndo": "Ingenting å angre",
     "undone": "Angret: {description}",
     "undoFailed": "Kunne ikke angre handlingen",
     "filesImported": "{count, plural, one {# fil importert} other {# filer importert}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Agenten vil opprette {title}. Se gjennom endringen før du bruker den.",
       "descriptionDelete": "Agenten vil slette {title}. Se gjennom endringen før du bruker den.",
       "fallbackTitle": "dette elementet",
-      "current": "Gjeldende",
       "candidate": "Kandidat",
       "loading": "Laster inn …",
       "apply": "Bruk",
@@ -383,12 +381,8 @@
       "removeAttachment": "Fjern {label}",
       "placeholder": "Gjør hva som helst med memrynote … @ for å nevne notater, oppgaver og hendelser",
       "send": "Send",
-      "providerLabel": "Agentleverandør: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Tilkoblede verktøy",
       "connectTool": "Koble til {tool}",
-      "addContext": "Legg til kontekst",
-      "addContextWithPermissions": "Legg til kontekst ({permissions})",
       "mentionContext": "Nevn et notat, en oppgave eller en hendelse",
       "files": {
         "attach": "Legg ved en tekstfil",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Kunne ikke gjøre om talen til tekst"
         }
       },
-      "modelLabel": "Agentmodell: {provider} {model}",
-      "reasoningLabel": "Agentresonnering: {reasoning}",
       "providers": {
-        "label": "Leverandør",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Datamaskintilgang"
       },
       "webSearch": {
-        "on": "På",
-        "off": "Av",
         "label": "Nettsøk"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agenten er utilgjengelig – åpne Innstillinger …"
       },
       "settings": {
-        "reasoning": "Resonnering",
         "effort": "Innsats"
       },
       "includeCurrentNote": "Ta med gjeldende notat",
@@ -472,11 +460,8 @@
           "max": "Maks"
         }
       },
-      "permissionsLabel": "Agenttillatelser: {access}, nettsøk {webSearch}",
       "permissions": {
-        "label": "Tillatelser",
-        "access": "Tilgang",
-        "tools": "Verktøy"
+        "access": "Tilgang"
       },
       "modelSettingsLabel": "Agentens modellinnstillinger: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Ny mappe",
       "newProject": "Nytt prosjekt",
       "bookmarks": "Bokmerker",
-      "chart": "Diagram",
       "tags": "Tagger",
       "reorderSection": "Endre rekkefølge på {section}",
       "dropFilesToImport": "Slipp filer for å importere",
       "dropFilesIntoVaultRoot": "Hvelvroten",
       "newNoteN": "Nytt notat (⌘N)",
-      "new": "Nytt",
       "newItemMenu": "Opprett ny …",
       "feedbackButton": "Send tilbakemelding",
       "feedbackTitle": "Send tilbakemelding",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Finn, erstatt, spør …"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Hopp over introduksjonen",
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Den personlige kunnskapsbasen din. La oss bruke to minutter på å komme i gang.",
-      "getStarted": "Kom i gang ",
-      "createYourFirstNote": "Opprett ditt første notat",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-basert, lagret lokalt som vanlige filer.",
-      "eGMeetingNotesIdeasAnything": "f.eks. møtenotater, ideer, hva som helst …",
-      "skip": "Hopp over",
-      "createNote": "Opprett notat ",
-      "addYourFirstTask": "Legg til din første oppgave",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Oppgaver lenker til notatene dine, med prioriteter og forfallsdatoer.",
-      "eGReviewProjectProposal": "f.eks. gå gjennom prosjektforslaget …",
-      "skip2": "Hopp over",
-      "createTask": "Opprett oppgave ",
-      "syncAcrossDevices": "Synkroniser på tvers av enheter",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Hold notatene og oppgavene dine synkronisert på alle enhetene dine. Du kan alltid sette opp dette senere.",
-      "skipForNow": "Hopp over foreløpig",
-      "doneLetSGo": "Ferdig – sett i gang! "
+      "skip": "Hopp over"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Angi mappeikon",
@@ -852,8 +818,7 @@
       "unknownTabType": "Ukjent fanetype: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "ulagrede endringer",
-      "preview": "forhåndsvisning"
+      "unsavedChanges": "ulagrede endringer"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Ny fane",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Dra for å endre størrelse · Dobbeltklikk for å tilbakestille"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Velkommen til memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Det personlige kunnskapssystemet ditt.",
-      "selectAFolderToStoreYourNotesAndTasks": "Velg en mappe for å lagre notatene og oppgavene dine.",
       "opening": "Åpner …",
-      "selectVaultFolder": "Velg hvelvmappe",
-      "plainMarkdown": "Vanlig Markdown",
-      "yourNotesStayPortable": "Notatene dine kan flyttes fritt",
-      "syncAnywhere": "Synkroniser hvor som helst",
-      "useDropboxIcloudGit": "Bruk Dropbox, iCloud, Git",
       "recentVaults": "Nylige hvelv",
-      "notesLastOpened": "notater · Sist åpnet",
-      "preRelease": "Beta",
       "createNewVault": "Opprett nytt hvelv",
-      "createNewVaultDesc": "Start et nytt hvelv i en mappe du velger.",
-      "openExistingVault": "Åpne eksisterende hvelv",
-      "openExistingVaultDesc": "Velg en mappe med Markdown-filer du allerede har.",
-      "signInToSync": "Logg på for å synkronisere",
-      "signInToSyncDesc": "Ende-til-ende-krypterte hvelv på tvers av enhetene dine.",
-      "create": "Opprett",
       "open": "Åpne",
-      "signIn": "Logg på",
       "helpAndDocs": "Hjelp og dokumentasjon",
-      "signInRequiresVault": "Åpne eller opprett et hvelv først for å konfigurere synkronisering.",
       "addVault": "Legg til hvelv",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Ingen hvelv ennå",
       "openVault": "Åpne hvelv",
       "settings": "Innstillinger",
-      "logOut": "Logg ut",
-      "signInToSync": "Logg på for å synkronisere",
       "remove": "Fjern \"",
       "removeVaultTitle": "Vil du fjerne «{name}» fra listen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dette hvelvet blir fjernet fra appen, men filene dine blir liggende på disken. Du kan alltid legge det til igjen senere.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Endre …",
       "download": "Last ned",
       "downloadFailed": "Kunne ikke laste ned hvelvet",
-      "deleteFromAccount": "Slett fra kontoen",
       "deleteVaultTitle": "Vil du slette «{name}» fra kontoen din?",
       "deleteVaultBody": "Dette fjerner for godt alle synkroniserte data for dette hvelvet fra Memrys servere og kan ikke angres. Filene dine på disken blir ikke slettet.",
       "deleteVaultConfirm": "Slett fra kontoen",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Fjern widget",
       "dragAria": "Dra widget",
-      "configAria": "Konfigurer widget",
-      "resizeAria": "Endre størrelse til {size}",
       "menuAria": "Alternativer for widget",
-      "resize": "Størrelse",
       "remove": "Fjern",
       "filter": {
         "all": "Alle",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Velg en mappe",
       "folderEmpty": "Ingen mapper ennå",
       "folderNoSelection": "Ingen mappe valgt",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galleri",
       "folderViewSelect": "Visning",
       "project": "Prosjekt",
       "projectNoSelection": "Ingen prosjekt valgt",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Oppsett for Hjem",
       "deleteAria": "Slett oppsett",
-      "newAria": "Ny tavle",
       "newName": "Ny tavle",
       "defaultName": "Hjem",
       "manage": "Administrer tavler",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# oppgave forfaller i dag} other {# oppgaver forfaller i dag}}",
       "events": "{count, plural, one {# hendelse} other {# hendelser}}"
     },
-    "edit": "Rediger",
-    "done": "Ferdig",
     "addWidget": "Legg til widget",
     "cover": {
       "add": "Legg til omslag"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Introduksjonen er fullført",
-      "body": "Gi oss en stjerne på GitHub – det hjelper andre med å finne MemryNote.",
-      "action": "Gi en stjerne på GitHub"
+      "body": "Gi oss en stjerne på GitHub – det hjelper andre med å finne MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Oppdateringen er klar",
     "failed": "Oppdatering mislyktes",
     "downloadAction": "Last ned",
-    "restartAction": "Start på nytt",
     "detailsAction": "Detaljer",
     "popover": {
       "readyTitle": "MemryNote {version} er klar",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Hvelv",
     "position": "{name}, hvelv {index} av {count}",
-    "openList": "{position}. Åpne listen over hvelv",
     "switchTo": "Bytt til {name}",
     "switchingTo": "Bytter til {name}",
     "changeIcon": "Endre ikon …",
@@ -1501,7 +1433,6 @@
       "onDevice": "På {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# hvelv funnet} other {# hvelv funnet}}",
-      "notion": "Notion",
       "otherApps": "Andre apper og filer",
       "otherAppsHint": "og {count} til",
       "detectedFootnote": "Funnet ved å sjekke hvilke apper som er installert. Ingenting forlater {device}.",

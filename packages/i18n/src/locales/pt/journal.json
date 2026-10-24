@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Conexões de IA",
     "todaysNotes": "Notas de hoje",
-    "todaysSchedule": "Programação de hoje",
-    "todaysTasks": "Tarefas de hoje",
     "tasks": "Tarefas",
     "technicalDetails": "Detalhes técnicos"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Boa tarde",
       "evening": "Boa noite",
       "night": "Boa noite"
-    },
-    "allDay": "Dia inteiro"
+    }
   },
   "nav": {
     "previousDay": "Dia anterior",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Mais opções",
     "documentStatistics": "Estatísticas do documento",
-    "dayContext": "Contexto do dia: tarefas e programação",
-    "scheduleEvents": "Eventos da programação",
-    "tasks": "Tarefas",
     "notesCreatedToday": "{count} notas criadas hoje"
   },
   "empty": {
     "noEntry": "Nenhuma entrada",
     "noDaysInMonth": "Não há dias neste mês",
-    "noEventsScheduled": "Nenhum evento agendado",
-    "noEventsScheduledToday": "Nenhum evento agendado para hoje",
-    "noEventsWereScheduled": "Nenhum evento foi agendado",
-    "noTasksDue": "Nenhuma tarefa com prazo",
-    "noTasksDueToday": "Nenhuma tarefa vence hoje",
-    "noTasksWereDue": "Nenhuma tarefa vencia neste dia",
     "noNotesToday": "Nenhuma nota criada hoje",
     "startDocumenting": "Comece a documentar seus pensamentos e ideias"
   },
@@ -155,9 +143,7 @@
     "day": "dia",
     "days": "dias",
     "event": "evento",
-    "events": "eventos",
     "task": "tarefa",
-    "todo": "a fazer",
     "moreConnections": "+ {count} outra conexão",
     "moreConnections_plural": "+ {count} outras conexões",
     "moreNotes": "+ {count} outra nota",
@@ -166,7 +152,6 @@
     "charactersWritten": "caracteres escritos",
     "words": "{count} palavras",
     "characters": "{count} caracteres",
-    "completed": "{count} concluídas",
     "overdue": "{count} em atraso"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Modificado em {date}"
   },
   "task": {
-    "completed": "Concluído",
-    "notCompleted": "Não concluído",
-    "priority": "Prioridade {priority}",
-    "overdue": "em atraso",
-    "markComplete": "Marcar “{title}” como concluída",
-    "markNotComplete": "Marcar “{title}” como não concluída"
+    "priority": "Prioridade {priority}"
   },
   "template": {
     "using": "Usando “{templateName}”"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Seu conteúdo ainda está na memória. Clique para tentar salvar novamente.",
-    "noteNotFound": "Nota “{target}” não encontrada",
     "createLinkedFailed": "Não foi possível criar a nota vinculada",
     "fileNotFound": "Arquivo não encontrado: {target}",
     "openLinkedItemFailed": "Não foi possível abrir o item vinculado",

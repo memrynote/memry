@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "認証されていません",
-    "sessionExpired": "セッションの有効期限が切れました。もう一度サインインしてください。",
     "setupSessionExpired": "処理が完了する前にサインインがタイムアウトしました。もう一度サインインしてから、リカバリーフレーズを入力してください。",
     "setupSessionExpiredLinking": "このデバイスのリンクが完了する前にサインインがタイムアウトしました。もう一度サインインしてから、コードをもう一度スキャンしてください。",
     "invalidRecoveryPhraseFormat": "リカバリーフレーズの形式が正しくありません",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "モデルを読み込めませんでした",
     "voiceModelDownloadFailed": "音声モデルをダウンロードできませんでした",
     "terminalCommandInstallFailed": "ターミナルコマンドをインストールできませんでした",
-    "terminalCommandUninstallFailed": "ターミナルコマンドをアンインストールできませんでした",
-    "shortcutInUse": "ショートカット {shortcut} はすでに使用されています"
+    "terminalCommandUninstallFailed": "ターミナルコマンドをアンインストールできませんでした"
   },
   "tag": {
     "renameInProgress": "#{from} から #{to} への名前変更がまだ実行中です。完了してからもう一度お試しください。",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} はすでにこのタグからフィールドを引き継いでいます",
     "unreadableSchema": "新しいバージョンの Memry がこのタグを変更しました。編集するには Memry をアップデートしてください",
     "relationTargetRequired": "このリレーションが指すタグを選んでください",
-    "editFailed": "タグのフィールドを変更できませんでした",
-    "previewFailed": "この変更の影響範囲を数えられませんでした",
-    "snapshotFailed": "タグのフィールドを読み込めませんでした",
     "renameRunning": "別のフィールド名変更（{from} から {to}）がまだ完了していません。完了してからもう一度お試しください。"
   }
 }

@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "הפעולה נכשלה",
-    "nothingToUndo": "אין מה לבטל",
     "undone": "בוטל: {description}",
     "undoFailed": "ביטול הפעולה נכשל",
     "filesImported": "{count, plural, one {קובץ אחד יובא} other {# קבצים יובאו}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "הסוכן רוצה ליצור את {title}. כדאי לעבור על השינוי לפני החלתו.",
       "descriptionDelete": "הסוכן רוצה למחוק את {title}. כדאי לעבור על השינוי לפני החלתו.",
       "fallbackTitle": "הפריט הזה",
-      "current": "נוכחי",
       "candidate": "מוצע",
       "loading": "טוען…",
       "apply": "החלה",
@@ -383,12 +381,8 @@
       "removeAttachment": "הסרת {label}",
       "placeholder": "אפשר לעשות כל דבר עם memrynote… @ לאזכור פתקים, משימות ואירועים",
       "send": "שליחה",
-      "providerLabel": "ספק הסוכן: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "כלים מחוברים",
       "connectTool": "חיבור {tool}",
-      "addContext": "הוספת הקשר",
-      "addContextWithPermissions": "הוספת הקשר ({permissions})",
       "mentionContext": "אזכור פתק, משימה או אירוע",
       "files": {
         "attach": "צירוף קובץ טקסט",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "לא ניתן להמיר את הקלט הקולי לטקסט"
         }
       },
-      "modelLabel": "מודל הסוכן: {provider} {model}",
-      "reasoningLabel": "רמת החשיבה של הסוכן: {reasoning}",
       "providers": {
-        "label": "ספק",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "גישה למחשב"
       },
       "webSearch": {
-        "on": "פועל",
-        "off": "כבוי",
         "label": "חיפוש באינטרנט"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "הסוכן לא זמין — פתיחת ההגדרות…"
       },
       "settings": {
-        "reasoning": "חשיבה",
         "effort": "מאמץ"
       },
       "includeCurrentNote": "צירוף הפתק הנוכחי",
@@ -472,11 +460,8 @@
           "max": "מרבי"
         }
       },
-      "permissionsLabel": "הרשאות הסוכן: {access}, חיפוש באינטרנט {webSearch}",
       "permissions": {
-        "label": "הרשאות",
-        "access": "גישה",
-        "tools": "כלים"
+        "access": "גישה"
       },
       "modelSettingsLabel": "הגדרות המודל של הסוכן: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "תיקייה חדשה",
       "newProject": "פרויקט חדש",
       "bookmarks": "סימניות",
-      "chart": "תרשים",
       "tags": "תגיות",
       "reorderSection": "שינוי הסדר של {section}",
       "dropFilesToImport": "שחרור קבצים לייבוא",
       "dropFilesIntoVaultRoot": "תיקיית השורש של הכספת",
       "newNoteN": "פתק חדש (⌘N)",
-      "new": "חדש",
       "newItemMenu": "יצירת פריט חדש…",
       "feedbackButton": "שליחת משוב",
       "feedbackTitle": "שליחת משוב",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "חיפוש, החלפה, שאלה…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "דילוג על ההדרכה",
-      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "מאגר הידע האישי שלך. נתחיל? זה לוקח רק 2 דקות.",
-      "getStarted": "התחלה ",
-      "createYourFirstNote": "יצירת הפתק הראשון שלך",
-      "markdownBasedStoredLocallyAsPlainFiles": "מבוסס Markdown, מאוחסן באופן מקומי כקבצים רגילים.",
-      "eGMeetingNotesIdeasAnything": "למשל סיכומי פגישות, רעיונות, כל דבר…",
-      "skip": "דילוג",
-      "createNote": "יצירת פתק ",
-      "addYourFirstTask": "הוספת המשימה הראשונה שלך",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "משימות מקושרות לפתקים שלך, עם עדיפויות ותאריכי יעד.",
-      "eGReviewProjectProposal": "למשל לעבור על הצעת הפרויקט…",
-      "skip2": "דילוג",
-      "createTask": "יצירת משימה ",
-      "syncAcrossDevices": "סנכרון בין מכשירים",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "אפשר לשמור על הפתקים והמשימות שלך מסונכרנים בכל המכשירים שלך. את ההגדרה אפשר לעשות גם מאוחר יותר.",
-      "skipForNow": "דילוג בינתיים",
-      "doneLetSGo": "סיום — יוצאים לדרך! "
+      "skip": "דילוג"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "הגדרת סמל לתיקייה",
@@ -852,8 +818,7 @@
       "unknownTabType": "סוג כרטיסייה לא ידוע: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "שינויים שלא נשמרו",
-      "preview": "תצוגה מקדימה"
+      "unsavedChanges": "שינויים שלא נשמרו"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "כרטיסייה חדשה",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "גרירה לשינוי הגודל · לחיצה כפולה לאיפוס"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "ברוכים הבאים ל-memrynote",
-      "yourPersonalKnowledgeManagementSystem": "מערכת ניהול הידע האישי שלך.",
-      "selectAFolderToStoreYourNotesAndTasks": "יש לבחור תיקייה לאחסון הפתקים והמשימות שלך.",
       "opening": "פותח…",
-      "selectVaultFolder": "בחירת תיקיית כספת",
-      "plainMarkdown": "Markdown רגיל",
-      "yourNotesStayPortable": "הפתקים שלך נשארים ניידים",
-      "syncAnywhere": "סנכרון בכל מקום",
-      "useDropboxIcloudGit": "שימוש ב-Dropbox, iCloud, Git",
       "recentVaults": "כספות אחרונות",
-      "notesLastOpened": "פתקים · נפתח לאחרונה",
-      "preRelease": "בטא",
       "createNewVault": "יצירת כספת חדשה",
-      "createNewVaultDesc": "יצירת כספת חדשה בתיקייה לבחירתך.",
-      "openExistingVault": "פתיחת כספת קיימת",
-      "openExistingVaultDesc": "בחירת תיקייה של קובצי Markdown שכבר יש לך.",
-      "signInToSync": "התחברות לסנכרון",
-      "signInToSyncDesc": "כספות מוצפנות מקצה לקצה בכל המכשירים שלך.",
-      "create": "יצירה",
       "open": "פתיחה",
-      "signIn": "התחברות",
       "helpAndDocs": "עזרה ותיעוד",
-      "signInRequiresVault": "כדי להגדיר סנכרון, יש קודם לפתוח או ליצור כספת.",
       "addVault": "הוספת כספת",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "עדיין אין כספות",
       "openVault": "פתיחת כספת",
       "settings": "הגדרות",
-      "logOut": "התנתקות",
-      "signInToSync": "התחברות לסנכרון",
       "remove": "הסרת \"",
       "removeVaultTitle": "להסיר את \"{name}\" מהרשימה?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "הכספת הזו תוסר מהאפליקציה, אבל הקבצים שלך יישארו בדיסק. אפשר תמיד להוסיף אותה מחדש מאוחר יותר.",
@@ -1020,7 +965,6 @@
       "changeLocation": "שינוי…",
       "download": "הורדה",
       "downloadFailed": "לא ניתן היה להוריד את הכספת",
-      "deleteFromAccount": "מחיקה מהחשבון",
       "deleteVaultTitle": "למחוק את \"{name}\" מהחשבון שלך?",
       "deleteVaultBody": "פעולה זו מסירה לצמיתות את כל הנתונים המסונכרנים של הכספת הזו משרתי Memry, ולא ניתן לבטל אותה. הקבצים שלך בדיסק לא יימחקו.",
       "deleteVaultConfirm": "מחיקה מהחשבון",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "הסרת הווידג׳ט",
       "dragAria": "גרירת הווידג׳ט",
-      "configAria": "הגדרת הווידג׳ט",
-      "resizeAria": "שינוי הגודל ל-{size}",
       "menuAria": "אפשרויות הווידג׳ט",
-      "resize": "גודל",
       "remove": "הסרה",
       "filter": {
         "all": "הכול",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "בחירת תיקייה",
       "folderEmpty": "אין עדיין תיקיות",
       "folderNoSelection": "לא נבחרה תיקייה",
-      "folderView_list": "רשימה",
-      "folderView_gallery": "גלריה",
       "folderViewSelect": "תצוגה",
       "project": "פרויקט",
       "projectNoSelection": "לא נבחר פרויקט",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "פריסת דף הבית",
       "deleteAria": "מחיקת הפריסה",
-      "newAria": "לוח חדש",
       "newName": "לוח חדש",
       "defaultName": "דף הבית",
       "manage": "ניהול לוחות",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {משימה אחת להיום} other {# משימות להיום}}",
       "events": "{count, plural, one {אירוע אחד} other {# אירועים}}"
     },
-    "edit": "עריכה",
-    "done": "סיום",
     "addWidget": "הוספת וידג׳ט",
     "cover": {
       "add": "הוספת עטיפה"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "הדרכת הפתיחה הושלמה",
-      "body": "נשמח לכוכב ב-GitHub — זה עוזר לאנשים אחרים למצוא את MemryNote.",
-      "action": "כוכב ב-GitHub"
+      "body": "נשמח לכוכב ב-GitHub — זה עוזר לאנשים אחרים למצוא את MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "העדכון מוכן",
     "failed": "העדכון נכשל",
     "downloadAction": "הורדה",
-    "restartAction": "הפעלה מחדש",
     "detailsAction": "פרטים",
     "popover": {
       "readyTitle": "MemryNote {version} מוכן",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "כספות",
     "position": "{name}, כספת {index} מתוך {count}",
-    "openList": "{position}. פתיחת רשימת הכספות",
     "switchTo": "מעבר אל {name}",
     "switchingTo": "עובר אל {name}",
     "changeIcon": "שינוי סמל…",
@@ -1501,7 +1433,6 @@
       "onDevice": "על {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {נמצאה כספת #} two {נמצאו # כספות} other {נמצאו # כספות}}",
-      "notion": "Notion",
       "otherApps": "אפליקציות וקבצים אחרים",
       "otherAppsHint": "ועוד {count}",
       "detectedFootnote": "נמצא לפי בדיקה של האפליקציות המותקנות. שום דבר לא יוצא מ{device}.",

@@ -17,18 +17,6 @@
       "filterAll": "Tutti i file"
     },
     "exportCancelled": "Esportazione annullata",
-    "update": {
-      "availableTitle": "Aggiornamento disponibile",
-      "availableMessage": "memrynote {version} è disponibile.",
-      "availableDetailFallback": "Scaricare l'aggiornamento adesso?",
-      "buttonDownload": "Scarica",
-      "buttonLater": "Più tardi",
-      "readyTitle": "Aggiornamento pronto",
-      "readyMessage": "memrynote {version} è stato scaricato.",
-      "readyDetailFallback": "Riavvia memrynote per completare l'installazione dell'aggiornamento.",
-      "buttonRestartNow": "Riavvia ora",
-      "releaseNotesLabel": "Note sulla versione:"
-    },
     "dataDbRecovery": {
       "title": "Ripara il database del vault",
       "message": "Il database di Memry per questo vault è danneggiato.",

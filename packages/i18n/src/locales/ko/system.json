@@ -17,18 +17,6 @@
       "filterAll": "모든 파일"
     },
     "exportCancelled": "내보내기가 취소되었습니다.",
-    "update": {
-      "availableTitle": "업데이트 가능",
-      "availableMessage": "memrynote {version} 버전을 사용할 수 있습니다.",
-      "availableDetailFallback": "지금 업데이트를 다운로드하시겠습니까?",
-      "buttonDownload": "다운로드",
-      "buttonLater": "나중에",
-      "readyTitle": "업데이트 준비됨",
-      "readyMessage": "memrynote {version} 버전을 다운로드했습니다.",
-      "readyDetailFallback": "memrynote를 다시 시작하여 업데이트 설치를 완료하세요.",
-      "buttonRestartNow": "지금 다시 시작",
-      "releaseNotesLabel": "릴리스 노트:"
-    },
     "dataDbRecovery": {
       "title": "볼트 데이터베이스 복구",
       "message": "이 볼트의 Memry 데이터베이스가 손상되었습니다.",

@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Tidak disahkan",
-    "sessionExpired": "Sesi telah tamat tempoh. Sila log masuk semula.",
     "setupSessionExpired": "Log masuk anda tamat masa sebelum proses ini selesai. Log masuk semula, kemudian masukkan frasa pemulihan anda.",
     "setupSessionExpiredLinking": "Log masuk anda tamat masa sebelum peranti ini selesai dipautkan. Log masuk semula, kemudian imbas kod sekali lagi.",
     "invalidRecoveryPhraseFormat": "Format frasa pemulihan tidak sah",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Gagal memuatkan model",
     "voiceModelDownloadFailed": "Gagal memuat turun model suara",
     "terminalCommandInstallFailed": "Gagal memasang arahan terminal",
-    "terminalCommandUninstallFailed": "Gagal menyahpasang arahan terminal",
-    "shortcutInUse": "Pintasan {shortcut} sudah digunakan"
+    "terminalCommandUninstallFailed": "Gagal menyahpasang arahan terminal"
   },
   "tag": {
     "renameInProgress": "Penamaan semula #{from} kepada #{to} masih berjalan. Cuba lagi apabila ia selesai.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} sudah mengambil medannya daripada teg ini",
     "unreadableSchema": "Versi Memry yang lebih baharu telah mengubah teg ini. Kemas kini Memry untuk mengeditnya",
     "relationTargetRequired": "Pilih teg yang ditunjuk oleh hubungan ini",
-    "editFailed": "Tidak dapat menukar medan teg",
-    "previewFailed": "Tidak dapat mengira apa yang terjejas oleh perubahan ini",
-    "snapshotFailed": "Tidak dapat memuatkan medan teg",
     "renameRunning": "Penamaan semula medan lain masih diselesaikan ({from} kepada {to}). Cuba lagi sebaik ia selesai."
   }
 }

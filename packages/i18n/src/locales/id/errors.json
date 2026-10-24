@@ -145,7 +145,6 @@
   },
   "auth": {
     "notAuthenticated": "Belum terautentikasi",
-    "sessionExpired": "Sesi telah berakhir. Silakan masuk lagi.",
     "setupSessionExpired": "Sesi masuk Anda habis sebelum proses ini selesai. Masuk lagi, lalu masukkan frasa pemulihan Anda.",
     "setupSessionExpiredLinking": "Sesi masuk Anda habis sebelum perangkat ini selesai ditautkan. Masuk lagi, lalu pindai kodenya sekali lagi.",
     "invalidRecoveryPhraseFormat": "Format frasa pemulihan tidak valid",
@@ -295,8 +294,7 @@
     "modelLoadFailed": "Gagal memuat model",
     "voiceModelDownloadFailed": "Gagal mengunduh model suara",
     "terminalCommandInstallFailed": "Gagal memasang perintah terminal",
-    "terminalCommandUninstallFailed": "Gagal mencopot perintah terminal",
-    "shortcutInUse": "Pintasan {shortcut} sudah digunakan"
+    "terminalCommandUninstallFailed": "Gagal mencopot perintah terminal"
   },
   "tag": {
     "renameInProgress": "Penggantian nama #{from} menjadi #{to} masih berjalan. Coba lagi setelah selesai.",
@@ -373,9 +371,6 @@
     "cycle": "#{parent} sudah mengambil kolomnya dari tag ini",
     "unreadableSchema": "Versi Memry yang lebih baru telah mengubah tag ini. Perbarui Memry untuk mengeditnya",
     "relationTargetRequired": "Pilih tag yang dituju relasi ini",
-    "editFailed": "Tidak dapat mengubah kolom tag",
-    "previewFailed": "Tidak dapat menghitung dampak perubahan ini",
-    "snapshotFailed": "Tidak dapat memuat kolom tag",
     "renameRunning": "Penggantian nama kolom lain masih diselesaikan ({from} menjadi {to}). Coba lagi setelah selesai."
   }
 }

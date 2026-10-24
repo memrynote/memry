@@ -7,11 +7,6 @@
     "backToApp": "Kembali ke aplikasi",
     "nav": {
       "groups": {
-        "account": "Akun",
-        "application": "Aplikasi",
-        "editing": "Pengeditan",
-        "modules": "Modul",
-        "services": "Layanan",
         "data": "Data",
         "workspace": "Ruang kerja",
         "features": "Fitur"
@@ -45,11 +40,6 @@
     },
     "modules": {
       "configure": "Konfigurasikan {module}"
-    },
-    "vaultImport": {
-      "label": "Impor dari aplikasi lain",
-      "description": "Notion, Evernote, Bear, Apple Notes, Todoist, dan lainnya",
-      "action": "Impor…"
     },
     "search": {
       "placeholder": "Cari pengaturan",
@@ -102,12 +92,8 @@
       "loading": "Memuat pengaturan…"
     },
     "groups": {
-      "startup": "Startup",
       "updates": "Pembaruan",
       "languageRegion": "Bahasa & wilayah",
-      "tabBehavior": "Perilaku tab",
-      "window": "Perilaku jendela",
-      "fileCreation": "Pembuatan file",
       "privacy": "Privasi",
       "startupWindows": "Startup & jendela",
       "newNotes": "Catatan baru",
@@ -116,32 +102,21 @@
     "startup": {
       "launchAtLogin": {
         "label": "Jalankan saat masuk",
-        "description": "Mulai memrynote saat Anda masuk",
         "error": "Gagal memperbarui pengaturan startup"
       }
     },
     "updates": {
       "autoCheck": {
         "label": "Periksa pembaruan secara otomatis",
-        "description": "Periksa rilis baru saat aplikasi dijalankan dan secara berkala selama aplikasi terbuka.",
         "error": "Gagal memperbarui pengaturan pemeriksaan otomatis"
       },
       "autoDownload": {
         "label": "Unduh pembaruan secara otomatis",
-        "description": "Unduh dan instal rilis baru di latar belakang tanpa meminta konfirmasi.",
         "error": "Gagal memperbarui pengaturan unduhan otomatis"
       },
-      "appUpdates": "Pembaruan aplikasi",
-      "installedVersion": "Versi terinstal {version}",
-      "availableVersion": "Versi tersedia {version}",
-      "unsupported": "Build terpaket dapat memeriksa, mengunduh, dan menginstal pembaruan dari Rilis GitHub",
       "available": "memrynote {version} tersedia untuk diunduh",
       "downloadingLatest": "Mengunduh rilis terbaru",
-      "downloadingLatestPercent": "Mengunduh rilis terbaru ({percent}%)",
       "downloaded": "memrynote {version} siap diinstal",
-      "upToDate": "Instalasi ini sudah menggunakan rilis terbaru",
-      "checking": "Memeriksa Rilis GitHub untuk versi yang lebih baru",
-      "idle": "Periksa rilis baru dan instal tanpa meninggalkan aplikasi",
       "unsupportedToast": "Pembaruan otomatis hanya tersedia di rilis terpaket",
       "upToDateToast": "memrynote {version} sudah versi terbaru",
       "actionFailed": "Tindakan pembaruan gagal",
@@ -164,17 +139,10 @@
         "downloading": "Mengunduh…",
         "downloadingPercent": "Mengunduh {percent}%",
         "downloaded": "Versi {version} siap diinstal"
-      },
-      "mode": {
-        "label": "Mode pembaruan",
-        "off": "Jangan periksa",
-        "notify": "Beri tahu saja",
-        "auto": "Unduh otomatis"
       }
     },
     "language": {
       "label": "Bahasa",
-      "helper": "Sebagian besar aplikasi langsung diperbarui. Beberapa teks tingkat sistem — notifikasi yang sudah ditampilkan, label Dock, bilah judul jendela — baru diperbarui setelah aplikasi dibuka lagi.",
       "changed": "Bahasa diubah menjadi {nativeName}",
       "failed": "Gagal mengubah bahasa. Silakan coba lagi."
     },
@@ -190,7 +158,6 @@
     },
     "clockFormat": {
       "label": "Format waktu",
-      "description": "Format 12 jam atau 24 jam",
       "options": {
         "12h": "12 jam",
         "24h": "24 jam"
@@ -199,7 +166,6 @@
     },
     "dateFormat": {
       "label": "Format tanggal",
-      "description": "Cara tanggal kalender ditampilkan",
       "options": {
         "MM/DD/YYYY": "MM/DD/YYYY (AS)",
         "DD/MM/YYYY": "DD/MM/YYYY",
@@ -210,8 +176,7 @@
     },
     "tabs": {
       "openPagesInNewTab": {
-        "label": "Buka halaman di tab baru",
-        "description": "Mengeklik atau membuat halaman — catatan, folder, proyek, kanvas, tag, markah — akan membukanya di tab baru. Jika nonaktif, tab saat ini digunakan kembali, termasuk saat mengikuti tautan di dalam catatan; tab yang disematkan tidak pernah diganti. “Buka di tab baru”, “Buka di samping”, dan klik tengah selalu membuka tab baru."
+        "label": "Buka halaman di tab baru"
       },
       "restoreSession": {
         "label": "Pulihkan tab saat mulai",
@@ -219,7 +184,6 @@
       },
       "closeButton": {
         "label": "Tombol tutup tab",
-        "description": "Kapan menampilkan tombol tutup",
         "options": {
           "always": "Selalu terlihat",
           "hover": "Saat diarahkan kursor",
@@ -231,19 +195,16 @@
     "window": {
       "minimizeToTray": {
         "label": "Tetap berjalan di bilah menu saat ditutup",
-        "description": "Menutup jendela akan menyembunyikan memrynote ke baki sistem, bukan menutupnya. Klik ikon baki untuk menampilkannya kembali. Di macOS, aplikasi juga tetap ada di Dock; di desktop Linux tanpa baki sistem, jendela ditutup seperti biasa.",
         "error": "Gagal memperbarui pengaturan baki sistem"
       }
     },
     "fileCreation": {
       "createInSelectedFolder": {
-        "label": "Buat di dalam folder yang dipilih",
-        "description": "Catatan dan folder baru dibuat di dalam folder yang dipilih saat ini. Jika nonaktif, item selalu dibuat di root."
+        "label": "Buat di dalam folder yang dipilih"
       },
       "defaultNoteFolder": {
         "label": "Lokasi default",
         "description": "Digunakan jika tidak ada folder yang dipilih di bilah samping.",
-        "placeholder": "notes",
         "root": "/"
       }
     },
@@ -272,7 +233,6 @@
         "error": "Gagal mengirim laporan diagnostik",
         "sendReport": {
           "label": "Laporan diagnostik",
-          "description": "Kirim laporan satu kali berisi log teknis yang sudah disamarkan untuk membantu kami menelusuri masalah yang Anda alami.",
           "button": "Kirim laporan…"
         }
       }
@@ -301,20 +261,14 @@
       "loading": "Memuat pengaturan…"
     },
     "groups": {
-      "theme": "Tema",
-      "accentColor": "Warna aksen",
-      "typography": "Tipografi",
-      "zoom": "Zoom"
+      "theme": "Tema"
     },
     "theme": {
       "colorMode": {
-        "label": "Mode warna",
-        "description": "Pilih tema yang Anda sukai",
         "aria": "Mode warna"
       },
       "options": {
         "light": "Terang",
-        "white": "Putih",
         "dark": "Gelap",
         "system": "Sistem"
       },
@@ -332,11 +286,8 @@
       "importInvalid": "Papan klip tidak berisi tema memrynote"
     },
     "accent": {
-      "pick": "Pilih warna aksen",
       "custom": {
-        "label": "Warna khusus",
-        "description": "Masukkan nilai hex",
-        "placeholder": "#000000"
+        "label": "Warna khusus"
       },
       "presets": {
         "indigo": "Nila",
@@ -348,7 +299,6 @@
         "pink": "Merah muda",
         "orange": "Oranye"
       },
-      "error": "Gagal memperbarui warna aksen",
       "aria": "Preset aksen",
       "options": {
         "theme": "Tema",
@@ -387,8 +337,6 @@
       }
     },
     "zoom": {
-      "label": "Tingkat zoom",
-      "description": "Skalakan seluruh antarmuka",
       "decrease": "Perkecil zoom",
       "increase": "Perbesar zoom",
       "reset": "Atur ulang zoom ke default",
@@ -396,15 +344,12 @@
     },
     "typography": {
       "fontSize": {
-        "label": "Ukuran font",
-        "description": "Ukuran dasar teks antarmuka dalam piksel",
         "decrease": "Perkecil ukuran font",
         "increase": "Perbesar ukuran font",
         "reset": "Atur ulang ukuran font ke default"
       },
       "fontFamily": {
         "label": "Jenis font",
-        "description": "Jenis huruf utama untuk antarmuka",
         "options": {
           "system": "Default sistem",
           "sansSerif": "Sans-serif",
@@ -428,13 +373,9 @@
       "fontFamilyError": "Gagal memperbarui jenis font"
     },
     "v2": {
-      "groups": {
-        "text": "Teks & zoom"
-      },
       "colorMode": "Mode warna",
       "colorTheme": "Tema",
       "accent": "Warna aksen",
-      "customColor": "Warna khusus",
       "fontFamily": "Jenis font",
       "fontSize": "Ukuran font",
       "zoom": "Zoom"
@@ -448,7 +389,6 @@
     },
     "groups": {
       "layout": "Tata letak",
-      "toolbar": "Bilah alat",
       "spelling": "Ejaan",
       "checklists": "Daftar periksa",
       "attachments": "Lampiran",
@@ -473,7 +413,6 @@
       "error": "Gagal memperbarui jenis callout"
     },
     "width": {
-      "label": "Lebar editor",
       "description": "Berlaku untuk semua catatan dan halaman jurnal",
       "options": {
         "normal": "Normal",
@@ -482,12 +421,10 @@
       "error": "Gagal memperbarui lebar editor"
     },
     "toolbarMode": {
-      "label": "Bilah alat pemformatan tetap",
       "description": "Selalu tampilkan bilah alat di atas editor",
       "error": "Gagal memperbarui mode bilah alat"
     },
     "spellCheck": {
-      "label": "Periksa ejaan",
       "description": "Garis bawahi kata yang salah eja di catatan dan jurnal",
       "error": "Gagal memperbarui pemeriksaan ejaan"
     },
@@ -522,14 +459,12 @@
       "subtitle": "Kelola templat catatan untuk pembuatan cepat"
     },
     "actions": {
-      "new": "Templat baru",
       "edit": "Edit",
       "duplicate": "Duplikat",
       "delete": "Hapus"
     },
     "groups": {
-      "builtIn": "Bawaan",
-      "myTemplates": "Templat saya"
+      "builtIn": "Bawaan"
     },
     "loading": "Memuat templat…",
     "newTemplateTitle": "Templat baru",
@@ -537,9 +472,6 @@
     "empty": {
       "title": "Belum ada templat khusus",
       "description": "Buat templat untuk memulai"
-    },
-    "preview": {
-      "notFound": "Tidak dapat memuat templat ini."
     },
     "toasts": {
       "deleted": "Templat dihapus",
@@ -572,11 +504,7 @@
       "loading": "Memuat pengaturan…"
     },
     "groups": {
-      "defaultTemplate": "Templat default",
-      "location": "Lokasi & format",
-      "sidebarVisibility": "Visibilitas bilah samping",
-      "footer": "Footer",
-      "weekdayTemplates": "Templat per hari"
+      "footer": "Footer"
     },
     "template": {
       "label": "Templat",
@@ -588,18 +516,6 @@
       "updated": "Templat default diperbarui",
       "cleared": "Templat default dihapus",
       "error": "Gagal memperbarui templat default"
-    },
-    "showSchedule": {
-      "label": "Tampilkan jadwal",
-      "description": "Tampilkan acara dan kalender hari ini"
-    },
-    "showTasks": {
-      "label": "Tampilkan tugas",
-      "description": "Tampilkan tugas dengan tenggat pada hari yang dipilih"
-    },
-    "showAIConnections": {
-      "label": "Tampilkan koneksi AI",
-      "description": "Tampilkan koneksi bertenaga AI ke entri terkait"
     },
     "showStatsFooter": {
       "label": "Tampilkan footer statistik",
@@ -632,7 +548,6 @@
       "inheritWith": "Default · {name}",
       "inheritNone": "Default · tidak ada",
       "missing": "Templat terhapus",
-      "clear": "Kosongkan",
       "updated": "Templat diperbarui untuk {day}",
       "cleared": "Templat dikosongkan untuk {day}",
       "error": "Gagal memperbarui templat untuk {day}",
@@ -751,11 +666,6 @@
       "subtitle": "Konfigurasikan perilaku sel hari di panel hari",
       "loading": "Memuat pengaturan…"
     },
-    "groups": {
-      "weekStart": "Minggu",
-      "dayCellClick": "Klik sel hari",
-      "notes": "Catatan"
-    },
     "weekStart": {
       "label": "Minggu dimulai pada",
       "description": "Hari pertama dalam seminggu di semua kalender",
@@ -795,8 +705,6 @@
       },
       "accountReconnect": "Hubungkan kembali Google",
       "addAccount": "Tambahkan akun",
-      "importedCalendars": "Kalender yang diimpor",
-      "selected": "{count} dipilih",
       "syncNow": "Sinkronkan sekarang",
       "disconnect": "Putuskan sambungan",
       "reconnect": "Hubungkan kembali Google",
@@ -1025,10 +933,8 @@
       "loading": "Memuat…"
     },
     "groups": {
-      "identity": "Identitas",
       "sync": "Sinkronisasi",
       "billing": "Penagihan",
-      "storage": "Penyimpanan",
       "devices": "Perangkat"
     },
     "identity": {
@@ -1152,7 +1058,6 @@
     },
     "security": {
       "signOut": {
-        "label": "Keluar",
         "description": "Putuskan sambungan perangkat ini dari sinkronisasi",
         "action": "Keluar"
       }
@@ -1404,20 +1309,8 @@
       "disabled": "Pencarian gambar dinonaktifkan"
     },
     "unknownError": "Kesalahan tidak diketahui",
-    "groups": {
-      "voice": "Transkripsi suara",
-      "embeddingModel": "Model embedding lokal",
-      "embeddingIndex": "Indeks embedding",
-      "inline": "Pengeditan AI sebaris"
-    },
     "voice": {
-      "provider": "Penyedia",
       "providerDescription": "Penyedia ucapan-ke-teks untuk memo suara",
-      "providers": {
-        "local": "Lokal (default)",
-        "openai": "OpenAI (BYOK)"
-      },
-      "memoNameMode": "Nama memo",
       "memoNameModeDescription": "Cara memo suara dinamai setelah transkripsi",
       "naming": {
         "transcript": "Judul transkrip",
@@ -1432,8 +1325,6 @@
       "languageDescription": "Bahasa yang Anda gunakan dalam memo suara",
       "languageDefault": "Default",
       "languageError": "Gagal memperbarui bahasa transkripsi",
-      "localModel": "Model lokal",
-      "localModelDescription": "Whisper Small diunduh saat diperlukan dan tetap di-cache secara lokal",
       "status": {
         "ready": "Siap",
         "downloading": "Mengunduh",
@@ -1458,17 +1349,12 @@
     "embedding": {
       "loaded": "Dimuat",
       "loading": "Memuat",
-      "cacheHint": "~210MB · Di-cache secara lokal · Semua di perangkat",
-      "dimensions": "Dimensi",
-      "embeddings": "Embedding",
       "downloadLoad": "Unduh & muat model",
       "downloadingModel": "Mengunduh model…",
       "loadingModel": "Memuat model…",
       "loadSuccess": "Model berhasil dimuat",
       "loadFailed": "Gagal memuat model",
       "rebuildIndex": "Bangun ulang indeks",
-      "rebuildDescription": "Buat ulang embedding untuk semua catatan",
-      "rebuild": "Bangun ulang",
       "scanning": "Memindai catatan…",
       "generating": "Membuat embedding…",
       "complete": "Selesai!",
@@ -1477,13 +1363,10 @@
     },
     "inline": {
       "loading": "Memuat…",
-      "title": "Pengeditan AI sebaris",
-      "enable": "Aktifkan AI sebaris",
       "enableDescription": "Tampilkan menu AI saat mengedit catatan",
       "enabled": "Pengeditan AI sebaris diaktifkan",
       "disabled": "Pengeditan AI sebaris dinonaktifkan",
       "provider": "Penyedia",
-      "providerDescription": "Layanan AI untuk operasi teks",
       "providers": {
         "ollama": "Ollama (Lokal)",
         "openai": "OpenAI",
@@ -1502,7 +1385,6 @@
       "activePort": "Aktif pada port {port}",
       "notConnected": "Tidak terhubung",
       "test": "Uji",
-      "stopFailed": "Gagal menghentikan server yang ada",
       "connected": "Terhubung! Server berjalan pada port {port}",
       "connectFailed": "Gagal terhubung",
       "testFailed": "Uji koneksi gagal",
@@ -1566,8 +1448,6 @@
       "onenote": "Impor buku catatan OneNote (memerlukan akun Microsoft)",
       "readwise": "Impor sorotan Anda dari Readwise (memerlukan token akses)"
     },
-    "action": "Impor",
-    "select": "Pilih aplikasi untuk mengimpor…",
     "stats": {
       "notes": "{count, plural, one {# catatan} other {# catatan}}",
       "projects": "{count, plural, one {# proyek} other {# proyek}}",
@@ -1631,13 +1511,11 @@
       "chooseFolder": "Pilih folder Apple Notes…",
       "chooseDirectory": "Pilih folder…",
       "folderKeepsAssets": "Pilih folder jika gambar berada di luar folder catatannya sendiri — hasil ekspor sering menyimpan media di satu folder bersama.",
-      "chooseHint": "Pilih {label} Anda",
       "folderHint": "Klik di bawah dan pilih folder “group.com.apple.notes” saat pemilih terbuka (pemilih dimulai di sana). Ini memungkinkan Memry membaca catatan dan lampiran Anda — tanpa perlu Akses Disk Penuh.",
       "noteplanFolderHint": "Pilih folder NotePlan Anda — folder data aplikasi atau salah satu salinan Backups-nya. Memry membaca folder Calendar, Notes, dan @Archive di dalamnya.",
       "selected": "{count, plural, one {# file dipilih} other {# file dipilih}}",
       "start": "Mulai impor",
       "cancel": "Batal",
-      "close": "Tutup",
       "done": "Selesai",
       "running": "Mengimpor…",
       "progress": "{completed} dari {total}",
@@ -1660,8 +1538,6 @@
         "connecting": "Menghubungkan…",
         "connectFailed": "Tidak dapat terhubung ke Readwise",
         "takeOver": {
-          "syncsOn": "Readwise disinkronkan di {device}.",
-          "syncsOnAnother": "Readwise disinkronkan di perangkat lain.",
           "explain": "Hanya satu perangkat yang menarik data dari Readwise, sehingga sorotan yang sama tidak pernah ditulis dua kali. Untuk menarik dari perangkat ini, tempel token Anda lagi: token tidak pernah berpindah antarperangkat. Perangkat lain berhenti di buku berikutnya, dan semua catatan tetap ada.",
           "button": "Sinkronkan di sini",
           "working": "Memindahkan Readwise ke sini…",
@@ -1937,8 +1813,6 @@
       "searchPlaceholder": "Cari aplikasi atau jenis file…",
       "noMatch": "Tidak ada sumber yang cocok dengan “{query}”",
       "formatAccount": "Akun",
-      "showMore": "{count, plural, other {Tampilkan # lainnya}}",
-      "showLess": "Tampilkan lebih sedikit",
       "groups": {
         "reading": "Bacaan",
         "noteApps": "Aplikasi catatan",
@@ -1968,8 +1842,6 @@
       "subtitle": "Konfigurasi dan penyimpanan brankas"
     },
     "groups": {
-      "storageUsage": "Penggunaan penyimpanan",
-      "location": "Lokasi",
       "accountVaults": "Brankas di akun Anda",
       "largeNotes": "Catatan yang mendekati batas sinkronisasi",
       "activity": "Aktivitas"
@@ -2229,8 +2101,6 @@
       "loading": "Memuat pengaturan…"
     },
     "searchPlaceholder": "Cari pintasan…",
-    "resetAll": "Atur ulang semua",
-    "custom": "Khusus",
     "pressShortcut": "Tekan pintasan…",
     "cancelTitle": "Batal",
     "rebindTitle": "Klik untuk mengubah",
@@ -2241,7 +2111,6 @@
     "noMatch": "Tidak ada pintasan yang cocok dengan pencarian Anda",
     "conflict": "Konflik dengan: {labels}",
     "globalCapture": {
-      "title": "Catat cepat global",
       "description": "Catat dari mana saja",
       "active": "Aktif",
       "inUse": "{shortcut} sedang digunakan oleh aplikasi lain. Pilih kombinasi lain.",
@@ -2458,7 +2327,6 @@
       "systemWide": "Seluruh sistem",
       "globalCapture": "Catat cepat global",
       "recordingHint": "Tekan tombol… esc untuk membatalkan",
-      "reset": "Atur ulang",
       "resetAll": "Atur ulang semua ke default",
       "sticky": "Sticky"
     },
@@ -2534,7 +2402,6 @@
       "failedToResendCode": "Gagal mengirim ulang kode",
       "failedToSetUpDevice": "Gagal menyiapkan perangkat",
       "failedToConfirmRecoveryPhrase": "Gagal mengonfirmasi frasa pemulihan",
-      "failedToAnalyzeContent": "Gagal menganalisis konten",
       "failedToLoadUpdaterState": "Gagal memuat status pembaru",
       "failedToCheckForUpdates": "Gagal memeriksa pembaruan",
       "failedToDownloadUpdate": "Gagal mengunduh pembaruan",
@@ -2549,9 +2416,7 @@
       "failedToLoadNoteEditorSettings": "Gagal memuat pengaturan editor catatan",
       "failedToUpdateSettings": "Gagal memperbarui pengaturan",
       "failedToLoadTabSettings": "Gagal memuat pengaturan tab",
-      "failedToLoadNotes": "Gagal memuat catatan",
       "failedToLoadTags": "Gagal memuat tag",
-      "failedToLoadTasks": "Gagal memuat tugas",
       "failedToLoadVaultStatus": "Gagal memuat status brankas",
       "failedToSelectVault": "Gagal memilih brankas",
       "failedToCloseVault": "Gagal menutup brankas",
@@ -2565,18 +2430,12 @@
       "title": "MCP agen",
       "subtitle": "Akses server lokal untuk klien MCP eksternal."
     },
-    "groups": {
-      "connection": "Koneksi",
-      "access": "Akses"
-    },
     "fields": {
       "url": {
-        "label": "URL",
-        "description": "Gunakan endpoint localhost ini dari Cursor, Claude Desktop, atau Zed."
+        "label": "URL"
       },
       "bearer": {
-        "label": "Token bearer",
-        "description": "Kredensial dalam memori untuk sesi aplikasi ini."
+        "label": "Token bearer"
       }
     },
     "actions": {
@@ -2601,11 +2460,6 @@
       "title": "Izin agen",
       "subtitle": "Pilih akses default, konfirmasi, dan penyedia lokal untuk obrolan agen."
     },
-    "groups": {
-      "cliAgents": "Agen CLI",
-      "local": "Penyedia lokal yang kompatibel dengan OpenAI",
-      "actions": "Pemeriksaan koneksi"
-    },
     "cliAgents": {
       "claude": {
         "label": "Claude Code CLI",
@@ -2628,16 +2482,13 @@
       }
     },
     "permissions": {
-      "group": "Izin agen",
       "access": {
-        "label": "Akses default",
         "description": "Menetapkan mode akses awal untuk giliran agen yang baru.",
         "vaultOnly": "Hanya brankas",
         "computerAccess": "Akses komputer",
         "builtInNote": "Koneksi model bawaan selalu berjalan hanya dengan alat brankas."
       },
       "confirm": {
-        "label": "Konfirmasi tindakan",
         "description": "Pilih apakah panggilan alat berjalan otomatis atau menunggu persetujuan di obrolan. Catatan dan folder yang dikunci tetap hanya-baca di kedua mode.",
         "alwaysAllow": "Selalu izinkan",
         "askBeforeChanges": "Tanya sebelum mengubah"
@@ -2678,21 +2529,15 @@
       }
     },
     "actions": {
-      "save": "Simpan",
-      "models": "Daftar model",
-      "test": "Uji koneksi",
-      "probe": "Periksa alat"
+      "test": "Uji koneksi"
     },
     "status": {
       "label": "Koneksi",
       "checking": "Memeriksa…",
       "connected": "Terhubung",
-      "disconnected": "Terputus",
-      "toolsDisabled": "Alat dinonaktifkan",
-      "fullTools": "Semua alat aktif"
+      "disconnected": "Terputus"
     },
     "alwaysAllowed": {
-      "group": "Selalu diizinkan",
       "description": "Alat yang telah Anda beri persetujuan tetap di brankas ini. Penghapusan tidak pernah bisa diberi persetujuan tetap.",
       "empty": "Tidak ada yang selalu diizinkan. Setiap perubahan tetap meminta persetujuan.",
       "revoke": "Cabut",

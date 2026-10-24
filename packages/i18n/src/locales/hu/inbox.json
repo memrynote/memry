@@ -15,19 +15,13 @@
       "showWithCount": "Elhalasztott elemek megjelenítése ({count})",
       "hide": "Elhalasztott elemek elrejtése"
     },
-    "density": {
-      "toComfortable": "Kényelmes nézet",
-      "toCompact": "Kompakt nézet"
-    },
     "filter": {
-      "button": "Szűrés",
       "byType": "Szűrés típus szerint",
       "active": "{count, plural, one {Szűrés # típus szerint} other {Szűrés # típus szerint}}",
       "clearAll": "Minden törlése"
     },
     "jobs": {
-      "running": "{count, plural, one {# háttérfeladat fut} other {# háttérfeladat fut}}",
-      "failed": "{count} sikertelen"
+      "running": "{count, plural, one {# háttérfeladat fut} other {# háttérfeladat fut}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "„{name}” létrehozása",
     "addTags": "Címkék hozzáadása…",
     "linkToNote": "Hozzákapcsolás jegyzethez",
-    "linkANote": "Jegyzet hozzákapcsolása",
-    "suggestedCount": "{count} javasolt",
-    "linkNotesPlaceholder": "Jegyzetek hozzákapcsolása…",
     "linkOrCreateNotePlaceholder": "Jegyzet keresése vagy létrehozása…",
     "createNote": "„{title}” létrehozása",
     "pendingNote": "Új jegyzet",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Az emlékeztető adatai nem érhetők el.",
     "triggered": "Emlékeztető aktiválva",
-    "noteLabel": "Emlékeztető megjegyzés",
     "source": "Forrás",
     "journalTitle": "Napló – {date}",
     "noteFallback": "Jegyzet",
@@ -514,9 +504,7 @@
       "settings": "Beállítások",
       "processing": "Feldolgozás…",
       "cancelRecording": "Felvétel megszakítása",
-      "cancel": "Mégse",
       "stopRecording": "Felvétel leállítása",
-      "stop": "Leállítás",
       "recordingError": "Hiba történt a felvétel közben",
       "microphoneAccessDenied": "Mikrofonhozzáférés megtagadva",
       "noMicrophoneFound": "Nem található mikrofon",

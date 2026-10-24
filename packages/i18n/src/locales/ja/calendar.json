@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "{title} を完了にする",
     "task-completed": "タスクを完了しました",
-    "could-not-complete": "タスクを完了できませんでした",
     "could-not-update-status": "タスクのステータスを変更できませんでした",
     "duration-minutes": "{minutes} 分",
     "duration-hours": "{hours} 時間",
@@ -215,12 +213,9 @@
     "next-week": "来週",
     "open-task": "タスクを開く",
     "source-note": "元のノート",
-    "reschedule": "日程を変更",
     "mark-done": "完了にする",
     "mark-not-done": "未完了にする",
-    "later-today": "今日の後ほど",
     "tomorrow": "明日",
-    "next-week-mon": "来週（月）",
     "pick-date-time": "日時を選択…",
     "remove-due-date": "期限を削除",
     "subtasks-prefix": "サブタスク",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "購読カレンダー"
     },
     "caldav": {
       "name": "CalDAV"

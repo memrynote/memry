@@ -192,9 +192,7 @@
     }
   },
   "chip": {
-    "complete-task": "Виконати «{title}»",
     "task-completed": "Завдання виконано",
-    "could-not-complete": "Не вдалося позначити завдання як виконане",
     "could-not-update-status": "Не вдалося змінити статус завдання",
     "duration-minutes": "{minutes} хв",
     "duration-hours": "{hours} год",
@@ -215,12 +213,9 @@
     "next-week": "Наступного тижня",
     "open-task": "Відкрити завдання",
     "source-note": "Нотатка-джерело",
-    "reschedule": "Перепланувати",
     "mark-done": "Позначити як виконане",
     "mark-not-done": "Позначити як невиконане",
-    "later-today": "Пізніше сьогодні",
     "tomorrow": "Завтра",
-    "next-week-mon": "Наступного тижня · Пн",
     "pick-date-time": "Вибрати дату й час…",
     "remove-due-date": "Прибрати термін",
     "subtasks-prefix": "Підзавдання",
@@ -392,9 +387,6 @@
   "providers": {
     "google": {
       "name": "Google Calendar"
-    },
-    "ics": {
-      "name": "Календарі за підпискою"
     },
     "caldav": {
       "name": "CalDAV"

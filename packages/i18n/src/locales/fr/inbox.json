@@ -15,19 +15,13 @@
       "showWithCount": "Afficher les éléments reportés ({count})",
       "hide": "Masquer les éléments reportés"
     },
-    "density": {
-      "toComfortable": "Vue confortable",
-      "toCompact": "Vue compacte"
-    },
     "filter": {
-      "button": "Filtrer",
       "byType": "Filtrer par type",
       "active": "{count, plural, one {Filtrage par # type} other {Filtrage par # types}}",
       "clearAll": "Tout effacer"
     },
     "jobs": {
-      "running": "{count, plural, one {# traitement en arrière-plan en cours} other {# traitements en arrière-plan en cours}}",
-      "failed": "{count} en échec"
+      "running": "{count, plural, one {# traitement en arrière-plan en cours} other {# traitements en arrière-plan en cours}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Créer « {name} »",
     "addTags": "Ajouter des tags…",
     "linkToNote": "Lier à une note",
-    "linkANote": "Lier une note",
-    "suggestedCount": "{count} suggéré(s)",
-    "linkNotesPlaceholder": "Lier des notes…",
     "linkOrCreateNotePlaceholder": "Rechercher ou créer une note…",
     "createNote": "Créer « {title} »",
     "pendingNote": "Nouvelle note",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Données de rappel indisponibles.",
     "triggered": "Rappel déclenché",
-    "noteLabel": "Note de rappel",
     "source": "Source",
     "journalTitle": "Journal – {date}",
     "noteFallback": "Note",
@@ -514,9 +504,7 @@
       "settings": "Paramètres",
       "processing": "Traitement…",
       "cancelRecording": "Annuler l'enregistrement",
-      "cancel": "Annuler",
       "stopRecording": "Arrêter l'enregistrement",
-      "stop": "Arrêter",
       "recordingError": "Une erreur d'enregistrement s'est produite",
       "microphoneAccessDenied": "Accès au microphone refusé",
       "noMicrophoneFound": "Aucun microphone détecté",

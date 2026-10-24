@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "ارتباطات الذكاء الاصطناعي",
     "todaysNotes": "ملاحظات اليوم",
-    "todaysSchedule": "جدول اليوم",
-    "todaysTasks": "مهام اليوم",
     "tasks": "المهام",
     "technicalDetails": "التفاصيل الفنية"
   },
@@ -102,8 +100,7 @@
       "afternoon": "مساء الخير",
       "evening": "مساء الخير",
       "night": "ليلة سعيدة"
-    },
-    "allDay": "طوال اليوم"
+    }
   },
   "nav": {
     "previousDay": "اليوم السابق",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "المزيد من الخيارات",
     "documentStatistics": "إحصائيات المستند",
-    "dayContext": "سياق اليوم: المهام والجدول الزمني",
-    "scheduleEvents": "أحداث الجدول",
-    "tasks": "المهام",
     "notesCreatedToday": "الملاحظات المُنشأة اليوم: {count}"
   },
   "empty": {
     "noEntry": "لا يوجد إدخال",
     "noDaysInMonth": "لا توجد أيام في هذا الشهر",
-    "noEventsScheduled": "لا توجد أحداث مجدولة",
-    "noEventsScheduledToday": "لا توجد أحداث مجدولة اليوم",
-    "noEventsWereScheduled": "لم تتم جدولة أي أحداث",
-    "noTasksDue": "لا توجد مهام مستحقة",
-    "noTasksDueToday": "لا توجد مهام مستحقة اليوم",
-    "noTasksWereDue": "لم تكن هناك مهام مستحقة",
     "noNotesToday": "لم يتم إنشاء أي ملاحظات اليوم",
     "startDocumenting": "ابدأ بتدوين أفكارك وخواطرك"
   },
@@ -155,9 +143,7 @@
     "day": "يوم",
     "days": "أيام",
     "event": "حدث",
-    "events": "أحداث",
     "task": "مهمة",
-    "todo": "للتنفيذ",
     "moreConnections": "+ {count} ارتباط آخر",
     "moreConnections_plural": "+ {count} ارتباطات أخرى",
     "moreNotes": "+ {count} ملاحظة أخرى",
@@ -166,7 +152,6 @@
     "charactersWritten": "الأحرف المكتوبة",
     "words": "الكلمات: {count}",
     "characters": "الأحرف: {count}",
-    "completed": "مكتملة: {count}",
     "overdue": "متأخرة: {count}"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "تاريخ التعديل: {date}"
   },
   "task": {
-    "completed": "مكتملة",
-    "notCompleted": "غير مكتملة",
-    "priority": "أولوية {priority}",
-    "overdue": "متأخرة",
-    "markComplete": "تحديد «{title}» كمكتملة",
-    "markNotComplete": "تحديد «{title}» كغير مكتملة"
+    "priority": "أولوية {priority}"
   },
   "template": {
     "using": "باستخدام «{templateName}»"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "لا يزال محتواك في الذاكرة. انقر لإعادة محاولة الحفظ.",
-    "noteNotFound": "لم يُعثر على الملاحظة «{target}»",
     "createLinkedFailed": "تعذّر إنشاء الملاحظة المرتبطة",
     "fileNotFound": "لم يتم العثور على الملف: {target}",
     "openLinkedItemFailed": "تعذّر فتح العنصر المرتبط",

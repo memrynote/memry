@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "AI Connections",
     "todaysNotes": "Today's Notes",
-    "todaysSchedule": "Today's Schedule",
-    "todaysTasks": "Today's Tasks",
     "tasks": "Tasks",
     "technicalDetails": "Technical details"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Good afternoon",
       "evening": "Good evening",
       "night": "Good night"
-    },
-    "allDay": "All day"
+    }
   },
   "nav": {
     "previousDay": "Previous day",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "More options",
     "documentStatistics": "Document statistics",
-    "dayContext": "Day context: tasks and schedule",
-    "scheduleEvents": "Schedule events",
-    "tasks": "Tasks",
     "notesCreatedToday": "{count} notes created today"
   },
   "empty": {
     "noEntry": "No entry",
     "noDaysInMonth": "No days in this month",
-    "noEventsScheduled": "No events scheduled",
-    "noEventsScheduledToday": "No events scheduled today",
-    "noEventsWereScheduled": "No events were scheduled",
-    "noTasksDue": "No tasks due",
-    "noTasksDueToday": "No tasks due today",
-    "noTasksWereDue": "No tasks were due",
     "noNotesToday": "No notes created today",
     "startDocumenting": "Start documenting your thoughts and ideas"
   },
@@ -155,9 +143,7 @@
     "day": "day",
     "days": "days",
     "event": "event",
-    "events": "events",
     "task": "task",
-    "todo": "to do",
     "moreConnections": "+ {count} more connection",
     "moreConnections_plural": "+ {count} more connections",
     "moreNotes": "+ {count} more note",
@@ -166,7 +152,6 @@
     "charactersWritten": "characters written",
     "words": "{count} words",
     "characters": "{count} chars",
-    "completed": "{count} completed",
     "overdue": "{count} overdue"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Modified {date}"
   },
   "task": {
-    "completed": "Completed",
-    "notCompleted": "Not completed",
-    "priority": "{priority} priority",
-    "overdue": "overdue",
-    "markComplete": "Mark \"{title}\" as completed",
-    "markNotComplete": "Mark \"{title}\" as not completed"
+    "priority": "{priority} priority"
   },
   "template": {
     "using": "Using \"{templateName}\""
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Your content is still in memory. Click to retry saving.",
-    "noteNotFound": "Note \"{target}\" not found",
     "createLinkedFailed": "Failed to create linked note",
     "fileNotFound": "File not found: {target}",
     "openLinkedItemFailed": "Failed to open linked item",

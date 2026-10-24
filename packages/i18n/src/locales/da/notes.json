@@ -122,10 +122,6 @@
       "body": "Opret en note for at komme i gang",
       "newNote": "Ny note"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise-synkronisering",
-      "failed": "Readwise-synkroniseringen mislykkedes"
-    },
     "syncing": {
       "body": "Synkroniserer dine noter – de vises her, efterhånden som de ankommer"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Tilføj bogmærke",
       "removeFromBookmarks": "Fjern fra bogmærker",
       "journalSettings": "Indstillinger for dagbog…"
-    },
-    "nav": {
-      "label": "Navigation",
-      "ariaExpanded": "Navigationssektion, udvidet",
-      "ariaCollapsed": "Navigationssektion, skjult",
-      "saveFailed": "Kunne ikke gemme navigationssektionens tilstand"
     },
     "viewOptions": {
       "label": "Visningsindstillinger",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Som foldbar",
         "asLinkedTask": "Som linket opgave",
         "asReminder": "Som påmindelse"
-      },
-      "actions": {
-        "insert": "Indsæt",
-        "open": "Åbn"
       },
       "close": "Luk menu",
       "matchesAlias": "matcher",
@@ -607,7 +592,6 @@
         "title": "Flyt blok til note",
         "searchPlaceholder": "Søg i noter…",
         "noResults": "Ingen matchende noter",
-        "moved": "Blok flyttet til »{title}«",
         "failed": "Kunne ikke flytte blokken"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Disposition",
     "aria": "Dokumentets disposition",
-    "emptyYet": "Ingen overskrifter endnu",
     "readTime": "{count} min. læsetid",
     "words": "{count} ord",
     "created": "Oprettet",
@@ -839,11 +822,9 @@
     "toolbarComment": "Kommentér",
     "commentPlaceholder": "Tilføj en kommentar…",
     "createdTooltip": "Oprettet {date} kl. {time}",
-    "cancel": "Annullér",
     "resolve": "Løs",
     "edit": "Redigér kommentar",
     "delete": "Slet kommentar",
-    "replyPlaceholder": "Svar…",
     "attachAria": "Vedhæft fil",
     "mentionAria": "Nævn en person, side eller dato",
     "sendAria": "Send kommentar",
@@ -856,13 +837,7 @@
       "code": "Kode"
     },
     "openImageAria": "Åbn billedet {name}",
-    "openAttachmentAria": "Åbn den vedhæftede fil {name}",
-    "kind": {
-      "comment": "Kommentar",
-      "addition": "Tilføjelse",
-      "deletion": "Sletning",
-      "substitution": "Erstatning"
-    }
+    "openAttachmentAria": "Åbn den vedhæftede fil {name}"
   },
   "tagsRow": {
     "aria": "Tags",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Egenskaber",
     "noteAria": "Notens egenskaber",
-    "workspaceAria": "Arbejdsområdets egenskaber",
     "listAria": "Egenskabsliste",
     "add": "Tilføj egenskab",
     "addDescription": "Tilføj en ny egenskab til denne note",
@@ -932,7 +906,6 @@
       "inProgress": "I gang",
       "done": "Fuldført"
     },
-    "projectAlreadySet": "Denne note har allerede en projektegenskab",
     "projectPlaceholder": "Intet projekt",
     "projectSearch": "Søg i projekter",
     "projectEmpty": "Ingen projekter",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
-      "filters": "Filtre",
-      "clearAll": "Ryd alle",
-      "noFiltersApplied": "Ingen filtre anvendt",
-      "addFiltersToNarrowDownYourNotes": "Tilføj filtre for at indsnævre dine noter",
       "match": "Match",
-      "allAnd": "Alle (OG)",
-      "anyOr": "Mindst én (ELLER)",
-      "ofTheFollowing": "af følgende:",
       "match2": "Match",
       "all": "Alle",
       "any": "Mindst én",
-      "of": "af:",
       "addCondition": "Tilføj betingelse",
       "addFilter": "Tilføj filter",
       "addGroup": "Tilføj gruppe",
@@ -1207,7 +1172,6 @@
       "available": "Tilgængelige: ",
       "preview": "Forhåndsvisning",
       "fixExpressionErrorsToSeePreview": "Ret udtryksfejl for at se forhåndsvisning",
-      "usingNote": "Bruger noten: »",
       "cancel": "Annullér",
       "namePlaceholder": "dage_til_forfald",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Indlæser mapper…",
       "suggested": "FORESLÅET",
       "bestMatch": "Bedste match",
-      "current": "nuværende)",
       "allFolders": "ALLE MAPPER",
-      "noFoldersMatch": "Ingen mapper matcher \"",
-      "create": "Opret \"",
       "cancel": "Annullér",
       "currentFolderBadge": "(nuværende)",
       "noFoldersMatchQuery": "Ingen mapper matcher »{query}«",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "standard",
       "viewActions": "Visningshandlinger",
-      "rename": "Omdøb",
       "duplicate": "Duplikér",
       "setAsDefault": "Angiv som standard",
       "delete": "Slet",
-      "createNewView": "Opret ny visning",
-      "createNewView2": "Opret ny visning",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Opret en ny visning med tilpassede kolonner, filtre og sortering.",
-      "viewName": "Visningsnavn",
       "myCustomView": "Min brugerdefinerede visning",
-      "baseConfiguration": "Basiskonfiguration",
-      "copyFromCurrentView": "Kopiér fra den aktuelle visning",
-      "startFreshDefaultColumns": "Start forfra (standardkolonner)",
       "cancel": "Annullér",
-      "renameView": "Omdøb visning",
-      "enterANewNameForThisView": "Indtast et nyt navn til denne visning.",
-      "viewName2": "Visningsnavn",
-      "viewName3": "Visningsnavn",
-      "cancel2": "Annullér",
       "deleteView": "Slet visning",
       "areYouSureYouWantToDelete": "Er du sikker på, at du vil slette \"",
       "thisActionCannotBeUndone": "Denne handling kan ikke fortrydes.",
@@ -1289,22 +1237,17 @@
       "layout": "Layout",
       "table": "Tabel",
       "list": "Liste",
-      "gallery": "Galleri",
-      "createView": "Opret visning",
-      "save": "Gem"
+      "gallery": "Galleri"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Kunne ikke indlæse PDF’en: ",
-      "download": "Hent",
       "download2": "Hent",
       "noFileAttached": "Ingen fil vedhæftet",
       "resizePdf": "Ændr størrelse på PDF",
       "resizeHtml": "Ændr størrelse på HTML-indlejring",
       "alignLeft": "Justér til venstre",
       "alignCenter": "Justér til midten",
-      "alignRight": "Justér til højre",
-      "previousPage": "Forrige side",
-      "nextPage": "Næste side"
+      "alignRight": "Justér til højre"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Åbn i opgavepanelet",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 tommer)",
       "legal85X14In": "Legal (8,5 x 14 tommer)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.åååå"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Synkroniseret"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Ord",
       "characters": "Tegn",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Ingen bogmærker endnu",
       "moreOptions": "Flere muligheder",
       "remove": "Fjern"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Åbn",
-      "openToTheSide": "Åbn ved siden af",
-      "pinToTabs": "Fastgør som fane",
-      "edit": "Redigér",
-      "delete": "Slet",
-      "copyLink": "Kopiér link"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Indlæser tags…",
@@ -1380,26 +1309,9 @@
       "cancel": "Annullér"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Gå tilbage",
-      "notes": "noter",
-      "loadingNotes": "Indlæser noter…",
-      "noNotesWithThisTag": "Ingen noter med dette tag",
-      "addThisTagToANoteToSeeItHere": "Tilføj tagget til en note for at se den her",
-      "pinned": "FASTGJORT",
-      "allNotes": "ALLE NOTER",
-      "allNotesArePinned": "Alle noter er fastgjort",
-      "tasks": "OPGAVER",
-      "unpinFromTag": "Frigør fra tag",
-      "unpin": "Frigør",
-      "pinToTag": "Fastgør til tag",
-      "pin": "Fastgør",
       "tagActions": "Taghandlinger",
-      "editTagName": "Redigér tagnavn",
       "changeColor": "Skift farve",
-      "deleteTag": "Slet tag",
-      "recent": "Seneste",
-      "created": "Oprettet",
-      "alphabetical": "Alfabetisk"
+      "deleteTag": "Slet tag"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Omdøb tag",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Opret ny note",
-      "viewSettings": "Visningsindstillinger",
-      "displayDensity": "Visningstæthed",
-      "comfortable": "Komfortabel",
-      "compact": "Kompakt",
-      "showSummaries": "Vis opsummeringer",
       "cancel": "Annullér"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Åbn tagsiden"
   },
   "tagView": {
-    "moreActions": "Flere handlinger",
     "pin": {
       "action": "Fastgør {count, plural, one {# note} other {# noter}} til tagget",
       "success": "{count, plural, one {# note er fastgjort til tagget} other {# noter er fastgjort til tagget}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Navngiv denne søgning",
     "saveDialogPlaceholder": "f.eks. Arbejdsmøder",
     "cancel": "Annullér",
-    "save": "Gem",
-    "addToFilterHint": "Ctrl/Cmd-klik på et tag for at føje det til filteret"
+    "save": "Gem"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Skriver…",
       "writtenBy": "Skrevet af {agent}",
       "retry": "Seneste kørsel mislykkedes · Prøv igen",
-      "retryAction": "Prøv igen",
       "captionOff": "Slå Opsummér lange noter til under Indstillinger → AI",
       "captionNoAgent": "Ingen agent tilsluttet · Indstillinger → AI",
       "unknownAgent": "AI"

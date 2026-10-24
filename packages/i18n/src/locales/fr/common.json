@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "L'action a échoué",
-    "nothingToUndo": "Rien à annuler",
     "undone": "Annulé : {description}",
     "undoFailed": "Impossible d'annuler l'action",
     "filesImported": "{count, plural, one {# fichier importé} other {# fichiers importés}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "L'agent souhaite créer {title}. Vérifiez la modification avant de l'appliquer.",
       "descriptionDelete": "L'agent souhaite supprimer {title}. Vérifiez la modification avant de l'appliquer.",
       "fallbackTitle": "cet élément",
-      "current": "Actuel",
       "candidate": "Proposé",
       "loading": "Chargement…",
       "apply": "Appliquer",
@@ -383,12 +381,8 @@
       "removeAttachment": "Retirer {label}",
       "placeholder": "Demandez n'importe quoi à memrynote… @ pour mentionner des notes, tâches et événements",
       "send": "Envoyer",
-      "providerLabel": "Fournisseur de l'agent : {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Outils connectés",
       "connectTool": "Connecter {tool}",
-      "addContext": "Ajouter du contexte",
-      "addContextWithPermissions": "Ajouter du contexte ({permissions})",
       "mentionContext": "Mentionner une note, une tâche ou un événement",
       "files": {
         "attach": "Joindre un fichier texte",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Impossible de transcrire l'entrée vocale"
         }
       },
-      "modelLabel": "Modèle de l'agent : {provider} {model}",
-      "reasoningLabel": "Raisonnement de l'agent : {reasoning}",
       "providers": {
-        "label": "Fournisseur",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Accès à l'ordinateur"
       },
       "webSearch": {
-        "on": "Activée",
-        "off": "Désactivée",
         "label": "Recherche web"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent indisponible – ouvrir les paramètres…"
       },
       "settings": {
-        "reasoning": "Raisonnement",
         "effort": "Effort"
       },
       "includeCurrentNote": "Inclure la note actuelle",
@@ -472,11 +460,8 @@
           "max": "Maximale"
         }
       },
-      "permissionsLabel": "Autorisations de l'agent : {access}, recherche web {webSearch}",
       "permissions": {
-        "label": "Autorisations",
-        "access": "Accès",
-        "tools": "Outils"
+        "access": "Accès"
       },
       "modelSettingsLabel": "Paramètres du modèle de l'agent : {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Nouveau dossier",
       "newProject": "Nouveau projet",
       "bookmarks": "Favoris",
-      "chart": "Graphique",
       "tags": "Tags",
       "reorderSection": "Réorganiser {section}",
       "dropFilesToImport": "Déposez les fichiers à importer",
       "dropFilesIntoVaultRoot": "Racine du coffre",
       "newNoteN": "Nouvelle note (⌘N)",
-      "new": "Nouveau",
       "newItemMenu": "Créer un nouvel élément…",
       "feedbackButton": "Envoyer un avis",
       "feedbackTitle": "Envoyer un avis",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Rechercher, remplacer, demander…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Passer la prise en main",
-      "welcomeToMemry": "Bienvenue dans memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Votre base de connaissances personnelle. Prenons 2 minutes pour commencer.",
-      "getStarted": "Commencer ",
-      "createYourFirstNote": "Créez votre première note",
-      "markdownBasedStoredLocallyAsPlainFiles": "Des notes Markdown, stockées localement sous forme de fichiers texte.",
-      "eGMeetingNotesIdeasAnything": "p. ex. notes de réunion, idées, tout ce que vous voulez…",
-      "skip": "Passer",
-      "createNote": "Créer une note ",
-      "addYourFirstTask": "Ajoutez votre première tâche",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Les tâches sont liées à vos notes, avec des priorités et des dates d'échéance.",
-      "eGReviewProjectProposal": "p. ex. relire la proposition de projet…",
-      "skip2": "Passer",
-      "createTask": "Créer une tâche ",
-      "syncAcrossDevices": "Synchroniser sur tous les appareils",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Gardez vos notes et tâches synchronisées sur tous vos appareils. Vous pourrez toujours configurer cela plus tard.",
-      "skipForNow": "Passer pour l'instant",
-      "doneLetSGo": "C'est fait, c'est parti ! "
+      "skip": "Passer"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Définir l'icône du dossier",
@@ -852,8 +818,7 @@
       "unknownTabType": "Type d'onglet inconnu : "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "modifications non enregistrées",
-      "preview": "aperçu"
+      "unsavedChanges": "modifications non enregistrées"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Nouvel onglet",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Faites glisser pour redimensionner · Double-cliquez pour réinitialiser"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Bienvenue dans memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Votre système de gestion des connaissances personnelles.",
-      "selectAFolderToStoreYourNotesAndTasks": "Sélectionnez un dossier pour stocker vos notes et tâches.",
       "opening": "Ouverture…",
-      "selectVaultFolder": "Sélectionner le dossier du coffre",
-      "plainMarkdown": "Markdown standard",
-      "yourNotesStayPortable": "Vos notes restent portables",
-      "syncAnywhere": "Synchronisez n'importe où",
-      "useDropboxIcloudGit": "Utilisez Dropbox, iCloud, Git",
       "recentVaults": "Coffres récents",
-      "notesLastOpened": "notes · Dernière ouverture",
-      "preRelease": "Bêta",
       "createNewVault": "Créer un nouveau coffre",
-      "createNewVaultDesc": "Commencez un nouveau coffre dans le dossier de votre choix.",
-      "openExistingVault": "Ouvrir un coffre existant",
-      "openExistingVaultDesc": "Choisissez un dossier contenant les fichiers Markdown que vous conservez déjà.",
-      "signInToSync": "Se connecter pour synchroniser",
-      "signInToSyncDesc": "Coffres chiffrés de bout en bout sur vos appareils.",
-      "create": "Créer",
       "open": "Ouvrir",
-      "signIn": "Se connecter",
       "helpAndDocs": "Aide et documentation",
-      "signInRequiresVault": "Ouvrez ou créez d'abord un coffre pour configurer la synchronisation.",
       "addVault": "Ajouter un coffre",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Aucun coffre pour l'instant",
       "openVault": "Ouvrir un coffre",
       "settings": "Paramètres",
-      "logOut": "Se déconnecter",
-      "signInToSync": "Se connecter pour synchroniser",
       "remove": "Retirer «",
       "removeVaultTitle": "Retirer « {name} » de la liste ?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Ce coffre sera retiré de l'application, mais vos fichiers resteront sur le disque. Vous pourrez toujours l'ajouter à nouveau plus tard.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Modifier…",
       "download": "Télécharger",
       "downloadFailed": "Impossible de télécharger le coffre",
-      "deleteFromAccount": "Supprimer du compte",
       "deleteVaultTitle": "Supprimer « {name} » de votre compte ?",
       "deleteVaultBody": "Toutes les données synchronisées de ce coffre seront définitivement supprimées des serveurs de Memry. Cette action est irréversible. Vos fichiers sur le disque ne seront pas supprimés.",
       "deleteVaultConfirm": "Supprimer du compte",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Retirer le widget",
       "dragAria": "Déplacer le widget",
-      "configAria": "Configurer le widget",
-      "resizeAria": "Redimensionner en {size}",
       "menuAria": "Options du widget",
-      "resize": "Taille",
       "remove": "Retirer",
       "filter": {
         "all": "Toutes",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Choisir un dossier",
       "folderEmpty": "Aucun dossier pour l'instant",
       "folderNoSelection": "Aucun dossier sélectionné",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galerie",
       "folderViewSelect": "Vue",
       "project": "Projet",
       "projectNoSelection": "Aucun projet sélectionné",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Disposition de l'accueil",
       "deleteAria": "Supprimer la disposition",
-      "newAria": "Nouveau tableau",
       "newName": "Nouveau tableau",
       "defaultName": "Accueil",
       "manage": "Gérer les tableaux",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# tâche prévue aujourd'hui} other {# tâches prévues aujourd'hui}}",
       "events": "{count, plural, one {# événement} other {# événements}}"
     },
-    "edit": "Modifier",
-    "done": "Terminé",
     "addWidget": "Ajouter un widget",
     "cover": {
       "add": "Ajouter une couverture"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Prise en main terminée",
-      "body": "Donnez-nous une étoile sur GitHub : cela aide d'autres personnes à découvrir MemryNote.",
-      "action": "Donner une étoile sur GitHub"
+      "body": "Donnez-nous une étoile sur GitHub : cela aide d'autres personnes à découvrir MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Mise à jour prête",
     "failed": "Échec de la mise à jour",
     "downloadAction": "Télécharger",
-    "restartAction": "Redémarrer",
     "detailsAction": "Détails",
     "popover": {
       "readyTitle": "MemryNote {version} est prêt",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Coffres",
     "position": "{name}, coffre {index} sur {count}",
-    "openList": "{position}. Ouvrir la liste des coffres",
     "switchTo": "Passer à {name}",
     "switchingTo": "Passage à {name}",
     "changeIcon": "Changer d'icône…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Sur {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# coffre trouvé} many {# de coffres trouvés} other {# coffres trouvés}}",
-      "notion": "Notion",
       "otherApps": "Autres applications et fichiers",
       "otherAppsHint": "et {count} de plus",
       "detectedFootnote": "Trouvé en vérifiant quelles applications sont installées. Rien ne quitte {device}.",

@@ -15,19 +15,13 @@
       "showWithCount": "다시 알림 항목 표시({count})",
       "hide": "다시 알림 항목 숨기기"
     },
-    "density": {
-      "toComfortable": "넓게 보기",
-      "toCompact": "좁게 보기"
-    },
     "filter": {
-      "button": "필터",
       "byType": "유형별로 필터링",
       "active": "{count, plural, other {유형 #개로 필터링 중}}",
       "clearAll": "모두 지우기"
     },
     "jobs": {
-      "running": "{count, plural, other {백그라운드 처리 #개 진행 중}}",
-      "failed": "{count}개 실패"
+      "running": "{count, plural, other {백그라운드 처리 #개 진행 중}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "“{name}” 만들기",
     "addTags": "태그 추가…",
     "linkToNote": "노트에 연결",
-    "linkANote": "노트 연결",
-    "suggestedCount": "{count}개 제안됨",
-    "linkNotesPlaceholder": "노트 연결…",
     "linkOrCreateNotePlaceholder": "노트 찾기 또는 만들기…",
     "createNote": "“{title}” 만들기",
     "pendingNote": "새 노트",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "리마인더 데이터를 사용할 수 없습니다.",
     "triggered": "리마인더 시간이 되었습니다",
-    "noteLabel": "리마인더 노트",
     "source": "원본",
     "journalTitle": "저널 — {date}",
     "noteFallback": "노트",
@@ -514,9 +504,7 @@
       "settings": "설정",
       "processing": "처리 중…",
       "cancelRecording": "녹음 취소",
-      "cancel": "취소",
       "stopRecording": "녹음 중지",
-      "stop": "중지",
       "recordingError": "녹음 중 오류가 발생했습니다",
       "microphoneAccessDenied": "마이크 접근이 거부되었습니다",
       "noMicrophoneFound": "마이크를 찾을 수 없습니다",

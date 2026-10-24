@@ -122,10 +122,6 @@
       "body": "노트를 만들어 시작하세요",
       "newNote": "새 노트"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise 동기화",
-      "failed": "Readwise 동기화 실패"
-    },
     "syncing": {
       "body": "노트를 동기화하는 중 — 도착하는 대로 여기에 표시됩니다"
     },
@@ -157,12 +153,6 @@
       "bookmark": "북마크에 추가",
       "removeFromBookmarks": "북마크에서 제거",
       "journalSettings": "저널 설정…"
-    },
-    "nav": {
-      "label": "탐색",
-      "ariaExpanded": "탐색 섹션, 펼쳐짐",
-      "ariaCollapsed": "탐색 섹션, 접힘",
-      "saveFailed": "탐색 섹션 상태를 저장하지 못했습니다"
     },
     "viewOptions": {
       "label": "보기 옵션",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "토글로",
         "asLinkedTask": "링크된 작업으로",
         "asReminder": "리마인더로"
-      },
-      "actions": {
-        "insert": "삽입",
-        "open": "열기"
       },
       "close": "메뉴 닫기",
       "matchesAlias": "일치:",
@@ -607,7 +592,6 @@
         "title": "블록을 노트로 이동",
         "searchPlaceholder": "노트 검색…",
         "noResults": "일치하는 노트 없음",
-        "moved": "블록을 “{title}”(으)로 이동했습니다",
         "failed": "블록을 이동하지 못했습니다"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "목차",
     "aria": "문서 목차",
-    "emptyYet": "아직 제목이 없습니다",
     "readTime": "읽는 시간 {count}분",
     "words": "단어 {count}개",
     "created": "만든 날짜",
@@ -839,11 +822,9 @@
     "toolbarComment": "댓글",
     "commentPlaceholder": "댓글 추가…",
     "createdTooltip": "{date} {time}에 생성됨",
-    "cancel": "취소",
     "resolve": "해결",
     "edit": "댓글 편집",
     "delete": "댓글 삭제",
-    "replyPlaceholder": "답글 입력…",
     "attachAria": "파일 첨부",
     "mentionAria": "사람, 페이지 또는 날짜 멘션",
     "sendAria": "댓글 보내기",
@@ -856,13 +837,7 @@
       "code": "코드"
     },
     "openImageAria": "이미지 {name} 열기",
-    "openAttachmentAria": "첨부 파일 {name} 열기",
-    "kind": {
-      "comment": "댓글",
-      "addition": "추가",
-      "deletion": "삭제",
-      "substitution": "대체"
-    }
+    "openAttachmentAria": "첨부 파일 {name} 열기"
   },
   "tagsRow": {
     "aria": "태그",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "속성",
     "noteAria": "노트 속성",
-    "workspaceAria": "워크스페이스 속성",
     "listAria": "속성 목록",
     "add": "속성 추가",
     "addDescription": "이 노트에 새 속성 추가",
@@ -932,7 +906,6 @@
       "inProgress": "진행 중",
       "done": "완료"
     },
-    "projectAlreadySet": "이 노트에는 이미 프로젝트 속성이 있습니다",
     "projectPlaceholder": "프로젝트 없음",
     "projectSearch": "프로젝트 검색",
     "projectEmpty": "프로젝트 없음",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "필터",
-      "filters": "필터",
-      "clearAll": "모두 지우기",
-      "noFiltersApplied": "적용된 필터 없음",
-      "addFiltersToNarrowDownYourNotes": "필터를 추가하여 노트 범위를 좁히세요",
       "match": "일치 조건",
-      "allAnd": "모두(AND)",
-      "anyOr": "하나 이상(OR)",
-      "ofTheFollowing": "다음 중:",
       "match2": "일치 조건",
       "all": "모두",
       "any": "하나 이상",
-      "of": ":",
       "addCondition": "조건 추가",
       "addFilter": "필터 추가",
       "addGroup": "그룹 추가",
@@ -1207,7 +1172,6 @@
       "available": "사용 가능: ",
       "preview": "미리보기",
       "fixExpressionErrorsToSeePreview": "미리보기를 보려면 표현식 오류를 수정하세요",
-      "usingNote": "사용 중인 노트: “",
       "cancel": "취소",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "폴더 불러오는 중…",
       "suggested": "제안",
       "bestMatch": "가장 일치하는 항목",
-      "current": "현재)",
       "allFolders": "모든 폴더",
-      "noFoldersMatch": "일치하는 폴더 없음: \"",
-      "create": "만들기: \"",
       "cancel": "취소",
       "currentFolderBadge": "(현재)",
       "noFoldersMatchQuery": "“{query}”와(과) 일치하는 폴더가 없습니다",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "기본값",
       "viewActions": "보기 메뉴",
-      "rename": "이름 바꾸기",
       "duplicate": "복제",
       "setAsDefault": "기본값으로 설정",
       "delete": "삭제",
-      "createNewView": "새 보기 만들기",
-      "createNewView2": "새 보기 만들기",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "맞춤 열, 필터, 정렬을 사용하여 새 보기를 만듭니다.",
-      "viewName": "보기 이름",
       "myCustomView": "내 사용자 지정 보기",
-      "baseConfiguration": "기본 구성",
-      "copyFromCurrentView": "현재 보기에서 복사",
-      "startFreshDefaultColumns": "새로 시작(기본 열)",
       "cancel": "취소",
-      "renameView": "보기 이름 바꾸기",
-      "enterANewNameForThisView": "이 보기의 새 이름을 입력하세요.",
-      "viewName2": "보기 이름",
-      "viewName3": "보기 이름",
-      "cancel2": "취소",
       "deleteView": "보기 삭제",
       "areYouSureYouWantToDelete": "다음 보기를 삭제하시겠습니까: \"",
       "thisActionCannotBeUndone": "되돌릴 수 없습니다.",
@@ -1289,22 +1237,17 @@
       "layout": "레이아웃",
       "table": "표",
       "list": "목록",
-      "gallery": "갤러리",
-      "createView": "보기 만들기",
-      "save": "저장"
+      "gallery": "갤러리"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF를 불러오지 못했습니다: ",
-      "download": "다운로드",
       "download2": "다운로드",
       "noFileAttached": "첨부된 파일 없음",
       "resizePdf": "PDF 크기 조정",
       "resizeHtml": "HTML 임베드 크기 조정",
       "alignLeft": "왼쪽 정렬",
       "alignCenter": "가운데 정렬",
-      "alignRight": "오른쪽 정렬",
-      "previousPage": "이전 페이지",
-      "nextPage": "다음 페이지"
+      "alignRight": "오른쪽 정렬"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "작업 패널에서 열기",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "레터(8.5 x 11인치)",
       "legal85X14In": "리갈(8.5 x 14인치)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "동기화됨"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "단어",
       "characters": "문자",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "아직 북마크가 없습니다",
       "moreOptions": "추가 옵션",
       "remove": "제거"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "열기",
-      "openToTheSide": "옆에서 열기",
-      "pinToTabs": "탭에 고정",
-      "edit": "편집",
-      "delete": "삭제",
-      "copyLink": "링크 복사"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "태그 불러오는 중…",
@@ -1380,26 +1309,9 @@
       "cancel": "취소"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "돌아가기",
-      "notes": "노트",
-      "loadingNotes": "노트 불러오는 중…",
-      "noNotesWithThisTag": "이 태그가 있는 노트가 없습니다",
-      "addThisTagToANoteToSeeItHere": "이 태그를 노트에 추가하면 여기에 표시됩니다",
-      "pinned": "고정됨",
-      "allNotes": "모든 노트",
-      "allNotesArePinned": "모든 노트가 고정되어 있습니다",
-      "tasks": "작업",
-      "unpinFromTag": "태그에서 고정 해제",
-      "unpin": "고정 해제",
-      "pinToTag": "태그에 고정",
-      "pin": "고정",
       "tagActions": "태그 메뉴",
-      "editTagName": "태그 이름 수정",
       "changeColor": "색상 변경",
-      "deleteTag": "태그 삭제",
-      "recent": "최근",
-      "created": "만든 날짜",
-      "alphabetical": "알파벳순"
+      "deleteTag": "태그 삭제"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "태그 이름 바꾸기",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "새 노트 만들기",
-      "viewSettings": "보기 설정",
-      "displayDensity": "표시 밀도",
-      "comfortable": "넓게",
-      "compact": "좁게",
-      "showSummaries": "요약 표시",
       "cancel": "취소"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "태그 허브 열기"
   },
   "tagView": {
-    "moreActions": "더 보기",
     "pin": {
       "action": "{count, plural, other {노트 #개를 태그에 고정}}",
       "success": "{count, plural, other {노트 #개를 태그에 고정했습니다}}",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "검색 이름 지정",
     "saveDialogPlaceholder": "예: 업무 회의",
     "cancel": "취소",
-    "save": "저장",
-    "addToFilterHint": "Ctrl/Cmd를 누른 채 태그를 클릭하면 필터에 추가됩니다"
+    "save": "저장"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "작성 중…",
       "writtenBy": "{agent}이(가) 작성",
       "retry": "마지막 실행 실패 · 다시 시도",
-      "retryAction": "다시 시도",
       "captionOff": "설정 → AI에서 긴 노트 요약을 켜세요",
       "captionNoAgent": "연결된 에이전트 없음 · 설정 → AI",
       "unknownAgent": "AI"

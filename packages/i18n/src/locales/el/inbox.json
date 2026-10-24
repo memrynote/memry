@@ -15,19 +15,13 @@
       "showWithCount": "Εμφάνιση στοιχείων σε αναβολή ({count})",
       "hide": "Απόκρυψη στοιχείων σε αναβολή"
     },
-    "density": {
-      "toComfortable": "Άνετη προβολή",
-      "toCompact": "Συμπαγής προβολή"
-    },
     "filter": {
-      "button": "Φίλτρο",
       "byType": "Φιλτράρισμα κατά τύπο",
       "active": "{count, plural, one {Φιλτράρισμα κατά # τύπο} other {Φιλτράρισμα κατά # τύπους}}",
       "clearAll": "Εκκαθάριση όλων"
     },
     "jobs": {
-      "running": "{count, plural, one {# διεργασία παρασκηνίου σε εκτέλεση} other {# διεργασίες παρασκηνίου σε εκτέλεση}}",
-      "failed": "Αποτυχίες: {count}"
+      "running": "{count, plural, one {# διεργασία παρασκηνίου σε εκτέλεση} other {# διεργασίες παρασκηνίου σε εκτέλεση}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Δημιουργία του «{name}»",
     "addTags": "Προσθήκη ετικετών…",
     "linkToNote": "Σύνδεση με σημείωση",
-    "linkANote": "Σύνδεση σημείωσης",
-    "suggestedCount": "{count} προτεινόμενα",
-    "linkNotesPlaceholder": "Σύνδεση σημειώσεων…",
     "linkOrCreateNotePlaceholder": "Εύρεση ή δημιουργία σημείωσης…",
     "createNote": "Δημιουργία του «{title}»",
     "pendingNote": "Νέα σημείωση",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Τα δεδομένα υπενθύμισης δεν είναι διαθέσιμα.",
     "triggered": "Ενεργοποιήθηκε η υπενθύμιση",
-    "noteLabel": "Σημείωση υπενθύμισης",
     "source": "Πηγή",
     "journalTitle": "Ημερολόγιο γραφής — {date}",
     "noteFallback": "Σημείωση",
@@ -514,9 +504,7 @@
       "settings": "Ρυθμίσεις",
       "processing": "Επεξεργασία…",
       "cancelRecording": "Ακύρωση ηχογράφησης",
-      "cancel": "Ακύρωση",
       "stopRecording": "Διακοπή ηχογράφησης",
-      "stop": "Διακοπή",
       "recordingError": "Παρουσιάστηκε σφάλμα ηχογράφησης",
       "microphoneAccessDenied": "Η πρόσβαση στο μικρόφωνο απορρίφθηκε",
       "noMicrophoneFound": "Δεν βρέθηκε μικρόφωνο",

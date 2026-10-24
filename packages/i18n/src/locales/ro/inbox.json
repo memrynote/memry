@@ -15,19 +15,13 @@
       "showWithCount": "Afișează elementele amânate ({count})",
       "hide": "Ascunde elementele amânate"
     },
-    "density": {
-      "toComfortable": "Vizualizare confortabilă",
-      "toCompact": "Vizualizare compactă"
-    },
     "filter": {
-      "button": "Filtrează",
       "byType": "Filtrează după tip",
       "active": "{count, plural, one {Filtrare după # tip} few {Filtrare după # tipuri} other {Filtrare după # de tipuri}}",
       "clearAll": "Șterge tot"
     },
     "jobs": {
-      "running": "{count, plural, one {# operațiune în fundal în curs} few {# operațiuni în fundal în curs} other {# de operațiuni în fundal în curs}}",
-      "failed": "Eșuate: {count}"
+      "running": "{count, plural, one {# operațiune în fundal în curs} few {# operațiuni în fundal în curs} other {# de operațiuni în fundal în curs}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "Creează „{name}”",
     "addTags": "Adaugă etichete…",
     "linkToNote": "Link către notiță",
-    "linkANote": "Leagă o notiță",
-    "suggestedCount": "{count} sugerate",
-    "linkNotesPlaceholder": "Leagă notițe…",
     "linkOrCreateNotePlaceholder": "Găsește sau creează o notiță…",
     "createNote": "Creează „{title}”",
     "pendingNote": "Notiță nouă",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Datele de memento nu sunt disponibile.",
     "triggered": "Memento declanșat",
-    "noteLabel": "Notița mementoului",
     "source": "Sursa",
     "journalTitle": "Jurnal – {date}",
     "noteFallback": "Notiță",
@@ -514,9 +504,7 @@
       "settings": "Setări",
       "processing": "Se procesează…",
       "cancelRecording": "Anulează înregistrarea",
-      "cancel": "Anulează",
       "stopRecording": "Oprește înregistrarea",
-      "stop": "Oprește",
       "recordingError": "A apărut o eroare la înregistrare",
       "microphoneAccessDenied": "Acces la microfon refuzat",
       "noMicrophoneFound": "Nu s-a găsit niciun microfon",

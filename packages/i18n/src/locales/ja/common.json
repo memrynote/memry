@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "操作を実行できませんでした",
-    "nothingToUndo": "元に戻すものはありません",
     "undone": "元に戻しました：{description}",
     "undoFailed": "操作を元に戻せませんでした",
     "filesImported": "{count, plural, other {# 件のファイルをインポートしました}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "エージェントが {title} を作成しようとしています。適用する前に変更内容を確認してください。",
       "descriptionDelete": "エージェントが {title} を削除しようとしています。適用する前に変更内容を確認してください。",
       "fallbackTitle": "この項目",
-      "current": "現在",
       "candidate": "候補",
       "loading": "読み込み中…",
       "apply": "適用",
@@ -383,12 +381,8 @@
       "removeAttachment": "{label} を削除",
       "placeholder": "memrynote に何でも頼めます… @ でノート、タスク、予定をメンション",
       "send": "送信",
-      "providerLabel": "エージェントプロバイダー：{provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "接続済みのツール",
       "connectTool": "{tool} を接続",
-      "addContext": "コンテキストを追加",
-      "addContextWithPermissions": "コンテキストを追加（{permissions}）",
       "mentionContext": "ノート、タスク、予定をメンション",
       "files": {
         "attach": "テキストファイルを添付",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "音声を文字起こしできませんでした"
         }
       },
-      "modelLabel": "エージェントのモデル：{provider} {model}",
-      "reasoningLabel": "エージェントの推論：{reasoning}",
       "providers": {
-        "label": "プロバイダー",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "コンピューターへのアクセス"
       },
       "webSearch": {
-        "on": "オン",
-        "off": "オフ",
         "label": "Web 検索"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "エージェントを利用できません。設定を開く…"
       },
       "settings": {
-        "reasoning": "推論",
         "effort": "推論の強度"
       },
       "includeCurrentNote": "現在のノートを含める",
@@ -472,11 +460,8 @@
           "max": "最大"
         }
       },
-      "permissionsLabel": "エージェントの権限：{access}、Web 検索 {webSearch}",
       "permissions": {
-        "label": "権限",
-        "access": "アクセス",
-        "tools": "ツール"
+        "access": "アクセス"
       },
       "modelSettingsLabel": "エージェントのモデル設定：{model}、{settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "新しいフォルダー",
       "newProject": "新規プロジェクト",
       "bookmarks": "ブックマーク",
-      "chart": "チャート",
       "tags": "タグ",
       "reorderSection": "{section} を並べ替え",
       "dropFilesToImport": "ファイルをドロップしてインポート",
       "dropFilesIntoVaultRoot": "保管庫の最上位",
       "newNoteN": "新規ノート（⌘N）",
-      "new": "新規",
       "newItemMenu": "新規作成…",
       "feedbackButton": "フィードバックを送信",
       "feedbackTitle": "フィードバックを送信",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "検索、置換、質問…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "オンボーディングをスキップ",
-      "welcomeToMemry": "memrynote へようこそ",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "個人のナレッジベースです。2 分ほどで使い始める準備をしましょう。",
-      "getStarted": "始めましょう ",
-      "createYourFirstNote": "最初のノートを作成",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown ベースで、プレーンファイルとしてローカルに保存されます。",
-      "eGMeetingNotesIdeasAnything": "例：会議メモ、アイデア、何でも…",
-      "skip": "スキップ",
-      "createNote": "ノートを作成 ",
-      "addYourFirstTask": "最初のタスクを追加",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "タスクはノートにリンクでき、優先度と期限を設定できます。",
-      "eGReviewProjectProposal": "例：プロジェクト提案書を確認…",
-      "skip2": "スキップ",
-      "createTask": "タスクを作成 ",
-      "syncAcrossDevices": "デバイス間で同期",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "ノートとタスクをすべてのデバイスで同期できます。この設定は後からいつでも行えます。",
-      "skipForNow": "今はスキップ",
-      "doneLetSGo": "完了、始めましょう！ "
+      "skip": "スキップ"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "フォルダーのアイコンを設定",
@@ -852,8 +818,7 @@
       "unknownTabType": "不明なタブの種類: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "未保存の変更",
-      "preview": "プレビュー"
+      "unsavedChanges": "未保存の変更"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "新しいタブ",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "ドラッグでサイズを変更 · ダブルクリックでリセット"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "memrynote へようこそ",
-      "yourPersonalKnowledgeManagementSystem": "個人のためのナレッジマネジメントシステム。",
-      "selectAFolderToStoreYourNotesAndTasks": "ノートとタスクを保存するフォルダーを選択してください。",
       "opening": "開いています…",
-      "selectVaultFolder": "保管庫のフォルダーを選択",
-      "plainMarkdown": "プレーンな Markdown",
-      "yourNotesStayPortable": "ノートはどこへでも持ち出せます",
-      "syncAnywhere": "どこでも同期",
-      "useDropboxIcloudGit": "Dropbox、iCloud、Git が使えます",
       "recentVaults": "最近の保管庫",
-      "notesLastOpened": "ノート · 最終アクセス",
-      "preRelease": "Beta",
       "createNewVault": "新しい保管庫を作成",
-      "createNewVaultDesc": "選択したフォルダーに新しい保管庫を作成します。",
-      "openExistingVault": "既存の保管庫を開く",
-      "openExistingVaultDesc": "すでに管理している Markdown ファイルのフォルダーを選択します。",
-      "signInToSync": "サインインして同期",
-      "signInToSyncDesc": "デバイス間でエンドツーエンド暗号化された保管庫。",
-      "create": "作成",
       "open": "開く",
-      "signIn": "サインイン",
       "helpAndDocs": "ヘルプとドキュメント",
-      "signInRequiresVault": "同期を設定するには、先に保管庫を開くか作成してください。",
       "addVault": "保管庫を追加",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "まだ保管庫はありません",
       "openVault": "保管庫を開く",
       "settings": "設定",
-      "logOut": "ログアウト",
-      "signInToSync": "サインインして同期",
       "remove": "削除：「",
       "removeVaultTitle": "「{name}」を一覧から削除しますか？",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "この保管庫はアプリから削除されますが、ファイルはディスク上に残ります。後からいつでも再追加できます。",
@@ -1020,7 +965,6 @@
       "changeLocation": "変更…",
       "download": "ダウンロード",
       "downloadFailed": "保管庫をダウンロードできませんでした",
-      "deleteFromAccount": "アカウントから削除",
       "deleteVaultTitle": "「{name}」をアカウントから削除しますか？",
       "deleteVaultBody": "この保管庫のすべての同期データを Memry のサーバーから完全に削除します。この操作は元に戻せません。ディスク上のファイルは削除されません。",
       "deleteVaultConfirm": "アカウントから削除",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "ウィジェットを削除",
       "dragAria": "ウィジェットをドラッグ",
-      "configAria": "ウィジェットを設定",
-      "resizeAria": "{size} にサイズ変更",
       "menuAria": "ウィジェットのオプション",
-      "resize": "サイズ",
       "remove": "削除",
       "filter": {
         "all": "すべて",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "フォルダーを選択",
       "folderEmpty": "フォルダーはまだありません",
       "folderNoSelection": "フォルダーが選択されていません",
-      "folderView_list": "リスト",
-      "folderView_gallery": "ギャラリー",
       "folderViewSelect": "ビュー",
       "project": "プロジェクト",
       "projectNoSelection": "プロジェクトが選択されていません",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "ホームレイアウト",
       "deleteAria": "レイアウトを削除",
-      "newAria": "新しいボード",
       "newName": "新しいボード",
       "defaultName": "ホーム",
       "manage": "ボードを管理",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, other {今日が期限のタスク # 件}}",
       "events": "{count, plural, other {予定 # 件}}"
     },
-    "edit": "編集",
-    "done": "完了",
     "addWidget": "ウィジェットを追加",
     "cover": {
       "add": "カバーを追加"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "ツアーが完了しました",
-      "body": "GitHub でスターを付けてください。ほかの人が MemryNote を見つけやすくなります。",
-      "action": "GitHub でスターを付ける"
+      "body": "GitHub でスターを付けてください。ほかの人が MemryNote を見つけやすくなります。"
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "アップデートの準備ができました",
     "failed": "アップデートできませんでした",
     "downloadAction": "ダウンロード",
-    "restartAction": "再起動",
     "detailsAction": "詳細",
     "popover": {
       "readyTitle": "MemryNote {version} の準備ができました",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "保管庫",
     "position": "{name}、{count} 件中 {index} 件目の保管庫",
-    "openList": "{position}。保管庫の一覧を開く",
     "switchTo": "{name} に切り替え",
     "switchingTo": "{name} に切り替え中",
     "changeIcon": "アイコンを変更…",
@@ -1501,7 +1433,6 @@
       "onDevice": "{device}内",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, other {保管庫が # 件見つかりました}}",
-      "notion": "Notion",
       "otherApps": "その他のアプリとファイル",
       "otherAppsHint": "ほか {count} 件",
       "detectedFootnote": "インストール済みのアプリを確認して検出しました。{device}の外には何も送信されません。",

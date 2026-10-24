@@ -3,8 +3,6 @@
   "section": {
     "aiConnections": "Связи от ИИ",
     "todaysNotes": "Сегодняшние заметки",
-    "todaysSchedule": "Расписание на сегодня",
-    "todaysTasks": "Сегодняшние задачи",
     "tasks": "Задачи",
     "technicalDetails": "Технические детали"
   },
@@ -102,8 +100,7 @@
       "afternoon": "Добрый день",
       "evening": "Добрый вечер",
       "night": "Доброй ночи"
-    },
-    "allDay": "Весь день"
+    }
   },
   "nav": {
     "previousDay": "Предыдущий день",
@@ -120,20 +117,11 @@
   "aria": {
     "moreOptions": "Другие действия",
     "documentStatistics": "Статистика документа",
-    "dayContext": "Контекст дня: задачи и расписание",
-    "scheduleEvents": "События в расписании",
-    "tasks": "Задачи",
     "notesCreatedToday": "{count, plural, one {Сегодня создана # заметка} few {Сегодня создано # заметки} many {Сегодня создано # заметок} other {Сегодня создано # заметки}}"
   },
   "empty": {
     "noEntry": "Нет записи",
     "noDaysInMonth": "Нет дней в этом месяце",
-    "noEventsScheduled": "Нет запланированных событий",
-    "noEventsScheduledToday": "На сегодня нет запланированных событий",
-    "noEventsWereScheduled": "Запланированных событий не было",
-    "noTasksDue": "Нет задач на этот день",
-    "noTasksDueToday": "Нет задач на сегодня",
-    "noTasksWereDue": "На этот день задач не было",
     "noNotesToday": "Сегодня заметок не создано",
     "startDocumenting": "Начните записывать свои мысли и идеи"
   },
@@ -155,9 +143,7 @@
     "day": "день",
     "days": "дн.",
     "event": "событие",
-    "events": "события",
     "task": "задача",
-    "todo": "к выполнению",
     "moreConnections": "{count, plural, one {Ещё # связь} few {Ещё # связи} many {Ещё # связей} other {Ещё # связи}}",
     "moreConnections_plural": "{count, plural, one {Ещё # связь} few {Ещё # связи} many {Ещё # связей} other {Ещё # связи}}",
     "moreNotes": "{count, plural, one {Ещё # заметка} few {Ещё # заметки} many {Ещё # заметок} other {Ещё # заметки}}",
@@ -166,7 +152,6 @@
     "charactersWritten": "символов написано",
     "words": "{count, plural, one {# слово} few {# слова} many {# слов} other {# слова}}",
     "characters": "{count, plural, one {# символ} few {# символа} many {# символов} other {# символа}}",
-    "completed": "Выполнено: {count}",
     "overdue": "Просрочено: {count}"
   },
   "stats": {
@@ -180,12 +165,7 @@
     "modified": "Изменено {date}"
   },
   "task": {
-    "completed": "Выполнено",
-    "notCompleted": "Не выполнено",
-    "priority": "Приоритет: {priority}",
-    "overdue": "просрочено",
-    "markComplete": "Отметить задачу «{title}» как выполненную",
-    "markNotComplete": "Отметить задачу «{title}» как невыполненную"
+    "priority": "Приоритет: {priority}"
   },
   "template": {
     "using": "Используется шаблон «{templateName}»"
@@ -212,7 +192,6 @@
   },
   "toast": {
     "unsavedRetry": "Содержимое всё ещё в памяти. Нажмите, чтобы повторить сохранение.",
-    "noteNotFound": "Заметка «{target}» не найдена",
     "createLinkedFailed": "Не удалось создать связанную заметку",
     "fileNotFound": "Файл не найден: {target}",
     "openLinkedItemFailed": "Не удалось открыть связанный элемент",

@@ -122,10 +122,6 @@
       "body": "Skapa en anteckning för att komma igång",
       "newNote": "Ny anteckning"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise-synk",
-      "failed": "Readwise-synken misslyckades"
-    },
     "syncing": {
       "body": "Synkroniserar dina anteckningar – de visas här när de kommer fram"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Lägg till bokmärke",
       "removeFromBookmarks": "Ta bort från bokmärken",
       "journalSettings": "Dagboksinställningar…"
-    },
-    "nav": {
-      "label": "Navigering",
-      "ariaExpanded": "Navigeringsavsnitt, expanderat",
-      "ariaCollapsed": "Navigeringsavsnitt, hopfällt",
-      "saveFailed": "Det gick inte att spara navigeringsavsnittets läge"
     },
     "viewOptions": {
       "label": "Visningsalternativ",
@@ -523,13 +513,8 @@
         "ai": "AI"
       },
       "secondary": {
-        "asToggleHeading": "Som hopfällbar",
         "asLinkedTask": "Som länkad uppgift",
         "asReminder": "Som påminnelse"
-      },
-      "actions": {
-        "insert": "Infoga",
-        "open": "Öppna"
       },
       "close": "Stäng menyn",
       "matchesAlias": "matchar",
@@ -607,7 +592,6 @@
         "title": "Flytta block till anteckning",
         "searchPlaceholder": "Sök anteckningar…",
         "noResults": "Inga matchande anteckningar",
-        "moved": "Blocket flyttades till ”{title}”",
         "failed": "Det gick inte att flytta blocket"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Disposition",
     "aria": "Dokumentdisposition",
-    "emptyYet": "Inga rubriker än",
     "readTime": "{count} min lästid",
     "words": "{count} ord",
     "created": "Skapad",
@@ -839,11 +822,9 @@
     "toolbarComment": "Kommentera",
     "commentPlaceholder": "Lägg till en kommentar…",
     "createdTooltip": "Skapad {date} kl. {time}",
-    "cancel": "Avbryt",
     "resolve": "Lös",
     "edit": "Redigera kommentar",
     "delete": "Radera kommentar",
-    "replyPlaceholder": "Svara…",
     "attachAria": "Bifoga fil",
     "mentionAria": "Nämn en person, sida eller datum",
     "sendAria": "Skicka kommentar",
@@ -856,13 +837,7 @@
       "code": "Kod"
     },
     "openImageAria": "Öppna bilden {name}",
-    "openAttachmentAria": "Öppna bilagan {name}",
-    "kind": {
-      "comment": "Kommentar",
-      "addition": "Tillägg",
-      "deletion": "Borttagning",
-      "substitution": "Ersättning"
-    }
+    "openAttachmentAria": "Öppna bilagan {name}"
   },
   "tagsRow": {
     "aria": "Taggar",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Egenskaper",
     "noteAria": "Anteckningens egenskaper",
-    "workspaceAria": "Arbetsytans egenskaper",
     "listAria": "Lista över egenskaper",
     "add": "Lägg till egenskap",
     "addDescription": "Lägg till en ny egenskap i den här anteckningen",
@@ -932,7 +906,6 @@
       "inProgress": "Pågår",
       "done": "Klar"
     },
-    "projectAlreadySet": "Anteckningen har redan en projektegenskap",
     "projectPlaceholder": "Inget projekt",
     "projectSearch": "Sök projekt",
     "projectEmpty": "Inga projekt",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filter",
-      "filters": "Filter",
-      "clearAll": "Rensa allt",
-      "noFiltersApplied": "Inga filter används",
-      "addFiltersToNarrowDownYourNotes": "Lägg till filter för att begränsa dina anteckningar",
       "match": "Matcha",
-      "allAnd": "Alla (OCH)",
-      "anyOr": "Någon (ELLER)",
-      "ofTheFollowing": "av följande:",
       "match2": "Matcha",
       "all": "Alla",
       "any": "Någon",
-      "of": "av:",
       "addCondition": "Lägg till villkor",
       "addFilter": "Lägg till filter",
       "addGroup": "Lägg till grupp",
@@ -1207,7 +1172,6 @@
       "available": "Tillgängliga: ",
       "preview": "Förhandsvisning",
       "fixExpressionErrorsToSeePreview": "Åtgärda felen i uttrycket för att se förhandsvisningen",
-      "usingNote": "Använder anteckning: ”",
       "cancel": "Avbryt",
       "namePlaceholder": "days_until_due",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Läser in mappar…",
       "suggested": "FÖRESLAGNA",
       "bestMatch": "Bästa träff",
-      "current": "nuvarande)",
       "allFolders": "ALLA MAPPAR",
-      "noFoldersMatch": "Inga mappar matchar ”",
-      "create": "Skapa ”",
       "cancel": "Avbryt",
       "currentFolderBadge": "(nuvarande)",
       "noFoldersMatchQuery": "Inga mappar matchar ”{query}”",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "standard",
       "viewActions": "Vyåtgärder",
-      "rename": "Byt namn",
       "duplicate": "Duplicera",
       "setAsDefault": "Ange som standard",
       "delete": "Radera",
-      "createNewView": "Skapa ny vy",
-      "createNewView2": "Skapa ny vy",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Skapa en ny vy med anpassade kolumner, filter och sortering.",
-      "viewName": "Namn på vyn",
       "myCustomView": "Min anpassade vy",
-      "baseConfiguration": "Grundkonfiguration",
-      "copyFromCurrentView": "Kopiera från nuvarande vy",
-      "startFreshDefaultColumns": "Börja från början (standardkolumner)",
       "cancel": "Avbryt",
-      "renameView": "Byt namn på vy",
-      "enterANewNameForThisView": "Ange ett nytt namn för vyn.",
-      "viewName2": "Namn på vyn",
-      "viewName3": "Namn på vyn",
-      "cancel2": "Avbryt",
       "deleteView": "Radera vy",
       "areYouSureYouWantToDelete": "Är du säker på att du vill radera \"",
       "thisActionCannotBeUndone": "Det går inte att ångra.",
@@ -1289,22 +1237,17 @@
       "layout": "Layout",
       "table": "Tabell",
       "list": "Lista",
-      "gallery": "Galleri",
-      "createView": "Skapa vy",
-      "save": "Spara"
+      "gallery": "Galleri"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "Det gick inte att läsa in PDF-filen: ",
-      "download": "Ladda ner",
       "download2": "Ladda ner",
       "noFileAttached": "Ingen fil bifogad",
       "resizePdf": "Ändra storlek på PDF",
       "resizeHtml": "Ändra storlek på HTML-inbäddning",
       "alignLeft": "Vänsterjustera",
       "alignCenter": "Centrera",
-      "alignRight": "Högerjustera",
-      "previousPage": "Föregående sida",
-      "nextPage": "Nästa sida"
+      "alignRight": "Högerjustera"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Öppna i uppgiftspanel",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 tum)",
       "legal85X14In": "Legal (8,5 x 14 tum)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "dd.mm.åååå"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Synkroniserad"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Ord",
       "characters": "Tecken",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Inga bokmärken än",
       "moreOptions": "Fler alternativ",
       "remove": "Ta bort"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Öppna",
-      "openToTheSide": "Öppna bredvid",
-      "pinToTabs": "Fäst som flik",
-      "edit": "Redigera",
-      "delete": "Radera",
-      "copyLink": "Kopiera länk"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Läser in taggar…",
@@ -1380,26 +1309,9 @@
       "cancel": "Avbryt"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Gå tillbaka",
-      "notes": "anteckningar",
-      "loadingNotes": "Läser in anteckningar…",
-      "noNotesWithThisTag": "Inga anteckningar med den här taggen",
-      "addThisTagToANoteToSeeItHere": "Lägg till taggen på en anteckning för att se den här",
-      "pinned": "FÄSTA",
-      "allNotes": "ALLA ANTECKNINGAR",
-      "allNotesArePinned": "Alla anteckningar är fästa",
-      "tasks": "UPPGIFTER",
-      "unpinFromTag": "Lossa från tagg",
-      "unpin": "Lossa",
-      "pinToTag": "Fäst på tagg",
-      "pin": "Fäst",
       "tagActions": "Taggåtgärder",
-      "editTagName": "Redigera taggnamn",
       "changeColor": "Byt färg",
-      "deleteTag": "Radera tagg",
-      "recent": "Senaste",
-      "created": "Skapad",
-      "alphabetical": "Alfabetiskt"
+      "deleteTag": "Radera tagg"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Byt namn på tagg",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Skapa ny anteckning",
-      "viewSettings": "Visningsinställningar",
-      "displayDensity": "Visningstäthet",
-      "comfortable": "Bekväm",
-      "compact": "Kompakt",
-      "showSummaries": "Visa sammanfattningar",
       "cancel": "Avbryt"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Öppna taggöversikten"
   },
   "tagView": {
-    "moreActions": "Fler åtgärder",
     "pin": {
       "action": "Fäst {count, plural, one {# anteckning} other {# anteckningar}} på taggen",
       "success": "{count, plural, one {# anteckning fäst} other {# anteckningar fästa}} på taggen",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Namnge sökningen",
     "saveDialogPlaceholder": "t.ex. Arbetsmöten",
     "cancel": "Avbryt",
-    "save": "Spara",
-    "addToFilterHint": "Ctrl/Cmd-klicka på en tagg för att lägga till den i filtret"
+    "save": "Spara"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Skriver…",
       "writtenBy": "Skrivet av {agent}",
       "retry": "Senaste körningen misslyckades · Försök igen",
-      "retryAction": "Försök igen",
       "captionOff": "Slå på Sammanfatta långa anteckningar i Inställningar → AI",
       "captionNoAgent": "Ingen agent ansluten · Inställningar → AI",
       "unknownAgent": "AI"

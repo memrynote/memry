@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "فشل الإجراء",
-    "nothingToUndo": "لا يوجد شيء للتراجع عنه",
     "undone": "تم التراجع: {description}",
     "undoFailed": "تعذّر التراجع عن الإجراء",
     "filesImported": "{count, plural, zero {تم استيراد # ملف} one {تم استيراد ملف واحد} two {تم استيراد ملفين} few {تم استيراد # ملفات} many {تم استيراد # ملفًا} other {تم استيراد # ملف}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "يريد الوكيل إنشاء {title}. راجع التغيير قبل تطبيقه.",
       "descriptionDelete": "يريد الوكيل حذف {title}. راجع التغيير قبل تطبيقه.",
       "fallbackTitle": "هذا العنصر",
-      "current": "الحالي",
       "candidate": "المقترح",
       "loading": "جارٍ التحميل…",
       "apply": "تطبيق",
@@ -383,12 +381,8 @@
       "removeAttachment": "إزالة {label}",
       "placeholder": "اطلب أي شيء من memrynote… @ للإشارة إلى الملاحظات والمهام والأحداث",
       "send": "إرسال",
-      "providerLabel": "مزوّد الوكيل: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "الأدوات المتصلة",
       "connectTool": "توصيل {tool}",
-      "addContext": "إضافة سياق",
-      "addContextWithPermissions": "إضافة سياق ({permissions})",
       "mentionContext": "الإشارة إلى ملاحظة أو مهمة أو حدث",
       "files": {
         "attach": "إرفاق ملف نصي",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "تعذّر تحويل الإدخال الصوتي إلى نص"
         }
       },
-      "modelLabel": "نموذج الوكيل: {provider} {model}",
-      "reasoningLabel": "استدلال الوكيل: {reasoning}",
       "providers": {
-        "label": "المزوّد",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "الوصول إلى الكمبيوتر"
       },
       "webSearch": {
-        "on": "تشغيل",
-        "off": "إيقاف",
         "label": "البحث في الويب"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "الوكيل غير متاح — فتح الإعدادات…"
       },
       "settings": {
-        "reasoning": "الاستدلال",
         "effort": "الجهد"
       },
       "includeCurrentNote": "تضمين الملاحظة الحالية",
@@ -472,11 +460,8 @@
           "max": "أقصى"
         }
       },
-      "permissionsLabel": "أذونات الوكيل: {access}، البحث في الويب: {webSearch}",
       "permissions": {
-        "label": "الأذونات",
-        "access": "الوصول",
-        "tools": "الأدوات"
+        "access": "الوصول"
       },
       "modelSettingsLabel": "إعدادات نموذج الوكيل: {model}، {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "مجلد جديد",
       "newProject": "مشروع جديد",
       "bookmarks": "الإشارات المرجعية",
-      "chart": "مخطط",
       "tags": "الوسوم",
       "reorderSection": "إعادة ترتيب {section}",
       "dropFilesToImport": "أفلِت الملفات لاستيرادها",
       "dropFilesIntoVaultRoot": "جذر الخزنة",
       "newNoteN": "ملاحظة جديدة (⌘N)",
-      "new": "جديد",
       "newItemMenu": "إنشاء جديد…",
       "feedbackButton": "إرسال رأيك",
       "feedbackTitle": "إرسال رأيك",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "بحث، استبدال، طرح سؤال…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "تخطي الجولة التعريفية",
-      "welcomeToMemry": "مرحبًا بك في memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "قاعدة المعرفة الشخصية الخاصة بك. لنأخذ دقيقتين للبدء.",
-      "getStarted": "لنبدأ ",
-      "createYourFirstNote": "أنشئ ملاحظتك الأولى",
-      "markdownBasedStoredLocallyAsPlainFiles": "تعتمد الملاحظات على Markdown وتُخزَّن محليًا كملفات عادية.",
-      "eGMeetingNotesIdeasAnything": "مثال: ملاحظات اجتماع، أفكار، أي شيء…",
-      "skip": "تخطي",
-      "createNote": "إنشاء ملاحظة ",
-      "addYourFirstTask": "أضف مهمتك الأولى",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "ترتبط المهام بملاحظاتك، مع الأولويات وتواريخ الاستحقاق.",
-      "eGReviewProjectProposal": "مثال: مراجعة مقترح المشروع…",
-      "skip2": "تخطي",
-      "createTask": "إنشاء مهمة ",
-      "syncAcrossDevices": "المزامنة عبر الأجهزة",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "حافظ على مزامنة ملاحظاتك ومهامك عبر جميع أجهزتك. يمكنك دائمًا إعداد هذا لاحقًا.",
-      "skipForNow": "تخطي حاليًا",
-      "doneLetSGo": "تم — لننطلق! "
+      "skip": "تخطي"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "تعيين أيقونة المجلد",
@@ -852,8 +818,7 @@
       "unknownTabType": "نوع علامة التبويب غير معروف: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "التغييرات غير المحفوظة",
-      "preview": "معاينة"
+      "unsavedChanges": "التغييرات غير المحفوظة"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "علامة تبويب جديدة",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "اسحب لتغيير الحجم · انقر نقرًا مزدوجًا لإعادة التعيين"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "مرحبًا بك في memrynote",
-      "yourPersonalKnowledgeManagementSystem": "نظام إدارة المعرفة الشخصية الخاص بك.",
-      "selectAFolderToStoreYourNotesAndTasks": "حدد مجلدًا لتخزين ملاحظاتك ومهامك.",
       "opening": "جارٍ الفتح…",
-      "selectVaultFolder": "اختيار مجلد الخزنة",
-      "plainMarkdown": "Markdown عادي",
-      "yourNotesStayPortable": "تبقى ملاحظاتك قابلة للنقل",
-      "syncAnywhere": "مزامنة في أي مكان",
-      "useDropboxIcloudGit": "استخدم Dropbox، iCloud، Git",
       "recentVaults": "الخزائن الأخيرة",
-      "notesLastOpened": "ملاحظات · آخر فتح",
-      "preRelease": "تجريبي",
       "createNewVault": "إنشاء خزنة جديدة",
-      "createNewVaultDesc": "أنشئ خزنة جديدة في مجلد من اختيارك.",
-      "openExistingVault": "فتح خزنة موجودة",
-      "openExistingVaultDesc": "اختر مجلدًا يضم ملفات Markdown التي تحتفظ بها بالفعل.",
-      "signInToSync": "تسجيل الدخول للمزامنة",
-      "signInToSyncDesc": "خزائن مشفرة من طرف إلى طرف عبر أجهزتك.",
-      "create": "إنشاء",
       "open": "فتح",
-      "signIn": "تسجيل الدخول",
       "helpAndDocs": "المساعدة والوثائق",
-      "signInRequiresVault": "افتح خزنة أو أنشئها أولًا لإعداد المزامنة.",
       "addVault": "إضافة خزنة",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "لا توجد خزائن بعد",
       "openVault": "فتح خزنة",
       "settings": "الإعدادات",
-      "logOut": "تسجيل الخروج",
-      "signInToSync": "تسجيل الدخول للمزامنة",
       "remove": "إزالة «",
       "removeVaultTitle": "هل تريد إزالة «{name}» من القائمة؟",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "ستتم إزالة هذه الخزنة من التطبيق، لكن ملفاتك ستبقى على القرص. يمكنك دائمًا إعادة إضافتها لاحقًا.",
@@ -1020,7 +965,6 @@
       "changeLocation": "تغيير…",
       "download": "تنزيل",
       "downloadFailed": "تعذّر تنزيل الخزنة",
-      "deleteFromAccount": "حذف من الحساب",
       "deleteVaultTitle": "هل تريد حذف «{name}» من حسابك؟",
       "deleteVaultBody": "يزيل هذا نهائيًا كل البيانات المزامَنة لهذه الخزنة من خوادم Memry، ولا يمكن التراجع عنه. لن تُحذف ملفاتك الموجودة على القرص.",
       "deleteVaultConfirm": "حذف من الحساب",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "إزالة الأداة",
       "dragAria": "سحب الأداة",
-      "configAria": "تكوين الأداة",
-      "resizeAria": "تغيير الحجم إلى {size}",
       "menuAria": "خيارات الأداة",
-      "resize": "الحجم",
       "remove": "إزالة",
       "filter": {
         "all": "الكل",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "اختر مجلدًا",
       "folderEmpty": "لا توجد مجلدات بعد",
       "folderNoSelection": "لم يتم تحديد مجلد",
-      "folderView_list": "قائمة",
-      "folderView_gallery": "معرض",
       "folderViewSelect": "عرض",
       "project": "مشروع",
       "projectNoSelection": "لم يتم تحديد مشروع",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "تخطيط الرئيسية",
       "deleteAria": "حذف التخطيط",
-      "newAria": "لوحة معلومات جديدة",
       "newName": "لوحة معلومات جديدة",
       "defaultName": "الرئيسية",
       "manage": "إدارة لوحات المعلومات",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, zero {لا توجد مهام مستحقة اليوم} one {مهمة واحدة مستحقة اليوم} two {مهمتان مستحقتان اليوم} few {# مهام مستحقة اليوم} many {# مهمة مستحقة اليوم} other {# مهمة مستحقة اليوم}}",
       "events": "{count, plural, zero {لا توجد أحداث} one {حدث واحد} two {حدثان} few {# أحداث} many {# حدثًا} other {# حدث}}"
     },
-    "edit": "تحرير",
-    "done": "تم",
     "addWidget": "إضافة أداة",
     "cover": {
       "add": "إضافة غلاف"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "اكتملت الجولة التعريفية",
-      "body": "امنحنا نجمة على GitHub — فهذا يساعد الآخرين على العثور على MemryNote.",
-      "action": "منح نجمة على GitHub"
+      "body": "امنحنا نجمة على GitHub — فهذا يساعد الآخرين على العثور على MemryNote."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "التحديث جاهز",
     "failed": "فشل التحديث",
     "downloadAction": "تنزيل",
-    "restartAction": "إعادة التشغيل",
     "detailsAction": "التفاصيل",
     "popover": {
       "readyTitle": "MemryNote {version} جاهز",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "الخزائن",
     "position": "{name}، الخزنة {index} من {count}",
-    "openList": "{position}. فتح قائمة الخزائن",
     "switchTo": "التبديل إلى {name}",
     "switchingTo": "جارٍ التبديل إلى {name}",
     "changeIcon": "تغيير الأيقونة…",
@@ -1501,7 +1433,6 @@
       "onDevice": "على {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, zero {لم يُعثر على خزائن} one {عُثر على خزنة} two {عُثر على خزنتين} few {عُثر على # خزائن} many {عُثر على # خزنة} other {عُثر على # خزنة}}",
-      "notion": "Notion",
       "otherApps": "تطبيقات وملفات أخرى",
       "otherAppsHint": "و{count} أخرى",
       "detectedFootnote": "عُثر عليها بفحص التطبيقات المثبّتة. لا شيء يغادر {device}.",

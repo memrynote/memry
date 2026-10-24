@@ -15,19 +15,13 @@
       "showWithCount": "Uitgestelde items tonen ({count})",
       "hide": "Uitgestelde items verbergen"
     },
-    "density": {
-      "toComfortable": "Comfortabele weergave",
-      "toCompact": "Compacte weergave"
-    },
     "filter": {
-      "button": "Filteren",
       "byType": "Filteren op type",
       "active": "{count, plural, one {Gefilterd op # type} other {Gefilterd op # typen}}",
       "clearAll": "Alles wissen"
     },
     "jobs": {
-      "running": "{count, plural, one {# achtergrondtaak actief} other {# achtergrondtaken actief}}",
-      "failed": "{count} mislukt"
+      "running": "{count, plural, one {# achtergrondtaak actief} other {# achtergrondtaken actief}}"
     }
   },
   "type": {
@@ -187,9 +181,6 @@
     "createFolder": "“{name}” maken",
     "addTags": "Tags toevoegen…",
     "linkToNote": "Aan notitie koppelen",
-    "linkANote": "Een notitie koppelen",
-    "suggestedCount": "{count} voorgesteld",
-    "linkNotesPlaceholder": "Notities koppelen…",
     "linkOrCreateNotePlaceholder": "Notitie zoeken of maken…",
     "createNote": "“{title}” maken",
     "pendingNote": "Nieuwe notitie",
@@ -264,7 +255,6 @@
   "reminder": {
     "dataUnavailable": "Herinneringsgegevens niet beschikbaar.",
     "triggered": "Herinnering geactiveerd",
-    "noteLabel": "Notitie bij herinnering",
     "source": "Bron",
     "journalTitle": "Dagboek – {date}",
     "noteFallback": "Notitie",
@@ -514,9 +504,7 @@
       "settings": "Instellingen",
       "processing": "Verwerken…",
       "cancelRecording": "Opname annuleren",
-      "cancel": "Annuleren",
       "stopRecording": "Opname stoppen",
-      "stop": "Stoppen",
       "recordingError": "Er is een opnamefout opgetreden",
       "microphoneAccessDenied": "Microfoontoegang geweigerd",
       "noMicrophoneFound": "Geen microfoon gevonden",

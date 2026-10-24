@@ -178,7 +178,6 @@
   },
   "toast": {
     "actionFailed": "Aktion fehlgeschlagen",
-    "nothingToUndo": "Nichts rückgängig zu machen",
     "undone": "Rückgängig gemacht: {description}",
     "undoFailed": "Aktion konnte nicht rückgängig gemacht werden",
     "filesImported": "{count, plural, one {# Datei importiert} other {# Dateien importiert}}",
@@ -279,7 +278,6 @@
       "descriptionCreate": "Der Agent möchte {title} erstellen. Prüfe die Änderung, bevor du sie anwendest.",
       "descriptionDelete": "Der Agent möchte {title} löschen. Prüfe die Änderung, bevor du sie anwendest.",
       "fallbackTitle": "dieses Element",
-      "current": "Aktuell",
       "candidate": "Vorschlag",
       "loading": "Wird geladen…",
       "apply": "Anwenden",
@@ -383,12 +381,8 @@
       "removeAttachment": "{label} entfernen",
       "placeholder": "Alles mit memrynote erledigen… @ zum Erwähnen von Notizen, Aufgaben und Terminen",
       "send": "Senden",
-      "providerLabel": "Agent-Anbieter: {provider}",
-      "settingsSummary": "{reasoning}",
       "connectedTools": "Verbundene Tools",
       "connectTool": "{tool} verbinden",
-      "addContext": "Kontext hinzufügen",
-      "addContextWithPermissions": "Kontext hinzufügen ({permissions})",
       "mentionContext": "Notiz, Aufgabe oder Termin erwähnen",
       "files": {
         "attach": "Textdatei anhängen",
@@ -411,10 +405,7 @@
           "transcriptionFailed": "Spracheingabe konnte nicht transkribiert werden"
         }
       },
-      "modelLabel": "Agent-Modell: {provider} {model}",
-      "reasoningLabel": "Denkaufwand des Agenten: {reasoning}",
       "providers": {
-        "label": "Anbieter",
         "claude": "Claude",
         "codex": "Codex",
         "antigravity": "Antigravity",
@@ -425,8 +416,6 @@
         "computerAccess": "Computerzugriff"
       },
       "webSearch": {
-        "on": "Ein",
-        "off": "Aus",
         "label": "Websuche"
       },
       "models": {
@@ -440,7 +429,6 @@
         "runtimeUnavailable": "Agent nicht verfügbar – Einstellungen öffnen…"
       },
       "settings": {
-        "reasoning": "Denkaufwand",
         "effort": "Aufwand"
       },
       "includeCurrentNote": "Aktuelle Notiz einbeziehen",
@@ -472,11 +460,8 @@
           "max": "Maximal"
         }
       },
-      "permissionsLabel": "Agent-Berechtigungen: {access}, Websuche {webSearch}",
       "permissions": {
-        "label": "Berechtigungen",
-        "access": "Zugriff",
-        "tools": "Tools"
+        "access": "Zugriff"
       },
       "modelSettingsLabel": "Agent-Modelleinstellungen: {model}, {settings}",
       "queue": {
@@ -720,13 +705,11 @@
       "newFolder2": "Neuer Ordner",
       "newProject": "Neues Projekt",
       "bookmarks": "Lesezeichen",
-      "chart": "Diagramm",
       "tags": "Tags",
       "reorderSection": "{section} neu anordnen",
       "dropFilesToImport": "Dateien hier ablegen, um sie zu importieren",
       "dropFilesIntoVaultRoot": "Stammordner des Tresors",
       "newNoteN": "Neue Notiz (⌘N)",
-      "new": "Neu",
       "newItemMenu": "Neu erstellen…",
       "feedbackButton": "Feedback senden",
       "feedbackTitle": "Feedback senden",
@@ -767,24 +750,7 @@
       "findReplaceAsk": "Suchen, ersetzen, fragen…"
     },
     "componentsFirstRunOnboarding": {
-      "skipOnboarding": "Einführung überspringen",
-      "welcomeToMemry": "Willkommen bei memrynote",
-      "yourPersonalKnowledgeBaseLetSTake2MinutesToGetYouStarted": "Deine persönliche Wissensbasis. In 2 Minuten bist du startklar.",
-      "getStarted": "Los geht’s ",
-      "createYourFirstNote": "Erstelle deine erste Notiz",
-      "markdownBasedStoredLocallyAsPlainFiles": "Markdown-basiert, lokal als einfache Dateien gespeichert.",
-      "eGMeetingNotesIdeasAnything": "z. B. Besprechungsnotizen, Ideen, alles…",
-      "skip": "Überspringen",
-      "createNote": "Notiz erstellen ",
-      "addYourFirstTask": "Füge deine erste Aufgabe hinzu",
-      "tasksLinkToYourNotesWithPrioritiesAndDueDates": "Aufgaben verlinken auf deine Notizen und haben Prioritäten und Fälligkeitsdaten.",
-      "eGReviewProjectProposal": "z. B. Projektvorschlag prüfen…",
-      "skip2": "Überspringen",
-      "createTask": "Aufgabe erstellen ",
-      "syncAcrossDevices": "Geräteübergreifend synchronisieren",
-      "keepYourNotesAndTasksInSyncAcrossAllYourDevicesYouCanAlw": "Halte deine Notizen und Aufgaben auf allen deinen Geräten synchron. Du kannst das jederzeit später einrichten.",
-      "skipForNow": "Vorerst überspringen",
-      "doneLetSGo": "Fertig – los geht’s! "
+      "skip": "Überspringen"
     },
     "componentsFolderIconButton": {
       "setFolderIcon": "Ordnersymbol festlegen",
@@ -852,8 +818,7 @@
       "unknownTabType": "Unbekannter Tab-Typ: "
     },
     "componentsTabsAccessibleTab": {
-      "unsavedChanges": "nicht gespeicherte Änderungen",
-      "preview": "Vorschau"
+      "unsavedChanges": "nicht gespeicherte Änderungen"
     },
     "componentsTabsNewTabMenu": {
       "newTab": "Neuer Tab",
@@ -931,29 +896,11 @@
       "dragToResizeDoubleClickToReset": "Zum Ändern der Größe ziehen · Zum Zurücksetzen doppelklicken"
     },
     "componentsVaultOnboarding": {
-      "welcomeToMemry": "Willkommen bei memrynote",
-      "yourPersonalKnowledgeManagementSystem": "Dein persönliches Wissensmanagementsystem.",
-      "selectAFolderToStoreYourNotesAndTasks": "Wähle einen Ordner, in dem deine Notizen und Aufgaben gespeichert werden.",
       "opening": "Wird geöffnet…",
-      "selectVaultFolder": "Tresorordner auswählen",
-      "plainMarkdown": "Reines Markdown",
-      "yourNotesStayPortable": "Deine Notizen bleiben portabel",
-      "syncAnywhere": "Überall synchronisieren",
-      "useDropboxIcloudGit": "Nutze Dropbox, iCloud, Git",
       "recentVaults": "Zuletzt verwendete Tresore",
-      "notesLastOpened": "Notizen · Zuletzt geöffnet",
-      "preRelease": "Beta",
       "createNewVault": "Neuen Tresor erstellen",
-      "createNewVaultDesc": "Lege einen neuen Tresor in einem Ordner deiner Wahl an.",
-      "openExistingVault": "Vorhandenen Tresor öffnen",
-      "openExistingVaultDesc": "Wähle einen Ordner mit Markdown-Dateien, die du bereits nutzt.",
-      "signInToSync": "Zum Synchronisieren anmelden",
-      "signInToSyncDesc": "Ende-zu-Ende-verschlüsselte Tresore auf all deinen Geräten.",
-      "create": "Erstellen",
       "open": "Öffnen",
-      "signIn": "Anmelden",
       "helpAndDocs": "Hilfe & Dokumentation",
-      "signInRequiresVault": "Öffne oder erstelle zuerst einen Tresor, um die Synchronisierung einzurichten.",
       "addVault": "Tresor hinzufügen",
       "brandName": "Memrynote",
       "flow": {
@@ -1000,8 +947,6 @@
       "noVaultsYet": "Noch keine Tresore",
       "openVault": "Tresor öffnen",
       "settings": "Einstellungen",
-      "logOut": "Abmelden",
-      "signInToSync": "Zum Synchronisieren anmelden",
       "remove": "Entfernen „",
       "removeVaultTitle": "„{name}“ aus der Liste entfernen?",
       "thisVaultWillBeRemovedFromTheAppButYourFilesWillRemainOn": "Dieser Tresor wird aus der App entfernt, deine Dateien bleiben aber auf dem Datenträger. Du kannst ihn jederzeit wieder hinzufügen.",
@@ -1020,7 +965,6 @@
       "changeLocation": "Ändern…",
       "download": "Herunterladen",
       "downloadFailed": "Der Tresor konnte nicht heruntergeladen werden",
-      "deleteFromAccount": "Aus Konto löschen",
       "deleteVaultTitle": "„{name}“ aus deinem Konto löschen?",
       "deleteVaultBody": "Damit werden alle synchronisierten Daten dieses Tresors dauerhaft von den Memry-Servern entfernt. Das lässt sich nicht rückgängig machen. Deine Dateien auf der Festplatte bleiben erhalten.",
       "deleteVaultConfirm": "Aus Konto löschen",
@@ -1047,12 +991,8 @@
   },
   "home": {
     "widget": {
-      "removeAria": "Widget entfernen",
       "dragAria": "Widget ziehen",
-      "configAria": "Widget konfigurieren",
-      "resizeAria": "Auf {size} anpassen",
       "menuAria": "Widget-Optionen",
-      "resize": "Größe",
       "remove": "Entfernen",
       "filter": {
         "all": "Alle",
@@ -1087,8 +1027,6 @@
       "folderPickPrompt": "Ordner auswählen",
       "folderEmpty": "Noch keine Ordner",
       "folderNoSelection": "Kein Ordner ausgewählt",
-      "folderView_list": "Liste",
-      "folderView_gallery": "Galerie",
       "folderViewSelect": "Ansicht",
       "project": "Projekt",
       "projectNoSelection": "Kein Projekt ausgewählt",
@@ -1107,7 +1045,6 @@
     "board": {
       "label": "Start-Layout",
       "deleteAria": "Layout löschen",
-      "newAria": "Neues Board",
       "newName": "Neues Board",
       "defaultName": "Start",
       "manage": "Boards verwalten",
@@ -1126,8 +1063,6 @@
       "tasksDue": "{count, plural, one {# Aufgabe heute fällig} other {# Aufgaben heute fällig}}",
       "events": "{count, plural, one {# Termin} other {# Termine}}"
     },
-    "edit": "Bearbeiten",
-    "done": "Fertig",
     "addWidget": "Widget hinzufügen",
     "cover": {
       "add": "Cover hinzufügen"
@@ -1191,8 +1126,7 @@
     },
     "starPrompt": {
       "title": "Einführung abgeschlossen",
-      "body": "Gib uns bitte einen Stern auf GitHub – so finden andere Menschen MemryNote leichter.",
-      "action": "Stern auf GitHub geben"
+      "body": "Gib uns bitte einen Stern auf GitHub – so finden andere Menschen MemryNote leichter."
     }
   },
   "shortcuts": {
@@ -1281,7 +1215,6 @@
     "ready": "Update bereit",
     "failed": "Update fehlgeschlagen",
     "downloadAction": "Herunterladen",
-    "restartAction": "Neu starten",
     "detailsAction": "Details",
     "popover": {
       "readyTitle": "MemryNote {version} ist bereit",
@@ -1318,7 +1251,6 @@
   "vaultSwipe": {
     "indicatorLabel": "Tresore",
     "position": "{name}, Tresor {index} von {count}",
-    "openList": "{position}. Tresorliste öffnen",
     "switchTo": "Zu {name} wechseln",
     "switchingTo": "Wechsel zu {name}",
     "changeIcon": "Symbol ändern…",
@@ -1501,7 +1433,6 @@
       "onDevice": "Auf {device}",
       "obsidian": "Obsidian",
       "vaultsFound": "{count, plural, one {# Tresor gefunden} other {# Tresore gefunden}}",
-      "notion": "Notion",
       "otherApps": "Andere Apps und Dateien",
       "otherAppsHint": "und {count} weitere",
       "detectedFootnote": "Gefunden, indem geprüft wird, welche Apps installiert sind. Alles bleibt auf {device}.",

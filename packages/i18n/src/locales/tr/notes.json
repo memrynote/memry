@@ -122,10 +122,6 @@
       "body": "Başlamak için bir not oluşturun",
       "newNote": "Yeni not"
     },
-    "readwiseSync": {
-      "tooltip": "Readwise eşitlemesi",
-      "failed": "Readwise eşitlemesi başarısız oldu"
-    },
     "syncing": {
       "body": "Notlarınız eşitleniyor — geldikçe burada görünecekler"
     },
@@ -157,12 +153,6 @@
       "bookmark": "Yer imlerine ekle",
       "removeFromBookmarks": "Yer imlerinden kaldır",
       "journalSettings": "Günlük ayarları…"
-    },
-    "nav": {
-      "label": "Gezinme",
-      "ariaExpanded": "Gezinme bölümü, genişletilmiş",
-      "ariaCollapsed": "Gezinme bölümü, daraltılmış",
-      "saveFailed": "Gezinme bölümünün durumu kaydedilemedi"
     },
     "viewOptions": {
       "label": "Görünüm seçenekleri",
@@ -523,13 +513,8 @@
         "ai": "Yapay zeka"
       },
       "secondary": {
-        "asToggleHeading": "Açılır olarak",
         "asLinkedTask": "Bağlantılı görev olarak",
         "asReminder": "Hatırlatıcı olarak"
-      },
-      "actions": {
-        "insert": "Ekle",
-        "open": "Aç"
       },
       "close": "Menüyü kapat",
       "matchesAlias": "eşleşme:",
@@ -607,7 +592,6 @@
         "title": "Bloğu nota taşı",
         "searchPlaceholder": "Notlarda ara…",
         "noResults": "Eşleşen not yok",
-        "moved": "Blok “{title}” notuna taşındı",
         "failed": "Blok taşınamadı"
       }
     },
@@ -756,7 +740,6 @@
   "outline": {
     "title": "Ana hat",
     "aria": "Belge ana hattı",
-    "emptyYet": "Henüz başlık yok",
     "readTime": "{count} dk okuma",
     "words": "{count} kelime",
     "created": "Oluşturulma",
@@ -839,11 +822,9 @@
     "toolbarComment": "Yorum ekle",
     "commentPlaceholder": "Yorum ekle…",
     "createdTooltip": "Oluşturulma: {date}, {time}",
-    "cancel": "İptal",
     "resolve": "Çöz",
     "edit": "Yorumu düzenle",
     "delete": "Yorumu sil",
-    "replyPlaceholder": "Yanıtla…",
     "attachAria": "Dosya ekle",
     "mentionAria": "Bir kişiden, sayfadan veya tarihten bahset",
     "sendAria": "Yorumu gönder",
@@ -856,13 +837,7 @@
       "code": "Kod"
     },
     "openImageAria": "{name} görselini aç",
-    "openAttachmentAria": "{name} ekini aç",
-    "kind": {
-      "comment": "Yorum",
-      "addition": "Ekleme",
-      "deletion": "Silme",
-      "substitution": "Değiştirme"
-    }
+    "openAttachmentAria": "{name} ekini aç"
   },
   "tagsRow": {
     "aria": "Etiketler",
@@ -884,7 +859,6 @@
   "properties": {
     "title": "Özellikler",
     "noteAria": "Not özellikleri",
-    "workspaceAria": "Çalışma alanı özellikleri",
     "listAria": "Özellikler listesi",
     "add": "Özellik ekle",
     "addDescription": "Bu nota yeni bir özellik ekleyin",
@@ -932,7 +906,6 @@
       "inProgress": "Devam ediyor",
       "done": "Tamamlandı"
     },
-    "projectAlreadySet": "Bu notun zaten bir proje özelliği var",
     "projectPlaceholder": "Proje yok",
     "projectSearch": "Projelerde ara",
     "projectEmpty": "Proje yok",
@@ -1159,18 +1132,10 @@
     },
     "componentsFolderViewFilterBuilder": {
       "filter": "Filtre",
-      "filters": "Filtreler",
-      "clearAll": "Tümünü temizle",
-      "noFiltersApplied": "Hiçbir filtre uygulanmadı",
-      "addFiltersToNarrowDownYourNotes": "Notlarınızı daraltmak için filtreler ekleyin",
       "match": "Eşleşme",
-      "allAnd": "Hepsi (VE)",
-      "anyOr": "Herhangi biri (VEYA)",
-      "ofTheFollowing": "aşağıdakilerden:",
       "match2": "Eşleşme",
       "all": "Tümü",
       "any": "Herhangi biri",
-      "of": ":",
       "addCondition": "Koşul ekle",
       "addFilter": "Filtre ekle",
       "addGroup": "Grup ekle",
@@ -1207,7 +1172,6 @@
       "available": "Kullanılabilir: ",
       "preview": "Önizleme",
       "fixExpressionErrorsToSeePreview": "Önizlemeyi görmek için ifade hatalarını düzeltin",
-      "usingNote": "Not kullanılıyor: \"",
       "cancel": "İptal",
       "namePlaceholder": "son_tarihe_kalan_gun",
       "expressionPlaceholder": "dateDiff(due_date, today(), \"days\")",
@@ -1235,10 +1199,7 @@
       "loadingFolders": "Klasörler yükleniyor…",
       "suggested": "ÖNERİLEN",
       "bestMatch": "En iyi eşleşme",
-      "current": "geçerli)",
       "allFolders": "TÜM KLASÖRLER",
-      "noFoldersMatch": "Eşleşen klasör yok \"",
-      "create": "Oluştur \"",
       "cancel": "İptal",
       "currentFolderBadge": "(geçerli)",
       "noFoldersMatchQuery": "“{query}” ile eşleşen klasör yok",
@@ -1262,24 +1223,11 @@
     "componentsFolderViewViewSwitcher": {
       "default": "varsayılan",
       "viewActions": "Görünüm işlemleri",
-      "rename": "Yeniden adlandır",
       "duplicate": "Çoğalt",
       "setAsDefault": "Varsayılan olarak ayarla",
       "delete": "Sil",
-      "createNewView": "Yeni görünüm oluştur",
-      "createNewView2": "Yeni görünüm oluştur",
-      "createANewViewWithCustomColumnsFiltersAndSorting": "Özel sütunlar, filtreler ve sıralamayla yeni bir görünüm oluşturun.",
-      "viewName": "Görünüm adı",
       "myCustomView": "Özel görünümüm",
-      "baseConfiguration": "Temel yapılandırma",
-      "copyFromCurrentView": "Geçerli görünümden kopyala",
-      "startFreshDefaultColumns": "Sıfırdan başla (varsayılan sütunlar)",
       "cancel": "İptal",
-      "renameView": "Görünümü yeniden adlandır",
-      "enterANewNameForThisView": "Bu görünüm için yeni bir ad girin.",
-      "viewName2": "Görünüm adı",
-      "viewName3": "Görünüm adı",
-      "cancel2": "İptal",
       "deleteView": "Görünümü sil",
       "areYouSureYouWantToDelete": "Silmek istediğinizden emin misiniz: \"",
       "thisActionCannotBeUndone": "Bu işlem geri alınamaz.",
@@ -1289,22 +1237,17 @@
       "layout": "Düzen",
       "table": "Tablo",
       "list": "Liste",
-      "gallery": "Galeri",
-      "createView": "Görünüm oluştur",
-      "save": "Kaydet"
+      "gallery": "Galeri"
     },
     "componentsNoteContentAreaFileBlock": {
       "failedToLoadPdf": "PDF yüklenemedi: ",
-      "download": "İndir",
       "download2": "İndir",
       "noFileAttached": "Dosya eklenmedi",
       "resizePdf": "PDF'yi yeniden boyutlandır",
       "resizeHtml": "Gömülü HTML'yi yeniden boyutlandır",
       "alignLeft": "Sola hizala",
       "alignCenter": "Ortaya hizala",
-      "alignRight": "Sağa hizala",
-      "previousPage": "Önceki sayfa",
-      "nextPage": "Sonraki sayfa"
+      "alignRight": "Sağa hizala"
     },
     "componentsNoteContentAreaTaskBlockTaskBlockRenderer": {
       "openInTaskPanel": "Görev panelinde aç",
@@ -1328,12 +1271,6 @@
       "letter85X11In": "Letter (8,5 x 11 inç)",
       "legal85X14In": "Legal (8,5 x 14 inç)"
     },
-    "componentsNoteInfoSectionEditorsDateeditor": {
-      "ddMmYyyy": "gg.aa.yyyy"
-    },
-    "componentsNoteNoteHeader": {
-      "synced": "Eşitlendi"
-    },
     "componentsSharedDocumentInfoTab": {
       "words": "Kelimeler",
       "characters": "Karakterler",
@@ -1352,14 +1289,6 @@
       "noBookmarksYet": "Henüz yer imi yok",
       "moreOptions": "Daha fazla seçenek",
       "remove": "Kaldır"
-    },
-    "componentsSidebarSidebarItemContextMenu": {
-      "open": "Aç",
-      "openToTheSide": "Yanda aç",
-      "pinToTabs": "Sekmelere sabitle",
-      "edit": "Düzenle",
-      "delete": "Sil",
-      "copyLink": "Bağlantıyı kopyala"
     },
     "componentsSidebarSidebarTagList": {
       "loadingTags": "Etiketler yükleniyor…",
@@ -1380,26 +1309,9 @@
       "cancel": "İptal"
     },
     "componentsSidebarTagDetailView": {
-      "goBack": "Geri dön",
-      "notes": "not",
-      "loadingNotes": "Notlar yükleniyor…",
-      "noNotesWithThisTag": "Bu etikete sahip not yok",
-      "addThisTagToANoteToSeeItHere": "Burada görmek için bu etiketi bir nota ekleyin",
-      "pinned": "SABİTLENENLER",
-      "allNotes": "TÜM NOTLAR",
-      "allNotesArePinned": "Tüm notlar sabitlendi",
-      "tasks": "GÖREVLER",
-      "unpinFromTag": "Etiketteki sabitlemeyi kaldır",
-      "unpin": "Sabitlemeyi kaldır",
-      "pinToTag": "Etikete sabitle",
-      "pin": "Sabitle",
       "tagActions": "Etiket işlemleri",
-      "editTagName": "Etiket adını düzenle",
       "changeColor": "Rengi değiştir",
-      "deleteTag": "Etiketi sil",
-      "recent": "En yeni",
-      "created": "Oluşturulma tarihi",
-      "alphabetical": "Alfabetik"
+      "deleteTag": "Etiketi sil"
     },
     "componentsSidebarTagRenameDialog": {
       "renameTag": "Etiketi yeniden adlandır",
@@ -1458,11 +1370,6 @@
     },
     "pagesFolderView": {
       "createNewNote": "Yeni not oluştur",
-      "viewSettings": "Görünüm ayarları",
-      "displayDensity": "Görünüm yoğunluğu",
-      "comfortable": "Rahat",
-      "compact": "Kompakt",
-      "showSummaries": "Özetleri göster",
       "cancel": "İptal"
     },
     "componentsFolderViewSortSelector": {
@@ -1566,7 +1473,6 @@
     "openHub": "Etiket merkezini aç"
   },
   "tagView": {
-    "moreActions": "Daha fazla işlem",
     "pin": {
       "action": "{count, plural, one {# notu} other {# notu}} etikete sabitle",
       "success": "{count, plural, one {# not} other {# not}} etikete sabitlendi",
@@ -1679,8 +1585,7 @@
     "saveDialogTitle": "Bu aramaya ad verin",
     "saveDialogPlaceholder": "ör. İş toplantıları",
     "cancel": "İptal",
-    "save": "Kaydet",
-    "addToFilterHint": "Filtreye eklemek için bir etikete Ctrl/Cmd ile tıklayın"
+    "save": "Kaydet"
   },
   "writingTools": {
     "chrome": {
@@ -2251,7 +2156,6 @@
       "writing": "Yazılıyor…",
       "writtenBy": "Yazan: {agent}",
       "retry": "Son çalıştırma başarısız oldu · Yeniden dene",
-      "retryAction": "Yeniden dene",
       "captionOff": "Ayarlar → Yapay zeka bölümünde Uzun notları özetle seçeneğini açın",
       "captionNoAgent": "Bağlı ajan yok · Ayarlar → Yapay zeka",
       "unknownAgent": "Yapay zeka"
