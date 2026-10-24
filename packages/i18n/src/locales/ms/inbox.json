@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, other {# item ditunda}}",
     "notificationBody": "{count, plural, =1 {Item anda yang ditunda sedia untuk disemak} other {Item anda yang ditunda sudah sedia}}",
     "toast": "{count, plural, =1 {“{itemTitle}” kembali selepas ditunda} other {# item yang ditunda sudah kembali}}"
+  },
+  "sticky": {
+    "kindLabel": "Hantar sebagai",
+    "kinds": {
+      "note": "Nota",
+      "task": "Tugas",
+      "journal": "Jurnal"
+    },
+    "placeholders": {
+      "note": "Catatkan di sini…",
+      "task": "Telefon Ana @esok #rumah !tinggi",
+      "journal": "Tambah ke jurnal hari ini…"
+    },
+    "saving": "Menyimpan…",
+    "saved": "Disimpan",
+    "saveFailed": "Tidak disimpan",
+    "tuck": "Simpan ke tepi",
+    "send": "Hantar",
+    "hints": "Esc simpan ke tepi · {mod}⌫ padam",
+    "sendAndCloseHint": "⌥{mod}↵ hantar dan tutup",
+    "deleted": "Draf dipadamkan",
+    "open": "Buka",
+    "undo": "Buat asal",
+    "sent": {
+      "note": "Disimpan ke folder Sticky",
+      "task": "Tugas ditambah",
+      "journal": "Ditambah ke jurnal hari ini"
+    },
+    "tab": {
+      "label": "{count, plural, other {# draf sticky}}",
+      "newSticky": "Sticky baharu"
+    },
+    "errors": {
+      "empty": "Tulis sesuatu dahulu.",
+      "taskFailed": "Tidak dapat membuat tugas.",
+      "tasksOff": "Tugas dimatikan dalam Tetapan.",
+      "journalOff": "Jurnal dimatikan dalam Tetapan.",
+      "sendFailed": "Tidak dapat menghantar sticky.",
+      "undoExpired": "Sudah terlambat untuk membuat asal.",
+      "undoFailed": "Tidak dapat membuat asal penghantaran."
+    },
+    "inputLabel": "Teks sticky",
+    "dismissError": "Tutup"
   }
 }

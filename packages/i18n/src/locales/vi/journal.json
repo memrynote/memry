@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Xóa mục nhật ký",
     "description": "Bạn có chắc muốn xóa “{title}” không? Không thể hoàn tác thao tác này."
+  },
+  "dayTimeline": {
+    "label": "Lịch trình trong ngày",
+    "allDay": "Mục cả ngày",
+    "unscheduled": "Chưa lên lịch",
+    "unscheduledEmpty": "Không có công việc chưa lên lịch. Kéo một khối vào đây để xóa giờ của nó.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Hoàn thành {title}"
   }
 }

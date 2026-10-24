@@ -195,6 +195,7 @@
     "complete-task": "Selesaikan {title}",
     "task-completed": "Tugas selesai",
     "could-not-complete": "Tidak dapat menyelesaikan tugas",
+    "could-not-update-status": "Tidak dapat menukar status tugas",
     "duration-minutes": "{minutes} min",
     "duration-hours": "{hours} j",
     "duration-hours-minutes": "{hours} j {minutes} min"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Tidak dapat membuka nota"
     }
   },
+  "eventNotes": {
+    "heading": "Nota",
+    "create": "Nota baharu",
+    "link": "Pautkan nota",
+    "untitled": "Nota mesyuarat",
+    "searchPlaceholder": "Cari nota",
+    "noResults": "Tiada nota ditemui",
+    "createFailed": "Tidak dapat membuat nota untuk acara ini.",
+    "linkFailed": "Tidak dapat memautkan nota ke acara ini.",
+    "loadFailed": "Tidak dapat memuatkan nota yang dipautkan ke acara ini.",
+    "propertyTaken": "Nota ini sudah mempunyai sifat \"{name}\" yang bukan pautan."
+  },
   "notePopover": {
     "kind": "Nota",
     "kindDateReminder": "Peringatan tarikh",
@@ -254,6 +267,10 @@
     "overdue": "lewat tempoh",
     "untitled": "Tanpa tajuk",
     "days": "{count, plural, other {# hari}}",
+    "subtasks": {
+      "expand": "Tunjukkan {count, plural, other {# subtugas}} bagi {title}",
+      "collapse": "Sembunyikan {count, plural, other {# subtugas}} bagi {title}"
+    },
     "events": "Acara",
     "schedule-hint": "Klik untuk menetapkan tarikh, seret untuk menetapkan julat",
     "empty-title": "Tiada apa-apa pada garis masa di sini",

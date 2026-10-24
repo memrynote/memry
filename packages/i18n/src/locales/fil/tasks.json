@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {Na-clear ang takdang petsa ng # subtask} other {Na-clear ang takdang petsa ng # subtask}}",
       "prioritySet": "{count, plural, one {Itinakda ang priyoridad ng # subtask} other {Itinakda ang priyoridad ng # subtask}}",
       "deleted": "{count, plural, one {Tinanggal ang # subtask} other {Tinanggal ang # subtask}}"
-    }
+    },
+    "completedBranch": "Natapos ang {title} at {count, plural, one {# bukas na subtask} other {# bukas na subtask}}",
+    "deletedKeepSubtasks": "Natanggal ang {title} at itinira ang mga subtask nito",
+    "deletedBranch": "Natanggal ang {title} at {count, plural, one {# subtask} other {# subtask}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "katayuan",
       "projectIs": "Proyekto:",
       "project": "proyekto",
+      "locationIs": "Ang lokasyon ay",
+      "location": "lokasyon",
+      "unknownNote": "Hindi kilalang tala",
       "due": "Takda:",
       "dueDate": "takdang petsa",
       "search": "paghahanap",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "Takdang petsa"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "Lokasyon",
+      "search": "Maghanap ng mga folder at tala...",
+      "empty": "Walang folder o tala na may mga gawain"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "Priyoridad",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "Mga view ng proyekto",
       "overview": "Buod",
+      "all": "Lahat",
       "tasks": "Mga gawain",
       "notes": "Mga tala",
       "files": "Mga file",
@@ -951,6 +963,25 @@
       "fileError": "Hindi ma-link ang {name}",
       "fileErrorGeneric": "Hindi ma-import ang mga file",
       "label": "Idagdag sa {name}"
+    },
+    "all": {
+      "showDone": "Ipakita ang tapos na",
+      "empty": "Walang bukas sa proyektong ito.",
+      "expand": "Ipakita ang mga gawain sa {title}",
+      "collapse": "Itago ang mga gawain sa {title}",
+      "taskSummary": "{open}/{total} bukas",
+      "daysLeft": "{count}d",
+      "overdue": "{count}d na overdue",
+      "columns": {
+        "title": "Pamagat",
+        "daysLeft": "Natitirang araw"
+      },
+      "status": {
+        "active": "Aktibo",
+        "done": "Tapos na",
+        "upcoming": "Paparating",
+        "past": "Nakaraan"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "Indigo",
     "purple": "Lila",
     "pink": "Rosas"
+  },
+  "subtaskTree": {
+    "addSubtask": "Magdagdag ng subtask",
+    "dropInto": "Sa loob ng {title}",
+    "dropOut": "Lumabas ng isang antas",
+    "draftPlaceholder": "Pamagat ng subtask",
+    "draftLabel": "Bagong subtask sa {title}",
+    "draftIn": "sa {title}",
+    "toggleComplete": "Tapusin ang {title}",
+    "moveUnder": {
+      "title": "Ilipat sa ilalim ng",
+      "placeholder": "Ilipat sa ilalim ng…",
+      "empty": "Walang katugmang gawain",
+      "topLevel": "Pinakataas na antas ng {project}",
+      "thisTask": "Ang gawaing ito",
+      "currentParent": "Kasalukuyang parent",
+      "movesOne": "Ililipat ang {title}",
+      "movesBranch": "Ililipat ang {title} at {count, plural, one {# subtask} other {# subtask}}",
+      "keys": "↵ Ilipat dito · ⌘↵ Pinakataas na antas · esc Isara"
+    },
+    "zoom": {
+      "path": "Path ng gawain",
+      "up": "Umakyat ng isang antas",
+      "upShortcut": "Umakyat ng isang antas (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "Tanggalin ang {title}?",
+      "summary": "{direct, plural, one {May # subtask ito} other {May # subtask ito}}{deeper, plural, =0 {} one { at # pa sa ilalim nito} other { at # pa sa ilalim ng mga ito}}{open, plural, =0 {, tapos na lahat.} other {, # ang bukas pa.}}",
+      "cancel": "Kanselahin",
+      "deleteAll": "Tanggalin lahat",
+      "keepSubtasks": "Itira ang mga subtask"
+    },
+    "menu": {
+      "open": "Buksan",
+      "complete": "Tapusin",
+      "reopen": "Buksan ulit",
+      "zoom": "I-zoom ang mga subtask",
+      "moveUnder": "Ilipat sa ilalim ng…",
+      "indent": "Ilipat sa ilalim ng {title}",
+      "outdent": "Ilabas ng isang antas",
+      "topLevel": "Gawing pinakataas na gawain",
+      "delete": "Tanggalin"
+    },
+    "openPath": "Buksan ang {path}"
   }
 }

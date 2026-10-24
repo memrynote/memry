@@ -195,6 +195,7 @@
     "complete-task": "Selesaikan {title}",
     "task-completed": "Tugas selesai",
     "could-not-complete": "Tidak dapat menyelesaikan tugas",
+    "could-not-update-status": "Tidak dapat mengubah status tugas",
     "duration-minutes": "{minutes} mnt",
     "duration-hours": "{hours} jam",
     "duration-hours-minutes": "{hours} jam {minutes} mnt"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Tidak dapat membuka catatan"
     }
   },
+  "eventNotes": {
+    "heading": "Catatan",
+    "create": "Catatan baru",
+    "link": "Tautkan catatan",
+    "untitled": "Catatan rapat",
+    "searchPlaceholder": "Cari catatan",
+    "noResults": "Catatan tidak ditemukan",
+    "createFailed": "Tidak dapat membuat catatan untuk acara ini.",
+    "linkFailed": "Tidak dapat menautkan catatan ke acara ini.",
+    "loadFailed": "Tidak dapat memuat catatan yang tertaut ke acara ini.",
+    "propertyTaken": "Catatan ini sudah memiliki properti \"{name}\" yang bukan tautan."
+  },
   "notePopover": {
     "kind": "Catatan",
     "kindDateReminder": "Pengingat tanggal",
@@ -254,6 +267,10 @@
     "overdue": "terlambat",
     "untitled": "Tanpa judul",
     "days": "{count, plural, other {# hari}}",
+    "subtasks": {
+      "expand": "Tampilkan {count, plural, other {# subtugas}} dari {title}",
+      "collapse": "Sembunyikan {count, plural, other {# subtugas}} dari {title}"
+    },
     "events": "Acara",
     "schedule-hint": "Klik untuk mengatur tanggal, seret untuk mengatur rentang",
     "empty-title": "Tidak ada apa pun di lini masa ini",

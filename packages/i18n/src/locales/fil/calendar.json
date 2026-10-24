@@ -195,6 +195,7 @@
     "complete-task": "Tapusin ang {title}",
     "task-completed": "Tapos na ang gawain",
     "could-not-complete": "Hindi mamarkahang tapos na ang gawain",
+    "could-not-update-status": "Hindi mabago ang katayuan ng gawain",
     "duration-minutes": "{minutes}m",
     "duration-hours": "{hours}h",
     "duration-hours-minutes": "{hours}h {minutes}m"
@@ -236,6 +237,18 @@
       "could-not-open-note": "Hindi mabuksan ang tala"
     }
   },
+  "eventNotes": {
+    "heading": "Mga tala",
+    "create": "Bagong tala",
+    "link": "I-link ang tala",
+    "untitled": "Tala ng pulong",
+    "searchPlaceholder": "Maghanap ng mga tala",
+    "noResults": "Walang nahanap na tala",
+    "createFailed": "Hindi makagawa ng tala para sa kaganapang ito.",
+    "linkFailed": "Hindi mai-link ang tala sa kaganapang ito.",
+    "loadFailed": "Hindi ma-load ang mga talang naka-link sa kaganapang ito.",
+    "propertyTaken": "May property na \"{name}\" na ang talang ito na hindi link."
+  },
   "notePopover": {
     "kind": "Tala",
     "kindDateReminder": "Paalala sa petsa",
@@ -254,6 +267,10 @@
     "overdue": "lampas na sa takdang petsa",
     "untitled": "Walang pamagat",
     "days": "{count, plural, one {# araw} other {# araw}}",
+    "subtasks": {
+      "expand": "Ipakita ang {count, plural, one {# subtask} other {# subtask}} ng {title}",
+      "collapse": "Itago ang {count, plural, one {# subtask} other {# subtask}} ng {title}"
+    },
     "events": "Mga kaganapan",
     "schedule-hint": "I-click para magtakda ng petsa, i-drag para magtakda ng saklaw",
     "empty-title": "Walang nasa timeline dito",

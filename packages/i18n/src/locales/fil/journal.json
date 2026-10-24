@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "Tanggalin ang entry sa talaarawan",
     "description": "Sigurado ka bang gusto mong tanggalin ang “{title}”? Hindi na ito maibabalik."
+  },
+  "dayTimeline": {
+    "label": "Iskedyul ng araw",
+    "allDay": "Mga item sa buong araw",
+    "unscheduled": "Walang iskedyul",
+    "unscheduledEmpty": "Walang gawaing walang iskedyul. I-drag ang isang block dito para alisin ang oras nito.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "Tapusin ang {title}"
   }
 }

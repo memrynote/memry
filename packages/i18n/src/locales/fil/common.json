@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Hindi makopya ang portal",
+    "hiddenCount": "{count} ang nakatago",
+    "windowFailed": "Hindi mabuksan ang portal na ito. Buksan na lang ang pinagmulang tala.",
+    "noTarget": "Wala pang target ang portal na ito. Magdagdag ng tala sa definition, o alisin ang block.",
+    "invalidJson": "Hindi valid na JSON ang definition ng portal na ito. Ayusin ito sa ibaba, o alisin ang block.",
+    "invalidShape": "Walang tala o paghahanap ang definition ng portal na ito. Ayusin ito sa ibaba, o alisin ang block.",
+    "search": {
+      "editQuery": "I-edit ang query",
+      "count": "{count, plural, one {# block} other {# block}}",
+      "loading": "Naghahanap…",
+      "empty": "Walang block na tumutugma sa query na ito.",
+      "failed": "Hindi tumakbo ang paghahanap.",
+      "retry": "Subukan ulit",
+      "truncated": "Ipinapakita ang unang {count} na tugma."
+    },
+    "copiedContents": "Nakopya ang nilalaman",
+    "copiedLink": "Nakopya ang link",
+    "actionFailed": "Hindi mabago ang portal na ito",
+    "keepsOneBlock": "Nananatili ang kahit isang block sa portal. Alisin na lang ang portal.",
+    "expandChildren": "Ipakita ang mga child",
+    "collapseChildren": "Itago ang mga child",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Isama ang “{block}”",
+      "locked": "Naka-lock ang {note} · read only",
+      "more": "Higit pa",
+      "openBeside": "Buksan ang {note} sa tabi",
+      "click": "I-click",
+      "copyContents": "Kopyahin ang nilalaman",
+      "copyLink": "Kopyahin ang link",
+      "remove": "Alisin ang portal",
+      "removeHint": "Nananatili ang bawat block ng {note}"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Natanggal ang pinagmulang tala. Nananatili ang reference.",
+        "action": "Alisin"
+      },
+      "missingBlock": {
+        "text": "Natanggal ang block sa {source}.",
+        "action": "Pumili ng iba"
+      },
+      "notSynced": {
+        "text": "Naghihintay na mag-sync ang pinagmulang tala.",
+        "action": "Subukan ulit"
+      },
+      "cycle": {
+        "text": "Bumabalik sa sarili ang portal na ito.",
+        "action": "Buksan ang pinagmulan"
+      },
+      "tooDeep": {
+        "text": "Hanggang {max} antas ang lalim ng mga portal. Magbubukas na lang ito bilang link.",
+        "action": "Buksan ang pinagmulan"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "I-focus ang field ng pagtatala",
@@ -43,6 +100,50 @@
     "showInFileManager": "Ipakita sa file manager",
     "openInDefaultApp": "Buksan sa default na app",
     "revealFailed": "Hindi maipakita sa folder"
+  },
+  "commands": {
+    "runFailed": "Hindi tumakbo ang command na iyon. Subukan ulit."
+  },
+  "commandsPalette": {
+    "title": "Mga command",
+    "placeholder": "Mag-type ng command…",
+    "groups": {
+      "navigation": "Nabigasyon",
+      "create": "Gumawa",
+      "tabs": "Mga tab",
+      "editor": "Editor",
+      "view": "View",
+      "app": "App",
+      "note": "Tala",
+      "settings": "Mga setting",
+      "sync": "Sync",
+      "help": "Tulong",
+      "project": "Proyekto",
+      "tasks": "Mga gawain",
+      "canvas": "Canvas",
+      "folder": "Folder",
+      "file": "File"
+    },
+    "contexts": {
+      "note": "Ang talang ito",
+      "journal": "Ang talaarawang ito",
+      "project": "Ang proyektong ito",
+      "tasks": "Ang mga gawaing ito",
+      "canvas": "Ang canvas na ito",
+      "folder": "Ang folder na ito",
+      "tag": "Ang tag na ito",
+      "file": "Ang file na ito"
+    },
+    "recent": "Kamakailan",
+    "empty": "Walang command na tumutugma sa “{query}”",
+    "searchHint": "Maghanap ng mga tala: {shortcut}",
+    "status": {
+      "count": "{count, plural, one {# command} other {# command}}"
+    },
+    "actions": {
+      "run": "Patakbuhin",
+      "searchNotes": "Maghanap ng mga tala"
+    }
   },
   "tabs": {
     "pin": "I-pin ang tab",
@@ -131,6 +232,20 @@
     "openInTab": "Buksan ang usapan sa tab",
     "stop": "Ihinto",
     "thinking": "Nag-iisip ang agent",
+    "toolsUnavailable": "Naka-off ang mga tool ng vault para sa model na ito. Bumagsak ito sa tool check, kaya makakapag-chat lang ito.",
+    "toolsUnavailableWithDetail": "Naka-off ang mga tool ng vault para sa model na ito. Bumagsak ito sa tool check, kaya makakapag-chat lang ito. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Naka-off ang mga tool ng vault para sa model na ito. Tinanggihan ng provider ang test request na may kasamang mga tool, kaya makakapag-chat lang ang model.",
+      "noToolCall": "Naka-off ang mga tool ng vault para sa model na ito. Sumagot ito sa test request nang hindi tinatawag ang tool, kaya makakapag-chat lang ito.",
+      "toolResultRejected": "Naka-off ang mga tool ng vault para sa model na ito. Tumawag ito ng test tool pero nabigo matapos makuha ang resulta, kaya makakapag-chat lang ito.",
+      "streamingUnsupported": "Naka-off ang mga tool ng vault para sa model na ito. Hindi nag-stream ang provider ng test reply, kaya makakapag-chat lang ang model.",
+      "providerSaid": "Sabi ng provider: {detail}",
+      "wroteToolCall": "Isinulat ng model ang tool call bilang teksto, at walang tumakbo."
+    },
+    "stepLimit": {
+      "notice": "Huminto sa limitasyon ng hakbang.",
+      "continue": "Magpatuloy"
+    },
     "enable": {
       "title": "I-on ang memrynote Agent",
       "description": "Ginagamit ng memrynote Agent ang napili mong lokal na agent CLI para makipag-chat tungkol sa vault mo. Ipinapadala ng Claude ang mga mensahe sa Anthropic; ipinapadala ng Codex ang mga mensahe sa OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Magdagdag ng konteksto",
       "addContextWithPermissions": "Magdagdag ng konteksto ({permissions})",
       "mentionContext": "Banggitin ang isang tala, gawain, o kaganapan",
+      "files": {
+        "attach": "Mag-attach ng text file",
+        "refused": {
+          "unsupportedType": "Hindi suportadong text file ang {name}. Mag-attach ng .txt, .md, .log, .csv, .tsv, .json, .yaml o .yml na file.",
+          "notText": "Hindi UTF-8 na text file ang {name}. Mag-attach na lang ng text file.",
+          "tooLarge": "Lalampas sa limitasyong 100 KB ang mensaheng ito dahil sa {name}. Mag-alis ng file o mag-attach ng mas maliit.",
+          "readFailed": "Hindi mabasa ang {name}. Tiyaking nariyan pa ang file at mabubuksan mo ito, tapos i-attach ulit."
+        }
+      },
       "voice": {
         "start": "Simulan ang pagdidikta gamit ang boses",
         "stop": "Ihinto ang pagdidikta gamit ang boses",
@@ -340,6 +464,14 @@
           "extraHigh": "Napakataas"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Default",
+          "default": "Default na lalim",
+          "high": "Mataas",
+          "max": "Max"
+        }
+      },
       "permissionsLabel": "Mga pahintulot ng agent: {access}, paghahanap sa web {webSearch}",
       "permissions": {
         "label": "Mga pahintulot",
@@ -347,6 +479,17 @@
         "tools": "Mga tool"
       },
       "modelSettingsLabel": "Mga setting ng modelo ng agent: {model}, {settings}",
+      "queue": {
+        "label": "Mga mensaheng nakapila",
+        "queueMessage": "Ipila ang mensahe",
+        "edit": "I-edit ang nakapilang mensahe",
+        "editLabel": "Teksto ng nakapilang mensahe",
+        "remove": "Alisin ang nakapilang mensahe",
+        "save": "I-save",
+        "cancel": "Kanselahin",
+        "sending": "Ipinapadala…",
+        "notSent": "Hindi naipadala. I-edit para ipadala ulit, o alisin ito."
+      },
       "unavailable": {
         "vaultToolsOnly": "Mga tool ng vault lang sa model na ito"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Hindi ma-save ang pagtanggap mo sa paunawa",
       "resolveWindow": "Hindi matukoy ang window na pinagmulan ng agent",
       "detectCli": "Hindi matukoy ang mga backend ng agent",
-      "loadDisclosure": "Hindi ma-load ang katayuan ng paunawa"
+      "loadDisclosure": "Hindi ma-load ang katayuan ng paunawa",
+      "turnFailed": "Huminto ang sagot dahil sa error. Nananatili ang mensahe mo, kaya maaari mo itong ipadala ulit."
     },
     "actions": {
       "copy": "Kopyahin",
@@ -576,6 +720,7 @@
       "newFolder2": "Bagong folder",
       "newProject": "Bagong proyekto",
       "bookmarks": "Mga bookmark",
+      "chart": "Chart",
       "tags": "Mga tag",
       "reorderSection": "Baguhin ang pagkakasunod ng {section}",
       "dropFilesToImport": "I-drop ang mga file para i-import",
@@ -863,6 +1008,11 @@
       "cancel": "Kanselahin",
       "remove2": "Alisin",
       "inYourAccount": "Sa iyong account",
+      "trySandbox": "Subukan ang sandbox vault",
+      "sandboxVault": "Sandbox vault",
+      "sandboxPreparing": "Inihahanda ang sandbox…",
+      "sandboxFailed": "Hindi maihanda ang sandbox vault",
+      "resetSandbox": "I-reset ang sandbox vault",
       "itemsCount": "{count} item",
       "untitledVault": "Vault",
       "downloadVaultTitle": "I-download ang “{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Lalabas dito ang mga talang binubuksan mo",
       "bookmarks": "Mga bookmark",
       "tasks": "Mga gawain",
+      "chart": "Chart",
       "calendar": "Kalendaryo",
       "calendarToday": "Ngayong araw",
       "openCalendar": "Buksan ang Kalendaryo",
@@ -978,6 +1129,9 @@
     "edit": "I-edit",
     "done": "Tapos na",
     "addWidget": "Magdagdag ng widget",
+    "cover": {
+      "add": "Magdagdag ng cover"
+    },
     "empty": {
       "title": "Walang laman ang iyong board",
       "body": "Pinagsasama ng mga widget ang iyong mga tala, gawain, at bookmark sa isang panatag na lugar.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Palitan ang icon…",
     "resetIcon": "I-reset ang icon",
     "iconButton": "Palitan ang icon ng {name}",
+    "leaveSandbox": "Bumalik sa {name}",
     "iconFailed": "Hindi mapalitan ang icon ng vault"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Uri",
     "filterModified": "Binago",
     "matches": "Mga tugma",
+    "matchesMore": "{count, plural, one {# pang tugma} other {# pang tugma}}",
+    "matchesHide": "Itago ang mga tugma",
+    "matchOf": "Tugma {index} sa {total}",
     "showMore": "Ipakita ang {count} pa",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Susunod na seksyon",
       "open": "Buksan",
       "openNote": "Buksan ang tala",
+      "openAtMatch": "Buksan sa tugma",
       "openFile": "Buksan ang file",
       "openJournal": "Buksan ang talaarawan",
       "openTask": "Buksan ang gawain",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Pumili ng tag",
       "addTag": "Idagdag ang tag",
       "showAll": "Ipakita lahat",
+      "hideMatches": "Itago ang mga tugma",
       "searchEverywhere": "Maghanap sa lahat",
       "clearFilters": "I-clear ang mga filter"
     },

@@ -305,7 +305,10 @@
       "dueDateCleared": "{count, plural, one {תאריך היעד הוסר מתת-משימה אחת} other {תאריך היעד הוסר מ-# תת-משימות}}",
       "prioritySet": "{count, plural, one {העדיפות נקבעה עבור תת-משימה אחת} other {העדיפות נקבעה עבור # תת-משימות}}",
       "deleted": "{count, plural, one {תת-משימה אחת נמחקה} other {# תת-משימות נמחקו}}"
-    }
+    },
+    "completedBranch": "{title} הושלמה, וגם {count, plural, one {תת-משימה פתוחה אחת} other {# תת-משימות פתוחות}}",
+    "deletedKeepSubtasks": "{title} נמחקה, ותת-המשימות שלה נשמרו",
+    "deletedBranch": "{title} נמחקה, וגם {count, plural, one {תת-משימה אחת} other {# תת-משימות}}"
   },
   "phaseF": {
     "componentsTasksAddSubtaskInput": {
@@ -564,6 +567,9 @@
       "status": "סטטוס",
       "projectIs": "פרויקט:",
       "project": "פרויקט",
+      "locationIs": "המיקום הוא",
+      "location": "מיקום",
+      "unknownNote": "פתק לא מוכר",
       "due": "יעד",
       "dueDate": "תאריך יעד",
       "search": "חיפוש",
@@ -584,6 +590,11 @@
     },
     "componentsTasksFiltersFilterPanelsDueDatePanel": {
       "dueDate": "תאריך יעד"
+    },
+    "componentsTasksFiltersFilterPanelsLocationPanel": {
+      "location": "מיקום",
+      "search": "חיפוש בתיקיות ובפתקים...",
+      "empty": "אין תיקיות או פתקים עם משימות"
     },
     "componentsTasksFiltersFilterPanelsPriorityPanel": {
       "priority": "עדיפות",
@@ -897,6 +908,7 @@
     "tabs": {
       "label": "תצוגות פרויקט",
       "overview": "סקירה",
+      "all": "הכול",
       "tasks": "משימות",
       "notes": "פתקים",
       "files": "קבצים",
@@ -951,6 +963,25 @@
       "fileError": "לא ניתן היה לקשר את {name}",
       "fileErrorGeneric": "לא ניתן היה לייבא את הקבצים",
       "label": "הוספה ל-{name}"
+    },
+    "all": {
+      "showDone": "הצגת משימות שהושלמו",
+      "empty": "אין דבר פתוח בפרויקט הזה.",
+      "expand": "הצגת המשימות ב-{title}",
+      "collapse": "הסתרת המשימות ב-{title}",
+      "taskSummary": "{open}/{total} פתוחות",
+      "daysLeft": "{count} ימים",
+      "overdue": "באיחור של {count} ימים",
+      "columns": {
+        "title": "כותרת",
+        "daysLeft": "ימים שנותרו"
+      },
+      "status": {
+        "active": "פעיל",
+        "done": "הושלם",
+        "upcoming": "קרוב",
+        "past": "עבר"
+      }
     }
   },
   "project": {
@@ -1001,5 +1032,49 @@
     "indigo": "אינדיגו",
     "purple": "סגול",
     "pink": "ורוד"
+  },
+  "subtaskTree": {
+    "addSubtask": "הוספת תת-משימה",
+    "dropInto": "לתוך {title}",
+    "dropOut": "החוצה ברמה אחת",
+    "draftPlaceholder": "כותרת תת-המשימה",
+    "draftLabel": "תת-משימה חדשה ב-{title}",
+    "draftIn": "ב-{title}",
+    "toggleComplete": "השלמת {title}",
+    "moveUnder": {
+      "title": "העברה לתחת",
+      "placeholder": "העברה לתחת…",
+      "empty": "אין משימה תואמת",
+      "topLevel": "הרמה העליונה של {project}",
+      "thisTask": "המשימה הזו",
+      "currentParent": "האב הנוכחי",
+      "movesOne": "מעביר את {title}",
+      "movesBranch": "מעביר את {title} וגם {count, plural, one {תת-משימה אחת} other {# תת-משימות}}",
+      "keys": "↵ העברה לכאן · ⌘↵ רמה עליונה · esc סגירה"
+    },
+    "zoom": {
+      "path": "נתיב המשימה",
+      "up": "רמה אחת למעלה",
+      "upShortcut": "רמה אחת למעלה (⌘↑)"
+    },
+    "deleteParent": {
+      "title": "למחוק את {title}?",
+      "summary": "{direct, plural, one {יש בה תת-משימה אחת} other {יש בה # תת-משימות}}{deeper, plural, =0 {} one { ועוד אחת מתחתיהן} other { ועוד # מתחתיהן}}{open, plural, =0 {, וכולן הושלמו.} other {, ו-# עדיין פתוחות.}}",
+      "cancel": "ביטול",
+      "deleteAll": "מחיקת הכול",
+      "keepSubtasks": "שמירת תת-המשימות"
+    },
+    "menu": {
+      "open": "פתיחה",
+      "complete": "השלמה",
+      "reopen": "פתיחה מחדש",
+      "zoom": "התמקדות בתת-המשימות",
+      "moveUnder": "העברה לתחת…",
+      "indent": "העברה לתחת {title}",
+      "outdent": "העברה החוצה ברמה אחת",
+      "topLevel": "הפיכה למשימה ברמה העליונה",
+      "delete": "מחיקה"
+    },
+    "openPath": "פתיחת {path}"
   }
 }

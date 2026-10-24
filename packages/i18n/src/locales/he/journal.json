@@ -248,5 +248,14 @@
   "deleteConfirm": {
     "title": "מחיקת רשומת יומן",
     "description": "למחוק את \"{title}\"? אי אפשר לבטל את הפעולה."
+  },
+  "dayTimeline": {
+    "label": "לוח הזמנים של היום",
+    "allDay": "פריטים של כל היום",
+    "unscheduled": "ללא תזמון",
+    "unscheduledEmpty": "אין משימות ללא תזמון. אפשר לגרור בלוק לכאן כדי לנקות את השעה שלו.",
+    "range": "{start} – {end}",
+    "openTask": "{title}, {range}",
+    "completeTask": "השלמת {title}"
   }
 }

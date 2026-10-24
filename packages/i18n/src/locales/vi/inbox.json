@@ -551,5 +551,48 @@
     "notificationTitle": "{count, plural, other {# mục đã tạm ẩn}}",
     "notificationBody": "{count, plural, other {Mục đã tạm ẩn giờ đã sẵn sàng để xem lại}}",
     "toast": "{count, plural, =1 {“{itemTitle}” đã hiện lại} other {# mục tạm ẩn đã hiện lại}}"
+  },
+  "sticky": {
+    "kindLabel": "Gửi dưới dạng",
+    "kinds": {
+      "note": "Ghi chú",
+      "task": "Công việc",
+      "journal": "Nhật ký"
+    },
+    "placeholders": {
+      "note": "Ghi nhanh lại…",
+      "task": "Gọi cho Ana @tomorrow #home !high",
+      "journal": "Thêm vào nhật ký hôm nay…"
+    },
+    "saving": "Đang lưu…",
+    "saved": "Đã lưu",
+    "saveFailed": "Chưa lưu",
+    "tuck": "Cất đi",
+    "send": "Gửi",
+    "hints": "Esc cất đi · {mod}⌫ xóa",
+    "sendAndCloseHint": "⌥{mod}↵ gửi và đóng",
+    "deleted": "Đã xóa bản nháp",
+    "open": "Mở",
+    "undo": "Hoàn tác",
+    "sent": {
+      "note": "Đã lưu vào thư mục Sticky",
+      "task": "Đã thêm công việc",
+      "journal": "Đã thêm vào nhật ký hôm nay"
+    },
+    "tab": {
+      "label": "{count, plural, other {# bản nháp sticky}}",
+      "newSticky": "Sticky mới"
+    },
+    "errors": {
+      "empty": "Hãy viết gì đó trước.",
+      "taskFailed": "Không thể tạo công việc.",
+      "tasksOff": "Công việc đã bị tắt trong Cài đặt.",
+      "journalOff": "Nhật ký đã bị tắt trong Cài đặt.",
+      "sendFailed": "Không thể gửi sticky.",
+      "undoExpired": "Đã quá muộn để hoàn tác.",
+      "undoFailed": "Không thể hoàn tác việc gửi."
+    },
+    "inputLabel": "Nội dung sticky",
+    "dismissError": "Bỏ qua"
   }
 }
