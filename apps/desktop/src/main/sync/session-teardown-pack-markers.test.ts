@@ -76,7 +76,7 @@ describe('sign-out and the pack settle markers', () => {
       .from(syncState)
       .all()
       .map((row) => row.key)
-      .sort()
+      .toSorted()
     expect(keys).toEqual([
       'packSeedSettlePending',
       'packSeeded:j2026-09-26',

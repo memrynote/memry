@@ -128,11 +128,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db
-      .select()
-      .from(propertyDefinitions)
-      .where(eq(propertyDefinitions.name, itemId))
-      .get() as Record<string, unknown> | undefined
+    return db.select().from(propertyDefinitions).where(eq(propertyDefinitions.name, itemId)).get()
   }
 
   buildPushPayload(
@@ -168,6 +164,7 @@ class PropertyDefinitionHandler extends BaseItemHandler<PropertyDefinitionSyncPa
       .from(propertyDefinitions)
       .where(isNull(propertyDefinitions.clock))
       .all()
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload type is a plain string; isPersistableDefinitionType is the runtime check that narrows it
       .filter((item) => isPersistableDefinitionType(item.type as PropertyType))
     for (const item of items) {
       const clock = nextLocalClock(db, 'property_definition', item.name, null, deviceId, 'create')

@@ -248,8 +248,8 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
     const cached = getNoteMetadataById(db, itemId)
-    if (!cached || !cached.journalDate) return undefined
-    return cached as unknown as Record<string, unknown>
+    if (!cached?.journalDate) return undefined
+    return cached
   }
 
   buildPushPayload(
@@ -259,7 +259,7 @@ class JournalHandler extends BaseItemHandler<JournalSyncPayload> {
     operation: string
   ): string | null {
     const cached = getNoteMetadataById(db, itemId)
-    if (!cached || !cached.journalDate) return null
+    if (!cached?.journalDate) return null
 
     let content: string | null = null
     let tags: string[] = []

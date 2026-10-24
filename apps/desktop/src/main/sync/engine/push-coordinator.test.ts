@@ -946,7 +946,7 @@ describe('PushCoordinator', () => {
       expect(markPushSynced).toHaveBeenCalledWith(expect.anything(), 'task-ok')
       expect(stateManager.emitItemSynced).toHaveBeenCalledWith('task-ok', 'task', 'push')
       const left = queue.peek()
-      expect(left.map((row) => row.itemId).sort()).toEqual(['task-bad', 'task-big'])
+      expect(left.map((row) => row.itemId).toSorted()).toEqual(['task-bad', 'task-big'])
       expect(left.every((row) => row.attempts === 1)).toBe(true)
     })
 
@@ -1393,6 +1393,7 @@ describe('PushCoordinator', () => {
       ctx.syncing = true
       ctx.inFlightSync = new Promise<void>((resolve) => {
         endCycle = resolve
+        // oxlint-disable-next-line promise/always-return -- the cycle promise resolves void, as the engine's own inFlightSync does
       }).then(() => {
         ctx.syncing = false
         ctx.inFlightSync = null

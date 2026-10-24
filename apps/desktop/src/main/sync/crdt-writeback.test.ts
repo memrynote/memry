@@ -978,6 +978,7 @@ describe('crdt writeback', () => {
 
     beforeEach(() => {
       vaultFile = ''
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
       mocks.yDocToMarkdown.mockImplementation(async (doc: Y.Doc) => doc.getText('body').toString())
       mocks.safeRead.mockImplementation(async () => vaultFile)
       // The index has read whatever is on disk right now, so the external-edit
@@ -1014,6 +1015,7 @@ describe('crdt writeback', () => {
       // what makes this safe: a destroyed Y.Doc keeps its store readable, so
       // the stale pass would serialize it just fine.
       closedDoc.destroy()
+      // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
       expect(closedDoc.getText('body').toString()).toBe('paragraph one')
 
       await vi.advanceTimersByTimeAsync(500)

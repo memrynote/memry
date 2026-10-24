@@ -138,6 +138,7 @@ async function writeNoteFileNowAsync(absolutePath: string, content: string): Pro
 }
 
 function isMissingFileError(err: unknown): boolean {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   return (err as NodeJS.ErrnoException | null)?.code === 'ENOENT'
 }
 
@@ -532,12 +533,16 @@ function settleLanded(landed: ReadonlySet<string>): void {
 }
 
 function extractRawClient(db: DrizzleDb): Database.Database | null {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   const candidate = (db as { $client?: unknown }).$client
   if (
     candidate &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     typeof (candidate as Database.Database).exec === 'function' &&
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     typeof (candidate as Database.Database).inTransaction === 'boolean'
   ) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
     return candidate as Database.Database
   }
   // Test stubs and non-better-sqlite3 shims land here: the page still applies,
@@ -672,8 +677,10 @@ export function replayBulkApplyJournal(): void {
     } else if (
       parsed &&
       typeof parsed === 'object' &&
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
       Array.isArray((parsed as JournalFile).entries)
     ) {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
       const journal = parsed as JournalFile
       if (typeof journal.writtenAt === 'number') writtenAt = journal.writtenAt
       entries = journal.entries.filter(isPendingVaultFileOp)
@@ -722,9 +729,12 @@ export function replayBulkApplyJournal(): void {
 
 /** Entries of a kind this build does not know are skipped, like older builds skip deletes. */
 function isPendingVaultFileOp(e: unknown): e is PendingVaultFileOp {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   if (!e || typeof (e as PendingVaultFileOp).absolutePath !== 'string') return false
   const kind = (e as { kind?: unknown }).kind
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   if (kind === 'delete') return typeof (e as PendingVaultFileDelete).deferredAt === 'number'
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
   return kind === undefined && typeof (e as PendingNoteFileWrite).content === 'string'
 }
 

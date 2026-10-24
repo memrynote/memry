@@ -4,6 +4,7 @@ import { encryptItemForPush } from './encrypt'
 import { decryptItemFromPull, type DecryptItemInput } from './decrypt'
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   await sodium.ready
 })
 
@@ -14,6 +15,7 @@ function generateTestKeys() {
     vaultKey,
     signingSecretKey: keyPair.privateKey,
     signingPublicKey: keyPair.publicKey,
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     deviceId: 'device-' + sodium.to_hex(sodium.randombytes_buf(4))
   }
 }

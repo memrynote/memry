@@ -543,7 +543,7 @@ describe('http-client', () => {
         status: 404,
         headers: new Headers(),
         json: () => Promise.reject(new Error('not json'))
-      } as unknown as Response)
+      })
 
       // #when / #then the status has to survive: it is the whole capability
       // signal, and swallowing it would strand every body on old servers.

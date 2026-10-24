@@ -461,7 +461,7 @@ describe('bulk apply page session', () => {
         flags?: string,
         mode?: number
       ) => {
-        const fd = realOpenSync(p as string, flags as never, mode)
+        const fd = realOpenSync(p, flags as never, mode)
         fdPaths.set(fd, p)
         return fd
       }) as typeof fs.openSync)
@@ -471,7 +471,7 @@ describe('bulk apply page session', () => {
       })
       const origExec = raw.exec.bind(raw)
       const execSpy = vi.fn((sql: string) => origExec(sql))
-      raw.exec = execSpy as unknown as typeof raw.exec
+      raw.exec = execSpy
 
       try {
         const page = beginPageApply(db)
@@ -484,13 +484,13 @@ describe('bulk apply page session', () => {
         // call time while the fd→path map still described it.
         const journalDataFsyncs = fsyncTargets
           .map((target, i) => ({ ...target, order: fsyncSpy.mock.invocationCallOrder[i] }))
-          .filter(({ path }) => path.endsWith('.tmp'))
+          .filter(({ path: fsyncPath }) => fsyncPath.endsWith('.tmp'))
         expect(journalDataFsyncs).toHaveLength(1)
         // The bytes must be on stable storage before the commit makes the
         // journal load-bearing — power loss between the two would leave
         // committed rows that no journal entry can heal.
         expect(execSpy.mock.invocationCallOrder[commitCall]).toBeGreaterThan(
-          journalDataFsyncs[0]!.order
+          journalDataFsyncs[0].order
         )
       } finally {
         openSpy.mockRestore()
@@ -518,10 +518,10 @@ describe('bulk apply page session', () => {
     /** Route a connection's exec through an order recorder. */
     const tap = (raw: Database.Database, label: string): void => {
       const orig = raw.exec.bind(raw)
-      raw.exec = ((sql: string) => {
+      raw.exec = (sql: string) => {
         order.push(`${label}:${sql}`)
         return orig(sql)
-      }) as typeof raw.exec
+      }
     }
     let order: string[] = []
 
@@ -583,11 +583,11 @@ describe('bulk apply page session', () => {
 
       const origExec = indexRaw.exec.bind(indexRaw)
       const sqlLog: string[] = []
-      indexRaw.exec = ((sql: string) => {
+      indexRaw.exec = (sql: string) => {
         sqlLog.push(sql)
         if (sql === 'COMMIT') throw new Error('index commit boom')
         return origExec(sql)
-      }) as typeof indexRaw.exec
+      }
 
       expect(() => page.commit()).not.toThrow()
       indexRaw.exec = origExec
@@ -608,11 +608,11 @@ describe('bulk apply page session', () => {
 
       const origExec = raw.exec.bind(raw)
       const sqlLog: string[] = []
-      raw.exec = ((sql: string) => {
+      raw.exec = (sql: string) => {
         sqlLog.push(sql)
         if (sql === 'COMMIT') throw new Error('data commit boom')
         return origExec(sql)
-      }) as typeof raw.exec
+      }
 
       expect(() => page.commit()).toThrow('data commit boom')
       raw.exec = origExec
@@ -713,10 +713,10 @@ describe('bulk apply page session', () => {
       const notify = vi.fn()
       page.afterCommit(notify)
       const origExec = raw.exec.bind(raw)
-      raw.exec = ((sql: string) => {
+      raw.exec = (sql: string) => {
         if (sql === 'COMMIT') throw new Error('data commit boom')
         return origExec(sql)
-      }) as typeof raw.exec
+      }
 
       expect(() => page.commit()).toThrow('data commit boom')
       raw.exec = origExec
@@ -777,6 +777,7 @@ describe('bulk apply page session', () => {
       let quiescent = false
       const waited = whenPageApplyQuiescent(60_000).then(() => {
         quiescent = true
+        return undefined
       })
       await new Promise((resolve) => setTimeout(resolve, 10))
       expect(isPageApplyQuiescent()).toBe(false)

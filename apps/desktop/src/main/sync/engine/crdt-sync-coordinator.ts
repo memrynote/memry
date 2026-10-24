@@ -168,10 +168,13 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     }
 
     return payloads.map((p) => {
+      // oxlint-disable-next-line import/no-named-as-default-member -- sibling tests vi.mock this module with only a `default` export
       const pubKey = sodium.from_base64(
         signerKeys[p.signerDeviceId],
+        // oxlint-disable-next-line import/no-named-as-default-member -- sibling tests vi.mock this module with only a `default` export
         sodium.base64_variants.ORIGINAL
       )
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- payload carries data or dataB64; a missing one fails below, as before
       const packed = p.data ?? base64ToBytes(p.dataB64 as string)
       return decryptCrdtUpdate(packed, vaultKey, p.noteId, pubKey)
     })
@@ -185,6 +188,7 @@ export class CrdtSyncCoordinator extends CrdtPullLedger {
     for (const entry of entries) {
       const pubKey = keyOf(entry.signerDeviceId)
       if (pubKey && !signerKeys[entry.signerDeviceId]) {
+        // oxlint-disable-next-line import/no-named-as-default-member -- sibling tests vi.mock this module with only a `default` export
         signerKeys[entry.signerDeviceId] = sodium.to_base64(pubKey, sodium.base64_variants.ORIGINAL)
       }
     }

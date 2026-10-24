@@ -59,6 +59,7 @@ type EnumerableCrdtPersistence = CrdtPersistence & {
  * why this runs from the pending flag rather than on every open.
  */
 export async function setAsideAmbiguousLegacyDocs(storagePath: string): Promise<boolean> {
+  // oxlint-disable-next-line typescript/no-unnecessary-type-assertion -- the cast adds getAllDocNames, which CrdtPersistence does not declare; the rule misreads it as a no-op
   const persistence = (await openCrdtPersistence(storagePath)) as EnumerableCrdtPersistence | null
   if (!persistence) {
     // Preflight refused the store, or the binding is unusable. The provider is

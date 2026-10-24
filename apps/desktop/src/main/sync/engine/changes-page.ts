@@ -38,6 +38,7 @@ export function planPullSlices(changes: RecordChangesResponse): PullSlice[] {
   const pageIds = new Set([...changes.items.map((item) => item.id), ...changes.deleted])
   const inline: unknown[] = Array.isArray(changes.inline) ? changes.inline : []
   const covered = new Set(
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- untrusted wire value probed via typeof checks on each field
     inline.map((raw) => (raw as { id?: unknown } | null)?.id).filter((id) => typeof id === 'string')
   )
   const fetchIds = Array.from(pageIds).filter((id) => !covered.has(id))

@@ -99,7 +99,7 @@ describe('TaskSyncService', () => {
 
       const [item] = queue.dequeue(1)
       const payload = JSON.parse(item.payload)
-      expect(payload.linkedCanvasIds.sort()).toEqual(['canvas-1', 'canvas-2'])
+      expect(payload.linkedCanvasIds.toSorted()).toEqual(['canvas-1', 'canvas-2'])
     })
   })
 

@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  ready as sodiumReady,
+  to_base64 as sodiumToBase64,
+  base64_variants as sodiumBase64Variants
+} from 'libsodium-wrappers-sumo'
 import { CBOR_FIELD_ORDER } from '@memry/contracts/cbor-ordering'
 import { deleteAttestationPayload } from '@memry/contracts/delete-attestation'
 import { signPayload } from '../../crypto/signatures'
@@ -37,7 +41,7 @@ vi.mock('./purged-tombstone-guard', () => ({
   localTombstoneRefusal: vi.fn(() => null)
 }))
 
-await sodium.ready
+await sodiumReady
 const signer = sodium.crypto_sign_seed_keypair(new Uint8Array(32).fill(5))
 
 /** A purged tombstone entry, attested by device-a unless `attest` is false (#2408). */
@@ -56,13 +60,13 @@ const purged = (
   ...(attest
     ? {
         signerDeviceId: 'device-a',
-        deleteAttestation: sodium.to_base64(
+        deleteAttestation: sodiumToBase64(
           signPayload(
             deleteAttestationPayload({ id, type: type as 'task', deletedAt: 5, clock }),
             CBOR_FIELD_ORDER.DELETE_ATTESTATION,
             signer.privateKey
           ),
-          sodium.base64_variants.ORIGINAL
+          sodiumBase64Variants.ORIGINAL
         )
       }
     : {})

@@ -41,6 +41,7 @@ let uploads: number
 
 function fetchFn(_url: string | URL | Request, init?: RequestInit): Promise<Response> {
   if (!serverUp) return Promise.resolve(new Response('down', { status: 503 }))
+  // oxlint-disable-next-line typescript/no-base-to-string -- Y.Text/Y.XmlFragment toString returns the document text; the rule does not see the override
   dereferenced.push((JSON.parse(String(init?.body)) as { chunkHashes: string[] }).chunkHashes)
   return Promise.resolve(Response.json({ dereferenced: 1 }))
 }
@@ -50,7 +51,7 @@ const dereference = async (chunkHashes: string[]): Promise<{ ok: boolean }> => {
     getAccessToken: async () => 'token',
     getSyncServerUrl: () => 'http://sync.test',
     getVaultId: () => VAULT_ID,
-    fetchFn: fetchFn as typeof fetch
+    fetchFn: fetchFn
   })
   return { ok }
 }

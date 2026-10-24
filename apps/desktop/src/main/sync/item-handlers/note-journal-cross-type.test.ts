@@ -20,11 +20,14 @@ const vaultPath = path.join(root, 'vault')
 const userDataDir = path.join(root, 'user-data')
 fs.mkdirSync(userDataDir, { recursive: true })
 
-const { currentDb, purge, logger } = vi.hoisted(() => ({
-  currentDb: { value: null as unknown },
-  purge: vi.fn(() => Promise.resolve()),
-  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
-}))
+const { currentDb, purge, logger } = vi.hoisted(() => {
+  const slot: { value: unknown } = { value: null }
+  return {
+    currentDb: slot,
+    purge: vi.fn(() => Promise.resolve()),
+    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() }
+  }
+})
 
 vi.mock('electron', () => ({ app: { getPath: vi.fn(() => userDataDir) } }))
 vi.mock('../../lib/logger', () => ({ createLogger: () => logger }))
@@ -106,7 +109,7 @@ describe('note and journal rows that share an id', () => {
     fs
       .readdirSync(vaultPath, { recursive: true, encoding: 'utf-8' })
       .filter((f) => f.endsWith('.md'))
-      .sort()
+      .toSorted()
 
   const seedLiveNote = (id = ID) => {
     testDb.db

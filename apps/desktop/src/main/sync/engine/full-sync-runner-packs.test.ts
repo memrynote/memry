@@ -1,4 +1,8 @@
-import sodium from 'libsodium-wrappers-sumo'
+import sodium, {
+  ready as sodiumReady,
+  to_base64 as sodiumToBase64,
+  base64_variants as sodiumBase64Variants
+} from 'libsodium-wrappers-sumo'
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -248,7 +252,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
     let peer: { publicKey: Uint8Array; privateKey: Uint8Array }
 
     beforeAll(async () => {
-      await sodium.ready
+      await sodiumReady
       vaultKey = new Uint8Array(32)
       peer = sodium.crypto_sign_keypair('uint8array')
     })
@@ -266,7 +270,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
 
     it('opens the doc without a markdown seed, and releases it after', async () => {
       const harness = createHarness()
-      harness.deviceKeys.push(sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL))
+      harness.deviceKeys.push(sodiumToBase64(peer.publicKey, sodiumBase64Variants.ORIGINAL))
       const deps = await capture(harness)
 
       const packed = encryptCrdtUpdate(
@@ -303,9 +307,9 @@ describe('FullSyncRunner pack bootstrap seam', () => {
       // that runs after this. Every packed snapshot is peer-signed.
       const harness = createHarness()
       const own = sodium.crypto_sign_keypair('uint8array')
-      harness.deviceKeys.push(sodium.to_base64(own.publicKey, sodium.base64_variants.ORIGINAL))
+      harness.deviceKeys.push(sodiumToBase64(own.publicKey, sodiumBase64Variants.ORIGINAL))
       mocks.fetchAndCacheDeviceKeys.mockImplementation(async () => {
-        harness.deviceKeys.push(sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL))
+        harness.deviceKeys.push(sodiumToBase64(peer.publicKey, sodiumBase64Variants.ORIGINAL))
       })
       const deps = await capture(harness)
 
@@ -324,7 +328,7 @@ describe('FullSyncRunner pack bootstrap seam', () => {
 
     it('#given the key refresh fails #then the cached keys are still tried', async () => {
       const harness = createHarness()
-      harness.deviceKeys.push(sodium.to_base64(peer.publicKey, sodium.base64_variants.ORIGINAL))
+      harness.deviceKeys.push(sodiumToBase64(peer.publicKey, sodiumBase64Variants.ORIGINAL))
       mocks.fetchAndCacheDeviceKeys.mockRejectedValue(new Error('offline'))
       const deps = await capture(harness)
 

@@ -15,7 +15,6 @@ import { SyncQueueManager } from '@memry/sync-client/queue'
 import { TASK_SYNCABLE_FIELDS, initAllFieldClocks } from '@memry/sync-client/field-merge'
 import { TaskSyncService, resetTaskSyncService } from '@memry/sync-client/task-sync'
 import { taskHandler } from './item-handlers/task-handler'
-import type { DrizzleDb } from '@memry/sync-client/item-handlers/types'
 import { resetProjectSyncService } from '@memry/sync-client/project-sync'
 
 const BASE_PROJECT = {
@@ -106,7 +105,7 @@ function getTagsFor(db: TestDatabaseResult, taskId: string): string[] {
     .where(eq(taskTags.taskId, taskId))
     .all()
     .map((r) => r.tag)
-    .sort()
+    .toSorted()
 }
 
 function getNoteIdsFor(db: TestDatabaseResult, taskId: string): string[] {
@@ -116,7 +115,7 @@ function getNoteIdsFor(db: TestDatabaseResult, taskId: string): string[] {
     .where(eq(taskNotes.taskId, taskId))
     .all()
     .map((r) => r.noteId)
-    .sort()
+    .toSorted()
 }
 
 function applyRemotePayload(
@@ -220,18 +219,13 @@ describe('task sync gap fixes — E2E', () => {
         .run()
 
       // Build push payload (includes tags now)
-      const payload = taskHandler.buildPushPayload!(
-        deviceA.db as unknown as DrizzleDb,
-        'task-1',
-        'device-A',
-        'update'
-      )
+      const payload = taskHandler.buildPushPayload(deviceA.db, 'task-1', 'device-A', 'update')
       expect(payload).toBeTruthy()
       const parsed = JSON.parse(payload!) as Record<string, unknown>
 
       // Verify payload includes tags
       expect(parsed.tags).toBeDefined()
-      expect((parsed.tags as string[]).sort()).toEqual(['bug', 'urgent'])
+      expect((parsed.tags as string[]).toSorted()).toEqual(['bug', 'urgent'])
 
       // #when Device B applies the payload
       const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
@@ -256,14 +250,9 @@ describe('task sync gap fixes — E2E', () => {
         ])
         .run()
 
-      const payload = taskHandler.buildPushPayload!(
-        deviceA.db as unknown as DrizzleDb,
-        'task-1',
-        'device-A',
-        'update'
-      )
+      const payload = taskHandler.buildPushPayload(deviceA.db, 'task-1', 'device-A', 'update')
       const parsed = JSON.parse(payload!) as Record<string, unknown>
-      expect((parsed.linkedNoteIds as string[]).sort()).toEqual(['note-alpha', 'note-beta'])
+      expect((parsed.linkedNoteIds as string[]).toSorted()).toEqual(['note-alpha', 'note-beta'])
 
       // #when Device B applies
       const applierB = new ItemApplier(asSyncDb(deviceB.db), vi.fn())
@@ -376,7 +365,7 @@ describe('task sync gap fixes — E2E', () => {
       const queueItem = queueA.peek(1)[0]
       expect(queueItem).toBeDefined()
       const payload = JSON.parse(queueItem.payload) as Record<string, unknown>
-      expect((payload.tags as string[]).sort()).toEqual(['p0', 'release'])
+      expect((payload.tags as string[]).toSorted()).toEqual(['p0', 'release'])
       expect(payload.linkedNoteIds).toEqual([])
 
       // And remote device can consume it

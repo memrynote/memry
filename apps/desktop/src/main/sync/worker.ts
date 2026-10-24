@@ -25,6 +25,7 @@ const log = createLogger('SyncWorker')
 let shuttingDown = false
 
 async function init(): Promise<void> {
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   await sodium.ready
 
   port.on('message', (msg: MainToWorkerMessage) => {
@@ -160,6 +161,7 @@ function handleDecryptBatch(msg: Extract<MainToWorkerMessage, { type: 'decrypt-b
         continue
       }
 
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       const signerPublicKey = sodium.from_base64(signerKeyB64, sodium.base64_variants.ORIGINAL)
       const outcome = decryptSingleItem(item, msg.vaultKey, signerPublicKey)
 
@@ -212,7 +214,9 @@ function handleDecryptCrdtBatch(
         continue
       }
 
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- item.data and item.dataB64 are alternatives; one is always present for a well-formed item
       const packed = item.data ?? base64ToBytes(item.dataB64 as string)
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       const signerPublicKey = sodium.from_base64(signerKeyB64, sodium.base64_variants.ORIGINAL)
 
       try {

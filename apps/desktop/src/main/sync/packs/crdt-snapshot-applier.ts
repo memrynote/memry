@@ -159,6 +159,7 @@ export const decodeSignerPublicKeys = (encoded: string[]): Uint8Array[] => {
   const out: Uint8Array[] = []
   for (const value of encoded) {
     try {
+      // oxlint-disable-next-line import/no-named-as-default-member -- sibling tests vi.mock this module with only a `default` export
       out.push(sodium.from_base64(value, sodium.base64_variants.ORIGINAL))
     } catch {
       // A malformed cached key is one fewer candidate, never a failure.

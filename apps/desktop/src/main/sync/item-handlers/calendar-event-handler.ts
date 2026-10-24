@@ -57,12 +57,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
               remoteVal === undefined ? (existing as Record<string, unknown>)[field] : remoteVal
           }
 
-          const result = mergeCalendarEventFields(
-            existing as Record<string, unknown>,
-            remoteForMerge,
-            localFC,
-            remoteFC
-          )
+          const result = mergeCalendarEventFields(existing, remoteForMerge, localFC, remoteFC)
 
           // Routing and recurrence identity are deliberately NOT in
           // CALENDAR_EVENT_SYNCABLE_FIELDS — adding them would change the
@@ -115,10 +110,12 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
             recurrenceExceptions:
               data.recurrenceExceptions ?? existing.recurrenceExceptions ?? null,
             attendees: hasKey('attendees')
-              ? ((data.attendees as CalendarEvent['attendees']) ?? null)
+              ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
+                ((data.attendees as CalendarEvent['attendees']) ?? null)
               : (existing.attendees ?? null),
             reminders: hasKey('reminders')
-              ? ((data.reminders as CalendarEvent['reminders']) ?? null)
+              ? // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
+                ((data.reminders as CalendarEvent['reminders']) ?? null)
               : (existing.reminders ?? null),
             visibility: hasKey('visibility')
               ? (data.visibility ?? null)
@@ -134,7 +131,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
               ? (data.originalStartTime ?? null)
               : (existing.originalStartTime ?? null),
             conferenceData: hasKey('conferenceData')
-              ? ((data.conferenceData as CalendarEvent['conferenceData']) ?? null)
+              ? (data.conferenceData ?? null)
               : (existing.conferenceData ?? null),
             archivedAt: data.archivedAt ?? existing.archivedAt,
             clock: resolution.mergedClock,
@@ -163,7 +160,9 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
           isAllDay: data.isAllDay ?? false,
           recurrenceRule: data.recurrenceRule ?? null,
           recurrenceExceptions: data.recurrenceExceptions ?? null,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
           attendees: (data.attendees as CalendarEvent['attendees'] | undefined) ?? null,
+          // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
           reminders: (data.reminders as CalendarEvent['reminders'] | undefined) ?? null,
           visibility: data.visibility ?? null,
           colorId: data.colorId ?? null,
@@ -190,7 +189,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
     if (!existing) return 'skipped'
 
     if (clock && existing.clock) {
-      const resolution = this.resolveDeleteClock(existing.clock as VectorClock | null, clock)
+      const resolution = this.resolveDeleteClock(existing.clock, clock)
       if (resolution.skip) {
         log.info('Skipping remote calendar event delete, local is ahead of the tombstone', {
           itemId
@@ -205,9 +204,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
   }
 
   fetchLocal(db: DrizzleDb, itemId: string): Record<string, unknown> | undefined {
-    return db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get() as
-      | Record<string, unknown>
-      | undefined
+    return db.select().from(calendarEvents).where(eq(calendarEvents.id, itemId)).get()
   }
 
   buildPushPayload(db: DrizzleDb, itemId: string): string | null {
@@ -223,10 +220,13 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       isAllDay: row.isAllDay,
       recurrenceRule: row.recurrenceRule ?? null,
       recurrenceExceptions: row.recurrenceExceptions ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
       attendees: (row.attendees as Array<Record<string, unknown>> | null) ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
       reminders: (row.reminders as Record<string, unknown> | null) ?? null,
       visibility: row.visibility ?? null,
       colorId: row.colorId ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
       conferenceData: (row.conferenceData as Record<string, unknown> | null) ?? null,
       archivedAt: row.archivedAt ?? null,
       // The push coordinator prefers this rebuild over the frozen queue payload,
@@ -235,6 +235,7 @@ class CalendarEventHandler extends BaseItemHandler<CalendarEventSyncPayload> {
       targetCalendarId: row.targetCalendarId ?? null,
       parentEventId: row.parentEventId ?? null,
       originalStartTime: row.originalStartTime ?? null,
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- calendar JSON columns and payload fields are typed loosely by the schema; no runtime validation exists to narrow them
       clock: (row.clock as VectorClock) ?? undefined,
       fieldClocks: row.fieldClocks ?? undefined,
       createdAt: row.createdAt,

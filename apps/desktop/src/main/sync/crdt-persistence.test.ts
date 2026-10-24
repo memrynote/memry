@@ -171,7 +171,7 @@ describe('openCrdtPersistence telemetry', () => {
   it('attributes a post-preflight failure to the probe, not to the preflight', async () => {
     // Preflight passes, so the binding loads for real — and the mocked store
     // rejects, which is the out-of-band-abort shape this path exists for.
-    mockPreflight.mockResolvedValue({ ok: true, transport: 'utility' } as CrdtPreflightResult)
+    mockPreflight.mockResolvedValue({ ok: true, transport: 'utility' })
 
     expect(await openCrdtPersistence(STORE)).toBeNull()
 
@@ -181,7 +181,7 @@ describe('openCrdtPersistence telemetry', () => {
   })
 
   it('opens the store with the bounded LevelDB cache and write buffer', async () => {
-    mockPreflight.mockResolvedValue({ ok: true, transport: 'node' } as CrdtPreflightResult)
+    mockPreflight.mockResolvedValue({ ok: true, transport: 'node' })
 
     await openCrdtPersistence(STORE)
 
@@ -196,7 +196,7 @@ describe('openCrdtPersistence telemetry', () => {
     // A preflight child that dies during Chromium bootstrap and then passes on
     // the node fallback is the recovered case: `Utility:crashed:CrdtPreflight`
     // fires, and this event must not.
-    mockPreflight.mockResolvedValue({ ok: true, transport: 'node' } as CrdtPreflightResult)
+    mockPreflight.mockResolvedValue({ ok: true, transport: 'node' })
     mockExistsSync.mockReturnValue(true)
 
     await openCrdtPersistence(STORE)
@@ -212,7 +212,7 @@ describe('openCrdtPersistence telemetry', () => {
     mockExistsSync.mockReturnValue(true)
     mockPreflight
       .mockResolvedValueOnce(failed('store', 'utility'))
-      .mockResolvedValueOnce({ ok: true, transport: 'utility' } as CrdtPreflightResult)
+      .mockResolvedValueOnce({ ok: true, transport: 'utility' })
 
     await openCrdtPersistence(STORE)
 

@@ -1,3 +1,4 @@
+// oxlint-disable-next-line import/no-named-as-default -- websocket.test.ts vi.mocks 'ws' with only a default export
 import WebSocket from 'ws'
 import { parseSyncSocketFrame, SYNC_SOCKET_ITEMS_HEADER } from '@memry/contracts/sync-socket'
 import { SyncEventEmitter } from '@memry/sync-client/emitter'

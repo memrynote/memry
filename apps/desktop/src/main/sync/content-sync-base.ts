@@ -134,6 +134,7 @@ export abstract class ContentSyncService<
         )
       },
       serialize: (local, operation, extra) =>
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- loosely typed value (unknown, column or error) named as its contract type; a runtime guard would change behavior
         this.buildSnapshotPayload(local, (local.clock as VectorClock) ?? {}, operation, ...extra),
       shouldSkip: (local) => isLocalOnly(local),
       buildDeletePayload: ({ local, deviceId, extra }) => {
@@ -147,7 +148,7 @@ export abstract class ContentSyncService<
         // which enqueues first precisely so the clock is still readable). If
         // that order is ever flipped, `load` starts returning undefined and the
         // guard goes silently dead — re-read the note on enqueueDelete first.
-        const nextClock = incrementClock((local?.clock as VectorClock) ?? {}, deviceId)
+        const nextClock = incrementClock(local?.clock ?? {}, deviceId)
         const payload = this.buildDeletePayload(local, nextClock, ...extra)
         return payload === null ? null : JSON.stringify(payload)
       }

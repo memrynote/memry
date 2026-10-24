@@ -75,11 +75,13 @@ const redactUrls = (message: string): string => message.replace(/https?:\/\/\S+/
 /** Node's web ReadableStream is async-iterable; undici bodies are too. */
 async function* iterateBody(body: unknown): AsyncGenerator<Uint8Array> {
   if (!body) throw new NetworkError('pack response had no body')
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- body is unknown; the asyncIterator check on the next line selects the path
   const iterable = body as AsyncIterable<Uint8Array>
   if (typeof iterable[Symbol.asyncIterator] === 'function') {
     for await (const chunk of iterable) yield chunk
     return
   }
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- reached only when the body is not async-iterable, i.e. a plain web ReadableStream
   const reader = (body as ReadableStream<Uint8Array>).getReader()
   try {
     for (;;) {

@@ -12,7 +12,7 @@ import {
 } from '@memry/sync-client/field-merge'
 import { TaskSyncPayloadSchema, type TaskSyncPayload } from '@memry/contracts/sync-payloads'
 import { taskHandler } from './task-handler'
-import type { ApplyContext, DrizzleDb } from '@memry/sync-client/item-handlers/types'
+import type { ApplyContext } from '@memry/sync-client/item-handlers/types'
 import {
   TEST_PROJECT,
   TEST_STATUSES,
@@ -250,20 +250,15 @@ describe('taskHandler buildPushPayload', () => {
       .run()
 
     // #when
-    const payload = taskHandler.buildPushPayload(
-      testDb.db as unknown as DrizzleDb,
-      'task-push-1',
-      'device-A',
-      'update'
-    )
+    const payload = taskHandler.buildPushPayload(testDb.db, 'task-push-1', 'device-A', 'update')
 
     // #then
     expect(payload).not.toBeNull()
     const parsed = JSON.parse(payload!)
     expect(parsed.tags).toBeDefined()
-    expect(parsed.tags.sort()).toEqual(['bug', 'urgent'])
+    expect(parsed.tags.toSorted()).toEqual(['bug', 'urgent'])
     expect(parsed.linkedNoteIds).toBeDefined()
-    expect(parsed.linkedNoteIds.sort()).toEqual(['note-1', 'note-2'])
+    expect(parsed.linkedNoteIds.toSorted()).toEqual(['note-1', 'note-2'])
   })
 
   it('includes linkedCanvasIds from the task_canvases junction', () => {
@@ -290,18 +285,13 @@ describe('taskHandler buildPushPayload', () => {
       .run()
 
     // #when
-    const payload = taskHandler.buildPushPayload(
-      testDb.db as unknown as DrizzleDb,
-      'task-push-3',
-      'device-A',
-      'update'
-    )
+    const payload = taskHandler.buildPushPayload(testDb.db, 'task-push-3', 'device-A', 'update')
 
     // #then
     expect(payload).not.toBeNull()
     const parsed = JSON.parse(payload!)
     expect(parsed.linkedCanvasIds).toBeDefined()
-    expect(parsed.linkedCanvasIds.sort()).toEqual(['canvas-1', 'canvas-2'])
+    expect(parsed.linkedCanvasIds.toSorted()).toEqual(['canvas-1', 'canvas-2'])
   })
 
   it('includes empty arrays when no junction data exists', () => {
@@ -320,12 +310,7 @@ describe('taskHandler buildPushPayload', () => {
       .run()
 
     // #when
-    const payload = taskHandler.buildPushPayload(
-      testDb.db as unknown as DrizzleDb,
-      'task-push-2',
-      'device-A',
-      'update'
-    )
+    const payload = taskHandler.buildPushPayload(testDb.db, 'task-push-2', 'device-A', 'update')
 
     // #then
     expect(payload).not.toBeNull()
@@ -358,7 +343,7 @@ describe('taskHandler applyUpsert with tags/linkedNoteIds', () => {
       .where(eq(taskTags.taskId, taskId))
       .all()
       .map((r) => r.tag)
-      .sort()
+      .toSorted()
   }
 
   function getNoteIdsForTask(taskId: string): string[] {
@@ -368,7 +353,7 @@ describe('taskHandler applyUpsert with tags/linkedNoteIds', () => {
       .where(eq(taskNotes.taskId, taskId))
       .all()
       .map((r) => r.noteId)
-      .sort()
+      .toSorted()
   }
 
   function getCanvasIdsForTask(taskId: string): string[] {
@@ -378,7 +363,7 @@ describe('taskHandler applyUpsert with tags/linkedNoteIds', () => {
       .where(eq(taskCanvases.taskId, taskId))
       .all()
       .map((r) => r.canvasId)
-      .sort()
+      .toSorted()
   }
 
   function seedTaskWithCanvasLinks(
@@ -765,9 +750,7 @@ describe('taskHandler equal clock', () => {
 
   const ownPushPayload = (): TaskSyncPayload =>
     TaskSyncPayloadSchema.parse(
-      JSON.parse(
-        taskHandler.buildPushPayload(testDb.db as unknown as DrizzleDb, 'task-eq', 'X', 'update')!
-      )
+      JSON.parse(taskHandler.buildPushPayload(testDb.db, 'task-eq', 'X', 'update')!)
     )
 
   it('skips its own pushed row pulled back: no row write, no emit', () => {

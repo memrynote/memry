@@ -73,7 +73,7 @@ describe('edits made while the device id is missing (#2897)', () => {
     const activitySync = initTaskActivitySyncService(services)
     const record = (
       type: 'tag_definition' | 'task' | 'settings' | 'task_activity',
-      local: object
+      local: unknown
     ) => ({
       type,
       kind: 'record' as const,
@@ -163,7 +163,7 @@ describe('edits made while the device id is missing (#2897)', () => {
       deps.queue
         .peek(10)
         .map((row) => `${row.type}:${row.operation}`)
-        .sort()
+        .toSorted()
 
     return {
       db,
@@ -227,7 +227,7 @@ describe('edits made while the device id is missing (#2897)', () => {
       s
         .sentBodies()
         .map(({ type }) => type)
-        .sort()
+        .toSorted()
     ).toEqual(['settings', 'tag_definition', 'task'])
     expect(JSON.stringify(s.sentBodies())).not.toContain('_offline')
     expect(s.deps.queue.getSize()).toBe(0)
@@ -247,7 +247,7 @@ describe('edits made while the device id is missing (#2897)', () => {
       s
         .sentBodies()
         .map(({ type }) => type)
-        .sort()
+        .toSorted()
     ).toEqual(['settings', 'task'])
     expect(JSON.stringify(s.sentBodies())).not.toContain('_offline')
     expect(s.deps.queue.getSize()).toBe(0)

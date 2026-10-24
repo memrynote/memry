@@ -71,7 +71,7 @@ describe('note push payloads and extracted text', () => {
 
     expect(pdf).not.toContain(EXTRACTED)
     expect(note).not.toContain(EXTRACTED)
-    expect(Object.keys(JSON.parse(pdf ?? '{}')).sort()).toEqual([
+    expect(Object.keys(JSON.parse(pdf ?? '{}')).toSorted()).toEqual([
       'attachmentId',
       'clock',
       'createdAt',

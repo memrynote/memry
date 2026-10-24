@@ -223,6 +223,7 @@ describe('SyncEngine socket items (#2300)', () => {
     const { engine, ws, releaseChanges, pullItems } = await startEngineWithHeldPull(getDb(), {
       crdtProvider: provider as unknown as SyncEngineDeps['crdtProvider']
     })
+    // oxlint-disable-next-line typescript/no-misused-promises -- mock implementation is async on purpose; the code under test awaits the returned promise and the mock type says void
     pullItems.mockImplementation(async (itemIds: string[]) => ({
       items: itemIds.map((id) => ({ ...pullItem(id), type: 'note' }))
     }))

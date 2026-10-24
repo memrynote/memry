@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { and, eq, isNull } from 'drizzle-orm'
-import sodium from 'libsodium-wrappers-sumo'
+import { ready } from 'libsodium-wrappers-sumo'
 import { asClientDb, createTestDataDb, type TestDatabaseResult } from '@tests/utils/test-db'
 import {
   canvases,
@@ -167,12 +167,12 @@ describe('canvasHandler', () => {
   let mockQueue: MockQueue
 
   beforeAll(async () => {
-    await sodium.ready
+    await ready
   })
 
   beforeEach(() => {
     testDb = createTestDataDb()
-    db = testDb.db as unknown as DrizzleDb
+    db = testDb.db
     mockQueue = { enqueue: vi.fn() }
     initCanvasSyncService({
       queue: mockQueue as unknown as SyncQueueManager,
@@ -247,11 +247,11 @@ describe('canvasHandler', () => {
         .from(canvasEntityRefs)
         .where(eq(canvasEntityRefs.canvasId, 'c1'))
         .all()
-      expect(refs.map((r) => `${r.entityType}:${r.entityId}`).sort()).toEqual([
+      expect(refs.map((r) => `${r.entityType}:${r.entityId}`).toSorted()).toEqual([
         'file:f1',
         'project:p1'
       ])
-      const pushed = JSON.parse(canvasHandler.buildPushPayload!(db, 'c1', 'device-B', 'update')!)
+      const pushed = JSON.parse(canvasHandler.buildPushPayload(db, 'c1', 'device-B', 'update')!)
       const elements = (JSON.parse(pushed.scene) as { elements: { customData: unknown }[] })
         .elements
       expect(elements.map((e) => e.customData)).toEqual([
@@ -740,7 +740,7 @@ describe('canvasHandler', () => {
       expect(row!.filePath).toBe(`${CANVAS_DIR}/c1.excalidraw`)
       expect(row!.folder).toBeNull()
       expectScene(row, sceneWith('note-2'))
-      expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-B', 'update')).not.toBeNull()
+      expect(canvasHandler.buildPushPayload(db, 'c1', 'device-B', 'update')).not.toBeNull()
     })
 
     it('#given a pre-folders payload (no folder) #then leaves the document exactly where it is', () => {
@@ -825,7 +825,7 @@ describe('canvasHandler', () => {
       expect(fs.existsSync(resolveCanvasFile(vaultDir.current, copy.filePath!))).toBe(true)
       expectScene(copy, sceneWith('note-local'))
       expect(
-        JSON.parse(canvasHandler.buildPushPayload!(db, copy.id, 'device-B', 'create')!).folder
+        JSON.parse(canvasHandler.buildPushPayload(db, copy.id, 'device-B', 'create')!).folder
       ).toBe('Work')
     })
   })
@@ -886,7 +886,7 @@ describe('canvasHandler', () => {
       expect(getCanvas(clientDb, vault, 'c1')!.unreadable).toBeUndefined()
       // ...and still on the wire. A row pointing at a file that is not there
       // drops the canvas off sync in silence.
-      expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-B', 'update')).not.toBeNull()
+      expect(canvasHandler.buildPushPayload(db, 'c1', 'device-B', 'update')).not.toBeNull()
 
       // --- 3. the user deletes the folder on B ------------------------------
       const swept = await deleteCanvasFolder(clientDb, vault, VAULT_ID, 'Projects', async (abs) => {
@@ -913,7 +913,7 @@ describe('canvasHandler', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
       db.update(canvases).set({ folder: 'Work', icon: '🎨' }).where(eq(canvases.id, 'c1')).run()
 
-      const parsed = JSON.parse(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')!)
+      const parsed = JSON.parse(canvasHandler.buildPushPayload(db, 'c1', 'device-A', 'update')!)
 
       expect(parsed.folder).toBe('Work')
       expect(parsed.icon).toBe('🎨')
@@ -921,7 +921,7 @@ describe('canvasHandler', () => {
 
     it('#given a row with a document #then returns a scene-bearing payload', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
-      const payload = canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')
+      const payload = canvasHandler.buildPushPayload(db, 'c1', 'device-A', 'update')
       expect(payload).not.toBeNull()
       const parsed = JSON.parse(payload!)
       expect(JSON.parse(parsed.scene)).toEqual(JSON.parse(sceneWith('note-1')))
@@ -933,7 +933,7 @@ describe('canvasHandler', () => {
       seedCanvas(db, 'c1', sceneWith('note-1'), { A: 1 })
       fs.rmSync(resolveCanvasFile(vaultDir.current, `${CANVAS_DIR}/c1.excalidraw`))
 
-      expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')).toBeNull()
+      expect(canvasHandler.buildPushPayload(db, 'c1', 'device-A', 'update')).toBeNull()
     })
 
     it('#given no open vault #then returns null', () => {
@@ -941,14 +941,14 @@ describe('canvasHandler', () => {
       const open = vaultDir.current
       vaultDir.current = ''
       try {
-        expect(canvasHandler.buildPushPayload!(db, 'c1', 'device-A', 'update')).toBeNull()
+        expect(canvasHandler.buildPushPayload(db, 'c1', 'device-A', 'update')).toBeNull()
       } finally {
         vaultDir.current = open
       }
     })
 
     it('#given no row #then returns null', () => {
-      expect(canvasHandler.buildPushPayload!(db, 'missing', 'device-A', 'update')).toBeNull()
+      expect(canvasHandler.buildPushPayload(db, 'missing', 'device-A', 'update')).toBeNull()
     })
   })
 
@@ -1006,7 +1006,7 @@ describe('canvasHandler', () => {
 
       expect(result).toBe('applied')
       const rows = db.select().from(canvasAssets).where(eq(canvasAssets.canvasId, 'c1')).all()
-      expect(rows.map((r) => r.contentHash).sort()).toEqual(['h1', 'h2'])
+      expect(rows.map((r) => r.contentHash).toSorted()).toEqual(['h1', 'h2'])
       expect(rows.every((r) => r.vaultId === VAULT_ID)).toBe(true)
       // Restore is fired AFTER the tx commits, once, with the same descriptors.
       expect(mockEnsureAssetsPresent).toHaveBeenCalledTimes(1)
@@ -1163,7 +1163,7 @@ describe('canvasHandler', () => {
         // leave a stale owner in place on the receiver.
         ['c2', null]
       ] as const) {
-        const pushed = JSON.parse(canvasHandler.buildPushPayload!(db, id, LOCAL_DEVICE, 'update')!)
+        const pushed = JSON.parse(canvasHandler.buildPushPayload(db, id, LOCAL_DEVICE, 'update')!)
         expect(pushed).toHaveProperty('ownerNoteId', owner)
       }
     })

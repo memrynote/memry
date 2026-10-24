@@ -223,7 +223,7 @@ export const contiguousAppliedCursor = (
   packs: PackSummary[],
   completed: ReadonlySet<string>
 ): number | null => {
-  const ascending = [...packs].sort((a, b) => a.maxCursor - b.maxCursor)
+  const ascending = [...packs].toSorted((a, b) => a.maxCursor - b.maxCursor)
   let watermark: number | null = null
   for (let i = 0; i < ascending.length;) {
     const cursor = ascending[i].maxCursor
@@ -272,7 +272,7 @@ export const runPackBootstrap = async (deps: PackBootstrapDeps): Promise<PackBoo
   // already applied — skip them rather than re-reading their bytes.
   const packs = allPacks
     .filter((pack) => pack.maxCursor > alreadyCovered)
-    .sort((a, b) => b.maxCursor - a.maxCursor)
+    .toSorted((a, b) => b.maxCursor - a.maxCursor)
   if (packs.length === 0) return emptyResult()
 
   log.info('Pack bootstrap starting', {

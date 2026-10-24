@@ -1443,7 +1443,7 @@ describe('checkManifestIntegrity', () => {
           .from(tasks)
           .all()
           .map((row) => row.id)
-          .sort()
+          .toSorted()
       ).toEqual(['task-a', 'task-b'])
     })
 

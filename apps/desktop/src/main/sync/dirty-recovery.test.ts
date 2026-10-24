@@ -282,7 +282,8 @@ describe('dirty-recovery', () => {
     expect(payloadFieldClocks?.title).toEqual({ 'device-A': 2 })
 
     const task = db.select().from(tasks).where(eq(tasks.id, 'task-offline-create')).get()
-    expect((task?.clock as Record<string, number>)._offline).toBeUndefined()
+    const taskClock = task?.clock as Record<string, number>
+    expect(taskClock._offline).toBeUndefined()
     const fc = task?.fieldClocks as Record<string, Record<string, number>>
     expect(fc.title._offline).toBeUndefined()
   })
@@ -538,7 +539,7 @@ describe('dirty-recovery', () => {
     expect(result.notes).toBe(1)
     expect(notesQueued).toEqual(['note-keyless'])
     const queued = queue.peek(10)
-    expect(queued.map((item) => `${item.type}:${item.itemId}`).sort()).toEqual([
+    expect(queued.map((item) => `${item.type}:${item.itemId}`).toSorted()).toEqual([
       'inbox:inbox-keyless',
       'task:task-keyless'
     ])
@@ -1172,7 +1173,7 @@ describe('dirty-recovery', () => {
     const SWEPT_ABOVE: RecordSyncItemType[] = ['task', 'project', 'note', 'journal', 'inbox']
 
     it('covers every record sync item type with a sweep or a stated exemption (#2286)', () => {
-      expect(Object.keys(DIRTY_RECOVERY).sort()).toEqual([...RECORD_SYNC_ITEM_TYPES].sort())
+      expect(Object.keys(DIRTY_RECOVERY).toSorted()).toEqual([...RECORD_SYNC_ITEM_TYPES].toSorted())
       for (const type of RECORD_SYNC_ITEM_TYPES) {
         const entry = DIRTY_RECOVERY[type]
         // oxlint-disable-next-line vitest/no-conditional-expect -- table/vector-driven loop: each case asserts only the properties its row defines
@@ -1181,7 +1182,7 @@ describe('dirty-recovery', () => {
 
       const swept = RECORD_SYNC_ITEM_TYPES.filter((type) => DIRTY_RECOVERY[type].kind === 'sweep')
       const tested = [...SWEPT_ABOVE, ...FIXTURES.map((fixture) => fixture.type)]
-      expect([...swept].sort()).toEqual(tested.sort())
+      expect([...swept].toSorted()).toEqual(tested.toSorted())
     })
 
     describe.each(FIXTURES)('$type', (fixture) => {

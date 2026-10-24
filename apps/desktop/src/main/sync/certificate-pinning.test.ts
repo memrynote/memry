@@ -243,7 +243,7 @@ describe('certificate-pinning', () => {
       return {
         ...makeMockCertWithRaw(getTestCertDer()),
         subjectaltname: `DNS:${hostname}`
-      } as tls.PeerCertificate
+      }
     }
 
     function checkOf(agent: ReturnType<typeof createPinnedAgent>) {

@@ -851,7 +851,7 @@ describe('SyncWorkerBridge', () => {
     it('#then rejects once the pending map is at MAX_PENDING_REQUESTS', async () => {
       // #given — the worker accepts requests and never replies
       await startReadyBridge()
-      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) sendUnanswered()
+      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) void sendUnanswered()
 
       // #when / #then
       await expect(
@@ -862,7 +862,7 @@ describe('SyncWorkerBridge', () => {
     it('#then the rejected request is never posted to the worker', async () => {
       // #given
       await startReadyBridge()
-      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) sendUnanswered()
+      for (let i = 0; i < MAX_PENDING_REQUESTS; i++) void sendUnanswered()
 
       // #when
       await bridge

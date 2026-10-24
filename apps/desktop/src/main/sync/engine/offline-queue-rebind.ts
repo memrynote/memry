@@ -99,6 +99,7 @@ export function rebindQueuedOfflineEdits(
   for (const [key, stale] of edits) {
     const { type, itemId } = stale[0]
     const create = stale.some((row) => row.operation === 'create')
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- wire item type is a plain string; a runtime guard would change behavior for unknown types
     const requeue = requeueFor(type as SyncItemType, itemId, create, adapters)
     if (!requeue) {
       reportStuck(key, 'No local sync adapter for a queued offline edit')

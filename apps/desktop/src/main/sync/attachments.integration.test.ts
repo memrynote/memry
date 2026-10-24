@@ -141,7 +141,7 @@ function createDeps(
     getDevicePublicKey: async () => signing.publicKey,
     getSyncServerUrl: () => baseUrl,
     // Real HTTP against the miniflare listener — not a mock.
-    fetchFn: (input, init) => fetch(input as RequestInfo, init as RequestInit)
+    fetchFn: (input, init) => fetch(input, init)
   }
 }
 
@@ -152,12 +152,13 @@ async function writeTempFile(name: string, bytes: Uint8Array): Promise<string> {
 }
 
 beforeAll(async () => {
+  // oxlint-disable-next-line import/no-named-as-default-member -- libsodium is a CJS default-export object and sibling crypto tests mock it as default-only
   await sodium.ready
   // By package name, not a relative escape out of apps/desktop: @memry/sync-harness
   // is a declared devDependency, so this resolves the same way everywhere instead
   // of depending on the workspace's directory layout and pnpm's hoisting.
   const mod = await import('@memry/sync-harness/simulated-server')
-  server = new mod.SimulatedServer() as Harness
+  server = new mod.SimulatedServer()
   await server.start()
   const url = await server.getDirectUrl()
   // origin, not href: href carries a trailing slash and the client appends '/sync/...'.
@@ -363,6 +364,7 @@ describe('attachment upload/download against the real sync-server', () => {
     const deps = createDeps(user)
     const realFetch = deps.fetchFn!
     deps.fetchFn = async (input, init) => {
+      // oxlint-disable-next-line typescript/no-base-to-string -- value is a fetch input (string | URL | Request) in a test; URL and Request stringify correctly
       const url = typeof input === 'string' ? input : String(input)
       if (url.endsWith('/sync/attachments/upload/initiate') && typeof init?.body === 'string') {
         initiateBody = JSON.parse(init.body) as Record<string, unknown>
@@ -444,6 +446,7 @@ describe('an upload whose bytes the note already has on the server', () => {
     const seen = { count: 0 }
     const realFetch = deps.fetchFn!
     deps.fetchFn = async (input, init) => {
+      // oxlint-disable-next-line typescript/no-base-to-string -- value is a fetch input (string | URL | Request) in a test; URL and Request stringify correctly
       if (String(input).endsWith('/sync/attachments/upload/initiate')) seen.count++
       return realFetch(input, init)
     }
@@ -570,7 +573,7 @@ describe('deleted note attachment release against the real sync-server', () => {
             getAccessToken: async () => user.token,
             getSyncServerUrl: () => baseUrl,
             getVaultId: () => 'default',
-            fetchFn: (input, init) => fetch(input as RequestInfo, init as RequestInit)
+            fetchFn: (input, init) => fetch(input, init)
           }),
         markWritebackIgnored: () => {}
       })
@@ -592,7 +595,7 @@ describe('deleted note attachment release against the real sync-server', () => {
         getAccessToken: async () => user.token,
         getSyncServerUrl: () => baseUrl,
         getVaultId: () => 'default',
-        fetchFn: (input, init) => fetch(input as RequestInfo, init as RequestInit)
+        fetchFn: (input, init) => fetch(input, init)
       }
     )
     expect(replay.ok).toBe(true)
@@ -618,8 +621,7 @@ describe('revived note attachments against the real sync-server', () => {
       getAccessToken: async () => user.token,
       getSyncServerUrl: () => baseUrl,
       getVaultId: () => 'default',
-      fetchFn: (input: RequestInfo | URL, init?: RequestInit) =>
-        fetch(input as RequestInfo, init as RequestInit)
+      fetchFn: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)
     }
 
     const noteId = 'note-revived'

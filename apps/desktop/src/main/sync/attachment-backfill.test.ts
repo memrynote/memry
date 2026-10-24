@@ -68,8 +68,8 @@ describe('attachment backfill', () => {
     expect(
       listPendingUploads(db)
         .map((row) => row.diskPath)
-        .sort()
-    ).toEqual([image, pdf].sort())
+        .toSorted()
+    ).toEqual([image, pdf].toSorted())
   })
 
   it('leaves a note that already has references alone', () => {
@@ -150,8 +150,8 @@ describe('attachment backfill', () => {
     expect(
       listPendingUploads(db)
         .map((row) => row.diskPath)
-        .sort()
-    ).toEqual([picture, pdf].sort())
+        .toSorted()
+    ).toEqual([picture, pdf].toSorted())
   })
 
   it('queues no embed of a note file linked outside the vault (#2936)', () => {
@@ -201,7 +201,7 @@ describe('attachment backfill', () => {
     const queuedPaths = (): string[] =>
       listPendingUploads(db)
         .map((row) => row.diskPath)
-        .sort()
+        .toSorted()
 
     it('finds the file this device recorded for an attachment, wherever it lives', () => {
       addNote('note-src', { attachmentReferences: ['att-src'] })

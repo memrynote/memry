@@ -185,7 +185,7 @@ describe('calendar sync handlers', () => {
         isAllDay: false,
         fieldClocks: null,
         modifiedAt: '2026-04-20T08:30:00.000Z'
-      } as never,
+      },
       { 'device-legacy': 1 }
     )
 
@@ -526,7 +526,7 @@ describe('calendar sync handlers', () => {
     const queuedTypes = queue
       .peek(10)
       .map((item) => `${item.type}:${item.operation}`)
-      .sort()
+      .toSorted()
 
     expect(queuedTypes).toEqual([
       'calendar_binding:update',
@@ -574,7 +574,7 @@ describe('calendar sync handlers', () => {
         visibility: null,
         colorId: null,
         conferenceData: null
-      } as never,
+      },
       { 'device-a': 2 }
     )
 

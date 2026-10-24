@@ -607,7 +607,7 @@ describe('#given a cancel landing before the first page is fetched #when the pul
 
     // The cycle's AbortController is armed before credentials resolve, so a
     // cancel here is observed by the loop guard on its very first iteration.
-    ;(deps.getVaultKey as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+    vi.mocked(deps.getVaultKey).mockImplementation(async () => {
       engine.requestCancel()
       return new Uint8Array(32)
     })

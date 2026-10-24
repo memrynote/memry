@@ -235,12 +235,14 @@ const bodyGets = (get: { mock: { calls: unknown[][] } }): string[] =>
   get.mock.calls.map(([url]) => url as string).filter((url) => url.startsWith('/sync/crdt/'))
 
 const ledgerKeys = (engine: SyncEngine): string[] =>
-  Object.keys(JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.SCHEMA_INVALID_ITEMS) ?? '{}')).sort()
+  Object.keys(
+    JSON.parse(engine.getStateValue(SYNC_STATE_KEYS.SCHEMA_INVALID_ITEMS) ?? '{}')
+  ).toSorted()
 
 const owedPulls = (engine: SyncEngine): string[] =>
   (engine as unknown as { crdtSync: { drainPendingPulls(): string[] } }).crdtSync
     .drainPendingPulls()
-    .sort()
+    .toSorted()
 
 describe('PullCoordinator note bodies from the change feed (#2297)', () => {
   const { getDb } = setupTestDb()
@@ -965,13 +967,8 @@ describe('PullCoordinator note bodies from the change feed (#2297)', () => {
     const { get } = await mockServer([{ noteBodies: [update('note-1', 2, A)], nextCursor: 2 }])
     const declared = (): unknown[] =>
       get.mock.calls
-        .filter(([url]) => (url as string).startsWith('/sync/changes'))
-        .map(
-          (call) =>
-            (call[3] as { headers?: Record<string, string> } | undefined)?.headers?.[
-              'X-Memry-Sync-Types'
-            ]
-        )
+        .filter(([url]) => url.startsWith('/sync/changes'))
+        .map((call) => call[3]?.headers?.['X-Memry-Sync-Types'])
 
     await engine.pull()
     expect(declared()).toEqual([undefined])

@@ -51,6 +51,7 @@ vi.mock('fs', async (importOriginal) => {
 // would dlopen classic-level in the test runner.
 vi.mock('module', async (importOriginal) => {
   const actual = await importOriginal<typeof ModuleModule>()
+  // oxlint-disable-next-line typescript/no-misused-spread -- `actual` is the module namespace object, not a class
   return { ...actual, createRequire: () => mockRequire }
 })
 
@@ -135,10 +136,14 @@ describe('crdt-preflight-child', () => {
       if (id !== 'y-leveldb') throw new Error(`unexpected require: ${id}`)
       return {
         LeveldbPersistence: class {
-          constructor(dir: string, opts?: { Level?: new (dir: string, o: object) => unknown }) {
+          constructor(
+            dir: string,
+            opts?: { Level?: new (dir: string, o: Record<string, unknown>) => unknown }
+          ) {
             constructedWith.push(dir)
             // Real y-leveldb constructs the adapter in its own constructor;
             // the child's diagnostic depends on that, so the fake does too.
+            // oxlint-disable-next-line no-new -- the adapter's constructor side effect is what the diagnostic depends on
             if (opts?.Level) new opts.Level(dir, {})
           }
           storeUpdate = persistence.storeUpdate
@@ -151,9 +156,9 @@ describe('crdt-preflight-child', () => {
 
     exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never)
     // Guard the runner: a real abort() would take the vitest worker with it.
-    abortSpy = vi.spyOn(process, 'abort').mockImplementation((() => {
+    abortSpy = vi.spyOn(process, 'abort').mockImplementation(() => {
       throw new Error('process.abort() called')
-    }) as never)
+    })
     errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     delete process.env.MEMRY_TEST_CRDT_PREFLIGHT_CRASH
@@ -429,7 +434,10 @@ describe('crdt-preflight-child', () => {
       // Holding the LOCK here is what the previous app process does to the
       // next one when it never exits cleanly.
       const { Level } = yLeveldbRequire('level') as {
-        Level: new (dir: string, opts: object) => { open(): Promise<void>; close(): Promise<void> }
+        Level: new (
+          dir: string,
+          opts: Record<string, unknown>
+        ) => { open(): Promise<void>; close(): Promise<void> }
       }
       const dir = await mkdtemp(join(tmpdir(), 'memry-preflight-lock-'))
       const holder = new Level(dir, {})

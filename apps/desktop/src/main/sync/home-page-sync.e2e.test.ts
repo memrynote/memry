@@ -70,7 +70,7 @@ describe('home board sync, device A → device B', () => {
         emit,
         itemId: item.itemId,
         operation: item.operation as 'create' | 'update' | 'delete',
-        data: parsed.success ? (parsed.data as never) : undefined,
+        data: parsed.success ? parsed.data : undefined,
         clock: payload.clock as Record<string, number> | undefined,
         vaultKey: undefined
       })

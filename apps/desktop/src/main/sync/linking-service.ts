@@ -179,6 +179,7 @@ export const initiateDeviceLinking = async (
   clearPendingSession()
 
   const keyPair = await generateX25519KeyPair()
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const ephemeralPublicKeyB64 = sodium.to_base64(keyPair.publicKey, sodium.base64_variants.ORIGINAL)
 
   const response = await postToServer<{
@@ -219,6 +220,7 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
     expiresAt: number
   }
   try {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- QR payload is untrusted JSON; the following field checks validate it, so the cast only names the shape
     parsed = JSON.parse(qrData) as typeof parsed
   } catch {
     return { success: false, error: 'Invalid QR code data' }
@@ -237,8 +239,10 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
     return { success: false, error: 'Linking session has expired' }
   }
 
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const initiatorPublicKey = sodium.from_base64(
     parsed.ephemeralPublicKey,
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     sodium.base64_variants.ORIGINAL
   )
 
@@ -246,12 +250,15 @@ export const linkViaQr = async (qrData: string, setupToken: string): Promise<Lin
   const sharedSecret = await computeSharedSecret(newDeviceKeyPair.secretKey, initiatorPublicKey)
   const { encKey, macKey } = await deriveLinkingKeys(sharedSecret)
 
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const newDevicePublicKeyB64 = sodium.to_base64(
     newDeviceKeyPair.publicKey,
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     sodium.base64_variants.ORIGINAL
   )
 
   const proof = computeLinkingProof(macKey, parsed.sessionId, newDevicePublicKeyB64)
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const proofB64 = sodium.to_base64(proof, sodium.base64_variants.ORIGINAL)
   const scanProof = await computeScanProof(
     parsed.linkingSecret,
@@ -341,8 +348,10 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       return { success: false, error: 'Session not yet approved' }
     }
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const receivedKeyConfirm = sodium.from_base64(
       completeResponse.keyConfirm,
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       sodium.base64_variants.ORIGINAL
     )
     const expectedKeyConfirm = computeKeyConfirm(
@@ -356,12 +365,16 @@ export const completeLinkingQr = async (sessionId: string): Promise<CompleteLink
       return { success: false, error: 'Key confirmation failed — linking data may be corrupted' }
     }
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const ciphertext = sodium.from_base64(
       completeResponse.encryptedMasterKey,
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       sodium.base64_variants.ORIGINAL
     )
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const nonce = sodium.from_base64(
       completeResponse.encryptedKeyNonce,
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       sodium.base64_variants.ORIGINAL
     )
     const masterKey = decryptMasterKeyFromLinking(ciphertext, nonce, encKey)
@@ -660,8 +673,10 @@ export const approveDeviceLinking = async (
       return { success: false, error: 'Session has not been scanned yet' }
     }
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const newDevicePublicKey = sodium.from_base64(
       session.newDevicePublicKey,
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       sodium.base64_variants.ORIGINAL
     )
     const sharedSecret = await computeSharedSecret(
@@ -670,8 +685,10 @@ export const approveDeviceLinking = async (
     )
     const { encKey, macKey } = await deriveLinkingKeys(sharedSecret)
 
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const receivedConfirm = sodium.from_base64(
       session.newDeviceConfirm,
+      // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
       sodium.base64_variants.ORIGINAL
     )
     const expectedConfirm = computeLinkingProof(macKey, sessionId, session.newDevicePublicKey)
@@ -691,10 +708,13 @@ export const approveDeviceLinking = async (
     }
 
     const { ciphertext, nonce } = encryptMasterKeyForLinking(masterKey, encKey)
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const encryptedMasterKeyB64 = sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const encryptedKeyNonceB64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
 
     const keyConfirm = computeKeyConfirm(macKey, sessionId, encryptedMasterKeyB64)
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     const keyConfirmB64 = sodium.to_base64(keyConfirm, sodium.base64_variants.ORIGINAL)
     const providerAuthTransfer = await collectGoogleProviderAuthTransfer(getDatabase())
     const encryptedProviderAuth = providerAuthTransfer
@@ -779,8 +799,10 @@ export const getLinkingVerificationCode = async (
     return { error: 'Session has not been scanned yet' }
   }
 
+  // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
   const newDevicePublicKey = sodium.from_base64(
     session.newDevicePublicKey,
+    // oxlint-disable-next-line import/no-named-as-default-member -- default import required: tests vi.mock libsodium-wrappers-sumo with only a default export
     sodium.base64_variants.ORIGINAL
   )
   const sharedSecret = await computeSharedSecret(

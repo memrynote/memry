@@ -189,7 +189,7 @@ describe('UploadQueue', () => {
       const fn = makeUploadFn(5)
       const q = new UploadQueue(fn, monitor)
 
-      q.enqueue('n1', '/p1')
+      void q.enqueue('n1', '/p1')
       await new Promise((r) => setTimeout(r, 20))
 
       // #when — simulate network restored

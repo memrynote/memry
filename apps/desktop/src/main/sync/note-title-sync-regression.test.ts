@@ -172,7 +172,7 @@ describe('note title: a push that never landed is re-pushed, not forgotten', () 
       .where(eq(noteMetadata.id, 'note-in-step'))
       .get()
     expect(row?.syncedAt).toBeTruthy()
-    expect(row!.syncedAt! > row!.modifiedAt!).toBe(true)
+    expect(row!.syncedAt! > row!.modifiedAt).toBe(true)
 
     expect(recoverDirtyItems(asSyncDb(testDb.db), noteAdapters).notes).toBe(0)
     expect(recovered).toEqual([])
