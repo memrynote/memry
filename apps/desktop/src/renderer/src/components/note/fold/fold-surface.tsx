@@ -188,6 +188,7 @@ export function FoldSurface({ fold, children }: FoldSurfaceProps) {
               level={level}
               openCount={state.opened.size}
               onSelectLevel={setLevel}
+              onStep={step}
               onRetry={retry}
               onCopy={() => navigator.clipboard.writeText(foldedMarkdown(view))}
             />

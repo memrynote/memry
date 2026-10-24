@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react'
+import { Fragment, useLayoutEffect, useRef, useState } from 'react'
 import type { FoldLevel, FoldSkipped } from '@memry/contracts/note-fold'
 import { useT } from '@memry/i18n/renderer'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,7 @@ import {
   type TopicCard
 } from './fold-display'
 import { InlineMarkdown } from './fold-inline-text'
+import { FOLD_MORPH_EASING, prefersReducedMotion } from './fold-morph'
 import { MorphLine } from './fold-morph-line'
 import type { FoldAction } from './fold-state'
 
@@ -179,24 +180,14 @@ function Card({ card, dispatch }: { card: TopicCard; dispatch: Dispatch }) {
   )
 }
 
-/** The read-only folded body: sections of lines, or Topic cards. Pure display over `FoldedView`. */
-export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispatch }) {
-  // Entering or leaving Topic swaps cards for lines: a crossfade, since no word survives the swap.
+const NOOP: Dispatch = () => {}
+const SWAP_TIMING = { duration: 220, easing: FOLD_MORPH_EASING, fill: 'both' } as const
+
+function BodyItems({ view, dispatch }: { view: FoldedView; dispatch: Dispatch }) {
   const topic = view.level === 'topic'
-  const wasTopic = useRef(topic)
-  // oxlint-disable-next-line react/refs -- previous-value ref: render compares against the last committed topic to pick the crossfade
-  const crossfade = wasTopic.current !== topic
-  useEffect(() => {
-    wasTopic.current = topic
-  }, [topic])
   return (
     <div
-      key={topic ? 'cards' : 'lines'}
-      className={cn(
-        'flex flex-col',
-        topic ? 'gap-3' : 'gap-2.5',
-        crossfade && 'animate-in fade-in duration-150 motion-reduce:animate-none'
-      )}
+      className={cn('flex flex-col', topic ? 'gap-3' : 'gap-2.5')}
       data-testid="note-fold-body"
       data-fold-level={view.level}
     >
@@ -211,6 +202,77 @@ export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispa
             dispatch={dispatch}
           />
         )
+      )}
+    </div>
+  )
+}
+
+/**
+ * The read-only folded body: sections of lines, or Topic cards. Entering or
+ * leaving Topic swaps cards for lines, and no word survives that swap, so the
+ * outgoing body stays as an inert layer that drifts up and fades while the
+ * incoming one rises in. Transform and opacity only.
+ */
+export function FoldBody({ view, dispatch }: { view: FoldedView; dispatch: Dispatch }) {
+  const topic = view.level === 'topic'
+  const previous = useRef({ topic, view })
+  const [outgoing, setOutgoing] = useState<FoldedView | null>(null)
+  const incomingRef = useRef<HTMLDivElement>(null)
+  const outgoingRef = useRef<HTMLDivElement>(null)
+
+  useLayoutEffect(() => {
+    const before = previous.current
+    previous.current = { topic, view }
+    if (before.topic === topic) return
+    if (prefersReducedMotion() || typeof Element.prototype.animate !== 'function') return
+    setOutgoing(before.view)
+  }, [topic, view])
+
+  useLayoutEffect(() => {
+    const incoming = incomingRef.current
+    const leaving = outgoingRef.current
+    if (!outgoing || !incoming || !leaving) return
+    const animations = [
+      incoming.animate(
+        [
+          { opacity: 0, transform: 'translateY(8px)' },
+          { opacity: 1, transform: 'translateY(0)' }
+        ],
+        SWAP_TIMING
+      ),
+      leaving.animate(
+        [
+          { opacity: 1, transform: 'translateY(0)' },
+          { opacity: 0, transform: 'translateY(-8px)' }
+        ],
+        SWAP_TIMING
+      )
+    ]
+    let cancelled = false
+    void Promise.all(animations.map((animation) => animation.finished)).then(
+      () => !cancelled && setOutgoing(null),
+      () => {}
+    )
+    return () => {
+      cancelled = true
+      for (const animation of animations) animation.cancel()
+    }
+  }, [outgoing])
+
+  return (
+    <div className="relative">
+      <div ref={incomingRef}>
+        <BodyItems view={view} dispatch={dispatch} />
+      </div>
+      {outgoing && (
+        <div
+          ref={outgoingRef}
+          aria-hidden
+          inert
+          className="pointer-events-none absolute inset-x-0 top-0 select-none"
+        >
+          <BodyItems view={outgoing} dispatch={NOOP} />
+        </div>
       )}
     </div>
   )

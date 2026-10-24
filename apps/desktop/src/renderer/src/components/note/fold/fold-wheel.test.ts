@@ -24,4 +24,12 @@ describe('wheel stepper', () => {
     expect(stepper.push(30, 0)).toBe(0)
     expect(stepper.push(-30, 10)).toBe(0)
   })
+
+  it('with untilIdle, a continuing flick keeps the lock until the wheel pauses', () => {
+    const stepper = createWheelStepper(40, 250, true)
+    expect(stepper.push(80, 0)).toBe(1)
+    expect(stepper.push(80, 200)).toBe(0)
+    expect(stepper.push(80, 400)).toBe(0)
+    expect(stepper.push(80, 700)).toBe(1)
+  })
 })

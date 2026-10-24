@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useReducer } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -158,6 +158,7 @@ describe('FoldPill', () => {
       level: 'brief' as const,
       openCount: 0,
       onSelectLevel: vi.fn(),
+      onStep: vi.fn(),
       onRetry: vi.fn(),
       onCopy: vi.fn().mockResolvedValue(undefined),
       ...overrides
@@ -171,6 +172,17 @@ describe('FoldPill', () => {
     expect(screen.getByRole('button', { name: 'Brief' })).toHaveAttribute('aria-pressed', 'true')
     await userEvent.click(screen.getByRole('button', { name: 'Takeaway' }))
     expect(props.onSelectLevel).toHaveBeenCalledWith('takeaway')
+  })
+
+  it('steps one level per scroll over the bar and keeps the note from scrolling', () => {
+    const props = renderPill()
+    const bar = screen.getByRole('group', { name: 'Folded view' })
+    const notPrevented = fireEvent.wheel(bar, { deltaY: 80 })
+    expect(notPrevented).toBe(false)
+    expect(props.onStep).toHaveBeenCalledTimes(1)
+    expect(props.onStep).toHaveBeenCalledWith(1)
+    fireEvent.wheel(bar, { deltaY: 80 })
+    expect(props.onStep).toHaveBeenCalledTimes(1)
   })
 
   it('names the agent once on a written level', () => {

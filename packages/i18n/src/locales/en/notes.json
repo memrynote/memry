@@ -122,6 +122,10 @@
       "body": "Create a note to get started",
       "newNote": "New Note"
     },
+    "readwiseSync": {
+      "tooltip": "Readwise sync",
+      "failed": "Readwise sync failed"
+    },
     "syncing": {
       "body": "Syncing your notes — they will appear here as they arrive"
     },
@@ -2262,7 +2266,9 @@
       "escape": "esc",
       "copy": "Copy as text",
       "copied": "Copied",
-      "aria": "Folded view"
+      "aria": "Folded view",
+      "hintMac": "Pinch, ⌘-scroll, or scroll on this bar to zoom · click a paragraph to open it",
+      "hint": "Pinch, Ctrl-scroll, or scroll on this bar to zoom · click a paragraph to open it"
     },
     "view": {
       "aria": "Folded {level} view",
