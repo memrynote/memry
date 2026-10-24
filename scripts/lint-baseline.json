@@ -1,7 +1,6 @@
 {
   "version": 1,
   "files": {
-    "apps/cli/src/app-core/calendar-extras.ts": {"import/no-duplicates":1},
     "apps/desktop/src/main/calendar/google/disconnected-accounts.ts": {"import/no-cycle":2},
     "apps/desktop/src/main/calendar/google/google-sync-runner.ts": {"import/no-cycle":2},
     "apps/desktop/src/main/calendar/google/push-conflict-retry.ts": {"import/no-cycle":1},
