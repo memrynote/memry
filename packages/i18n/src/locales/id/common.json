@@ -1,4 +1,61 @@
 {
+  "portalBlock": {
+    "copyFailed": "Tidak dapat menyalin portal",
+    "hiddenCount": "{count} disembunyikan",
+    "windowFailed": "Portal ini tidak dapat dibuka. Buka catatan sumbernya.",
+    "noTarget": "Portal ini belum memiliki target. Tambahkan catatan ke definisinya, atau hapus blok ini.",
+    "invalidJson": "Definisi portal ini bukan JSON yang valid. Perbaiki di bawah, atau hapus blok ini.",
+    "invalidShape": "Definisi portal ini tidak memiliki catatan atau pencarian. Perbaiki di bawah, atau hapus blok ini.",
+    "search": {
+      "editQuery": "Edit kueri",
+      "count": "{count, plural, other {# blok}}",
+      "loading": "Mencari…",
+      "empty": "Tidak ada blok yang cocok dengan kueri ini.",
+      "failed": "Pencarian tidak dapat dijalankan.",
+      "retry": "Coba lagi",
+      "truncated": "Menampilkan {count} kecocokan pertama."
+    },
+    "copiedContents": "Isi disalin",
+    "copiedLink": "Tautan disalin",
+    "actionFailed": "Tidak dapat mengubah portal ini",
+    "keepsOneBlock": "Portal menyimpan setidaknya satu blok. Hapus portalnya saja.",
+    "expandChildren": "Tampilkan turunan",
+    "collapseChildren": "Sembunyikan turunan",
+    "toolbar": {
+      "label": "Portal",
+      "include": "Sertakan “{block}”",
+      "locked": "{note} terkunci · hanya baca",
+      "more": "Lainnya",
+      "openBeside": "Buka {note} di samping",
+      "click": "Klik",
+      "copyContents": "Salin isi",
+      "copyLink": "Salin tautan",
+      "remove": "Hapus portal",
+      "removeHint": "{note} tetap menyimpan semua blok"
+    },
+    "states": {
+      "missingNote": {
+        "text": "Catatan sumber telah dihapus. Referensinya tetap disimpan.",
+        "action": "Hapus"
+      },
+      "missingBlock": {
+        "text": "Blok ini telah dihapus di {source}.",
+        "action": "Pilih yang lain"
+      },
+      "notSynced": {
+        "text": "Menunggu catatan sumber disinkronkan.",
+        "action": "Coba lagi"
+      },
+      "cycle": {
+        "text": "Portal ini mengarah kembali ke dirinya sendiri.",
+        "action": "Buka sumber"
+      },
+      "tooDeep": {
+        "text": "Portal bersarang hingga {max} tingkat. Yang ini dibuka sebagai tautan.",
+        "action": "Buka sumber"
+      }
+    }
+  },
   "capture": {
     "focusHint": "Q",
     "focusShortcut": "Fokuskan kolom catat cepat",
@@ -43,6 +100,50 @@
     "showInFileManager": "Tampilkan di pengelola file",
     "openInDefaultApp": "Buka di aplikasi default",
     "revealFailed": "Gagal menampilkan di folder"
+  },
+  "commands": {
+    "runFailed": "Perintah itu tidak dapat dijalankan. Coba lagi."
+  },
+  "commandsPalette": {
+    "title": "Perintah",
+    "placeholder": "Ketik perintah…",
+    "groups": {
+      "navigation": "Navigasi",
+      "create": "Buat",
+      "tabs": "Tab",
+      "editor": "Editor",
+      "view": "Tampilan",
+      "app": "Aplikasi",
+      "note": "Catatan",
+      "settings": "Pengaturan",
+      "sync": "Sinkronisasi",
+      "help": "Bantuan",
+      "project": "Proyek",
+      "tasks": "Tugas",
+      "canvas": "Kanvas",
+      "folder": "Folder",
+      "file": "File"
+    },
+    "contexts": {
+      "note": "Catatan ini",
+      "journal": "Jurnal ini",
+      "project": "Proyek ini",
+      "tasks": "Tugas ini",
+      "canvas": "Kanvas ini",
+      "folder": "Folder ini",
+      "tag": "Tag ini",
+      "file": "File ini"
+    },
+    "recent": "Terbaru",
+    "empty": "Tidak ada perintah yang cocok dengan “{query}”",
+    "searchHint": "Cari catatan: {shortcut}",
+    "status": {
+      "count": "{count, plural, other {# perintah}}"
+    },
+    "actions": {
+      "run": "Jalankan",
+      "searchNotes": "Cari catatan"
+    }
   },
   "tabs": {
     "pin": "Sematkan tab",
@@ -131,6 +232,20 @@
     "openInTab": "Buka percakapan di tab",
     "stop": "Hentikan",
     "thinking": "Agen sedang berpikir",
+    "toolsUnavailable": "Alat vault dinonaktifkan untuk model ini. Model gagal dalam pemeriksaan alat, sehingga hanya bisa mengobrol.",
+    "toolsUnavailableWithDetail": "Alat vault dinonaktifkan untuk model ini. Model gagal dalam pemeriksaan alat, sehingga hanya bisa mengobrol. {detail}",
+    "toolsOff": {
+      "toolsRejected": "Alat vault dinonaktifkan untuk model ini. Penyedia menolak permintaan uji yang menyertakan alat, sehingga model hanya bisa mengobrol.",
+      "noToolCall": "Alat vault dinonaktifkan untuk model ini. Model menjawab permintaan uji tanpa memanggil alat, sehingga hanya bisa mengobrol.",
+      "toolResultRejected": "Alat vault dinonaktifkan untuk model ini. Model memanggil alat uji tetapi gagal setelah menerima hasilnya, sehingga hanya bisa mengobrol.",
+      "streamingUnsupported": "Alat vault dinonaktifkan untuk model ini. Penyedia tidak men-streaming balasan uji, sehingga model hanya bisa mengobrol.",
+      "providerSaid": "Penyedia menyatakan: {detail}",
+      "wroteToolCall": "Model menulis pemanggilan alat sebagai teks, dan tidak ada yang dijalankan."
+    },
+    "stepLimit": {
+      "notice": "Berhenti di batas langkah.",
+      "continue": "Lanjutkan"
+    },
     "enable": {
       "title": "Aktifkan agen memrynote",
       "description": "Agen memrynote menggunakan CLI agen lokal pilihan Anda untuk mengobrol tentang brankas Anda. Claude mengirim giliran ke Anthropic; Codex mengirim giliran ke OpenAI.",
@@ -275,6 +390,15 @@
       "addContext": "Tambahkan konteks",
       "addContextWithPermissions": "Tambahkan konteks ({permissions})",
       "mentionContext": "Sebut catatan, tugas, atau acara",
+      "files": {
+        "attach": "Lampirkan file teks",
+        "refused": {
+          "unsupportedType": "{name} bukan file teks yang didukung. Lampirkan file .txt, .md, .log, .csv, .tsv, .json, .yaml, atau .yml.",
+          "notText": "{name} bukan file teks UTF-8. Lampirkan file teks.",
+          "tooLarge": "{name} akan membuat pesan ini melebihi batas 100 KB. Hapus satu file atau lampirkan yang lebih kecil.",
+          "readFailed": "{name} tidak dapat dibaca. Pastikan file masih ada dan dapat Anda buka, lalu lampirkan lagi."
+        }
+      },
       "voice": {
         "start": "Mulai dikte suara",
         "stop": "Hentikan dikte suara",
@@ -340,6 +464,14 @@
           "extraHigh": "Ekstra tinggi"
         }
       },
+      "localSettings": {
+        "reasoning": {
+          "defaultLabel": "Default",
+          "default": "Kedalaman default",
+          "high": "Tinggi",
+          "max": "Maks"
+        }
+      },
       "permissionsLabel": "Izin agen: {access}, pencarian web {webSearch}",
       "permissions": {
         "label": "Izin",
@@ -347,6 +479,17 @@
         "tools": "Alat"
       },
       "modelSettingsLabel": "Pengaturan model agen: {model}, {settings}",
+      "queue": {
+        "label": "Pesan dalam antrean",
+        "queueMessage": "Antrekan pesan",
+        "edit": "Edit pesan dalam antrean",
+        "editLabel": "Teks pesan dalam antrean",
+        "remove": "Hapus pesan dalam antrean",
+        "save": "Simpan",
+        "cancel": "Batal",
+        "sending": "Mengirim…",
+        "notSent": "Belum terkirim. Edit untuk mengirim lagi, atau hapus."
+      },
       "unavailable": {
         "vaultToolsOnly": "Hanya alat brankas dengan model ini"
       }
@@ -394,7 +537,8 @@
       "saveDisclosure": "Tidak dapat menyimpan status pengungkapan",
       "resolveWindow": "Tidak dapat menentukan jendela sumber agen",
       "detectCli": "Tidak dapat mendeteksi backend agen",
-      "loadDisclosure": "Tidak dapat memuat status pengungkapan"
+      "loadDisclosure": "Tidak dapat memuat status pengungkapan",
+      "turnFailed": "Balasan berhenti karena kesalahan. Pesan Anda tetap tersimpan, jadi Anda bisa mengirimnya lagi."
     },
     "actions": {
       "copy": "Salin",
@@ -576,6 +720,7 @@
       "newFolder2": "Folder baru",
       "newProject": "Proyek baru",
       "bookmarks": "Markah",
+      "chart": "Bagan",
       "tags": "Tag",
       "reorderSection": "Ubah urutan {section}",
       "dropFilesToImport": "Letakkan file untuk mengimpor",
@@ -863,6 +1008,11 @@
       "cancel": "Batal",
       "remove2": "Hapus",
       "inYourAccount": "Di akun Anda",
+      "trySandbox": "Coba vault sandbox",
+      "sandboxVault": "Vault sandbox",
+      "sandboxPreparing": "Menyiapkan sandbox…",
+      "sandboxFailed": "Tidak dapat menyiapkan vault sandbox",
+      "resetSandbox": "Atur ulang vault sandbox",
       "itemsCount": "{count} item",
       "untitledVault": "Brankas",
       "downloadVaultTitle": "Unduh “{name}”",
@@ -920,6 +1070,7 @@
       "noRecentlyOpened": "Catatan yang Anda buka akan muncul di sini",
       "bookmarks": "Markah",
       "tasks": "Tugas",
+      "chart": "Bagan",
       "calendar": "Kalender",
       "calendarToday": "Hari ini",
       "openCalendar": "Buka kalender",
@@ -978,6 +1129,9 @@
     "edit": "Edit",
     "done": "Selesai",
     "addWidget": "Tambahkan widget",
+    "cover": {
+      "add": "Tambahkan sampul"
+    },
     "empty": {
       "title": "Papan Anda kosong",
       "body": "Widget menyatukan catatan, tugas, dan markah Anda di satu tempat yang tenang.",
@@ -1170,6 +1324,7 @@
     "changeIcon": "Ubah ikon…",
     "resetIcon": "Atur ulang ikon",
     "iconButton": "Ubah ikon {name}",
+    "leaveSandbox": "Kembali ke {name}",
     "iconFailed": "Tidak dapat mengubah ikon brankas"
   },
   "sidebarHelp": {
@@ -1213,6 +1368,9 @@
     "filterType": "Jenis",
     "filterModified": "Diubah",
     "matches": "Kecocokan",
+    "matchesMore": "{count, plural, other {# kecocokan lagi}}",
+    "matchesHide": "Sembunyikan kecocokan",
+    "matchOf": "Kecocokan {index} dari {total}",
     "showMore": "Tampilkan {count} lagi",
     "keys": {
       "esc": "esc"
@@ -1250,6 +1408,7 @@
       "nextSection": "Bagian berikutnya",
       "open": "Buka",
       "openNote": "Buka catatan",
+      "openAtMatch": "Buka di kecocokan",
       "openFile": "Buka file",
       "openJournal": "Buka jurnal",
       "openTask": "Buka tugas",
@@ -1259,6 +1418,7 @@
       "chooseTag": "Pilih tag",
       "addTag": "Tambah tag",
       "showAll": "Tampilkan semua",
+      "hideMatches": "Sembunyikan kecocokan",
       "searchEverywhere": "Cari di semua tempat",
       "clearFilters": "Hapus filter"
     },

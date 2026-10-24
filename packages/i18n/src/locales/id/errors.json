@@ -99,6 +99,7 @@
     "vaultLimitExceeded": "Paket Anda menyinkronkan lebih sedikit brankas daripada yang dimiliki akun ini, jadi brankas ini tetap di perangkat ini. Hapus brankas dari akun Anda di Pengaturan → Akun, atau tingkatkan paket Anda.",
     "certificatePinFailed": "Koneksi aman gagal. Periksa koneksi jaringan Anda.",
     "deviceKeyMismatch": "Kunci keamanan perangkat ini tidak lagi cocok dengan kunci yang terdaftar untuk akun Anda, sehingga server menolak perubahannya. Masuk lagi di perangkat ini untuk mendaftarkannya ulang.",
+    "deviceKeysMissing": "Perubahan di perangkat ini tidak diunggah karena kunci perangkatnya hilang. Pilih Perbaiki untuk memulihkannya. Jika perangkat ini tidak lagi menyimpan kuncinya, Anda akan masuk lagi dan mungkin memerlukan frasa pemulihan. Catatan, tugas, dan proyek yang belum tersinkron tetap tersimpan.",
     "keychainUnavailable": "Sinkronisasi dijeda karena Memry saat ini tidak dapat membaca kunci sinkronisasi dari rantai kunci sistem. Buka kunci rantai kunci Anda, dan sinkronisasi akan berlanjut dengan sendirinya; jika tidak, mulai ulang Memry. Tidak ada yang dihapus.",
     "unknown": "Terjadi kesalahan sinkronisasi yang tidak terduga. Akan mencoba lagi secara otomatis.",
     "statusFetchFailed": "Gagal mengambil status sinkronisasi",
@@ -106,6 +107,10 @@
     "triggerFailed": "Sinkronisasi gagal",
     "pauseFailed": "Gagal menjeda sinkronisasi",
     "resumeFailed": "Gagal melanjutkan sinkronisasi",
+    "syncNowSignedOut": "Sinkronisasi mengharuskan Anda masuk lagi di perangkat ini.",
+    "syncNowBusy": "Sinkronisasi sedang berjalan. Coba lagi sebentar lagi.",
+    "syncNowPaused": "Sinkronisasi dijeda saat berjalan. Lanjutkan dari menu sinkronisasi.",
+    "openAccountSettings": "Buka pengaturan",
     "settingsNotInitialized": "Sinkronisasi pengaturan tidak diinisialisasi",
     "securityQuarantinePermanent": "Item sinkronisasi tidak dapat diverifikasi dan telah dikarantina demi keamanan.",
     "securityQuarantineRetry": "Item sinkronisasi gagal dalam verifikasi tanda tangan dan akan dicoba lagi.",
@@ -131,7 +136,12 @@
   },
   "ai": {
     "inlineDisabled": "Pengeditan sebaris AI dinonaktifkan",
-    "listOllamaModelsFailed": "Gagal menampilkan daftar model Ollama"
+    "listOllamaModelsFailed": "Gagal menampilkan daftar model Ollama",
+    "writingAssistInvalid": "Permintaan itu tidak dapat dikirim ke model AI.",
+    "apiKeyMissing": "Tambahkan kunci API {provider} Anda di Pengaturan → AI untuk menggunakan alat menulis.",
+    "apiKeyInvalid": "Kunci API {provider} Anda ditolak. Periksa di Pengaturan → AI.",
+    "ollamaUnreachable": "Ollama tidak berjalan. Jalankan dengan \"ollama serve\", atau pilih penyedia lain di Pengaturan → AI.",
+    "providerUnreachable": "Tidak dapat menjangkau {provider}. Periksa koneksi internet Anda dan coba lagi."
   },
   "auth": {
     "notAuthenticated": "Belum terautentikasi",
@@ -182,7 +192,8 @@
     "promoteExternalEventFailed": "Gagal membuat salinan tertaut dari acara kalender eksternal",
     "onlyCalendarSourcesRetryable": "Hanya sumber kalender yang dapat dicoba lagi",
     "invalidProviderSettings": "Pengaturan penyedia kalender tidak valid",
-    "getExternalEventFailed": "Tidak dapat memuat acara ini. Acara masih ada di kalender Anda; coba buka lagi."
+    "getExternalEventFailed": "Tidak dapat memuat acara ini. Acara masih ada di kalender Anda; coba buka lagi.",
+    "listLinkedNotesFailed": "Tidak dapat memuat catatan yang tertaut ke acara ini."
   },
   "canvasFolder": {
     "exists": "Folder kanvas dengan nama tersebut sudah ada di sini.",
@@ -209,10 +220,35 @@
     "previewFailed": "Pratinjau gagal",
     "listFailed": "Gagal menampilkan daftar pengimpor",
     "appleNotesFoldersFailed": "Tidak dapat membaca folder Apple Notes Anda",
+    "appleNotesPasswordFailed": "Tidak dapat memeriksa kata sandi Notes.",
     "onenoteStatusFailed": "Tidak dapat membaca status koneksi OneNote",
     "onenoteConnectFailed": "Gagal masuk ke Microsoft",
     "onenoteDisconnectFailed": "Tidak dapat memutus sambungan akun Microsoft",
-    "onenoteNotebooksFailed": "Tidak dapat memuat buku catatan OneNote"
+    "onenoteNotebooksFailed": "Tidak dapat memuat buku catatan OneNote",
+    "readwiseStatusFailed": "Tidak dapat membaca status koneksi Readwise",
+    "readwiseConnectFailed": "Tidak dapat terhubung ke Readwise",
+    "readwiseInvalidToken": "Readwise tidak menerima token ini. Salin lagi dari readwise.io/access_token.",
+    "readwiseRateLimited": "Readwise sedang membatasi permintaan. Coba lagi dalam semenit.",
+    "readwiseUnreachable": "Tidak dapat menjangkau Readwise. Periksa koneksi Anda dan coba lagi.",
+    "readwiseDisconnectFailed": "Tidak dapat memutus Readwise",
+    "readwiseSyncFailed": "Tidak dapat memulai sinkronisasi Readwise",
+    "readwiseRunUnavailable": "Readwise tidak disinkronkan di perangkat ini.",
+    "readwiseRunInProgress": "Impor Readwise sedang berjalan. Coba lagi setelah selesai.",
+    "readwiseOptionsFailed": "Tidak dapat menyimpan pengaturan Readwise",
+    "readwiseNotConnected": "Readwise belum terhubung. Tempel token akses Anda terlebih dahulu.",
+    "readwiseSyncsElsewhere": "Readwise disinkronkan di perangkat lain. Jalankan perintah ini di sana.",
+    "readwiseBookCommandFailed": "Tidak dapat menyelesaikan perintah Readwise",
+    "readwiseBookGone": "Buku ini tidak lagi ada di pustaka Readwise Anda.",
+    "readwiseNotLinked": "Catatan ini tidak tertaut ke buku Readwise.",
+    "readwiseNotDeleted": "Buku ini tidak ada dalam daftar yang dihapus.",
+    "readwiseBookBusy": "Catatan berubah saat perintah berjalan. Coba lagi.",
+    "readwiseSyncsOnDevice": "Readwise disinkronkan di {device}. Gunakan “Sinkronkan di sini” untuk memindahkannya ke sini.",
+    "readwiseAnotherDevice": "perangkat lain",
+    "readwiseNotReady": "Memry belum selesai menyinkronkan dengan perangkat Anda yang lain. Coba lagi sebentar lagi.",
+    "readwiseNeedsSync": "Aktifkan sinkronisasi untuk memindahkan Readwise antarperangkat.",
+    "readwiseClaimNotDelivered": "Belum dapat memberi tahu perangkat Anda yang lain. Periksa koneksi Anda dan coba lagi.",
+    "readwiseTakeOverFailed": "Tidak dapat memindahkan Readwise ke perangkat ini",
+    "readwiseCancelFailed": "Tidak dapat membatalkan sinkronisasi Readwise"
   },
   "project": {
     "createFailed": "Gagal membuat proyek",
@@ -236,7 +272,8 @@
     "renameFailed": "Gagal mengganti nama properti",
     "createDefinitionFailed": "Gagal membuat definisi properti",
     "updateDefinitionFailed": "Gagal memperbarui definisi properti",
-    "setCalendarVisibilityFailed": "Gagal menyetel visibilitas properti kalender"
+    "setCalendarVisibilityFailed": "Gagal menyetel visibilitas properti kalender",
+    "definitionsFileUnreadable": "Tidak dapat menyimpan perubahan properti karena .memry/properties.md tidak dapat dibaca. Perbaiki atau hapus file itu, lalu coba lagi."
   },
   "reminder": {
     "notFound": "Pengingat tidak ditemukan",
@@ -262,6 +299,7 @@
     "shortcutInUse": "Pintasan {shortcut} sudah digunakan"
   },
   "tag": {
+    "renameInProgress": "Penggantian nama #{from} menjadi #{to} masih berjalan. Coba lagi setelah selesai.",
     "mergeSameTag": "Tag sumber dan tag tujuan sama",
     "categoryNameRequired": "Nama kategori wajib diisi",
     "pinNoteFailed": "Gagal menyematkan catatan",
@@ -295,7 +333,8 @@
     "deleteManyFailed": "Gagal menghapus tugas",
     "moveManyFailed": "Gagal memindahkan tugas",
     "archiveManyFailed": "Gagal mengarsipkan tugas",
-    "projectMissing": "Proyek tersebut sudah tidak ada"
+    "projectMissing": "Proyek tersebut sudah tidak ada",
+    "invalidParent": "Tugas tidak dapat ditempatkan di sana"
   },
   "taskStatus": {
     "createFailed": "Gagal membuat status",
@@ -319,5 +358,24 @@
   "vaultLock": {
     "noteReadOnly": "Pemilik membuat catatan ini hanya-baca.",
     "folderReadOnly": "Pemilik membuat folder ini hanya-baca."
+  },
+  "ocrLanguages": {
+    "unreachable": "Server Memry tidak dapat dijangkau. Bahasa yang sudah ada tetap berfungsi, dan Memry akan mencoba lagi saat dimulai berikutnya.",
+    "unavailable": "Server Memry belum menyediakan bahasa ini. Bahasa yang sudah ada tetap berfungsi.",
+    "corrupt": "Data yang diunduh tidak sesuai dengan yang diharapkan Memry, jadi tidak digunakan. Coba lagi untuk mengunduhnya kembali.",
+    "saveFailed": "Data bahasa tidak dapat disimpan di komputer ini. Periksa ruang disk yang tersedia, lalu coba lagi."
+  },
+  "tagFields": {
+    "reservedName": "\"{name}\" dicadangkan dan tidak dapat menjadi nama kolom",
+    "duplicateField": "#{definedBy} sudah memiliki kolom bernama \"{name}\"",
+    "unknownField": "Tag ini tidak memiliki kolom bernama \"{name}\"",
+    "inheritedField": "\"{name}\" berasal dari #{definedBy}. Edit di sana",
+    "cycle": "#{parent} sudah mengambil kolomnya dari tag ini",
+    "unreadableSchema": "Versi Memry yang lebih baru telah mengubah tag ini. Perbarui Memry untuk mengeditnya",
+    "relationTargetRequired": "Pilih tag yang dituju relasi ini",
+    "editFailed": "Tidak dapat mengubah kolom tag",
+    "previewFailed": "Tidak dapat menghitung dampak perubahan ini",
+    "snapshotFailed": "Tidak dapat memuat kolom tag",
+    "renameRunning": "Penggantian nama kolom lain masih diselesaikan ({from} menjadi {to}). Coba lagi setelah selesai."
   }
 }
