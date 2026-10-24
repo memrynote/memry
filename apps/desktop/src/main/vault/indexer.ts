@@ -11,7 +11,7 @@
 import path from 'path'
 import { readdir, readFile, stat } from 'fs/promises'
 import { existsSync, unlinkSync } from 'fs'
-import { getConfig, emitIndexProgress } from './index'
+import { getConfig, emitIndexProgress } from './status'
 import { getIndexDbPath } from './init'
 import {
   initIndexDatabase,

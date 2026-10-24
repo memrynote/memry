@@ -5,7 +5,7 @@ import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { htmlToPlainText } from './lib/html-to-plain-text'
 import type { InstallerHandoff } from './installer-handoff'
 import { isExpiredSignedAssetError, isUpdaterCheckPhase } from './updater-error-severity'
-import { describeUpdaterError } from './updater'
+import { describeUpdaterError } from './updater-error-description'
 import { plainTextReleaseNotes, stripDeveloperChangelog } from './updater-release-notes'
 import type { AvailableUpdate, UpdaterBackend, UpdaterHost } from './updater-backend'
 

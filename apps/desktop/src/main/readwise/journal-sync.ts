@@ -10,7 +10,7 @@ import { appendToJournalEntry, updateJournalEntry } from '../journal/update-entr
 import { resolveJournalEntryId } from '../journal/create-entry'
 import { getFeaturesSettings } from '../settings/features'
 import { getCrdtProvider } from '../sync/crdt-provider'
-import { wasRecentNetworkUpdate } from '../sync/crdt-writeback'
+import { wasRecentNetworkUpdate } from '../sync/crdt-network-update'
 import { readJournalEntry } from '../vault/journal'
 import { getNoteById } from '../vault/notes'
 import {

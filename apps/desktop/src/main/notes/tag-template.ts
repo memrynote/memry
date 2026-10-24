@@ -22,7 +22,7 @@ import { loadResolvedTags } from '../tags/schema/read'
 import { getTemplate } from '../vault/templates'
 import { getNoteById, type Note, type NoteUpdateInput } from '../vault/notes'
 import { createLogger } from '../lib/logger'
-import { buildTemplateApplyUpdate } from './apply-template'
+import { buildTemplateApplyUpdate } from './template-update'
 
 const log = createLogger('TagTemplate')
 

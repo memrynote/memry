@@ -1,4 +1,4 @@
-import type { UpdaterErrorPhase } from './updater'
+import type { UpdaterErrorPhase } from './updater-error-description'
 
 export type UpdaterBackendKind = 'electron-updater' | 'velopack'
 

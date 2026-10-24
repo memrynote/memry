@@ -13,7 +13,7 @@ import { existsSync, type Stats } from 'fs'
 import chokidar from 'chokidar'
 import type { FSWatcher } from 'chokidar'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getConfig } from './index'
+import { getConfig } from './status'
 import {
   parseNote,
   generateContentHash,

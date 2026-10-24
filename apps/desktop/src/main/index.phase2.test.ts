@@ -280,7 +280,7 @@ vi.mock('./telemetry/log-ship', () => ({
   getLogShip: vi.fn(() => ({ dispose: vi.fn(async () => undefined) }))
 }))
 
-vi.mock('./calendar/google/sync-service', () => ({
+vi.mock('./calendar/google/google-sync-runner', () => ({
   startGoogleCalendarSyncRunner: startGoogleCalendarSyncRunnerMock,
   stopGoogleCalendarSyncRunner: stopGoogleCalendarSyncRunnerMock,
   triggerGoogleCalendarSyncNow: triggerGoogleCalendarSyncNowMock
@@ -584,11 +584,12 @@ describe('main index phase2 exports', () => {
     delete process.env.OPENAI_WHISPER_MODEL
     delete process.env.OPENAI_EMBEDDING_MODEL
 
-    const module = await importMainModule()
+    await importMainModule()
+    const { envConfig } = await import('./env-config')
 
-    expect(module.envConfig.openaiApiKey).toBeUndefined()
-    expect(module.envConfig.whisperModel).toBe('whisper-1')
-    expect(module.envConfig.embeddingModel).toBe('text-embedding-3-small')
+    expect(envConfig.openaiApiKey).toBeUndefined()
+    expect(envConfig.whisperModel).toBe('whisper-1')
+    expect(envConfig.embeddingModel).toBe('text-embedding-3-small')
     expect(dotenvConfigMock).toHaveBeenCalled()
     expect(requestSingleInstanceLockMock).toHaveBeenCalledTimes(1)
     expect(appOnMock).toHaveBeenCalled()
@@ -599,11 +600,12 @@ describe('main index phase2 exports', () => {
     process.env.OPENAI_WHISPER_MODEL = 'whisper-test'
     process.env.OPENAI_EMBEDDING_MODEL = 'embed-test'
 
-    const module = await importMainModule()
+    await importMainModule()
+    const { envConfig } = await import('./env-config')
 
-    expect(module.envConfig.openaiApiKey).toBe('test-key')
-    expect(module.envConfig.whisperModel).toBe('whisper-test')
-    expect(module.envConfig.embeddingModel).toBe('embed-test')
+    expect(envConfig.openaiApiKey).toBe('test-key')
+    expect(envConfig.whisperModel).toBe('whisper-test')
+    expect(envConfig.embeddingModel).toBe('embed-test')
   })
 
   it('suppresses console logging before running headless CLI mode', async () => {

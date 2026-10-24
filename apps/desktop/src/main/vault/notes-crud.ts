@@ -22,7 +22,6 @@ import {
 } from './frontmatter'
 import { syncNoteToCache, deleteNoteFromCache } from './note-sync'
 import { moveIndexedNotesWithFolder, type FolderMovedNote } from './folder-move-index'
-import { reconcileTaskCheckboxesFromMarkdown } from '../tasks/reconcile-markdown-tasks'
 import {
   compareHeaderTags,
   nextHeaderTags,
@@ -78,7 +77,7 @@ import { createLogger } from '../lib/logger'
 import { trackMainLog } from '../telemetry/diagnostics'
 import { markExpectedWarning } from '../telemetry/expected-conditions'
 import { getFileType, getExtension, isBinaryFileType } from '@memry/shared/file-types'
-import { getStatus, getConfig } from './index'
+import { getStatus, getConfig } from './status'
 import { followJournalFolderMove } from './journal-folder-follow'
 import { createTreeFolderFilter } from './folder-visibility'
 import {
@@ -518,9 +517,15 @@ export async function getNoteById(id: string): Promise<Note | null> {
   // just ticked in the app. Fire and forget otherwise — the note must render
   // immediately, and the task events that follow refresh the affected rows.
   if (!hasPendingWriteback(id)) {
-    void reconcileTaskCheckboxesFromMarkdown(parsed.content).catch((err: unknown) => {
-      logger.warn('Failed to reconcile task checkboxes on note open', { id, error: err })
-    })
+    // Loaded on first use: the tasks domain reaches back into note writes
+    // (header status sync), so a static import here is a cycle.
+    void import('../tasks/reconcile-markdown-tasks')
+      .then(({ reconcileTaskCheckboxesFromMarkdown }) =>
+        reconcileTaskCheckboxesFromMarkdown(parsed.content)
+      )
+      .catch((err: unknown) => {
+        logger.warn('Failed to reconcile task checkboxes on note open', { id, error: err })
+      })
   }
 
   return {

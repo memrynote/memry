@@ -88,9 +88,18 @@ vi.mock('./crdt-writeback', () => ({
   scheduleWriteback: vi.fn(),
   cancelPendingWritebacks: vi.fn(),
   flushPendingWritebacks: vi.fn(),
-  recordNetworkUpdate: vi.fn(),
   resetWritebackState: vi.fn()
 }))
+vi.mock('./crdt-writeback-port', () => ({
+  crdtWriteback: () => ({
+    scheduleWriteback: vi.fn(),
+    cancelWriteback: vi.fn(),
+    flushPendingWritebacks: vi.fn(),
+    resetWritebackState: vi.fn(),
+    writebackNow: vi.fn()
+  })
+}))
+vi.mock('./crdt-network-update', () => ({ recordNetworkUpdate: vi.fn() }))
 vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({
   MicrotaskBatchBroadcaster: class {
     enqueue() {

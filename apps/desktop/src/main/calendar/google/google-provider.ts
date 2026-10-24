@@ -40,10 +40,9 @@ import {
 } from './oauth'
 import { listGoogleCalendars, setDefaultGoogleCalendar } from './onboarding'
 import { getGooglePushRuntime } from './push-runtime'
+import { startGoogleCalendarSyncRunner, stopGoogleCalendarSyncRunner } from './google-sync-runner'
 import {
   discoverGoogleCalendarSources,
-  startGoogleCalendarSyncRunner,
-  stopGoogleCalendarSyncRunner,
   syncGoogleCalendarNow,
   syncGoogleCalendarSource,
   syncLocalSourceToGoogleCalendar

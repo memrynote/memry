@@ -161,13 +161,12 @@ import {
   handleSyncDeletion,
   isWritebackIgnored,
   markWritebackIgnored,
-  recordNetworkUpdate,
   resetWritebackState,
   scheduleWriteback,
   settleWriteback,
-  wasRecentNetworkUpdate,
   writebackNow
 } from './crdt-writeback'
+import { recordNetworkUpdate, wasRecentNetworkUpdate } from './crdt-network-update'
 import { resetTelemetryThrottle } from '../telemetry/throttle'
 
 // A real, empty folder: the outside-vault check resolves every read against it.

@@ -270,13 +270,18 @@ vi.mock('@memry/sync-client/crdt-compact-utils', () => ({
   compactYDoc: (...args: unknown[]) => mocks.compactYDoc(...args)
 }))
 
-vi.mock('./crdt-writeback', () => ({
-  scheduleWriteback: (...args: unknown[]) => mocks.scheduleWriteback(...args),
-  cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
-  flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
-  recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args),
-  resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args),
-  writebackNow: (...args: unknown[]) => mocks.writebackNow(...args)
+vi.mock('./crdt-writeback-port', () => ({
+  crdtWriteback: () => ({
+    scheduleWriteback: (...args: unknown[]) => mocks.scheduleWriteback(...args),
+    cancelWriteback: (...args: unknown[]) => mocks.cancelWriteback(...args),
+    flushPendingWritebacks: (...args: unknown[]) => mocks.flushPendingWritebacks(...args),
+    resetWritebackState: (...args: unknown[]) => mocks.resetWritebackState(...args),
+    writebackNow: (...args: unknown[]) => mocks.writebackNow(...args)
+  })
+}))
+
+vi.mock('./crdt-network-update', () => ({
+  recordNetworkUpdate: (...args: unknown[]) => mocks.recordNetworkUpdate(...args)
 }))
 
 vi.mock('@memry/sync-client/microtask-batch-broadcaster', () => ({

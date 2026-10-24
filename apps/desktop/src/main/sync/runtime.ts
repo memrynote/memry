@@ -17,6 +17,16 @@ import {
   secureCleanup
 } from '../crypto'
 import { SyncEngine, type SyncEngineDeps } from './engine'
+import { getActiveRuntime, setActiveRuntime } from './runtime-state'
+
+// The runtime handle lives in runtime-state.ts; importers outside the
+// asset/attachment path keep reading it through here.
+export {
+  getNetworkMonitor,
+  getNoteBodyOutbox,
+  getSyncEngine,
+  getSyncWebSocket
+} from './runtime-state'
 import { handleDeviceKeyMismatch } from './device-key-mismatch'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { syncGoogleCalendarSource } from '../calendar/google/sync-service'
@@ -163,23 +173,6 @@ const crdtAuthRetryDeps: AuthRetryDeps = {
   getAccessToken: () => getValidAccessToken()
 }
 
-interface SyncRuntimeState {
-  queue: SyncQueueManager
-  network: NetworkMonitor
-  ws: WebSocketManager
-  engine: SyncEngine
-  noteBodyOutbox: NoteBodyOutbox
-  snapshotScheduler: CrdtSnapshotScheduler
-  workerBridge: SyncWorkerBridge
-  /**
-   * Kept so teardown can detach it. The closure reaches this runtime's
-   * noteBodyOutbox, and the attachment UploadQueue is a module
-   * singleton that holds the NetworkMonitor past a runtime stop — leaving the
-   * subscriber attached keeps the whole dead graph reachable.
-   */
-  onNetworkStatusChanged: (event: { online: boolean }) => void
-}
-
 /**
  * Settle Home board cover bytes (#3384) once the attachment queues exist.
  * Lazy import: the cover service reaches back into the IPC attachment module,
@@ -245,7 +238,6 @@ function emitLocalOnly(): void {
 // Secrets present but unreadable this run (#2521): paused and retried, not failed.
 const keychainDeps = { start: startSyncRuntime, emitStatus: emitSyncStatus }
 
-let runtime: SyncRuntimeState | null = null
 let startPromise: Promise<SyncEngine | null> | null = null
 /**
  * Liveness for the work this runtime starts and then does not await.
@@ -343,18 +335,6 @@ async function getOptionalRuntimeVaultKey(db: DataDb, context: string): Promise<
   }
 }
 
-export function getSyncEngine(): SyncEngine | null {
-  return runtime?.engine ?? null
-}
-
-export const getNoteBodyOutbox = (): NoteBodyOutbox | null => runtime?.noteBodyOutbox ?? null
-
-export function getNetworkMonitor(): NetworkMonitor | null {
-  return runtime?.network ?? null
-}
-
-export const getSyncWebSocket = (): WebSocketManager | null => runtime?.ws ?? null
-
 async function seedExistingCrdtDocs(
   crdtProvider: ReturnType<typeof getCrdtProvider>,
   signal: AbortSignal
@@ -397,8 +377,9 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
   // In-flight startup work or a late IPC can otherwise restart it mid-shutdown,
   // right after before-quit already stopped it. Return any existing engine so
   // callers behave as if the runtime were already up.
-  if (isAppShuttingDown()) return runtime?.engine ?? null
-  if (runtime) return runtime.engine
+  if (isAppShuttingDown()) return getActiveRuntime()?.engine ?? null
+  const activeRuntime = getActiveRuntime()
+  if (activeRuntime) return activeRuntime.engine
   if (startPromise) return startPromise
 
   startPromise = (async () => {
@@ -949,7 +930,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         workerBridge,
         onNetworkStatusChanged
       }
-      runtime = pendingRuntime
+      setActiveRuntime(pendingRuntime)
 
       await engine.start()
       log.info('Sync runtime started')
@@ -1045,7 +1026,7 @@ export async function startSyncRuntime(): Promise<SyncEngine | null> {
         })
       resetCrdtProvider()
 
-      runtime = null
+      setActiveRuntime(null)
       resetSyncServiceSingletons()
       if (!pauseForKeychain(error, keychainDeps)) log.error('Failed to start sync runtime', error)
       // sync_enabled only fires on success, so a fleet-wide startup regression
@@ -1083,7 +1064,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
     // teardown of work already unwinding. With no runtime yet there is no sync
     // cycle to cancel; the start is still inside policy gates or provider init
     // and settles on its own.
-    runtime?.engine.requestCancel()
+    getActiveRuntime()?.engine.requestCancel()
     await startPromise.catch(() => {})
   }
 
@@ -1101,7 +1082,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
     seedPromise = null
   }
 
-  const active = runtime
+  const active = getActiveRuntime()
 
   // Cancel deferred snapshots before the shutdown flush: pushAllSnapshots()
   // covers every note with pending bytes, so a timer firing mid-teardown would
@@ -1115,7 +1096,7 @@ export async function stopSyncRuntime(options?: StopSyncRuntimeOptions): Promise
     await pushFinalSnapshots(options?.finalSyncTimeoutMs)
   }
 
-  runtime = null
+  setActiveRuntime(null)
   startPromise = null
   // token-manager holds this runtime's callback in a single slot and keeps
   // firing it long after teardown (its refresh timer is independent), so the

@@ -4,9 +4,22 @@ import path from 'path'
 import { LocaleSchema, type Locale } from '@memry/contracts/locale-api'
 import { OcrLanguageSchema, type OcrLanguage } from '@memry/contracts/ocr-languages-api'
 import { createLogger } from './lib/logger'
-import { trackMainError } from './telemetry/diagnostics'
 
 const logger = createLogger('Store')
+
+/**
+ * Loaded on demand: telemetry/diagnostics redacts with the current vault path
+ * (telemetry/redact-options.ts), which this module owns, so a static import
+ * would close a cycle. The call sites are error paths, and the module is
+ * already loaded by then.
+ */
+function trackStoreError(action: string, error: unknown): void {
+  void import('./telemetry/diagnostics')
+    .then(({ trackMainError }) => trackMainError('store', action, error))
+    .catch((importError: unknown) => {
+      logger.error('Could not report store error to telemetry:', importError)
+    })
+}
 
 /**
  * Vault information stored in config
@@ -299,7 +312,7 @@ function readConfig(): StoreSchema {
     logger.error('Error reading config:', error)
     // A corrupt/unreadable config makes the app look factory-reset (vault list,
     // current vault, window bounds all gone) — must be visible fleet-wide.
-    trackMainError('store', 'config_read_failed', error)
+    trackStoreError('config_read_failed', error)
   }
   return { ...defaultData }
 }
@@ -316,7 +329,7 @@ function writeConfig(data: StoreSchema): void {
     logger.error('Error writing config:', error)
     // Silently loses vault registration / currentVault / device id until restart;
     // the in-memory cache masks it, so telemetry is the only timely signal.
-    trackMainError('store', 'config_write_failed', error)
+    trackStoreError('config_write_failed', error)
   }
 }
 

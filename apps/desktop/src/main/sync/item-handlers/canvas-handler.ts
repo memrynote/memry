@@ -29,10 +29,6 @@ import { extractEntityRefsFromScene } from '../../canvas/scene-refs'
 import { clearCanvasEdges, rewriteCanvasEdges } from '../../canvas/edge-index'
 import { readMemryAssets, sceneWithCurrentAssetRows } from '../../canvas/assets/memry-assets'
 import { ensureAssetsPresent } from '../../canvas/assets/asset-service'
-import {
-  buildAssetServiceContext,
-  releaseUnshownCanvasHolds
-} from '../../canvas/assets/asset-service-context'
 import { getCanvasSyncService } from '@memry/sync-client/canvas-sync'
 import { trackMainEvent } from '../../telemetry/track'
 import { trackMainLog } from '../../telemetry/diagnostics'
@@ -108,6 +104,9 @@ async function restoreCanvasAssets(
   descriptors: MemryAssetDescriptor[]
 ): Promise<void> {
   try {
+    // Lazy: asset-service-context reaches the sync runtime, which imports the
+    // item handlers (this file) through the engine, so a static import is a cycle.
+    const { buildAssetServiceContext } = await import('../../canvas/assets/asset-service-context')
     const assetCtx = buildAssetServiceContext()
     if (!assetCtx) return
     await ensureAssetsPresent(assetCtx, canvasId, descriptors)
@@ -127,7 +126,10 @@ function scheduleUnshownHoldRelease(canvasId: string): void {
     canvasId,
     setTimeout(() => {
       pendingHoldReleases.delete(canvasId)
-      void releaseUnshownCanvasHolds(canvasId)
+      // Lazy for the same reason as in restoreCanvasAssets.
+      void import('../../canvas/assets/asset-service-context')
+        .then(({ releaseUnshownCanvasHolds }) => releaseUnshownCanvasHolds(canvasId))
+        .catch((err: unknown) => log.warn('canvas hold release failed to load', { canvasId, err }))
     }, HOLD_RELEASE_DELAY_MS)
   )
 }

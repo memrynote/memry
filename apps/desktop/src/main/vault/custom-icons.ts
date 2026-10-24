@@ -11,7 +11,7 @@
 
 import path from 'path'
 import fs from 'fs/promises'
-import { getStatus } from './index'
+import { getStatus } from './status'
 import { getMemryDir } from './init'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 import { sanitizeSvgBytes } from '@memry/shared/sanitize-svg'

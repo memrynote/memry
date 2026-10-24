@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import type { UpdaterErrorPhase } from './updater'
+import type { UpdaterErrorPhase } from './updater-error-description'
 import {
   classifyUpdaterError,
   isExpiredSignedAssetError,

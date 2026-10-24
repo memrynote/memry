@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { getI18n } from 'react-i18next'
 import { toast } from 'sonner'
-import { useTabs } from '@/contexts/tabs'
+import { useTabs } from '@/contexts/tabs/context'
 import type { TabSystemState } from '@/contexts/tabs/types'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import {

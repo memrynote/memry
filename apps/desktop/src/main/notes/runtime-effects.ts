@@ -12,12 +12,18 @@ import {
   removePendingNoteSyncItems
 } from '../sync/local-mutations'
 import { createDesktopTasksDomain } from '../tasks/domain'
-import { createTasksPublisher } from '../tasks/publisher'
 import { generateId } from '../lib/id'
 import { createLogger } from '../lib/logger'
 import { trackMainError } from '../telemetry/diagnostics'
 
 const logger = createLogger('NoteRuntimeEffects')
+
+// Loaded on first use: the tasks publisher syncs note header status, which
+// writes notes back through this module, so a static import is a cycle.
+async function createNoteTasksDomain(): Promise<ReturnType<typeof createDesktopTasksDomain>> {
+  const { createTasksPublisher } = await import('../tasks/publisher')
+  return createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+}
 
 export { queueEmbeddedVaultFiles } from '../sync/attachment-backfill'
 
@@ -90,7 +96,7 @@ export async function syncNoteDelete(noteId: string): Promise<void> {
  * and dangling home_note_id (spec §4 "Cleanup rules").
  */
 export async function cleanupProjectLinksForDeletedNote(noteId: string): Promise<void> {
-  const domain = createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+  const domain = await createNoteTasksDomain()
   await domain.cleanupProjectLinksForDeletedNote(noteId)
 }
 
@@ -107,7 +113,7 @@ export async function cleanupProjectLinksForDeletedNote(noteId: string): Promise
  */
 export async function unlinkTasksFromDeletedNote(noteId: string): Promise<void> {
   try {
-    const domain = createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+    const domain = await createNoteTasksDomain()
     for (const task of domain.getLinkedTasks(noteId)) {
       await domain.updateTask({
         id: task.id,
@@ -127,7 +133,7 @@ export async function unlinkTasksFromDeletedNote(noteId: string): Promise<void> 
  * relinks converge. Through `updateTask`, so the change syncs.
  */
 export async function relinkTasksToMergedNote(fromId: string, toId: string): Promise<void> {
-  const domain = createDesktopTasksDomain(getDatabase(), createTasksPublisher(), generateId)
+  const domain = await createNoteTasksDomain()
   for (const task of domain.getLinkedTasks(fromId)) {
     const linked = (task.linkedNoteIds ?? []).map((id) => (id === fromId ? toId : id))
     await domain.updateTask({ id: task.id, linkedNoteIds: [...new Set(linked)] })

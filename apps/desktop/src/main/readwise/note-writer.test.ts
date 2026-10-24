@@ -531,7 +531,7 @@ describe('upsertReadwiseNote', () => {
 
   it('skips a note that took a network update moments ago', async () => {
     const noteId = await created(book(1, { highlights: [highlight(1)] }))
-    const { recordNetworkUpdate } = await import('../sync/crdt-writeback')
+    const { recordNetworkUpdate } = await import('../sync/crdt-network-update')
     recordNetworkUpdate(noteId)
 
     expect(await sync(book(1, { highlights: threeHighlights() }))).toEqual({

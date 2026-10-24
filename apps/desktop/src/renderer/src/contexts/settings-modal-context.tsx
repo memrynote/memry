@@ -6,7 +6,7 @@ import {
   type SettingsSection
 } from '@memry/contracts/commands'
 import { toSafeToken } from '@memry/contracts/telemetry-api'
-import { useAppCommands } from '@/commands'
+import { useAppCommands } from '@/commands/use-command-impls'
 import { trackTelemetry } from '@/lib/telemetry'
 
 export type { SettingsSection }

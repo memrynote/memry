@@ -19,14 +19,8 @@ import { NOTE_BODY_FULL_STATE_PAYLOAD, SyncQueueManager } from '@memry/sync-clie
 import { MicrotaskBatchBroadcaster } from '@memry/sync-client/microtask-batch-broadcaster'
 import { parallelWithLimit } from '@memry/sync-client/concurrency'
 import { MAX_CRDT_SNAPSHOT_BATCH_ENTRIES } from '@memry/sync-client/crdt-payload'
-import {
-  scheduleWriteback,
-  cancelWriteback,
-  flushPendingWritebacks,
-  recordNetworkUpdate,
-  resetWritebackState,
-  writebackNow
-} from './crdt-writeback'
+import { crdtWriteback } from './crdt-writeback-port'
+import { recordNetworkUpdate } from './crdt-network-update'
 import { openCrdtPersistence, type CrdtPersistence } from './crdt-persistence'
 import {
   readSnapshotWatermark,
@@ -38,8 +32,7 @@ import { getCrdtInMemorySessions, recordCrdtPersistenceOutcome } from '../store'
 import { prepareVaultCrdtStore } from './crdt-store-path'
 import { reconcileCrdtStoreEpoch } from './crdt-store-epoch'
 import { clearOwedFileBody, owesFileBody } from './crdt-owed-file-body'
-import { takeOwedFile } from './crdt-external-feed'
-import { getVaultRoot } from '../vault/notes'
+import { getVaultRoot } from '../vault/notes-io'
 import { openVaultFile } from '../lib/paths'
 import { OutsideVaultError } from '../lib/errors'
 import { generateContentHash, parseNote } from '../vault/frontmatter'
@@ -907,6 +900,9 @@ export class CrdtProvider {
         log.warn('The vault file a note owes does not exist; nothing is left to take', { noteId })
         return true
       }
+      // Loaded on first use: the external feed reads this provider back, so a
+      // static import is a cycle. This path is already async I/O.
+      const { takeOwedFile } = await import('./crdt-external-feed')
       await takeOwedFile(noteId, doc, { path: cached.path, raw, title: cached.title })
       return true
     } finally {
@@ -1168,7 +1164,7 @@ export class CrdtProvider {
       // An empty doc's state vector is the single varint 0; two bytes is the
       // threshold the pack applier and the CRDT pull use too.
       if (Y.encodeStateVector(doc).length <= 2) return false
-      await writebackNow(noteId, doc)
+      await crdtWriteback().writebackNow(noteId, doc)
       return true
     } finally {
       if (!wasOpen) await this.closeIfInactive(noteId)
@@ -1222,7 +1218,7 @@ export class CrdtProvider {
    * Safe to repeat: every step converges on the same absence.
    */
   async purge(noteId: string): Promise<void> {
-    cancelWriteback(noteId)
+    crdtWriteback().cancelWriteback(noteId)
     this.dropOwedBody(noteId)
     clearOwedFileBody(noteId)
 
@@ -1419,7 +1415,7 @@ export class CrdtProvider {
     // Read before the map is cleared below: after that the count is gone, and
     // the reset that follows destroy() is where it has to be reported.
     this.attachedDocsAtDestroy = this.strandedEditorDocCount
-    await flushPendingWritebacks()
+    await crdtWriteback().flushPendingWritebacks()
     this.networkBatcher.flushAll()
 
     for (const [noteId] of this.docs) {
@@ -1464,7 +1460,7 @@ export class CrdtProvider {
 
     // Write-back keeps its own module-level per-note maps, keyed by ids and
     // absolute paths belonging to the vault being torn down here.
-    resetWritebackState()
+    crdtWriteback().resetWritebackState()
 
     log.info('CrdtProvider destroyed')
   }
@@ -1701,7 +1697,7 @@ export class CrdtProvider {
 
     const doc = await this.open(targetId, undefined, { skipSeed: true })
     Y.applyUpdate(doc, state, ORIGIN_LOCAL)
-    scheduleWriteback(targetId, doc, 'local')
+    crdtWriteback().scheduleWriteback(targetId, doc, 'local')
     return true
   }
 
@@ -2109,9 +2105,9 @@ export class CrdtProvider {
     }
 
     if (origin === ORIGIN_NETWORK) {
-      scheduleWriteback(noteId, entry.doc, 'remote', this.applyingRemoteEditedAtMs)
+      crdtWriteback().scheduleWriteback(noteId, entry.doc, 'remote', this.applyingRemoteEditedAtMs)
     } else if (isIpcOrigin(origin)) {
-      scheduleWriteback(noteId, entry.doc, 'local')
+      crdtWriteback().scheduleWriteback(noteId, entry.doc, 'local')
     }
   }
 

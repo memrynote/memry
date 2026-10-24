@@ -17,7 +17,8 @@ vi.mock('../vault-locks/registry', () => ({
   })
 }))
 
-import { buildTemplateApplyUpdate, applyTemplateToNote } from './apply-template'
+import { applyTemplateToNote } from './apply-template'
+import { buildTemplateApplyUpdate } from './template-update'
 import { getNoteById, type Note as NotesNote } from '../vault/notes'
 import { getTemplate } from '../vault/templates'
 import { updateNoteCommand } from './domain'

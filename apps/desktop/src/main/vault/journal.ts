@@ -13,7 +13,7 @@ import matter from 'gray-matter'
 import { createNoteContentStore } from '@memry/storage-vault'
 import { splitFrontmatterBlock } from '@memry/app-core/markdown'
 import { extractJournalPreview } from '@memry/domain-notes/journal'
-import { getStatus, getConfig } from './index'
+import { getStatus, getConfig } from './status'
 import {
   extractAliases,
   normalizePropertiesToRoot,

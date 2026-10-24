@@ -103,7 +103,10 @@ vi.mock('../calendar/google/sync-service', () => ({
   syncGoogleCalendarNow: (...args: unknown[]) => mockSyncGoogleCalendarNow(...args),
   syncGoogleCalendarSource: (...args: unknown[]) => mockSyncGoogleCalendarSource(...args),
   syncLocalSourceToGoogleCalendar: (...args: unknown[]) =>
-    mockSyncLocalSourceToGoogleCalendar(...args),
+    mockSyncLocalSourceToGoogleCalendar(...args)
+}))
+
+vi.mock('../calendar/google/google-sync-runner', () => ({
   startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleCalendarSyncRunner(...args),
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mockStopGoogleCalendarSyncRunner(...args)
 }))

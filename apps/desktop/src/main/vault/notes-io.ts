@@ -8,7 +8,7 @@
 
 import path from 'path'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
-import { getStatus, getConfig } from './index'
+import { getStatus, getConfig } from './status'
 import { normalizeRelativePath } from '../lib/paths'
 import { VaultError, VaultErrorCode } from '../lib/errors'
 

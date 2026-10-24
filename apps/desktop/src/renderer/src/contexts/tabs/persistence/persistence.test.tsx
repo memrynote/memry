@@ -63,7 +63,7 @@ vi.mock('./serialization', async (importOriginal) => {
   }
 })
 
-vi.mock('@/contexts/tabs', () => ({
+vi.mock('@/contexts/tabs/context', () => ({
   useTabs: () => ({
     state: mocks.tabsState,
     dispatch: mocks.dispatch

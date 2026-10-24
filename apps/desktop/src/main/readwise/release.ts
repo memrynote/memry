@@ -1,6 +1,6 @@
 import { getDatabase } from '../database'
 import { createLogger } from '../lib/logger'
-import { getStatus } from '../vault'
+import { getStatus } from '../vault/status'
 import { deleteReadwiseToken, getReadwiseToken } from './secrets'
 import { claimLostToAnotherDevice } from './pull-gate'
 import { clearRunState } from './sync-state'

@@ -17,13 +17,21 @@ import { isDatabaseInitialized } from '../database/client'
 import { postToServer } from '../sync/http-client'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getSyncEngine, startSyncRuntime } from '../sync/runtime'
-import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { startGoogleCalendarSyncRunner } from '../calendar/google/google-sync-runner'
 import { signInKnownDevice } from '../sync/device-registration'
 import { teardownSession } from '../sync/session-teardown'
 import { hasSessionEnded, refreshAccessToken, storeToken } from '../sync/token-manager'
 import { getSetupDevicePublicKey } from '../sync/setup-token'
 import { createLogger } from '../lib/logger'
 import { registerCommand } from './lib/register-command'
+import {
+  OAUTH_SESSION_TIMEOUT_MS,
+  cleanExpiredOAuthSessions,
+  consumeOAuthSession,
+  oauthSessions,
+  setActiveLoopbackServer,
+  shutdownLoopbackServer
+} from './auth-oauth-state'
 import {
   clearPendingRecoveryPhrase,
   getPendingRecoveryPhrase,
@@ -36,49 +44,10 @@ const logger = createLogger('IPC:Sync:OAuth')
 // OAuth State & Loopback Server (T072, T072a)
 // ============================================================================
 
-interface OAuthSession {
-  state: string
-  redirectUri: string
-  createdAt: number
-}
-
-const oauthSessions = new Map<string, OAuthSession>()
-const OAUTH_SESSION_TIMEOUT_MS = 10 * 60 * 1000
 // Cap how long we wait for the sync server to hand back the Google OAuth URL.
 // Without it, a server that accepts the socket but never responds leaves the
 // IPC call unsettled, so the "Continue with Google" button spins forever.
 const OAUTH_INIT_REQUEST_TIMEOUT_MS = 15 * 1000
-let activeLoopbackServer: http.Server | null = null
-
-const cleanExpiredOAuthSessions = (): void => {
-  const now = Date.now()
-  for (const [state, session] of oauthSessions) {
-    if (now - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
-      oauthSessions.delete(state)
-    }
-  }
-}
-
-const consumeOAuthSession = (state: string): OAuthSession => {
-  const session = oauthSessions.get(state)
-  if (!session) {
-    throw new Error('Invalid or expired OAuth state parameter')
-  }
-  if (Date.now() - session.createdAt > OAUTH_SESSION_TIMEOUT_MS) {
-    oauthSessions.delete(state)
-    throw new Error('OAuth session expired. Please try again.')
-  }
-  oauthSessions.delete(state)
-  return session
-}
-
-const shutdownLoopbackServer = (): void => {
-  if (activeLoopbackServer) {
-    activeLoopbackServer.close()
-    activeLoopbackServer = null
-  }
-}
-
 const SUCCESS_HTML = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>memrynote</title>
 <style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#111;color:#eee}
@@ -107,23 +76,6 @@ const startLoopbackServer = (): Promise<{ server: http.Server; port: number }> =
 }
 
 // ============================================================================
-// Test seam — let tests inject an OAuth state without hitting Google
-// ============================================================================
-
-export function seedOAuthSession(state: string, redirectUri: string): void {
-  oauthSessions.set(state, { state, redirectUri, createdAt: Date.now() })
-}
-
-// ============================================================================
-// State cleanup (composed by sync-handlers' clearInMemoryAuthState)
-// ============================================================================
-
-export function clearOAuthState(): void {
-  oauthSessions.clear()
-  shutdownLoopbackServer()
-}
-
-// ============================================================================
 // Handler Registration
 // ============================================================================
 
@@ -138,7 +90,7 @@ export function registerAuthOAuthHandlers(): void {
       shutdownLoopbackServer()
 
       const { server, port } = await startLoopbackServer()
-      activeLoopbackServer = server
+      setActiveLoopbackServer(server)
 
       const redirectUri = `http://127.0.0.1:${port}/callback`
 

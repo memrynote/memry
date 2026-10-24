@@ -1,6 +1,6 @@
 import { createLogger } from '../lib/logger'
 import { getDatabase, isDatabaseInitialized } from '../database'
-import { getStatus as getVaultStatus } from '../vault/index'
+import { getStatus as getVaultStatus } from '../vault/status'
 import { getNoteAttachmentsDir } from '../vault/attachments'
 import { toAbsolutePath } from '../vault/notes'
 import { getNoteMetadataById } from '@memry/storage-data'

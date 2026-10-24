@@ -58,7 +58,7 @@ import {
 import { markWritebackIgnored } from '../sync/crdt-writeback'
 import { applyDownloadedAttachmentName } from '../vault/attachment-rename'
 import { fileTextNoteChanged } from '../file-text'
-import { getStatus as getVaultStatus } from '../vault/index'
+import { getStatus as getVaultStatus } from '../vault/status'
 import {
   recordAttachmentDownloadFailure,
   recordAttachmentUploadFailure
@@ -77,7 +77,7 @@ import {
   recordUploadedAttachment
 } from '../sync/note-attachment-metadata'
 import { registerCommand } from './lib/register-command'
-import { getNetworkMonitor } from '../sync/runtime'
+import { getNetworkMonitor } from '../sync/runtime-state'
 import { resolveSyncServerUrl } from '@memry/sync-client/sync-server-url'
 import { getValidAccessToken } from '../sync/token-manager'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'

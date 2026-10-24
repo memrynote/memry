@@ -1,6 +1,6 @@
 import { readVaultFileSync } from '../lib/paths'
 import { createLogger } from '../lib/logger'
-import { getVaultRoot } from '../vault/notes'
+import { getVaultRoot } from '../vault/notes-io'
 import { extractAliases, parseNote, type NoteFrontmatter } from '../vault/frontmatter'
 
 const log = createLogger('NoteFileFields')

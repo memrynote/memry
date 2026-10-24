@@ -6,18 +6,14 @@
  * @module vault/notes-versions
  */
 
-import { parseNote, calculateWordCount, generateContentHash } from './frontmatter'
+import { parseNote } from './frontmatter'
 import { writingFrontmatterOf } from '@memry/shared/writing-tools/markdown'
 import { syncNoteToCache } from './note-sync'
 import { atomicWrite } from './file-ops'
 import {
   getNoteCacheById,
-  insertNoteSnapshot,
-  getLatestSnapshot,
-  snapshotExistsWithHash,
   getNoteSnapshots,
   getNoteSnapshotById,
-  pruneOldSnapshots,
   ensureTagDefinitions
 } from '@main/database/queries/notes'
 import { SnapshotReasons, type SnapshotReason } from '@memry/db-schema/schema/notes-cache'
@@ -25,123 +21,23 @@ import { getDatabase, getIndexDatabase } from '../database'
 import { replaceNoteTagsInCrdt } from '../sync/crdt-feed'
 import { feedExternalEditToCrdt } from '../sync/crdt-external-feed'
 import { NoteError, NoteErrorCode } from '../lib/errors'
-import { generateNoteId } from '../lib/id'
 import { NotesChannels } from '@memry/contracts/notes-api'
 import { emitNoteEvent, getVaultRoot, toAbsolutePath } from './notes-io'
 import { readVaultFile } from '../lib/paths'
+import { createSnapshot, type SnapshotListItem } from './note-snapshots'
 import type { Note } from './notes-crud'
 import { assertNoteWritable } from '../vault-locks/registry'
-
-// ============================================================================
-// Snapshot Configuration
-// ============================================================================
-
-const MAX_SNAPSHOTS_PER_NOTE = 50
-const MIN_SNAPSHOT_INTERVAL_MS = 5 * 60 * 1000
-const SIGNIFICANT_WORD_CHANGE = 10
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface SnapshotListItem {
-  id: string
-  noteId: string
-  title: string
-  wordCount: number
-  reason: SnapshotReason
-  createdAt: string
-}
 
 export interface SnapshotDetail extends SnapshotListItem {
   fileContent: string
 }
 
-// ============================================================================
-// Snapshot Creation
-// ============================================================================
-
-export function createSnapshot(
-  noteId: string,
-  fileContent: string,
-  title: string,
-  reason: SnapshotReason,
-  forceCreate = false
-): SnapshotListItem | null {
-  const db = getIndexDatabase()
-
-  const contentHash = generateContentHash(fileContent)
-
-  if (!forceCreate && snapshotExistsWithHash(db, noteId, contentHash)) {
-    return null
-  }
-
-  if (reason === SnapshotReasons.AUTO || reason === SnapshotReasons.TIMER) {
-    const latest = getLatestSnapshot(db, noteId)
-    if (latest) {
-      const latestTime = new Date(latest.createdAt).getTime()
-      const now = Date.now()
-      if (now - latestTime < MIN_SNAPSHOT_INTERVAL_MS) {
-        return null
-      }
-    }
-  }
-
-  const parsed = parseNote(fileContent)
-  const wordCount = calculateWordCount(parsed.content)
-
-  const snapshot = insertNoteSnapshot(db, {
-    id: generateNoteId(),
-    noteId,
-    fileContent,
-    title,
-    wordCount,
-    contentHash,
-    reason
-  })
-
-  pruneOldSnapshots(db, noteId, MAX_SNAPSHOTS_PER_NOTE)
-
-  return {
-    id: snapshot.id,
-    noteId: snapshot.noteId,
-    title: snapshot.title,
-    wordCount: snapshot.wordCount,
-    reason: snapshot.reason as SnapshotReason,
-    createdAt: snapshot.createdAt
-  }
-}
-
-/** A version of an open note's file as the app quits. False when there is nothing new to keep. */
-export async function createCloseSnapshot(noteId: string): Promise<boolean> {
-  const cached = getNoteCacheById(getIndexDatabase(), noteId)
-  if (!cached) return false
-  const fileContent = await readVaultFile(getVaultRoot(), cached.path)
-  if (!fileContent) return false
-  return createSnapshot(noteId, fileContent, cached.title, SnapshotReasons.CLOSE) !== null
-}
-
-export function maybeCreateSignificantSnapshot(
-  noteId: string,
-  currentFileContent: string,
-  oldContent: string,
-  newContent: string,
-  title: string
-): SnapshotListItem | null {
-  const oldWordCount = calculateWordCount(oldContent)
-  const newWordCount = calculateWordCount(newContent)
-  const wordDiff = Math.abs(newWordCount - oldWordCount)
-
-  if (wordDiff >= SIGNIFICANT_WORD_CHANGE) {
-    try {
-      return createSnapshot(noteId, currentFileContent, title, SnapshotReasons.SIGNIFICANT)
-    } catch {
-      return null
-    }
-  }
-
-  return null
-}
+export {
+  createCloseSnapshot,
+  createSnapshot,
+  maybeCreateSignificantSnapshot,
+  type SnapshotListItem
+} from './note-snapshots'
 
 // ============================================================================
 // Version History

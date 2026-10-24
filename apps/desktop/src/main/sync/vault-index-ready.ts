@@ -1,4 +1,4 @@
-import { getStatus as getVaultStatus, onVaultStatusChanged } from '../vault/index'
+import { getStatus as getVaultStatus, onVaultStatusChanged } from '../vault/status'
 
 /**
  * Resolves once the open vault is not running an index build (immediately when

@@ -36,7 +36,7 @@ import {
   reEvaluatePollCadence,
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner
-} from './sync-service'
+} from './google-sync-runner'
 
 const RUN_INTERVAL_MS = 5 * 60 * 1000
 

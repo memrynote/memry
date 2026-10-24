@@ -17,7 +17,7 @@ import { normalizeJournalFolder } from '@memry/storage-vault'
 import { VaultChannels } from '@memry/contracts/ipc-channels'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import { createLogger } from '../lib/logger'
-import { getConfig, getStatus } from './index'
+import { getConfig, getStatus } from './status'
 import { writeVaultConfig } from './init'
 
 const logger = createLogger('JournalFolderFollow')

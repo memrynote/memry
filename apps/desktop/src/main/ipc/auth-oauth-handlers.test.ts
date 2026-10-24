@@ -80,7 +80,7 @@ vi.mock('../sync/token-manager', () => ({
 }))
 
 const mockStartGoogleRunner = vi.fn()
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/google/google-sync-runner', () => ({
   startGoogleCalendarSyncRunner: (...args: unknown[]) => mockStartGoogleRunner(...args)
 }))
 
@@ -153,11 +153,8 @@ vi.mock('libsodium-wrappers-sumo', () => ({
   }
 }))
 
-import {
-  registerAuthOAuthHandlers,
-  unregisterAuthOAuthHandlers,
-  seedOAuthSession
-} from './auth-oauth-handlers'
+import { registerAuthOAuthHandlers, unregisterAuthOAuthHandlers } from './auth-oauth-handlers'
+import { seedOAuthSession } from './auth-oauth-state'
 
 // ============================================================================
 // Tests

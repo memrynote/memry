@@ -27,7 +27,7 @@ import { createLogger } from '../lib/logger'
 import { normalizeRelativePath, openVaultFile, openVaultFileSync } from '../lib/paths'
 import { setVaultFileWriteGuard } from '../vault/file-ops'
 import { generateContentHash } from '../vault/frontmatter'
-import { getStatus } from '../vault/index'
+import { getStatus } from '../vault/status'
 import {
   folderLockedError,
   hasAnyVaultLock,

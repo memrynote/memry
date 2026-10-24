@@ -98,7 +98,7 @@ vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => crdtProvider.get()
 }))
 
-vi.mock('../ipc/sync-core-handlers', () => ({
+vi.mock('../ipc/in-memory-auth-state', () => ({
   clearInMemoryAuthState: (...args: unknown[]) => mocks.clearInMemoryAuthState(...args)
 }))
 
@@ -118,7 +118,7 @@ vi.mock('../calendar/google/oauth', () => ({
   listGoogleAccountIds: (...args: unknown[]) => mocks.listGoogleAccountIds(...args)
 }))
 
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/google/google-sync-runner', () => ({
   stopGoogleCalendarSyncRunner: (...args: unknown[]) => mocks.stopGoogleCalendarSyncRunner(...args),
   startGoogleCalendarSyncRunner: (...args: unknown[]) =>
     mocks.startGoogleCalendarSyncRunner(...args)

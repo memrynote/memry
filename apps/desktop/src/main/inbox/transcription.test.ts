@@ -49,7 +49,7 @@ vi.mock('openai/uploads', () => ({
   toFile: mockToFile
 }))
 
-vi.mock('../index', () => ({
+vi.mock('../env-config', () => ({
   envConfig: mockEnvConfig
 }))
 

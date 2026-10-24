@@ -12,7 +12,7 @@ import { resetTokenManagerState, getValidAccessToken } from './token-manager'
 import { clearPendingSession, clearPendingLinkCompletion } from './linking-service'
 import { getCrdtProvider } from './crdt-provider'
 import { notPackSeedState } from './engine/pack-seeded-docs'
-import { clearInMemoryAuthState } from '../ipc/sync-core-handlers'
+import { clearInMemoryAuthState } from '../ipc/in-memory-auth-state'
 import { getDatabase, isDatabaseInitialized } from '../database/client'
 import { store } from '../store'
 import { createLogger } from '../lib/logger'
@@ -20,7 +20,7 @@ import { disconnectGoogleCalendar, listGoogleAccountIds } from '../calendar/goog
 import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner
-} from '../calendar/google/sync-service'
+} from '../calendar/google/google-sync-runner'
 
 const log = createLogger('SessionTeardown')
 

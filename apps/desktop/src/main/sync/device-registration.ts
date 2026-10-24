@@ -35,7 +35,7 @@ import {
   persistAccountKeyVerifier
 } from './key-verification'
 import { getNoteBodyOutbox, getSyncEngine, startSyncRuntime, stopSyncRuntime } from './runtime'
-import { startGoogleCalendarSyncRunner } from '../calendar/google/sync-service'
+import { startGoogleCalendarSyncRunner } from '../calendar/google/google-sync-runner'
 import { getOrCreateVaultUuid } from '../agent/storage/vault-id'
 import { adoptAccountVaultIfAbsent } from './vault-adoption'
 import {

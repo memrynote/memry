@@ -17,7 +17,7 @@ vi.mock('./linking-service', () => ({
 vi.mock('./crdt-provider', () => ({
   getCrdtProvider: () => ({ initPersistence: vi.fn(async () => {}) })
 }))
-vi.mock('../ipc/sync-core-handlers', () => ({ clearInMemoryAuthState: vi.fn() }))
+vi.mock('../ipc/in-memory-auth-state', () => ({ clearInMemoryAuthState: vi.fn() }))
 vi.mock('../database/client', () => ({
   isDatabaseInitialized: () => true,
   getDatabase: () => state.db
@@ -27,7 +27,7 @@ vi.mock('../calendar/google/oauth', () => ({
   disconnectGoogleCalendar: vi.fn(),
   listGoogleAccountIds: () => []
 }))
-vi.mock('../calendar/google/sync-service', () => ({
+vi.mock('../calendar/google/google-sync-runner', () => ({
   startGoogleCalendarSyncRunner: vi.fn(async () => {}),
   stopGoogleCalendarSyncRunner: vi.fn()
 }))

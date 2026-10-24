@@ -2,7 +2,6 @@ import { dialog } from 'electron'
 import { broadcastToAllWindows } from '../lib/window-broadcast'
 import type {
   VaultInfo,
-  VaultStatus,
   VaultConfig,
   SelectVaultResponse,
   GetVaultsResponse
@@ -31,7 +30,14 @@ import {
   getDataDbPath,
   getIndexDbPath
 } from './init'
-import { normalizeJournalSettings, syncJournalConfig } from './journal-config'
+import { normalizeJournalSettings } from './journal-config'
+import {
+  emitStatusChanged,
+  getConfig,
+  getStatus,
+  isVaultShuttingDown,
+  updateStatus
+} from './status'
 import {
   initDatabase,
   isDataDatabaseCorrupt,
@@ -136,16 +142,6 @@ import type { AgentHandle } from '../agent/bootstrap'
 
 const logger = createLogger('Vault')
 
-/**
- * Current vault status
- */
-let currentStatus: VaultStatus = {
-  isOpen: false,
-  path: null,
-  isIndexing: false,
-  indexProgress: 0,
-  error: null
-}
 let agentHandle: AgentHandle | null = null
 let agentStartupPromise: Promise<void> | null = null
 /**
@@ -178,7 +174,6 @@ let agentMcpStarted = false
  * under this — so the timeout only fires when the start is genuinely wedged.
  */
 const AGENT_STARTUP_TEARDOWN_WAIT_MS = 1000
-let isShuttingDown = false
 /** See `isVaultSwitchInProgress`. */
 let switchInProgress = false
 /**
@@ -189,16 +184,6 @@ let switchInProgress = false
  * after the previous one settled.
  */
 let vaultLifecycleTail: Promise<unknown> = Promise.resolve()
-const statusListeners = new Set<(status: VaultStatus) => void>()
-
-/**
- * Mark the app as shutting down so vault status changes (e.g. closeVault during
- * graceful shutdown) stop reaching the renderer. Prevents the UI flipping to the
- * vault picker while the app is quitting/installing an update.
- */
-export function beginVaultShutdown(): void {
-  isShuttingDown = true
-}
 
 /**
  * True while `switchVault` closes one vault and opens the next. The status in
@@ -214,13 +199,6 @@ function runVaultLifecycleOperation<T>(operation: () => Promise<T>): Promise<T> 
   const run = vaultLifecycleTail.then(operation, operation)
   vaultLifecycleTail = run.catch(() => undefined)
   return run
-}
-
-export function onVaultStatusChanged(listener: (status: VaultStatus) => void): () => void {
-  statusListeners.add(listener)
-  return () => {
-    statusListeners.delete(listener)
-  }
 }
 
 /**
@@ -306,54 +284,6 @@ export function createVaultInfo(vaultPath: string): VaultInfo {
 }
 
 /**
- * Update vault status and emit to all windows
- */
-export function updateStatus(updates: Partial<VaultStatus>): void {
-  currentStatus = { ...currentStatus, ...updates }
-  emitStatusChanged()
-}
-
-/**
- * Emit vault status changed event to all windows
- */
-function emitStatusChanged(): void {
-  // During shutdown, suppress ALL consumers — both the main-process listeners
-  // (e.g. the window-resize listener that would shrink the window to the vault
-  // picker size) and the renderer broadcast. The gate must be first: a
-  // closeVault() during graceful shutdown flips status to isOpen:false, and
-  // nothing should react to it while the app is quitting/installing.
-  if (isShuttingDown) return
-  statusListeners.forEach((listener) => listener(currentStatus))
-  broadcastToAllWindows('vault:status-changed', currentStatus)
-}
-
-/**
- * Emit indexing progress event to all windows.
- *
- * `counts` rides along on the status broadcast so the renderer can show
- * "building x/y" while the background index build runs; the dedicated
- * `vault:index-progress` channel keeps its plain percentage payload.
- */
-export function emitIndexProgress(
-  progress: number,
-  counts?: { indexed: number; total: number }
-): void {
-  updateStatus({
-    indexProgress: progress,
-    ...(counts ? { indexBuilt: counts.indexed, indexTotal: counts.total } : {})
-  })
-  broadcastToAllWindows('vault:index-progress', progress)
-}
-
-/**
- * Emit vault error event to all windows
- */
-export function emitVaultError(error: string): void {
-  updateStatus({ error })
-  broadcastToAllWindows('vault:error', error)
-}
-
-/**
  * Index recovered event data
  */
 export interface IndexRecoveredEvent {
@@ -405,7 +335,7 @@ export function emitIndexRecovered(event: IndexRecoveredEvent): void {
 async function repairCorruptFtsIndexes(vaultPath: string): Promise<void> {
   // The callers are backgrounded, so this can land after a vault switch or
   // during shutdown — both of which close the databases underneath it.
-  if (isShuttingDown || currentStatus.path !== vaultPath) {
+  if (isVaultShuttingDown() || getStatus().path !== vaultPath) {
     return
   }
 
@@ -528,10 +458,10 @@ interface BackgroundIndexBuildInput {
 async function runBackgroundIndexBuild(input: BackgroundIndexBuildInput): Promise<void> {
   const { vaultPath, dataDb, indexHealth, recoveredReason, forcePaths, lockedFilesChecked } = input
   const startedAt = Date.now()
-  // currentStatus.path stays vaultPath for the whole build: closeVault() nulls
+  // getStatus().path stays vaultPath for the whole build: closeVault() nulls
   // it only after awaiting this promise, and a vault switch closes first.
   const isStale = (): boolean =>
-    backgroundIndexBuildCancelled || isShuttingDown || currentStatus.path !== vaultPath
+    backgroundIndexBuildCancelled || isVaultShuttingDown() || getStatus().path !== vaultPath
 
   await lockedFilesChecked
   if (isStale()) return
@@ -799,7 +729,7 @@ async function openVault(vaultPath: string): Promise<void> {
     ),
     createEmbeddingProjector(
       () => vaultPath,
-      () => currentStatus.isIndexing
+      () => getStatus().isIndexing
     ),
     createImageEmbeddingProjector(() => vaultPath, openPdfDocument),
     createVoiceEmbeddingProjector(() => vaultPath),
@@ -1017,7 +947,7 @@ async function replaceOpenVault(vaultPath: string): Promise<SelectVaultResponse>
   validateVaultPath(vaultPath)
 
   // Close current vault if open
-  if (currentStatus.isOpen) {
+  if (getStatus().isOpen) {
     await closeOpenVault()
   }
 
@@ -1057,43 +987,6 @@ async function replaceOpenVault(vaultPath: string): Promise<SelectVaultResponse>
 }
 
 /**
- * Get current vault status
- */
-export function getStatus(): VaultStatus {
-  return currentStatus
-}
-
-/**
- * Get vault configuration
- */
-export function getConfig(): VaultConfig {
-  if (!currentStatus.path) {
-    const fallback: VaultConfig = {
-      excludePatterns: [],
-      defaultNoteFolder: '',
-      journalFolder: 'journal',
-      journalDateFormat: 'YYYY-MM-DD',
-      attachmentsFolder: 'attachments',
-      journalShowInSidebar: false
-    }
-    syncJournalConfig(fallback)
-    return fallback
-  }
-
-  const config = readVaultConfig(currentStatus.path)
-  const resolved: VaultConfig = normalizeJournalSettings({
-    excludePatterns: config.excludePatterns,
-    defaultNoteFolder: config.defaultNoteFolder,
-    journalFolder: config.journalFolder,
-    journalDateFormat: config.journalDateFormat,
-    attachmentsFolder: config.attachmentsFolder,
-    journalShowInSidebar: config.journalShowInSidebar === true
-  })
-  syncJournalConfig(resolved)
-  return resolved
-}
-
-/**
  * Update vault configuration.
  * If excludePatterns change, the file watcher is restarted with the new patterns.
  */
@@ -1117,11 +1010,11 @@ function drainDeferredEmbeddings(): void {
 }
 
 export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<VaultConfig> {
-  if (!currentStatus.path) {
+  const vaultPath = getStatus().path
+  if (!vaultPath) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
 
-  const vaultPath = currentStatus.path
   const oldConfig = getConfig()
   const updates = normalizeJournalSettings(rawUpdates)
   const renameJournals = journalFormatChange(oldConfig, updates)
@@ -1177,7 +1070,7 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
   ) {
     logger.info('Exclude patterns changed, restarting watcher...')
     await stopWatcher()
-    await startWatcher(currentStatus.path, newConfig.excludePatterns)
+    await startWatcher(vaultPath, newConfig.excludePatterns)
   }
 
   // Re-index when config that affects note/journal classification changes, so the
@@ -1197,7 +1090,7 @@ export async function updateConfig(rawUpdates: Partial<VaultConfig>): Promise<Va
     try {
       // Full rebuild, not incremental reindex: indexFile skips paths already in
       // cache, so re-classifying existing notes/journals needs a clean rebuild.
-      await rebuildIndex(currentStatus.path)
+      await rebuildIndex(vaultPath)
     } finally {
       updateStatus({ isIndexing: false, indexProgress: 100 })
     }
@@ -1236,7 +1129,7 @@ export function closeVault(options?: { projectionDrainTimeoutMs?: number }): Pro
 
 /** Teardown behind `closeVault`, for callers already inside the lifecycle queue. */
 async function closeOpenVault(options?: { projectionDrainTimeoutMs?: number }): Promise<void> {
-  if (!currentStatus.isOpen) {
+  if (!getStatus().isOpen) {
     return
   }
 
@@ -1400,7 +1293,7 @@ export function getAllVaults(): GetVaultsResponse {
 export function prepareSandboxVault(reset = false): Promise<{ path: string }> {
   return runVaultLifecycleOperation(async () => {
     const sandbox = getSandboxInfo()
-    if (currentStatus.path === sandbox.path) {
+    if (getStatus().path === sandbox.path) {
       if (!reset && !sandboxNeedsGeneration()) return { path: sandbox.path }
       throw new VaultError('Leave the sandbox before resetting it', VaultErrorCode.INVALID_PATH)
     }
@@ -1425,12 +1318,12 @@ export async function switchVault(vaultPath: string): Promise<SelectVaultRespons
   } finally {
     logger.info('Vault switch timing', {
       totalMs: Math.round(performance.now() - startedAt),
-      isOpen: currentStatus.isOpen
+      isOpen: getStatus().isOpen
     })
     switchInProgress = false
     // A failed switch can leave no vault open. Listeners that skipped the
     // closed status mid-switch get it again now that it is final.
-    if (!currentStatus.isOpen) emitStatusChanged()
+    if (!getStatus().isOpen) emitStatusChanged()
   }
 }
 
@@ -1440,7 +1333,7 @@ export async function switchVault(vaultPath: string): Promise<SelectVaultRespons
 export function removeVault(vaultPath: string): Promise<void> {
   return runVaultLifecycleOperation(async () => {
     // Close if it's the current vault
-    if (currentStatus.path === vaultPath) {
+    if (getStatus().path === vaultPath) {
       await closeOpenVault()
       setCurrentVaultPath(null)
     }
@@ -1453,7 +1346,8 @@ export function removeVault(vaultPath: string): Promise<void> {
  * Trigger manual reindex of current vault
  */
 export async function reindex(): Promise<void> {
-  if (!currentStatus.path) {
+  const reindexPath = getStatus().path
+  if (!reindexPath) {
     throw new VaultError('No vault is currently open', VaultErrorCode.NOT_INITIALIZED)
   }
 
@@ -1465,7 +1359,7 @@ export async function reindex(): Promise<void> {
   updateStatus({ isIndexing: true, indexProgress: 0 })
 
   try {
-    await indexVault(currentStatus.path, { activity: 'scan' })
+    await indexVault(reindexPath, { activity: 'scan' })
     updateStatus({ isIndexing: false, indexProgress: 100 })
     drainDeferredEmbeddings()
   } catch (error) {
@@ -1481,7 +1375,7 @@ export async function reindex(): Promise<void> {
  * autoOpenLastVault's choice, so change the two together.
  */
 export function getLaunchVaultPath(): string | null {
-  if (currentStatus.isOpen) return currentStatus.path
+  if (getStatus().isOpen) return getStatus().path
 
   const testVaultPath = process.env.TEST_VAULT_PATH
   if (testVaultPath && process.env.NODE_ENV === 'test') return testVaultPath
@@ -1547,3 +1441,16 @@ export async function autoOpenLastVault(): Promise<void> {
     }
   }
 }
+
+// Moved to ./status so modules the vault lifecycle imports can read vault state
+// without importing the lifecycle back. Importers outside any import cycle keep
+// reading them from here.
+export {
+  beginVaultShutdown,
+  emitIndexProgress,
+  emitVaultError,
+  getConfig,
+  getStatus,
+  onVaultStatusChanged,
+  updateStatus
+} from './status'

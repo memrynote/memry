@@ -68,7 +68,10 @@ vi.mock('../calendar/google/sync-service', () => ({
   discoverGoogleCalendarSources: vi.fn(),
   syncGoogleCalendarNow: vi.fn(),
   syncGoogleCalendarSource: (...args: unknown[]) => mocks.syncGoogleCalendarSource(...args),
-  syncLocalSourceToGoogleCalendar: vi.fn(async () => null),
+  syncLocalSourceToGoogleCalendar: vi.fn(async () => null)
+}))
+
+vi.mock('../calendar/google/google-sync-runner', () => ({
   startGoogleCalendarSyncRunner: vi.fn(async () => {}),
   stopGoogleCalendarSyncRunner: vi.fn()
 }))

@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import type { UpdateInfo, UpdateManager } from 'velopack'
 import { createLogger } from './lib/logger'
-import { describeUpdaterError } from './updater'
+import { describeUpdaterError } from './updater-error-description'
 import { plainTextReleaseNotes } from './updater-release-notes'
 import { loadVelopack } from './velopack-native'
 import type { AvailableUpdate, UpdaterBackend, UpdaterHost } from './updater-backend'

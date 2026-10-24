@@ -7,7 +7,7 @@
  * @module canvas/vault-path
  */
 
-import { getStatus as getVaultStatus } from '../vault/index'
+import { getStatus as getVaultStatus } from '../vault/status'
 
 /** The open vault path, or null when no vault is open (closed-vault safe). */
 export function getCanvasVaultPath(): string | null {

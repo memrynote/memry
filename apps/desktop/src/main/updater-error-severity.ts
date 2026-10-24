@@ -10,7 +10,7 @@
 // `warn`, with the same error code, redacted message and stack. Only the
 // severity — and therefore the Error Tracking membership — moves.
 
-import type { UpdaterErrorPhase } from './updater'
+import type { UpdaterErrorPhase } from './updater-error-description'
 
 export type UpdaterErrorSeverity = 'warn' | 'error'
 

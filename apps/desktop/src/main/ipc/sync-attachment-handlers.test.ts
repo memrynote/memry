@@ -194,7 +194,7 @@ vi.mock('../sync/attachment-files', () => ({
   reusableAttachmentIds: () => []
 }))
 
-vi.mock('../sync/runtime', () => ({
+vi.mock('../sync/runtime-state', () => ({
   getNetworkMonitor: vi.fn().mockReturnValue(null)
 }))
 
@@ -217,7 +217,7 @@ import {
   unregisterAttachmentHandlers
 } from './sync-attachment-handlers'
 import { getStatus as getVaultStatus } from '../vault/index'
-import { getNetworkMonitor } from '../sync/runtime'
+import { getNetworkMonitor } from '../sync/runtime-state'
 import {
   clearUpload,
   isLocalOnlyNote,

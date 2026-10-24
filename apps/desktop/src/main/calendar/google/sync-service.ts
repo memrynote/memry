@@ -655,15 +655,3 @@ export async function syncGoogleCalendarNow(
     }
   })
 }
-
-// Runner lifecycle + push-channel poll cadence live in google-sync-runner.ts.
-// Re-exported here so existing callers (index.ts, calendar-handlers,
-// session-teardown, device-registration, tests) keep their import paths.
-export {
-  PUSH_BACKOFF_INTERVAL_MS,
-  getCurrentPollIntervalMs,
-  reEvaluatePollCadence,
-  startGoogleCalendarSyncRunner,
-  stopGoogleCalendarSyncRunner,
-  triggerGoogleCalendarSyncNow
-} from './google-sync-runner'

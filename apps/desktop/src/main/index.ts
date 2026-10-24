@@ -49,15 +49,13 @@ import {
   isTrayActive,
   showMainWindow
 } from './tray'
+import { autoOpenLastVault, closeVault, getLaunchVaultPath, isVaultSwitchInProgress } from './vault'
+import { loadEnvironmentConfig } from './env-config'
 import {
-  autoOpenLastVault,
   beginVaultShutdown,
-  closeVault,
-  getLaunchVaultPath,
   getStatus as getVaultStatus,
-  isVaultSwitchInProgress,
   onVaultStatusChanged
-} from './vault'
+} from './vault/status'
 import { readPreferences } from './vault/vault-preferences'
 import {
   getCurrentVaultPath,
@@ -119,7 +117,7 @@ import {
   startGoogleCalendarSyncRunner,
   stopGoogleCalendarSyncRunner,
   triggerGoogleCalendarSyncNow
-} from './calendar/google/sync-service'
+} from './calendar/google/google-sync-runner'
 import {
   log,
   createLogger,
@@ -341,7 +339,6 @@ enableSoftwareWebglFallback()
 crashReporter.start({ uploadToServer: false })
 
 const mainLog = createLogger('Main')
-const configLog = createLogger('Config')
 const quickCaptureLog = createLogger('QuickCapture')
 const shutdownLog = createLogger('Shutdown')
 const deepLinkLog = createLogger('DeepLink')
@@ -579,55 +576,6 @@ protocol.registerSchemesAsPrivileged([
     }
   }
 ])
-
-// ============================================================================
-// Environment Configuration
-// ============================================================================
-
-/**
- * Environment configuration for external services
- */
-interface EnvironmentConfig {
-  /** Optional environment OpenAI API key for development-only integrations */
-  openaiApiKey: string | undefined
-  /** Whisper model to use for transcription */
-  whisperModel: string
-  /** Embedding model to use for AI suggestions */
-  embeddingModel: string
-}
-
-/**
- * Global environment configuration
- * Loaded once at startup, accessible throughout main process
- */
-export const envConfig: EnvironmentConfig = {
-  openaiApiKey: undefined,
-  whisperModel: 'whisper-1',
-  embeddingModel: 'text-embedding-3-small'
-}
-
-/**
- * Load and validate environment variables for external services
- */
-function loadEnvironmentConfig(): void {
-  // Optional development OpenAI API key
-  envConfig.openaiApiKey = process.env.OPENAI_API_KEY
-
-  if (!envConfig.openaiApiKey) {
-    configLog.debug('OPENAI_API_KEY not set. Voice transcription will rely on BYOK settings.')
-  } else {
-    configLog.info('OpenAI API key loaded successfully')
-  }
-
-  // Optional: Override default models
-  if (process.env.OPENAI_WHISPER_MODEL) {
-    envConfig.whisperModel = process.env.OPENAI_WHISPER_MODEL
-  }
-
-  if (process.env.OPENAI_EMBEDDING_MODEL) {
-    envConfig.embeddingModel = process.env.OPENAI_EMBEDDING_MODEL
-  }
-}
 
 // Load environment config early
 loadEnvironmentConfig()

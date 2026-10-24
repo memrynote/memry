@@ -404,8 +404,8 @@ export async function transcribeAudioInput(input: {
     return { success: false, text: '', error: 'Empty audio data' }
   }
 
-  // Imported lazily: transcription.ts pulls in the app entrypoint for envConfig,
-  // which must not land in the module graph of every domain consumer.
+  // Imported lazily so the transcription stack (OpenAI client) stays out of the
+  // module graph of every domain consumer.
   const { transcribeAudioData } = await import('./transcription')
   const outcome = await transcribeAudioData(audioBuffer, input.format, 'dictation request')
   if (outcome.error !== undefined) {

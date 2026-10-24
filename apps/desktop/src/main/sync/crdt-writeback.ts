@@ -4,6 +4,8 @@ import { trackMainError, trackMainLog } from '../telemetry/diagnostics'
 import { shouldEmitThrottled } from '../telemetry/throttle'
 import { getCrdtProvider } from './crdt-provider'
 import { feedExternalEditToCrdt } from './crdt-external-feed'
+import { registerCrdtWritebackPort } from './crdt-writeback-port'
+import { networkUpdateCount, resetNetworkUpdateState, sweepExpired } from './crdt-network-update'
 import { owesFileBody } from './crdt-owed-file-body'
 import type { SourceRestoreOutcome } from './blocknote-converter'
 import { serializeNoteBody, type NoteBody } from './writing-markdown'
@@ -30,12 +32,8 @@ import {
   type NoteFrontmatter
 } from '../vault/frontmatter'
 import { splitFrontmatterBlock } from '@memry/shared/frontmatter-split'
-import {
-  getVaultRoot,
-  toAbsolutePath,
-  createSnapshot,
-  maybeCreateSignificantSnapshot
-} from '../vault/notes'
+import { getVaultRoot, toAbsolutePath } from '../vault/notes-io'
+import { createSnapshot, maybeCreateSignificantSnapshot } from '../vault/notes-versions'
 import { SnapshotReasons } from '@memry/db-schema/schema/notes-cache'
 import { getJournalPath } from '../vault/journal'
 import { syncNoteToCache, deleteNoteFromCache } from '../vault/note-sync'
@@ -122,7 +120,6 @@ const inFlightWritebacks = new Set<string>()
 /** Notes whose last pass failed and whose user has been told so. */
 const failingWritebacks = new Set<string>()
 const ignoredWrites = new Map<string, number>()
-const lastNetworkUpdateMs = new Map<string, number>()
 /** Note id to the content hash of the file bytes this module last wrote for it. */
 const lastWrittenHash = new Map<string, string>()
 
@@ -189,14 +186,7 @@ function journalIdToDate(journalId: string): string {
  * cost O(map) each time. Gating the pass on its own TTL keeps both maps to the
  * entries written in the last two windows at amortized O(1) per call.
  */
-function sweepExpired(entries: Map<string, number>, ttlMs: number, now: number): void {
-  for (const [key, ts] of entries) {
-    if (now - ts >= ttlMs) entries.delete(key)
-  }
-}
-
 let ignoredWritesSweptAt = 0
-let networkUpdatesSweptAt = 0
 
 export function isWritebackIgnored(absolutePath: string): boolean {
   const now = Date.now()
@@ -229,30 +219,6 @@ function rememberIgnoredWrite(absolutePath: string): void {
 
 export function markWritebackIgnored(absolutePath: string): void {
   rememberIgnoredWrite(absolutePath)
-}
-
-const CONCURRENT_EDIT_WINDOW_MS = 2000
-
-export function recordNetworkUpdate(noteId: string): void {
-  const now = Date.now()
-  // Only `wasRecentNetworkUpdate` used to delete, and it is reached only when
-  // that note is edited externally on disk — so without this the map grew one
-  // entry per note ever received from the network, for the whole session.
-  if (now - networkUpdatesSweptAt >= CONCURRENT_EDIT_WINDOW_MS) {
-    networkUpdatesSweptAt = now
-    sweepExpired(lastNetworkUpdateMs, CONCURRENT_EDIT_WINDOW_MS, now)
-  }
-  lastNetworkUpdateMs.set(noteId, now)
-}
-
-export function wasRecentNetworkUpdate(noteId: string): boolean {
-  const ts = lastNetworkUpdateMs.get(noteId)
-  if (!ts) return false
-  if (Date.now() - ts >= CONCURRENT_EDIT_WINDOW_MS) {
-    lastNetworkUpdateMs.delete(noteId)
-    return false
-  }
-  return true
 }
 
 function emitToRenderer(channel: string, data: unknown): void {
@@ -487,7 +453,7 @@ export function getWritebackStateSizes(): {
 } {
   return {
     ignoredWrites: ignoredWrites.size,
-    networkUpdates: lastNetworkUpdateMs.size,
+    networkUpdates: networkUpdateCount(),
     lastWrittenHashes: lastWrittenHash.size,
     debugState: debugState.size
   }
@@ -503,12 +469,11 @@ export function getWritebackStateSizes(): {
 export function resetWritebackState(): void {
   lastWritebackCost.clear()
   ignoredWrites.clear()
-  lastNetworkUpdateMs.clear()
+  resetNetworkUpdateState()
   lastWrittenHash.clear()
   debugState.clear()
   failingWritebacks.clear()
   ignoredWritesSweptAt = 0
-  networkUpdatesSweptAt = 0
 }
 
 export async function flushPendingWritebacks(): Promise<void> {
@@ -1128,3 +1093,11 @@ function getYjsTags(doc: Y.Doc): string[] {
   }
   return tags
 }
+
+registerCrdtWritebackPort({
+  scheduleWriteback,
+  cancelWriteback,
+  flushPendingWritebacks,
+  resetWritebackState,
+  writebackNow
+})

@@ -34,7 +34,7 @@ import { generateNotePath, generateFilePath, generateUniquePathSync } from '../.
 import { toAbsolutePath, toRelativePath, getVaultRoot } from '../../vault/notes'
 import { readVaultFileSync } from '../../lib/paths'
 import { getNoteAttachmentsDir } from '../../vault/attachments'
-import { getStatus as getVaultStatus } from '../../vault/index'
+import { getStatus as getVaultStatus } from '../../vault/status'
 import {
   parseNote,
   serializeNote,

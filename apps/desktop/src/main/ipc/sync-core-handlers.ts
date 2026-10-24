@@ -39,23 +39,12 @@ import { getCachedEntitlement } from '../billing/entitlement-cache'
 import { teardownSession } from '../sync/session-teardown'
 import { getValidAccessToken, cancelTokenRefresh } from '../sync/token-manager'
 import { checkLocalKeyAgainstAccount, isKeyMaterialActivityRecent } from '../sync/key-verification'
+import { registerAuthOAuthHandlers, unregisterAuthOAuthHandlers } from './auth-oauth-handlers'
+import { registerAuthDeviceHandlers, unregisterAuthDeviceHandlers } from './auth-device-handlers'
 import {
-  clearOAuthState,
-  registerAuthOAuthHandlers,
-  unregisterAuthOAuthHandlers
-} from './auth-oauth-handlers'
-import {
-  clearAuthDeviceState,
-  registerAuthDeviceHandlers,
-  unregisterAuthDeviceHandlers
-} from './auth-device-handlers'
-import {
-  clearAttachmentState,
   registerAttachmentHandlers,
   unregisterAttachmentHandlers
 } from './sync-attachment-handlers'
-
-export { seedOAuthSession } from './auth-oauth-handlers'
 
 const logger = createLogger('IPC:Sync')
 
@@ -199,16 +188,6 @@ function emitVaultRecoveryNeededToWindows(event: VaultRecoveryNeededEvent): void
 
 async function cleanupLocalSyncState(): Promise<void> {
   await teardownSession('integrity')
-}
-
-// ============================================================================
-// Exported cleanup helper for session-teardown module
-// ============================================================================
-
-export function clearInMemoryAuthState(): void {
-  clearAuthDeviceState()
-  clearOAuthState()
-  clearAttachmentState()
 }
 
 // ============================================================================
