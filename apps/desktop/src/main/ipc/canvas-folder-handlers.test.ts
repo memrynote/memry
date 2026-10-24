@@ -94,7 +94,7 @@ async function registerAndGetHandlers(): Promise<Record<string, Handler>> {
   registerCanvasFolderHandlers()
   const map: Record<string, Handler> = {}
   for (const [channel, handler] of handleMock.mock.calls) {
-    map[channel as string] = handler as Handler
+    map[channel] = handler as Handler
   }
   return map
 }
