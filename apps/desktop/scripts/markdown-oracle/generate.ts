@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
 import { pmSchemaCases, yxmlCases } from './cases-pm'
 import { frontmatterCases, markdownClassCases, type OracleCase } from './cases-frontmatter'
 
@@ -35,7 +36,7 @@ interface VectorFile {
   cases: OracleCase[]
 }
 
-function vectorFiles(): VectorFile[] {
+function vectorFiles(external: MarkdownSource[]): VectorFile[] {
   return [
     {
       path: 'frontmatter.json',
@@ -56,6 +57,21 @@ function vectorFiles(): VectorFile[] {
       path: 'yxml.json',
       note: 'y-prosemirror 1.3.7 reading a Yjs fragment into a ProseMirror document (yXmlFragmentToProseMirrorRootNode: unbuildable elements are removed) and writing that document back (prosemirrorToYXmlFragment), as canonical fragment text. Updates are authored under client id 0x6d656d72.',
       cases: yxmlCases()
+    },
+    {
+      path: 'md-to-html.json',
+      note: 'BlockNote 0.54.2 markdownToHtml (the hand-written parser that replaced remark): markdown in, HTML string out, byte for byte. Sources: a hand-written grammar covering every branch, the 275 markdown-roundtrip cases and the 288 expanded fuzz cases.',
+      cases: mdToHtmlCases(external)
+    },
+    {
+      path: 'html-to-blocks.json',
+      note: 'BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.',
+      cases: htmlToBlocksCases()
+    },
+    {
+      path: 'parse.json',
+      note: 'BlockNote markdown parse (markdownToHtml then HTMLToBlocks) as canonical block JSON, without the memry layers. memryLayerNoop says whether blocknote-converter.ts markdownToBlocks returns the same blocks; where it is false, the memry layers of a later stage change the result.',
+      cases: bnParseCases(external)
     }
   ]
 }
@@ -125,7 +141,12 @@ function render(file: VectorFile, results: Map<string, OracleResult>): string {
 
 function main(): void {
   const check = process.argv.includes('--check')
-  const files = vectorFiles()
+  const sources = runOracle([
+    { id: 'sources/markdown-sources/all', op: 'markdown-sources', input: {} }
+  ])
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- written by oracle-serve.oracle.ts
+  const external = sources.get('sources/markdown-sources/all')?.output as MarkdownSource[]
+  const files = vectorFiles(external)
   const results = runOracle(files.flatMap((f) => f.cases))
   const target = check ? mkdtempSync(join(tmpdir(), 'memry-markdown-convert-')) : COMMITTED_DIR
   const drifted: string[] = []

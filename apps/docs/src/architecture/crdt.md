@@ -1728,7 +1728,9 @@ What the port covers today:
 - **ProseMirror model** (`markdown::pm`): `Node`, `Fragment` and `Mark` with the checked constructors of `prosemirror-model`, the 36 node types and 8 mark types of the memry schema as a static table (`pm/specs.rs`, held equal to the TypeScript schema by the `pm-schema` vectors), and content expressions compiled to the same automaton, so `fillBefore` and `findWrapping` pick the same nodes.
 - **Fragment conversion** (`markdown::yxml`): a Yjs fragment read into a ProseMirror document and written back with y-prosemirror 1.3.7 behavior. An element the schema cannot build is dropped with everything under it, and a parent left with invalid content is dropped in turn, exactly as y-prosemirror would delete them. The read only reports the removals and never changes the document, so callers keep reading from a detached copy.
 
-The markdown-to-blocks and blocks-to-markdown halves land in later steps of the same port. Until they do, the Electron converter is the only one that produces or reads note bodies.
+- **BlockNote parse path** (`markdown::bn`): `markdownToHtml` (BlockNote's hand-written markdown parser, one scanner per JavaScript regular expression), an arena DOM filled by html5ever (the TypeScript path uses jsdom, also a WHATWG parser), `nestedListsToBlockNoteStructure` and whitespace normalisation, ProseMirror's `DOMParser` with the memry schema's 69 tag rules and 6 style rules, and `nodeToBlock`. The proof is `md-to-html.json`, `html-to-blocks.json` and `parse.json`. The memry layers on top (marker repairs, comment masking, callouts, link references) land in later steps of the same port.
+
+The blocks-to-markdown half lands in later steps of the same port. Until it does, the Electron converter is the only one that produces or reads note bodies.
 
 ## Files Worth Knowing
 

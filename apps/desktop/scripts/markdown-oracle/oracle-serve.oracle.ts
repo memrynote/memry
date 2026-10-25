@@ -15,7 +15,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 
 import matter from 'gray-matter'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 
 import {
   parseMarkdownNote,
@@ -27,6 +27,7 @@ import {
 } from '@memry/app-core/markdown'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 
+import { bnParse, htmlToBlocks, markdownSources, mdToHtml } from './bn-oracle'
 import {
   contentMatchSweep,
   findWrappingSweep,
@@ -35,6 +36,33 @@ import {
   yxmlRoundtrip
 } from './pm-oracle'
 import { decodeYaml, encodeYaml, type YamlJson } from './yaml-json'
+
+// The converter imports two Electron-coupled modules. The oracle runs it
+// without a vault, a database or a log file: a silent logger, and an embed
+// resolver driven by the `embedFiles` of the job (none yet: stage 3 parses no
+// `![[embed]]`; the map is where later cases state theirs).
+vi.mock('../../src/main/lib/logger', () => {
+  const silent = {
+    debug: (): undefined => undefined,
+    info: (): undefined => undefined,
+    warn: (): undefined => undefined,
+    error: (): undefined => undefined,
+    scope: () => silent
+  }
+  return { log: silent, createLogger: () => silent }
+})
+vi.mock('../../src/main/vault/resolve-embed', () => ({
+  resolveVaultEmbeds: (refs: string[]): Record<string, string> =>
+    Object.fromEntries(refs.filter((ref) => ref in embedFiles).map((ref) => [ref, embedFiles[ref]]))
+}))
+const embedFiles: Record<string, string> = {}
+
+// Block ids are `crypto.randomUUID()` (blocknote-converter.ts:501-509): a
+// counter makes every run reproducible. Vectors never compare ids anyway.
+let uuidCounter = 0
+vi.spyOn(crypto, 'randomUUID').mockImplementation(
+  () => `00000000-0000-4000-8000-${(++uuidCounter).toString(16).padStart(12, '0')}`
+)
 
 interface Job {
   id: string
@@ -59,7 +87,7 @@ function frontmatterOf(input: Record<string, unknown>): Record<string, unknown> 
   return decoded as Record<string, unknown>
 }
 
-function run(job: Job): unknown {
+async function run(job: Job): Promise<unknown> {
   const { input } = job
   switch (job.op) {
     case 'split':
@@ -104,6 +132,14 @@ function run(job: Job): unknown {
       return yxmlRead(text(input, 'updateHex'), text(input, 'fragment'))
     case 'yxml-roundtrip':
       return yxmlRoundtrip(text(input, 'updateHex'), text(input, 'fragment'))
+    case 'markdown-sources':
+      return markdownSources()
+    case 'md-to-html':
+      return mdToHtml(text(input, 'markdown'))
+    case 'html-to-blocks':
+      return htmlToBlocks(text(input, 'html'))
+    case 'bn-parse':
+      return bnParse(text(input, 'markdown'))
     default:
       throw new Error(`unknown oracle op: ${job.op}`)
   }
@@ -112,20 +148,21 @@ function run(job: Job): unknown {
 const inPath = process.env.MEMRY_ORACLE_IN
 const outPath = process.env.MEMRY_ORACLE_OUT
 
-it.skipIf(!inPath || !outPath)('serves one oracle batch', () => {
+it.skipIf(!inPath || !outPath)('serves one oracle batch', async () => {
   if (!inPath || !outPath) return
   const jobs = readFileSync(inPath, 'utf8')
     .split('\n')
     .filter((line) => line.length > 0)
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the job file is written by generate.ts
     .map((line) => JSON.parse(line) as Job)
-  const lines = jobs.map((job) => {
+  const lines: string[] = []
+  for (const job of jobs) {
     try {
-      return JSON.stringify({ id: job.id, ok: true, output: run(job) })
+      lines.push(JSON.stringify({ id: job.id, ok: true, output: await run(job) }))
     } catch (error) {
-      return JSON.stringify({ id: job.id, ok: false, error: String(error) })
+      lines.push(JSON.stringify({ id: job.id, ok: false, error: String(error) }))
     }
-  })
+  }
   writeFileSync(outPath, `${lines.join('\n')}\n`, 'utf8')
   expect(lines).toHaveLength(jobs.length)
 })

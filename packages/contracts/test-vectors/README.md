@@ -77,7 +77,10 @@ one-class change reviewable.
 | `markdown-convert/markdown-class.json`  |                                  23 | same                                        | same + Rust `markdown_class_vectors.rs`                                              |
 | `markdown-convert/pm-schema.json`       |                                  27 | same                                        | same + Rust `markdown_pm_vectors.rs`                                                 |
 | `markdown-convert/yxml.json`            |                                 122 | same                                        | same + Rust `markdown_yxml_vectors.rs`                                               |
-| **Total**                               | **1234 cases plus 6 fuzz families** |                                             |                                                                                      |
+| `markdown-convert/md-to-html.json`      |                                 817 | same                                        | same + Rust `markdown_md_to_html_vectors.rs`                                         |
+| `markdown-convert/html-to-blocks.json`  |                                 129 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
+| `markdown-convert/parse.json`           |                                 817 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
+| **Total**                               | **2997 cases plus 6 fuzz families** |                                             |                                                                                      |
 
 ### `markdown-convert/`
 

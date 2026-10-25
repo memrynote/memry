@@ -1,0 +1,4815 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3522-markdown-convert",
+    "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
+    "note": "BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.",
+    "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
+    "caseCount": 129
+  },
+  "cases": [
+    {
+      "id": "html-blocks/html-to-blocks/p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>text</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "text",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-inline-styles",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><strong>b</strong><em>i</em><u>u</u><del>d</del><s>s</s><code>c</code></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "bold": true
+                },
+                "text": "b",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "italic": true
+                },
+                "text": "i",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "underline": true
+                },
+                "text": "u",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "strike": true
+                },
+                "text": "ds",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "code": true
+                },
+                "text": "c",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-b-i",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><b>b</b><i>i</i><strike>x</strike></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "bold": true
+                },
+                "text": "b",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "italic": true
+                },
+                "text": "i",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "strike": true
+                },
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-nested-marks",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><strong><em>both</em></strong> plain</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "bold": true,
+                  "italic": true
+                },
+                "text": "both",
+                "type": "text"
+              },
+              {
+                "styles": {},
+                "text": " plain",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-link",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><a href=\"https://x.y\">link</a></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "link",
+                    "type": "text"
+                  }
+                ],
+                "href": "https://x.y",
+                "type": "link"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-link-no-href",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><a name=\"n\">no href</a></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "no href",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-link-title",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><a href=\"u\" title=\"t\">x</a></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "x",
+                    "type": "text"
+                  }
+                ],
+                "href": "u",
+                "type": "link"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-br",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a<br>b</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a\nb",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-br-start",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><br>a</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "\na",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-br-end",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a<br></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a\n",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-newline-in-text",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a\nb</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-newline-collapsed",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a  \n  b</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-tab-newline",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a\t\r\nb</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-empty",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/p-whitespace-only",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>   </p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/text-only",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "plain text"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "plain text",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/text-and-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "lead <p>para</p> tail"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "lead",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "para",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": " tail",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/span-bold-style",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span style=\"font-weight: bold\">b</span><span style=\"font-weight:700\">c</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "bold": true
+                },
+                "text": "bc",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/span-italic-style",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span style=\"font-style: italic\">i</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "italic": true
+                },
+                "text": "i",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/span-underline-style",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span style=\"text-decoration: underline\">u</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "underline": true
+                },
+                "text": "u",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/span-strike-style",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span style=\"text-decoration: line-through\">s</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "strike": true
+                },
+                "text": "s",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/span-normal-weight",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><strong><span style=\"font-weight: 400\">n</span></strong></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "n",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/text-color-attr",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span data-style-type=\"textColor\" data-value=\"red\">r</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "textColor": "red"
+                },
+                "text": "r",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/background-color-attr",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span data-style-type=\"backgroundColor\" data-value=\"blue\">b</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "backgroundColor": "blue"
+                },
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/h1",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h1>one</h1>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 1,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "one",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/h3",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h3>three</h3>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 3,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "three",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/h6",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h6>six</h6>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 6,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "six",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/h2-inline",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h2>a <b>b</b> <a href=\"u\">c</a></h2>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 2,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a ",
+                "type": "text"
+              },
+              {
+                "styles": {
+                  "bold": true
+                },
+                "text": "b",
+                "type": "text"
+              },
+              {
+                "styles": {},
+                "text": " ",
+                "type": "text"
+              },
+              {
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "c",
+                    "type": "text"
+                  }
+                ],
+                "href": "u",
+                "type": "link"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/h-with-attrs",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<h2 data-level=\"3\" data-text-color=\"red\">x</h2>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 3,
+              "textAlignment": "left",
+              "textColor": "red"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li>a</li><li>b</li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ol",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ol><li>a</li><li>b</li></ol>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ol-start",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ol start=\"4\"><li>a</li><li>b</li></ol>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "start": 4,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ol-start-zero",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ol start=\"0\"><li>a</li></ol>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "start": 0,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ol-start-bad",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ol start=\"x\"><li>a</li></ol>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "start": null,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul-nested",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li>a<ul><li>b</li><li>c</li></ul></li><li>d</li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "bulletListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "type": "bulletListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "c",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "d",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ol-in-ul",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li>a<ol><li>b</li></ol></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "numberedListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul-nested-with-trailing-text",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li>a<ul><li>b</li></ul>after</li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "bulletListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          },
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "after",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul-nested-whitespace",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "bulletListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul-li-only-nested",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><ul><li>b</li></ul></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul-deep",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li>a<ul><li>b<ul><li>c</li></ul></li></ul></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "bulletListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": [
+                  {
+                    "type": "bulletListItem",
+                    "props": {
+                      "backgroundColor": "default",
+                      "textAlignment": "left",
+                      "textColor": "default"
+                    },
+                    "content": [
+                      {
+                        "styles": {},
+                        "text": "c",
+                        "type": "text"
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/ul-two-nested-lists",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li>a<ul><li>b</li></ul><ol><li>c</li></ol></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "bulletListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              },
+              {
+                "type": "numberedListItem",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "c",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-with-paragraph",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><p>text</p></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "text",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-with-two-paragraphs",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><p>one</p><p>two</p></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "one",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "paragraph",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "two",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-with-block-children",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><p>a</p><blockquote><p>q</p></blockquote></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "quote",
+                "props": {
+                  "backgroundColor": "default",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "q",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-task-unchecked",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><input type=\"checkbox\" disabled><p>todo</p></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "checkListItem",
+            "props": {
+              "backgroundColor": "default",
+              "checked": false,
+              "plain": false,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "todo",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-task-checked",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><input type=\"checkbox\" disabled checked><p>done</p></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "checkListItem",
+            "props": {
+              "backgroundColor": "default",
+              "checked": true,
+              "plain": false,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "done",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-task-in-ol",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ol><li><input type=\"checkbox\"><p>x</p></li></ol>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "numberedListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/li-outside-list",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<li>orphan</li>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "orphan",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blockquote",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<blockquote><p>q</p></blockquote>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "quote",
+            "props": {
+              "backgroundColor": "default",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "q",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blockquote-two-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<blockquote><p>a</p><p>b</p></blockquote>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "quote",
+            "props": {
+              "backgroundColor": "default",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a\nb",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blockquote-bare-text",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<blockquote>bare</blockquote>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "quote",
+            "props": {
+              "backgroundColor": "default",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "bare",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blockquote-nested",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<blockquote><blockquote><p>deep</p></blockquote></blockquote>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "quote",
+            "props": {
+              "backgroundColor": "default",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "deep",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/hr",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<hr>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "divider",
+            "props": {},
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/hr-between",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a</p><hr><p>b</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "divider",
+            "props": {},
+            "content": null,
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/pre-code",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<pre><code>line1\nline2</code></pre>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "codeBlock",
+            "props": {
+              "language": ""
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "line1\nline2",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/pre-code-lang",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<pre><code data-language=\"ts\">x</code></pre>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "codeBlock",
+            "props": {
+              "language": "ts"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/pre-code-class-lang",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<pre><code class=\"language-rust\">fn</code></pre>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "codeBlock",
+            "props": {
+              "language": "rust"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "fn",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/pre-no-code",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<pre>plain\n  pre</pre>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "plain\n  pre",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/pre-indented-html",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<pre>\n<code>\n  a\n</code>\n</pre>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "codeBlock",
+            "props": {
+              "language": ""
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "\n  a\n",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/code-inline-with-newline",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><code>a\nb</code></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "code": true
+                },
+                "text": "a\nb",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><thead><tr><th>h1</th><th>h2</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "headerRows": 1,
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h1",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h2",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "1",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "2",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-no-thead",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tbody><tr><td>1</td></tr></tbody></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "1",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-bare-rows",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "1",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "2",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "3",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "4",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-align",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><th align=\"center\">h</th><td align=\"right\">c</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "headerCols": 1,
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "c",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-colspan",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td colspan=\"2\">wide</td></tr><tr><td>a</td><td>b</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "wide",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 2,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "a",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "b",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-rowspan",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td rowspan=\"2\">tall</td><td>a</td></tr><tr><td>b</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "tall",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 2,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "a",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "b",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-colwidth",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td data-colwidth=\"100,200\">a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "a",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-cell-inline",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td><b>b</b> <a href=\"u\">l</a><br>x</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {
+                            "bold": true
+                          },
+                          "text": "b",
+                          "type": "text"
+                        },
+                        {
+                          "styles": {},
+                          "text": " ",
+                          "type": "text"
+                        },
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "l\n",
+                              "type": "text"
+                            }
+                          ],
+                          "href": "u",
+                          "type": "link"
+                        },
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-cell-paragraphs",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td><p>a</p><p>b</p></td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "ab",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-empty-cell",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td></td><td>x</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-header-col",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><th>h</th><td>a</td></tr><tr><th>h2</th><td>b</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "headerCols": 1,
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "a",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h2",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "b",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-mixed-headers",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><th>h</th><th>h</th></tr><tr><th>x</th><td>y</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null,
+                null
+              ],
+              "headerCols": 1,
+              "headerRows": 1,
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "h",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                },
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    },
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "y",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-nested-div",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td><div>d</div></td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "d",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/table-blocknote-wrapper",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"blockContainer\" data-content-type=\"table\"><table><tr><td>a</td></tr></table></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "a",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"a.png\" alt=\"alt\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "alt",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img-title",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"a.png\" alt=\"alt\" title=\"t\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "alt",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img-in-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><img src=\"a.png\" alt=\"x\"></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "x",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img-text-around",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>before <img src=\"a.png\"> after</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "before  after",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img-no-src",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img alt=\"x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "x",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": ""
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img-width",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"a.png\" width=\"120\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "previewWidth": 120,
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/img-data-attrs",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"a.png\" data-name=\"n\" data-show-preview=\"false\" data-preview-width=\"300\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "n",
+              "previewWidth": 300,
+              "showPreview": false,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/video",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<video src=\"v.mp4\" controls></video>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "video",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "v.mp4"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/video-data",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<video src=\"v.mp4\" data-name=\"clip\" data-url=\"v.mp4\" controls></video>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "video",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "clip",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "v.mp4"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/video-source-child",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<video controls><source src=\"v.mp4\"></video>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "video",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": ""
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/audio",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<audio src=\"a.mp3\" controls></audio>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "audio",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "url": "a.mp3"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/audio-name",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<audio src=\"a.mp3\" data-name=\"song\" controls></audio>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "audio",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "song",
+              "showPreview": true,
+              "url": "a.mp3"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/figure-img",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<figure><img src=\"a.png\" alt=\"x\"><figcaption>cap</figcaption></figure>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "cap",
+              "name": "x",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/figure-video",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<figure><video src=\"v.mp4\" controls></video><figcaption>cap</figcaption></figure>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "video",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "cap",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "v.mp4"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/figure-audio",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<figure><audio src=\"a.mp3\" controls></audio><figcaption>cap</figcaption></figure>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "audio",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "cap",
+              "name": "",
+              "showPreview": true,
+              "url": "a.mp3"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/figure-no-media",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<figure><figcaption>only caption</figcaption></figure>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "only caption",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/file-link",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<a href=\"f.pdf\">f.pdf</a>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "f.pdf",
+                    "type": "text"
+                  }
+                ],
+                "href": "f.pdf",
+                "type": "link"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/iframe",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<iframe src=\"https://example.com\"></iframe>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/div-text",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div>text in div</div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "text in div",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/div-nested",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div><div>inner</div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "inner",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/div-with-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div><p>a</p><p>b</p></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/section-article",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<section><h2>h</h2><p>p</p></section><article>a</article>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 2,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "h",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "p",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/details",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<details><summary>sum</summary><p>body</p></details>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "sum",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "body",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/details-open",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<details open><summary>sum</summary>body</details>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "sumbody",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/details-no-summary",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<details><p>body</p></details>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "body",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/details-blocknote",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-content-type=\"toggleListItem\"><div class=\"bn-inline-content\">sum</div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "toggleListItem",
+            "props": {
+              "backgroundColor": "default",
+              "open": false,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "sum",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/comment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a<!-- c -->b</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "ab",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/comment-block",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<!-- top --><p>x</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/comment-notion",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<!-- notionvc: 1234 --><p>a\nb</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a\nb",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/comment-notion-spaced",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<!--   notionvc:x--><p>a\nb</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a\nb",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/script-style",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a</p><script>x</script><style>p{}</style>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/unknown-tag",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<custom-el>text</custom-el>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "text",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/unknown-inline-in-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a <abbr>b</abbr> c</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a b c",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/entities",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>&amp; &lt; &gt; &quot; &nbsp; &copy;</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "& < > \"   ©",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/nbsp-literal",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a b</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/unicode",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>日本語 😀</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "日本語 😀",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-paragraph",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"blockContainer\" data-id=\"1\"><div data-content-type=\"paragraph\"><p class=\"bn-inline-content\">bn</p></div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "bn",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-heading",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"blockContainer\"><div data-content-type=\"heading\" data-level=\"2\"><h2 class=\"bn-inline-content\">bn</h2></div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 2,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "bn",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-nested",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"blockGroup\"><div data-node-type=\"blockContainer\"><div data-content-type=\"paragraph\"><p class=\"bn-inline-content\">a</p></div><div data-node-type=\"blockGroup\"><div data-node-type=\"blockContainer\"><div data-content-type=\"paragraph\"><p class=\"bn-inline-content\">b</p></div></div></div></div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": [
+              {
+                "type": "paragraph",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "b",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-props",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"blockContainer\"><div data-content-type=\"paragraph\" data-text-color=\"red\" data-background-color=\"blue\" data-text-alignment=\"center\"><p class=\"bn-inline-content\">c</p></div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "blue",
+              "textAlignment": "center",
+              "textColor": "red"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "c",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-bad-prop",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-content-type=\"heading\" data-level=\"zz\"><p class=\"bn-inline-content\">x</p></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "heading",
+            "props": {
+              "backgroundColor": "default",
+              "isToggleable": false,
+              "level": 1,
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-outer",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"blockOuter\"><div data-node-type=\"blockContainer\"><div data-content-type=\"paragraph\"><p class=\"bn-inline-content\">o</p></div></div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "o",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-callout",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-content-type=\"callout\" data-callout-type=\"warning\"><p class=\"bn-inline-content\">c</p></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "callout",
+            "props": {
+              "fold": "none",
+              "textAlignment": "left",
+              "textColor": "default",
+              "type": "info"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "c",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-divider",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-content-type=\"divider\"></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "divider",
+            "props": {},
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-code",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-content-type=\"codeBlock\" data-language=\"py\"><pre class=\"bn-inline-content\">x = 1</pre></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "codeBlock",
+            "props": {
+              "language": "py"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "x = 1",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-wiki-link",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span data-inline-content-type=\"wikiLink\" data-target=\"Note\">Note</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "props": {
+                  "alias": "",
+                  "backgroundColor": "default",
+                  "bold": false,
+                  "code": false,
+                  "cover": false,
+                  "italic": false,
+                  "preview": false,
+                  "size": "none",
+                  "strike": false,
+                  "target": "Note",
+                  "textColor": "default",
+                  "underline": false
+                },
+                "type": "wikiLink"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-hash-tag",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span data-inline-content-type=\"hashTag\" data-tag=\"t\">#t</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "props": {
+                  "color": "",
+                  "icon": "",
+                  "tag": "t"
+                },
+                "type": "hashTag"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-date-mention",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span data-inline-content-type=\"dateMention\" data-date=\"2026-01-02\">d</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "props": {
+                  "anchorId": "",
+                  "dateFormat": "relative",
+                  "dateISO": "",
+                  "hasTime": false,
+                  "remind": "none",
+                  "timeFormat": "system"
+                },
+                "type": "dateMention"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-link-mention",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><span data-inline-content-type=\"linkMention\" data-url=\"https://x.y\">x</span></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "props": {
+                  "domain": "",
+                  "favicon": "",
+                  "siteName": "",
+                  "title": "",
+                  "url": "https://x.y"
+                },
+                "type": "linkMention"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/blocknote-columns",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<div data-node-type=\"columnList\"><div data-node-type=\"column\"><p>a</p></div><div data-node-type=\"column\"><p>b</p></div></div>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "columnList",
+            "props": {
+              "regionId": "",
+              "settings": ""
+            },
+            "content": null,
+            "children": [
+              {
+                "type": "column",
+                "props": {
+                  "width": 1
+                },
+                "content": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "props": {
+                      "backgroundColor": "default",
+                      "textAlignment": "left",
+                      "textColor": "default"
+                    },
+                    "content": [
+                      {
+                        "styles": {},
+                        "text": "a",
+                        "type": "text"
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              },
+              {
+                "type": "column",
+                "props": {
+                  "width": 1
+                },
+                "content": null,
+                "children": [
+                  {
+                    "type": "paragraph",
+                    "props": {
+                      "backgroundColor": "default",
+                      "textAlignment": "left",
+                      "textColor": "default"
+                    },
+                    "content": [
+                      {
+                        "styles": {},
+                        "text": "b",
+                        "type": "text"
+                      }
+                    ],
+                    "children": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/empty-placeholder",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>​</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "​",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/deep-inline",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p><b><i><u><s><code>x</code></s></u></i></b></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "code": true
+                },
+                "text": "x",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/inline-block-mix",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a</p>text<p>b</p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "text",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/whitespace-between-blocks",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a</p>\n\n<p>b</p>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/empty",
+      "op": "html-to-blocks",
+      "input": {
+        "html": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [],
+            "children": []
+          }
+        ]
+      }
+    }
+  ]
+}
