@@ -17,6 +17,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
+import { memryParseCases } from './cases-parse'
 import { blocksCases } from './fns/blocks'
 import { criticCases } from './fns/critic'
 import { markersCases } from './fns/markers'
@@ -76,6 +77,11 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
       path: 'parse.json',
       note: 'BlockNote markdown parse (markdownToHtml then HTMLToBlocks) as canonical block JSON, without the memry layers. memryLayerNoop says whether blocknote-converter.ts markdownToBlocks returns the same blocks; where it is false, the memry layers of a later stage change the result.',
       cases: bnParseCases(external)
+    },
+    {
+      path: 'memry-parse.json',
+      note: 'prepareFragmentSeed of blocknote-converter.ts: markdown to blocks plus CriticMarkup marks, link reference definitions and usages, plain text and writing sentinels, as canonical JSON (block ids dropped). deferred says a callout or structured quote run was read: claiming it re-serializes the body, which needs the block serializer of a later stage, so such cases are not compared yet.',
+      cases: memryParseCases(external)
     },
     {
       path: 'layer-text.json',

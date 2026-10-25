@@ -54,6 +54,12 @@ fn strip_blocks(blocks: &mut [Json]) {
 
 /// `HTMLToBlocks(html, schema)`: canonical block JSON.
 pub fn html_to_blocks(html: &str) -> Result<Json, ParseError> {
+    Ok(canonical_blocks(&html_to_blocks_raw(html)?))
+}
+
+/// `HTMLToBlocks` as the converter's later layers consume it: the blocks as
+/// `nodeToBlock` built them (keys in build order, no canonicalisation).
+pub fn html_to_blocks_raw(html: &str) -> Result<Vec<Json>, ParseError> {
     let parser = DomParser::memry();
     let schema = parser.schema;
     let (mut dom, root) = parse_fragment_in_div(html);
@@ -81,7 +87,12 @@ pub fn html_to_blocks(html: &str) -> Result<Json, ParseError> {
         blocks.push(node_to_block(schema, child)?);
     }
     strip_blocks(&mut blocks);
-    Ok(canonical_blocks(&blocks))
+    Ok(blocks)
+}
+
+/// `tryParseMarkdownToBlocks` (raw blocks): BlockNote's own markdown parse.
+pub fn markdown_to_blocks_raw(markdown: &str) -> Result<Vec<Json>, ParseError> {
+    html_to_blocks_raw(&markdown_to_html(markdown))
 }
 
 /// `markdownToBlocks(markdown, schema)`: BlockNote's own markdown parse.

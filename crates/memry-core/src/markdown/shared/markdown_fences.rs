@@ -25,7 +25,10 @@ fn fence_line(line: &str) -> Option<(char, usize, &str)> {
         return None;
     }
     let info = &rest[run..];
-    if info.chars().any(|c| matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}')) {
+    if info
+        .chars()
+        .any(|c| matches!(c, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+    {
         return None;
     }
     Some((ch, run, info))

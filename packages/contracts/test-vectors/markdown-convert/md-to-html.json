@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote 0.54.2 markdownToHtml (the hand-written parser that replaced remark): markdown in, HTML string out, byte for byte. Sources: a hand-written grammar covering every branch, the 275 markdown-roundtrip cases and the 288 expanded fuzz cases.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 817
+    "caseCount": 833
   },
   "cases": [
     {
@@ -2436,6 +2436,182 @@
       "expected": {
         "status": "ok",
         "output": "<p><img src=\"v.mp4?a=1\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-mp4",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/v.mp4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"https://example.com/v.mp4\" data-name=\"x\" data-url=\"https://example.com/v.mp4\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-upper",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/V.MP4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"https://example.com/V.MP4\" data-name=\"x\" data-url=\"https://example.com/V.MP4\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-query",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/a/v.webm?t=1#frag)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"https://example.com/a/v.webm?t=1#frag\" data-name=\"x\" data-url=\"https://example.com/a/v.webm?t=1#frag\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-no-ext",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/video)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"https://example.com/video\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-dir-dot",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/a.mp4/index)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"https://example.com/a.mp4/index\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-percent",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/clip%2Emp4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"https://example.com/clip%2Emp4\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-backslash",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com\\dir\\v.mov)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"https://example.com\\dir\\v.mov\" data-name=\"x\" data-url=\"https://example.com\\dir\\v.mov\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-userinfo-port",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://u:p@example.com:8080/v.mkv)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"https://u:p@example.com:8080/v.mkv\" data-name=\"x\" data-url=\"https://u:p@example.com:8080/v.mkv\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-dotdot",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/a/../v.avi)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"https://example.com/a/../v.avi\" data-name=\"x\" data-url=\"https://example.com/a/../v.avi\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-ftp",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](ftp://example.com/v.flv)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"ftp://example.com/v.flv\" data-name=\"x\" data-url=\"ftp://example.com/v.flv\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-file",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](file:///tmp/v.wmv)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"file:///tmp/v.wmv\" data-name=\"x\" data-url=\"file:///tmp/v.wmv\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-data",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](data:video/mp4;base64,AAAA)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"data:video/mp4;base64,AAAA\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-mailto",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](mailto:a@b.c)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"mailto:a@b.c\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-bad-port",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com:99999/v.mp4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"https://example.com:99999/v.mp4\" alt=\"x\"></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-ipv6",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](http://[::1]/v.m4v)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><video src=\"http://[::1]/v.m4v\" data-name=\"x\" data-url=\"http://[::1]/v.m4v\" controls></video></p>"
+      }
+    },
+    {
+      "id": "md-html/md-to-html/bn-video-abs-trailing-dot",
+      "op": "md-to-html",
+      "input": {
+        "markdown": "![x](https://example.com/v.)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": "<p><img src=\"https://example.com/v.\" alt=\"x\"></p>"
       }
     },
     {

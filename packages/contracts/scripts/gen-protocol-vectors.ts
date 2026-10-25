@@ -152,7 +152,12 @@ const CLASSES: readonly VectorClass[] = [
       'yxml.json',
       'md-to-html.json',
       'html-to-blocks.json',
-      'parse.json'
+      'parse.json',
+      'memry-parse.json',
+      'layer-text.json',
+      'layer-markers.json',
+      'layer-blocks.json',
+      'layer-critic.json'
     ].map((name) => ({
       path: `markdown-convert/${name}`,
       build: () => committedVector(`markdown-convert/${name}`)
