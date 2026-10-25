@@ -100,14 +100,19 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "journal_aliases",
         sql: include_str!("migrations/data/0012_journal_aliases.sql"),
     },
+    Migration {
+        version: 13,
+        name: "note_snapshots",
+        sql: include_str!("migrations/data/0013_note_snapshots.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
 ///
-/// This list exists to build the file, not to evolve it. An `index.db` at an
-/// unexpected version is deleted and rebuilt rather than migrated (§A.0), so a
-/// later entry here is a new shape for a fresh file, never a step applied to a
-/// user's existing one.
+/// An `index.db` at a lower version migrates in place through this list and
+/// keeps every row; only a damaged file, or one written by a newer build, is
+/// deleted and rebuilt (`index_db`). So an entry is hand written, additive and
+/// idempotent (`IF NOT EXISTS`), exactly like a `data.db` migration.
 pub const INDEX_MIGRATIONS: &[Migration] = &[
     Migration {
         version: 1,
@@ -160,6 +165,55 @@ pub fn run(conn: &mut Connection, migrations: &[Migration]) -> Result<u32, Stora
         current = migration.version;
     }
 
+    Ok(current)
+}
+
+/// A migration that failed, with the SQLite error that stopped it, so the caller
+/// can tell a defect in the migration from a lock or a full disk.
+#[derive(Debug)]
+pub struct MigrationFailure {
+    pub version: u32,
+    pub name: &'static str,
+    pub error: rusqlite::Error,
+}
+
+impl From<MigrationFailure> for StorageError {
+    fn from(failure: MigrationFailure) -> Self {
+        Self::Migration {
+            version: failure.version,
+            what: format!("{}: {}", failure.name, failure.error),
+        }
+    }
+}
+
+/// As [`run`], with `user_version` written **inside** each migration's
+/// transaction. SQLite commits the pragma with the schema change, so there is no
+/// window in which a migration has applied and its counter has not, and a
+/// migration need not be re-runnable. For `index.db`, which migrates in place;
+/// `data.db` keeps the §A.0 convention of [`run`].
+pub fn run_atomic(
+    conn: &mut Connection,
+    migrations: &[Migration],
+) -> Result<u32, MigrationFailure> {
+    let start = user_version(conn).map_err(|err| MigrationFailure {
+        version: 0,
+        name: "read user_version",
+        error: rusqlite::Error::InvalidParameterName(err.to_string()),
+    })?;
+    let mut current = start;
+    for migration in migrations.iter().filter(|m| m.version > start) {
+        let fail = |error| MigrationFailure {
+            version: migration.version,
+            name: migration.name,
+            error,
+        };
+        let tx = conn.transaction().map_err(fail)?;
+        tx.execute_batch(migration.sql).map_err(fail)?;
+        tx.execute_batch(&format!("PRAGMA user_version = {}", migration.version))
+            .map_err(fail)?;
+        tx.commit().map_err(fail)?;
+        current = migration.version;
+    }
     Ok(current)
 }
 
@@ -228,7 +282,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 12);
+        assert_eq!(version, 13);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -339,7 +393,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 12);
+        assert_eq!(version, 13);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -417,5 +471,102 @@ mod tests {
         let names = table_names(&db);
         assert!(names.iter().any(|n| n == "kept"));
         assert!(!names.iter().any(|n| n == "added"));
+    }
+
+    #[test]
+    fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
+        let db = Db::open_in_memory().expect("open");
+        db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..12]))
+            .expect("a database as the last shipped build left it");
+        db.call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES ('device.id', 'dev-1')",
+                [],
+            )
+            .map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+        })
+        .expect("a row to keep");
+        assert!(!table_names(&db).iter().any(|n| n == "note_snapshots"));
+
+        let version = db
+            .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+            .expect("step forward");
+        assert_eq!(version, 13);
+
+        let (device, indexes): (String, i64) = db
+            .call_blocking(|conn| {
+                conn.execute(
+                    "INSERT INTO note_snapshots
+                       (id, note_id, content, title, content_hash, reason, created_at)
+                     VALUES ('s1', 'n1', 'body', 'Title', 'hash', 'manual', '2026-10-24T00:00:00Z')",
+                    [],
+                )
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })?;
+                let device = conn
+                    .query_row("SELECT value FROM meta WHERE key = 'device.id'", [], |row| row.get(0))
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                let indexes = conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM sqlite_master
+                         WHERE type = 'index' AND tbl_name = 'note_snapshots'
+                           AND name IN ('idx_note_snapshots_note_id', 'idx_note_snapshots_created')",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                Ok((device, indexes))
+            })
+            .expect("read back");
+        assert_eq!(device, "dev-1");
+        assert_eq!(indexes, 2);
+    }
+
+    #[test]
+    fn run_atomic_leaves_a_failed_migration_and_its_counter_untouched() {
+        const FAILING: &[Migration] = &[
+            Migration {
+                version: 1,
+                name: "first",
+                sql: "CREATE TABLE a (n INTEGER); INSERT INTO a VALUES (1)",
+            },
+            Migration {
+                version: 2,
+                name: "second",
+                sql: "CREATE TABLE b (n INTEGER); CREATE TABLE a (n INTEGER)",
+            },
+        ];
+        let db = Db::open_in_memory().expect("open");
+
+        let failure = db
+            .call_blocking(|conn| Ok(run_atomic(conn, FAILING)))
+            .expect("call")
+            .expect_err("the second migration collides with the first");
+
+        assert_eq!((failure.version, failure.name), (2, "second"));
+        let (version, rows, has_b) = db
+            .call_blocking(|conn| {
+                Ok((
+                    user_version(conn)?,
+                    conn.query_row("SELECT COUNT(*) FROM a", [], |r| r.get::<_, i64>(0))
+                        .unwrap_or(-1),
+                    conn.query_row(
+                        "SELECT COUNT(*) FROM sqlite_master WHERE name = 'b'",
+                        [],
+                        |r| r.get::<_, i64>(0),
+                    )
+                    .unwrap_or(-1),
+                ))
+            })
+            .expect("state");
+        // Migration 1 committed with its counter; migration 2 rolled back whole.
+        assert_eq!((version, rows, has_b), (1, 1, 0));
     }
 }

@@ -139,7 +139,7 @@ impl Tasks {
     /// elsewhere, or not pulled yet).
     pub fn get(&self, id: String) -> Result<Option<TaskItem>, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(task_records::get(conn, &id)?.map(TaskItem::from)))
+            .read_blocking(move |conn| Ok(task_records::get(conn, &id)?.map(TaskItem::from)))
     }
 
     /// Every project with its statuses; archived ones only when asked.
