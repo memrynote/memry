@@ -63,9 +63,13 @@ pub fn open_data(path: &Path) -> Result<Db, StorageError> {
 pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageError> {
     guard::refuse_foreign_schema(path)?;
     if !options.verify_integrity {
-        let db = Db::open(path)?;
-        db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS).map(drop))?;
-        return Ok(db);
+        // A recovery that never finished leaves `data.db` missing or fresh. Opening
+        // it as is would let the user write rows the old salvage then races
+        // against, so finish the salvage first (it never overwrites live rows).
+        if recovery::pending_recovery(path).is_some() {
+            recovery::quarantine_and_rebuild(path)?;
+        }
+        return open_data_unchecked(path);
     }
 
     let corrupt = || StorageError::Corrupt {
@@ -81,6 +85,14 @@ pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageEr
     let db = Db::open(path).map_err(map)?;
     db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS).map(drop))
         .map_err(map)?;
+    Ok(db)
+}
+
+/// Opens and migrates `data.db` without looking at a pending recovery: what the
+/// recovery itself uses to build the fresh database.
+pub(crate) fn open_data_unchecked(path: &Path) -> Result<Db, StorageError> {
+    let db = Db::open(path)?;
+    db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS).map(drop))?;
     Ok(db)
 }
 

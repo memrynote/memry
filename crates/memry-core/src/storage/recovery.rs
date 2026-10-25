@@ -19,6 +19,9 @@
 //! [`quarantine_and_rebuild`] picks up from the quarantined file instead of
 //! starting an empty database and losing the salvage.
 //!
+//! Salvage never overwrites a row the fresh database already holds (`INSERT OR
+//! IGNORE`): a resumed salvage must not put old rows over newer writes.
+//!
 //! Salvage never fails recovery. A table that cannot be read to the end, and a
 //! row the fresh schema refuses, are counted in the [`RecoveryReport`] for the
 //! shell to log.
@@ -31,7 +34,7 @@ use rusqlite::{Connection, OpenFlags, params_from_iter};
 
 use crate::api::errors::StorageError;
 use crate::storage::quarantine::{free_name, move_to, now_ms};
-use crate::storage::{guard, open_data};
+use crate::storage::{guard, open_data_unchecked};
 
 /// What recovery did, for the log.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,7 +96,7 @@ fn write_marker(path: &Path, quarantined: &Path) -> Result<(), StorageError> {
 /// the module docs). The caller closes every handle on `path` first: an open
 /// connection would keep writing to the file that was just renamed.
 pub fn quarantine_and_rebuild(path: &Path) -> Result<RecoveryReport, StorageError> {
-    rebuild(path, &open_data)
+    rebuild(path, &open_data_unchecked)
 }
 
 fn rebuild(
@@ -115,9 +118,24 @@ fn rebuild(
     let fresh = open_fresh(path)?;
     let (tables, salvage_error) = fresh.call_blocking(|conn| Ok(salvage(&quarantined, conn)))?;
     drop(fresh);
-    // Best effort: a marker left behind only makes the next recovery re-run an
-    // idempotent salvage, and the verified open keeps asking until it is gone.
-    let _ = std::fs::remove_file(marker_path(path));
+    // Salvage never overwrites live rows, so a marker that stays only makes the
+    // next open re-run it harmlessly. It is still an error: the verified open
+    // keeps refusing until the marker is gone, and the shell must say why.
+    let marker = marker_path(path);
+    if let Err(err) = std::fs::remove_file(&marker)
+        && err.kind() != std::io::ErrorKind::NotFound
+    {
+        eprintln!(
+            "memry recovery: could not remove {}: {err}",
+            marker.display()
+        );
+        return Err(StorageError::Failed {
+            what: format!(
+                "recovery finished but the marker {} could not be removed: {err}",
+                marker.display()
+            ),
+        });
+    }
     Ok(RecoveryReport {
         quarantined,
         tables,
@@ -255,7 +273,7 @@ fn copy_table(old: &Connection, fresh: &mut Connection, table: &str) -> Option<T
         .join(", ");
     let marks = vec!["?"; shared.len()].join(", ");
     let insert = format!(
-        "INSERT OR REPLACE INTO \"{}\" ({list}) VALUES ({marks})",
+        "INSERT OR IGNORE INTO \"{}\" ({list}) VALUES ({marks})",
         quote(table)
     );
 
@@ -298,6 +316,7 @@ fn quote(identifier: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::open_data;
     use crate::storage::test_support::temp_dir;
 
     fn meta_value(db: &crate::storage::Db, key: &'static str) -> Option<String> {
@@ -372,6 +391,27 @@ mod tests {
         assert!(
             pending_recovery(&path).is_none(),
             "done: the marker is gone"
+        );
+    }
+
+    #[test]
+    fn a_marker_that_cannot_be_removed_is_an_error_not_a_silent_success() {
+        let dir = temp_dir("recovery-marker-stuck");
+        let path = dir.path().join("data.db");
+        drop(open_data(&path).expect("open"));
+
+        // A directory where the marker file was: `remove_file` refuses it.
+        let stuck = |p: &Path| -> Result<crate::storage::Db, StorageError> {
+            let marker = marker_path(p);
+            std::fs::remove_file(&marker).expect("the marker exists");
+            std::fs::create_dir(&marker).expect("block the marker");
+            open_data_unchecked(p)
+        };
+        let err = rebuild(&path, &stuck).expect_err("must surface");
+
+        assert!(
+            matches!(&err, StorageError::Failed { what } if what.contains("marker") && what.contains("could not be removed")),
+            "{err:?}"
         );
     }
 

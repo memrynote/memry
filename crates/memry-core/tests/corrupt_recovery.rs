@@ -427,3 +427,78 @@ fn corrupt_recovery_default_open_of_a_non_database_is_the_error_it_always_was() 
         "{verified:?}"
     );
 }
+
+fn set_meta(db: &Db, key: &'static str, value: &'static str) {
+    db.call_blocking(move |conn| {
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES (?1, ?2) \
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            [key, value],
+        )
+        .map(drop)
+        .map_err(failed)
+    })
+    .expect("write meta");
+}
+
+fn meta(db: &Db, key: &'static str) -> String {
+    db.read_blocking(move |conn| {
+        conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |row| {
+            row.get(0)
+        })
+        .map_err(failed)
+    })
+    .expect("meta row")
+}
+
+/// The app dies after the file moved aside and before the fresh database exists.
+fn crash_after_quarantine(scratch: &Scratch) -> (PathBuf, PathBuf) {
+    let path = scratch.0.join("data.db");
+    let db = open_data(&path).expect("open");
+    set_meta(&db, "note.k", "old");
+    drop(db);
+    let parked = scratch.0.join("data.db.corrupt-1");
+    std::fs::rename(&path, &parked).expect("quarantine");
+    let marker = scratch.0.join("data.db.recovering");
+    std::fs::write(&marker, parked.display().to_string()).expect("marker");
+    (path, marker)
+}
+
+#[test]
+fn corrupt_recovery_default_open_finishes_a_pending_salvage_before_it_hands_out_a_database() {
+    let scratch = Scratch::new("marker-race");
+    let (path, marker) = crash_after_quarantine(&scratch);
+
+    let db = open_data(&path).expect("the default open still opens");
+
+    assert_eq!(meta(&db, "note.k"), "old", "the parked rows came back");
+    assert!(!marker.exists());
+    set_meta(&db, "note.k", "new");
+    drop(db);
+
+    // The marker comes back (a crash between the salvage and its removal).
+    // Rebuilding again must not put the old row over the newer write.
+    std::fs::write(
+        &marker,
+        scratch.0.join("data.db.corrupt-1").display().to_string(),
+    )
+    .expect("marker");
+    quarantine_and_rebuild(&path).expect("resume");
+    let db = open_data(&path).expect("reopen");
+    assert_eq!(
+        meta(&db, "note.k"),
+        "new",
+        "salvage never overwrites live rows"
+    );
+}
+
+#[test]
+fn corrupt_recovery_verified_open_refuses_while_a_salvage_is_pending() {
+    let scratch = Scratch::new("marker-verified");
+    let (path, _) = crash_after_quarantine(&scratch);
+
+    let refused = open_data_with(&path, VERIFIED);
+
+    assert!(matches!(refused, Err(StorageError::Corrupt { .. })));
+    assert!(!path.exists(), "and it created nothing");
+}
