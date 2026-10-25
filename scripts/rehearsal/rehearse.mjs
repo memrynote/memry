@@ -100,6 +100,8 @@ function latestRunId(startedAfter) {
   const out = capture('gh', [
     'run',
     'list',
+    '-R',
+    FEED_REPO,
     '--workflow',
     WORKFLOW,
     '--limit',
@@ -119,6 +121,8 @@ function cmdBuild(version, argv) {
     'workflow',
     'run',
     WORKFLOW,
+    '-R',
+    FEED_REPO,
     '-f',
     `version=${version}`,
     '-f',
@@ -136,7 +140,7 @@ function cmdBuild(version, argv) {
     }
   }
   if (!id) throw new Error('The dispatched run did not appear')
-  run('gh', ['run', 'watch', String(id), '--exit-status'])
+  run('gh', ['run', 'watch', '-R', FEED_REPO, String(id), '--exit-status'])
   console.log(`build run: ${id}`)
   writeFileSync(path.join(stateDir(version), 'run-id'), String(id))
 }
@@ -145,7 +149,7 @@ function downloadArtifacts(version, runId) {
   const dir = path.join(stateDir(version), 'artifacts')
   rmSync(dir, { force: true, recursive: true })
   const id = runId ?? readFileSync(path.join(stateDir(version), 'run-id'), 'utf8').trim()
-  run('gh', ['run', 'download', id, '-D', dir, '-p', 'rehearsal-*'])
+  run('gh', ['run', 'download', '-R', FEED_REPO, id, '-D', dir, '-p', 'rehearsal-*'])
   return dir
 }
 
@@ -314,6 +318,8 @@ function cmdElectronBaseline(tag, argv) {
   run('gh', [
     'run',
     'download',
+    '-R',
+    FEED_REPO,
     ...(runId ? [runId] : []),
     '-D',
     dir,

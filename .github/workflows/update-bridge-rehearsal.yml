@@ -1,4 +1,5 @@
-# Step 07 (#3524): update bridge rehearsal. Builds and packs the Tauri scaffold with Velopack and
+# Step 07 (#3524): update bridge rehearsal. This file also lives in memrynote/memry-update-rehearsal,
+# where the rehearsal-scoped signing secrets are set; every job checks out memrynote/memry. Builds and packs the Tauri scaffold with Velopack and
 # builds Electron rehearsal baselines whose update feed is fixed to the rehearsal repo. Uploads
 # workflow artifacts only, like publish-release.yml: Windows is signed on Kaan's Mac by
 # scripts/rehearsal/rehearse.mjs, which also writes the bridge feeds and publishes. Publishing to
@@ -19,6 +20,10 @@ on:
         description: Rehearsal tag whose full packages the deltas are built against (empty for the first pack)
         required: false
         default: ''
+      source_ref:
+        description: Branch or tag of memrynote/memry to build
+        required: false
+        default: feat/3524-update-bridge
       electron_tag:
         description: Production Electron tag to build rehearsal baselines from (empty to skip)
         required: false
@@ -53,6 +58,9 @@ jobs:
           - { target: win-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
       - uses: ./.github/actions/setup-pnpm
       - uses: actions/setup-node@v4
         with:
@@ -91,6 +99,9 @@ jobs:
           - { target: osx-x64, os: macos-15-intel, triple: x86_64-apple-darwin, arch: x64 }
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
       - uses: ./.github/actions/setup-pnpm
       - uses: actions/setup-node@v4
         with:
@@ -173,6 +184,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
       - uses: ./.github/actions/setup-pnpm
       - uses: actions/setup-node@v4
         with:
@@ -234,6 +248,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm
       - uses: actions/setup-node@v4
@@ -272,6 +291,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
       - uses: actions/download-artifact@v4
         with:
           name: MemryNote-${{ inputs.electron_tag }}-rehearsal-macos-15-intel
@@ -298,6 +320,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
