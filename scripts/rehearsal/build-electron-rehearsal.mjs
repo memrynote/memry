@@ -101,7 +101,8 @@ export function build({ tag, feedRepo, keep = false, repoRoot = process.cwd() })
     }
     run('pnpm', ['install', '--frozen-lockfile'], { cwd: worktree })
     const [command, args] = productionBuild
-    run(command, [...args, '--', ...publishOverrides(feedRepo)], { cwd: worktree })
+    // pnpm appends these to the script's own electron-builder command.
+    run(command, [...args, ...publishOverrides(feedRepo)], { cwd: worktree })
     console.log(
       `Electron rehearsal build of ${tag} is in ${path.join(worktree, 'apps/desktop/dist')}`
     )
