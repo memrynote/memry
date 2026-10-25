@@ -10,10 +10,12 @@
 pub mod constants;
 pub mod defuddle;
 pub mod dom;
+pub mod elements;
 pub mod error;
 pub mod fetch;
 pub mod map;
 pub mod metadata;
+pub mod removals;
 pub mod utils;
 
 use serde::{Deserialize, Serialize};
