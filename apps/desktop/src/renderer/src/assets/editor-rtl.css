@@ -1,0 +1,66 @@
+/* RTL fixes for the BlockNote editor.
+   BlockNote's stylesheet (@blocknote/core, @blocknote/shadcn) is physical: nested
+   indent, guide lines, list markers, the quote bar and table headers all use
+   left/right. Nothing there reads `dir`, so a RTL locale left nested lists flat and
+   put the quote bar on the wrong side. These rules mirror them for right-to-left blocks.
+   The stylesheet is JS-imported and lands after this file, so each selector
+   outranks the BlockNote one instead of relying on order. */
+
+/* Every selector keys off the block's own direction (:dir), not the UI language:
+   block-direction-plugin.ts sets dir="auto" per block, so a Persian block in an
+   English UI mirrors and an English block in a Persian UI does not.
+   Nested blocks indent from the inline start; the guide line follows. base.css sets
+   the LTR guide offset to -14px with !important, so the mirror needs it too. */
+.bn-block-group .bn-block-group:dir(rtl) {
+  margin-left: 0;
+  margin-inline-start: 24px;
+}
+
+.bn-block-group .bn-block-group:dir(rtl) > .bn-block-outer::before {
+  left: auto !important;
+  right: -14px !important;
+}
+
+.bn-block-outer[data-prev-depth-change]:dir(rtl) {
+  margin-left: 0;
+  margin-inline-start: calc(10px * var(--x));
+}
+
+.bn-block-outer[data-prev-depth-change]:dir(rtl) .bn-block-outer[data-prev-depth-change] {
+  margin-inline-start: 0;
+}
+
+/* The marker's gap to the text sits on the text side. */
+.bn-block-content[data-content-type='bulletListItem']:dir(rtl)::before,
+.bn-block-content[data-content-type='numberedListItem']:dir(rtl)::before {
+  padding-right: 0;
+  padding-inline-end: 4px;
+}
+
+:root [data-content-type='quote']:dir(rtl) blockquote {
+  border-left: 0 !important;
+  border-right: 3px solid currentcolor !important;
+}
+
+.bn-editor [data-content-type='table']:dir(rtl) th {
+  text-align: start;
+}
+
+.bn-block-column:dir(rtl) {
+  padding: 12px 25px 12px 15px;
+}
+
+.bn-block-column:dir(rtl):first-child {
+  padding-right: 0;
+}
+
+.bn-block-column:dir(rtl):last-child {
+  padding-left: 0;
+}
+
+/* Code reads left to right whatever the UI language. */
+.bn-block-content[data-content-type='codeBlock'] > pre,
+.bn-inline-content code {
+  direction: ltr;
+  text-align: left;
+}

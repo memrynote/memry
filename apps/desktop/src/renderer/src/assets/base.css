@@ -3058,11 +3058,11 @@ div.react-sigma {
 @keyframes row-drop-flash {
   0% {
     background-color: rgb(59 130 246 / 0.08);
-    border-left: 3px solid rgb(59 130 246 / 0.6);
+    border-inline-start: 3px solid rgb(59 130 246 / 0.6);
   }
   100% {
     background-color: transparent;
-    border-left: 3px solid transparent;
+    border-inline-start: 3px solid transparent;
   }
 }
 
@@ -4622,7 +4622,7 @@ del.bn-inline-content {
 .outline-heading-active::before {
   content: '';
   position: absolute;
-  left: -8px;
+  inset-inline-start: -8px;
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
@@ -4673,7 +4673,7 @@ del.bn-inline-content {
 .note-margin-line::before {
   content: '';
   position: absolute;
-  left: 48px;
+  inset-inline-start: 48px;
   top: 0;
   bottom: 0;
   width: 1px;

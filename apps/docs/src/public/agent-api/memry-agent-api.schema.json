@@ -3,7 +3,7 @@
   "$id": "https://docs.memrynote.com/agent-api/memry-agent-api.schema.json",
   "title": "Memry agent API",
   "description": "The arguments of every Memry MCP tool and every desktop API operation, for agents. Each $defs entry named vault_* is the `arguments` object of that tools/call. Each other entry is the `args` array that vault_desktop_read or vault_desktop_write (x-memry-tool) takes for that operation. Each entry is its own schema resource whose $id is its name, so its internal $refs resolve the same inside this file and on their own. Human-readable page: https://docs.memrynote.com/user-guide/ai/agent-api-reference",
-  "x-memry-app-version": "2026.928.1+main",
+  "x-memry-app-version": "2026.1024.1",
   "x-memry-endpoint": "http://127.0.0.1:<port>/mcp",
   "$defs": {
     "vault_search_notes": {
