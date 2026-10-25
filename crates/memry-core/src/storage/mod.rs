@@ -68,7 +68,7 @@ pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageEr
         // Finish it before handing the database out: the user must not write
         // beside a salvage that is still to come. A transient failure is an
         // error, not an empty vault; the marker stays for the next launch.
-        if recovery::pending_recovery(path).is_some() {
+        if recovery::pending_recovery(path)?.is_some() {
             let report = recovery::quarantine_and_rebuild(path)?;
             if let Some(problems) = report.problems() {
                 eprintln!(
@@ -78,7 +78,7 @@ pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageEr
                 );
             }
         } else {
-            recovery::clear_settled_marker(path);
+            recovery::clear_settled_marker(path)?;
         }
         return open_data_unchecked(path);
     }
@@ -86,11 +86,11 @@ pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageEr
     let corrupt = || StorageError::Corrupt {
         path: path.display().to_string(),
     };
-    if recovery::pending_recovery(path).is_some() {
+    if recovery::pending_recovery(path)?.is_some() {
         // An unfinished recovery: the file here is not the user's data.
         return Err(corrupt());
     }
-    recovery::clear_settled_marker(path);
+    recovery::clear_settled_marker(path)?;
     // Before the file is opened for writing: a corrupt file stays as found.
     guard::check_integrity(path)?;
     let map = |err: StorageError| if err.is_corrupt() { corrupt() } else { err };

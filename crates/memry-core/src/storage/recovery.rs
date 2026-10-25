@@ -90,32 +90,98 @@ fn marker_path(path: &Path) -> PathBuf {
     PathBuf::from(format!("{}.recovering", path.display()))
 }
 
+fn io_failure(what: &str, path: &Path, err: &dyn std::fmt::Display) -> StorageError {
+    StorageError::Failed {
+        what: format!("recovery could not check {what} {}: {err}", path.display()),
+    }
+}
+
 /// Whether `path` holds the proof that the salvage of `quarantined` finished.
-fn completed(path: &Path, quarantined: &Path) -> bool {
+/// Only a missing database, a missing table or row, or a damaged file mean "no":
+/// a busy, locked or unreadable one is an error, because answering "no" would
+/// salvage a second time and bring back rows deleted since.
+fn completed(path: &Path, quarantined: &Path) -> Result<bool, StorageError> {
     let Some(name) = quarantined.file_name() else {
-        return false;
+        return Ok(false);
     };
-    let Ok(conn) = Connection::open_with_flags(
+    if !path
+        .try_exists()
+        .map_err(|err| io_failure("the database", path, &err))?
+    {
+        return Ok(false);
+    }
+    let conn = Connection::open_with_flags(
         path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    ) else {
-        return false;
-    };
-    conn.query_row(
+    )
+    .map_err(|err| io_failure("the database", path, &err))?;
+    match conn.query_row(
         "SELECT 1 FROM recovery_log WHERE quarantine_name = ?1",
         [name.to_string_lossy()],
         |_| Ok(()),
-    )
-    .is_ok()
+    ) {
+        Ok(()) => Ok(true),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(false),
+        Err(err) if is_damage(&err) || err.to_string().contains("no such table") => Ok(false),
+        Err(err) => Err(io_failure("the recovery log in", path, &err)),
+    }
+}
+
+/// What the marker beside a database says.
+enum Marker {
+    /// No marker, or one that is not a file (nothing to act on).
+    Absent,
+    /// An unfinished recovery: the quarantine is on disk and unrecorded.
+    Pending(PathBuf),
+    /// The salvage is recorded (`recorded`), or the quarantine is gone.
+    Stale {
+        quarantined: PathBuf,
+        recorded: bool,
+    },
+}
+
+fn marker_state(path: &Path) -> Result<Marker, StorageError> {
+    let marker = marker_path(path);
+    let text = match std::fs::read_to_string(&marker) {
+        Ok(text) => text,
+        Err(err)
+            if matches!(
+                err.kind(),
+                std::io::ErrorKind::NotFound | std::io::ErrorKind::IsADirectory
+            ) =>
+        {
+            return Ok(Marker::Absent);
+        }
+        Err(err) => return Err(io_failure("the marker", &marker, &err)),
+    };
+    let quarantined = PathBuf::from(text.trim());
+    if quarantined.as_os_str().is_empty() {
+        return Ok(Marker::Absent);
+    }
+    // A stat error is not "gone": treating it so would drop the marker and
+    // abandon the salvage.
+    let on_disk = quarantined
+        .try_exists()
+        .map_err(|err| io_failure("the quarantine", &quarantined, &err))?;
+    let recorded = completed(path, &quarantined)?;
+    Ok(if on_disk && !recorded {
+        Marker::Pending(quarantined)
+    } else {
+        Marker::Stale {
+            quarantined,
+            recorded,
+        }
+    })
 }
 
 /// The quarantined file of a recovery that has not finished: a marker beside
-/// `path`, a quarantine still on disk, and no `recovery_log` row for it.
-pub fn pending_recovery(path: &Path) -> Option<PathBuf> {
-    let text = std::fs::read_to_string(marker_path(path)).ok()?;
-    let quarantined = PathBuf::from(text.trim());
-    (!quarantined.as_os_str().is_empty() && quarantined.exists() && !completed(path, &quarantined))
-        .then_some(quarantined)
+/// `path`, a quarantine still on disk, and no `recovery_log` row for it. An
+/// error means that could not be decided, and the caller must not open.
+pub fn pending_recovery(path: &Path) -> Result<Option<PathBuf>, StorageError> {
+    Ok(match marker_state(path)? {
+        Marker::Pending(quarantined) => Some(quarantined),
+        _ => None,
+    })
 }
 
 fn write_marker(path: &Path, quarantined: &Path) -> Result<(), StorageError> {
@@ -147,24 +213,24 @@ fn remove_marker(path: &Path) {
 }
 
 /// Drops a marker that no longer means anything: its salvage is recorded, or its
-/// quarantine is gone. Never moves or reads the live database.
-pub(crate) fn clear_settled_marker(path: &Path) {
-    let Ok(text) = std::fs::read_to_string(marker_path(path)) else {
-        return;
-    };
-    let quarantined = PathBuf::from(text.trim());
-    if pending_recovery(path).is_some() {
-        return;
+/// quarantine is gone. Never moves or salvages the live database.
+pub(crate) fn clear_settled_marker(path: &Path) -> Result<(), StorageError> {
+    if let Marker::Stale {
+        quarantined,
+        recorded,
+    } = marker_state(path)?
+    {
+        if !recorded {
+            eprintln!(
+                "memry recovery: the quarantine {} named by the marker is gone and no \
+                 recovery_log row records it; opening {} as it is",
+                quarantined.display(),
+                path.display()
+            );
+        }
+        remove_marker(path);
     }
-    if !completed(path, &quarantined) {
-        eprintln!(
-            "memry recovery: the quarantine {} named by the marker is gone and no \
-             recovery_log row records it; opening {} as it is",
-            quarantined.display(),
-            path.display()
-        );
-    }
-    remove_marker(path);
+    Ok(())
 }
 
 /// Moves the database at `path` aside, creates a fresh migrated one in its
@@ -185,7 +251,7 @@ fn rebuild(
     guard::refuse_foreign_schema(path)?;
     // No unfinished recovery (a marker without its quarantine means the app died
     // before the move): this is a new one.
-    let quarantined = match pending_recovery(path) {
+    let quarantined = match pending_recovery(path)? {
         Some(quarantined) => quarantined,
         None => {
             let planned = free_name(path, "corrupt", now_ms());
@@ -338,7 +404,9 @@ mod tests {
             !path.exists(),
             "the database is parked, nothing stands in its place"
         );
-        let parked = pending_recovery(&path).expect("the recovery is remembered");
+        let parked = pending_recovery(&path)
+            .expect("decidable")
+            .expect("the recovery is remembered");
         assert!(parked.exists());
         // Until it finishes, a verified open does not hand out an empty database.
         let verified = crate::storage::OpenOptions {
@@ -362,7 +430,7 @@ mod tests {
             Some("dev-9")
         );
         assert!(
-            pending_recovery(&path).is_none(),
+            pending_recovery(&path).expect("decidable").is_none(),
             "done: the marker is gone"
         );
     }
@@ -389,6 +457,60 @@ mod tests {
         );
     }
 
+    /// A busy database cannot answer "was this salvage recorded?". Answering "no"
+    /// would salvage again and bring back rows the user deleted since.
+    #[test]
+    fn a_locked_database_is_an_error_not_a_pending_recovery() {
+        let dir = temp_dir("recovery-locked");
+        let path = dir.path().join("data.db");
+        let parked = dir.path().join("data.db.corrupt-1");
+        std::fs::write(&parked, b"x").expect("quarantine");
+        write_marker(&path, &parked).expect("marker");
+        // Rollback-mode database with the proof in it, held under an exclusive lock.
+        let holder = Connection::open(&path).expect("create");
+        holder
+            .execute_batch(
+                "CREATE TABLE recovery_log (quarantine_name TEXT PRIMARY KEY);
+                 INSERT INTO recovery_log VALUES ('data.db.corrupt-1');
+                 BEGIN EXCLUSIVE;",
+            )
+            .expect("lock");
+
+        let outcome = pending_recovery(&path);
+
+        assert!(
+            matches!(&outcome, Err(StorageError::Failed { .. })),
+            "{outcome:?}"
+        );
+        assert!(marker_path(&path).exists(), "the marker is kept");
+        drop(holder);
+        assert_eq!(pending_recovery(&path).expect("decidable"), None);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_quarantine_that_cannot_be_statted_is_an_error_not_gone() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = temp_dir("recovery-stat");
+        let path = dir.path().join("data.db");
+        let sealed = dir.path().join("sealed");
+        std::fs::create_dir(&sealed).expect("dir");
+        let parked = sealed.join("data.db.corrupt-1");
+        std::fs::write(&parked, b"x").expect("quarantine");
+        write_marker(&path, &parked).expect("marker");
+        std::fs::set_permissions(&sealed, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+        let readable = std::fs::metadata(&parked).is_ok();
+
+        let outcome = clear_settled_marker(&path);
+
+        std::fs::set_permissions(&sealed, std::fs::Permissions::from_mode(0o755)).expect("chmod");
+        if readable {
+            return; // root ignores permissions
+        }
+        assert!(matches!(outcome, Err(StorageError::Failed { .. })));
+        assert!(marker_path(&path).exists(), "the salvage is not abandoned");
+    }
+
     #[test]
     fn a_marker_from_a_crash_before_the_move_starts_over() {
         let dir = temp_dir("recovery-early-crash");
@@ -400,6 +522,6 @@ mod tests {
 
         assert!(report.quarantined.exists());
         assert!(path.exists());
-        assert!(pending_recovery(&path).is_none());
+        assert!(pending_recovery(&path).expect("decidable").is_none());
     }
 }
