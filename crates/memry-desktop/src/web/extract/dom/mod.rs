@@ -3,6 +3,7 @@
 pub mod element;
 pub mod node;
 mod parse;
+pub mod position;
 pub mod query;
 pub mod selector;
 pub mod serialize;
