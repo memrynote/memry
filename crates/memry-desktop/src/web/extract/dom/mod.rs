@@ -1,5 +1,6 @@
 //! The arena DOM: linkedom's tree as Defuddle sees it, built by a port of htmlparser2.
 
+mod build;
 pub mod element;
 pub mod node;
 mod parse;

@@ -1,0 +1,5 @@
+{
+  "html": "<body>   <p>I keep my notes as plain markdown files. What is the least painful way to back them up off-site?</p>  <p>Use an encrypted sync. Anything else is a chore you will skip.</p> <p>+1 to the above.</p>  <div><H3>Suggested</H3> <ul><li><a href=\"/t/1\">Sync conflicts</a></li></ul></div> </body>",
+  "math": false,
+  "markdown": "I keep my notes as plain markdown files. What is the least painful way to back them up off-site?\n\nUse an encrypted sync. Anything else is a chore you will skip.\n\n+1 to the above.\n\n### Suggested\n\n- [Sync conflicts](/t/1)"
+}

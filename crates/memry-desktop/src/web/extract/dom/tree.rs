@@ -41,7 +41,7 @@ impl Document {
         &mut self.nodes[id.index()]
     }
 
-    fn alloc(&mut self, kind: NodeKind) -> NodeId {
+    pub(super) fn alloc(&mut self, kind: NodeKind) -> NodeId {
         self.nodes.push(Node::new(kind));
         NodeId(u32::try_from(self.nodes.len() - 1).expect("arena holds fewer than 2^32 nodes"))
     }

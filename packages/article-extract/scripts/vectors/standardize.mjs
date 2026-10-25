@@ -47,10 +47,10 @@ function withDeferredRulesOff(run) {
   }
 }
 
-export function standardizeVector(html, url, variant) {
+function runVariant(html, url, variant) {
   const { options, metadata, small, clone, main, input } = preparePage(html, url)
   input.variant = variant
-  if (!main) return { input, steps: null }
+  if (!main) return { input, steps: null, main: null }
   const doc = main.ownerDocument
   const steps = {}
   let last = wellFormed(main.outerHTML)
@@ -71,7 +71,19 @@ export function standardizeVector(html, url, variant) {
   step('standardize', () =>
     withDeferredRulesOff(() => standardize.standardizeContent(main, metadata, doc, false))
   )
+  return { input, steps, main }
+}
+
+export function standardizeVector(html, url, variant) {
+  const { input, steps } = runVariant(html, url, variant)
   return { input, steps }
+}
+
+/** The content HTML `parseInternal` hands to `toMarkdown` (the `pipeline` variant's element), or
+ *  null when the content finder finds nothing. */
+export function standardizedContent(html, url) {
+  const { main } = runVariant(html, url, 'pipeline')
+  return main ? wellFormed(main.outerHTML) : null
 }
 
 /** Both variants of one page. */
