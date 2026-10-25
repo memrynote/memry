@@ -15,6 +15,7 @@
 
 pub mod content;
 pub mod model;
+pub mod ops;
 pub mod schema;
 pub mod specs;
 

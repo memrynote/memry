@@ -3,7 +3,7 @@
 //! `packages/app-core/src/markdown.ts`. Specified in
 //! `docs/protocol/12-note-body-format.md` section 12.4.
 
-mod js;
+pub(crate) mod js;
 mod note;
 mod scalar;
 mod split;

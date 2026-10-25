@@ -40,7 +40,12 @@ const DIGESTS: Record<string, string> = {
     '1641fc52c860c385dde2d0a54145880e6f6edef84f92e494621563a47ea0744f',
   'markdown-convert/pm-schema.json':
     '5e524687c59e0e435db25c72248be9723b11fe3721602a6d65027f11de801836',
-  'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb'
+  'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb',
+  'markdown-convert/md-to-html.json':
+    '5041a070827e18815151e9f897047a9a3273dc1bf94f9952a75e86581cb74062',
+  'markdown-convert/html-to-blocks.json':
+    'e44263eb4c8c5335cad1a54a326113a7c6b9d0612c96006ab25f803bb49c3a4a',
+  'markdown-convert/parse.json': 'bb0d2eb36fd125756ed2f2b5dfaad8fdad5e2f18453a51c9dcced568b5633a64'
 }
 
 const OPS_PER_FILE: Record<string, Record<string, number>> = {
@@ -54,7 +59,10 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   },
   'markdown-convert/markdown-class.json': { classify: 23 },
   'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
-  'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 }
+  'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 },
+  'markdown-convert/md-to-html.json': { 'md-to-html': 817 },
+  'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 129 },
+  'markdown-convert/parse.json': { 'bn-parse': 817 }
 }
 
 function opCounts(file: VectorFile): Record<string, number> {

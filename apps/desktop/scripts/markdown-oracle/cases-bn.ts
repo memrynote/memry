@@ -1,0 +1,482 @@
+import type { OracleCase } from './cases-frontmatter'
+
+/**
+ * Inputs of `md-to-html.json`, `html-to-blocks.json` and `parse.json`. Expected
+ * outputs come from the oracle (`bn-oracle.ts`); nothing here states an answer.
+ *
+ * Markdown comes from three places: the hand-written BlockNote grammar below
+ * (every branch of `markdownToHtml.ts`, one case per quirk), the 275
+ * `ROUNDTRIP_CASES` of the markdown-roundtrip class, and the 288 expanded
+ * fuzz cases (6 families by 48, `createSeededRandom(0x1848)`). The last two
+ * come from `@memry/editor-schema/conformance`, which only loads under Vitest,
+ * so the oracle serves them (op `markdown-sources`).
+ */
+
+export interface MarkdownSource {
+  name: string
+  markdown: string
+}
+
+function slug(text: string): string {
+  const s = text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return s.length > 0 ? s : 'case'
+}
+
+/** Slug unique within one group: a repeated slug gets `-2`, `-3`, ... */
+function uniqueSlugs(names: string[]): string[] {
+  const seen = new Map<string, number>()
+  return names.map((name) => {
+    const base = slug(name)
+    const n = (seen.get(base) ?? 0) + 1
+    seen.set(base, n)
+    return n === 1 ? base : `${base}-${n}`
+  })
+}
+
+const BLOCKS: Record<string, string> = {
+  paragraph: 'Hello world',
+  'two-paragraphs': 'one\n\ntwo',
+  'soft-break': 'line one\nline two',
+  'hard-break-spaces': 'line one  \nline two',
+  'hard-break-backslash': 'line one\\\nline two',
+  'trailing-spaces-end': 'text   ',
+  'trailing-tab-end': 'text\t',
+  'leading-spaces-paragraph': '   indented three\n    four',
+  'crlf-paragraphs': 'one\r\n\r\ntwo\r\n',
+  'cr-only': 'one\rtwo',
+  'blank-only': '   \n\n  \n',
+  empty: '',
+  'nbsp-line': 'a\n\u00a0\nb',
+  'line-separator': 'a\u2028b',
+  'bom-leading': '\uFEFFtext',
+  'nul-char': 'a\u0000b',
+  astral: 'emoji \u{1F600} text',
+  'heading-1': '# Title',
+  'heading-6': '###### Six',
+  'heading-7-is-paragraph': '####### Seven',
+  'heading-no-space': '#Title',
+  'heading-closing-hashes': '## Title ##',
+  'heading-closing-no-space': '### foo###',
+  'heading-trailing-spaces': '# Title   ',
+  'heading-only-hashes': '# ',
+  'heading-hash-only-content': '# #',
+  'heading-tab': '#\tTitle',
+  'heading-inline': '# **bold** and *it* `c`',
+  'setext-h1': 'Title\n=====',
+  'setext-h1-short': 'Title\n=',
+  'setext-h2': 'Title\n-----',
+  'setext-h2-short': 'Title\n---',
+  'setext-multiline': 'Line one\nLine two\n---',
+  'setext-after-blank-is-hr': 'text\n\n---',
+  'hr-dashes': '---',
+  'hr-stars': '***',
+  'hr-underscores': '___',
+  'hr-spaced': '- - -',
+  'hr-spaced-stars': '* * *',
+  'hr-four-spaces-indent': '    ---',
+  'hr-mixed-not-hr': '-*-',
+  'hr-between-paragraphs': 'a\n\n***\n\nb',
+  'code-fence': '```\ncode\n```',
+  'code-fence-lang': '```ts\nconst a = 1\n```',
+  'code-fence-lang-spaces': '```  rust  \nfn main() {}\n```',
+  'code-fence-tilde': '~~~\ncode\n~~~',
+  'code-fence-unclosed': '```\nnever closed\nmore',
+  'code-fence-longer-close': '```\ncode\n`````',
+  'code-fence-shorter-close': '````\ncode\n```\nmore\n````',
+  'code-fence-mixed-close': '```\ncode\n~~~\nmore\n```',
+  'code-fence-indented-three': '   ```\n   code\n   ```',
+  'code-fence-empty': '```\n```',
+  'code-fence-blank-lines': '```\n\n\ncode\n\n```',
+  'code-fence-html-chars': '```\n<div>&amp; "q"</div>\n```',
+  'code-fence-crlf': '```js\r\ncode\r\n```\r\n',
+  'code-fence-backtick-in-info': '``` a`b\ncode\n```',
+  'code-fence-closing-trailing-space': '```\ncode\n```   ',
+  'code-fence-closing-trailing-text': '```\ncode\n``` x\n```',
+  'code-fence-interrupts-paragraph': 'text\n```\ncode\n```',
+  blockquote: '> quote',
+  'blockquote-multi': '> a\n> b',
+  'blockquote-no-space': '>a',
+  'blockquote-lazy': '> a\nlazy',
+  'blockquote-lazy-stops-heading': '> a\n# H',
+  'blockquote-lazy-stops-list': '> a\n- item',
+  'blockquote-nested': '> a\n> > b',
+  'blockquote-with-list': '> - a\n> - b',
+  'blockquote-with-code': '> ```\n> code\n> ```',
+  'blockquote-blank-inside': '> a\n>\n> b',
+  'blockquote-two': '> a\n\n> b',
+  'blockquote-empty': '>',
+  'bullet-dash': '- a',
+  'bullet-star': '* a',
+  'bullet-plus': '+ a',
+  'bullet-three': '- a\n- b\n- c',
+  'bullet-switch-marker': '- a\n* b',
+  'bullet-empty-item': '- ',
+  'bullet-tight-then-paragraph': '- a\ntext',
+  'bullet-after-paragraph': 'text\n- a',
+  ordered: '1. a\n2. b',
+  'ordered-start-five': '5. a\n6. b',
+  'ordered-start-zero': '0. a',
+  'ordered-paren': '1) a\n2) b',
+  'ordered-large': '123456789. a',
+  'ordered-then-bullet': '1. a\n- b',
+  'bullet-then-ordered': '- a\n1. b',
+  'task-open': '- [ ] todo',
+  'task-done-x': '- [x] done',
+  'task-done-upper': '- [X] done',
+  'task-no-space-after-box': '- [ ]todo',
+  'task-ordered': '1. [ ] todo',
+  'task-mixed-with-bullet': '- [ ] a\n- b',
+  'task-empty': '- [ ] ',
+  'nested-bullets': '- a\n  - b\n    - c\n- d',
+  'nested-two-space': '- a\n - b',
+  'nested-ordered-in-bullet': '- a\n  1. b\n  2. c',
+  'nested-bullet-in-ordered': '1. a\n   - b',
+  'nested-tab-indent': '- a\n\t- b',
+  'nested-wide-marker': '-   a\n    - b',
+  'list-item-continuation': '- a\n  continued',
+  'list-item-continuation-paragraph': '- a\n\n  second paragraph',
+  'list-item-code': '- a\n\n  ```\n  code\n  ```',
+  'list-item-blockquote': '- a\n  > quote',
+  'list-loose': '- a\n\n- b\n\n- c',
+  'list-blank-then-dedent': '- a\n\nb',
+  'list-item-heading-content': '- # not heading',
+  'list-item-inline': '- **bold** [link](u)',
+  'list-indented-first': '  - a\n  - b',
+  'list-deep-dedent': '- a\n  - b\n    - c\n  - d\n- e',
+  'table-basic': '| a | b |\n| --- | --- |\n| 1 | 2 |',
+  'table-no-outer-pipes': 'a | b\n--- | ---\n1 | 2',
+  'table-alignments': '| l | c | r | n |\n|:--|:-:|--:|---|\n| 1 | 2 | 3 | 4 |',
+  'table-short-row': '| a | b |\n| - | - |\n| 1 |',
+  'table-long-row': '| a |\n| - |\n| 1 | 2 | 3 |',
+  'table-header-only': '| a | b |\n| - | - |',
+  'table-empty-header': '| | |\n| - | - |\n| 1 | 2 |',
+  'table-escaped-pipe': '| a\\|b | c |\n| - | - |\n| 1 | 2 |',
+  'table-inline': '| **b** | `c` |\n| - | - |\n| [l](u) | ~~s~~ |',
+  'table-single-column': '| a |\n| - |\n| 1 |',
+  'table-then-paragraph': '| a |\n| - |\n| 1 |\ntext',
+  'table-trailing-blank-then-row': '| a |\n| - |\n| 1 |\n\n| 2 |',
+  'table-no-pipe-header': 'a\n| - |',
+  'table-separator-only-dashes': '| a | b |\n|---|---|\n',
+  'table-crlf': '| a | b |\r\n| - | - |\r\n| 1 | 2 |\r\n',
+  'html-block-div': '<div>block</div>',
+  'html-block-multi': '<div>\nline\n</div>\n\nafter',
+  'html-block-comment': '<!-- comment -->',
+  'html-block-comment-multi': '<!--\nline\n\nmore\n-->',
+  'html-block-details': '<details>\n<summary>s</summary>\nbody\n</details>',
+  'html-block-figure': '<figure><img src="a.png" alt="a"><figcaption>cap</figcaption></figure>',
+  'html-block-audio': '<audio src="a.mp3" controls></audio>',
+  'html-block-pi': '<?php echo 1 ?>',
+  'html-block-doctype': '<!DOCTYPE html>',
+  'html-block-cdata': '<![CDATA[x]]>',
+  'html-block-unknown-tag-is-paragraph': '<span>inline</span> text',
+  'html-block-indented-four': '    <div>x</div>',
+  'html-block-interrupts-paragraph': 'text\n<div>x</div>',
+  'html-block-table': '<table><tr><td>a</td><td>b</td></tr></table>',
+  'html-block-ul': '<ul><li>a</li><li>b</li></ul>',
+  'html-block-nested-ul': '<ul><li>a<ul><li>b</li></ul></li></ul>',
+  'html-block-hr': '<hr>',
+  'html-block-heading': '<h2>head</h2>',
+  'html-block-p': '<p>para <b>bold</b></p>',
+  'html-block-script': '<script>alert(1)</script>',
+  'html-inline-em': 'text <em>foo</em> more',
+  'html-inline-self-closing': 'a <br/> b',
+  'html-inline-comment': 'a <!-- c --> b',
+  'html-inline-bad-tag': 'a < b and c > d',
+  'html-inline-attrs': '<span class="x" data-a=\'1\' hidden>t</span>',
+  'html-entity': 'a &amp; b &lt; c &copy; d &#65; &#x41;',
+  'html-entity-no-semicolon': 'a &amp b &copy c',
+  'bold-star': '**bold**',
+  'bold-underscore': '__bold__',
+  'italic-star': '*it*',
+  'italic-underscore': '_it_',
+  'bold-italic-star': '***both***',
+  'bold-italic-underscore': '___both___',
+  strike: '~~gone~~',
+  'strike-single-tilde': '~gone~',
+  'code-span': '`code`',
+  'code-span-double': '``a`b``',
+  'code-span-padded': '` a `',
+  'code-span-only-spaces': '`  `',
+  'code-span-newline': '`a\nb`',
+  'code-span-unclosed': '`code',
+  'code-span-html': '`<b>&</b>`',
+  'emphasis-intraword-underscore': 'snake_case_word',
+  'emphasis-intraword-star': 'a*b*c',
+  'emphasis-space-after-open': '* not italic*',
+  'emphasis-space-before-close': '*not italic *',
+  'emphasis-unclosed': '*open',
+  'emphasis-empty': '****',
+  'emphasis-nested': '**bold *it* bold**',
+  'emphasis-across-lines': '**a\nb**',
+  'emphasis-escaped-star': '\\*not\\*',
+  'emphasis-triple-mixed': '**_a_**',
+  'emphasis-adjacent': '*a**b*',
+  'emphasis-underscore-leading': '_a_b',
+  'emphasis-dunder-intraword': 'a__b__c',
+  'emphasis-run-of-stars': '*a **b** c*',
+  'escape-all': '\\\\ \\` \\* \\_ \\{ \\} \\[ \\] \\( \\) \\# \\+ \\- \\. \\! \\~ \\| \\>',
+  'escape-non-escapable': '\\a \\< \\&',
+  'escape-trailing-backslash': 'end\\',
+  'escape-bracket-link': '\\[not a link\\](x)',
+  link: '[text](https://example.com)',
+  'link-title-dq': '[t](u "title")',
+  'link-title-sq': "[t](u 'title')",
+  'link-title-paren': '[t](u (title))',
+  'link-angle': '[t](<a b>)',
+  'link-angle-unclosed': '[t](<a b)',
+  'link-angle-title': '[t](<a b> "ti")',
+  'link-empty-url': '[t]()',
+  'link-empty-text': '[](u)',
+  'link-nested-parens': '[t](a(b)c)',
+  'link-escaped-paren': '[t](a\\)b)',
+  'link-nested-brackets': '[a [b] c](u)',
+  'link-escaped-bracket': '[a \\] b](u)',
+  'link-with-emphasis': '[**b** `c`](u)',
+  'link-in-link': '[a [b](c) d](e)',
+  'link-spaces-in-url': '[t](a b)',
+  'link-newline': '[t](a\nb)',
+  'link-reference-style': '[t][ref]\n\n[ref]: http://x',
+  'link-no-url': '[t]',
+  'link-quote-in-url': '[t](a"b)',
+  'link-entity-in-url': '[t](a&b)',
+  'link-javascript': '[t](javascript:alert(1))',
+  'autolink-angle': '<https://example.com>',
+  'autolink-bare': 'see https://example.com now',
+  image: '![alt](a.png)',
+  'image-title': '![alt](a.png "t")',
+  'image-empty-alt': '![](a.png)',
+  'image-nested-alt': '![a [b] c](a.png)',
+  'image-in-link': '[![alt](a.png)](u)',
+  'image-in-paragraph': 'text ![alt](a.png) text',
+  'image-unclosed': '![alt](a.png',
+  'image-spaces-url': '![alt](a b.png)',
+  'image-quote-alt': '![a "q" b](a.png)',
+  'video-mp4': '![clip](v.mp4)',
+  'video-webm-title': '![](v.webm "name")',
+  'video-mov': '![x](v.mov)',
+  'video-query': '![x](v.mp4?a=1)',
+  'audio-line': '[a.mp3](a.mp3)',
+  'mixed-document':
+    '# T\n\nPara with **b** and [l](u).\n\n- a\n  - b\n\n> q\n\n```js\nx\n```\n\n| a |\n| - |\n| 1 |\n\n---\n\nend',
+  'heading-then-list-no-blank': '# H\n- a',
+  'list-then-heading-no-blank': '- a\n# H',
+  'code-then-heading': '```\nc\n```\n# H',
+  'paragraph-lazy-hr': 'a\n***\nb',
+  'paragraph-interrupted-by-quote': 'a\n> q',
+  'paragraph-interrupted-by-table-row': 'a\n| b |',
+  'paragraph-setext-eq-lookahead': 'a\nb\n===',
+  'paragraph-four-space-first': '    a',
+  'tab-leading': '\tindented',
+  'unicode-ws-trim': '\u00a0\u3000text\u00a0',
+  'unicode-ws-line-blank': '\u3000\n\ntext',
+  'wiki-link': '[[Note Name]]',
+  'wiki-link-alias': '[[Note|Alias]]',
+  'hash-tag': 'a #tag b',
+  'math-block': '$$\nx^2\n$$',
+  'callout-gfm': '> [!note]\n> body',
+  footnote: 'a[^1]\n\n[^1]: note',
+  'obsidian-comment': 'a %%hidden%% b',
+  'long-line': 'word '.repeat(300),
+  'deep-quote': '> > > > > deep',
+  'deep-list': '- a\n  - b\n    - c\n      - d\n        - e',
+  'html-in-list': '- <b>x</b>\n  <i>y</i>',
+  'quote-ordered-start': '> 3. a\n> 4. b',
+  'pipe-in-paragraph': 'a | b | c',
+  'separator-like-paragraph': '| - |',
+  'dash-lines-paragraph': 'a\n-\nb',
+  'plus-line-no-space': '+a',
+  'number-no-space': '1.a',
+  'number-dot-only': '1.',
+  'star-only': '*',
+  'quote-then-hr': '> a\n***'
+}
+
+const HTML: Record<string, string> = {
+  p: '<p>text</p>',
+  'p-inline-styles':
+    '<p><strong>b</strong><em>i</em><u>u</u><del>d</del><s>s</s><code>c</code></p>',
+  'p-b-i': '<p><b>b</b><i>i</i><strike>x</strike></p>',
+  'p-nested-marks': '<p><strong><em>both</em></strong> plain</p>',
+  'p-link': '<p><a href="https://x.y">link</a></p>',
+  'p-link-no-href': '<p><a name="n">no href</a></p>',
+  'p-link-title': '<p><a href="u" title="t">x</a></p>',
+  'p-br': '<p>a<br>b</p>',
+  'p-br-start': '<p><br>a</p>',
+  'p-br-end': '<p>a<br></p>',
+  'p-newline-in-text': '<p>a\nb</p>',
+  'p-newline-collapsed': '<p>a  \n  b</p>',
+  'p-tab-newline': '<p>a\t\r\nb</p>',
+  'p-empty': '<p></p>',
+  'p-whitespace-only': '<p>   </p>',
+  'text-only': 'plain text',
+  'text-and-p': 'lead <p>para</p> tail',
+  'span-bold-style':
+    '<p><span style="font-weight: bold">b</span><span style="font-weight:700">c</span></p>',
+  'span-italic-style': '<p><span style="font-style: italic">i</span></p>',
+  'span-underline-style': '<p><span style="text-decoration: underline">u</span></p>',
+  'span-strike-style': '<p><span style="text-decoration: line-through">s</span></p>',
+  'span-normal-weight': '<p><strong><span style="font-weight: 400">n</span></strong></p>',
+  'text-color-attr': '<p><span data-style-type="textColor" data-value="red">r</span></p>',
+  'background-color-attr':
+    '<p><span data-style-type="backgroundColor" data-value="blue">b</span></p>',
+  h1: '<h1>one</h1>',
+  h3: '<h3>three</h3>',
+  h6: '<h6>six</h6>',
+  'h2-inline': '<h2>a <b>b</b> <a href="u">c</a></h2>',
+  'h-with-attrs': '<h2 data-level="3" data-text-color="red">x</h2>',
+  ul: '<ul><li>a</li><li>b</li></ul>',
+  ol: '<ol><li>a</li><li>b</li></ol>',
+  'ol-start': '<ol start="4"><li>a</li><li>b</li></ol>',
+  'ol-start-zero': '<ol start="0"><li>a</li></ol>',
+  'ol-start-bad': '<ol start="x"><li>a</li></ol>',
+  'ul-nested': '<ul><li>a<ul><li>b</li><li>c</li></ul></li><li>d</li></ul>',
+  'ol-in-ul': '<ul><li>a<ol><li>b</li></ol></li></ul>',
+  'ul-nested-with-trailing-text': '<ul><li>a<ul><li>b</li></ul>after</li></ul>',
+  'ul-nested-whitespace': '<ul>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>',
+  'ul-li-only-nested': '<ul><li><ul><li>b</li></ul></li></ul>',
+  'ul-deep': '<ul><li>a<ul><li>b<ul><li>c</li></ul></li></ul></li></ul>',
+  'ul-two-nested-lists': '<ul><li>a<ul><li>b</li></ul><ol><li>c</li></ol></li></ul>',
+  'li-with-paragraph': '<ul><li><p>text</p></li></ul>',
+  'li-with-two-paragraphs': '<ul><li><p>one</p><p>two</p></li></ul>',
+  'li-with-block-children': '<ul><li><p>a</p><blockquote><p>q</p></blockquote></li></ul>',
+  'li-task-unchecked': '<ul><li><input type="checkbox" disabled><p>todo</p></li></ul>',
+  'li-task-checked': '<ul><li><input type="checkbox" disabled checked><p>done</p></li></ul>',
+  'li-task-in-ol': '<ol><li><input type="checkbox"><p>x</p></li></ol>',
+  'li-outside-list': '<li>orphan</li>',
+  blockquote: '<blockquote><p>q</p></blockquote>',
+  'blockquote-two-p': '<blockquote><p>a</p><p>b</p></blockquote>',
+  'blockquote-bare-text': '<blockquote>bare</blockquote>',
+  'blockquote-nested': '<blockquote><blockquote><p>deep</p></blockquote></blockquote>',
+  hr: '<hr>',
+  'hr-between': '<p>a</p><hr><p>b</p>',
+  'pre-code': '<pre><code>line1\nline2</code></pre>',
+  'pre-code-lang': '<pre><code data-language="ts">x</code></pre>',
+  'pre-code-class-lang': '<pre><code class="language-rust">fn</code></pre>',
+  'pre-no-code': '<pre>plain\n  pre</pre>',
+  'pre-indented-html': '<pre>\n<code>\n  a\n</code>\n</pre>',
+  'code-inline-with-newline': '<p><code>a\nb</code></p>',
+  table:
+    '<table><thead><tr><th>h1</th><th>h2</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>',
+  'table-no-thead': '<table><tbody><tr><td>1</td></tr></tbody></table>',
+  'table-bare-rows': '<table><tr><td>1</td><td>2</td></tr><tr><td>3</td><td>4</td></tr></table>',
+  'table-align': '<table><tr><th align="center">h</th><td align="right">c</td></tr></table>',
+  'table-colspan': '<table><tr><td colspan="2">wide</td></tr><tr><td>a</td><td>b</td></tr></table>',
+  'table-rowspan': '<table><tr><td rowspan="2">tall</td><td>a</td></tr><tr><td>b</td></tr></table>',
+  'table-colwidth': '<table><tr><td data-colwidth="100,200">a</td></tr></table>',
+  'table-cell-inline': '<table><tr><td><b>b</b> <a href="u">l</a><br>x</td></tr></table>',
+  'table-cell-paragraphs': '<table><tr><td><p>a</p><p>b</p></td></tr></table>',
+  'table-empty-cell': '<table><tr><td></td><td>x</td></tr></table>',
+  'table-header-col': '<table><tr><th>h</th><td>a</td></tr><tr><th>h2</th><td>b</td></tr></table>',
+  'table-mixed-headers':
+    '<table><tr><th>h</th><th>h</th></tr><tr><th>x</th><td>y</td></tr></table>',
+  'table-nested-div': '<table><tr><td><div>d</div></td></tr></table>',
+  'table-blocknote-wrapper':
+    '<div data-node-type="blockContainer" data-content-type="table"><table><tr><td>a</td></tr></table></div>',
+  img: '<img src="a.png" alt="alt">',
+  'img-title': '<img src="a.png" alt="alt" title="t">',
+  'img-in-p': '<p><img src="a.png" alt="x"></p>',
+  'img-text-around': '<p>before <img src="a.png"> after</p>',
+  'img-no-src': '<img alt="x">',
+  'img-width': '<img src="a.png" width="120">',
+  'img-data-attrs':
+    '<img src="a.png" data-name="n" data-show-preview="false" data-preview-width="300">',
+  video: '<video src="v.mp4" controls></video>',
+  'video-data': '<video src="v.mp4" data-name="clip" data-url="v.mp4" controls></video>',
+  'video-source-child': '<video controls><source src="v.mp4"></video>',
+  audio: '<audio src="a.mp3" controls></audio>',
+  'audio-name': '<audio src="a.mp3" data-name="song" controls></audio>',
+  'figure-img': '<figure><img src="a.png" alt="x"><figcaption>cap</figcaption></figure>',
+  'figure-video':
+    '<figure><video src="v.mp4" controls></video><figcaption>cap</figcaption></figure>',
+  'figure-audio':
+    '<figure><audio src="a.mp3" controls></audio><figcaption>cap</figcaption></figure>',
+  'figure-no-media': '<figure><figcaption>only caption</figcaption></figure>',
+  'file-link': '<a href="f.pdf">f.pdf</a>',
+  iframe: '<iframe src="https://example.com"></iframe>',
+  'div-text': '<div>text in div</div>',
+  'div-nested': '<div><div>inner</div></div>',
+  'div-with-p': '<div><p>a</p><p>b</p></div>',
+  'section-article': '<section><h2>h</h2><p>p</p></section><article>a</article>',
+  details: '<details><summary>sum</summary><p>body</p></details>',
+  'details-open': '<details open><summary>sum</summary>body</details>',
+  'details-no-summary': '<details><p>body</p></details>',
+  'details-blocknote':
+    '<div data-content-type="toggleListItem"><div class="bn-inline-content">sum</div></div>',
+  comment: '<p>a<!-- c -->b</p>',
+  'comment-block': '<!-- top --><p>x</p>',
+  'comment-notion': '<!-- notionvc: 1234 --><p>a\nb</p>',
+  'comment-notion-spaced': '<!--   notionvc:x--><p>a\nb</p>',
+  'script-style': '<p>a</p><script>x</script><style>p{}</style>',
+  'unknown-tag': '<custom-el>text</custom-el>',
+  'unknown-inline-in-p': '<p>a <abbr>b</abbr> c</p>',
+  entities: '<p>&amp; &lt; &gt; &quot; &nbsp; &copy;</p>',
+  'nbsp-literal': '<p>a\u00a0b</p>',
+  unicode: '<p>日本語 \u{1F600}</p>',
+  'blocknote-paragraph':
+    '<div data-node-type="blockContainer" data-id="1"><div data-content-type="paragraph"><p class="bn-inline-content">bn</p></div></div>',
+  'blocknote-heading':
+    '<div data-node-type="blockContainer"><div data-content-type="heading" data-level="2"><h2 class="bn-inline-content">bn</h2></div></div>',
+  'blocknote-nested':
+    '<div data-node-type="blockGroup"><div data-node-type="blockContainer"><div data-content-type="paragraph"><p class="bn-inline-content">a</p></div><div data-node-type="blockGroup"><div data-node-type="blockContainer"><div data-content-type="paragraph"><p class="bn-inline-content">b</p></div></div></div></div></div>',
+  'blocknote-props':
+    '<div data-node-type="blockContainer"><div data-content-type="paragraph" data-text-color="red" data-background-color="blue" data-text-alignment="center"><p class="bn-inline-content">c</p></div></div>',
+  'blocknote-bad-prop':
+    '<div data-content-type="heading" data-level="zz"><p class="bn-inline-content">x</p></div>',
+  'blocknote-outer':
+    '<div data-node-type="blockOuter"><div data-node-type="blockContainer"><div data-content-type="paragraph"><p class="bn-inline-content">o</p></div></div></div>',
+  'blocknote-callout':
+    '<div data-content-type="callout" data-callout-type="warning"><p class="bn-inline-content">c</p></div>',
+  'blocknote-divider': '<div data-content-type="divider"></div>',
+  'blocknote-code':
+    '<div data-content-type="codeBlock" data-language="py"><pre class="bn-inline-content">x = 1</pre></div>',
+  'blocknote-wiki-link':
+    '<p><span data-inline-content-type="wikiLink" data-target="Note">Note</span></p>',
+  'blocknote-hash-tag': '<p><span data-inline-content-type="hashTag" data-tag="t">#t</span></p>',
+  'blocknote-date-mention':
+    '<p><span data-inline-content-type="dateMention" data-date="2026-01-02">d</span></p>',
+  'blocknote-link-mention':
+    '<p><span data-inline-content-type="linkMention" data-url="https://x.y">x</span></p>',
+  'blocknote-columns':
+    '<div data-node-type="columnList"><div data-node-type="column"><p>a</p></div><div data-node-type="column"><p>b</p></div></div>',
+  'empty-placeholder': '<p>\u200b</p>',
+  'deep-inline': '<p><b><i><u><s><code>x</code></s></u></i></b></p>',
+  'inline-block-mix': '<p>a</p>text<p>b</p>',
+  'whitespace-between-blocks': '<p>a</p>\n\n<p>b</p>\n',
+  empty: ''
+}
+
+function markdownSources(external: MarkdownSource[]): MarkdownSource[] {
+  const hand = Object.entries(BLOCKS).map(([name, markdown]) => ({ name: `bn-${name}`, markdown }))
+  return [...hand, ...external]
+}
+
+function markdownCases(group: string, op: string, external: MarkdownSource[]): OracleCase[] {
+  const sources = markdownSources(external)
+  const slugs = uniqueSlugs(sources.map((s) => s.name))
+  return sources.map((s, i) => ({
+    id: `${group}/${op}/${slugs[i]}`,
+    op,
+    input: { markdown: s.markdown }
+  }))
+}
+
+export function mdToHtmlCases(external: MarkdownSource[]): OracleCase[] {
+  return markdownCases('md-html', 'md-to-html', external)
+}
+
+export function htmlToBlocksCases(): OracleCase[] {
+  const names = Object.keys(HTML)
+  return names.map((name) => ({
+    id: `html-blocks/html-to-blocks/${slug(name)}`,
+    op: 'html-to-blocks',
+    input: { html: HTML[name] }
+  }))
+}
+
+export function bnParseCases(external: MarkdownSource[]): OracleCase[] {
+  return markdownCases('bn-parse', 'bn-parse', external)
+}

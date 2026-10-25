@@ -119,6 +119,15 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/pm-schema" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/pm-schema.json"
         ),
+        "markdown-convert/md-to-html" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/md-to-html.json"
+        ),
+        "markdown-convert/html-to-blocks" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/html-to-blocks.json"
+        ),
+        "markdown-convert/parse" => {
+            include_str!("../../../../packages/contracts/test-vectors/markdown-convert/parse.json")
+        }
         "markdown-convert/yxml" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-convert/yxml.json")
         }

@@ -20,7 +20,7 @@ default = []
 native-transport = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
-markdown = []
+markdown = ["dep:html5ever", "dep:markup5ever"]
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
@@ -51,6 +51,11 @@ rusqlite = { workspace = true }
 # mutex is never held across an await (research R4).
 tokio = { workspace = true }
 unicode-normalization = { workspace = true }
+# The markdown converter's HTML5 tokenizer and tree builder (`src/markdown`).
+# The TypeScript path parses HTML with jsdom, which uses parse5; both are
+# WHATWG parsers and produce the same tree for the same fragment.
+html5ever = { version = "0.40", optional = true }
+markup5ever = { version = "0.40", optional = true }
 
 [dev-dependencies]
 dryoc = "1.0.0"

@@ -49,7 +49,7 @@ pub struct Node {
 
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Fragment {
-    nodes: Vec<Node>,
+    pub(super) nodes: Vec<Node>,
 }
 
 impl Node {
