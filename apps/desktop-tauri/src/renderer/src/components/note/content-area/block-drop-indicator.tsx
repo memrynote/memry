@@ -56,7 +56,7 @@ export function BlockDropIndicator({
       aria-hidden="true"
     >
       {/* Circle at the start of the line */}
-      <div className="absolute -left-1 w-2 h-2 bg-primary rounded-full -top-[3px]" />
+      <div className="absolute -start-1 w-2 h-2 bg-primary rounded-full -top-[3px]" />
     </div>
   )
 }
@@ -80,13 +80,13 @@ export function EmptyDocumentDropIndicator({
   return (
     <div
       className={cn(
-        'absolute top-4 left-0 right-0 h-0.5 bg-primary pointer-events-none z-30',
+        'absolute top-4 inset-x-0 h-0.5 bg-primary pointer-events-none z-30',
         className
       )}
       aria-hidden="true"
     >
       {/* Circle at the start of the line */}
-      <div className="absolute -left-1 w-2 h-2 bg-primary rounded-full -top-[3px]" />
+      <div className="absolute -start-1 w-2 h-2 bg-primary rounded-full -top-[3px]" />
     </div>
   )
 }
