@@ -63,11 +63,21 @@ pub fn open_data(path: &Path) -> Result<Db, StorageError> {
 pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageError> {
     guard::refuse_foreign_schema(path)?;
     if !options.verify_integrity {
-        // A recovery that never finished leaves `data.db` missing or fresh. Opening
-        // it as is would let the user write rows the old salvage then races
-        // against, so finish the salvage first (it never overwrites live rows).
+        // A recovery that never finished leaves `data.db` missing or empty.
+        // Finish it before handing the database out: the user must not write
+        // beside a salvage that is still to come. A transient failure is an
+        // error, not an empty vault; the marker stays for the next launch.
         if recovery::pending_recovery(path).is_some() {
-            recovery::quarantine_and_rebuild(path)?;
+            let report = recovery::quarantine_and_rebuild(path)?;
+            if let Some(problems) = report.problems() {
+                eprintln!(
+                    "memry recovery: {} was salvaged only in part ({problems}); the \
+                     damaged file is kept and the outcome is in recovery_log",
+                    report.quarantined.display()
+                );
+            }
+        } else {
+            recovery::clear_settled_marker(path);
         }
         return open_data_unchecked(path);
     }
@@ -79,6 +89,7 @@ pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageEr
         // An unfinished recovery: the file here is not the user's data.
         return Err(corrupt());
     }
+    recovery::clear_settled_marker(path);
     // Before the file is opened for writing: a corrupt file stays as found.
     guard::check_integrity(path)?;
     let map = |err: StorageError| if err.is_corrupt() { corrupt() } else { err };

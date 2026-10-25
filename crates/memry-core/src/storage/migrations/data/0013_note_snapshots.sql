@@ -20,3 +20,18 @@ CREATE TABLE IF NOT EXISTS note_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_note_snapshots_note_id ON note_snapshots (note_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_note_snapshots_created ON note_snapshots (created_at);
+
+-- One row per finished `data.db` recovery (`storage::recovery`), written in the
+-- same transaction as the salvaged rows, so "salvage finished" and "the rows are
+-- here" cannot disagree. A leftover `data.db.recovering` marker whose quarantine
+-- is listed here is stale and is never salvaged again (a second salvage would
+-- bring back rows the user deleted since). `detail` is empty for a clean
+-- salvage, else what could not be carried over. Additive; an older build never
+-- reads it.
+CREATE TABLE IF NOT EXISTS recovery_log (
+  quarantine_name TEXT PRIMARY KEY,
+  completed_at    INTEGER NOT NULL,
+  rows_copied     INTEGER NOT NULL,
+  rows_rejected   INTEGER NOT NULL,
+  detail          TEXT NOT NULL DEFAULT ''
+);

@@ -464,6 +464,32 @@ fn crash_after_quarantine(scratch: &Scratch) -> (PathBuf, PathBuf) {
     (path, marker)
 }
 
+fn marker_file(scratch: &Scratch) -> PathBuf {
+    scratch.0.join("data.db.recovering")
+}
+
+fn meta_exists(db: &Db, key: &'static str) -> bool {
+    count(
+        db,
+        match key {
+            "note.k" => "SELECT COUNT(*) FROM meta WHERE key = 'note.k'",
+            _ => "SELECT COUNT(*) FROM meta WHERE key = 'other'",
+        },
+    ) > 0
+}
+
+fn log_detail(db: &Db) -> (i64, String) {
+    db.read_blocking(|conn| {
+        conn.query_row(
+            "SELECT COUNT(*), COALESCE(MAX(detail), '') FROM recovery_log",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .map_err(failed)
+    })
+    .expect("recovery_log")
+}
+
 #[test]
 fn corrupt_recovery_default_open_finishes_a_pending_salvage_before_it_hands_out_a_database() {
     let scratch = Scratch::new("marker-race");
@@ -473,23 +499,69 @@ fn corrupt_recovery_default_open_finishes_a_pending_salvage_before_it_hands_out_
 
     assert_eq!(meta(&db, "note.k"), "old", "the parked rows came back");
     assert!(!marker.exists());
-    set_meta(&db, "note.k", "new");
+    assert_eq!(log_detail(&db).0, 1, "the recovery is recorded in the data");
+}
+
+/// The marker that survives a finished recovery (it could not be removed) must
+/// not bring a row back that the user deleted since.
+#[test]
+fn corrupt_recovery_a_leftover_marker_never_salvages_twice() {
+    let scratch = Scratch::new("marker-leftover");
+    let (path, marker) = crash_after_quarantine(&scratch);
+    let db = open_data(&path).expect("salvage");
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM meta WHERE key = 'note.k'", [])
+            .map(drop)
+            .map_err(failed)
+    })
+    .expect("the user deletes the row");
     drop(db);
 
-    // The marker comes back (a crash between the salvage and its removal).
-    // Rebuilding again must not put the old row over the newer write.
+    let parked = scratch.0.join("data.db.corrupt-1");
+    std::fs::write(&marker, parked.display().to_string()).expect("marker is back");
+    let db = open_data(&path).expect("reopen");
+    assert!(
+        !meta_exists(&db, "note.k"),
+        "the deleted row stayed deleted"
+    );
+    assert!(!marker.exists(), "and the stale marker was cleared");
+    drop(db);
+
+    std::fs::write(&marker, parked.display().to_string()).expect("marker is back");
+    let db = open_data_with(&path, VERIFIED).expect("the verified open agrees");
+    assert!(!meta_exists(&db, "note.k"));
+}
+
+/// A shell pruned the quarantine (08c prunes `data.db.corrupt-*`) while a marker
+/// was left: the healthy database must open as it is.
+#[test]
+fn corrupt_recovery_a_marker_without_its_quarantine_never_moves_a_live_database() {
+    let scratch = Scratch::new("marker-pruned");
+    let path = scratch.0.join("data.db");
+    let db = open_data(&path).expect("open");
+    set_meta(&db, "note.k", "live");
+    drop(db);
     std::fs::write(
-        &marker,
-        scratch.0.join("data.db.corrupt-1").display().to_string(),
+        marker_file(&scratch),
+        scratch.0.join("data.db.corrupt-gone").display().to_string(),
     )
     .expect("marker");
-    quarantine_and_rebuild(&path).expect("resume");
-    let db = open_data(&path).expect("reopen");
-    assert_eq!(
-        meta(&db, "note.k"),
-        "new",
-        "salvage never overwrites live rows"
-    );
+
+    for options in [OpenOptions::default(), VERIFIED] {
+        let db = open_data_with(&path, options).expect("opens");
+        assert_eq!(meta(&db, "note.k"), "live");
+        drop(db);
+        std::fs::write(
+            marker_file(&scratch),
+            scratch.0.join("data.db.corrupt-gone").display().to_string(),
+        )
+        .expect("marker");
+    }
+    let moved = std::fs::read_dir(&scratch.0)
+        .expect("dir")
+        .flatten()
+        .any(|entry| entry.file_name().to_string_lossy().contains("corrupt-"));
+    assert!(!moved, "nothing was moved aside");
 }
 
 #[test]
@@ -501,4 +573,90 @@ fn corrupt_recovery_verified_open_refuses_while_a_salvage_is_pending() {
 
     assert!(matches!(refused, Err(StorageError::Corrupt { .. })));
     assert!(!path.exists(), "and it created nothing");
+}
+
+/// A quarantine that cannot be read right now (permissions here; a lock or an I/O
+/// error in the field) is not damage: the open fails, the marker stays, and no
+/// empty vault is handed out. Once it can be read the salvage completes.
+#[cfg(unix)]
+#[test]
+fn corrupt_recovery_a_transient_salvage_failure_fails_closed_and_retries() {
+    use std::os::unix::fs::PermissionsExt;
+    let scratch = Scratch::new("marker-transient");
+    let (path, marker) = crash_after_quarantine(&scratch);
+    let parked = scratch.0.join("data.db.corrupt-1");
+    std::fs::set_permissions(&parked, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+    if std::fs::File::open(&parked).is_ok() {
+        return; // root ignores permissions; nothing to prove here
+    }
+
+    let refused = open_data(&path);
+    assert!(
+        matches!(refused, Err(StorageError::Failed { .. })),
+        "{:?}",
+        refused.err()
+    );
+    assert!(marker.exists(), "the marker stays");
+    assert!(
+        matches!(
+            open_data_with(&path, VERIFIED),
+            Err(StorageError::Corrupt { .. })
+        ),
+        "an empty database is not handed out"
+    );
+
+    std::fs::set_permissions(&parked, std::fs::Permissions::from_mode(0o644)).expect("chmod");
+    let db = open_data(&path).expect("the retry finishes");
+    assert_eq!(meta(&db, "note.k"), "old");
+    assert!(!marker.exists());
+}
+
+/// Damage in the quarantine is permanent: retrying cannot help, so the recovery
+/// is recorded with what was lost, the marker goes, and the vault opens.
+#[test]
+fn corrupt_recovery_a_quarantine_that_is_not_a_database_is_recorded_and_settled() {
+    let scratch = Scratch::new("marker-notadb");
+    let (path, marker) = crash_after_quarantine(&scratch);
+    std::fs::write(scratch.0.join("data.db.corrupt-1"), vec![0xAB; 8192]).expect("garbage");
+
+    let db = open_data(&path).expect("opens, empty");
+
+    let (rows, detail) = log_detail(&db);
+    assert_eq!(rows, 1);
+    assert!(detail.contains("damaged file"), "{detail}");
+    assert!(!marker.exists());
+    assert!(scratch.0.join("data.db.corrupt-1").exists(), "kept");
+    drop(db);
+    open_data(&path).expect("and it opens again, without a second attempt");
+}
+
+#[test]
+fn corrupt_recovery_copied_counts_inserted_rows_not_ignored_ones() {
+    let scratch = Scratch::new("copied");
+    let path = scratch.0.join("data.db");
+    let db = open_data(&path).expect("open");
+    set_meta(&db, "note.k", "old");
+    let before = count(&db, "SELECT COUNT(*) FROM meta");
+    drop(db);
+
+    let report = quarantine_and_rebuild(&path).expect("recover");
+
+    let table = report
+        .tables
+        .iter()
+        .find(|t| t.table == "meta")
+        .expect("meta salvaged");
+    let db = open_data(&path).expect("open");
+    let after = count(&db, "SELECT COUNT(*) FROM meta");
+    assert_eq!(after, before, "nothing lost, nothing doubled");
+    assert_eq!(
+        (table.copied + table.already_present) as i64,
+        before,
+        "{table:?}"
+    );
+    assert_eq!(
+        table.copied as i64,
+        before - table.already_present as i64,
+        "copied counts only inserted rows: {table:?}"
+    );
 }
