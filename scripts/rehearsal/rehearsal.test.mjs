@@ -41,6 +41,8 @@ describe('build-electron-rehearsal', () => {
         'https://github.com/memrynote/memry-update-rehearsal/releases/download'
     })
     assert.deepEqual(publishOverrides(FEED_REPO), [
+      '--publish',
+      'never',
       '-c.publish.provider=github',
       '-c.publish.owner=memrynote',
       '-c.publish.repo=memry-update-rehearsal'

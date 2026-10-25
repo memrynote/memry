@@ -51,7 +51,14 @@ export function feedValues(feedRepo) {
 
 export function publishOverrides(feedRepo) {
   const [owner, name] = feedRepo.split('/')
-  return ['-c.publish.provider=github', `-c.publish.owner=${owner}`, `-c.publish.repo=${name}`]
+  // `--publish never` writes app-update.yml for the rehearsal repo without uploading anything.
+  return [
+    '--publish',
+    'never',
+    '-c.publish.provider=github',
+    `-c.publish.owner=${owner}`,
+    `-c.publish.repo=${name}`
+  ]
 }
 
 function run(command, args, options = {}) {
