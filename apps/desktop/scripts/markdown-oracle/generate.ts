@@ -18,6 +18,7 @@ import { fileURLToPath } from 'node:url'
 
 import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
 import { memryParseCases } from './cases-parse'
+import { serializeCases } from './cases-serialize'
 import { blocksCases } from './fns/blocks'
 import { criticCases } from './fns/critic'
 import { markersCases } from './fns/markers'
@@ -80,8 +81,13 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
     },
     {
       path: 'memry-parse.json',
-      note: 'prepareFragmentSeed of blocknote-converter.ts: markdown to blocks plus CriticMarkup marks, link reference definitions and usages, plain text and writing sentinels, as canonical JSON (block ids dropped). deferred says a callout or structured quote run was read: claiming it re-serializes the body, which needs the block serializer of a later stage, so such cases are not compared yet.',
+      note: 'prepareFragmentSeed of blocknote-converter.ts: markdown to blocks plus CriticMarkup marks, link reference definitions and usages, plain text and writing sentinels, as canonical JSON (block ids dropped).',
       cases: memryParseCases(external)
+    },
+    {
+      path: 'serialize.json',
+      note: 'serializeBlocks of blocknote-converter.ts (extractInlineColorRuns, HTML comment and emphasis tokens, BlockNote blocksToMarkdownLossy, normalizeSerializedMarkdown): hand-written blocks of every type, and the blocks prepareFragmentSeed builds from the memry-parse inputs, to markdown byte for byte. status "error" means the oracle threw (the converter answers null).',
+      cases: serializeCases(external)
     },
     {
       path: 'layer-text.json',

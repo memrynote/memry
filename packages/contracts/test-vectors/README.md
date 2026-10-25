@@ -81,11 +81,12 @@ one-class change reviewable.
 | `markdown-convert/html-to-blocks.json`  |                                  129 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/parse.json`           |                                  833 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/memry-parse.json`     |                                  723 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
+| `markdown-convert/serialize.json`       |                                  912 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
 | `markdown-convert/layer-text.json`      |                                13066 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`   |                                 3243 | same                                        | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`    |                                 5116 | same                                        | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
 | `markdown-convert/layer-critic.json`    |                                 2944 | same                                        | same + Rust `markdown_layer_critic_vectors.rs`                                       |
-| **Total**                               | **28121 cases plus 6 fuzz families** |                                             |                                                                                      |
+| **Total**                               | **29033 cases plus 6 fuzz families** |                                             |                                                                                      |
 
 ### `markdown-convert/`
 
@@ -102,9 +103,10 @@ with `expected.status` `ok` or `error` (the oracle threw; the message is not par
 the contract). YAML values travel in the JSON spelling described in each file's
 `meta.yamlJsonEncoding`.
 
-`memry-parse.json` is the whole markdown-to-seed path (`prepareFragmentSeed`). A case
-with `deferred: true` read a callout or structured-quote run; claiming one re-serializes
-the body, so the Rust test does not compare it until the block serializer lands. The
+`serialize.json` is `serializeBlocks`: 189 hand-written block lists and the 723 seeds of `memry-parse.json` serialized, markdown byte for byte; an oracle error means the converter answers null and the Rust must fail closed.
+
+`memry-parse.json` is the whole markdown-to-seed path (`prepareFragmentSeed`); the Rust
+test compares every case, callout and structured-quote claims included. The
 `layer-*.json` files are function-level cases (`op: fn`, input `{fn, args}`) for the
 shared text, marker, block and CriticMarkup layers; callback arguments are named
 deterministic stubs defined identically in the oracle and the Rust test.

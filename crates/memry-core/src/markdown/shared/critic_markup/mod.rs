@@ -11,7 +11,7 @@ mod scan;
 mod transforms;
 mod types;
 pub mod units;
-mod uri;
+pub(crate) mod uri;
 
 pub use comment::build_comment_payload;
 pub use format::{
