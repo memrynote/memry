@@ -26,10 +26,16 @@ allowBuilds:
   unrs-resolver: true
   react-native-libsodium: set this to true or false
   tesseract.js: false
+  # wdio's external driver downloads; the Tauri harness uses the embedded driver only.
+  edgedriver: false
+  geckodriver: false
 
 # Moved from package.json "pnpm.overrides" (no longer read by pnpm 11)
 overrides:
   tar: '>=7.5.21'
+  # One yaml for every vite peer variant; @wdio/native-utils needs ^2.9.1 (#3520).
+  yaml: '>=2.9.1'
+  tsx: '4.21.0'
   proxy-addr: '>=2.0.8'
   tinypool: '>=2.1.2'
   rollup: '>=4.59.0'

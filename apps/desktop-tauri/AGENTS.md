@@ -39,7 +39,14 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 
 ## E2E
 
-The `e2e` Cargo feature is declared and empty. Step 03 (#3520) fills it.
+WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`, `VITE_MEMRY_E2E=1`, `src-tauri/tauri.e2e.conf.json`). `pnpm test:e2e` runs `e2e/specs/**` (one app per worker) and `pnpm test:e2e:multi` runs `e2e/specs/two-device/**` (instances A and B). `MEMRY_E2E_BINARY` overrides the binary path.
+
+- The driver exists only in an `e2e` build and starts only with `MEMRY_E2E=1` (`E2eGate`). A release build links none of it, and `scripts/smoke-launch.mjs --expect-no-driver` proves that.
+- Specs import `test` and `expect` from `e2e/harness/test.ts`, a Playwright-shaped layer (`page`, `locator`, `expect`, fixtures) over mocha and WebDriver. A fresh app per test; `restart(app)` relaunches it on the same data.
+- Per-instance state travels in `<temp>/memry-e2e/control-<port>.json` (`harness/tauri-lifecycle.ts`, `memry_desktop::e2e::control`). The webview profile is isolated per instance, so two instances need macOS 14 or later.
+- No main-process eval. A spec calls a named `e2e_*` command through `invokeTest(app, name, args)`. A domain step adds its commands under `src-tauri/src/e2e/<domain>.rs` and one line in `e2e/commands.rs`, and updates `e2e/HOOKS.md`. `pnpm check:test-hooks` fails while an Electron hook has no mapped command.
+- A native dialog is never opened by a spec. The dialog queue contract is in `e2e/HOOKS.md`; Step 08 (#3525) implements it.
+- Specs never leave keychain items: `e2e-` device ids are purged on completion, `pnpm keychain:purge-e2e` sweeps leaks.
 
 ## Validation
 
@@ -49,6 +56,7 @@ pnpm --filter @memry/desktop-tauri test
 cd crates && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings
 cd crates && cargo test -p memry-desktop -p memry-tauri
 node scripts/check-line-ceilings.mjs
+pnpm --filter @memry/desktop-tauri test:scripts && pnpm --filter @memry/desktop-tauri test:e2e:harness
 ```
 
 - 800 lines per TypeScript file and 600 per Rust file. Split a file at its ceiling before adding behavior.

@@ -43,6 +43,10 @@ import {
 // Step 43 (#3560) deletes it.
 if (import.meta.env.VITE_MEMRY_DEV_API_PROXY === '1') installNotPortedShim()
 
+// The WDIO frontend plugin exists only in the e2e build; Vite removes this branch from every
+// other build, so a release bundle never contains it.
+if (import.meta.env.VITE_MEMRY_E2E === '1') await import('@wdio/tauri-plugin')
+
 // Before first paint: theme, color theme, platform, zoom cache and locale.
 applyStartupState()
 

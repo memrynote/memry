@@ -2,6 +2,7 @@
 //! `apps/desktop-tauri/src-tauri` call it.
 
 pub mod command_failure;
+pub mod e2e;
 pub mod http;
 pub mod launch_env;
 pub mod logging;

@@ -3,6 +3,8 @@
 
 pub mod binary;
 pub mod commands;
+#[cfg(feature = "e2e")]
+pub mod e2e;
 pub mod events;
 pub mod registry;
 pub mod startup;
@@ -73,9 +75,23 @@ fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 /// Builds and runs the app. `context` carries the profile identifier `main.rs` set.
 pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     register_stages();
+    #[cfg(feature = "e2e")]
+    e2e::register_stages();
     let builder = registry::builder();
+    #[cfg(feature = "e2e")]
+    let gate = memry_desktop::e2e::E2eGate::from_env(&env);
+    #[cfg(feature = "e2e")]
+    let handler = e2e::dispatcher(
+        gate,
+        e2e::commands::handler(),
+        registry::invoke_handler(&builder),
+    );
+    #[cfg(not(feature = "e2e"))]
     let handler = registry::invoke_handler(&builder);
-    let result = tauri::Builder::default()
+    let app = tauri::Builder::default();
+    #[cfg(feature = "e2e")]
+    let app = e2e::install(app, gate);
+    let result = app
         .manage(env)
         .invoke_handler(handler)
         .setup(|app| {

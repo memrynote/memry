@@ -54,4 +54,48 @@ describe('smokeLaunch', () => {
     assert.equal(result.ok, false)
     assert.match(result.log, /starting \(packaged\)/)
   })
+
+  it('with expectNoDriver passes when MEMRY_E2E starts no server', async () => {
+    const binary = fakeBinary('nodriver.mjs', [
+      '2026-01-01 INFO MemryNote 0.0.0 starting (packaged)',
+      '2026-01-01 INFO renderer started'
+    ])
+
+    const result = await smokeLaunch(binary, {
+      timeoutMs: 10_000,
+      settleMs: 300,
+      xvfb: false,
+      expectNoDriver: true
+    })
+
+    assert.equal(result.ok, true)
+    assert.equal(result.driver, false)
+  })
+
+  it('with expectNoDriver fails when the WebDriver port is listening', async () => {
+    const file = join(dir, 'driver.mjs')
+    writeFileSync(
+      file,
+      `#!/usr/bin/env node
+import { appendFileSync, mkdirSync } from 'node:fs'
+import net from 'node:net'
+import { join } from 'node:path'
+const logDir = process.env.MEMRY_TEST_LOG_DIR
+mkdirSync(logDir, { recursive: true })
+net.createServer().listen(Number(process.env.TAURI_WEBDRIVER_PORT), '127.0.0.1')
+appendFileSync(join(logDir, 'main.log'), 'MemryNote 0.0.0 starting (dev)\\nrenderer started\\n')
+`
+    )
+    chmodSync(file, 0o755)
+
+    const result = await smokeLaunch(file, {
+      timeoutMs: 10_000,
+      settleMs: 300,
+      xvfb: false,
+      expectNoDriver: true
+    })
+
+    assert.equal(result.ok, false)
+    assert.equal(result.driver, true)
+  })
 })
