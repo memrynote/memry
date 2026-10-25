@@ -241,8 +241,13 @@ jobs:
 
       - name: Locate the e2e app
         run: |
-          bin="$GITHUB_WORKSPACE/e2e-app/memry-tauri"
-          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; else chmod +x "$bin"; fi
+          # The platform overlays (tauri.<os>.conf.json) set mainBinaryName.
+          case "${{ runner.os }}" in
+            Windows) bin="$GITHUB_WORKSPACE/e2e-app/Memrynote.exe" ;;
+            macOS) bin="$GITHUB_WORKSPACE/e2e-app/MemryNote" ;;
+            *) bin="$GITHUB_WORKSPACE/e2e-app/memrynote" ;;
+          esac
+          if [ "${{ runner.os }}" != "Windows" ]; then chmod +x "$bin"; fi
           echo "MEMRY_E2E_BINARY=$bin" >> "$GITHUB_ENV"
 
       - name: Harness unit tests
@@ -318,8 +323,13 @@ jobs:
 
       - name: Locate the app
         run: |
-          bin="$GITHUB_WORKSPACE/app/memry-tauri"
-          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; else chmod +x "$bin"; fi
+          # The platform overlays (tauri.<os>.conf.json) set mainBinaryName.
+          case "${{ runner.os }}" in
+            Windows) bin="$GITHUB_WORKSPACE/app/Memrynote.exe" ;;
+            macOS) bin="$GITHUB_WORKSPACE/app/MemryNote" ;;
+            *) bin="$GITHUB_WORKSPACE/app/memrynote" ;;
+          esac
+          if [ "${{ runner.os }}" != "Windows" ]; then chmod +x "$bin"; fi
           echo "BIN=$bin" >> "$GITHUB_ENV"
 
       - name: No e2e command in the binary

@@ -8,11 +8,16 @@ import { pollUntil } from './wait'
 
 const crateTarget = fileURLToPath(new URL('../../../../crates/target/debug', import.meta.url))
 
+/** The executable names the `tauri.<os>.conf.json` overlays set as `mainBinaryName`. */
+const BINARY_NAMES: Partial<Record<NodeJS.Platform, string>> = {
+  win32: 'Memrynote.exe',
+  darwin: 'MemryNote'
+}
+
 /** The e2e build: `MEMRY_E2E_BINARY`, else the debug build of `pnpm build:e2e`. */
 export function binaryPath(): string {
   return (
-    process.env.MEMRY_E2E_BINARY ??
-    join(crateTarget, process.platform === 'win32' ? 'memry-tauri.exe' : 'memry-tauri')
+    process.env.MEMRY_E2E_BINARY ?? join(crateTarget, BINARY_NAMES[process.platform] ?? 'memrynote')
   )
 }
 

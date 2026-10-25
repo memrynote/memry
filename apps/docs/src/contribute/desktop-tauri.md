@@ -27,7 +27,7 @@ The backend is not ported yet, so a call to `window.api` throws `NotPortedError`
 pnpm build:tauri
 ```
 
-This builds a debug binary without a bundle at `crates/target/debug/memry-tauri`. CI builds it on macOS (arm64 and x64), Windows (x64 and arm64) and Linux x64, launches it and uploads it.
+This builds a debug binary without a bundle at `crates/target/debug/` (`MemryNote` on macOS, `Memrynote.exe` on Windows, `memrynote` on Linux: the platform overlays set `mainBinaryName`). CI builds it on macOS (arm64 and x64), Windows (x64 and arm64) and Linux x64, launches it and uploads it.
 
 ## Logs
 
