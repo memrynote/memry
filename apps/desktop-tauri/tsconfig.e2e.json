@@ -1,0 +1,21 @@
+{
+  "include": ["e2e/**/*.ts", "e2e/**/*.mjs"],
+  "exclude": ["e2e/**/*.test.mjs", "e2e/fixtures/test-vault"],
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node", "mocha"]
+  }
+}

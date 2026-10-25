@@ -169,7 +169,7 @@ jobs:
         if: matrix.variant == 'e2e'
         env:
           VITE_MEMRY_E2E: '1'
-        run: pnpm --filter @memry/desktop-tauri exec tauri build --debug --no-bundle --features e2e --target ${{ matrix.triple }}
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json --target ${{ matrix.triple }}
 
       - name: Locate binary
         id: binary
@@ -188,3 +188,141 @@ jobs:
           name: memry-tauri-${{ matrix.variant }}-${{ matrix.platform }}
           path: ${{ steps.binary.outputs.path }}
           retention-days: 14
+
+  e2e:
+    name: E2E (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: macos-arm64, os: macos-15, triple: aarch64-apple-darwin }
+          - { platform: windows-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
+          - { platform: windows-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
+          - { platform: linux-x64, os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
+            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev xvfb gnome-keyring dbus-x11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Download the e2e app
+        uses: actions/download-artifact@v4
+        with:
+          name: memry-tauri-e2e-${{ matrix.platform }}
+          path: e2e-app
+
+      - name: Locate the e2e app
+        run: |
+          bin="$GITHUB_WORKSPACE/e2e-app/memry-tauri"
+          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; else chmod +x "$bin"; fi
+          echo "MEMRY_E2E_BINARY=$bin" >> "$GITHUB_ENV"
+
+      - name: Harness unit tests
+        run: pnpm --filter @memry/desktop-tauri test:e2e:harness
+
+      # `dbus-run-session` gives libsecret a session bus; the keyring is unlocked with an empty
+      # password. Every other OS has its keychain already.
+      - name: E2E specs
+        if: runner.os != 'Linux'
+        run: |
+          pnpm --filter @memry/desktop-tauri test:e2e
+          pnpm --filter @memry/desktop-tauri test:e2e:multi
+
+      - name: E2E specs (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          dbus-run-session -- bash -c "
+            echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            xvfb-run -a -s '-screen 0 1920x1080x24' bash -c 'pnpm --filter @memry/desktop-tauri test:e2e && pnpm --filter @memry/desktop-tauri test:e2e:multi'
+          "
+
+      - name: Purge leaked e2e keychain items
+        if: always()
+        run: pnpm --filter @memry/desktop-tauri keychain:purge-e2e || true
+
+      - name: Upload e2e results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-results-${{ matrix.platform }}
+          path: apps/desktop-tauri/test-results/e2e
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # A build without the `e2e` cargo feature, as a release is, started the way a test starts the
+  # app (`MEMRY_E2E=1`, a driver port), must not listen, must not log a driver and must carry no
+  # `e2e_` command.
+  no-driver-smoke:
+    name: No driver (${{ matrix.platform }})
+    needs: build
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { platform: macos-arm64, os: macos-15 }
+          - { platform: windows-x64, os: windows-2022 }
+          - { platform: linux-x64, os: ubuntu-22.04 }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Install Linux system libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-0 libsoup-3.0-0 libayatana-appindicator3-1 xvfb
+
+      - name: Download the app
+        uses: actions/download-artifact@v4
+        with:
+          name: memry-tauri-debug-${{ matrix.platform }}
+          path: app
+
+      - name: Locate the app
+        run: |
+          bin="$GITHUB_WORKSPACE/app/memry-tauri"
+          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; else chmod +x "$bin"; fi
+          echo "BIN=$bin" >> "$GITHUB_ENV"
+
+      - name: No e2e command in the binary
+        run: |
+          if grep -c e2e_request_quit "$BIN" | grep -qv '^0$'; then
+            echo "the binary carries e2e_request_quit"
+            exit 1
+          fi
+
+      - name: Launch smoke (carries no driver)
+        run: node apps/desktop-tauri/scripts/smoke-launch.mjs "$BIN" --expect-no-driver
