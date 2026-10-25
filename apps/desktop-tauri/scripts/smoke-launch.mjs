@@ -8,7 +8,7 @@
 // release binary must carry none.
 //
 //   node smoke-launch.mjs <binary> [--expect-no-driver]
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import net from 'node:net'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -55,6 +55,26 @@ function launch(binary, env, xvfb) {
     return spawn('xvfb-run', ['-a', binary], { env, stdio: 'inherit' })
   }
   return spawn(binary, [], { env, stdio: 'inherit' })
+}
+
+/**
+ * Removes the temp profile. A WebView2 helper can hold a file for a few seconds after the app is
+ * gone and Node 24's `rmSync` ignores its retry options, so retry here. The directory is scratch
+ * space in the OS temp dir: failing to delete it is logged and never changes the smoke result.
+ */
+async function removeTemp(root) {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      rmSync(root, { recursive: true, force: true })
+      return
+    } catch (error) {
+      if (attempt >= 20) {
+        console.warn(`smoke-launch: could not remove ${root}: ${error.message}`)
+        return
+      }
+      await sleep(500)
+    }
+  }
 }
 
 /** Resolves `{ ok, log }`. `log` is the whole main.log at the end. */
@@ -112,10 +132,15 @@ export async function smokeLaunch(
     }
     return { ok: alive, log, exited: state.exited, driver: false }
   } finally {
-    child.kill()
+    if (process.platform === 'win32' && child.pid) {
+      // /T ends the WebView2 helper processes, which hold the profile files open.
+      spawnSync('taskkill', ['/F', '/T', '/PID', String(child.pid)], { stdio: 'ignore' })
+    } else {
+      child.kill()
+    }
     // `xvfb-run` leaves the app behind unless the group goes with it.
     await sleep(200)
-    rmSync(root, { recursive: true, force: true })
+    await removeTemp(root)
   }
 }
 
