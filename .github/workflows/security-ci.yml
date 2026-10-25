@@ -70,6 +70,10 @@ jobs:
         uses: actions/dependency-review-action@v4
         with:
           fail-on-severity: high
+          # extract-zip 2.0.1 has no patched release. It is a dev-only transitive dependency of
+          # @wdio/utils (@puppeteer/browsers), which only uses it to unpack browser downloads
+          # the Tauri e2e harness never makes (#3520). Remove these when extract-zip is fixed.
+          allow-ghsas: GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3
 
   codeql:
     name: CodeQL

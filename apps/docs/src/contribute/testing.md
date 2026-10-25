@@ -217,6 +217,48 @@ need two synced devices still belong in E2E.
 
 `@tanstack/react-virtual` doesn't render any items inside jsdom (heights are zero, virtualization sees no scrollable area). Cover virtualized calendar / week / list UIs at the **Playwright** layer only.
 
+## E2E on Tauri
+
+The Tauri desktop app (`apps/desktop-tauri`) has its own end-to-end suite on WebdriverIO. The Playwright sections above keep covering the Electron app until the cutover step deletes it. A new e2e test for the Tauri app goes in `apps/desktop-tauri/e2e/specs`.
+
+```bash
+pnpm --filter @memry/desktop-tauri build:e2e        # the e2e build (cargo feature `e2e`)
+pnpm --filter @memry/desktop-tauri test:e2e         # shell specs, up to two apps in parallel
+pnpm --filter @memry/desktop-tauri test:e2e:multi   # two-device specs, instances A and B
+pnpm --filter @memry/desktop-tauri test:e2e:harness # unit tests of the harness
+pnpm --filter @memry/desktop-tauri check:test-hooks # every Electron test hook is mapped
+```
+
+`MEMRY_E2E_BINARY` points the harness at another binary; the default is `crates/target/debug/memry-tauri`. `--spec e2e/specs/shell/startup.e2e.ts` runs one spec. A JUnit file per worker lands in `apps/desktop-tauri/test-results/e2e`.
+
+### How a test reaches the app
+
+The app embeds a W3C WebDriver server, but only in a build made with the `e2e` cargo feature, and only when it starts with `MEMRY_E2E=1`. A release build carries neither. CI proves it: `no-driver-smoke` starts a build without the feature with `MEMRY_E2E=1`, then checks that no port listens, that `main.log` names no driver and that the binary holds no `e2e_` command.
+
+The harness starts one app per test, on a free port, with its own data directory, log directory, webview profile and device id (`e2e-<uuid>`). It writes these to a control file, `<temp dir>/memry-e2e/control-<port>.json`, and the app reads the file named by its own `TAURI_WEBDRIVER_PORT` before it computes any path. `fresh` throws `control file not applied` when the app reports other directories than the file named. `restart(app)` closes the app gracefully and starts it again on the same files; the pid changes and the data stays.
+
+The main process has no eval. A spec calls a named command: `invokeTest(app, 'e2e_...', args)`. Every command starts with `e2e_`, answers `e2e_disabled` while the gate is closed, and is listed in `apps/desktop-tauri/e2e/HOOKS.md` next to the Electron hook it replaces.
+
+Two instances at once need macOS 14 or later, because each instance needs its own webview data store.
+
+### Porting a Playwright spec
+
+`import { test, expect } from '../../harness/test'` gives `test` with the fixtures `app`, `page`, `testVaultPath`, `deviceId`, `appB`, `pageB` and `vaultPathB`. `page`, `locator` and `expect` follow the Playwright API that the specs use (`getByRole`, `getByTestId`, `filter`, `nth`, `fill`, `press`, `toBeVisible`, `poll`, ...), so most specs port by changing the import and replacing each `electronApp.evaluate` with an `invokeTest` call. `HOOKS.md` holds the full mapping table.
+
+Limits of the adapter: the macOS WebView driver sends synthetic mouse events, so `pw-compat` adds the pointer events, focus change, `dblclick` and `contextmenu` a real click produces; drag and drop and text selection by mouse need a driver with native input. Native dialogs, the color picker and native menus cannot be clicked, so a spec never opens one; `HOOKS.md` describes the dialog result queue that Step 08 (#3525) builds.
+
+### Running the harness on a Windows or Linux VM
+
+Install Node 24 and `npm install` the `devDependencies` of `apps/desktop-tauri/package.json` that start with `@wdio` or `webdriverio`, plus `tsx`, next to a copy of `apps/desktop-tauri/e2e`, set `MEMRY_E2E_BINARY` to the e2e build from CI, and run `wdio run e2e/wdio.conf.ts`. Checked on 2026-10-24:
+
+- Windows 11 ARM64 (VMware Fusion, WebView2 154): start the run from a scheduled task with `/it` so it has the console session. Every spec passes. WebView2 helper processes keep the profile open for a moment after the app exits, so the harness retries removing a profile directory for 10 seconds.
+- Ubuntu 24.04 ARM64 (tart, x64 build under Rosetta, XFCE): install `libwebkit2gtk-4.1-0`, `libsoup-3.0-0`, `libayatana-appindicator3-1` and `libxdo3` for `amd64`. No `WEBKIT_*` variable is needed. Startup, restart, window and two-device pass. The 300 ms `click` budget in `pw-compat` fails there (about 470 ms) because the VM runs the build under Rosetta without a GPU; native CI runners decide that budget.
+- A window larger than the display is maximized by the window manager and ignores `set_size`, so `e2e_set_window_rect` restores the window first and CI starts Xvfb with a 1920x1080 screen.
+
+### Keychain
+
+Specs that sign in leave keychain items under `e2e-` device ids. The harness removes them when the run ends. `node apps/desktop-tauri/e2e/scripts/purge-e2e-keychain.mjs` lists leaked items and deletes nothing; `--apply` deletes only accounts that match `e2e-`.
+
 ## IPC Contract Check
 
 ```bash
@@ -229,6 +271,19 @@ When to run:
 - Any time you touch a Zod schema in `packages/contracts`
 - Any time you add or rename an IPC channel
 - Before opening a PR that touches the boundary
+
+## Markdown Converter Vectors
+
+The Rust markdown converter in `crates/memry-core` is checked against vectors produced by the Electron converter. Regenerate them after a change to that converter, to the packages it uses, or to the case list in `apps/desktop/scripts/markdown-oracle/`:
+
+```bash
+pnpm --filter @memry/desktop vectors:markdown-convert          # run the oracle, rewrite the class
+pnpm --filter @memry/desktop vectors:markdown-convert:check    # regenerate to a temp dir, diff, write nothing (CI)
+pnpm --filter @memry/contracts test                            # verifier: case counts, coverage list, file digests
+cd crates && cargo test -p memry-core --features markdown      # the Rust side
+```
+
+After regenerating, update the digests in `packages/contracts/src/__tests__/markdown-convert.test.ts` and the table in `packages/contracts/test-vectors/README.md`. The oracle runs in the `markdown-oracle` Vitest project with the time zone set to UTC.
 
 ## I18n Checks
 

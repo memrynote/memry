@@ -127,3 +127,21 @@ fn empty_override_falls_back_to_the_default() {
     );
     assert_eq!(paths.data_dir, PathBuf::from("/default/data"));
 }
+
+#[test]
+fn webview_profile_follows_the_data_dir() {
+    let a = AppPaths::resolve(
+        &env(&[("MEMRY_APP_DATA_DIR", "/t/a")]),
+        "/d".into(),
+        "/l".into(),
+    );
+    let b = AppPaths::resolve(
+        &env(&[("MEMRY_APP_DATA_DIR", "/t/b")]),
+        "/d".into(),
+        "/l".into(),
+    );
+
+    assert_eq!(a.webview_dir(), PathBuf::from("/t/a/webview"));
+    assert_ne!(a.webview_store_id(), b.webview_store_id());
+    assert_eq!(a.webview_store_id(), a.webview_store_id());
+}

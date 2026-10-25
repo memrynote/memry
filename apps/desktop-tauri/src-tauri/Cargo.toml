@@ -21,8 +21,8 @@ name = "export-bindings"
 path = "src/bin/export_bindings.rs"
 
 [features]
-# Step 03 (#3520) fills it.
-e2e = []
+# The WDIO driver plugins and the `e2e_*` test commands. Never part of a release build.
+e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio", "dep:arboard"]
 # Step 07 (#3524): rehearsal-only Velopack probe. Step 38 (#3555) replaces it with the real updater.
 update-probe = []
 
@@ -42,6 +42,10 @@ tracing = { workspace = true }
 velopack = { workspace = true }
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+
+tauri-plugin-wdio-webdriver = { version = "=1.5.0", optional = true }
+tauri-plugin-wdio = { version = "=1.5.0", optional = true }
+arboard = { version = "3.7.0", optional = true, default-features = false }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }

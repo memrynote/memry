@@ -20,6 +20,11 @@
 use ciborium::value::Value;
 use serde_json::Value as Json;
 
+#[cfg(feature = "markdown")]
+pub mod vector_compare;
+#[cfg(feature = "markdown")]
+pub mod yaml_json;
+
 /// Loads a committed vector file by its name under
 /// `packages/contracts/test-vectors/`.
 ///
@@ -104,6 +109,18 @@ pub fn vector_file(name: &str) -> Json {
         }
         "wiki-target-resolution" => {
             include_str!("../../../../packages/contracts/test-vectors/wiki-target-resolution.json")
+        }
+        "markdown-convert/frontmatter" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/frontmatter.json"
+        ),
+        "markdown-convert/markdown-class" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/markdown-class.json"
+        ),
+        "markdown-convert/pm-schema" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/pm-schema.json"
+        ),
+        "markdown-convert/yxml" => {
+            include_str!("../../../../packages/contracts/test-vectors/markdown-convert/yxml.json")
         }
         other => panic!("no committed vector file named {other}"),
     };

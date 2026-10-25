@@ -13,6 +13,8 @@ pub mod api;
 pub mod crdt;
 pub mod crypto;
 pub mod domain;
+#[cfg(feature = "markdown")]
+pub mod markdown;
 pub mod portal;
 pub mod protocol;
 pub mod seams;

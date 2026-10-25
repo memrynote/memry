@@ -33,6 +33,23 @@ impl AppPaths {
     }
 }
 
+impl AppPaths {
+    /// Where Windows and Linux keep this instance's webview profile, so two instances never
+    /// share localStorage.
+    pub fn webview_dir(&self) -> PathBuf {
+        self.data_dir.join("webview")
+    }
+
+    /// The WKWebView data store of this instance on macOS 14 and later: the first 16 bytes of
+    /// sha256 of the data dir path. macOS 13 has no per-instance store.
+    pub fn webview_store_id(&self) -> [u8; 16] {
+        let digest = Sha256::digest(self.data_dir.to_string_lossy().as_bytes());
+        let mut id = [0_u8; 16];
+        id.copy_from_slice(&digest[..16]);
+        id
+    }
+}
+
 /// The bundle identifier of this run: `base` without a device, `<base>.<device>` with one.
 ///
 /// An unpackaged `dev` device becomes `dev-<first 8 hex of sha256(checkout_dir)>`, the rule of

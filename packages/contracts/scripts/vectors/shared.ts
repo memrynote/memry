@@ -5,7 +5,7 @@
  * entry point decides where it lands, so `--check` can write to a temporary
  * directory without any class knowing about it.
  */
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -33,4 +33,15 @@ export function writeVectorFile(root: string, relativePath: string, value: unkno
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
   return target
+}
+
+/**
+ * A class whose bytes come from an oracle that cannot run here (the Electron
+ * converter, `apps/desktop/scripts/markdown-oracle`) is registered as its own
+ * committed file: `vectors:check` then proves the file is present and
+ * byte-stable, `@memry/desktop vectors:markdown-convert:check` proves it still
+ * matches the oracle, and a regeneration here is a no-op.
+ */
+export function committedVector(relativePath: string): unknown {
+  return JSON.parse(readFileSync(join(VECTORS_DIR, relativePath), 'utf8'))
 }

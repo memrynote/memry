@@ -33,7 +33,10 @@ const TEST_FILES = [
   '**/*.spec.{ts,tsx,js,mjs,cjs}',
   '**/__tests__/**',
   '**/tests/**',
-  '**/test/**'
+  '**/test/**',
+  // The Tauri e2e harness and its ported specs are test code.
+  '**/*.e2e.ts',
+  'apps/desktop-tauri/e2e/**'
 ]
 
 const RENDERER = 'apps/desktop/src/renderer/src'
@@ -397,6 +400,22 @@ export default defineConfig({
         ...forRenderers('components/capture-bar/capture-bar.tsx')
       ],
       rules: { 'no-restricted-imports': 'off' }
+    },
+    {
+      // The e2e harness is mocha over WebDriver, not vitest or React. Playwright-shaped fixtures
+      // take `({}, use)`, `use` is a fixture callback, and `execCommand` is the only way to edit
+      // text in a page that a driver cannot type into.
+      files: ['apps/desktop-tauri/e2e/**'],
+      rules: disable(
+        'react/rules-of-hooks',
+        'no-empty-pattern',
+        'typescript/no-deprecated',
+        'vitest/valid-title',
+        'vitest/valid-describe-callback',
+        'vitest/no-disabled-tests',
+        'vitest/no-conditional-tests',
+        'vitest/expect-expect'
+      )
     },
     {
       // The i18n rules never applied to tests.
