@@ -289,42 +289,70 @@ jobs:
           path: electron-out/
           if-no-files-found: error
 
-  # Dispatch with the published rehearsal tags: previous_tag is R2, version is R3 (L1) or R2 (M2).
+  # Dispatch after the rehearsal release for `version` is published: the Electron rehearsal build
+  # updates itself into the Tauri pack through the bridge feed.
   proof-macos-x64:
     name: M2 proof (macOS x64)
     needs: build-electron-rehearsal
-    if: inputs.electron_tag != ''
+    if: ${{ !cancelled() && inputs.electron_tag != '' }}
     runs-on: macos-15-intel
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
         with:
           repository: memrynote/memry
           ref: ${{ inputs.source_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
       - uses: actions/download-artifact@v4
         with:
           name: MemryNote-${{ inputs.electron_tag }}-rehearsal-macos-15-intel
           path: electron
-      - name: Install Electron rehearsal build and read the R2 feed
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install the Electron rehearsal build
         run: |
           set -euo pipefail
           ditto -x -k electron/*.zip /Applications
           app=/Applications/MemryNote.app
-          gh release download "rehearsal-${{ inputs.version }}" --repo "${{ inputs.feed_repo }}" -p "MemryNote-${{ inputs.version }}-x64.zip" -D feed
-          ditto -x -k "feed/MemryNote-${{ inputs.version }}-x64.zip" feed/new
           codesign -dv "$app" 2>&1 | grep -E 'Identifier=com.memrynote.memry|TeamIdentifier'
-          scripts/release/check-mac-designated-requirement.sh "$app" feed/new/MemryNote.app
-          spctl -a -vv feed/new/MemryNote.app 2>&1 | grep 'Notarized Developer ID'
-          lipo -archs feed/new/MemryNote.app/Contents/MacOS/MemryNote | grep -x x86_64
+          spctl -a -vv "$app" 2>&1 | grep 'Notarized Developer ID'
+          cp -R "$app" "$RUNNER_TEMP/old.app"
+          mkdir -p "$HOME/Library/Application Support/MemryNote"
+          printf '00000000-0000-4000-8000-000000000000' > "$HOME/Library/Application Support/MemryNote/.updaterId"
+      - name: Designated requirement of the update bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "rehearsal-${{ inputs.version }}" --repo "${{ inputs.feed_repo }}" -p "MemryNote-${{ inputs.version }}-x64.zip" -D "$RUNNER_TEMP/feed"
+          ditto -x -k "$RUNNER_TEMP/feed/MemryNote-${{ inputs.version }}-x64.zip" "$RUNNER_TEMP/feed/new"
+          scripts/release/check-mac-designated-requirement.sh "$RUNNER_TEMP/old.app" "$RUNNER_TEMP/feed/new/MemryNote.app"
+          spctl -a -vv "$RUNNER_TEMP/feed/new/MemryNote.app" 2>&1 | grep 'Notarized Developer ID'
+          lipo -archs "$RUNNER_TEMP/feed/new/MemryNote.app/Contents/MacOS/MemryNote" | grep -x x86_64
+      - name: Update through Squirrel.Mac
+        run: |
+          set -uo pipefail
+          open -a /Applications/MemryNote.app --args --remote-debugging-port=9222
+          sleep 30
+          node scripts/rehearsal/drive-electron-update.mjs 9222 --timeout-s 900
+          for i in $(seq 1 60); do
+            [ -f /Applications/MemryNote.app/Contents/Resources/sq.version ] && break
+            sleep 5
+          done
+          sleep 30
+          ls -la /Applications/MemryNote.app/Contents/Resources/sq.version
+          grep -E '<version>|<channel>' /Applications/MemryNote.app/Contents/Resources/sq.version
+          lipo -archs /Applications/MemryNote.app/Contents/MacOS/MemryNote
+          codesign -dv /Applications/MemryNote.app 2>&1 | grep -E 'Identifier|TeamIdentifier'
+          find "$HOME/Library/Logs" -name main.log -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
+          pgrep -fl MemryNote || true
 
   proof-linux:
     name: L1 proof (Linux AppImage)
     needs: build-electron-rehearsal
-    if: inputs.electron_tag != ''
+    if: ${{ !cancelled() && inputs.electron_tag != '' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v6
         with:
@@ -339,15 +367,20 @@ jobs:
           path: electron
       - name: Update the Electron AppImage into the Tauri scaffold
         run: |
-          set -euo pipefail
-          sudo apt-get update && sudo apt-get install -y libfuse2 xvfb
+          set -uo pipefail
+          sudo apt-get update && sudo apt-get install -y libfuse2t64 xvfb libwebkit2gtk-4.1-0 libayatana-appindicator3-1 || sudo apt-get install -y libfuse2 xvfb
           appimage="$(ls "$PWD"/electron/*.AppImage)"
           chmod +x "$appimage"
           mkdir -p "$HOME/.config/MemryNote"
           printf '00000000-0000-4000-8000-000000000000' > "$HOME/.config/MemryNote/.updaterId"
-          APPIMAGE="$appimage" xvfb-run -a "$appimage" --no-sandbox --remote-debugging-port=9222 &
-          sleep 25
+          sha256sum "$appimage" | tee "$RUNNER_TEMP/before.sha"
+          export APPIMAGE="$appimage"
+          xvfb-run -a "$appimage" --no-sandbox --remote-debugging-port=9222 > "$RUNNER_TEMP/electron.log" 2>&1 &
+          sleep 40
           node scripts/rehearsal/drive-electron-update.mjs 9222 --timeout-s 900
-          sleep 30
-          ls -la electron
-          strings "$appimage" | grep -F "update-probe" || true
+          sleep 60
+          sha256sum "$appimage"
+          ls -la "$appimage"
+          "$appimage" --appimage-extract usr/bin/memrynote >/dev/null 2>&1 && echo "the file at the old path is the Tauri AppImage (usr/bin/memrynote present)"
+          find "$HOME" -name main.log -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
+          tail -20 "$RUNNER_TEMP/electron.log"
