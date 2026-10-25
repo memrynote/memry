@@ -115,6 +115,9 @@ jobs:
         with:
           workspaces: crates
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
       - name: Install vpk
         run: |
           dotnet tool update -g vpk --version "$VPK_VERSION"
@@ -203,6 +206,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev squashfs-tools libfuse2
       - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
       - name: Install vpk
         run: |
           dotnet tool update -g vpk --version "$VPK_VERSION"
