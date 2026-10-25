@@ -2861,6 +2861,7 @@ dependencies = [
  "libsodium-sys-stable",
  "markup5ever 0.40.0",
  "proptest",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",

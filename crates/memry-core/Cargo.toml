@@ -20,7 +20,7 @@ default = []
 native-transport = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
-markdown = ["dep:html5ever", "dep:markup5ever"]
+markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex"]
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
@@ -56,6 +56,11 @@ unicode-normalization = { workspace = true }
 # WHATWG parsers and produce the same tree for the same fragment.
 html5ever = { version = "0.40", optional = true }
 markup5ever = { version = "0.40", optional = true }
+# The TypeScript regular expressions that need no look-around or backreference
+# (those become hand-written scanners). JS semantics differ from Rust's: use
+# ASCII classes (`(?-u:\\w)`) where the JS pattern is ASCII, and spell JS `\\s`
+# out.
+regex = { version = "1.13", optional = true }
 
 [dev-dependencies]
 dryoc = "1.0.0"

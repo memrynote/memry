@@ -27,6 +27,7 @@ import {
 } from '@memry/app-core/markdown'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 
+import { FNS } from './fns'
 import { bnParse, htmlToBlocks, markdownSources, mdToHtml } from './bn-oracle'
 import {
   contentMatchSweep,
@@ -140,6 +141,14 @@ async function run(job: Job): Promise<unknown> {
       return htmlToBlocks(text(input, 'html'))
     case 'bn-parse':
       return bnParse(text(input, 'markdown'))
+    case 'fn': {
+      const name = text(input, 'fn')
+      const fn = FNS[name]
+      if (!fn) throw new Error(`unknown oracle function: ${name}`)
+      const args = Array.isArray(input.args) ? input.args : []
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the table is untyped by design: every function takes the JSON arguments of its case
+      return await (fn as (...a: unknown[]) => unknown)(...args)
+    }
     default:
       throw new Error(`unknown oracle op: ${job.op}`)
   }

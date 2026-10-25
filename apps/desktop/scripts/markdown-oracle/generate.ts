@@ -17,6 +17,10 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
+import { blocksCases } from './fns/blocks'
+import { criticCases } from './fns/critic'
+import { markersCases } from './fns/markers'
+import { textCases } from './fns/text'
 import { pmSchemaCases, yxmlCases } from './cases-pm'
 import { frontmatterCases, markdownClassCases, type OracleCase } from './cases-frontmatter'
 
@@ -72,6 +76,26 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
       path: 'parse.json',
       note: 'BlockNote markdown parse (markdownToHtml then HTMLToBlocks) as canonical block JSON, without the memry layers. memryLayerNoop says whether blocknote-converter.ts markdownToBlocks returns the same blocks; where it is false, the memry layers of a later stage change the result.',
       cases: bnParseCases(external)
+    },
+    {
+      path: 'layer-text.json',
+      note: 'Function-level cases of the shared text layers (empty-lines, html-comments, hard-breaks, block-nesting, link-references) and the inline masks of editor-schema (token-masking, link-destinations, link-code-spans, cell-code-spaces).',
+      cases: textCases(external)
+    },
+    {
+      path: 'layer-markers.json',
+      note: 'Function-level cases of the marker layers of packages/shared (block-markers, block-colors, inline-colors, task-block, plain-checkbox, obsidian-tasks, link-card-marker).',
+      cases: markersCases(external)
+    },
+    {
+      path: 'layer-blocks.json',
+      note: 'Function-level cases of the editor-schema block layers (callout types, blocks/markdown.ts, quote, columns) and shared youtube.',
+      cases: blocksCases(external)
+    },
+    {
+      path: 'layer-critic.json',
+      note: 'Function-level cases of CriticMarkup parsing and writing tools marker decoding (packages/shared critic-markup and writing-tools).',
+      cases: criticCases(external)
     }
   ]
 }

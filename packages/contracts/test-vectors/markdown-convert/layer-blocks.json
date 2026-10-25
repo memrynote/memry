@@ -1,0 +1,10 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3522-markdown-convert",
+    "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
+    "note": "Function-level cases of the editor-schema block layers (callout types, blocks/markdown.ts, quote, columns) and shared youtube.",
+    "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
+    "caseCount": 0
+  },
+  "cases": []
+}
