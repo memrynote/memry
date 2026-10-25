@@ -13,6 +13,9 @@ import { metadataCases } from './vectors/metadata-cases.mjs'
 import { metadataVector } from './vectors/metadata.mjs'
 import { removalCases } from './vectors/removal-cases.mjs'
 import { removalsVectors, scoreVector } from './vectors/removals.mjs'
+import { standardizeCases } from './vectors/standardize-cases.mjs'
+import { standardizeFuzzVectors } from './vectors/standardize-fuzz.mjs'
+import { standardizeUrl, standardizeVectors } from './vectors/standardize.mjs'
 import { playScenario, scenarios } from './vectors/mutations.mjs'
 import { loadFixtures, vectorsDir } from './vectors/paths.mjs'
 import {
@@ -98,6 +101,23 @@ function buildFiles() {
       }))
     )
   )
+  for (const fixture of fixtures) {
+    files.set(
+      `standardize/${fixture.name}.json`,
+      format({ url: fixture.url, variants: standardizeVectors(fixture.html, fixture.url) })
+    )
+  }
+  files.set(
+    'standardize-cases.json',
+    format(
+      standardizeCases.map(({ name, html, url }) => ({
+        name,
+        html,
+        url: url ?? standardizeUrl,
+        variants: standardizeVectors(html, url ?? standardizeUrl)
+      }))
+    )
+  )
   files.set(
     'scores.json',
     format(
@@ -122,6 +142,7 @@ function buildFiles() {
     })
   )
   files.set('dom-fuzz.json', format(fuzzVectors(600)))
+  files.set('standardize-fuzz.json', format(standardizeFuzzVectors(400)))
   return files
 }
 

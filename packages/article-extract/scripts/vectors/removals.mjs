@@ -57,8 +57,10 @@ function snapshot(clone, main) {
   return { main: wellFormed(main.outerHTML), cloneLength: clone.documentElement.outerHTML.length }
 }
 
-export function removalsVector(html, url, name = 'default') {
-  const variant = variants.find((v) => v.name === name)
+/** The state every pipeline-level vector starts from: the metadata, the small images and the
+ *  content element the TypeScript content finder picks inside a clone of the page. */
+export function preparePage(html, url, variantName = 'default') {
+  const variant = variants.find((v) => v.name === variantName)
   const options = { ...defaults, ...variant.options }
   const { document } = parseHTML(html)
   const defuddle = new Defuddle(document, { url })
@@ -82,8 +84,78 @@ export function removalsVector(html, url, name = 'default') {
     options: variant.options,
     smallImages: [...small].map(wellFormed)
   }
+  if (main) input.mainPath = pathTo(clone, main)
+  return { options, metadata, small, clone, main, input }
+}
+
+/** The removal steps in `parseInternal` order, each run only when its setting allows it. */
+export const removalSteps = [
+  [
+    'smallImages',
+    ({ clone, small }, options) => {
+      if (options.removeSmallImages) smallImages.removeSmallImages(clone, small, false)
+    }
+  ],
+  [
+    'hidden',
+    ({ clone }, options) => {
+      if (options.removeHiddenElements) hidden.removeHiddenElements(clone, false, [])
+    }
+  ],
+  [
+    'eyebrow',
+    ({ main }, options) => {
+      if (options.removeContentPatterns) contentPatterns.removeEyebrowLabel(main, false, [])
+    }
+  ],
+  [
+    'selectors',
+    ({ clone, main }, options) => {
+      if (options.removeExactSelectors || options.removePartialSelectors) {
+        selectors.removeBySelector(
+          clone,
+          false,
+          options.removeExactSelectors,
+          options.removePartialSelectors,
+          main,
+          [],
+          options.removeHiddenElements === false
+        )
+      }
+    }
+  ],
+  [
+    'lowScoring',
+    ({ clone, main }, options) => {
+      if (options.removeLowScoring) ContentScorer.scoreAndRemove(clone, false, [], main)
+    }
+  ],
+  [
+    'contentPatterns',
+    ({ main, url, metadata }, options) => {
+      if (options.removeContentPatterns) {
+        contentPatterns.removeByContentPattern(
+          main,
+          false,
+          url,
+          metadata.title || '',
+          metadata.description || '',
+          []
+        )
+      }
+    }
+  ]
+]
+
+/** `removeMetadataBlock` when the page has a byline, then every `<wbr>`. */
+export function removeMetadataBlockStep(main, hasPublishedOrAuthor) {
+  if (hasPublishedOrAuthor) metadataBlock.removeMetadataBlock(main)
+  for (const el of main.querySelectorAll('wbr')) el.remove()
+}
+
+export function removalsVector(html, url, name = 'default') {
+  const { options, metadata, small, clone, main, input } = preparePage(html, url, name)
   if (!main) return { input, main: null }
-  input.mainPath = pathTo(clone, main)
 
   const steps = {}
   let last = snapshot(clone, main)
@@ -94,47 +166,9 @@ export function removalsVector(html, url, name = 'default') {
     steps[key] = { main: now.main === last.main ? null : now.main, cloneLength: now.cloneLength }
     last = now
   }
-  step('metadataBlock', () => {
-    if (input.hasPublishedOrAuthor) metadataBlock.removeMetadataBlock(main)
-    for (const el of main.querySelectorAll('wbr')) el.remove()
-  })
-  step('smallImages', () => {
-    if (options.removeSmallImages) smallImages.removeSmallImages(clone, small, false)
-  })
-  step('hidden', () => {
-    if (options.removeHiddenElements) hidden.removeHiddenElements(clone, false, [])
-  })
-  step('eyebrow', () => {
-    if (options.removeContentPatterns) contentPatterns.removeEyebrowLabel(main, false, [])
-  })
-  step('selectors', () => {
-    if (options.removeExactSelectors || options.removePartialSelectors) {
-      selectors.removeBySelector(
-        clone,
-        false,
-        options.removeExactSelectors,
-        options.removePartialSelectors,
-        main,
-        [],
-        options.removeHiddenElements === false
-      )
-    }
-  })
-  step('lowScoring', () => {
-    if (options.removeLowScoring) ContentScorer.scoreAndRemove(clone, false, [], main)
-  })
-  step('contentPatterns', () => {
-    if (options.removeContentPatterns) {
-      contentPatterns.removeByContentPattern(
-        main,
-        false,
-        url,
-        metadata.title || '',
-        metadata.description || '',
-        []
-      )
-    }
-  })
+  step('metadataBlock', () => removeMetadataBlockStep(main, input.hasPublishedOrAuthor))
+  const state = { clone, main, small, url, metadata }
+  for (const [key, run] of removalSteps) step(key, () => run(state, options))
   return { input, steps }
 }
 
