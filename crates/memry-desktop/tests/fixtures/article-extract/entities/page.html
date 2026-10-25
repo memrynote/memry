@@ -1,0 +1,14 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Entities &amp; escapes &lt;test&gt; &copy; 2024</title></head><body>
+<p>Named: &amp; &lt; &gt; &quot; &apos; &nbsp;| &copy; &reg; &trade; &hellip; &mdash; &euro; &eacute; &Eacute; &szlig;</p>
+<p>No semicolon: &copy 2024, &amp x, &ampx, &lt3, &notit; &notin; &not</p>
+<p>Numeric: &#65;&#x42;&#X43; &#128512; &#x1F600; &#0; &#128; &#x80; &#xD800; &#1114112; &#99999999999; &#x;&#;</p>
+<p>Unknown: &nosuchname; &; & alone, AT&T, a&b=c</p>
+<p>Math: &NotEqualTilde; &fjlig; &Afr; &Copf; &bne;</p>
+<a href="/search?q=a&amp;lang=en&lang=de&copy=1&notit=2" title="&lt;t&gt; &#x26; &quot;q&quot; &copy &amp=" data-x=a&amp;b>link</a>
+<p title='single &apos;quote&apos;'>attr entities</p>
+<textarea>&amp; stays raw? &lt;b&gt;</textarea>
+<script>var s = "&amp; &lt;";</script>
+<style>a::after{content:"&amp;"}</style>
+<xmp>&amp; <b>raw</b></xmp>
+<p>Non-BMP: &#x1D504; plus literal 😀 and 􏿿.</p>
+</body></html>

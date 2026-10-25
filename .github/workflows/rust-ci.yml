@@ -14,6 +14,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'packages/contracts/test-vectors/**'
+      - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
   push:
@@ -25,6 +26,7 @@ on:
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'packages/contracts/test-vectors/**'
+      - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
   workflow_dispatch:
@@ -111,6 +113,36 @@ jobs:
         if: runner.os == 'Linux'
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
+
+  # The article-extraction vectors and the entity table are generated from the TypeScript
+  # oracle (linkedom, Defuddle, htmlparser2). A change to the oracle or its pins that ships
+  # without regenerating them leaves the Rust port tested against a stale oracle.
+  article-extract-oracle-fresh:
+    name: Article-extraction vectors are current
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Vectors are current
+        run: pnpm --filter @memry/article-extract vectors --check
+
+      - name: Entity table is current
+        run: pnpm --filter @memry/article-extract entities --check
 
   swift-bindings-fresh:
     name: Generated Swift bindings are current

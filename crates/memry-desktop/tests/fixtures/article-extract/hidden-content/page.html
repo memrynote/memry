@@ -1,0 +1,13 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>A post with hidden parts</title></head><body>
+<article><h1>A post with hidden parts</h1>
+<p>The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.</p>
+<div style="display:none"><p>Inline display none block that should never be read.</p></div>
+<div style="display: none;"><p>Spaced display none block.</p></div>
+<div hidden><p>Block with the hidden attribute.</p></div>
+<div aria-hidden="true"><p>Block hidden from assistive technology.</p></div>
+<div style="visibility:hidden"><p>Invisible but laid out.</p></div>
+<div class="hidden"><p>Tailwind style hidden class.</p></div>
+<div class="hidden sm:flex"><p>Hidden on mobile, shown from the sm breakpoint.</p></div>
+<div style="opacity:0"><p>Fully transparent.</p></div>
+<p>The closing paragraph is visible again and wraps the post up with a final remark about what was left unseen.</p></article>
+</body></html>

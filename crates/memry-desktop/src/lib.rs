@@ -7,3 +7,4 @@ pub mod http;
 pub mod launch_env;
 pub mod logging;
 pub mod paths;
+pub mod web;

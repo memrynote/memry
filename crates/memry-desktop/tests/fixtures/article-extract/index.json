@@ -1,0 +1,265 @@
+[
+  {
+    "name": "attribute-quirks",
+    "covers": [
+      "attribute quirks",
+      "duplicate attributes",
+      "uppercase names",
+      "numeric keys",
+      "class normalization",
+      "empty attributes"
+    ]
+  },
+  {
+    "name": "blog-post",
+    "covers": [
+      "generic article",
+      "schema.org JSON-LD",
+      "sidebar",
+      "comments",
+      "script and style"
+    ]
+  },
+  {
+    "name": "cjk-chinese",
+    "covers": [
+      "Chinese",
+      "UTF-8"
+    ]
+  },
+  {
+    "name": "cjk-japanese",
+    "covers": [
+      "Japanese",
+      "ruby",
+      "fullwidth characters"
+    ]
+  },
+  {
+    "name": "docs-page",
+    "covers": [
+      "documentation page",
+      "code blocks",
+      "table with tbody",
+      "admonition",
+      "toc"
+    ]
+  },
+  {
+    "name": "doctype-comments",
+    "covers": [
+      "doctype public and system",
+      "processing instruction",
+      "conditional comment",
+      "cdata becomes comment",
+      "unterminated comment",
+      "bogus declarations"
+    ]
+  },
+  {
+    "name": "entities",
+    "covers": [
+      "entities",
+      "named numeric invalid no semicolon",
+      "attribute entities",
+      "title entities",
+      "astral entities"
+    ]
+  },
+  {
+    "name": "forum-thread",
+    "covers": [
+      "forum thread",
+      "nested lists",
+      "quote",
+      "buttons"
+    ]
+  },
+  {
+    "name": "gallery-figure",
+    "covers": [
+      "gallery",
+      "figure without caption",
+      "figure with empty caption"
+    ]
+  },
+  {
+    "name": "hidden-content",
+    "covers": [
+      "hidden content",
+      "display none",
+      "hidden attribute",
+      "aria-hidden",
+      "responsive show class"
+    ]
+  },
+  {
+    "name": "jsonld-only",
+    "covers": [
+      "page with only JSON-LD metadata",
+      "multiple authors",
+      "image array"
+    ]
+  },
+  {
+    "name": "long-read-images",
+    "covers": [
+      "lazy images",
+      "noscript fallback",
+      "picture and srcset",
+      "tracking pixel",
+      "svg image"
+    ]
+  },
+  {
+    "name": "malformed-html",
+    "covers": [
+      "malformed html",
+      "unclosed p and li",
+      "table without tbody",
+      "stray end tags",
+      "implied closes",
+      "</p> and </br> without opens"
+    ]
+  },
+  {
+    "name": "mixed-bidi",
+    "covers": [
+      "mixed bidi",
+      "emoji and ZWJ sequences",
+      "unicode spaces",
+      "combining marks"
+    ]
+  },
+  {
+    "name": "nested-tables",
+    "covers": [
+      "nested tables",
+      "colspan and rowspan",
+      "table caption and tfoot"
+    ]
+  },
+  {
+    "name": "news-sidebar",
+    "covers": [
+      "generic article",
+      "news layout",
+      "figure with caption",
+      "related links",
+      "ads"
+    ]
+  },
+  {
+    "name": "newsletter",
+    "covers": [
+      "newsletter page",
+      "layout table",
+      "nested tables",
+      "br"
+    ]
+  },
+  {
+    "name": "og-only",
+    "covers": [
+      "page with og: only metadata",
+      "no doctype",
+      "protocol-relative image"
+    ]
+  },
+  {
+    "name": "persian-windows-1256",
+    "covers": [
+      "RTL Persian",
+      "declared windows-1256 saved as UTF-8"
+    ]
+  },
+  {
+    "name": "product-page",
+    "covers": [
+      "product page",
+      "unclosed option",
+      "form controls",
+      "schema.org Product"
+    ]
+  },
+  {
+    "name": "recipe-schema",
+    "covers": [
+      "recipe with schema.org",
+      "JSON-LD array",
+      "microdata",
+      "onclick handler"
+    ]
+  },
+  {
+    "name": "relative-canonical",
+    "covers": [
+      "page with relative canonical",
+      "base href",
+      "relative urls"
+    ]
+  },
+  {
+    "name": "rtl-arabic",
+    "covers": [
+      "RTL Arabic",
+      "UTF-8",
+      "bidi marks"
+    ]
+  },
+  {
+    "name": "rtl-hebrew",
+    "covers": [
+      "RTL Hebrew",
+      "UTF-8"
+    ]
+  },
+  {
+    "name": "scripts-styles",
+    "covers": [
+      "scripts and styles",
+      "inline event handlers",
+      "textarea and title raw text",
+      "unterminated script",
+      "uppercase tags"
+    ]
+  },
+  {
+    "name": "svg-math",
+    "covers": [
+      "svg",
+      "foreignObject",
+      "mathml",
+      "template",
+      "self-closing in foreign content",
+      "custom element"
+    ]
+  },
+  {
+    "name": "tiny-page",
+    "covers": [
+      "tiny page under 50 words",
+      "both retry paths"
+    ]
+  },
+  {
+    "name": "truncated-closing",
+    "covers": [
+      "truncated in a closing tag"
+    ]
+  },
+  {
+    "name": "truncated-eof",
+    "covers": [
+      "truncated at EOF",
+      "unfinished attribute"
+    ]
+  },
+  {
+    "name": "truncated-slash",
+    "covers": [
+      "truncated after tag name and slash",
+      "slice(-1) text"
+    ]
+  }
+]

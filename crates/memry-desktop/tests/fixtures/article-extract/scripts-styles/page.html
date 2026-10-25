@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><title>Scripts &amp; styles</title>
+<script src="/a.js" async defer></script>
+<script>if (a < b && c > d) { document.write("<p>hi</p>"); }</script>
+<script type="text/template"><div class="tpl"><p>not parsed</p></div></script>
+<script>var s = "</scr" + "ipt>"; var t = '<!-- not a comment -->';</script>
+<style media="print">@media print { body > p { display: none } } /* </p> */</style>
+<style>a > b::before { content: ">" }</style>
+<noscript><style>.js-only{display:none}</style></noscript>
+</head><body onload="init()">
+<div class="x" onclick="go('a&amp;b')" onmouseover=track(this)>handlers</div>
+<p>Text before.<script>var inline = '</b>';</script> Text after.</p>
+<textarea name="t" rows="2"><p>raw &lt;text&gt;</p></textarea>
+<title>title in body</title>
+<SCRIPT TYPE="text/javascript">UPPER = 1</SCRIPT>
+<iframe src="/frame" srcdoc="<p>x</p>"></iframe>
+<object data="/o.swf"><param name="a" value="b"><embed src="/e.swf"></object>
+<noscript><p>Please enable JavaScript.</p></noscript>
+<script>unterminated = 1;
