@@ -474,14 +474,15 @@ impl Document {
         Ok(())
     }
 
-    /// `node.cloneNode(deep)`. Attributes are always copied, children only when `deep`.
+    /// `node.cloneNode(deep)`. Attributes are always copied, children only when `deep`. A
+    /// document clones into a new document node of this arena (`Document.cloneNode`).
     pub fn clone_node(&mut self, id: NodeId, deep: bool) -> NodeId {
         let kind = self.node(id).kind.clone();
         let clone = self.alloc(kind);
         if deep
             && matches!(
                 self.node(id).kind,
-                NodeKind::Element(_) | NodeKind::Fragment
+                NodeKind::Element(_) | NodeKind::Fragment | NodeKind::Document
             )
         {
             for child in self.child_nodes(id) {

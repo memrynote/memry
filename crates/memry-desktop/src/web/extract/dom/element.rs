@@ -256,13 +256,23 @@ impl Document {
 
     /// `document.documentElement`: the first element child of the document.
     pub fn document_element(&self) -> Option<NodeId> {
-        self.first_element_child(self.root())
+        self.document_element_of(self.root())
+    }
+
+    /// `documentElement` of the document node `root`: the main document or a `cloneNode` of it.
+    pub fn document_element_of(&self, root: NodeId) -> Option<NodeId> {
+        self.first_element_child(root)
     }
 
     /// `document.head`, which linkedom creates inside the document element when it is not the
     /// first element child. `None` when the document has no element at all (JS throws).
     pub fn head(&mut self) -> Option<NodeId> {
-        let html = self.document_element()?;
+        self.head_of(self.root())
+    }
+
+    /// `head` of the document node `root`.
+    pub fn head_of(&mut self, root: NodeId) -> Option<NodeId> {
+        let html = self.document_element_of(root)?;
         if let Some(first) = self.first_element_child(html)
             && self.tag_name(first).as_deref() == Some("HEAD")
         {
@@ -275,7 +285,12 @@ impl Document {
 
     /// `document.body`, created after `head` when missing.
     pub fn body(&mut self) -> Option<NodeId> {
-        let head = self.head()?;
+        self.body_of(self.root())
+    }
+
+    /// `body` of the document node `root`.
+    pub fn body_of(&mut self, root: NodeId) -> Option<NodeId> {
+        let head = self.head_of(root)?;
         if let Some(next) = self.next_element_sibling(head)
             && self.tag_name(next).as_deref() == Some("BODY")
         {
