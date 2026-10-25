@@ -17,17 +17,13 @@
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::types::Value;
 use rusqlite::{Connection, OpenFlags, params_from_iter};
 
 use crate::api::errors::StorageError;
-use crate::storage::guard;
-use crate::storage::open_data;
-
-/// The `-wal` and `-shm` SQLite keeps beside a database; they move with it.
-const SIDECARS: [&str; 2] = ["-wal", "-shm"];
+use crate::storage::quarantine::{move_aside, now_ms};
+use crate::storage::{guard, open_data};
 
 /// What recovery did, for the log.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,6 +31,11 @@ pub struct RecoveryReport {
     /// Where the damaged database now lives.
     pub quarantined: PathBuf,
     pub tables: Vec<TableSalvage>,
+    /// Set when salvage could not even start or finish (the damaged file would
+    /// not open, its table list was unreadable, a pragma was refused). The fresh
+    /// database is empty in that case and the quarantined file still holds every
+    /// row: nothing is lost, but nothing was carried over either.
+    pub salvage_error: Option<String>,
 }
 
 /// The salvage of one table.
@@ -57,97 +58,95 @@ pub struct TableSalvage {
 /// keep writing to the file that was just renamed.
 pub fn quarantine_and_rebuild(path: &Path) -> Result<RecoveryReport, StorageError> {
     guard::refuse_foreign_schema(path)?;
-    let stamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_millis());
-    let quarantined = move_aside(path, stamp)?;
+    let quarantined = move_aside(path, "corrupt", now_ms())?;
     let fresh = open_data(path)?;
-    let tables = fresh.call_blocking(|conn| Ok(salvage(&quarantined, conn)))?;
+    let (tables, salvage_error) = fresh.call_blocking(|conn| Ok(salvage(&quarantined, conn)))?;
     Ok(RecoveryReport {
         quarantined,
         tables,
+        salvage_error,
     })
 }
 
-/// Renames the file and its sidecars to `<path>.corrupt-<ms>[-n]`.
-fn move_aside(path: &Path, stamp: u128) -> Result<PathBuf, StorageError> {
-    let named = |suffix: &str| PathBuf::from(format!("{}{suffix}", path.display()));
-    let mut backup = named(&format!(".corrupt-{stamp}"));
-    let mut n = 1;
-    while backup.exists() {
-        backup = named(&format!(".corrupt-{stamp}-{n}"));
-        n += 1;
-    }
-
-    let rename = |from: &Path, to: &Path| {
-        std::fs::rename(from, to).map_err(|err| StorageError::Failed {
-            what: format!("could not move {} aside: {err}", from.display()),
-        })
-    };
-    rename(path, &backup)?;
-    for suffix in SIDECARS {
-        let sidecar = named(suffix);
-        if sidecar.exists() {
-            rename(
-                &sidecar,
-                &PathBuf::from(format!("{}{suffix}", backup.display())),
-            )?;
-        }
-    }
-    Ok(backup)
-}
-
 /// Copies every table present in both files, over the columns both have.
-fn salvage(backup: &Path, fresh: &mut Connection) -> Vec<TableSalvage> {
-    let Ok(old) = Connection::open_with_flags(
+/// Returns what was copied and, when salvage could not run to the end, why.
+fn salvage(backup: &Path, fresh: &mut Connection) -> (Vec<TableSalvage>, Option<String>) {
+    let old = match Connection::open_with_flags(
         backup,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    ) else {
-        return Vec::new();
+    ) {
+        Ok(old) => old,
+        Err(err) => {
+            return (
+                Vec::new(),
+                Some(format!("could not open the damaged file: {err}")),
+            );
+        }
     };
-    let Ok(tables) = plain_tables(&old) else {
-        return Vec::new();
+    let tables = match plain_tables(&old) {
+        Ok(tables) => tables,
+        Err(err) => {
+            return (
+                Vec::new(),
+                Some(format!("could not list the damaged file's tables: {err}")),
+            );
+        }
     };
 
     // Insertion order is the damaged file's, not the foreign-key order of the
-    // fresh schema.
-    let _ = fresh.execute_batch("PRAGMA foreign_keys = OFF");
+    // fresh schema. If the pragma is refused, salvage would reject rows for
+    // ordering reasons alone, so it does not run.
+    if let Err(err) = fresh.execute_batch("PRAGMA foreign_keys = OFF") {
+        return (
+            Vec::new(),
+            Some(format!("could not suspend foreign keys: {err}")),
+        );
+    }
     let report = tables
         .iter()
         .filter_map(|table| copy_table(&old, fresh, table))
         .collect();
-    let _ = fresh.execute_batch("PRAGMA foreign_keys = ON");
-    report
+    let restored = fresh
+        .execute_batch("PRAGMA foreign_keys = ON")
+        .err()
+        .map(|err| format!("could not restore foreign keys: {err}"));
+    (report, restored)
 }
 
 /// Ordinary tables only: virtual tables and their shadow tables are derived.
 fn plain_tables(conn: &Connection) -> rusqlite::Result<Vec<String>> {
-    let mut virtual_names = HashSet::new();
     let mut stmt = conn.prepare(
         "SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     )?;
-    let rows = stmt.query_map([], |row| {
-        Ok((row.get::<_, String>(0)?, row.get::<_, Option<String>>(1)?))
-    })?;
-    let mut plain = Vec::new();
-    for row in rows {
-        let (name, sql) = row?;
-        let is_virtual = sql
-            .as_deref()
-            .is_some_and(|sql| sql.to_ascii_uppercase().starts_with("CREATE VIRTUAL"));
-        if is_virtual {
-            virtual_names.insert(name);
-        } else {
-            plain.push(name);
-        }
-    }
-    // FTS5 shadow tables are named `<virtual>_data`, `_idx`, `_content` ...
-    plain.retain(|name| {
-        !virtual_names
-            .iter()
-            .any(|virtual_name| name.starts_with(&format!("{virtual_name}_")))
-    });
-    Ok(plain)
+    let rows: Vec<(String, Option<String>)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<rusqlite::Result<_>>()?;
+
+    let virtual_names: Vec<&String> = rows
+        .iter()
+        .filter(|(_, sql)| {
+            sql.as_deref()
+                .is_some_and(|sql| sql.to_ascii_uppercase().starts_with("CREATE VIRTUAL"))
+        })
+        .map(|(name, _)| name)
+        .collect();
+    // The shadow tables an FTS5 table keeps: exactly these suffixes, not any
+    // table that merely starts with the virtual table's name.
+    const FTS5_SHADOWS: [&str; 5] = ["data", "idx", "content", "docsize", "config"];
+    let derived = |name: &str| {
+        virtual_names.iter().any(|virtual_name| {
+            name == virtual_name.as_str()
+                || FTS5_SHADOWS
+                    .iter()
+                    .any(|suffix| name == format!("{virtual_name}_{suffix}"))
+        })
+    };
+    Ok(rows
+        .iter()
+        .map(|(name, _)| name)
+        .filter(|name| !derived(name))
+        .cloned()
+        .collect())
 }
 
 fn columns(conn: &Connection, table: &str) -> rusqlite::Result<Vec<String>> {
@@ -230,48 +229,4 @@ fn copy_table(old: &Connection, fresh: &mut Connection, table: &str) -> Option<T
 
 fn quote(identifier: &str) -> String {
     identifier.replace('"', "\"\"").replace('\'', "''")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::storage::test_support::temp_dir;
-
-    #[test]
-    fn corrupt_recovery_never_overwrites_an_earlier_quarantine() {
-        let dir = temp_dir("recovery-collision");
-        let path = dir.path().join("data.db");
-
-        let mut moved = Vec::new();
-        for round in 0..3 {
-            std::fs::write(&path, format!("round {round}")).expect("a damaged file");
-            std::fs::write(dir.path().join("data.db-wal"), "log").expect("its wal");
-            moved.push(move_aside(&path, 1_700_000_000_000).expect("move aside"));
-        }
-
-        let names: Vec<String> = moved
-            .iter()
-            .map(|p| p.file_name().expect("name").to_string_lossy().into_owned())
-            .collect();
-        assert_eq!(
-            names,
-            [
-                "data.db.corrupt-1700000000000",
-                "data.db.corrupt-1700000000000-1",
-                "data.db.corrupt-1700000000000-2",
-            ]
-        );
-        for (round, backup) in moved.iter().enumerate() {
-            assert_eq!(
-                std::fs::read_to_string(backup).expect("kept"),
-                format!("round {round}")
-            );
-            let wal = PathBuf::from(format!("{}-wal", backup.display()));
-            assert_eq!(
-                std::fs::read_to_string(wal).expect("its wal moved too"),
-                "log"
-            );
-        }
-        assert!(!path.exists());
-    }
 }

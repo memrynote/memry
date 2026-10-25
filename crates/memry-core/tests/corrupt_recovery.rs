@@ -279,3 +279,81 @@ fn corrupt_recovery_runtime_read_error_is_recognised_as_corruption() {
         .is_corrupt()
     );
 }
+
+#[test]
+fn corrupt_recovery_open_leaves_the_damaged_file_byte_identical() {
+    let Damaged { dir, path, .. } = vault_with_a_damaged_page("untouched");
+    let before = std::fs::read(&path).expect("read");
+
+    let refused = open_data(&path);
+
+    assert!(matches!(refused, Err(StorageError::Corrupt { .. })));
+    assert_eq!(
+        std::fs::read(&path).expect("read"),
+        before,
+        "nothing was changed"
+    );
+    // A read-only look at a WAL database may create empty `-wal` / `-shm`
+    // files; it must not leave a log with content in it.
+    let wal = std::fs::metadata(dir.join("data.db-wal")).map_or(0, |m| m.len());
+    assert_eq!(wal, 0, "nothing was written to the log");
+}
+
+#[test]
+fn corrupt_recovery_reports_a_salvage_that_could_not_start() {
+    // Not a database at all: the header is gone, so no table can be listed.
+    let dir = std::env::temp_dir().join(format!("memry-corrupt-total-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("dir");
+    let path = dir.join("data.db");
+    std::fs::write(&path, vec![0xAB; 8192]).expect("garbage");
+
+    let report = quarantine_and_rebuild(&path).expect("a fresh database is still built");
+
+    assert!(report.tables.is_empty());
+    assert!(
+        report.salvage_error.is_some(),
+        "an empty report must not look like a clean, empty salvage"
+    );
+    assert_eq!(
+        std::fs::read(&report.quarantined).expect("kept"),
+        vec![0xAB; 8192]
+    );
+    open_data(&path).expect("the fresh database opens");
+}
+
+#[test]
+fn corrupt_recovery_salvages_a_table_that_only_shares_a_prefix_with_a_virtual_one() {
+    let dir = std::env::temp_dir().join(format!("memry-corrupt-prefix-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("dir");
+    let path = dir.join("data.db");
+    {
+        let db = open_data(&path).expect("open");
+        db.call_blocking(|conn| {
+            conn.execute_batch(
+                "INSERT INTO note_tags (note_id, tag) VALUES ('n1', 'Work');
+                 CREATE VIRTUAL TABLE note USING fts5(body);",
+            )
+            .map_err(failed)
+        })
+        .expect("a core table next to a virtual table named like its prefix");
+    }
+
+    let report = quarantine_and_rebuild(&path).expect("recover");
+
+    let tags = report
+        .tables
+        .iter()
+        .find(|t| t.table == "note_tags")
+        .expect("note_tags was copied");
+    assert_eq!(tags.copied, 1);
+    let db = open_data(&path).expect("open");
+    assert_eq!(count(&db, "SELECT COUNT(*) FROM note_tags"), 1);
+    assert!(
+        report
+            .tables
+            .iter()
+            .all(|t| t.table != "note" && !t.table.starts_with("note_content"))
+    );
+}

@@ -294,6 +294,13 @@ impl Search {
     pub fn notes(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
         let index = self.index.clone();
         let limit = limit as usize;
+        // Two pooled readers, so two snapshots: one of `data.db` and one of
+        // `index.db`, each the last commit when its reader started the call. A
+        // write landing between them can show a hit whose note was just edited
+        // or deleted; the next search sees both sides. `index.db` is derived and
+        // trails `data.db` by design (a reindex moves it forward), so the ranking
+        // was never a single-snapshot promise. A caller that needs one view
+        // routes through the writer, as the pre-pool code did.
         self.data.read_blocking(move |data| {
             index.read_blocking(|index| {
                 Ok(search::search_notes(data, index, &query, limit)?

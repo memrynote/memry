@@ -30021,8 +30021,8 @@ enum StorageError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
      */
     case MissingFts5
     /**
-     * `index.db` is missing, corrupt, or at an unexpected version. Not fatal:
-     * the file is deleted and rebuilt from `data.db`, which is the whole
+     * `index.db` is missing, damaged, or written by a newer build. Not fatal:
+     * the file is set aside and rebuilt from `data.db`, which is the whole
      * reason the index lives in its own file (data-model §A.0).
      */
     case IndexRebuildRequired(what: String
@@ -30047,7 +30047,8 @@ enum StorageError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
     )
     /**
      * The file at `path` is not a readable SQLite database, or `quick_check`
-     * found damage. Nothing was changed. The shell offers recovery, which
+     * found damage. The file's contents were not changed. The shell offers
+     * recovery, which
      * quarantines the file and salvages its rows (`storage::recovery`).
      */
     case Corrupt(path: String

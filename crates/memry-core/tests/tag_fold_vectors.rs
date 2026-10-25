@@ -71,3 +71,21 @@ fn tag_fold_in_sql_matches_the_committed_vectors() {
         assert_eq!(folded, expected, "{name}: SQL tag_fold");
     }
 }
+
+#[test]
+fn tag_fold_in_sql_passes_non_text_through_like_the_desktop_function() {
+    let db = memry_core::storage::Db::open_in_memory().expect("open");
+    let (null, int, blob): (Option<String>, i64, Vec<u8>) = db
+        .call_blocking(|conn| {
+            conn.query_row(
+                "SELECT tag_fold(NULL), tag_fold(42), tag_fold(x'00ff')",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            })
+        })
+        .expect("tag_fold over non-text");
+    assert_eq!((null, int, blob), (None, 42, vec![0, 0xFF]));
+}

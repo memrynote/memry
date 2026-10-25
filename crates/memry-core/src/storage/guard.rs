@@ -1,4 +1,5 @@
-//! The drizzle guard: the core never opens an Electron database.
+//! Looking at a database file before the core opens it for writing: the drizzle
+//! guard, and the integrity check.
 //!
 //! The Electron `data.db` and the core's share 19 table names with different
 //! columns (`settings` is `key, value, modified_at` there and `group, key,
@@ -7,47 +8,119 @@
 //! hybrid that corrupts both. The Electron file is recognisable by the
 //! `__drizzle_migrations` table drizzle creates; finding it is a hard error and
 //! the file is left exactly as it was.
+//!
+//! **The guard fails closed.** It passes a file only when it is absent or empty,
+//! or when SQLite says the file is not a database or is corrupt (the opener then
+//! reports that with its own error). Any other failure to look, such as a lock
+//! held by a running Electron app mid-checkpoint, an I/O error or a permission
+//! error, is an error here, because "could not tell" must never read as "not
+//! Electron".
+//!
+//! Both checks open the file read-only and never write it.
 
 use std::path::Path;
+use std::time::Duration;
 
-use rusqlite::{Connection, OpenFlags};
+use rusqlite::{Connection, ErrorCode, OpenFlags};
 
 use crate::api::errors::StorageError;
+use crate::storage::pragmas::BUSY_TIMEOUT_MS;
 
-/// Refuses `path` when it is a drizzle database. A missing, empty or unreadable
-/// file passes: the stage that opens it owns reporting those.
-///
-/// Opens the file read-only and never writes, so the bytes on disk are the same
-/// before and after, whatever the verdict.
-pub fn refuse_foreign_schema(path: &Path) -> Result<(), StorageError> {
+/// Whether SQLite is saying the file itself is not a usable database
+/// (`SQLITE_CORRUPT*` or `SQLITE_NOTADB`), as opposed to being unable to look.
+pub(crate) fn is_damage(err: &rusqlite::Error) -> bool {
+    matches!(
+        err,
+        rusqlite::Error::SqliteFailure(failure, _)
+            if matches!(failure.code, ErrorCode::DatabaseCorrupt | ErrorCode::NotADatabase)
+    )
+}
+
+/// A read-only look at an existing file.
+enum Probe {
+    /// Nothing there to look at: no file, or an empty one.
+    Absent,
+    /// SQLite says it is not a database.
+    Damaged,
+    Open(Connection),
+}
+
+fn open_probe(path: &Path, wait: Duration) -> Result<Probe, StorageError> {
+    let unreadable = |err: &dyn std::fmt::Display| StorageError::Failed {
+        what: format!("could not inspect {}: {err}", path.display()),
+    };
     match std::fs::metadata(path) {
         Ok(meta) if meta.len() > 0 => {}
-        _ => return Ok(()),
+        Ok(_) => return Ok(Probe::Absent),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Probe::Absent),
+        Err(err) => return Err(unreadable(&err)),
     }
-    let Ok(conn) = Connection::open_with_flags(
+    let conn = match Connection::open_with_flags(
         path,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX,
-    ) else {
-        return Ok(());
+    ) {
+        Ok(conn) => conn,
+        Err(err) if is_damage(&err) => return Ok(Probe::Damaged),
+        Err(err) => return Err(unreadable(&err)),
     };
-    let foreign = conn
-        .query_row(
-            "SELECT EXISTS(
-               SELECT 1 FROM sqlite_master
-               WHERE type = 'table' AND name = '__drizzle_migrations'
-             )",
-            [],
-            |row| row.get::<_, bool>(0),
-        )
-        // Not a database, or too damaged to read `sqlite_master`: that is
-        // corruption, which the opener reports with its own error.
-        .unwrap_or(false);
-    if foreign {
-        Err(StorageError::ForeignSchema {
+    conn.busy_timeout(wait).map_err(|err| unreadable(&err))?;
+    Ok(Probe::Open(conn))
+}
+
+/// Refuses `path` when it is a drizzle database
+/// ([`StorageError::ForeignSchema`]). See the module docs for what passes.
+pub fn refuse_foreign_schema(path: &Path) -> Result<(), StorageError> {
+    refuse_foreign_schema_within(path, Duration::from_millis(BUSY_TIMEOUT_MS))
+}
+
+fn refuse_foreign_schema_within(path: &Path, wait: Duration) -> Result<(), StorageError> {
+    let conn = match open_probe(path, wait)? {
+        Probe::Absent | Probe::Damaged => return Ok(()),
+        Probe::Open(conn) => conn,
+    };
+    let foreign = conn.query_row(
+        "SELECT EXISTS(
+           SELECT 1 FROM sqlite_master
+           WHERE type = 'table' AND name = '__drizzle_migrations'
+         )",
+        [],
+        |row| row.get::<_, bool>(0),
+    );
+    match foreign {
+        Ok(true) => Err(StorageError::ForeignSchema {
             path: path.display().to_string(),
-        })
-    } else {
-        Ok(())
+        }),
+        Ok(false) => Ok(()),
+        Err(err) if is_damage(&err) => Ok(()),
+        Err(err) => Err(StorageError::Failed {
+            what: format!("could not inspect {}: {err}", path.display()),
+        }),
+    }
+}
+
+/// `PRAGMA quick_check(1)` on an existing file, without opening it for writing.
+/// Damage is [`StorageError::Corrupt`]; failing to look is a different error, so
+/// a lock never reads as corruption.
+///
+/// Runs before the file is opened for writing on purpose: opening sets
+/// `journal_mode`, which rewrites the file header, and a file reported corrupt
+/// should be exactly as it was found.
+pub fn check_integrity(path: &Path) -> Result<(), StorageError> {
+    let corrupt = || StorageError::Corrupt {
+        path: path.display().to_string(),
+    };
+    let conn = match open_probe(path, Duration::from_millis(BUSY_TIMEOUT_MS))? {
+        Probe::Absent => return Ok(()),
+        Probe::Damaged => return Err(corrupt()),
+        Probe::Open(conn) => conn,
+    };
+    match conn.query_row("PRAGMA quick_check(1)", [], |row| row.get::<_, String>(0)) {
+        Ok(verdict) if verdict == "ok" => Ok(()),
+        Ok(_) => Err(corrupt()),
+        Err(err) if is_damage(&err) => Err(corrupt()),
+        Err(err) => Err(StorageError::Failed {
+            what: format!("quick_check on {} did not finish: {err}", path.display()),
+        }),
     }
 }
 
@@ -108,5 +181,66 @@ mod tests {
         drop(open_data(&path).expect("create"));
         refuse_foreign_schema(&path).expect("a core file passes");
         open_data(&path).expect("and reopens");
+    }
+
+    #[test]
+    fn drizzle_guard_fails_closed_when_the_file_is_locked() {
+        // An Electron app mid-write holds the file; "could not look" must not
+        // read as "not Electron".
+        let dir = temp_dir("drizzle-guard-locked");
+        let path = dir.path().join("data.db");
+        electron_file(&path);
+        let holder = Connection::open(&path).expect("holder");
+        holder.execute_batch("BEGIN EXCLUSIVE").expect("lock");
+
+        let outcome = refuse_foreign_schema_within(&path, Duration::from_millis(50));
+
+        assert!(
+            matches!(outcome, Err(StorageError::Failed { .. })),
+            "{outcome:?}"
+        );
+        holder.execute_batch("ROLLBACK").expect("release");
+        assert!(matches!(
+            refuse_foreign_schema_within(&path, Duration::from_millis(50)),
+            Err(StorageError::ForeignSchema { .. })
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn drizzle_guard_fails_closed_when_the_file_cannot_be_read() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let dir = temp_dir("drizzle-guard-unreadable");
+        let path = dir.path().join("data.db");
+        electron_file(&path);
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+        if std::fs::read(&path).is_ok() {
+            return; // root ignores file modes
+        }
+
+        let outcome = refuse_foreign_schema(&path);
+
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).expect("restore");
+        assert!(
+            matches!(outcome, Err(StorageError::Failed { .. })),
+            "{outcome:?}"
+        );
+    }
+
+    #[test]
+    fn drizzle_guard_leaves_a_damaged_file_to_its_opener() {
+        let dir = temp_dir("drizzle-guard-damaged");
+        let path = dir.path().join("data.db");
+        std::fs::write(&path, b"this is not a SQLite database").expect("garbage");
+
+        refuse_foreign_schema(&path).expect("not Electron");
+        assert!(matches!(
+            check_integrity(&path),
+            Err(StorageError::Corrupt { .. })
+        ));
+        assert!(matches!(
+            open_data(&path),
+            Err(StorageError::Corrupt { .. })
+        ));
     }
 }

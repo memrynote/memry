@@ -97,25 +97,34 @@ fn common(conn: &Connection, profile: Profile) -> Result<(), StorageError> {
     Ok(())
 }
 
-/// `tag_fold(text)`: tag identity (§13.7.7), because `COLLATE NOCASE` folds ASCII
-/// only. `ulower(x)`: Unicode lowercase of a text value, any other value
-/// unchanged, the SQL twin of the desktop `ulower` function.
+/// `tag_fold(x)`: a tag's identity (§13.7.7), because `COLLATE NOCASE` folds
+/// ASCII only. `ulower(x)`: Unicode lowercase, as `String.prototype.toLowerCase`
+/// does it. Both are the SQL twins of the desktop functions in
+/// `database/sqlite-functions.ts`, which pass anything but text (NULL, numbers,
+/// blobs) through untouched so either is safe to wrap around any column.
 fn register_functions(conn: &Connection) -> Result<(), StorageError> {
     let flags = FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_DETERMINISTIC;
     conn.create_scalar_function("tag_fold", 1, flags, |ctx| {
-        Ok(crate::domain::tags::fold(&ctx.get::<String>(0)?))
+        Ok(map_text(ctx.get_raw(0), |text| {
+            crate::domain::tags::fold(text)
+        }))
     })
     .map_err(|err| fail("tag_fold", err))?;
     conn.create_scalar_function("ulower", 1, flags, |ctx| {
-        Ok(match ctx.get_raw(0) {
-            ValueRef::Text(bytes) => Value::Text(String::from_utf8_lossy(bytes).to_lowercase()),
-            ValueRef::Null => Value::Null,
-            ValueRef::Integer(n) => Value::Integer(n),
-            ValueRef::Real(x) => Value::Real(x),
-            ValueRef::Blob(bytes) => Value::Blob(bytes.to_vec()),
-        })
+        Ok(map_text(ctx.get_raw(0), str::to_lowercase))
     })
     .map_err(|err| fail("ulower", err))
+}
+
+/// Applies `f` to a text value and returns every other value unchanged.
+fn map_text(value: ValueRef<'_>, f: impl Fn(&str) -> String) -> Value {
+    match value {
+        ValueRef::Text(bytes) => Value::Text(f(&String::from_utf8_lossy(bytes))),
+        ValueRef::Null => Value::Null,
+        ValueRef::Integer(n) => Value::Integer(n),
+        ValueRef::Real(x) => Value::Real(x),
+        ValueRef::Blob(bytes) => Value::Blob(bytes.to_vec()),
+    }
 }
 
 /// `bundled` compiles FTS5 in; there is no `fts5` cargo feature to depend on, so
@@ -146,32 +155,60 @@ mod tests {
     use super::*;
     use crate::storage::Db;
 
-    fn ulower(db: &Db, value: Value) -> Value {
+    fn file_db(label: &str) -> (crate::storage::test_support::TempDir, Db) {
+        let dir = crate::storage::test_support::temp_dir(label);
+        // File-backed, so the call runs on a pooled reader.
+        let db = Db::open(&dir.path().join("data.db")).expect("open");
+        (dir, db)
+    }
+
+    fn apply(db: &Db, function: &'static str, value: Value) -> Value {
         db.read_blocking(|conn| {
-            conn.query_row("SELECT ulower(?1)", [value], |row| row.get(0))
+            conn.query_row(&format!("SELECT {function}(?1)"), [value], |row| row.get(0))
                 .map_err(|err| StorageError::Failed {
                     what: err.to_string(),
                 })
         })
-        .expect("ulower")
+        .expect(function)
+    }
+
+    /// Each pair is `String.prototype.toLowerCase` of the input, taken from Node.
+    #[test]
+    fn ulower_matches_javascript_to_lower_case() {
+        let (_dir, db) = file_db("ulower");
+        for (input, js) in [
+            ("Ödeme Toplantısı", "ödeme toplantısı"),
+            // Dotted capital I: `i` plus a combining dot above (U+0307).
+            ("İ", "i\u{307}"),
+            ("İstanbul", "i\u{307}stanbul"),
+            // Final sigma: ς at the end of a word, σ elsewhere.
+            ("ΟΔΟΣ", "οδος"),
+            ("ΑΣ ΑΣΑ Σ", "ας ασα σ"),
+            ("ΣΑΣ", "σας"),
+            ("Σ", "σ"),
+            ("ǅ", "ǆ"),
+            ("ẞ", "ß"),
+        ] {
+            assert_eq!(
+                apply(&db, "ulower", Value::Text(input.to_owned())),
+                Value::Text(js.to_owned()),
+                "{input}"
+            );
+        }
     }
 
     #[test]
-    fn ulower_folds_unicode_and_passes_other_values_through() {
-        let dir = crate::storage::test_support::temp_dir("ulower");
-        // A file-backed database, so the call runs on a pooled reader.
-        let db = Db::open(&dir.path().join("data.db")).expect("open");
-
-        let text = |s: &str| ulower(&db, Value::Text(s.to_owned()));
-        assert_eq!(
-            text("Ödeme Toplantısı"),
-            Value::Text("ödeme toplantısı".to_owned())
-        );
-        // Rust's lowercase of `İ` is `i` plus a combining dot above (U+0307).
-        assert_eq!(text("İ"), Value::Text("i\u{307}".to_owned()));
-        // Final sigma: Σ at the end of a word lowercases to ς.
-        assert_eq!(text("ΟΔΟΣ"), Value::Text("οδος".to_owned()));
-        assert_eq!(ulower(&db, Value::Null), Value::Null);
-        assert_eq!(ulower(&db, Value::Integer(42)), Value::Integer(42));
+    fn ulower_and_tag_fold_pass_anything_but_text_through() {
+        let (_dir, db) = file_db("passthrough");
+        for function in ["ulower", "tag_fold"] {
+            for value in [
+                Value::Null,
+                Value::Integer(42),
+                Value::Real(1.5),
+                Value::Blob(vec![0, 1, 0xFF]),
+            ] {
+                assert_eq!(apply(&db, function, value.clone()), value, "{function}");
+            }
+        }
     }
 }

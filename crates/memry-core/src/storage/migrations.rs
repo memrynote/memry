@@ -168,6 +168,55 @@ pub fn run(conn: &mut Connection, migrations: &[Migration]) -> Result<u32, Stora
     Ok(current)
 }
 
+/// A migration that failed, with the SQLite error that stopped it, so the caller
+/// can tell a defect in the migration from a lock or a full disk.
+#[derive(Debug)]
+pub struct MigrationFailure {
+    pub version: u32,
+    pub name: &'static str,
+    pub error: rusqlite::Error,
+}
+
+impl From<MigrationFailure> for StorageError {
+    fn from(failure: MigrationFailure) -> Self {
+        Self::Migration {
+            version: failure.version,
+            what: format!("{}: {}", failure.name, failure.error),
+        }
+    }
+}
+
+/// As [`run`], with `user_version` written **inside** each migration's
+/// transaction. SQLite commits the pragma with the schema change, so there is no
+/// window in which a migration has applied and its counter has not, and a
+/// migration need not be re-runnable. For `index.db`, which migrates in place;
+/// `data.db` keeps the §A.0 convention of [`run`].
+pub fn run_atomic(
+    conn: &mut Connection,
+    migrations: &[Migration],
+) -> Result<u32, MigrationFailure> {
+    let start = user_version(conn).map_err(|err| MigrationFailure {
+        version: 0,
+        name: "read user_version",
+        error: rusqlite::Error::InvalidParameterName(err.to_string()),
+    })?;
+    let mut current = start;
+    for migration in migrations.iter().filter(|m| m.version > start) {
+        let fail = |error| MigrationFailure {
+            version: migration.version,
+            name: migration.name,
+            error,
+        };
+        let tx = conn.transaction().map_err(fail)?;
+        tx.execute_batch(migration.sql).map_err(fail)?;
+        tx.execute_batch(&format!("PRAGMA user_version = {}", migration.version))
+            .map_err(fail)?;
+        tx.commit().map_err(fail)?;
+        current = migration.version;
+    }
+    Ok(current)
+}
+
 fn set_user_version(conn: &Connection, version: u32) -> Result<(), StorageError> {
     // `pragma_update` cannot bind a parameter to a pragma value, and the value
     // is a `u32` this module owns, so there is nothing here to inject.
@@ -478,5 +527,46 @@ mod tests {
             .expect("read back");
         assert_eq!(device, "dev-1");
         assert_eq!(indexes, 2);
+    }
+
+    #[test]
+    fn run_atomic_leaves_a_failed_migration_and_its_counter_untouched() {
+        const FAILING: &[Migration] = &[
+            Migration {
+                version: 1,
+                name: "first",
+                sql: "CREATE TABLE a (n INTEGER); INSERT INTO a VALUES (1)",
+            },
+            Migration {
+                version: 2,
+                name: "second",
+                sql: "CREATE TABLE b (n INTEGER); CREATE TABLE a (n INTEGER)",
+            },
+        ];
+        let db = Db::open_in_memory().expect("open");
+
+        let failure = db
+            .call_blocking(|conn| Ok(run_atomic(conn, FAILING)))
+            .expect("call")
+            .expect_err("the second migration collides with the first");
+
+        assert_eq!((failure.version, failure.name), (2, "second"));
+        let (version, rows, has_b) = db
+            .call_blocking(|conn| {
+                Ok((
+                    user_version(conn)?,
+                    conn.query_row("SELECT COUNT(*) FROM a", [], |r| r.get::<_, i64>(0))
+                        .unwrap_or(-1),
+                    conn.query_row(
+                        "SELECT COUNT(*) FROM sqlite_master WHERE name = 'b'",
+                        [],
+                        |r| r.get::<_, i64>(0),
+                    )
+                    .unwrap_or(-1),
+                ))
+            })
+            .expect("state");
+        // Migration 1 committed with its counter; migration 2 rolled back whole.
+        assert_eq!((version, rows, has_b), (1, 1, 0));
     }
 }

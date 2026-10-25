@@ -23,6 +23,7 @@ pub mod index_db;
 pub mod migrations;
 pub(crate) mod pool;
 pub mod pragmas;
+pub(crate) mod quarantine;
 pub mod recovery;
 pub mod repositories;
 
@@ -44,6 +45,8 @@ use crate::api::errors::StorageError;
 /// read) so the shell can offer [`recovery::quarantine_and_rebuild`].
 pub fn open_data(path: &Path) -> Result<Db, StorageError> {
     guard::refuse_foreign_schema(path)?;
+    // Before the file is opened for writing: a corrupt file stays as found.
+    guard::check_integrity(path)?;
     let corrupt = |err: StorageError| {
         if err.is_corrupt() {
             StorageError::Corrupt {
@@ -54,26 +57,14 @@ pub fn open_data(path: &Path) -> Result<Db, StorageError> {
         }
     };
     let db = Db::open(path).map_err(corrupt)?;
-    db.call_blocking(|conn| {
-        let check: String = conn
-            .query_row("PRAGMA quick_check(1)", [], |row| row.get(0))
-            .map_err(|err| StorageError::Failed {
-                what: format!("quick_check failed to run: {err}"),
-            })?;
-        if check != "ok" {
-            return Err(StorageError::Corrupt {
-                path: path.display().to_string(),
-            });
-        }
-        migrations::run(conn, migrations::DATA_MIGRATIONS)?;
-        Ok(())
-    })
-    .map_err(corrupt)?;
+    db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS).map(drop))
+        .map_err(corrupt)?;
     Ok(db)
 }
 
-/// Opens `index.db`, rebuilding it from scratch if it is missing, corrupt, or at
-/// an unexpected version. See [`index_db::open_or_rebuild`].
+/// Opens `index.db`: migrated in place when behind, set aside and rebuilt when
+/// damaged or newer than this build, created when missing. Any other failure to
+/// open it is an error, never a rebuild. See [`index_db::open_or_rebuild`].
 pub fn open_index(path: &Path) -> Result<OpenedIndex, StorageError> {
     index_db::open_or_rebuild(path)
 }
