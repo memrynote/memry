@@ -9,13 +9,16 @@ import { dirname, join, relative } from 'node:path'
 import { parseHTML } from 'linkedom'
 import { domVector, fuzzVectors } from './vectors/dom.mjs'
 import { mapVector } from './vectors/map.mjs'
+import { markdownCases } from './vectors/markdown-cases.mjs'
+import { markdownFuzzVectors } from './vectors/markdown-fuzz.mjs'
+import { frontmatterProbes, markdownVector } from './vectors/markdown.mjs'
 import { metadataCases } from './vectors/metadata-cases.mjs'
 import { metadataVector } from './vectors/metadata.mjs'
 import { removalCases } from './vectors/removal-cases.mjs'
 import { removalsVectors, scoreVector } from './vectors/removals.mjs'
 import { standardizeCases } from './vectors/standardize-cases.mjs'
 import { standardizeFuzzVectors } from './vectors/standardize-fuzz.mjs'
-import { standardizeUrl, standardizeVectors } from './vectors/standardize.mjs'
+import { standardizeUrl, standardizeVectors, standardizedContent } from './vectors/standardize.mjs'
 import { playScenario, scenarios } from './vectors/mutations.mjs'
 import { loadFixtures, vectorsDir } from './vectors/paths.mjs'
 import {
@@ -118,6 +121,19 @@ function buildFiles() {
       }))
     )
   )
+  for (const fixture of fixtures) {
+    const content = standardizedContent(fixture.html, fixture.url)
+    files.set(
+      `markdown/${fixture.name}.json`,
+      format(content === null ? { html: null } : markdownVector(content))
+    )
+  }
+  files.set(
+    'markdown-cases.json',
+    format(markdownCases.map(({ name, html }) => ({ name, ...markdownVector(html) })))
+  )
+  files.set('markdown-fuzz.json', format(markdownFuzzVectors(400)))
+  files.set('frontmatter.json', format(frontmatterProbes()))
   files.set(
     'scores.json',
     format(
@@ -160,12 +176,12 @@ function committedFiles() {
   return out
 }
 
-// Defuddle reports unparsable JSON-LD and the like through console.error and console.warn; the
-// probes feed it such input on purpose.
-const { error, warn } = console
-console.error = console.warn = () => {}
+// Defuddle reports unparsable JSON-LD and the like through console.error and console.warn, and a
+// failed markdown conversion through console.log; the probes feed it such input on purpose.
+const { error, warn, log } = console
+console.error = console.warn = console.log = () => {}
 const files = buildFiles()
-Object.assign(console, { error, warn })
+Object.assign(console, { error, warn, log })
 const committed = committedFiles()
 
 if (process.argv.includes('--check')) {

@@ -222,6 +222,81 @@ pub fn parse_float(s: &str) -> Option<f64> {
     s[..i].parse::<f64>().ok()
 }
 
+/// `Number(s)` for a string; NaN for what is not a StringNumericLiteral. Whitespace trims, the
+/// empty string is 0, and `0x`, `0o` and `0b` literals take no sign.
+pub fn to_number(s: &str) -> f64 {
+    let s = trim(s);
+    if s.is_empty() {
+        return 0.0;
+    }
+    let radix = |digits: &str, radix: u32| {
+        if digits.is_empty() || !digits.chars().all(|c| c.is_digit(radix)) {
+            return f64::NAN;
+        }
+        digits.chars().fold(0.0, |acc, c| {
+            acc * f64::from(radix) + f64::from(c.to_digit(radix).unwrap_or(0))
+        })
+    };
+    let lower = s.to_ascii_lowercase();
+    if let Some(rest) = lower.strip_prefix("0x") {
+        return radix(rest, 16);
+    }
+    if let Some(rest) = lower.strip_prefix("0o") {
+        return radix(rest, 8);
+    }
+    if let Some(rest) = lower.strip_prefix("0b") {
+        return radix(rest, 2);
+    }
+    let (negative, unsigned) = match s.as_bytes()[0] {
+        b'-' => (true, &s[1..]),
+        b'+' => (false, &s[1..]),
+        _ => (false, s),
+    };
+    let value = if unsigned == "Infinity" {
+        f64::INFINITY
+    } else if is_decimal_literal(unsigned) {
+        unsigned.parse::<f64>().unwrap_or(f64::NAN)
+    } else {
+        f64::NAN
+    };
+    if negative { -value } else { value }
+}
+
+/// `StrUnsignedDecimalLiteral`: digits with an optional fraction, or a fraction alone, and an
+/// optional exponent.
+fn is_decimal_literal(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    let count = |from: usize| {
+        bytes[from..]
+            .iter()
+            .take_while(|b| b.is_ascii_digit())
+            .count()
+    };
+    let int = count(0);
+    let mut i = int;
+    let mut digits = int;
+    if bytes.get(i) == Some(&b'.') {
+        let frac = count(i + 1);
+        digits += frac;
+        i += 1 + frac;
+    }
+    if digits == 0 {
+        return false;
+    }
+    if matches!(bytes.get(i), Some(b'e' | b'E')) {
+        i += 1;
+        if matches!(bytes.get(i), Some(b'+' | b'-')) {
+            i += 1;
+        }
+        let exp = count(i);
+        if exp == 0 {
+            return false;
+        }
+        i += exp;
+    }
+    i == bytes.len()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -307,6 +382,20 @@ mod tests {
         assert_eq!(parse_int("+3.9"), Some(3));
         assert_eq!(parse_int("x1"), None);
         assert_eq!(parse_int(""), None);
+    }
+
+    #[test]
+    fn to_number_reads_whole_string_numeric_literals() {
+        assert_eq!(to_number(" 12 "), 12.0);
+        assert_eq!(to_number(""), 0.0);
+        assert_eq!(to_number("0x10"), 16.0);
+        assert_eq!(to_number("1e3"), 1000.0);
+        assert_eq!(to_number(".5"), 0.5);
+        assert_eq!(to_number("-Infinity"), f64::NEG_INFINITY);
+        assert!(to_number("3px").is_nan());
+        assert!(to_number("1_0").is_nan());
+        assert!(to_number("-0x10").is_nan());
+        assert!(to_number("inf").is_nan());
     }
 
     #[test]

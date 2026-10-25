@@ -2880,6 +2880,8 @@ name = "memry-desktop"
 version = "0.0.0"
 dependencies = [
  "hex",
+ "html5ever 0.40.1",
+ "markup5ever 0.40.0",
  "memry-core",
  "rcgen",
  "regex",

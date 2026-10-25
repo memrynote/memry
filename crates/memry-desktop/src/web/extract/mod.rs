@@ -14,6 +14,7 @@ pub mod elements;
 pub mod error;
 pub mod fetch;
 pub mod map;
+pub mod markdown;
 pub mod metadata;
 pub mod removals;
 pub mod standardize;
