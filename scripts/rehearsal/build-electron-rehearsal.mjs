@@ -56,7 +56,12 @@ export function publishOverrides(feedRepo) {
 
 function run(command, args, options = {}) {
   console.log(`$ ${command} ${args.join(' ')}`)
-  const result = spawnSync(command, args, { stdio: 'inherit', ...options })
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    // pnpm is a .cmd shim on Windows.
+    shell: process.platform === 'win32',
+    ...options
+  })
   if (result.status !== 0) {
     throw new Error(`${command} ${args[0] ?? ''} exited with ${result.status}`)
   }

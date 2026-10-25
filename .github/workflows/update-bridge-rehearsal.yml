@@ -254,7 +254,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-15-intel, windows-2022, ubuntu-22.04]
+        os: [macos-15, macos-15-intel, windows-2022, ubuntu-24.04]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -323,7 +323,7 @@ jobs:
     name: L1 proof (Linux AppImage)
     needs: build-electron-rehearsal
     if: inputs.electron_tag != ''
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
@@ -335,7 +335,7 @@ jobs:
           node-version-file: .nvmrc
       - uses: actions/download-artifact@v4
         with:
-          name: MemryNote-${{ inputs.electron_tag }}-rehearsal-ubuntu-22.04
+          name: MemryNote-${{ inputs.electron_tag }}-rehearsal-ubuntu-24.04
           path: electron
       - name: Update the Electron AppImage into the Tauri scaffold
         run: |
