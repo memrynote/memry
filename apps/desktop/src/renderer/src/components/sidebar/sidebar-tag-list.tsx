@@ -229,7 +229,7 @@ function TagTreeItem({
     <>
       <div
         className="flex items-center group rounded-md transition-colors hover:bg-muted"
-        style={{ paddingLeft: `${node.depth * 14 + 8}px` }}
+        style={{ paddingInlineStart: `${node.depth * 14 + 8}px` }}
       >
         {hasChildren ? (
           <button

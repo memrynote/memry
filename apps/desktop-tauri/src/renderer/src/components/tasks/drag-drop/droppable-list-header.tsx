@@ -66,7 +66,7 @@ export const DroppableListHeader = ({
       {isTargetSection && dragState.sectionDropPosition === 'start' && (
         <InsertionIndicator
           position="after"
-          className="left-3 right-3"
+          className="inset-x-3"
           dataTestId="list-drop-indicator"
           kind="column"
         />

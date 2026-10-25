@@ -1253,7 +1253,7 @@ export function GroupedTable({
                       position: 'absolute',
                       transform: `translateY(${virtualRow.start}px)`,
                       // Add left padding when grouped to show hierarchy
-                      paddingLeft: isInGroup ? '24px' : undefined
+                      paddingInlineStart: isInGroup ? '24px' : undefined
                     }}
                     className={cn(
                       'group/row',

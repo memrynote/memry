@@ -35,14 +35,14 @@ export const InsertionIndicator = ({
       data-testid={dataTestId}
       data-drop-indicator={kind}
       className={cn(
-        'absolute left-0 right-0 h-0.5 bg-primary pointer-events-none z-20',
+        'absolute inset-x-0 h-0.5 bg-primary pointer-events-none z-20',
         position === 'before' ? 'top-0' : 'bottom-0',
         className
       )}
       aria-hidden="true"
     >
       {/* Circle at the start of the line */}
-      <div className={cn('absolute -left-1 w-2 h-2 bg-primary rounded-full', '-top-[3px]')} />
+      <div className={cn('absolute -start-1 w-2 h-2 bg-primary rounded-full', '-top-[3px]')} />
     </div>
   )
 }
