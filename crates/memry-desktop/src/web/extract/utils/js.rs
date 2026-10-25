@@ -71,12 +71,18 @@ pub fn char_at(s: &str, index: usize) -> String {
 /// `s.split(/\s+/)`. A leading or trailing run of whitespace yields an empty first or last
 /// element, and the empty string yields `[""]`.
 pub fn split_whitespace_runs(s: &str) -> Vec<&str> {
+    split_runs(s, is_js_whitespace)
+}
+
+/// `s.split(/[class]+/)` where `separator` tests one character of the class: runs of separators
+/// split, and a leading or trailing run yields an empty first or last element.
+pub fn split_runs(s: &str, separator: impl Fn(char) -> bool) -> Vec<&str> {
     let mut parts = Vec::new();
     let mut start = 0usize;
     let mut in_run = false;
     let mut run_start = 0usize;
     for (i, c) in s.char_indices() {
-        if is_js_whitespace(c) {
+        if separator(c) {
             if !in_run {
                 in_run = true;
                 run_start = i;
@@ -95,6 +101,52 @@ pub fn split_whitespace_runs(s: &str) -> Vec<&str> {
     }
     parts
 }
+
+/// A string as JS indexes it: UTF-16 code units. `indexOf` positions and `length` of the page
+/// text feed thresholds ("near the start", "within 300 characters of the end").
+pub struct Utf16Text(Vec<u16>);
+
+impl Utf16Text {
+    pub fn new(s: &str) -> Self {
+        Utf16Text(s.encode_utf16().collect())
+    }
+
+    /// `s.length`.
+    pub fn unit_len(&self) -> i64 {
+        self.0.len() as i64
+    }
+
+    /// `s.indexOf(needle)` for `needle` given as its code units; -1 when absent.
+    pub fn index_of(&self, needle: &[u16]) -> i64 {
+        if needle.is_empty() {
+            return 0;
+        }
+        let Some(&first) = needle.first() else {
+            return 0;
+        };
+        let last_start = match self.0.len().checked_sub(needle.len()) {
+            Some(n) => n,
+            None => return -1,
+        };
+        for at in 0..=last_start {
+            if self.0[at] == first && &self.0[at..at + needle.len()] == needle {
+                return at as i64;
+            }
+        }
+        -1
+    }
+}
+
+/// `s.substring(0, n)` as code units: a cut through a surrogate pair stays a lone surrogate,
+/// which only `Utf16Text::index_of` can compare.
+pub fn utf16_prefix(s: &str, n: usize) -> Vec<u16> {
+    s.encode_utf16().take(n).collect()
+}
+
+/// JS `\s` as a regex class.
+pub const WS: &str = r"[\t\n\x0B\x0C\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]";
+/// The members of `WS` without brackets, to build larger classes.
+pub const WS_BODY: &str = r"\t\n\x0B\x0C\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}";
 
 /// `s.toLowerCase()`. Rust's `str::to_lowercase` applies the same language-neutral Unicode
 /// mapping, including the final-sigma rule.
@@ -221,6 +273,25 @@ mod tests {
         assert_eq!(split_whitespace_runs(""), vec![""]);
         assert_eq!(split_whitespace_runs("   "), vec!["", ""]);
         assert_eq!(split_whitespace_runs("a\u{a0}b"), vec!["a", "b"]);
+    }
+
+    #[test]
+    fn utf16_index_of_counts_code_units() {
+        // 'a😀b'.indexOf('b') is 3 in JS, and 'a😀b'.length is 4.
+        let text = Utf16Text::new("a\u{1f600}b");
+        assert_eq!(text.unit_len(), 4);
+        assert_eq!(text.index_of(&utf16_prefix("b", 1)), 3);
+        assert_eq!(text.index_of(&utf16_prefix("", 0)), 0);
+        assert_eq!(text.index_of(&utf16_prefix("zz", 2)), -1);
+        // A prefix cut through a surrogate pair is a lone high surrogate, which still matches.
+        assert_eq!(text.index_of(&utf16_prefix("a\u{1f600}", 2)), 0);
+        assert_eq!(text.index_of(&[0xd83d]), 1);
+    }
+
+    #[test]
+    fn splitting_on_a_class_of_runs() {
+        let parts = split_runs(", 0 0, 16 ,16", |c| c == ',' || c == ' ');
+        assert_eq!(parts, vec!["", "0", "0", "16", "16"]);
     }
 
     #[test]

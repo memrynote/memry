@@ -11,6 +11,8 @@ import { domVector, fuzzVectors } from './vectors/dom.mjs'
 import { mapVector } from './vectors/map.mjs'
 import { metadataCases } from './vectors/metadata-cases.mjs'
 import { metadataVector } from './vectors/metadata.mjs'
+import { removalCases } from './vectors/removal-cases.mjs'
+import { removalsVectors, scoreVector } from './vectors/removals.mjs'
 import { playScenario, scenarios } from './vectors/mutations.mjs'
 import { loadFixtures, vectorsDir } from './vectors/paths.mjs'
 import {
@@ -78,6 +80,32 @@ function buildFiles() {
   files.set(
     'metadata-cases.json',
     format(metadataCases.map(({ name, html }) => ({ name, html, expected: metadataVector(html) })))
+  )
+  for (const fixture of fixtures) {
+    files.set(
+      `removals/${fixture.name}.json`,
+      format({ url: fixture.url, variants: removalsVectors(fixture.html, fixture.url) })
+    )
+  }
+  files.set(
+    'removal-cases.json',
+    format(
+      removalCases.map(({ name, html, url }) => ({
+        name,
+        html,
+        url,
+        variants: removalsVectors(html, url)
+      }))
+    )
+  )
+  files.set(
+    'scores.json',
+    format(
+      Object.fromEntries([
+        ...fixtures.map((f) => [f.name, scoreVector(f.html)]),
+        ...removalCases.map((c) => [c.name, scoreVector(c.html)])
+      ])
+    )
   )
   files.set(
     'probes.json',

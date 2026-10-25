@@ -33,6 +33,19 @@ Kaan owns this repo. MemryNote is a local-first, end-to-end encrypted notes app,
 - Verify a visual change in the running app and inspect the screenshots. Desktop has a sandboxed live app for this ([live-app verification](apps/desktop/AGENTS.md#live-app-verification)).
 - After two identical tooling failures with no new evidence, change approach or report the blocker. Retrying blindly or bypassing a guard is not a fix.
 
+## Subagents
+
+One agent owns a change from plan to proof, one issue or one stage of an epic per PR. The agent that writes the plan writes the code, so the plan changes as results arrive. Read the code you change or port yourself, since a summary is not a source. A change too big for one context splits into smaller stages, each its own PR with its own owner.
+
+Spawn a subagent only for a unit that needs little from the rest of the work and returns a compact result:
+
+- **Noisy runs.** CI logs, VM runs, fuzz and corpus runs, and broad surveys whose details you will not need. The subagent returns the verdict and the evidence behind it.
+- **Independent units.** Separate issues or stages with clean interfaces, each in its own worktree.
+- **Review.** A finished diff, read by an agent that did not write it, on another model when one is available.
+- **One-way doors.** Competing designs for a core schema, sync protocol, crypto, or migration change, explored in parallel and discarded after the pick.
+
+Planner, coder, and tester subagents pass each other lossy summaries, so this rule replaces any playbook step that hands implementation to a subagent, such as pstack's Feature step 4.
+
 ## One owner, complete cutover
 
 1. **Intent.** Reproduce the defect, then read the affected module, its callers, siblings, tests, and history until the violated invariant is clear. Before restoring a removed path, find out why it was removed (`git log -p -S <symbol>`).
