@@ -184,7 +184,7 @@ Windows ships only the Velopack Setup. The NSIS-position file is a byte copy of 
 
 ### Results
 
-Rehearsal repo proof is pending the maintainer's approval to create `memrynote/memry-update-rehearsal`. No row below has run.
+The rehearsal repo `memrynote/memry-update-rehearsal` (public) exists and carries the workflow. Run 40164450237 (version 2099.101.1, 2026-10-25): the Linux pack and both Windows payload jobs passed, so the `linux` channel packs (`MemryNote-2099.101.1-linux-full.nupkg`, `MemryNote.AppImage`, `releases.linux.json`) and the `win-x64` and `win-arm64` payload zips exist; `Memrynote.exe` in the arm64 zip is `PE32+ ... Aarch64`. The macOS pack jobs stop at "Import signing identity" until the Developer ID and notarization secrets are set on the rehearsal repo, the Windows packs need the Certum session on the maintainer's Mac, and the macOS VM rows need `tart`. No matrix row has run yet.
 
 | Id  | Environment                                                         | Result  |
 | --- | ------------------------------------------------------------------- | ------- |
