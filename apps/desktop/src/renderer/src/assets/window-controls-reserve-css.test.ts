@@ -18,4 +18,11 @@ describe('window-controls reserve in main.css', () => {
     expect(narrow).toContain('var(--chrome-buttons-width)')
     expect(narrow).not.toContain('.peer')
   })
+
+  it('reserves the traffic lights at the physical left in RTL on macOS', () => {
+    const css = readFileSync(MAIN_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    const rule = css.match(/:root\[data-platform='darwin'\]\[dir='rtl'\] \{([\s\S]*?)\}/)?.[1] ?? ''
+    expect(rule).toContain('--caption-reserve-end: 68px')
+    expect(rule).toContain('--window-controls-start: 0px')
+  })
 })

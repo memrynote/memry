@@ -33,7 +33,7 @@ const LinkedTaskItem = ({ task, onClick }: LinkedTaskItemProps): React.JSX.Eleme
       type="button"
       onClick={onClick}
       className={cn(
-        'flex items-center gap-2 w-full p-2 rounded-md text-left',
+        'flex items-center gap-2 w-full p-2 rounded-md text-start',
         'hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors',
         'focus:outline-none',
         isCompleted && 'opacity-60'
