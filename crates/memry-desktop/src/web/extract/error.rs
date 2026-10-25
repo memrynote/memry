@@ -1,3 +1,4 @@
+// tiered-ci proof: comment-only change, to be discarded.
 //! Errors of the extraction port.
 
 /// A failure that JavaScript would raise as an exception. The pipeline treats these as
