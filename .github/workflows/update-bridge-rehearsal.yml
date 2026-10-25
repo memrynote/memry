@@ -379,8 +379,13 @@ jobs:
           sleep 40
           node scripts/rehearsal/drive-electron-update.mjs 9222 --timeout-s 900
           sleep 60
-          sha256sum "$appimage"
-          ls -la "$appimage"
-          "$appimage" --appimage-extract usr/bin/memrynote >/dev/null 2>&1 && echo "the file at the old path is the Tauri AppImage (usr/bin/memrynote present)"
-          find "$HOME" -name main.log -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
+          ls -la electron
+          # AppImageUpdater replaces the file with the update's own name.
+          new="$(ls "$PWD"/electron/MemryNote-${{ inputs.version }}-x86_64.AppImage)"
+          sha256sum "$new"
+          chmod +x "$new"
+          (cd "$RUNNER_TEMP" && "$new" --appimage-extract usr/bin/memrynote >/dev/null && ls -la squashfs-root/usr/bin/memrynote && echo "the replacement is the Tauri AppImage")
+          pgrep -fl memrynote || xvfb-run -a "$new" > "$RUNNER_TEMP/tauri.log" 2>&1 &
+          sleep 45
+          find "$HOME" -name main.log -newer "$RUNNER_TEMP/before.sha" -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
           tail -20 "$RUNNER_TEMP/electron.log"
