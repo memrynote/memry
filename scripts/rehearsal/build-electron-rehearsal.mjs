@@ -81,11 +81,11 @@ export function build({ tag, feedRepo, keep = false, repoRoot = process.cwd() })
       writeFileSync(file, patchConstant(readFileSync(file, 'utf8'), entry, values[entry.constant]))
       console.log(`patched ${entry.constant} in ${entry.file}`)
     }
-    // The production build requires a runtime env file. A rehearsal build must never reach the
-    // production sync server, so it gets a valid HTTPS host that resolves nowhere.
+    // The production build requires a runtime env file whose sync host has certificate pins.
+    // Rehearsal installs never sign in, so the shipped default host is only a build input.
     const envFile = path.join(worktree, 'apps/desktop/.env.production')
     if (!existsSync(envFile)) {
-      writeFileSync(envFile, 'SYNC_SERVER_URL=https://rehearsal.invalid\n')
+      writeFileSync(envFile, 'SYNC_SERVER_URL=https://sync.memrynote.com\n')
     }
     run('pnpm', ['install', '--frozen-lockfile'], { cwd: worktree })
     const [command, args] = productionBuild
