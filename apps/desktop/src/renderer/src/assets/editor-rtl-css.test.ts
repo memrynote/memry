@@ -19,10 +19,10 @@ describe('editor RTL mirror', () => {
   it('indents nested blocks and moves the quote bar to the inline start', () => {
     const css = strip(readFileSync(join(ASSETS, 'editor-rtl.css'), 'utf8'))
     expect(css).toMatch(
-      /:root\[dir='rtl'\] \.bn-block-group \.bn-block-group \{[^}]*margin-inline-start: 24px/
+      /\.bn-block-group \.bn-block-group:dir\(rtl\) \{[^}]*margin-inline-start: 24px/
     )
     expect(css).toMatch(
-      /:root\[dir='rtl'\] \[data-content-type='quote'\] blockquote \{[^}]*border-right: 3px/
+      /\[data-content-type='quote'\]:dir\(rtl\) blockquote \{[^}]*border-right: 3px/
     )
   })
 })
