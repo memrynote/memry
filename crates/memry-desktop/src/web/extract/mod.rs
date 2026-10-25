@@ -1,15 +1,19 @@
 //! Readable-article extraction: a port of `packages/article-extract` (Defuddle 0.19.0 on
 //! linkedom 0.18.12, then `mapToArticleCapture`) that runs no JavaScript.
 //!
-//! The port is built in stages (Step 26, #3543). This stage carries the foundations: the JS
-//! string semantics, the arena DOM with its htmlparser2 parser, serializer and css-select
-//! selector engine, the result mapping and the fetch seam. `extract_article` arrives with the
-//! pipeline that feeds it.
+//! The port is built in stages (Step 26, #3543). Stage 1 carries the foundations: the JS string
+//! semantics, the arena DOM with its htmlparser2 parser, serializer and css-select selector
+//! engine, the result mapping and the fetch seam. Stage 2a adds Defuddle's constants, the
+//! metadata extractor, JSON-LD and meta-tag collection, and the content boundary.
+//! `extract_article` arrives with the pipeline that feeds it.
 
+pub mod constants;
+pub mod defuddle;
 pub mod dom;
 pub mod error;
 pub mod fetch;
 pub mod map;
+pub mod metadata;
 pub mod utils;
 
 use serde::{Deserialize, Serialize};
