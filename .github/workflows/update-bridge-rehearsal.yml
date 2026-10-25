@@ -166,9 +166,11 @@ jobs:
         run: |
           mkdir -p out
           delta=BestSpeed; [ -z "${{ inputs.previous_tag }}" ] && delta=None
+          # vpk only accepts a .entitlements extension.
+          cp apps/desktop-tauri/src-tauri/entitlements.mac.plist "$RUNNER_TEMP/MemryNote.entitlements"
           node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "${{ inputs.version }}" \
             --pack-dir pack/MemryNote.app --output-dir out --delta "$delta" \
-            --identity "$IDENTITY" --entitlements apps/desktop-tauri/src-tauri/entitlements.mac.plist \
+            --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
             --notary-profile memry-notary --keychain "$KEYCHAIN"
       - name: Entitlements and Info.plist of the packed bundle
         run: |
