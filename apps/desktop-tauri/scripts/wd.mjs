@@ -86,7 +86,7 @@ async function main() {
 
 main().then(
   () => process.exit(0),
-  (error) => {
+  (/** @type {unknown} */ error) => {
     console.error(error instanceof Error ? error.message : error)
     process.exit(1)
   }
