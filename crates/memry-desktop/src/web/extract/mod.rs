@@ -16,6 +16,7 @@ pub mod fetch;
 pub mod map;
 pub mod metadata;
 pub mod removals;
+pub mod standardize;
 pub mod utils;
 
 use serde::{Deserialize, Serialize};

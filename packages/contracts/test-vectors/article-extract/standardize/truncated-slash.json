@@ -1,0 +1,4 @@
+{
+  "url": "https://example.com/cut/slash",
+  "variants": {"direct":{"input":{"url":"https://example.com/cut/slash","title":"","description":"","hasPublishedOrAuthor":false,"options":{},"smallImages":[],"mainPath":[0,1],"variant":"direct"},"steps":{"callouts":null,"standardize":"<body><p>Ends with a slash after a tag name</p> /</body>"}},"pipeline":{"input":{"url":"https://example.com/cut/slash","title":"","description":"","hasPublishedOrAuthor":false,"options":{},"smallImages":[],"mainPath":[0,1],"variant":"pipeline"},"steps":{"metadataBlock":null,"callouts":null,"smallImages":null,"hidden":null,"eyebrow":null,"selectors":null,"lowScoring":null,"contentPatterns":null,"standardize":"<body><p>Ends with a slash after a tag name</p> /</body>"}}}
+}

@@ -1,4 +1,61 @@
-//! DOM helpers of `dist/utils/dom.js`.
+//! DOM helpers of `dist/utils/dom.js` and `dist/utils.js`.
+
+use crate::web::extract::dom::{Document, NodeId};
+use crate::web::extract::error::ExtractError;
+
+/// `el.tagName.toLowerCase()`: `localName` as parsed or created, lower-cased.
+pub fn tag_lower(doc: &Document, el: NodeId) -> String {
+    doc.local_name(el)
+        .map(str::to_lowercase)
+        .unwrap_or_default()
+}
+
+/// `isSVGElement(el)` of `dist/utils.js`: inside an `<svg>` (or one itself), or an SVG-namespace
+/// element.
+pub fn is_svg_element(doc: &Document, el: NodeId) -> Result<bool, ExtractError> {
+    Ok(doc.closest(el, "svg")?.is_some() || doc.element(el).is_some_and(|e| e.svg))
+}
+
+/// `transferContent(source, target)`: empties `target`, then moves every child of `source` into
+/// it.
+pub fn transfer_content(
+    doc: &mut Document,
+    source: NodeId,
+    target: NodeId,
+) -> Result<(), ExtractError> {
+    doc.replace_children(target, &[])?;
+    while let Some(child) = doc.first_child(source) {
+        doc.append_child(target, child)?;
+    }
+    Ok(())
+}
+
+/// `isDirectTableChild(el, ancestor)`: `el` belongs to `ancestor` itself, not to a table nested
+/// between them.
+pub fn is_direct_table_child(doc: &Document, el: NodeId, ancestor: NodeId) -> bool {
+    let mut parent = doc.parent_node(el);
+    while let Some(p) = parent {
+        if p == ancestor {
+            return true;
+        }
+        if doc.node_name(p) == "TABLE" {
+            return false;
+        }
+        parent = doc.parent_node(p);
+    }
+    false
+}
+
+/// `unwrapElement` of `dist/standardize.js`: the children move in front of `el`, then `el` goes.
+pub fn unwrap_element(doc: &mut Document, el: NodeId) -> Result<(), ExtractError> {
+    if let Some(parent) = doc.parent_node(el) {
+        while let Some(child) = doc.first_child(el) {
+            doc.insert_before(parent, child, Some(el))?;
+        }
+    }
+    doc.remove(el);
+    Ok(())
+}
 
 /// `decodeHTMLEntities(doc, text)`: assigns `text` to a `<textarea>`'s `innerHTML` and reads its
 /// `value`. linkedom's `TextElement` implements both as `textContent`, so no entity is decoded
