@@ -143,9 +143,8 @@ impl Db {
                 // catch a misclassified site.
                 let writer = lock(&self.writer)?;
                 set_query_only(&writer, true)?;
-                let out = f(&writer);
-                set_query_only(&writer, false)?;
-                out
+                let _restore = QueryOnlyOff(&writer);
+                f(&writer)
             }
         }
     }
@@ -157,6 +156,17 @@ async fn join<T>(
     task.await.map_err(|err| StorageError::Failed {
         what: format!("database task did not finish: {err}"),
     })?
+}
+
+/// Turns `query_only` back off on every exit, an `Err` and a panic included.
+struct QueryOnlyOff<'a>(&'a Connection);
+
+impl Drop for QueryOnlyOff<'_> {
+    fn drop(&mut self) {
+        if let Err(err) = set_query_only(self.0, false) {
+            eprintln!("memry-core: {err:?}");
+        }
+    }
 }
 
 fn set_query_only(conn: &Connection, on: bool) -> Result<(), StorageError> {
