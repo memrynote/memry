@@ -142,16 +142,14 @@ enum Marker {
 
 fn marker_state(path: &Path) -> Result<Marker, StorageError> {
     let marker = marker_path(path);
+    // A directory is not a marker (and Windows reports reading one as "access
+    // denied", which would read as an undecidable marker).
+    if marker.is_dir() {
+        return Ok(Marker::Absent);
+    }
     let text = match std::fs::read_to_string(&marker) {
         Ok(text) => text,
-        Err(err)
-            if matches!(
-                err.kind(),
-                std::io::ErrorKind::NotFound | std::io::ErrorKind::IsADirectory
-            ) =>
-        {
-            return Ok(Marker::Absent);
-        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(Marker::Absent),
         Err(err) => return Err(io_failure("the marker", &marker, &err)),
     };
     let quarantined = PathBuf::from(text.trim());
