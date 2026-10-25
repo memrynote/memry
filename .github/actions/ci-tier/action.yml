@@ -1,0 +1,67 @@
+name: CI tier
+description: >-
+  Decide which CI tier a run needs. Only pull requests whose base is feat/tauri-v2 are tiered;
+  every other event (push, workflow_dispatch, a PR into main) gets every output true, so those
+  runs behave as they did before tiering.
+
+  A tiered PR runs the fast tier unless it carries the `full-ci` label. The path outputs say
+  whether the diff can change what a gate protects. If the file list cannot be read, they fail
+  open (true).
+inputs:
+  token:
+    description: Token that can read the pull request's files
+    required: true
+outputs:
+  full:
+    description: The full matrix runs (push, dispatch, `full-ci` label, or a PR not into feat/tauri-v2)
+    value: ${{ steps.tier.outputs.full }}
+  tauri:
+    description: The diff can change Tauri app behavior, so the Tauri build and E2E run
+    value: ${{ steps.tier.outputs.tauri }}
+  swift:
+    description: The diff can change the UniFFI surface or the iOS app, so the Swift bindings check runs
+    value: ${{ steps.tier.outputs.swift }}
+runs:
+  using: composite
+  steps:
+    - id: tier
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        EVENT: ${{ github.event_name }}
+        BASE_REF: ${{ github.base_ref }}
+        REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+      run: |
+        set -euo pipefail
+        emit() { echo "full=$1" >> "$GITHUB_OUTPUT"; echo "tauri=$2" >> "$GITHUB_OUTPUT"; echo "swift=$3" >> "$GITHUB_OUTPUT"; echo "tier: full=$1 tauri=$2 swift=$3"; }
+
+        if [ "$EVENT" != "pull_request" ] || [ "$BASE_REF" != "feat/tauri-v2" ]; then
+          emit true true true; exit 0
+        fi
+        if [[ ",$LABELS," == *",full-ci,"* ]]; then
+          emit true true true; exit 0
+        fi
+
+        if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
+          echo "::warning::could not list the PR files; running the Tauri and Swift gates"
+          emit false true true; exit 0
+        fi
+
+        # App behavior: the Tauri app and its Rust shells, everything the renderer bundles
+        # (packages/, minus the two packages only Swift and the extraction oracle consume),
+        # dependency locks, and the CI definitions. The pure article-extraction library under
+        # crates/memry-desktop/src/web/extract/ has its own unit tests and its own oracle gate.
+        tauri=false
+        if printf '%s\n' "$files" | grep -Ev '^crates/memry-desktop/src/web/extract/' \
+          | grep -Eq '^(apps/desktop-tauri/|crates/memry-tauri/|crates/memry-desktop/|crates/Cargo\.(toml|lock)$|pnpm-lock\.yaml$|packages/(app-core|contracts|db-schema|domain-[a-z]+|editor-schema|i18n|importers|rpc|shared|storage-[a-z]+|sync-[a-z]+|typescript-config)/|\.github/(workflows|actions|scripts)/)'; then
+          tauri=true
+        fi
+
+        # The Swift bindings are generated from memry-core's UniFFI surface and consumed by iOS.
+        swift=false
+        if printf '%s\n' "$files" | grep -Eqi '^(crates/memry-core/|apps/ios/|packages/swift/|\.github/workflows/rust-ci\.yml$)|uniffi'; then
+          swift=true
+        fi
+        emit false "$tauri" "$swift"

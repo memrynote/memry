@@ -4,6 +4,20 @@ name: Desktop Tauri CI
 
 on:
   pull_request:
+    # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
+    # other labeled event skips all jobs, so PRs into main see no change.
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - 'apps/desktop-tauri/**'
+      - 'crates/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'oxlint.config.mts'
+      - '.github/workflows/desktop-tauri-ci.yml'
+  # The full matrix runs on every merge into feat/tauri-v2.
+  push:
+    branches:
+      - feat/tauri-v2
     paths:
       - 'apps/desktop-tauri/**'
       - 'crates/**'
@@ -17,8 +31,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || '' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/tauri-v2' }}
 
 env:
   CI: true
@@ -27,8 +41,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
+  # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
+  plan:
+    name: CI tier
+    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.tier.outputs.full }}
+      tauri: ${{ steps.tier.outputs.tauri }}
+      swift: ${{ steps.tier.outputs.swift }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Decide tier
+        id: tier
+        uses: ./.github/actions/ci-tier
+        with:
+          token: ${{ github.token }}
+
   static:
     name: Static checks
+    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -59,6 +100,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -81,6 +123,7 @@ jobs:
 
   renderer-tests:
     name: Renderer tests
+    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -105,24 +148,18 @@ jobs:
       - name: Script tests
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
+  # Fast tier: linux-x64 only, and only when the diff can change app behavior. Full: every leg.
+  # Entries that name an existing `platform` add their keys to that platform's legs. linux-arm64
+  # builds the artifact the arm64 Ubuntu VM runs (tart); it is not shipped and has no smoke.
   build:
     name: Build ${{ matrix.variant }} (${{ matrix.platform }})
+    needs: plan
+    if: needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
-      matrix:
-        variant: [debug, e2e]
-        platform: [macos-arm64, macos-x64, windows-x64, windows-arm64, linux-x64, linux-arm64]
-        # Entries that name an existing `platform` add their keys to that platform's legs.
-        include:
-          - { platform: macos-arm64, os: macos-15, triple: aarch64-apple-darwin }
-          - { platform: macos-x64, os: macos-15-intel, triple: x86_64-apple-darwin }
-          - { platform: windows-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
-          - { platform: windows-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
-          - { platform: linux-x64, os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu }
-          # Builds the artifact the arm64 Ubuntu VM runs (tart); it is not shipped and has no smoke.
-          - { platform: linux-arm64, os: ubuntu-22.04-arm, triple: aarch64-unknown-linux-gnu }
+      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
@@ -159,6 +196,7 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.variant }}-${{ matrix.triple }}
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -193,17 +231,12 @@ jobs:
 
   e2e:
     name: E2E (${{ matrix.platform }})
-    needs: build
+    needs: [plan, build]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { platform: macos-arm64, os: macos-15, triple: aarch64-apple-darwin }
-          - { platform: windows-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
-          - { platform: windows-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
-          - { platform: linux-x64, os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu }
+      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && '{"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}' || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
     defaults:
       run:
         shell: bash
@@ -279,16 +312,12 @@ jobs:
   # `e2e_` command.
   no-driver-smoke:
     name: No driver (${{ matrix.platform }})
-    needs: build
+    needs: [plan, build]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { platform: macos-arm64, os: macos-15 }
-          - { platform: windows-x64, os: windows-2022 }
-          - { platform: linux-x64, os: ubuntu-22.04 }
+      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && '{"include":[{"platform":"macos-arm64","os":"macos-15"},{"platform":"windows-x64","os":"windows-2022"},{"platform":"linux-x64","os":"ubuntu-22.04"}]}' || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04"}]}') }}
     defaults:
       run:
         shell: bash
