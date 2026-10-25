@@ -24,8 +24,8 @@
 //! A file that is rebuilt is **moved aside** (`index.db.corrupt-<ms>`,
 //! `.newer-<ms>` or `.old-<ms>`, with its `-wal` and `-shm`), never deleted. The
 //! newer one matters: after a downgrade the newer build wants its index back, and
-//! two builds alternating would otherwise wipe it each time. Only the two newest
-//! of each kind are kept.
+//! two builds alternating would otherwise wipe it each time. Only the newest of
+//! each kind is kept.
 
 use std::path::Path;
 
@@ -35,8 +35,9 @@ use crate::storage::guard::{self, is_damage};
 use crate::storage::migrations::{self, INDEX_MIGRATIONS};
 use crate::storage::quarantine;
 
-/// Quarantined copies kept per kind.
-const KEEP_SET_ASIDE: usize = 2;
+/// Quarantined copies kept per kind. One: the index is derived, and a pile of
+/// multi-hundred-megabyte copies is a disk hazard.
+const KEEP_SET_ASIDE: usize = 1;
 
 /// The result of opening the index.
 pub struct OpenedIndex {
@@ -537,5 +538,38 @@ mod tests {
             named(dir.path(), "index.db.").is_empty(),
             "nothing was set aside"
         );
+    }
+
+    /// Another connection holds the file (a second instance, a backup tool):
+    /// the environment's fault on every OS, not the file's. Takes the busy
+    /// timeout (5 s) to give up.
+    #[test]
+    fn an_index_held_by_another_connection_is_an_error_and_keeps_its_rows() {
+        let dir = temp_dir("index-locked");
+        let path = dir.path().join("index.db");
+        index_at_version_one(&path);
+        // A rollback-mode exclusive lock: nothing else may even read the file.
+        let holder = rusqlite::Connection::open(&path).expect("holder");
+        holder
+            .execute_batch("PRAGMA journal_mode = DELETE")
+            .expect("rollback mode");
+        holder.execute_batch("BEGIN EXCLUSIVE").expect("lock");
+
+        let outcome = open_or_rebuild(&path);
+
+        assert!(
+            matches!(outcome, Err(StorageError::Failed { .. })),
+            "{:?}",
+            outcome.err()
+        );
+        holder.execute_batch("ROLLBACK").expect("release");
+        drop(holder);
+        assert!(
+            named(dir.path(), "index.db.").is_empty(),
+            "nothing was set aside"
+        );
+        let reopened = open_or_rebuild(&path).expect("open once it is free");
+        assert!(reopened.rebuild_reason.is_none());
+        assert_eq!(row_count(&reopened.db), 1, "the rows were never touched");
     }
 }

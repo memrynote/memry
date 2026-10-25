@@ -23,31 +23,64 @@ fn suffixed(path: &Path, suffix: &str) -> PathBuf {
     PathBuf::from(format!("{}{suffix}", path.display()))
 }
 
-/// Renames the file and its sidecars to `<path>.<label>-<stamp>[-n]`, the sidecars
-/// keeping their `-wal` / `-shm` suffix so SQLite still replays the log when the
-/// set-aside file is opened. `-n` is a collision counter: an earlier quarantine
-/// is never overwritten.
-pub(crate) fn move_aside(path: &Path, label: &str, stamp: u128) -> Result<PathBuf, StorageError> {
+/// The first free `<path>.<label>-<stamp>[-n]`: an earlier quarantine is never
+/// overwritten.
+pub(crate) fn free_name(path: &Path, label: &str, stamp: u128) -> PathBuf {
     let mut backup = suffixed(path, &format!(".{label}-{stamp}"));
     let mut n = 1;
     while backup.exists() {
         backup = suffixed(path, &format!(".{label}-{stamp}-{n}"));
         n += 1;
     }
+    backup
+}
 
-    let rename = |from: &Path, to: &Path| {
-        std::fs::rename(from, to).map_err(|err| StorageError::Failed {
-            what: format!("could not move {} aside: {err}", from.display()),
-        })
-    };
-    rename(path, &backup)?;
-    for suffix in SIDECARS {
-        let sidecar = suffixed(path, suffix);
-        if sidecar.exists() {
-            rename(&sidecar, &suffixed(&backup, suffix))?;
-        }
-    }
+/// Renames the file and its sidecars to `<path>.<label>-<stamp>[-n]`, the sidecars
+/// keeping their `-wal` / `-shm` suffix so SQLite still replays the log when the
+/// set-aside file is opened.
+pub(crate) fn move_aside(path: &Path, label: &str, stamp: u128) -> Result<PathBuf, StorageError> {
+    let backup = free_name(path, label, stamp);
+    move_to(path, &backup)?;
     Ok(backup)
+}
+
+/// Moves `path` and its sidecars to `backup` and its sidecars.
+pub(crate) fn move_to(path: &Path, backup: &Path) -> Result<(), StorageError> {
+    move_with(path, backup, &|from, to| std::fs::rename(from, to))
+}
+
+type Rename<'a> = &'a dyn Fn(&Path, &Path) -> std::io::Result<()>;
+
+/// **Sidecars first, the main file last, all or nothing.** The main file must
+/// never move while a `-wal` stays behind: SQLite would replay that log onto
+/// whatever database is created at `path` next, writing the old file's pages
+/// into the new one. If any rename fails, the ones already done are undone, so
+/// the database is left exactly where it was. Only a crash between two renames
+/// can leave a half-moved set, and it leaves the main file in place without its
+/// log, never a log without its file.
+fn move_with(path: &Path, backup: &Path, rename: Rename<'_>) -> Result<(), StorageError> {
+    let pairs: Vec<(PathBuf, PathBuf)> = SIDECARS
+        .iter()
+        .map(|suffix| (suffixed(path, suffix), suffixed(backup, suffix)))
+        .filter(|(from, _)| from.exists())
+        .chain(std::iter::once((path.to_path_buf(), backup.to_path_buf())))
+        .collect();
+
+    let mut done: Vec<&(PathBuf, PathBuf)> = Vec::new();
+    for pair in &pairs {
+        if let Err(err) = rename(&pair.0, &pair.1) {
+            for (from, to) in done.into_iter().rev() {
+                // Best effort: the rename that just worked can be undone by the
+                // same call unless something grabbed the file in between.
+                let _ = rename(to, from);
+            }
+            return Err(StorageError::Failed {
+                what: format!("could not move {} aside: {err}", pair.0.display()),
+            });
+        }
+        done.push(pair);
+    }
+    Ok(())
 }
 
 /// Deletes all but the `keep` newest `<path>.<label>-*` quarantines. Only for a
@@ -153,6 +186,92 @@ mod tests {
                 "index.db.old-400",
                 "index.db.old-400-wal",
             ]
+        );
+    }
+
+    fn set_of_three(dir: &Path) -> PathBuf {
+        let path = dir.join("data.db");
+        std::fs::write(&path, "main").expect("main");
+        std::fs::write(dir.join("data.db-wal"), "log").expect("wal");
+        std::fs::write(dir.join("data.db-shm"), "shm").expect("shm");
+        path
+    }
+
+    fn assert_unmoved(dir: &Path) {
+        for (name, body) in [
+            ("data.db", "main"),
+            ("data.db-wal", "log"),
+            ("data.db-shm", "shm"),
+        ] {
+            assert_eq!(
+                std::fs::read_to_string(dir.join(name)).unwrap_or_default(),
+                body,
+                "{name} is back where it was"
+            );
+        }
+        let strays: Vec<_> = std::fs::read_dir(dir)
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .filter(|n| n.contains(".corrupt-"))
+            .collect();
+        assert!(strays.is_empty(), "{strays:?}");
+    }
+
+    fn refuse_when(needle: &'static str) -> impl Fn(&Path, &Path) -> std::io::Result<()> {
+        move |from, to| {
+            if from.to_string_lossy().ends_with(needle) {
+                Err(std::io::Error::other("sharing violation"))
+            } else {
+                std::fs::rename(from, to)
+            }
+        }
+    }
+
+    #[test]
+    fn a_sidecar_that_will_not_move_leaves_the_whole_set_where_it_was() {
+        let dir = temp_dir("quarantine-sidecar-fails");
+        let path = set_of_three(dir.path());
+        let backup = free_name(&path, "corrupt", 1);
+
+        let outcome = move_with(&path, &backup, &refuse_when("-shm"));
+
+        assert!(outcome.is_err());
+        assert_unmoved(dir.path());
+    }
+
+    #[test]
+    fn a_main_file_that_will_not_move_puts_the_sidecars_back() {
+        let dir = temp_dir("quarantine-main-fails");
+        let path = set_of_three(dir.path());
+        let backup = free_name(&path, "corrupt", 1);
+
+        let outcome = move_with(&path, &backup, &refuse_when("data.db"));
+
+        assert!(outcome.is_err());
+        assert_unmoved(dir.path());
+    }
+
+    #[test]
+    fn the_main_file_moves_only_after_its_sidecars() {
+        let dir = temp_dir("quarantine-order");
+        let path = set_of_three(dir.path());
+        let backup = free_name(&path, "corrupt", 1);
+        let order = std::cell::RefCell::new(Vec::new());
+
+        move_with(&path, &backup, &|from, to| {
+            order.borrow_mut().push(
+                from.file_name()
+                    .expect("name")
+                    .to_string_lossy()
+                    .into_owned(),
+            );
+            std::fs::rename(from, to)
+        })
+        .expect("move");
+
+        assert_eq!(
+            order.into_inner().last().map(String::as_str),
+            Some("data.db")
         );
     }
 }

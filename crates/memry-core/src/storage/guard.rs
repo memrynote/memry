@@ -128,7 +128,7 @@ pub fn check_integrity(path: &Path) -> Result<(), StorageError> {
 mod tests {
     use super::*;
     use crate::storage::test_support::temp_dir;
-    use crate::storage::{open_data, open_index};
+    use crate::storage::{OpenOptions, open_data, open_data_with, open_index};
 
     /// What drizzle-kit leaves behind in an Electron `data.db`.
     fn electron_file(path: &Path) {
@@ -238,8 +238,11 @@ mod tests {
             check_integrity(&path),
             Err(StorageError::Corrupt { .. })
         ));
+        let verified = OpenOptions {
+            verify_integrity: true,
+        };
         assert!(matches!(
-            open_data(&path),
+            open_data_with(&path, verified),
             Err(StorageError::Corrupt { .. })
         ));
     }

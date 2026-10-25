@@ -34,31 +34,53 @@ pub use index_db::OpenedIndex;
 
 use crate::api::errors::StorageError;
 
-/// Opens `data.db` and brings it to the latest schema version.
+/// How [`open_data_with`] treats a database it may not be able to trust.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct OpenOptions {
+    /// Run `quick_check(1)` on a read-only probe before the file is opened for
+    /// writing, and report damage (and a recovery that never finished) as
+    /// [`StorageError::Corrupt`] with the file left byte-for-byte as found.
+    ///
+    /// **Off by default**, which is how every shell opened `data.db` before this
+    /// existed: the vault opens, and only a read that reaches the damaged page
+    /// fails. A shell turns it on only when it also offers the user a way out
+    /// ([`recovery::quarantine_and_rebuild`]); without one, `Corrupt` on every
+    /// launch is a dead end. Desktop's session sets it; iOS does not.
+    pub verify_integrity: bool,
+}
+
+/// Opens `data.db` and brings it to the latest schema version, with the default
+/// [`OpenOptions`]. This is what `Vault::open` calls.
 ///
 /// Forward only: an existing file steps through the migrations it has not seen
-/// and keeps every row it already had.
-///
-/// Refuses, without touching the file, a database written by the Electron app
-/// ([`StorageError::ForeignSchema`]), and reports damage as
-/// [`StorageError::Corrupt`] (`quick_check` at open, or a file SQLite cannot
-/// read) so the shell can offer [`recovery::quarantine_and_rebuild`].
+/// and keeps every row it already had. Refuses, without writing the file, a
+/// database written by the Electron app ([`StorageError::ForeignSchema`]).
 pub fn open_data(path: &Path) -> Result<Db, StorageError> {
+    open_data_with(path, OpenOptions::default())
+}
+
+/// [`open_data`] with explicit [`OpenOptions`].
+pub fn open_data_with(path: &Path, options: OpenOptions) -> Result<Db, StorageError> {
     guard::refuse_foreign_schema(path)?;
+    if !options.verify_integrity {
+        let db = Db::open(path)?;
+        db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS).map(drop))?;
+        return Ok(db);
+    }
+
+    let corrupt = || StorageError::Corrupt {
+        path: path.display().to_string(),
+    };
+    if recovery::pending_recovery(path).is_some() {
+        // An unfinished recovery: the file here is not the user's data.
+        return Err(corrupt());
+    }
     // Before the file is opened for writing: a corrupt file stays as found.
     guard::check_integrity(path)?;
-    let corrupt = |err: StorageError| {
-        if err.is_corrupt() {
-            StorageError::Corrupt {
-                path: path.display().to_string(),
-            }
-        } else {
-            err
-        }
-    };
-    let db = Db::open(path).map_err(corrupt)?;
+    let map = |err: StorageError| if err.is_corrupt() { corrupt() } else { err };
+    let db = Db::open(path).map_err(map)?;
     db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS).map(drop))
-        .map_err(corrupt)?;
+        .map_err(map)?;
     Ok(db)
 }
 

@@ -11,6 +11,14 @@
 //! `meta` table travels with them, so `device.id` survives and the vault does not
 //! turn into a stranger to the server.
 //!
+//! **Resumable.** Before the file moves, the quarantine's path is written to a
+//! marker beside the database (`data.db.recovering`). It is removed only after
+//! salvage finished. If the fresh database cannot be built (disk full, a lock) or
+//! the app dies mid-salvage, the marker stays; [`pending_recovery`] reports it,
+//! the verified open refuses to hand out a database while it exists, and the next
+//! [`quarantine_and_rebuild`] picks up from the quarantined file instead of
+//! starting an empty database and losing the salvage.
+//!
 //! Salvage never fails recovery. A table that cannot be read to the end, and a
 //! row the fresh schema refuses, are counted in the [`RecoveryReport`] for the
 //! shell to log.
@@ -22,13 +30,14 @@ use rusqlite::types::Value;
 use rusqlite::{Connection, OpenFlags, params_from_iter};
 
 use crate::api::errors::StorageError;
-use crate::storage::quarantine::{move_aside, now_ms};
+use crate::storage::quarantine::{free_name, move_to, now_ms};
 use crate::storage::{guard, open_data};
 
 /// What recovery did, for the log.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RecoveryReport {
-    /// Where the damaged database now lives.
+    /// Where the damaged database now lives. Never pruned: it may be the only
+    /// copy of unsynced work, so the shell should tell the user where it is.
     pub quarantined: PathBuf,
     pub tables: Vec<TableSalvage>,
     /// Set when salvage could not even start or finish (the damaged file would
@@ -50,17 +59,65 @@ pub struct TableSalvage {
     pub read_error: Option<String>,
 }
 
+fn marker_path(path: &Path) -> PathBuf {
+    PathBuf::from(format!("{}.recovering", path.display()))
+}
+
+/// The quarantined file of a recovery that has not finished, if one is pending
+/// for the database at `path`.
+pub fn pending_recovery(path: &Path) -> Option<PathBuf> {
+    let text = std::fs::read_to_string(marker_path(path)).ok()?;
+    let quarantined = PathBuf::from(text.trim());
+    (!quarantined.as_os_str().is_empty()).then_some(quarantined)
+}
+
+fn write_marker(path: &Path, quarantined: &Path) -> Result<(), StorageError> {
+    let marker = marker_path(path);
+    let failed = |err: std::io::Error| StorageError::Failed {
+        what: format!(
+            "could not record the recovery in {}: {err}",
+            marker.display()
+        ),
+    };
+    let mut file = std::fs::File::create(&marker).map_err(failed)?;
+    std::io::Write::write_all(&mut file, quarantined.display().to_string().as_bytes())
+        .map_err(failed)?;
+    file.sync_all().map_err(failed)
+}
+
 /// Moves the database at `path` aside, creates a fresh migrated one in its
 /// place, and copies the salvageable rows into it. The fresh database is closed
 /// again on return; open it with [`open_data`].
 ///
-/// The caller closes every handle on `path` first: an open connection would
-/// keep writing to the file that was just renamed.
+/// Call it again after a failure and it resumes from the quarantined file (see
+/// the module docs). The caller closes every handle on `path` first: an open
+/// connection would keep writing to the file that was just renamed.
 pub fn quarantine_and_rebuild(path: &Path) -> Result<RecoveryReport, StorageError> {
+    rebuild(path, &open_data)
+}
+
+fn rebuild(
+    path: &Path,
+    open_fresh: &dyn Fn(&Path) -> Result<crate::storage::Db, StorageError>,
+) -> Result<RecoveryReport, StorageError> {
     guard::refuse_foreign_schema(path)?;
-    let quarantined = move_aside(path, "corrupt", now_ms())?;
-    let fresh = open_data(path)?;
+    // A marker whose file is gone and whose database is still here is a crash
+    // before the move: start over. Otherwise the move already happened.
+    let quarantined = match pending_recovery(path) {
+        Some(quarantined) if quarantined.exists() || !path.exists() => quarantined,
+        _ => {
+            let planned = free_name(path, "corrupt", now_ms());
+            write_marker(path, &planned)?;
+            move_to(path, &planned)?;
+            planned
+        }
+    };
+    let fresh = open_fresh(path)?;
     let (tables, salvage_error) = fresh.call_blocking(|conn| Ok(salvage(&quarantined, conn)))?;
+    drop(fresh);
+    // Best effort: a marker left behind only makes the next recovery re-run an
+    // idempotent salvage, and the verified open keeps asking until it is gone.
+    let _ = std::fs::remove_file(marker_path(path));
     Ok(RecoveryReport {
         quarantined,
         tables,
@@ -160,16 +217,23 @@ fn columns(conn: &Connection, table: &str) -> rusqlite::Result<Vec<String>> {
 /// `None` when the table does not exist in the fresh schema (a concept a later
 /// build removed, or a table this build never had).
 fn copy_table(old: &Connection, fresh: &mut Connection, table: &str) -> Option<TableSalvage> {
-    let fresh_columns: HashSet<String> = columns(fresh, table).ok()?.into_iter().collect();
-    if fresh_columns.is_empty() {
-        return None;
-    }
     let mut report = TableSalvage {
         table: table.to_owned(),
         copied: 0,
         rejected: 0,
         read_error: None,
     };
+    let fresh_columns: HashSet<String> = match columns(fresh, table) {
+        Ok(found) => found.into_iter().collect(),
+        Err(err) => {
+            // Skipped, and said so: a silent skip would read as "nothing there".
+            report.read_error = Some(format!("could not read the fresh schema: {err}"));
+            return Some(report);
+        }
+    };
+    if fresh_columns.is_empty() {
+        return None;
+    }
     let shared: Vec<String> = match columns(old, table) {
         Ok(old_columns) => old_columns
             .into_iter()
@@ -229,4 +293,99 @@ fn copy_table(old: &Connection, fresh: &mut Connection, table: &str) -> Option<T
 
 fn quote(identifier: &str) -> String {
     identifier.replace('"', "\"\"").replace('\'', "''")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::storage::test_support::temp_dir;
+
+    fn meta_value(db: &crate::storage::Db, key: &'static str) -> Option<String> {
+        db.read_blocking(|conn| {
+            conn.query_row("SELECT value FROM meta WHERE key = ?1", [key], |row| {
+                row.get(0)
+            })
+            .map(Some)
+            .or_else(|err| match err {
+                rusqlite::Error::QueryReturnedNoRows => Ok(None),
+                other => Err(StorageError::Failed {
+                    what: other.to_string(),
+                }),
+            })
+        })
+        .expect("meta")
+    }
+
+    #[test]
+    fn corrupt_recovery_resumes_from_the_quarantine_after_a_failed_rebuild() {
+        let dir = temp_dir("recovery-resume");
+        let path = dir.path().join("data.db");
+        {
+            let db = open_data(&path).expect("open");
+            db.call_blocking(|conn| {
+                conn.execute(
+                    "INSERT INTO meta (key, value) VALUES ('device.id', 'dev-9')",
+                    [],
+                )
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })
+            })
+            .expect("a row to keep");
+        }
+
+        // The disk fills up after the file moved.
+        let full = |_: &Path| -> Result<crate::storage::Db, StorageError> {
+            Err(StorageError::OutOfSpace {
+                needed_bytes: 1,
+                available_bytes: 0,
+            })
+        };
+        assert!(rebuild(&path, &full).is_err());
+        assert!(
+            !path.exists(),
+            "the database is parked, nothing stands in its place"
+        );
+        let parked = pending_recovery(&path).expect("the recovery is remembered");
+        assert!(parked.exists());
+        // Until it finishes, a verified open does not hand out an empty database.
+        let verified = crate::storage::OpenOptions {
+            verify_integrity: true,
+        };
+        assert!(matches!(
+            crate::storage::open_data_with(&path, verified),
+            Err(StorageError::Corrupt { .. })
+        ));
+        assert!(!path.exists(), "and it did not create one");
+
+        // A later launch finishes the job from the parked file.
+        let report = quarantine_and_rebuild(&path).expect("resume");
+
+        assert_eq!(
+            report.quarantined, parked,
+            "it did not quarantine a second time"
+        );
+        assert_eq!(
+            meta_value(&open_data(&path).expect("open"), "device.id").as_deref(),
+            Some("dev-9")
+        );
+        assert!(
+            pending_recovery(&path).is_none(),
+            "done: the marker is gone"
+        );
+    }
+
+    #[test]
+    fn a_marker_from_a_crash_before_the_move_starts_over() {
+        let dir = temp_dir("recovery-early-crash");
+        let path = dir.path().join("data.db");
+        drop(open_data(&path).expect("open"));
+        write_marker(&path, &dir.path().join("data.db.corrupt-never-moved")).expect("marker");
+
+        let report = quarantine_and_rebuild(&path).expect("recover");
+
+        assert!(report.quarantined.exists());
+        assert!(path.exists());
+        assert!(pending_recovery(&path).is_none());
+    }
 }

@@ -23,8 +23,12 @@ use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use memry_core::storage::recovery::quarantine_and_rebuild;
-use memry_core::storage::{Db, open_data};
+use memry_core::storage::{Db, OpenOptions, open_data, open_data_with};
 
+/// What desktop opens with: damage is reported, not carried on past.
+const VERIFIED: OpenOptions = OpenOptions {
+    verify_integrity: true,
+};
 const TASKS: usize = 25;
 const BULK_ROWS: usize = 1_500;
 
@@ -51,7 +55,27 @@ fn device_id(db: &Db) -> String {
     .expect("device id")
 }
 
+/// A scratch directory removed when the test is done, pass or fail.
+struct Scratch(PathBuf);
+
+impl Scratch {
+    fn new(label: &str) -> Self {
+        let dir =
+            std::env::temp_dir().join(format!("memry-corrupt-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("the scratch directory");
+        Self(dir)
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
 struct Damaged {
+    _scratch: Scratch,
     dir: PathBuf,
     path: PathBuf,
     /// Queued changes before the damage: the rows that must not be lost.
@@ -61,9 +85,8 @@ struct Damaged {
 /// A closed vault directory whose `data.db` holds real tasks written through the
 /// API, their outbox rows, a device id, and a bulk table to damage.
 fn vault_with_a_damaged_page(label: &str) -> Damaged {
-    let dir = std::env::temp_dir().join(format!("memry-corrupt-{label}-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).expect("the scratch directory");
+    let scratch = Scratch::new(label);
+    let dir = scratch.0.clone();
     let path = dir.join("data.db");
 
     let outbox_rows = {
@@ -137,6 +160,7 @@ fn vault_with_a_damaged_page(label: &str) -> Damaged {
     );
     damage_root_page_of(&path, "sync_items");
     Damaged {
+        _scratch: scratch,
         dir,
         path,
         outbox_rows,
@@ -167,9 +191,10 @@ fn damage_root_page_of(path: &Path, table: &str) {
 
 #[test]
 fn corrupt_recovery_open_reports_the_damage() {
-    let Damaged { path, .. } = vault_with_a_damaged_page("open");
+    let damaged = vault_with_a_damaged_page("open");
+    let path = damaged.path.clone();
 
-    let refused = open_data(&path);
+    let refused = open_data_with(&path, VERIFIED);
 
     assert!(
         matches!(refused, Err(StorageError::Corrupt { .. })),
@@ -180,9 +205,8 @@ fn corrupt_recovery_open_reports_the_damage() {
 
 #[test]
 fn corrupt_recovery_salvages_tasks_outbox_and_device_id() {
-    let Damaged {
-        path, outbox_rows, ..
-    } = vault_with_a_damaged_page("salvage");
+    let damaged = vault_with_a_damaged_page("salvage");
+    let (path, outbox_rows) = (damaged.path.clone(), damaged.outbox_rows);
     let report = quarantine_and_rebuild(&path).expect("recovery never fails on damage");
 
     let db = open_data(&path).expect("the rebuilt database opens");
@@ -213,7 +237,10 @@ fn corrupt_recovery_salvages_tasks_outbox_and_device_id() {
 
 #[test]
 fn corrupt_recovery_moves_the_damaged_file_aside_and_keeps_it() {
-    let Damaged { dir, path, .. } = vault_with_a_damaged_page("quarantine");
+    let damaged = vault_with_a_damaged_page("quarantine");
+    let dir = damaged.dir.clone();
+    let path = damaged.path.clone();
+
     let damaged = std::fs::read(&path).expect("read the damage");
 
     let report = quarantine_and_rebuild(&path).expect("recover");
@@ -234,7 +261,9 @@ fn corrupt_recovery_moves_the_damaged_file_aside_and_keeps_it() {
 
 #[test]
 fn corrupt_recovery_leaves_a_vault_that_takes_writes_and_reopens() {
-    let Damaged { path, .. } = vault_with_a_damaged_page("usable");
+    let damaged = vault_with_a_damaged_page("usable");
+    let path = damaged.path.clone();
+
     quarantine_and_rebuild(&path).expect("recover");
 
     let db = open_data(&path).expect("open");
@@ -257,7 +286,9 @@ fn corrupt_recovery_leaves_a_vault_that_takes_writes_and_reopens() {
 
 #[test]
 fn corrupt_recovery_runtime_read_error_is_recognised_as_corruption() {
-    let Damaged { path, .. } = vault_with_a_damaged_page("runtime");
+    let damaged = vault_with_a_damaged_page("runtime");
+    let path = damaged.path.clone();
+
     // A handle that was opened before the damage surfaced: it opens fine and
     // fails on the first statement that reaches the damaged page.
     let db = Db::open(&path).expect("opening reads only the header");
@@ -282,10 +313,13 @@ fn corrupt_recovery_runtime_read_error_is_recognised_as_corruption() {
 
 #[test]
 fn corrupt_recovery_open_leaves_the_damaged_file_byte_identical() {
-    let Damaged { dir, path, .. } = vault_with_a_damaged_page("untouched");
+    let damaged = vault_with_a_damaged_page("untouched");
+    let dir = damaged.dir.clone();
+    let path = damaged.path.clone();
+
     let before = std::fs::read(&path).expect("read");
 
-    let refused = open_data(&path);
+    let refused = open_data_with(&path, VERIFIED);
 
     assert!(matches!(refused, Err(StorageError::Corrupt { .. })));
     assert_eq!(
@@ -302,10 +336,8 @@ fn corrupt_recovery_open_leaves_the_damaged_file_byte_identical() {
 #[test]
 fn corrupt_recovery_reports_a_salvage_that_could_not_start() {
     // Not a database at all: the header is gone, so no table can be listed.
-    let dir = std::env::temp_dir().join(format!("memry-corrupt-total-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).expect("dir");
-    let path = dir.join("data.db");
+    let scratch = Scratch::new("total");
+    let path = scratch.0.join("data.db");
     std::fs::write(&path, vec![0xAB; 8192]).expect("garbage");
 
     let report = quarantine_and_rebuild(&path).expect("a fresh database is still built");
@@ -324,10 +356,8 @@ fn corrupt_recovery_reports_a_salvage_that_could_not_start() {
 
 #[test]
 fn corrupt_recovery_salvages_a_table_that_only_shares_a_prefix_with_a_virtual_one() {
-    let dir = std::env::temp_dir().join(format!("memry-corrupt-prefix-{}", std::process::id()));
-    let _ = std::fs::remove_dir_all(&dir);
-    std::fs::create_dir_all(&dir).expect("dir");
-    let path = dir.join("data.db");
+    let scratch = Scratch::new("prefix");
+    let path = scratch.0.join("data.db");
     {
         let db = open_data(&path).expect("open");
         db.call_blocking(|conn| {
@@ -355,5 +385,45 @@ fn corrupt_recovery_salvages_a_table_that_only_shares_a_prefix_with_a_virtual_on
             .tables
             .iter()
             .all(|t| t.table != "note" && !t.table.starts_with("note_content"))
+    );
+}
+
+/// The default open is what `Vault::open` (and so iOS) runs. It must not start
+/// refusing a vault that opened before: with one damaged page the vault opens,
+/// the healthy tables read, and only the damaged one fails.
+#[test]
+fn corrupt_recovery_default_open_keeps_opening_a_vault_with_one_damaged_page() {
+    let damaged = vault_with_a_damaged_page("default");
+
+    let db = open_data(&damaged.path).expect("the default open carries on");
+
+    assert_eq!(count(&db, "SELECT COUNT(*) FROM tasks"), TASKS as i64);
+    let reading = db.read_blocking(|conn| {
+        conn.query_row("SELECT SUM(LENGTH(payload)) FROM sync_items", [], |row| {
+            row.get::<_, i64>(0)
+        })
+        .map_err(failed)
+    });
+    assert!(reading.expect_err("the damaged table fails").is_corrupt());
+}
+
+#[test]
+fn corrupt_recovery_default_open_of_a_non_database_is_the_error_it_always_was() {
+    let scratch = Scratch::new("garbage");
+    let path = scratch.0.join("data.db");
+    std::fs::write(&path, vec![0xAB; 8192]).expect("garbage");
+
+    let default = open_data(&path).err().expect("not a database");
+    let verified = open_data_with(&path, VERIFIED)
+        .err()
+        .expect("not a database");
+
+    assert!(
+        matches!(default, StorageError::Failed { .. }),
+        "{default:?}"
+    );
+    assert!(
+        matches!(verified, StorageError::Corrupt { .. }),
+        "{verified:?}"
     );
 }
