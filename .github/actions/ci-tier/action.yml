@@ -55,13 +55,13 @@ runs:
         # crates/memry-desktop/src/web/extract/ has its own unit tests and its own oracle gate.
         tauri=false
         if printf '%s\n' "$files" | grep -Ev '^crates/memry-desktop/src/web/extract/' \
-          | grep -Eq '^(apps/desktop-tauri/|crates/memry-tauri/|crates/memry-desktop/|crates/Cargo\.(toml|lock)$|pnpm-lock\.yaml$|packages/(app-core|contracts|db-schema|domain-[a-z]+|editor-schema|i18n|importers|rpc|shared|storage-[a-z]+|sync-[a-z]+|typescript-config)/|\.github/(workflows|actions|scripts)/)'; then
+          | grep -Eq '^(apps/desktop-tauri/|crates/memry-tauri/|crates/memry-desktop/|crates/Cargo\.(toml|lock)$|pnpm-lock\.yaml$|packages/(app-core|contracts|db-schema|domain-[a-z]+|editor-schema|i18n|importers|rpc|shared|storage-[a-z]+|sync-[a-z]+|typescript-config)/)'; then
           tauri=true
         fi
 
         # The Swift bindings are generated from memry-core's UniFFI surface and consumed by iOS.
         swift=false
-        if printf '%s\n' "$files" | grep -Eqi '^(crates/memry-core/|apps/ios/|packages/swift/|\.github/workflows/rust-ci\.yml$)|uniffi'; then
+        if printf '%s\n' "$files" | grep -Eqi '^(crates/memry-core/|apps/ios/|packages/swift/)|uniffi'; then
           swift=true
         fi
         emit false "$tauri" "$swift"
