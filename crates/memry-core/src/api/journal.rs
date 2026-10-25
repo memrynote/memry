@@ -74,7 +74,7 @@ impl Journal {
     /// The live entry for `date`, or `nil` when the day has none.
     pub fn day(&self, date: String) -> Result<Option<JournalDayRecord>, CrdtError> {
         self.db
-            .call_blocking(move |conn| Ok(reads::day(conn, &date)))
+            .read_blocking(move |conn| Ok(reads::day(conn, &date)))
             .map_err(CrdtError::from)?
             .map(|day| day.map(Into::into))
     }
@@ -82,7 +82,7 @@ impl Journal {
     /// The record id the day's entry has, or `nil` when it has no live one.
     pub fn entry_id(&self, date: String) -> Result<Option<String>, StorageError> {
         self.db
-            .call_blocking(move |conn| journal::live_entry(conn, &date))
+            .read_blocking(move |conn| journal::live_entry(conn, &date))
     }
 
     /// Every day of a month (1-12), newest first, flagged against `today`.
@@ -93,7 +93,7 @@ impl Journal {
         today: String,
     ) -> Result<JournalMonthRecord, CrdtError> {
         self.db
-            .call_blocking(move |conn| Ok(reads::month(conn, year, month, &today)))
+            .read_blocking(move |conn| Ok(reads::month(conn, year, month, &today)))
             .map_err(CrdtError::from)?
             .map(Into::into)
     }
@@ -101,7 +101,7 @@ impl Journal {
     /// Twelve month cards, totals and the streak.
     pub fn year(&self, year: i64, today: String) -> Result<JournalYearRecord, CrdtError> {
         self.db
-            .call_blocking(move |conn| Ok(reads::year(conn, year, &today)))
+            .read_blocking(move |conn| Ok(reads::year(conn, year, &today)))
             .map_err(CrdtError::from)?
             .map(Into::into)
     }
@@ -109,7 +109,7 @@ impl Journal {
     /// Every live day of `year`, oldest first, with its activity level.
     pub fn heatmap(&self, year: i64) -> Result<Vec<JournalHeatmapEntry>, CrdtError> {
         self.db
-            .call_blocking(move |conn| Ok(reads::heatmap(conn, year)))
+            .read_blocking(move |conn| Ok(reads::heatmap(conn, year)))
             .map_err(CrdtError::from)?
             .map(|days| days.into_iter().map(Into::into).collect())
     }
@@ -117,14 +117,14 @@ impl Journal {
     /// Current and longest streak counted from the shell's local today (D3).
     pub fn streak(&self, today: String) -> Result<JournalStreakRecord, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::streak(conn, &today))
+            .read_blocking(move |conn| reads::streak(conn, &today))
             .map(Into::into)
     }
 
     /// Dates in `from..=to` that have a live entry, oldest first.
     pub fn days_with_entries(&self, from: String, to: String) -> Result<Vec<String>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::days_with_entries(conn, &from, &to))
+            .read_blocking(move |conn| reads::days_with_entries(conn, &from, &to))
     }
 
     /// What a `[[wiki link]]` points at: a note by title or alias first, then
@@ -135,7 +135,7 @@ impl Journal {
         target: String,
     ) -> Result<Option<WikiTargetMatch>, StorageError> {
         self.db
-            .call_blocking(move |conn| note_meta::resolve_wiki_target_kind(conn, &target))
+            .read_blocking(move |conn| note_meta::resolve_wiki_target_kind(conn, &target))
     }
 
     // MARK: - Body
@@ -287,7 +287,7 @@ impl Journal {
     /// else `nil`.
     pub fn template_for(&self, date: String) -> Result<Option<String>, StorageError> {
         self.db
-            .call_blocking(move |conn| seed::resolve_template_for(conn, &date))
+            .read_blocking(move |conn| seed::resolve_template_for(conn, &date))
     }
 
     /// Seeds an empty day from a template with the shell's locale strings.
@@ -322,7 +322,7 @@ impl Journal {
     /// `journal.defaultTemplate` and the seven weekday templates.
     pub fn settings(&self) -> Result<JournalSettingsRecord, StorageError> {
         self.db
-            .call_blocking(|conn| settings::journal_settings(conn))
+            .read_blocking(settings::journal_settings)
             .map(Into::into)
     }
 
@@ -358,7 +358,7 @@ impl Journal {
     /// The day's reminders, every status, sorted by time.
     pub fn reminders(&self, date: String) -> Result<Vec<JournalReminder>, StorageError> {
         self.db
-            .call_blocking(move |conn| reminders::journal::for_journal(conn, &date))
+            .read_blocking(move |conn| reminders::journal::for_journal(conn, &date))
             .map(|list| list.into_iter().map(Into::into).collect())
     }
 

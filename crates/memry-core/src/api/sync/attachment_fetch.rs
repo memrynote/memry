@@ -81,7 +81,7 @@ impl VaultSync {
         let wanted = attachment_id.clone();
         let cached = self
             .db
-            .call(move |conn| Ok(attachments::get(conn, &wanted)))
+            .read(move |conn| Ok(attachments::get(conn, &wanted)))
             .await??;
         let unmetered_only = cached.as_ref().is_none_or(|row| row.unmetered_only);
 
@@ -184,7 +184,7 @@ impl VaultSync {
     ) -> Result<AttachmentRedriveSummary, SyncError> {
         let missing = self
             .db
-            .call(|conn| Ok(attachments::missing_downloads(conn)))
+            .read(|conn| Ok(attachments::missing_downloads(conn)))
             .await??;
         let mut summary = AttachmentRedriveSummary {
             downloaded: 0,

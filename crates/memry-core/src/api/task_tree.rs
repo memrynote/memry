@@ -58,7 +58,7 @@ impl TreeNode for TaskRecord {
 impl Tasks {
     /// Every live task's place in the tree, in `position` order.
     pub fn tree(&self) -> Result<Vec<TaskTreeEntry>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             let tasks = task_records::all(conn)?;
             let nested = task_settings::read(conn)?.nested_subtasks;
             Ok(tree_entries(&tasks, nested))
@@ -68,7 +68,7 @@ impl Tasks {
     /// The "Move under…" picker for `task_id`: its project's unarchived tasks
     /// as the tree, depth first. Empty when the task is gone.
     pub fn move_under_places(&self, task_id: String) -> Result<Vec<TaskPlace>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let tasks = task_records::all(conn)?;
             let nested = task_settings::read(conn)?.nested_subtasks;
             Ok(places(&tasks, &task_id, nested))

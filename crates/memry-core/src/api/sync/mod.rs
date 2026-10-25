@@ -332,9 +332,7 @@ impl VaultSync {
     /// backoff: the "N pending" a status line shows (spec 006 ST15). Blocks,
     /// makes no request.
     pub fn pending_changes(&self) -> Result<u32, SyncError> {
-        let depth = self
-            .db
-            .call_blocking(|conn| crate::sync::outbox::depth(conn))?;
+        let depth = self.db.read_blocking(crate::sync::outbox::depth)?;
         Ok(u32::try_from(depth).unwrap_or(u32::MAX))
     }
 
@@ -347,7 +345,7 @@ impl VaultSync {
     pub fn is_first_sync_complete(&self) -> Result<bool, SyncError> {
         Ok(self
             .db
-            .call_blocking(|conn| read_meta(conn, META_FIRST_SYNC_COMPLETED))?
+            .read_blocking(|conn| read_meta(conn, META_FIRST_SYNC_COMPLETED))?
             .is_some())
     }
 
@@ -448,7 +446,7 @@ impl VaultSync {
         let wanted = note_id.clone();
         let live = self
             .db
-            .call(move |conn| Ok(reads::document_exists(conn, &wanted)))
+            .read(move |conn| Ok(reads::document_exists(conn, &wanted)))
             .await?;
         if !live {
             return Err(SyncError::UnknownNote { id: note_id });

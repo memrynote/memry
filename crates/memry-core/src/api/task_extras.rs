@@ -232,7 +232,7 @@ impl Tasks {
         now: String,
     ) -> Result<QuickAddParse, StorageError> {
         let now = local(&now)?;
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let projects: Vec<quick_add::QuickAddProject> = projects::list(conn, true)?
                 .into_iter()
                 .map(|project| quick_add::QuickAddProject {
@@ -270,7 +270,7 @@ impl Tasks {
         task_id: String,
         active_only: bool,
     ) -> Result<Vec<ReminderItem>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(reminders::for_task(conn, &task_id, active_only)?
                 .into_iter()
                 .map(ReminderItem::from)
@@ -348,7 +348,7 @@ impl Tasks {
         &self,
         until_ms: Option<i64>,
     ) -> Result<Vec<DueReminderItem>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(reminders::due_window(conn, until_ms)?
                 .into_iter()
                 .map(|due| DueReminderItem {
@@ -372,7 +372,7 @@ impl Tasks {
         offset: u32,
     ) -> Result<ActivityPageItem, StorageError> {
         let device = self.device_id.clone();
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let query = ActivityQuery {
                 task_id: &task_id,
                 actions: &actions,
@@ -406,7 +406,7 @@ impl Tasks {
         query: String,
         limit: u32,
     ) -> Result<Vec<RelatedItemRecord>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(related_items::search(conn, &query, limit as usize)?
                 .into_iter()
                 .map(RelatedItemRecord::from)
@@ -417,7 +417,7 @@ impl Tasks {
     /// A task's linked notes and canvases, each present, missing or not on
     /// this device.
     pub fn linked_items(&self, task_id: String) -> Result<Vec<LinkedItemRecord>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let Some(task) = task_records::get(conn, &task_id)? else {
                 return Ok(Vec::new());
             };
