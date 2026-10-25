@@ -41,6 +41,8 @@ env:
   HUSKY: 0
   NODE_OPTIONS: --max-old-space-size=4096
   CARGO_TERM_COLOR: always
+  # Native modules are rebuilt once by the tag's build-packaged-app; skip the postinstall rebuild.
+  SKIP_ELECTRON_REBUILD: 1
   VPK_VERSION: 1.2.161
   MACOSX_DEPLOYMENT_TARGET: '13.0'
   MEMRY_UPDATE_FEED_URL: https://github.com/${{ inputs.feed_repo }}
