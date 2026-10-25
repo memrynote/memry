@@ -4,8 +4,10 @@
 //! The port is built in stages (Step 26, #3543). Stage 1 carries the foundations: the JS string
 //! semantics, the arena DOM with its htmlparser2 parser, serializer and css-select selector
 //! engine, the result mapping and the fetch seam. Stage 2a adds Defuddle's constants, the
-//! metadata extractor, JSON-LD and meta-tag collection, and the content boundary.
-//! `extract_article` arrives with the pipeline that feeds it.
+//! metadata extractor, JSON-LD and meta-tag collection, and the content boundary. Stages 2b to
+//! 2d add the removals, standardization and markdown, and stage 2e the `Defuddle` class around
+//! them, so `extract_article` runs for generic pages. Site extractors, footnotes, code, image
+//! and math handlers arrive with their stages.
 
 pub mod constants;
 pub mod defuddle;
@@ -22,6 +24,11 @@ pub mod utils;
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
+
+use defuddle::{Defuddle, DefuddleResponse};
+use error::ExtractError;
+use fetch::Fetcher;
+use map::to_article_capture;
 
 /// `ArticleCapture` of `packages/article-extract/src/map.ts`, serialised with the key order
 /// `mapToArticleCapture` produces. Absent optional fields are omitted, never null.
@@ -85,4 +92,36 @@ pub enum ExtractionStatus {
     Full,
     Partial,
     Failed,
+}
+
+/// `Defuddle(document, url, { markdown: true })` without the markdown step: parses with
+/// linkedom's rules and runs `parseAsync`. `content` is the standardized HTML. An empty `url`
+/// becomes `about:blank`, as `node.js` does.
+pub fn run_defuddle(html: &str, url: &str) -> Result<DefuddleResponse, ExtractError> {
+    let page_url = if url.is_empty() { "about:blank" } else { url };
+    Defuddle::new(dom::Document::parse_html(html), page_url).parse_async()
+}
+
+/// `extractFromHtml(html, url, { now })` of `packages/article-extract/src/node.ts`, with the
+/// errors JS would reject with returned instead. The fetcher serves the async extractors, which
+/// arrive in stage 6; no extractor fetches yet.
+pub fn try_extract_article(
+    html: &str,
+    url: &str,
+    now: &str,
+    _fetcher: &dyn Fetcher,
+) -> Result<ArticleCapture, ExtractError> {
+    let mut response = run_defuddle(html, url)?;
+    response.content = markdown::create_markdown_content(&response.content);
+    Ok(to_article_capture(&response.to_map_input(), url, now))
+}
+
+/// `try_extract_article` where a failure (a page with no element at all, a selector error
+/// outside the pipeline's own recovery) yields a `failed` capture with no content, so one bad
+/// page never aborts the caller.
+pub fn extract_article(html: &str, url: &str, now: &str, fetcher: &dyn Fetcher) -> ArticleCapture {
+    try_extract_article(html, url, now, fetcher).unwrap_or_else(|error| {
+        tracing::error!(%error, "article extraction failed");
+        to_article_capture(&map::DefuddleResult::default(), url, now)
+    })
 }

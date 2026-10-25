@@ -168,6 +168,16 @@ impl Document {
         parser::parse(html, &mut builder);
     }
 
+    /// `parseHTML(doc, html)` of `dist/utils/dom.js`: a template's `innerHTML = html` and its
+    /// `content` fragment, which linkedom fills with deep copies of the parsed children.
+    pub fn parse_fragment(&mut self, html: &str) -> NodeId {
+        let fragment = self.create_document_fragment();
+        if !html.is_empty() {
+            self.parse_into(fragment, html);
+        }
+        fragment
+    }
+
     /// `element.innerHTML = html`. The text elements (script, style, textarea, title) keep it as
     /// text.
     pub fn set_inner_html(&mut self, node: NodeId, html: &str) -> Result<(), ExtractError> {

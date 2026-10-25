@@ -1,0 +1,8 @@
+{
+  "input": {"url":"https://example.com/legacy/page","now":"2025-03-04T05:06:07.000Z"},
+  "math": false,
+  "content": "<body>  <p>Legacy  text &amp; instruction.</p> <p>End.</p> </body>",
+  "markdown": "Legacy text & instruction.\n\nEnd.",
+  "raw": {"title":"Legacy page","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":5},
+  "expected": {"url":"https://example.com/legacy/page","mode":"article","contentMarkdown":"Legacy text & instruction.\n\nEnd.","excerpt":"Legacy text & instruction.\n\nEnd.","extractionStatus":"partial","properties":{"title":"Legacy page","source":"https://example.com/legacy/page","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

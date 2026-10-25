@@ -1,0 +1,8 @@
+{
+  "input": {"url":"https://example.com/attrs/quirks","now":"2025-03-04T05:06:07.000Z"},
+  "math": false,
+  "content": "<body> <p>dups and case</p> <p>numeric and special keys</p> <a href=\"https://example.com/x\" title=\"spaced\">self-closing slash</a> <input type=\"checkbox\" checked> tailwind <p>json attr</p> <p>second class ignored</p> <b>nameless</b> <i>quoted name</i> <u>no space</u> </body>",
+  "markdown": "dups and case\n\nnumeric and special keys\n\n[self-closing slash](https://example.com/x \"spaced\")  tailwind\n\njson attr\n\nsecond class ignored\n\n**nameless** *quoted name* no space",
+  "raw": {"title":"","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":20},
+  "expected": {"url":"https://example.com/attrs/quirks","mode":"article","contentMarkdown":"dups and case\n\nnumeric and special keys\n\n[self-closing slash](https://example.com/x \"spaced\")  tailwind\n\njson attr\n\nsecond class ignored\n\n**nameless** *quoted name* no space","excerpt":"dups and case\n\nnumeric and special keys\n\n[self-closing slash](https://example.com/x \"spaced\")  tailwind\n\njson attr\n\nsecond class ignored\n\n**nameless** *quoted name* no space","extractionStatus":"partial","properties":{"title":"https://example.com/attrs/quirks","source":"https://example.com/attrs/quirks","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}
