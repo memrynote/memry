@@ -16,6 +16,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { pmSchemaCases, yxmlCases } from './cases-pm'
 import { frontmatterCases, markdownClassCases, type OracleCase } from './cases-frontmatter'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -45,6 +46,16 @@ function vectorFiles(): VectorFile[] {
       path: 'markdown-class.json',
       note: 'classifyMarkdownContent of @memry/shared/markdown-class: the note and large-file classes. Thresholds are per case so the bounds are testable on small inputs.',
       cases: markdownClassCases()
+    },
+    {
+      path: 'pm-schema.json',
+      note: 'The memry ProseMirror schema as BlockNote builds it (nodes in schema.spec.nodes order, marks, derived facts), and prosemirror-model ContentMatch behaviour per node type: matchFragment, fillBefore, defaultType and findWrapping over sequences of generated children.',
+      cases: pmSchemaCases()
+    },
+    {
+      path: 'yxml.json',
+      note: 'y-prosemirror 1.3.7 reading a Yjs fragment into a ProseMirror document (yXmlFragmentToProseMirrorRootNode: unbuildable elements are removed) and writing that document back (prosemirrorToYXmlFragment), as canonical fragment text. Updates are authored under client id 0x6d656d72.',
+      cases: yxmlCases()
     }
   ]
 }

@@ -37,7 +37,10 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/frontmatter.json':
     'a1a38199e9ef01def9374d4312d52048d6c97885ecb40d6fc2b04d9f195fd276',
   'markdown-convert/markdown-class.json':
-    '1641fc52c860c385dde2d0a54145880e6f6edef84f92e494621563a47ea0744f'
+    '1641fc52c860c385dde2d0a54145880e6f6edef84f92e494621563a47ea0744f',
+  'markdown-convert/pm-schema.json':
+    '5e524687c59e0e435db25c72248be9723b11fe3721602a6d65027f11de801836',
+  'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb'
 }
 
 const OPS_PER_FILE: Record<string, Record<string, number>> = {
@@ -49,7 +52,9 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
     load: 173,
     write: 10
   },
-  'markdown-convert/markdown-class.json': { classify: 23 }
+  'markdown-convert/markdown-class.json': { classify: 23 },
+  'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
+  'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 }
 }
 
 function opCounts(file: VectorFile): Record<string, number> {
@@ -115,6 +120,35 @@ describe('markdown-convert class', () => {
 
     it('holds at least 120 dump cases', () => {
       expect(file.cases.filter((entry) => entry.op === 'dump').length).toBeGreaterThanOrEqual(120)
+    })
+  })
+
+  describe('yxml coverage (protocol 12.5.0)', () => {
+    const file = loadVectorFile<VectorFile>('markdown-convert/yxml.json')
+    const ids = new Set(file.cases.map((entry) => entry.id))
+    const required = [
+      // y-prosemirror removes an element the schema cannot build, and what is left
+      // of its parents with it (12.5.0).
+      'yxml/read/unknown-node-drops-container',
+      'yxml/read/unknown-node-keeps-sibling',
+      'yxml/read/childless-table-row',
+      'yxml/read/column-list-with-one-column',
+      'yxml/read/code-block-rejects-marks',
+      'yxml/read/unknown-mark-drops-text',
+      // The read of a document BlockNote wrote loses nothing.
+      'yxml/roundtrip/note-blocks-table',
+      'yxml/roundtrip/note-blocks-an-empty-document',
+      // Fragments y-prosemirror cannot convert at all.
+      'yxml/read/text-at-fragment-root'
+    ]
+
+    it('has a case for every rule the list names', () => {
+      expect(required.filter((id) => !ids.has(id))).toEqual([])
+    })
+
+    it('reads every note-blocks document', () => {
+      const reads = file.cases.filter((entry) => entry.id.startsWith('yxml/read/note-blocks-'))
+      expect(reads).toHaveLength(35)
     })
   })
 })

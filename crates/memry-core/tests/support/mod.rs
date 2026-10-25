@@ -116,6 +116,12 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/markdown-class" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/markdown-class.json"
         ),
+        "markdown-convert/pm-schema" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/pm-schema.json"
+        ),
+        "markdown-convert/yxml" => {
+            include_str!("../../../../packages/contracts/test-vectors/markdown-convert/yxml.json")
+        }
         other => panic!("no committed vector file named {other}"),
     };
     serde_json::from_str(raw)
