@@ -1,0 +1,23 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Install - Example Docs</title>
+<meta name="description" content="Install the toolkit on macOS, Linux or Windows.">
+<link rel="stylesheet" href="/static/site.css"></head>
+<body class="docs">
+<nav class="sidebar-nav" aria-label="Docs"><ul><li class="active"><a href="/guide/install">Install</a></li><li><a href="/guide/config">Configure</a></li></ul></nav>
+<div class="doc-container"><div class="toc"><h2>On this page</h2><ul><li><a href="#macos">macOS</a></li><li><a href="#linux">Linux</a></li></ul></div>
+<main class="doc-content"><h1 id="install">Install</h1>
+<p>The toolkit ships as a single static binary. Pick the method that fits your platform.</p>
+<h2 id="macos">macOS</h2>
+<pre class="highlight"><code class="language-bash"><span class="token function">brew</span> install example-toolkit
+example --version</code></pre>
+<p>If you use <code>MacPorts</code>, run <code>sudo port install example</code> instead.</p>
+<h2 id="linux">Linux</h2>
+<table class="docs-table"><thead><tr><th>Distro</th><th>Command</th></tr></thead><tbody>
+<tr><td>Debian</td><td><code>apt install example</code></td></tr>
+<tr><td>Fedora</td><td><code>dnf install example</code></td></tr></tbody></table>
+<div class="admonition note"><p class="admonition-title">Note</p><p>Root is not required for the user install.</p></div>
+<h3 id="verify">Verify the install</h3>
+<ol><li>Open a new shell.</li><li>Run <kbd>example doctor</kbd>.</li><li>Confirm all checks pass.</li></ol>
+<div class="pagination"><a rel="prev" href="/guide/intro">Previous</a><a rel="next" href="/guide/config">Next</a></div>
+</main></div>
+<footer class="doc-footer">Edit this page on GitHub</footer>
+</body></html>

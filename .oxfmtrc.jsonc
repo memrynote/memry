@@ -51,6 +51,10 @@
     "packages/contracts/test-vectors/*.json",
     "packages/contracts/test-vectors/markdown-roundtrip/*.json",
     "packages/contracts/test-vectors/markdown-convert/*.json",
+    "packages/contracts/test-vectors/article-extract/",
+
+    // Saved pages of the article-extraction corpus, parsed byte for byte by the Rust tests.
+    "crates/memry-desktop/tests/fixtures/article-extract/",
 
     // Generated minified bundle (scripts/generate-ios-article-extract.mjs); a formatter
     // reflows 1.2 MB of minified JS into 27k lines with trailing whitespace.
