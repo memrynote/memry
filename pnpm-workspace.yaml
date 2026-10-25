@@ -33,7 +33,7 @@ overrides:
   proxy-addr: '>=2.0.8'
   tinypool: '>=2.1.2'
   rollup: '>=4.59.0'
-  hono: '>=4.13.12'
+  hono: '>=4.13.13'
   # @modelcontextprotocol/sdk >=1.30 accepts '^1.19.9 || ^2.0.5';
   # 1.x has no patch.
   '@hono/node-server': '>=2.0.5 <3'
