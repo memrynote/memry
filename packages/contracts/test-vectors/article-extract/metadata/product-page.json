@@ -1,0 +1,10 @@
+{
+  "metaTags": [{"name":null,"property":"og:type","content":"product"},{"name":null,"property":"og:image","content":"https://shop.example.com/img/bottle.jpg"}],
+  "schemaOrgData": "[{\"@context\":\"https://schema.org\",\"@type\":\"Product\",\"name\":\"Steel Bottle 750 ml\",\"description\":\"Double-walled, keeps drinks cold for 24 hours.\",\"offers\":{\"@type\":\"Offer\",\"price\":\"24.00\",\"priceCurrency\":\"EUR\"}}]",
+  "schemaText": "",
+  "metadata": {"title":"Steel Bottle 750 ml","description":"Double-walled, keeps drinks cold for 24 hours.","domain":"","favicon":"","image":"https://shop.example.com/img/bottle.jpg","language":"","published":"","author":"","site":"Example Shop"},
+  "contentStart": 19,
+  "contentStartNoTitle": 19,
+  "contentStartHeading": 19,
+  "above": "1111111111110000001000001000011"
+}

@@ -1,0 +1,10 @@
+{
+  "metaTags": [{"name":"viewport","property":null,"content":"width=device-width, initial-scale=1"},{"name":"description","property":null,"content":"Small, sharp tools outlast sprawling platforms. Here is why."},{"name":"author","property":null,"content":"Mira Okafor"},{"name":null,"property":"og:title","content":"Why small tools win"},{"name":null,"property":"og:type","content":"article"},{"name":null,"property":"og:image","content":"https://blog.example.org/img/small-tools.jpg"},{"name":null,"property":"article:published_time","content":"2024-05-14T09:30:00Z"}],
+  "schemaOrgData": "[{\"@context\":\"https://schema.org\",\"@type\":\"BlogPosting\",\"headline\":\"Why small tools win\",\"author\":{\"@type\":\"Person\",\"name\":\"Mira Okafor\"},\"datePublished\":\"2024-05-14T09:30:00Z\"}]",
+  "schemaText": "",
+  "metadata": {"title":"Why small tools win","description":"Small, sharp tools outlast sprawling platforms. Here is why.","domain":"blog.example.org","favicon":"https://blog.example.org/favicon.ico","image":"https://blog.example.org/img/small-tools.jpg","language":"en","published":"2024-05-14T09:30:00Z","author":"Mira Okafor","site":"Mira Okafor"},
+  "contentStart": 26,
+  "contentStartNoTitle": 26,
+  "contentStartHeading": 26,
+  "above": "11111111111111111000111100000000000000000001000000100001111"
+}

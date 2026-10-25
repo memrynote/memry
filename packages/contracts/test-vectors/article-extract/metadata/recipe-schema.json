@@ -1,0 +1,10 @@
+{
+  "metaTags": [{"name":null,"property":"og:image","content":"/images/cake.jpg"}],
+  "schemaOrgData": "[[{\"@context\":\"https://schema.org\",\"@type\":\"Recipe\",\"name\":\"Lemon Olive Oil Cake\",\"author\":{\"@type\":\"Person\",\"name\":\"Rosa Bellini\"},\"datePublished\":\"2023-11-02\",\"description\":\"A moist, fragrant cake that keeps for days.\",\"recipeYield\":\"8 servings\",\"prepTime\":\"PT15M\",\"cookTime\":\"PT45M\",\"recipeIngredient\":[\"3 eggs\",\"200 g sugar\",\"120 ml olive oil\",\"zest of 2 lemons\",\"220 g flour\"],\"recipeInstructions\":[{\"@type\":\"HowToStep\",\"text\":\"Whisk eggs and sugar until pale.\"},{\"@type\":\"HowToStep\",\"text\":\"Fold in oil, zest and flour.\"},{\"@type\":\"HowToStep\",\"text\":\"Bake at 170C for 45 minutes.\"}]},{\"@type\":\"BreadcrumbList\",\"itemListElement\":[]}]]",
+  "schemaText": "",
+  "metadata": {"title":"Lemon Olive Oil Cake","description":"A moist, fragrant cake that keeps for days.","domain":"","favicon":"","image":"/images/cake.jpg","language":"","published":"2023-11-02","author":"Rosa Bellini","site":"Rosa Bellini"},
+  "contentStart": 26,
+  "contentStartNoTitle": 26,
+  "contentStartHeading": 26,
+  "above": "11111111110001110000011000010"
+}

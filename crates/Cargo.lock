@@ -2882,6 +2882,7 @@ dependencies = [
  "hex",
  "memry-core",
  "rcgen",
+ "regex",
  "reqwest",
  "rustls",
  "serde",
@@ -2895,6 +2896,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]

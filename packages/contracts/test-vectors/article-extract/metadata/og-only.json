@@ -1,0 +1,10 @@
+{
+  "metaTags": [{"name":null,"property":"og:title","content":"Open Graph & friends"},{"name":null,"property":"og:description","content":"Only og: tags describe this page."},{"name":null,"property":"og:site_name","content":"Example"},{"name":null,"property":"og:image","content":"//cdn.example.com/og.png"},{"name":null,"property":"article:author","content":"Ola Nordmann"},{"name":null,"property":"article:published_time","content":"2021-12-24"}],
+  "schemaOrgData": "[]",
+  "schemaText": "",
+  "metadata": {"title":"Open Graph & friends","description":"Only og: tags describe this page.","domain":"","favicon":"","image":"//cdn.example.com/og.png","language":"","published":"2021-12-24","author":"Ola Nordmann","site":"Example"},
+  "contentStart": 10,
+  "contentStartNoTitle": 10,
+  "contentStartHeading": 10,
+  "above": "11111111110"
+}
