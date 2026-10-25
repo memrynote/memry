@@ -250,9 +250,6 @@ jobs:
         with:
           repository: memrynote/memry
           ref: ${{ inputs.source_ref }}
-        with:
-          repository: memrynote/memry
-          ref: ${{ inputs.source_ref }}
           fetch-depth: 0
       - uses: ./.github/actions/setup-pnpm
       - uses: actions/setup-node@v4
