@@ -94,6 +94,11 @@ jobs:
       - name: Test
         run: cargo test -p memry-core -p memry-desktop -p memry-tauri
 
+      # Release only: the latency assertions are meaningless in a debug build. Proves reads
+      # through the pool do not wait behind a held write transaction.
+      - name: Test (memry-core, read pool contention, release)
+        run: cargo test -p memry-core --release --test read_pool_contention
+
       # The markdown converter (cargo feature `markdown`) is off by default so iOS links none
       # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
       # the core is linted and tested with the feature explicitly.

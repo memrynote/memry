@@ -100,14 +100,19 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "journal_aliases",
         sql: include_str!("migrations/data/0012_journal_aliases.sql"),
     },
+    Migration {
+        version: 13,
+        name: "note_snapshots",
+        sql: include_str!("migrations/data/0013_note_snapshots.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.
 ///
-/// This list exists to build the file, not to evolve it. An `index.db` at an
-/// unexpected version is deleted and rebuilt rather than migrated (§A.0), so a
-/// later entry here is a new shape for a fresh file, never a step applied to a
-/// user's existing one.
+/// An `index.db` at a lower version migrates in place through this list and
+/// keeps every row; only a damaged file, or one written by a newer build, is
+/// deleted and rebuilt (`index_db`). So an entry is hand written, additive and
+/// idempotent (`IF NOT EXISTS`), exactly like a `data.db` migration.
 pub const INDEX_MIGRATIONS: &[Migration] = &[
     Migration {
         version: 1,
@@ -228,7 +233,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| user_version(conn))
             .expect("user_version");
-        assert_eq!(version, 12);
+        assert_eq!(version, 13);
 
         let names = table_names(&db);
         // Source of record, §A.2.
@@ -339,7 +344,7 @@ mod tests {
         let version = db
             .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
             .expect("step forward");
-        assert_eq!(version, 12);
+        assert_eq!(version, 13);
 
         let (count, payload): (i64, String) = db
             .call_blocking(|conn| {
@@ -417,5 +422,61 @@ mod tests {
         let names = table_names(&db);
         assert!(names.iter().any(|n| n == "kept"));
         assert!(!names.iter().any(|n| n == "added"));
+    }
+
+    #[test]
+    fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
+        let db = Db::open_in_memory().expect("open");
+        db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..12]))
+            .expect("a database as the last shipped build left it");
+        db.call_blocking(|conn| {
+            conn.execute(
+                "INSERT INTO meta (key, value) VALUES ('device.id', 'dev-1')",
+                [],
+            )
+            .map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+        })
+        .expect("a row to keep");
+        assert!(!table_names(&db).iter().any(|n| n == "note_snapshots"));
+
+        let version = db
+            .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+            .expect("step forward");
+        assert_eq!(version, 13);
+
+        let (device, indexes): (String, i64) = db
+            .call_blocking(|conn| {
+                conn.execute(
+                    "INSERT INTO note_snapshots
+                       (id, note_id, content, title, content_hash, reason, created_at)
+                     VALUES ('s1', 'n1', 'body', 'Title', 'hash', 'manual', '2026-10-24T00:00:00Z')",
+                    [],
+                )
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })?;
+                let device = conn
+                    .query_row("SELECT value FROM meta WHERE key = 'device.id'", [], |row| row.get(0))
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                let indexes = conn
+                    .query_row(
+                        "SELECT COUNT(*) FROM sqlite_master
+                         WHERE type = 'index' AND tbl_name = 'note_snapshots'
+                           AND name IN ('idx_note_snapshots_note_id', 'idx_note_snapshots_created')",
+                        [],
+                        |row| row.get(0),
+                    )
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })?;
+                Ok((device, indexes))
+            })
+            .expect("read back");
+        assert_eq!(device, "dev-1");
+        assert_eq!(indexes, 2);
     }
 }

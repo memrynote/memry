@@ -141,7 +141,7 @@ impl Notes {
     /// dropping the property.
     pub fn metadata(&self, id: String) -> Result<Option<NoteMetadata>, StorageError> {
         self.db
-            .call_blocking(move |conn| note_meta::metadata(conn, &id))
+            .read_blocking(move |conn| note_meta::metadata(conn, &id))
     }
 
     /// What a `[[wiki link]]` points at: by vault path when the note half

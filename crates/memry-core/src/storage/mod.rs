@@ -10,16 +10,20 @@
 //! The split is not tidiness. `index.db` is deletable: a full-text rebuild is a
 //! large write that must never contend with, or risk, the outbox, which is the
 //! one table whose loss loses a user's work. So `data.db` migrates forward and
-//! `index.db` gets deleted and rebuilt whenever it is not exactly what this
-//! build expects.
+//! `index.db` migrates in place and is deleted and rebuilt only when it is
+//! damaged or newer than this build.
 //!
 //! File protection (`completeUntilFirstUserAuthentication`) and backup exclusion
 //! are attributes of the files, not of the connections, and belong to the shell
 //! through the `FileProtection` seam.
 
 pub mod connection;
+pub mod guard;
 pub mod index_db;
 pub mod migrations;
+pub(crate) mod pool;
+pub mod pragmas;
+pub mod recovery;
 pub mod repositories;
 
 use std::path::Path;
@@ -33,9 +37,38 @@ use crate::api::errors::StorageError;
 ///
 /// Forward only: an existing file steps through the migrations it has not seen
 /// and keeps every row it already had.
+///
+/// Refuses, without touching the file, a database written by the Electron app
+/// ([`StorageError::ForeignSchema`]), and reports damage as
+/// [`StorageError::Corrupt`] (`quick_check` at open, or a file SQLite cannot
+/// read) so the shell can offer [`recovery::quarantine_and_rebuild`].
 pub fn open_data(path: &Path) -> Result<Db, StorageError> {
-    let db = Db::open(path)?;
-    db.call_blocking(|conn| migrations::run(conn, migrations::DATA_MIGRATIONS))?;
+    guard::refuse_foreign_schema(path)?;
+    let corrupt = |err: StorageError| {
+        if err.is_corrupt() {
+            StorageError::Corrupt {
+                path: path.display().to_string(),
+            }
+        } else {
+            err
+        }
+    };
+    let db = Db::open(path).map_err(corrupt)?;
+    db.call_blocking(|conn| {
+        let check: String = conn
+            .query_row("PRAGMA quick_check(1)", [], |row| row.get(0))
+            .map_err(|err| StorageError::Failed {
+                what: format!("quick_check failed to run: {err}"),
+            })?;
+        if check != "ok" {
+            return Err(StorageError::Corrupt {
+                path: path.display().to_string(),
+            });
+        }
+        migrations::run(conn, migrations::DATA_MIGRATIONS)?;
+        Ok(())
+    })
+    .map_err(corrupt)?;
     Ok(db)
 }
 

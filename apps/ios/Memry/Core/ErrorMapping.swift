@@ -454,6 +454,14 @@ extension ErrorMapping {
         case .OutOfSpace:
             copy("storage.outOfSpace", "This phone is out of storage.",
                  "Free up some space, then try again. Nothing was lost.", .retry)
+        // Only a desktop vault can be corrupt or Electron-shaped in this
+        // sense; the core reports them for every shell, so every shell maps them.
+        case .Corrupt:
+            copy("storage.corrupt", "Memry's database is damaged.",
+                 "Close Memry and open it again. If it keeps happening, restore from your last backup or sync.")
+        case .ForeignSchema:
+            copy("storage.foreignSchema", "That folder holds a database from another version of Memry.",
+                 "Nothing was changed. Choose a different vault.")
         case .Failed:
             copy("storage.failed", "Memry could not read or write its database.",
                  "Close Memry and open it again.", .retry)

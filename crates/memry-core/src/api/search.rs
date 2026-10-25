@@ -294,8 +294,8 @@ impl Search {
     pub fn notes(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
         let index = self.index.clone();
         let limit = limit as usize;
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
                 Ok(search::search_notes(data, index, &query, limit)?
                     .into_iter()
                     .map(SearchResult::from)

@@ -244,6 +244,39 @@ pub enum StorageError {
     /// for the log, not for the user.
     #[error("refused: {what}")]
     Invalid { what: String },
+
+    /// The file at `path` is not a readable SQLite database, or `quick_check`
+    /// found damage. Nothing was changed. The shell offers recovery, which
+    /// quarantines the file and salvages its rows (`storage::recovery`).
+    #[error("database is corrupt: {path}")]
+    Corrupt { path: String },
+
+    /// The file at `path` was written by the Electron app's drizzle schema,
+    /// which shares table names with the core's and not their columns. Opening
+    /// it would run `IF NOT EXISTS` migrations over it and produce a broken
+    /// hybrid, so the core refuses and leaves the file untouched.
+    #[error("{path} is an Electron database, not a core database")]
+    ForeignSchema { path: String },
+}
+
+impl StorageError {
+    /// Whether this failure says the database file itself is damaged:
+    /// `SQLITE_CORRUPT*` (`database disk image is malformed`, which also covers
+    /// `CORRUPT_VTAB`) or `SQLITE_NOTADB` (`file is not a database`).
+    ///
+    /// Storage errors carry SQLite's message and not its code, so the signal is
+    /// read from the text. The shell asks "is this corruption?" here rather
+    /// than matching strings itself.
+    pub fn is_corrupt(&self) -> bool {
+        const SIGNALS: [&str; 2] = ["database disk image is malformed", "file is not a database"];
+        match self {
+            Self::Corrupt { .. } => true,
+            Self::Failed { what } | Self::Migration { what, .. } => {
+                SIGNALS.iter().any(|signal| what.contains(signal))
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Failures of the `Notifications` seam.

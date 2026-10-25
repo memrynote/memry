@@ -49,3 +49,25 @@ fn tag_fold_matches_the_committed_vectors() {
         }
     }
 }
+
+/// The SQL function every core connection registers must agree with the vectors
+/// too, because queries group and compare tags through `tag_fold(...)`.
+#[test]
+fn tag_fold_in_sql_matches_the_committed_vectors() {
+    let file = vector_file("tag-fold");
+    let db = memry_core::storage::Db::open_in_memory().expect("open");
+    for case in file["cases"].as_array().expect("cases is an array") {
+        let name = case["name"].as_str().expect("named");
+        let tag = case["input"]["tag"].as_str().expect("tag").to_owned();
+        let expected = case["expected"]["fold"].as_str().expect("fold").to_owned();
+        let folded: String = db
+            .call_blocking(|conn| {
+                conn.query_row("SELECT tag_fold(?1)", [&tag], |row| row.get(0))
+                    .map_err(|error| memry_core::api::errors::StorageError::Failed {
+                        what: error.to_string(),
+                    })
+            })
+            .expect("tag_fold");
+        assert_eq!(folded, expected, "{name}: SQL tag_fold");
+    }
+}
