@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote markdown parse (markdownToHtml then HTMLToBlocks) as canonical block JSON, without the memry layers. memryLayerNoop says whether blocknote-converter.ts markdownToBlocks returns the same blocks; where it is false, the memry layers of a later stage change the result.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 817
+    "caseCount": 833
   },
   "cases": [
     {
@@ -8698,6 +8698,454 @@
                 "showPreview": true,
                 "textAlignment": "left",
                 "url": "v.mp4?a=1"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-mp4",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/v.mp4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/v.mp4"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-upper",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/V.MP4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/V.MP4"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-query",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/a/v.webm?t=1#frag)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/a/v.webm?t=1#frag"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-no-ext",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/video)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/video"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-dir-dot",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/a.mp4/index)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/a.mp4/index"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-percent",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/clip%2Emp4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/clip%2Emp4"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-backslash",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com\\dir\\v.mov)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com\\dir\\v.mov"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-userinfo-port",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://u:p@example.com:8080/v.mkv)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://u:p@example.com:8080/v.mkv"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-dotdot",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/a/../v.avi)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/a/../v.avi"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-ftp",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](ftp://example.com/v.flv)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "ftp://example.com/v.flv"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-file",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](file:///tmp/v.wmv)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "file:///tmp/v.wmv"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-data",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](data:video/mp4;base64,AAAA)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "data:video/mp4;base64,AAAA"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-mailto",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](mailto:a@b.c)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "mailto:a@b.c"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-bad-port",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com:99999/v.mp4)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com:99999/v.mp4"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-ipv6",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](http://[::1]/v.m4v)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "video",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "http://[::1]/v.m4v"
+              },
+              "content": null,
+              "children": []
+            }
+          ],
+          "memryLayerNoop": true
+        }
+      }
+    },
+    {
+      "id": "bn-parse/bn-parse/bn-video-abs-trailing-dot",
+      "op": "bn-parse",
+      "input": {
+        "markdown": "![x](https://example.com/v.)"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "x",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "https://example.com/v."
               },
               "content": null,
               "children": []

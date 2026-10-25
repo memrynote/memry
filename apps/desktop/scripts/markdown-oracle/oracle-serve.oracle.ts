@@ -27,6 +27,10 @@ import {
 } from '@memry/app-core/markdown'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 
+import type * as EditorBlocks from '@memry/editor-schema/blocks'
+
+import { FNS } from './fns'
+import { claims, memryParse, type MemryParseInput } from './memry-oracle'
 import { bnParse, htmlToBlocks, markdownSources, mdToHtml } from './bn-oracle'
 import {
   contentMatchSweep,
@@ -57,12 +61,37 @@ vi.mock('../../src/main/vault/resolve-embed', () => ({
 }))
 const embedFiles: Record<string, string> = {}
 
+// Callouts and structured quotes are claimed only when re-serializing the
+// parsed run reproduces its bytes, which is the serializer of stage 5. The
+// readers' hits are counted so the vectors can say which cases need it.
+vi.mock('@memry/editor-schema/blocks', async (importOriginal) => {
+  const actual = await importOriginal<EditorBlocks>()
+  return {
+    ...actual,
+    readCalloutRun: (...args: Parameters<typeof actual.readCalloutRun>) => {
+      const found = actual.readCalloutRun(...args)
+      if (found) claims.count++
+      return found
+    },
+    readStructuredQuoteRun: (...args: Parameters<typeof actual.readStructuredQuoteRun>) => {
+      const found = actual.readStructuredQuoteRun(...args)
+      if (found) claims.count++
+      return found
+    }
+  }
+})
+
 // Block ids are `crypto.randomUUID()` (blocknote-converter.ts:501-509): a
 // counter makes every run reproducible. Vectors never compare ids anyway.
 let uuidCounter = 0
 vi.spyOn(crypto, 'randomUUID').mockImplementation(
   () => `00000000-0000-4000-8000-${(++uuidCounter).toString(16).padStart(12, '0')}`
 )
+
+function memryParseInput(input: Record<string, unknown>): MemryParseInput {
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-parse.ts
+  return input as MemryParseInput
+}
 
 interface Job {
   id: string
@@ -140,6 +169,21 @@ async function run(job: Job): Promise<unknown> {
       return htmlToBlocks(text(input, 'html'))
     case 'bn-parse':
       return bnParse(text(input, 'markdown'))
+    case 'memry-parse': {
+      for (const key of Object.keys(embedFiles)) delete embedFiles[key]
+      const files = input.embedFiles
+      if (files && typeof files === 'object') Object.assign(embedFiles, files)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-parse.ts
+      return memryParse(memryParseInput(input))
+    }
+    case 'fn': {
+      const name = text(input, 'fn')
+      const fn = FNS[name]
+      if (!fn) throw new Error(`unknown oracle function: ${name}`)
+      const args = Array.isArray(input.args) ? input.args : []
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the table is untyped by design: every function takes the JSON arguments of its case
+      return await (fn as (...a: unknown[]) => unknown)(...args)
+    }
     default:
       throw new Error(`unknown oracle op: ${job.op}`)
   }

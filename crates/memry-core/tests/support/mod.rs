@@ -125,6 +125,21 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/html-to-blocks" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/html-to-blocks.json"
         ),
+        "markdown-convert/memry-parse" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/memry-parse.json"
+        ),
+        "markdown-convert/layer-text" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/layer-text.json"
+        ),
+        "markdown-convert/layer-markers" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/layer-markers.json"
+        ),
+        "markdown-convert/layer-blocks" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/layer-blocks.json"
+        ),
+        "markdown-convert/layer-critic" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/layer-critic.json"
+        ),
         "markdown-convert/parse" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-convert/parse.json")
         }

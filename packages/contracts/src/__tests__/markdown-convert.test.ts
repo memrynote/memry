@@ -42,10 +42,20 @@ const DIGESTS: Record<string, string> = {
     '5e524687c59e0e435db25c72248be9723b11fe3721602a6d65027f11de801836',
   'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb',
   'markdown-convert/md-to-html.json':
-    '5041a070827e18815151e9f897047a9a3273dc1bf94f9952a75e86581cb74062',
+    '816cfb5da51485e40e08780863ff38e7a682cb25965204c529a2f3df833b3605',
   'markdown-convert/html-to-blocks.json':
     'e44263eb4c8c5335cad1a54a326113a7c6b9d0612c96006ab25f803bb49c3a4a',
-  'markdown-convert/parse.json': 'bb0d2eb36fd125756ed2f2b5dfaad8fdad5e2f18453a51c9dcced568b5633a64'
+  'markdown-convert/parse.json': '0f4003e2d32f27cd1e839c0e652a21a3650bb2010bd37f7d9112eab789db4d0a',
+  'markdown-convert/memry-parse.json':
+    '6bca15359804010a832aebd9752897bb49af927d15c7f8f1cf6ffeb5ced2733d',
+  'markdown-convert/layer-text.json':
+    'b744daa9b37d3c8453fff565d7e48ff1b097ce05fb06bef33974b48954e90ce1',
+  'markdown-convert/layer-markers.json':
+    '92a83da5c6e6b698e8014d2da5c8e302987e06dfba35cf9e7e9925e6211e5396',
+  'markdown-convert/layer-blocks.json':
+    '2b4b5848352528f4e4ee885e0f793bd3df84854410c2b3242061afa05873b9f6',
+  'markdown-convert/layer-critic.json':
+    'ec32ce283c197c9c0091c804e69cb4e31eda5655971ac7b0cadf4801dfde0b79'
 }
 
 const OPS_PER_FILE: Record<string, Record<string, number>> = {
@@ -60,9 +70,14 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/markdown-class.json': { classify: 23 },
   'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
   'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 },
-  'markdown-convert/md-to-html.json': { 'md-to-html': 817 },
+  'markdown-convert/md-to-html.json': { 'md-to-html': 833 },
   'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 129 },
-  'markdown-convert/parse.json': { 'bn-parse': 817 }
+  'markdown-convert/parse.json': { 'bn-parse': 833 },
+  'markdown-convert/memry-parse.json': { 'memry-parse': 723 },
+  'markdown-convert/layer-text.json': { fn: 13066 },
+  'markdown-convert/layer-markers.json': { fn: 3243 },
+  'markdown-convert/layer-blocks.json': { fn: 5116 },
+  'markdown-convert/layer-critic.json': { fn: 2944 }
 }
 
 function opCounts(file: VectorFile): Record<string, number> {
