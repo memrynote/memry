@@ -2,68 +2,65 @@
    BlockNote's stylesheet (@blocknote/core, @blocknote/shadcn) is physical: nested
    indent, guide lines, list markers, the quote bar and table headers all use
    left/right. Nothing there reads `dir`, so a RTL locale left nested lists flat and
-   put the quote bar on the wrong side. These rules mirror them for [dir='rtl'].
+   put the quote bar on the wrong side. These rules mirror them for right-to-left blocks.
    The stylesheet is JS-imported and lands after this file, so each selector
    outranks the BlockNote one instead of relying on order. */
 
-/* Nested blocks indent from the inline start; the guide line follows. base.css sets
+/* Every selector keys off the block's own direction (:dir), not the UI language:
+   block-direction-plugin.ts sets dir="auto" per block, so a Persian block in an
+   English UI mirrors and an English block in a Persian UI does not.
+   Nested blocks indent from the inline start; the guide line follows. base.css sets
    the LTR guide offset to -14px with !important, so the mirror needs it too. */
-:root[dir='rtl'] .bn-block-group .bn-block-group {
+.bn-block-group .bn-block-group:dir(rtl) {
   margin-left: 0;
   margin-inline-start: 24px;
 }
 
-:root[dir='rtl'] .bn-block-group .bn-block-group > .bn-block-outer::before {
+.bn-block-group .bn-block-group:dir(rtl) > .bn-block-outer::before {
   left: auto !important;
   right: -14px !important;
 }
 
-:root[dir='rtl'] .bn-block-outer[data-prev-depth-change] {
+.bn-block-outer[data-prev-depth-change]:dir(rtl) {
   margin-left: 0;
   margin-inline-start: calc(10px * var(--x));
 }
 
-:root[dir='rtl'] .bn-block-outer[data-prev-depth-change] .bn-block-outer[data-prev-depth-change] {
+.bn-block-outer[data-prev-depth-change]:dir(rtl) .bn-block-outer[data-prev-depth-change] {
   margin-inline-start: 0;
 }
 
 /* The marker's gap to the text sits on the text side. */
-:root[dir='rtl'] .bn-block-content[data-content-type='bulletListItem']::before,
-:root[dir='rtl'] .bn-block-content[data-content-type='numberedListItem']::before {
+.bn-block-content[data-content-type='bulletListItem']:dir(rtl)::before,
+.bn-block-content[data-content-type='numberedListItem']:dir(rtl)::before {
   padding-right: 0;
   padding-inline-end: 4px;
 }
 
-:root[dir='rtl'] [data-content-type='quote'] blockquote {
+:root [data-content-type='quote']:dir(rtl) blockquote {
   border-left: 0 !important;
   border-right: 3px solid currentcolor !important;
 }
 
-:root[dir='rtl'] .bn-editor [data-content-type='table'] th {
+.bn-editor [data-content-type='table']:dir(rtl) th {
   text-align: start;
 }
 
-:root[dir='rtl'] .bn-block-column {
+.bn-block-column:dir(rtl) {
   padding: 12px 25px 12px 15px;
 }
 
-:root[dir='rtl'] .bn-block-column:first-child {
+.bn-block-column:dir(rtl):first-child {
   padding-right: 0;
 }
 
-:root[dir='rtl'] .bn-block-column:last-child {
+.bn-block-column:dir(rtl):last-child {
   padding-left: 0;
 }
 
 /* Code reads left to right whatever the UI language. */
-:root[dir='rtl'] .bn-block-content[data-content-type='codeBlock'] > pre,
-:root[dir='rtl'] .bn-inline-content code {
+.bn-block-content[data-content-type='codeBlock'] > pre,
+.bn-inline-content code {
   direction: ltr;
   text-align: left;
-}
-
-/* Each paragraph takes its direction from its first strong character, so an English
-   line in an Arabic note (or the reverse) keeps its punctuation and alignment. */
-.bn-editor .bn-inline-content {
-  unicode-bidi: plaintext;
 }
