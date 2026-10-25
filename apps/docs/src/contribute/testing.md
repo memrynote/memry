@@ -213,6 +213,31 @@ SQL is read-only because a raw write skips vector clocks, sync enqueueing and re
 broadcasts; seed through the UI or `__memryTestHooks` instead. Single instance only, so flows that
 need two synced devices still belong in E2E.
 
+### Agent sandbox on Tauri
+
+`apps/desktop-tauri/scripts/agent-app.mjs` is the Tauri counterpart of the Electron sandbox above. It starts the e2e build in a throwaway sandbox so an agent can drive it over WebDriver.
+
+```bash
+pnpm --filter @memry/desktop-tauri build:e2e                 # after code changes
+node apps/desktop-tauri/scripts/agent-app.mjs start          # WebDriver on 127.0.0.1:9222
+node apps/desktop-tauri/scripts/agent-app.mjs eval "document.title"
+node apps/desktop-tauri/scripts/agent-app.mjs shot /tmp/agent.png
+node apps/desktop-tauri/scripts/agent-app.mjs status
+node apps/desktop-tauri/scripts/agent-app.mjs stop
+```
+
+`start` writes a control file for its port (a temp app data dir, the log directory, an `e2e-agent-<uuid>` device and a copy of the test vault), starts the binary with `MEMRY_E2E=1` and `TAURI_WEBDRIVER_PORT`, and waits until the app answers `e2e_app_info`. `stop` asks the app to quit, removes the temp dirs and the control file, and purges the keychain items of the device. Only one instance runs at a time. State lives in `$TMPDIR/memry-agent-app-tauri.json`, so the Electron and Tauri sandboxes can be inspected side by side (they still cannot run together on one port).
+
+Options:
+
+- `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of that vault. `MEMRY_AGENT_FIRST_RUN=1` opens no vault, so the first-run setup shows.
+- `MEMRY_AGENT_SCALE=2` renders at 2x on Windows (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`) and Linux (`GDK_SCALE`); macOS renders at the display scale and ignores it.
+- `MEMRY_AGENT_BINARY=<path>` replaces `crates/target/debug/memry-tauri`. `TAURI_WEBDRIVER_PORT=<port>` replaces 9222.
+
+`eval` runs in the renderer; the main process has no eval. The webview is driven by the `webdriver-memry` MCP server (`apps/desktop-tauri/scripts/webdriver-mcp.mjs`, `.pi/mcp.json`), which keeps the tool names of the Playwright MCP (`browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot`, ...). `pnpm staging:tauri` runs the app against staging, and `pnpm staging:tauri:debug` adds the e2e build with WebDriver on port 9333 and a persistent profile in `~/.memry/staging-tauri-profile`; it reads `apps/desktop-tauri/.env.staging`, which is gitignored.
+
+For a Windows or Linux VM, CI builds the app on demand: `gh workflow run desktop-tauri-ci.yml --ref <ref>` uploads `memry-tauri-e2e-<os>-<arch>` (the Ubuntu VM is arm64, so `linux-arm64`), which the `vm-repro` skill installs.
+
 ### Virtualized UI Tests
 
 `@tanstack/react-virtual` doesn't render any items inside jsdom (heights are zero, virtualization sees no scrollable area). Cover virtualized calendar / week / list UIs at the **Playwright** layer only.

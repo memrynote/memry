@@ -1,0 +1,447 @@
+diff -ruN a/staging-test-account/SKILL.md b/staging-test-account/SKILL.md
+--- a/staging-test-account/SKILL.md	2026-10-25 07:58:36
++++ b/staging-test-account/SKILL.md	2026-10-25 08:00:59
+@@ -1,6 +1,6 @@
+ ---
+ name: staging-test-account
+-description: "Use when a mobile or desktop task needs a signed-in staging session: iOS app sign-in, OTP/email code, recovery phrase entry, pairing or syncing iOS with desktop, or launching desktop against staging (optionally with CDP debugging). Provides the staging test account and the exact steps."
++description: "Use when a mobile or desktop task needs a signed-in staging session: iOS app sign-in, OTP/email code, recovery phrase entry, pairing or syncing iOS with desktop, or launching desktop against staging (Electron with CDP debugging, or Tauri with WebDriver). Provides the staging test account and the exact steps."
+ ---
+ 
+ Staging only. Never use this account or these steps against production.
+@@ -44,3 +44,18 @@
+ Use the debug variant when you need to drive or inspect the renderer (CDP via `http://localhost:9333/json`). If the desktop app also needs sign-in, use the same account, OTP, and phrase flow above.
+ 
+ Done when the window is open and, in debug mode, `curl -s localhost:9333/json` lists the renderer target.
++
++### Tauri desktop (staging)
++
++The Tauri app (`apps/desktop-tauri`, epic #3517) has its own commands. The Electron lines above stay until Step 43 (#3560).
++
++```bash
++pnpm staging:tauri         # normal
++pnpm staging:tauri:debug   # e2e build, WebDriver on localhost:9333, persistent profile
++```
++
++`apps/desktop-tauri/.env.staging` (gitignored, linked into worktrees by `pnpm env:link`) holds the staging values; copy `apps/desktop/.env.staging` there once in the main checkout. `dev.mjs` merges it without overriding variables already set, sets `MEMRY_ENV=staging` and `MEMRY_DEVICE=dev`, and runs `tauri dev`. The debug variant adds `--features e2e`, `MEMRY_E2E=1` and `TAURI_WEBDRIVER_PORT=9333`, and a control file that keeps the profile in `~/.memry/staging-tauri-profile`, so a signed-in staging device survives restarts and does not add a new staging device per run.
++
++Done when the window is open and, in debug mode, `curl -s localhost:9333/status` returns `ready` true.
++
++Drive it with the `webdriver-memry` MCP server (set `MEMRY_WEBDRIVER_URL=http://127.0.0.1:9333`), or with `cd apps/desktop-tauri && WD_PORT=9333 node --import tsx scripts/wd.mjs shot|text|eval|run`. The account, Keychain phrase and OTP sections apply unchanged to the sign-in screens once Steps 15 (#3532) to 19 (#3536) port them.
+diff -ruN a/vm-repro/SKILL.md b/vm-repro/SKILL.md
+--- a/vm-repro/SKILL.md	2026-10-25 07:58:36
++++ b/vm-repro/SKILL.md	2026-10-25 08:00:59
+@@ -1,6 +1,6 @@
+ ---
+ name: vm-repro
+-description: Use when a Windows or Linux user reports a MemryNote bug that does not reproduce on macOS, or when a fix must be checked on Windows or Linux — "windows'ta repro et", "linux'ta repro et", "windows kullanıcısı şunu yaşıyor", "ubuntu'da dene", "fix windows'ta çalışıyor mu", "windows vm", "linux vm". Resets a Windows 11 ARM64 VMware Fusion VM (or clones an Ubuntu tart VM with Rosetta) to a clean state, installs the exact release the user runs, signs in to the production test account, drives the app over CDP with screenshots, pulls logs, then swaps in a working-tree build to verify the fix. Reports in Turkish.
++description: Use when a Windows or Linux user reports a MemryNote bug that does not reproduce on macOS, or when a fix must be checked on Windows or Linux — "windows'ta repro et", "linux'ta repro et", "windows kullanıcısı şunu yaşıyor", "ubuntu'da dene", "fix windows'ta çalışıyor mu", "windows vm", "linux vm". Resets a Windows 11 ARM64 VMware Fusion VM (or clones an Ubuntu tart VM with Rosetta) to a clean state, installs the exact release the user runs, signs in to the production test account, drives the app over CDP with screenshots, pulls logs, then swaps in a working-tree build to verify the fix. Has a Tauri mode that installs a CI artifact instead of a release and drives it over WebDriver. Reports in Turkish.
+ ---
+ 
+ # /memrynote:vm-repro
+@@ -61,7 +61,64 @@
+   installs; it disappears after installing `vc_redist.x64.exe`. Keep `clean` without the runtime
+   so this class of bug stays visible.
+ 
+-## Workflow
++## Tauri mode
++
++The desktop app is moving to Tauri (epic #3517). A Tauri release has no WebDriver, so a repro of
++the Tauri app runs on a **CI artifact of the commit under test**, not on an installed release.
++The Electron workflow below stays valid for Electron releases until Step 43 (#3560).
++
++1. **Build the artifact.** The PR's own run of `desktop-tauri-ci.yml` already uploads it. For
++   another ref: `gh workflow run desktop-tauri-ci.yml --ref <ref>`, then
++   `gh run list --workflow desktop-tauri-ci.yml -L 1` for the run id. Artifacts:
++   `memry-tauri-e2e-windows-arm64` and `memry-tauri-e2e-linux-arm64` (driven by WebDriver), and
++   the `debug` twins (no driver, for startup checks). They expire after 14 days.
++2. **Fresh VM.** `winvm.sh new` or `linvm.sh new`, as in the Electron workflow.
++3. **Install.** `winvm.sh install-artifact <run-id> [--variant e2e|debug]` copies
++   `memry-tauri.exe` to `C:\Users\agent\memry-tauri\` and prints the WebView2 Runtime version.
++   `linvm.sh install-artifact <run-id>` installs `libwebkit2gtk-4.1-0 libsoup-3.0-0
++   libayatana-appindicator3-1 libsecret-1-0 libxdo3` with apt (the base image is not changed, so
++   a package missing from a future `.deb` `Depends` stays visible) and copies the binary to
++   `~/memry-tauri/`. Rosetta is not used.
++4. **Launch.** `winvm.sh launch-tauri [vault-template]` / `linvm.sh launch-tauri [vault-template]`
++   writes the control file (`control-9222.json` in the guest's temp dir) with dirs under
++   `C:\Users\agent\memry-tauri-data` / `~/memry-tauri-data`, a device `e2e-vm-<uuid>` and a copy of
++   the test vault (or of the template), starts the app with `MEMRY_E2E=1` and
++   `TAURI_WEBDRIVER_PORT=9222` in the console session, tunnels 9222 and waits for `/status`. The
++   real profile is never touched.
++5. **Drive.** `winvm.sh cdp text|shot|eval|run` is routed to `apps/desktop-tauri/scripts/wd.mjs`
++   after `launch-tauri` (WebDriver through `pw-compat`, so `run` scripts get a Playwright-style
++   `{ page, browser }` and the UI recipes below keep working). Run `pnpm install` in the repo
++   first; `wd.mjs` runs under `node --import tsx` from `apps/desktop-tauri`. The `webdriver-memry`
++   MCP server can use the tunnel too: `MEMRY_WEBDRIVER_URL=http://127.0.0.1:<port>`. No main-process
++   eval exists; `eval` runs in the renderer.
++6. **Evidence and clean up.** `winvm.sh logs` / `linvm.sh logs` copy the `logDir` of the control
++   file (`main.log`; the app logs `starting (...)` and `renderer started`). `rm` removes the guest's
++   `memry-tauri*` directories and the cached artifacts.
++7. **Verify a fix.** `swap` and `unswap` are Electron-only: a Tauri build embeds the frontend in
++   the executable. Push the fix, wait for the CI artifact, `install-artifact` again.
++
++Paths on a Tauri build (identifier `com.memrynote.memry`): Windows data
++`%APPDATA%\com.memrynote.memry`, logs `%LOCALAPPDATA%\com.memrynote.memry\logs`; Linux data
++`~/.local/share/com.memrynote.memry`, logs `~/.local/share/com.memrynote.memry/logs`. A run through
++`launch-tauri` uses the control-file dirs instead.
++
++Faithful: the Windows guest runs the native arm64 build (no Prism), WebView2 is the real engine,
++and WebKitGTK arm64 on the Ubuntu VM is the real engine with no Rosetta. Paths, file locks, the
++Credential Manager and the Secret Service keyring behave as for users.
++
++Not faithful, say so in the report: rendering and performance are still not representative of
++real hardware, and the debug binary is slower than release. The artifact is not the signed or
++installed release, so installer, Velopack and update behavior are not covered (Steps 07 (#3524)
++and 42 prove those).
++
++Known finding: a clean Windows image without the WebView2 Runtime cannot start the app.
++`install-artifact` prints the runtime version and fails when it is absent; it does not install
++it. Keep `clean` without it so the class of bug stays visible.
++
++The sign-in recipe below is unchanged text; drive it with `wd.mjs run`. The OTP, phrase and
++account sections do not change.
++
++## Workflow (Electron releases)
+ 
+ 1. **Pin the version.** Get the user's app version from the feedback (Settings → About, or log
+    header). `winvm.sh tag-for 2026.928.1` prints the release tag. If unknown, use the latest
+diff -ruN a/vm-repro/scripts/linvm.sh b/vm-repro/scripts/linvm.sh
+--- a/vm-repro/scripts/linvm.sh	2026-10-25 07:58:36
++++ b/vm-repro/scripts/linvm.sh	2026-10-25 08:00:29
+@@ -54,7 +54,7 @@
+   [ -z "$(state_of "$VM")" ] && return 0
+   [ "$(state_of "$VM")" = running ] && { "$TART" stop "$VM" > /dev/null 2>&1 || true; }
+   "$TART" delete "$VM"
+-  rm -f "$STATE"/tag
++  rm -f "$STATE"/tag "$STATE"/mode "$STATE"/artifact
+   echo "deleted $VM"
+ }
+ 
+@@ -74,10 +74,63 @@
+   scp -q "${SSH_OPTS[@]}" "$CACHE/$tag/$asset" "admin@$(ip_of):/tmp/memrynote.deb"
+   vssh 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y /tmp/memrynote.deb > /tmp/install.log 2>&1 || { tail -20 /tmp/install.log; exit 1; }; rm /tmp/memrynote.deb; dpkg-query -W memrynote'
+   echo "$tag" > "$STATE/tag"
++  rm -f "$STATE/artifact"
+ }
+ 
++# Tauri mode: the arm64 CI artifact of the commit under test runs natively; Rosetta is not used.
++# The apt packages are what the app links against. They are installed here and the base image is
++# not changed, so a package missing from a future .deb `Depends` stays visible.
++cmd_install_artifact() {
++  local run="" variant=e2e
++  while [ $# -gt 0 ]; do
++    case $1 in
++      --variant) variant=${2:-}; shift ;;
++      *) run=$1 ;;
++    esac
++    shift
++  done
++  [ -n "$run" ] || die "usage: install-artifact <run-id> [--variant e2e|debug]"
++  case $variant in e2e|debug) ;; *) die "variant must be e2e or debug" ;; esac
++  local dir="$CACHE/$run/$variant"
++  [ -f "$dir/memry-tauri" ] || gh run download "$run" -R "$(gh_repo)" -n "memry-tauri-$variant-linux-arm64" -D "$dir"
++  [ -f "$dir/memry-tauri" ] || die "artifact memry-tauri-$variant-linux-arm64 of run $run has no memry-tauri"
++  vssh 'sudo apt-get update -qq > /tmp/apt.log 2>&1 && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libwebkit2gtk-4.1-0 libsoup-3.0-0 libayatana-appindicator3-1 libsecret-1-0 libxdo3 >> /tmp/apt.log 2>&1 || { tail -20 /tmp/apt.log; exit 1; }; dpkg-query -W libwebkit2gtk-4.1-0 libsoup-3.0-0 libayatana-appindicator3-1 libsecret-1-0 libxdo3; mkdir -p ~/memry-tauri'
++  scp -q "${SSH_OPTS[@]}" "$dir/memry-tauri" "admin@$(ip_of):memry-tauri/memry-tauri"
++  vssh 'chmod +x ~/memry-tauri/memry-tauri; file ~/memry-tauri/memry-tauri | cut -c1-120'
++  echo "$run/$variant" > "$STATE/artifact"
++  rm -f "$STATE/tag"
++}
++
++# Start the e2e artifact on the XFCE display with its WebDriver on the guest's loopback, a control
++# file for dirs and device (the real profile is never touched), then tunnel it.
++cmd_launch_tauri() {
++  [ -f "$STATE/artifact" ] || die "no artifact installed; run install-artifact first"
++  local template=${1:-$(repo_root)/apps/desktop-tauri/e2e/fixtures/test-vault}
++  [ -d "$template" ] || die "no vault template at $template"
++  local name device
++  name=$(basename "$template")
++  device="e2e-vm-$(uuidgen | tr 'A-Z' 'a-z')"
++  untunnel
++  vssh 'pkill -x memry-tauri || true; sleep 1; rm -rf ~/memry-tauri-data; mkdir -p ~/memry-tauri-data/vault /tmp/memry-e2e'
++  scp -q -r "${SSH_OPTS[@]}" "$template" "admin@$(ip_of):memry-tauri-data/vault/"
++  printf '{"appDataDir":"/home/admin/memry-tauri-data/data","logDir":"/home/admin/memry-tauri-data/logs","device":"%s","testVaultPath":"/home/admin/memry-tauri-data/vault/%s","syncServerUrl":null,"extraEnv":{}}' "$device" "$name" \
++    | vssh "cat > /tmp/memry-e2e/control-$CDP_GUEST_PORT.json"
++  vssh "$SESSION_ENV MEMRY_E2E=1 TAURI_WEBDRIVER_PORT=$CDP_GUEST_PORT nohup ~/memry-tauri/memry-tauri > /tmp/memry-tauri.out 2>&1 < /dev/null & echo launched device $device"
++  tunnel
++  echo tauri > "$STATE/mode"
++  local port i
++  port=$(cat "$STATE/port")
++  for i in $(seq 1 60); do
++    curl -sf "http://127.0.0.1:$port/status" | grep -Eq '"ready": ?true' && { echo "WebDriver: http://127.0.0.1:$port"; return 0; }
++    sleep 2
++  done
++  vssh 'tail -20 /tmp/memry-tauri.out' || true
++  die "the app did not answer WebDriver"
++}
++
+ cmd_launch() {
+   local extra="$*"
++  untunnel
+   vssh "$SESSION_ENV pkill -x memrynote || true; sleep 1; nohup memrynote --remote-debugging-port=$CDP_GUEST_PORT $extra > /tmp/memrynote.out 2>&1 < /dev/null & echo launched"
+   tunnel
+   local port i
+@@ -102,17 +155,32 @@
+ 
+ untunnel() {
+   [ -f "$STATE/tunnel" ] && kill "$(cat "$STATE/tunnel")" 2>/dev/null || true
+-  rm -f "$STATE/tunnel" "$STATE/port"
++  rm -f "$STATE/tunnel" "$STATE/port" "$STATE/mode"
+ }
+ 
+ cmd_cdp() {
+-  [ -f "$STATE/port" ] || die "no CDP tunnel; run launch first"
++  [ -f "$STATE/port" ] || die "no tunnel; run launch or launch-tauri first"
++  if [ "$(cat "$STATE/mode" 2>/dev/null)" = tauri ]; then
++    # WebDriver, not CDP: wd.mjs has the commands of cdp.mjs. It needs `pnpm install` in the repo.
++    (cd "$(repo_root)/apps/desktop-tauri" && WD_PORT=$(cat "$STATE/port") node --import tsx scripts/wd.mjs "$@")
++    return
++  fi
+   WINVM_CDP_PORT=$(cat "$STATE/port") WINVM_REPO="$(repo_root)" node "$SCRIPT_DIR/cdp.mjs" "$@"
+ }
+ 
+ cmd_logs() {
+   local dest=${1:-/tmp/linvm-logs-$(date +%Y%m%d-%H%M%S)}
+   mkdir -p "$dest"
++  if [ -f "$STATE/artifact" ]; then
++    # Tauri: the logDir of the control file, plus the app's stdout.
++    local logdir
++    logdir=$(vssh "python3 -c 'import json; print(json.load(open(\"/tmp/memry-e2e/control-$CDP_GUEST_PORT.json\"))[\"logDir\"])'")
++    scp -q -r "${SSH_OPTS[@]}" "admin@$(ip_of):$logdir" "$dest/" 2>/dev/null || echo "no logs dir yet" >&2
++    scp -q "${SSH_OPTS[@]}" "admin@$(ip_of):/tmp/memry-tauri.out" "$dest/stdout.log" 2>/dev/null || true
++    echo "$dest"
++    ls -la "$dest" "$dest/logs" 2>/dev/null | sed 1d
++    return
++  fi
+   scp -q -r "${SSH_OPTS[@]}" "admin@$(ip_of):.config/memrynote/logs" "$dest/" 2>/dev/null || echo "no logs dir yet" >&2
+   scp -q "${SSH_OPTS[@]}" "admin@$(ip_of):/tmp/memrynote.out" "$dest/stdout.log" 2>/dev/null || true
+   echo "$dest"
+@@ -127,8 +195,12 @@
+   status                state, ip, installed tag
+   install <tag>         install that release's amd64 .deb (apt resolves amd64 deps)
+   launch [args]         start MemryNote in the XFCE session with CDP, open tunnel
+-  cdp <shot|text|eval|run>  drive the renderer (shared cdp.mjs)
+-  logs [dest]           copy ~/.config/memrynote/logs + stdout to the Mac
++  install-artifact <run-id> [--variant e2e|debug]
++                        Tauri: apt packages + the linux-arm64 CI artifact of a run (no Rosetta)
++  launch-tauri [vault-template]
++                        Tauri: start the e2e artifact (WebDriver :$CDP_GUEST_PORT), open tunnel
++  cdp <shot|text|eval|run>  drive the renderer (cdp.mjs for Electron, wd.mjs after launch-tauri)
++  logs [dest]           copy the logs (Electron: ~/.config/memrynote/logs; Tauri: control-file logDir) + stdout
+   ssh [cmd]             bash over SSH as admin (prefix desktop/keyring commands with \$SESSION_ENV)
+ EOF
+ }
+@@ -140,6 +212,8 @@
+   status) s=$(state_of "$VM"); echo "${s:-absent} ${s:+ip=$("$TART" ip "$VM" 2>/dev/null || echo -)} tag=$(cat "$STATE/tag" 2>/dev/null || echo -)" ;;
+   install) cmd_install "$@" ;;
+   launch) cmd_launch "$@" ;;
++  install-artifact) cmd_install_artifact "$@" ;;
++  launch-tauri) cmd_launch_tauri "$@" ;;
+   cdp) cmd_cdp "$@" ;;
+   logs) cmd_logs "$@" ;;
+   ssh) vssh "$SESSION_ENV $*" ;;
+diff -ruN a/vm-repro/scripts/winvm.sh b/vm-repro/scripts/winvm.sh
+--- a/vm-repro/scripts/winvm.sh	2026-10-25 07:58:36
++++ b/vm-repro/scripts/winvm.sh	2026-10-25 07:59:53
+@@ -65,7 +65,7 @@
+ cmd_new() {
+   untunnel
+   if running; then vmrun stop "$VMX" hard; sleep 2; fi
+-  rm -f "$STATE"/ip "$STATE"/tag
++  rm -f "$STATE"/ip "$STATE"/tag "$STATE"/mode "$STATE"/artifact
+   vmrun revertToSnapshot "$VMX" "$SNAPSHOT"
+   cmd_start
+ }
+@@ -98,11 +98,13 @@
+ 
+ # Reset to clean, leave it off, and drop everything this run left on the Mac.
+ cmd_rm() {
++  # Best effort while the VM is up; the revert below is what guarantees a clean guest.
++  if running; then vssh 'Get-Process memry-tauri -ErrorAction SilentlyContinue | Stop-Process -Force; Remove-Item -Recurse -Force "$env:USERPROFILE\memry-tauri*" -ErrorAction SilentlyContinue' > /dev/null 2>&1 || true; fi
+   cmd_stop
+   vmrun revertToSnapshot "$VMX" "$SNAPSHOT"
+-  rm -f "$STATE"/ip "$STATE"/tag
++  rm -f "$STATE"/ip "$STATE"/tag "$STATE"/mode "$STATE"/artifact
+   rm -rf "${CACHE:?}"/* /tmp/winvm-logs-* /tmp/winvm-swap-*
+-  echo "VM reset to $SNAPSHOT and powered off; installer cache and /tmp logs removed"
++  echo "VM reset to $SNAPSHOT and powered off; installer and artifact cache and /tmp logs removed"
+ }
+ 
+ # Release tag(s) whose assets carry this app version, e.g. 2026.928.1 -> v2026-09-28.
+@@ -138,6 +140,7 @@
+ "installed: \$exe  version: \$((Get-Item \$exe).VersionInfo.ProductVersion)"
+ EOF
+   echo "$tag" > "$STATE/tag"
++  rm -f "$STATE/artifact"
+ }
+ 
+ # Launch inside the logged-on console session (SSH runs in a non-interactive one, so a
+@@ -145,6 +148,7 @@
+ # Always the release's own (production) sync server.
+ cmd_launch() {
+   local extra="$*"
++  untunnel
+   vps <<EOF
+ Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+ Start-Sleep 1
+@@ -168,6 +172,77 @@
+   die "renderer did not come up on CDP; check \`winvm.sh logs\`"
+ }
+ 
++# Tauri mode: a CI artifact of the commit under test, not a release. Needs the e2e variant to be
++# driven (`launch-tauri`); the debug variant only starts. See SKILL.md "Tauri mode".
++cmd_install_artifact() {
++  local run="" variant=e2e
++  while [ $# -gt 0 ]; do
++    case $1 in
++      --variant) variant=${2:-}; shift ;;
++      *) run=$1 ;;
++    esac
++    shift
++  done
++  [ -n "$run" ] || die "usage: install-artifact <run-id> [--variant e2e|debug]"
++  case $variant in e2e|debug) ;; *) die "variant must be e2e or debug" ;; esac
++  local dir="$CACHE/$run/$variant"
++  [ -f "$dir/memry-tauri.exe" ] || gh run download "$run" -R "$(gh_repo)" -n "memry-tauri-$variant-windows-arm64" -D "$dir"
++  [ -f "$dir/memry-tauri.exe" ] || die "artifact memry-tauri-$variant-windows-arm64 of run $run has no memry-tauri.exe"
++  vscp_to "$dir/memry-tauri.exe" "memry-tauri-upload.exe"
++  vps <<'EOF'
++Get-Process memry-tauri -ErrorAction SilentlyContinue | Stop-Process -Force
++New-Item -ItemType Directory -Force "$env:USERPROFILE\memry-tauri" | Out-Null
++Move-Item -Force "$env:USERPROFILE\memry-tauri-upload.exe" "$env:USERPROFILE\memry-tauri\memry-tauri.exe"
++$key = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
++$pv = (Get-ItemProperty $key -ErrorAction SilentlyContinue).pv
++if (-not $pv) { throw 'WebView2 Runtime is not installed in this image, so the app cannot start. It is not installed here: the finding stays visible.' }
++"installed: $env:USERPROFILE\memry-tauri\memry-tauri.exe  WebView2 Runtime: $pv"
++EOF
++  echo "$run/$variant" > "$STATE/artifact"
++  rm -f "$STATE/tag"
++}
++
++# Start the e2e artifact in the console session with its WebDriver on the guest's loopback,
++# a control file for dirs and device (the real profile is never touched), then tunnel it.
++cmd_launch_tauri() {
++  [ -f "$STATE/artifact" ] || die "no artifact installed; run install-artifact first"
++  local template=${1:-$(repo_root)/apps/desktop-tauri/e2e/fixtures/test-vault}
++  [ -d "$template" ] || die "no vault template at $template"
++  local name device
++  name=$(basename "$template")
++  device="e2e-vm-$(uuidgen | tr 'A-Z' 'a-z')"
++  untunnel
++  vps <<EOF
++Get-Process memry-tauri -ErrorAction SilentlyContinue | Stop-Process -Force
++Start-Sleep 1
++Remove-Item -Recurse -Force "\$env:USERPROFILE\memry-tauri-data" -ErrorAction SilentlyContinue
++New-Item -ItemType Directory -Force "\$env:USERPROFILE\memry-tauri-data\vault" | Out-Null
++EOF
++  scp -q -r "${SSH_OPTS[@]}" "$template" "$GUSER@$(ip_of):memry-tauri-data/vault/"
++  vps <<EOF
++\$root = "\$env:USERPROFILE\memry-tauri-data"
++\$n = '$name'
++\$control = @{ appDataDir = "\$root\data"; logDir = "\$root\logs"; device = '$device'; testVaultPath = (Join-Path "\$root\vault" \$n); syncServerUrl = \$null; extraEnv = @{} } | ConvertTo-Json -Compress
++New-Item -ItemType Directory -Force "\$env:TEMP\memry-e2e" | Out-Null
++Set-Content -Path "\$env:TEMP\memry-e2e\control-$CDP_GUEST_PORT.json" -Value \$control -Encoding ascii
++\$cmd = "C:\Users\Public\memry-tauri-launch.cmd"
++\$lines = @('@echo off', 'set MEMRY_E2E=1', 'set TAURI_WEBDRIVER_PORT=$CDP_GUEST_PORT', ('start "" "' + "\$env:USERPROFILE\memry-tauri\memry-tauri.exe" + '"'))
++Set-Content -Path \$cmd -Value \$lines -Encoding ascii
++schtasks /create /f /tn memry-repro /it /ru $GUSER /sc once /st 00:00 /tr \$cmd 2>&1 | Out-Null
++schtasks /run /tn memry-repro | Out-Null
++"launched device $device"
++EOF
++  tunnel
++  echo tauri > "$STATE/mode"
++  local port i
++  port=$(cat "$STATE/port")
++  for i in $(seq 1 60); do
++    curl -sf "http://127.0.0.1:$port/status" | grep -Eq '"ready": ?true' && { echo "WebDriver: http://127.0.0.1:$port"; return 0; }
++    sleep 2
++  done
++  die "the app did not answer WebDriver; check \`winvm.sh logs\` and the WebView2 Runtime"
++}
++
+ tunnel() {
+   local port pid
+   if [ -f "$STATE/tunnel" ] && kill -0 "$(cat "$STATE/tunnel")" 2>/dev/null; then return 0; fi
+@@ -181,17 +256,35 @@
+ 
+ untunnel() {
+   [ -f "$STATE/tunnel" ] && kill "$(cat "$STATE/tunnel")" 2>/dev/null || true
+-  rm -f "$STATE/tunnel" "$STATE/port"
++  rm -f "$STATE/tunnel" "$STATE/port" "$STATE/mode"
+ }
+ 
+ cmd_cdp() {
+-  [ -f "$STATE/port" ] || die "no CDP tunnel; run launch first"
++  [ -f "$STATE/port" ] || die "no tunnel; run launch or launch-tauri first"
++  if [ "$(cat "$STATE/mode" 2>/dev/null)" = tauri ]; then
++    # WebDriver, not CDP: wd.mjs has the commands of cdp.mjs. It needs `pnpm install` in the repo.
++    (cd "$(repo_root)/apps/desktop-tauri" && WD_PORT=$(cat "$STATE/port") node --import tsx scripts/wd.mjs "$@")
++    return
++  fi
+   WINVM_CDP_PORT=$(cat "$STATE/port") WINVM_REPO="$(repo_root)" node "$SCRIPT_DIR/cdp.mjs" "$@"
+ }
+ 
+ cmd_logs() {
+   local dest=${1:-/tmp/winvm-logs-$(date +%Y%m%d-%H%M%S)}
+   mkdir -p "$dest"
++  if [ -f "$STATE/artifact" ]; then
++    # Tauri: the logDir of the control file, relative to the guest user's profile.
++    local rel
++    rel=$(vps <<EOF | tail -1
++\$c = Get-Content "\$env:TEMP\memry-e2e\control-$CDP_GUEST_PORT.json" | ConvertFrom-Json
++\$c.logDir.Substring(\$env:USERPROFILE.Length + 1).Replace('\\', '/')
++EOF
++)
++    vscp_from "$rel" "$dest/" 2>/dev/null || echo "no logs dir yet" >&2
++    echo "$dest"
++    ls -la "$dest" "$dest/logs" 2>/dev/null | sed 1d
++    return
++  fi
+   vscp_from "AppData/Roaming/MemryNote/logs" "$dest/" 2>/dev/null || echo "no logs dir yet" >&2
+   vscp_from "AppData/Roaming/MemryNote/Crashpad/reports" "$dest/crashpad" 2>/dev/null || true
+   echo "$dest"
+@@ -202,6 +295,7 @@
+ # working tree. Native modules live outside the asar (resources/node_modules), so this is
+ # valid only while the runtime dependency set and Electron version match the release.
+ cmd_swap() {
++  [ ! -f "$STATE/artifact" ] || die "swap is Electron-only: a Tauri build embeds the frontend in the executable. Build the commit with the fix in CI and run install-artifact <run-id>."
+   local force=0
+   for a in "$@"; do case $a in --force) force=1 ;; esac; done
+   local tag root asar_cli work
+@@ -238,6 +332,7 @@
+ }
+ 
+ cmd_unswap() {
++  [ ! -f "$STATE/artifact" ] || die "unswap is Electron-only (see swap); install-artifact replaces the Tauri build."
+   vps <<'EOF'
+ Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+ Start-Sleep 1
+@@ -259,8 +354,12 @@
+   tag-for <version>           release tag(s) that shipped app version, e.g. 2026.928.1
+   install <tag> [--nsis]      install that release (Velopack Setup.exe if present, else NSIS)
+   launch [args]               start MemryNote in the console session with CDP, open tunnel
+-  cdp <shot|text|eval|run>    drive the renderer (see cdp.mjs)
+-  logs [dest]                 copy %APPDATA%\\MemryNote\\logs (+ Crashpad reports) to the Mac
++  install-artifact <run-id> [--variant e2e|debug]
++                              Tauri: install the CI artifact of a run, print the WebView2 Runtime
++  launch-tauri [vault-template]
++                              Tauri: start the e2e artifact (WebDriver :$CDP_GUEST_PORT), open tunnel
++  cdp <shot|text|eval|run>    drive the renderer (cdp.mjs for Electron, wd.mjs after launch-tauri)
++  logs [dest]                 copy the logs (Electron: %APPDATA%\\MemryNote\\logs + Crashpad; Tauri: control-file logDir)
+   ssh [cmd]                   PowerShell one-liner over SSH (guest default shell)
+   ps                          run a PowerShell script from stdin
+   swap [--force]              replace app.asar out/ with a build of the working tree
+@@ -275,10 +374,12 @@
+   start) cmd_start ;;
+   stop) cmd_stop ;;
+   rm) cmd_rm ;;
+-  status) if running; then echo "running ip=$(ip_of) tag=$(cat "$STATE/tag" 2>/dev/null || echo -)"; else echo stopped; fi ;;
++  status) if running; then echo "running ip=$(ip_of) tag=$(cat "$STATE/tag" 2>/dev/null || echo -) artifact=$(cat "$STATE/artifact" 2>/dev/null || echo -)"; else echo stopped; fi ;;
+   tag-for) cmd_tag_for "$@" ;;
+   install) cmd_install "$@" ;;
+   launch) cmd_launch "$@" ;;
++  install-artifact) cmd_install_artifact "$@" ;;
++  launch-tauri) cmd_launch_tauri "$@" ;;
+   cdp) cmd_cdp "$@" ;;
+   logs) cmd_logs "$@" ;;
+   ssh) vssh "$@" | clean ;;

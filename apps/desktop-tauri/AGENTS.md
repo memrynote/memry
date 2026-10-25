@@ -44,9 +44,22 @@ WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`,
 - The driver exists only in an `e2e` build and starts only with `MEMRY_E2E=1` (`E2eGate`). A release build links none of it, and `scripts/smoke-launch.mjs --expect-no-driver` proves that.
 - Specs import `test` and `expect` from `e2e/harness/test.ts`, a Playwright-shaped layer (`page`, `locator`, `expect`, fixtures) over mocha and WebDriver. A fresh app per test; `restart(app)` relaunches it on the same data.
 - Per-instance state travels in `<temp>/memry-e2e/control-<port>.json` (`harness/tauri-lifecycle.ts`, `memry_desktop::e2e::control`). The webview profile is isolated per instance, so two instances need macOS 14 or later.
-- No main-process eval. A spec calls a named `e2e_*` command through `invokeTest(app, name, args)`. A domain step adds its commands under `src-tauri/src/e2e/<domain>.rs` and one line in `e2e/commands.rs`, and updates `e2e/HOOKS.md`. `pnpm check:test-hooks` fails while an Electron hook has no mapped command.
+- No main-process eval, for specs and for `agent-app.mjs eval` (which runs in the renderer only). A spec calls a named `e2e_*` command through `invokeTest(app, name, args)`. A domain step adds its commands under `src-tauri/src/e2e/<domain>.rs` and one line in `e2e/commands.rs`, and updates `e2e/HOOKS.md`. `pnpm check:test-hooks` fails while an Electron hook has no mapped command.
 - A native dialog is never opened by a spec. The dialog queue contract is in `e2e/HOOKS.md`; Step 08 (#3525) implements it.
 - Specs never leave keychain items: `e2e-` device ids are purged on completion, `pnpm keychain:purge-e2e` sweeps leaks.
+
+## Live app verification
+
+Verify a change in the running app when it touches what a user sees or does: UI, startup, windows, anything a spec cannot show. A passing test is not that proof. The sandbox never opens a real profile or vault.
+
+1. `pnpm --filter @memry/desktop-tauri build:e2e` after each code change (a build without the `e2e` feature cannot be driven).
+2. `node apps/desktop-tauri/scripts/agent-app.mjs start` prints the pid, the WebDriver URL, the vault path and the log path. It copies the test vault into a temp dir and runs as device `e2e-agent-<uuid>`.
+3. Drive the app with the `webdriver-memry` MCP server (`.pi/mcp.json`): `browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot`, `browser_evaluate`. `agent-app.mjs eval "<javascript>"` and `shot <file.png>` do the same from a shell. Read a screenshot before you call a visual change done.
+4. `node apps/desktop-tauri/scripts/agent-app.mjs stop` removes the temp dirs, the control file and the device's keychain items.
+
+Options for `start`: `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of another vault, `MEMRY_AGENT_FIRST_RUN=1` opens no vault, `MEMRY_AGENT_SCALE=2` renders at 2x on Windows and Linux, `MEMRY_AGENT_BINARY=<path>` replaces the debug build, `TAURI_WEBDRIVER_PORT=<port>` replaces 9222. One instance at a time. Step 08 (#3525) adds `agent-app.mjs query` for data checks and extends this recipe.
+
+Report what you exercised and what you observed, not that it works.
 
 ## Validation
 

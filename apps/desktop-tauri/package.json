@@ -14,6 +14,8 @@
     "tauri:dev:a": "cross-env VITE_MEMRY_DEV_API_PROXY=1 MEMRY_ENV=development MEMRY_DEVICE=A tauri dev",
     "tauri:dev:b": "cross-env VITE_MEMRY_DEV_API_PROXY=1 MEMRY_ENV=development MEMRY_DEVICE=B tauri dev",
     "tauri:dev:c": "cross-env VITE_MEMRY_DEV_API_PROXY=1 MEMRY_ENV=development MEMRY_DEVICE=C tauri dev",
+    "dev:staging": "node scripts/dev.mjs --mode=staging",
+    "dev:staging:debug": "node scripts/dev.mjs --mode=staging --debug",
     "tauri:build": "cross-env VITE_MEMRY_DEV_API_PROXY=1 tauri build --debug --no-bundle",
     "build:e2e": "cross-env VITE_MEMRY_DEV_API_PROXY=1 VITE_MEMRY_E2E=1 tauri build --debug --no-bundle --features e2e --config src-tauri/tauri.e2e.conf.json",
     "ipc:generate": "cargo run --manifest-path ../../crates/Cargo.toml -p memry-tauri --bin export-bindings -- --out src/generated/bindings.ts",
@@ -131,6 +133,7 @@
   },
   "devDependencies": {
     "@memry/sync-harness": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@tailwindcss/vite": "^4.1.18",
     "@tauri-apps/api": "2.12.4",
     "@tauri-apps/cli": "2.12.4",
