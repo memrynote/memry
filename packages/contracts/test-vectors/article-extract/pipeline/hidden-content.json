@@ -1,0 +1,8 @@
+{
+  "input": {"url":"https://example.com/post/with-hidden-parts","now":"2025-03-04T05:06:07.000Z"},
+  "math": false,
+  "content": "<article> <p>The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.</p>       <p>Hidden on mobile, shown from the sm breakpoint.</p>  <p>The closing paragraph is visible again and wraps the post up with a final remark about what was left unseen.</p></article>",
+  "markdown": "The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.\n\nHidden on mobile, shown from the sm breakpoint.\n\nThe closing paragraph is visible again and wraps the post up with a final remark about what was left unseen.",
+  "raw": {"title":"A post with hidden parts","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":50},
+  "expected": {"url":"https://example.com/post/with-hidden-parts","mode":"article","contentMarkdown":"The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.\n\nHidden on mobile, shown from the sm breakpoint.\n\nThe closing paragraph is visible again and wraps the post up with a final remark about what was left unseen.","excerpt":"The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.\n\nHidden on mobile, shown from the sm breakpoint.\n\nThe closing paragraph ","extractionStatus":"partial","properties":{"title":"A post with hidden parts","source":"https://example.com/post/with-hidden-parts","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

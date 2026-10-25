@@ -3,6 +3,7 @@
 //! `callouts`; the remaining handlers arrive with their corpus pages.
 
 pub mod callouts;
+pub mod footnotes;
 pub mod headings;
 pub mod images;
 pub mod math;

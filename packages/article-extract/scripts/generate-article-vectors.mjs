@@ -19,6 +19,8 @@ import { removalsVectors, scoreVector } from './vectors/removals.mjs'
 import { standardizeCases } from './vectors/standardize-cases.mjs'
 import { standardizeFuzzVectors } from './vectors/standardize-fuzz.mjs'
 import { standardizeUrl, standardizeVectors, standardizedContent } from './vectors/standardize.mjs'
+import { pipelineCases } from './vectors/pipeline-cases.mjs'
+import { pipelineVector } from './vectors/pipeline.mjs'
 import { playScenario, scenarios } from './vectors/mutations.mjs'
 import { loadFixtures, vectorsDir } from './vectors/paths.mjs'
 import {
@@ -134,6 +136,22 @@ function buildFiles() {
   )
   files.set('markdown-fuzz.json', format(markdownFuzzVectors(400)))
   files.set('frontmatter.json', format(frontmatterProbes()))
+  for (const fixture of fixtures) {
+    files.set(
+      `pipeline/${fixture.name}.json`,
+      format(pipelineVector(fixture.html, fixture.url, fixture.now))
+    )
+  }
+  files.set(
+    'pipeline-cases.json',
+    format(
+      pipelineCases.map(({ name, html, url }) => ({
+        name,
+        html,
+        ...pipelineVector(html, url, '2025-01-02T03:04:05.000Z')
+      }))
+    )
+  )
   files.set(
     'scores.json',
     format(

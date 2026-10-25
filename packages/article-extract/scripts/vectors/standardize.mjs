@@ -27,7 +27,7 @@ const wellFormed = (value) => (typeof value === 'string' ? value.toWellFormed() 
 
 /** Runs `run` with the element rules of stages 3 and 4 (math, code blocks, images) switched off:
  *  their selectors match nothing, the LaTeX wrapper does nothing and no `img` looks like LaTeX. */
-function withDeferredRulesOff(run) {
+export function withDeferredRulesOff(run) {
   const rules = [...math.mathRules, ...code.codeBlockRules, ...images.imageRules]
   const saved = rules.map((rule) => rule.selector)
   const { wrapRawLatexDelimiters, extractLatexFromImageSrc, LOOKS_LIKE_LATEX_RE } = mathBase
