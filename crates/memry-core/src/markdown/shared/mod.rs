@@ -13,6 +13,7 @@ pub mod link_references;
 pub mod markdown_class;
 pub mod markdown_code;
 pub mod markdown_fences;
+pub mod markdown_source;
 pub mod obsidian_tasks;
 pub mod plain_checkbox;
 pub mod task_block;

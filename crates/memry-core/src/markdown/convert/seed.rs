@@ -36,6 +36,8 @@ pub struct SeedEnv<'a> {
     pub callout_types: &'a CalloutTypes,
     pub embeds: &'a dyn EmbedResolver,
     pub serializer: &'a dyn BlockSerializer,
+    /// False parses as builds before #2741 did, dropping every HTML comment.
+    pub html_comments: bool,
 }
 
 /// `withLfLineEndings`: the parse reads a `\r` as a space, so a CRLF file
@@ -65,7 +67,7 @@ pub fn prepare_fragment_seed(
         callout_types: env.callout_types,
         embeds: env.embeds,
         serializer: env.serializer,
-        html_comments: true,
+        html_comments: env.html_comments,
     };
     let blocks = parser.markdown_to_blocks(&source, note_path)?;
     // Upgrade `- [ ] … {task:id}` checkboxes into taskBlock nodes, and lines

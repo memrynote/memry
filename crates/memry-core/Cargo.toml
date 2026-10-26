@@ -20,7 +20,7 @@ default = []
 native-transport = []
 # The markdown converter (`src/markdown`), the Rust port of the Electron one.
 # Desktop turns it on; the iOS build keeps it off and links none of it.
-markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url"]
+markdown = ["dep:html5ever", "dep:markup5ever", "dep:regex", "dep:url", "dep:uuid"]
 
 [dependencies]
 # Library mode: the proc-macro attributes are the only interface. `tokio` lets
@@ -54,6 +54,8 @@ unicode-normalization = { workspace = true }
 # The markdown converter's HTML5 tokenizer and tree builder (`src/markdown`).
 # The TypeScript path parses HTML with jsdom, which uses parse5; both are
 # WHATWG parsers and produce the same tree for the same fragment.
+# Block ids of a seeded document (`crypto.randomUUID()` in the TypeScript).
+uuid = { workspace = true, optional = true }
 html5ever = { version = "0.40", optional = true }
 markup5ever = { version = "0.40", optional = true }
 # The TypeScript regular expressions that need no look-around or backreference
