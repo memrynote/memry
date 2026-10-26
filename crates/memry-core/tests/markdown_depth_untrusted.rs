@@ -165,3 +165,23 @@ fn replacing_the_body_of_a_deep_yjs_doc_fails_closed() {
         });
     }
 }
+
+/// An alias costs O(1), not the size of the anchored value: n aliases of one
+/// wide anchor once took n x width steps (105 s at n = 40000).
+#[test]
+fn many_aliases_of_a_wide_anchor_do_not_hang() {
+    let n = 40_000;
+    let mut yaml = format!("a: &a [{}]\n", vec!["[]"; n].join(","));
+    for i in 0..n {
+        yaml.push_str(&format!("b{i}: *a\n"));
+    }
+    let start = std::time::Instant::now();
+    on_small_stack(move || {
+        assert!(safe_load(&yaml).is_ok());
+    });
+    assert!(
+        start.elapsed() < std::time::Duration::from_secs(10),
+        "took {:?}",
+        start.elapsed()
+    );
+}

@@ -50,11 +50,24 @@ impl PartialEq for YamlValue {
     }
 }
 
+/// Heights of collections already measured, keyed by `Arc` address.
+#[derive(Default)]
+pub struct DepthMemo {
+    heights: HashMap<usize, usize>,
+    keep: Vec<YamlValue>,
+}
+
 impl YamlValue {
     /// Whether the value is more than `limit` levels deep. Iterative, so it is
     /// safe on a value of any depth, and it visits a shared collection once
     /// (an alias loads as the same `Arc`), so aliases cannot make it slow.
     pub fn deeper_than(&self, limit: usize) -> bool {
+        self.deeper_than_memo(limit, &mut DepthMemo::default())
+    }
+
+    /// [`Self::deeper_than`] with heights remembered across calls, so the
+    /// loader pays for each collection once however many aliases name it.
+    pub fn deeper_than_memo(&self, limit: usize, memo: &mut DepthMemo) -> bool {
         fn children(value: &YamlValue) -> Vec<&YamlValue> {
             match value {
                 YamlValue::Seq(items) => items.iter().collect(),
@@ -70,8 +83,11 @@ impl YamlValue {
             }
         }
         // Post-order with the height of every finished collection remembered.
-        let mut heights: HashMap<usize, usize> = HashMap::new();
+        let heights = &mut memo.heights;
         let mut stack: Vec<(&YamlValue, Vec<&YamlValue>, usize)> = Vec::new();
+        if let Some(known) = id(self).and_then(|root| heights.get(&root)) {
+            return *known > limit;
+        }
         if id(self).is_some() {
             stack.push((self, children(self), 0));
         }
@@ -95,6 +111,8 @@ impl YamlValue {
             }
             if let Some(node_id) = id(node) {
                 heights.insert(node_id, finished);
+                // Holding the `Arc` keeps the address from being reused.
+                memo.keep.push(node.clone());
             }
             if let Some(parent) = stack.last_mut() {
                 parent.2 = parent.2.max(finished);

@@ -120,7 +120,7 @@ impl State {
         }
         let alias = self.read_name("alias node")?;
         match self.anchor_map.get(&alias) {
-            Some(value) if value.deeper_than(MAX_YAML_DEPTH) => {
+            Some(value) if value.deeper_than_memo(MAX_YAML_DEPTH, &mut self.heights) => {
                 return self.error("anchored value is nested too deeply");
             }
             Some(value) => self.result = value.clone(),

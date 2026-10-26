@@ -76,6 +76,8 @@ pub(super) struct State {
     pub total_merge_keys: usize,
     /// Open `compose_node` calls; see [`MAX_YAML_DEPTH`].
     pub depth: usize,
+    /// Heights of anchored values, so an alias check costs O(1).
+    pub heights: super::value::DepthMemo,
     pub documents: Vec<YamlValue>,
     pub version: Option<String>,
     pub tag_map: HashMap<String, String>,
@@ -241,6 +243,7 @@ pub fn safe_load(text: &str) -> Result<Option<YamlValue>, YamlError> {
         line_indent: 0,
         total_merge_keys: 0,
         depth: 0,
+        heights: Default::default(),
         documents: Vec::new(),
         version: None,
         tag_map: HashMap::new(),
