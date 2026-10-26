@@ -107,11 +107,13 @@ jobs:
           toolchain: '1.98.1'
           components: rustfmt, clippy
 
+      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
-          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       - name: Format
         if: runner.os == 'Linux'
@@ -258,11 +260,13 @@ jobs:
           toolchain: '1.98.1'
           targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
 
+      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
-          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
       # patch version moves. Failing loudly with the available list beats a bare
