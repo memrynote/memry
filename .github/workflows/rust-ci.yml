@@ -33,6 +33,8 @@ on:
       - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
+  # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -299,3 +301,20 @@ jobs:
           name: MemryCoreFFI-xcframework
           path: packages/swift/MemryCore/MemryCoreFFI.xcframework
           retention-days: 7
+
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
+  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
+  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  gate:
+    name: Rust CI gate
+    needs: [plan, lint-and-test, article-extract-oracle-fresh, swift-bindings-fresh]
+    if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail when a needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needed job results: $RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

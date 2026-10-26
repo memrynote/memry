@@ -15,6 +15,8 @@ on:
     paths-ignore:
       - 'apps/docs/**'
       - 'apps/landing/**'
+  # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -308,7 +310,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload desktop coverage to Codecov
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -687,3 +689,20 @@ jobs:
           name: e2e-full-results-${{ strategy.job-index }}
           path: apps/desktop/test-results/
           if-no-files-found: ignore
+
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
+  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
+  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  gate:
+    name: Desktop CI gate
+    needs: [static, unit, unit-merge, coverage, desktop-build, e2e-smoke, e2e-smoke-windows, e2e-full]
+    if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail when a needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needed job results: $RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

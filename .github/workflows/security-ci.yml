@@ -13,6 +13,8 @@ on:
       - 'apps/landing/**'
   schedule:
     - cron: '23 4 * * 1'
+  # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -30,7 +32,7 @@ env:
 jobs:
   secret-scan:
     name: Secret scan
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    if: github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -50,7 +52,7 @@ jobs:
 
       - name: Scan changed files for secrets
         env:
-          BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.before }}
         run: node scripts/check-staged-secrets.mjs --changed "$BASE_REF"
 
   dependency-review:
@@ -96,3 +98,20 @@ jobs:
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v4
+
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
+  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
+  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  gate:
+    name: Security CI gate
+    needs: [secret-scan, dependency-review]
+    if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail when a needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "needed job results: $RESULTS"
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
