@@ -57,6 +57,8 @@ one-class change reviewable.
 | `compression.json`                      |                                    9 | `../scripts/vectors/compression.ts`         | `../src/__tests__/compression.test.ts`                                               |
 | `field-merge.json`                      |                                   32 | `../scripts/vectors/field-merge.ts`         | `../src/__tests__/field-merge.test.ts`                                               |
 | `settings-merge.json`                   |                                   18 | `../scripts/vectors/settings-merge.ts`      | `../src/__tests__/settings-merge.test.ts` + the Rust `settings_merge.rs` tests       |
+| `redact.json`                           |                            444 cases | `../scripts/vectors/redact.ts`              | the Rust `redact_vectors` test (`crates/memry-desktop/tests/redact_vectors.rs`)      |
+| `safe-dimension.json`                   |                           200+ cases | `../scripts/vectors/redact.ts`              | the same Rust test                                                                   |
 | `settings-groups.json`                  |                            17 groups | `../scripts/vectors/settings-groups.ts`     | the Rust `domain/app_settings` parity test                                           |
 | `recreate-clock.json`                   |                                   11 | `../scripts/vectors/recreate-clock.ts`      | `../src/__tests__/recreate-clock.test.ts` + the Rust `recreate_clock_vectors.rs`     |
 | `versioned-values.json`                 |                                   43 | `../scripts/vectors/versioned-values.ts`    | `../src/__tests__/versioned-values.test.ts` + Rust `versioned_values_vectors.rs`     |
