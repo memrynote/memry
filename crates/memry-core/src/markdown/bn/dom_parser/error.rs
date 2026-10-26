@@ -11,4 +11,7 @@ pub enum ParseError {
     Tree(#[from] TreeError),
     #[error("{0}")]
     Js(&'static str),
+    /// Nested deeper than `limits::MAX_NESTING_DEPTH`: the TypeScript throws a `RangeError`.
+    #[error("nesting too deep")]
+    TooDeep,
 }

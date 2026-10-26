@@ -1,0 +1,2 @@
+> [!quote]
+> body of quote

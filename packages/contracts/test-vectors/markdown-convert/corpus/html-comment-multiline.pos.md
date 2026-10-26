@@ -1,0 +1,7 @@
+<!--
+line
+
+break
+-->
+
+text

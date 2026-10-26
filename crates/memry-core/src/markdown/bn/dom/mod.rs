@@ -50,11 +50,13 @@ struct Node {
     data: NodeData,
     parent: Option<NodeId>,
     children: Vec<NodeId>,
+    depth: usize,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct Dom {
     nodes: Vec<Node>,
+    too_deep: bool,
 }
 
 impl Dom {
@@ -67,6 +69,7 @@ impl Dom {
             data,
             parent: None,
             children: Vec::new(),
+            depth: 0,
         });
         self.nodes.len() - 1
     }
@@ -204,6 +207,22 @@ impl Dom {
         self.detach(child);
         self.nodes[child].parent = Some(parent);
         self.nodes[parent].children.push(child);
+        self.note_depth(parent, child);
+    }
+
+    /// Records the depth `child` has under `parent`. A tree deeper than the
+    /// limit is flagged, not cut: the caller fails closed.
+    fn note_depth(&mut self, parent: NodeId, child: NodeId) {
+        let depth = self.nodes[parent].depth + 1;
+        self.nodes[child].depth = depth;
+        if depth > crate::markdown::limits::MAX_NESTING_DEPTH {
+            self.too_deep = true;
+        }
+    }
+
+    /// True when the parse built a tree deeper than `limits::MAX_NESTING_DEPTH`.
+    pub fn too_deep(&self) -> bool {
+        self.too_deep
     }
 
     /// `insertAdjacentElement("afterend")`: `node` becomes the next sibling of `anchor`.

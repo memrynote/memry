@@ -17,7 +17,9 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
-import { seedCorpusCases } from './cases-corpus'
+import { urlCases } from './cases-url'
+import { writeGrammarCorpus } from './gen-grammar-corpus'
+import { grammarCorpusCases, seedCorpusCases } from './cases-corpus'
 import { memryParseCases } from './cases-parse'
 import { serializeCases } from './cases-serialize'
 import { blocksCases } from './fns/blocks'
@@ -80,7 +82,7 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
     {
       path: 'html-to-blocks.json',
       note: 'BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.',
-      cases: htmlToBlocksCases()
+      cases: [...htmlToBlocksCases(), ...urlCases()]
     },
     {
       path: 'parse.json',
@@ -121,6 +123,11 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
       path: 'replace-body.json',
       note: 'replaceDocBody of crdt-feed.ts (re-implemented over the exported converter functions because the original is coupled to the CRDT provider): large-file refusal, the unlessChangedFrom guard, the empty-body paragraph, and the side roots after the replace.',
       cases: replaceBodyCases()
+    },
+    {
+      path: 'grammar-corpus.json',
+      note: 'One positive and one negative note per rule of protocol 12.6 to 12.8 (grammar-rules.ts; the same bytes are the corpus/*.md files and corpus/manifest.json), seeded and read back as seed-corpus.json does.',
+      cases: grammarCorpusCases()
     },
     {
       path: 'seed-corpus.json',
@@ -221,6 +228,7 @@ function main(): void {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- written by oracle-serve.oracle.ts
   const external = sources.get('sources/markdown-sources/all')?.output as MarkdownSource[]
   const files = vectorFiles(external)
+  if (!check) writeGrammarCorpus()
   const results = runOracle(files.flatMap((f) => f.cases))
   const target = check ? mkdtempSync(join(tmpdir(), 'memry-markdown-convert-')) : COMMITTED_DIR
   const drifted: string[] = []

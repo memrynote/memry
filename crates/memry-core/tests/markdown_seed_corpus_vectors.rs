@@ -13,7 +13,17 @@ use support::vector_file;
 
 #[test]
 fn the_synthetic_vault_converts_like_the_oracle() {
-    let file = vector_file("markdown-convert/seed-corpus");
+    check_file("seed-corpus");
+}
+
+/// One positive and one negative note per grammar rule of protocol 12.6 to 12.8.
+#[test]
+fn every_grammar_rule_converts_like_the_oracle() {
+    check_file("grammar-corpus");
+}
+
+fn check_file(name: &str) {
+    let file = vector_file(&format!("markdown-convert/{name}"));
     let mut failures = Failures::default();
     for case in file["cases"].as_array().expect("cases") {
         let id = case["id"].as_str().expect("id");
@@ -38,6 +48,6 @@ fn the_synthetic_vault_converts_like_the_oracle() {
         })();
         failures.check(id, outcome);
     }
-    println!("seed-corpus: {} cases", failures.checked());
-    failures.finish("seed-corpus.json");
+    println!("{name}: {} cases", failures.checked());
+    failures.finish(&format!("{name}.json"));
 }

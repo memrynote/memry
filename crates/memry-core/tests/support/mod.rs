@@ -150,6 +150,9 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/seed-doc" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/seed-doc.json"
         ),
+        "markdown-convert/grammar-corpus" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/grammar-corpus.json"
+        ),
         "markdown-convert/seed-corpus" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/seed-corpus.json"
         ),

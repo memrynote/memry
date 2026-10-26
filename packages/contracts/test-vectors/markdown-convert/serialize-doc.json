@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "yDocToMarkdown over documents authored from Yjs trees (note-blocks documents, hand cases, fail-closed shapes) and over seeded documents edited before they are read: the three way source merge, record states, file spelling and the empty-conversion guard. status \"error\" means the oracle threw. doc-repair-ids is repairEmptyBlockIds.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 499
+    "caseCount": 505
   },
   "cases": [
     {
@@ -1598,6 +1598,123 @@
           "repaired": 2,
           "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph\n3 text \"x\"\n1 element blockContainer\n2 element paragraph\n1 element columnList"
         }
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/start-table-span-colspan-text",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>",
+        "edits": [
+          {
+            "kind": "insert-start",
+            "run": 0,
+            "text": "EDIT "
+          }
+        ]
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/end-table-span-colspan-sum",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>",
+        "edits": [
+          {
+            "kind": "insert-end",
+            "run": 0,
+            "text": " tail"
+          }
+        ]
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "|        |   |   |   |   |\n| ------ | - | - | - | - |\n| x tail |   | y |   |   |\n| a      |   |   |   |   |",
+          "outcome": "house-style-fallback",
+          "canonical": "|        |   |   |   |   |\n| ------ | - | - | - | - |\n| x tail |   | y |   |   |\n| a      |   |   |   |   |",
+          "noteBody": {
+            "markdown": "|        |   |   |   |   |\n| ------ | - | - | - | - |\n| x tail |   | y |   |   |\n| a      |   |   |   |   |",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "house-style-fallback"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/start-table-span-rowspan-two",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+        "edits": [
+          {
+            "kind": "insert-start",
+            "run": 0,
+            "text": "EDIT "
+          }
+        ]
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/end-table-span-colspan-negative",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"-1\">x</td></tr><tr><td>a</td></tr></table>",
+        "edits": [
+          {
+            "kind": "insert-end",
+            "run": 0,
+            "text": " tail"
+          }
+        ]
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/start-table-span-colspan-empty",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>",
+        "edits": [
+          {
+            "kind": "insert-start",
+            "run": 0,
+            "text": "EDIT "
+          }
+        ]
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "serialize-edit/doc-serialize/end-table-span-colspan-leading-space",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>",
+        "edits": [
+          {
+            "kind": "insert-end",
+            "run": 0,
+            "text": " tail"
+          }
+        ]
+      },
+      "expected": {
+        "status": "error"
       }
     },
     {

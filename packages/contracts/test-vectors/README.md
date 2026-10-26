@@ -78,19 +78,20 @@ one-class change reviewable.
 | `markdown-convert/pm-schema.json`       |                                   27 | same                                        | same + Rust `markdown_pm_vectors.rs`                                                 |
 | `markdown-convert/yxml.json`            |                                  122 | same                                        | same + Rust `markdown_yxml_vectors.rs`                                               |
 | `markdown-convert/md-to-html.json`      |                                  833 | same                                        | same + Rust `markdown_md_to_html_vectors.rs`                                         |
-| `markdown-convert/html-to-blocks.json`  |                                  129 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
+| `markdown-convert/html-to-blocks.json`  |                                  190 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/parse.json`           |                                  833 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
-| `markdown-convert/memry-parse.json`     |                                  724 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
-| `markdown-convert/serialize.json`       |                                  913 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
+| `markdown-convert/memry-parse.json`     |                                  736 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
+| `markdown-convert/serialize.json`       |                                  925 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
 | `markdown-convert/layer-text.json`      |                                13066 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`   |                                 3243 | same                                        | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`    |                                 5116 | same                                        | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
 | `markdown-convert/layer-critic.json`    |                                 2944 | same                                        | same + Rust `markdown_layer_critic_vectors.rs`                                       |
 | `markdown-convert/seed-corpus.json`     |                                  250 | same                                        | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
-| `markdown-convert/seed-doc.json`        |                                  739 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
-| `markdown-convert/roundtrip.json`       |                                  739 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
-| `markdown-convert/blocks.json`          |                                  800 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
-| `markdown-convert/serialize-doc.json`   |                                  499 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
+| `markdown-convert/grammar-corpus.json`  |                                  454 | same                                        | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
+| `markdown-convert/seed-doc.json`        |                                  751 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
+| `markdown-convert/roundtrip.json`       |                                  751 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
+| `markdown-convert/blocks.json`          |                                  812 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
+| `markdown-convert/serialize-doc.json`   |                                  505 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`    |                                   44 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | **Total**                               | **32106 cases plus 6 fuzz families** |                                             |                                                                                      |
 
@@ -111,7 +112,7 @@ the contract). YAML values travel in the JSON spelling described in each file's
 
 `serialize.json` is `serializeBlocks`: 189 hand-written block lists and the 723 seeds of `memry-parse.json` serialized, markdown byte for byte; an oracle error means the converter answers null and the Rust must fail closed.
 
-`seed-corpus.json` is 250 bodies of the synthetic vault of `seed-bench-vault.ts` (a seeded generator, so the bytes are stable) through the same seed and read-back; a result equal to the input is omitted.
+`grammar-corpus.json` holds one positive and one negative note per rule of protocol 12.6 to 12.8 (227 rules, 454 notes). The same bytes are `markdown-convert/corpus/<rule>.pos.md` and `.neg.md`, indexed by `corpus/manifest.json`; the verifier requires the two to agree and both sides of every rule to exist. `seed-corpus.json` is 250 bodies of the synthetic vault of `seed-bench-vault.ts` (a seeded generator, so the bytes are stable) through the same seed and read-back; a result equal to the input is omitted.
 
 `seed-doc.json`, `roundtrip.json`, `blocks.json`, `serialize-doc.json` and
 `replace-body.json` are the Y.Doc half (protocol 12.1.1 to 12.1.3): the document a seed

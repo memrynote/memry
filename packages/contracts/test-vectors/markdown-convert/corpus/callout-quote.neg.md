@@ -1,0 +1,2 @@
+> [!QUOTE]
+> body

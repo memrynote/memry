@@ -175,13 +175,23 @@ fn resolve_range<T: ReadTxn>(
 /// resolves on `snapshot`, which must be a throwaway copy: the inserts are real
 /// edits. Records whose range no longer resolves (its text was deleted) are
 /// left out, and so leave the file.
-pub fn insert_writing_sentinels(
+///
+/// Crate-private: positions are UTF-16 units, so `snapshot` must be a
+/// `canonical::detach` copy (the registry's own documents count bytes).
+pub(crate) fn insert_writing_sentinels(
     snapshot: &yrs::Doc,
     fragment: &str,
     alternatives: &[WritingAlternative],
     ghosts: &[WritingGhost],
 ) -> EncodedWritingRanges {
     let frag = snapshot.get_or_insert_xml_fragment(fragment);
+    if crate::markdown::limits::fragment_too_deep(&snapshot.transact(), &frag) {
+        // The read that follows fails closed on a tree this deep.
+        return EncodedWritingRanges {
+            sentinels: WritingSentinelMap::new(),
+            alternatives: Vec::new(),
+        };
+    }
     let mut runs: Vec<TextRun> = Vec::new();
     let mut ranges: Vec<ResolvedRange> = Vec::new();
     let mut shown: Vec<(WritingAlternative, String)> = Vec::new();

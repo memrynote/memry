@@ -1,0 +1,71 @@
+/**
+ * `img.src` as jsdom 27.4 (whatwg-url 15.1) answers it, one case per class of
+ * input (#3522 review): the Rust converter serialises URLs with the `url` crate
+ * and must agree on each. The cases ride in `html-to-blocks.json` as
+ * `<img src>` snippets; the image block's `url` prop is the reflected value.
+ */
+import type { OracleCase } from './cases-frontmatter'
+
+const URLS: Record<string, string> = {
+  relative: 'a.png',
+  'relative-space': ' ./a b.png ',
+  'absolute-http': 'HTTPS://Example.COM/a b?q=1 2#f g',
+  'default-port': 'http://a.com:80/x',
+  'empty-path': 'http://a.com',
+  'caret-in-path': 'http://a.com/a^b',
+  'caret-in-query': 'http://a.com/?a^b',
+  'brace-in-path': 'http://a.com/a{b}c',
+  'pipe-in-path': 'http://a.com/a|b',
+  backslash: 'http://a.com\\a\\b',
+  'dot-segments': 'http://a.com/a/../b/./c',
+  'file-drive-pipe': 'file:///C|/x',
+  'file-drive-colon': 'file:///C:/x',
+  'file-host-drive-pipe': 'file://host/C|/x',
+  'file-unc': 'file:////srv/share/x',
+  'file-plain': 'file:///usr/bin/x',
+  'file-localhost': 'file://localhost/etc/x',
+  'opaque-space-query': 'x-y:a b?c',
+  'opaque-space-fragment': 'x-y:a b#c',
+  'opaque-trailing-space': 'x-y:a b ',
+  'opaque-plain': 'x-y:opaque',
+  'nonspecial-authority': 'x-y://host/path with space',
+  'nonspecial-empty-authority': 'x-y://@',
+  'nonspecial-port-backslash': 'x-y://h:\\',
+  'nonspecial-port-late-colon': 'x-y://h:\\)https://e.com/x',
+  'nonspecial-port-digits': 'x-y://h:80/x',
+  'nonspecial-ipv6-port': 'x-y://[::1]:80/x',
+  'nonspecial-userinfo': 'x-y://u:p@h/p',
+  'data-uri': 'data:image/png;base64,AAA=',
+  'javascript-uri': 'javascript:alert(1)',
+  'mailto-uri': 'mailto:a@b.c?subject=a b',
+  'fragment-only': '#top',
+  'query-only': '?a=1',
+  'protocol-relative': '//a.com/x',
+  'root-relative': '/a/b.png',
+  'ipv4-number': 'http://0x7f.1/x',
+  ipv6: 'http://[::1]:8080/x',
+  'bad-ipv6': 'http://[::1/x',
+  idna: 'http://Bücher.example/x',
+  'percent-encoded': 'http://a.com/%7e%zz',
+  'userinfo-special': 'http://u:p@a.com/x',
+  'empty-host-http': 'http:///x',
+  'tab-newline': 'http://a.com/a\tb\nc',
+  'leading-controls': '\u0001 http://a.com/x ',
+  'unicode-path': 'http://a.com/日本',
+  'unicode-query': 'http://a.com/?q=日本',
+  'blob-uri': 'blob:http://a.com/uuid',
+  'ws-uri': 'WS://a.com:80/x',
+  'ftp-uri': 'ftp://a.com:21/x',
+  'wrong-port': 'http://a.com:99999/x',
+  'about-blank': 'about:blank',
+  'memry-file': 'memry-file://abc/photo.png',
+  'memry-canvas': 'memry://canvas/V1StGXR8_Z}5jdHi6B-myT'
+}
+
+export function urlCases(): OracleCase[] {
+  return Object.entries(URLS).map(([name, url]) => ({
+    id: `url-reflect/html-to-blocks/${name}`,
+    op: 'html-to-blocks',
+    input: { html: `<img src="${url.replace(/"/g, '&quot;')}">` }
+  }))
+}

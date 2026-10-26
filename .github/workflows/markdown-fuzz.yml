@@ -4,8 +4,9 @@
 # running in place as the oracle, and lets cargo-fuzz look for panics.
 #
 #   differential  20000 mutated inputs, Rust against the oracle, zero mismatches
-#   corpus        the synthetic vault (generated from the repo's seed builders)
-#                 and the sandbox vault, Rust against the oracle
+#   corpus        the synthetic vault (the bulk generator and the demo seed the
+#                 dev sandbox vault is built from), Rust against the oracle
+#   perf          the report-only budget test of #3600 on macOS, Linux and Windows
 #   fuzz          cargo-fuzz, 10 minutes per target; a crash is uploaded
 #
 # A mismatch is minimised and written to crates/target/markdown-fuzz/<hash>.json,
@@ -95,13 +96,24 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [convert_roundtrip, frontmatter_split]
+        target: [convert_roundtrip, replace_body, frontmatter_split]
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
       - name: Setup Rust (nightly, fuzz only)
-        uses: dtolnay/rust-toolchain@nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          # The same date as crates/memry-core/fuzz/rust-toolchain.toml.
+          toolchain: nightly-2026-10-25
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - name: Seed the corpus from the committed vectors
+        run: node scripts/markdown-fuzz-seeds.mjs
 
       - name: Install cargo-fuzz
         run: cargo install cargo-fuzz --version 0.13.2 --locked
@@ -113,7 +125,7 @@ jobs:
 
       - name: Fuzz, 10 minutes
         working-directory: crates/memry-core
-        run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=600 -len_control=10
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=600 -len_control=10
 
       - name: Upload crashes
         if: failure()
@@ -122,3 +134,32 @@ jobs:
           name: fuzz-crashes-${{ matrix.target }}
           path: crates/memry-core/fuzz/artifacts/
           if-no-files-found: ignore
+
+  perf:
+    name: Report-only perf budget (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-22.04, windows-2022]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+
+      # doc_to_markdown misses its budget today (#3600); the numbers are the
+      # record, so the step reports and does not fail. Set MEMRY_PERF_ENFORCE=1
+      # here when #3600 lands.
+      - name: Perf, release build
+        working-directory: crates
+        run: cargo test -p memry-core --features markdown --release --test markdown_perf -- --ignored --nocapture

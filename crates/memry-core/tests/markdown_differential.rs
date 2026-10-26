@@ -76,8 +76,38 @@ const MARKERS: &[&str] = &[
 ];
 
 const HOSTILE: &[&str] = &[
-    "\u{2028}", "\u{feff}", "\0", "\\", "\r\n", "\r", "\u{a0}", "\u{200b}", "😀", "é", "<", "&",
-    "*", "_", "`", "~", "|", "[", "]", "(", ")", "!", "$", "{", "}",
+    "\u{2028}",
+    "\u{feff}",
+    "\0",
+    "\\",
+    "\r\n",
+    "\r",
+    "\u{a0}",
+    "\u{200b}",
+    "😀",
+    "é",
+    "<",
+    "&",
+    "*",
+    "_",
+    "`",
+    "~",
+    "|",
+    "[",
+    "]",
+    "(",
+    ")",
+    "!",
+    "$",
+    "{",
+    "}",
+    "^",
+    "file:///C|/x",
+    "file://h/C|/",
+    "file:////s/x",
+    "x-y://@",
+    "![](x-y://h:\\)",
+    "<img src=\"file:///C|/^\">",
 ];
 
 fn mutate(rng: &mut Rng, seeds: &[String], pool: &[String]) -> String {
@@ -155,7 +185,14 @@ fn blank_process_words(value: &Json) -> Json {
             let mut out = String::new();
             let mut rest = text.as_str();
             while let Some(at) = rest.find("MEMRY") {
-                let (head, tail) = rest.split_at(at + 8);
+                // `MEMRY` plus three more bytes; a non-ASCII byte there is not a token.
+                let Some((head, tail)) =
+                    rest.is_char_boundary(at + 8).then(|| rest.split_at(at + 8))
+                else {
+                    out.push_str(&rest[..at + 5]);
+                    rest = &rest[at + 5..];
+                    continue;
+                };
                 out.push_str(head);
                 let word = tail.bytes().take_while(u8::is_ascii_uppercase).count();
                 if head.ends_with("CMT") || head[at..].starts_with("MEMRYEM") {

@@ -5,6 +5,7 @@ use serde_json::Value as Json;
 
 use super::body::BodyParser;
 use super::{BlockSerializer, ConvertError, EmbedResolver};
+use crate::markdown::bn::dom_parser::ParseError;
 use crate::markdown::schema::callout_types::CalloutTypes;
 use crate::markdown::shared::critic_markup::{CriticMarkupMark, parse_critic_markup};
 use crate::markdown::shared::link_references::{
@@ -56,6 +57,9 @@ pub fn prepare_fragment_seed(
     // Writing tools markers first, as sentinels that ride the parse into the
     // blocks. CriticMarkup offsets are then moved onto the text every
     // CriticMarkup reader counts in.
+    if crate::markdown::limits::markdown_nests_too_deep(markdown) {
+        return Err(ParseError::TooDeep.into());
+    }
     let decoded = decode_writing_markers(&with_lf_line_endings(markdown));
     let parsed = parse_critic_markup(&decoded.text);
     let critic = without_writing_sentinels(&parsed, &decoded.sentinels);

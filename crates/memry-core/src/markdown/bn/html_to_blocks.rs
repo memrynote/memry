@@ -63,6 +63,9 @@ pub fn html_to_blocks_raw(html: &str) -> Result<Vec<Json>, ParseError> {
     let parser = DomParser::memry();
     let schema = parser.schema;
     let (mut dom, root) = parse_fragment_in_div(html);
+    if dom.too_deep() {
+        return Err(ParseError::TooDeep);
+    }
     nested_lists_to_blocknote_structure(&mut dom, root)?;
     preprocess_html_whitespace(&mut dom, root);
     let top = schema.create(

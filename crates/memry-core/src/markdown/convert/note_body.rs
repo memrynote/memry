@@ -21,6 +21,12 @@ pub struct NoteBody {
     pub markdown: String,
     pub writing: WritingFrontmatter,
     pub outcome: SourceRestoreOutcome,
+    /// As [`super::restore::SerializedBody::unrepresentable`].
+    pub unrepresentable: Vec<String>,
+    /// Elements y-prosemirror would delete because the schema cannot build them
+    /// (a childless table row, a node in the wrong place): their content is not
+    /// in `markdown` either. `Converter` fills it.
+    pub dropped_elements: usize,
 }
 
 /// `yDocToMarkdownWithWritingRanges`' three answers.
@@ -87,6 +93,8 @@ pub fn serialize_note_body<T: ReadTxn>(
                 markdown,
                 writing: writing_frontmatter_for(&alternatives, &overflow),
                 outcome: SourceRestoreOutcome::WritingMarks,
+                unrepresentable: Vec::new(),
+                dropped_elements: 0,
             });
         }
         WritingRanged::NotApplicable => {}
@@ -96,5 +104,7 @@ pub fn serialize_note_body<T: ReadTxn>(
         markdown: serialize_critic_markup(&plain.markdown, &critic_marks),
         writing: writing_frontmatter_for(&[], &overflow),
         outcome: plain.outcome,
+        unrepresentable: Vec::new(),
+        dropped_elements: 0,
     })
 }

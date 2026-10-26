@@ -18,6 +18,22 @@ interface Extra {
 const FENCE = '```'
 
 const NOTES: Record<string, string> = {
+  'table-span-colspan-text': '<table><tr><td colspan="x">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-rowspan-text': '<table><tr><td rowspan="x">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-sum':
+    '<table><tr><td colspan="2">x</td><td colspan="3">y</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-two': '<table><tr><td colspan="2">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-rowspan-two': '<table><tr><td rowspan="2">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-zero': '<table><tr><td colspan="0">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-negative':
+    '<table><tr><td colspan="-1">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-fraction':
+    '<table><tr><td colspan="1.5">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-empty': '<table><tr><td colspan="">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-suffix': '<table><tr><td colspan="2x">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-leading-space':
+    '<table><tr><td colspan=" 2">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-rowspan-zero': '<table><tr><td rowspan="0">x</td></tr><tr><td>a</td></tr></table>',
   'empty-input': '',
   'only-blank-lines': '\n\n\n',
   'plain-paragraph': 'Hello world\n',

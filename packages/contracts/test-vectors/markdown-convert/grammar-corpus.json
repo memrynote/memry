@@ -1,0 +1,6835 @@
+{
+  "meta": {
+    "spec": "tauri-v2-3522-markdown-convert",
+    "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
+    "note": "One positive and one negative note per rule of protocol 12.6 to 12.8 (grammar-rules.ts; the same bytes are the corpus/*.md files and corpus/manifest.json), seeded and read back as seed-corpus.json does.",
+    "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
+    "caseCount": 454
+  },
+  "cases": [
+    {
+      "id": "grammar-corpus/corpus-note/heading-1.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "# Title 1\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "# Title 1\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-1.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "#Title 1\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "#Title 1"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-2.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "## Title 2\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "## Title 2\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-2.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "##Title 2\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "##Title 2"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-3.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "### Title 3\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "### Title 3\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-3.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "###Title 3\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "###Title 3"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-4.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "#### Title 4\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "#### Title 4\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-4.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "####Title 4\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "####Title 4"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-5.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "##### Title 5\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "##### Title 5\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-5.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "#####Title 5\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "#####Title 5"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-6.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "###### Title 6\n\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "###### Title 6\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-6.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "######Title 6\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "######Title 6"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-seven-hashes.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "###### six\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "###### six"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-seven-hashes.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "####### seven\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "####### seven"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-toggle.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary># Heading toggle</summary>\n\nbody\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary># Heading toggle</summary>\n\nbody\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/heading-toggle.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>#Heading toggle</summary>\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>#Heading toggle</summary>\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/paragraph.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "plain text\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "plain text"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/paragraph.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "\\# not a heading\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "# not a heading"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/paragraph-hard-break.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a  \nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a  \nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/paragraph-hard-break.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a \nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a \nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-dash.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- one\n- two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- one\n- two"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-dash.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "-one\n-two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "-one\n-two"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-star.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "* one\n* two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- one\n- two"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-star.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*one\n*two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*one*\ntwo"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-plus.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "+ one\n+ two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- one\n- two"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-plus.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "+one\n+two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "+one\n+two"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-nested.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- a\n  - b\n    - c\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- a\n  - b\n    - c"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-nested.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- a\n - b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- a\n  - b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-loose.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- a\n\n- b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- a\n- b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-loose.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- a\n\n\n\n- b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- a\n\n\n\n- b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-empty-item.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- \n- b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- \n- b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-empty-item.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "-\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "-"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1. a\n2. b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1. a\n2. b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1.a\n2.b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1.a\n2.b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered-start.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "5. a\n6. b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "5. a\n6. b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered-start.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "5) a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "5. a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered-nested.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1. a\n   1. b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1. a\n   1. b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered-nested.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1. a\n  1. b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1. a\n   1. b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered-paren.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1) a\n2) b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1. a\n2. b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/ordered-paren.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1 ) a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1 ) a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-open.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [ ] todo\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [ ] todo"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-open.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [] todo\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [] todo"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-done.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [x] done\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [x] done"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-done.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [X ] done\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [X ] done"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-upper.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [X] done\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [x] done"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-upper.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [y] nope\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [y] nope"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-nested.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [ ] a\n  - [x] b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [ ] a\n  - [x] b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/task-nested.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- [ ]a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- [ ]a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> quoted\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> quoted"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": ">quoted\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> quoted"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-multi.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> a\n> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> a\n> b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-multi.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> a\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> a\n> b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-nested.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> a\n>\n> > b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> a\n>\n> > b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-nested.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": ">> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-with-list.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> - a\n> - b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> - a\n> - b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-with-list.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> -a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> -a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-with-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> ```\n> x\n> ```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-with-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> ```\n> x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-info.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]\n> body of info\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]\n> body of info"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-info.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!INFO]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!INFO]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-warning.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!warning]\n> body of warning\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!warning]\n> body of warning"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-warning.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!WARNING]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!WARNING]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-error.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!error]\n> body of error\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!error]\n> body of error"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-error.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!ERROR]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!ERROR]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-success.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!success]\n> body of success\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!success]\n> body of success"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-success.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!SUCCESS]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!SUCCESS]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-note.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!note]\n> body of note\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!note]\n> body of note"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-note.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!NOTE]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!NOTE]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-abstract.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!abstract]\n> body of abstract\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!abstract]\n> body of abstract"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-abstract.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!ABSTRACT]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!ABSTRACT]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-todo.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!todo]\n> body of todo\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!todo]\n> body of todo"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-todo.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!TODO]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!TODO]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-tip.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!tip]\n> body of tip\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!tip]\n> body of tip"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-tip.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!TIP]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!TIP]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-important.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!important]\n> body of important\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!important]\n> body of important"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-important.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!IMPORTANT]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!IMPORTANT]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-question.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!question]\n> body of question\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!question]\n> body of question"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-question.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!QUESTION]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!QUESTION]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-example.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!example]\n> body of example\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!example]\n> body of example"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-example.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!EXAMPLE]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!EXAMPLE]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-quote.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!quote]\n> body of quote\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!quote]\n> body of quote"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-quote.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!QUOTE]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!QUOTE]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-bug.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!bug]\n> body of bug\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!bug]\n> body of bug"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-bug.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!BUG]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!BUG]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-folded.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]-\n> hidden\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]-\n> hidden"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-folded.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info] -\n> hidden\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info] -\n> hidden"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-open-fold.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]+\n> open\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]+\n> open"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-open-fold.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]++\n> x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]++\n> x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-with-title.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!tip] Title\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!tip] Title\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-with-title.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!tip]Title\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!tip]Title\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-with-list.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!note]\n> - a\n> - b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!note]\n> - a\n> - b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-with-list.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!note]\n> - [ ] a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!note]\n> - [ ] a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-unknown-type.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!danger]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!danger]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-unknown-type.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!Danger-Zone]\n> body\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!Danger-Zone]\n> body"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-empty.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-empty.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-nested-quote.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]\n> > inner\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]\n> > inner"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/callout-nested-quote.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> [!info]\n>> inner\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> [!info]\n> inner"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\ncode\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\ncode\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\ncode\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\ncode\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```ts\nconst a = 1\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```ts\nconst a = 1\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "``` ts extra words\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```ts extra words\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-tilde.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~~\nx\n~~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-tilde.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~\nx\n~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~x~~"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-long.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "````\n```\n````\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "````\n```\n````"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-long.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\n````\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-empty.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-empty.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "``````\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-indented.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "    indented code\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "indented code"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-indented.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "   not code\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "not code"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-keeps-markers.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\n<!-- align:center -->\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\n```\n\n```\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-keeps-markers.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:center -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": ""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/math-block.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "$$\nx^2\n$$\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "$$\nx^2\n$$"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/math-block.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "$$x^2$$\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "$$x^2$$"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/math-block-multiline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "$$\na\nb\n$$\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "$$\na\nb\n$$"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/math-block-multiline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "  $$\na\n$$\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "$$\na\n$$"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/math-unterminated.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "$$\nx\n\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "$$\nx\n\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/math-unterminated.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "$$ \nx\n$$ \n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "$$ \nx\n$$"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/divider.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\n---\n\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n\n***\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/divider.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n--\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n--\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/divider-star.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "***\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/divider-star.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/divider-underscore.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "___\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/divider-underscore.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "__\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "__"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n| - | - |\n| 1 | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n\n| 1 | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-align.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| :- | -: |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n| - | - |\n| 1 | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-align.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| :-: :- |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n\n| :-: :- |\n\n| 1 | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-ragged.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n| 1 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n| - | - |\n| 1 |   |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-ragged.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n| - | - |\n| 1 | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-pipe-escape.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a \\| b | c |\n| - | - |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a \\| b | c |\n| ------ | - |\n| 1      | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-pipe-escape.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n| 1 \\\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a   | b |\n| --- | - |\n| 1 \\ |   |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-empty-cell.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n|  | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n| - | - |\n|   | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-empty-cell.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n||\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a | b |\n| - | - |\n|   |   |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-inline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| **a** | `b` |\n| - | - |\n| [l](u) | ~~s~~ |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| **a**  | `b`   |\n| ------ | ----- |\n| [l](u) | ~~s~~ |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-inline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| **a | b** |\n| - | - |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| **a | b** |\n| --- | --- |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-html.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td><td>b</td></tr></table>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "|   |   |\n| - | - |\n| x |   |\n| a | b |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-html.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr></table>\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-rowspan.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td><td>a</td></tr><tr><td>b</td></tr></table>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "|   |   |\n| - | - |\n| x | a |\n|   | b |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-rowspan.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"0\">x</td></tr></table>\n"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-align-marker.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- table-align:[\"left\",\"center\"] -->\n| a | b |\n| - | - |\n| 1 | 2 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- table-align:[\"left\",\"center\"] -->\n\n| a | b |\n| - | - |\n| 1 | 2 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-align-marker.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- table-align:[left] -->\n| a | b |\n| - | - |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- table-align:[left] -->\n\n| a | b |\n| - | - |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-colors-marker.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- table-colors:{\"0:0\":{\"textColor\":\"red\"}} -->\n| a |\n| - |\n| 1 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- table-colors:{\"0:0\":{\"textColor\":\"red\"}} -->\n| a |\n| - |\n| 1 |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-colors-marker.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- table-colors:{ -->\n| a |\n| - |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- table-colors:{ -->\n\n| a |\n| - |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![alt](https://example.com/a.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![alt](https://example.com/a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![alt] (https://example.com/a.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![alt] (https://example.com/a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-title.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![alt](a.png \"title\")\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![alt](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-title.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![alt](a.png title)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![alt](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-width.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![alt|300](a.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![alt|300](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-width.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![alt|3x0](a.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![alt|3x0](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-relative.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![](./img/a b.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![](./img/a)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-relative.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![](<>)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": ""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-reserved-char.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![a](http://h/a^b|c)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![a](http://h/a%5Eb|c)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-reserved-char.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![a](http://h/a b)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![a](http://h/a)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-file-url.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![a](file:///C|/x.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![a](file:///C:/x.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/image-file-url.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![a](file:/x.png\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![a](file:/x.png"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a.pdf\",\"size\":10,\"mimeType\":\"application/pdf\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a.pdf\",\"size\":10,\"mimeType\":\"application/pdf\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\" -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\" -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-order.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":1,\"mimeType\":\"x/y\",\"width\":5,\"height\":6} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":1,\"mimeType\":\"x/y\",\"width\":5,\"height\":6} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-order.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"name\":\"a\",\"url\":\"a.pdf\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":0,\"mimeType\":\"\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":1,\"mimeType\":\"application/pdf\",\"display\":\"link\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":1,\"mimeType\":\"application/pdf\",\"display\":\"link\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":1,\"mimeType\":\"x/y\",\"display\":\"odd\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a\",\"size\":1,\"mimeType\":\"x/y\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-align.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.png\",\"name\":\"a\",\"size\":1,\"mimeType\":\"image/png\",\"align\":\"center\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.png\",\"name\":\"a\",\"size\":1,\"mimeType\":\"image/png\",\"align\":\"center\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-align.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.png\",\"name\":\"a\",\"size\":1,\"mimeType\":\"image/png\",\"align\":\"left\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.png\",\"name\":\"a\",\"size\":1,\"mimeType\":\"image/png\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-escape.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a--b.pdf\",\"size\":1,\"mimeType\":\"x/y\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a--b.pdf\",\"size\":1,\"mimeType\":\"x/y\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/file-marker-escape.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a-->b\",\"size\":1,\"mimeType\":\"x/y\"} -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- file:{\"url\":\"a.pdf\",\"name\":\"a-->b\",\"size\":1,\"mimeType\":\"x/y\"} -->"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![whiteboard](https://example.com/c.png)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![whiteboard](https://example.com/c.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard-inline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "text\n\n![whiteboard](memry://canvas/abc)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text\n\n![whiteboard](memry://canvas/abc)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard-inline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "text ![whiteboard](memry://canvas/abc) more\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text more\n\n![whiteboard](memry://canvas/abc)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard-empty-id.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![whiteboard](memry://canvas/)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard-empty-id.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/a b)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![whiteboard](memry://canvas/a)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard-in-fence.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\n![whiteboard](memry://canvas/abc)\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```\n![whiteboard](memry://canvas/abc)\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/whiteboard-in-fence.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "    ![whiteboard](memry://canvas/abc)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "![whiteboard](memry://canvas/abc)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>Title</summary>\n\nbody\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>Title</summary>\n\nbody\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>Title</summary>\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>Title</summary>\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-open.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details open>\n<summary>T</summary>\n\nb\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details open>\n<summary>T</summary>\n\nb\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-open.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details closed>\n<summary>T</summary>\n\nb\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details closed>\n<summary>T</summary>\n\nb\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-nested.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>O</summary>\n\n<details>\n<summary>I</summary>\n\nx\n\n</details>\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>O</summary>\n\n<details>\n<summary>I</summary>\n\nx\n\n</details>\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-nested.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details><details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "\n\n\n"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-inline-summary.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>**bold** `c`</summary>\n\nb\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>**bold** `c`</summary>\n\nb\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-inline-summary.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary></summary>\n\nb\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary></summary>\n\nb\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-list.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>T</summary>\n\n- a\n- b\n\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>T</summary>\n\n- a\n- b\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/toggle-list.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<details>\n<summary>T</summary>\n- a\n</details>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<details>\n<summary>T</summary>\n\n- a\n\n</details>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/columns.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- memry:columns -->\n<div data-column-list>\n<div data-column>\n\na\n\n</div>\n<div data-column>\n\nb\n\n</div>\n</div>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- memry:columns -->\n\na\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/columns.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<div data-column>\n\na\n\n</div>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-center.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:center -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:center -->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-center.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:middle -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:middle -->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-right.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:right -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:right -->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-right.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:right-->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:right-->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-justify.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:justify -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:justify -->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-justify.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!--align:justify-->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!--align:justify-->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-heading.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:center -->\n# H\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:center -->\n# H"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-heading.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:center -->\n\n\n# H\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "\n\n\n# H"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-orphan.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:center -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": ""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/align-marker-orphan.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- align:center --> trailing\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- align:center --> trailing"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/colors-marker.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- colors:{\"textColor\":\"red\"} -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- colors:{\"textColor\":\"red\"} -->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/colors-marker.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- colors:{\"textColor\":} -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/colors-marker-background.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- colors:{\"backgroundColor\":\"blue\"} -->\n# H\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- colors:{\"backgroundColor\":\"blue\"} -->\n# H"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/colors-marker-background.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- colors: -->\n# H\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- colors: -->\n\n# H"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-card-marker.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- link-card:{\"display\":\"card\"} -->\n[a](https://example.com)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- link-card:{\"display\":\"card\"} -->\n[a](https://example.com)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-card-marker.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- link-card:{\"display\":\"card\" -->\n[a](https://example.com)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- link-card:{\"display\":\"card\" -->\n[a](https://example.com)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/block-nesting-marker.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- memry:block-nesting-level=1 -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/block-nesting-marker.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- memry:block-nesting-level=x -->\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- memry:block-nesting-level=x -->\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/view-block.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```memry-view\n{\"query\":\"x\"}\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```memry-view\n{\"query\":\"x\"}\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/view-block.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```memry-views\n{\"query\":\"x\"}\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```memry-views\n{\"query\":\"x\"}\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/portal-block.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```memry-portal\n{\"noteId\":\"n1\"}\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```memry-portal\n{\"noteId\":\"n1\"}\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/portal-block.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```memry-portal extra\n{}\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```memry-portal extra\n{}\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-block.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<div>raw</div>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "raw"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-block.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<div>raw\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "raw"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-block-figure.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<figure><img src=\"a.png\" alt=\"a\"><figcaption>c</figcaption></figure>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<figure><img alt=\"a\" src=\"a.png\"><figcaption>c</figcaption></figure>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-block-figure.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<figure>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "\n\n\n"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-block.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- note -->\n\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- note -->\n\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-block.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- note\n\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!-- note\n\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-multiline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!--\nline\n\nbreak\n-->\n\ntext\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!--\nline\n\nbreak\n-->\n\ntext"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-multiline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!--\nline\n\nbreak\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<!--\nline\n\nbreak"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/percent-comment.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a %%hidden%% b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a %%hidden%% b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/percent-comment.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a %%unclosed b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a %%unclosed b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/blank-lines.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\n\n\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n\n\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/blank-lines.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/crlf.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\r\n\r\nb\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a\n\nb\n",
+          "canonical": "a\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/crlf.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\rb\r"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a\nb\n",
+          "canonical": "a\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/empty-body.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": ""
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "no-record"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/empty-body.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": ""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\ntitle: T\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n## title: T\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\ntitle: T\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\ntitle: T\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-empty.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n***\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-empty.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "--- \n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n***\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-crlf.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\r\ntitle: T\r\n---\r\nbody\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "---\ntitle: T\n---\nbody\n",
+          "canonical": "***\n\n## title: T\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-crlf.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\r\ntitle: T\r\n--\r\nbody\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "---\ntitle: T\n--\nbody\n",
+          "canonical": "***\n\ntitle: T\n--\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-bom.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "﻿---\ntitle: T\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n## title: T\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-bom.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "﻿\n---\ntitle: T\n---\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n## title: T"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-unicode-title.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\ntitle: Çay ☕\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n## title: Çay ☕\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-unicode-title.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\ntitle: [unclosed\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n## title: [unclosed\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bold.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**b**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**b**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bold.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "** b**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "** b**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bold-underscore.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "__b__\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**b**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bold-underscore.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "__ b__\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "__ b__"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/italic.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*i*\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*i*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/italic.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "* i*\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- i*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/italic-underscore.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "_i_\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*i*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/italic-underscore.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "snake_case_word\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "snake_case_word"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bold-italic.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "***bi***\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***bi***"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bold-italic.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "***bi*\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***bi*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/strike.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~s~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~s~~"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/strike.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~ s~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~ s~~"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`code`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`code`"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`code\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`code"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-code-double.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`` a`b ``\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "``a`b``"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-code-double.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`` a`b `\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`` a`b `"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-code-spaces.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`  a  `\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`a `"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-code-spaces.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "` `\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "\n\n\n"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/underline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<u>u</u>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<span style=\"text-decoration:underline\">u</span>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/underline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<u>u\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<span style=\"text-decoration:underline\">u</span>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/highlight.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "==h==\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "==h=="
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/highlight.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "== h==\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "== h=="
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/superscript.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "x<sup>2</sup>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "x2"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/superscript.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "x<sup>2\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "x2"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/subscript.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "H<sub>2</sub>O\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "H2O"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/subscript.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "H<sub>2\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "H2"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/text-color.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<span style=\"color: red\">t</span>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<span style=\"color:red\">t</span>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/text-color.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<span style=\"color:\">t</span>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "t"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/background-color.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<span style=\"background-color: yellow\">t</span>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<span style=\"background-color:yellow\">t</span>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/background-color.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<span style=\"background-color\">t</span>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "t"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](https://example.com)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](https://example.com)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t] (https://example.com)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t] (https://example.com)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-title.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](https://example.com \"T\")\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](https://example.com \"T\")"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-title.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](https://example.com T)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](https://example.com T)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-angle.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](<a b>)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](<a b>)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-angle.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](<a b)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](<a b)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-parens.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](https://e.com/a_(b))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](https://e.com/a_(b))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-parens.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t](https://e.com/a_(b)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t](https://e.com/a_(b)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-reference.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t][r]\n\n[r]: https://example.com\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t][r]\n\n[r]: https://example.com"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-reference.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t][r]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t][r]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-reference-title.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[t][r]\n\n[r]: https://example.com \"T\"\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[t][r]\n\n[r]: https://example.com \"T\""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-reference-title.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[r]: \n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[r]:"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-autolink.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<https://example.com>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<https://example.com>"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-autolink.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<https://example.com\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "<https://example.com"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-bare.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "see https://example.com/a now\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "see https://example.com/a now"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-bare.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "see https:// now\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "see https:// now"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-in-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`[t](u)`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`[t](u)`"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-in-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[`t`](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[`t`](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-hard-break.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[one  \ntwo](https://example.com)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[one](https://example.com)  \n[two](https://example.com)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-hard-break.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[one\\\ntwo](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[one](u)  \n[two](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[[Target]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[[Target]]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[[Target]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[[Target]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link-alias.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[[Target|alias]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[[Target|alias]]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link-alias.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[[Target|]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[[Target|]]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link-empty.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[[]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[[]]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link-empty.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[[ ]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[[ ]]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link-in-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`[[Target]]`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`[[Target]]`"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/wiki-link-in-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[ [Target]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[ [Target]]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/hash-tag.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "#tag\n\ntext #tag-two\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "#tag\n\ntext #tag-two"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/hash-tag.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "#\n\n# \n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "#\n\n#"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/hash-tag-digits.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a #2024 b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a #2024 b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/hash-tag-digits.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a#tag\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a#tag"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/date-mention.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "((date:2026-01-02))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "((date:2026-01-02))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/date-mention.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "((date:2026 01))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "((date:2026 01))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/date-mention-range.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "((date:2026-01-02;2026-01-05))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "((date:2026-01-02;2026-01-05))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/date-mention-range.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "((date:))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "((date:))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-mention.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "((mention:https%3A%2F%2Fexample.com))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "((mention:https%3A%2F%2Fexample.com))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/link-mention.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "((mention:))\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "((mention:))"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-image.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "text ![a](a.png) more\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text more\n\n![a](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-image.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "text !\\[a](a.png) more\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text ![a](a.png) more"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-image-width.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "text ![a|20](a.png) more\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text more\n\n![a|20](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-image-width.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "text ![a|](a.png) more\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "text more\n\n![a|](a.png)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-checkbox.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| [ ] x |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| [ ] x |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-checkbox.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| [] x |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a    |\n| ---- |\n| [] x |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-inline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a <!-- hidden --> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a <!-- hidden --> b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-inline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a <!- hidden --> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a <!- hidden --> b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-in-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "use `<!-- x -->` here\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "use `<!-- x -->` here"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-in-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "use <!-- x here\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "use <!-- x here"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-in-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[a <!-- c --> b](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[a <!-- c --> b](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-in-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "[a <!-- c b](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[a <!-- c b](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-in-table.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n| x <!-- c --> | y |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a            | b |\n| ------------ | - |\n| x <!-- c --> | y |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-in-table.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a | b |\n| - | - |\n| x <!-- c | y |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a        | b |\n| -------- | - |\n| x <!-- c | y |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-bold.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**a <!-- b --> c**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**a <!-- b --> c**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/html-comment-bold.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**a <!-- b c**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**a <!-- b c**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-star.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a \\* b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a * b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-star.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a * b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a * b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-bracket.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "\\[a\\](b)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[a](b)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-bracket.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "\\[a](b)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "[a](b)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-backtick.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a \\` b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a ` b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-backtick.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a ` b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a ` b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-hash.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "\\# no\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "# no"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-hash.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "\\#no\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "#no"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-pipe-in-table.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a \\| b |\n| - |\n| 1 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a \\| b |\n| ------ |\n| 1      |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/escape-pipe-in-table.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a \\\\| b |\n| - |\n| 1 |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a \\| b |\n| ------ |\n| 1      |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/entity-amp.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a &amp; b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a &amp; b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/entity-amp.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a &ampx b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a &ampx b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/entity-numeric.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "&#65;&#x42;\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "&#65;&#x42;"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/entity-numeric.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "&#x;\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "&#x;"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/emoji.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a 😀 b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a 😀 b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/emoji.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a � b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a � b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/cjk.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "日本語の文章 **強調**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "日本語の文章 **強調**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/cjk.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "日本語**強調 \n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "日本語**強調"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/combining-marks.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "é ä\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "é ä"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/combining-marks.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "́\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "́"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/rtl.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "مرحبا **بالعالم**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "مرحبا **بالعالم**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/rtl.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "مرحبا ** بالعالم**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "مرحبا ** بالعالم**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/non-ascii-writing-run.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "çay <!--ghost-->x<!--/ghost--> ☕\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "çay x ☕\n",
+          "canonical": "çay x ☕"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/non-ascii-writing-run.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "çay <!--ghost-->x ☕\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "çay x ☕\n",
+          "canonical": "çay x ☕"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-addition.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {++add++} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "a add b",
+          "canonical": "a add b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-addition.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {++add b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a {++add b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-deletion.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {--del--} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "a del b",
+          "canonical": "a del b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-deletion.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {--del-} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a {--del-} b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-substitution.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {~~old~>new~~} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "a new b",
+          "canonical": "a new b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-substitution.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {~~old~new~~} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a {~~old~new~~} b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-comment.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {>>note<<} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "a  b",
+          "canonical": "a  b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-comment.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {>>note} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a {>>note} b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-highlight.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {==hi==} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a {==hi==} b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-highlight.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a {==hi=} b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a {==hi=} b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-in-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`{++a++}`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "`a`",
+          "canonical": "`a`"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-in-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "{ ++a++ }\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "{ ++a++ }"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-in-fence.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\n{++a++}\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "```\na\n```",
+          "canonical": "```\na\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-in-fence.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "    {++a++}\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "a",
+          "canonical": "a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-nested-marks.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "{++**b**++}\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "**b**",
+          "canonical": "**b**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/critic-nested-marks.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "{++**b++}**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "critic-marks",
+          "markdown": "**b**",
+          "canonical": "**b**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-ghost.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a <!--ghost-->g<!--/ghost--> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a g b\n",
+          "canonical": "a g b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-ghost.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a <!--ghost--> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a  b\n",
+          "canonical": "a  b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-alt.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a <!--alt:k1-->x<!--/alt:k1--> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a x b\n",
+          "canonical": "a x b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-alt.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a <!--alt:-->x<!--/alt:--> b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a <!--alt:-->x<!--/alt:--> b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-ghost-unclosed.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!--ghost-->g<!--/ghost-->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "g\n",
+          "canonical": "g"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-ghost-unclosed.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!--/ghost-->g<!--ghost-->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "g\n",
+          "canonical": "g"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-in-code.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`<!--ghost-->`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "``\n",
+          "canonical": "``"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-in-code.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!-- ghost -->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "\n",
+          "canonical": ""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-in-fence.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```\n<!--ghost-->\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "```\n\n```\n",
+          "canonical": "```\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/writing-in-fence.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "<!--ghost-->\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "\n",
+          "canonical": ""
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-bullet.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "* a\n* b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- a\n- b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-bullet.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-emphasis.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "__a__ and *b*\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**a** and *b*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-emphasis.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "__ a__\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "__ a__"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-heading-setext.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "Title\n=====\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "# Title"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-heading-setext.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "Title\n=\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "# Title"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-setext-2.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "Title\n-----\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "## Title"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-setext-2.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "Title\n--\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "Title\n--"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-hr.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "***\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-hr.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "* *\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- *"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-ordered.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1) a\n2) b\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1. a\n2. b"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-ordered.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "1)a\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "1)a"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-blank-gaps.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\n\n\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n\n\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-blank-gaps.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\n\nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-fence-tilde.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~~js\nx\n~~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```js\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-fence-tilde.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~js\nx\n~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~js\nx~~"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-trailing-ws.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a  \nb\t\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a  \nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-trailing-ws.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a \nb\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a \nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-no-final-newline.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\nb"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "no-record"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-no-final-newline.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\n\nb\n\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "a\n\nb\n\n\n"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-crlf.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\r\n\r\nb\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a\n\nb\n",
+          "canonical": "a\n\nb"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/source-spelling-crlf.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "a\r\nb\n\r\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "markdown": "a\nb\n\n",
+          "canonical": "a\nb\n\n\n"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-keys-order.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\nz: 1\na: 2\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\nz: 1\n\n## a: 2\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-keys-order.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\nz: 1\na: 2\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\nz: 1\na: 2\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-writing.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\nwriting:\n  alt: []\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\nwriting:\n\n## alt: []\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/frontmatter-writing.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "---\nwriting: [\n---\nbody\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "***\n\n## writing: [\n\nbody"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-js.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```js\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```js\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-js.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```js `x\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```js `x\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-python.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```python\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```python\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-python.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```python `x\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```python `x\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-cpp.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```cpp\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```cpp\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-cpp.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```cpp `x\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```cpp `x\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-csharp.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```csharp\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```csharp\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-csharp.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```csharp `x\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```csharp `x\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-shell-session.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```shell-session\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```shell-session\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-shell-session.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```shell-session `x\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```shell-session `x\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-memry-view.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```memry-view\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```memry-view\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/code-fence-lang-memry-view.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "```memry-view `x\nx\n```\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "```memry-view `x\nx\n```"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-depth-2.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- l0\n  - l1\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- l0\n  - l1"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-depth-2.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- l0\n - l1\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- l0\n  - l1"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-depth-2.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> > x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> > x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-depth-2.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": ">>x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-depth-3.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- l0\n  - l1\n    - l2\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- l0\n  - l1\n    - l2"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-depth-3.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- l0\n - l1\n  - l2\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- l0\n  - l1\n  - l2"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-depth-3.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> > > x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> > x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-depth-3.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": ">>>x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-depth-5.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- l0\n  - l1\n    - l2\n      - l3\n        - l4\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- l0\n  - l1\n    - l2\n      - l3\n        - l4"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/bullet-depth-5.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "- l0\n - l1\n  - l2\n   - l3\n    - l4\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "- l0\n  - l1\n  - l2\n    - l3\n    - l4"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-depth-5.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "> > > > > x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> > x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/quote-depth-5.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": ">>>>>x\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "> x"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-b.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| **b** |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| **b** |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-b.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| **b**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| **b** |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-c.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| `c` |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a   |\n| --- |\n| `c` |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-c.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| `c`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a   |\n| --- |\n| `c` |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-lu.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| [l](u) |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a      |\n| ------ |\n| [l](u) |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-lu.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| [l](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a      |\n| ------ |\n| [l](u) |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-s.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| ~~s~~ |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| ~~s~~ |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-s.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| ~~s~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| ~~s~~ |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-h.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| ==h== |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| ==h== |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-h.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| ==h==\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| ==h== |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-uuu.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| <u>u</u> |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a                     |\n| --------------------- |\n| <span style=\"text-decoration:underline\">u</span> |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-uuu.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| <u>u</u>\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a                     |\n| --------------------- |\n| <span style=\"text-decoration:underline\">u</span> |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-w.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| [[w]] |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| [[w]] |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-w.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| [[w]]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a     |\n| ----- |\n| [[w]] |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-tag.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| #tag |\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a    |\n| ---- |\n| #tag |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/table-cell-tag.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "| a |\n| - |\n| #tag\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "| a    |\n| ---- |\n| #tag |"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-bold-around-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**[t](u)**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**[t](u)**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-bold-around-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**[t](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**[t](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-bold-around-wiki.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**[[w]]**\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**[[w]]**"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-bold-around-wiki.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "**[[w]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "**[[w]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-italic-around-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*[t](u)*\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*[t](u)*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-italic-around-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*[t](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*[t](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-italic-around-wiki.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*[[w]]*\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*[[w]]*"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-italic-around-wiki.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "*[[w]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "*[[w]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-strike-around-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~[t](u)~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~[t](u)~~"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-strike-around-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~[t](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~[t](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-strike-around-wiki.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~[[w]]~~\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~[[w]]~~"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-strike-around-wiki.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "~~[[w]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "~~[[w]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-highlight-around-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "==[t](u)==\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "==[t](u)=="
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-highlight-around-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "==[t](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "==[t](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-highlight-around-wiki.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "==[[w]]==\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "==[[w]]=="
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-highlight-around-wiki.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "==[[w]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "==[[w]"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-code-around-link.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`[t](u)`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`[t](u)`"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-code-around-link.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`[t](u)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`[t](u)"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-code-around-wiki.pos",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`[[w]]`\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`[[w]]`"
+        }
+      }
+    },
+    {
+      "id": "grammar-corpus/corpus-note/inline-mark-code-around-wiki.neg",
+      "op": "corpus-note",
+      "input": {
+        "markdown": "`[[w]\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "outcome": "source",
+          "canonical": "`[[w]"
+        }
+      }
+    }
+  ]
+}

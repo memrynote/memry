@@ -392,6 +392,17 @@ const HTML: Record<string, string> = {
   'table-nested-div': '<table><tr><td><div>d</div></td></tr></table>',
   'table-blocknote-wrapper':
     '<div data-node-type="blockContainer" data-content-type="table"><table><tr><td>a</td></tr></table></div>',
+  // jsdom's parse5 adapter appends the text a table foster-parents after the
+  // table, at the end of its parent (#3522 differential).
+  'foster-table-in-p': '<p>a<table><tr><td>x</td></tr></table></p>',
+  'foster-table-in-li': '<ul><li><p><table><tr>&lt;td</p></li></ul>',
+  'foster-table-foster-text': '<table>t<tr><td>x</td></tr></table>',
+  'foster-table-after-p': '<p>a</p><table><tr><td>x</td></tr></table>',
+  'foster-text-merges': '<table>t<tbody>a<tr><td>x</td></tr></tbody>b</table>u',
+  'foster-text-then-text':
+    '<table><tr><td>x</td></tr></table>a<table>t<tr><td>y</td></tr></table>b',
+  'foster-element-stays-before': '<table><tr><b>t</b><td>x</td></tr></table>',
+  'foster-table-eof-in-tag': '<ul><li><table><tr><td',
   img: '<img src="a.png" alt="alt">',
   'img-title': '<img src="a.png" alt="alt" title="t">',
   'img-in-p': '<p><img src="a.png" alt="x"></p>',

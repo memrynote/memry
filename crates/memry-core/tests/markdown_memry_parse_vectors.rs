@@ -81,6 +81,8 @@ fn memry_parse_vectors() {
 
         compared += 1;
         let outcome = match result {
+            // `prepareFragmentSeed` answers null where the conversion throws.
+            Err(_) if want["seed"].is_null() => Ok(()),
             Err(e) => Err(format!("failed: {e}")),
             Ok(seed) => {
                 let mut sentinels = Map::new();

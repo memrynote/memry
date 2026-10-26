@@ -84,6 +84,14 @@ fn an_unknown_node_beside_a_block_keeps_only_the_block() {
         add_container(txn, &group, "b", paragraph("kept"));
     });
     assert_untouched(&doc, |doc| {
+        // The body is written without the unknown node's content, and says so:
+        // a caller that must not lose content refuses on a non-empty list.
+        let converter = converter_for(&serde_json::json!({}));
+        let body = converter
+            .doc_to_markdown(doc, FRAGMENT, &SerializeOptions::default())
+            .expect("body");
+        assert_eq!(body.unrepresentable, vec!["mysteryBlock".to_owned()]);
+        assert_eq!(body.dropped_elements, 2);
         assert_eq!(markdown_of(doc).as_deref(), Some("kept"));
         let converter = converter_for(&serde_json::json!({}));
         assert_eq!(
@@ -103,6 +111,14 @@ fn a_childless_table_row_is_dropped_not_written_as_a_broken_table() {
         add_container(txn, &group, "b", paragraph("after"));
     });
     assert_untouched(&doc, |doc| {
+        let converter = converter_for(&serde_json::json!({}));
+        let body = converter
+            .doc_to_markdown(doc, FRAGMENT, &SerializeOptions::default())
+            .expect("body");
+        assert!(
+            body.dropped_elements > 0,
+            "the dropped table must be reported"
+        );
         assert_eq!(markdown_of(doc).as_deref(), Some("after"));
     });
 }

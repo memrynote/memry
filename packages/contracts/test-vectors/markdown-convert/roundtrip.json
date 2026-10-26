@@ -4,9 +4,159 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "Markdown seeded into a Y.Doc and read back: yDocToMarkdown (bytes and SourceRestoreOutcome), yDocToCanonicalMarkdown, serializeNoteBody (body and writing frontmatter) and findUnrepresentableNodes. markdown is compared byte for byte; it is the contract for what lands in users vault files.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 739
+    "caseCount": 751
   },
   "cases": [
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-text",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-rowspan-text",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-sum",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>",
+          "outcome": "source",
+          "canonical": "|   |   |   |   |   |\n| - | - | - | - | - |\n| x |   | y |   |   |\n| a |   |   |   |   |",
+          "noteBody": {
+            "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-two",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+          "outcome": "source",
+          "canonical": "|   |   |\n| - | - |\n| x |   |\n| a |   |",
+          "noteBody": {
+            "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-rowspan-two",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-zero",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-negative",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"-1\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-fraction",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"1.5\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-empty",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-suffix",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-leading-space",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-rowspan-zero",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
     {
       "id": "roundtrip/doc-serialize/empty-input",
       "op": "doc-serialize",

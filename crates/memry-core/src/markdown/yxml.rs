@@ -55,6 +55,9 @@ pub fn read_fragment<T: ReadTxn>(
     txn: &T,
     fragment: &XmlFragmentRef,
 ) -> Result<ReadFragment, YxmlError> {
+    if crate::markdown::limits::fragment_too_deep(txn, fragment) {
+        return Err(YxmlError::Unconvertible);
+    }
     let mut children = Vec::new();
     let mut total = 0;
     for child in fragment.children(txn) {

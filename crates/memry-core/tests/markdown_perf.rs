@@ -123,3 +123,31 @@ fn markdown_perf_budget() {
         println!("over budget (not enforced):\n{}", failures.join("\n"));
     }
 }
+
+/// Shapes that cost more than their size: `seed_body` of a paragraph of 5000
+/// bold spans is quadratic in yrs' `find_position` (1.4 s at 30 KB, 22 s at
+/// 120 KB, release, Apple M-series). Report only, tracked in #3600.
+#[test]
+#[ignore = "timing: run in a release build, see the module docs"]
+fn markdown_perf_pathological_shapes() {
+    let converter = converter_for(&serde_json::json!({}));
+    let references: String = (0..5000)
+        .map(|i| format!("[l{i}][r{i}] x\n\n"))
+        .chain((0..5000).map(|i| format!("[r{i}]: https://example.com/{i}\n")))
+        .collect();
+    for (label, markdown) in [
+        ("5000 bold spans in one paragraph", "**a** ".repeat(5000)),
+        ("5000 link references", references),
+        ("5000 list items", "- a\n".repeat(5000)),
+    ] {
+        let document = support::doc_case::open_document();
+        let started = Instant::now();
+        let seeded = converter.seed_body(&document, &markdown, None, None, &NoEmbeds);
+        println!(
+            "{label}: {} bytes, seeded={seeded}, {:?}",
+            markdown.len(),
+            started.elapsed()
+        );
+        assert!(seeded, "{label} must convert");
+    }
+}

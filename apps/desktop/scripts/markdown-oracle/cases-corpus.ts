@@ -9,6 +9,7 @@
  */
 import { generateBulkVault } from '../seed-data/bulk-notes'
 import type { OracleCase } from './cases-frontmatter'
+import { GRAMMAR_RULES } from './grammar-rules'
 
 const SEED = 0x1848
 const COUNT = 1000
@@ -22,4 +23,15 @@ export function seedCorpusCases(): OracleCase[] {
       op: 'corpus-note',
       input: { markdown: note.file.body }
     }))
+}
+
+/** One note per rule file of `grammar-rules.ts`, positive and negative. */
+export function grammarCorpusCases(): OracleCase[] {
+  return GRAMMAR_RULES.flatMap((rule) =>
+    (['pos', 'neg'] as const).map((kind) => ({
+      id: `grammar-corpus/corpus-note/${rule.id}.${kind}`,
+      op: 'corpus-note',
+      input: { markdown: rule[kind] }
+    }))
+  )
 }

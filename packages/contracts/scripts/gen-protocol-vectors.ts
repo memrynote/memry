@@ -160,6 +160,7 @@ const CLASSES: readonly VectorClass[] = [
       'layer-blocks.json',
       'layer-critic.json',
       'seed-corpus.json',
+      'grammar-corpus.json',
       'seed-doc.json',
       'roundtrip.json',
       'blocks.json',

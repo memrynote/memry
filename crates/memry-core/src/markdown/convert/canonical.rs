@@ -41,6 +41,26 @@ pub fn detach<T: ReadTxn>(txn: &T) -> Option<Doc> {
     Some(snapshot)
 }
 
+/// A copy of the document with the registry's own offset kind (bytes), for a
+/// rehearsal: running a write on it first shows whether the same write on the
+/// live document would fail halfway.
+pub fn rehearsal_copy<T: ReadTxn>(txn: &T) -> Option<Doc> {
+    let copy = Doc::new();
+    let update = Update::decode_v1(&txn.encode_state_as_update_v1(&StateVector::default())).ok()?;
+    copy.transact_mut().apply_update(update).ok()?;
+    Some(copy)
+}
+
+/// How many elements the read of `fragment` drops (`ReadFragment::removed`).
+pub fn dropped_elements<T: ReadTxn>(txn: &T, fragment: &str) -> usize {
+    txn.get_xml_fragment(fragment)
+        .and_then(|f| read_fragment(Schema::memry(), txn, &f).ok())
+        .map_or(0, |read| read.removed)
+}
+
+/// What `find_unrepresentable_nodes` names for a tree nested past `limits::MAX_NESTING_DEPTH`.
+pub const TOO_DEEP: &str = "<nesting too deep>";
+
 /// `docToBlocks`: the children of the document's first child, each a bnBlock.
 pub fn doc_to_blocks(schema: &Schema, root: &Node) -> Result<Vec<Json>, ParseError> {
     match root.children().first() {
@@ -147,6 +167,9 @@ pub fn find_unrepresentable_nodes<T: ReadTxn>(txn: &T, fragment: &str) -> Vec<St
     }
     let mut unknown = Vec::new();
     if let Some(root) = txn.get_xml_fragment(fragment) {
+        if crate::markdown::limits::fragment_too_deep(txn, &root) {
+            return vec![TOO_DEEP.to_owned()];
+        }
         visit(&root, txn, &mut unknown);
     }
     unknown

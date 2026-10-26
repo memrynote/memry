@@ -30,3 +30,10 @@ path = "fuzz_targets/frontmatter_split.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "replace_body"
+path = "fuzz_targets/replace_body.rs"
+test = false
+doc = false
+bench = false

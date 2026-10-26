@@ -214,7 +214,7 @@ function serializeOptions(input: DocInput, report: (o: SourceRestoreOutcome) => 
 export function docSeed(input: DocInput): Promise<unknown> {
   return withTypes(input, async () => {
     const doc = await buildDoc(input)
-    if (!doc) return { seeded: false }
+    if (!doc) throw new Error('seed failed')
     return { seeded: true, fragment: fragmentText(doc), roots: rootsOf(doc) }
   })
 }
@@ -223,7 +223,7 @@ export function docSeed(input: DocInput): Promise<unknown> {
 export function docSerialize(input: DocInput): Promise<unknown> {
   return withTypes(input, async () => {
     const doc = await buildDoc(input)
-    if (!doc) return { seeded: false }
+    if (!doc) throw new Error('seed failed')
     const fragment = input.fragment ?? FRAGMENT
     let outcome: SourceRestoreOutcome | null = null
     const markdown = await yDocToMarkdown(
@@ -254,7 +254,7 @@ export function docSerialize(input: DocInput): Promise<unknown> {
 export function docBlocks(input: DocInput): Promise<unknown> {
   return withTypes(input, async () => {
     const doc = await buildDoc(input)
-    if (!doc) return { seeded: false }
+    if (!doc) throw new Error('seed failed')
     const blocks = await yFragmentToBlocks(doc.getXmlFragment(input.fragment ?? FRAGMENT))
     return { seeded: true, blocks: blocks ? canonicalBlocks(blocks) : null }
   })
@@ -267,7 +267,7 @@ export function docBlocks(input: DocInput): Promise<unknown> {
 export function docReplace(input: DocInput): Promise<unknown> {
   return withTypes(input, async () => {
     const doc = await buildDoc({ ...input, markdown: input.baseMarkdown ?? '', writing: undefined })
-    if (!doc) return { seeded: false }
+    if (!doc) throw new Error('seed failed')
     const markdown = input.markdown ?? ''
     const fragment = doc.getXmlFragment(FRAGMENT)
     const before = fragment.toJSON()

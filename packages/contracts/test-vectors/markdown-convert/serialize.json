@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "serializeBlocks of blocknote-converter.ts (extractInlineColorRuns, HTML comment and emphasis tokens, BlockNote blocksToMarkdownLossy, normalizeSerializedMarkdown): hand-written blocks of every type, and the blocks prepareFragmentSeed builds from the memry-parse inputs, to markdown byte for byte. status \"error\" means the oracle threw (the converter answers null).",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 913
+    "caseCount": 925
   },
   "cases": [
     {
@@ -6265,6 +6265,138 @@
         "output": {
           "markdown": "colored\n"
         }
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-text",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-rowspan-text",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-sum",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "markdown": "|   |   |   |   |   |\n| - | - | - | - | - |\n| x |   | y |   |   |\n| a |   |   |   |   |\n"
+        }
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-two",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "markdown": "|   |   |\n| - | - |\n| x |   |\n| a |   |\n"
+        }
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-rowspan-two",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-zero",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-negative",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"-1\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "markdown": null
+        }
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-fraction",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"1.5\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "markdown": null
+        }
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-empty",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-suffix",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-colspan-leading-space",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/table-span-rowspan-zero",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
       }
     },
     {
