@@ -79,7 +79,7 @@ impl Vault {
     /// change when the folder moves.
     pub fn open_with(directory: String, options: OpenOptions) -> Result<Self, StorageError> {
         let db = open_data_with(&PathBuf::from(&directory).join("data.db"), options)?;
-        let id = db.call_blocking(|conn| crate::storage::vault_identity::resolve(conn))?;
+        let id = db.call_blocking(crate::storage::vault_identity::resolve)?;
         Ok(Self { id, db, directory })
     }
 

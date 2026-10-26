@@ -94,12 +94,12 @@ mod tests {
         let path = dir.path().join("data.db");
         let first = open_data(&path)
             .expect("open")
-            .call_blocking(|c| resolve(c))
+            .call_blocking(resolve)
             .expect("id");
         assert!(is_uuid(&first) && first.as_bytes()[14] == b'4');
         let again = open_data(&path)
             .expect("reopen")
-            .call_blocking(|c| resolve(c))
+            .call_blocking(resolve)
             .expect("id");
         assert_eq!(first, again);
     }
@@ -118,7 +118,7 @@ mod tests {
             .map_err(failed)
         })
         .expect("seed");
-        assert!(db.call_blocking(|c| resolve(c)).is_err());
+        assert!(db.call_blocking(resolve).is_err());
         let stored: String = db
             .read_blocking(|c| {
                 c.query_row("SELECT value FROM meta WHERE key = 'vault.id'", [], |r| {
