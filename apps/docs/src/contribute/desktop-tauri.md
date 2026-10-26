@@ -67,3 +67,7 @@ To look at a running e2e build's data, start it with `node apps/desktop-tauri/sc
 ## Two renderers
 
 Until the cutover deletes the Electron app, `apps/desktop-tauri/src/renderer` is a copy of `apps/desktop/src/renderer`. A critical renderer fix lands in both in the same PR. The rest of the rules are in `apps/desktop-tauri/AGENTS.md`.
+
+## Native strings
+
+The Tauri process speaks the `errors`, `menu`, `system` and `notes` namespaces of `packages/i18n/src/locales`; `crates/memry-desktop/build.rs` embeds them for all 32 locales and `memry_desktop::i18n::t(locale, "ns:dotted.key", &args)` looks a key up (the locale, then English; a missing key comes back as `ns:key`). The formatter is a port of the `intl-messageformat` subset the messages use: arguments, `plural` with `#`, `select` and apostrophe quoting, with plural rules and number digits from ICU4X. `crates/memry-desktop/tests/vectors/i18n-format.json.gz` holds what the real main-process i18n produces for every message and `cargo test -p memry-desktop --test i18n_vectors` replays it. After you edit a locale file or the formatter, run `pnpm --filter @memry/i18n vectors:generate`; CI runs `vectors:check`.
