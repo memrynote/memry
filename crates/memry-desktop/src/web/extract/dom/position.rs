@@ -26,7 +26,16 @@ impl Document {
 
     /// `node.childNodes.indexOf(child)` for a child of `node`.
     fn child_index(&self, node: NodeId, child: NodeId) -> Option<usize> {
-        self.child_nodes(node).iter().position(|&c| c == child)
+        let mut index = 0;
+        let mut next = self.first_child(node);
+        while let Some(c) = next {
+            if c == child {
+                return Some(index);
+            }
+            index += 1;
+            next = self.next_sibling(c);
+        }
+        None
     }
 
     /// `this.compareDocumentPosition(target)`.
