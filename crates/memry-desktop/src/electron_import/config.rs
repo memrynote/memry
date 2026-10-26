@@ -5,31 +5,45 @@
 
 use std::fs;
 
-use serde::Deserialize;
 use serde_json::{Map, Value};
 
 use super::ImportError;
 use super::profile::ElectronProfile;
 
 /// `StoredVaultInfo`. Every field but `path` is optional: older stores lack some.
-#[derive(Debug, Clone, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StoredVault {
     pub path: String,
-    #[serde(default)]
     pub name: Option<String>,
-    #[serde(default)]
     pub note_count: Option<u64>,
-    #[serde(default)]
     pub task_count: Option<u64>,
-    #[serde(default)]
     pub last_opened: Option<String>,
-    #[serde(default)]
     pub is_default: bool,
-    #[serde(default)]
     pub vault_uuid: Option<String>,
-    #[serde(default)]
     pub account_binding: Option<Value>,
+}
+
+impl StoredVault {
+    /// Reads each field on its own: a wrong-typed optional field reads as absent and does not
+    /// cost the vault its `path`. Only a missing string `path` skips the entry.
+    fn from_value(value: &Value) -> Option<Self> {
+        let path = value.get("path")?.as_str()?.to_owned();
+        let text = |key: &str| value.get(key).and_then(Value::as_str).map(str::to_owned);
+        let count = |key: &str| value.get(key).and_then(Value::as_u64);
+        Some(Self {
+            path,
+            name: text("name"),
+            note_count: count("noteCount"),
+            task_count: count("taskCount"),
+            last_opened: text("lastOpened"),
+            is_default: value
+                .get("isDefault")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+            vault_uuid: text("vaultUuid"),
+            account_binding: value.get("accountBinding").cloned(),
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -61,15 +75,15 @@ impl ElectronConfig {
         }
     }
 
-    /// Vaults in stored order; an entry without a string `path` is skipped.
-    pub fn vaults(&self) -> Vec<StoredVault> {
+    /// Vaults in stored order and the number of entries that could not be read (no string
+    /// `path`, or a wrong-typed field). A skipped entry is reported, not dropped silently.
+    pub fn vaults(&self) -> (Vec<StoredVault>, usize) {
         let Some(Value::Array(items)) = self.raw.get("vaults") else {
-            return Vec::new();
+            return (Vec::new(), 0);
         };
-        items
-            .iter()
-            .filter_map(|v| serde_json::from_value(v.clone()).ok())
-            .collect()
+        let vaults: Vec<StoredVault> = items.iter().filter_map(StoredVault::from_value).collect();
+        let skipped = items.len() - vaults.len();
+        (vaults, skipped)
     }
 
     pub fn current_vault(&self) -> Option<&str> {
@@ -101,6 +115,34 @@ impl ElectronConfig {
             .get("sync")?
             .get("recoveryPhraseConfirmed")?
             .as_bool()
+    }
+
+    /// `crdtStore.pendingRenames[vaultUuid]`: the uuid the vault's CRDT store directory is still
+    /// named after, when the vault adopted a new uuid (device linking) and its store was not yet
+    /// renamed (`store.ts` `recordCrdtStoreRename`).
+    pub fn crdt_pending_rename(&self, vault_uuid: &str) -> Option<&str> {
+        self.crdt_store()?
+            .get("pendingRenames")?
+            .get(vault_uuid)?
+            .as_str()
+    }
+
+    /// `crdtStore.legacyStoreClaimedBy`: the one vault uuid that inherited the global legacy
+    /// `crdt-store/`. Absent means unclaimed.
+    pub fn legacy_store_claimed_by(&self) -> Option<&str> {
+        self.crdt_store()?.get("legacyStoreClaimedBy")?.as_str()
+    }
+
+    /// `crdtStore.legacyStorePartitionPendingFor`: the vault that still owes its inherited legacy
+    /// store a partition pass. Set means that store holds documents of other vaults.
+    pub fn legacy_store_partition_pending_for(&self) -> Option<&str> {
+        self.crdt_store()?
+            .get("legacyStorePartitionPendingFor")?
+            .as_str()
+    }
+
+    fn crdt_store(&self) -> Option<&Value> {
+        self.raw.get("crdtStore")
     }
 
     /// Any other top-level section (`sync.entitlement` through `sync_section`, `crdtStore`,

@@ -86,25 +86,39 @@ pub struct IdentityPin {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct RawPin {
+    #[serde(default)]
+    version: Option<serde_json::Value>,
     app_name: String,
     #[serde(default)]
-    flipped: bool,
+    flipped: Option<serde_json::Value>,
 }
 
 impl IdentityPin {
-    /// An unreadable, unparseable or unknown-name pin is no pin.
-    pub fn read(dir: &Path) -> Option<Self> {
-        let raw = fs::read(dir.join(IDENTITY_PIN_FILENAME)).ok()?;
-        let raw: RawPin = serde_json::from_slice(&raw).ok()?;
+    /// An unreadable or unparseable pin, or one with an unknown app name, is no pin
+    /// (`readPin`). A pin whose `version` is present and not 1 is a layout this reader does not
+    /// know and is an error: guessing the app name from it could pick the wrong key.
+    pub fn read(dir: &Path) -> Result<Option<Self>, ImportError> {
+        let Ok(raw) = fs::read(dir.join(IDENTITY_PIN_FILENAME)) else {
+            return Ok(None);
+        };
+        let Ok(raw) = serde_json::from_slice::<RawPin>(&raw) else {
+            return Ok(None);
+        };
+        if raw.version.as_ref().is_some_and(|v| v != 1) {
+            return Err(ImportError::UnsupportedVersion {
+                what: IDENTITY_PIN_FILENAME,
+                found: raw.version.map(|v| v.to_string()).unwrap_or_default(),
+            });
+        }
         let app_name = match raw.app_name.as_str() {
             LEGACY_APP_NAME => LEGACY_APP_NAME,
             MEMRYNOTE_APP_NAME => MEMRYNOTE_APP_NAME,
-            _ => return None,
+            _ => return Ok(None),
         };
-        Some(Self {
+        Ok(Some(Self {
             app_name,
-            flipped: raw.flipped,
-        })
+            flipped: raw.flipped.is_some_and(|v| v == true),
+        }))
     }
 }
 
@@ -268,7 +282,7 @@ pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, Impor
             }
         }
     };
-    let pin = IdentityPin::read(&dir);
+    let pin = IdentityPin::read(&dir)?;
     let has_ciphertexts = store_has_ciphertexts(&dir);
     let app_names = app_names(env.host, pin.as_ref(), has_ciphertexts, born_at_new_path);
     let crdt_store_dirs = list_dirs(&dir.join("crdt-stores"))?;

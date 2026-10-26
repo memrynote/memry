@@ -24,7 +24,17 @@ use super::profile::ElectronProfile;
 /// `service -> account -> base64 ciphertext`, as `secure-secrets.json` v1 holds them.
 #[derive(Debug, Clone, Default)]
 pub struct SecretStoreFile {
-    pub entries: BTreeMap<String, BTreeMap<String, String>>,
+    pub entries: BTreeMap<String, BTreeMap<String, StoreLeaf>>,
+    /// Services whose value is not an object: nothing can be told about their accounts, so each
+    /// is reported as one corrupt entry instead of vanishing.
+    pub malformed_services: Vec<String>,
+}
+
+/// A store leaf. A non-string leaf is kept so the reader reports it, never drops it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum StoreLeaf {
+    Ciphertext(String),
+    Malformed,
 }
 
 impl SecretStoreFile {
@@ -43,21 +53,38 @@ impl SecretStoreFile {
     pub fn parse(bytes: &[u8]) -> Result<Self, ImportError> {
         let value: Value = serde_json::from_slice(bytes)
             .map_err(|e| ImportError::parse("secure-secrets.json", e.column()))?;
+        // The Electron app writes `version: 1`. An absent field reads (the app never checks it);
+        // any other value is a layout this reader was not written for.
+        if let Some(version) = value.get("version")
+            && version != 1
+        {
+            return Err(ImportError::UnsupportedVersion {
+                what: "secure-secrets.json",
+                found: version.to_string(),
+            });
+        }
         let Some(Value::Object(services)) = value.get("entries") else {
-            return Err(ImportError::parse("secure-secrets.json", 0));
+            return Err(ImportError::UnsupportedLayout("secure-secrets.json"));
         };
-        let mut entries = BTreeMap::new();
+        let mut store = Self::default();
         for (service, accounts) in services {
             let Value::Object(accounts) = accounts else {
+                store.malformed_services.push(service.clone());
                 continue;
             };
             let accounts = accounts
                 .iter()
-                .filter_map(|(a, v)| Some((a.clone(), v.as_str()?.to_owned())))
+                .map(|(account, v)| {
+                    let leaf = match v.as_str() {
+                        Some(s) => StoreLeaf::Ciphertext(s.to_owned()),
+                        None => StoreLeaf::Malformed,
+                    };
+                    (account.clone(), leaf)
+                })
                 .collect();
-            entries.insert(service.clone(), accounts);
+            store.entries.insert(service.clone(), accounts);
         }
-        Ok(Self { entries })
+        Ok(store)
     }
 }
 
@@ -84,7 +111,7 @@ impl fmt::Debug for SecretEntry {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum UnreadableReason {
     WrongIdentity,
     KeySourceMissing,

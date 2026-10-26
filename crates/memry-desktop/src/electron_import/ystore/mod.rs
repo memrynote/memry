@@ -9,14 +9,15 @@
 pub mod lib0_any;
 
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use lib0_any::Decoder;
 pub use lib0_any::Lib0Any;
 
 use super::ImportError;
+use super::config::ElectronConfig;
 use super::profile::{ElectronProfile, vault_dir_name};
-use super::scratch::ScratchDb;
+use super::scratch::{Scratch, ScratchDb};
 
 /// Reserved pseudo documents and meta keys (`crdt-provider.ts`).
 pub const STORE_DOC: &str = "__memry_crdt_store__";
@@ -39,6 +40,7 @@ struct DocData {
 
 pub struct YStoreReader {
     docs: BTreeMap<String, DocData>,
+    ignored_keys: usize,
 }
 
 enum Part {
@@ -59,24 +61,61 @@ fn decode_key(key: &[u8]) -> Result<Vec<Part>, ImportError> {
     Ok(parts)
 }
 
+fn is_dir(path: &Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| m.is_dir())
+}
+
 impl YStoreReader {
-    /// The per-vault store. `Ok(None)` when the vault has none.
-    pub fn open(profile: &ElectronProfile, vault_uuid: &str) -> Result<Option<Self>, ImportError> {
-        let dir = profile.crdt_store_root().join(vault_dir_name(vault_uuid));
-        Self::open_dir(&dir)
+    /// Where `vault_uuid`'s store sits. Device linking rewrites a vault's uuid and the store
+    /// directory follows only at the next open, so `crdtStore.pendingRenames[uuid]` in
+    /// `memry-config.json` names the directory that still holds the history. Like
+    /// `settlePendingCrdtStoreRename`, the old directory wins only when the new one does not
+    /// exist; when both exist the new one is the vault's own history and stays authoritative.
+    pub fn store_dir(
+        profile: &ElectronProfile,
+        vault_uuid: &str,
+        config: Option<&ElectronConfig>,
+    ) -> PathBuf {
+        let root = profile.crdt_store_root();
+        let own = root.join(vault_dir_name(vault_uuid));
+        let previous = config
+            .and_then(|c| c.crdt_pending_rename(vault_uuid))
+            .map(|prev| root.join(vault_dir_name(prev)));
+        match previous {
+            Some(previous) if !is_dir(&own) && is_dir(&previous) => previous,
+            _ => own,
+        }
     }
 
-    /// The global store every build before per-vault scoping wrote.
-    pub fn open_legacy(profile: &ElectronProfile) -> Result<Option<Self>, ImportError> {
-        Self::open_dir(&profile.legacy_crdt_store_dir())
+    /// The per-vault store. `Ok(None)` when the vault has none, under its own name or a pending
+    /// previous one.
+    pub fn open(
+        profile: &ElectronProfile,
+        vault_uuid: &str,
+        config: Option<&ElectronConfig>,
+        scratch: &Scratch,
+    ) -> Result<Option<Self>, ImportError> {
+        Self::open_dir(&Self::store_dir(profile, vault_uuid, config), scratch)
     }
 
-    pub fn open_dir(dir: &Path) -> Result<Option<Self>, ImportError> {
-        if !std::fs::symlink_metadata(dir).is_ok_and(|m| m.is_dir()) {
+    /// The global store every build before per-vault scoping wrote. `crdtStore.legacyStoreClaimedBy`
+    /// names the one vault that inherited it and `legacyStorePartitionPendingFor` the vault that
+    /// still owes it a partition pass (its documents may belong to other vaults); the migration
+    /// reads both from [`ElectronConfig`] before it trusts a legacy document's vault.
+    pub fn open_legacy(
+        profile: &ElectronProfile,
+        scratch: &Scratch,
+    ) -> Result<Option<Self>, ImportError> {
+        Self::open_dir(&profile.legacy_crdt_store_dir(), scratch)
+    }
+
+    pub fn open_dir(dir: &Path, scratch: &Scratch) -> Result<Option<Self>, ImportError> {
+        if !is_dir(dir) {
             return Ok(None);
         }
-        let mut db = ScratchDb::open(dir)?;
+        let mut db = ScratchDb::open(scratch, dir)?;
         let mut docs: BTreeMap<String, DocData> = BTreeMap::new();
+        let mut ignored_keys = 0;
         for (key, value) in db.scan_prefix(&[])? {
             let parts = decode_key(&key)?;
             match parts.as_slice() {
@@ -109,10 +148,17 @@ impl YStoreReader {
                     let sv = decoder.read_var_bytes()?.to_vec();
                     docs.entry(doc.clone()).or_default().state_vector = Some(sv);
                 }
-                _ => {}
+                _ => ignored_keys += 1,
             }
         }
-        Ok(Some(Self { docs }))
+        Ok(Some(Self { docs, ignored_keys }))
+    }
+
+    /// Keys in the store that are none of the three y-leveldb shapes this reader knows. A store
+    /// with any is not fully understood; the migration reports the count instead of importing
+    /// as if nothing were left behind.
+    pub fn ignored_keys(&self) -> usize {
+        self.ignored_keys
     }
 
     /// Every document with a state vector, an update or a meta entry, reserved ones included.

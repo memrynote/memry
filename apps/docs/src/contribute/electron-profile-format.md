@@ -33,7 +33,9 @@ The ciphertext is Chromium's synchronous `OSCrypt`, which Electron 43.1.1 restor
 
 On Linux a failed CBC decrypt retries with the key of the empty password, `d0d0ec9c7d77d43ac54187fa4818d17f`.
 
-CBC has no authentication, so a wrong key still decrypts about once in 256 tries on padding luck. A CBC result counts only when it is printable ASCII (`looksLikePlaintextSecret` in `secret-storage.ts`). The GCM tag authenticates the key, so a Windows result only has to be UTF-8.
+CBC has no authentication, so a wrong key still decrypts about once in 256 tries on padding luck. Electron applies the printable-ASCII test (`looksLikePlaintextSecret` in `secret-storage.ts`) only in `probeSecretStoreIdentity`, to judge the key. `decryptValue` accepts any decrypt. The reader follows both: a candidate key is validated when it decrypts some entry to printable ASCII, and under a validated key every entry that decrypts to valid UTF-8 is accepted, so a value with accented letters survives. A store whose entries are all non-printable validates no key and reads as unreadable. The GCM tag authenticates the key, so a Windows result only has to be UTF-8.
+
+A `version` field other than 1 in `secure-secrets.json` or `app-identity.json` is an error (`UnsupportedVersion`), and a store whose `entries` is not an object is `UnsupportedLayout`. A service that is not an object, or an account whose value is not a string, is reported as `CorruptCiphertext`, never dropped.
 
 Every entry that does not decrypt, and has no legacy keytar copy, is reported as unreadable with a reason (`WrongIdentity`, `KeySourceMissing`, `KeySourceDenied`, `CorruptCiphertext`). The reader never reports a secret as absent when it exists but could not be read. The migration uses this to refuse to mint a new master key over an unreadable one.
 
@@ -55,6 +57,13 @@ The key encoding is y-leveldb's `keyEncoding`: a string is `0x00`, a varuint byt
 - `[v1_sv, <doc>]` holds a varuint clock and a var-byte state vector.
 - `[v1, <doc>, meta, <key>]` holds a lib0 `encodeAny` value.
 
+Two bookkeeping records in `memry-config.json` (`crdtStore`, `apps/desktop/src/main/store.ts`) decide which directory and which vault a store belongs to, and the migration reads them through `ElectronConfig`:
+
+- `pendingRenames[newUuid] = oldUuid`: device linking rewrote the vault uuid and the store directory is still named after the old one. `YStoreReader::open` takes the old directory when the new one does not exist, as `settlePendingCrdtStoreRename` does. When both exist, the new one wins.
+- `legacyStoreClaimedBy` names the one vault that inherited the global `crdt-store/`. `legacyStorePartitionPendingFor` names the vault that still owes it a partition pass, which means the legacy store may hold documents of other vaults. Step 37 must not attribute a legacy document to a vault while the pass is pending.
+
+Keys in a store that are none of the three shapes are counted (`ignored_keys`) and reported.
+
 The pseudo document `__memry_crdt_store__` holds `syncEpoch`. A note's meta key `memry.snapshotWatermark.v1` (`packages/sync-client/src/crdt-snapshot-watermark.ts`) holds `{appliedSequence, snapshotRevision?}`. The reader returns it only for a non-negative integer `appliedSequence` and an absent or string `snapshotRevision`, as `decodeSnapshotWatermark` does.
 
 ## `Custom Dictionary.txt`
@@ -63,8 +72,10 @@ One word per line, then `checksum_v1 = <lowercase md5 hex of everything before t
 
 ## How the readers stay read-only
 
-LevelDB writes when it opens a database, so no reader opens a store in the profile. It copies the directory without `LOCK` into a temporary directory and opens the copy. Before the copy, a probe asks whether a running Electron holds the `LOCK` file (an `fcntl` lock query on Unix, an exclusive-open check on Windows) and refuses with `ProfileInUse` if so. The tests hash the profile tree (path, size, sha256) before and after every reader and require equality.
+LevelDB writes when it opens a database, so no reader opens a store in the profile. It copies the directory without `LOCK` into a `Scratch` directory under the app's own data dir (never the system temp dir, since a CRDT copy holds decrypted note history) and opens the copy. Stale copies older than an hour are swept when the scratch directory is opened, and a store over 4 GiB is refused.
+
+rusty-leveldb silently drops a log record whose checksum fails and opens with fewer entries. The reader therefore checks the crc32c of every record of each `*.log` and `MANIFEST-*` in the copy and returns `LevelDb` on a mismatch. Only a torn tail passes: a record cut short by the end of the file, or the zero padding at a block end. A bit flip in the length field of the last record looks like a torn tail and is tolerated; table files are checked by rusty-leveldb's paranoid mode. Before the copy, a probe asks whether a running Electron holds the `LOCK` file (an `fcntl` lock query on Unix, an exclusive-open check on Windows) and refuses with `ProfileInUse` if so. The tests hash the profile tree (path, size, sha256) before and after every reader and require equality.
 
 ## Fixtures
 
-`scripts/electron-fixtures/capture.mjs` launches the real Electron 43.1.1 with a fixture app name and writes a profile into `crates/memry-desktop/tests/fixtures/electron/<os>/`. It uses fixture names, never `memrynote` or `@memry/desktop`, so it cannot touch a real Safe Storage item. On macOS it passes `--use-mock-keychain`, which makes Chromium use a fixed password and leave the login keychain alone. The expected plaintexts and the throw-away key material sit in `<new|legacy>.json` beside each profile.
+`node scripts/electron-fixtures/capture.mjs --out <dir>` runs against the repo's own `pnpm install` (the desktop app's electron, y-leveldb and yjs, so the tool brings no second Electron lockfile). It launches the real Electron 43.1.1 with a fixture app name and writes a profile into `crates/memry-desktop/tests/fixtures/electron/<os>/`. It uses fixture names, never `memrynote` or `@memry/desktop`, so it cannot touch a real Safe Storage item. On macOS it passes `--use-mock-keychain`, which makes Chromium use a fixed password and leave the login keychain alone. The expected plaintexts and the throw-away key material sit in `<new|legacy>.json` beside each profile.

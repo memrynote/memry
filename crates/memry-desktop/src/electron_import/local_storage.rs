@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use super::ImportError;
 use super::profile::ElectronProfile;
-use super::scratch::ScratchDb;
+use super::scratch::{Scratch, ScratchDb};
 
 pub const PACKAGED_ORIGIN: &str = "file://";
 
@@ -21,12 +21,16 @@ pub struct LocalStorageSnapshot {
 
 impl LocalStorageSnapshot {
     /// `Ok(None)` when the profile has no localStorage store.
-    pub fn read(profile: &ElectronProfile, origin: &str) -> Result<Option<Self>, ImportError> {
+    pub fn read(
+        profile: &ElectronProfile,
+        origin: &str,
+        scratch: &Scratch,
+    ) -> Result<Option<Self>, ImportError> {
         let dir = profile.local_storage_dir();
         if !profile.has_local_storage {
             return Ok(None);
         }
-        let mut db = ScratchDb::open(&dir)?;
+        let mut db = ScratchDb::open(scratch, &dir)?;
         let mut prefix = format!("_{origin}").into_bytes();
         prefix.push(0);
         let mut snapshot = Self::default();

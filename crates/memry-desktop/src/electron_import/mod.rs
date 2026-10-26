@@ -6,6 +6,7 @@
 
 pub mod config;
 pub mod dictionary;
+mod leveldb_log;
 pub mod local_storage;
 pub mod profile;
 pub mod scratch;
@@ -18,7 +19,7 @@ pub use config::ElectronConfig;
 pub use dictionary::CustomDictionary;
 pub use local_storage::LocalStorageSnapshot;
 pub use profile::{AppNameCandidates, ElectronProfile, HostOs, IdentityPin, ProfileEnv};
-pub use scratch::ProfileLock;
+pub use scratch::{ProfileLock, Scratch};
 pub use secrets::{SecretEntry, SecretsReport, UnreadableReason, UnreadableSecret};
 pub use ystore::{SnapshotWatermark, YStoreReader};
 
@@ -38,6 +39,12 @@ pub enum ImportError {
     /// `offset` is a byte offset into the file or value; the content is never included.
     #[error("cannot parse {what} at byte {offset}")]
     Parse { what: &'static str, offset: usize },
+    /// A `version` field this reader does not know. Fail closed: read nothing from it.
+    #[error("{what} has unsupported version {found}")]
+    UnsupportedVersion { what: &'static str, found: String },
+    /// A document whose shape is not one the Electron app writes.
+    #[error("{0} has an unsupported layout")]
+    UnsupportedLayout(&'static str),
     #[error("key source: {0}")]
     KeySource(String),
     #[error("decrypt: {0}")]

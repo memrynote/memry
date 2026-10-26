@@ -9,8 +9,8 @@ use zeroize::Zeroizing;
 use super::chromium::{self, DecryptFailure};
 use super::key_source::{ChromiumKeySource, KeySourceError};
 use super::{
-    KeytarSource, SecretEntry, SecretSource, SecretStoreFile, SecretsReport, UnreadableReason,
-    UnreadableSecret,
+    KeytarSource, SecretEntry, SecretSource, SecretStoreFile, SecretsReport, StoreLeaf,
+    UnreadableReason, UnreadableSecret,
 };
 use crate::electron_import::ImportError;
 use crate::electron_import::profile::{ElectronProfile, HostOs};
@@ -61,7 +61,7 @@ struct Keys<'a> {
     windows: Option<Lookup<Zeroizing<[u8; 32]>>>,
 }
 
-impl<'a> Keys<'a> {
+impl Keys<'_> {
     fn password(&mut self, name: &'static str) -> &Lookup<Zeroizing<Vec<u8>>> {
         let source = self.source;
         self.passwords
@@ -69,20 +69,8 @@ impl<'a> Keys<'a> {
             .or_insert_with(|| source.password(name))
     }
 
-    fn decrypt(&mut self, ciphertext: &[u8]) -> Result<Zeroizing<String>, UnreadableReason> {
-        let mut attempt = Attempt::default();
-        let plain = match self.profile.host {
-            HostOs::Windows => self.windows_candidate(ciphertext, &mut attempt),
-            host => self.password_candidates(host, ciphertext, &mut attempt),
-        };
-        plain.ok_or_else(|| attempt.reason())
-    }
-
-    fn windows_candidate(
-        &mut self,
-        ciphertext: &[u8],
-        attempt: &mut Attempt,
-    ) -> Option<Zeroizing<String>> {
+    /// Windows: GCM authenticates the key, so any UTF-8 result is final.
+    fn windows(&mut self, ciphertext: &[u8], attempt: &mut Attempt) -> Option<Zeroizing<String>> {
         let (source, profile) = (self.source, self.profile);
         let lookup = self
             .windows
@@ -99,17 +87,19 @@ impl<'a> Keys<'a> {
         }
     }
 
-    fn password_candidates(
+    /// Every CBC key worth trying for `ciphertext`, across both candidate app names.
+    fn cbc_candidates(
         &mut self,
-        host: HostOs,
         ciphertext: &[u8],
         attempt: &mut Attempt,
-    ) -> Option<Zeroizing<String>> {
-        // Linux `v10` has a fixed key, so it decrypts with no key source at all.
+    ) -> Vec<chromium::CbcKey> {
+        let host = self.profile.host;
+        let mut keys = Vec::new();
+        // Linux `v10` has a fixed key, so it needs no key source at all.
         if host == HostOs::Linux && !chromium::linux_needs_password(ciphertext) {
-            match chromium::decrypt_linux(None, ciphertext) {
-                Ok(plain) => return Some(plain),
-                Err(failure) => attempt.corrupt |= failure == DecryptFailure::Corrupt,
+            match chromium::cbc_keys(host, None, ciphertext) {
+                Ok(found) => keys.extend(found),
+                Err(_) => attempt.corrupt = true,
             }
         }
         for name in self.profile.app_names.0.clone() {
@@ -117,23 +107,31 @@ impl<'a> Keys<'a> {
             attempt.note_lookup(&lookup);
             let Ok(Some(password)) = lookup else { continue };
             attempt.keyed = true;
-            let result = if host == HostOs::MacOs {
-                chromium::decrypt_macos(&password, ciphertext)
-            } else {
-                chromium::decrypt_linux(Some(&password), ciphertext)
-            };
-            match result {
-                Ok(plain) => return Some(plain),
-                Err(failure) => attempt.corrupt |= failure == DecryptFailure::Corrupt,
+            match chromium::cbc_keys(host, Some(&password), ciphertext) {
+                Ok(found) => keys.extend(found),
+                Err(_) => attempt.corrupt = true,
             }
         }
-        None
+        keys
     }
+}
+
+/// An entry the first pass could not settle: it decrypted under some key to UTF-8 that is not
+/// printable, which proves nothing until a key is validated by another entry.
+struct Pending {
+    service: String,
+    account: String,
+    attempt: Attempt,
+    relaxed: Vec<(chromium::CbcKey, Zeroizing<String>)>,
 }
 
 /// Decrypts every entry of `secure-secrets.json` and fills gaps from `keytar`. A decrypted
 /// safeStorage entry wins over a keytar value; an entry that does not decrypt and has no keytar
 /// copy is listed as unreadable, never as absent.
+///
+/// A CBC key counts as the right one when it decrypts some entry to printable ASCII (the probe of
+/// `probeSecretStoreIdentity`). Under a validated key every entry that decrypts to valid UTF-8 is
+/// accepted, as `decryptValue` does, so a value such as "sifre" with accents survives.
 pub fn read_all_secrets(
     profile: &ElectronProfile,
     key_source: &dyn ChromiumKeySource,
@@ -148,25 +146,74 @@ pub fn read_all_secrets(
     };
     let mut report = SecretsReport::default();
     let mut failed = Vec::new();
+    let mut pending = Vec::new();
+    let mut validated: Vec<chromium::CbcKey> = Vec::new();
+    for service in &store.malformed_services {
+        failed.push(UnreadableSecret {
+            service: service.clone(),
+            account: String::new(),
+            reason: UnreadableReason::CorruptCiphertext,
+        });
+    }
     for (service, accounts) in &store.entries {
-        for (account, encoded) in accounts {
-            let outcome = match STANDARD.decode(encoded) {
-                Ok(ciphertext) => keys.decrypt(&ciphertext),
-                Err(_) => Err(UnreadableReason::CorruptCiphertext),
+        for (account, leaf) in accounts {
+            let ciphertext = match leaf {
+                StoreLeaf::Ciphertext(encoded) => STANDARD.decode(encoded).ok(),
+                StoreLeaf::Malformed => None,
             };
-            match outcome {
-                Ok(value) => report.entries.push(SecretEntry {
+            let Some(ciphertext) = ciphertext else {
+                failed.push(UnreadableSecret {
                     service: service.clone(),
                     account: account.clone(),
-                    value,
-                    source: SecretSource::SafeStorage,
-                }),
-                Err(reason) => failed.push(UnreadableSecret {
-                    service: service.clone(),
-                    account: account.clone(),
-                    reason,
-                }),
+                    reason: UnreadableReason::CorruptCiphertext,
+                });
+                continue;
+            };
+            let mut attempt = Attempt::default();
+            if profile.host == HostOs::Windows {
+                match keys.windows(&ciphertext, &mut attempt) {
+                    Some(value) => report.entries.push(entry(service, account, value)),
+                    None => failed.push(unreadable(service, account, &attempt)),
+                }
+                continue;
             }
+            let mut relaxed = Vec::new();
+            let mut accepted = None;
+            for key in keys.cbc_candidates(&ciphertext, &mut attempt) {
+                match chromium::decrypt_cbc(&key, &ciphertext) {
+                    Ok(plain) if chromium::is_printable(&plain) => {
+                        if !validated.iter().any(|k| **k == *key) {
+                            validated.push(key);
+                        }
+                        accepted = Some(plain);
+                        break;
+                    }
+                    Ok(plain) => relaxed.push((key, plain)),
+                    Err(failure) => attempt.corrupt |= failure == DecryptFailure::Corrupt,
+                }
+            }
+            match accepted {
+                Some(value) => report.entries.push(entry(service, account, value)),
+                None if !relaxed.is_empty() => pending.push(Pending {
+                    service: service.clone(),
+                    account: account.clone(),
+                    attempt,
+                    relaxed,
+                }),
+                None => failed.push(unreadable(service, account, &attempt)),
+            }
+        }
+    }
+    for item in pending {
+        let found = item
+            .relaxed
+            .into_iter()
+            .find(|(key, _)| validated.iter().any(|k| **k == **key));
+        match found {
+            Some((_, value)) => report
+                .entries
+                .push(entry(&item.service, &item.account, value)),
+            None => failed.push(unreadable(&item.service, &item.account, &item.attempt)),
         }
     }
     for item in keytar.items()? {
@@ -184,4 +231,21 @@ pub fn read_all_secrets(
         .filter(|u| report.get(&u.service, &u.account).is_none())
         .collect();
     Ok(report)
+}
+
+fn entry(service: &str, account: &str, value: Zeroizing<String>) -> SecretEntry {
+    SecretEntry {
+        service: service.to_owned(),
+        account: account.to_owned(),
+        value,
+        source: SecretSource::SafeStorage,
+    }
+}
+
+fn unreadable(service: &str, account: &str, attempt: &Attempt) -> UnreadableSecret {
+    UnreadableSecret {
+        service: service.to_owned(),
+        account: account.to_owned(),
+        reason: attempt.reason(),
+    }
 }

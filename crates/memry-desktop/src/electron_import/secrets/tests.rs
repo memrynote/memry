@@ -202,8 +202,9 @@ fn store_file_parse_is_strict_about_json_and_lenient_about_leaves() {
     assert!(SecretStoreFile::parse(b"nope").is_err());
     assert!(SecretStoreFile::parse(br#"{"version":1}"#).is_err());
     let store = SecretStoreFile::parse(br#"{"entries":{"s":{"a":"x","b":3},"t":7}}"#).unwrap();
-    assert_eq!(store.entries["s"].len(), 1);
-    assert!(!store.entries.contains_key("t"));
+    assert_eq!(store.entries["s"].len(), 2);
+    assert_eq!(store.entries["s"]["b"], StoreLeaf::Malformed);
+    assert_eq!(store.malformed_services, ["t"]);
 }
 
 #[test]
@@ -228,4 +229,119 @@ fn unparseable_store_is_an_error_and_is_not_renamed() {
         .filter(|e| e.file_name().to_string_lossy().contains("corrupt"))
         .count();
     assert_eq!(leftovers, 0);
+}
+
+fn seal(password: &str, plain: &str) -> String {
+    use aes::cipher::{BlockModeEncrypt, KeyIvInit, block_padding::Pkcs7};
+    let mut key = [0_u8; 16];
+    pbkdf2::pbkdf2_hmac::<sha1::Sha1>(password.as_bytes(), b"saltysalt", 1003, &mut key);
+    let body = cbc::Encryptor::<aes::Aes128>::new((&key).into(), (&[0x20_u8; 16]).into())
+        .encrypt_padded_vec::<Pkcs7>(plain.as_bytes());
+    STANDARD.encode([&b"v10"[..], &body].concat())
+}
+
+fn rewrite_store(f: &Fixture, edit: impl FnOnce(&mut serde_json::Value)) {
+    let path = f.profile.secret_store_path();
+    let mut store: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&path).unwrap()).unwrap();
+    edit(&mut store);
+    std::fs::write(&path, serde_json::to_vec(&store).unwrap()).unwrap();
+}
+
+use base64::Engine as _;
+use base64::engine::general_purpose::STANDARD;
+
+#[test]
+fn a_non_ascii_plaintext_survives_under_a_key_the_other_entries_validated() {
+    let f = macos_fixture("new");
+    let password = f.expected.macos_password.clone().unwrap();
+    rewrite_store(&f, |s| {
+        s["entries"]["com.memry.readwise"]["accented"] = seal(&password, "şifre-ğüş").into();
+    });
+    let keys = source(
+        &f,
+        &[
+            (MEMRYNOTE_APP_NAME, "recorded"),
+            (LEGACY_APP_NAME, "recorded"),
+        ],
+    );
+    let report = read_all_secrets(&f.profile, &keys, &NoKeytar).unwrap();
+    assert!(report.unreadable.is_empty(), "{:?}", report.unreadable);
+    assert_eq!(
+        report.get("com.memry.readwise", "accented"),
+        Some("şifre-ğüş")
+    );
+}
+
+#[test]
+fn a_non_ascii_plaintext_alone_validates_nothing_and_is_unreadable() {
+    let f = macos_fixture("new");
+    let password = f.expected.macos_password.clone().unwrap();
+    rewrite_store(&f, |s| {
+        s["entries"] = serde_json::json!({"svc": {"acct": seal(&password, "şifre")}});
+    });
+    let keys = source(
+        &f,
+        &[
+            (MEMRYNOTE_APP_NAME, "recorded"),
+            (LEGACY_APP_NAME, "recorded"),
+        ],
+    );
+    let report = read_all_secrets(&f.profile, &keys, &NoKeytar).unwrap();
+    assert!(report.entries.is_empty());
+    assert_eq!(report.unreadable.len(), 1);
+    assert_eq!(report.unreadable[0].reason, UnreadableReason::WrongIdentity);
+}
+
+#[test]
+fn malformed_entries_are_corrupt_never_absent() {
+    let f = macos_fixture("new");
+    rewrite_store(&f, |s| {
+        s["entries"]["com.memry.readwise"]["number"] = 5.into();
+        s["entries"]["com.memry.calendar.google"] = "not an object".into();
+    });
+    let keys = source(&f, &[(MEMRYNOTE_APP_NAME, "recorded")]);
+    let report = read_all_secrets(&f.profile, &keys, &NoKeytar).unwrap();
+    let mut corrupt: Vec<_> = report
+        .unreadable
+        .iter()
+        .map(|u| (u.service.as_str(), u.account.as_str(), u.reason))
+        .collect();
+    corrupt.sort();
+    assert_eq!(
+        corrupt,
+        [
+            (
+                "com.memry.calendar.google",
+                "",
+                UnreadableReason::CorruptCiphertext
+            ),
+            (
+                "com.memry.readwise",
+                "number",
+                UnreadableReason::CorruptCiphertext
+            ),
+        ]
+    );
+    assert_eq!(
+        report.get("com.memry.sync", "master-key"),
+        Some("fixture-master-key-aGVsbG8=")
+    );
+}
+
+#[test]
+fn an_unknown_store_version_or_layout_is_an_error() {
+    assert!(matches!(
+        SecretStoreFile::parse(br#"{"version":2,"entries":{}}"#),
+        Err(ImportError::UnsupportedVersion { .. })
+    ));
+    assert!(matches!(
+        SecretStoreFile::parse(br#"{"version":"1","entries":{}}"#),
+        Err(ImportError::UnsupportedVersion { .. })
+    ));
+    assert!(matches!(
+        SecretStoreFile::parse(br#"{"version":1,"entries":[]}"#),
+        Err(ImportError::UnsupportedLayout(_))
+    ));
+    assert!(SecretStoreFile::parse(br#"{"entries":{}}"#).is_ok());
 }

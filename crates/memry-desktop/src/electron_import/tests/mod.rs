@@ -12,6 +12,7 @@ use serde_json::Value;
 use tempfile::TempDir;
 
 use super::profile::{ElectronProfile, HostOs, ProfileEnv, locate_profile};
+use super::scratch::Scratch;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +49,7 @@ pub(crate) fn copy_dir(src: &Path, dst: &Path) {
 /// A scratch copy of one captured profile (`new` or `legacy`), located through the override.
 pub(crate) struct Fixture {
     pub _dir: TempDir,
+    pub scratch: Scratch,
     pub profile: ElectronProfile,
     pub expected: Expected,
 }
@@ -65,8 +67,10 @@ pub(crate) fn fixture(os: &str, slug: &str, host: HostOs) -> Fixture {
         host,
     };
     let profile = locate_profile(&env).unwrap().expect("fixture is a profile");
+    let scratch = Scratch::new(dir.path().join("scratch")).unwrap();
     Fixture {
         _dir: dir,
+        scratch,
         profile,
         expected,
     }
@@ -92,6 +96,14 @@ pub(crate) mod synthetic {
         }
         out.push(len as u8);
         out.extend(s.as_bytes());
+    }
+
+    pub fn string_keys(parts: &[&str]) -> Vec<u8> {
+        let mut key = Vec::new();
+        for part in parts {
+            string_key(&mut key, part);
+        }
+        key
     }
 
     pub fn update_key(doc: &str, clock: u32) -> Vec<u8> {
@@ -142,4 +154,11 @@ pub(crate) fn tree_snapshot(root: &Path) -> Vec<(String, u64, String)> {
     }
     out.sort();
     out
+}
+
+/// A scratch dir for tests that open stores outside a fixture profile.
+pub(crate) fn test_scratch() -> (TempDir, Scratch) {
+    let dir = tempfile::tempdir().unwrap();
+    let scratch = Scratch::new(dir.path().join("scratch")).unwrap();
+    (dir, scratch)
 }
