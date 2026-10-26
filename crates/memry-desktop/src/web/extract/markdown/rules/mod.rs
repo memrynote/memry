@@ -2,11 +2,9 @@
 //! `addRule` puts the newest rule first, so this is the reverse of the order the rules are added
 //! in. Turndown's own rules follow (`turndown::defaults`), then `keep` and `remove`.
 //!
-//! Not ported yet (stage 5, with `mathml-to-latex` and `temml`): the `callout`-preceding `katex`
-//! and `math` rules, `extractLatex` and its helpers, the `ltx_equation` branch of `table` and the
-//! `<math>` substitution in the `figure` caption. A page with math markup converts differently
-//! from Defuddle until then; the oracle pages contain none. `handleTextNodesInTables` never
-//! matches, since a rule filter only ever sees elements, so it has no port.
+//! `handleTextNodesInTables` never matches, since a rule filter only ever sees elements, so it
+//! has no port. `katex` and `math` were added after `preformattedCode` and before `callout`, so
+//! they follow `callout` here.
 
 mod callout;
 mod code;
@@ -14,6 +12,7 @@ mod footnotes;
 mod images;
 mod inline;
 mod lists;
+mod math;
 mod table;
 
 use super::turndown::{Filter, Rule};
@@ -22,6 +21,14 @@ pub static RULES: &[Rule] = &[
     Rule {
         filter: Filter::Predicate(callout::is_callout),
         replacement: callout::callout,
+    },
+    Rule {
+        filter: Filter::Predicate(math::is_katex),
+        replacement: math::katex,
+    },
+    Rule {
+        filter: Filter::Predicate(math::is_math),
+        replacement: math::math,
     },
     Rule {
         filter: Filter::Predicate(code::is_pre),

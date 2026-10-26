@@ -434,5 +434,45 @@
       "truncated after tag name and slash",
       "slice(-1) text"
     ]
+  },
+  {
+    "name": "math-mathml-structures",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "mtable",
+      "mfenced",
+      "scripts",
+      "roots"
+    ]
+  },
+  {
+    "name": "math-mathml-symbols",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "symbols",
+      "mathvariant",
+      "mtext"
+    ]
+  },
+  {
+    "name": "math-arxiv-equation-tables",
+    "covers": [
+      "math",
+      "arXiv ltx_equation",
+      "ltx_eqn_table",
+      "figure caption math",
+      "nested equations"
+    ]
+  },
+  {
+    "name": "math-mathml-failures",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "invalid arity",
+      "xmldom recovery"
+    ]
   }
 ]

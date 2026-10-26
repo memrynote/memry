@@ -136,7 +136,10 @@ pub fn figure(dom: &mut Dom, node: NodeId, content: &str, _: &NodeInfo) -> Strin
             .query_class(figcaption, "ltx_tag_figure")
             .first()
             .map_or(String::new(), |&span| trim(&dom.text(span)).to_string());
-        let markdown = dom.turndown(&dom.inner_html(figcaption));
+        // Math in the caption is replaced by its LaTeX before the caption is converted.
+        let markdown = dom.turndown(&super::math::substitute_caption_math(
+            &dom.inner_html(figcaption),
+        ));
         caption = trim(&format!("{tag_text} {markdown}")).to_string();
     }
     format!("![{alt}]({src})\n\n{caption}\n\n")

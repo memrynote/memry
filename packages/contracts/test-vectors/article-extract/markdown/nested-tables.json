@@ -1,5 +1,4 @@
 {
   "html": "<body> <table><caption>Outer</caption> <thead><tr><th colspan=\"2\">Head</th></tr></thead> <tbody><tr><td>left</td> <td><table><tr><td>inner a</td> <td>inner b</td></tr> <tr><td colspan=\"2\">inner span</td></tr></table></td></tr> <tr><td rowspan=\"2\">tall</td> <td>r1</td></tr> <tr><td>r2</td></tr></tbody> <tfoot><tr><td colspan=\"2\">foot</td></tr></tfoot></table> <table><tr><th>No section</th></tr> <tr><td>row</td></tr></table> <p>After the tables.</p></body>",
-  "math": false,
   "markdown": "Headleft\n\n<table><tbody><tr><td>inner a</td><td>inner b</td></tr><tr><td colspan=\"2\">inner span</td></tr></tbody></table>\n\ntallr1r2foot\n\n| No section |\n| --- |\n| row |\n\nAfter the tables."
 }

@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/cut/closing","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body><p>Ends inside a closing tag</p> </body>",
   "markdown": "Ends inside a closing tag",
   "raw": {"title":"","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":5},

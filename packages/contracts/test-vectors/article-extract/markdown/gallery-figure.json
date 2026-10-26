@@ -1,5 +1,4 @@
 {
   "html": "<main><p>Eight days, one rental car, and more rain than the forecast allowed for.</p> <div> <figure><img src=\"/thumb/1.jpg\" alt=\"Black beach\"> <figcaption>Black sand at Reynisfjara.</figcaption></figure> <figure><a href=\"/full/2.jpg\"><img src=\"/thumb/2.jpg\" alt=\"Waterfall\"></a></figure> <figure><img src=\"/thumb/3.jpg\" alt=\"Lava field\"></figure> </div> <figure><img src=\"/i/aurora.jpg\" alt=\"Aurora\"></figure> <p>The aurora showed itself once, on the last night, for about ten minutes.</p> </main>",
-  "math": false,
   "markdown": "Eight days, one rental car, and more rain than the forecast allowed for.\n\n![Black beach](/thumb/1.jpg)\n\nBlack sand at Reynisfjara.\n\n![Waterfall](/thumb/2.jpg)\n\n![Lava field](/thumb/3.jpg)\n\n![Aurora](/i/aurora.jpg)\n\nThe aurora showed itself once, on the last night, for about ten minutes."
 }

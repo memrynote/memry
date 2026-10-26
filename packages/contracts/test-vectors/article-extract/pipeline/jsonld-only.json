@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/entries/42","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body><p>Body text with enough words to count as a paragraph of real content for the extractor to read.</p></body>",
   "markdown": "Body text with enough words to count as a paragraph of real content for the extractor to read.",
   "raw": {"title":"Metadata only, no markup","author":"Lee Park, Sol Reyes","published":"2022-03-01T08:00:00+01:00","description":"All the metadata lives in JSON-LD.","image":"","site":"Example Press","language":"","wordCount":18},

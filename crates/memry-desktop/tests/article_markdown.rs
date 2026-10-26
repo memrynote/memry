@@ -2,9 +2,6 @@
 //! (`pnpm --filter @memry/article-extract vectors`): the content HTML `parseInternal` hands to
 //! `toMarkdown` for every corpus page, every single-rule input in `markdown-cases.json` and the
 //! 400 random inputs of `markdown-fuzz.json`, compared byte for byte.
-//!
-//! Inputs with math markup are flagged `math` in the vectors and skipped: the math rules of
-//! `markdown.js` belong to stage 5.
 
 use std::{fs, path::PathBuf};
 
@@ -30,9 +27,6 @@ fn compare(inputs: Vec<(String, Value)>) -> usize {
         let Some(html) = vector["html"].as_str() else {
             continue;
         };
-        if vector["math"].as_bool() == Some(true) {
-            continue;
-        }
         compared += 1;
         let expected = vector["markdown"].as_str().unwrap();
         let actual = create_markdown_content(html);
