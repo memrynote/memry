@@ -53,6 +53,16 @@ describe('smokeLaunch', () => {
 
     assert.equal(result.ok, false)
     assert.match(result.log, /starting \(packaged\)/)
+    assert.equal(result.phase, 'startup marker logged, renderer never called app_info')
+  })
+
+  it('names the startup phase when nothing is logged', async () => {
+    const binary = fakeBinary('silent.mjs', [])
+
+    const result = await smokeLaunch(binary, { timeoutMs: 1_000, settleMs: 100, xvfb: false })
+
+    assert.equal(result.ok, false)
+    assert.equal(result.phase, 'no startup marker')
   })
 
   it('with expectNoDriver passes when MEMRY_E2E starts no server', async () => {
