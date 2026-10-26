@@ -659,6 +659,49 @@ export const INBOX_SETTINGS_DEFAULTS: InboxSettings = {
 }
 
 // ============================================================================
+// Synced fields
+// ============================================================================
+
+/**
+ * The fields of each group that follow the user across devices, one field clock
+ * per field (`<group>.<field>`). Everything else in a group stays on this
+ * device. `startOnBoot` and `zoomFactor` describe the machine, so they are not
+ * here. `settings-groups.json` pins these lists for the Rust core.
+ */
+export const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
+  'theme',
+  'fontSize',
+  'fontSizePx',
+  'fontFamily',
+  'customFontFamily',
+  'accentColor',
+  'colorTheme',
+  'useThemeAccent',
+  'backgroundLight',
+  'foregroundLight',
+  'backgroundDark',
+  'foregroundDark',
+  'language',
+  'createInSelectedFolder',
+  'openPagesInNewTab',
+  'minimizeToTray'
+]
+
+export const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
+  'reviewReminderEnabled',
+  'reviewReminderTime'
+]
+
+// Checklist conversion decides what a note's checkboxes become, and two devices
+// that disagree would convert the same note differently. The PDF display
+// default is pushed so a PDF added on any device starts the same way.
+export const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = [
+  'convertChecklistsToTasks',
+  'convertAgentChecklistsToTasks',
+  'pdfDisplayMode'
+]
+
+// ============================================================================
 // Sticky Settings
 // ============================================================================
 
