@@ -78,7 +78,7 @@ one-class change reviewable.
 | `markdown-convert/pm-schema.json`       |                                   27 | same                                        | same + Rust `markdown_pm_vectors.rs`                                                 |
 | `markdown-convert/yxml.json`            |                                  122 | same                                        | same + Rust `markdown_yxml_vectors.rs`                                               |
 | `markdown-convert/md-to-html.json`      |                                  833 | same                                        | same + Rust `markdown_md_to_html_vectors.rs`                                         |
-| `markdown-convert/html-to-blocks.json`  |                                  190 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
+| `markdown-convert/html-to-blocks.json`  |                                  213 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/parse.json`           |                                  833 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/memry-parse.json`     |                                  736 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
 | `markdown-convert/serialize.json`       |                                  925 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |

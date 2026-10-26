@@ -2,6 +2,7 @@
 
 use super::scan::{is_js_ws, trim};
 use super::video::is_video_url;
+use crate::markdown::limits::{DepthGuard, MAX_INLINE_DEPTH};
 
 type Tok = Option<(String, usize)>;
 
@@ -42,6 +43,9 @@ pub(super) fn parse_inline(text: &str) -> String {
 }
 
 fn parse_chars(text: &[char]) -> String {
+    let Some(_level) = DepthGuard::enter(MAX_INLINE_DEPTH) else {
+        return String::new();
+    };
     let mut result = String::new();
     let mut i = 0;
     while i < text.len() {

@@ -21,12 +21,22 @@ fn repo_root() -> PathBuf {
 /// oracle answered, `Ok(None)` is "the oracle failed closed" (it threw, or it
 /// answered `seeded: false`), in the order of `inputs`.
 pub fn doc_serialize(inputs: &[String], tag: &str) -> Result<Vec<Option<Json>>, String> {
+    let jobs: Vec<Json> = inputs.iter().map(|m| json!({ "markdown": m })).collect();
+    Ok(run_jobs("doc-serialize", &jobs, tag)?
+        .into_iter()
+        .map(|output| output.filter(|o| o["seeded"] == Json::Bool(true)))
+        .collect())
+}
+
+/// One job of `op` per input: `Some(output)` when the oracle answered, `None`
+/// when it threw.
+pub fn run_jobs(op: &str, inputs: &[Json], tag: &str) -> Result<Vec<Option<Json>>, String> {
     let dir = std::env::temp_dir().join(format!("memry-oracle-{}-{tag}", std::process::id()));
     std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let (jobs, out) = (dir.join("jobs.jsonl"), dir.join("out.jsonl"));
     let mut lines = String::new();
-    for (i, markdown) in inputs.iter().enumerate() {
-        let job = json!({ "id": i.to_string(), "op": "doc-serialize", "input": { "markdown": markdown } });
+    for (i, input) in inputs.iter().enumerate() {
+        let job = json!({ "id": i.to_string(), "op": op, "input": input });
         lines.push_str(&job.to_string());
         lines.push('\n');
     }
@@ -67,9 +77,7 @@ pub fn doc_serialize(inputs: &[String], tag: &str) -> Result<Vec<Option<Json>>, 
             .as_str()
             .and_then(|s| s.parse().ok())
             .ok_or("bad id")?;
-        let output = (result["ok"] == Json::Bool(true)
-            && result["output"]["seeded"] == Json::Bool(true))
-        .then(|| result["output"].clone());
+        let output = (result["ok"] == Json::Bool(true)).then(|| result["output"].clone());
         by_id.insert(id, output);
     }
     let _ = std::fs::remove_dir_all(&dir);

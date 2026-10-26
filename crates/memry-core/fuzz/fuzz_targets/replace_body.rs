@@ -28,18 +28,16 @@ fuzz_target!(|input: &str| {
     if !converter.seed_body(&document, base, None, None, &NoEmbeds) {
         return;
     }
-    let before = (document.encode_state().expect("state"), document.state_vector().expect("sv"));
-    let outcome = converter.replace_body(
-        &document,
-        replacement,
-ReplaceOptions::default(),
+    let before = (
+        document.encode_state().expect("state"),
+        document.state_vector().expect("sv"),
     );
+    let outcome = converter.replace_body(&document, replacement, ReplaceOptions::default());
     if outcome != ReplaceOutcome::Replaced {
-        let after = (document.encode_state().expect("state"), document.state_vector().expect("sv"));
-        assert_eq!(
-            after,
-            before,
-            "a {outcome:?} replace changed the document"
+        let after = (
+            document.encode_state().expect("state"),
+            document.state_vector().expect("sv"),
         );
+        assert_eq!(after, before, "a {outcome:?} replace changed the document");
     }
 });

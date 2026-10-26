@@ -95,10 +95,10 @@ pub fn html_to_blocks_raw(html: &str) -> Result<Vec<Json>, ParseError> {
 
 /// `tryParseMarkdownToBlocks` (raw blocks): BlockNote's own markdown parse.
 pub fn markdown_to_blocks_raw(markdown: &str) -> Result<Vec<Json>, ParseError> {
-    html_to_blocks_raw(&markdown_to_html(markdown))
+    html_to_blocks_raw(&markdown_to_html(markdown).ok_or(ParseError::TooDeep)?)
 }
 
 /// `markdownToBlocks(markdown, schema)`: BlockNote's own markdown parse.
 pub fn markdown_to_blocks(markdown: &str) -> Result<Json, ParseError> {
-    html_to_blocks(&markdown_to_html(markdown))
+    html_to_blocks(&markdown_to_html(markdown).ok_or(ParseError::TooDeep)?)
 }

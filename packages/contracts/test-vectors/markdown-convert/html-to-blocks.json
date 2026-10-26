@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 190
+    "caseCount": 213
   },
   "cases": [
     {
@@ -6064,6 +6064,581 @@
               "showPreview": true,
               "textAlignment": "left",
               "url": "x-y://u:p@h/p"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-five-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://///server/share/x.png\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://///server/share/x.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-six-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://////x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://////x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-ipv6-host",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://[::1]/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://[::1]/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-ipv6-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://[::1]:8080/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://[::1]:8080/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-unc",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:\\\\server\\share\\x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://server/share/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-named-host-empty-segment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://a.com//x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://a.com//x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-dot-before-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://host/./C|/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://host/C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-dotdot-before-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///../C|/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-dotdot-after-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///C:/../x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-host-credentials",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://u@h/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://u@h/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-host-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://h:80/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://h:80/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-before-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"mailto:a@b.c ?x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "mailto:a@b.c%20?x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-before-fragment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"mailto:a@b.c #x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "mailto:a@b.c%20#x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-two-spaces-before-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"tel:+1  555 ?x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "tel:+1  555%20?x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-only",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"about: #x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "about:%20#x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-many-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http:////a.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-backslashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http:\\\\a.com\\x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-no-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"ws:a.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "ws://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-dotdot-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"wss://[::1]/C|/../x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "wss://[::1]/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-dotdot-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y:///C:/C:/..\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y:///C:/"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-path-only-empty-segment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"memry-file:/.//a/C|/\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "memry-file:/.//a/C|/"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-path-only-dotdot",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"tel:/..//x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "tel:/.//x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/tab-inside-scheme-and-host",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"ht\ttp://a.\ncom/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
             },
             "content": null,
             "children": []

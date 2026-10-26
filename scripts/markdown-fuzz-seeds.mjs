@@ -18,6 +18,18 @@ for (const name of files) {
   for (const c of cases) if (typeof c.input?.markdown === 'string') bodies.add(c.input.markdown)
 }
 
+// Shapes that once overflowed the stack or went quadratic (#3522): the mutator
+// grows and bends them.
+for (const n of [90, 300, 1000]) {
+  bodies.add(`${'['.repeat(n)}x${'](u)'.repeat(n)}`)
+  bodies.add(`${'[a '.repeat(n)}${'](u)'.repeat(n)}`)
+  bodies.add(`${'[*'.repeat(n)}x${'*](u)'.repeat(n)}`)
+  bodies.add('**a *b '.repeat(n))
+  bodies.add(`${'> '.repeat(n)}x`)
+  bodies.add('<details>\n<summary>t</summary>\n\n'.repeat(n))
+  bodies.add(`${'<div>'.repeat(n)}x`)
+}
+
 const targets = {
   convert_roundtrip: (body) => body,
   // `base NUL replacement`: replace each body with the next one.

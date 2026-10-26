@@ -78,72 +78,202 @@ fn encode_caret_in_path(url: &str) -> String {
     )
 }
 
-/// The `file:` quirks the `url` crate does not share with whatwg-url 15.1: a
-/// drive letter written `C|` becomes `C:` under any host, a named host with a
-/// drive letter is kept, and `file:////` keeps its empty first path segment.
+fn is_drive(segment: &str) -> bool {
+    let bytes = segment.as_bytes();
+    bytes.len() == 2 && bytes[0].is_ascii_alphabetic() && matches!(bytes[1], b':' | b'|')
+}
+
+/// `file:` URLs, by the WHATWG file host and path states as whatwg-url 15.1
+/// runs them. The `url` crate differs in three ways this reproduces: it
+/// collapses empty path segments (`file:////x`, `file://h//x`), it drops the
+/// drive letter at `..` or `.` segments, and it keeps a `C|` drive spelled with
+/// a pipe under a named host. The path is walked here segment by segment and
+/// only the percent-encoding is left to the crate (`http` URLs share the
+/// special-scheme path and query sets). `None` where the parse fails.
 fn reflect_file(rest: &str) -> Option<String> {
-    let rest = rest.replace('\\', "/");
-    if rest.starts_with("////") {
-        let inner = Url::parse(&format!("file:{}", &rest[1..])).ok()?;
-        return Some(encode_caret_in_path(&inner.as_str().replacen(
-            "file:///",
-            "file:////",
-            1,
-        )));
-    }
-    let drive = |path: &str| {
-        let mut chars = path.chars();
-        chars.next() == Some('/')
-            && chars.next().is_some_and(|c| c.is_ascii_alphabetic())
-            && chars.next().is_some_and(|c| c == ':' || c == '|')
-            && chars.next().is_none_or(|c| matches!(c, '/' | '?' | '#'))
+    let rest: String = rest
+        .chars()
+        .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+        .map(|c| if c == '\\' { '/' } else { c })
+        .collect();
+    let (host, tail) = match rest.strip_prefix("//") {
+        Some(after) => {
+            let end = after.find(['/', '?', '#']).unwrap_or(after.len());
+            let (host, tail) = after.split_at(end);
+            if is_drive(host) {
+                // `file://C|/x`: the drive is a path segment, not a host.
+                (String::new(), format!("/{host}{tail}"))
+            } else if host.is_empty() || host.eq_ignore_ascii_case("localhost") {
+                (String::new(), tail.to_owned())
+            } else {
+                // A port, after an IPv6 literal or not, fails a `file:` host.
+                let port = match host.strip_prefix('[') {
+                    Some(inner) => inner
+                        .split_once(']')
+                        .is_none_or(|(_, after)| !after.is_empty()),
+                    None => host.contains(':'),
+                };
+                // `@` would read as credentials to the `http` parse below.
+                if port || host.contains('@') {
+                    return None;
+                }
+                let parsed = Url::parse(&format!("http://{host}/")).ok()?;
+                (parsed.host_str()?.to_owned(), tail.to_owned())
+            }
+        }
+        None => (String::new(), rest.clone()),
     };
-    if let Some(after) = rest.strip_prefix("//") {
-        let end = after.find(['/', '?', '#']).unwrap_or(after.len());
-        let (host, tail) = after.split_at(end);
-        let named = !host.is_empty() && !host.eq_ignore_ascii_case("localhost");
-        if named && !host.contains(['[', ':', '|', '%']) && host.is_ascii() && drive(tail) {
-            let fixed = tail.replacen('|', ":", 1);
-            let inner = Url::parse(&format!("file://{fixed}")).ok()?;
-            let path = inner.as_str().strip_prefix("file://")?;
-            return Some(encode_caret_in_path(&format!(
-                "file://{}{path}",
-                host.to_ascii_lowercase()
-            )));
+    let path_end = tail.find(['?', '#']).unwrap_or(tail.len());
+    let (path, after_path) = tail.split_at(path_end);
+    let mut segments: Vec<String> = Vec::new();
+    let raw = path.strip_prefix('/').unwrap_or(path);
+    let parts: Vec<&str> = if path.is_empty() {
+        Vec::new()
+    } else {
+        raw.split('/').collect()
+    };
+    for (index, part) in parts.iter().enumerate() {
+        let last = index + 1 == parts.len();
+        let lower = part.to_ascii_lowercase();
+        let dot_dot = matches!(lower.as_str(), ".." | ".%2e" | "%2e." | "%2e%2e");
+        let dot = matches!(lower.as_str(), "." | "%2e");
+        if dot_dot {
+            if !(segments.len() == 1 && is_drive(&segments[0])) {
+                segments.pop();
+            }
+            if last {
+                segments.push(String::new());
+            }
+        } else if dot {
+            if last {
+                segments.push(String::new());
+            }
+        } else {
+            let mut segment = (*part).to_owned();
+            if segments.is_empty() && is_drive(&segment) {
+                segment = format!("{}:", &segment[..1]);
+            }
+            segments.push(segment);
         }
     }
-    None
+    let joined: String = segments.iter().map(|s| format!("/{s}")).collect();
+    let joined = if joined.is_empty() {
+        "/".to_owned()
+    } else {
+        joined
+    };
+    let encoded = Url::parse(&format!("http://h{joined}{after_path}")).ok()?;
+    let path_and_rest = encoded.as_str().strip_prefix("http://h")?;
+    Some(encode_caret_in_path(&format!(
+        "file://{host}{path_and_rest}"
+    )))
+}
+
+/// whatwg-url 15.1 encodes a space that ends an opaque path before `?` or `#`
+/// as `%20`; the `url` crate (2.5.8, the newer spec) trims it away.
+fn encode_opaque_trailing_space(scheme: &str, rest: &str) -> Option<String> {
+    if SPECIAL.contains(&scheme) || rest.starts_with('/') {
+        return None;
+    }
+    let end = rest.find(['?', '#'])?;
+    let path = &rest[..end];
+    // Only the one space next to the delimiter: the others stay literal.
+    let trimmed = path.strip_suffix(' ')?;
+    Some(format!("{scheme}:{trimmed}%20{}", &rest[end..]))
+}
+
+/// Dot segments of a hierarchical URL, resolved by the WHATWG path state
+/// (`..` pops whatever segment is last: only `file:` protects a drive letter).
+/// The `url` crate protects `C|`/`C:` segments under every scheme, so this runs
+/// first and leaves it nothing to pop. `rest` is what follows `scheme:`.
+fn resolve_dot_segments(scheme: &str, rest: &str) -> Option<String> {
+    let special = SPECIAL.contains(&scheme);
+    // A special scheme without a base ignores every slash and backslash after
+    // the colon: the authority starts at the first other character.
+    let squeezed;
+    let rest = if special {
+        squeezed = format!("//{}", rest.trim_start_matches(['/', '\\']));
+        squeezed.as_str()
+    } else {
+        rest
+    };
+    let (authority, tail) = match rest.strip_prefix("//") {
+        Some(after) => {
+            let end = after
+                .find(|c| matches!(c, '/' | '?' | '#') || (special && c == '\\'))
+                .unwrap_or(after.len());
+            (Some(&after[..end]), &after[end..])
+        }
+        None if rest.starts_with('/') || (special && rest.starts_with('\\')) => (None, rest),
+        None => return None,
+    };
+    let path_end = tail.find(['?', '#']).unwrap_or(tail.len());
+    let (path, after_path) = tail.split_at(path_end);
+    if path.is_empty() {
+        return None;
+    }
+    let path = if special {
+        path.replace('\\', "/")
+    } else {
+        path.to_owned()
+    };
+    let parts: Vec<&str> = path.strip_prefix('/')?.split('/').collect();
+    let mut segments: Vec<&str> = Vec::new();
+    for (index, part) in parts.iter().enumerate() {
+        let last = index + 1 == parts.len();
+        let lower = part.to_ascii_lowercase();
+        if matches!(lower.as_str(), ".." | ".%2e" | "%2e." | "%2e%2e") {
+            segments.pop();
+            if last {
+                segments.push("");
+            }
+        } else if matches!(lower.as_str(), "." | "%2e") {
+            if last {
+                segments.push("");
+            }
+        } else {
+            segments.push(part);
+        }
+    }
+    let joined: String = segments.iter().map(|s| format!("/{s}")).collect();
+    // Without an authority, a path that opens with an empty segment would read
+    // as one: the serializer guards it with `/.` (the `url` crate adds it back
+    // after its own dot-segment pass).
+    let guard = if authority.is_none() && joined.starts_with("//") {
+        "/."
+    } else {
+        ""
+    };
+    let authority = authority.map_or(String::new(), |a| format!("//{a}"));
+    Some(format!("{scheme}:{authority}{guard}{joined}{after_path}"))
 }
 
 pub fn reflect_url(value: &str) -> String {
-    let trimmed = value.trim_matches(|c: char| c <= ' ');
+    // The URL parser drops tabs and newlines everywhere before it looks at anything.
+    let stripped: String = value
+        .chars()
+        .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
+        .collect();
+    let trimmed = stripped.trim_matches(|c: char| c <= ' ');
     if let Some((scheme, rest)) = split_scheme(trimmed) {
         if authority_fails(&scheme, rest) {
             return value.to_owned();
         }
-        if scheme == "file"
-            && let Some(url) = reflect_file(rest)
-        {
-            return url;
+        if let Some(encoded) = encode_opaque_trailing_space(&scheme, rest) {
+            return reflect_url(&encoded);
+        }
+        if scheme == "file" {
+            return reflect_file(rest).unwrap_or_else(|| value.to_owned());
         }
     }
+    let resolved = split_scheme(trimmed)
+        .filter(|(scheme, _)| scheme != "file")
+        .and_then(|(scheme, rest)| resolve_dot_segments(&scheme, rest));
     let base = Url::parse("about:blank").expect("static URL");
-    let mut url = match base.join(value) {
+    let url = match base.join(resolved.as_deref().unwrap_or(value)) {
         Ok(url) => url.to_string(),
         Err(_) => return value.to_owned(),
     };
-    // A drive letter written `C|` is `C:` in the path of a file URL.
-    if url.starts_with("file:///") {
-        let path = &url["file://".len()..];
-        let mut chars = path.chars();
-        if chars.next() == Some('/')
-            && chars.next().is_some_and(|c| c.is_ascii_alphabetic())
-            && chars.next() == Some('|')
-            && chars.next().is_none_or(|c| matches!(c, '/' | '?' | '#'))
-        {
-            url = format!("file:///{}:{}", &path[1..2], &path[3..]);
-        }
-    }
     encode_caret_in_path(&url)
 }
 

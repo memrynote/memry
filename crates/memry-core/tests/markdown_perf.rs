@@ -135,7 +135,16 @@ fn markdown_perf_pathological_shapes() {
         .map(|i| format!("[l{i}][r{i}] x\n\n"))
         .chain((0..5000).map(|i| format!("[r{i}]: https://example.com/{i}\n")))
         .collect();
+    let definitions: String = (0..4000)
+        .map(|i| format!("see [l{i}][r{i}]\n\n"))
+        .chain((0..4000).map(|i| format!("[r{i}]: https://example.com/{i}\n")))
+        .collect();
     for (label, markdown) in [
+        ("4000 link-reference usages and definitions", definitions),
+        (
+            "4000 unclosed nested emphasis (`**a *b `)",
+            "**a *b ".repeat(4000),
+        ),
         ("5000 bold spans in one paragraph", "**a** ".repeat(5000)),
         ("5000 link references", references),
         ("5000 list items", "- a\n".repeat(5000)),

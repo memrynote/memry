@@ -308,7 +308,7 @@ pnpm --filter @memry/contracts test                            # verifier: case 
 cd crates && cargo test -p memry-core --features markdown      # the Rust side
 ```
 
-The same oracle backs three ignored Rust runs that prove the converter beyond the committed vectors. `cargo test -p memry-core --features markdown --release --test markdown_differential -- --ignored --nocapture` mutates inputs and compares the two converters (20000 per run; `MEMRY_DIFF_INPUTS`, `MEMRY_DIFF_SEED` tune it). `markdown_corpus` compares whole vaults (the synthetic one comes from `MEMRY_CORPUS_SYNTHETIC`, the sandbox one from `pnpm --filter @memry/cli sandbox --vault=<new empty dir>`): run the oracle with `MEMRY_CORPUS_OUT=<file> MEMRY_CORPUS_DIRS=<dir:dir> [MEMRY_CORPUS_SYNTHETIC=<empty dir>]` under `--project markdown-oracle`, then the Rust test with `MEMRY_CORPUS_JSONL=<file> MEMRY_CORPUS_DIRS=<same dirs>`. `markdown_perf_budget` prints timings for a release build. The nightly `markdown-fuzz` workflow runs the differential, the synthetic vault and the two cargo-fuzz targets.
+The same oracle backs three ignored Rust runs that prove the converter beyond the committed vectors. `cargo test -p memry-core --features markdown --release --test markdown_differential -- --ignored --nocapture` mutates inputs and compares the two converters (20000 per run; `MEMRY_DIFF_INPUTS`, `MEMRY_DIFF_SEED` tune it). `markdown_corpus` compares whole vaults (the synthetic one comes from `MEMRY_CORPUS_SYNTHETIC`, the sandbox one from `pnpm --filter @memry/cli sandbox --vault=<new empty dir>`): run the oracle with `MEMRY_CORPUS_OUT=<file> MEMRY_CORPUS_DIRS=<dir:dir> [MEMRY_CORPUS_SYNTHETIC=<empty dir>]` under `--project markdown-oracle`, then the Rust test with `MEMRY_CORPUS_JSONL=<file> MEMRY_CORPUS_DIRS=<same dirs>`. `markdown_url_differential` sends seeded random `<img src>` values through jsdom and the Rust URL reflection (`MEMRY_URL_INPUTS`, `MEMRY_URL_SEED`). `markdown_perf_budget` prints timings for a release build (report only; #3600). The nightly `markdown-fuzz` workflow runs the differential, the URL differential, the synthetic and sandbox vaults, the three cargo-fuzz targets (`convert_roundtrip`, `replace_body`, `frontmatter_split`, seeded by `node scripts/markdown-fuzz-seeds.mjs`, toolchain pinned in `crates/memry-core/fuzz/rust-toolchain.toml`) and the perf job on three operating systems. Each fuzz run writes its run count to the job summary.
 
 After regenerating, update the digests in `packages/contracts/src/__tests__/markdown-convert.test.ts` and the table in `packages/contracts/test-vectors/README.md`. The oracle runs in the `markdown-oracle` Vitest project with the time zone set to UTC.
 
@@ -498,3 +498,20 @@ When E2E passes locally but fails in CI, walk through in order:
 3. **Timezone** — CI runs UTC; date assertions can flake.
 4. **Native ABI** — CI rebuilds; check the Electron version is pinned.
 5. **xvfb timing** — Electron windows need time to compose; bump waits.
+
+### Recorded runs of the markdown converter proof
+
+Stage 7 of #3522 (PR #3604), release builds on an Apple M-series Mac, `nightly-2026-10-25` for fuzz:
+
+| Run                                                                     | Result                                                               |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Differential, seeds 0x1848, 6216, 8228, 20000 inputs each               | 0 mismatches                                                         |
+| URL differential against jsdom 27.4, seeds 6216, 8228 and 7, 50000 each | 0 mismatches over 150000 random URLs (after the fixes of this stage) |
+| cargo-fuzz `convert_roundtrip`, 600 s                                   | 61447 runs, no crash                                                 |
+| cargo-fuzz `replace_body`, 600 s                                        | 35667 runs, no crash                                                 |
+| cargo-fuzz `frontmatter_split`, 600 s                                   | 2083487 runs, no crash                                               |
+| Vault corpus, six local vaults (copies, counts only)                    | 909 files, 0 mismatches, 0 panics                                    |
+| Vault corpus, synthetic vault                                           | 1278 files, 0 mismatches                                             |
+| Vault corpus, sandbox vault                                             | 176 files, 0 mismatches                                              |
+
+Perf (report only, #3600): `doc_to_markdown` 49 KB p95 78 to 100 ms against 60 ms; 5000 bold spans in one paragraph seed in 1.6 s; 4000 nested unclosed emphasis in 1.0 s; 4000 link references with definitions in 0.4 s.

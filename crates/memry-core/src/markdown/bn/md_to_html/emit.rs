@@ -3,6 +3,7 @@
 use super::block::{ListKind, Table, Token, tokenize};
 use super::inline::{escape_html, parse_inline};
 use super::scan::is_js_ws;
+use crate::markdown::limits::{DepthGuard, MAX_NESTING_DEPTH};
 
 /// JS `String(Number)` for the values `parseInt` can produce.
 fn js_number(n: f64) -> String {
@@ -18,6 +19,10 @@ fn js_number(n: f64) -> String {
 }
 
 pub(super) fn tokens_to_html(tokens: &[Token]) -> String {
+    // A quote or list item re-enters the parser for its content: one level.
+    let Some(_level) = DepthGuard::enter(MAX_NESTING_DEPTH) else {
+        return String::new();
+    };
     let mut html = String::new();
     let mut i = 0;
     while i < tokens.len() {

@@ -3,7 +3,8 @@
 # converter inputs nobody wrote and compares it with the Electron converter
 # running in place as the oracle, and lets cargo-fuzz look for panics.
 #
-#   differential  20000 mutated inputs, Rust against the oracle, zero mismatches
+#   differential  20000 mutated inputs, Rust against the oracle, zero mismatches;
+#                 50000 random URLs against jsdom's img.src
 #   corpus        the synthetic vault (the bulk generator and the demo seed the
 #                 dev sandbox vault is built from), Rust against the oracle
 #   perf          the report-only budget test of #3600 on macOS, Linux and Windows
@@ -69,16 +70,28 @@ jobs:
           MEMRY_DIFF_INPUTS: '20000'
         run: cargo test -p memry-core --features markdown --release --test markdown_differential -- --ignored --nocapture
 
-      - name: Synthetic vault
+      - name: URL differential against jsdom, 50000 random URLs
+        working-directory: crates
+        env:
+          TZ: UTC
+          MEMRY_URL_INPUTS: '50000'
+        run: cargo test -p memry-core --features markdown --release --test markdown_url_differential -- --ignored --nocapture
+
+      # The synthetic vault (bulk generator, demo seed) and the sandbox vault the
+      # dev command builds (`pnpm --filter @memry/cli sandbox`), both written to
+      # fresh directories, Rust against the oracle.
+      - name: Synthetic and sandbox vaults
         working-directory: crates
         env:
           TZ: UTC
         run: |
           corpus="$RUNNER_TEMP/corpus"
-          mkdir -p "$corpus"
-          MEMRY_CORPUS_OUT="$corpus/synthetic.jsonl" MEMRY_CORPUS_SYNTHETIC="$corpus/synthetic" \
+          mkdir -p "$corpus/sandbox"
+          pnpm --filter @memry/cli sandbox --vault="$corpus/sandbox"
+          MEMRY_CORPUS_OUT="$corpus/all.jsonl" MEMRY_CORPUS_SYNTHETIC="$corpus/synthetic" \
+            MEMRY_CORPUS_DIRS="$corpus/sandbox" \
             pnpm --filter @memry/desktop exec vitest run --config config/vitest.config.ts --project markdown-oracle
-          MEMRY_CORPUS_JSONL="$corpus/synthetic.jsonl" MEMRY_CORPUS_DIRS="$corpus/synthetic" \
+          MEMRY_CORPUS_JSONL="$corpus/all.jsonl" MEMRY_CORPUS_DIRS="$corpus/synthetic:$corpus/sandbox" \
             cargo test -p memry-core --features markdown --release --test markdown_corpus -- --ignored --nocapture
 
       - name: Upload mismatches
@@ -125,7 +138,10 @@ jobs:
 
       - name: Fuzz, 10 minutes
         working-directory: crates/memry-core
-        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=600 -len_control=10
+        run: |
+          cargo fuzz run ${{ matrix.target }} -- -max_total_time=600 -len_control=10 2>&1 | tee fuzz.log
+          echo "### cargo-fuzz ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^Done ' fuzz.log >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload crashes
         if: failure()

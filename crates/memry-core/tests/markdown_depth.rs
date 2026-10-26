@@ -39,7 +39,8 @@ fn deep_quotes_fail_closed() {
 #[test]
 fn deep_spaced_quotes_and_lists_fail_closed() {
     on_small_stack(|| assert!(!seeds("> ".repeat(20_000))));
-    on_small_stack(|| assert!(!seeds(format!("{}- x", " ".repeat(4_000)))));
+    // Indentation alone is not nesting: the TypeScript accepts it, so must the Rust.
+    on_small_stack(|| assert!(seeds(format!("{}- x", " ".repeat(4_000)))));
     on_small_stack(|| {
         let nested: String = (0..3_000)
             .map(|i| format!("{}- x\n", "  ".repeat(i)))
@@ -111,5 +112,93 @@ fn a_huge_table_span_fails_closed_without_allocating_it() {
             "<table><tr><td {attr}=\"{n}\">x</td><td>y</td></tr><tr><td>a</td><td>b</td></tr></table>"
         );
         assert_eq!(seeds(md), ok, "{attr}={n}");
+    }
+}
+
+/// Inline nesting: the recursion is in the markdown parser itself, so a
+/// 20 KB note of brackets overflowed a 2 MiB stack at n=10000 (release) and
+/// n=1000 (debug). The TypeScript fails at about 3000.
+#[test]
+fn deep_inline_nesting_fails_closed() {
+    for n in [100usize, 1_000, 10_000] {
+        on_small_stack(move || {
+            let nested = format!("{}x{}", "[".repeat(n), "](u)".repeat(n));
+            assert_eq!(seeds(nested), n <= 100, "nested links, n={n}");
+        });
+        on_small_stack(move || {
+            assert!(!seeds(format!(
+                "{}{}",
+                "[a ".repeat(n.max(300)),
+                "](u)".repeat(n.max(300))
+            )));
+        });
+        on_small_stack(move || {
+            // Emphasis inside emphasis inside links: every recursive path.
+            let nested = format!("{}x{}", "[*".repeat(n), "*](u)".repeat(n));
+            assert_eq!(seeds(nested), n <= 100, "links and emphasis, n={n}");
+        });
+    }
+    on_small_stack(|| {
+        assert!(!seeds(format!(
+            "{}x{}",
+            "**[".repeat(5_000),
+            "](u)**".repeat(5_000)
+        )))
+    });
+    on_small_stack(|| {
+        // An image's alt text is not parsed again, so this is flat.
+        assert!(seeds(format!(
+            "{}x{}",
+            "![".repeat(20_000),
+            "](u)".repeat(20_000)
+        )))
+    });
+}
+
+/// What the TypeScript accepts must still convert: a fence of `>` characters,
+/// code indented far past any list, and the real list depth.
+#[test]
+fn deep_looking_but_flat_input_still_converts() {
+    on_small_stack(|| {
+        assert!(seeds(format!("```\n{}\n```\n", ">".repeat(500))));
+        assert!(seeds(format!("{}text\n", " ".repeat(500))));
+        let list: String = (0..40)
+            .map(|i| format!("{}- x\n", "  ".repeat(i)))
+            .collect();
+        assert!(seeds(list));
+        assert!(seeds(format!("{}- x\n", " ".repeat(300))));
+    });
+}
+
+/// The remaining recursive shapes of the markdown layers: toggles, columns,
+/// unclosed emphasis, and tasks. None may abort a 2 MiB stack.
+#[test]
+fn other_recursive_shapes_do_not_abort() {
+    let columns = "<!-- memry:columns -->\n<div data-column-list>\n<div data-column>\n\n";
+    for (label, markdown) in [
+        (
+            "toggles",
+            "<details>\n<summary>t</summary>\n\n".repeat(2_000),
+        ),
+        ("columns", columns.repeat(2_000)),
+        ("emphasis", "**a *b ".repeat(4_000)),
+        ("strike", "~~a **b _c ".repeat(2_000)),
+        (
+            "tasks",
+            (0..2_000)
+                .map(|i| format!("{}- [ ] t\n", "  ".repeat(i % 60)))
+                .collect(),
+        ),
+        (
+            "callouts",
+            "> [!note]\n".repeat(2_000) + &"> ".repeat(2_000),
+        ),
+        ("tables", "| a | ".repeat(5_000) + "|\n| - |\n"),
+        ("comments", "<!-- ".repeat(5_000)),
+    ] {
+        on_small_stack(move || {
+            let _ = seeds(markdown);
+            eprintln!("{label}: survived");
+        });
     }
 }

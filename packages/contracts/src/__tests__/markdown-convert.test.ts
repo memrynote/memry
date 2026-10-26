@@ -45,7 +45,7 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/md-to-html.json':
     '816cfb5da51485e40e08780863ff38e7a682cb25965204c529a2f3df833b3605',
   'markdown-convert/html-to-blocks.json':
-    'd0c69446b039e642c967b79344dcdb6add38e35f5c1447237ec4cce0bc9ffb1a',
+    'a178711869c739df8e7bc191b68e9fdd24bab1be5ea181ae9457fb867d3a22e5',
   'markdown-convert/parse.json': '0f4003e2d32f27cd1e839c0e652a21a3650bb2010bd37f7d9112eab789db4d0a',
   'markdown-convert/memry-parse.json':
     'bbd0c7d816af1a5af80553a3c2561b97ee4c4fdacfb2dd668deb0aa80a5e1f09',
@@ -88,7 +88,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
   'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 },
   'markdown-convert/md-to-html.json': { 'md-to-html': 833 },
-  'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 190 },
+  'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 213 },
   'markdown-convert/parse.json': { 'bn-parse': 833 },
   'markdown-convert/memry-parse.json': { 'memry-parse': 736 },
   'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 736 },
@@ -201,30 +201,36 @@ describe('markdown-convert class', () => {
   })
   describe('grammar coverage (protocol 12.6 to 12.8)', () => {
     const file = loadVectorFile<VectorFile>('markdown-convert/grammar-corpus.json')
-    const manifest = JSON.parse(
-      readFileSync(
-        new URL('../../test-vectors/markdown-convert/corpus/manifest.json', import.meta.url),
-        'utf8'
-      )
-    ) as { id: string; section: string }[]
+    const read = (path: string): string =>
+      readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
+    // The protocol is the source of the rule ids: its index table (12.8.1), not
+    // the generator's list.
+    const chapter = read('../../docs/protocol/12-note-body-format.md')
+    const index = chapter.slice(
+      chapter.indexOf('### 12.8.1 Rule index of the conformance corpus'),
+      chapter.indexOf('\n## 12.9')
+    )
+    const rules = [...index.matchAll(/^\| `([a-z0-9-]+)`\s+\| §(12\.[678])\s+\|/gm)].map((m) => ({
+      id: m[1],
+      section: m[2]
+    }))
+    const manifest = JSON.parse(read('test-vectors/markdown-convert/corpus/manifest.json')) as {
+      id: string
+      section: string
+    }[]
     const bodies = new Map(file.cases.map((entry) => [entry.id, entry.input.markdown]))
     const corpusFile = (name: string): string =>
-      readFileSync(
-        new URL(`../../test-vectors/markdown-convert/corpus/${name}`, import.meta.url),
-        'utf8'
-      )
+      read(`test-vectors/markdown-convert/corpus/${name}`)
 
-    it('names at least 200 rules, so at least 400 files, in the three sections', () => {
-      expect(manifest.length).toBeGreaterThanOrEqual(200)
-      expect(new Set(manifest.map((rule) => rule.section))).toEqual(
-        new Set(['12.6', '12.7', '12.8'])
-      )
-      expect(new Set(manifest.map((rule) => rule.id)).size).toBe(manifest.length)
+    it('indexes at least 200 rules, so at least 400 notes, in the three sections', () => {
+      expect(rules.length).toBeGreaterThanOrEqual(200)
+      expect(new Set(rules.map((rule) => rule.section))).toEqual(new Set(['12.6', '12.7', '12.8']))
+      expect(new Set(rules.map((rule) => rule.id)).size).toBe(rules.length)
     })
 
-    it('has a positive and a negative note per rule, equal to its corpus files', () => {
+    it('has a positive and a negative note for every rule of the protocol index', () => {
       const problems: string[] = []
-      for (const { id } of manifest) {
+      for (const { id } of rules) {
         for (const kind of ['pos', 'neg']) {
           const body = bodies.get(`grammar-corpus/corpus-note/${id}.${kind}`)
           if (body === undefined) problems.push(`${id}.${kind}: no case`)
@@ -233,11 +239,15 @@ describe('markdown-convert class', () => {
         }
       }
       expect(problems).toEqual([])
-      expect(file.cases).toHaveLength(manifest.length * 2)
+    })
+
+    it('has no note and no manifest entry for a rule the protocol does not index', () => {
+      expect(manifest).toEqual(rules)
+      expect(file.cases).toHaveLength(rules.length * 2)
     })
 
     it('has a negative note that differs from its positive one', () => {
-      const same = manifest.filter(
+      const same = rules.filter(
         ({ id }) =>
           bodies.get(`grammar-corpus/corpus-note/${id}.pos`) ===
           bodies.get(`grammar-corpus/corpus-note/${id}.neg`)

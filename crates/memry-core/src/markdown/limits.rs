@@ -5,8 +5,14 @@
 //! the conversion fails closed, as the TypeScript does on a `RangeError`
 //! (`status: "error"` in the oracle): the caller keeps the file.
 //!
-//! Real notes nest a few levels. The cap is far above that and far below the
-//! depth at which a 2 MiB thread stack overflows in a debug build.
+//! The caps sit at the recursion sites, so no shape of input escapes them:
+//! block recursion of the markdown parser (quotes, list items) and the HTML
+//! tree depth are capped at [`MAX_NESTING_DEPTH`], inline recursion (links and
+//! emphasis inside each other) at [`MAX_INLINE_DEPTH`]. Indentation and `>`
+//! characters that open no nested block (inside a code fence, past a lazy
+//! continuation) are not nesting and are not counted. Real notes nest a few
+//! levels; the caps are far above that and far below the depth at which a
+//! 2 MiB stack overflows in a debug build.
 
 use yrs::{ReadTxn, XmlFragment, XmlFragmentRef, XmlOut};
 
@@ -20,39 +26,45 @@ pub const MAX_TABLE_SPAN: usize = 100_000;
 /// Largest table grid (rows x columns, spans included) the converter builds.
 pub const MAX_TABLE_CELLS: usize = 4_000_000;
 
-/// True when a line of `markdown` opens more than [`MAX_NESTING_DEPTH`] levels
-/// of block quotes and list indentation. A cheap scan, run before any parse.
-pub fn markdown_nests_too_deep(markdown: &str) -> bool {
-    markdown.lines().any(|line| {
-        let mut rest = line;
-        let mut indent = 0usize;
-        let mut quotes = 0usize;
-        loop {
-            let trimmed = rest.trim_start_matches([' ', '\t']);
-            indent += rest[..rest.len() - trimmed.len()]
-                .bytes()
-                .map(|b| if b == b'\t' { 4 } else { 1 })
-                .sum::<usize>();
-            match trimmed.strip_prefix('>') {
-                Some(after) => {
-                    quotes += 1;
-                    if quotes > MAX_NESTING_DEPTH {
-                        return true;
-                    }
-                    rest = after;
-                }
-                None => {
-                    rest = trimmed;
-                    break;
-                }
+/// Nesting of inline constructs (links and emphasis inside each other) the
+/// markdown parser follows. Each level costs two stack frames; the TypeScript
+/// fails at about 3000, a debug build on a 2 MiB thread at about 500.
+pub const MAX_INLINE_DEPTH: usize = 200;
+
+thread_local! {
+    static DEPTH: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static EXCEEDED: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// One level of recursion. [`DepthGuard::enter`] answers `None` past `limit`
+/// and records it; [`take_exceeded`] reports and clears that record, so the
+/// entry point of a recursive parser can fail closed without every frame
+/// threading an error through.
+pub struct DepthGuard;
+
+impl DepthGuard {
+    pub fn enter(limit: usize) -> Option<DepthGuard> {
+        DEPTH.with(|d| {
+            if d.get() >= limit {
+                EXCEEDED.with(|e| e.set(true));
+                None
+            } else {
+                d.set(d.get() + 1);
+                Some(DepthGuard)
             }
-        }
-        let is_item = rest.starts_with(['-', '*', '+'])
-            || rest
-                .trim_start_matches(|c: char| c.is_ascii_digit())
-                .starts_with('.');
-        is_item && quotes + indent / 2 > MAX_NESTING_DEPTH
-    })
+        })
+    }
+}
+
+impl Drop for DepthGuard {
+    fn drop(&mut self) {
+        DEPTH.with(|d| d.set(d.get() - 1));
+    }
+}
+
+/// Whether any [`DepthGuard::enter`] failed since the last call; clears it.
+pub fn take_exceeded() -> bool {
+    EXCEEDED.with(|e| e.replace(false))
 }
 
 /// True when the fragment's element tree is deeper than [`MAX_NESTING_DEPTH`].
@@ -68,22 +80,4 @@ pub fn fragment_too_deep<T: ReadTxn>(txn: &T, fragment: &XmlFragmentRef) -> bool
         }
     }
     false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn quotes_and_indented_items_are_counted() {
-        assert!(!markdown_nests_too_deep(&">".repeat(100)));
-        assert!(markdown_nests_too_deep(&">".repeat(101)));
-        assert!(markdown_nests_too_deep(&"> ".repeat(1000)));
-        assert!(markdown_nests_too_deep(&format!("{}- x", " ".repeat(400))));
-        assert!(!markdown_nests_too_deep(&format!(
-            "{}text",
-            " ".repeat(400)
-        )));
-        assert!(!markdown_nests_too_deep("- a\n  - b\n    - c"));
-    }
 }
