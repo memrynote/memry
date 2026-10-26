@@ -1,0 +1,2 @@
+> [!error]
+> body of error

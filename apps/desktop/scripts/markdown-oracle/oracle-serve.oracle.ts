@@ -40,6 +40,7 @@ import {
 } from './pm-oracle'
 import {
   docBlocks,
+  docCorpusNote,
   docRepairIds,
   docReplace,
   docSeed,
@@ -175,6 +176,8 @@ async function run(job: Job): Promise<unknown> {
       const blocks = input.blocks as Parameters<typeof serializeBlocks>[0]
       return { markdown: await serializeBlocks(blocks) }
     }
+    case 'corpus-note':
+      return docCorpusNote({ markdown: text(input, 'markdown') })
     case 'doc-seed':
     case 'doc-serialize':
     case 'doc-blocks':

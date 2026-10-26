@@ -1,7 +1,8 @@
 //! html5ever tree builder over the arena [`Dom`].
 
 use std::borrow::Cow;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 
 use html5ever::interface::tree_builder::{ElementFlags, NodeOrText, QuirksMode, TreeSink};
 use html5ever::tendril::{StrTendril, TendrilSink};
@@ -29,6 +30,10 @@ impl ElemName for Name {
 struct Sink {
     dom: RefCell<Dom>,
     document: NodeId,
+    /// Set once the tree is deeper than the limit, so the driver can stop
+    /// feeding input (html5ever's scope checks walk the open elements, which
+    /// makes a deep tree quadratic to build).
+    too_deep: Rc<Cell<bool>>,
 }
 
 impl Sink {
@@ -142,9 +147,36 @@ impl TreeSink for Sink {
     fn append(&self, parent: &NodeId, child: NodeOrText<NodeId>) {
         let last = self.dom.borrow().children(*parent).last().copied();
         self.place(child, last, |dom, node| dom.append_child(*parent, node));
+        self.too_deep.set(self.dom.borrow().too_deep());
     }
 
     fn append_before_sibling(&self, sibling: &NodeId, child: NodeOrText<NodeId>) {
+        // jsdom's `insertTextBefore` (its parse5 tree adapter) merges into a text
+        // node before the reference and otherwise calls `_append(node, reference)`,
+        // whose second argument `_append` ignores: the text lands at the END of the
+        // parent, as a node of its own. This is where a table's foster-parented
+        // text goes (oracle cases `foster-table-*`).
+        //
+        // That is a jsdom quirk, not what the HTML spec says, and it is a
+        // compatibility contract: desktop is the reference, so a note that has such
+        // text must convert to the same document in both. Do not "fix" it here
+        // without changing the oracle and the vectors in the same change.
+        if let NodeOrText::AppendText(text) = &child {
+            let (prev_is_text, parent) = {
+                let dom = self.dom.borrow();
+                let prev = dom.previous_sibling(*sibling);
+                (
+                    prev.is_some_and(|p| matches!(dom.nodes[p].data, NodeData::Text(_))),
+                    dom.parent(*sibling),
+                )
+            };
+            if let (false, Some(parent)) = (prev_is_text, parent) {
+                let node = self.new_node(NodeData::Text(text.to_string()));
+                self.dom.borrow_mut().append_child(parent, node);
+                self.too_deep.set(self.dom.borrow().too_deep());
+                return;
+            }
+        }
         let prev = self.dom.borrow().previous_sibling(*sibling);
         self.place(child, prev, |dom, node| {
             dom.detach(node);
@@ -156,6 +188,7 @@ impl TreeSink for Sink {
                 .expect("sibling is a child");
             dom.nodes[parent].children.insert(at, node);
             dom.nodes[node].parent = Some(parent);
+            dom.note_depth(parent, node);
         });
     }
 
@@ -200,21 +233,36 @@ impl TreeSink for Sink {
 
 /// `div.innerHTML = html` on a fresh `div`: parse `html` as a fragment with a
 /// `div` context and return the DOM with the `div` as its returned root.
+/// How much input the parser takes between looks at the depth flag.
+const CHUNK_BYTES: usize = 512;
+
 pub fn parse_fragment_in_div(html: &str) -> (Dom, NodeId) {
     let mut dom = Dom::new();
     let document = dom.create_document();
+    let too_deep = Rc::new(Cell::new(false));
     let sink = Sink {
         dom: RefCell::new(dom),
         document,
+        too_deep: Rc::clone(&too_deep),
     };
-    let mut dom = parse_fragment(
+    let mut parser = parse_fragment(
         sink,
         Default::default(),
         QualName::new(None, ns!(html), local_name!("div")),
         Vec::new(),
         true,
-    )
-    .one(html);
+    );
+    let mut rest = html;
+    while !rest.is_empty() && !too_deep.get() {
+        let mut end = rest.len().min(CHUNK_BYTES);
+        while !rest.is_char_boundary(end) {
+            end += 1;
+        }
+        let (chunk, tail) = rest.split_at(end);
+        parser.process(StrTendril::from_slice(chunk));
+        rest = tail;
+    }
+    let mut dom = parser.finish();
     // The tree builder roots a fragment under a synthetic `html` element.
     let root = dom
         .first_child(document)

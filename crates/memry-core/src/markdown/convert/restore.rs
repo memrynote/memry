@@ -74,10 +74,24 @@ pub struct SerializeOptions<'a> {
 pub struct SerializedBody {
     pub markdown: String,
     pub outcome: SourceRestoreOutcome,
+    /// Node names in the document the schema cannot build (`findUnrepresentableNodes`).
+    /// Writing `markdown` to the vault file drops those nodes' content, so a
+    /// caller that must not lose content refuses when this is not empty.
+    /// `Converter::doc_to_markdown` fills it; the inner function leaves it empty.
+    pub unrepresentable: Vec<String>,
+    /// Elements y-prosemirror would delete because the schema cannot build them
+    /// (a childless table row, a node in the wrong place): their content is not
+    /// in `markdown` either. `Converter` fills it.
+    pub dropped_elements: usize,
 }
 
 fn done(markdown: String, outcome: SourceRestoreOutcome) -> Option<SerializedBody> {
-    Some(SerializedBody { markdown, outcome })
+    Some(SerializedBody {
+        markdown,
+        outcome,
+        unrepresentable: Vec::new(),
+        dropped_elements: 0,
+    })
 }
 
 /// `withLfLineEndings`.

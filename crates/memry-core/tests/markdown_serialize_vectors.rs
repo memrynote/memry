@@ -91,6 +91,12 @@ fn serialize_vectors() {
                 (Json::Null, None) => Ok(()),
                 (want, got) => Err(format!("expected {want:?}, got {got:?}")),
             },
+            // A body the oracle's `prepareFragmentSeed` refuses answers `null`.
+            (Some("ok"), Err(e))
+                if e.starts_with("seed failed") && expected["output"]["markdown"].is_null() =>
+            {
+                Ok(())
+            }
             (Some("ok"), Err(e)) => Err(e),
             (Some("error"), Err(_)) => {
                 errors += 1;

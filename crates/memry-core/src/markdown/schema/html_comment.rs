@@ -9,6 +9,7 @@ use super::emphasis_runs::{
     Span, list_link_break_tokens, restore_emphasis_runs, tokenize_emphasis_runs,
 };
 use crate::markdown::convert::ConvertError;
+use crate::markdown::shared::block_copy::clone_without;
 use crate::markdown::shared::html_comments::encode_html_comment_token;
 
 fn type_of(item: &Json) -> &str {
@@ -151,10 +152,11 @@ fn map_inline(blocks: &[Json], marks: &mut Vec<Span>) -> Result<Vec<Json>, Conve
     blocks
         .iter()
         .map(|block| {
-            let mut next = block.clone();
+            let mut next = clone_without(block, &["content", "children"]);
             let block_type = block.get("type").and_then(Json::as_str);
-            if let Some(content) = block.get("content").and_then(Json::as_array) {
-                next["content"] = Json::Array(inline(content, block_type, marks)?);
+            let mut content = None;
+            if let Some(items) = block.get("content").and_then(Json::as_array) {
+                content = Some(Json::Array(inline(items, block_type, marks)?));
             } else if block
                 .get("content")
                 .and_then(|c| c.get("type"))
@@ -182,10 +184,18 @@ fn map_inline(blocks: &[Json], marks: &mut Vec<Span>) -> Result<Vec<Json>, Conve
                     .collect::<Result<Vec<Json>, ConvertError>>()?;
                 let mut table = table.clone();
                 table["rows"] = Json::Array(rows);
-                next["content"] = table;
+                content = Some(table);
             }
-            if let Some(children) = block.get("children").and_then(Json::as_array) {
-                next["children"] = Json::Array(map_inline(children, marks)?);
+            let children = match block.get("children").and_then(Json::as_array) {
+                Some(children) => Some(Json::Array(map_inline(children, marks)?)),
+                None => None,
+            };
+            if let Some(map) = next.as_object_mut() {
+                for (key, mapped) in [("content", content), ("children", children)] {
+                    if let Some(original) = block.get(key) {
+                        map.insert(key.to_owned(), mapped.unwrap_or_else(|| original.clone()));
+                    }
+                }
             }
             Ok(next)
         })

@@ -10,6 +10,13 @@ mod inline;
 mod scan;
 mod video;
 
-pub fn markdown_to_html(markdown: &str) -> String {
-    emit::tokens_to_html(&block::tokenize(markdown))
+use crate::markdown::limits::take_exceeded;
+
+/// `None` when quotes, lists or inline constructs nest deeper than the
+/// limits of [`crate::markdown::limits`]: the TypeScript throws a `RangeError`
+/// there, and the stack would overflow here.
+pub fn markdown_to_html(markdown: &str) -> Option<String> {
+    take_exceeded();
+    let html = emit::tokens_to_html(&block::tokenize(markdown));
+    (!take_exceeded()).then_some(html)
 }

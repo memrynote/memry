@@ -4,9 +4,159 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "Markdown seeded into a Y.Doc and read back: yDocToMarkdown (bytes and SourceRestoreOutcome), yDocToCanonicalMarkdown, serializeNoteBody (body and writing frontmatter) and findUnrepresentableNodes. markdown is compared byte for byte; it is the contract for what lands in users vault files.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 734
+    "caseCount": 751
   },
   "cases": [
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-text",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-rowspan-text",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-sum",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>",
+          "outcome": "source",
+          "canonical": "|   |   |   |   |   |\n| - | - | - | - | - |\n| x |   | y |   |   |\n| a |   |   |   |   |",
+          "noteBody": {
+            "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-two",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+          "outcome": "source",
+          "canonical": "|   |   |\n| - | - |\n| x |   |\n| a |   |",
+          "noteBody": {
+            "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-rowspan-two",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-zero",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-negative",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"-1\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-fraction",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"1.5\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-empty",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-suffix",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-colspan-leading-space",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/table-span-rowspan-zero",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
     {
       "id": "roundtrip/doc-serialize/empty-input",
       "op": "doc-serialize",
@@ -2847,6 +2997,31 @@
           "canonical": "a {++open",
           "noteBody": {
             "markdown": "a {++open\n",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "source"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/image-url-reserved-char",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n",
+          "outcome": "source",
+          "canonical": "![whiteboard](memry://canvas/V1StGXR8_Z%7D5jdHi6B-myT)",
+          "noteBody": {
+            "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n",
             "writing": {
               "alternatives": {},
               "overflow": []
@@ -18540,6 +18715,138 @@
           "canonical": "a new b",
           "noteBody": {
             "markdown": "a <!--alt:k1-->{++new++}<!--/alt:k1--> b",
+            "writing": {
+              "alternatives": {
+                "k1": {
+                  "versions": [
+                    {
+                      "text": "n"
+                    }
+                  ]
+                }
+              },
+              "overflow": []
+            },
+            "outcome": "writing-marks"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/ghost-after-two-byte-char",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<!--ghost-->a<!--/ghost-é-> and <!--ghost-->b<!--/ghost-->"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "a<!--/ghost-é-> and b",
+          "outcome": "no-record",
+          "canonical": "a<!--/ghost-é-> and b",
+          "noteBody": {
+            "markdown": "a<!--/ghost-é-> and <!--ghost-->b<!--/ghost-->",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "writing-marks"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/ghost-after-three-byte-char",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "<!--ghost-->a <!--alt:q1-->b<!--/alt:q1--​> c<!--/ghost-->",
+        "writing": {
+          "alternatives": {
+            "q1": {
+              "versions": [
+                {
+                  "text": "x"
+                }
+              ]
+            }
+          },
+          "overflow": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "a b<!--/alt:q1--​> c",
+          "outcome": "no-record",
+          "canonical": "a b<!--/alt:q1--​> c",
+          "noteBody": {
+            "markdown": "<!--ghost-->a b<!--/alt:q1--​> c<!--/ghost-->",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "writing-marks"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/ghost-ends-on-astral-char",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "é <!--ghost-->go 😀<!--/ghost--> after\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "é go 😀 after\n",
+          "outcome": "source",
+          "canonical": "é go 😀 after",
+          "noteBody": {
+            "markdown": "é <!--ghost-->go 😀<!--/ghost--> after",
+            "writing": {
+              "alternatives": {},
+              "overflow": []
+            },
+            "outcome": "writing-marks"
+          },
+          "unrepresentable": []
+        }
+      }
+    },
+    {
+      "id": "roundtrip/doc-serialize/alt-after-non-ascii",
+      "op": "doc-serialize",
+      "input": {
+        "markdown": "é日本 <!--alt:k1-->ayaz<!--/alt:k1--> bir 😀 ruzgar.\n",
+        "writing": {
+          "alternatives": {
+            "k1": {
+              "versions": [
+                {
+                  "text": "n"
+                }
+              ]
+            }
+          },
+          "overflow": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "markdown": "é日本 ayaz bir 😀 ruzgar.\n",
+          "outcome": "source",
+          "canonical": "é日本 ayaz bir 😀 ruzgar.",
+          "noteBody": {
+            "markdown": "é日本 <!--alt:k1-->ayaz<!--/alt:k1--> bir 😀 ruzgar.",
             "writing": {
               "alternatives": {
                 "k1": {

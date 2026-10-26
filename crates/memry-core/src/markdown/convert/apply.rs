@@ -15,7 +15,7 @@ use super::seed::{PreparedSeed, SeedEnv, prepare_fragment_seed};
 use super::serialize::BlockNoteSerializer;
 use super::writing_seed::apply_writing_seed;
 use crate::markdown::bn::block_to_node::{blocks_to_doc, ensure_block_ids};
-use crate::markdown::pm::Schema;
+use crate::markdown::pm::{Node, Schema};
 use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_markdown_content};
 use crate::markdown::shared::writing_tools::WritingFrontmatter;
 use crate::markdown::yxml::write_fragment;
@@ -25,22 +25,41 @@ use crate::protocol::envelope::NOTE_SYNC_MAX_BYTES;
 /// record may occupy: half of `NOTE_SYNC_MAX_BYTES` (`MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES`).
 pub const MARKDOWN_SOURCE_SNAPSHOT_BUDGET_BYTES: usize = NOTE_SYNC_MAX_BYTES / 2;
 
+/// The ProseMirror document `prepared` becomes: every step of
+/// [`apply_fragment_seed`] that can fail, before any of it touches a Y.Doc.
+pub fn build_seed_doc(env: &Env, prepared: &PreparedSeed) -> Option<Node> {
+    let schema = Schema::memry();
+    let mut blocks = prepared.blocks.clone();
+    ensure_block_ids(&mut blocks, env.ids);
+    blocks_to_doc(schema, &blocks, env.ids).ok()
+}
+
 /// `blocksToYFragment`, the three side-channel writes of `applyFragmentSeed`
 /// and `applyWritingSeed`. `fragment` must be empty (clear it first for a
 /// replace). `false` is the TypeScript's `false`: the caller keeps the file.
+///
+/// The document is built before the first write, but a `false` from a later
+/// step leaves what was written. A caller that must keep the document intact
+/// on failure runs this on a copy first (`Converter::replace_body`).
 pub fn apply_fragment_seed(
     env: &Env,
     prepared: &PreparedSeed,
     txn: &mut TransactionMut,
     fragment: &XmlFragmentRef,
 ) -> bool {
-    let schema = Schema::memry();
-    let mut blocks = prepared.blocks.clone();
-    ensure_block_ids(&mut blocks, env.ids);
-    let Ok(doc) = blocks_to_doc(schema, &blocks, env.ids) else {
+    let Some(doc) = build_seed_doc(env, prepared) else {
         return false;
     };
-    if write_fragment(schema, txn, fragment, &doc).is_err() {
+    apply_built_seed(prepared, &doc, txn, fragment)
+}
+
+fn apply_built_seed(
+    prepared: &PreparedSeed,
+    doc: &Node,
+    txn: &mut TransactionMut,
+    fragment: &XmlFragmentRef,
+) -> bool {
+    if write_fragment(Schema::memry(), txn, fragment, doc).is_err() {
         return false;
     }
     write_critic_marks(txn, &prepared.marks);
@@ -50,8 +69,7 @@ pub fn apply_fragment_seed(
         fragment,
         &prepared.writing_sentinels,
         prepared.writing.as_ref(),
-    );
-    true
+    )
 }
 
 /// `recordMarkdownSourceInYDoc`: remember what the document was just built
@@ -122,7 +140,12 @@ pub fn empty_document_blocks() -> Vec<Json> {
 /// The fragment's XML string (`fragment.toJSON()`), which `unless_changed_from`
 /// of [`replace_doc_body`] compares.
 pub fn fragment_snapshot<T: ReadTxn>(txn: &T, fragment: &str) -> Option<String> {
-    txn.get_xml_fragment(fragment).map(|f| f.get_string(txn))
+    let fragment = txn.get_xml_fragment(fragment)?;
+    // `get_string` recurses once per level; a deeper tree has no snapshot.
+    if crate::markdown::limits::fragment_too_deep(txn, &fragment) {
+        return None;
+    }
+    Some(fragment.get_string(txn))
 }
 
 /// `replaceDocBody` over the converter: swap a note's body for new markdown in
@@ -156,7 +179,17 @@ pub fn replace_doc_body(
     if prepared.blocks.is_empty() {
         prepared.blocks = empty_document_blocks();
     }
+    // Everything that can fail runs before the first write; the fragment is
+    // cleared last, so a failure leaves the body as it was.
+    let Some(doc) = build_seed_doc(env, &prepared) else {
+        return ReplaceOutcome::Failed;
+    };
     let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
+    // A peer can send a tree deeper than the stack: `get_string` and
+    // `remove_range` both recurse into it, so it is refused before either runs.
+    if crate::markdown::limits::fragment_too_deep(&*txn, &fragment) {
+        return ReplaceOutcome::Failed;
+    }
     if let Some(expected) = unless_changed_from
         && fragment.get_string(&*txn) != expected
     {
@@ -166,7 +199,7 @@ pub fn replace_doc_body(
     if length > 0 {
         fragment.remove_range(txn, 0, length);
     }
-    if !apply_fragment_seed(env, &prepared, txn, &fragment) {
+    if !apply_built_seed(&prepared, &doc, txn, &fragment) {
         return ReplaceOutcome::Failed;
     }
     // The file's new bytes are the source from here on. Without the writing
@@ -208,6 +241,9 @@ pub fn repair_empty_block_ids(
             }
             visit(env, txn, &element, repaired);
         }
+    }
+    if crate::markdown::limits::fragment_too_deep(&*txn, fragment) {
+        return 0;
     }
     let mut repaired = 0;
     visit(env, txn, fragment, &mut repaired);

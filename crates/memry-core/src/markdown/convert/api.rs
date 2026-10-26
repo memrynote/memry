@@ -8,10 +8,10 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use serde_json::Value as Json;
-use yrs::{TransactionMut, XmlFragmentRef};
+use yrs::{Transact as _, TransactionMut, XmlFragmentRef};
 
 use super::apply::{self, ReplaceOutcome};
-use super::canonical::{self, BODY_FRAGMENT};
+use super::canonical::{self, BODY_FRAGMENT, rehearsal_copy};
 use super::note_body::{NoteBody, serialize_note_body};
 use super::restore::{SerializeOptions, SerializedBody, doc_to_markdown};
 use super::seed::{PreparedSeed, SeedEnv, prepare_fragment_seed};
@@ -97,8 +97,18 @@ impl Converter {
         .unwrap_or(false)
     }
 
+    /// Runs `write` on a copy of `doc` first. A write that fails (or panics)
+    /// halfway leaves the copy half written, and the live document untouched.
+    fn rehearse(&self, doc: &Document, write: impl Fn(&mut TransactionMut) -> bool) -> bool {
+        let Some(copy) = doc.read(|txn| rehearsal_copy(txn)).ok().flatten() else {
+            return false;
+        };
+        let mut txn = copy.transact_mut();
+        catch_unwind(AssertUnwindSafe(|| write(&mut txn))).unwrap_or(false)
+    }
+
     /// `markdownToYFragment`: seed an empty document body from markdown and
-    /// record the source beside it.
+    /// record the source beside it. On `false` the document is unchanged.
     pub fn seed_body(
         &self,
         doc: &Document,
@@ -107,6 +117,21 @@ impl Converter {
         writing: Option<WritingFrontmatter>,
         embeds: &dyn EmbedResolver,
     ) -> bool {
+        let run = |txn: &mut TransactionMut| {
+            let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
+            apply::seed_fragment(
+                &self.env(Some(embeds)),
+                markdown,
+                note_path,
+                writing.clone(),
+                txn,
+                &fragment,
+                true,
+            )
+        };
+        if !self.rehearse(doc, run) {
+            return false;
+        }
         let seeded = doc.write(|txn| {
             catch_unwind(AssertUnwindSafe(|| {
                 let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
@@ -133,9 +158,14 @@ impl Converter {
         options: &SerializeOptions,
     ) -> Option<SerializedBody> {
         guard(|| {
-            doc.read(|txn| doc_to_markdown(&self.env(options.embeds), txn, fragment, options))
-                .ok()
-                .flatten()
+            doc.read(|txn| {
+                let mut body = doc_to_markdown(&self.env(options.embeds), txn, fragment, options)?;
+                body.unrepresentable = canonical::find_unrepresentable_nodes(txn, fragment);
+                body.dropped_elements = canonical::dropped_elements(txn, fragment);
+                Some(body)
+            })
+            .ok()
+            .flatten()
         })
     }
 
@@ -156,9 +186,15 @@ impl Converter {
         options: &SerializeOptions,
     ) -> Option<NoteBody> {
         guard(|| {
-            doc.read(|txn| serialize_note_body(&self.env(options.embeds), txn, fragment, options))
-                .ok()
-                .flatten()
+            doc.read(|txn| {
+                let mut body =
+                    serialize_note_body(&self.env(options.embeds), txn, fragment, options)?;
+                body.unrepresentable = canonical::find_unrepresentable_nodes(txn, fragment);
+                body.dropped_elements = canonical::dropped_elements(txn, fragment);
+                Some(body)
+            })
+            .ok()
+            .flatten()
         })
     }
 
@@ -188,12 +224,38 @@ impl Converter {
     }
 
     /// `replaceDocBody`: swap a note's body for new markdown in one transaction.
+    /// Anything but `Replaced` leaves the document unchanged: the replace runs
+    /// on a copy first, and only a copy that succeeded is repeated on the live one.
     pub fn replace_body(
         &self,
         doc: &Document,
         markdown: &str,
         options: ReplaceOptions,
     ) -> ReplaceOutcome {
+        // The copy writes unguarded: the guard compares the fragment's XML string,
+        // whose attribute order differs between two documents holding the same
+        // content, so only the live document can answer it.
+        let replace = |txn: &mut TransactionMut| {
+            apply::replace_doc_body(
+                &self.env(options.embeds),
+                txn,
+                markdown,
+                options.note_path,
+                options.writing.clone(),
+                None,
+            )
+        };
+        let rehearsed = doc.read(|txn| rehearsal_copy(txn)).ok().flatten();
+        let Some(copy) = rehearsed else {
+            return ReplaceOutcome::Failed;
+        };
+        let rehearsal = {
+            let mut txn = copy.transact_mut();
+            catch_unwind(AssertUnwindSafe(|| replace(&mut txn))).unwrap_or(ReplaceOutcome::Failed)
+        };
+        if rehearsal != ReplaceOutcome::Replaced {
+            return rehearsal;
+        }
         let outcome = doc.write(|txn| {
             catch_unwind(AssertUnwindSafe(|| {
                 apply::replace_doc_body(

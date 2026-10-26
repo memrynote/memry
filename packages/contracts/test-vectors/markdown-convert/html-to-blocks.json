@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 129
+    "caseCount": 216
   },
   "cases": [
     {
@@ -3124,6 +3124,566 @@
       }
     },
     {
+      "id": "html-blocks/html-to-blocks/foster-table-in-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a<table><tr><td>x</td></tr></table></p>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-table-in-li",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><p><table><tr>&lt;td</p></li></ul>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [],
+            "children": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              },
+              {
+                "type": "paragraph",
+                "props": {
+                  "backgroundColor": "default",
+                  "textAlignment": "left",
+                  "textColor": "default"
+                },
+                "content": [
+                  {
+                    "styles": {},
+                    "text": "<td",
+                    "type": "text"
+                  }
+                ],
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-table-foster-text",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table>t<tr><td>x</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "t",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-table-after-p",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<p>a</p><table><tr><td>x</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "a",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-text-merges",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table>t<tbody>a<tr><td>x</td></tr></tbody>b</table>u"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "tabu",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-text-then-text",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><td>x</td></tr></table>a<table>t<tr><td>y</td></tr></table>b"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "at",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "y",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          },
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {},
+                "text": "b",
+                "type": "text"
+              }
+            ],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-element-stays-before",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<table><tr><b>t</b><td>x</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "paragraph",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [
+              {
+                "styles": {
+                  "bold": true
+                },
+                "text": "t",
+                "type": "text"
+              }
+            ],
+            "children": []
+          },
+          {
+            "type": "table",
+            "props": {
+              "textColor": "default"
+            },
+            "content": {
+              "columnWidths": [
+                null
+              ],
+              "rows": [
+                {
+                  "cells": [
+                    {
+                      "content": [
+                        {
+                          "styles": {},
+                          "text": "x",
+                          "type": "text"
+                        }
+                      ],
+                      "props": {
+                        "backgroundColor": "default",
+                        "colspan": 1,
+                        "rowspan": 1,
+                        "textAlignment": "left",
+                        "textColor": "default"
+                      },
+                      "type": "tableCell"
+                    }
+                  ]
+                }
+              ],
+              "type": "tableContent"
+            },
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "html-blocks/html-to-blocks/foster-table-eof-in-tag",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<ul><li><table><tr><td"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "bulletListItem",
+            "props": {
+              "backgroundColor": "default",
+              "textAlignment": "left",
+              "textColor": "default"
+            },
+            "content": [],
+            "children": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "html-blocks/html-to-blocks/img",
       "op": "html-to-blocks",
       "input": {
@@ -4806,6 +5366,1981 @@
               "textColor": "default"
             },
             "content": [],
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/relative",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"a.png\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "a.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/relative-space",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\" ./a b.png \">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": " ./a b.png "
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/absolute-http",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"HTTPS://Example.COM/a b?q=1 2#f g\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "https://example.com/a%20b?q=1%202#f%20g"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/default-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com:80/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/empty-path",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/caret-in-path",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/a^b\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/a%5Eb"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/caret-in-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/?a^b\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/?a^b"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/brace-in-path",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/a{b}c\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/a%7Bb%7Dc"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/pipe-in-path",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/a|b\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/a|b"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/backslash",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com\\a\\b\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/a/b"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/dot-segments",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/a/../b/./c\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/b/c"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-drive-pipe",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///C|/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-drive-colon",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///C:/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-host-drive-pipe",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://host/C|/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://host/C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-unc",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:////srv/share/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:////srv/share/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-plain",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///usr/bin/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///usr/bin/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///a\\b?q\\r\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///a/b?q\\r"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-fragment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///a?x#f\\g\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///a?x#f\\g"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-empty-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///a?\\\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///a?\\"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-localhost",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://localhost/etc/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///etc/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y:a b?c\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y:a b?c"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-fragment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y:a b#c\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y:a b#c"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-trailing-space",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y:a b \">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y:a b"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-plain",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y:opaque\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y:opaque"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-authority",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://host/path with space\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://host/path%20with%20space"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-empty-authority",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://@\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://@"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-port-backslash",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://h:\\\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://h:\\"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-port-late-colon",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://h:\\)https://e.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://h:\\)https://e.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-port-digits",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://h:80/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://h:80/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-ipv6-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://[::1]:80/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://[::1]:80/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-userinfo",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y://u:p@h/p\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y://u:p@h/p"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-five-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://///server/share/x.png\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://///server/share/x.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-six-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://////x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://////x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-ipv6-host",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://[::1]/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://[::1]/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-ipv6-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://[::1]:8080/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://[::1]:8080/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-unc",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:\\\\server\\share\\x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://server/share/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-named-host-empty-segment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://a.com//x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://a.com//x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-dot-before-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://host/./C|/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://host/C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-dotdot-before-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///../C|/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-dotdot-after-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///C:/../x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///C:/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-host-credentials",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://u@h/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://u@h/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-host-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file://h:80/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file://h:80/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-before-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"mailto:a@b.c ?x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "mailto:a@b.c%20?x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-before-fragment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"mailto:a@b.c #x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "mailto:a@b.c%20#x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-two-spaces-before-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"tel:+1  555 ?x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "tel:+1  555%20?x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/opaque-space-only",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"about: #x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "about:%20#x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-many-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http:////a.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-backslashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http:\\\\a.com\\x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-no-slashes",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"ws:a.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "ws://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/special-dotdot-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"wss://[::1]/C|/../x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "wss://[::1]/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-dotdot-drive",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"x-y:///C:/C:/..\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "x-y:///C:/"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-path-only-empty-segment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"memry-file:/.//a/C|/\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "memry-file:/.//a/C|/"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/nonspecial-path-only-dotdot",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"tel:/..//x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "tel:/.//x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/tab-inside-scheme-and-host",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"ht\ttp://a.\ncom/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/data-uri",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"data:image/png;base64,AAA=\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "data:image/png;base64,AAA="
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/javascript-uri",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"javascript:alert(1)\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "javascript:alert(1)"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/mailto-uri",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"mailto:a@b.c?subject=a b\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "mailto:a@b.c?subject=a%20b"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/fragment-only",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"#top\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "about:blank#top"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/query-only",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"?a=1\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "?a=1"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/protocol-relative",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"//a.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "//a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/root-relative",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"/a/b.png\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "/a/b.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/ipv4-number",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://0x7f.1/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://127.0.0.1/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/ipv6",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://[::1]:8080/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://[::1]:8080/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/bad-ipv6",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://[::1/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://[::1/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/idna",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://Bücher.example/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://xn--bcher-kva.example/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/percent-encoded",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/%7e%zz\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/%7e%zz"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/userinfo-special",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://u:p@a.com/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://u:p@a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/empty-host-http",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http:///x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://x/"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/tab-newline",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/a\tb\nc\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/abc"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/leading-controls",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"\u0001 http://a.com/x \">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/unicode-path",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/日本\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/%E6%97%A5%E6%9C%AC"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/unicode-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com/?q=日本\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com/?q=%E6%97%A5%E6%9C%AC"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/blob-uri",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"blob:http://a.com/uuid\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "blob:http://a.com/uuid"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/ws-uri",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"WS://a.com:80/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "ws://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/ftp-uri",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"ftp://a.com:21/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "ftp://a.com/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/wrong-port",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"http://a.com:99999/x\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "http://a.com:99999/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/about-blank",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"about:blank\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "about:blank"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/memry-file",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"memry-file://abc/photo.png\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "memry-file://abc/photo.png"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/memry-canvas",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"memry://canvas/V1StGXR8_Z}5jdHi6B-myT\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "memry://canvas/V1StGXR8_Z%7D5jdHi6B-myT"
+            },
+            "content": null,
             "children": []
           }
         ]

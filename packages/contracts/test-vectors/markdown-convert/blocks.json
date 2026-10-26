@@ -4,9 +4,275 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "yFragmentToBlocks (y-prosemirror read, then nodeToBlock) as canonical block JSON, ids dropped, over seeded documents and Yjs-authored ones.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 795
+    "caseCount": 812
   },
   "cases": [
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-text",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-rowspan-text",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-sum",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "table",
+              "props": {
+                "textColor": "default"
+              },
+              "content": {
+                "columnWidths": [
+                  null,
+                  null,
+                  null,
+                  null,
+                  null
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      {
+                        "content": [
+                          {
+                            "styles": {},
+                            "text": "x",
+                            "type": "text"
+                          }
+                        ],
+                        "props": {
+                          "backgroundColor": "default",
+                          "colspan": 2,
+                          "rowspan": 1,
+                          "textAlignment": "left",
+                          "textColor": "default"
+                        },
+                        "type": "tableCell"
+                      },
+                      {
+                        "content": [
+                          {
+                            "styles": {},
+                            "text": "y",
+                            "type": "text"
+                          }
+                        ],
+                        "props": {
+                          "backgroundColor": "default",
+                          "colspan": 3,
+                          "rowspan": 1,
+                          "textAlignment": "left",
+                          "textColor": "default"
+                        },
+                        "type": "tableCell"
+                      }
+                    ]
+                  },
+                  {
+                    "cells": [
+                      {
+                        "content": [
+                          {
+                            "styles": {},
+                            "text": "a",
+                            "type": "text"
+                          }
+                        ],
+                        "props": {
+                          "backgroundColor": "default",
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "textAlignment": "left",
+                          "textColor": "default"
+                        },
+                        "type": "tableCell"
+                      }
+                    ]
+                  }
+                ],
+                "type": "tableContent"
+              },
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-two",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "table",
+              "props": {
+                "textColor": "default"
+              },
+              "content": {
+                "columnWidths": [
+                  null,
+                  null
+                ],
+                "rows": [
+                  {
+                    "cells": [
+                      {
+                        "content": [
+                          {
+                            "styles": {},
+                            "text": "x",
+                            "type": "text"
+                          }
+                        ],
+                        "props": {
+                          "backgroundColor": "default",
+                          "colspan": 2,
+                          "rowspan": 1,
+                          "textAlignment": "left",
+                          "textColor": "default"
+                        },
+                        "type": "tableCell"
+                      }
+                    ]
+                  },
+                  {
+                    "cells": [
+                      {
+                        "content": [
+                          {
+                            "styles": {},
+                            "text": "a",
+                            "type": "text"
+                          }
+                        ],
+                        "props": {
+                          "backgroundColor": "default",
+                          "colspan": 1,
+                          "rowspan": 1,
+                          "textAlignment": "left",
+                          "textColor": "default"
+                        },
+                        "type": "tableCell"
+                      }
+                    ]
+                  }
+                ],
+                "type": "tableContent"
+              },
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-rowspan-two",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-zero",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-negative",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"-1\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-fraction",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"1.5\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-empty",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-suffix",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-colspan-leading-space",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/table-span-rowspan-zero",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "error"
+      }
+    },
     {
       "id": "blocks/doc-blocks/empty-input",
       "op": "doc-blocks",
@@ -5136,6 +5402,34 @@
                   "type": "text"
                 }
               ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/image-url-reserved-char",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "image",
+              "props": {
+                "backgroundColor": "default",
+                "caption": "",
+                "name": "whiteboard",
+                "showPreview": true,
+                "textAlignment": "left",
+                "url": "memry://canvas/V1StGXR8_Z%7D5jdHi6B-myT"
+              },
+              "content": null,
               "children": []
             }
           ]
@@ -33215,6 +33509,154 @@
                 {
                   "styles": {},
                   "text": "a new b",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/ghost-after-two-byte-char",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<!--ghost-->a<!--/ghost-é-> and <!--ghost-->b<!--/ghost-->"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "a<!--/ghost-é-> and b",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/ghost-after-three-byte-char",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "<!--ghost-->a <!--alt:q1-->b<!--/alt:q1--​> c<!--/ghost-->",
+        "writing": {
+          "alternatives": {
+            "q1": {
+              "versions": [
+                {
+                  "text": "x"
+                }
+              ]
+            }
+          },
+          "overflow": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "a b<!--/alt:q1--​> c",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/ghost-ends-on-astral-char",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "é <!--ghost-->go 😀<!--/ghost--> after\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "é go 😀 after",
+                  "type": "text"
+                }
+              ],
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "blocks/doc-blocks/alt-after-non-ascii",
+      "op": "doc-blocks",
+      "input": {
+        "markdown": "é日本 <!--alt:k1-->ayaz<!--/alt:k1--> bir 😀 ruzgar.\n",
+        "writing": {
+          "alternatives": {
+            "k1": {
+              "versions": [
+                {
+                  "text": "n"
+                }
+              ]
+            }
+          },
+          "overflow": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "blocks": [
+            {
+              "type": "paragraph",
+              "props": {
+                "backgroundColor": "default",
+                "textAlignment": "left",
+                "textColor": "default"
+              },
+              "content": [
+                {
+                  "styles": {},
+                  "text": "é日本 ayaz bir 😀 ruzgar.",
                   "type": "text"
                 }
               ],

@@ -8,23 +8,11 @@ mod support;
 
 use serde_json::Value as Json;
 use support::doc_case::{
-    FRAGMENT, build_document, converter_for, files_of, fragment_text, roots_json, serialized,
-    sorted,
+    FRAGMENT, build_document, compare_roundtrip, converter_for, files_of, fragment_text,
+    roots_json, serialized, sorted,
 };
 use support::vector_compare::{Failures, bytes_equal, json_equal};
 use support::vector_file;
-
-fn text_of(value: &Json) -> Option<&str> {
-    value.as_str()
-}
-
-fn opt_bytes(expected: &Json, actual: Option<&str>) -> Result<(), String> {
-    match (text_of(expected), actual) {
-        (Some(want), Some(got)) => bytes_equal(want, got),
-        (None, None) => Ok(()),
-        (want, got) => Err(format!("expected {want:?}, got {got:?}")),
-    }
-}
 
 #[test]
 fn seeded_documents_match_the_oracle() {
@@ -76,33 +64,7 @@ fn read_back_markdown_matches_the_oracle_byte_for_byte() {
             (_, Ok(document)) => {
                 let want = &case["expected"]["output"];
                 let got = serialized(&converter, &document, input, &files);
-                opt_bytes(&want["markdown"], got["markdown"].as_str())
-                    .map_err(|e| format!("markdown: {e}"))
-                    .and_then(|()| {
-                        json_equal(&want["outcome"], &got["outcome"])
-                            .map_err(|e| format!("outcome: {e}"))
-                    })
-                    .and_then(|()| {
-                        opt_bytes(&want["canonical"], got["canonical"].as_str())
-                            .map_err(|e| format!("canonical: {e}"))
-                    })
-                    .and_then(|()| {
-                        let (w, g) = (&want["noteBody"], &got["noteBody"]);
-                        opt_bytes(&w["markdown"], g["markdown"].as_str())
-                            .map_err(|e| format!("note body: {e}"))
-                            .and_then(|()| {
-                                json_equal(&sorted(&w["writing"]), &sorted(&g["writing"]))
-                                    .map_err(|e| format!("writing frontmatter: {e}"))
-                            })
-                            .and_then(|()| {
-                                json_equal(&w["outcome"], &g["outcome"])
-                                    .map_err(|e| format!("note outcome: {e}"))
-                            })
-                    })
-                    .and_then(|()| {
-                        json_equal(&want["unrepresentable"], &got["unrepresentable"])
-                            .map_err(|e| format!("unrepresentable: {e}"))
-                    })
+                compare_roundtrip(want, &got)
             }
         };
         failures.check(id, outcome);

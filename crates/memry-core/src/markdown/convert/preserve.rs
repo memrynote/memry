@@ -18,6 +18,7 @@ use crate::markdown::schema::quote::serialize_quote_block;
 use crate::markdown::shared::block_colors::{
     has_non_default_colors, serialize_block_colors_marker,
 };
+use crate::markdown::shared::block_copy::clone_without;
 use crate::markdown::shared::block_markers::sidecar_marker_lines;
 use crate::markdown::shared::block_nesting::create_block_nesting_marker;
 use crate::markdown::shared::empty_lines::{MarkdownSegment, assemble_markdown_with_blanks};
@@ -116,7 +117,7 @@ fn serialized_trimmed(blocks: &[Json]) -> Result<String, ConvertError> {
 
 /// A copy of `block` as a bare paragraph: same content, `props`, no children.
 fn as_paragraph(block: &Json, props: Json) -> Json {
-    let mut copy = block.clone();
+    let mut copy = clone_without(block, &["children", "props"]);
     if let Some(map) = copy.as_object_mut() {
         map.insert("type".into(), json!("paragraph"));
         map.insert("props".into(), props);
@@ -141,7 +142,7 @@ fn serialize_with_nesting_markers(blocks: &[Json]) -> Result<String, ConvertErro
             "file" => serialize_file_block(&file_props(props_of(block))),
             "mathBlock" => serialize_math_block(latex_of(block)),
             _ => {
-                let mut shallow = block.clone();
+                let mut shallow = clone_without(block, &["children"]);
                 if let Some(map) = shallow.as_object_mut() {
                     map.insert("children".into(), json!([]));
                 }

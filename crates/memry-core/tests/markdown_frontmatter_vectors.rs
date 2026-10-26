@@ -72,18 +72,16 @@ fn actual(op: &str, input: &Json) -> Result<Json, ()> {
                 .as_str()
                 .map_or_else(|| parsed.content.clone(), str::to_owned);
             let edited = input["frontmatterEdited"].as_bool() == Some(true);
-            Ok(Json::String(serialize_parsed_markdown_note(
-                &parsed, &content, edited,
-            )))
+            serialize_parsed_markdown_note(&parsed, &content, edited)
+                .map(Json::String)
+                .map_err(|_| ())
         }
-        "dump" => Ok(Json::String(stringify_frontmatter_block(
-            &map_of(input),
-            eol_of(input),
-        ))),
-        "write" => Ok(Json::String(write_markdown_note(
-            &map_of(input),
-            &string(input, "content"),
-        ))),
+        "dump" => stringify_frontmatter_block(&map_of(input), eol_of(input))
+            .map(Json::String)
+            .map_err(|_| ()),
+        "write" => write_markdown_note(&map_of(input), &string(input, "content"))
+            .map(Json::String)
+            .map_err(|_| ()),
         "load" => match safe_load(&string(input, "text")) {
             Ok(Some(value)) => Ok(encode(&value)),
             Ok(None) => Ok(encode(&YamlValue::Null)),

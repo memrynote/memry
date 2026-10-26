@@ -4,9 +4,835 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "prepareFragmentSeed of blocknote-converter.ts: markdown to blocks plus CriticMarkup marks, link reference definitions and usages, plain text and writing sentinels, as canonical JSON (block ids dropped).",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 723
+    "caseCount": 736
   },
   "cases": [
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-text",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": "x",
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\"x\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-rowspan-text",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": "x",
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td rowspan=\"x\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-sum",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 2,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        },
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "y",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 3,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\"2\">x</td><td colspan=\"3\">y</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-two",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null,
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 2,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-rowspan-two",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 2,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td rowspan=\"2\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-zero",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 0,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\"0\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-negative",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"-1\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": null
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-fraction",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"1.5\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": null
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-empty",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": "",
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\"\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-suffix",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\"2x\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": "2x",
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\"2x\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-colspan-leading-space",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": " 2",
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td colspan=\" 2\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/table-span-rowspan-zero",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "<table><tr><td rowspan=\"0\">x</td></tr><tr><td>a</td></tr></table>"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "table",
+                "props": {
+                  "textColor": "default"
+                },
+                "content": {
+                  "columnWidths": [
+                    null
+                  ],
+                  "rows": [
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "x",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 0,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    },
+                    {
+                      "cells": [
+                        {
+                          "content": [
+                            {
+                              "styles": {},
+                              "text": "a",
+                              "type": "text"
+                            }
+                          ],
+                          "props": {
+                            "backgroundColor": "default",
+                            "colspan": 1,
+                            "rowspan": 1,
+                            "textAlignment": "left",
+                            "textColor": "default"
+                          },
+                          "type": "tableCell"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": "tableContent"
+                },
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "<table><tr><td rowspan=\"0\">x</td></tr><tr><td>a</td></tr></table>",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
     {
       "id": "parse-notes/memry-parse/empty-input",
       "op": "memry-parse",
@@ -5886,6 +6712,40 @@
             "definitions": [],
             "usages": [],
             "plainText": "a {++open\n",
+            "writingSentinels": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "parse-notes/memry-parse/image-url-reserved-char",
+      "op": "memry-parse",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seed": {
+            "blocks": [
+              {
+                "type": "image",
+                "props": {
+                  "backgroundColor": "default",
+                  "caption": "",
+                  "name": "whiteboard",
+                  "showPreview": true,
+                  "textAlignment": "left",
+                  "url": "memry://canvas/V1StGXR8_Z%7D5jdHi6B-myT"
+                },
+                "content": null,
+                "children": []
+              }
+            ],
+            "criticMarks": [],
+            "definitions": [],
+            "usages": [],
+            "plainText": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n",
             "writingSentinels": {}
           }
         }

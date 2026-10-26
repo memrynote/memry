@@ -90,10 +90,10 @@ proptest! {
             frontmatter.insert(key, item);
         }
         let expected = YamlValue::map(frontmatter.clone());
-        let dumped = safe_dump(&expected);
+        let dumped = safe_dump(&expected).expect("shallow value dumps");
         let loaded = safe_load(&dumped);
         prop_assert_eq!(loaded.as_ref().ok().and_then(Option::as_ref), Some(&expected), "{}", dumped);
-        let block = stringify_frontmatter_block(&frontmatter, Eol::CrLf);
+        let block = stringify_frontmatter_block(&frontmatter, Eol::CrLf).expect("shallow value dumps");
         prop_assert!(block.is_empty() || block.ends_with("---\r\n"));
     }
 }

@@ -8,14 +8,16 @@ read by another must be byte-identical where this chapter says it is.
 
 ## 12.1 Who converts markdown — Q12.2
 
-> **Ownership change.** From the Tauri desktop build, the core owns markdown conversion in both directions, in `crates/memry-core/src/markdown/`, per `docs/adr/0001-desktop-on-tauri-v2.md`. The rules and citations below describe the TypeScript converter, which is frozen and stays the oracle for the conversion vectors. Step 05 (#3522) of the Tauri epic rewrites this section with citations to the Rust implementation.
+> **Ownership change.** From the Tauri desktop build, the core owns markdown conversion in both directions, in `crates/memry-core/src/markdown/`, per `docs/adr/0001-desktop-on-tauri-v2.md`. The converter is a Rust port of the TypeScript one, behind the cargo feature `markdown` (§12.1.4). The TypeScript converter named in the rules below is frozen until the cutover step, and it stays the oracle that generates the `markdown-convert` vectors. The citations below name the TypeScript the vectors were generated from; §12.1.4 names the Rust that reproduces them.
 
-**Normative. Desktop converts markdown in both directions, in its main process.
-The core never serialises a document to markdown, and it parses markdown in one
-module, `markdown_seed`, for the three writes of §12.1.0. Every other path carries
-markdown verbatim.**
+**Normative. A build of the core with the cargo feature `markdown` converts markdown in both
+directions, through `Converter` (`crates/memry-core/src/markdown/convert/api.rs:39`), and the
+`markdown-convert` vector class is the proof that it matches the TypeScript converter below. A
+build without the feature, which is the iOS build, never serialises a document to markdown, and
+it parses markdown in one module, `markdown_seed`, for the three writes of §12.1.0. Every other
+path carries markdown verbatim.**
 
-Desktop's converter is a headless BlockNote editor in the Electron main process
+The TypeScript converter is a headless BlockNote editor in the Electron main process
 (`apps/desktop/src/main/sync/blocknote-converter.ts:1` (`ServerBlockNoteEditor`), `:133-141`),
 built from the schema factory the renderer uses (`createMemrySchema`,
 `packages/editor-schema/src/schema.ts:126`;
@@ -25,11 +27,11 @@ converts no markdown. It changes a body through the core's block operations (`Bl
 
 The directions:
 
-| Direction              | Mechanism                                                                                                                                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the core, `markdown_seed` for the two writes of §12.1.0 and no others |
-| document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                                      |
-| document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                          |
+| Direction              | Mechanism                                                                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:102`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
+| document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:152`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                  |
+| document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                                                                                                               |
 
 ### 12.1.0 The core's markdown seed
 
@@ -105,7 +107,8 @@ the whole text to literal paragraphs (§12.1.0).
 every shell over it. Such a client:
 
 - MUST NOT parse or serialise BlockNote markdown, except through `markdown_seed` for the two
-  writes of §12.1.0;
+  writes of §12.1.0, or through the Rust converter of §12.1.4 in a build that enables the feature
+  `markdown` (`crates/memry-core/Cargo.toml:23`);
 - carries a create's `content` and a template's body verbatim (§12.2 carve-out A);
 - duplicates a note by copying its document, never by serialising it. The core snapshots each
   top-level block into the copy and sends `content: ''`
@@ -176,6 +179,61 @@ A conforming port **reproduces this**, because parity is what the digest
 measures and a port that fixed it would report a false mismatch against every
 other shell. Fixing it is a coordinated change to every port and its vectors at
 once, not a local correction.
+
+### 12.1.4 The Rust converter and its proof
+
+**Normative.** The converter in `crates/memry-core/src/markdown/` MUST answer what the
+TypeScript converter of §12.1.1 answers for the same input, byte for byte for markdown and
+canonically for trees, and MUST fail closed, with `None`, where the TypeScript throws or answers
+`null`, so the caller keeps the vault file (`crates/memry-core/src/markdown/convert/api.rs:129`,
+`crates/memry-core/tests/markdown_fail_closed.rs:1`). It never edits the live document it
+reads: serialization works on a detached copy
+(`crates/memry-core/src/markdown/convert/canonical.rs:34`).
+
+A write is atomic. `seed_body` and `replace_body` run the whole conversion on a copy of the
+document first and touch the live one only when that succeeded, so a call either succeeds or
+leaves the document, and so the vault file, exactly as it was
+(`crates/memry-core/src/markdown/convert/api.rs`, `crates/memry-core/tests/markdown_atomic.rs:1`).
+No input aborts the process. One budget of 100 steps covers quotes, list items and HTML elements, and a quote or an element costs one step while a list level costs two (the list and its item), so the real limits are about 97 nested quotes, about 98 nested elements and about 48 nested list levels; links and emphasis inside each other get 200 steps. A table span above 100000, a grid
+above 4 million cells, and a body in the large-file class also fail closed. The same holds beyond markdown: YAML frontmatter nested more than 100 levels deep, or an alias that would put a value deeper than that under another node, is a parse error; a value deeper than 256 levels is not dumped (an error, never a truncation); and an existing Yjs body tree deeper than 100 elements is refused by `replace_body` (`Failed`, the document untouched) and has no snapshot, markdown, blocks or repair
+(`crates/memry-core/src/markdown/limits.rs:1`, `crates/memry-core/tests/markdown_depth.rs:1`, `crates/memry-core/tests/markdown_depth_untrusted.rs:1`).
+
+A read can succeed and still lose content. `doc_to_markdown` and `serialize_note_body` return
+`unrepresentable` (node names the schema cannot build) and `dropped_elements` (elements
+y-prosemirror removes, such as a childless table row) next to the markdown. When either is
+non-empty the markdown omits that content, so a caller that writes the vault file MUST refuse the
+write, or keep the file, instead of saving it
+(`crates/memry-core/tests/markdown_fail_closed.rs:1`).
+
+The proof is the `markdown-convert` class in `packages/contracts/test-vectors/markdown-convert/`,
+generated by running the TypeScript in place (`apps/desktop/scripts/markdown-oracle/`) and
+reproduced by `crates/memry-core/tests/markdown_*_vectors.rs`:
+
+| File                                                                              | Pins                                                                                                                | Owner section         |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `frontmatter.json`, `markdown-class.json`                                         | the split, parse, serialize, YAML dump and load, the large-file class                                               | §12.4                 |
+| `pm-schema.json`, `yxml.json`                                                     | the ProseMirror schema, content matching, and y-prosemirror's read and write of the fragment                        | §12.5.0               |
+| `md-to-html.json`, `html-to-blocks.json`, `parse.json`, `memry-parse.json`        | BlockNote's markdown parse, and the whole markdown-to-seed path with the repairs of §12.1.1                         | §12.1.1, §12.6, §12.7 |
+| `grammar-corpus.json`, `seed-corpus.json`                                         | a positive and a negative note per grammar rule (`corpus/*.md`), and 250 notes of a synthetic vault                 | §12.6 to §12.8        |
+| `serialize.json`, `serialize-doc.json`, `roundtrip.json`                          | the block serializer, and the document read back as markdown with the restore outcome and the unrepresentable nodes | §12.1.1, §12.10       |
+| `seed-doc.json`, `blocks.json`, `replace-body.json`                               | the document a seed writes with its side roots, the block view, and the whole-body replace                          | §12.5, §12.8          |
+| `layer-text.json`, `layer-markers.json`, `layer-blocks.json`, `layer-critic.json` | the function-level marker, block and CriticMarkup layers                                                            | §12.6 to §12.8        |
+
+Update bytes, client ids and block ids are never compared (§12.5.0): two documents are equal
+when their canonical fragments and side roots are. Beyond the vectors, three oracle-free checks
+run on every change (`crates/memry-core/tests/markdown_proptest.rs:1`), and two oracle-backed runs
+(`crates/memry-core/tests/markdown_differential.rs:1`, `crates/memry-core/tests/markdown_corpus.rs:1`)
+run in the nightly job (`.github/workflows/markdown-fuzz.yml`), with cargo-fuzz targets for `convert_roundtrip`, `replace_body` and `frontmatter_split`.
+
+URL reflection follows whatwg-url 15.1 (jsdom 27.4), which differs from the `url` crate on `^` in
+a path, `file:` hosts, drive letters, empty segments and UNC paths, opaque paths with a space before `?` or `#`,
+dot segments next to a drive letter, and non-special authorities. A seeded random differential against
+jsdom (`crates/memry-core/tests/markdown_url_differential.rs`, 230000 URLs, 0 mismatches) backs the
+claim that the Rust answers what jsdom answers for `img.src`; a class it does not cover is not claimed. The Rust pins
+`url = "=2.5.8"` and `crates/memry-core/src/markdown/bn/dom_parser/rules/url.rs` adjusts it; the
+classes are `url-reflect/*` in `html-to-blocks.json`. Text that the tree builder foster-parents out of
+a table lands after the table, at the end of its parent, as jsdom's adapter does
+(`foster-table-*` cases).
 
 ## 12.2 FR-041 holds structurally, with three carve-outs
 
@@ -1046,6 +1104,240 @@ duty beyond the fragment itself**:
 
 Date mentions (`packages/shared/src/date-mention.ts:32`, `:103`) are likewise
 in-fragment, not a root.
+
+### 12.8.1 Rule index of the conformance corpus
+
+**Normative.** Every rule of §12.6 to §12.8 that a converter must reproduce has one row below: an identifier, the section that owns it, a note that carries the construct (positive) and a near miss that must stay the author's markdown (negative). The notes are `packages/contracts/test-vectors/markdown-convert/corpus/<id>.pos.md` and `<id>.neg.md`, and `grammar-corpus.json` holds the oracle's answer for each. A rule added to §12.6 to §12.8 gets a row here, and the verifier (`packages/contracts/src/__tests__/markdown-convert.test.ts`) fails when a row has no positive or no negative note, or a note has no row. The table is the source of the identifiers; `apps/desktop/scripts/markdown-oracle/grammar-rules.ts` writes the notes and refuses to run when its identifiers differ from these.
+
+| Rule                                | Section | Positive note (first 70 bytes)                                           | Negative note (first 70 bytes)                                           |
+| ----------------------------------- | ------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| `heading-1`                         | §12.6   | `# Title 1⏎⏎body⏎`                                                       | `#Title 1⏎`                                                              |
+| `heading-2`                         | §12.6   | `## Title 2⏎⏎body⏎`                                                      | `##Title 2⏎`                                                             |
+| `heading-3`                         | §12.6   | `### Title 3⏎⏎body⏎`                                                     | `###Title 3⏎`                                                            |
+| `heading-4`                         | §12.6   | `#### Title 4⏎⏎body⏎`                                                    | `####Title 4⏎`                                                           |
+| `heading-5`                         | §12.6   | `##### Title 5⏎⏎body⏎`                                                   | `#####Title 5⏎`                                                          |
+| `heading-6`                         | §12.6   | `###### Title 6⏎⏎body⏎`                                                  | `######Title 6⏎`                                                         |
+| `heading-seven-hashes`              | §12.6   | `###### six⏎`                                                            | `####### seven⏎`                                                         |
+| `heading-toggle`                    | §12.6   | `<details>⏎<summary># Heading toggle</summary>⏎⏎body⏎⏎</details>⏎`       | `<details>⏎<summary>#Heading toggle</summary>⏎</details>⏎`               |
+| `paragraph`                         | §12.6   | `plain text⏎`                                                            | `\# not a heading⏎`                                                      |
+| `paragraph-hard-break`              | §12.6   | `a  ⏎b⏎`                                                                 | `a ⏎b⏎`                                                                  |
+| `bullet-dash`                       | §12.6   | `- one⏎- two⏎`                                                           | `-one⏎-two⏎`                                                             |
+| `bullet-star`                       | §12.6   | `* one⏎* two⏎`                                                           | `*one⏎*two⏎`                                                             |
+| `bullet-plus`                       | §12.6   | `+ one⏎+ two⏎`                                                           | `+one⏎+two⏎`                                                             |
+| `bullet-nested`                     | §12.6   | `- a⏎  - b⏎    - c⏎`                                                     | `- a⏎ - b⏎`                                                              |
+| `bullet-loose`                      | §12.6   | `- a⏎⏎- b⏎`                                                              | `- a⏎⏎⏎⏎- b⏎`                                                            |
+| `bullet-empty-item`                 | §12.6   | `- ⏎- b⏎`                                                                | `-⏎`                                                                     |
+| `ordered`                           | §12.6   | `1. a⏎2. b⏎`                                                             | `1.a⏎2.b⏎`                                                               |
+| `ordered-start`                     | §12.6   | `5. a⏎6. b⏎`                                                             | `5) a⏎`                                                                  |
+| `ordered-nested`                    | §12.6   | `1. a⏎   1. b⏎`                                                          | `1. a⏎  1. b⏎`                                                           |
+| `ordered-paren`                     | §12.6   | `1) a⏎2) b⏎`                                                             | `1 ) a⏎`                                                                 |
+| `task-open`                         | §12.6   | `- [ ] todo⏎`                                                            | `- [] todo⏎`                                                             |
+| `task-done`                         | §12.6   | `- [x] done⏎`                                                            | `- [X ] done⏎`                                                           |
+| `task-upper`                        | §12.6   | `- [X] done⏎`                                                            | `- [y] nope⏎`                                                            |
+| `task-nested`                       | §12.6   | `- [ ] a⏎  - [x] b⏎`                                                     | `- [ ]a⏎`                                                                |
+| `quote`                             | §12.6   | `> quoted⏎`                                                              | `>quoted⏎`                                                               |
+| `quote-multi`                       | §12.6   | `> a⏎> b⏎`                                                               | `> a⏎b⏎`                                                                 |
+| `quote-nested`                      | §12.6   | `> a⏎>⏎> > b⏎`                                                           | `>> b⏎`                                                                  |
+| `quote-with-list`                   | §12.6   | `> - a⏎> - b⏎`                                                           | `> -a⏎`                                                                  |
+| `quote-with-code`                   | §12.6   | `> '''⏎> x⏎> '''⏎`                                                       | `> '''⏎> x⏎`                                                             |
+| `callout-info`                      | §12.6   | `> [!info]⏎> body of info⏎`                                              | `> [!INFO]⏎> body⏎`                                                      |
+| `callout-warning`                   | §12.6   | `> [!warning]⏎> body of warning⏎`                                        | `> [!WARNING]⏎> body⏎`                                                   |
+| `callout-error`                     | §12.6   | `> [!error]⏎> body of error⏎`                                            | `> [!ERROR]⏎> body⏎`                                                     |
+| `callout-success`                   | §12.6   | `> [!success]⏎> body of success⏎`                                        | `> [!SUCCESS]⏎> body⏎`                                                   |
+| `callout-note`                      | §12.6   | `> [!note]⏎> body of note⏎`                                              | `> [!NOTE]⏎> body⏎`                                                      |
+| `callout-abstract`                  | §12.6   | `> [!abstract]⏎> body of abstract⏎`                                      | `> [!ABSTRACT]⏎> body⏎`                                                  |
+| `callout-todo`                      | §12.6   | `> [!todo]⏎> body of todo⏎`                                              | `> [!TODO]⏎> body⏎`                                                      |
+| `callout-tip`                       | §12.6   | `> [!tip]⏎> body of tip⏎`                                                | `> [!TIP]⏎> body⏎`                                                       |
+| `callout-important`                 | §12.6   | `> [!important]⏎> body of important⏎`                                    | `> [!IMPORTANT]⏎> body⏎`                                                 |
+| `callout-question`                  | §12.6   | `> [!question]⏎> body of question⏎`                                      | `> [!QUESTION]⏎> body⏎`                                                  |
+| `callout-example`                   | §12.6   | `> [!example]⏎> body of example⏎`                                        | `> [!EXAMPLE]⏎> body⏎`                                                   |
+| `callout-quote`                     | §12.6   | `> [!quote]⏎> body of quote⏎`                                            | `> [!QUOTE]⏎> body⏎`                                                     |
+| `callout-bug`                       | §12.6   | `> [!bug]⏎> body of bug⏎`                                                | `> [!BUG]⏎> body⏎`                                                       |
+| `callout-folded`                    | §12.6   | `> [!info]-⏎> hidden⏎`                                                   | `> [!info] -⏎> hidden⏎`                                                  |
+| `callout-open-fold`                 | §12.6   | `> [!info]+⏎> open⏎`                                                     | `> [!info]++⏎> x⏎`                                                       |
+| `callout-with-title`                | §12.6   | `> [!tip] Title⏎> body⏎`                                                 | `> [!tip]Title⏎> body⏎`                                                  |
+| `callout-with-list`                 | §12.6   | `> [!note]⏎> - a⏎> - b⏎`                                                 | `> [!note]⏎> - [ ] a⏎`                                                   |
+| `callout-unknown-type`              | §12.6   | `> [!danger]⏎> body⏎`                                                    | `> [!Danger-Zone]⏎> body⏎`                                               |
+| `callout-empty`                     | §12.6   | `> [!info]⏎`                                                             | `> [!]⏎`                                                                 |
+| `callout-nested-quote`              | §12.6   | `> [!info]⏎> > inner⏎`                                                   | `> [!info]⏎>> inner⏎`                                                    |
+| `code-fence`                        | §12.6   | `'''⏎code⏎'''⏎`                                                          | `'''⏎code⏎`                                                              |
+| `code-fence-lang`                   | §12.6   | `'''ts⏎const a = 1⏎'''⏎`                                                 | `''' ts extra words⏎x⏎'''⏎`                                              |
+| `code-fence-tilde`                  | §12.6   | `~~~⏎x⏎~~~⏎`                                                             | `~~⏎x⏎~~⏎`                                                               |
+| `code-fence-long`                   | §12.6   | `''''⏎'''⏎''''⏎`                                                         | `'''⏎''''⏎`                                                              |
+| `code-fence-empty`                  | §12.6   | `'''⏎'''⏎`                                                               | `''''''⏎`                                                                |
+| `code-indented`                     | §12.6   | `    indented code⏎`                                                     | `   not code⏎`                                                           |
+| `code-keeps-markers`                | §12.6   | `'''⏎<!-- align:center -->⏎'''⏎`                                         | `<!-- align:center -->⏎`                                                 |
+| `math-block`                        | §12.6   | `$$⏎x^2⏎$$⏎`                                                             | `$$x^2$$⏎`                                                               |
+| `math-block-multiline`              | §12.6   | `$$⏎a⏎b⏎$$⏎`                                                             | `  $$⏎a⏎$$⏎`                                                             |
+| `math-unterminated`                 | §12.6   | `$$⏎x⏎⏎text⏎`                                                            | `$$ ⏎x⏎$$ ⏎`                                                             |
+| `divider`                           | §12.6   | `a⏎⏎---⏎⏎b⏎`                                                             | `a⏎--⏎b⏎`                                                                |
+| `divider-star`                      | §12.6   | `***⏎`                                                                   | `**⏎`                                                                    |
+| `divider-underscore`                | §12.6   | `___⏎`                                                                   | `__⏎`                                                                    |
+| `table`                             | §12.6   | `\| a \| b \|⏎\| - \| - \|⏎\| 1 \| 2 \|⏎`                                | `\| a \| b \|⏎\| 1 \| 2 \|⏎`                                             |
+| `table-align`                       | §12.6   | `\| a \| b \|⏎\| :- \| -: \|⏎\| 1 \| 2 \|⏎`                              | `\| a \| b \|⏎\| :-: :- \|⏎\| 1 \| 2 \|⏎`                                |
+| `table-ragged`                      | §12.6   | `\| a \| b \|⏎\| - \| - \|⏎\| 1 \|⏎`                                     | `\| a \| b \|⏎\| - \|⏎\| 1 \| 2 \|⏎`                                     |
+| `table-pipe-escape`                 | §12.6   | `\| a \\                                                                 | b \| c \|⏎\| - \| - \|⏎\| 1 \| 2 \|⏎`                                    | `\| a \| b \|⏎\| - \| - \|⏎\| 1 \⏎` |
+| `table-empty-cell`                  | §12.6   | `\| a \| b \|⏎\| - \| - \|⏎\|  \| 2 \|⏎`                                 | `\| a \| b \|⏎\| - \| - \|⏎\|\|⏎`                                        |
+| `table-inline`                      | §12.6   | `\| **a** \| 'b' \|⏎\| - \| - \|⏎\| [l](u) \| ~~s~~ \|⏎`                 | `\| **a \| b** \|⏎\| - \| - \|⏎`                                         |
+| `table-html`                        | §12.6   | `<table><tr><td colspan="2">x</td></tr><tr><td>a</td><td>b</td></tr></t` | `<table><tr><td colspan="x">x</td></tr></table>⏎`                        |
+| `table-rowspan`                     | §12.6   | `<table><tr><td rowspan="2">x</td><td>a</td></tr><tr><td>b</td></tr></t` | `<table><tr><td rowspan="0">x</td></tr></table>⏎`                        |
+| `table-align-marker`                | §12.6   | `<!-- table-align:["left","center"] -->⏎\| a \| b \|⏎\| - \| - \|⏎\| 1 ` | `<!-- table-align:[left] -->⏎\| a \| b \|⏎\| - \| - \|⏎`                 |
+| `table-colors-marker`               | §12.6   | `<!-- table-colors:{"0:0":{"textColor":"red"}} -->⏎\| a \|⏎\| - \|⏎\| 1` | `<!-- table-colors:{ -->⏎\| a \|⏎\| - \|⏎`                               |
+| `image`                             | §12.6   | `![alt](https://example.com/a.png)⏎`                                     | `![alt] (https://example.com/a.png)⏎`                                    |
+| `image-title`                       | §12.6   | `![alt](a.png "title")⏎`                                                 | `![alt](a.png title)⏎`                                                   |
+| `image-width`                       | §12.6   | `![alt\|300](a.png)⏎`                                                    | `![alt\|3x0](a.png)⏎`                                                    |
+| `image-relative`                    | §12.6   | `![](./img/a b.png)⏎`                                                    | `![](<>)⏎`                                                               |
+| `image-reserved-char`               | §12.6   | `![a](http://h/a^b\|c)⏎`                                                 | `![a](http://h/a b)⏎`                                                    |
+| `image-file-url`                    | §12.6   | `![a](file:///C\|/x.png)⏎`                                               | `![a](file:/x.png⏎`                                                      |
+| `file-marker`                       | §12.6   | `<!-- file:{"url":"a.pdf","name":"a.pdf","size":10,"mimeType":"applicat` | `<!-- file:{"url":"a.pdf" -->⏎`                                          |
+| `file-marker-order`                 | §12.6   | `<!-- file:{"url":"a.pdf","name":"a","size":1,"mimeType":"x/y","width":` | `<!-- file:{"name":"a","url":"a.pdf"} -->⏎`                              |
+| `file-marker-link`                  | §12.6   | `<!-- file:{"url":"a.pdf","name":"a","size":1,"mimeType":"application/p` | `<!-- file:{"url":"a.pdf","name":"a","size":1,"mimeType":"x/y","display` |
+| `file-marker-align`                 | §12.6   | `<!-- file:{"url":"a.png","name":"a","size":1,"mimeType":"image/png","a` | `<!-- file:{"url":"a.png","name":"a","size":1,"mimeType":"image/png","a` |
+| `file-marker-escape`                | §12.6   | `<!-- file:{"url":"a.pdf","name":"a--b.pdf","size":1,"mimeType":"x/y"} ` | `<!-- file:{"url":"a.pdf","name":"a-->b","size":1,"mimeType":"x/y"} -->` |
+| `whiteboard`                        | §12.6   | `![whiteboard](memry://canvas/V1StGXR8_Z5jdHi6B-myT)⏎`                   | `![whiteboard](https://example.com/c.png)⏎`                              |
+| `whiteboard-inline`                 | §12.6   | `text⏎⏎![whiteboard](memry://canvas/abc)⏎`                               | `text ![whiteboard](memry://canvas/abc) more⏎`                           |
+| `whiteboard-empty-id`               | §12.6   | `![whiteboard](memry://canvas/)⏎`                                        | `![whiteboard](memry://canvas/a b)⏎`                                     |
+| `whiteboard-in-fence`               | §12.6   | `'''⏎![whiteboard](memry://canvas/abc)⏎'''⏎`                             | `    ![whiteboard](memry://canvas/abc)⏎`                                 |
+| `toggle`                            | §12.6   | `<details>⏎<summary>Title</summary>⏎⏎body⏎⏎</details>⏎`                  | `<details>⏎<summary>Title</summary>⏎body⏎`                               |
+| `toggle-open`                       | §12.6   | `<details open>⏎<summary>T</summary>⏎⏎b⏎⏎</details>⏎`                    | `<details closed>⏎<summary>T</summary>⏎⏎b⏎⏎</details>⏎`                  |
+| `toggle-nested`                     | §12.6   | `<details>⏎<summary>O</summary>⏎⏎<details>⏎<summary>I</summary>⏎⏎x⏎⏎</d` | `<details><details>⏎`                                                    |
+| `toggle-inline-summary`             | §12.6   | `<details>⏎<summary>**bold** 'c'</summary>⏎⏎b⏎⏎</details>⏎`              | `<details>⏎<summary></summary>⏎⏎b⏎⏎</details>⏎`                          |
+| `toggle-list`                       | §12.6   | `<details>⏎<summary>T</summary>⏎⏎- a⏎- b⏎⏎</details>⏎`                   | `<details>⏎<summary>T</summary>⏎- a⏎</details>⏎`                         |
+| `columns`                           | §12.6   | `<!-- memry:columns -->⏎<div data-column-list>⏎<div data-column>⏎⏎a⏎⏎</` | `<div data-column>⏎⏎a⏎⏎</div>⏎`                                          |
+| `align-marker-center`               | §12.6   | `<!-- align:center -->⏎text⏎`                                            | `<!-- align:middle -->⏎text⏎`                                            |
+| `align-marker-right`                | §12.6   | `<!-- align:right -->⏎text⏎`                                             | `<!-- align:right-->⏎text⏎`                                              |
+| `align-marker-justify`              | §12.6   | `<!-- align:justify -->⏎text⏎`                                           | `<!--align:justify-->⏎text⏎`                                             |
+| `align-marker-heading`              | §12.6   | `<!-- align:center -->⏎# H⏎`                                             | `<!-- align:center -->⏎⏎⏎# H⏎`                                           |
+| `align-marker-orphan`               | §12.6   | `<!-- align:center -->⏎`                                                 | `<!-- align:center --> trailing⏎`                                        |
+| `colors-marker`                     | §12.6   | `<!-- colors:{"textColor":"red"} -->⏎text⏎`                              | `<!-- colors:{"textColor":} -->⏎text⏎`                                   |
+| `colors-marker-background`          | §12.6   | `<!-- colors:{"backgroundColor":"blue"} -->⏎# H⏎`                        | `<!-- colors: -->⏎# H⏎`                                                  |
+| `link-card-marker`                  | §12.6   | `<!-- link-card:{"display":"card"} -->⏎[a](https://example.com)⏎`        | `<!-- link-card:{"display":"card" -->⏎[a](https://example.com)⏎`         |
+| `block-nesting-marker`              | §12.6   | `<!-- memry:block-nesting-level=1 -->⏎text⏎`                             | `<!-- memry:block-nesting-level=x -->⏎text⏎`                             |
+| `view-block`                        | §12.6   | `'''memry-view⏎{"query":"x"}⏎'''⏎`                                       | `'''memry-views⏎{"query":"x"}⏎'''⏎`                                      |
+| `portal-block`                      | §12.6   | `'''memry-portal⏎{"noteId":"n1"}⏎'''⏎`                                   | `'''memry-portal extra⏎{}⏎'''⏎`                                          |
+| `html-block`                        | §12.6   | `<div>raw</div>⏎`                                                        | `<div>raw⏎`                                                              |
+| `html-block-figure`                 | §12.6   | `<figure><img src="a.png" alt="a"><figcaption>c</figcaption></figure>⏎`  | `<figure>⏎`                                                              |
+| `html-comment-block`                | §12.6   | `<!-- note -->⏎⏎text⏎`                                                   | `<!-- note⏎⏎text⏎`                                                       |
+| `html-comment-multiline`            | §12.6   | `<!--⏎line⏎⏎break⏎-->⏎⏎text⏎`                                            | `<!--⏎line⏎⏎break⏎`                                                      |
+| `percent-comment`                   | §12.6   | `a %%hidden%% b⏎`                                                        | `a %%unclosed b⏎`                                                        |
+| `blank-lines`                       | §12.6   | `a⏎⏎⏎⏎b⏎`                                                                | `a⏎⏎b⏎`                                                                  |
+| `crlf`                              | §12.6   | `a␍⏎␍⏎b␍⏎`                                                               | `a␍b␍`                                                                   |
+| `empty-body`                        | §12.6   | ``                                                                       | `⏎⏎`                                                                     |
+| `frontmatter`                       | §12.6   | `---⏎title: T⏎---⏎body⏎`                                                 | `---⏎title: T⏎body⏎`                                                     |
+| `frontmatter-empty`                 | §12.6   | `---⏎---⏎body⏎`                                                          | `--- ⏎---⏎body⏎`                                                         |
+| `frontmatter-crlf`                  | §12.6   | `---␍⏎title: T␍⏎---␍⏎body␍⏎`                                             | `---␍⏎title: T␍⏎--␍⏎body␍⏎`                                              |
+| `frontmatter-bom`                   | §12.6   | `﻿---⏎title: T⏎---⏎body⏎`                                                 | `﻿⏎---⏎title: T⏎---⏎`                                                     |
+| `frontmatter-unicode-title`         | §12.6   | `---⏎title: Çay ☕⏎---⏎body⏎`                                            | `---⏎title: [unclosed⏎---⏎body⏎`                                         |
+| `bold`                              | §12.7   | `**b**⏎`                                                                 | `** b**⏎`                                                                |
+| `bold-underscore`                   | §12.7   | `__b__⏎`                                                                 | `__ b__⏎`                                                                |
+| `italic`                            | §12.7   | `*i*⏎`                                                                   | `* i*⏎`                                                                  |
+| `italic-underscore`                 | §12.7   | `_i_⏎`                                                                   | `snake_case_word⏎`                                                       |
+| `bold-italic`                       | §12.7   | `***bi***⏎`                                                              | `***bi*⏎`                                                                |
+| `strike`                            | §12.7   | `~~s~~⏎`                                                                 | `~~ s~~⏎`                                                                |
+| `inline-code`                       | §12.7   | `'code'⏎`                                                                | `'code⏎`                                                                 |
+| `inline-code-double`                | §12.7   | `'' a'b ''⏎`                                                             | `'' a'b '⏎`                                                              |
+| `inline-code-spaces`                | §12.7   | `'  a  '⏎`                                                               | `' '⏎`                                                                   |
+| `underline`                         | §12.7   | `<u>u</u>⏎`                                                              | `<u>u⏎`                                                                  |
+| `highlight`                         | §12.7   | `==h==⏎`                                                                 | `== h==⏎`                                                                |
+| `superscript`                       | §12.7   | `x<sup>2</sup>⏎`                                                         | `x<sup>2⏎`                                                               |
+| `subscript`                         | §12.7   | `H<sub>2</sub>O⏎`                                                        | `H<sub>2⏎`                                                               |
+| `text-color`                        | §12.7   | `<span style="color: red">t</span>⏎`                                     | `<span style="color:">t</span>⏎`                                         |
+| `background-color`                  | §12.7   | `<span style="background-color: yellow">t</span>⏎`                       | `<span style="background-color">t</span>⏎`                               |
+| `link`                              | §12.7   | `[t](https://example.com)⏎`                                              | `[t] (https://example.com)⏎`                                             |
+| `link-title`                        | §12.7   | `[t](https://example.com "T")⏎`                                          | `[t](https://example.com T)⏎`                                            |
+| `link-angle`                        | §12.7   | `[t](<a b>)⏎`                                                            | `[t](<a b)⏎`                                                             |
+| `link-parens`                       | §12.7   | `[t](https://e.com/a_(b))⏎`                                              | `[t](https://e.com/a_(b)⏎`                                               |
+| `link-reference`                    | §12.7   | `[t][r]⏎⏎[r]: https://example.com⏎`                                      | `[t][r]⏎`                                                                |
+| `link-reference-title`              | §12.7   | `[t][r]⏎⏎[r]: https://example.com "T"⏎`                                  | `[r]: ⏎`                                                                 |
+| `link-autolink`                     | §12.7   | `<https://example.com>⏎`                                                 | `<https://example.com⏎`                                                  |
+| `link-bare`                         | §12.7   | `see https://example.com/a now⏎`                                         | `see https:// now⏎`                                                      |
+| `link-in-code`                      | §12.7   | `'[t](u)'⏎`                                                              | `['t'](u)⏎`                                                              |
+| `link-hard-break`                   | §12.7   | `[one  ⏎two](https://example.com)⏎`                                      | `[one\⏎two](u)⏎`                                                         |
+| `wiki-link`                         | §12.7   | `[[Target]]⏎`                                                            | `[[Target]⏎`                                                             |
+| `wiki-link-alias`                   | §12.7   | `[[Target\|alias]]⏎`                                                     | `[[Target\|]]⏎`                                                          |
+| `wiki-link-empty`                   | §12.7   | `[[]]⏎`                                                                  | `[[ ]]⏎`                                                                 |
+| `wiki-link-in-code`                 | §12.7   | `'[[Target]]'⏎`                                                          | `[ [Target]]⏎`                                                           |
+| `hash-tag`                          | §12.7   | `#tag⏎⏎text #tag-two⏎`                                                   | `#⏎⏎# ⏎`                                                                 |
+| `hash-tag-digits`                   | §12.7   | `a #2024 b⏎`                                                             | `a#tag⏎`                                                                 |
+| `date-mention`                      | §12.7   | `((date:2026-01-02))⏎`                                                   | `((date:2026 01))⏎`                                                      |
+| `date-mention-range`                | §12.7   | `((date:2026-01-02;2026-01-05))⏎`                                        | `((date:))⏎`                                                             |
+| `link-mention`                      | §12.7   | `((mention:https%3A%2F%2Fexample.com))⏎`                                 | `((mention:))⏎`                                                          |
+| `inline-image`                      | §12.7   | `text ![a](a.png) more⏎`                                                 | `text !\[a](a.png) more⏎`                                                |
+| `inline-image-width`                | §12.7   | `text ![a\|20](a.png) more⏎`                                             | `text ![a\|](a.png) more⏎`                                               |
+| `inline-checkbox`                   | §12.7   | `\| a \|⏎\| - \|⏎\| [ ] x \|⏎`                                           | `\| a \|⏎\| - \|⏎\| [] x \|⏎`                                            |
+| `html-comment-inline`               | §12.7   | `a <!-- hidden --> b⏎`                                                   | `a <!- hidden --> b⏎`                                                    |
+| `html-comment-in-code`              | §12.7   | `use '<!-- x -->' here⏎`                                                 | `use <!-- x here⏎`                                                       |
+| `html-comment-in-link`              | §12.7   | `[a <!-- c --> b](u)⏎`                                                   | `[a <!-- c b](u)⏎`                                                       |
+| `html-comment-in-table`             | §12.7   | `\| a \| b \|⏎\| - \| - \|⏎\| x <!-- c --> \| y \|⏎`                     | `\| a \| b \|⏎\| - \| - \|⏎\| x <!-- c \| y \|⏎`                         |
+| `html-comment-bold`                 | §12.7   | `**a <!-- b --> c**⏎`                                                    | `**a <!-- b c**⏎`                                                        |
+| `escape-star`                       | §12.7   | `a \* b⏎`                                                                | `a * b⏎`                                                                 |
+| `escape-bracket`                    | §12.7   | `\[a\](b)⏎`                                                              | `\[a](b)⏎`                                                               |
+| `escape-backtick`                   | §12.7   | `a \' b⏎`                                                                | `a ' b⏎`                                                                 |
+| `escape-hash`                       | §12.7   | `\# no⏎`                                                                 | `\#no⏎`                                                                  |
+| `escape-pipe-in-table`              | §12.7   | `\| a \\                                                                 | b \|⏎\| - \|⏎\| 1 \|⏎`                                                   | `\| a \\\| b \|⏎\| - \|⏎\| 1 \|⏎`   |
+| `entity-amp`                        | §12.7   | `a &amp; b⏎`                                                             | `a &ampx b⏎`                                                             |
+| `entity-numeric`                    | §12.7   | `&#65;&#x42;⏎`                                                           | `&#x;⏎`                                                                  |
+| `emoji`                             | §12.7   | `a 😀 b⏎`                                                                | `a � b⏎`                                                                 |
+| `cjk`                               | §12.7   | `日本語の文章 **強調**⏎`                                                 | `日本語**強調 ⏎`                                                         |
+| `combining-marks`                   | §12.7   | `é ä⏎`                                                                   | `́⏎`                                                                      |
+| `rtl`                               | §12.7   | `مرحبا **بالعالم**⏎`                                                     | `مرحبا ** بالعالم**⏎`                                                    |
+| `non-ascii-writing-run`             | §12.7   | `çay <!--ghost-->x<!--/ghost--> ☕⏎`                                     | `çay <!--ghost-->x ☕⏎`                                                  |
+| `critic-addition`                   | §12.8   | `a {++add++} b⏎`                                                         | `a {++add b⏎`                                                            |
+| `critic-deletion`                   | §12.8   | `a {--del--} b⏎`                                                         | `a {--del-} b⏎`                                                          |
+| `critic-substitution`               | §12.8   | `a {~~old~>new~~} b⏎`                                                    | `a {~~old~new~~} b⏎`                                                     |
+| `critic-comment`                    | §12.8   | `a {>>note<<} b⏎`                                                        | `a {>>note} b⏎`                                                          |
+| `critic-highlight`                  | §12.8   | `a {==hi==} b⏎`                                                          | `a {==hi=} b⏎`                                                           |
+| `critic-in-code`                    | §12.8   | `'{++a++}'⏎`                                                             | `{ ++a++ }⏎`                                                             |
+| `critic-in-fence`                   | §12.8   | `'''⏎{++a++}⏎'''⏎`                                                       | `    {++a++}⏎`                                                           |
+| `critic-nested-marks`               | §12.8   | `{++**b**++}⏎`                                                           | `{++**b++}**⏎`                                                           |
+| `writing-ghost`                     | §12.8   | `a <!--ghost-->g<!--/ghost--> b⏎`                                        | `a <!--ghost--> b⏎`                                                      |
+| `writing-alt`                       | §12.8   | `a <!--alt:k1-->x<!--/alt:k1--> b⏎`                                      | `a <!--alt:-->x<!--/alt:--> b⏎`                                          |
+| `writing-ghost-unclosed`            | §12.8   | `<!--ghost-->g<!--/ghost-->⏎`                                            | `<!--/ghost-->g<!--ghost-->⏎`                                            |
+| `writing-in-code`                   | §12.8   | `'<!--ghost-->'⏎`                                                        | `<!-- ghost -->⏎`                                                        |
+| `writing-in-fence`                  | §12.8   | `'''⏎<!--ghost-->⏎'''⏎`                                                  | `<!--ghost-->⏎`                                                          |
+| `source-spelling-bullet`            | §12.8   | `* a⏎* b⏎`                                                               | `*a⏎`                                                                    |
+| `source-spelling-emphasis`          | §12.8   | `__a__ and *b*⏎`                                                         | `__ a__⏎`                                                                |
+| `source-spelling-heading-setext`    | §12.8   | `Title⏎=====⏎`                                                           | `Title⏎=⏎`                                                               |
+| `source-spelling-setext-2`          | §12.8   | `Title⏎-----⏎`                                                           | `Title⏎--⏎`                                                              |
+| `source-spelling-hr`                | §12.8   | `***⏎`                                                                   | `* *⏎`                                                                   |
+| `source-spelling-ordered`           | §12.8   | `1) a⏎2) b⏎`                                                             | `1)a⏎`                                                                   |
+| `source-spelling-blank-gaps`        | §12.8   | `a⏎⏎⏎⏎b⏎`                                                                | `a⏎⏎⏎b⏎`                                                                 |
+| `source-spelling-fence-tilde`       | §12.8   | `~~~js⏎x⏎~~~⏎`                                                           | `~~js⏎x⏎~~⏎`                                                             |
+| `source-spelling-trailing-ws`       | §12.8   | `a  ⏎b	⏎`                                                               | `a ⏎b⏎`                                                                  |
+| `source-spelling-no-final-newline`  | §12.8   | `a⏎⏎b`                                                                   | `a⏎⏎b⏎⏎`                                                                 |
+| `source-spelling-crlf`              | §12.8   | `a␍⏎␍⏎b␍⏎`                                                               | `a␍⏎b⏎␍⏎`                                                                |
+| `frontmatter-keys-order`            | §12.8   | `---⏎z: 1⏎a: 2⏎---⏎body⏎`                                                | `---⏎z: 1⏎a: 2⏎body⏎`                                                    |
+| `frontmatter-writing`               | §12.8   | `---⏎writing:⏎  alt: []⏎---⏎body⏎`                                       | `---⏎writing: [⏎---⏎body⏎`                                               |
+| `code-fence-lang-js`                | §12.6   | `'''js⏎x⏎'''⏎`                                                           | `'''js 'x⏎x⏎'''⏎`                                                        |
+| `code-fence-lang-python`            | §12.6   | `'''python⏎x⏎'''⏎`                                                       | `'''python 'x⏎x⏎'''⏎`                                                    |
+| `code-fence-lang-cpp`               | §12.6   | `'''cpp⏎x⏎'''⏎`                                                          | `'''cpp 'x⏎x⏎'''⏎`                                                       |
+| `code-fence-lang-csharp`            | §12.6   | `'''csharp⏎x⏎'''⏎`                                                       | `'''csharp 'x⏎x⏎'''⏎`                                                    |
+| `code-fence-lang-shell-session`     | §12.6   | `'''shell-session⏎x⏎'''⏎`                                                | `'''shell-session 'x⏎x⏎'''⏎`                                             |
+| `code-fence-lang-memry-view`        | §12.6   | `'''memry-view⏎x⏎'''⏎`                                                   | `'''memry-view 'x⏎x⏎'''⏎`                                                |
+| `bullet-depth-2`                    | §12.6   | `- l0⏎  - l1⏎`                                                           | `- l0⏎ - l1⏎`                                                            |
+| `quote-depth-2`                     | §12.6   | `> > x⏎`                                                                 | `>>x⏎`                                                                   |
+| `bullet-depth-3`                    | §12.6   | `- l0⏎  - l1⏎    - l2⏎`                                                  | `- l0⏎ - l1⏎  - l2⏎`                                                     |
+| `quote-depth-3`                     | §12.6   | `> > > x⏎`                                                               | `>>>x⏎`                                                                  |
+| `bullet-depth-5`                    | §12.6   | `- l0⏎  - l1⏎    - l2⏎      - l3⏎        - l4⏎`                          | `- l0⏎ - l1⏎  - l2⏎   - l3⏎    - l4⏎`                                    |
+| `quote-depth-5`                     | §12.6   | `> > > > > x⏎`                                                           | `>>>>>x⏎`                                                                |
+| `table-cell-b`                      | §12.6   | `\| a \|⏎\| - \|⏎\| **b** \|⏎`                                           | `\| a \|⏎\| - \|⏎\| **b**⏎`                                              |
+| `table-cell-c`                      | §12.6   | `\| a \|⏎\| - \|⏎\| 'c' \|⏎`                                             | `\| a \|⏎\| - \|⏎\| 'c'⏎`                                                |
+| `table-cell-lu`                     | §12.6   | `\| a \|⏎\| - \|⏎\| [l](u) \|⏎`                                          | `\| a \|⏎\| - \|⏎\| [l](u)⏎`                                             |
+| `table-cell-s`                      | §12.6   | `\| a \|⏎\| - \|⏎\| ~~s~~ \|⏎`                                           | `\| a \|⏎\| - \|⏎\| ~~s~~⏎`                                              |
+| `table-cell-h`                      | §12.6   | `\| a \|⏎\| - \|⏎\| ==h== \|⏎`                                           | `\| a \|⏎\| - \|⏎\| ==h==⏎`                                              |
+| `table-cell-uuu`                    | §12.6   | `\| a \|⏎\| - \|⏎\| <u>u</u> \|⏎`                                        | `\| a \|⏎\| - \|⏎\| <u>u</u>⏎`                                           |
+| `table-cell-w`                      | §12.6   | `\| a \|⏎\| - \|⏎\| [[w]] \|⏎`                                           | `\| a \|⏎\| - \|⏎\| [[w]]⏎`                                              |
+| `table-cell-tag`                    | §12.6   | `\| a \|⏎\| - \|⏎\| #tag \|⏎`                                            | `\| a \|⏎\| - \|⏎\| #tag⏎`                                               |
+| `inline-mark-bold-around-link`      | §12.7   | `**[t](u)**⏎`                                                            | `**[t](u)⏎`                                                              |
+| `inline-mark-bold-around-wiki`      | §12.7   | `**[[w]]**⏎`                                                             | `**[[w]⏎`                                                                |
+| `inline-mark-italic-around-link`    | §12.7   | `*[t](u)*⏎`                                                              | `*[t](u)⏎`                                                               |
+| `inline-mark-italic-around-wiki`    | §12.7   | `*[[w]]*⏎`                                                               | `*[[w]⏎`                                                                 |
+| `inline-mark-strike-around-link`    | §12.7   | `~~[t](u)~~⏎`                                                            | `~~[t](u)⏎`                                                              |
+| `inline-mark-strike-around-wiki`    | §12.7   | `~~[[w]]~~⏎`                                                             | `~~[[w]⏎`                                                                |
+| `inline-mark-highlight-around-link` | §12.7   | `==[t](u)==⏎`                                                            | `==[t](u)⏎`                                                              |
+| `inline-mark-highlight-around-wiki` | §12.7   | `==[[w]]==⏎`                                                             | `==[[w]⏎`                                                                |
+| `inline-mark-code-around-link`      | §12.7   | `'[t](u)'⏎`                                                              | `'[t](u)⏎`                                                               |
+| `inline-mark-code-around-wiki`      | §12.7   | `'[[w]]'⏎`                                                               | `'[[w]⏎`                                                                 |
 
 ## 12.9 The type registry FR-040 enumerates
 

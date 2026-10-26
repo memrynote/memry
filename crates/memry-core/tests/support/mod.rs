@@ -23,6 +23,8 @@ use serde_json::Value as Json;
 #[cfg(feature = "markdown")]
 pub mod doc_case;
 #[cfg(feature = "markdown")]
+pub mod oracle;
+#[cfg(feature = "markdown")]
 pub mod vector_compare;
 #[cfg(feature = "markdown")]
 pub mod yaml_json;
@@ -147,6 +149,12 @@ pub fn vector_file(name: &str) -> Json {
         ),
         "markdown-convert/seed-doc" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/seed-doc.json"
+        ),
+        "markdown-convert/grammar-corpus" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/grammar-corpus.json"
+        ),
+        "markdown-convert/seed-corpus" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/seed-corpus.json"
         ),
         "markdown-convert/roundtrip" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/roundtrip.json"

@@ -18,6 +18,22 @@ interface Extra {
 const FENCE = '```'
 
 const NOTES: Record<string, string> = {
+  'table-span-colspan-text': '<table><tr><td colspan="x">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-rowspan-text': '<table><tr><td rowspan="x">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-sum':
+    '<table><tr><td colspan="2">x</td><td colspan="3">y</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-two': '<table><tr><td colspan="2">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-rowspan-two': '<table><tr><td rowspan="2">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-zero': '<table><tr><td colspan="0">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-negative':
+    '<table><tr><td colspan="-1">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-fraction':
+    '<table><tr><td colspan="1.5">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-empty': '<table><tr><td colspan="">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-suffix': '<table><tr><td colspan="2x">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-colspan-leading-space':
+    '<table><tr><td colspan=" 2">x</td></tr><tr><td>a</td></tr></table>',
+  'table-span-rowspan-zero': '<table><tr><td rowspan="0">x</td></tr><tr><td>a</td></tr></table>',
   'empty-input': '',
   'only-blank-lines': '\n\n\n',
   'plain-paragraph': 'Hello world\n',
@@ -145,6 +161,7 @@ const NOTES: Record<string, string> = {
   'critic-astral': '😀 {++é++} 日本語 {--x--}\n',
   'critic-in-fence': `${FENCE}\n{++x++}\n${FENCE}\n`,
   'critic-unclosed': 'a {++open\n',
+  'image-url-reserved-char': '![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n',
   'writing-alt': 'Sabah <!--alt:k3x9q2-->ayaz<!--/alt:k3x9q2--> bir ruzgar.\n',
   'writing-ghost': 'Kahve <!--ghost-->biraz fazla<!--/ghost--> kalabalikti.\n',
   'writing-unpaired': 'a <!--alt:x1-->b\n\nc <!--/ghost--> d\n',

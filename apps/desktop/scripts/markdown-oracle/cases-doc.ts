@@ -92,6 +92,20 @@ const WRITING: Record<string, { markdown: string; writing?: unknown }> = {
     markdown: 'a {++<!--alt:k1-->new<!--/alt:k1-->++} b\n',
     writing: { alternatives: { k1: { versions: [{ text: 'n' }] } }, overflow: [] }
   },
+  // Regressions found by the differential run (#3522 stage 7): a range that
+  // ends after a multi-byte character, and one that ends on an astral one.
+  'ghost-after-two-byte-char': {
+    markdown: '<!--ghost-->a<!--/ghost-é-> and <!--ghost-->b<!--/ghost-->'
+  },
+  'ghost-after-three-byte-char': {
+    markdown: '<!--ghost-->a <!--alt:q1-->b<!--/alt:q1--\u200b> c<!--/ghost-->',
+    writing: { alternatives: { q1: { versions: [{ text: 'x' }] } }, overflow: [] }
+  },
+  'ghost-ends-on-astral-char': { markdown: 'é <!--ghost-->go 😀<!--/ghost--> after\n' },
+  'alt-after-non-ascii': {
+    markdown: 'é日本 <!--alt:k1-->ayaz<!--/alt:k1--> bir 😀 ruzgar.\n',
+    writing: { alternatives: { k1: { versions: [{ text: 'n' }] } }, overflow: [] }
+  },
   'overflow-only': {
     markdown: 'plain\n',
     writing: { alternatives: {}, overflow: [{ text: 'kept', label: 'tag' }] }

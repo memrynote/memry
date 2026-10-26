@@ -13,6 +13,7 @@ use memry_core::crdt::registry::{Document, UpdateSink};
 use memry_core::markdown::bn::block_to_node::IdSource;
 use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::convert::canonical::detach;
 use memry_core::markdown::convert::restore::SerializeOptions;
 use memry_core::markdown::schema::callout_types::{CalloutTypeDefinition, CalloutTypes};
 use memry_core::markdown::shared::writing_tools::read_writing_frontmatter;
@@ -21,7 +22,7 @@ use yrs::branch::Branch;
 use yrs::types::text::YChange;
 use yrs::{
     Any, Array as _, Assoc, ClientID, ID, IndexScope, Map as _, Out, ReadTxn, StickyIndex,
-    Text as _, WriteTxn, XmlFragment, XmlOut, XmlTextRef,
+    Text as _, Transact as _, WriteTxn, XmlFragment, XmlOut, XmlTextRef,
 };
 
 pub const FRAGMENT: &str = "prosemirror";
@@ -229,12 +230,8 @@ fn anchor_json<T: ReadTxn>(txn: &T, runs: &[XmlTextRef], anchor: &Json) -> Json 
     else {
         return Json::Null;
     };
-    // `get_offset` answers in bytes; the vectors count UTF-16 units.
-    let plain = plain_of(txn, &runs[run]);
-    let index = plain
-        .get(..offset.index as usize)
-        .map_or(offset.index as usize, |s| s.encode_utf16().count());
-    json!({"run": run, "index": index, "assoc": assoc_value})
+    // `txn` belongs to a UTF-16 copy of the document (`roots_json`).
+    json!({"run": run, "index": offset.index, "assoc": assoc_value})
 }
 
 fn json_array<T: ReadTxn>(txn: &T, name: &str) -> Vec<Json> {
@@ -244,7 +241,11 @@ fn json_array<T: ReadTxn>(txn: &T, name: &str) -> Vec<Json> {
 /// The side roots as the vectors state them.
 pub fn roots_json(document: &Document) -> Json {
     document
-        .read(|txn| {
+        .read(|live| {
+            // Anchors resolve on a UTF-16 copy: the live document counts bytes.
+            let copy = detach(live).expect("detach");
+            let snapshot = copy.transact();
+            let txn = &snapshot;
             let mut runs = Vec::new();
             if let Some(fragment) = txn.get_xml_fragment(FRAGMENT) {
                 text_runs(&fragment, txn, &mut runs);
@@ -335,4 +336,40 @@ pub fn serialized(converter: &Converter, document: &Document, input: &Json, file
         })),
         "unrepresentable": converter.find_unrepresentable_nodes(document, FRAGMENT),
     })
+}
+
+fn opt_bytes(expected: &Json, actual: Option<&str>) -> Result<(), String> {
+    use super::vector_compare::bytes_equal;
+    match (expected.as_str(), actual) {
+        (Some(want), Some(got)) => bytes_equal(want, got),
+        (None, None) => Ok(()),
+        (want, got) => Err(format!("expected {want:?}, got {got:?}")),
+    }
+}
+
+/// The read side of one case: `want` is the oracle's `doc-serialize` output,
+/// `got` is [`serialized`]. Markdown is compared as bytes, the rest as JSON.
+pub fn compare_roundtrip(want: &Json, got: &Json) -> Result<(), String> {
+    use super::vector_compare::json_equal;
+    opt_bytes(&want["markdown"], got["markdown"].as_str()).map_err(|e| format!("markdown: {e}"))?;
+    json_equal(&want["outcome"], &got["outcome"]).map_err(|e| format!("outcome: {e}"))?;
+    opt_bytes(&want["canonical"], got["canonical"].as_str())
+        .map_err(|e| format!("canonical: {e}"))?;
+    let (w, g) = (&want["noteBody"], &got["noteBody"]);
+    opt_bytes(&w["markdown"], g["markdown"].as_str()).map_err(|e| format!("note body: {e}"))?;
+    json_equal(&sorted(&w["writing"]), &sorted(&g["writing"]))
+        .map_err(|e| format!("writing frontmatter: {e}"))?;
+    json_equal(&w["outcome"], &g["outcome"]).map_err(|e| format!("note outcome: {e}"))?;
+    json_equal(&want["unrepresentable"], &got["unrepresentable"])
+        .map_err(|e| format!("unrepresentable: {e}"))
+}
+
+/// What `doc-serialize` would answer for plain markdown: seed, then every read
+/// (`Err` when the seed fails, where the oracle throws or answers `seeded: false`).
+pub fn roundtrip_of(markdown: &str) -> Result<Json, String> {
+    let input = json!({ "markdown": markdown });
+    let converter = converter_for(&input);
+    let files = files_of(&input);
+    let document = build_document(&converter, &input, &files)?;
+    Ok(serialized(&converter, &document, &input, &files))
 }

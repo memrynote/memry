@@ -21,7 +21,13 @@ fn every_md_to_html_case_matches_the_oracle() {
         assert_eq!(case["expected"]["status"], "ok", "{id}: status");
         let markdown = case["input"]["markdown"].as_str().expect("markdown");
         let expected = case["expected"]["output"].as_str().expect("output");
-        failures.check(id, bytes_equal(expected, &markdown_to_html(markdown)));
+        failures.check(
+            id,
+            bytes_equal(
+                expected,
+                &markdown_to_html(markdown).expect("within the depth limits"),
+            ),
+        );
     }
     let checked = failures.checked();
     failures.finish("md-to-html");

@@ -200,6 +200,13 @@ fn table_content(schema: &Schema, content_node: &Node) -> Result<Json, ParseErro
                     Json::Array(widths) => column_widths.extend(widths),
                     _ => {
                         let span = attr_json(cell, "colspan").as_f64().unwrap_or(1.0);
+                        // `Array(span)` throws a RangeError on a negative or fractional length.
+                        if span < 0.0 || span.fract() != 0.0 {
+                            return Err(ParseError::Js("invalid array length"));
+                        }
+                        if span > crate::markdown::limits::MAX_TABLE_SPAN as f64 {
+                            return Err(ParseError::Js("table cell span is too large"));
+                        }
                         column_widths.extend((0..span.max(0.0) as usize).map(|_| Json::Null));
                     }
                 }

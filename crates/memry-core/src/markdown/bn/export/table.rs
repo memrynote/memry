@@ -48,6 +48,9 @@ pub(super) fn rows(dom: &mut Dom, content: &Json) -> Result<Vec<NodeId>, Convert
         .and_then(Json::as_array)
         .filter(|r| !r.is_empty())
         .ok_or_else(|| err("a table without rows"))?;
+    // `tableContentToNodes` places every cell on the occupancy grid first, and
+    // that throws on a span the grid cannot hold (text, fraction, overlap).
+    crate::markdown::bn::block_to_node::absolute_columns(rows).map_err(|e| err(e.to_string()))?;
     let mut trs = Vec::new();
     for (row_index, row) in rows.iter().enumerate() {
         let cells = row

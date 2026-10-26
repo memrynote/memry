@@ -309,7 +309,7 @@ pub fn parse_markdown_to_blocks_repaired(
     // BlockNote parses markdown by way of this same HTML, so the detour changes
     // nothing but the lifted images and the code in link text.
     let parse_html = if link_code || images {
-        let html = markdown_to_html(&masked);
+        let html = markdown_to_html(&masked).ok_or(ParseError::TooDeep)?;
         let lifted = if images {
             lift_images_out_of_text_blocks(&html).unwrap_or(html)
         } else {
@@ -317,7 +317,7 @@ pub fn parse_markdown_to_blocks_repaired(
         };
         link_code_as_text(&lifted)
     } else {
-        markdown_to_html(&masked)
+        markdown_to_html(&masked).ok_or(ParseError::TooDeep)?
     };
     let mut parsed = html_to_blocks_raw(&parse_html)?;
     let masks = Masks {

@@ -103,7 +103,8 @@ pub fn encode(value: &YamlValue) -> Json {
         YamlValue::String(text) => Json::String(text.clone()),
         YamlValue::Date(ms) => {
             // The oracle's own `toISOString` is the contract; reuse the dumper's.
-            let dumped = memry_core::markdown::frontmatter::safe_dump(&YamlValue::Date(*ms));
+            let dumped = memry_core::markdown::frontmatter::safe_dump(&YamlValue::Date(*ms))
+                .expect("a date dumps");
             Json::Object(Map::from_iter([(
                 "$date".to_owned(),
                 Json::String(dumped.trim_end().to_owned()),

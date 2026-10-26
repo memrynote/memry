@@ -1,0 +1,2 @@
+> [!tip]
+> body of tip

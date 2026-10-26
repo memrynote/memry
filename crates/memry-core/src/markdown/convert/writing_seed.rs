@@ -3,8 +3,12 @@
 //! [`super::writing`] for the write half and the position conventions.
 
 use yrs::branch::{Branch, BranchID};
-use yrs::{Assoc, IndexScope, StickyIndex, Text as _, TransactionMut, XmlFragmentRef};
+use yrs::{
+    Assoc, IndexScope, ReadTxn, StickyIndex, Text as _, Transact as _, TransactionMut,
+    XmlFragmentRef,
+};
 
+use super::canonical::detach;
 use super::writing::{
     RunPosition, TextRun, collect_text_runs, plain_text_of, previous_boundary, text_between,
     width_at,
@@ -31,7 +35,7 @@ struct SeededRange {
     shown_text: String,
 }
 
-fn anchor_of(txn: &TransactionMut, run: &TextRun, index: usize) -> Option<WritingAnchor> {
+fn anchor_of<T: ReadTxn>(txn: &T, run: &TextRun, index: usize) -> Option<WritingAnchor> {
     let branch = AsRef::<Branch>::as_ref(&run.text);
     let type_id = match branch.id() {
         BranchID::Nested(id) => Some(AnchorId {
@@ -62,13 +66,17 @@ fn anchor_of(txn: &TransactionMut, run: &TextRun, index: usize) -> Option<Writin
 
 /// Read every sentinel out of a freshly built fragment as an anchor and delete
 /// it. A range whose sentinels did not both survive the parse is dropped.
+///
+/// `None` means the anchors could not be built, and nothing has been touched:
+/// the sentinels are deleted from the live document only after every anchor
+/// exists, so a failure never leaves a body without its ranges.
 fn extract_writing_ranges(
     txn: &mut TransactionMut,
     fragment: &XmlFragmentRef,
     sentinels: &WritingSentinelMap,
-) -> Vec<SeededRange> {
+) -> Option<Vec<SeededRange>> {
     if sentinels.is_empty() {
-        return Vec::new();
+        return Some(Vec::new());
     }
     struct Found {
         key: String,
@@ -76,15 +84,34 @@ fn extract_writing_ranges(
         start: Option<RunPosition>,
         end: Option<RunPosition>,
     }
+    // Anchors come from a UTF-16 copy (`detach`) with the sentinels gone: the
+    // item ids are the live document's, and `StickyIndex::at` counts the same
+    // unit as the indices below.
+    let BranchID::Root(name) = AsRef::<Branch>::as_ref(fragment).id() else {
+        return None;
+    };
+    let snap_doc = detach(&*txn)?;
+    // The fragment first: `get_or_insert_xml_fragment` takes the doc's write
+    // lock, which a live read transaction in the same statement would block.
+    let snap_fragment = snap_doc.get_or_insert_xml_fragment(&*name);
+    if crate::markdown::limits::fragment_too_deep(&snap_doc.transact(), &snap_fragment) {
+        return None;
+    }
+    let mut snap_runs: Vec<TextRun> = Vec::new();
+    collect_text_runs(&snap_fragment, &snap_doc.transact(), &mut snap_runs);
+
     let mut found: Vec<Found> = Vec::new();
-    let mut runs: Vec<TextRun> = Vec::new();
-    collect_text_runs(fragment, &*txn, &mut runs);
-    #[allow(clippy::needless_range_loop)] // `runs` is mutated and re-read inside the loop
-    for run_number in 0..runs.len() {
+    let mut live_runs: Vec<TextRun> = Vec::new();
+    collect_text_runs(fragment, &*txn, &mut live_runs);
+    let runs = &live_runs;
+    if runs.len() != snap_runs.len() {
+        return None;
+    }
+    // (byte index, byte width, UTF-16 index, UTF-16 width) of every sentinel, per run.
+    let mut hits: Vec<Vec<(usize, usize, usize, usize)>> = vec![Vec::new(); live_runs.len()];
+    for run_number in 0..live_runs.len() {
         let mut removed = 0usize;
-        // (unit index, byte index, width in bytes) of every sentinel.
-        let mut hits: Vec<(usize, usize, usize)> = Vec::new();
-        let text = String::from_utf16_lossy(&runs[run_number].plain);
+        let text = String::from_utf16_lossy(&live_runs[run_number].plain);
         let mut unit = 0usize;
         for (byte, ch) in text.char_indices() {
             let units = ch.len_utf16();
@@ -92,7 +119,7 @@ fn extract_writing_ranges(
                 unit += units;
                 continue;
             };
-            hits.push((unit, byte, ch.len_utf8()));
+            hits[run_number].push((byte, ch.len_utf8(), unit, units));
             let at = match found.iter().position(|f| f.key == marker.key) {
                 Some(at) => at,
                 None => {
@@ -118,15 +145,23 @@ fn extract_writing_ranges(
             removed += units;
             unit += units;
         }
-        for (_, byte, width) in hits.iter().rev() {
-            runs[run_number]
-                .text
-                .remove_range(txn, *byte as u32, *width as u32);
-        }
-        if !hits.is_empty() {
-            runs[run_number].plain = plain_text_of(&*txn, &runs[run_number].text);
+    }
+    // The copy loses its sentinels first; `runs` then names the text as it will be.
+    {
+        let mut snap_txn = snap_doc.transact_mut();
+        for (run_number, run_hits) in hits.iter().enumerate() {
+            for (_, _, unit, units) in run_hits.iter().rev() {
+                snap_runs[run_number]
+                    .text
+                    .remove_range(&mut snap_txn, *unit as u32, *units as u32);
+            }
+            if !run_hits.is_empty() {
+                snap_runs[run_number].plain = plain_text_of(&snap_txn, &snap_runs[run_number].text);
+            }
         }
     }
+    let snap_txn = snap_doc.transact();
+    let runs = &snap_runs;
 
     let mut ranges = Vec::new();
     for Found {
@@ -173,10 +208,10 @@ fn extract_writing_ranges(
             continue;
         }
         let (Some(anchor_start), Some(mut anchor_end)) = (
-            anchor_of(txn, &runs[first.run], first.index),
-            anchor_of(txn, &runs[last.run], last.index),
+            anchor_of(&snap_txn, &runs[first.run], first.index),
+            anchor_of(&snap_txn, &runs[last.run], last.index),
         ) else {
-            continue;
+            return None;
         };
         anchor_end.assoc = Some(-1.0);
         let shown_end = RunPosition {
@@ -188,10 +223,19 @@ fn extract_writing_ranges(
             key,
             anchor_start,
             anchor_end,
-            shown_text: text_between(&runs, first, shown_end),
+            shown_text: text_between(runs, first, shown_end),
         });
     }
-    ranges
+    drop(snap_txn);
+    // Every anchor exists: now the live document loses its sentinels.
+    for (run_number, run_hits) in hits.iter().enumerate() {
+        for (byte, width, _, _) in run_hits.iter().rev() {
+            live_runs[run_number]
+                .text
+                .remove_range(txn, *byte as u32, *width as u32);
+        }
+    }
+    Some(ranges)
 }
 
 fn unique_id(preferred: String, taken: &mut Vec<String>) -> String {
@@ -216,10 +260,12 @@ pub fn apply_writing_seed(
     fragment: &XmlFragmentRef,
     sentinels: &WritingSentinelMap,
     frontmatter: Option<&WritingFrontmatter>,
-) {
+) -> bool {
     let existing_alternatives = read_writing_alternatives(&*txn);
     let existing_overflow = read_writing_overflow(&*txn);
-    let ranges = extract_writing_ranges(txn, fragment, sentinels);
+    let Some(ranges) = extract_writing_ranges(txn, fragment, sentinels) else {
+        return false;
+    };
 
     let mut alternatives: Vec<WritingAlternative> = Vec::new();
     let mut ghosts: Vec<WritingGhost> = Vec::new();
@@ -303,7 +349,9 @@ pub fn apply_writing_seed(
 
     write_writing_alternatives(txn, &alternatives);
     write_writing_ghosts(txn, &ghosts);
-    let Some(front) = frontmatter else { return };
+    let Some(front) = frontmatter else {
+        return true;
+    };
 
     // File order is display order (newest first); the timestamps only carry
     // it. The file holds plain text, so an item whose text is unchanged keeps
@@ -331,4 +379,5 @@ pub fn apply_writing_seed(
         })
         .collect();
     write_writing_overflow(txn, &overflow);
+    true
 }

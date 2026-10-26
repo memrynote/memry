@@ -214,21 +214,33 @@ fn inline_nodes(
     Ok(nodes)
 }
 
+use crate::markdown::limits::{MAX_TABLE_CELLS, MAX_TABLE_SPAN};
+
 /// Cell column of every cell in `rows`, by `getTableCellOccupancyGrid` and
 /// `getAbsoluteTableCells`: `result[row][cell]` is the absolute column.
-fn absolute_columns(rows: &[Json]) -> Result<Vec<Vec<usize>>, BlockError> {
+pub(crate) fn absolute_columns(rows: &[Json]) -> Result<Vec<Vec<usize>>, BlockError> {
     fn is_table_cell(cell: &Json) -> bool {
         cell.get("type").and_then(Json::as_str) == Some("tableCell")
             && cell.get("props").is_some_and(|p| !p.is_null())
             && cell.get("content").is_some_and(|c| !c.is_null())
     }
-    fn span(cell: &Json, key: &str) -> usize {
+    /// `props.colspan ?? 1` as the occupancy grid uses it. BlockNote sums the
+    /// spans with `+=` and sizes the grid with `Array(width)`, so a text span
+    /// concatenates, a fraction is an invalid array length, and zero leaves
+    /// cells unplaced: all of them throw. A boolean counts as 1 or 0.
+    fn span(cell: &Json, key: &str) -> Result<usize, BlockError> {
         if !is_table_cell(cell) {
-            return 1;
+            return Ok(1);
         }
         match cell["props"].get(key) {
-            Some(Json::Number(n)) => n.as_f64().map_or(1, |f| f.max(0.0) as usize),
-            _ => 1,
+            None | Some(Json::Null) => Ok(1),
+            Some(Json::Bool(flag)) => Ok(usize::from(*flag)),
+            Some(Json::Number(n)) => match n.as_f64() {
+                Some(f) if f.fract() == 0.0 && f >= 1.0 => Ok(f as usize),
+                Some(f) if f.fract() == 0.0 && f <= 0.0 => Ok(0),
+                _ => Err(err("table cell span is not a whole number")),
+            },
+            Some(_) => Err(err("table cell span is not a number")),
         }
     }
     let cells = |row: &Json| {
@@ -237,17 +249,34 @@ fn absolute_columns(rows: &[Json]) -> Result<Vec<Vec<usize>>, BlockError> {
             .cloned()
             .unwrap_or_default()
     };
+    // The grid is rows x columns: a cell claiming 100 million columns would
+    // allocate gigabytes. The TypeScript answers a 100000-column span and
+    // fails on a million (oracle cases `table-span-*`), so a span past the first
+    // fails closed here, and so does a grid that would not fit in memory.
+    for row in rows {
+        for cell in cells(row).iter() {
+            if span(cell, "colspan")? > MAX_TABLE_SPAN || span(cell, "rowspan")? > MAX_TABLE_SPAN {
+                return Err(err("table cell span is too large"));
+            }
+        }
+    }
     let height = rows.len();
-    let width = rows
-        .iter()
-        .map(|row| cells(row).iter().map(|c| span(c, "colspan")).sum::<usize>())
-        .max()
-        .unwrap_or(0);
+    let mut width = 0usize;
+    for row in rows {
+        let mut sum = 0usize;
+        for cell in cells(row).iter() {
+            sum += span(cell, "colspan")?;
+        }
+        width = width.max(sum);
+    }
     // grid[r][c] = Some((relative row, relative col))
+    if width.saturating_mul(height) > MAX_TABLE_CELLS {
+        return Err(err("table grid is too large"));
+    }
     let mut grid: Vec<Vec<Option<(usize, usize)>>> = vec![vec![None; width]; height];
     for (row, row_json) in rows.iter().enumerate() {
         for (col, cell) in cells(row_json).iter().enumerate() {
-            let (rowspan, colspan) = (span(cell, "rowspan"), span(cell, "colspan"));
+            let (rowspan, colspan) = (span(cell, "rowspan")?, span(cell, "colspan")?);
             let mut start = None;
             'find: for (i, grid_row) in grid.iter().enumerate().skip(row) {
                 for (j, slot) in grid_row.iter().enumerate().skip(col) {

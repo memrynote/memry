@@ -1,0 +1,2 @@
+> [!success]
+> body of success
