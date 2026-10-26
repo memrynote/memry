@@ -55,6 +55,5 @@ fn a_cold_locked_keyring_is_never_listed_as_empty() {
             message.contains("timed out") || message.contains("prompt"),
             "unexpected failure: {message}"
         ),
-        Err(other) => panic!("unexpected error: {other:?}"),
     }
 }
