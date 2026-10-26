@@ -1,5 +1,8 @@
 use std::path::Path;
 
+#[path = "build_env.rs"]
+mod build_env;
+
 fn main() {
     let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("cargo sets CARGO_MANIFEST_DIR");
     let manifest_dir = Path::new(&manifest_dir);
@@ -35,5 +38,39 @@ fn main() {
         );
     }
 
+    compile_runtime_config(checkout_dir);
+
     tauri_build::build();
+}
+
+/// Compiles the sync server URL and the client ids into the binary (`memry_desktop::config`).
+fn compile_runtime_config(checkout_dir: &Path) {
+    for name in build_env::NAMES.iter().chain(["MEMRY_ENV"].iter()) {
+        println!("cargo:rerun-if-env-changed={name}");
+    }
+    println!("cargo:rerun-if-env-changed=PROFILE");
+    let process_env = |name: &str| std::env::var(name).ok();
+    let env_file = |env: &str| {
+        let path = checkout_dir.join(format!(".env.{env}"));
+        println!("cargo:rerun-if-changed={}", path.display());
+        std::fs::read_to_string(path).ok()
+    };
+    let profile = std::env::var("PROFILE").unwrap_or_default();
+    let inputs = build_env::Inputs {
+        profile: &profile,
+        e2e: std::env::var_os("CARGO_FEATURE_E2E").is_some(),
+        process_env: &process_env,
+        env_file: &env_file,
+    };
+    match build_env::resolve(&inputs) {
+        Ok(pairs) => {
+            for (name, value) in pairs {
+                println!("cargo:rustc-env={name}={value}");
+            }
+        }
+        Err(message) => {
+            println!("cargo:warning={message}");
+            panic!("{message}");
+        }
+    }
 }

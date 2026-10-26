@@ -2,4 +2,5 @@
 //! recovery glue of the vault session.
 
 pub mod dialogs;
+pub mod services;
 pub mod vault_boot;

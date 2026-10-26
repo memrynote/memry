@@ -36,6 +36,11 @@ specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
 specta-typescript = "=0.0.13"
 serde = { workspace = true }
 serde_json = { workspace = true }
+# The OS language of a first launch (`locale::resolve_startup`).
+sys-locale = "0.3.2"
+uuid = { workspace = true }
+# The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime.
+tokio = { workspace = true, features = ["time"] }
 tracing = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"

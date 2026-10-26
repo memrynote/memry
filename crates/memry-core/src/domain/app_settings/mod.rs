@@ -96,6 +96,23 @@ pub fn group_names() -> Vec<&'static str> {
     groups::GROUPS.iter().map(|group| group.name).collect()
 }
 
+/// A group's defaults, or `None` for a name this build does not know. For the shell's
+/// answer while no vault is open.
+pub fn group_defaults(name: &str) -> Option<Value> {
+    groups::find(name).map(|group| Value::Object(spec_defaults(group)))
+}
+
+/// A flat device-local key (`tagSearches`, `graphViews`): not a group, never synced.
+fn local_key_ok(key: &str) -> bool {
+    let bytes = key.as_bytes();
+    (1..=64).contains(&bytes.len())
+        && bytes[0].is_ascii_alphabetic()
+        && bytes
+            .iter()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'_' | b'-'))
+        && groups::find(key).is_none()
+}
+
 impl AppSettings {
     /// Built by [`crate::api::vault::Vault::app_settings`]. The device id is the
     /// one [`crate::api::settings::Settings`] ticks, so both write the same
@@ -204,6 +221,46 @@ impl AppSettings {
         Ok(SettingsChange {
             group: spec.name.to_owned(),
             fields: patch.keys().cloned().collect(),
+        })
+    }
+
+    /// A flat local key's value, `None` when never written. An unparseable row reads as `None`
+    /// and is left on disk.
+    pub fn get_local(&self, key: &str) -> Result<Option<Value>, StorageError> {
+        if !local_key_ok(key) {
+            return Err(invalid(format!("`{key}` is not a local settings key")));
+        }
+        let key = key.to_owned();
+        let raw: Option<String> = self.db.read_blocking(move |conn| {
+            conn.query_row(
+                "SELECT value FROM local_settings WHERE key = ?1",
+                params![key],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(failed)
+        })?;
+        Ok(raw.and_then(|raw| serde_json::from_str(&raw).ok()))
+    }
+
+    /// Replaces a flat local key's value.
+    pub fn set_local(&self, key: &str, value: &Value) -> Result<SettingsChange, StorageError> {
+        if !local_key_ok(key) {
+            return Err(invalid(format!("`{key}` is not a local settings key")));
+        }
+        let (name, text) = (key.to_owned(), value.to_string());
+        self.db.call_blocking(move |conn| {
+            conn.execute(
+                "INSERT INTO local_settings (key, value, updated_at) VALUES (?1, ?2, ?3)
+                 ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+                params![name, text, now_ms()],
+            )
+            .map_err(failed)?;
+            Ok(())
+        })?;
+        Ok(SettingsChange {
+            group: key.to_owned(),
+            fields: Vec::new(),
         })
     }
 

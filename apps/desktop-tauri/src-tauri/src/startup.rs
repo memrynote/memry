@@ -17,7 +17,16 @@ pub struct StartupState {
     pub zoom: f64,
     pub platform: String,
     pub color_theme: Option<serde_json::Value>,
+    pub accent_color: Option<String>,
+    /// `ltr` or `rtl`, from the locale.
+    pub direction: String,
     pub startup_vault: Option<String>,
+    /// Set in an e2e build whose control file names a test vault: the init script marks the
+    /// onboarding tour and the star prompt as seen, so no overlay covers the app
+    /// (`apps/desktop/src/preload/lib/e2e-onboarding.ts`). Not part of the published state.
+    #[serde(skip)]
+    #[specta(skip)]
+    pub suppress_onboarding: bool,
 }
 
 impl Default for StartupState {
@@ -29,7 +38,10 @@ impl Default for StartupState {
             zoom: 1.0,
             platform: node_platform().to_owned(),
             color_theme: None,
+            accent_color: None,
+            direction: "ltr".to_owned(),
             startup_vault: None,
+            suppress_onboarding: false,
         }
     }
 }
@@ -49,7 +61,13 @@ pub fn script(state: &StartupState) -> String {
     let json = serde_json::to_string(state)
         .expect("StartupState is plain data")
         .replace('<', "\\u003c");
-    format!("window.__MEMRY_STARTUP__ = Object.freeze({json});")
+    let onboarding = if state.suppress_onboarding {
+        // Wrapped: a webview without storage must not stop the state from being published.
+        "try{localStorage.setItem('memry:onboarding:tour:v1','1');localStorage.setItem('memry:onboarding:star:v1','done');}catch(e){}\n"
+    } else {
+        ""
+    };
+    format!("{onboarding}window.__MEMRY_STARTUP__ = Object.freeze({json});")
 }
 
 /// The boot order of `apps/desktop/src/main/index.ts`.
