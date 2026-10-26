@@ -3382,6 +3382,7 @@ dependencies = [
  "tracing-subscriber",
  "unicode-normalization",
  "url",
+ "uuid",
  "windows",
  "zbus",
  "zeroize",

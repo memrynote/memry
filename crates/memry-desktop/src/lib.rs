@@ -14,4 +14,5 @@ pub mod paths;
 pub mod redact;
 pub mod registry;
 pub mod session;
+pub mod telemetry;
 pub mod web;
