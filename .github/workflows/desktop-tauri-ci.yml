@@ -31,7 +31,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
+  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/tauri-v2' }}
 
 env:
@@ -45,7 +45,7 @@ jobs:
   # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
   plan:
     name: CI tier
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
@@ -69,7 +69,7 @@ jobs:
 
   static:
     name: Static checks
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -123,7 +123,7 @@ jobs:
 
   renderer-tests:
     name: Renderer tests
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:

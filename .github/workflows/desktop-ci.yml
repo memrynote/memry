@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
+  group: desktop-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
   # Cancel superseded runs on PR branches only. On main, two pushes in a row
   # used to cancel the earlier run's e2e-full mid-flight, so some commits never
   # got full e2e coverage at all. Main runs now queue instead of cancelling.
@@ -38,7 +38,7 @@ env:
 jobs:
   static:
     name: Static checks
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -178,7 +178,7 @@ jobs:
     # runner). Splitting it across 4 runners with `--shard` cuts the critical
     # path; each shard writes a blob report that `unit-merge` combines into
     # the same coverage output the single run used to produce.
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
@@ -251,7 +251,7 @@ jobs:
     # Merges the shard blob reports into one test summary and one coverage
     # report (json-summary for the thresholds job, lcov for Codecov).
     needs: unit
-    if: ${{ !cancelled() && (github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -318,7 +318,7 @@ jobs:
     # against the summary produced by unit-merge — a distinct check so coverage
     # regressions never read as failing tests. Just reads JSON, so no install.
     needs: unit-merge
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-latest
     timeout-minutes: 5
 

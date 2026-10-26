@@ -39,7 +39,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
   # feat/tauri-v2 queues like main does elsewhere: every merge keeps its full-matrix result.
   cancel-in-progress: ${{ github.ref != 'refs/heads/feat/tauri-v2' }}
 
@@ -52,7 +52,7 @@ jobs:
   # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
   plan:
     name: CI tier
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     permissions:
@@ -193,7 +193,7 @@ jobs:
   # without regenerating them leaves the Rust port tested against a stale oracle.
   article-extract-oracle-fresh:
     name: Article-extraction vectors are current
-    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
 
