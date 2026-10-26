@@ -661,6 +661,10 @@ export function splitByCodeFences(markdown: string): TextRegion[] {
       inCode = false
       openFence = ''
       lastIndex = endPos
+      // The closing line ends at its `\n`. A fence after a `\r`, U+2028 or U+2029 inside it is
+      // part of that line; rescanning it would reopen at an index behind `lastIndex` and copy the
+      // tail again, once per such fence (quadratic output).
+      fenceRegex.lastIndex = Math.max(fenceRegex.lastIndex, endPos)
     }
   }
 

@@ -71,6 +71,9 @@ pub fn split_by_code_fences(markdown: &str) -> Vec<TextRegion> {
                 in_code = false;
                 open_fence = "";
                 last_index = fence_end;
+                // The closing line ends at its `\n`; a fence after a `\r`, U+2028 or U+2029
+                // inside it belongs to that line (the TypeScript sets `lastIndex` the same way).
+                search_from = search_from.max(fence_end);
             }
         }
         candidate = after_next_terminator(markdown, search_from);
