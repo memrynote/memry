@@ -33,12 +33,25 @@ fn denied_or_failed(error: &SsError) -> KeySourceError {
     }
 }
 
+/// The session bus socket is absent or nobody listens on it: there is no service to ask. Any
+/// other failure (authentication, a protocol error) means a bus exists and is not "no service".
+fn no_bus(error: &zbus::Error) -> bool {
+    use std::io::ErrorKind::{ConnectionRefused, NotFound};
+    match error {
+        zbus::Error::Address(_) => true,
+        zbus::Error::Connection(io, _) => matches!(io.kind(), NotFound | ConnectionRefused),
+        zbus::Error::InputOutput(io) => matches!(io.kind(), NotFound | ConnectionRefused),
+        _ => false,
+    }
+}
+
 /// A Secret Service connection. `Ok(None)` only when there is nothing to talk to (no session
 /// bus socket, no provider on it); a failed negotiation is `Failed`, since a service exists.
 fn connect<'a>() -> Result<Option<SecretService<'a>>, KeySourceError> {
     match SecretService::connect(EncryptionType::Dh) {
         Ok(service) => Ok(Some(service)),
         Err(SsError::Unavailable) => Ok(None),
+        Err(SsError::Zbus(error)) if no_bus(&error) => Ok(None),
         Err(other) => Err(KeySourceError::Failed(format!(
             "Secret Service connect: {other}"
         ))),
@@ -79,10 +92,7 @@ fn kwallet_password(app_name: &str) -> Result<Option<Zeroizing<Vec<u8>>>, KeySou
     let connection = match Connection::session() {
         Ok(connection) => connection,
         // No session bus to ask: there is no KWallet either.
-        Err(zbus::Error::Address(_)) => return Ok(None),
-        Err(zbus::Error::InputOutput(e)) if e.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(None);
-        }
+        Err(error) if no_bus(&error) => return Ok(None),
         Err(other) => return Err(failed(other)),
     };
     let bus = DBusProxy::new(&connection).map_err(failed)?;
