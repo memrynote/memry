@@ -1,0 +1,8 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.fxtwitter.com/alice/status/1001",
+    "status": 200,
+    "text": "{\"tweet\":{\"text\":\"Emoji 😀 start 🚀 @bob look at https://example.com/a\\n\\n> quoted *italic* line\\nsecond line\\n\\n\\n\\nLast paragraph\",\"created_at\":\"Sat Mar 01 10:00:00 +0000 2025\",\"author\":{\"screen_name\":\"alice\"},\"raw_text\":{\"text\":\"Emoji 😀 start 🚀 @bob look at example.com/a\\n\\n> quoted *italic* line\\nsecond line\\n\\n\\n\\nLast paragraph\",\"facets\":[{\"type\":\"mention\",\"indices\":[14,18],\"text\":\"bob\"},{\"type\":\"url\",\"indices\":[30,43],\"original\":\"https://example.com/a?x=1&y=2\"},{\"type\":\"italic\",\"indices\":[58,64]},{\"type\":\"media\",\"indices\":[0,3]},{\"type\":\"hashtag\",\"indices\":[0,1],\"text\":\"x\"}]},\"media\":{\"photos\":[{\"url\":\"https://pbs.twimg.com/media/p1.jpg\"},{\"url\":\"https://pbs.twimg.com/media/p2.jpg?a=1&b=2\"}]}}}"
+  }
+]

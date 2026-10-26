@@ -1,0 +1,4 @@
+{
+  "html": "<body>@alice@mastodon.social <p>Thread part 2</p> Bob@bob@example.org <p>Nice!</p>@carol@example.org <p>Reply to Bob</p> <p>no status</p></body>",
+  "markdown": "@alice@mastodon.social\n\nThread part 2\n\nBob@bob@example.org\n\nNice!\n\n@carol@example.org\n\nReply to Bob\n\nno status"
+}

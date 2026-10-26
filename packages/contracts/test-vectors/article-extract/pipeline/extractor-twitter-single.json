@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://twitter.com/bob/status/2","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<article data-defuddle=\"\">\n\t\t\t<div class=\"twitter post\">\n\t\t\t\t<div class=\"post-content\">\n\t\t\t\t\t<p>Just one tweet</p>\n<img src=\"https://pbs.twimg.com/media/b?name=large\" alt=\"Pic\">\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t\t\n\t\t</article>",
+  "markdown": "Just one tweet\n\n![Pic](https://pbs.twimg.com/media/b?name=large)",
+  "raw": {"title":"Post by @ on X","author":"@","published":"","description":"Just one tweet","image":"","site":"X (Twitter)","language":"en","wordCount":3},
+  "expected": {"url":"https://twitter.com/bob/status/2","mode":"article","contentMarkdown":"Just one tweet\n\n![Pic](https://pbs.twimg.com/media/b?name=large)","excerpt":"Just one tweet","extractionStatus":"partial","properties":{"title":"Post by @ on X","source":"https://twitter.com/bob/status/2","created":"2025-03-04T05:06:07.000Z","author":"@","description":"Just one tweet"},"tags":["clippings"]}
+}

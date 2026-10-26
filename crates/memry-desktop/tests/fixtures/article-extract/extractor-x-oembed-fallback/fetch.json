@@ -1,0 +1,14 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.fxtwitter.com/dave/status/1003",
+    "status": 500,
+    "text": ""
+  },
+  {
+    "method": "GET",
+    "url": "https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2Fdave%2Fstatus%2F1003&omit_script=true",
+    "status": 200,
+    "text": "{\"html\":\"<blockquote class=\\\"twitter-tweet\\\"><p lang=\\\"en\\\" dir=\\\"ltr\\\">Hello <a href=\\\"https://t.co/x\\\">pic.twitter.com/x</a> world &amp; more</p><p>Second</p>&mdash; Dave (@dave) <a href=\\\"https://twitter.com/dave/status/1003\\\">March 1, 2025</a></blockquote>\",\"author_url\":\"https://twitter.com/dave\",\"author_name\":\"Dave\"}"
+  }
+]

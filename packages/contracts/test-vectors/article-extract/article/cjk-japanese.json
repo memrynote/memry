@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://ja.example.jp/blog/small-tools","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://ja.example.jp/blog/small-tools","mode":"article","contentMarkdown":"数年ごとに、新しいプラットフォームが机の上の十個のツールを一つに置き換えると約束します。それが実現することはほとんどありません。長く残るのは、一つのことをうまくこなすツールです。\n\nパイプで二つのプログラムをつなぐ方が、千の設定画面よりも価値があります。「小さい」ことは、約束が少ないということです。\n\n漢 (かん) 字 と全角スペース　と半角ｶﾅ。","excerpt":"数年ごとに、新しいプラットフォームが机の上の十個のツールを一つに置き換えると約束します。それが実現することはほとんどありません。長く残るのは、一つのことをうまくこなすツールです。\n\nパイプで二つのプログラムをつなぐ方が、千の設定画面よりも価値があります。「小さい」ことは、約束が少ないということです。\n\n漢 (かん) 字 と全角スペース　と半角ｶﾅ。","extractionStatus":"full","properties":{"title":"小さなツールが勝つ理由","source":"https://ja.example.jp/blog/small-tools","created":"2025-03-04T05:06:07.000Z","author":"山田 花子"},"tags":["clippings"]},
+  "raw": {"title":"小さなツールが勝つ理由","author":"山田 花子","published":"","description":"","image":"","site":"山田 花子","language":"ja","wordCount":165,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

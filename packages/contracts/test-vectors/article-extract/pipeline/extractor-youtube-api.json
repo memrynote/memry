@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://www.youtube.com/watch?v=abcDEF12345","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/abcDEF12345\" title=\"YouTube video player\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe><p>First line<br>Second line with <b>html</b></p>",
+  "markdown": "![](https://www.youtube.com/watch?v=abcDEF12345)\n\nFirst line  \nSecond line with **html**",
+  "raw": {"title":"How CRDTs merge","author":"CRDT Channel","published":"2025-02-10T08:00:00-08:00","description":"First line\nSecond line with <b>html</b>","image":"","site":"YouTube","language":"en","wordCount":6},
+  "expected": {"url":"https://www.youtube.com/watch?v=abcDEF12345","mode":"article","contentMarkdown":"![](https://www.youtube.com/watch?v=abcDEF12345)\n\nFirst line  \nSecond line with **html**","excerpt":"First line\nSecond line with <b>html</b>","extractionStatus":"partial","properties":{"title":"How CRDTs merge","source":"https://www.youtube.com/watch?v=abcDEF12345","created":"2025-03-04T05:06:07.000Z","author":"CRDT Channel","published":"2025-02-10T08:00:00-08:00","description":"First line\nSecond line with <b>html</b>"},"tags":["clippings"]}
+}

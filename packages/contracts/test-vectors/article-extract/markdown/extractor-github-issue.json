@@ -1,0 +1,4 @@
+{
+  "html": "<div><p>Steps to reproduce:</p><pre><code>const a = 1;</code></pre></div>",
+  "markdown": "Steps to reproduce:\n\n```\nconst a = 1;\n```"
+}

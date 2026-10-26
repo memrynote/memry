@@ -110,6 +110,381 @@
     ]
   },
   {
+    "name": "extractor-bbcode-data",
+    "covers": [
+      "site extractor",
+      "BBCode announcement data"
+    ]
+  },
+  {
+    "name": "extractor-bilibili",
+    "covers": [
+      "site extractor",
+      "Bilibili",
+      "subtitle transcript"
+    ]
+  },
+  {
+    "name": "extractor-bilibili-fallback",
+    "covers": [
+      "site extractor",
+      "Bilibili",
+      "view fetch fails"
+    ]
+  },
+  {
+    "name": "extractor-bilibili-no-tracks",
+    "covers": [
+      "site extractor",
+      "Bilibili",
+      "no subtitle tracks"
+    ]
+  },
+  {
+    "name": "extractor-bluesky",
+    "covers": [
+      "site extractor",
+      "Bluesky",
+      "thread and replies"
+    ]
+  },
+  {
+    "name": "extractor-c2-wiki",
+    "covers": [
+      "site extractor",
+      "C2 wiki"
+    ]
+  },
+  {
+    "name": "extractor-c2-wiki-empty",
+    "covers": [
+      "site extractor",
+      "C2 wiki",
+      "empty page"
+    ]
+  },
+  {
+    "name": "extractor-chatgpt",
+    "covers": [
+      "site extractor",
+      "ChatGPT conversation",
+      "footnotes"
+    ]
+  },
+  {
+    "name": "extractor-claude",
+    "covers": [
+      "site extractor",
+      "Claude conversation"
+    ]
+  },
+  {
+    "name": "extractor-discourse",
+    "covers": [
+      "site extractor",
+      "Discourse"
+    ]
+  },
+  {
+    "name": "extractor-gemini",
+    "covers": [
+      "site extractor",
+      "Gemini conversation"
+    ]
+  },
+  {
+    "name": "extractor-gemini-sources",
+    "covers": [
+      "site extractor",
+      "Gemini conversation",
+      "browse-item throws in Node"
+    ]
+  },
+  {
+    "name": "extractor-github-issue",
+    "covers": [
+      "site extractor",
+      "GitHub",
+      "issue"
+    ]
+  },
+  {
+    "name": "extractor-github-issue-bare",
+    "covers": [
+      "site extractor",
+      "GitHub",
+      "issue without body"
+    ]
+  },
+  {
+    "name": "extractor-github-pull",
+    "covers": [
+      "site extractor",
+      "GitHub",
+      "pull request"
+    ]
+  },
+  {
+    "name": "extractor-grok",
+    "covers": [
+      "site extractor",
+      "Grok conversation",
+      "footnotes"
+    ]
+  },
+  {
+    "name": "extractor-hackernews-comment",
+    "covers": [
+      "site extractor",
+      "Hacker News",
+      "single comment"
+    ]
+  },
+  {
+    "name": "extractor-hackernews-listing",
+    "covers": [
+      "site extractor",
+      "Hacker News",
+      "listing page"
+    ]
+  },
+  {
+    "name": "extractor-hackernews-post",
+    "covers": [
+      "site extractor",
+      "Hacker News",
+      "comment tree"
+    ]
+  },
+  {
+    "name": "extractor-leetcode",
+    "covers": [
+      "site extractor",
+      "LeetCode",
+      "content selector"
+    ]
+  },
+  {
+    "name": "extractor-linkedin",
+    "covers": [
+      "site extractor",
+      "LinkedIn"
+    ]
+  },
+  {
+    "name": "extractor-lwn",
+    "covers": [
+      "site extractor",
+      "LWN",
+      "nested comments"
+    ]
+  },
+  {
+    "name": "extractor-mastodon",
+    "covers": [
+      "site extractor",
+      "Mastodon",
+      "thread and replies"
+    ]
+  },
+  {
+    "name": "extractor-medium",
+    "covers": [
+      "site extractor",
+      "Medium"
+    ]
+  },
+  {
+    "name": "extractor-nytimes",
+    "covers": [
+      "site extractor",
+      "New York Times",
+      "preloaded data"
+    ]
+  },
+  {
+    "name": "extractor-reddit-linkpost",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "bad status"
+    ]
+  },
+  {
+    "name": "extractor-reddit-old",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "old reddit page"
+    ]
+  },
+  {
+    "name": "extractor-reddit-shreddit",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "old.reddit fetch"
+    ]
+  },
+  {
+    "name": "extractor-reddit-shreddit-offline",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "rendered comments"
+    ]
+  },
+  {
+    "name": "extractor-substack-markup",
+    "covers": [
+      "site extractor",
+      "Substack",
+      "rendered post"
+    ]
+  },
+  {
+    "name": "extractor-substack-note",
+    "covers": [
+      "site extractor",
+      "Substack",
+      "note with image"
+    ]
+  },
+  {
+    "name": "extractor-substack-preload",
+    "covers": [
+      "site extractor",
+      "Substack",
+      "preloaded body_html",
+      "byline date"
+    ]
+  },
+  {
+    "name": "extractor-threads-pagelet",
+    "covers": [
+      "site extractor",
+      "Threads",
+      "pagelets"
+    ]
+  },
+  {
+    "name": "extractor-threads-region",
+    "covers": [
+      "site extractor",
+      "Threads",
+      "server rendered region"
+    ]
+  },
+  {
+    "name": "extractor-twitter-single",
+    "covers": [
+      "site extractor",
+      "Twitter",
+      "single tweet"
+    ]
+  },
+  {
+    "name": "extractor-twitter-timeline",
+    "covers": [
+      "site extractor",
+      "Twitter",
+      "thread and replies"
+    ]
+  },
+  {
+    "name": "extractor-wikipedia",
+    "covers": [
+      "site extractor",
+      "Wikipedia",
+      "content selector"
+    ]
+  },
+  {
+    "name": "extractor-x-article",
+    "covers": [
+      "site extractor",
+      "X article"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-article",
+    "covers": [
+      "site extractor",
+      "X FxTwitter",
+      "article blocks"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-fallback",
+    "covers": [
+      "site extractor",
+      "X oEmbed fallback"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-name-only",
+    "covers": [
+      "site extractor",
+      "X oEmbed fallback",
+      "no author_url"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-tweet",
+    "covers": [
+      "site extractor",
+      "X FxTwitter",
+      "facets",
+      "emoji offsets"
+    ]
+  },
+  {
+    "name": "extractor-youtube-api",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "inline and InnerTube captions",
+      "chapters from next"
+    ]
+  },
+  {
+    "name": "extractor-youtube-dom",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "transcript from DOM",
+      "chapters from page data"
+    ]
+  },
+  {
+    "name": "extractor-youtube-mobile",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "mobile transcript",
+      "Shorts URL",
+      "Open Graph fallback"
+    ]
+  },
+  {
+    "name": "extractor-youtube-offline",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "all fetches fail",
+      "JSON-LD fallback"
+    ]
+  },
+  {
+    "name": "extractor-youtube-speakers",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "speaker turns",
+      "text caption format"
+    ]
+  },
+  {
     "name": "footnotes-gutenberg",
     "covers": [
       "footnotes",
@@ -245,6 +620,16 @@
     ]
   },
   {
+    "name": "math-arxiv-equation-tables",
+    "covers": [
+      "math",
+      "arXiv ltx_equation",
+      "ltx_eqn_table",
+      "figure caption math",
+      "nested equations"
+    ]
+  },
+  {
     "name": "math-katex",
     "covers": [
       "math",
@@ -285,6 +670,94 @@
       "plain MathML",
       "alttext",
       "tagged equation"
+    ]
+  },
+  {
+    "name": "math-mathml-failures",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "invalid arity",
+      "xmldom recovery"
+    ]
+  },
+  {
+    "name": "math-mathml-structures",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "mtable",
+      "mfenced",
+      "scripts",
+      "roots"
+    ]
+  },
+  {
+    "name": "math-mathml-symbols",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "symbols",
+      "mathvariant",
+      "mtext"
+    ]
+  },
+  {
+    "name": "math-temml-aligned",
+    "covers": [
+      "math",
+      "temml",
+      "align",
+      "gather",
+      "multline",
+      "tag",
+      "label",
+      "display mode"
+    ]
+  },
+  {
+    "name": "math-temml-cd",
+    "covers": [
+      "math",
+      "temml",
+      "CD",
+      "column separators",
+      "arraycolsep"
+    ]
+  },
+  {
+    "name": "math-temml-enclose",
+    "covers": [
+      "math",
+      "temml",
+      "cancel",
+      "boxed",
+      "sout",
+      "colorbox",
+      "textcircled"
+    ]
+  },
+  {
+    "name": "math-temml-matrices",
+    "covers": [
+      "math",
+      "temml",
+      "matrix environments",
+      "array",
+      "cases",
+      "bordermatrix",
+      "smallmatrix"
+    ]
+  },
+  {
+    "name": "math-temml-unsupported",
+    "covers": [
+      "math",
+      "temml",
+      "untrusted",
+      "unknown environment",
+      "unbalanced",
+      "hline"
     ]
   },
   {
@@ -409,6 +882,31 @@
     ]
   },
   {
+    "name": "tables-layout",
+    "covers": [
+      "tables",
+      "layout table",
+      "single cell"
+    ]
+  },
+  {
+    "name": "tables-simple",
+    "covers": [
+      "tables",
+      "caption",
+      "pipe in cell"
+    ]
+  },
+  {
+    "name": "tables-spans",
+    "covers": [
+      "tables",
+      "rowspan",
+      "colspan",
+      "line break in cell"
+    ]
+  },
+  {
     "name": "tiny-page",
     "covers": [
       "tiny page under 50 words",
@@ -433,104 +931,6 @@
     "covers": [
       "truncated after tag name and slash",
       "slice(-1) text"
-    ]
-  },
-  {
-    "name": "math-mathml-structures",
-    "covers": [
-      "math",
-      "MathML to LaTeX",
-      "mtable",
-      "mfenced",
-      "scripts",
-      "roots"
-    ]
-  },
-  {
-    "name": "math-mathml-symbols",
-    "covers": [
-      "math",
-      "MathML to LaTeX",
-      "symbols",
-      "mathvariant",
-      "mtext"
-    ]
-  },
-  {
-    "name": "math-arxiv-equation-tables",
-    "covers": [
-      "math",
-      "arXiv ltx_equation",
-      "ltx_eqn_table",
-      "figure caption math",
-      "nested equations"
-    ]
-  },
-  {
-    "name": "math-mathml-failures",
-    "covers": [
-      "math",
-      "MathML to LaTeX",
-      "invalid arity",
-      "xmldom recovery"
-    ]
-  },
-  {
-    "name": "math-temml-matrices",
-    "covers": [
-      "math",
-      "temml",
-      "matrix environments",
-      "array",
-      "cases",
-      "bordermatrix",
-      "smallmatrix"
-    ]
-  },
-  {
-    "name": "math-temml-aligned",
-    "covers": [
-      "math",
-      "temml",
-      "align",
-      "gather",
-      "multline",
-      "tag",
-      "label",
-      "display mode"
-    ]
-  },
-  {
-    "name": "math-temml-enclose",
-    "covers": [
-      "math",
-      "temml",
-      "cancel",
-      "boxed",
-      "sout",
-      "colorbox",
-      "textcircled"
-    ]
-  },
-  {
-    "name": "math-temml-cd",
-    "covers": [
-      "math",
-      "temml",
-      "CD",
-      "column separators",
-      "arraycolsep"
-    ]
-  },
-  {
-    "name": "math-temml-unsupported",
-    "covers": [
-      "math",
-      "temml",
-      "untrusted",
-      "unknown environment",
-      "unbalanced",
-      "hline"
     ]
   }
 ]

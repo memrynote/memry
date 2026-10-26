@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://lwn.net/Articles/1000001/","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://lwn.net/Articles/1000001/","mode":"article","contentMarkdown":"The kernel gained a feature.\n\nMore about it.\n\n---\n\n## Comments\n\n> **reader1** · [2025-02-04](https://lwn.net/Articles/1000002/)\n> \n> **Great**\n> \n> Thanks!\n> \n> > **reader2** · 2025-02-05\n> > \n> > Same title as parent\n\n> **reader3** ·\n> \n> Plain.","excerpt":"Kernel news","extractionStatus":"partial","properties":{"title":"A kernel story","source":"https://lwn.net/Articles/1000001/","created":"2025-03-04T05:06:07.000Z","author":"corbet","published":"2025-02-03","description":"Kernel news"},"tags":["clippings"]},
+  "raw": {"title":"A kernel story","author":"corbet","published":"2025-02-03","description":"Kernel news","image":"","site":"LWN.net","language":"en","wordCount":24,"schemaOrgData":"[]","extractorType":"lwn"},
+  "requests": []
+}

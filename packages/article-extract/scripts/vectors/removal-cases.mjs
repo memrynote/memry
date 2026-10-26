@@ -3,6 +3,7 @@
 // branch the port gets wrong shows as a difference in the step that owns it.
 import { URL, byline, page, prose, pubDate, words } from './removal-pages.mjs'
 import { sweepCases } from './removal-sweeps.mjs'
+import { edgeSweepCases } from './removal-sweeps-edges.mjs'
 
 export const singleRuleCases = [
   // removeMetadataBlock
@@ -689,4 +690,7 @@ export const singleRuleCases = [
   }
 ]
 
-export const removalCases = [...singleRuleCases, ...sweepCases].map((c) => ({ url: URL, ...c }))
+export const removalCases = [...singleRuleCases, ...sweepCases, ...edgeSweepCases].map((c) => ({
+  url: URL,
+  ...c
+}))

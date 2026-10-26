@@ -70,7 +70,9 @@ fn elements(doc: &Document) -> Vec<NodeId> {
 
 fn error_value(e: ExtractError) -> Value {
     match e {
-        ExtractError::Selector(m) | ExtractError::Dom(m) => json!({ "error": m }),
+        ExtractError::Selector(m) | ExtractError::Dom(m) | ExtractError::Js(m) => {
+            json!({ "error": m })
+        }
     }
 }
 

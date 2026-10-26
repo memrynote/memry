@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://gemini.google.com/app/777","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://gemini.google.com/app/777","mode":"article","contentMarkdown":"**You**\n\nSummarize CRDTs\n\n---\n\n**Gemini**\n\nCRDTs merge without coordination.\n\na\n\n---\n\n**You**\n\nAnd Yjs?\n\n---\n\n**Gemini**\n\nYjs is a CRDT library.","excerpt":"Gemini conversation with 4 messages","extractionStatus":"partial","properties":{"title":"Summarize CRDTs","source":"https://gemini.google.com/app/777","created":"2025-03-04T05:06:07.000Z","description":"Gemini conversation with 4 messages"},"tags":["clippings"]},
+  "raw": {"title":"Summarize CRDTs","author":"","published":"","description":"Gemini conversation with 4 messages","image":"","site":"Gemini","language":"en","wordCount":18,"schemaOrgData":"[]","extractorType":"gemini"},
+  "requests": []
+}

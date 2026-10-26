@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://sam.substack.com/p/second-post","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://sam.substack.com/p/second-post","mode":"article","contentMarkdown":"Craft is *patience*.\n\n## Part two\n\nMore words follow here, enough to be an article.\n\n> Quote","excerpt":"Second desc","extractionStatus":"partial","properties":{"title":"Second (og)","source":"https://sam.substack.com/p/second-post","created":"2025-03-04T05:06:07.000Z","author":"Sam H","published":"2025-03-05T00:00:00+00:00","description":"Second desc"},"tags":["clippings"]},
+  "raw": {"title":"Second (og)","author":"Sam H","published":"2025-03-05T00:00:00+00:00","description":"Second desc","image":"","site":"Substack","language":"en","wordCount":16,"schemaOrgData":"[]","extractorType":"substack"},
+  "requests": []
+}

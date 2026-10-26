@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>App shell</p> <a href=\"https://substack.com/@sam\">Sam H</a></body>",
+  "markdown": "App shell\n\n[Sam H](https://substack.com/@sam)"
+}

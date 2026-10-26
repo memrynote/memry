@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://shop.example.com/p/steel-bottle-750","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://shop.example.com/p/steel-bottle-750","mode":"article","contentMarkdown":"€24.00\n\nDouble-walled stainless steel keeps drinks cold for 24 hours and hot for 12. Fits most cup holders. Dishwasher safe except the lid.\n\n- 750 ml\n- BPA free\n- Two-year warranty\n\n## Reviews\n\n5/5\n\nKeeps ice for a day.","excerpt":"Double-walled, keeps drinks cold for 24 hours.","extractionStatus":"partial","properties":{"title":"Steel Bottle 750 ml","source":"https://shop.example.com/p/steel-bottle-750","created":"2025-03-04T05:06:07.000Z","description":"Double-walled, keeps drinks cold for 24 hours."},"tags":["clippings"],"heroImage":"https://shop.example.com/img/bottle.jpg"},
+  "raw": {"title":"Steel Bottle 750 ml","author":"","published":"","description":"Double-walled, keeps drinks cold for 24 hours.","image":"https://shop.example.com/img/bottle.jpg","site":"Example Shop","language":"","wordCount":36,"schemaOrgData":"[{\"@context\":\"https://schema.org\",\"@type\":\"Product\",\"name\":\"Steel Bottle 750 ml\",\"description\":\"Double-walled, keeps drinks cold for 24 hours.\",\"offers\":{\"@type\":\"Offer\",\"price\":\"24.00\",\"priceCurrency\":\"EUR\"}}]","extractorType":null},
+  "requests": []
+}

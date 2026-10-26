@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://x.com/erin/status/1004","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<body><p>Loading</p></body>",
+  "markdown": "Loading",
+  "raw": {"title":"Erin on X","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":1},
+  "expected": {"url":"https://x.com/erin/status/1004","mode":"article","contentMarkdown":"Loading","excerpt":"Loading","extractionStatus":"partial","properties":{"title":"Erin on X","source":"https://x.com/erin/status/1004","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

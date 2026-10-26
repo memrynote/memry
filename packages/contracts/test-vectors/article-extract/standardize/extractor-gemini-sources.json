@@ -1,0 +1,4 @@
+{
+  "url": "https://gemini.google.com/app/778",
+  "variants": {"direct":{"input":{"url":"https://gemini.google.com/app/778","title":"Gemini","description":"","hasPublishedOrAuthor":false,"options":{},"smallImages":[],"mainPath":[2,1],"variant":"direct"},"steps":{"footnotes":null,"callouts":null,"standardize":"<body><p>Sources?</p><p>See sources.</p><p><a href=\"https://example.com/s\">example.comS</a></p></body>"}},"pipeline":{"input":{"url":"https://gemini.google.com/app/778","title":"Gemini","description":"","hasPublishedOrAuthor":false,"options":{},"smallImages":[],"mainPath":[2,1],"variant":"pipeline"},"steps":{"metadataBlock":null,"footnotes":null,"callouts":null,"smallImages":null,"hidden":null,"eyebrow":null,"selectors":null,"lowScoring":null,"contentPatterns":null,"standardize":"<body><p>Sources?</p><p>See sources.</p><p><a href=\"https://example.com/s\">example.comS</a></p></body>"}}}
+}

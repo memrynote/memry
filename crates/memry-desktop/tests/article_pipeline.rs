@@ -5,15 +5,25 @@
 
 use std::{fs, path::PathBuf};
 
-use memry_desktop::web::extract::fetch::{FetchRequest, FetchResponse, Fetcher};
-use memry_desktop::web::extract::{extract_article, run_defuddle};
+use memry_desktop::web::extract::ArticleCapture;
+use memry_desktop::web::extract::defuddle::{Defuddle, DefuddleResponse};
+use memry_desktop::web::extract::dom::Document;
+use memry_desktop::web::extract::error::ExtractError;
+use memry_desktop::web::extract::map::to_article_capture;
+use memry_desktop::web::extract::markdown::create_markdown_content;
 use serde_json::Value;
 
-struct NoFetch;
-impl Fetcher for NoFetch {
-    fn fetch(&self, request: FetchRequest) -> Result<FetchResponse, String> {
-        Err(format!("unexpected fetch of {}", request.url))
-    }
+/// `Defuddle.parse()`, which the pipeline vectors run: the sync extractors and the generic
+/// path, without the async extractors (`article_vectors.rs` covers those).
+fn run_sync(html: &str, url: &str) -> Result<DefuddleResponse, ExtractError> {
+    let page_url = if url.is_empty() { "about:blank" } else { url };
+    Defuddle::new(Document::parse_html(html), page_url).parse()
+}
+
+fn sync_capture(html: &str, url: &str, now: &str) -> Result<ArticleCapture, ExtractError> {
+    let mut response = run_sync(html, url)?;
+    response.content = create_markdown_content(&response.content);
+    Ok(to_article_capture(&response.to_map_input(), url, now))
 }
 
 fn root() -> PathBuf {
@@ -37,15 +47,14 @@ fn check(name: &str, html: &str, vector: &Value) -> Vec<String> {
     if let Some(error) = vector.get("error") {
         assert!(error.is_string());
         // The oracle threw (no element at all): the port fails too, and the capture is `failed`.
-        let capture = extract_article(html, url, now, &NoFetch);
-        return if run_defuddle(html, url).is_err() && capture.content_markdown.is_empty() {
+        return if sync_capture(html, url, now).is_err() {
             Vec::new()
         } else {
             vec![format!("{name}: oracle threw {error}, port did not")]
         };
     }
     let mut failures = Vec::new();
-    let response = run_defuddle(html, url).unwrap();
+    let response = run_sync(html, url).unwrap();
     let m = &response.metadata;
     let raw = &vector["raw"];
     let mut cmp = |what: &str, got: String, want: &Value| {
@@ -70,7 +79,7 @@ fn check(name: &str, html: &str, vector: &Value) -> Vec<String> {
         response.word_count.to_string(),
         &raw["wordCount"],
     );
-    let capture = extract_article(html, url, now, &NoFetch);
+    let capture = sync_capture(html, url, now).unwrap();
     cmp(
         "markdown",
         capture.content_markdown.clone(),

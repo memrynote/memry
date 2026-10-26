@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://www.bilibili.com/video/BV1AA411c7mA/?p=2","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1AA411c7mA&page=2&high_quality=1&danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscreen></iframe>",
+  "markdown": "<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1AA411c7mA&amp;page=2&amp;high_quality=1&amp;danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscreen=\"\"></iframe>",
+  "raw": {"title":"哔哩哔哩","author":"","published":"","description":"","image":"","site":"Bilibili","language":"en","wordCount":0},
+  "expected": {"url":"https://www.bilibili.com/video/BV1AA411c7mA/?p=2","mode":"article","contentMarkdown":"<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1AA411c7mA&amp;page=2&amp;high_quality=1&amp;danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscreen=\"\"></iframe>","excerpt":"<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1AA411c7mA&amp;page=2&amp;high_quality=1&amp;danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscre","extractionStatus":"partial","properties":{"title":"哔哩哔哩","source":"https://www.bilibili.com/video/BV1AA411c7mA/?p=2","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

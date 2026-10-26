@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Summarize CRDTs</p> <p>CRDTs merge without coordination.</p>a <p>And Yjs?</p><p>Yjs is a CRDT library.</p></body>",
+  "markdown": "Summarize CRDTs\n\nCRDTs merge without coordination.\n\na\n\nAnd Yjs?\n\nYjs is a CRDT library."
+}

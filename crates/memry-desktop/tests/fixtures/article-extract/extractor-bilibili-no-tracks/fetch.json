@@ -1,0 +1,26 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/web-interface/view?bvid=BV1CC411c7mC",
+    "status": 200,
+    "text": "{\"code\":0,\"data\":{\"aid\":7,\"title\":\"No subs\",\"desc\":\"\",\"pubdate\":0,\"owner\":{},\"pages\":[{\"cid\":8}]}}"
+  },
+  {
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/player/wbi/v2?bvid=BV1CC411c7mC&aid=7&cid=8",
+    "status": 200,
+    "text": "{\"code\":0,\"data\":{\"subtitle\":{\"subtitles\":[]}}}"
+  },
+  {
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/player/v2?bvid=BV1CC411c7mC&cid=8",
+    "status": 200,
+    "text": "{\"code\":-400}"
+  },
+  {
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/player/v2?aid=7&cid=8",
+    "status": 500,
+    "text": ""
+  }
+]

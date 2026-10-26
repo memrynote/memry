@@ -84,9 +84,53 @@ pub fn has_responsive_show_class(class_name: &str) -> bool {
         .any(|token| RESPONSIVE_SHOW_RE.is_match(token))
 }
 
+/// `isDangerousUrl(url)`: `javascript:` and `data:text/html`, whitespace and control characters
+/// stripped first.
+pub fn is_dangerous_url(url: &str) -> bool {
+    let normalized: String = url
+        .chars()
+        .filter(|&c| !is_js_whitespace(c) && c > '\u{1f}')
+        .collect::<String>()
+        .to_lowercase();
+    normalized.starts_with("javascript:") || normalized.starts_with("data:text/html")
+}
+
+/// `escapeHtml(text)`: `&`, `<`, `>` and `"`.
+pub fn escape_html(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    for c in text.chars() {
+        match c {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// `document.title` of linkedom: the text of the first `<title>` under `head`, or empty.
+pub fn document_title(doc: &mut Document, root: NodeId) -> String {
+    let Some(head) = doc.head_of(root) else {
+        return String::new();
+    };
+    doc.get_elements_by_tag_name(head, "title")
+        .first()
+        .and_then(|&t| doc.text_content(t))
+        .unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dangerous_urls() {
+        assert!(is_dangerous_url(" java\tscript:alert(1)"));
+        assert!(is_dangerous_url("DATA:text/html;base64,xx"));
+        assert!(!is_dangerous_url("data:image/png;base64,xx"));
+        assert!(!is_dangerous_url("https://a.com"));
+    }
 
     #[test]
     fn responsive_show_classes() {

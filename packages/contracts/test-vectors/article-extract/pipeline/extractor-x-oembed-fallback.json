@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://twitter.com/dave/status/1003","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<body><p>Loading</p></body>",
+  "markdown": "Loading",
+  "raw": {"title":"Dave on X","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":1},
+  "expected": {"url":"https://twitter.com/dave/status/1003","mode":"article","contentMarkdown":"Loading","excerpt":"Loading","extractionStatus":"partial","properties":{"title":"Dave on X","source":"https://twitter.com/dave/status/1003","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

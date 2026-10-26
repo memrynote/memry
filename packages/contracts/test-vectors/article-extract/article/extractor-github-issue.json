@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://github.com/memrynote/memry/issues/12","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://github.com/memrynote/memry/issues/12","mode":"article","contentMarkdown":"Steps to reproduce:\n\n```ts\nconst a = 1;\nconsole.log(a)\n```\n- one\n- two\n\n---\n\n## Comments\n\n> **bob** · 2025-01-11\n> \n> Reproduced on `main`.\n\n> **carol** ·\n> \n> Fixed in #13.","excerpt":"Steps to reproduce:const a = 1; console.log(a)onetwo Comments bob · 2025-01-11 Reproduced on main.","extractionStatus":"partial","properties":{"title":"Sync loses edits · Issue #12 · memrynote/memry","source":"https://github.com/memrynote/memry/issues/12","created":"2025-03-04T05:06:07.000Z","author":"alice","published":"2025-01-10T09:00:00Z","description":"Steps to reproduce:const a = 1; console.log(a)onetwo Comments bob · 2025-01-11 Reproduced on main."},"tags":["clippings"]},
+  "raw": {"title":"Sync loses edits · Issue #12 · memrynote/memry","author":"alice","published":"2025-01-10T09:00:00Z","description":"Steps to reproduce:const a = 1; console.log(a)onetwo Comments bob · 2025-01-11 Reproduced on main. ","image":"","site":"GitHub - memrynote/memry","language":"en","wordCount":23,"schemaOrgData":"[]","extractorType":"github"},
+  "requests": []
+}

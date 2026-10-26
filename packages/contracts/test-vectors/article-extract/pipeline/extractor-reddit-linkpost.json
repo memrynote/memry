@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://www.reddit.com/r/programming/comments/ghi/link/","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<article data-defuddle=\"\">\n\t\t\t<div class=\"reddit post\">\n\t\t\t\t<div class=\"post-content\">\n\t\t\t\t\t\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t\t\n\t\t</article>",
+  "markdown": "",
+  "raw": {"title":"Why Rust?","author":"alice","published":"","description":"","image":"","site":"r/programming","language":"en","wordCount":0},
+  "expected": {"url":"https://www.reddit.com/r/programming/comments/ghi/link/","mode":"article","contentMarkdown":"","excerpt":"","extractionStatus":"failed","properties":{"title":"Why Rust?","source":"https://www.reddit.com/r/programming/comments/ghi/link/","created":"2025-03-04T05:06:07.000Z","author":"alice"},"tags":["clippings"]}
+}

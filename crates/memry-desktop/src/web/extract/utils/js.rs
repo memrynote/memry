@@ -297,11 +297,135 @@ fn is_decimal_literal(s: &str) -> bool {
     i == bytes.len()
 }
 
+/// `decodeURIComponent(s)`; `None` for the `URIError` of a malformed escape or UTF-8 sequence.
+pub fn decode_uri_component(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'%' {
+            let hex = bytes.get(i + 1..i + 3)?;
+            let value = u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok()?;
+            // `from_str_radix` accepts a leading `+`; a hex pair does not.
+            if !hex.iter().all(u8::is_ascii_hexdigit) {
+                return None;
+            }
+            out.push(value);
+            i += 3;
+        } else {
+            out.push(bytes[i]);
+            i += 1;
+        }
+    }
+    String::from_utf8(out).ok()
+}
+
+const URI_RESERVED_AND_HASH: &str = ";/?:@&=+$,#";
+
+/// `decodeURI(s)`: like `decodeURIComponent`, but an escape of a reserved character or `#` stays
+/// as written. `None` for the `URIError` of a malformed escape or UTF-8 sequence.
+pub fn decode_uri(s: &str) -> Option<String> {
+    let bytes = s.as_bytes();
+    let mut out = String::new();
+    let mut i = 0;
+    let hex_byte = |at: usize| -> Option<u8> {
+        let pair = bytes.get(at + 1..at + 3)?;
+        if bytes.get(at) != Some(&b'%') || !pair.iter().all(u8::is_ascii_hexdigit) {
+            return None;
+        }
+        u8::from_str_radix(std::str::from_utf8(pair).ok()?, 16).ok()
+    };
+    while i < bytes.len() {
+        if bytes[i] != b'%' {
+            let start = i;
+            while i < bytes.len() && bytes[i] != b'%' {
+                i += 1;
+            }
+            out.push_str(&s[start..i]);
+            continue;
+        }
+        let first = hex_byte(i)?;
+        if first < 0x80 {
+            let c = first as char;
+            if URI_RESERVED_AND_HASH.contains(c) {
+                out.push_str(&s[i..i + 3]);
+            } else {
+                out.push(c);
+            }
+            i += 3;
+            continue;
+        }
+        let n = first.leading_ones() as usize;
+        if !(2..=4).contains(&n) {
+            return None;
+        }
+        let mut sequence = vec![first];
+        for k in 1..n {
+            let b = hex_byte(i + 3 * k)?;
+            if b & 0xC0 != 0x80 {
+                return None;
+            }
+            sequence.push(b);
+        }
+        out.push_str(std::str::from_utf8(&sequence).ok()?);
+        i += 3 * n;
+    }
+    Some(out)
+}
+
+/// `encodeURI(s)`: everything but letters, digits, `-_.!~*'()` and the reserved set with `#`.
+pub fn encode_uri(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() || "-_.!~*'()".contains(c) || URI_RESERVED_AND_HASH.contains(c)
+        {
+            out.push(c);
+        } else {
+            let mut buf = [0u8; 4];
+            for b in c.encode_utf8(&mut buf).bytes() {
+                out.push_str(&format!("%{b:02X}"));
+            }
+        }
+    }
+    out
+}
+
+/// `encodeURIComponent(s)`: everything but letters, digits and `-_.!~*'()`.
+pub fn encode_uri_component(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for c in s.chars() {
+        if c.is_ascii_alphanumeric() || "-_.!~*'()".contains(c) {
+            out.push(c);
+        } else {
+            let mut buf = [0u8; 4];
+            for b in c.encode_utf8(&mut buf).bytes() {
+                out.push_str(&format!("%{b:02X}"));
+            }
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // Every expected value below was read from Node 24.
+
+    #[test]
+    fn uri_codecs_match_node() {
+        assert_eq!(decode_uri("a%20b").as_deref(), Some("a b"));
+        assert_eq!(decode_uri("%23x%2Fy").as_deref(), Some("%23x%2Fy"));
+        assert_eq!(decode_uri("caf%C3%A9").as_deref(), Some("café"));
+        assert_eq!(decode_uri("%E0%A4%A"), None);
+        assert_eq!(decode_uri("%zz"), None);
+        assert_eq!(encode_uri("a b#c"), "a%20b#c");
+        assert_eq!(encode_uri("é/ü?x=1&y=ü"), "%C3%A9/%C3%BC?x=1&y=%C3%BC");
+        assert_eq!(
+            encode_uri_component("é/ü?x=1&y=ü"),
+            "%C3%A9%2F%C3%BC%3Fx%3D1%26y%3D%C3%BC"
+        );
+    }
 
     #[test]
     fn trim_uses_the_js_whitespace_set() {
