@@ -86,12 +86,13 @@ one-class change reviewable.
 | `markdown-convert/layer-markers.json`   |                                 3243 | same                                        | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`    |                                 5116 | same                                        | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
 | `markdown-convert/layer-critic.json`    |                                 2944 | same                                        | same + Rust `markdown_layer_critic_vectors.rs`                                       |
+| `markdown-convert/seed-corpus.json`     |                                  250 | same                                        | same + Rust `markdown_seed_corpus_vectors.rs`                                        |
 | `markdown-convert/seed-doc.json`        |                                  739 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/roundtrip.json`       |                                  739 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/blocks.json`          |                                  800 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
 | `markdown-convert/serialize-doc.json`   |                                  499 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
 | `markdown-convert/replace-body.json`    |                                   44 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
-| **Total**                               | **31856 cases plus 6 fuzz families** |                                             |                                                                                      |
+| **Total**                               | **32106 cases plus 6 fuzz families** |                                             |                                                                                      |
 
 ### `markdown-convert/`
 
@@ -109,6 +110,8 @@ the contract). YAML values travel in the JSON spelling described in each file's
 `meta.yamlJsonEncoding`.
 
 `serialize.json` is `serializeBlocks`: 189 hand-written block lists and the 723 seeds of `memry-parse.json` serialized, markdown byte for byte; an oracle error means the converter answers null and the Rust must fail closed.
+
+`seed-corpus.json` is 250 bodies of the synthetic vault of `seed-bench-vault.ts` (a seeded generator, so the bytes are stable) through the same seed and read-back; a result equal to the input is omitted.
 
 `seed-doc.json`, `roundtrip.json`, `blocks.json`, `serialize-doc.json` and
 `replace-body.json` are the Y.Doc half (protocol 12.1.1 to 12.1.3): the document a seed

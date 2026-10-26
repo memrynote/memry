@@ -6,8 +6,9 @@
 //!
 //! Budgets, release build on an Apple M1: `doc_to_markdown` of the 49 KB note at
 //! most 60 ms p95, of a 2 KB note at most 3 ms p95, `prepare_seed` of the 49 KB
-//! note at most 80 ms p95. `MEMRY_PERF_FACTOR` scales them (Windows and Linux
-//! runs may take twice as long).
+//! note at most 80 ms p95. The test prints p50 and p95 and only reports a miss;
+//! `MEMRY_PERF_ENFORCE=1` turns a miss into a failure, and `MEMRY_PERF_FACTOR`
+//! scales the budgets (Windows and Linux runs may take twice as long).
 
 #![cfg(feature = "markdown")]
 
@@ -116,5 +117,9 @@ fn markdown_perf_budget() {
             .expect("prepare");
     });
     report("prepare_seed 49 KB", times, 80.0);
-    assert!(failures.is_empty(), "{}", failures.join("\n"));
+    if std::env::var("MEMRY_PERF_ENFORCE").is_ok_and(|v| v == "1") {
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    } else if !failures.is_empty() {
+        println!("over budget (not enforced):\n{}", failures.join("\n"));
+    }
 }

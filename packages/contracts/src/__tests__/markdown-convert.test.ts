@@ -58,6 +58,8 @@ const DIGESTS: Record<string, string> = {
     '2b4b5848352528f4e4ee885e0f793bd3df84854410c2b3242061afa05873b9f6',
   'markdown-convert/layer-critic.json':
     'ec32ce283c197c9c0091c804e69cb4e31eda5655971ac7b0cadf4801dfde0b79',
+  'markdown-convert/seed-corpus.json':
+    'bbd5a8ffc5a6e114e1d6ea4a380b4223d926225a134a4c0ac047dc4d52f0d4cd',
   'markdown-convert/seed-doc.json':
     '8ff27d31380dc486c77d8ca827cd90803b24d50210f189586c66e90f4e15f769',
   'markdown-convert/roundtrip.json':
@@ -91,6 +93,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/layer-markers.json': { fn: 3243 },
   'markdown-convert/layer-blocks.json': { fn: 5116 },
   'markdown-convert/layer-critic.json': { fn: 2944 },
+  'markdown-convert/seed-corpus.json': { 'corpus-note': 250 },
   'markdown-convert/seed-doc.json': { 'doc-seed': 739 },
   'markdown-convert/roundtrip.json': { 'doc-serialize': 739 },
   'markdown-convert/blocks.json': { 'doc-blocks': 800 },

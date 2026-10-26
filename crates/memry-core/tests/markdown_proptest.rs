@@ -105,8 +105,11 @@ fn top_block() -> BoxedStrategy<Vec<String>> {
 
 /// Lists nested up to `depth` levels. A quote or a math fence inside a list
 /// item is not stable after one pass in the TypeScript either (the oracle gives
-/// `> *em\n>* **strong**` for a list in a quote), and the differential run
-/// covers those shapes against the oracle, so they are top level here only.
+/// `> *em\n>* **strong**` for a list in a quote, checked with the oracle on
+/// 2026-10-26), so the fixed-point property cannot hold there for any correct
+/// port. The differential run covers those shapes against the oracle, so they
+/// are top level here only. Follow-up for the TypeScript owner: the quote
+/// serializer drops a closing `*` on a continued line.
 fn list_tree(depth: u32) -> BoxedStrategy<Vec<String>> {
     if depth == 0 {
         return simple_block();

@@ -17,6 +17,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
+import { seedCorpusCases } from './cases-corpus'
 import { memryParseCases } from './cases-parse'
 import { serializeCases } from './cases-serialize'
 import { blocksCases } from './fns/blocks'
@@ -120,6 +121,11 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
       path: 'replace-body.json',
       note: 'replaceDocBody of crdt-feed.ts (re-implemented over the exported converter functions because the original is coupled to the CRDT provider): large-file refusal, the unlessChangedFrom guard, the empty-body paragraph, and the side roots after the replace.',
       cases: replaceBodyCases()
+    },
+    {
+      path: 'seed-corpus.json',
+      note: 'The synthetic vault of seed-bench-vault.ts (generateBulkVault, seed 0x1848, every fourth note of 1000) seeded and read back as roundtrip.json does. expected.output holds the outcome, and markdown and canonical only where they differ from the input; an absent field means the converter answers the input unchanged.',
+      cases: seedCorpusCases()
     },
     {
       path: 'layer-text.json',
