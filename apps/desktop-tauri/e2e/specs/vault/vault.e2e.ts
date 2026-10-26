@@ -8,6 +8,7 @@ import { basename, join } from 'node:path'
 
 import { invokeTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
+import type { Page } from '../../harness/pw-compat/page'
 import { removeDir } from '../../harness/remove-dir'
 import { test, expect } from '../../harness/test'
 import { invoke, type SelectResponse, vaultList, vaultStatus } from '../../harness/vault-commands'
@@ -37,6 +38,16 @@ test('opens the registered vault at launch and lays out the core databases', asy
   expect(log).not.toMatch(/\sERROR\s/)
 })
 
+/**
+ * Windows will not delete a vault whose databases the app still has open, so close it first.
+ * A failure is logged and the removal below reports the real problem.
+ */
+async function closeVault(page: Page): Promise<void> {
+  await invoke(page, 'vault_close').catch((error: unknown) => {
+    console.warn('vault_close before cleanup failed', error)
+  })
+}
+
 test('creates a vault under a path with spaces and non-ASCII, and restores it after a restart', async ({
   app,
   page
@@ -59,6 +70,7 @@ test('creates a vault under a path with spaces and non-ASCII, and restores it af
     expect(real(status.path as string)).toBe(real(vaultPath))
     expect(readMainLog(app.dirs.logDir)).not.toMatch(/\sERROR\s/)
   } finally {
+    await closeVault(page)
     removeDir(join(parent, '..'))
   }
 })
@@ -167,6 +179,7 @@ test('opens the folder the dialog queue answers, and reports a cancelled picker'
     // The vault the cancel left alone is still open.
     expect(real((await vaultStatus(page)).path as string)).toBe(real(folder))
   } finally {
+    await closeVault(page)
     removeDir(parent)
   }
 })
