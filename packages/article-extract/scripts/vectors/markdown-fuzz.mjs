@@ -97,6 +97,17 @@ const PIECES = [
   '<div id="footnotes">',
   '<li id="fn:1">',
   '<wbr>',
+  // Math arrives as closed units: html5ever 0.40 and domino differ on block content inside
+  // unclosed foreign elements (`annotation-xml` is no scope boundary in html5ever, and `<table>`
+  // or `</p>` inside `mi` or `math` break out differently).
+  '<math><mi>x</mi></math>',
+  '<math display="block"><mfrac><mi>a</mi><mi>b</mi></mfrac></math>',
+  '<math data-latex="a_b"><mi>z</mi></math>',
+  '<math alttext="q"><mfrac><mi>a</mi><mi>b</mi></mfrac></math>',
+  '<span class="katex" data-latex="k"><span class="katex-mathml"><math><mi>k</mi></math></span></span>',
+  '<span class="mwe-math-element"><math><semantics><mi>x</mi><annotation encoding="application/x-tex">w</annotation></semantics></math></span>',
+  '<figure><img src="i.png"><figcaption>c <math><mi>m</mi></math> d</figcaption></figure>',
+  '<table class="ltx_equation"><tr><td><math alttext="a"><mi>a</mi></math></td></tr></table>',
   '<my-el>',
   '</my-el>',
   '<!-- c -->',
@@ -133,8 +144,8 @@ const PIECES = [
   '漢字'
 ]
 
-export function markdownFuzzVectors(count) {
-  const random = rng(0x3543d2)
+export function markdownFuzzVectors(count, seed = 0x3543d2) {
+  const random = rng(seed)
   return Array.from({ length: count }, () => {
     const length = 2 + Math.floor(random() * 28)
     let soup = ''

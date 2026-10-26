@@ -1,5 +1,4 @@
 {
   "html": "<body> <p>English with عربي and עברית inside, 123 numbers, and a <span dir=\"rtl\">right-to-left span (מקוטע)</span> in the middle.</p> <p dir=\"auto\">שלום world mixed ‮override‬ end.</p> <p>Emoji 👩👩👧👦 and flags 🇳🇴 and skin 👍🏽 and combining é (e + U+0301), Å (A + U+030A), and a zero width joiner here.</p> <p>Spaces: nbsp here, thin space, em space, ideographic　space, BOM inside.</p> </body>",
-  "math": false,
   "markdown": "English with عربي and עברית inside, 123 numbers, and a right-to-left span (מקוטע) in the middle.\n\nשלום world mixed ‮override‬ end.\n\nEmoji 👩👩👧👦 and flags 🇳🇴 and skin 👍🏽 and combining é (e + U+0301), Å (A + U+030A), and a zero width joiner here.\n\nSpaces: nbsp here, thin space, em space, ideographic　space, BOM inside."
 }

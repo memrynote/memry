@@ -38,6 +38,8 @@ import {
   urlProbes
 } from './vectors/probes.mjs'
 import { buildSelectors } from './vectors/selectors.mjs'
+import { mathmlCases, mathmlFuzzVectors, mathmlVector } from './vectors/mathml.mjs'
+import { mathmlTablesText, tablesTarget } from './vectors/mathml-tables.mjs'
 
 /** Every class, id and test attribute value of a page: what the partial selectors run on. */
 function attributeValues(html) {
@@ -180,6 +182,8 @@ function buildFiles() {
       partial: partialProbes(fixtures.flatMap(({ html }) => attributeValues(html)))
     })
   )
+  files.set('mathml-cases.json', format(mathmlCases.map(mathmlVector)))
+  files.set('mathml-fuzz.json', format(mathmlFuzzVectors(1000)))
   files.set('dom-fuzz.json', format(fuzzVectors(600)))
   files.set(
     'standardize-fuzz.json',
@@ -222,6 +226,13 @@ if (process.argv.includes('--check')) {
     console.error('run: pnpm --filter @memry/article-extract vectors')
     process.exit(1)
   }
+  const tables = mathmlTablesText()
+  if (!existsSync(tablesTarget) || readFileSync(tablesTarget, 'utf8') !== tables) {
+    console.error(
+      'mathml/tables.json differs from mathml-to-latex; run pnpm --filter @memry/article-extract vectors'
+    )
+    process.exit(1)
+  }
   console.log(`article-extract vectors are current (${files.size} files)`)
 } else {
   for (const name of committed) if (!files.has(name)) rmSync(join(vectorsDir, name))
@@ -230,5 +241,6 @@ if (process.argv.includes('--check')) {
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, content)
   }
+  writeFileSync(tablesTarget, mathmlTablesText())
   console.log(`wrote ${files.size} files to ${vectorsDir}`)
 }

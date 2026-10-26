@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://forum.example.com/t/best-way-to-back-up-notes/881","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body> <p>kestrel <time>2 days ago</time></p> <p>I keep my notes as plain markdown files. What is the least painful way to back them up off-site?</p> <p>pomelo</p> <div><p>Use an encrypted sync. Anything else is a chore you will skip.</p><ul><li>test restores</li> <li>keep two copies</li></ul></div> <p>anon</p> <p>+1 to the above.</p> <div><H3>Suggested</H3> <ul><li><a href=\"https://forum.example.com/t/1\">Sync conflicts</a></li></ul></div> </body>",
   "markdown": "kestrel 2 days ago\n\nI keep my notes as plain markdown files. What is the least painful way to back them up off-site?\n\npomelo\n\nUse an encrypted sync. Anything else is a chore you will skip.\n\n- test restores\n- keep two copies\n\nanon\n\n+1 to the above.\n\n### Suggested\n\n- [Sync conflicts](https://forum.example.com/t/1)",
   "raw": {"title":"Best way to back up notes?","author":"","published":"2 days ago","description":"","image":"","site":"","language":"","wordCount":49},

@@ -3242,6 +3242,7 @@ dependencies = [
  "rcgen",
  "regex",
  "reqwest",
+ "rusqlite",
  "rustls",
  "rusty-leveldb",
  "secret-service",

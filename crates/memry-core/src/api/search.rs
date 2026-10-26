@@ -117,11 +117,22 @@ impl Search {
     /// Built by [`crate::api::vault::Vault::search`], which holds the data
     /// handle and knows the directory the index belongs beside.
     pub(crate) fn over(data: Db, directory: &str) -> Result<Self, StorageError> {
+        Self::over_reporting(data, directory).map(|(search, _)| search)
+    }
+
+    /// [`Search::over`] plus the reason `index.db` was rebuilt, when it was.
+    pub(crate) fn over_reporting(
+        data: Db,
+        directory: &str,
+    ) -> Result<(Self, Option<String>), StorageError> {
         let opened = open_index(&PathBuf::from(directory).join("index.db"))?;
-        Ok(Self {
-            data,
-            index: opened.db,
-        })
+        Ok((
+            Self {
+                data,
+                index: opened.db,
+            },
+            opened.rebuild_reason,
+        ))
     }
 }
 

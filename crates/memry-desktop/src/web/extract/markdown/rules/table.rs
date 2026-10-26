@@ -60,6 +60,13 @@ fn format_row(cells: &[String], columns: usize) -> String {
 }
 
 pub fn table(dom: &mut Dom, node: NodeId, content: &str, _: &NodeInfo) -> String {
+    // Equation tables (arXiv, Wikipedia) hold their LaTeX in nested `math` elements.
+    if ["ltx_equation", "ltx_eqn_table", "numblk"]
+        .iter()
+        .any(|class| dom.class_contains(node, class))
+    {
+        return super::math::handle_nested_equations(dom, node);
+    }
     let has_nested_tables = !dom.query_names(node, &["table"]).is_empty();
     let direct_cells: Vec<NodeId> = dom
         .query_names(node, &["td", "th"])

@@ -1,5 +1,4 @@
 {
   "html": "<article> <p>The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.</p>       <p>Hidden on mobile, shown from the sm breakpoint.</p>  <p>The closing paragraph is visible again and wraps the post up with a final remark about what was left unseen.</p></article>",
-  "math": false,
   "markdown": "The visible introduction is short but real, and it sits above several blocks that a stylesheet or an attribute hides from view.\n\nHidden on mobile, shown from the sm breakpoint.\n\nThe closing paragraph is visible again and wraps the post up with a final remark about what was left unseen."
 }

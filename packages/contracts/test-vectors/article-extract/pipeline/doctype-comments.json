@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/legacy/page","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body>  <p>Legacy  text &amp; instruction.</p> <p>End.</p> </body>",
   "markdown": "Legacy text & instruction.\n\nEnd.",
   "raw": {"title":"Legacy page","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":5},

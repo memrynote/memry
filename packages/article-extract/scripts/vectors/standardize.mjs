@@ -4,8 +4,8 @@
 // element the content finder picks; `pipeline` runs the metadata block, the footnotes, the
 // callouts and the five removal steps of the default run first, as `parseInternal` orders them.
 //
-// `standardizeElements` converts math through two libraries (mathml-to-latex, temml) that later
-// stages port. Until then both throw here, as a failing converter does in Defuddle;
+// `standardizeElements` renders LaTeX to MathML through temml, which the next stage ports. Until
+// then temml throws here, as a failing converter does in Defuddle (the LaTeX stays as text);
 // `withDeferredRulesOff` is the patch to delete.
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
@@ -15,7 +15,6 @@ import { preparePage, removalSteps, removeMetadataBlockStep } from './removals.m
 const require = createRequire(join(dist, 'x.js'))
 const callouts = require('./elements/callouts.js')
 const footnotes = require('./elements/footnotes.js')
-const { MathMLToLaTeX } = require('mathml-to-latex')
 const temml = require('temml')
 const standardize = require('./standardize.js')
 
@@ -23,17 +22,17 @@ export const standardizeVariants = ['direct', 'pipeline']
 export { URL as standardizeUrl } from './removal-pages.mjs'
 const wellFormed = (value) => (typeof value === 'string' ? value.toWellFormed() : value)
 
-/** Runs `run` with both math converters throwing, as a failing converter does in Defuddle: MathML
- *  stays without LaTeX and LaTeX stays as text. */
+/** Runs `run` with temml throwing, as a failing converter does in Defuddle: LaTeX stays as text. */
 const fail = () => {
   throw new Error('deferred converter')
 }
 
 export function withDeferredRulesOff(run) {
-  const patches = [
-    [MathMLToLaTeX, 'convert'],
-    [temml, 'renderToString']
-  ].map(([target, key]) => [target, key, Object.getOwnPropertyDescriptor(target, key)])
+  const patches = [[temml, 'renderToString']].map(([target, key]) => [
+    target,
+    key,
+    Object.getOwnPropertyDescriptor(target, key)
+  ])
   for (const [target, key] of patches) Object.defineProperty(target, key, { value: fail })
   try {
     return run()

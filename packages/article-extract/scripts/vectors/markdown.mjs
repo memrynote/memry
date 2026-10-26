@@ -1,8 +1,5 @@
 // Markdown vectors: `createMarkdownContent` of `dist/markdown.js` (turndown 7.2.4 with
 // Defuddle's rules) and `buildFrontmatter` of `dist/frontmatter.js`.
-//
-// The math rules of `markdown.js` (stage 5) are not ported yet, so content that holds math
-// markup is flagged `math` and the Rust test does not compare it.
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { dist } from './probes.mjs'
@@ -11,14 +8,11 @@ const require = createRequire(join(dist, 'x.js'))
 const { createMarkdownContent } = require('./markdown.js')
 const { buildFrontmatter } = require('./frontmatter.js')
 
-const MATH = /<math|katex|mwe-math|ltx_eq|ltx_equation|class="[^"]*\bmath\b/i
-
 /** `createMarkdownContent(html)` as `toMarkdown` calls it, on well-formed text. */
 export function markdownVector(html) {
   const wellFormed = html.toWellFormed()
   return {
     html: wellFormed,
-    math: MATH.test(wellFormed),
     markdown: createMarkdownContent(wellFormed, '').toWellFormed()
   }
 }

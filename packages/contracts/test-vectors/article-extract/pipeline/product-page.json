@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://shop.example.com/p/steel-bottle-750","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body> <p>€24.00</p> <div><p>Double-walled stainless steel keeps drinks cold for 24 hours and hot for 12. Fits most cup holders. Dishwasher safe except the lid.</p><ul><li>750 ml</li> <li>BPA free</li> <li>Two-year warranty</li></ul></div> <H2>Reviews</H2> 5/5 <p>Keeps ice for a day.</p> </body>",
   "markdown": "€24.00\n\nDouble-walled stainless steel keeps drinks cold for 24 hours and hot for 12. Fits most cup holders. Dishwasher safe except the lid.\n\n- 750 ml\n- BPA free\n- Two-year warranty\n\n## Reviews\n\n5/5\n\nKeeps ice for a day.",
   "raw": {"title":"Steel Bottle 750 ml","author":"","published":"","description":"Double-walled, keeps drinks cold for 24 hours.","image":"https://shop.example.com/img/bottle.jpg","site":"Example Shop","language":"","wordCount":36},

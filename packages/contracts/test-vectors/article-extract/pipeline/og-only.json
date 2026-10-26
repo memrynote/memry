@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/share/7","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<main><p>The body is plain and carries no title of its own, so the title comes from the og tag. It has two sentences. Here is the second one.</p></main>",
   "markdown": "The body is plain and carries no title of its own, so the title comes from the og tag. It has two sentences. Here is the second one.",
   "raw": {"title":"Open Graph & friends","author":"Ola Nordmann","published":"2021-12-24","description":"Only og: tags describe this page.","image":"//cdn.example.com/og.png","site":"Example","language":"","wordCount":28},
