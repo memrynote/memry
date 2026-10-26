@@ -148,6 +148,7 @@ jobs:
       # session bus at all, where the reader must answer "missing" and create nothing.
       - name: Electron profile readers, live OS secrets (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 15
         run: |
           cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked -- -D warnings
           cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked --no-run

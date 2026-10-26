@@ -9,25 +9,52 @@
 //! report a declined or unanswered prompt, never an empty listing.
 #![cfg(all(feature = "live-os-secrets", target_os = "linux"))]
 
+use std::process::Command;
 use std::time::Duration;
 
-use memry_desktop::electron_import::secrets::{Guarded, KeytarSource, OsKeytar};
+use memry_desktop::electron_import::secrets::{Guarded, KeySourceError, KeytarSource, OsKeytar};
 
 #[test]
 fn a_cold_locked_keyring_is_never_listed_as_empty() {
     if !std::env::var("MEMRY_LIVE_LOCKED_KEYRING").is_ok_and(|v| v == "1") {
         return;
     }
-    // No prompter runs in CI and nobody answers on a desktop, so the unlock ends as a failure or
-    // a timeout; a listing that found the item would also be correct.
-    let listed = Guarded::with_timeout(OsKeytar, Duration::from_secs(10)).list();
-    if let Ok(items) = listed {
-        assert!(
+    // The keyring must really be locked, or the assertions below prove nothing.
+    let locked = Command::new("gdbus")
+        .args([
+            "call",
+            "--session",
+            "--dest",
+            "org.freedesktop.secrets",
+            "--object-path",
+            "/org/freedesktop/secrets/collection/login",
+            "--method",
+            "org.freedesktop.DBus.Properties.Get",
+            "org.freedesktop.Secret.Collection",
+            "Locked",
+        ])
+        .output()
+        .expect("gdbus is installed");
+    assert!(
+        String::from_utf8_lossy(&locked.stdout).contains("true"),
+        "the login collection is not locked: {locked:?}"
+    );
+    // No prompter runs in CI and nobody answers on a desktop, so the unlock ends as a declined
+    // prompt or a timeout; a listing that found the item would also be correct. Only an empty
+    // listing, or an error that is not about the prompt, is the defect.
+    match Guarded::with_timeout(OsKeytar, Duration::from_secs(10)).list() {
+        Ok(items) => assert!(
             items
                 .iter()
                 .any(|(service, account)| service == "com.memry.sync" && account == "master-key"),
             "a locked keyring listed {} items although it holds the keytar item",
             items.len()
-        );
+        ),
+        Err(KeySourceError::Denied) => {}
+        Err(KeySourceError::Failed(message)) => assert!(
+            message.contains("timed out") || message.contains("prompt"),
+            "unexpected failure: {message}"
+        ),
+        Err(other) => panic!("unexpected error: {other:?}"),
     }
 }
