@@ -64,9 +64,9 @@ const BLOCKS = [
   (r) => `<p class="read-time">${3 + Math.floor(r() * 9)} min read</p>`,
   (r) =>
     `<time datetime="2024-0${1 + Math.floor(r() * 9)}-1${Math.floor(r() * 9)}">March ${1 + Math.floor(r() * 27)}</time>`,
-  (r) =>
+  () =>
     `<div class="share-buttons"><a href="#">Share</a><a href="#">Tweet</a><button>Copy link</button></div>`,
-  (r) =>
+  () =>
     `<div class="newsletter"><h3>Subscribe</h3><form><input type="email"><button>Go</button></form></div>`,
   (r) =>
     `<aside class="related"><h3>Related</h3><ul><li><a href="/a">${words(r, 3)}</a></li><li><a href="/b">${words(r, 3)}</a></li></ul></aside>`,
@@ -74,9 +74,9 @@ const BLOCKS = [
   (r) => `<div style="display:none"><p>${sentence(r)}</p></div>`,
   (r) => `<div hidden>${sentence(r)}</div>`,
   (r) => `<div class="advertisement"><a href="/buy">Buy ${words(r, 2)} now</a></div>`,
-  (r) => `<nav><a href="/">Home</a> <a href="/about">About</a> <a href="/blog">Blog</a></nav>`,
+  () => `<nav><a href="/">Home</a> <a href="/about">About</a> <a href="/blog">Blog</a></nav>`,
   (r) => `<details><summary>${words(r, 2)}</summary><p>${sentence(r)}</p></details>`,
-  (r) => `<hr>`,
+  () => `<hr>`,
   (r) => `<p>${sentence(r)}<br>${sentence(r)}</p>`,
   (r) =>
     `<div class="callout" data-callout="note"><div class="callout-content"><p>${sentence(r)}</p></div></div>`,
