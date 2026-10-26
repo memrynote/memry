@@ -23,10 +23,18 @@ const FEED_FILES = [
   }
 ]
 
+// Each platform runs the commands of its production release job; the publish overrides go to the
+// last one, which runs electron-builder. Windows cannot use `build:win`: its `prebuild` runs
+// ensure-native.sh under Git bash, whose /d/a/... paths node cannot resolve (run 40388750063).
+// publish-release.yml builds Windows with `build:release` and `build-packaged-app.js --win --x64`,
+// which rebuilds the native modules itself.
 const PRODUCTION_BUILD = {
-  darwin: ['pnpm', ['--filter', '@memry/desktop', 'build:mac']],
-  win32: ['pnpm', ['--filter', '@memry/desktop', 'build:win']],
-  linux: ['pnpm', ['--filter', '@memry/desktop', 'build:linux']]
+  darwin: [['pnpm', ['--filter', '@memry/desktop', 'build:mac']]],
+  win32: [
+    ['pnpm', ['--filter', '@memry/desktop', 'build:release']],
+    ['node', ['apps/desktop/scripts/build-packaged-app.js', '--win', '--x64']]
+  ],
+  linux: [['pnpm', ['--filter', '@memry/desktop', 'build:linux']]]
 }
 
 /** Rewrites one constant in `source`; throws when nothing changed. */
@@ -100,9 +108,11 @@ export function build({ tag, feedRepo, keep = false, repoRoot = process.cwd() })
       writeFileSync(envFile, 'SYNC_SERVER_URL=https://sync.memrynote.com\n')
     }
     run('pnpm', ['install', '--frozen-lockfile'], { cwd: worktree })
-    const [command, args] = productionBuild
-    // pnpm appends these to the script's own electron-builder command.
-    run(command, [...args, ...publishOverrides(feedRepo)], { cwd: worktree })
+    productionBuild.forEach(([command, args], index) => {
+      const last = index === productionBuild.length - 1
+      // pnpm appends these to the script's own electron-builder command.
+      run(command, last ? [...args, ...publishOverrides(feedRepo)] : args, { cwd: worktree })
+    })
     console.log(
       `Electron rehearsal build of ${tag} is in ${path.join(worktree, 'apps/desktop/dist')}`
     )
