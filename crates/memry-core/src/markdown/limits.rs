@@ -13,6 +13,14 @@
 //! continuation) are not nesting and are not counted. Real notes nest a few
 //! levels; the caps are far above that and far below the depth at which a
 //! 2 MiB stack overflows in a debug build.
+//!
+//! The budget is shared: a quote or an HTML element costs one step and a list
+//! level two (the list and its item), so the limits in practice are about 97
+//! quotes, 98 elements and 48 list levels.
+//!
+//! Untrusted structure that is not markdown has its own cap at its recursion:
+//! YAML frontmatter (`frontmatter::value::MAX_YAML_DEPTH`) and a Yjs tree from a
+//! peer ([`fragment_too_deep`], checked before `replace_body` touches it).
 
 use yrs::{ReadTxn, XmlFragment, XmlFragmentRef, XmlOut};
 

@@ -7,7 +7,18 @@
 //! references (an alias `*a` loads as the same object) and writes them back as
 //! `&ref_0` / `*ref_0`; `Arc::ptr_eq` is that identity.
 
+use std::collections::HashMap;
 use std::sync::Arc;
+
+/// Levels of nesting a frontmatter value may have in the text (the loader's
+/// recursion, one frame set per level, aborts the process on a small stack
+/// well before the TypeScript's `RangeError`) and, through aliases, in the
+/// value. Real frontmatter nests two or three levels.
+pub const MAX_YAML_DEPTH: usize = 100;
+
+/// Deepest value the dumper writes: a loaded value is at most the text depth
+/// plus one alias subtree, so this admits every loaded value with room to spare.
+pub const MAX_YAML_DUMP_DEPTH: usize = 256;
 
 #[derive(Debug, Clone)]
 pub enum YamlValue {
@@ -40,6 +51,58 @@ impl PartialEq for YamlValue {
 }
 
 impl YamlValue {
+    /// Whether the value is more than `limit` levels deep. Iterative, so it is
+    /// safe on a value of any depth, and it visits a shared collection once
+    /// (an alias loads as the same `Arc`), so aliases cannot make it slow.
+    pub fn deeper_than(&self, limit: usize) -> bool {
+        fn children(value: &YamlValue) -> Vec<&YamlValue> {
+            match value {
+                YamlValue::Seq(items) => items.iter().collect(),
+                YamlValue::Map(map) => map.iter().map(|(_, v)| v).collect(),
+                _ => Vec::new(),
+            }
+        }
+        fn id(value: &YamlValue) -> Option<usize> {
+            match value {
+                YamlValue::Seq(items) => Some(Arc::as_ptr(items) as *const u8 as usize),
+                YamlValue::Map(map) => Some(Arc::as_ptr(map) as *const u8 as usize),
+                _ => None,
+            }
+        }
+        // Post-order with the height of every finished collection remembered.
+        let mut heights: HashMap<usize, usize> = HashMap::new();
+        let mut stack: Vec<(&YamlValue, Vec<&YamlValue>, usize)> = Vec::new();
+        if id(self).is_some() {
+            stack.push((self, children(self), 0));
+        }
+        while let Some(top) = stack.len().checked_sub(1) {
+            if let Some(child) = stack[top].1.pop() {
+                let Some(child_id) = id(child) else { continue };
+                if let Some(known) = heights.get(&child_id) {
+                    stack[top].2 = stack[top].2.max(*known);
+                } else {
+                    if stack.len() >= limit {
+                        return true;
+                    }
+                    stack.push((child, children(child), 0));
+                }
+                continue;
+            }
+            let (node, _, below) = stack.pop().expect("top exists");
+            let finished = below + 1;
+            if finished > limit {
+                return true;
+            }
+            if let Some(node_id) = id(node) {
+                heights.insert(node_id, finished);
+            }
+            if let Some(parent) = stack.last_mut() {
+                parent.2 = parent.2.max(finished);
+            }
+        }
+        false
+    }
+
     pub fn seq(items: Vec<YamlValue>) -> Self {
         Self::Seq(Arc::new(items))
     }

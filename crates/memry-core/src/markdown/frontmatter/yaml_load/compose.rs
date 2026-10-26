@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 
 use super::{
-    CONTEXT_BLOCK_IN, CONTEXT_BLOCK_OUT, CONTEXT_FLOW_IN, CONTEXT_FLOW_OUT, Res, State, is_eol,
-    is_flow_indicator, is_white_space, is_ws_or_eol,
+    CONTEXT_BLOCK_IN, CONTEXT_BLOCK_OUT, CONTEXT_FLOW_IN, CONTEXT_FLOW_OUT, MAX_YAML_DEPTH, Res,
+    State, is_eol, is_flow_indicator, is_white_space, is_ws_or_eol,
 };
 use crate::markdown::frontmatter::scalar::{IMPLICIT, Kind, Ty};
 use crate::markdown::frontmatter::value::YamlValue;
@@ -120,6 +120,9 @@ impl State {
         }
         let alias = self.read_name("alias node")?;
         match self.anchor_map.get(&alias) {
+            Some(value) if value.deeper_than(MAX_YAML_DEPTH) => {
+                return self.error("anchored value is nested too deeply");
+            }
             Some(value) => self.result = value.clone(),
             None => return self.error("unidentified alias"),
         }
@@ -127,7 +130,26 @@ impl State {
         Ok(true)
     }
 
+    /// `composeNode`. Every level of nesting in the text recurses through
+    /// here, so the depth is capped here: a stack overflow aborts the process.
     pub fn compose_node(
+        &mut self,
+        parent_indent: i64,
+        node_context: u8,
+        allow_to_seek: bool,
+        allow_compact: bool,
+    ) -> Res<bool> {
+        if self.depth >= MAX_YAML_DEPTH {
+            return self.error("collection is nested too deeply");
+        }
+        self.depth += 1;
+        let composed =
+            self.compose_node_at_depth(parent_indent, node_context, allow_to_seek, allow_compact);
+        self.depth -= 1;
+        composed
+    }
+
+    fn compose_node_at_depth(
         &mut self,
         parent_indent: i64,
         node_context: u8,

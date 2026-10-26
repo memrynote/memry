@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use std::fmt;
 
 use super::scalar::Kind;
+pub(super) use super::value::MAX_YAML_DEPTH;
 use super::value::YamlValue;
 
 pub(super) const NAN: u32 = u32::MAX;
@@ -73,6 +74,8 @@ pub(super) struct State {
     pub line_start: usize,
     pub line_indent: i64,
     pub total_merge_keys: usize,
+    /// Open `compose_node` calls; see [`MAX_YAML_DEPTH`].
+    pub depth: usize,
     pub documents: Vec<YamlValue>,
     pub version: Option<String>,
     pub tag_map: HashMap<String, String>,
@@ -237,6 +240,7 @@ pub fn safe_load(text: &str) -> Result<Option<YamlValue>, YamlError> {
         line_start: 0,
         line_indent: 0,
         total_merge_keys: 0,
+        depth: 0,
         documents: Vec::new(),
         version: None,
         tag_map: HashMap::new(),

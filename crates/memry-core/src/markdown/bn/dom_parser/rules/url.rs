@@ -91,11 +91,14 @@ fn is_drive(segment: &str) -> bool {
 /// only the percent-encoding is left to the crate (`http` URLs share the
 /// special-scheme path and query sets). `None` where the parse fails.
 fn reflect_file(rest: &str) -> Option<String> {
+    // A backslash is a slash up to the query or fragment and a plain
+    // character in them (`file:///a?\` keeps its `?\`).
     let rest: String = rest
         .chars()
         .filter(|c| !matches!(c, '\t' | '\n' | '\r'))
-        .map(|c| if c == '\\' { '/' } else { c })
         .collect();
+    let head_end = rest.find(['?', '#']).unwrap_or(rest.len());
+    let rest = rest[..head_end].replace('\\', "/") + &rest[head_end..];
     let (host, tail) = match rest.strip_prefix("//") {
         Some(after) => {
             let end = after.find(['/', '?', '#']).unwrap_or(after.len());

@@ -18,7 +18,7 @@ fuzz_target!(|raw: &str| {
 
     if let Ok(parsed) = parse_markdown_note(raw) {
         let content = parsed.content.clone();
-        let again = serialize_parsed_markdown_note(&parsed, &content, false);
+        let again = serialize_parsed_markdown_note(&parsed, &content, false).expect("unedited path never dumps");
         assert_eq!(again, raw, "an unedited note did not round-trip");
     }
 });

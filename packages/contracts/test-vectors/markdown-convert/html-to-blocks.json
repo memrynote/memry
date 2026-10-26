@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 213
+    "caseCount": 216
   },
   "cases": [
     {
@@ -5764,6 +5764,81 @@
               "showPreview": true,
               "textAlignment": "left",
               "url": "file:///usr/bin/x"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///a\\b?q\\r\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///a/b?q\\r"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-fragment",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///a?x#f\\g\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///a?x#f\\g"
+            },
+            "content": null,
+            "children": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "url-reflect/html-to-blocks/file-backslash-empty-query",
+      "op": "html-to-blocks",
+      "input": {
+        "html": "<img src=\"file:///a?\\\">"
+      },
+      "expected": {
+        "status": "ok",
+        "output": [
+          {
+            "type": "image",
+            "props": {
+              "backgroundColor": "default",
+              "caption": "",
+              "name": "",
+              "showPreview": true,
+              "textAlignment": "left",
+              "url": "file:///a?\\"
             },
             "content": null,
             "children": []

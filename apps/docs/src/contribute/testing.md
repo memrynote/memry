@@ -507,6 +507,7 @@ Stage 7 of #3522 (PR #3604), release builds on an Apple M-series Mac, `nightly-2
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------- |
 | Differential, seeds 0x1848, 6216, 8228, 20000 inputs each               | 0 mismatches                                                         |
 | URL differential against jsdom 27.4, seeds 6216, 8228 and 7, 50000 each | 0 mismatches over 150000 random URLs (after the fixes of this stage) |
+| URL differential, seed 0xC0FFEE99, 80000, with `\` after `?` and `#`    | 0 mismatches (1136 before the `file:` query fix)                     |
 | cargo-fuzz `convert_roundtrip`, 600 s                                   | 61447 runs, no crash                                                 |
 | cargo-fuzz `replace_body`, 600 s                                        | 35667 runs, no crash                                                 |
 | cargo-fuzz `frontmatter_split`, 600 s                                   | 2083487 runs, no crash                                               |

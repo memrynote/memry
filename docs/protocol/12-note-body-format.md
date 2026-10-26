@@ -194,9 +194,9 @@ A write is atomic. `seed_body` and `replace_body` run the whole conversion on a 
 document first and touch the live one only when that succeeded, so a call either succeeds or
 leaves the document, and so the vault file, exactly as it was
 (`crates/memry-core/src/markdown/convert/api.rs`, `crates/memry-core/tests/markdown_atomic.rs:1`).
-No input aborts the process: nesting deeper than 100 levels of quotes, list items or HTML elements, or 200 levels of links and emphasis inside each other, a table span above 100000 or a grid
-above 4 million cells, and a body in the large-file class all fail closed
-(`crates/memry-core/src/markdown/limits.rs:1`, `crates/memry-core/tests/markdown_depth.rs:1`).
+No input aborts the process. One budget of 100 steps covers quotes, list items and HTML elements, and a quote or an element costs one step while a list level costs two (the list and its item), so the real limits are about 97 nested quotes, about 98 nested elements and about 48 nested list levels; links and emphasis inside each other get 200 steps. A table span above 100000, a grid
+above 4 million cells, and a body in the large-file class also fail closed. The same holds beyond markdown: YAML frontmatter nested more than 100 levels deep, or an alias that would put a value deeper than that under another node, is a parse error; a value deeper than 256 levels is not dumped (an error, never a truncation); and an existing Yjs body tree deeper than 100 elements is refused by `replace_body` (`Failed`, the document untouched) and has no snapshot, markdown, blocks or repair
+(`crates/memry-core/src/markdown/limits.rs:1`, `crates/memry-core/tests/markdown_depth.rs:1`, `crates/memry-core/tests/markdown_depth_untrusted.rs:1`).
 
 A read can succeed and still lose content. `doc_to_markdown` and `serialize_note_body` return
 `unrepresentable` (node names the schema cannot build) and `dropped_elements` (elements
@@ -228,7 +228,7 @@ run in the nightly job (`.github/workflows/markdown-fuzz.yml`), with cargo-fuzz 
 URL reflection follows whatwg-url 15.1 (jsdom 27.4), which differs from the `url` crate on `^` in
 a path, `file:` hosts, drive letters, empty segments and UNC paths, opaque paths with a space before `?` or `#`,
 dot segments next to a drive letter, and non-special authorities. A seeded random differential against
-jsdom (`crates/memry-core/tests/markdown_url_differential.rs`, 150000 URLs, 0 mismatches) backs the
+jsdom (`crates/memry-core/tests/markdown_url_differential.rs`, 230000 URLs, 0 mismatches) backs the
 claim that the Rust answers what jsdom answers for `img.src`; a class it does not cover is not claimed. The Rust pins
 `url = "=2.5.8"` and `crates/memry-core/src/markdown/bn/dom_parser/rules/url.rs` adjusts it; the
 classes are `url-reflect/*` in `html-to-blocks.json`. Text that the tree builder foster-parents out of

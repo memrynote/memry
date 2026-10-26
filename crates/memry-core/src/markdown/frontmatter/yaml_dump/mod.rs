@@ -8,7 +8,8 @@ use std::sync::Arc;
 
 use super::js::{iso_string, number_to_string};
 use super::scalar::represent_binary;
-use super::value::{YamlMap, YamlValue};
+use super::value::{MAX_YAML_DUMP_DEPTH, YamlMap, YamlValue};
+use super::yaml_load::YamlError;
 use style::write_scalar;
 
 const BINARY_TAG: &str = "tag:yaml.org,2002:binary";
@@ -279,7 +280,17 @@ impl Dumper {
 }
 
 /// `safeDump(value)`: the document text, ending in a newline.
-pub fn safe_dump(value: &YamlValue) -> String {
+///
+/// Fails on a value nested deeper than [`MAX_YAML_DUMP_DEPTH`], which the
+/// recursive writer would turn into a stack overflow.
+pub fn safe_dump(value: &YamlValue) -> Result<String, YamlError> {
+    if value.deeper_than(MAX_YAML_DUMP_DEPTH) {
+        return Err(YamlError {
+            message: "value is nested too deeply to dump".to_owned(),
+            line: 0,
+            column: 0,
+        });
+    }
     let mut objects = Vec::new();
     let mut duplicate_indexes = Vec::new();
     inspect_node(value, &mut objects, &mut duplicate_indexes);
@@ -294,5 +305,5 @@ pub fn safe_dump(value: &YamlValue) -> String {
         tag: None,
     };
     dumper.write_node(0, value, true, true, false);
-    dumper.dump + "\n"
+    Ok(dumper.dump + "\n")
 }

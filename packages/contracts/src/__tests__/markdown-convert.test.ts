@@ -45,7 +45,7 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/md-to-html.json':
     '816cfb5da51485e40e08780863ff38e7a682cb25965204c529a2f3df833b3605',
   'markdown-convert/html-to-blocks.json':
-    'a178711869c739df8e7bc191b68e9fdd24bab1be5ea181ae9457fb867d3a22e5',
+    '37bf20a7918d2d044def932431fee277e2b2c597a716781ea8b2c5558203947a',
   'markdown-convert/parse.json': '0f4003e2d32f27cd1e839c0e652a21a3650bb2010bd37f7d9112eab789db4d0a',
   'markdown-convert/memry-parse.json':
     'bbd0c7d816af1a5af80553a3c2561b97ee4c4fdacfb2dd668deb0aa80a5e1f09',
@@ -88,7 +88,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
   'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 },
   'markdown-convert/md-to-html.json': { 'md-to-html': 833 },
-  'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 213 },
+  'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 216 },
   'markdown-convert/parse.json': { 'bn-parse': 833 },
   'markdown-convert/memry-parse.json': { 'memry-parse': 736 },
   'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 736 },

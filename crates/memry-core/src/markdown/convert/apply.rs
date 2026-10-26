@@ -140,7 +140,12 @@ pub fn empty_document_blocks() -> Vec<Json> {
 /// The fragment's XML string (`fragment.toJSON()`), which `unless_changed_from`
 /// of [`replace_doc_body`] compares.
 pub fn fragment_snapshot<T: ReadTxn>(txn: &T, fragment: &str) -> Option<String> {
-    txn.get_xml_fragment(fragment).map(|f| f.get_string(txn))
+    let fragment = txn.get_xml_fragment(fragment)?;
+    // `get_string` recurses once per level; a deeper tree has no snapshot.
+    if crate::markdown::limits::fragment_too_deep(txn, &fragment) {
+        return None;
+    }
+    Some(fragment.get_string(txn))
 }
 
 /// `replaceDocBody` over the converter: swap a note's body for new markdown in
@@ -180,6 +185,11 @@ pub fn replace_doc_body(
         return ReplaceOutcome::Failed;
     };
     let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
+    // A peer can send a tree deeper than the stack: `get_string` and
+    // `remove_range` both recurse into it, so it is refused before either runs.
+    if crate::markdown::limits::fragment_too_deep(&*txn, &fragment) {
+        return ReplaceOutcome::Failed;
+    }
     if let Some(expected) = unless_changed_from
         && fragment.get_string(&*txn) != expected
     {
