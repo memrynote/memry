@@ -24,6 +24,10 @@ pub struct TableSalvage {
     /// Set when reading stopped early: every row before it was copied, the rest
     /// of the table lay behind damage.
     pub read_error: Option<String>,
+    /// Set when part of the table was not carried over because this build's schema has
+    /// no place for it: the whole table, or columns of the damaged file. Those rows or
+    /// values exist only in the quarantine.
+    pub skipped: Option<String>,
 }
 
 /// A failure that retrying later can cure, as opposed to damage in the file.
@@ -107,8 +111,8 @@ fn columns(conn: &Connection, table: &str) -> rusqlite::Result<Vec<String>> {
     stmt.query_map([], |row| row.get(0))?.collect()
 }
 
-/// `None` when the table does not exist in the fresh schema (a concept a later
-/// build removed, or a table this build never had).
+/// A table or column the fresh schema lacks is not copied and is recorded in
+/// [`TableSalvage::skipped`].
 pub(crate) fn copy_table(
     old: &Connection,
     fresh: &Connection,
@@ -120,6 +124,7 @@ pub(crate) fn copy_table(
         already_present: 0,
         rejected: 0,
         read_error: None,
+        skipped: None,
     };
     let fresh_columns: HashSet<String> = match columns(fresh, table) {
         Ok(found) => found.into_iter().collect(),
@@ -133,13 +138,20 @@ pub(crate) fn copy_table(
         }
     };
     if fresh_columns.is_empty() {
-        return Ok(None);
+        // Not carried over, and said so: a silent skip would let a prune take the only copy.
+        report.skipped = Some("table does not exist in this build".to_owned());
+        return Ok(Some(report));
     }
     let shared: Vec<String> = match columns(old, table) {
-        Ok(old_columns) => old_columns
-            .into_iter()
-            .filter(|column| fresh_columns.contains(column))
-            .collect(),
+        Ok(old_columns) => {
+            let (shared, dropped): (Vec<String>, Vec<String>) = old_columns
+                .into_iter()
+                .partition(|column| fresh_columns.contains(column));
+            if !dropped.is_empty() {
+                report.skipped = Some(format!("columns not in this build: {}", dropped.join(", ")));
+            }
+            shared
+        }
         Err(err) if !is_damage(&err) && is_transient(&err) => {
             return Err(transient("read the quarantined schema", &err));
         }
@@ -250,5 +262,31 @@ mod tests {
             })
             .expect("row");
         assert_eq!(live, "live", "a live row is never overwritten");
+    }
+
+    #[test]
+    fn a_table_or_column_this_build_lacks_is_recorded_not_skipped_silently() {
+        let old = Connection::open_in_memory().expect("old");
+        let fresh = Connection::open_in_memory().expect("fresh");
+        old.execute_batch(
+            "CREATE TABLE kept (id TEXT PRIMARY KEY, extra TEXT); INSERT INTO kept VALUES ('a', 'x');
+             CREATE TABLE gone (id TEXT PRIMARY KEY); INSERT INTO gone VALUES ('g');",
+        )
+        .expect("old");
+        fresh
+            .execute_batch("CREATE TABLE kept (id TEXT PRIMARY KEY)")
+            .expect("fresh");
+        let kept = copy_table(&old, &fresh, "kept")
+            .expect("ok")
+            .expect("reported");
+        assert_eq!(kept.copied, 1);
+        assert_eq!(
+            kept.skipped.as_deref(),
+            Some("columns not in this build: extra")
+        );
+        let gone = copy_table(&old, &fresh, "gone")
+            .expect("ok")
+            .expect("reported");
+        assert!(gone.skipped.is_some());
     }
 }

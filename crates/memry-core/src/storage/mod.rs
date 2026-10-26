@@ -25,8 +25,10 @@ pub(crate) mod pool;
 pub mod pragmas;
 pub(crate) mod quarantine;
 pub mod recovery;
+pub mod recovery_prune;
 pub mod repositories;
 mod salvage;
+pub mod vault_identity;
 
 use std::path::Path;
 
