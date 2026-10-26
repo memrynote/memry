@@ -4,7 +4,7 @@
 
 mod dedupe;
 mod format;
-mod localtime;
+pub mod localtime;
 mod rotate;
 
 use std::io;

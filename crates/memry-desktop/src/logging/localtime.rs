@@ -64,8 +64,7 @@ pub fn now() -> Stamp {
 }
 
 /// UTC civil time, the fallback when the OS cannot answer.
-#[cfg(unix)]
-fn utc(since_epoch: std::time::Duration) -> Stamp {
+pub fn utc(since_epoch: std::time::Duration) -> Stamp {
     let secs = since_epoch.as_secs();
     let days = (secs / 86_400) as i64;
     let rem = secs % 86_400;
@@ -90,6 +89,39 @@ fn utc(since_epoch: std::time::Duration) -> Stamp {
     }
 }
 
+/// Days since 1970-01-01 of a civil date (Howard Hinnant).
+pub fn days_from_civil(year: i32, month: u32, day: u32) -> i64 {
+    let y = i64::from(year) - i64::from(month <= 2);
+    let era = y.div_euclid(400);
+    let yoe = y.rem_euclid(400);
+    let mp = (i64::from(month) + 9) % 12;
+    let doy = (153 * mp + 2) / 5 + i64::from(day) - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+impl Stamp {
+    /// Whole minutes since the epoch of this civil time, read as if it were UTC.
+    pub fn epoch_minutes(&self) -> i64 {
+        days_from_civil(self.year, self.month, self.day) * 1_440
+            + i64::from(self.hour) * 60
+            + i64::from(self.minute)
+    }
+}
+
+/// `Date.prototype.getTimezoneOffset()`: minutes the local clock is **behind** UTC, so UTC+2
+/// is -120.
+pub fn timezone_offset_minutes() -> i32 {
+    let local = now();
+    let since_epoch = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    let offset = utc(since_epoch).epoch_minutes() - local.epoch_minutes();
+    // A clock tick between the two reads can move the difference by one minute; the real
+    // offsets are multiples of 15.
+    ((offset + 7).div_euclid(15) * 15).clamp(-840, 840) as i32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -106,6 +138,15 @@ mod tests {
             millis: 7,
         };
         assert_eq!(stamp.render(), "2026-03-09 04:05:06.007");
+    }
+
+    #[test]
+    fn the_offset_is_a_quarter_hour_multiple_in_range() {
+        let offset = timezone_offset_minutes();
+        assert_eq!(offset % 15, 0);
+        assert!((-840..=840).contains(&offset));
+        assert_eq!(days_from_civil(1970, 1, 1), 0);
+        assert_eq!(days_from_civil(2000, 3, 1), 11_017);
     }
 
     #[test]

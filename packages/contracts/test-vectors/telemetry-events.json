@@ -1,0 +1,857 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "telemetry-events",
+    "implementation": "packages/contracts/src/telemetry-api.ts"
+  },
+  "eventNames": [
+    "app_started",
+    "app_backgrounded",
+    "app_active_heartbeat",
+    "app_launch_phase_completed",
+    "app_log_recorded",
+    "onboarding_started",
+    "onboarding_completed",
+    "vault_created",
+    "vault_opened",
+    "page_viewed",
+    "note_created",
+    "note_opened",
+    "note_updated",
+    "note_deleted",
+    "journal_opened",
+    "journal_updated",
+    "task_created",
+    "task_completed",
+    "task_reopened",
+    "project_created",
+    "inbox_captured",
+    "inbox_filed",
+    "inbox_archived",
+    "inbox_snoozed",
+    "search_opened",
+    "search_performed",
+    "search_result_opened",
+    "calendar_event_created",
+    "calendar_event_updated",
+    "calendar_google_connected",
+    "calendar_google_sync_completed",
+    "readwise_connected",
+    "readwise_sync_completed",
+    "graph_opened",
+    "setting_changed",
+    "sync_enabled",
+    "sync_run_completed",
+    "sync_error",
+    "voice_recording_completed",
+    "transcription_completed",
+    "ai_action_completed",
+    "agent_chat_started",
+    "agent_chat_message_sent",
+    "command_palette_opened",
+    "app_update_installed",
+    "app_error_seen",
+    "app_crashed",
+    "canvas_sync_conflict_copy",
+    "canvas_too_large",
+    "sync_skipped_unknown_type",
+    "canvas_asset_uploaded",
+    "canvas_asset_dedup_hit",
+    "canvas_asset_gc_reaped",
+    "canvas_created",
+    "canvas_opened",
+    "canvas_deleted",
+    "canvas_card_added",
+    "project_opened",
+    "project_updated",
+    "project_archived",
+    "project_deleted",
+    "project_item_linked",
+    "tag_created",
+    "tag_renamed",
+    "tag_deleted",
+    "tag_merged",
+    "tag_category_created",
+    "task_updated",
+    "task_deleted",
+    "calendar_event_deleted",
+    "calendar_google_disconnected",
+    "readwise_disconnected",
+    "note_imported",
+    "note_exported",
+    "import_completed",
+    "deep_link_opened",
+    "home_board_customized",
+    "reminder_created",
+    "reminder_deleted",
+    "sync_bootstrap"
+  ],
+  "surfaces": [
+    "app",
+    "home",
+    "onboarding",
+    "vault",
+    "notes",
+    "journal",
+    "tasks",
+    "inbox",
+    "calendar",
+    "search",
+    "graph",
+    "settings",
+    "sync",
+    "ai",
+    "voice",
+    "updater",
+    "canvas",
+    "projects",
+    "tags"
+  ],
+  "results": [
+    "success",
+    "failed",
+    "canceled",
+    "skipped"
+  ],
+  "dimensionKeys": [
+    "capture_type",
+    "changed_fields",
+    "decision",
+    "filed_action",
+    "format",
+    "from_version",
+    "itemType",
+    "log_action",
+    "note_bucket",
+    "prior_app_version",
+    "result_bucket",
+    "setting",
+    "size_bucket",
+    "skip_reason",
+    "target",
+    "target_app_version",
+    "tool",
+    "transport",
+    "value"
+  ],
+  "dimensions": [
+    {
+      "input": null,
+      "expected": null
+    },
+    {
+      "input": {},
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": "general.theme"
+      },
+      "expected": {
+        "setting": "general.theme"
+      }
+    },
+    {
+      "input": {
+        "setting": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "expected": {
+        "setting": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    {
+      "input": {
+        "setting": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": "a/b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": "a@b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": "https://x.test"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": "123e4567-e89b-12d3-a456-426614174000"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": ""
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "unknown_key": "ok"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "distinct_id": "x"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "$set": "x"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "ip": "1.2.3.4"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "changed_fields": "a,b"
+      },
+      "expected": {
+        "changed_fields": "a,b"
+      }
+    },
+    {
+      "input": {
+        "capture_type": "url"
+      },
+      "expected": {
+        "capture_type": "url"
+      }
+    },
+    {
+      "input": {
+        "decision": "keep"
+      },
+      "expected": {
+        "decision": "keep"
+      }
+    },
+    {
+      "input": {
+        "filed_action": "note"
+      },
+      "expected": {
+        "filed_action": "note"
+      }
+    },
+    {
+      "input": {
+        "format": "md"
+      },
+      "expected": {
+        "format": "md"
+      }
+    },
+    {
+      "input": {
+        "from_version": "1.0.0"
+      },
+      "expected": {
+        "from_version": "1.0.0"
+      }
+    },
+    {
+      "input": {
+        "itemType": "note"
+      },
+      "expected": {
+        "itemType": "note"
+      }
+    },
+    {
+      "input": {
+        "log_action": "group_corrupted_reset"
+      },
+      "expected": {
+        "log_action": "group_corrupted_reset"
+      }
+    },
+    {
+      "input": {
+        "note_bucket": "10-99"
+      },
+      "expected": {
+        "note_bucket": "10-99"
+      }
+    },
+    {
+      "input": {
+        "prior_app_version": "1.2.3"
+      },
+      "expected": {
+        "prior_app_version": "1.2.3"
+      }
+    },
+    {
+      "input": {
+        "result_bucket": "many"
+      },
+      "expected": {
+        "result_bucket": "many"
+      }
+    },
+    {
+      "input": {
+        "size_bucket": "small"
+      },
+      "expected": {
+        "size_bucket": "small"
+      }
+    },
+    {
+      "input": {
+        "skip_reason": "offline"
+      },
+      "expected": {
+        "skip_reason": "offline"
+      }
+    },
+    {
+      "input": {
+        "target": "main"
+      },
+      "expected": {
+        "target": "main"
+      }
+    },
+    {
+      "input": {
+        "target_app_version": "2.0.0"
+      },
+      "expected": {
+        "target_app_version": "2.0.0"
+      }
+    },
+    {
+      "input": {
+        "tool": "search"
+      },
+      "expected": {
+        "tool": "search"
+      }
+    },
+    {
+      "input": {
+        "transport": "http"
+      },
+      "expected": {
+        "transport": "http"
+      }
+    },
+    {
+      "input": {
+        "value": "42"
+      },
+      "expected": {
+        "value": "42"
+      }
+    },
+    {
+      "input": {
+        "a_unknown": "x",
+        "setting": "ok"
+      },
+      "expected": {
+        "setting": "ok"
+      }
+    },
+    {
+      "input": {
+        "setting": "a/b",
+        "value": "fine"
+      },
+      "expected": {
+        "value": "fine"
+      }
+    },
+    {
+      "input": {
+        "capture_type": "x@y",
+        "format": "md"
+      },
+      "expected": {
+        "format": "md"
+      }
+    },
+    {
+      "input": {
+        "distinct_id": "x",
+        "setting": "ok"
+      },
+      "expected": {
+        "setting": "ok"
+      }
+    },
+    {
+      "input": {
+        "setting": "日本語"
+      },
+      "expected": {
+        "setting": "日本語"
+      }
+    },
+    {
+      "input": {
+        "setting": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": {
+        "setting": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      }
+    },
+    {
+      "input": {
+        "setting": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": "line\nbreak"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "setting": " "
+      },
+      "expected": {
+        "setting": " "
+      }
+    },
+    {
+      "input": {
+        "capture_type": "ok"
+      },
+      "expected": {
+        "capture_type": "ok"
+      }
+    },
+    {
+      "input": {
+        "changed_fields": "ok"
+      },
+      "expected": {
+        "changed_fields": "ok"
+      }
+    },
+    {
+      "input": {
+        "decision": "ok"
+      },
+      "expected": {
+        "decision": "ok"
+      }
+    },
+    {
+      "input": {
+        "filed_action": "ok"
+      },
+      "expected": {
+        "filed_action": "ok"
+      }
+    },
+    {
+      "input": {
+        "format": "ok"
+      },
+      "expected": {
+        "format": "ok"
+      }
+    },
+    {
+      "input": {
+        "from_version": "ok"
+      },
+      "expected": {
+        "from_version": "ok"
+      }
+    },
+    {
+      "input": {
+        "itemType": "ok"
+      },
+      "expected": {
+        "itemType": "ok"
+      }
+    },
+    {
+      "input": {
+        "log_action": "ok"
+      },
+      "expected": {
+        "log_action": "ok"
+      }
+    },
+    {
+      "input": {
+        "note_bucket": "ok"
+      },
+      "expected": {
+        "note_bucket": "ok"
+      }
+    },
+    {
+      "input": {
+        "prior_app_version": "ok"
+      },
+      "expected": {
+        "prior_app_version": "ok"
+      }
+    },
+    {
+      "input": {
+        "result_bucket": "ok"
+      },
+      "expected": {
+        "result_bucket": "ok"
+      }
+    },
+    {
+      "input": {
+        "setting": "ok"
+      },
+      "expected": {
+        "setting": "ok"
+      }
+    },
+    {
+      "input": {
+        "size_bucket": "ok"
+      },
+      "expected": {
+        "size_bucket": "ok"
+      }
+    },
+    {
+      "input": {
+        "skip_reason": "ok"
+      },
+      "expected": {
+        "skip_reason": "ok"
+      }
+    },
+    {
+      "input": {
+        "target": "ok"
+      },
+      "expected": {
+        "target": "ok"
+      }
+    },
+    {
+      "input": {
+        "target_app_version": "ok"
+      },
+      "expected": {
+        "target_app_version": "ok"
+      }
+    },
+    {
+      "input": {
+        "tool": "ok"
+      },
+      "expected": {
+        "tool": "ok"
+      }
+    },
+    {
+      "input": {
+        "transport": "ok"
+      },
+      "expected": {
+        "transport": "ok"
+      }
+    },
+    {
+      "input": {
+        "value": "ok"
+      },
+      "expected": {
+        "value": "ok"
+      }
+    },
+    {
+      "input": {
+        "capture_type": "a/b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "changed_fields": "a/b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "decision": "a/b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "filed_action": "a/b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "format": "a/b"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "from_version": "a/b"
+      },
+      "expected": null
+    }
+  ],
+  "failures": [
+    {
+      "input": null,
+      "expected": null
+    },
+    {
+      "input": {},
+      "expected": {}
+    },
+    {
+      "input": {
+        "httpStatus": 500
+      },
+      "expected": {
+        "httpStatus": 500
+      }
+    },
+    {
+      "input": {
+        "httpStatus": 99
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "httpStatus": 600
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "httpStatus": 404.5
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "httpStatus": "500"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "serverCode": "VALIDATION_ERROR"
+      },
+      "expected": {
+        "serverCode": "VALIDATION_ERROR"
+      }
+    },
+    {
+      "input": {
+        "serverCode": "lowercase"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "serverCode": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expected": {
+        "serverCode": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      }
+    },
+    {
+      "input": {
+        "serverCode": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "serverCode": ""
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "retryable": true
+      },
+      "expected": {
+        "retryable": true
+      }
+    },
+    {
+      "input": {
+        "retryable": "yes"
+      },
+      "expected": null
+    },
+    {
+      "input": {
+        "httpStatus": 503,
+        "serverCode": "STORAGE_QUOTA_EXCEEDED",
+        "retryable": false
+      },
+      "expected": {
+        "httpStatus": 503,
+        "serverCode": "STORAGE_QUOTA_EXCEEDED",
+        "retryable": false
+      }
+    },
+    {
+      "input": {
+        "httpStatus": 0,
+        "serverCode": "X",
+        "retryable": true
+      },
+      "expected": {
+        "serverCode": "X",
+        "retryable": true
+      }
+    },
+    {
+      "input": {
+        "httpStatus": 200,
+        "serverCode": 5,
+        "retryable": false
+      },
+      "expected": {
+        "httpStatus": 200,
+        "retryable": false
+      }
+    }
+  ],
+  "tokens": [
+    {
+      "input": "plain",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "plain"
+    },
+    {
+      "input": "with space",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "with_space"
+    },
+    {
+      "input": "a/b",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "a_b"
+    },
+    {
+      "input": "a@b.c",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "a_b.c"
+    },
+    {
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    {
+      "input": "",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "fb"
+    },
+    {
+      "input": "ok-1_2.3:4",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "ok-1_2.3:4"
+    },
+    {
+      "input": "über",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "_ber"
+    },
+    {
+      "input": "😀",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "__"
+    },
+    {
+      "input": "Err or",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "Err_or"
+    },
+    {
+      "input": 42,
+      "inputKind": "number",
+      "fallback": "fb",
+      "expected": "42"
+    },
+    {
+      "input": true,
+      "inputKind": "boolean",
+      "fallback": "fb",
+      "expected": "true"
+    },
+    {
+      "input": null,
+      "inputKind": "null",
+      "fallback": "fb",
+      "expected": "fb"
+    },
+    {
+      "input": null,
+      "inputKind": "undefined",
+      "fallback": "fb",
+      "expected": "fb"
+    },
+    {
+      "input": {},
+      "inputKind": "object",
+      "fallback": "fb",
+      "expected": "fb"
+    },
+    {
+      "input": "://",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": ":__"
+    },
+    {
+      "input": "\\",
+      "inputKind": "string",
+      "fallback": "fb",
+      "expected": "_"
+    }
+  ]
+}
