@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://en.wikipedia.org/wiki/Rust_(programming_language)","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://en.wikipedia.org/wiki/Rust_(programming_language)","mode":"article","contentMarkdown":"**Rust** is a general-purpose programming language emphasizing performance, type safety, and concurrency. It enforces memory safety without a garbage collector.\n\n## History\n\nRust began as a personal project of Graydon Hoare in 2006. Mozilla sponsored it from 2009 and announced it in 2010. The first stable release came in 2015.\n\n## Syntax\n\nThe syntax is similar to C and C++.\n\n```\nfn main() { println!(\"hi\"); }\n```","excerpt":"**Rust** is a general-purpose programming language emphasizing performance, type safety, and concurrency. It enforces memory safety without a garbage collector.\n\n## History\n\nRust began as a personal p","extractionStatus":"partial","properties":{"title":"Rust (programming language)","source":"https://en.wikipedia.org/wiki/Rust_(programming_language)","created":"2025-03-04T05:06:07.000Z","author":"Wikipedia"},"tags":["clippings"]},
+  "raw": {"title":"Rust (programming language)","author":"Wikipedia","published":"","description":"","image":"","site":"Wikipedia","language":"en","wordCount":63,"schemaOrgData":"[]","extractorType":"wikipedia"},
+  "requests": []
+}

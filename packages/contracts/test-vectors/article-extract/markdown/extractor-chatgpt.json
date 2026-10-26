@@ -1,0 +1,4 @@
+{
+  "html": "<article><p>A lifetime names a scope.<a href=\"https://doc.rust-lang.org/book/ch10-03.html#:~:text=lifetimes,syntax\">Rust Book</a> Also see <a href=\"https://www.example.com/x\">Ex</a> and again <a href=\"https://doc.rust-lang.org/book/ch10-03.html#:~:text=lifetimes,syntax\">Rust Book</a>.</p><p>tooltip</p></article>",
+  "markdown": "A lifetime names a scope.[Rust Book](https://doc.rust-lang.org/book/ch10-03.html#:~:text=lifetimes,syntax) Also see [Ex](https://www.example.com/x) and again [Rust Book](https://doc.rust-lang.org/book/ch10-03.html#:~:text=lifetimes,syntax).\n\ntooltip"
+}

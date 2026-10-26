@@ -1,0 +1,4 @@
+{
+  "html": "<body><div><a>Why Rust?</a><p>I am <b>curious</b> about it.</p></div><p>12 points</p> <p>Safety.</p><p>3 points</p> <p>And speed.</p><p>No permalink</p></body>",
+  "markdown": "Why Rust?\n\nI am **curious** about it.\n\n12 points\n\nSafety.\n\n3 points\n\nAnd speed.\n\nNo permalink"
+}

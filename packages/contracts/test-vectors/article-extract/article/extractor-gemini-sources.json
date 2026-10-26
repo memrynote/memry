@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://gemini.google.com/app/778","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://gemini.google.com/app/778","mode":"article","contentMarkdown":"Sources?\n\nSee sources.\n\n[example.comS](https://example.com/s)","excerpt":"Sources?\n\nSee sources.\n\n[example.comS](https://example.com/s)","extractionStatus":"partial","properties":{"title":"Gemini","source":"https://gemini.google.com/app/778","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Gemini","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":5,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

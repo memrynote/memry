@@ -35,6 +35,8 @@ mod wikipedia;
 mod x_article;
 mod x_oembed;
 mod youtube;
+mod youtube_data;
+mod youtube_group;
 
 use std::sync::LazyLock;
 
@@ -238,9 +240,12 @@ pub fn extractor_names() -> Vec<&'static str> {
     MAPPINGS.iter().map(|(_, name, _)| *name).collect()
 }
 
+/// A registered extractor's type name and instance.
+pub type Found = (&'static str, Box<dyn Extractor>);
+
 /// `ExtractorRegistry.findByPredicate`: any error, from the URL parse to a constructor or a
 /// predicate, ends the search with no extractor (JS logs it).
-pub fn find_extractor(cx: &mut Cx, find: Find) -> Option<(&'static str, Box<dyn Extractor>)> {
+pub fn find_extractor(cx: &mut Cx, find: Find) -> Option<Found> {
     match search(cx, find) {
         Ok(found) => found,
         Err(error) => {
@@ -250,10 +255,7 @@ pub fn find_extractor(cx: &mut Cx, find: Find) -> Option<(&'static str, Box<dyn 
     }
 }
 
-fn search(
-    cx: &mut Cx,
-    find: Find,
-) -> Result<Option<(&'static str, Box<dyn Extractor>)>, ExtractError> {
+fn search(cx: &mut Cx, find: Find) -> Result<Option<Found>, ExtractError> {
     let url = cx.url.to_string();
     let parsed = Url::parse(&url).map_err(|e| ExtractError::Js(format!("Invalid URL: {e}")))?;
     let domain = parsed.host_str().unwrap_or_default().to_string();

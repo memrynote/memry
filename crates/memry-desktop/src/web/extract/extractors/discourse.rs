@@ -136,7 +136,7 @@ impl Extractor for DiscourseExtractor {
                 content: post_content(cx, post)?,
                 date: post_date(cx, post)?,
                 url: Some(permalink(cx, post)?).filter(|u| !u.is_empty()),
-                score: Some(format!("{likes} likes")).filter(|_| !likes.is_empty()),
+                score: (!likes.is_empty()).then(|| format!("{likes} likes")),
                 depth: Some(0.0),
             });
         }

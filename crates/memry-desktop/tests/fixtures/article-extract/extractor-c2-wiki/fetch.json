@@ -1,0 +1,8 @@
+[
+  {
+    "method": "GET",
+    "url": "https://c2.com/wiki/remodel/pages/HelloWorldProgram",
+    "status": 200,
+    "text": "{\"text\":\"Welcome to the wiki. ''Italic'' and '''bold''' and a link http://example.com/page, and an image https://example.com/pic.png.\\\\\\ncontinued line\\n\\n----\\n*bullet one\\n**nested bullet\\n\\t* tab bullet\\n\\t1. numbered\\n\\tTerm:\\tdefinition here\\n    preformatted code\\n\\nPlain again javascript:alert(1) and mailto:me@example.com.\\n\",\"date\":\"Jan 5, 2020 <x>\"}"
+  }
+]

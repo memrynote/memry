@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://www.threads.net/@alice/post/Cregion","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://www.threads.net/@alice/post/Cregion","mode":"article","contentMarkdown":"Server rendered post\n\n> **@alice**\n> \n> t\n> \n> [https://www.threads.com/@alice/post/Cregion](https://www.threads.com/@alice/post/Cregion)\n\n---\n\n## Comments\n\n> **@bob** ·\n> \n> Reply \\<one>@zedhttps://z.example","excerpt":"Server rendered post","extractionStatus":"partial","properties":{"title":"Post by @alice on Threads","source":"https://www.threads.net/@alice/post/Cregion","created":"2025-03-04T05:06:07.000Z","author":"@alice","published":"2025-03-04","description":"Server rendered post"},"tags":["clippings"]},
+  "raw": {"title":"Post by @alice on Threads","author":"@alice","published":"2025-03-04","description":"Server rendered post","image":"","site":"Threads","language":"en","wordCount":11,"schemaOrgData":"[]","extractorType":"threads"},
+  "requests": []
+}

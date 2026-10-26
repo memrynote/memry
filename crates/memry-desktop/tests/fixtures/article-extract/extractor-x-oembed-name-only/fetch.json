@@ -1,0 +1,14 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.fxtwitter.com/erin/status/1004",
+    "status": 200,
+    "text": "{\"tweet\":{\"text\":\"\",\"author\":{\"screen_name\":\"erin\"}}}"
+  },
+  {
+    "method": "GET",
+    "url": "https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Ferin%2Fstatus%2F1004&omit_script=true",
+    "status": 200,
+    "text": "{\"html\":\"<blockquote><p>Only text</p></blockquote>\",\"author_name\":\"Erin E\"}"
+  }
+]

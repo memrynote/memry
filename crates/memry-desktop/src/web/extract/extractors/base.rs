@@ -128,3 +128,13 @@ pub fn description_cut(text: &str) -> String {
     RUNS.replace_all(&utf16_slice(text, 0, 140), " ")
         .into_owned()
 }
+
+/// `anchor.href` of linkedom: `encodeURI(decodeURI(attribute)).trim()`, empty without the
+/// attribute. A malformed escape throws a `URIError`.
+pub fn anchor_href(doc: &Document, el: NodeId) -> Result<String, ExtractError> {
+    use crate::web::extract::utils::js::{decode_uri, encode_uri, trim};
+    let raw = attr_of(doc, el, "href");
+    let decoded =
+        decode_uri(&raw).ok_or_else(|| ExtractError::Js("URIError: URI malformed".into()))?;
+    Ok(trim(&encode_uri(&decoded)).to_string())
+}

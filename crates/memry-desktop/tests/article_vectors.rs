@@ -37,13 +37,19 @@ struct Replay {
 
 impl Replay {
     fn new(recorded: &Value) -> Self {
-        Replay { recorded: recorded.as_array().cloned().unwrap_or_default(), log: RefCell::default() }
+        Replay {
+            recorded: recorded.as_array().cloned().unwrap_or_default(),
+            log: RefCell::default(),
+        }
     }
 }
 
 impl Fetcher for Replay {
     fn fetch(&self, request: FetchRequest) -> Result<FetchResponse, String> {
-        let body = request.body.as_ref().map(|b| String::from_utf8_lossy(b).into_owned());
+        let body = request
+            .body
+            .as_ref()
+            .map(|b| String::from_utf8_lossy(b).into_owned());
         let headers: Vec<Value> = request.headers.iter().map(|(k, v)| json!([k, v])).collect();
         self.log.borrow_mut().push(json!({
             "method": request.method,
@@ -57,7 +63,10 @@ impl Fetcher for Replay {
                 && r.get("body").and_then(Value::as_str).map(str::to_string) == body
         });
         let Some(hit) = hit else {
-            return Err(format!("no recorded response for {} {}", request.method, request.url));
+            return Err(format!(
+                "no recorded response for {} {}",
+                request.method, request.url
+            ));
         };
         if let Some(error) = hit.get("error").and_then(Value::as_str) {
             return Err(error.to_string());
@@ -100,7 +109,10 @@ fn check(name: &str, vector: &Value) -> Vec<String> {
     let m = &response.metadata;
     let raw = &vector["raw"];
     let mut cmp = |what: &str, got: String, want: &Value| {
-        let want = want.as_str().map(str::to_string).unwrap_or_else(|| want.to_string());
+        let want = want
+            .as_str()
+            .map(str::to_string)
+            .unwrap_or_else(|| want.to_string());
         if got != want {
             failures.push(format!("{name} {what}:\n  rust: {got}\n  node: {want}"));
         }
@@ -112,15 +124,29 @@ fn check(name: &str, vector: &Value) -> Vec<String> {
     cmp("image", m.image.clone(), &raw["image"]);
     cmp("site", m.site.clone(), &raw["site"]);
     cmp("language", m.language.clone(), &raw["language"]);
-    cmp("wordCount", response.word_count.to_string(), &raw["wordCount"]);
-    cmp("schemaOrgData", response.schema_org_data.stringify(), &raw["schemaOrgData"]);
+    cmp(
+        "wordCount",
+        response.word_count.to_string(),
+        &raw["wordCount"],
+    );
+    cmp(
+        "schemaOrgData",
+        response.schema_org_data.stringify(),
+        &raw["schemaOrgData"],
+    );
     cmp(
         "extractorType",
-        response.extractor_type.map_or("null".to_string(), str::to_string),
+        response
+            .extractor_type
+            .map_or("null".to_string(), str::to_string),
         &raw["extractorType"],
     );
     let requests = Value::Array(replay.log.borrow().clone());
-    cmp("requests", requests.to_string(), &Value::String(vector["requests"].to_string()));
+    cmp(
+        "requests",
+        requests.to_string(),
+        &Value::String(vector["requests"].to_string()),
+    );
 
     let replay = Replay::new(recorded);
     let capture = extract_article(&html, url, now, &replay);
@@ -168,9 +194,18 @@ fn corpus_covers_every_extractor_and_category() {
     let names = extractor_names();
     assert_eq!(names.len(), 25);
     for name in &names {
-        assert!(taken.iter().any(|t| t == name), "no corpus page for the {name} extractor");
+        assert!(
+            taken.iter().any(|t| t == name),
+            "no corpus page for the {name} extractor"
+        );
     }
-    for (extractor, pages) in [("github", 3), ("substack", 2), ("reddit", 2), ("youtube", 2), ("twitter", 2)] {
+    for (extractor, pages) in [
+        ("github", 3),
+        ("substack", 2),
+        ("reddit", 2),
+        ("youtube", 2),
+        ("twitter", 2),
+    ] {
         let count = taken.iter().filter(|t| *t == extractor).count();
         assert!(count >= pages, "{extractor}: {count} pages, want {pages}");
     }
@@ -189,7 +224,11 @@ fn corpus_covers_every_extractor_and_category() {
         ("code", &["code-"], 5),
         ("tables", &["tables-", "nested-tables"], 4),
         ("images", &["images-"], 4),
-        ("rtl and non-latin", &["rtl-", "cjk-", "persian-", "mixed-bidi"], 6),
+        (
+            "rtl and non-latin",
+            &["rtl-", "cjk-", "persian-", "mixed-bidi"],
+            6,
+        ),
     ] {
         let count = named(prefixes);
         assert!(count >= want, "{category}: {count} pages, want {want}");
@@ -199,7 +238,14 @@ fn corpus_covers_every_extractor_and_category() {
         .filter(|p| {
             let name = p["name"].as_str().unwrap();
             ![
-                "footnotes-", "math-", "code-", "tables-", "images-", "rtl-", "cjk-", "persian-",
+                "footnotes-",
+                "math-",
+                "code-",
+                "tables-",
+                "images-",
+                "rtl-",
+                "cjk-",
+                "persian-",
                 "extractor-",
             ]
             .iter()
@@ -216,9 +262,11 @@ fn expected_captures_round_trip_through_the_capture_type() {
     for entry in index() {
         let name = entry["name"].as_str().unwrap();
         let vector = read(&format!("article/{name}.json"));
-        let Some(expected) = vector.get("expected") else { continue };
-        let capture: ArticleCapture = serde_json::from_value(expected.clone())
-            .unwrap_or_else(|e| panic!("{name}: {e}"));
+        let Some(expected) = vector.get("expected") else {
+            continue;
+        };
+        let capture: ArticleCapture =
+            serde_json::from_value(expected.clone()).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(
             serde_json::to_string(&capture).unwrap(),
             serde_json::to_string(expected).unwrap(),

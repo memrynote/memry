@@ -1,0 +1,20 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/web-interface/view?bvid=BV1AA411c7mA",
+    "status": 200,
+    "text": "{\"code\":0,\"data\":{\"aid\":111,\"title\":\"Video 标题\",\"desc\":\"Line one\\nLine <2> & more\",\"pic\":\"https://i.example/p.jpg\",\"pubdate\":1738404000,\"owner\":{\"name\":\"作者\"},\"pages\":[{\"cid\":222,\"part\":\"P1\"},{\"cid\":333,\"part\":\"P2\"}]}}"
+  },
+  {
+    "method": "GET",
+    "url": "https://api.bilibili.com/x/player/wbi/v2?bvid=BV1AA411c7mA&aid=111&cid=333",
+    "status": 200,
+    "text": "{\"code\":0,\"data\":{\"subtitle\":{\"subtitles\":[{\"lan\":\"en\",\"lan_doc\":\"English (AI)\",\"subtitle_url\":\"//i0.hdslb.com/bfs/subtitle/en.json\",\"id\":5,\"is_ai_subtitle\":true},{\"lan\":\"zh-CN\",\"lan_doc\":\"中文\",\"subtitle_url\":\"//i0.hdslb.com/bfs/subtitle/zh.json\",\"id\":6},{\"lan\":\"xx\",\"subtitle_url\":\"\"}]}}}"
+  },
+  {
+    "method": "GET",
+    "url": "https://i0.hdslb.com/bfs/subtitle/zh.json",
+    "status": 200,
+    "text": "{\"body\":[{\"from\":0.4,\"to\":3,\"content\":\"大家好\"},{\"from\":3.2,\"to\":6,\"content\":\"欢迎来到\"},{\"from\":6.5,\"to\":9,\"content\":\"hello\"},{\"from\":9.5,\"to\":12,\"content\":\"world\"},{\"from\":60,\"to\":62,\"content\":\"  later  \"},{\"from\":63,\"content\":\"\"},{\"to\":5,\"content\":\"no from\"},{\"from\":100,\"to\":120,\"content\":\"end\"}]}"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.fxtwitter.com/alice/status/99",
+    "error": "network down"
+  },
+  {
+    "method": "GET",
+    "url": "https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Falice%2Farticle%2F99&omit_script=true",
+    "error": "network down"
+  }
+]

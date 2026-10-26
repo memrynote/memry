@@ -36,14 +36,23 @@ export async function articleVector({ name, html, url, now, fetch: recorded }) {
   const { fetch, requests } = replayFetch(recorded)
   const { document } = parseHTML(html)
   let result
+  // The Reddit extractor's constructor drops `options`, so its `this.fetch` is `globalThis.fetch`
+  // and would reach the real network. The replay stands in for it, as it does for the others.
+  const realFetch = globalThis.fetch
+  globalThis.fetch = fetch
   try {
     result = await Defuddle(document, url, { markdown: true, fetch })
   } catch (error) {
     // A page with no element at all: linkedom throws on `document.body`.
     return { input: { url, now, fetch: recorded }, error: error.constructor.name }
+  } finally {
+    globalThis.fetch = realFetch
   }
   const unmatched = requests.filter(
-    (r) => !(recorded ?? []).some((h) => h.method === r.method && h.url === r.url && (h.body ?? null) === r.body)
+    (r) =>
+      !(recorded ?? []).some(
+        (h) => h.method === r.method && h.url === r.url && (h.body ?? null) === r.body
+      )
   )
   if (unmatched.length) {
     throw new Error(`${name}: requests without a recorded response: ${JSON.stringify(unmatched)}`)

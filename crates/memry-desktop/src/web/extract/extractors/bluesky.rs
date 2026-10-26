@@ -14,8 +14,7 @@ use crate::web::extract::utils::dom::escape_html;
 use crate::web::extract::utils::js::trim;
 
 use super::base::{
-    Cx, Extracted, Extractor, Variables, attr_of, description_cut, post_title, sel_attr, text_of,
-    trimmed,
+    Cx, Extracted, Extractor, Variables, attr_of, description_cut, post_title, text_of, trimmed,
 };
 
 const ITEM: &str = r#"[data-testid^="postThreadItem-by-"]"#;
@@ -249,7 +248,10 @@ fn reply_date(cx: &Cx, item: NodeId) -> Result<String, ExtractError> {
 }
 
 fn permalink(cx: &Cx, item: NodeId) -> Result<String, ExtractError> {
-    let href = sel_attr(cx.doc, item, r#"a[href*="/post/"]"#, "href")?;
+    let Some(link) = cx.doc.query_selector(item, r#"a[href*="/post/"]"#)? else {
+        return Ok(String::new());
+    };
+    let href = attr_of(cx.doc, link, "href");
     Ok(if href.starts_with("http") {
         href
     } else {

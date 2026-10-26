@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://store.example.com/news/app/10/view/1","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://store.example.com/news/app/10/view/1","mode":"article","contentMarkdown":"**Bold** and *italic* with [a link](https://example.com/x).  \n- First\n- Second\n  \n\n> Quote\n\n  \n```\nlet x = 1;\n```\n  \n![](https://example.com/i.png)","excerpt":"**Bold** and *italic* with [a link](https://example.com/x).  \n- First\n- Second\n  \n\n> Quote\n\n  \n```\nlet x = 1;\n```\n  \n![](https://example.com/i.png)","extractionStatus":"partial","properties":{"title":"Patch 1.2 notes","source":"https://store.example.com/news/app/10/view/1","created":"2025-03-04T05:06:07.000Z","author":"Example Studio","published":"2025-02-01T10:00:00.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Patch 1.2 notes","author":"Example Studio","published":"2025-02-01T10:00:00.000Z","description":"","image":"","site":"","language":"en","wordCount":15,"schemaOrgData":"[]","extractorType":"bbcodedata"},
+  "requests": []
+}

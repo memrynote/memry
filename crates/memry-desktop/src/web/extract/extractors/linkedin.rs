@@ -264,7 +264,7 @@ impl LinkedInExtractor {
             content,
             depth: Some(depth),
             url: Some(url).filter(|u| !u.is_empty()),
-            score: Some(format!("{reactions} reactions")).filter(|_| !reactions.is_empty()),
+            score: (!reactions.is_empty()).then(|| format!("{reactions} reactions")),
         }))
     }
 

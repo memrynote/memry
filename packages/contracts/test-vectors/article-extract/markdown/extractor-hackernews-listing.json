@@ -1,0 +1,4 @@
+{
+  "html": "<body><a href=\"https://a.example/1\">First story</a> (a.example)10 points by <a>u1</a> <span title=\"2025-02-01T10:00:00 1\"><a>1 hour ago</a></span> | <a href=\"hide\">hide</a> | <a href=\"item?id=1\">3 comments</a> <a href=\"item?id=2\">Ask: second?</a>5 points by <a>u2</a> <span title=\"2025-02-01T11:00:00 1\"><a>2 hours ago</a></span> | <a href=\"item?id=2\">discuss</a> <a href=\"https://c.example/3\">Third &amp; last</a> <a>u3</a> <a href=\"?p=2\">More</a></body>",
+  "markdown": "[First story](https://a.example/1) (a.example)10 points by u1 1 hour ago | [hide](hide) | [3 comments](item?id=1) [Ask: second?](item?id=2)5 points by u2 2 hours ago | [discuss](item?id=2) [Third & last](https://c.example/3) u3 [More](?p=2)"
+}

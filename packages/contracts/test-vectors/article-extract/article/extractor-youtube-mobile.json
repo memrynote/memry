@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://m.youtube.com/shorts/sh0rt123456/extra","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://m.youtube.com/shorts/sh0rt123456/extra","mode":"article","contentMarkdown":"![](https://www.youtube.com/watch?v=sh0rt123456)\n\nShort description\n\n## Transcript\n\n### Chapter One\n\n**0:00** · Begin here.\n\n### Chapter Two\n\n**0:30** · Second half.","excerpt":"Short description","extractionStatus":"partial","properties":{"title":"Short title","source":"https://m.youtube.com/shorts/sh0rt123456/extra","created":"2025-03-04T05:06:07.000Z","description":"Short description"},"tags":["clippings"],"heroImage":"https://i.ytimg.com/vi/s/hq.jpg"},
+  "raw": {"title":"Short title","author":"","published":"","description":"Short description","image":"https://i.ytimg.com/vi/s/hq.jpg","site":"YouTube","language":"en","wordCount":15,"schemaOrgData":"[]","extractorType":"youtube"},
+  "requests": []
+}

@@ -8,3 +8,4 @@ pub mod frontmatter;
 pub mod js;
 pub mod json;
 pub mod text;
+pub mod transcript;

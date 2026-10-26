@@ -147,7 +147,8 @@ mod tests {
             ..Comment::default()
         };
         let html = build_comment_tree(&[c(0.0), c(2.0), c(1.0), c(1.0)]);
-        assert_eq!(html.matches("<blockquote>").count(), 5);
-        assert_eq!(html.matches("</blockquote>").count(), 5);
+        // Node 24 gives 3 and 3 for this input.
+        assert_eq!(html.matches("<blockquote>").count(), 3);
+        assert_eq!(html.matches("</blockquote>").count(), 3);
     }
 }

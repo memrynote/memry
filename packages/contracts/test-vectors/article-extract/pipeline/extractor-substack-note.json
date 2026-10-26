@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://substack.com/@alice/note/c-123","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<div class=\"ProseMirror FeedProseMirror\"><p>A short note about <b>writing</b>.</p></div>\n<img src=\"https://img.example/og.png\" alt=\"\">",
+  "markdown": "A short note about **writing**.\n\n![](https://img.example/og.png)",
+  "raw": {"title":"Alice (@alice)","author":"Alice","published":"","description":"A short note","image":"https://img.example/og.png","site":"Substack","language":"en","wordCount":6},
+  "expected": {"url":"https://substack.com/@alice/note/c-123","mode":"article","contentMarkdown":"A short note about **writing**.\n\n![](https://img.example/og.png)","excerpt":"A short note","extractionStatus":"partial","properties":{"title":"Alice (@alice)","source":"https://substack.com/@alice/note/c-123","created":"2025-03-04T05:06:07.000Z","author":"Alice","description":"A short note"},"tags":["clippings"],"heroImage":"https://img.example/og.png"}
+}
