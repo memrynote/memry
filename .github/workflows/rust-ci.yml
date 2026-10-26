@@ -8,6 +8,9 @@ name: Rust CI
 
 on:
   pull_request:
+    # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
+    # other labeled event skips all jobs, so PRs into main see no change.
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'crates/**'
       - 'apps/desktop-tauri/**'
@@ -20,6 +23,7 @@ on:
   push:
     branches:
       - main
+      - feat/tauri-v2
     paths:
       - 'crates/**'
       - 'apps/desktop-tauri/**'
@@ -35,22 +39,51 @@ permissions:
   contents: read
 
 concurrency:
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
+  # feat/tauri-v2 queues like main does elsewhere: every merge keeps its full-matrix result.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/tauri-v2' }}
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
 
 jobs:
+  # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
+  # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
+  plan:
+    name: CI tier
+    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.tier.outputs.full }}
+      tauri: ${{ steps.tier.outputs.tauri }}
+      swift: ${{ steps.tier.outputs.swift }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Decide tier
+        id: tier
+        uses: ./.github/actions/ci-tier
+        with:
+          token: ${{ github.token }}
+
   lint-and-test:
     name: fmt, clippy, test (${{ matrix.os }})
+    needs: plan
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-15, macos-15-intel, windows-2022, windows-11-arm]
+        # Fast tier: one runner per OS family. Full adds the Intel Mac and the Windows ARM runner.
+        os: ${{ fromJSON(needs.plan.outputs.full == 'true' && '["ubuntu-22.04","macos-15","macos-15-intel","windows-2022","windows-11-arm"]' || '["ubuntu-22.04","macos-15","windows-2022"]') }}
     defaults:
       run:
         shell: bash
@@ -78,6 +111,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       - name: Format
         if: runner.os == 'Linux'
@@ -124,6 +158,7 @@ jobs:
   # without regenerating them leaves the Rust port tested against a stale oracle.
   article-extract-oracle-fresh:
     name: Article-extraction vectors are current
+    if: github.event.action != 'labeled' || (github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 20
 
@@ -151,6 +186,9 @@ jobs:
 
   swift-bindings-fresh:
     name: Generated Swift bindings are current
+    needs: plan
+    # Fast tier: only when the UniFFI surface or the iOS app can have changed.
+    if: needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true'
     # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
     # from the same build. Anything less proves nothing about what ships.
     runs-on: macos-26
@@ -170,6 +208,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
       # patch version moves. Failing loudly with the available list beats a bare
