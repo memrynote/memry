@@ -155,6 +155,16 @@ fn list_reads_accent_icon_and_reachability_of_vaults_that_are_not_open() {
 /// (a dead share, a sleeping drive) must not hold the config mutex, or every registry write
 /// in the app would wait behind it. A named pipe as `config.json` blocks `read` until a writer
 /// opens it, which is a blocking filesystem call a test can release.
+/// `O_NONBLOCK`, which differs between macOS (0x4) and Linux (0o4000).
+#[cfg(unix)]
+const fn libc_o_nonblock() -> i32 {
+    if cfg!(target_os = "linux") {
+        0o4000
+    } else {
+        0x4
+    }
+}
+
 #[cfg(unix)]
 #[test]
 fn list_does_no_filesystem_io_while_holding_the_config_mutex() {
@@ -196,9 +206,20 @@ fn list_does_no_filesystem_io_while_holding_the_config_mutex() {
     let update_finished = updated_rx.recv_timeout(Duration::from_secs(5));
 
     // Release the reader whatever happened, so a failure does not hang the suite.
-    // `list` reads the config twice (icon, then accent), and each read waits for a writer.
-    for _ in 0..2 {
-        std::fs::write(&pipe, "{}").expect("unblock the reader");
+    // However many times `list` reads the config, feed each read. A non-blocking open fails
+    // while no reader waits, so a reader that never comes cannot hang the suite.
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    while !list_thread.is_finished() && std::time::Instant::now() < deadline {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        if let Ok(mut writer) = std::fs::OpenOptions::new()
+            .write(true)
+            .custom_flags(libc_o_nonblock())
+            .open(&pipe)
+        {
+            let _ = writer.write_all(b"{}");
+        }
+        std::thread::sleep(Duration::from_millis(10));
     }
     let response = list_thread.join().expect("list thread");
     update_thread.join().expect("update thread");
