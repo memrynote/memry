@@ -16,6 +16,8 @@ pub use note::{
     stringify_frontmatter_block, write_markdown_note,
 };
 pub use split::{FrontmatterSplit, split_frontmatter_block};
+#[doc(hidden)]
+pub use value::depth_visits;
 pub use value::{YamlMap, YamlValue};
 pub use yaml_dump::safe_dump;
 pub use yaml_load::{YamlError, safe_load};

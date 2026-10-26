@@ -12,7 +12,8 @@ use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::ReplaceOptions;
 use memry_core::markdown::convert::apply::ReplaceOutcome;
 use memry_core::markdown::frontmatter::{
-    Eol, YamlMap, YamlValue, parse_markdown_note, safe_dump, safe_load, stringify_frontmatter_block,
+    Eol, YamlMap, YamlValue, depth_visits, parse_markdown_note, safe_dump, safe_load,
+    stringify_frontmatter_block,
 };
 use support::doc_case::{converter_for, open_document};
 
@@ -167,7 +168,8 @@ fn replacing_the_body_of_a_deep_yjs_doc_fails_closed() {
 }
 
 /// An alias costs O(1), not the size of the anchored value: n aliases of one
-/// wide anchor once took n x width steps (6.5 s at n = 10000 in release).
+/// wide anchor once took n x width steps. Counted in collections measured, so
+/// the bound holds in debug and release and cannot flake on a slow runner.
 #[test]
 fn many_aliases_of_a_wide_anchor_do_not_hang() {
     let n = 10_000;
@@ -175,13 +177,37 @@ fn many_aliases_of_a_wide_anchor_do_not_hang() {
     for i in 0..n {
         yaml.push_str(&format!("b{i}: *a\n"));
     }
+    on_small_stack(move || {
+        let before = depth_visits();
+        assert!(safe_load(&yaml).is_ok());
+        let visits = depth_visits() - before;
+        // The anchored value and its n children, once: not n x n.
+        assert!(visits <= 2 * n + 10, "{visits} collections measured");
+    });
+}
+
+/// Keys cost O(1) each: 300000 plain keys and 100000 descending integer keys
+/// took minutes through a linear duplicate scan.
+#[test]
+fn a_frontmatter_of_many_keys_does_not_hang() {
+    let plain: String = (0..300_000).map(|i| format!("k{i}: 1\n")).collect();
+    let indexed: String = (0..100_000).rev().map(|i| format!("{i}: 1\n")).collect();
     let start = std::time::Instant::now();
     on_small_stack(move || {
-        assert!(safe_load(&yaml).is_ok());
+        assert!(safe_load(&plain).is_ok());
+        let loaded = safe_load(&indexed).unwrap().unwrap();
+        let YamlValue::Map(map) = loaded else {
+            panic!()
+        };
+        assert_eq!(
+            map.iter().next().map(|(k, _)| k.to_owned()),
+            Some("0".to_owned())
+        );
+        assert_eq!(map.len(), 100_000);
     });
     assert!(
-        start.elapsed() < std::time::Duration::from_secs(20),
-        "took {:?}",
+        start.elapsed() < std::time::Duration::from_secs(10),
+        "{:?}",
         start.elapsed()
     );
 }
