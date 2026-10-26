@@ -8,7 +8,6 @@
 mod http_fakes;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use base64::Engine as _;
@@ -37,14 +36,12 @@ const CANONICAL: &str = "j2026-06-09";
 const FOREIGN: &str = "vcpzueguep8y";
 const OTHER_FOREIGN: &str = "wxudm2oo4rci";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-journal-day-merge-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-journal-day-merge-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

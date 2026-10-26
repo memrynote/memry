@@ -11,7 +11,6 @@
 //! | a reindex is idempotent                       | safe on any schedule            |
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::search::BacklinkOrder;
 use memry_core::api::vault::Vault;
@@ -29,14 +28,12 @@ use yrs::{
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn vault(label: &str) -> (Db, Vault) {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-api-search-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-api-search-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let opened = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (

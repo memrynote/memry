@@ -13,8 +13,6 @@
 //! | the budget is measured in ciphertext bytes            | §14.8                       |
 //! | a manifest re-fetch keeps the user's settings         | a pin is the user's         |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::vault::Vault;
 use memry_core::domain::attachments;
 use memry_core::domain::notes::{self, NewNote};
@@ -25,14 +23,12 @@ use rusqlite::Connection;
 const DEVICE: &str = "device-a";
 const NOW: i64 = 1_760_000_000_000;
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn vault(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-attachments-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-attachments-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     open_data(&dir.join("data.db")).expect("second open")

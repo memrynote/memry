@@ -1,7 +1,6 @@
 //! Spec 007 CL092: a week holding 200 items reads back in one range query
 //! well inside a frame budget, so paging and first paint do not wait on it.
 
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Instant;
 
 use memry_core::domain::calendar_items::projection::{self, RangeInput};
@@ -10,11 +9,12 @@ use memry_core::domain::calendar_items::zone::FixedZone;
 use memry_core::storage::{Db, open_data};
 
 const NOW: i64 = 1_790_380_800_000; // 2026-09-26
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open() -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("memry-cal-load-{}-{unique}", std::process::id()));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-cal-load-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("scratch");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

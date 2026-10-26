@@ -6,7 +6,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::FakeSecureStore;
 use memry_core::api::projects::ProjectDraft;
@@ -17,14 +16,12 @@ use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn vault() -> Vault {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-api-task-tree-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix("memry-api-task-tree-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }

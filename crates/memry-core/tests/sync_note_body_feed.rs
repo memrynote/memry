@@ -10,7 +10,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -32,19 +31,17 @@ use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::{Value as Json, json};
 use yrs::{GetString as _, ReadTxn as _, StateVector, Text as _, Transact as _};
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 const NOTE_A: &str = "notea1234567";
 const NOTE_B: &str = "noteb1234567";
 const NOTE_C: &str = "notec1234567";
 const NOTE_D: &str = "noted1234567";
 
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-note-body-feed-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-note-body-feed-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

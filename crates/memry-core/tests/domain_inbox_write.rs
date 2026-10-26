@@ -14,8 +14,6 @@
 //! | bulk counts partial failures                           | `BulkResponse`                      |
 //! | the lifecycle payloads match the committed fixture     | IB028, desktop handler test         |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::inbox::convert::{self, LinkTarget, TaskInput};
 use memry_core::domain::inbox::filing::{self, LocalStamp};
 use memry_core::domain::inbox::write::{self, Captured, NewCapture};
@@ -29,14 +27,12 @@ use serde_json::{Value, json};
 const NOW: i64 = 1_790_251_200_000;
 const DEVICE: &str = "phone";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-inbox-write-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-inbox-write-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

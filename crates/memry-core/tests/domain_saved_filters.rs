@@ -12,8 +12,6 @@
 //! | a delete tombstones, ticks the clock, queues a delete  | desktop `enqueueDelete`       |
 //! | a reorder rewrites only the filters that moved         | desktop `reorderSavedFilters` |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::saved_filters::{self, NewSavedFilter};
 use memry_core::domain::task_filter::{CompletionFilter, SortDirection, SortField};
 use memry_core::protocol::types::{ArrivingItemType, Declaration};
@@ -26,14 +24,12 @@ use serde_json::{Value, json};
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-saved-filters-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-saved-filters-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }
