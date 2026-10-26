@@ -161,11 +161,13 @@ fn long_variable_name(mut math_group: Tree, font: &str) -> R<Tree> {
     );
     let mut parts: Vec<String> = Vec::new();
     for child in children.iter_mut().skip(1) {
-        let kids = child.children_mut().ok_or_else(|| super::super::val::TErr {
-            message: "TypeError".into(),
-            parse: false,
-            loc: false,
-        })?;
+        let kids = child
+            .children_mut()
+            .ok_or_else(|| super::super::val::TErr {
+                message: "TypeError".into(),
+                parse: false,
+                loc: false,
+            })?;
         let first = kids.first_mut().ok_or_else(|| super::super::val::TErr {
             message: "TypeError".into(),
             parse: false,
@@ -228,7 +230,9 @@ fn font_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
 fn old_font_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
     let mode = ctx.parser.mode;
     let break_on = ctx.break_on_token_text.clone();
-    let body = ctx.parser.parse_expression(true, break_on.as_deref(), true)?;
+    let body = ctx
+        .parser
+        .parse_expression(true, break_on.as_deref(), true)?;
     let font_style = format!("math{}", ctx.func_name.chars().skip(1).collect::<String>());
     let inner = node! {"type" => "ordgroup", "mode" => ctx.parser.mode}.with("body", V::arr(body));
     Ok(node! {"type" => "font", "mode" => mode, "font" => font_style}.with("body", inner))
@@ -245,9 +249,15 @@ fn style_level(name: &str) -> i32 {
 
 fn styling_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
     let break_on = ctx.break_on_token_text.clone();
-    let body = ctx.parser.parse_expression(true, break_on.as_deref(), true)?;
+    let body = ctx
+        .parser
+        .parse_expression(true, break_on.as_deref(), true)?;
     let name = ctx.func_name.clone();
-    let script_level: String = name.chars().skip(1).take(name.chars().count() - 6).collect();
+    let script_level: String = name
+        .chars()
+        .skip(1)
+        .take(name.chars().count() - 6)
+        .collect();
     Ok(node! {
         "type" => "styling",
         "mode" => ctx.parser.mode,
@@ -267,15 +277,54 @@ fn styling_builder(group: &V, style: &Style) -> R<Tree> {
         "script" => ("1", "false"),
         _ => ("2", "false"),
     };
-    crate::web::extract::elements::math::temml::build::set_attr(&mut node, "scriptlevel", scriptlevel)?;
-    crate::web::extract::elements::math::temml::build::set_attr(&mut node, "displaystyle", displaystyle)?;
+    crate::web::extract::elements::math::temml::build::set_attr(
+        &mut node,
+        "scriptlevel",
+        scriptlevel,
+    )?;
+    crate::web::extract::elements::math::temml::build::set_attr(
+        &mut node,
+        "displaystyle",
+        displaystyle,
+    )?;
     Ok(node)
 }
 
 const X_HEIGHTS: [&str; 34] = [
-    "a", "c", "e", "ı", "m", "n", "o", "r", "s", "u", "v", "w", "x", "z", "α", "ε", "ι", "κ", "ν",
-    "ο", "π", "σ", "τ", "υ", "ω", "\\alpha", "\\epsilon", "\\iota", "\\kappa", "\\nu", "\\omega",
-    "\\pi", "\\tau", "\\omega",
+    "a",
+    "c",
+    "e",
+    "ı",
+    "m",
+    "n",
+    "o",
+    "r",
+    "s",
+    "u",
+    "v",
+    "w",
+    "x",
+    "z",
+    "α",
+    "ε",
+    "ι",
+    "κ",
+    "ν",
+    "ο",
+    "π",
+    "σ",
+    "τ",
+    "υ",
+    "ω",
+    "\\alpha",
+    "\\epsilon",
+    "\\iota",
+    "\\kappa",
+    "\\nu",
+    "\\omega",
+    "\\pi",
+    "\\tau",
+    "\\omega",
 ];
 
 fn sqrt_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
@@ -284,7 +333,10 @@ fn sqrt_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
     let inner = body.get("body");
     if inner.truthy()
         && inner.len() == 1
-        && let Some(text) = inner.items()[0].get("text").as_string().filter(|t| !t.is_empty())
+        && let Some(text) = inner.items()[0]
+            .get("text")
+            .as_string()
+            .filter(|t| !t.is_empty())
         && X_HEIGHTS.contains(&text.as_str())
     {
         let size = |number: f64, unit: &str| {
@@ -307,10 +359,16 @@ fn sqrt_builder(group: &V, style: &Style) -> R<Tree> {
     if index.truthy() {
         Ok(Tree::Math(MathNode::new(
             "mroot",
-            vec![build_group(&body, style)?, build_group(&index, &style.increment_level())?],
+            vec![
+                build_group(&body, style)?,
+                build_group(&index, &style.increment_level())?,
+            ],
         )))
     } else {
-        Ok(Tree::Math(MathNode::new("msqrt", vec![build_group(&body, style)?])))
+        Ok(Tree::Math(MathNode::new(
+            "msqrt",
+            vec![build_group(&body, style)?],
+        )))
     }
 }
 
@@ -318,8 +376,17 @@ pub fn register(r: &mut Registry) {
     r.define(
         "text",
         &[
-            "\\text", "\\textrm", "\\textsf", "\\texttt", "\\textnormal", "\\textsc", "\\textbf",
-            "\\textmd", "\\textit", "\\textup", "\\emph",
+            "\\text",
+            "\\textrm",
+            "\\textsf",
+            "\\texttt",
+            "\\textnormal",
+            "\\textsc",
+            "\\textbf",
+            "\\textmd",
+            "\\textit",
+            "\\textup",
+            "\\emph",
         ],
         Props {
             num_args: 1,
@@ -334,32 +401,66 @@ pub fn register(r: &mut Registry) {
     r.define(
         "font",
         &[
-            "\\mathrm", "\\mathit", "\\mathbf", "\\mathnormal", "\\up@greek", "\\boldsymbol",
-            "\\mathbb", "\\mathcal", "\\mathfrak", "\\mathscr", "\\mathsf", "\\mathsfit",
-            "\\mathtt", "\\Bbb", "\\bm", "\\bold", "\\frak",
+            "\\mathrm",
+            "\\mathit",
+            "\\mathbf",
+            "\\mathnormal",
+            "\\up@greek",
+            "\\boldsymbol",
+            "\\mathbb",
+            "\\mathcal",
+            "\\mathfrak",
+            "\\mathscr",
+            "\\mathsf",
+            "\\mathsfit",
+            "\\mathtt",
+            "\\Bbb",
+            "\\bm",
+            "\\bold",
+            "\\frak",
         ],
-        Props { num_args: 1, allowed_in_argument: true, ..Props::D },
+        Props {
+            num_args: 1,
+            allowed_in_argument: true,
+            ..Props::D
+        },
         font_handler,
         Some(font_builder),
     );
     r.define(
         "font",
         &["\\rm", "\\sf", "\\tt", "\\bf", "\\it", "\\cal"],
-        Props { allowed_in_text: true, ..Props::D },
+        Props {
+            allowed_in_text: true,
+            ..Props::D
+        },
         old_font_handler,
         Some(font_builder),
     );
     r.define(
         "styling",
-        &["\\displaystyle", "\\textstyle", "\\scriptstyle", "\\scriptscriptstyle"],
-        Props { allowed_in_text: true, primitive: true, ..Props::D },
+        &[
+            "\\displaystyle",
+            "\\textstyle",
+            "\\scriptstyle",
+            "\\scriptscriptstyle",
+        ],
+        Props {
+            allowed_in_text: true,
+            primitive: true,
+            ..Props::D
+        },
         styling_handler,
         Some(styling_builder),
     );
     r.define(
         "sqrt",
         &["\\sqrt"],
-        Props { num_args: 1, num_optional_args: 1, ..Props::D },
+        Props {
+            num_args: 1,
+            num_optional_args: 1,
+            ..Props::D
+        },
         sqrt_handler,
         Some(sqrt_builder),
     );

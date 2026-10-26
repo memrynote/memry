@@ -17,12 +17,14 @@ fn mclass_builder(group: &V, style: &Style) -> R<Tree> {
     if mclass == "minner" {
         node = MathNode::new("mpadded", inner);
     } else if mclass == "mord" {
-        if group.get("isCharacterBox").truthy() || inner.first().is_some_and(|t| t.is_ty("mathord")) {
+        if group.get("isCharacterBox").truthy() || inner.first().is_some_and(|t| t.is_ty("mathord"))
+        {
             let Some(Tree::Math(mut first)) = inner.drain(..1).next() else {
                 return jserr("Cannot set properties of undefined (setting 'type')");
             };
             first.ty = "mi".to_string();
-            if first.children.len() == 1 && matches!(&first.children[0], Tree::Text(t) if t == "∇") {
+            if first.children.len() == 1 && matches!(&first.children[0], Tree::Text(t) if t == "∇")
+            {
                 first.set_attribute("mathvariant", "normal");
             }
             return Ok(Tree::Math(first));
@@ -34,9 +36,17 @@ fn mclass_builder(group: &V, style: &Style) -> R<Tree> {
                 return jserr("Cannot set properties of undefined (setting 'type')");
             };
             first.ty = "mo".to_string();
-            let body0 = group.get("body").items().first().cloned().unwrap_or(V::Undef);
+            let body0 = group
+                .get("body")
+                .items()
+                .first()
+                .cloned()
+                .unwrap_or(V::Undef);
             if group.get("isCharacterBox").truthy()
-                && body0.get("text").as_string().is_some_and(|t| t.chars().any(|c| c.is_ascii_alphabetic()))
+                && body0
+                    .get("text")
+                    .as_string()
+                    .is_some_and(|t| t.chars().any(|c| c.is_ascii_alphabetic()))
             {
                 first.set_attribute("mathvariant", "italic");
             }
@@ -91,7 +101,8 @@ fn mclass_builder(group: &V, style: &Style) -> R<Tree> {
             }
         }
         if !(mclass == "mopen" || mclass == "mclose") {
-            node.attributes.retain(|(k, _)| k != "stretchy" && k != "form");
+            node.attributes
+                .retain(|(k, _)| k != "stretchy" && k != "form");
         }
     }
     Ok(Tree::Math(node))
@@ -102,7 +113,11 @@ fn mclass_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
     let char_box = is_character_box(body);
     let mut must_promote = true;
     let mut mord_text = String::new();
-    let arr = if body.get("body").truthy() { body.get("body").items() } else { vec![body.clone()] };
+    let arr = if body.get("body").truthy() {
+        body.get("body").items()
+    } else {
+        vec![body.clone()]
+    };
     let mode = ctx.parser.mode;
     for arg in &arr {
         if ["text", "textord", "mathord", "atom"].contains(&arg.ty().as_str()) {
@@ -114,7 +129,11 @@ fn mclass_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
                 mord_text.push_str(&text.as_string().unwrap_or_default());
             } else if arg.get("body").truthy() {
                 for e in arg.get("body").items() {
-                    mord_text.push_str(&e.get("text").as_string().unwrap_or_else(|| "undefined".to_string()));
+                    mord_text.push_str(
+                        &e.get("text")
+                            .as_string()
+                            .unwrap_or_else(|| "undefined".to_string()),
+                    );
                 }
             }
         } else {
@@ -123,7 +142,10 @@ fn mclass_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
         }
     }
     let mord = node! {"type" => "mathord", "text" => mord_text.clone(), "mode" => mode};
-    if must_promote && ctx.func_name == "\\mathord" && crate::web::extract::elements::math::temml::val::ulen(&mord_text) > 1 {
+    if must_promote
+        && ctx.func_name == "\\mathord"
+        && crate::web::extract::elements::math::temml::val::ulen(&mord_text) > 1
+    {
         return Ok(mord);
     }
     let body_arg = ordargument(&if must_promote { mord } else { body.clone() });
@@ -147,7 +169,11 @@ fn binrel_class(arg: &V) -> R<&'static str> {
         return Ok("mord");
     }
     let body = arg.get("body");
-    let first_text = body.items().first().and_then(|f| f.get("text").as_string()).filter(|t| !t.is_empty());
+    let first_text = body
+        .items()
+        .first()
+        .and_then(|f| f.get("text").as_string())
+        .filter(|t| !t.is_empty());
     let family = match first_text.as_deref().and_then(|t| symbol("math", t)) {
         Some(s) if body.len() > 0 => s.group.clone(),
         _ => atom.text("family"),
@@ -175,8 +201,16 @@ fn binrel_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
 fn stackrel_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
     let base_arg = &args[1];
     let shifted = &args[0];
-    let mclass = if ctx.func_name != "\\stackrel" { binrel_class(base_arg)? } else { "mrel" };
-    let base_type = if mclass == "mrel" || mclass == "mbin" { "op" } else { "ordgroup" };
+    let mclass = if ctx.func_name != "\\stackrel" {
+        binrel_class(base_arg)?
+    } else {
+        "mrel"
+    };
+    let base_type = if mclass == "mrel" || mclass == "mbin" {
+        "op"
+    } else {
+        "ordgroup"
+    };
     let base_op = node! {
         "type" => base_type,
         "limits" => true,
@@ -219,10 +253,20 @@ fn multiscript_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
     let post_items = args[1].get("body");
     let not_supsub = |v: &V| v.len() > 0 && v.items()[0].ty() != "supsub";
     if not_supsub(&pre_items) || not_supsub(&post_items) {
-        return perr("\\sideset can parse only subscripts and superscripts in its first two arguments");
+        return perr(
+            "\\sideset can parse only subscripts and superscripts in its first two arguments",
+        );
     }
-    let pre = if pre_items.len() > 0 { pre_items.items()[0].clone() } else { V::Null };
-    let post = if post_items.len() > 0 { post_items.items()[0].clone() } else { V::Null };
+    let pre = if pre_items.len() > 0 {
+        pre_items.items()[0].clone()
+    } else {
+        V::Null
+    };
+    let post = if post_items.len() > 0 {
+        post_items.items()[0].clone()
+    } else {
+        V::Null
+    };
     let mode = ctx.parser.mode;
     if !pre.truthy() && !post.truthy() {
         return Ok(base);
@@ -232,8 +276,10 @@ fn multiscript_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
             .with("base", base)
             .with("sup", post.get("sup"))
             .with("sub", post.get("sub"));
-        return Ok(node! {"type" => "styling", "mode" => mode, "scriptLevel" => "text"}
-            .with("body", V::arr(vec![sup])));
+        return Ok(
+            node! {"type" => "styling", "mode" => mode, "scriptLevel" => "text"}
+                .with("body", V::arr(vec![sup])),
+        );
     }
     Ok(node! {
         "type" => "multiscript",
@@ -253,8 +299,16 @@ fn multiscript_builder(group: &V, style: &Style) -> R<Tree> {
     let mut pre_sub = multiscript_node(&pre.get("sub"), style, &none)?;
     let mut pre_sup = multiscript_node(&pre.get("sup"), style, &none)?;
     if group.get("isSideset").truthy() {
-        crate::web::extract::elements::math::temml::build::set_attr(&mut pre_sub, "style", "text-align: left;")?;
-        crate::web::extract::elements::math::temml::build::set_attr(&mut pre_sup, "style", "text-align: left;")?;
+        crate::web::extract::elements::math::temml::build::set_attr(
+            &mut pre_sub,
+            "style",
+            "text-align: left;",
+        )?;
+        crate::web::extract::elements::math::temml::build::set_attr(
+            &mut pre_sup,
+            "style",
+            "text-align: left;",
+        )?;
     }
     let post = group.get("postscripts");
     let children = if post.truthy() {
@@ -281,8 +335,15 @@ fn horiz_bracket_builder(group: &V, style: &Style) -> R<Tree> {
     let mut accent = stretchy::math_ml_node(&group.text("label"));
     accent.set_style("math-depth", "0");
     let base = build_group(&group.get("base"), style)?;
-    let ty = if group.get("isOver").truthy() { "mover" } else { "munder" };
-    Ok(Tree::Math(MathNode::new(ty, vec![base, Tree::Math(accent)])))
+    let ty = if group.get("isOver").truthy() {
+        "mover"
+    } else {
+        "munder"
+    };
+    Ok(Tree::Math(MathNode::new(
+        ty,
+        vec![base, Tree::Math(accent)],
+    )))
 }
 
 fn env_tag_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
@@ -300,45 +361,84 @@ fn empty_row(_group: &V, _style: &Style) -> R<Tree> {
 pub fn register(r: &mut Registry) {
     r.define(
         "mclass",
-        &["\\mathord", "\\mathbin", "\\mathrel", "\\mathopen", "\\mathclose", "\\mathpunct", "\\mathinner"],
-        Props { num_args: 1, primitive: true, ..Props::D },
+        &[
+            "\\mathord",
+            "\\mathbin",
+            "\\mathrel",
+            "\\mathopen",
+            "\\mathclose",
+            "\\mathpunct",
+            "\\mathinner",
+        ],
+        Props {
+            num_args: 1,
+            primitive: true,
+            ..Props::D
+        },
         mclass_handler,
         Some(mclass_builder),
     );
     r.define(
         "mclass",
         &["\\@binrel"],
-        Props { num_args: 2, ..Props::D },
+        Props {
+            num_args: 2,
+            ..Props::D
+        },
         binrel_handler,
         None,
     );
     r.define(
         "mclass",
         &["\\stackrel", "\\overset", "\\underset"],
-        Props { num_args: 2, ..Props::D },
+        Props {
+            num_args: 2,
+            ..Props::D
+        },
         stackrel_handler,
         None,
     );
     r.define(
         "multiscript",
         &["\\sideset", "\\pres@cript"],
-        Props { num_args: 3, ..Props::D },
+        Props {
+            num_args: 3,
+            ..Props::D
+        },
         multiscript_handler,
         Some(multiscript_builder),
     );
     r.define(
         "horizBracket",
-        &["\\overbrace", "\\underbrace", "\\overbracket", "\\underbracket"],
-        Props { num_args: 1, ..Props::D },
+        &[
+            "\\overbrace",
+            "\\underbrace",
+            "\\overbracket",
+            "\\underbracket",
+        ],
+        Props {
+            num_args: 1,
+            ..Props::D
+        },
         horiz_bracket_handler,
         Some(horiz_bracket_builder),
     );
     r.define(
         "envTag",
         &["\\env@tag"],
-        Props { num_args: 1, arg_types: Some(&["math"]), ..Props::D },
+        Props {
+            num_args: 1,
+            arg_types: Some(&["math"]),
+            ..Props::D
+        },
         env_tag_handler,
         Some(empty_row),
     );
-    r.define("noTag", &["\\env@notag"], Props::D, no_tag_handler, Some(empty_row));
+    r.define(
+        "noTag",
+        &["\\env@notag"],
+        Props::D,
+        no_tag_handler,
+        Some(empty_row),
+    );
 }

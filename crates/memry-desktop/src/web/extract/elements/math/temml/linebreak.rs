@@ -23,10 +23,14 @@ pub fn set_line_breaks(expression: Vec<Tree>, wrap_mode: &str, is_display_mode: 
             break;
         }
         let node = expression[i].clone();
-        let is_newline = matches!(&node, Tree::Math(m) if m.get_attribute("linebreak") == Some("newline"));
+        let is_newline =
+            matches!(&node, Tree::Math(m) if m.get_attribute("linebreak") == Some("newline"));
         if is_newline {
             if !block.is_empty() {
-                mrows.push(Tree::Math(MathNode::new("mrow", std::mem::take(&mut block))));
+                mrows.push(Tree::Math(MathNode::new(
+                    "mrow",
+                    std::mem::take(&mut block),
+                )));
             }
             mrows.push(node);
             block = Vec::new();

@@ -209,11 +209,19 @@ fn raw_string(node: &V) -> R<String> {
 }
 
 fn textcolor_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
-    let model = if opt[0].truthy() { raw_string(&opt[0])? } else { String::new() };
+    let model = if opt[0].truthy() {
+        raw_string(&opt[0])?
+    } else {
+        String::new()
+    };
     let color = if !model.is_empty() {
         color_from_spec(&model, &raw_string(&args[0])?)?
     } else {
-        validate_color(&raw_string(&args[0])?, &ctx.parser.gullet.macros, ctx.token.as_ref())?
+        validate_color(
+            &raw_string(&args[0])?,
+            &ctx.parser.gullet.macros,
+            ctx.token.as_ref(),
+        )?
     };
     Ok(node! {
         "type" => "color",
@@ -225,14 +233,24 @@ fn textcolor_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
 }
 
 fn color_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
-    let model = if opt[0].truthy() { raw_string(&opt[0])? } else { String::new() };
+    let model = if opt[0].truthy() {
+        raw_string(&opt[0])?
+    } else {
+        String::new()
+    };
     let color = if !model.is_empty() {
         color_from_spec(&model, &raw_string(&args[0])?)?
     } else {
-        validate_color(&raw_string(&args[0])?, &ctx.parser.gullet.macros, ctx.token.as_ref())?
+        validate_color(
+            &raw_string(&args[0])?,
+            &ctx.parser.gullet.macros,
+            ctx.token.as_ref(),
+        )?
     };
     let break_on = ctx.break_on_token_text.clone();
-    let body = ctx.parser.parse_expression(true, break_on.as_deref(), true)?;
+    let body = ctx
+        .parser
+        .parse_expression(true, break_on.as_deref(), true)?;
     Ok(node! {
         "type" => "color",
         "mode" => ctx.parser.mode,
@@ -264,10 +282,11 @@ fn definecolor_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
         delimiters: None,
         unexpandable: false,
     };
-    ctx.parser
-        .gullet
-        .macros
-        .set(&format!("\\\\color@{name}"), MacroDef::Exp(std::rc::Rc::new(expansion)), false);
+    ctx.parser.gullet.macros.set(
+        &format!("\\\\color@{name}"),
+        MacroDef::Exp(std::rc::Rc::new(expansion)),
+        false,
+    );
     Ok(node! {"type" => "internal", "mode" => ctx.parser.mode})
 }
 

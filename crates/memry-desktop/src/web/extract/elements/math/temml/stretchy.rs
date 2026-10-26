@@ -43,8 +43,12 @@ fn stretchy_code_point(name: &str) -> &'static str {
         "widecheck" => "ˇ",
         "widetilde" | "utilde" => "~",
         "wideparen" | "overparen" => "⏜",
-        "overleftarrow" | "underleftarrow" | "xleftarrow" | "yieldsLeft" | "\\cdleftarrow" => "\u{2190}",
-        "overrightarrow" | "underrightarrow" | "xrightarrow" | "yields" | "\\cdrightarrow" => "\u{2192}",
+        "overleftarrow" | "underleftarrow" | "xleftarrow" | "yieldsLeft" | "\\cdleftarrow" => {
+            "\u{2190}"
+        }
+        "overrightarrow" | "underrightarrow" | "xrightarrow" | "yields" | "\\cdrightarrow" => {
+            "\u{2192}"
+        }
         "underbrace" => "\u{23df}",
         "overbrace" => "\u{23de}",
         "overbracket" => "\u{23b4}",
@@ -52,10 +56,14 @@ fn stretchy_code_point(name: &str) -> &'static str {
         "overgroup" => "\u{23e0}",
         "undergroup" => "\u{23e1}",
         "underparen" => "\u{23dd}",
-        "overleftrightarrow" | "underleftrightarrow" | "xleftrightarrow" | "mesomerism" => "\u{2194}",
+        "overleftrightarrow" | "underleftrightarrow" | "xleftrightarrow" | "mesomerism" => {
+            "\u{2194}"
+        }
         "Overrightarrow" | "xRightarrow" => "\u{21d2}",
         "overleftharpoon" | "xleftharpoonup" => "\u{21bc}",
-        "overrightharpoon" | "xrightharpoonup" | "eqrightharpoonup" | "longrightharpoonup" => "\u{21c0}",
+        "overrightharpoon" | "xrightharpoonup" | "eqrightharpoonup" | "longrightharpoonup" => {
+            "\u{21c0}"
+        }
         "xLeftarrow" => "\u{21d0}",
         "xLeftrightarrow" => "\u{21d4}",
         "xhookleftarrow" => "\u{21a9}",
@@ -76,7 +84,10 @@ fn stretchy_code_point(name: &str) -> &'static str {
 /// `mathMLnode(label)`.
 pub fn math_ml_node(label: &str) -> MathNode {
     let name = label.chars().skip(1).collect::<String>();
-    let mut node = MathNode::new("mo", vec![Tree::Text(stretchy_code_point(&name).to_string())]);
+    let mut node = MathNode::new(
+        "mo",
+        vec![Tree::Text(stretchy_code_point(&name).to_string())],
+    );
     node.set_attribute("stretchy", "true");
     node
 }

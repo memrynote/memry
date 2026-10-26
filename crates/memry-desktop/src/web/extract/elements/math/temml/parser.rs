@@ -47,7 +47,10 @@ fn first_bmp(text: &str) -> Option<char> {
 
 fn is_verb(text: &str) -> bool {
     match text.strip_prefix("\\verb") {
-        Some(rest) => rest.chars().next().is_some_and(|c| !c.is_ascii_alphabetic()),
+        Some(rest) => rest
+            .chars()
+            .next()
+            .is_some_and(|c| !c.is_ascii_alphabetic()),
         None => false,
     }
 }
@@ -201,7 +204,13 @@ impl Parser {
         let numer = group(numer_body);
         let denom = group(denom_body);
         let node = if func_name == "\\\\abovefrac" {
-            self.call_function(&func_name, &[numer, body[over].clone(), denom], &[], None, None)?
+            self.call_function(
+                &func_name,
+                &[numer, body[over].clone(), denom],
+                &[],
+                None,
+                None,
+            )?
         } else {
             self.call_function(&func_name, &[numer, denom], &[], None, None)?
         };
@@ -421,11 +430,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_group(
-        &mut self,
-        name: &str,
-        break_on_token_text: Option<&str>,
-    ) -> R<Option<V>> {
+    pub fn parse_group(&mut self, name: &str, break_on_token_text: Option<&str>) -> R<Option<V>> {
         let first = self.fetch()?;
         let text = first.borrow().text.clone();
         if name == "argument to '\\left'" {
@@ -501,7 +506,8 @@ impl Parser {
                     continue;
                 };
                 if a == b {
-                    let t = node! {"type" => "textord", "mode" => "text", "text" => format!("{a}{a}")};
+                    let t =
+                        node! {"type" => "textord", "mode" => "text", "text" => format!("{a}{a}")};
                     group.splice(i as usize..i as usize + 2, [t]);
                     n -= 1;
                 }
@@ -545,7 +551,11 @@ impl Parser {
             }
             text = format!("{replacement}{}", utf16_suffix_str(&text, 1));
         }
-        let combining = if mode == "math" { combining_tail(&text) } else { None };
+        let combining = if mode == "math" {
+            combining_tail(&text)
+        } else {
+            None
+        };
         let match_text = combining.map(|at| utf16_suffix_str(&text, at));
         if let Some(at) = combining {
             text = utf16_prefix_str(&text, at);
@@ -569,7 +579,8 @@ impl Parser {
             if tables().atoms.contains(&group) {
                 s = node! {"type" => "atom", "mode" => mode, "family" => group.clone(), "text" => text.clone()};
                 s.set("loc", loc.clone().into());
-                if (group == "rel" || group == "bin") && self.prev_atom_type == "text"
+                if (group == "rel" || group == "bin")
+                    && self.prev_atom_type == "text"
                     && let Some(loc) = &loc
                     && text_follows(&loc.lexer, loc.end)
                 {
@@ -580,11 +591,16 @@ impl Parser {
                     self.consume();
                     let next = self.fetch_text()?;
                     let code = next.encode_utf16().next();
-                    let font = if code == Some(0xfe01) { "mathscr" } else { "mathcal" };
+                    let font = if code == Some(0xfe01) {
+                        "mathscr"
+                    } else {
+                        "mathcal"
+                    };
                     if matches!(code, Some(0xfe00) | Some(0xfe01)) {
                         self.consume();
                     }
-                    let body = node! {"type" => "mathord", "mode" => "math", "text" => ascii.clone()};
+                    let body =
+                        node! {"type" => "mathord", "mode" => "math", "text" => ascii.clone()};
                     body.set("loc", loc.into());
                     let f = node! {"type" => "font", "mode" => "math", "font" => font};
                     f.set("body", body);
@@ -616,9 +632,16 @@ impl Parser {
                 let Some(entry) = functions::unicode_accent(&key) else {
                     return perr_at(format!("Unknown accent ' {accent}'"), &nucleus);
                 };
-                let command = if mode == "math" { entry.math.or(entry.text) } else { entry.text };
+                let command = if mode == "math" {
+                    entry.math.or(entry.text)
+                } else {
+                    entry.text
+                };
                 let Some(command) = command else {
-                    return perr_at(format!("Accent {accent} unsupported in {mode} mode"), &nucleus);
+                    return perr_at(
+                        format!("Accent {accent} unsupported in {mode} mode"),
+                        &nucleus,
+                    );
                 };
                 let a = node! {
                     "type" => "accent",

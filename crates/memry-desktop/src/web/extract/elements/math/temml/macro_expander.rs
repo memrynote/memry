@@ -108,6 +108,18 @@ impl Namespace {
         self.current.borrow_mut().insert(name.to_string(), value);
     }
 
+    /// `set(name, undefined, true)`: `get` then reports the macro as undefined. Only used for
+    /// names without a builtin.
+    pub fn set_global_undefined(&mut self, name: &str) {
+        for frame in &mut self.undef_stack {
+            frame.remove(name);
+        }
+        if let Some(top) = self.undef_stack.last_mut() {
+            top.insert(name.to_string(), None);
+        }
+        self.current.borrow_mut().remove(name);
+    }
+
     pub fn delete(&mut self, name: &str) {
         self.current.borrow_mut().remove(name);
     }
@@ -331,7 +343,9 @@ impl MacroExpander {
         let expansion = expansion.expect("expandable");
         self.expansion_count += 1;
         if self.expansion_count > self.settings.max_expand {
-            return perr("Too many expansions: infinite loop or need to increase maxExpand setting");
+            return perr(
+                "Too many expansions: infinite loop or need to increase maxExpand setting",
+            );
         }
         let mut tokens = expansion.tokens.clone();
         let args = self.consume_args(expansion.num_args, expansion.delimiters.as_ref())?;

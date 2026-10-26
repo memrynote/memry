@@ -40,15 +40,80 @@ const LEFT_TO_RIGHT: [(&str, &str); 28] = [
 ];
 
 const DELIMITERS: &[&str] = &[
-    "(", "\\lparen", ")", "\\rparen", "[", "\\lbrack", "]", "\\rbrack", "\\{", "\\lbrace", "\\}",
-    "\\rbrace", "⦇", "\\llparenthesis", "⦈", "\\rrparenthesis", "\\lfloor", "\\rfloor", "\u{230a}",
-    "\u{230b}", "\\lceil", "\\rceil", "\u{2308}", "\u{2309}", "<", ">", "\\langle", "\u{27e8}",
-    "\\rangle", "\u{27e9}", "\\lAngle", "\u{27ea}", "\\rAngle", "\u{27eb}", "\\llangle", "⦉",
-    "\\rrangle", "⦊", "\\lt", "\\gt", "\\lvert", "\\rvert", "\\lVert", "\\rVert", "\\lgroup",
-    "\\rgroup", "\u{27ee}", "\u{27ef}", "\\lmoustache", "\\rmoustache", "\u{23b0}", "\u{23b1}",
-    "\\llbracket", "\\rrbracket", "\u{27e6}", "\u{27e7}", "\\lBrace", "\\rBrace", "\u{2983}",
-    "\u{2984}", "/", "\\backslash", "|", "\\vert", "\\|", "\\Vert", "\u{2016}", "\\uparrow",
-    "\\Uparrow", "\\downarrow", "\\Downarrow", "\\updownarrow", "\\Updownarrow", ".",
+    "(",
+    "\\lparen",
+    ")",
+    "\\rparen",
+    "[",
+    "\\lbrack",
+    "]",
+    "\\rbrack",
+    "\\{",
+    "\\lbrace",
+    "\\}",
+    "\\rbrace",
+    "⦇",
+    "\\llparenthesis",
+    "⦈",
+    "\\rrparenthesis",
+    "\\lfloor",
+    "\\rfloor",
+    "\u{230a}",
+    "\u{230b}",
+    "\\lceil",
+    "\\rceil",
+    "\u{2308}",
+    "\u{2309}",
+    "<",
+    ">",
+    "\\langle",
+    "\u{27e8}",
+    "\\rangle",
+    "\u{27e9}",
+    "\\lAngle",
+    "\u{27ea}",
+    "\\rAngle",
+    "\u{27eb}",
+    "\\llangle",
+    "⦉",
+    "\\rrangle",
+    "⦊",
+    "\\lt",
+    "\\gt",
+    "\\lvert",
+    "\\rvert",
+    "\\lVert",
+    "\\rVert",
+    "\\lgroup",
+    "\\rgroup",
+    "\u{27ee}",
+    "\u{27ef}",
+    "\\lmoustache",
+    "\\rmoustache",
+    "\u{23b0}",
+    "\u{23b1}",
+    "\\llbracket",
+    "\\rrbracket",
+    "\u{27e6}",
+    "\u{27e7}",
+    "\\lBrace",
+    "\\rBrace",
+    "\u{2983}",
+    "\u{2984}",
+    "/",
+    "\\backslash",
+    "|",
+    "\\vert",
+    "\\|",
+    "\\Vert",
+    "\u{2016}",
+    "\\uparrow",
+    "\\Uparrow",
+    "\\downarrow",
+    "\\Downarrow",
+    "\\updownarrow",
+    "\\Updownarrow",
+    ".",
 ];
 
 const DELIMITER_SIZE_NAMES: [(&str, &str, usize); 16] = [
@@ -87,7 +152,10 @@ pub fn is_delimiter(text: &str) -> bool {
 
 /// `leftToRight[name]`.
 pub fn right_of(left: &str) -> Option<&'static str> {
-    LEFT_TO_RIGHT.iter().find(|(l, _)| *l == left).map(|(_, r)| *r)
+    LEFT_TO_RIGHT
+        .iter()
+        .find(|(l, _)| *l == left)
+        .map(|(_, r)| *r)
 }
 
 /// The names of the left delimiters (`leftDelimiterNames`).
@@ -109,11 +177,9 @@ pub fn is_left_delimiter(text: &str) -> bool {
     right_of(text).is_some()
 }
 
-fn check_symbol_node(node: &V) -> bool {
+pub fn check_symbol_node(node: &V) -> bool {
     let t = node.ty();
-    t == "atom"
-        || t == "delimiter"
-        || (!t.is_empty() && tables().non_atoms.contains(&t))
+    t == "atom" || t == "delimiter" || (!t.is_empty() && tables().non_atoms.contains(&t))
 }
 
 /// `checkDelimiter(delim, context)`: the symbol node (its `<`/`>` rewritten to angle brackets).
@@ -164,8 +230,10 @@ fn delimsizing_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
         return Ok(delim_node);
     }
     let empty = node! {"type" => "ordgroup", "mode" => "math"}.with("body", V::arr(vec![]));
-    Ok(node! {"type" => "ordgroup", "mode" => "math"}
-        .with("body", V::arr(vec![delim_node, empty])))
+    Ok(
+        node! {"type" => "ordgroup", "mode" => "math"}
+            .with("body", V::arr(vec![delim_node, empty])),
+    )
 }
 
 fn delimsizing_builder(group: &V, _style: &Style) -> R<Tree> {
@@ -173,7 +241,14 @@ fn delimsizing_builder(group: &V, _style: &Style) -> R<Tree> {
     let delim = if raw == "." { "" } else { raw.as_str() };
     let mut node = MathNode::new("mo", vec![make_text(delim, &group.text("mode"), None)]);
     let mclass = group.text("mclass");
-    node.set_attribute("fence", if mclass == "mopen" || mclass == "mclose" { "true" } else { "false" });
+    node.set_attribute(
+        "fence",
+        if mclass == "mopen" || mclass == "mclose" {
+            "true"
+        } else {
+            "false"
+        },
+    );
     if NEED_EXPLICIT_STRETCH.contains(&delim) || delim.contains("arrow") {
         node.set_attribute("stretchy", "true");
     }
@@ -238,7 +313,15 @@ fn fenced_builder(group: &V, style: &Style, stretchy: bool) -> R<Tree> {
     let items = body.items();
     let mut inner = build_expression(&items, style, false)?;
     let mode = group.text("mode");
-    inner.insert(0, Tree::Math(make_fence_mo(&group.text("left"), &mode, "prefix", stretchy)));
+    inner.insert(
+        0,
+        Tree::Math(make_fence_mo(
+            &group.text("left"),
+            &mode,
+            "prefix",
+            stretchy,
+        )),
+    );
     let mut right_node = make_fence_mo(&group.text("right"), &mode, "postfix", stretchy);
     if let Some(last) = items.last()
         && last.is_type("color")
@@ -261,9 +344,15 @@ fn delimiter_builder(group: &V, style: &Style) -> R<Tree> {
 fn delimiter_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
     let func_name = ctx.func_name.clone();
     let parser = &mut *ctx.parser;
-    let loc: V = ctx.token.as_ref().and_then(|t| t.borrow().loc.clone()).into();
+    let loc: V = ctx
+        .token
+        .as_ref()
+        .and_then(|t| t.borrow().loc.clone())
+        .into();
     if parser.mode == "text" {
-        return Ok(node! {"type" => "textord", "mode" => "text", "text" => func_name}.with("loc", loc));
+        return Ok(
+            node! {"type" => "textord", "mode" => "text", "text" => func_name}.with("loc", loc),
+        );
     } else if !parser.settings.wrap_delimiter_pairs.get() {
         return Ok(node! {
             "type" => "atom",
@@ -312,10 +401,32 @@ fn middle_builder(group: &V, _style: &Style) -> R<Tree> {
 
 pub fn register(r: &mut Registry) {
     let sizing: Vec<&'static str> = DELIMITER_SIZE_NAMES.iter().map(|(n, _, _)| *n).collect();
-    let primitive = Props { num_args: 1, arg_types: Some(&["primitive"]), ..Props::D };
-    r.define("delimsizing", &sizing, primitive, delimsizing_handler, Some(delimsizing_builder));
-    r.define("leftright-right", &["\\right"], primitive, right_handler, None);
-    r.define("leftright", &["\\left"], primitive, left_handler, Some(leftright_builder));
+    let primitive = Props {
+        num_args: 1,
+        arg_types: Some(&["primitive"]),
+        ..Props::D
+    };
+    r.define(
+        "delimsizing",
+        &sizing,
+        primitive,
+        delimsizing_handler,
+        Some(delimsizing_builder),
+    );
+    r.define(
+        "leftright-right",
+        &["\\right"],
+        primitive,
+        right_handler,
+        None,
+    );
+    r.define(
+        "leftright",
+        &["\\left"],
+        primitive,
+        left_handler,
+        Some(leftright_builder),
+    );
     r.define(
         "delimiter",
         &left_delimiter_names(),
@@ -328,5 +439,11 @@ pub fn register(r: &mut Registry) {
         delimiter_handler,
         Some(delimiter_builder),
     );
-    r.define("middle", &["\\middle"], primitive, middle_handler, Some(middle_builder));
+    r.define(
+        "middle",
+        &["\\middle"],
+        primitive,
+        middle_handler,
+        Some(middle_builder),
+    );
 }

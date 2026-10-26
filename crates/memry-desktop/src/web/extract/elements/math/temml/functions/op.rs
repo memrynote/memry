@@ -8,7 +8,14 @@ use crate::web::extract::elements::math::temml::tree::{MathNode, Tree};
 use crate::web::extract::elements::math::temml::val::{R, V};
 use crate::web::extract::utils::js::to_number;
 
-const ORD_TYPES: [&str; 6] = ["textord", "mathord", "ordgroup", "close", "leftright", "font"];
+const ORD_TYPES: [&str; 6] = [
+    "textord",
+    "mathord",
+    "ordgroup",
+    "close",
+    "leftright",
+    "font",
+];
 
 fn thin_space() -> Tree {
     let mut s = MathNode::new("mspace", Vec::new());
@@ -36,7 +43,10 @@ fn op_builder(group: &V, style: &Style) -> R<Tree> {
         }
         node = Tree::Math(n);
     } else if group.get("body").truthy() {
-        let mut n = MathNode::new("mo", build_expression(&group.get("body").items(), style, false)?);
+        let mut n = MathNode::new(
+            "mo",
+            build_expression(&group.get("body").items(), style, false)?,
+        );
         if group.get("fromMathOp").truthy() {
             set_spacing(&mut n);
         }
@@ -45,7 +55,10 @@ fn op_builder(group: &V, style: &Style) -> R<Tree> {
         let mi = MathNode::new("mi", vec![Tree::Text(name.chars().skip(1).collect())]);
         node = Tree::Math(mi);
         if !group.get("parentIsSupSub").truthy() {
-            let operator = Tree::Math(MathNode::new("mo", vec![make_text("\u{2061}", "text", None)]));
+            let operator = Tree::Math(MathNode::new(
+                "mo",
+                vec![make_text("\u{2061}", "text", None)],
+            ));
             let mut row = vec![node, operator];
             if group.get("needsLeadingSpace").truthy() {
                 row.insert(0, thin_space());
@@ -125,8 +138,13 @@ fn big_op_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
 
 fn mathop_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
     let body = &args[0];
-    let arr = if body.get("body").truthy() { body.get("body").items() } else { vec![body.clone()] };
-    let is_symbol = arr.len() == 1 && ["textord", "mathord", "atom"].contains(&arr[0].ty().as_str());
+    let arr = if body.get("body").truthy() {
+        body.get("body").items()
+    } else {
+        vec![body.clone()]
+    };
+    let is_symbol =
+        arr.len() == 1 && ["textord", "mathord", "atom"].contains(&arr[0].ty().as_str());
     let n = node! {
         "type" => "op",
         "mode" => ctx.parser.mode,
@@ -136,8 +154,22 @@ fn mathop_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
         "fromMathOp" => true,
         "stack" => false,
     };
-    n.set("name", if is_symbol { arr[0].get("text") } else { V::Null });
-    n.set("body", if is_symbol { V::Null } else { ordargument(body) });
+    n.set(
+        "name",
+        if is_symbol {
+            arr[0].get("text")
+        } else {
+            V::Null
+        },
+    );
+    n.set(
+        "body",
+        if is_symbol {
+            V::Null
+        } else {
+            ordargument(body)
+        },
+    );
     Ok(n)
 }
 
@@ -229,8 +261,11 @@ fn descends(node: &MathNode) -> bool {
 }
 
 fn operatorname_builder(group: &V, style: &Style) -> R<Tree> {
-    let mut expression =
-        build_expression(&group.get("body").items(), &style.with_font("mathrm"), false)?;
+    let mut expression = build_expression(
+        &group.get("body").items(),
+        &style.with_font("mathrm"),
+        false,
+    )?;
     let mut is_all_string = true;
     for i in 0..expression.len() {
         let Tree::Math(top) = &mut expression[i] else {
@@ -270,7 +305,12 @@ fn operatorname_builder(group: &V, style: &Style) -> R<Tree> {
             _ => is_all_string = false,
         }
     }
-    let operator = || Tree::Math(MathNode::new("mo", vec![make_text("\u{2061}", "text", None)]));
+    let operator = || {
+        Tree::Math(MathNode::new(
+            "mo",
+            vec![make_text("\u{2061}", "text", None)],
+        ))
+    };
     if is_all_string {
         let word: String = expression.iter().map(Tree::to_text).collect();
         expression = vec![Tree::Text(word)];
@@ -315,12 +355,43 @@ pub fn register(r: &mut Registry) {
     r.define(
         "op",
         &[
-            "\\coprod", "\\bigvee", "\\bigwedge", "\\biguplus", "\\bigcupplus", "\\bigcupdot",
-            "\\bigcap", "\\bigcup", "\\bigdoublevee", "\\bigdoublewedge", "\\intop", "\\prod",
-            "\\sum", "\\bigotimes", "\\bigoplus", "\\bigodot", "\\bigsqcap", "\\bigsqcup",
-            "\\bigtimes", "\\smallint", "\u{220F}", "\u{2210}", "\u{2211}", "\u{22c0}",
-            "\u{22c1}", "\u{22c2}", "\u{22c3}", "\u{2a00}", "\u{2a01}", "\u{2a02}", "\u{2a03}",
-            "\u{2a04}", "\u{2a05}", "\u{2a06}", "\u{2a07}", "\u{2a08}", "\u{2a09}",
+            "\\coprod",
+            "\\bigvee",
+            "\\bigwedge",
+            "\\biguplus",
+            "\\bigcupplus",
+            "\\bigcupdot",
+            "\\bigcap",
+            "\\bigcup",
+            "\\bigdoublevee",
+            "\\bigdoublewedge",
+            "\\intop",
+            "\\prod",
+            "\\sum",
+            "\\bigotimes",
+            "\\bigoplus",
+            "\\bigodot",
+            "\\bigsqcap",
+            "\\bigsqcup",
+            "\\bigtimes",
+            "\\smallint",
+            "\u{220F}",
+            "\u{2210}",
+            "\u{2211}",
+            "\u{22c0}",
+            "\u{22c1}",
+            "\u{22c2}",
+            "\u{22c3}",
+            "\u{2a00}",
+            "\u{2a01}",
+            "\u{2a02}",
+            "\u{2a03}",
+            "\u{2a04}",
+            "\u{2a05}",
+            "\u{2a06}",
+            "\u{2a07}",
+            "\u{2a08}",
+            "\u{2a09}",
         ],
         Props::D,
         big_op_handler,
@@ -329,7 +400,11 @@ pub fn register(r: &mut Registry) {
     r.define(
         "op",
         &["\\mathop"],
-        Props { num_args: 1, primitive: true, ..Props::D },
+        Props {
+            num_args: 1,
+            primitive: true,
+            ..Props::D
+        },
         mathop_handler,
         Some(op_builder),
     );
@@ -347,7 +422,9 @@ pub fn register(r: &mut Registry) {
     );
     r.define(
         "op",
-        &["\\det", "\\gcd", "\\inf", "\\lim", "\\max", "\\min", "\\Pr", "\\sup"],
+        &[
+            "\\det", "\\gcd", "\\inf", "\\lim", "\\max", "\\min", "\\Pr", "\\sup",
+        ],
         Props::D,
         limits_handler,
         Some(op_builder),
@@ -355,21 +432,62 @@ pub fn register(r: &mut Registry) {
     r.define(
         "op",
         &[
-            "\\int", "\\iint", "\\iiint", "\\iiiint", "\\oint", "\\oiint", "\\oiiint",
-            "\\intclockwise", "\\varointclockwise", "\\intbar", "\\intBar", "\\fint", "\\rppolint",
-            "\\scpolint", "\\pointint", "\\sqint", "\\intlarhk", "\\intx", "\\intcap", "\\intcup",
-            "\u{222b}", "\u{222c}", "\u{222d}", "\u{222e}", "\u{222f}", "\u{2230}", "\u{2231}",
-            "\u{2232}", "\u{2a0c}", "\u{2a0d}", "\u{2a0e}", "\u{2a0f}", "\u{2a12}", "\u{2a13}",
-            "\u{2a15}", "\u{2a16}", "\u{2a17}", "\u{2a18}", "\u{2a19}", "\u{2a1a}",
+            "\\int",
+            "\\iint",
+            "\\iiint",
+            "\\iiiint",
+            "\\oint",
+            "\\oiint",
+            "\\oiiint",
+            "\\intclockwise",
+            "\\varointclockwise",
+            "\\intbar",
+            "\\intBar",
+            "\\fint",
+            "\\rppolint",
+            "\\scpolint",
+            "\\pointint",
+            "\\sqint",
+            "\\intlarhk",
+            "\\intx",
+            "\\intcap",
+            "\\intcup",
+            "\u{222b}",
+            "\u{222c}",
+            "\u{222d}",
+            "\u{222e}",
+            "\u{222f}",
+            "\u{2230}",
+            "\u{2231}",
+            "\u{2232}",
+            "\u{2a0c}",
+            "\u{2a0d}",
+            "\u{2a0e}",
+            "\u{2a0f}",
+            "\u{2a12}",
+            "\u{2a13}",
+            "\u{2a15}",
+            "\u{2a16}",
+            "\u{2a17}",
+            "\u{2a18}",
+            "\u{2a19}",
+            "\u{2a1a}",
         ],
-        Props { allowed_in_argument: true, ..Props::D },
+        Props {
+            allowed_in_argument: true,
+            ..Props::D
+        },
         integral_handler,
         Some(op_builder),
     );
     r.define(
         "operatorname",
         &["\\operatorname@", "\\operatornamewithlimits"],
-        Props { num_args: 1, allowed_in_argument: true, ..Props::D },
+        Props {
+            num_args: 1,
+            allowed_in_argument: true,
+            ..Props::D
+        },
         operatorname_handler,
         Some(operatorname_builder),
     );

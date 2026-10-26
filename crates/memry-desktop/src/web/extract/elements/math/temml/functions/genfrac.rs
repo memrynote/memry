@@ -49,7 +49,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
     } else if bar_size.truthy() {
         let n = bar_size.get("number").as_num().unwrap_or(f64::NAN);
         let rule = calculate_size(n, &bar_size.text("unit"), &style)?;
-        node.set_attribute("linethickness", format!("{}{}", num_str(rule.number), rule.unit));
+        node.set_attribute(
+            "linethickness",
+            format!("{}{}", num_str(rule.number), rule.unit),
+        );
     }
     let left = group.get("leftDelim");
     let right = group.get("rightDelim");
@@ -57,7 +60,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
     if !left.is_nullish() || !right.is_nullish() {
         let mut with_delims = Vec::new();
         let fence = |d: &V| -> Tree {
-            let text = d.as_string().unwrap_or_else(|| "undefined".to_string()).replacen('\\', "", 1);
+            let text = d
+                .as_string()
+                .unwrap_or_else(|| "undefined".to_string())
+                .replacen('\\', "", 1);
             let mut op = MathNode::new("mo", vec![Tree::Text(text)]);
             op.set_attribute("fence", "true");
             Tree::Math(op)
@@ -75,7 +81,11 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
         let mut wrapper = MathNode::new("mstyle", vec![result]);
         wrapper.set_attribute(
             "displaystyle",
-            if script_level.as_deref() == Some("display") { "true" } else { "false" },
+            if script_level.as_deref() == Some("display") {
+                "true"
+            } else {
+                "false"
+            },
         );
         wrapper.set_attribute("scriptlevel", script_level_number(script_level.as_deref()));
         result = Tree::Math(wrapper);
@@ -131,7 +141,11 @@ fn infix_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
 }
 
 fn delim_from_value(delim: &str) -> V {
-    if !delim.is_empty() && delim != "." { V::str(delim) } else { V::Null }
+    if !delim.is_empty() && delim != "." {
+        V::str(delim)
+    } else {
+        V::Null
+    }
 }
 
 fn genfrac_full_handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
@@ -226,17 +240,32 @@ pub fn register(r: &mut Registry) {
     r.define(
         "genfrac",
         &[
-            "\\cfrac", "\\dfrac", "\\frac", "\\tfrac", "\\dbinom", "\\binom", "\\tbinom",
-            "\\\\atopfrac", "\\\\bracefrac", "\\\\brackfrac",
+            "\\cfrac",
+            "\\dfrac",
+            "\\frac",
+            "\\tfrac",
+            "\\dbinom",
+            "\\binom",
+            "\\tbinom",
+            "\\\\atopfrac",
+            "\\\\bracefrac",
+            "\\\\brackfrac",
         ],
-        Props { num_args: 2, allowed_in_argument: true, ..Props::D },
+        Props {
+            num_args: 2,
+            allowed_in_argument: true,
+            ..Props::D
+        },
         genfrac_handler,
         Some(builder),
     );
     r.define(
         "infix",
         &["\\over", "\\choose", "\\atop", "\\brace", "\\brack"],
-        Props { infix: true, ..Props::D },
+        Props {
+            infix: true,
+            ..Props::D
+        },
         infix_handler,
         None,
     );
@@ -255,14 +284,23 @@ pub fn register(r: &mut Registry) {
     r.define(
         "infix",
         &["\\above"],
-        Props { num_args: 1, arg_types: Some(&["size"]), infix: true, ..Props::D },
+        Props {
+            num_args: 1,
+            arg_types: Some(&["size"]),
+            infix: true,
+            ..Props::D
+        },
         above_handler,
         None,
     );
     r.define(
         "genfrac",
         &["\\\\abovefrac"],
-        Props { num_args: 3, arg_types: Some(&["math", "size", "math"]), ..Props::D },
+        Props {
+            num_args: 3,
+            arg_types: Some(&["math", "size", "math"]),
+            ..Props::D
+        },
         abovefrac_handler,
         Some(builder),
     );

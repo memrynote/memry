@@ -178,10 +178,7 @@ impl Lexer {
                 while i < s.len() && is_space(s[i]) {
                     i += 1;
                 }
-                return Some(Matched {
-                    end: i,
-                    text: word,
-                });
+                return Some(Matched { end: i, text: word });
             }
             if let Some(&n) = s.get(pos + 1)
                 && !(0xD800..=0xDFFF).contains(&n)

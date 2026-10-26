@@ -224,6 +224,55 @@ impl V {
         }
     }
 
+    /// `array[i]`.
+    pub fn at(&self, i: usize) -> V {
+        match self {
+            V::Arr(a) => a.borrow().get(i).cloned().unwrap_or(V::Undef),
+            _ => V::Undef,
+        }
+    }
+
+    /// `array[i] = value`, growing the array with `undefined` as JS does.
+    pub fn set_at(&self, i: usize, value: V) {
+        if let V::Arr(a) = self {
+            let mut a = a.borrow_mut();
+            if a.len() <= i {
+                a.resize(i + 1, V::Undef);
+            }
+            a[i] = value;
+        }
+    }
+
+    /// `array.shift()`.
+    pub fn shift(&self) -> V {
+        match self {
+            V::Arr(a) if !a.borrow().is_empty() => a.borrow_mut().remove(0),
+            _ => V::Undef,
+        }
+    }
+
+    /// `array.pop()`.
+    pub fn pop(&self) -> V {
+        match self {
+            V::Arr(a) => a.borrow_mut().pop().unwrap_or(V::Undef),
+            _ => V::Undef,
+        }
+    }
+
+    /// `array.unshift(value)`.
+    pub fn unshift(&self, value: V) {
+        if let V::Arr(a) = self {
+            a.borrow_mut().insert(0, value);
+        }
+    }
+
+    /// `array.includes(string)`.
+    pub fn includes(&self, s: &str) -> bool {
+        self.items()
+            .iter()
+            .any(|v| matches!(v, V::Str(x) if x == s))
+    }
+
     pub fn is_arr(&self) -> bool {
         matches!(self, V::Arr(_))
     }

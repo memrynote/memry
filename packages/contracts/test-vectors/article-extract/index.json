@@ -52,5 +52,10 @@
   {"name":"math-mathml-structures","covers":["math","MathML to LaTeX","mtable","mfenced","scripts","roots"],"htmlSha256":"18e61fa9b7ffe2827dbece39dbb19625edfb5fb7abdce4be112b74a3cdb9d592"},
   {"name":"math-mathml-symbols","covers":["math","MathML to LaTeX","symbols","mathvariant","mtext"],"htmlSha256":"57a00dd57ab17db4a3609c953a6b859dc18793139cee58bbc536a882e005fbaf"},
   {"name":"math-arxiv-equation-tables","covers":["math","arXiv ltx_equation","ltx_eqn_table","figure caption math","nested equations"],"htmlSha256":"e23e8d357408521645bd8761ad801a9272706ae69c2c9199e2648422d66bf8c7"},
-  {"name":"math-mathml-failures","covers":["math","MathML to LaTeX","invalid arity","xmldom recovery"],"htmlSha256":"5f6cb1b2dc85d6a97447d7926639a7c0c6b2383462990ec78539150442eb13a8"}
+  {"name":"math-mathml-failures","covers":["math","MathML to LaTeX","invalid arity","xmldom recovery"],"htmlSha256":"5f6cb1b2dc85d6a97447d7926639a7c0c6b2383462990ec78539150442eb13a8"},
+  {"name":"math-temml-matrices","covers":["math","temml","matrix environments","array","cases","bordermatrix","smallmatrix"],"htmlSha256":"4b52b52b6237272de85fa712ebd36ee9095b3a1d8f0570dd14dec421743c6caa"},
+  {"name":"math-temml-aligned","covers":["math","temml","align","gather","multline","tag","label","display mode"],"htmlSha256":"fb9f97e14529bd65b03db311827d556c3252c839fb808f06ea090a7569cb1d78"},
+  {"name":"math-temml-enclose","covers":["math","temml","cancel","boxed","sout","colorbox","textcircled"],"htmlSha256":"eb6316d38884a021d2b6cf9034156cf32165fadb32acbb454fe017f22af58274"},
+  {"name":"math-temml-cd","covers":["math","temml","CD","column separators","arraycolsep"],"htmlSha256":"2a7f4a25c3c3a6fbc846374d16d9af053c43d62d5cecd28cd58c9ed9d4a1372b"},
+  {"name":"math-temml-unsupported","covers":["math","temml","untrusted","unknown environment","unbalanced","hline"],"htmlSha256":"b24e116940ced72447c54bd07d50bfb74cd40bacf636a4b751927c241f01347f"}
 ]

@@ -41,7 +41,12 @@ fn compare(file: &str) -> usize {
         failures.is_empty(),
         "{} differences:\n{}",
         failures.len(),
-        failures.join("\n")
+        failures
+            .iter()
+            .take(8)
+            .map(|f| f.chars().take(700).collect::<String>())
+            .collect::<Vec<_>>()
+            .join("\n")
     );
     vectors.len()
 }
@@ -54,4 +59,14 @@ fn temml_cases_match() {
 #[test]
 fn temml_fuzz_matches() {
     assert_eq!(compare("temml-fuzz.json"), 2000);
+}
+
+#[test]
+fn temml_env_cases_match() {
+    assert!(compare("temml-env-cases.json") > 500);
+}
+
+#[test]
+fn temml_env_fuzz_matches() {
+    assert_eq!(compare("temml-env-fuzz.json"), 2000);
 }

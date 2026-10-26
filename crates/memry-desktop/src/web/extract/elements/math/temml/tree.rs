@@ -1,5 +1,9 @@
 //! `mathMLTree.js`, `tree.js` and `domTree.js`: the output tree and its markup.
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use super::style::Style;
 use super::val::{R, jserr};
 
 /// `utils.escape`.
@@ -47,6 +51,9 @@ pub struct MathNode {
     pub classes: Vec<String>,
     pub style: Pairs,
     pub label: String,
+    /// Set when the node's `style` is a Style object (see `MathNode::with_style_object`).
+    pub style_object: Option<Rc<RefCell<Pairs>>>,
+    style_object_fixed: Pairs,
 }
 
 #[derive(Clone, Debug)]
@@ -88,7 +95,20 @@ impl MathNode {
             classes: Vec::new(),
             style: Vec::new(),
             label: String::new(),
+            style_object: None,
+            style_object_fixed: Vec::new(),
         }
+    }
+
+    /// `new MathNode(type, children, [], style)` with a Style object as the style: the node
+    /// shares the object's assigned properties and serializes its own properties too.
+    pub fn with_style_object(ty: &str, children: Vec<Tree>, style: &Style) -> MathNode {
+        let mut n = MathNode::new(ty, children);
+        n.style_object_fixed = style.own_properties();
+        let fixed = n.style_object_fixed.len() - style.extra.borrow().len();
+        n.style_object_fixed.truncate(fixed);
+        n.style_object = Some(style.extra.clone());
+        n
     }
 
     pub fn with_classes(ty: &str, children: Vec<Tree>, classes: &[&str]) -> MathNode {
@@ -109,7 +129,10 @@ impl MathNode {
     }
 
     pub fn set_style(&mut self, name: &str, value: impl Into<String>) {
-        set_pair(&mut self.style, name, value.into());
+        match &self.style_object {
+            Some(shared) => set_pair(&mut shared.borrow_mut(), name, value.into()),
+            None => set_pair(&mut self.style, name, value.into()),
+        }
     }
 
     pub fn into_tree(self) -> Tree {
@@ -125,7 +148,14 @@ impl MathNode {
         if !self.classes.is_empty() {
             out.push_str(&format!(" class=\"{}\"", escape(&class)));
         }
-        let styles = styles_markup(&self.style);
+        let styles = match &self.style_object {
+            Some(shared) => {
+                let mut all = self.style_object_fixed.clone();
+                all.extend(shared.borrow().iter().cloned());
+                styles_markup(&all)
+            }
+            None => styles_markup(&self.style),
+        };
         if !styles.is_empty() {
             out.push_str(&format!(" style=\"{styles}\""));
         }

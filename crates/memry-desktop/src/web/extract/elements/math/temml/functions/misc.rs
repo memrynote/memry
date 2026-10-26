@@ -45,7 +45,10 @@ fn cr_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
         Some(s) => assert_node_type(&s, "size")?.get("value"),
         None => V::Null,
     };
-    Ok(node! {"type" => "cr", "mode" => parser.mode, "newLine" => new_line}.with("size", size_value))
+    Ok(
+        node! {"type" => "cr", "mode" => parser.mode, "newLine" => new_line}
+            .with("size", size_value),
+    )
 }
 
 fn cr_builder(group: &V, style: &Style) -> R<Tree> {
@@ -81,42 +84,65 @@ fn mismatched_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
 }
 
 fn ordgroup_builder(group: &V, style: &Style) -> R<Tree> {
-    build_expression_row(&group.get("body").items(), style, group.get("semisimple").truthy())
+    build_expression_row(
+        &group.get("body").items(),
+        style,
+        group.get("semisimple").truthy(),
+    )
 }
 
 pub fn register(r: &mut Registry) {
     r.define(
         "textord",
         &["\\@char"],
-        Props { num_args: 1, allowed_in_text: true, ..Props::D },
+        Props {
+            num_args: 1,
+            allowed_in_text: true,
+            ..Props::D
+        },
         char_handler,
         None,
     );
     r.define(
         "cr",
         &["\\\\"],
-        Props { allowed_in_text: true, ..Props::D },
+        Props {
+            allowed_in_text: true,
+            ..Props::D
+        },
         cr_handler,
         Some(cr_builder),
     );
     r.define(
         "internal",
         &["\\relax"],
-        Props { allowed_in_text: true, allowed_in_argument: true, ..Props::D },
+        Props {
+            allowed_in_text: true,
+            allowed_in_argument: true,
+            ..Props::D
+        },
         relax_handler,
         None,
     );
     r.define(
         "ordgroup",
         &["\\(", "$"],
-        Props { allowed_in_text: true, allowed_in_math: false, ..Props::D },
+        Props {
+            allowed_in_text: true,
+            allowed_in_math: false,
+            ..Props::D
+        },
         math_handler,
         None,
     );
     r.define(
         "text",
         &["\\)", "\\]"],
-        Props { allowed_in_text: true, allowed_in_math: false, ..Props::D },
+        Props {
+            allowed_in_text: true,
+            allowed_in_math: false,
+            ..Props::D
+        },
         mismatched_handler,
         None,
     );

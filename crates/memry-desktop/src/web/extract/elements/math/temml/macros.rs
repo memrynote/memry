@@ -69,17 +69,27 @@ fn ifnextchar(c: &mut MacroExpander) -> R<MacroResult> {
     c.consume_spaces()?;
     let next = c.future()?;
     let same = args[0].len() == 1 && args[0][0].borrow().text == next.borrow().text;
-    Ok(exp(if same { args.swap_remove(1) } else { args.swap_remove(2) }))
+    Ok(exp(if same {
+        args.swap_remove(1)
+    } else {
+        args.swap_remove(2)
+    }))
 }
 
 fn text_or_math(c: &mut MacroExpander) -> R<MacroResult> {
     let mut args = c.consume_args(2, None)?;
-    Ok(exp(if c.mode == "text" { args.swap_remove(0) } else { args.swap_remove(1) }))
+    Ok(exp(if c.mode == "text" {
+        args.swap_remove(0)
+    } else {
+        args.swap_remove(1)
+    }))
 }
 
 fn digit_to_number(ch: Option<u16>) -> Option<f64> {
     let c = char::from_u32(u32::from(ch?))?;
-    c.to_digit(16).map(f64::from).filter(|_| c.is_ascii_hexdigit())
+    c.to_digit(16)
+        .map(f64::from)
+        .filter(|_| c.is_ascii_hexdigit())
 }
 
 fn first_unit(s: &str) -> Option<u16> {
@@ -145,19 +155,55 @@ fn char_macro(c: &mut MacroExpander) -> R<MacroResult> {
             (digit, num_str) = next_char_number(c)?;
         }
     }
-    Ok(MacroResult::Text(format!("\\@char{{{}}}", super::val::num_str(number))))
+    Ok(MacroResult::Text(format!(
+        "\\@char{{{}}}",
+        super::val::num_str(number)
+    )))
 }
 
 fn dots_by_token(name: &str) -> Option<&'static str> {
     Some(match name {
         "," => "\\dotsc",
-        "\\not" | "+" | "=" | "<" | ">" | "-" | "*" | ":" | "\\DOTSB" | "\\coprod" | "\\bigvee"
-        | "\\bigwedge" | "\\biguplus" | "\\bigcap" | "\\bigcup" | "\\prod" | "\\sum"
-        | "\\bigotimes" | "\\bigoplus" | "\\bigodot" | "\\bigsqcap" | "\\bigsqcup" | "\\bigtimes"
-        | "\\And" | "\\longrightarrow" | "\\Longrightarrow" | "\\longleftarrow"
-        | "\\Longleftarrow" | "\\longleftrightarrow" | "\\Longleftrightarrow" | "\\mapsto"
-        | "\\longmapsto" | "\\hookrightarrow" | "\\doteq" | "\\mathbin" | "\\mathrel" | "\\relbar"
-        | "\\Relbar" | "\\xrightarrow" | "\\xleftarrow" => "\\dotsb",
+        "\\not"
+        | "+"
+        | "="
+        | "<"
+        | ">"
+        | "-"
+        | "*"
+        | ":"
+        | "\\DOTSB"
+        | "\\coprod"
+        | "\\bigvee"
+        | "\\bigwedge"
+        | "\\biguplus"
+        | "\\bigcap"
+        | "\\bigcup"
+        | "\\prod"
+        | "\\sum"
+        | "\\bigotimes"
+        | "\\bigoplus"
+        | "\\bigodot"
+        | "\\bigsqcap"
+        | "\\bigsqcup"
+        | "\\bigtimes"
+        | "\\And"
+        | "\\longrightarrow"
+        | "\\Longrightarrow"
+        | "\\longleftarrow"
+        | "\\Longleftarrow"
+        | "\\longleftrightarrow"
+        | "\\Longleftrightarrow"
+        | "\\mapsto"
+        | "\\longmapsto"
+        | "\\hookrightarrow"
+        | "\\doteq"
+        | "\\mathbin"
+        | "\\mathrel"
+        | "\\relbar"
+        | "\\Relbar"
+        | "\\xrightarrow"
+        | "\\xleftarrow" => "\\dotsb",
         "\\DOTSI" | "\\int" | "\\oint" | "\\iint" | "\\iiint" | "\\iiiint" => "\\dotsi",
         "\\DOTSX" => "\\dotsx",
         _ => return None,
@@ -165,8 +211,24 @@ fn dots_by_token(name: &str) -> Option<&'static str> {
 }
 
 const SPACE_AFTER_DOTS: [&str; 18] = [
-    ")", "]", "\\rbrack", "\\}", "\\rbrace", "\\rangle", "\\rceil", "\\rfloor", "\\rgroup",
-    "\\rmoustache", "\\right", "\\bigr", "\\biggr", "\\Bigr", "\\Biggr", "$", ";", ".",
+    ")",
+    "]",
+    "\\rbrack",
+    "\\}",
+    "\\rbrace",
+    "\\rangle",
+    "\\rceil",
+    "\\rfloor",
+    "\\rgroup",
+    "\\rmoustache",
+    "\\right",
+    "\\bigr",
+    "\\biggr",
+    "\\Bigr",
+    "\\Biggr",
+    "$",
+    ";",
+    ".",
 ];
 
 fn space_after_dots(next: &str) -> bool {
@@ -191,21 +253,36 @@ fn dots(c: &mut MacroExpander) -> R<MacroResult> {
 fn dotso(c: &mut MacroExpander) -> R<MacroResult> {
     let next = c.future()?.borrow().text.clone();
     Ok(MacroResult::Text(
-        if space_after_dots(&next) { "\\ldots\\," } else { "\\ldots" }.to_string(),
+        if space_after_dots(&next) {
+            "\\ldots\\,"
+        } else {
+            "\\ldots"
+        }
+        .to_string(),
     ))
 }
 
 fn dotsc(c: &mut MacroExpander) -> R<MacroResult> {
     let next = c.future()?.borrow().text.clone();
     Ok(MacroResult::Text(
-        if space_after_dots(&next) && next != "," { "\\ldots\\," } else { "\\ldots" }.to_string(),
+        if space_after_dots(&next) && next != "," {
+            "\\ldots\\,"
+        } else {
+            "\\ldots"
+        }
+        .to_string(),
     ))
 }
 
 fn cdots(c: &mut MacroExpander) -> R<MacroResult> {
     let next = c.future()?.borrow().text.clone();
     Ok(MacroResult::Text(
-        if space_after_dots(&next) { "\\@cdots\\," } else { "\\@cdots" }.to_string(),
+        if space_after_dots(&next) {
+            "\\@cdots\\,"
+        } else {
+            "\\@cdots"
+        }
+        .to_string(),
     ))
 }
 
@@ -216,7 +293,7 @@ fn tag_literal(c: &mut MacroExpander) -> R<MacroResult> {
     Ok(MacroResult::Text("\\gdef\\df@tag{\\text{#1}}".to_string()))
 }
 
-fn string_from_arg(arg: &[Tok]) -> String {
+pub fn string_from_arg(arg: &[Tok]) -> String {
     arg.iter().rev().map(|t| t.borrow().text.clone()).collect()
 }
 
@@ -333,11 +410,15 @@ fn pdv_helper(args: &[Vec<Tok>]) -> R<(String, String, String)> {
 fn pdv_numerator(c: &mut MacroExpander) -> R<MacroResult> {
     let args = c.consume_args(2, None)?;
     let (numerator, num_op, denominator) = pdv_helper(&args)?;
-    Ok(MacroResult::Text(format!("\\frac{{{num_op} {numerator}}}{{{denominator}}}")))
+    Ok(MacroResult::Text(format!(
+        "\\frac{{{num_op} {numerator}}}{{{denominator}}}"
+    )))
 }
 
 fn pdv_next(c: &mut MacroExpander) -> R<MacroResult> {
     let args = c.consume_args(2, None)?;
     let (numerator, num_op, denominator) = pdv_helper(&args)?;
-    Ok(MacroResult::Text(format!("\\frac{{{num_op}}}{{{denominator}}} {numerator}")))
+    Ok(MacroResult::Text(format!(
+        "\\frac{{{num_op}}}{{{denominator}}} {numerator}"
+    )))
 }

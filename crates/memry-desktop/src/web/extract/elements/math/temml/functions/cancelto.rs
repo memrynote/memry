@@ -21,13 +21,17 @@ fn handler(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
 }
 
 fn style_color(style: &Style) -> String {
-    style.color.clone().unwrap_or_else(|| "undefined".to_string())
+    style
+        .color
+        .clone()
+        .unwrap_or_else(|| "undefined".to_string())
 }
 
 fn builder(group: &V, style: &Style) -> R<Tree> {
     let body = group.get("body");
     let is_char_box = group.get("isCharacterBox").truthy();
-    let from_node = MathNode::with_classes("mrow", vec![build_group(&body, style)?], &["ff-narrow"]);
+    let from_node =
+        MathNode::with_classes("mrow", vec![build_group(&body, style)?], &["ff-narrow"]);
     let phantom = MathNode::new("mphantom", vec![build_group(&body, style)?]);
     let mut arrow = MathNode::with_classes("mrow", vec![Tree::Math(phantom)], &["tml-cancelto"]);
     arrow.set_style("color", style_color(style));
@@ -37,7 +41,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
         if !first.is_arr() || first.len() == 0 {
             return jserr("Cannot read properties of undefined (reading 'text')");
         }
-        Ok(first.items()[0].get("text").as_string().unwrap_or_else(|| "undefined".to_string()))
+        Ok(first.items()[0]
+            .get("text")
+            .as_string()
+            .unwrap_or_else(|| "undefined".to_string()))
     };
     if is_char_box && tables().smalls.contains(first_text()?.as_str()) {
         arrow.set_style("left", "0.1em");
@@ -77,7 +84,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
         zero_width_to.children.insert(0, Tree::Math(w));
     }
     zero_width_to.set_attribute("width", "0.1px");
-    let mover = MathNode::new("mover", vec![Tree::Math(dummy_node), Tree::Math(zero_width_to)]);
+    let mover = MathNode::new(
+        "mover",
+        vec![Tree::Math(dummy_node), Tree::Math(zero_width_to)],
+    );
     let nudge_left = MathNode::with_classes("mrow", vec![], &["ff-nudge-left"]);
     let row = make_row(vec![Tree::Math(node), Tree::Math(mover)], false);
     Ok(Tree::frag(vec![row, Tree::Math(nudge_left)]))
@@ -87,7 +97,10 @@ pub fn register(r: &mut Registry) {
     r.define(
         "cancelto",
         &["\\cancelto"],
-        Props { num_args: 2, ..Props::D },
+        Props {
+            num_args: 2,
+            ..Props::D
+        },
         handler,
         Some(builder),
     );
