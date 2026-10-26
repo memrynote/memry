@@ -85,7 +85,7 @@ export function preparePage(html, url, variantName = 'default') {
     smallImages: [...small].map(wellFormed)
   }
   if (main) input.mainPath = pathTo(clone, main)
-  return { options, metadata, small, clone, main, input }
+  return { options, metadata, small, clone, main, input, document }
 }
 
 /** The removal steps in `parseInternal` order, each run only when its setting allows it. */

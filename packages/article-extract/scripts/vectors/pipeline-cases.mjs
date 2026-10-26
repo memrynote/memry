@@ -11,6 +11,12 @@ const raw = (body, head = '') =>
 const img = (src, alt = 'photo', extra = '') => `<img src="${src}" alt="${alt}" ${extra}>`
 
 export const pipelineCases = [
+  // `decodeURIComponent` throws on a malformed escape; `parseInternal` returns the sanitized body.
+  {
+    name: 'math-latex-image-uri-error',
+    html: raw(`${long}<img class="latex" src="https://s0.wp.com/latex.php?latex=%E0%A4%A">`),
+    url: U
+  },
   { name: 'empty-document', html: '', url: U },
   { name: 'no-body-content', html: raw(''), url: U },
   {

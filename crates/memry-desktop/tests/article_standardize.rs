@@ -1,11 +1,11 @@
-//! `standardizeCallouts` and `standardizeContent` against Defuddle 0.19.0
+//! `standardizeFootnotes`, `standardizeCallouts` and `standardizeContent` against Defuddle 0.19.0
 //! (`pnpm --filter @memry/article-extract vectors`): the content element after each step, for
 //! every corpus page, every single-rule page in `standardize-cases.json` and the 400 random pages
 //! of `standardize-fuzz.json`, in the `direct` variant (callouts and standardize on the content
 //! element) and the `pipeline` variant (the metadata block and removal steps first).
 //!
-//! The vectors leave out the math, code block and image rules of `standardizeElements` and the
-//! footnote steps, which later stages port.
+//! The vectors make the two math converters (mathml-to-latex, temml) throw: they are ported in
+//! later stages.
 
 use std::{fs, path::PathBuf};
 
@@ -15,6 +15,7 @@ use memry_desktop::web::extract::defuddle::schema_org::{
 use memry_desktop::web::extract::defuddle::settings::Settings;
 use memry_desktop::web::extract::dom::{Document, NodeId};
 use memry_desktop::web::extract::elements::callouts::standardize_callouts;
+use memry_desktop::web::extract::elements::footnotes::standardize_footnotes;
 use memry_desktop::web::extract::metadata::extract;
 use memry_desktop::web::extract::removals::small_images::find_small_images;
 use memry_desktop::web::extract::removals::{Removal, Step, remove_metadata_block, run_step};
@@ -87,6 +88,8 @@ fn check(html: &str, variant: &Value) -> Vec<String> {
         .unwrap();
         compare(&doc, "metadataBlock");
     }
+    standardize_footnotes(&mut doc, main).unwrap();
+    compare(&doc, "footnotes");
     standardize_callouts(&mut doc, main).unwrap();
     compare(&doc, "callouts");
     if pipeline {
@@ -112,7 +115,8 @@ fn check(html: &str, variant: &Value) -> Vec<String> {
             compare(&doc, key);
         }
     }
-    standardize_content(&mut doc, main, &metadata.title).unwrap();
+    let source = doc.root();
+    standardize_content(&mut doc, main, &metadata.title, source).unwrap();
     compare(&doc, "standardize");
     diffs
 }

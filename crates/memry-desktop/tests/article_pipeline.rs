@@ -1,8 +1,7 @@
 //! The generic path of `Defuddle` (`parse()` with its retries, markdown, `mapToArticleCapture`)
 //! against Defuddle 0.19.0 (`pnpm --filter @memry/article-extract vectors`), for every corpus
 //! page: the standardized content, the markdown, the metadata fields, the word count and the
-//! serialized `ArticleCapture`. The footnote, math, code block and image handlers of later
-//! stages are off in the oracle.
+//! serialized `ArticleCapture`. The math handler of stage 4 is off in the oracle.
 
 use std::{fs, path::PathBuf};
 
