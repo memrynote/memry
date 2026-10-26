@@ -42,6 +42,7 @@ import { mathmlCases, mathmlFuzzVectors, mathmlVector } from './vectors/mathml.m
 import { mathmlTablesText, tablesTarget } from './vectors/mathml-tables.mjs'
 import { temmlTablesText, temmlTablesTarget } from './vectors/temml-tables.mjs'
 import { temmlCases, temmlFuzzVectors, temmlVector } from './vectors/temml.mjs'
+import { temmlEnvCases, temmlEnvFuzzVectors } from './vectors/temml-envs.mjs'
 
 /** Every class, id and test attribute value of a page: what the partial selectors run on. */
 function attributeValues(html) {
@@ -188,6 +189,8 @@ function buildFiles() {
   files.set('mathml-fuzz.json', format(mathmlFuzzVectors(1000)))
   files.set('temml-cases.json', format(temmlCases.map(temmlVector)))
   files.set('temml-fuzz.json', format(temmlFuzzVectors(2000)))
+  files.set('temml-env-cases.json', format(temmlEnvCases.map(temmlVector)))
+  files.set('temml-env-fuzz.json', format(temmlEnvFuzzVectors(2000)))
   files.set('dom-fuzz.json', format(fuzzVectors(600)))
   files.set(
     'standardize-fuzz.json',

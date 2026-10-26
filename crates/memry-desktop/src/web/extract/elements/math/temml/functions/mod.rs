@@ -12,12 +12,19 @@ use super::tree::Tree;
 use super::val::{R, Tok, V};
 
 mod accent;
+mod array;
+mod array_build;
 mod arrow;
+mod border_tree;
 mod cancelto;
+mod cd;
 mod color;
 mod def;
 mod delimiter;
+mod enclose;
+mod environment;
 mod genfrac;
+mod html;
 mod mclass;
 mod misc;
 mod op;
@@ -35,6 +42,27 @@ pub struct Ctx<'a> {
     pub parser: &'a mut Parser,
     pub token: Option<Tok>,
     pub break_on_token_text: Option<String>,
+}
+
+/// What an environment handler is called with: `context` of `defineEnvironment`.
+pub struct EnvCtx<'a> {
+    pub env_name: String,
+    pub mode: &'static str,
+    pub parser: &'a mut Parser,
+    /// `delimiters` of `\bordermatrix`: `undefined` or `[left, right]`.
+    pub delimiters: V,
+}
+
+pub type EnvHandler = for<'a> fn(&mut EnvCtx<'a>, &[V], &[V]) -> R<V>;
+
+/// An entry of `environments`. `func` carries the argument counts `parseArguments` reads.
+pub struct EnvData {
+    pub func: FuncData,
+    pub handler: EnvHandler,
+}
+
+fn no_handler(_: &mut Ctx, _: &[V], _: &[V]) -> R<V> {
+    super::val::jserr("environment data has no function handler")
 }
 
 pub type Handler = for<'a> fn(&mut Ctx<'a>, &[V], &[V]) -> R<V>;
@@ -83,6 +111,7 @@ impl Props {
 pub struct Registry {
     funcs: HashMap<&'static str, FuncData>,
     builders: HashMap<&'static str, Builder>,
+    envs: HashMap<&'static str, EnvData>,
 }
 
 impl Registry {
@@ -117,6 +146,39 @@ impl Registry {
         }
     }
 
+    /// `defineEnvironment({ type: "array", names, props: { numArgs }, handler, mathmlBuilder })`.
+    pub fn define_env(
+        &mut self,
+        names: &[&'static str],
+        num_args: usize,
+        handler: EnvHandler,
+        builder: Option<Builder>,
+    ) {
+        for name in names {
+            self.envs.insert(
+                name,
+                EnvData {
+                    func: FuncData {
+                        ty: "array",
+                        num_args,
+                        arg_types: None,
+                        allowed_in_argument: false,
+                        allowed_in_text: false,
+                        allowed_in_math: true,
+                        num_optional_args: 0,
+                        infix: false,
+                        primitive: false,
+                        handler: no_handler,
+                    },
+                    handler,
+                },
+            );
+        }
+        if let Some(b) = builder {
+            self.builders.insert("array", b);
+        }
+    }
+
     /// `defineFunctionBuilders({ type, mathmlBuilder })`.
     pub fn builder(&mut self, ty: &'static str, builder: Builder) {
         self.builders.insert(ty, builder);
@@ -126,6 +188,11 @@ impl Registry {
 static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
     let mut r = Registry::default();
     accent::register(&mut r);
+    array::register(&mut r);
+    cd::register(&mut r);
+    enclose::register(&mut r);
+    environment::register(&mut r);
+    html::register(&mut r);
     arrow::register(&mut r);
     cancelto::register(&mut r);
     color::register(&mut r);
@@ -145,6 +212,10 @@ static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
 
 pub fn get(name: &str) -> Option<&'static FuncData> {
     REGISTRY.funcs.get(name)
+}
+
+pub fn env_data(name: &str) -> Option<&'static EnvData> {
+    REGISTRY.envs.get(name)
 }
 
 pub fn builder(ty: &str) -> Option<Builder> {

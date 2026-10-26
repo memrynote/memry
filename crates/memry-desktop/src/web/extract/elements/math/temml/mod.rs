@@ -16,8 +16,6 @@
     clippy::needless_range_loop,
     clippy::neg_multiply
 )]
-// Nothing outside the module calls it until stage 4c-2 wires `convert::temml_render`.
-#![allow(dead_code)]
 
 mod build;
 mod functions;

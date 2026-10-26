@@ -108,6 +108,18 @@ impl Namespace {
         self.current.borrow_mut().insert(name.to_string(), value);
     }
 
+    /// `set(name, undefined, true)`: `get` then reports the macro as undefined. Only used for
+    /// names without a builtin.
+    pub fn set_global_undefined(&mut self, name: &str) {
+        for frame in &mut self.undef_stack {
+            frame.remove(name);
+        }
+        if let Some(top) = self.undef_stack.last_mut() {
+            top.insert(name.to_string(), None);
+        }
+        self.current.borrow_mut().remove(name);
+    }
+
     pub fn delete(&mut self, name: &str) {
         self.current.borrow_mut().remove(name);
     }
@@ -381,14 +393,6 @@ impl MacroExpander {
                 }
                 return Ok(t);
             }
-        }
-    }
-
-    pub fn expand_macro(&mut self, name: &str) -> R<Option<Vec<Tok>>> {
-        if self.macros.has(name) {
-            Ok(Some(self.expand_tokens(vec![tok(name, None)])?))
-        } else {
-            Ok(None)
         }
     }
 

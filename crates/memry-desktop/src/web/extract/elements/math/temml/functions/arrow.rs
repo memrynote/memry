@@ -102,8 +102,9 @@ fn x_arrow_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
         "mode" => ctx.parser.mode,
         "name" => ctx.func_name.clone(),
     }
-    .with("body", args[0].clone())
-    .with("below", opt[0].clone()))
+    // `\\cdlongequal` is called by {CD} with no arguments: both are `undefined` then.
+    .with("body", args.first().cloned().unwrap_or(V::Undef))
+    .with("below", opt.first().cloned().unwrap_or(V::Undef)))
 }
 
 fn x_arrow_builder(group: &V, style: &Style) -> R<Tree> {

@@ -163,20 +163,6 @@ impl V {
         }
     }
 
-    /// `delete node[key]`.
-    pub fn remove(&self, key: &str) {
-        if let V::Obj(o) = self {
-            o.borrow_mut().remove(key);
-        }
-    }
-
-    pub fn has(&self, key: &str) -> bool {
-        match self {
-            V::Obj(o) => o.borrow().contains_key(key),
-            _ => false,
-        }
-    }
-
     /// `node.type`, or `""` when there is none.
     pub fn ty(&self) -> String {
         self.get("type").as_string().unwrap_or_default()
@@ -205,10 +191,6 @@ impl V {
         }
     }
 
-    pub fn as_bool(&self) -> bool {
-        self.truthy()
-    }
-
     /// The items of an array value (a snapshot).
     pub fn items(&self) -> Vec<V> {
         match self {
@@ -224,6 +206,48 @@ impl V {
         }
     }
 
+    /// `array[i]`.
+    pub fn at(&self, i: usize) -> V {
+        match self {
+            V::Arr(a) => a.borrow().get(i).cloned().unwrap_or(V::Undef),
+            _ => V::Undef,
+        }
+    }
+
+    /// `array[i] = value`, growing the array with `undefined` as JS does.
+    pub fn set_at(&self, i: usize, value: V) {
+        if let V::Arr(a) = self {
+            let mut a = a.borrow_mut();
+            if a.len() <= i {
+                a.resize(i + 1, V::Undef);
+            }
+            a[i] = value;
+        }
+    }
+
+    /// `array.shift()`.
+    pub fn shift(&self) -> V {
+        match self {
+            V::Arr(a) if !a.borrow().is_empty() => a.borrow_mut().remove(0),
+            _ => V::Undef,
+        }
+    }
+
+    /// `array.pop()`.
+    pub fn pop(&self) -> V {
+        match self {
+            V::Arr(a) => a.borrow_mut().pop().unwrap_or(V::Undef),
+            _ => V::Undef,
+        }
+    }
+
+    /// `array.includes(string)`.
+    pub fn includes(&self, s: &str) -> bool {
+        self.items()
+            .iter()
+            .any(|v| matches!(v, V::Str(x) if x == s))
+    }
+
     pub fn is_arr(&self) -> bool {
         matches!(self, V::Arr(_))
     }
@@ -232,14 +256,6 @@ impl V {
         match self {
             V::Arr(a) => a.borrow().len(),
             _ => 0,
-        }
-    }
-
-    pub fn ptr_eq(&self, other: &V) -> bool {
-        match (self, other) {
-            (V::Obj(a), V::Obj(b)) => Rc::ptr_eq(a, b),
-            (V::Arr(a), V::Arr(b)) => Rc::ptr_eq(a, b),
-            _ => false,
         }
     }
 

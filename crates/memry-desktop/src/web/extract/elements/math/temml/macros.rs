@@ -293,7 +293,7 @@ fn tag_literal(c: &mut MacroExpander) -> R<MacroResult> {
     Ok(MacroResult::Text("\\gdef\\df@tag{\\text{#1}}".to_string()))
 }
 
-fn string_from_arg(arg: &[Tok]) -> String {
+pub fn string_from_arg(arg: &[Tok]) -> String {
     arg.iter().rev().map(|t| t.borrow().text.clone()).collect()
 }
 
