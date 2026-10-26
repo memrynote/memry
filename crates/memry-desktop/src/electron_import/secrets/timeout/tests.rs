@@ -59,3 +59,29 @@ fn a_stuck_call_times_out_and_blocks_new_calls_until_it_returns() {
     );
     assert_eq!(guarded.inner.calls.load(Ordering::SeqCst), 2);
 }
+
+struct Panics;
+
+impl ChromiumKeySource for Panics {
+    fn password(&self, _: &str) -> Result<Option<Zeroizing<Vec<u8>>>, KeySourceError> {
+        panic!("keychain exploded");
+    }
+
+    fn windows_key(
+        &self,
+        _: &ElectronProfile,
+    ) -> Result<Option<Zeroizing<[u8; 32]>>, KeySourceError> {
+        Ok(None)
+    }
+}
+
+#[test]
+fn a_panicking_call_is_reported_as_failed_and_releases_the_latch() {
+    let guarded = Guarded::new(Panics);
+    for _ in 0..2 {
+        // The second call would say "still pending" if the panic had left the latch held.
+        assert!(
+            matches!(guarded.password("x"), Err(KeySourceError::Failed(m)) if m == "the call panicked")
+        );
+    }
+}

@@ -26,7 +26,7 @@ use serde_json::Value;
 use zeroize::Zeroizing;
 
 pub use self::key_source::{ChromiumKeySource, FixedKeySource, KeySourceError};
-pub use self::keytar::{KeytarItem, KeytarSource, NoKeytar};
+pub use self::keytar::{KeytarSource, NoKeytar};
 pub use self::merge::read_all_secrets;
 pub use self::os::{OsKeySource, OsKeytar};
 pub use self::timeout::Guarded;
@@ -128,6 +128,9 @@ pub enum UnreadableReason {
     WrongIdentity,
     KeySourceMissing,
     KeySourceDenied,
+    /// The key source errored (timeout, D-Bus, DPAPI, Keychain failure): the key may exist, so
+    /// this is not "missing". [`UnreadableSecret::detail`] carries the message.
+    KeySourceFailed,
     CorruptCiphertext,
 }
 
@@ -136,12 +139,17 @@ pub struct UnreadableSecret {
     pub service: String,
     pub account: String,
     pub reason: UnreadableReason,
+    /// The error message behind `KeySourceFailed`. Never contains a key or a value.
+    pub detail: Option<String>,
 }
 
 #[derive(Debug, Default)]
 pub struct SecretsReport {
     pub entries: Vec<SecretEntry>,
     pub unreadable: Vec<UnreadableSecret>,
+    /// Legacy keytar items that could not be listed. Without the listing the report cannot say
+    /// what keytar holds, so the caller treats a `Some` as "may be missing items", not "none".
+    pub keytar_error: Option<String>,
 }
 
 impl SecretsReport {
@@ -153,5 +161,7 @@ impl SecretsReport {
     }
 }
 
+#[cfg(test)]
+mod invariants;
 #[cfg(test)]
 mod tests;

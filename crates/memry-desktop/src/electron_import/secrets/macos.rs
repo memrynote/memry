@@ -10,8 +10,7 @@ use security_framework::passwords::{PasswordOptions, generic_password};
 use zeroize::Zeroizing;
 
 use super::key_source::{ChromiumKeySource, KeySourceError};
-use super::keytar::{KeytarItem, KeytarSource, is_keytar_service};
-use crate::electron_import::ImportError;
+use super::keytar::{KeytarSource, is_keytar_service};
 use crate::electron_import::profile::ElectronProfile;
 
 const ERR_SEC_ITEM_NOT_FOUND: i32 = -25300;
@@ -65,7 +64,7 @@ impl ChromiumKeySource for OsKeySource {
 pub struct OsKeytar;
 
 impl KeytarSource for OsKeytar {
-    fn items(&self) -> Result<Vec<KeytarItem>, ImportError> {
+    fn list(&self) -> Result<Vec<(String, String)>, KeySourceError> {
         let found = ItemSearchOptions::new()
             .class(ItemClass::generic_password())
             .load_attributes(true)
@@ -75,43 +74,30 @@ impl KeytarSource for OsKeytar {
             Ok(found) => found,
             Err(error) if error.code() == ERR_SEC_ITEM_NOT_FOUND => return Ok(Vec::new()),
             Err(error) => {
-                return Err(ImportError::KeySource(format!(
+                return Err(KeySourceError::Failed(format!(
                     "Keychain listing error {}",
                     error.code()
                 )));
             }
         };
-        let mut items = Vec::new();
-        for entry in found {
-            let Some(attrs) = entry.simplify_dict() else {
-                continue;
-            };
-            let (Some(service), Some(account)) = (attrs.get("svce"), attrs.get("acct")) else {
-                continue;
-            };
-            if !is_keytar_service(service) {
-                continue;
-            }
-            match read_item(service, account) {
-                Ok(Some(bytes)) => {
-                    // keytar wrote UTF-8 text. A non-UTF-8 blob is not one of its items.
-                    if let Ok(text) = String::from_utf8(bytes.to_vec()) {
-                        items.push(KeytarItem {
-                            service: service.clone(),
-                            account: account.clone(),
-                            value: Zeroizing::new(text),
-                        });
-                    }
-                }
-                Ok(None) => {}
-                Err(KeySourceError::Denied) => {
-                    return Err(ImportError::KeySource("Keychain access denied".into()));
-                }
-                Err(KeySourceError::Failed(message)) => {
-                    return Err(ImportError::KeySource(message));
-                }
-            }
-        }
-        Ok(items)
+        Ok(found
+            .iter()
+            .filter_map(|entry| {
+                let attrs = entry.simplify_dict()?;
+                let (service, account) = (attrs.get("svce")?, attrs.get("acct")?);
+                is_keytar_service(service).then(|| (service.clone(), account.clone()))
+            })
+            .collect())
+    }
+
+    fn read(
+        &self,
+        service: &str,
+        account: &str,
+    ) -> Result<Option<Zeroizing<String>>, KeySourceError> {
+        // keytar wrote UTF-8 text. A non-UTF-8 blob is not one of its items.
+        Ok(read_item(service, account)?
+            .and_then(|bytes| String::from_utf8(bytes.to_vec()).ok())
+            .map(Zeroizing::new))
     }
 }

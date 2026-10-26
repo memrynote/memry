@@ -164,3 +164,57 @@ fn a_store_over_the_copy_limit_is_refused() {
     let result = crate::electron_import::LocalStorageSnapshot::read(&f.profile, "file://", &tiny);
     assert!(matches!(result, Err(ImportError::LevelDb(_))));
 }
+
+#[test]
+fn a_flipped_byte_in_the_live_log_fails_the_open() {
+    let dir = tempfile::tempdir().unwrap();
+    synthetic::write_store(dir.path(), 2, 10);
+    let (_keep, scratch) = crate::electron_import::tests::test_scratch();
+    let log = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .find(|p| p.extension().is_some_and(|e| e == "log"))
+        .unwrap();
+    let mut bytes = fs::read(&log).unwrap();
+    if bytes.len() > 20 {
+        bytes[12] ^= 0x10;
+        fs::write(&log, bytes).unwrap();
+        assert!(ScratchDb::open(&scratch, dir.path()).is_err());
+    }
+}
+
+#[test]
+fn a_log_the_manifest_retired_is_not_verified() {
+    let dir = tempfile::tempdir().unwrap();
+    synthetic::write_store(dir.path(), 2, 10);
+    fs::write(dir.path().join("000001.log"), b"junk of a log a flush retired").unwrap();
+    let (_keep, scratch) = crate::electron_import::tests::test_scratch();
+    let mut db = ScratchDb::open(&scratch, dir.path()).unwrap();
+    assert_eq!(db.scan_prefix(&[]).unwrap().len(), 20);
+    assert!(db.torn_tails().is_empty());
+}
+
+#[test]
+fn a_torn_log_tail_opens_and_is_reported_with_its_file_and_size() {
+    let dir = tempfile::tempdir().unwrap();
+    {
+        let mut db = rusty_leveldb::DB::open(dir.path(), rusty_leveldb::Options::default()).unwrap();
+        db.put(b"a", b"1").unwrap();
+        db.put(b"b", &[7; 200]).unwrap();
+        // The log is only closed by drop, which leaves it unflushed: that is the live-log shape.
+    }
+    let log = fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|e| e == "log"))
+        .max()
+        .unwrap();
+    let bytes = fs::read(&log).unwrap();
+    fs::write(&log, &bytes[..bytes.len() - 10]).unwrap();
+    let (_keep, scratch) = crate::electron_import::tests::test_scratch();
+    let db = ScratchDb::open(&scratch, dir.path()).unwrap();
+    let torn = db.torn_tails();
+    assert_eq!(torn.len(), 1, "{torn:?}");
+    assert_eq!(torn[0].file, log.file_name().unwrap().to_string_lossy());
+    assert!(torn[0].dropped_bytes > 0);
+}

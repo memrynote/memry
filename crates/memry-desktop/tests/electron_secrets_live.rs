@@ -9,18 +9,34 @@ use std::path::Path;
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
+use memry_desktop::electron_import::ElectronProfile;
+#[cfg(not(windows))]
+use memry_desktop::electron_import::UnreadableReason;
 use memry_desktop::electron_import::profile::{
     AppNameCandidates, HostOs, ProfileEnv, locate_profile,
 };
 use memry_desktop::electron_import::secrets::{
     ChromiumKeySource, Guarded, KeytarSource, OsKeySource, OsKeytar, read_all_secrets,
 };
-use memry_desktop::electron_import::{ElectronProfile, UnreadableReason};
 
 const PLAIN: &str = "live-secret-value-aGVsbG8=";
 
+#[cfg(not(windows))]
 fn test_name(tag: &str) -> &'static str {
     Box::leak(format!("memry-live-{tag}-{}", std::process::id()).into_boxed_str())
+}
+
+/// Every `(service, account, value)` the keytar reader finds: the listing, then one read each.
+fn read_all(keytar: &impl KeytarSource) -> Vec<(String, String, String)> {
+    keytar
+        .list()
+        .unwrap()
+        .into_iter()
+        .filter_map(|(service, account)| {
+            let value = keytar.read(&service, &account).unwrap()?;
+            Some((service, account, value.to_string()))
+        })
+        .collect()
 }
 
 fn keytar_enabled() -> bool {
@@ -155,23 +171,19 @@ mod macos {
         let _a = Item::create("com.memry.capture", "live-acct", "keytar-value");
         let _b = Item::create("com.memry.calendar.live", "refresh-token-x", "cal-value");
         let _other = Item::create("com.example.not-ours", "acct", "ignored");
-        let items = OsKeytar.items().unwrap();
-        let find = |s: &str, a: &str| items.iter().find(|i| i.service == s && i.account == a);
+        let items = read_all(&OsKeytar);
+        let find = |s: &str, a: &str| items.iter().find(|i| i.0 == s && i.1 == a);
         assert_eq!(
-            find("com.memry.capture", "live-acct")
-                .unwrap()
-                .value
-                .as_str(),
+            find("com.memry.capture", "live-acct").unwrap().2,
             "keytar-value"
         );
         assert_eq!(
             find("com.memry.calendar.live", "refresh-token-x")
                 .unwrap()
-                .value
-                .as_str(),
+                .2,
             "cal-value"
         );
-        assert!(items.iter().all(|i| i.service != "com.example.not-ours"));
+        assert!(items.iter().all(|i| i.0 != "com.example.not-ours"));
     }
 }
 
@@ -289,7 +301,7 @@ mod linux {
             report.unreadable[0].reason,
             UnreadableReason::KeySourceMissing
         );
-        assert!(OsKeytar.items().unwrap().is_empty());
+        assert!(OsKeytar.list().unwrap().is_empty());
     }
 
     #[test]
@@ -299,12 +311,12 @@ mod linux {
         }
         let attrs = ["service", "com.memry.capture", "account", "live-acct"];
         store("keytar item", &attrs, "keytar-value");
-        let items = OsKeytar.items().unwrap();
+        let items = read_all(&OsKeytar);
         clear(&attrs);
         let item = items
             .iter()
-            .find(|i| i.service == "com.memry.capture" && i.account == "live-acct");
-        assert_eq!(item.unwrap().value.as_str(), "keytar-value");
+            .find(|i| i.0 == "com.memry.capture" && i.1 == "live-acct");
+        assert_eq!(item.unwrap().2, "keytar-value");
     }
 }
 
@@ -398,13 +410,12 @@ mod windows_live {
         };
         // SAFETY: `cred` points at `target` and `blob`, both alive for the call.
         unsafe { CredWriteW(&cred, 0).unwrap() };
-        let items = OsKeytar.items();
+        let items = read_all(&OsKeytar);
         // SAFETY: deleting the credential created above.
         unsafe { CredDeleteW(&target, CRED_TYPE_GENERIC, None).unwrap() };
-        let items = items.unwrap();
         let item = items
             .iter()
-            .find(|i| i.service == "com.memry.capture" && i.account == "live-acct");
-        assert_eq!(item.unwrap().value.as_str(), "keytar-value");
+            .find(|i| i.0 == "com.memry.capture" && i.1 == "live-acct");
+        assert_eq!(item.unwrap().2, "keytar-value");
     }
 }

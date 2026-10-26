@@ -1,6 +1,7 @@
 //! Linux readers: Chromium's libsecret or KWallet password and legacy keytar items.
 //!
-//! Read-only. Secret Service: connect, search by attributes, unlock a locked item (the service
+//! Read-only. Secret Service: connect (the bus may D-Bus-activate the keyring daemon, as any
+//! client's connect does; this code never starts one itself), search by attributes, unlock a locked item (the service
 //! prompts the user), read its secret. KWallet: `isEnabled`, `networkWallet`, `open`, `hasEntry`,
 //! `readPassword`, `close`. Neither path ever stores a password, writes an entry or creates a
 //! collection, wallet or folder: Chromium mints a key when none exists and this code must not.
@@ -13,8 +14,7 @@ use zbus::blocking::{Connection, Proxy, fdo::DBusProxy};
 use zeroize::Zeroizing;
 
 use super::key_source::{ChromiumKeySource, KeySourceError};
-use super::keytar::{KeytarItem, KeytarSource, is_keytar_service};
-use crate::electron_import::ImportError;
+use super::keytar::{KeytarSource, is_keytar_service};
 use crate::electron_import::profile::ElectronProfile;
 
 const SCHEMA_ATTR: &str = "xdg:schema";
@@ -33,9 +33,16 @@ fn denied_or_failed(error: &SsError) -> KeySourceError {
     }
 }
 
-/// A Secret Service connection, or `None` when no service answers (no session bus, no daemon).
-fn connect<'a>() -> Option<SecretService<'a>> {
-    SecretService::connect(EncryptionType::Dh).ok()
+/// A Secret Service connection. `Ok(None)` only when there is nothing to talk to (no session
+/// bus socket, no provider on it); a failed negotiation is `Failed`, since a service exists.
+fn connect<'a>() -> Result<Option<SecretService<'a>>, KeySourceError> {
+    match SecretService::connect(EncryptionType::Dh) {
+        Ok(service) => Ok(Some(service)),
+        Err(SsError::Unavailable) => Ok(None),
+        Err(other) => Err(KeySourceError::Failed(format!(
+            "Secret Service connect: {other}"
+        ))),
+    }
 }
 
 /// Secrets of the items matching `attributes`, unlocking locked ones. `Ok(None)` when none match.
@@ -55,7 +62,7 @@ fn read_matching(
 }
 
 fn secret_service_password(app_name: &str) -> Result<Option<Zeroizing<Vec<u8>>>, KeySourceError> {
-    let Some(service) = connect() else {
+    let Some(service) = connect()? else {
         return Ok(None);
     };
     for schema in [CHROMIUM_SCHEMA_V2, CHROMIUM_SCHEMA_V1] {
@@ -69,10 +76,16 @@ fn secret_service_password(app_name: &str) -> Result<Option<Zeroizing<Vec<u8>>>,
 
 fn kwallet_password(app_name: &str) -> Result<Option<Zeroizing<Vec<u8>>>, KeySourceError> {
     let failed = |e: zbus::Error| KeySourceError::Failed(format!("KWallet: {e}"));
-    let Ok(connection) = Connection::session() else {
-        return Ok(None);
+    let connection = match Connection::session() {
+        Ok(connection) => connection,
+        // No session bus to ask: there is no KWallet either.
+        Err(zbus::Error::Address(_)) => return Ok(None),
+        Err(zbus::Error::InputOutput(e)) if e.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(None);
+        }
+        Err(other) => return Err(failed(other)),
     };
-    let bus = DBusProxy::new(&connection).map_err(|e| failed(e.into()))?;
+    let bus = DBusProxy::new(&connection).map_err(failed)?;
     for (name, path) in [
         ("org.kde.kwalletd6", "/modules/kwalletd6"),
         ("org.kde.kwalletd5", "/modules/kwalletd5"),
@@ -152,39 +165,47 @@ impl ChromiumKeySource for OsKeySource {
 
 /// keytar's libsecret items: schema `org.freedesktop.Secret.Generic`, string attributes
 /// `service` and `account`. Many apps share that schema, so only items whose `service` is one
-/// the Electron app wrote are unlocked and read.
+/// the Electron app wrote are listed, and a secret is unlocked and read only on `read`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OsKeytar;
 
 impl KeytarSource for OsKeytar {
-    fn items(&self) -> Result<Vec<KeytarItem>, ImportError> {
-        let Some(service) = connect() else {
+    fn list(&self) -> Result<Vec<(String, String)>, KeySourceError> {
+        let Some(service) = connect()? else {
             return Ok(Vec::new());
         };
-        let fail = |e: SsError| ImportError::KeySource(format!("Secret Service: {e}"));
+        let fail = |e: SsError| denied_or_failed(&e);
         let found = service
             .search_items(HashMap::from([(SCHEMA_ATTR, GENERIC_SCHEMA)]))
             .map_err(fail)?;
         let mut items = Vec::new();
         for item in found.unlocked.iter().chain(found.locked.iter()) {
             let attributes = item.get_attributes().map_err(fail)?;
-            let (Some(svc), Some(account)) = (attributes.get("service"), attributes.get("account"))
-            else {
-                continue;
-            };
-            if !is_keytar_service(svc) {
-                continue;
-            }
-            item.unlock().map_err(fail)?;
-            let secret = Zeroizing::new(item.get_secret().map_err(fail)?);
-            if let Ok(text) = String::from_utf8(secret.to_vec()) {
-                items.push(KeytarItem {
-                    service: svc.clone(),
-                    account: account.clone(),
-                    value: Zeroizing::new(text),
-                });
+            if let (Some(svc), Some(account)) =
+                (attributes.get("service"), attributes.get("account"))
+                && is_keytar_service(svc)
+            {
+                items.push((svc.clone(), account.clone()));
             }
         }
         Ok(items)
+    }
+
+    fn read(
+        &self,
+        service: &str,
+        account: &str,
+    ) -> Result<Option<Zeroizing<String>>, KeySourceError> {
+        let Some(connection) = connect()? else {
+            return Ok(None);
+        };
+        let attributes = HashMap::from([
+            (SCHEMA_ATTR, GENERIC_SCHEMA),
+            ("service", service),
+            ("account", account),
+        ]);
+        Ok(read_matching(&connection, attributes)?
+            .and_then(|bytes| String::from_utf8(bytes.to_vec()).ok())
+            .map(Zeroizing::new))
     }
 }

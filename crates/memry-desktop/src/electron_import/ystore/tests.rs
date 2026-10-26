@@ -80,6 +80,7 @@ fn watermark_validation_follows_decode_snapshot_watermark() {
             .insert(SNAPSHOT_WATERMARK_KEY.into(), Lib0Any::Object(object));
         YStoreReader {
             ignored_keys: 0,
+            torn_tails: Vec::new(),
             docs: [("d".to_owned(), doc)].into(),
         }
     };
@@ -193,6 +194,15 @@ fn a_pending_rename_never_overrides_an_existing_store_of_the_new_name() {
     assert_eq!(
         YStoreReader::store_dir(&f.profile, new_uuid, Some(&config)),
         own
+    );
+    // The old directory still holds history nobody reads: that is reportable, not silent.
+    assert_eq!(
+        YStoreReader::unread_previous_store(&f.profile, new_uuid, Some(&config)),
+        Some(f.profile.crdt_store_root().join(&f.expected.vault_uuid))
+    );
+    assert_eq!(
+        YStoreReader::unread_previous_store(&f.profile, &f.expected.vault_uuid, Some(&config)),
+        None
     );
     // A rename whose old directory is gone also reads as the vault's own (absent) store.
     let none = config_with_pending(

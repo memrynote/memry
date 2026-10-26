@@ -45,10 +45,15 @@ fn error_json(error: &ImportError) -> Value {
     json!({ "error": error.to_string() })
 }
 
-fn report(profile: &ElectronProfile, timeout: Duration) -> Result<Value, ImportError> {
+/// A scratch copy of a CRDT store holds note history, so it lives under the app data dir (next
+/// to, not inside, the Electron profile) and never under the system temp dir.
+fn report(
+    profile: &ElectronProfile,
+    app_data: &std::path::Path,
+    timeout: Duration,
+) -> Result<Value, ImportError> {
     ProfileLock::probe(profile)?;
-    let scratch_dir = tempfile::tempdir().map_err(|e| ImportError::KeySource(e.to_string()))?;
-    let scratch = Scratch::new(scratch_dir.path().join("scratch"))?;
+    let scratch = Scratch::new(app_data.join("memry-import-scratch"))?;
 
     let config = ElectronConfig::read(profile)?;
     let config_json = match &config {
@@ -92,7 +97,7 @@ fn report(profile: &ElectronProfile, timeout: Duration) -> Result<Value, ImportE
     let unreadable: Vec<Value> = secrets
         .unreadable
         .iter()
-        .map(|u| json!({ "service": u.service, "account": u.account, "reason": format!("{:?}", u.reason) }))
+        .map(|u| json!({ "service": u.service, "account": u.account, "reason": format!("{:?}", u.reason), "detail": u.detail }))
         .collect();
 
     let dictionary = CustomDictionary::read(profile)?.map(|d| {
@@ -103,7 +108,9 @@ fn report(profile: &ElectronProfile, timeout: Duration) -> Result<Value, ImportE
         memry_desktop::electron_import::local_storage::PACKAGED_ORIGIN,
         &scratch,
     )?
-    .map(|s| json!({ "entries": s.entries.len(), "skipped": s.skipped }));
+    .map(|s| {
+        json!({ "entries": s.entries.len(), "skipped": s.skipped, "tornTails": torn_json(&s.torn_tails) })
+    });
 
     let mut stores = Vec::new();
     let vaults = config.as_ref().map(|c| c.vaults().0).unwrap_or_default();
@@ -111,7 +118,13 @@ fn report(profile: &ElectronProfile, timeout: Duration) -> Result<Value, ImportE
         let store = YStoreReader::open(profile, vault, config.as_ref(), &scratch)?;
         stores.push(match store {
             None => json!({ "vault": "missing-store" }),
-            Some(store) => store_json(&store),
+            Some(store) => {
+                let mut value = store_json(&store);
+                value["previousStoreAlsoPresent"] = json!(
+                    YStoreReader::unread_previous_store(profile, vault, config.as_ref()).is_some()
+                );
+                value
+            }
         });
     }
     let legacy = YStoreReader::open_legacy(profile, &scratch)?.map(|s| store_json(&s));
@@ -135,12 +148,19 @@ fn report(profile: &ElectronProfile, timeout: Duration) -> Result<Value, ImportE
             "unreadable": unreadable.len(),
             "entries": entries,
             "unreadableEntries": unreadable,
+            "keytarError": secrets.keytar_error,
         },
         "dictionary": dictionary,
         "localStorage": local_storage,
         "ystores": stores,
         "legacyYstore": legacy,
     }))
+}
+
+fn torn_json(torn: &[memry_desktop::electron_import::TornFile]) -> Value {
+    torn.iter()
+        .map(|t| json!({ "file": t.file, "offset": t.offset, "droppedBytes": t.dropped_bytes }))
+        .collect()
 }
 
 fn store_json(store: &YStoreReader) -> Value {
@@ -151,6 +171,7 @@ fn store_json(store: &YStoreReader) -> Value {
         "updates": updates,
         "withWatermark": names.iter().filter(|n| store.watermark(n).is_some()).count(),
         "ignoredKeys": store.ignored_keys(),
+        "tornTails": torn_json(store.torn_tails()),
         "hasEpoch": store.store_epoch().is_some(),
     })
 }
@@ -175,7 +196,7 @@ fn main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-    match report(&profile, timeout_arg()) {
+    match report(&profile, &profile_env.app_data, timeout_arg()) {
         Ok(report) => {
             println!(
                 "{}",

@@ -12,8 +12,9 @@ use std::time::Duration;
 use rusty_leveldb::{DB, LdbIterator, Options};
 use tempfile::TempDir;
 
+use super::leveldb_log::{TornTail, read_records};
 use super::profile::ElectronProfile;
-use super::{ImportError, leveldb_log};
+use super::{ImportError, leveldb_manifest, leveldb_table};
 
 const LOCK_FILE: &str = "LOCK";
 
@@ -89,24 +90,43 @@ impl Scratch {
 /// deleted (field order matters on Windows, which cannot delete open files).
 pub struct ScratchDb {
     db: DB,
+    torn_tails: Vec<TornFile>,
     _dir: TempDir,
+}
+
+/// A log or manifest that ends in a record cut short. LevelDB drops that record and, for a
+/// corrupt length field, every record after it, so the reader reports it instead of hiding it.
+/// A crash leaves the same shape, which is why it is not an error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TornFile {
+    pub file: String,
+    pub offset: usize,
+    pub dropped_bytes: usize,
 }
 
 impl ScratchDb {
     /// Refuses a store a running Electron holds ([`ProfileLock::probe_dir`]) before copying, and
-    /// a store whose write-ahead log or manifest fails its checksums after.
+    /// a store whose live log, manifest or table blocks fail their checksums after.
     pub fn open(scratch: &Scratch, source: &Path) -> Result<Self, ImportError> {
         ProfileLock::probe_dir(source)?;
         let dir = scratch.new_dir()?;
         copy_leveldb_dir(source, dir.path(), scratch.max_bytes)?;
-        verify_logs(dir.path())?;
+        let torn_tails = verify_store(dir.path())?;
         let options = Options {
             create_if_missing: false,
-            paranoid_checks: true,
             ..Options::default()
         };
         let db = DB::open(dir.path(), options).map_err(|e| ImportError::LevelDb(e.to_string()))?;
-        Ok(Self { db, _dir: dir })
+        Ok(Self {
+            db,
+            torn_tails,
+            _dir: dir,
+        })
+    }
+
+    /// Files that end in a cut-short record; empty for a store that was closed cleanly.
+    pub fn torn_tails(&self) -> &[TornFile] {
+        &self.torn_tails
     }
 
     /// Every entry whose key starts with `prefix`, in key order.
@@ -166,21 +186,73 @@ pub fn copy_leveldb_dir(src: &Path, dst: &Path, max_bytes: u64) -> Result<(), Im
     Ok(())
 }
 
-fn verify_logs(dir: &Path) -> Result<(), ImportError> {
-    for entry in fs::read_dir(dir).map_err(|e| ImportError::io(dir, e))? {
-        let entry = entry.map_err(|e| ImportError::io(dir, e))?;
-        let name = entry.file_name().to_string_lossy().into_owned();
-        if !(name.ends_with(".log") || name.starts_with("MANIFEST-")) {
+/// The number in `000123.log`, `000123.ldb` or `MANIFEST-000123`.
+fn file_number(name: &str) -> Option<u64> {
+    let digits = name
+        .strip_prefix("MANIFEST-")
+        .or_else(|| name.split('.').next())?;
+    digits.parse().ok()
+}
+
+/// Verifies what LevelDB will read: the manifest `CURRENT` names, every live table block, and the
+/// logs the manifest has not retired. rusty-leveldb skips a corrupt table block and drops a log
+/// record with a bad checksum without an error, so a flipped byte would otherwise open as a store
+/// with rows missing. Files the manifest does not name are leftovers LevelDB ignores too.
+fn verify_store(dir: &Path) -> Result<Vec<TornFile>, ImportError> {
+    let corrupt = |name: &str, why: String| ImportError::LevelDb(format!("{name}: {why}"));
+    let read =
+        |name: &str| fs::read(dir.join(name)).map_err(|e| ImportError::io(dir.join(name), e));
+    let mut torn = Vec::new();
+    let mut note = |file: &str, tail: Option<TornTail>| {
+        if let Some(tail) = tail {
+            torn.push(TornFile {
+                file: file.to_owned(),
+                offset: tail.offset,
+                dropped_bytes: tail.dropped_bytes,
+            });
+        }
+    };
+
+    let current = read("CURRENT")?;
+    let manifest_name = String::from_utf8_lossy(&current).trim().to_owned();
+    if file_number(&manifest_name).is_none() || !manifest_name.starts_with("MANIFEST-") {
+        return Err(corrupt("CURRENT", "does not name a manifest".into()));
+    }
+    let live = leveldb_manifest::live_files(&read(&manifest_name)?)
+        .map_err(|why| corrupt(&manifest_name, why))?;
+    note(&manifest_name, live.torn_tail);
+
+    for number in &live.tables {
+        let found = [format!("{number:06}.ldb"), format!("{number:06}.sst")]
+            .into_iter()
+            .find(|name| dir.join(name).is_file());
+        let Some(name) = found else {
+            return Err(corrupt(
+                &manifest_name,
+                format!("names table {number:06} but the file is missing"),
+            ));
+        };
+        leveldb_table::verify(&read(&name)?).map_err(|why| corrupt(&name, why))?;
+    }
+
+    let mut logs: Vec<String> = fs::read_dir(dir)
+        .map_err(|e| ImportError::io(dir, e))?
+        .filter_map(Result::ok)
+        .map(|e| e.file_name().to_string_lossy().into_owned())
+        .filter(|name| name.ends_with(".log"))
+        .collect();
+    logs.sort();
+    for name in logs {
+        let live_log =
+            file_number(&name).is_some_and(|n| n >= live.log_number || n == live.prev_log_number);
+        if !live_log {
             continue;
         }
-        let bytes = fs::read(entry.path()).map_err(|e| ImportError::io(entry.path(), e))?;
-        if let Err(offset) = leveldb_log::verify(&bytes) {
-            return Err(ImportError::LevelDb(format!(
-                "{name} fails its checksum at byte {offset}"
-            )));
-        }
+        let records = read_records(&read(&name)?)
+            .map_err(|offset| corrupt(&name, format!("fails its checksum at byte {offset}")))?;
+        note(&name, records.torn_tail);
     }
-    Ok(())
+    Ok(torn)
 }
 
 /// The probe for a running Electron. Zero-sized: nothing is held after [`ProfileLock::probe`].

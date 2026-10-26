@@ -152,7 +152,10 @@ jobs:
           cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
           cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --no-run
           dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live'
-          env -u DBUS_SESSION_BUS_ADDRESS MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+          # Service stopped: the bus socket does not exist. The reader must say the key is missing
+          # and must not have created anything (checked in a live keyring afterwards).
+          DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && ! secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live'
 
       # Release only: the latency assertions are meaningless in a debug build. Proves reads
       # through the pool do not wait behind a held write transaction.

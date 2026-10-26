@@ -143,19 +143,27 @@ fn corrupt_ciphertexts_are_named() {
     assert_eq!(report.entries.len(), expected_flat(&f).len() - 2);
 }
 
-struct FixedKeytar(Vec<(&'static str, &'static str, &'static str)>);
+pub(super) struct FixedKeytar(pub Vec<(&'static str, &'static str, &'static str)>);
 
 impl KeytarSource for FixedKeytar {
-    fn items(&self) -> Result<Vec<KeytarItem>, ImportError> {
+    fn list(&self) -> Result<Vec<(String, String)>, KeySourceError> {
         Ok(self
             .0
             .iter()
-            .map(|(s, a, v)| KeytarItem {
-                service: (*s).into(),
-                account: (*a).into(),
-                value: Zeroizing::new((*v).into()),
-            })
+            .map(|(s, a, _)| ((*s).into(), (*a).into()))
             .collect())
+    }
+
+    fn read(
+        &self,
+        service: &str,
+        account: &str,
+    ) -> Result<Option<Zeroizing<String>>, KeySourceError> {
+        Ok(self
+            .0
+            .iter()
+            .find(|(s, a, _)| *s == service && *a == account)
+            .map(|(_, _, v)| Zeroizing::new((*v).into())))
     }
 }
 

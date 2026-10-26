@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 
 use super::ImportError;
 use super::profile::ElectronProfile;
-use super::scratch::{Scratch, ScratchDb};
+use super::scratch::{Scratch, ScratchDb, TornFile};
 
 pub const PACKAGED_ORIGIN: &str = "file://";
 
@@ -17,6 +17,8 @@ pub struct LocalStorageSnapshot {
     pub entries: BTreeMap<String, String>,
     /// Entries of the origin whose key or value could not be decoded.
     pub skipped: usize,
+    /// Log or manifest files that end in a cut-short record; see [`TornFile`].
+    pub torn_tails: Vec<TornFile>,
 }
 
 impl LocalStorageSnapshot {
@@ -33,7 +35,10 @@ impl LocalStorageSnapshot {
         let mut db = ScratchDb::open(scratch, &dir)?;
         let mut prefix = format!("_{origin}").into_bytes();
         prefix.push(0);
-        let mut snapshot = Self::default();
+        let mut snapshot = Self {
+            torn_tails: db.torn_tails().to_vec(),
+            ..Self::default()
+        };
         for (key, value) in db.scan_prefix(&prefix)? {
             match (decode(&key[prefix.len()..]), decode(&value)) {
                 (Some(k), Some(v)) => {

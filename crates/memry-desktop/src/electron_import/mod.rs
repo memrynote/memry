@@ -7,6 +7,8 @@
 pub mod config;
 pub mod dictionary;
 mod leveldb_log;
+mod leveldb_manifest;
+mod leveldb_table;
 pub mod local_storage;
 pub mod profile;
 pub mod scratch;
@@ -19,7 +21,7 @@ pub use config::ElectronConfig;
 pub use dictionary::CustomDictionary;
 pub use local_storage::LocalStorageSnapshot;
 pub use profile::{AppNameCandidates, ElectronProfile, HostOs, IdentityPin, ProfileEnv};
-pub use scratch::{ProfileLock, Scratch};
+pub use scratch::{ProfileLock, Scratch, TornFile};
 pub use secrets::{SecretEntry, SecretsReport, UnreadableReason, UnreadableSecret};
 pub use ystore::{SnapshotWatermark, YStoreReader};
 

@@ -17,7 +17,7 @@ pub use lib0_any::Lib0Any;
 use super::ImportError;
 use super::config::ElectronConfig;
 use super::profile::{ElectronProfile, vault_dir_name};
-use super::scratch::{Scratch, ScratchDb};
+use super::scratch::{Scratch, ScratchDb, TornFile};
 
 /// Reserved pseudo documents and meta keys (`crdt-provider.ts`).
 pub const STORE_DOC: &str = "__memry_crdt_store__";
@@ -41,6 +41,7 @@ struct DocData {
 pub struct YStoreReader {
     docs: BTreeMap<String, DocData>,
     ignored_keys: usize,
+    torn_tails: Vec<TornFile>,
 }
 
 enum Part {
@@ -85,6 +86,19 @@ impl YStoreReader {
             Some(previous) if !is_dir(&own) && is_dir(&previous) => previous,
             _ => own,
         }
+    }
+
+    /// The previous store directory of a pending rename when it exists next to the vault's own.
+    /// The own store is read; the previous one holds history that is not, so the migration must
+    /// say so instead of importing as if the vault had one store.
+    pub fn unread_previous_store(
+        profile: &ElectronProfile,
+        vault_uuid: &str,
+        config: Option<&ElectronConfig>,
+    ) -> Option<PathBuf> {
+        let root = profile.crdt_store_root();
+        let previous = root.join(vault_dir_name(config?.crdt_pending_rename(vault_uuid)?));
+        (is_dir(&root.join(vault_dir_name(vault_uuid))) && is_dir(&previous)).then_some(previous)
     }
 
     /// The per-vault store. `Ok(None)` when the vault has none, under its own name or a pending
@@ -151,7 +165,11 @@ impl YStoreReader {
                 _ => ignored_keys += 1,
             }
         }
-        Ok(Some(Self { docs, ignored_keys }))
+        Ok(Some(Self {
+            docs,
+            ignored_keys,
+            torn_tails: db.torn_tails().to_vec(),
+        }))
     }
 
     /// Keys in the store that are none of the three y-leveldb shapes this reader knows. A store
@@ -159,6 +177,12 @@ impl YStoreReader {
     /// as if nothing were left behind.
     pub fn ignored_keys(&self) -> usize {
         self.ignored_keys
+    }
+
+    /// Files of the store that end in a cut-short record. LevelDB drops that record and any
+    /// after it, so a non-empty list means the store may hold less than it did.
+    pub fn torn_tails(&self) -> &[TornFile] {
+        &self.torn_tails
     }
 
     /// Every document with a state vector, an update or a meta entry, reserved ones included.
