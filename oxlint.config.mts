@@ -93,6 +93,8 @@ export default defineConfig({
     // Written by `pnpm ipc:generate` from the Rust command registry.
     'apps/desktop-tauri/src/generated/**',
     'apps/desktop-tauri/src-tauri/gen/**',
+    // Electron-only fixture capture tool (own package, own lockfile); Step 43 (#3560) deletes it.
+    'scripts/electron-fixtures/**',
     // The lint rules' own implementation is not product code.
     'tools/oxlint/**',
     // Golden inputs for the i18n scanner and codemod tests: untranslated JSX and unresolved
