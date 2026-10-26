@@ -23,6 +23,8 @@ const FEED_FILES = [
   }
 ]
 
+const RESOURCES_TAG = 'v2026-10-15'
+
 // Each platform runs the commands of its production release job; the publish overrides go to the
 // last one, which runs electron-builder. Windows cannot use `build:win`: its `prebuild` runs
 // ensure-native.sh under Git bash, whose /d/a/... paths node cannot resolve (run 40388750063).
@@ -100,6 +102,14 @@ export function build({ tag, feedRepo, keep = false, repoRoot = process.cwd() })
       }
       writeFileSync(file, patchConstant(readFileSync(file, 'utf8'), entry, values[entry.constant]))
       console.log(`patched ${entry.constant} in ${entry.file}`)
+    }
+    // v2026.4.28 tracks no apps/desktop/build (the root .gitignore ignores `build`), so
+    // build-packaged-app.js cannot stage it. The directory holds icons, entitlements and the NSIS
+    // include only; take it from a later tag. Application code stays the tag's own.
+    const buildResources = path.join(worktree, 'apps/desktop/build')
+    if (!existsSync(buildResources)) {
+      console.log(`apps/desktop/build is missing at ${tag}; restoring it from ${RESOURCES_TAG}`)
+      run('git', ['checkout', RESOURCES_TAG, '--', 'apps/desktop/build'], { cwd: worktree })
     }
     // The production build requires a runtime env file whose sync host has certificate pins.
     // Rehearsal installs never sign in, so the shipped default host is only a build input.
