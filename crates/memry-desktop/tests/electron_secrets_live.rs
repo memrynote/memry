@@ -309,7 +309,15 @@ mod linux {
         if no_secret_service() || !keytar_enabled() {
             return;
         }
-        let attrs = ["service", "com.memry.capture", "account", "live-acct"];
+        // keytar stores its items with this schema attribute; `secret-tool` adds none by itself.
+        let attrs = [
+            "xdg:schema",
+            "org.freedesktop.Secret.Generic",
+            "service",
+            "com.memry.capture",
+            "account",
+            "live-acct",
+        ];
         store("keytar item", &attrs, "keytar-value");
         let items = read_all(&OsKeytar);
         clear(&attrs);
