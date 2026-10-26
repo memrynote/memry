@@ -40,6 +40,8 @@ import {
 import { buildSelectors } from './vectors/selectors.mjs'
 import { mathmlCases, mathmlFuzzVectors, mathmlVector } from './vectors/mathml.mjs'
 import { mathmlTablesText, tablesTarget } from './vectors/mathml-tables.mjs'
+import { temmlTablesText, temmlTablesTarget } from './vectors/temml-tables.mjs'
+import { temmlCases, temmlFuzzVectors, temmlVector } from './vectors/temml.mjs'
 
 /** Every class, id and test attribute value of a page: what the partial selectors run on. */
 function attributeValues(html) {
@@ -184,6 +186,8 @@ function buildFiles() {
   )
   files.set('mathml-cases.json', format(mathmlCases.map(mathmlVector)))
   files.set('mathml-fuzz.json', format(mathmlFuzzVectors(1000)))
+  files.set('temml-cases.json', format(temmlCases.map(temmlVector)))
+  files.set('temml-fuzz.json', format(temmlFuzzVectors(2000)))
   files.set('dom-fuzz.json', format(fuzzVectors(600)))
   files.set(
     'standardize-fuzz.json',
@@ -233,6 +237,13 @@ if (process.argv.includes('--check')) {
     )
     process.exit(1)
   }
+  const temmlTables = await temmlTablesText()
+  if (!existsSync(temmlTablesTarget) || readFileSync(temmlTablesTarget, 'utf8') !== temmlTables) {
+    console.error(
+      'temml/tables.json differs from temml; run pnpm --filter @memry/article-extract vectors'
+    )
+    process.exit(1)
+  }
   console.log(`article-extract vectors are current (${files.size} files)`)
 } else {
   for (const name of committed) if (!files.has(name)) rmSync(join(vectorsDir, name))
@@ -242,5 +253,7 @@ if (process.argv.includes('--check')) {
     writeFileSync(path, content)
   }
   writeFileSync(tablesTarget, mathmlTablesText())
+  mkdirSync(dirname(temmlTablesTarget), { recursive: true })
+  writeFileSync(temmlTablesTarget, await temmlTablesText())
   console.log(`wrote ${files.size} files to ${vectorsDir}`)
 }
