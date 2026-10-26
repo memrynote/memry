@@ -186,16 +186,16 @@ Windows ships only the Velopack Setup. The NSIS-position file is a byte copy of 
 
 The rehearsal repo `memrynote/memry-update-rehearsal` (public) exists and carries the workflow. Run 40164450237 (version 2099.101.1, 2026-10-25): the Linux pack and both Windows payload jobs passed, so the `linux` channel packs (`MemryNote-2099.101.1-linux-full.nupkg`, `MemryNote.AppImage`, `releases.linux.json`) and the `win-x64` and `win-arm64` payload zips exist; `Memrynote.exe` in the arm64 zip is `PE32+ ... Aarch64`. The macOS pack jobs stop at "Import signing identity" until the Developer ID and notarization secrets are set on the rehearsal repo, the Windows packs need the Certum session on the maintainer's Mac, and the macOS VM rows need `tart`. No matrix row has run yet.
 
-| Id  | Environment                                                         | Result  |
-| --- | ------------------------------------------------------------------- | ------- |
-| W1  | Windows 11 ARM64 VM, Electron rehearsal build, Velopack install, R2 | pending |
-| W2  | same VM, NSIS install, R2                                           | pending |
-| W3  | same VM, R2 to R3 delta                                             | pending |
-| W4  | same VM, native arm64 Setup, R2 to R3                               | pending |
-| W5  | clean snapshot without VC++                                         | pending |
-| M1  | tart `macos-sonoma-base`, arm64                                     | pending |
-| M2  | `macos-15-intel` CI job                                             | pending |
-| M3  | M1 VM after R3                                                      | pending |
-| M4  | tart `macos-monterey-base`, `v2026-10-15`                           | pending |
-| M4b | tart `macos-monterey-base`, `v2026.4.28`                            | pending |
-| L1  | `ubuntu-22.04` CI job under `xvfb-run`                              | pending |
+| Id  | Environment                                                         | Result                                                                                                            |
+| --- | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| W1  | Windows 11 ARM64 VM, Electron rehearsal build, Velopack install, R2 | blocked: SimplySign                                                                                               |
+| W2  | same VM, NSIS install, R2                                           | blocked: SimplySign                                                                                               |
+| W3  | same VM, R2 to R3 delta                                             | blocked: SimplySign                                                                                               |
+| W4  | same VM, native arm64 Setup, R2 to R3                               | blocked: SimplySign                                                                                               |
+| W5  | clean snapshot without VC++                                         | blocked: SimplySign                                                                                               |
+| M1  | tart `macos-sonoma-base`, arm64                                     | pass 2026-10-26: Squirrel install, notarized, DR ok, probe `up-to-date`; no auto-relaunch (ShipIt cannot spawn)   |
+| M2  | `macos-15-intel` CI job                                             | pass (run 40388750063, ubuntu-24.04 x64)                                                                          |
+| M3  | M1 VM after R3                                                      | pass 2026-10-26: R3 to R4 via Velopack base: `deltas=1`, downloaded, applied, relaunched, 2099.101.3 `up-to-date` |
+| M4  | tart `macos-monterey-base`, `v2026-10-15`                           | pass: Electron refuses (OS 21.6.0 < 22.0.0), state `up-to-date`                                                   |
+| M4b | tart `macos-monterey-base`, `v2026.4.28`                            | blocked: the oldest tag build fails with EMFILE on macos-15 even at `ulimit -n 65536`                             |
+| L1  | `ubuntu-22.04` CI job under `xvfb-run`                              | pass (run 40388750063, ubuntu-24.04 x64)                                                                          |
