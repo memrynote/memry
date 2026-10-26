@@ -168,10 +168,21 @@ jobs:
           delta=BestSpeed; [ -z "${{ inputs.previous_tag }}" ] && delta=None
           # vpk only accepts a .entitlements extension.
           cp apps/desktop-tauri/src-tauri/entitlements.mac.plist "$RUNNER_TEMP/MemryNote.entitlements"
-          node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "${{ inputs.version }}" \
-            --pack-dir pack/MemryNote.app --output-dir out --delta "$delta" \
-            --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
-            --notary-profile memry-notary --keychain "$KEYCHAIN"
+          # Notarization is Accepted before `stapler staple` runs. Staple fetches the ticket from
+          # api.apple-cloudkit.com, and a dropped connection there (Error 68, NSURLErrorDomain
+          # -1005, run 40194565979 osx-x64) fails the whole pack although the build is fine.
+          # vpk does not retry, so pack again: notarizing the same bytes is idempotent.
+          for attempt in 1 2 3; do
+            if node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "${{ inputs.version }}" \
+              --pack-dir pack/MemryNote.app --output-dir out --delta "$delta" \
+              --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
+              --notary-profile memry-notary --keychain "$KEYCHAIN"; then
+              exit 0
+            fi
+            echo "::warning::vpk pack attempt $attempt failed"
+            sleep 20
+          done
+          exit 1
       - name: Entitlements and Info.plist of the packed bundle
         run: |
           unzip -q -o out/MemryNote-${{ matrix.target }}-Portable.zip -d inspect
