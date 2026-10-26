@@ -2,8 +2,6 @@ import { waitForAppReady, createNote } from '../../harness/app-helpers'
 import type { Page } from '../../harness/pw-compat/page'
 import { test, expect } from '../../harness/test'
 
-const CLICK_BUDGET_MS = 300
-
 /** Replaces the app page with a small form and wires its behavior from the test side. */
 async function showFixturePage(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -44,11 +42,12 @@ test('click, fill, press, hover and expect polling work on a page inside the app
 }) => {
   await showFixturePage(page)
 
-  const started = Date.now()
   await page.getByRole('button', { name: /Count/ }).click()
-  const clickMs = Date.now() - started
+  // `click()` resolves only after the browser dispatched the click, so one plain read (no polling)
+  // already sees its effect. This replaces a wall-clock budget (300 ms), which failed on shared CI
+  // runners at 300 to 600 ms for a healthy click; the behavior is what the budget stood in for.
+  expect(await page.locator('#inc').textContent()).toBe('Count: 1')
   await expect(page.locator('#inc')).toHaveText('Count: 1')
-  expect(clickMs).toBeLessThan(CLICK_BUDGET_MS)
 
   await page.getByLabel('Name').fill('Ada')
   await expect(page.getByPlaceholder('Your name')).toHaveValue('Ada')

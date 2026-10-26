@@ -219,6 +219,7 @@ jobs:
           echo "path=$bin" >> "$GITHUB_OUTPUT"
 
       - name: Launch smoke
+        timeout-minutes: 5
         if: matrix.variant == 'debug' && matrix.platform != 'linux-arm64'
         run: node apps/desktop-tauri/scripts/smoke-launch.mjs "${{ steps.binary.outputs.path }}"
 
@@ -356,4 +357,5 @@ jobs:
           fi
 
       - name: Launch smoke (carries no driver)
+        timeout-minutes: 5
         run: node apps/desktop-tauri/scripts/smoke-launch.mjs "$BIN" --expect-no-driver
