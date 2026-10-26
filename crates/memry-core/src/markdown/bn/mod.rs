@@ -1,6 +1,7 @@
 //! The BlockNote 0.54.2 parse path: `markdownToHtml`, the HTML tree, the
 //! ProseMirror `DOMParser` and `nodeToBlock`.
 
+pub mod block_to_node;
 pub mod dom;
 pub mod dom_parser;
 pub mod export;

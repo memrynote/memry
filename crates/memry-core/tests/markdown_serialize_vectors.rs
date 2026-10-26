@@ -51,6 +51,7 @@ fn serialize_seed(input: &Json) -> Result<Option<String>, String> {
         callout_types: &types,
         embeds: &files,
         serializer: &BlockNoteSerializer,
+        html_comments: true,
     };
     let writing = input.get("writing").and_then(read_writing_frontmatter);
     let seed = prepare_fragment_seed(

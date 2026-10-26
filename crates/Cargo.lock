@@ -2871,6 +2871,7 @@ dependencies = [
  "unicode-normalization",
  "uniffi",
  "url",
+ "uuid",
  "yrs",
  "zeroize",
 ]
