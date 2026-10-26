@@ -85,3 +85,15 @@ fn a_panicking_call_is_reported_as_failed_and_releases_the_latch() {
         );
     }
 }
+
+#[test]
+fn the_latch_guard_releases_even_when_the_worker_unwinds_outside_catch_unwind() {
+    let latch = Arc::new(AtomicBool::new(true));
+    let held = Release(Arc::clone(&latch));
+    let unwound = std::panic::catch_unwind(AssertUnwindSafe(move || {
+        let _held = held;
+        panic!("worker died");
+    }));
+    assert!(unwound.is_err());
+    assert!(!latch.load(Ordering::SeqCst));
+}

@@ -99,3 +99,45 @@ fn a_table_the_manifest_no_longer_names_is_not_verified() {
     let mut db = ScratchDb::open(&scratch, dir.path()).unwrap();
     assert_eq!(db.scan_prefix(&[]).unwrap().len(), 20);
 }
+
+/// Written by classic-level 3.0.0 (the LevelDB the Electron app uses) and compacted: its index
+/// block is snappy-compressed, as real LevelDB writes it when that saves an eighth or more.
+fn snappy_store() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/electron/classic-level-snappy")
+}
+
+#[test]
+fn a_store_whose_index_block_is_snappy_compressed_verifies_and_opens() {
+    let table = fs::read(snappy_store().join("000005.ldb")).unwrap();
+    // Type byte of the index block: the fixture is only a test of this path while it is 1.
+    let footer = &table[table.len() - 48..];
+    let mut pos = 0;
+    handle(footer, &mut pos).unwrap();
+    let index = handle(footer, &mut pos).unwrap();
+    assert_eq!(
+        table[index.offset + index.size],
+        1,
+        "fixture index block is not compressed"
+    );
+    verify(&table).unwrap();
+    let (_keep, scratch) = test_scratch();
+    let mut db = ScratchDb::open(&scratch, &snappy_store()).unwrap();
+    assert_eq!(db.scan_prefix(b"_file://").unwrap().len(), 3000);
+}
+
+#[test]
+fn a_bit_flip_in_a_compressed_index_block_is_still_caught() {
+    let table = fs::read(snappy_store().join("000005.ldb")).unwrap();
+    let footer = &table[table.len() - 48..];
+    let mut pos = 0;
+    handle(footer, &mut pos).unwrap();
+    let index = handle(footer, &mut pos).unwrap();
+    // Without this, "compressed index block" would fail every flip for the wrong reason.
+    verify(&table).unwrap();
+    for at in [index.offset, index.offset + index.size / 2] {
+        let mut bad = table.clone();
+        bad[at] ^= 0x01;
+        assert!(verify(&bad).is_err(), "flip at {at}");
+    }
+}

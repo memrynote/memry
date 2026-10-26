@@ -28,7 +28,8 @@ fn crc32c_table() -> [u32; 256] {
 }
 
 pub(super) fn crc32c(parts: &[&[u8]]) -> u32 {
-    let table = crc32c_table();
+    static TABLE: std::sync::OnceLock<[u32; 256]> = std::sync::OnceLock::new();
+    let table = TABLE.get_or_init(crc32c_table);
     let mut crc = !0_u32;
     for byte in parts.iter().flat_map(|p| p.iter()) {
         crc = table[((crc ^ u32::from(*byte)) & 0xff) as usize] ^ (crc >> 8);

@@ -33,16 +33,14 @@ fn denied_or_failed(error: &SsError) -> KeySourceError {
     }
 }
 
-/// The session bus socket is absent or nobody listens on it: there is no service to ask. Any
-/// other failure (authentication, a protocol error) means a bus exists and is not "no service".
+/// The session bus socket is absent or nobody listens on it: there is no service to ask. This is
+/// `zbus::Error::Connection` with `NotFound` or `ConnectionRefused`, the error CI observed for
+/// `DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent` ("Failed to connect to address ..."). A
+/// malformed address (`Error::Address`), a failed authentication or a protocol error is not "no
+/// service": a bus may exist, so those stay failures.
 fn no_bus(error: &zbus::Error) -> bool {
     use std::io::ErrorKind::{ConnectionRefused, NotFound};
-    match error {
-        zbus::Error::Address(_) => true,
-        zbus::Error::Connection(io, _) => matches!(io.kind(), NotFound | ConnectionRefused),
-        zbus::Error::InputOutput(io) => matches!(io.kind(), NotFound | ConnectionRefused),
-        _ => false,
-    }
+    matches!(error, zbus::Error::Connection(io, _) if matches!(io.kind(), NotFound | ConnectionRefused))
 }
 
 /// A Secret Service connection. `Ok(None)` only when there is nothing to talk to (no session
@@ -217,5 +215,32 @@ impl KeytarSource for OsKeytar {
         Ok(read_matching(&connection, attributes)?
             .and_then(|bytes| String::from_utf8(bytes.to_vec()).ok())
             .map(Zeroizing::new))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn refused(kind: std::io::ErrorKind, address: &str) -> zbus::Error {
+        zbus::Error::Connection(
+            std::sync::Arc::new(std::io::Error::from(kind)),
+            address.parse().unwrap(),
+        )
+    }
+
+    #[test]
+    fn only_an_unreachable_bus_socket_is_no_service() {
+        use std::io::ErrorKind::{ConnectionRefused, NotFound, PermissionDenied};
+        assert!(no_bus(&refused(NotFound, "unix:path=/nonexistent")));
+        assert!(no_bus(&refused(
+            ConnectionRefused,
+            "unix:path=/run/user/1/bus"
+        )));
+        assert!(!no_bus(&refused(
+            PermissionDenied,
+            "unix:path=/run/user/1/bus"
+        )));
+        assert!(!no_bus(&zbus::Error::Address("malformed".into())));
     }
 }

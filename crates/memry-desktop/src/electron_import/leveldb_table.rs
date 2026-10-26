@@ -39,8 +39,9 @@ fn handle(bytes: &[u8], pos: &mut usize) -> Option<Handle> {
     })
 }
 
-/// Checks the block's crc and returns its contents (without trailer).
-fn block(file: &[u8], h: Handle) -> Result<&[u8], String> {
+/// Checks the block's crc and returns its on-disk contents (without trailer) and compression
+/// type byte.
+fn block(file: &[u8], h: Handle) -> Result<(&[u8], u8), String> {
     let end = h
         .offset
         .checked_add(h.size)
@@ -53,17 +54,31 @@ fn block(file: &[u8], h: Handle) -> Result<&[u8], String> {
     if mask(crc32c(&[data, &[kind]])) != stored {
         return Err(format!("block at {} fails its checksum", h.offset));
     }
-    Ok(data)
+    Ok((data, kind))
 }
 
 /// The values of a block's entries: for the index and metaindex blocks each value is a handle.
-/// A compressed block cannot be parsed without decompressing, and index blocks are never
-/// compressed by LevelDB writers, so a compressed one is rejected.
+/// LevelDB writes them through the same path as data blocks, so they are snappy-compressed (type byte
+/// one) whenever that saves an eighth or more; the crc covers the bytes on disk, the parse needs
+/// them decompressed.
 fn values(file: &[u8], h: Handle) -> Result<Vec<Handle>, String> {
-    let data = block(file, h)?;
-    if file[h.offset + h.size] != 0 {
-        return Err(format!("index block at {} is compressed", h.offset));
-    }
+    let (stored, kind) = block(file, h)?;
+    let decoded;
+    let data: &[u8] = match kind {
+        0 => stored,
+        1 => {
+            decoded = snap::raw::Decoder::new()
+                .decompress_vec(stored)
+                .map_err(|e| format!("block at {} does not decompress: {e}", h.offset))?;
+            &decoded
+        }
+        other => {
+            return Err(format!(
+                "block at {} has unknown compression {other}",
+                h.offset
+            ));
+        }
+    };
     let bad = || format!("index block at {} is malformed", h.offset);
     let restarts = u32::from_le_bytes(
         data.get(data.len().wrapping_sub(4)..)

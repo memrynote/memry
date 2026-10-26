@@ -44,6 +44,7 @@ sha1 = "0.11.0"
 hmac = "0.13.0"
 md-5 = "0.11"
 rusty-leveldb = "4.0.2"
+snap = "1.1.2"
 tempfile = "3"
 
 [target.'cfg(unix)'.dependencies]
