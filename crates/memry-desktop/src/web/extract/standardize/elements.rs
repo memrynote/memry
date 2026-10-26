@@ -2,19 +2,23 @@
 //! `code > pre`, arXiv LaTeXML, tables, video and `lite-youtube`.
 //!
 //! The JS rule table starts with the math and code rules and has the image rules between the
-//! heading and role rules; stages 3 and 4 add them, with `wrapRawLatexDelimiters` and the LaTeX
-//! image conversion that open the JS function, where those comments mark.
+//! heading and role rules; the raw LaTeX wrapper and the LaTeX image conversion open the
+//! function.
 
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::headings::clean_heading;
+use crate::web::extract::elements::math::base::{extract_latex_from_image_src, looks_like_latex};
+use crate::web::extract::elements::math::raw::wrap_raw_latex_delimiters;
+use crate::web::extract::elements::math::{self, create_clean_math_el};
+use crate::web::extract::elements::rule::attr_or_empty;
+use crate::web::extract::elements::rule::{Rule, Transform};
+use crate::web::extract::elements::{code, images};
 use crate::web::extract::error::ExtractError;
-use crate::web::extract::utils::dom::is_direct_table_child;
+use crate::web::extract::utils::dom::{is_direct_table_child, tag_lower};
 use crate::web::extract::utils::js::trim;
 
 use super::lists;
 use super::verso::merge_adjacent_verso_code_blocks;
-
-type Transform = fn(&mut Document, NodeId) -> Result<NodeId, ExtractError>;
 
 /// One `ELEMENT_STANDARDIZATION_RULES` entry: every match is replaced by what `transform` makes.
 fn apply_rule(
@@ -30,6 +34,18 @@ fn apply_rule(
     for el in matches {
         let transformed = transform(doc, el)?;
         doc.replace_with(el, &[transformed])?;
+    }
+    Ok(())
+}
+
+fn apply_rules(doc: &mut Document, element: NodeId, rules: &[Rule]) -> Result<(), ExtractError> {
+    for rule in rules {
+        if let Some(fast_check) = rule.fast_check
+            && doc.query_selector(element, fast_check)?.is_none()
+        {
+            continue;
+        }
+        apply_rule(doc, element, rule.selector, rule.transform)?;
     }
     Ok(())
 }
@@ -221,12 +237,47 @@ fn convert_lite_youtube(doc: &mut Document, element: NodeId) -> Result<(), Extra
     Ok(())
 }
 
-/// `standardizeElements(element, doc)`.
-pub fn standardize_elements(doc: &mut Document, element: NodeId) -> Result<(), ExtractError> {
-    // Stage 3 and 4: `wrapRawLatexDelimiters` and the LaTeX-image conversion, then the math and
-    // code block rules, run here in JS.
+/// Images from LaTeX rendering services become `<math>`: the URL-encoded LaTeX of the `src`
+/// (no domain allowlist), else an `alt` that holds LaTeX commands.
+fn convert_latex_images(doc: &mut Document, element: NodeId) -> Result<(), ExtractError> {
+    for img in doc.query_selector_all(element, "img[src]")? {
+        let src = attr_or_empty(doc, img, "src");
+        if src.is_empty() {
+            continue;
+        }
+        let mut latex = extract_latex_from_image_src(&src);
+        if latex.is_none() {
+            let alt = attr_or_empty(doc, img, "alt");
+            if looks_like_latex(&alt) {
+                latex = Some(alt);
+            }
+        }
+        let Some(latex) = latex.filter(|l| !l.is_empty()) else {
+            continue;
+        };
+        let alone_in_paragraph = doc.parent_element(img).is_some_and(|parent| {
+            tag_lower(doc, parent) == "p" && doc.child_nodes(parent).len() == 1
+        });
+        let is_block = latex.contains("\\begin{") || alone_in_paragraph;
+        let math = create_clean_math_el(doc, None, Some(&latex), is_block)?;
+        doc.replace_with(img, &[math])?;
+    }
+    Ok(())
+}
+
+/// `standardizeElements(element, doc)`; `source` is the `doc` of the JS function, the document
+/// the page was parsed into.
+pub fn standardize_elements(
+    doc: &mut Document,
+    element: NodeId,
+    source: NodeId,
+) -> Result<(), ExtractError> {
+    wrap_raw_latex_delimiters(doc, element, source)?;
+    convert_latex_images(doc, element)?;
+    apply_rules(doc, element, math::RULES)?;
+    apply_rules(doc, element, code::RULES)?;
     apply_rule(doc, element, "h1, h2, h3, h4, h5, h6", clean_heading)?;
-    // Stage 3: the image rules run here in JS.
+    apply_rules(doc, element, images::RULES)?;
     apply_rule(doc, element, lists::PARAGRAPH_SELECTOR, lists::paragraph)?;
     apply_rule(doc, element, lists::LIST_SELECTOR, lists::list)?;
     apply_rule(doc, element, lists::LIST_ITEM_SELECTOR, lists::list_item)?;

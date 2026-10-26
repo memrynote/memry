@@ -24,6 +24,8 @@ hex = { workspace = true }
 # `Type` for ArticleCapture, pinned with the Tauri crate (tauri-specta rc.26 needs this exact version).
 regex = "1"
 url = "2"
+# `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
+unicode-normalization = "0.1.25"
 # Turndown parses its input with domino, a spec-conformant HTML parser: the one place html5ever
 # is used. Everything else parses with the htmlparser2 port.
 html5ever = "0.40.1"
