@@ -3,7 +3,9 @@
 
 pub mod dom;
 pub mod dom_parser;
+pub mod export;
 pub mod html_to_blocks;
+pub mod html_to_md;
 pub mod html_tree;
 pub mod md_to_html;
 pub mod node_to_block;

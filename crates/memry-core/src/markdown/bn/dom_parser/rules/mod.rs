@@ -13,7 +13,7 @@ mod attrs;
 mod blocks;
 mod content;
 mod getattrs;
-mod js;
+pub(crate) mod js;
 mod link;
 mod url;
 

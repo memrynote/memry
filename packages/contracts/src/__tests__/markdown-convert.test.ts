@@ -47,7 +47,9 @@ const DIGESTS: Record<string, string> = {
     'e44263eb4c8c5335cad1a54a326113a7c6b9d0612c96006ab25f803bb49c3a4a',
   'markdown-convert/parse.json': '0f4003e2d32f27cd1e839c0e652a21a3650bb2010bd37f7d9112eab789db4d0a',
   'markdown-convert/memry-parse.json':
-    '6bca15359804010a832aebd9752897bb49af927d15c7f8f1cf6ffeb5ced2733d',
+    'c089a6e31c7c529bfc69661577e3596d0f5edb8368e800ba2535bb6acdd2a29d',
+  'markdown-convert/serialize.json':
+    '06d74f1a4a9009b9ecde1e7659abbd6db7947465426f3dc3c323b48755ab7de4',
   'markdown-convert/layer-text.json':
     'b744daa9b37d3c8453fff565d7e48ff1b097ce05fb06bef33974b48954e90ce1',
   'markdown-convert/layer-markers.json':
@@ -74,6 +76,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 129 },
   'markdown-convert/parse.json': { 'bn-parse': 833 },
   'markdown-convert/memry-parse.json': { 'memry-parse': 723 },
+  'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 723 },
   'markdown-convert/layer-text.json': { fn: 13066 },
   'markdown-convert/layer-markers.json': { fn: 3243 },
   'markdown-convert/layer-blocks.json': { fn: 5116 },

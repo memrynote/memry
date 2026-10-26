@@ -125,6 +125,9 @@ pub fn vector_file(name: &str) -> Json {
         "markdown-convert/html-to-blocks" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/html-to-blocks.json"
         ),
+        "markdown-convert/serialize" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/serialize.json"
+        ),
         "markdown-convert/memry-parse" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/memry-parse.json"
         ),

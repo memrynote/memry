@@ -154,6 +154,7 @@ const CLASSES: readonly VectorClass[] = [
       'html-to-blocks.json',
       'parse.json',
       'memry-parse.json',
+      'serialize.json',
       'layer-text.json',
       'layer-markers.json',
       'layer-blocks.json',
