@@ -173,7 +173,7 @@ impl ChromiumKeySource for OsKeySource {
 
 /// keytar's libsecret items: schema `org.freedesktop.Secret.Generic`, string attributes
 /// `service` and `account`. Many apps share that schema, so only items whose `service` is one
-/// the Electron app wrote are listed, and a secret is unlocked and read only on `read`.
+/// the Electron app wrote are listed, locked ones are unlocked to read their attributes, and a secret is read only on `read`.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OsKeytar;
 
@@ -188,6 +188,10 @@ impl KeytarSource for OsKeytar {
             .map_err(fail)?;
         let mut items = Vec::new();
         for item in found.unlocked.iter().chain(found.locked.iter()) {
+            // A cold gnome-keyring hides `service` and `account` of locked items (only hashed
+            // attributes remain), so a locked item lists as nothing. Unlock first (one prompt
+            // for the collection); a declined prompt is `Denied`, never an empty listing.
+            item.unlock().map_err(fail)?;
             let attributes = item.get_attributes().map_err(fail)?;
             if let (Some(svc), Some(account)) =
                 (attributes.get("service"), attributes.get("account"))
