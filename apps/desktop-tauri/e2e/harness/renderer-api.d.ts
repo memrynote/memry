@@ -3,4 +3,6 @@
 // A global script (no import or export), so the declaration merges into `Window` everywhere.
 interface Window {
   api: any
+  /** Published by the Rust init script before first paint (`StartupState`). */
+  __MEMRY_STARTUP__?: { theme: string; locale: string; direction: string }
 }

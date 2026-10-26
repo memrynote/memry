@@ -115,6 +115,12 @@ fn start_telemetry(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let paths = app.state::<AppPaths>();
     let env = app.state::<LaunchEnv>();
     let runtime = RuntimeConfig::resolve(&compiled(), &env);
+    tracing::info!(
+        scope = "Config",
+        "runtime config: env {}, sync server {}",
+        runtime.build_channel(),
+        runtime.sync_server_url
+    );
     let stored = memry_desktop::telemetry::TelemetryConfig::new(&paths.data_dir);
     let enabled = runtime.telemetry_enabled(stored.enabled(), &env);
     let version = app.package_info().version.to_string();
