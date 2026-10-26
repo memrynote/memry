@@ -99,7 +99,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf
+            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf \
+            gnome-keyring libsecret-tools dbus-x11
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -129,6 +130,40 @@ jobs:
 
       - name: Test
         run: cargo test -p memry-core -p memry-desktop -p memry-tauri
+
+      # Electron profile readers against the live OS secret store (#3523). Each test creates its
+      # own throw-away item under a test app name and removes it. macOS: a Keychain item named
+      # `<test app> Safe Storage`. Windows: a real CryptProtectData round trip through `Local
+      # State` and a keytar-style credential. The Windows legs decrypt with a key the test
+      # wraps itself, so the result does not depend on the machine.
+      - name: Electron profile readers, live OS secrets (macOS, Windows)
+        if: runner.os != 'Linux'
+        env:
+          MEMRY_LIVE_KEYTAR: '1'
+        run: |
+          cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+
+      # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
+      # session bus at all, where the reader must answer "missing" and create nothing.
+      - name: Electron profile readers, live OS secrets (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --no-run
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live'
+          # Service stopped, in the SAME session as the keyring check: the reader is pointed at a
+          # bus socket that does not exist, must say "missing", and must not have created an item
+          # in the live keyring. A probe item first proves the search would show a memry-live item.
+          dbus-run-session -- bash -c '
+            set -e
+            echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            echo -n probe | secret-tool store --label probe xdg:schema chrome_libsecret_os_crypt_password_v2 application memry-live-probe
+            secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live-probe
+            secret-tool clear xdg:schema chrome_libsecret_os_crypt_password_v2 application memry-live-probe
+            DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+            ! secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live
+          '
 
       # Release only: the latency assertions are meaningless in a debug build. Proves reads
       # through the pool do not wait behind a held write transaction.

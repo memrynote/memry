@@ -14,13 +14,15 @@ fn no_reader_changes_the_profile_tree() {
         ProfileLock::probe(&f.profile).unwrap();
         ElectronConfig::read(&f.profile).unwrap().unwrap();
         CustomDictionary::read(&f.profile).unwrap().unwrap();
-        LocalStorageSnapshot::read(&f.profile, "file://")
+        LocalStorageSnapshot::read(&f.profile, "file://", &f.scratch)
             .unwrap()
             .unwrap();
-        YStoreReader::open(&f.profile, &f.expected.vault_uuid)
+        YStoreReader::open(&f.profile, &f.expected.vault_uuid, None, &f.scratch)
             .unwrap()
             .unwrap();
-        YStoreReader::open_legacy(&f.profile).unwrap().unwrap();
+        YStoreReader::open_legacy(&f.profile, &f.scratch)
+            .unwrap()
+            .unwrap();
         let mut keys = FixedKeySource::default();
         keys.passwords.insert(
             "memrynote".into(),

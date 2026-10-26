@@ -1,7 +1,7 @@
 // Captures an Electron 43.1.1 profile fixture for crates/memry-desktop (electron_import tests).
 //
-//   pnpm install --ignore-workspace
-//   node capture.mjs --out ../../crates/memry-desktop/tests/fixtures/electron/<macos|windows|linux>
+//   pnpm install            (repo root: the desktop app's own electron 43.1.1, y-leveldb and yjs)
+//   node scripts/electron-fixtures/capture.mjs --out ../../crates/memry-desktop/tests/fixtures/electron/<macos|windows|linux>
 //
 // Writes <out>/<new|legacy>/ (a profile) and <out>/<new|legacy>.json (expected plaintexts, doc
 // names and the throw-away key material the deterministic tests need). The app names are
@@ -15,7 +15,14 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createRequire as nodeRequire } from 'node:module'
 
-const require = nodeRequire(import.meta.url)
+// The capture runs against the root install: the exact electron, y-leveldb and yjs the shipped
+// desktop app depends on, so no second Electron lockfile exists.
+// CAPTURE_MODULES_FROM points at another package.json whose node_modules hold electron 43.1.1,
+// y-leveldb and yjs: the Windows and Linux VMs have no checkout.
+const require = nodeRequire(
+  process.env.CAPTURE_MODULES_FROM ??
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '../../apps/desktop/package.json')
+)
 const here = path.dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
 const arg = (name, fallback) => {
@@ -146,7 +153,8 @@ function copyProfile(userData, dest) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, e.name)
       if (e.isDirectory()) stack.push(p)
-      else if (e.name === 'LOCK') fs.rmSync(p)
+      // LOCK is process state; LOG records the host's temp path and nothing reads it.
+      else if (['LOCK', 'LOG', 'LOG.old'].includes(e.name)) fs.rmSync(p)
     }
   }
 }
@@ -192,7 +200,14 @@ for (const { slug, appName } of RUNS) {
   )
   const plaintextsPath = path.join(userData, '.plaintexts.json')
   fs.writeFileSync(plaintextsPath, JSON.stringify(PLAINTEXTS))
-  const mockKeychain = process.platform === 'darwin' ? ['--use-mock-keychain'] : []
+  // Linux: Chromium picks its password store from the desktop environment and falls back to
+  // plaintext (safeStorage unavailable) outside GNOME and KDE, so libsecret is named.
+  const mockKeychain =
+    process.platform === 'darwin'
+      ? ['--use-mock-keychain']
+      : process.platform === 'linux'
+        ? ['--password-store=gnome-libsecret']
+        : []
   const run = spawnSync(
     electronBin,
     [

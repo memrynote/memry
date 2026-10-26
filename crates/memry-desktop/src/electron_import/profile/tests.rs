@@ -317,3 +317,32 @@ fn vault_dir_name_matches_electron() {
     );
     assert_ne!(vault_dir_name("A"), vault_dir_name("a"));
 }
+
+#[test]
+fn a_pin_with_an_unknown_version_is_an_error_not_a_guess() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("memrynote");
+    make_profile(&dir);
+    fs::write(
+        dir.join(IDENTITY_PIN_FILENAME),
+        r#"{"version":2,"appName":"@memry/desktop"}"#,
+    )
+    .unwrap();
+    let result = locate_profile(&env(root.path(), HostOs::MacOs));
+    assert!(matches!(
+        result,
+        Err(ImportError::UnsupportedVersion { .. })
+    ));
+    fs::write(
+        dir.join(IDENTITY_PIN_FILENAME),
+        r#"{"version":1,"appName":"memrynote"}"#,
+    )
+    .unwrap();
+    assert!(
+        locate_profile(&env(root.path(), HostOs::MacOs))
+            .unwrap()
+            .unwrap()
+            .pin
+            .is_some()
+    );
+}
