@@ -297,7 +297,10 @@ export const temmlEnvCases = bothModes([
   '\\begin{pmatrix}a&b&c\\\\d\\\\e&f\\end{pmatrix}',
   '\\begin{pmatrix}\\begin{matrix}a&b\\\\c\\end{matrix}&d\\\\e\\end{pmatrix}',
   '\\begin{array}{cc}\\begin{array}{ccc}a&b\\\\c\\end{array}&\\begin{array}{cc}x\\end{array}\\\\e\\end{array}',
-  '\\begin{matrix}a\\\\b&c\\end{matrix}^{\\begin{matrix}a\\\\b&c\\end{matrix}}'
+  '\\begin{matrix}a\\\\b&c\\end{matrix}^{\\begin{matrix}a\\\\b&c\\end{matrix}}',
+  '\\begin{cases}\\begin{matrix}a&b\\\\c\\end{matrix}&d\\\\e\\end{cases}',
+  '\\begin{pmatrix}\\begin{cases}a&b\\\\c\\end{cases}&d\\\\e\\end{pmatrix}',
+  '\\begin{cases}a&\\begin{align}x&y\\\\z\\end{align}\\\\e\\end{cases}'
 ])
 
 const SPEC_ARRAY = [
