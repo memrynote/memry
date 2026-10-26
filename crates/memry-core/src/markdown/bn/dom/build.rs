@@ -156,6 +156,11 @@ impl TreeSink for Sink {
         // whose second argument `_append` ignores: the text lands at the END of the
         // parent, as a node of its own. This is where a table's foster-parented
         // text goes (oracle cases `foster-table-*`).
+        //
+        // That is a jsdom quirk, not what the HTML spec says, and it is a
+        // compatibility contract: desktop is the reference, so a note that has such
+        // text must convert to the same document in both. Do not "fix" it here
+        // without changing the oracle and the vectors in the same change.
         if let NodeOrText::AppendText(text) = &child {
             let (prev_is_text, parent) = {
                 let dom = self.dom.borrow();

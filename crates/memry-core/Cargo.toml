@@ -66,7 +66,9 @@ regex = { version = "1.13", optional = true }
 # WHATWG URL parsing for `shared::youtube` (JS `new URL`): hostnames go through IDNA
 # and percent-decoding there, which a hand-written parser would only approximate.
 # Pinned exactly: `bn/dom_parser/rules/url.rs` reproduces whatwg-url 15.1 (jsdom 27.4) on top
-# of this crate, and a new release can move a byte of the serialisation.
+# of this crate, and a new release can move a byte of the serialisation. A bump
+# needs `markdown_bn_parse_vectors` (the `url-reflect/*` cases) and the nightly
+# differential rerun first.
 url = { version = "=2.5.8", optional = true }
 
 [dev-dependencies]
