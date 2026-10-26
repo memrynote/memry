@@ -52,7 +52,7 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/serialize.json':
     'b89250832f0599bb53852880897504e37fe3c52a25b2c357f39a9ce95fca57c7',
   'markdown-convert/layer-text.json':
-    'b744daa9b37d3c8453fff565d7e48ff1b097ce05fb06bef33974b48954e90ce1',
+    'ce4d061eb06236750913ca7bc6083440add65d3c9804ed76abf3302235647fae',
   'markdown-convert/layer-markers.json':
     '92a83da5c6e6b698e8014d2da5c8e302987e06dfba35cf9e7e9925e6211e5396',
   'markdown-convert/layer-blocks.json':
@@ -92,7 +92,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/parse.json': { 'bn-parse': 833 },
   'markdown-convert/memry-parse.json': { 'memry-parse': 736 },
   'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 736 },
-  'markdown-convert/layer-text.json': { fn: 13066 },
+  'markdown-convert/layer-text.json': { fn: 13074 },
   'markdown-convert/layer-markers.json': { fn: 3243 },
   'markdown-convert/layer-blocks.json': { fn: 5116 },
   'markdown-convert/layer-critic.json': { fn: 2944 },
