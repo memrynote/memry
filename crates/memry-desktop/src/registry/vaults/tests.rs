@@ -150,3 +150,63 @@ fn list_reads_accent_icon_and_reachability_of_vaults_that_are_not_open() {
     assert_eq!(json["isMissing"], true);
     assert!(json.get("icon").is_none());
 }
+
+/// `list` reads each vault's `.memry/config.json` for its accent and icon. A read that blocks
+/// (a dead share, a sleeping drive) must not hold the config mutex, or every registry write
+/// in the app would wait behind it. A named pipe as `config.json` blocks `read` until a writer
+/// opens it, which is a blocking filesystem call a test can release.
+#[cfg(unix)]
+#[test]
+fn list_does_no_filesystem_io_while_holding_the_config_mutex() {
+    use std::sync::mpsc::channel;
+    use std::time::Duration;
+
+    let dir = tempfile::tempdir().expect("dir");
+    let vault = dir.path().join("v");
+    std::fs::create_dir_all(vault.join(".memry")).expect("vault");
+    let pipe = vault.join(".memry/config.json");
+    let made = std::process::Command::new("mkfifo")
+        .arg(&pipe)
+        .status()
+        .expect("mkfifo");
+    assert!(made.success());
+    let registry = registry_in(dir.path(), None);
+    registry
+        .record_open(&vault.to_string_lossy(), 1_767_323_045_678)
+        .expect("register");
+
+    let (listed_tx, listed_rx) = channel();
+    let lister = registry.clone();
+    let list_thread = std::thread::spawn(move || {
+        let response = lister.list(no_sandbox());
+        listed_tx.send(()).expect("report");
+        response
+    });
+    assert!(
+        listed_rx.recv_timeout(Duration::from_millis(300)).is_err(),
+        "the list is stuck reading the pipe, which is the blocking I/O this test needs"
+    );
+
+    let (updated_tx, updated_rx) = channel();
+    let writer = registry.clone();
+    let update_thread = std::thread::spawn(move || {
+        let outcome = writer.set_default("/v/none");
+        updated_tx.send(outcome.is_err()).expect("report");
+    });
+    let update_finished = updated_rx.recv_timeout(Duration::from_secs(5));
+
+    // Release the reader whatever happened, so a failure does not hang the suite.
+    // `list` reads the config twice (icon, then accent), and each read waits for a writer.
+    for _ in 0..2 {
+        std::fs::write(&pipe, "{}").expect("unblock the reader");
+    }
+    let response = list_thread.join().expect("list thread");
+    update_thread.join().expect("update thread");
+
+    assert_eq!(
+        update_finished,
+        Ok(true),
+        "a registry write finished while the list was blocked in file I/O"
+    );
+    assert_eq!(response.vaults.len(), 1);
+}

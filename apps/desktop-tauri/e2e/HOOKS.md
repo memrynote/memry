@@ -60,37 +60,44 @@ Electron suite.
 
 ## Debug handles
 
-| Electron                                                 | Command                                       | Added by        |
-| -------------------------------------------------------- | --------------------------------------------- | --------------- |
-| `__memryDebug.query`                                     | `e2e_debug_query`, read-only connection       | Step 08 (#3525) |
-| `__memryDebug.indexQuery`                                | `e2e_debug_index_query`, read-only connection | Step 08 (#3525) |
-| `__memryDebug.store`                                     | `e2e_debug_store`, read-only                  | Step 08 (#3525) |
-| `__memryDebug.syncEngine`                                | `e2e_sync_engine_state`                       | Step 17 (#3534) |
-| `__memryDebug.crdt`                                      | `e2e_crdt_state`                              | Step 14 (#3531) |
-| `__memryNextContextMenuSelection` (`index.ts:1586-1596`) | `e2e_set_next_context_menu_selection`         | Step 10 (#3527) |
+| Electron                                                 | Command                                       | Added by                 |
+| -------------------------------------------------------- | --------------------------------------------- | ------------------------ |
+| `__memryDebug.query`                                     | `e2e_debug_query`, read-only connection       | Step 08 (#3525), shipped |
+| `__memryDebug.indexQuery`                                | `e2e_debug_index_query`, read-only connection | Step 08 (#3525), shipped |
+| `__memryDebug.store`                                     | `e2e_debug_store`, read-only                  | Step 08 (#3525)          |
+| `__memryDebug.syncEngine`                                | `e2e_sync_engine_state`                       | Step 17 (#3534)          |
+| `__memryDebug.crdt`                                      | `e2e_crdt_state`                              | Step 14 (#3531)          |
+| `__memryNextContextMenuSelection` (`index.ts:1586-1596`) | `e2e_set_next_context_menu_selection`         | Step 10 (#3527)          |
 
 ## Environment switches
 
-| Switch                                                                     | In the Tauri app                                                                                                                 |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `MEMRY_TEST_FORCE_STARTUP_THROW`                                           | Read through `LaunchEnv` only while `E2eGate` is open, and honored by the startup-error path of Step 10 (#3527).                 |
-| `MEMRY_TEST_CRDT_PREFLIGHT_CRASH`                                          | Retired. The Tauri app has no preflight child; `crdt-preflight-crash.e2e.ts` becomes a corrupt-database spec in Step 08 (#3525). |
-| `MEMRY_TEST_DIALOG_RESULT`                                                 | Initial dialog queue; see Dialogs. Passed through the control file `extraEnv`.                                                   |
-| `MEMRY_DEVICE`, `TEST_VAULT_PATH`, `SYNC_SERVER_URL`, `MEMRY_TEST_LOG_DIR` | Written by `fresh()` into the control file; see below.                                                                           |
+| Switch                                                                     | In the Tauri app                                                                                                                                                                                   |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MEMRY_TEST_FORCE_STARTUP_THROW`                                           | Read through `LaunchEnv` only while `E2eGate` is open, and honored by the startup-error path of Step 10 (#3527).                                                                                   |
+| `MEMRY_TEST_CRDT_PREFLIGHT_CRASH`                                          | Retired. The Tauri app has no preflight child; `specs/vault/recovery-*.e2e.ts` cover the damaged-database case.                                                                                    |
+| `MEMRY_TEST_DIALOG_RESULT`                                                 | Initial dialog queue; see Dialogs. Passed through the control file `extraEnv`.                                                                                                                     |
+| `MEMRY_DEVICE`, `TEST_VAULT_PATH`, `SYNC_SERVER_URL`, `MEMRY_TEST_LOG_DIR` | Written by `fresh()` into the control file; see below. The app opens `currentVault` of `<appDataDir>/memry-config.json`, which `fresh()` seeds with `testVaultPath` (`harness/seed-registry.mjs`). |
+| `MEMRY_FORCE_VAULT_PICKER`                                                 | `1` starts on the picker whatever `currentVault` says; `test.use({ extraEnv: { MEMRY_FORCE_VAULT_PICKER: '1' } })`.                                                                                |
 
 ## Dialogs
 
 Native dialogs, the color picker and native menus cannot be clicked through WebDriver, so a spec
-never opens one. This step ships no dialog code; it fixes the contract. Step 08 (#3525) builds
-the Rust dialog wrapper over `tauri-plugin-dialog` with a result queue:
+never opens one. The Rust dialog wrapper (`src-tauri/src/shell/dialogs.rs`, over
+`tauri-plugin-dialog`) asks a result queue first when the gate is open
+(`memry_desktop::e2e::dialog_queue`):
 
 - The queue holds one answer per dialog kind (`OpenFile`, `OpenFolder`, `SaveFile`, `Confirm`),
   consumed in push order.
 - An empty answer means the user cancelled. A `Confirm` answer is the string `confirm` or
-  `cancel`.
-- Step 08 (#3525) registers `e2e_dialog_queue_push(kind, paths)` and `e2e_dialog_queue_clear()`.
-- An initial queue can be given as a JSON list in `MEMRY_TEST_DIALOG_RESULT` (for `confirm` the
-  variable holds the plain string `confirm` or `cancel`) through the control file `extraEnv`.
+  `cancel`. A dialog asked with nothing queued answers as a cancel and logs a warning, so a
+  forgotten push fails the spec and never waits on a real dialog.
+- `invokeTest(app, 'e2e_dialog_queue_push', { kind, paths })` queues an answer and
+  `e2e_dialog_queue_clear` drops them all.
+- `MEMRY_TEST_DIALOG_RESULT` (through the control file `extraEnv`) gives the queue at start:
+  the plain word `confirm` or `cancel` answers every `Confirm` of the run, and a JSON list of
+  `{ "kind": "OpenFolder", "paths": ["/tmp/x"] }` objects is queued in order.
+- With an open gate `vault_reveal` records the path instead of opening a file manager;
+  `e2e_revealed_paths` reads it back.
 
 ## Control file
 

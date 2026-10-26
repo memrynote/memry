@@ -12,17 +12,26 @@ function install(): { api: Shim; electron: Shim } {
 }
 
 describe('installNotPortedShim', () => {
-  it('throws NotPortedError naming the call path of a leaf', () => {
+  it('rejects with NotPortedError naming the call path of a leaf, and never throws', async () => {
     const { api } = install()
 
-    expect(() => api.notes.get('id')).toThrow(NotPortedError)
-    expect(() => api.notes.get('id')).toThrow('window.api.notes.get is not ported')
+    const pending = api.notes.get('id')
+    await expect(pending).rejects.toBeInstanceOf(NotPortedError)
+    await expect(api.notes.get('id')).rejects.toThrow('window.api.notes.get is not ported')
   })
 
-  it('covers window.electron.ipcRenderer.invoke', () => {
+  it('keeps `fn.call(thisArg)` on the same leaf, so a caller that uses it is not crashed', async () => {
+    const { api } = install()
+
+    await expect(api.settings.getKeyboardSettings.bind(api.settings)()).rejects.toThrow(
+      'window.api.settings.getKeyboardSettings is not ported'
+    )
+  })
+
+  it('covers window.electron.ipcRenderer.invoke', async () => {
     const { electron } = install()
 
-    expect(() => electron.ipcRenderer.invoke('x')).toThrow(
+    await expect(electron.ipcRenderer.invoke('x')).rejects.toThrow(
       'window.electron.ipcRenderer.invoke is not ported'
     )
   })

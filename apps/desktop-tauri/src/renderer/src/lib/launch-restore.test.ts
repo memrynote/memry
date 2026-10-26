@@ -70,8 +70,19 @@ const noteTabStateFor = (noteId: string, savedAt: number): PersistedTabState =>
 const VAULT_A = '/Users/me/Vault A'
 const VAULT_B = '/Users/me/Vault B'
 
+// The vault this window was created for travels in the startup state Rust publishes.
 const launchInto = (vaultPath: string | null): void => {
-  vi.mocked(window.api.vault.getStartupPath).mockReturnValue(vaultPath)
+  window.__MEMRY_STARTUP__ =
+    vaultPath === null
+      ? undefined
+      : {
+          theme: 'system',
+          locale: 'en',
+          zoom: 1,
+          platform: 'darwin',
+          colorTheme: null,
+          startupVault: vaultPath
+        }
 }
 
 const seedVault = (vaultPath: string, state: PersistedTabState): void => {
@@ -96,7 +107,7 @@ beforeEach(() => {
 
 afterEach(() => {
   localStorage.clear()
-  vi.mocked(window.api.vault.getStartupPath).mockReturnValue(null)
+  launchInto(null)
 })
 
 describe('readRestoredActiveTab', () => {

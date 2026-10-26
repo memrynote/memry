@@ -19,7 +19,7 @@ pnpm dev:tauri
 
 The command opens a window titled MemryNote that loads the renderer from the Vite dev server on port 5173. The device profiles `pnpm dev:tauri:a`, `:b` and `:c` run separate profiles side by side, each with its own data and log directory. Plain `pnpm dev:tauri` hashes the checkout path into its profile, so two checkouts do not share state.
 
-The backend is not ported yet, so a call to `window.api` throws `NotPortedError`. The renderer shows its error state until a domain step ports the call.
+The backend is not ported yet, so a call to `window.api` rejects with `NotPortedError`. The renderer shows its error state until a domain step ports the call.
 
 ## Build it
 
@@ -43,6 +43,20 @@ A command is a Rust function that the renderer calls with a generated, typed fun
 4. Call `commands.<domainVerb>()` from the renderer. A failure throws the `CommandError`, and `extractErrorMessage` shows its message.
 
 Raw bytes use the helpers in `src/binary.rs` and `lib/ipc-binary.ts` instead.
+
+## Vaults and storage
+
+The app opens a vault through one owner, `memry_desktop::session::Session`. The registry of known vaults is `memry-config.json` in the app data directory, the same file shape Electron wrote, so the migration copies it as it is.
+
+Each vault keeps its databases in `<vault>/.memry/core/`: `data.db` (notes, tasks, sync state) and `index.db` (search, a cache that can be rebuilt). The Electron files in `<vault>/.memry/` are never opened. If `data.db` is an Electron database, the open fails with `foreign_schema` and does not touch the file.
+
+Every database has one writer and a pool of four read-only connections, so a list or a note read does not wait behind a sync write. A method that only runs `SELECT` uses `Db::read`. A method that writes, or reads and then writes in one step, uses `Db::call`. A reader refuses writes, so a misrouted write fails loudly.
+
+If `data.db` is damaged, the open stops with `storage_corrupt`. The app asks once per session: **Repair** keeps the damaged file as `data.db.corrupt-<timestamp>`, builds a fresh database and copies back every table it can read. **Not now** leaves the file alone and shows the picker. Nothing moves before the user answers. `index.db` is rebuilt without asking, because it is derived.
+
+The renderer calls `vault_list`, `vault_select`, `vault_create`, `vault_switch`, `vault_close`, `vault_remove`, `vault_set_default`, `vault_set_icon` and `vault_reveal`, and listens to `VaultStatusChangedEvent`, `VaultErrorEvent`, `VaultListChangedEvent` and `VaultIndexRecoveredEvent`. Events before a listener attaches are not replayed, so read `vault_get_status` once after you subscribe. `MEMRY_FORCE_VAULT_PICKER=1` starts on the picker.
+
+To look at a running e2e build's data, start it with `node apps/desktop-tauri/scripts/agent-app.mjs start`, then run `agent-app.mjs query "SELECT count(*) AS n FROM sync_items"` (or `index-query` for `index.db`). Only one read statement is accepted.
 
 ## Two renderers
 

@@ -176,12 +176,18 @@ fn startup_opens_the_current_vault_and_keeps_it_when_the_failure_may_be_transien
     f.session.open(&vault, OpenSource::Select).expect("open");
     f.session.close();
     let env = crate::launch_env::LaunchEnv::default();
-    assert!(f.session.open_startup(&env).is_some());
+    assert!(matches!(
+        f.session.open_startup(&env),
+        StartupOutcome::Opened(_)
+    ));
     f.session.close();
     // A regular file where `.memry/core` must go: an I/O failure, not a verdict on the vault.
     std::fs::remove_dir_all(vault.join(".memry/core")).expect("rm");
     std::fs::write(vault.join(".memry/core"), b"x").expect("block");
-    assert!(f.session.open_startup(&env).is_none());
+    assert!(matches!(
+        f.session.open_startup(&env),
+        StartupOutcome::Failed { .. }
+    ));
     assert_eq!(
         f.session.registry().current().as_deref(),
         Some(&*vault.to_string_lossy())
@@ -201,7 +207,10 @@ fn startup_forgets_a_vault_that_can_never_open() {
         .expect("seed");
     drop(conn);
     let env = crate::launch_env::LaunchEnv::default();
-    assert!(f.session.open_startup(&env).is_none());
+    assert!(matches!(
+        f.session.open_startup(&env),
+        StartupOutcome::Failed { .. }
+    ));
     assert_eq!(f.session.registry().current(), None);
 }
 

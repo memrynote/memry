@@ -11,7 +11,7 @@ This directory owns the Tauri v2 desktop app (`@memry/desktop-tauri`), the app t
 
 ## Dual renderer rule
 
-Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts` and `lib/startup/`. Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
+Until the cutover step deletes `apps/desktop`, a renderer change that fixes a critical bug lands in both `apps/desktop/src/renderer` and `apps/desktop-tauri/src/renderer` in the same PR, and the PR body names both paths. The Tauri copy differs from the Electron one only in `index.html`, `main.tsx`, `env.d.ts`, `lib/logger.ts`, `lib/startup-theme.ts`, `lib/startup-locale.ts`, `lib/ipc-error.ts`, `lib/ipc-binary.ts`, `lib/not-ported.ts`, `lib/startup/`, `services/vault-service.ts`, `pages/settings/vault-section.tsx` and `hooks/use-vault.ts` (its initial load tolerates a failing `getConfig` until Step 09 (#3526) ports it). Check with `diff -r apps/desktop/src/renderer apps/desktop-tauri/src/renderer`.
 
 ## Commands
 
@@ -35,7 +35,7 @@ Until the cutover step deletes `apps/desktop`, a renderer change that fixes a cr
 
 ## The not-ported shim
 
-`lib/not-ported.ts` makes `window.api` and `window.electron` proxies that throw `NotPortedError("window.api.<path> is not ported")` on a call. An `onXxx` leaf returns a no-op unsubscribe function. Every script that starts or builds the app sets `VITE_MEMRY_DEV_API_PROXY=1`; release builds do not. Step 43 (#3560) deletes the shim.
+`lib/not-ported.ts` makes `window.api` and `window.electron` proxies whose calls return a promise rejected with `NotPortedError("window.api.<path> is not ported")` (a synchronous throw blanked the window at boot). An `onXxx` leaf returns a no-op unsubscribe function. Every script that starts or builds the app sets `VITE_MEMRY_DEV_API_PROXY=1`; release builds do not. Step 43 (#3560) deletes the shim.
 
 ## E2E
 
@@ -45,7 +45,7 @@ WebdriverIO drives a built app. `pnpm build:e2e` builds it (cargo feature `e2e`,
 - Specs import `test` and `expect` from `e2e/harness/test.ts`, a Playwright-shaped layer (`page`, `locator`, `expect`, fixtures) over mocha and WebDriver. A fresh app per test; `restart(app)` relaunches it on the same data.
 - Per-instance state travels in `<temp>/memry-e2e/control-<port>.json` (`harness/tauri-lifecycle.ts`, `memry_desktop::e2e::control`). The webview profile is isolated per instance, so two instances need macOS 14 or later.
 - No main-process eval, for specs and for `agent-app.mjs eval` (which runs in the renderer only). A spec calls a named `e2e_*` command through `invokeTest(app, name, args)`. A domain step adds its commands under `src-tauri/src/e2e/<domain>.rs` and one line in `e2e/commands.rs`, and updates `e2e/HOOKS.md`. `pnpm check:test-hooks` fails while an Electron hook has no mapped command.
-- A native dialog is never opened by a spec. The dialog queue contract is in `e2e/HOOKS.md`; Step 08 (#3525) implements it.
+- A native dialog is never opened by a spec. The dialog queue is in `e2e/HOOKS.md` (`e2e_dialog_queue_push`, `MEMRY_TEST_DIALOG_RESULT`). `fresh()` registers `testVaultPath` as the current vault of the app's `memry-config.json` (`harness/seed-registry.mjs`), and `invoke(page, 'vault_*')` in `harness/vault-commands.ts` calls the vault commands as the renderer does.
 - Specs never leave keychain items: `e2e-` device ids are purged on completion, `pnpm keychain:purge-e2e` sweeps leaks.
 
 ## Live app verification
@@ -57,7 +57,7 @@ Verify a change in the running app when it touches what a user sees or does: UI,
 3. Drive the app with the `webdriver-memry` MCP server (`.pi/mcp.json`): `browser_snapshot`, `browser_click`, `browser_type`, `browser_take_screenshot`, `browser_evaluate`. `agent-app.mjs eval "<javascript>"` and `shot <file.png>` do the same from a shell. Read a screenshot before you call a visual change done.
 4. `node apps/desktop-tauri/scripts/agent-app.mjs stop` removes the temp dirs, the control file and the device's keychain items.
 
-Options for `start`: `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of another vault, `MEMRY_AGENT_FIRST_RUN=1` opens no vault, `MEMRY_AGENT_SCALE=2` renders at 2x on Windows and Linux, `MEMRY_AGENT_BINARY=<path>` replaces the debug build, `TAURI_WEBDRIVER_PORT=<port>` replaces 9222. One instance at a time. Step 08 (#3525) adds `agent-app.mjs query` for data checks and extends this recipe.
+Options for `start`: `MEMRY_AGENT_VAULT_TEMPLATE=<dir>` opens a copy of another vault, `MEMRY_AGENT_FIRST_RUN=1` opens no vault, `MEMRY_AGENT_SCALE=2` renders at 2x on Windows and Linux, `MEMRY_AGENT_BINARY=<path>` replaces the debug build, `TAURI_WEBDRIVER_PORT=<port>` replaces 9222. One instance at a time. `agent-app.mjs query "<sql>"` and `index-query "<sql>"` run one read-only statement against the open vault's `data.db` or `index.db` and print the rows as JSON; a write exits 1 with `read-only`. `start` registers the vault copy as the current vault.
 
 Report what you exercised and what you observed, not that it works.
 
