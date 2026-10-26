@@ -56,6 +56,7 @@
     "packages/contracts/test-vectors/markdown-convert/*.json",
     "packages/contracts/test-vectors/article-extract/",
     "crates/memry-desktop/src/web/extract/elements/math/mathml/tables.json",
+    "crates/memry-desktop/src/web/extract/elements/math/temml/tables.json",
 
     // Saved pages of the article-extraction corpus, parsed byte for byte by the Rust tests.
     "crates/memry-desktop/tests/fixtures/article-extract/",
