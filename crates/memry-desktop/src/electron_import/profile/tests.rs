@@ -364,10 +364,9 @@ fn a_chromium_named_profile_with_memry_files_is_found_with_its_own_app_name() {
         write_store(&dir);
         let profile = locate_profile(&env(root.path(), host)).unwrap().unwrap();
         assert_eq!(profile.dir, dir);
-        // The usual names first, `Chromium` last (the directory name does not key the store).
-        let found = names(&profile);
-        assert_eq!(found.last(), Some(&CHROMIUM_APP_NAME), "{host:?}");
-        assert!(found.contains(&MEMRYNOTE_APP_NAME), "{host:?}");
+        // The directory name does not key the store, and `Chromium Safe Storage` belongs to the
+        // Chromium browser: never a candidate.
+        assert!(!names(&profile).contains(&"Chromium"), "{host:?}");
         assert!(profile.other_candidates.is_empty());
     }
 }
@@ -419,4 +418,23 @@ fn the_most_recently_used_qualifying_profile_wins_and_the_rest_are_reported() {
         };
         assert_eq!(profile.other_candidates, [other]);
     }
+}
+
+#[test]
+fn a_fresh_memrynote_directory_does_not_beat_a_chromium_profile_that_holds_the_data() {
+    let root = tempfile::tempdir().unwrap();
+    let chromium = root.path().join("Chromium");
+    let memrynote = root.path().join("memrynote");
+    make_profile(&chromium);
+    write_store(&chromium);
+    fs::create_dir_all(chromium.join("crdt-stores").join("v")).unwrap();
+    // Just launched: a newer config, no secrets, no stores.
+    make_profile(&memrynote);
+    touch(&chromium.join("memry-config.json"), 5000);
+    touch(&memrynote.join("memry-config.json"), 1);
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, chromium);
+    assert_eq!(profile.other_candidates, [memrynote]);
 }
