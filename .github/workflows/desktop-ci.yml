@@ -21,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || '' }}
+  group: desktop-ci-${{ github.workflow }}-${{ github.ref }}${{ github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci') && '-noop' || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
   # Cancel superseded runs on PR branches only. On main, two pushes in a row
   # used to cancel the earlier run's e2e-full mid-flight, so some commits never
   # got full e2e coverage at all. Main runs now queue instead of cancelling.
