@@ -49,19 +49,35 @@ export const edgeSweepCases = [
       `${prose(4)}${grid(Array.from({ length: 20 }, (_, i) => (i < k ? card(i ? `c${i} x` : 'ZqZqZ one') : `<div>plain ${i}</div>`)))}${prose(1)}`
     )
   ),
-  ...sweep('sweep-edge-related-cards-grid-share', [28, 30, 32], (g) =>
-    page(
-      `${pad(600)}${grid([card(`ZqZqZ ${plain(g / 2 - 1)}`), card(plain(g / 2))])}<p>${plain(99 - g)}</p>`
-    )
+  // The grid holds 30 words of a 100-word page at `t` = 71 (0.3 exactly: the grid is content only
+  // above that); the card texts and the paragraphs around them join words without a space, which
+  // is why `t` is not the word count.
+  ...sweep('sweep-edge-related-cards-grid-share', [70, 71, 72], (t) =>
+    page(`${pad(600)}${grid([card(`ZqZqZ ${plain(14)}`), card(plain(16))])}<p>${plain(t)}</p>`)
   ),
-  ...sweep('sweep-edge-external-list-ratio', [5, 6, 7], (k) => {
-    const item = `<li><a href="https://other.com/p">${'a'.repeat(k)}</a>${'b'.repeat(10 - k)}</li>`
+  // Twenty characters per item, so that 0.55 and 0.65 of them are whole numbers apart from 0.6.
+  ...sweep('sweep-edge-external-list-ratio', [11, 12, 13], (k) => {
+    const item = `<li><a href="https://other.com/p">${'a'.repeat(k)}</a>${'b'.repeat(20 - k)}</li>`
     return page(`${H1}${prose(4)}<h2>Picks</h2><ul>${item}${item}</ul>`)
   }),
-  ...sweep('sweep-edge-related-posts-ratio', [5, 6, 7], (k) => {
-    const p = `<p><a href="/z">${'a'.repeat(k)}</a>${'b'.repeat(10 - k)}</p>`
+  ...sweep('sweep-edge-related-posts-ratio', [11, 12, 13], (k) => {
+    const p = `<p><a href="/z">${'a'.repeat(k)}</a>${'b'.repeat(20 - k)}</p>`
     return page(`${H1}${prose(4)}<div>${p}${p}</div>`)
   }),
+  // Audio: a "listen to this article" container is climbed to while its text is 25 words or
+  // fewer; a player without that text is removed only while its own text is 25 words or fewer.
+  ...sweep('sweep-edge-audio-listen-words', [25, 26, 27], (n) =>
+    page(
+      `<div><p>Listen to this article ${plain(n - 4)}</p><audio src="a.mp3"></audio></div>${H1}${prose(3)}`
+    )
+  ),
+  ...sweep('sweep-edge-audio-player-words', [25, 26, 27], (n) =>
+    page(`<audio src="a.mp3">${plain(n)}</audio>${H1}${prose(3)}`)
+  ),
+  // The link density penalty applies above one link per two words.
+  ...sweep('sweep-edge-score-link-density', [10, 11, 12], (k) =>
+    page(`${prose(3)}<div>${'<a href="/x">a</a> '.repeat(k)}${plain(20 - k)}</div>`)
+  ),
   // isLikelyContent: a navigation heading with 200+ words keeps the block only below 0.2 links
   // per word.
   ...sweep('sweep-edge-nav-heading-link-ratio', [39, 40, 41, 42], (links) =>
@@ -91,9 +107,10 @@ export const edgeSweepCases = [
       `<div>a,b,c,d,e,f,g,h,i<ul>${linkItems(links, (i) => `<li>x${i}</li>`).join('')}</ul> ${plain(14)}</div>`
     )
   ),
-  // `advert` in a class costs eight points; seven commas offset seven of them.
+  // A class with `homepage` costs eight points (`advert` would also be removed by the partial
+  // selectors); seven commas offset seven of them.
   ...sweep('sweep-edge-score-class-penalty', [7, 8], (commas) =>
-    article(`<div class="advert">${plain(4)}${',x'.repeat(commas)} end</div>`)
+    article(`<div class="homepage">${plain(4)}${',x'.repeat(commas)} end</div>`)
   ),
   // A layout table is wider than 400, so its middle cell counts as the content cell.
   ...sweep('sweep-edge-table-width', [399, 400, 401], (width) =>

@@ -1,5 +1,6 @@
 // Single-branch pages for `Defuddle.parse` and `parseInternal`: each reaches one retry, one
 // content-finder branch or one image/URL pass that the corpus pages do not.
+import { pipelineSweepCases } from './pipeline-sweeps.mjs'
 import { page, words } from './removal-pages.mjs'
 
 const U = 'https://example.com/blog/2024/post'
@@ -193,5 +194,6 @@ export const pipelineCases = [
     url: U
   },
   { name: 'blank-url', html: wrap(long), url: '' },
-  { name: 'bad-url', html: wrap(`${long}<a href="x">x</a>`), url: 'not a url' }
+  { name: 'bad-url', html: wrap(`${long}<a href="x">x</a>`), url: 'not a url' },
+  ...pipelineSweepCases
 ]
