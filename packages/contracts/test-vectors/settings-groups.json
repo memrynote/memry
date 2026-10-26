@@ -1,0 +1,340 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "settings-groups",
+    "implementation": "crates/memry-core/src/domain/app_settings",
+    "groupCount": 17
+  },
+  "ranges": {
+    "general.fontSizePx": {
+      "min": 12,
+      "max": 24
+    },
+    "general.zoomFactor": {
+      "min": 0.5,
+      "max": 2
+    }
+  },
+  "groups": {
+    "general": {
+      "defaults": {
+        "theme": "white",
+        "fontSize": "medium",
+        "fontSizePx": 16,
+        "fontFamily": "system",
+        "customFontFamily": "",
+        "accentColor": "#f97316",
+        "colorTheme": "memrynote",
+        "useThemeAccent": true,
+        "backgroundLight": "",
+        "foregroundLight": "",
+        "backgroundDark": "",
+        "foregroundDark": "",
+        "reduceMotion": "system",
+        "pointerCursors": false,
+        "fontSmoothing": false,
+        "startOnBoot": false,
+        "language": "en",
+        "onboardingCompleted": false,
+        "createInSelectedFolder": true,
+        "openPagesInNewTab": false,
+        "minimizeToTray": false,
+        "clockFormat": "12h",
+        "dateFormat": "DD.MM.YYYY",
+        "zoomFactor": 1
+      },
+      "syncable": [
+        "theme",
+        "fontSize",
+        "fontSizePx",
+        "fontFamily",
+        "customFontFamily",
+        "accentColor",
+        "colorTheme",
+        "useThemeAccent",
+        "backgroundLight",
+        "foregroundLight",
+        "backgroundDark",
+        "foregroundDark",
+        "language",
+        "createInSelectedFolder",
+        "openPagesInNewTab",
+        "minimizeToTray"
+      ],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "editor": {
+      "defaults": {
+        "width": "normal",
+        "toolbarMode": "floating",
+        "spellCheck": false,
+        "pdfAdaptToTheme": false,
+        "pdfDisplayMode": "embed",
+        "convertChecklistsToTasks": true,
+        "convertAgentChecklistsToTasks": false
+      },
+      "syncable": [
+        "convertChecklistsToTasks",
+        "convertAgentChecklistsToTasks",
+        "pdfDisplayMode"
+      ],
+      "maps": [
+        {
+          "name": "calloutTypes",
+          "validEntries": [
+            "note",
+            "my-type",
+            "a",
+            "x_1",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "invalidEntries": [
+            "",
+            "Note",
+            "1a",
+            "a.b",
+            "a b",
+            "-a",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "inGroup": false
+        }
+      ],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "tasks": {
+      "defaults": {
+        "defaultProjectId": null,
+        "defaultSortOrder": "manual",
+        "defaultView": "all",
+        "staleInboxDays": 7,
+        "nestedSubtasks": true
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "keyboard": {
+      "defaults": {
+        "overrides": {},
+        "globalCapture": null,
+        "folderNoteShortcuts": [],
+        "stickyShortcut": {
+          "key": "M",
+          "modifiers": {
+            "meta": true,
+            "shift": true
+          }
+        }
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "sync": {
+      "defaults": {
+        "enabled": true,
+        "autoSync": true,
+        "attachmentAutoDownload": true
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "backup": {
+      "defaults": {
+        "autoBackup": false,
+        "frequencyHours": 24,
+        "maxBackups": 5,
+        "lastBackupAt": null
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "calendar": {
+      "defaults": {
+        "dayCellClickBehavior": "journal",
+        "calendarPageClickOverride": "calendar",
+        "weekStartDay": "monday",
+        "showNotesOnCalendar": false
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "features": {
+      "defaults": {
+        "home": true,
+        "inbox": true,
+        "journal": true,
+        "tasks": true,
+        "calendar": true,
+        "graph": true,
+        "spatialCanvas": true
+      },
+      "syncable": [
+        "home",
+        "inbox",
+        "journal",
+        "tasks",
+        "calendar",
+        "graph",
+        "spatialCanvas"
+      ],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "inbox": {
+      "defaults": {
+        "reviewReminderEnabled": false,
+        "reviewReminderTime": "18:00",
+        "imageFilingMode": "embed",
+        "imageFilingModeRemembered": false
+      },
+      "syncable": [
+        "reviewReminderEnabled",
+        "reviewReminderTime"
+      ],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "sticky": {
+      "defaults": {
+        "defaultKind": "last",
+        "lastKind": "note",
+        "tuckEdge": "right"
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "graph": {
+      "defaults": {
+        "layout": "forceatlas2",
+        "showLabels": false,
+        "showEdgeLabels": false,
+        "animateLayout": true,
+        "showTagEdges": false
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/graph-api.ts"
+    },
+    "voiceTranscription": {
+      "defaults": {
+        "provider": "local",
+        "memoNameMode": "transcript"
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/settings-schemas.ts"
+    },
+    "ai-inline": {
+      "defaults": {
+        "enabled": true,
+        "provider": "ollama",
+        "model": "llama3.2",
+        "apiKey": "",
+        "baseUrl": "http://localhost:11434/v1"
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "packages/contracts/src/ai-inline-channels.ts"
+    },
+    "journal": {
+      "defaults": {
+        "defaultTemplate": null,
+        "weekdayTemplates": {},
+        "showSchedule": true,
+        "showTasks": true,
+        "showAIConnections": true,
+        "showStatsFooter": false
+      },
+      "syncable": [
+        "defaultTemplate"
+      ],
+      "maps": [
+        {
+          "name": "weekdayTemplates",
+          "validEntries": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5",
+            "6"
+          ],
+          "invalidEntries": [
+            "",
+            "7",
+            "-1",
+            "01",
+            "a",
+            "10"
+          ],
+          "inGroup": true
+        }
+      ],
+      "source": "apps/desktop/src/main/ipc/settings-handlers.ts"
+    },
+    "tabs": {
+      "defaults": {
+        "restoreSessionOnStart": true,
+        "tabCloseButton": "hover"
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "apps/desktop/src/main/ipc/settings-handlers.ts"
+    },
+    "noteEditor": {
+      "defaults": {
+        "toolbarMode": "floating"
+      },
+      "syncable": [],
+      "maps": [],
+      "source": "apps/desktop/src/main/ipc/settings-handlers.ts"
+    },
+    "sidebar": {
+      "defaults": {
+        "sortModes": {},
+        "sectionOrder": null,
+        "railOrder": null,
+        "navCollapsed": false,
+        "notesFirst": false,
+        "showFiles": true
+      },
+      "syncable": [
+        "sectionOrder",
+        "railOrder",
+        "navCollapsed",
+        "notesFirst",
+        "showFiles"
+      ],
+      "maps": [
+        {
+          "name": "sortModes",
+          "validEntries": [
+            "collections",
+            "projects",
+            "bookmarks",
+            "canvases",
+            "tags"
+          ],
+          "invalidEntries": [
+            "",
+            "notes",
+            "Collections",
+            "tags.x"
+          ],
+          "inGroup": true
+        }
+      ],
+      "source": "apps/desktop/src/main/settings/sidebar-*-store.ts"
+    }
+  }
+}

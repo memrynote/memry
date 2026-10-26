@@ -96,6 +96,16 @@ impl Vault {
     pub fn db_handle(&self) -> Db {
         self.db.clone()
     }
+
+    /// Every settings group of this vault, local and synced (desktop Step 09).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn app_settings(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::domain::app_settings::AppSettings, AuthError> {
+        crate::domain::app_settings::AppSettings::over(self.db.clone(), &store)
+    }
 }
 
 #[uniffi::export]

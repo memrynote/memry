@@ -142,7 +142,31 @@ pub fn apply(
     device_id: &str,
     now_ms: i64,
 ) -> Result<String, StorageError> {
-    let segments = segments(path)?;
+    let (merged, _) = apply_many(conn, &[(path, change)], device_id, now_ms, |_| Ok(()))?;
+    Ok(merged)
+}
+
+/// [`apply`] over several paths in **one** transaction, plus `within`, which
+/// runs in that same transaction after the payload is merged. That is how a
+/// settings group write keeps its synced fields and its device-local blob
+/// all-or-nothing.
+///
+/// Each path that changes ticks its own clock; one that does not is left
+/// alone. The `bool` is whether anything changed. When nothing did, the
+/// transaction rolls back, nothing is seeded or published, and `within` is
+/// **not** run: the caller does its own write, which needs no transaction
+/// with the synced item because that item did not move.
+pub(crate) fn apply_many(
+    conn: &Connection,
+    changes: &[(&str, Change)],
+    device_id: &str,
+    now_ms: i64,
+    within: impl FnOnce(&Connection) -> Result<(), StorageError>,
+) -> Result<(String, bool), StorageError> {
+    let parsed: Vec<(&str, Vec<&str>, &Change)> = changes
+        .iter()
+        .map(|(path, change)| Ok((*path, segments(path)?, change)))
+        .collect::<Result<_, StorageError>>()?;
     let tx = conn.unchecked_transaction().map_err(failed)?;
     ensure_item(&tx, now_ms)?;
 
@@ -150,17 +174,23 @@ pub fn apply(
         what: format!("{SETTINGS_ITEM_TYPE}/{SETTINGS_ITEM_ID} has no payload to merge into"),
     })?;
     let mut settings = settings_of(payload.object())?;
-    if !apply_at(&mut settings, &segments, &change, path)? {
-        // Nothing changed, so nothing is written — not even the seed row.
-        return Ok(payload.raw().to_owned());
-    }
-
     let mut field_clocks = field_clocks_of(payload.object())?;
-    let ticked = match field_clocks.get(path) {
-        Some(value) => clock::increment(&read_clock(value, path)?, device_id),
-        None => clock::increment(&VectorClock::new(), device_id),
-    };
-    field_clocks.insert(path.to_owned(), clock_value(&ticked));
+    let mut any = false;
+    for (path, segments, change) in parsed {
+        if !apply_at(&mut settings, &segments, change, path)? {
+            continue;
+        }
+        any = true;
+        let ticked = match field_clocks.get(path) {
+            Some(value) => clock::increment(&read_clock(value, path)?, device_id),
+            None => clock::increment(&VectorClock::new(), device_id),
+        };
+        field_clocks.insert(path.to_owned(), clock_value(&ticked));
+    }
+    if !any {
+        // Nothing changed, so nothing is written — not even the seed row.
+        return Ok((payload.raw().to_owned(), false));
+    }
 
     let changes = [
         ("settings", Change::Set(Value::Object(settings))),
@@ -178,8 +208,9 @@ pub fn apply(
         &outbox::Change::upsert(SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID),
         now_ms,
     )?;
+    within(&tx)?;
     tx.commit().map_err(failed)?;
-    Ok(merged)
+    Ok((merged, true))
 }
 
 /// Seeds the one settings item when the vault has never synced one.
