@@ -19,5 +19,8 @@ macro_rules! e2e_commands {
 e2e_commands! {
     app => [e2e_app_info, e2e_request_quit, e2e_emit],
     clipboard => [e2e_clipboard_read, e2e_clipboard_write],
+    debug => [e2e_debug_query, e2e_debug_index_query],
+    dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
+    reveal => [e2e_revealed_paths],
     window => [e2e_windows, e2e_set_window_rect],
 }

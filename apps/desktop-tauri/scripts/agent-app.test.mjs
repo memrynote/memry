@@ -42,6 +42,10 @@ createServer((req, res) => {
     if (req.url === '/session/s1/execute/async') {
       const { args } = JSON.parse(body)
       if (args[0] === 'e2e_app_info') return reply(res, { ok: true, value: { device: control.device, pid: process.pid } })
+      if (args[0] === 'e2e_debug_query' || args[0] === 'e2e_debug_index_query') {
+        if (!/^select/i.test(args[1].sql)) return reply(res, { ok: false, error: 'read-only: this statement would write' })
+        return reply(res, { ok: true, value: [{ n: args[0] === 'e2e_debug_query' ? 3 : 5 }] })
+      }
       if (args[0] === 'e2e_request_quit') {
         reply(res, { ok: true, value: null })
         return setTimeout(() => process.exit(0), 50)
@@ -124,6 +128,12 @@ describe('agent-app', () => {
     assert.match(control.device, /^e2e-agent-/)
     assert.equal(control.extraEnv && Object.keys(control.extraEnv).length, 0)
     assert.ok(existsSync(join(control.testVaultPath, 'notes')), 'a copy of the test vault')
+    // The app opens `currentVault` of its registry; the script prepares both.
+    assert.ok(existsSync(join(control.testVaultPath, '.memry')))
+    assert.equal(
+      JSON.parse(readFileSync(join(control.appDataDir, 'memry-config.json'), 'utf8')).currentVault,
+      control.testVaultPath
+    )
     assert.deepEqual(JSON.parse(readFileSync(join(control.appDataDir, 'env.json'), 'utf8')), {
       MEMRY_E2E: '1',
       port
@@ -192,6 +202,26 @@ describe('agent-app', () => {
 
     assert.equal(await main(['eval', 'nope'], ctx), 1)
     assert.match(lines.err.at(-1), /ReferenceError/)
+  })
+
+  it('query and index-query print rows as JSON and a write exits 1 with read-only', async () => {
+    const { ctx, lines } = await makeContext()
+    running = ctx
+    assert.equal(await main(['start'], ctx), 0)
+    lines.out.length = 0
+
+    assert.equal(
+      await main(['query', 'SELECT', 'count(*)', 'AS', 'n', 'FROM', 'sync_items'], ctx),
+      0
+    )
+    assert.deepEqual(JSON.parse(lines.out.at(-1)), [{ n: 3 }])
+    assert.equal(await main(['index-query', 'SELECT count(*) AS n FROM fts_notes'], ctx), 0)
+    assert.deepEqual(JSON.parse(lines.out.at(-1)), [{ n: 5 }])
+
+    assert.equal(await main(['query', 'DELETE FROM sync_items'], ctx), 1)
+    assert.match(lines.err.at(-1), /read-only/)
+    assert.equal(await main(['query'], ctx), 1)
+    assert.match(lines.err.at(-1), /Usage: agent-app.mjs query/)
   })
 
   it('shot writes the PNG bytes', async () => {

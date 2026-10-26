@@ -2,6 +2,8 @@
 //! file. Nothing here touches `tauri`; the e2e build of `memry-tauri` calls it.
 
 pub mod control;
+pub mod debug;
+pub mod dialog_queue;
 mod gate;
 
 pub use gate::{E2E_VAR, E2eGate};

@@ -4,6 +4,7 @@ import { RefreshCw } from '@/lib/icons'
 import { useStorageUsage } from '@/hooks/use-storage-usage'
 import { useAccountVaults } from '@/hooks/use-account-vaults'
 import { useVault } from '@/hooks/use-vault'
+import { vaultService } from '@/services/vault-service'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { formatBytes } from '@/lib/format'
 import {
@@ -60,7 +61,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   useEffect(() => {
-    window.api.vault
+    vaultService
       .getStatus()
       .then((status) => {
         if (status?.path) setVaultPath(status.path)
@@ -72,8 +73,8 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
   // Without it the section can only compare paths, and a vault that is open but
   // absent from the account looks indistinguishable from a synced one.
   useEffect(() => {
-    window.api.vault
-      .getAll?.()
+    vaultService
+      .getAll()
       .then((result) => {
         const current = result?.vaults?.find((v) => v.path === result.currentVault)
         setCurrentVaultUuid(current?.vaultUuid ?? null)
@@ -94,7 +95,7 @@ export function VaultSettings({ focusTarget, focusRequestId }: VaultSettingsProp
 
   const handleReveal = useCallback(async () => {
     if (!vaultPath) return
-    await window.api.vault.reveal()
+    await vaultService.reveal()
   }, [vaultPath])
 
   const handleConfirmDelete = useCallback(async () => {

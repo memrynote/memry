@@ -10,6 +10,7 @@ import { removeDir } from './remove-dir'
 import { type Executor, invokeTest } from './invoke-test'
 import { purgeKeychainForDevice } from './keychain-cleanup.mjs'
 import { recordDevice } from './registry'
+import { seedVaultRegistry } from './seed-registry.mjs'
 import { pollUntil, sleep } from './wait'
 
 /** The WebdriverIO browser (or one multiremote instance) the harness drives. */
@@ -164,6 +165,7 @@ export async function fresh(executor: AppBrowser, options: FreshOptions = {}): P
     extraEnv: options.extraEnv ?? {}
   }
   recordDevice(device)
+  if (control.testVaultPath) seedVaultRegistry(dirs.appDataDir, control.testVaultPath)
   writeControl(port, control)
 
   return start(executor, { port, device, dirs, control, label: options.label })

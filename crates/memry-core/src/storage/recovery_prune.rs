@@ -207,6 +207,53 @@ mod tests {
         assert!(!made[2].exists());
     }
 
+    /// The real salvage path, not a hand-edited log row: a table and a column the fresh schema
+    /// lacks are carried nowhere, so the quarantine is the only copy and must survive a prune
+    /// that would delete a clean one.
+    #[test]
+    fn a_quarantine_whose_salvage_skipped_tables_or_columns_is_kept() {
+        let dir = temp_dir("prune-skipped");
+        let path = dir.path().join("data.db");
+        drop(open_data(&path).expect("open"));
+        let conn = Connection::open(&path).expect("open");
+        conn.execute_batch(
+            "CREATE TABLE newer_build_only (id TEXT PRIMARY KEY, body TEXT);
+             INSERT INTO newer_build_only VALUES ('a', 'only copy');",
+        )
+        .expect("table this build lacks");
+        drop(conn);
+        let with_table = quarantine_and_rebuild(&path).expect("recover").quarantined;
+
+        let conn = Connection::open(&path).expect("open");
+        conn.execute_batch("ALTER TABLE meta ADD COLUMN newer_column TEXT")
+            .expect("column this build lacks");
+        drop(conn);
+        let with_column = quarantine_and_rebuild(&path).expect("recover").quarantined;
+
+        let clean = quarantine_and_rebuild(&path).expect("recover").quarantined;
+        let logged: Vec<String> = Connection::open(&path)
+            .expect("open")
+            .prepare("SELECT detail FROM recovery_log WHERE detail <> ''")
+            .expect("prepare")
+            .query_map([], |row| row.get(0))
+            .expect("query")
+            .collect::<Result<_, _>>()
+            .expect("rows");
+        assert_eq!(
+            logged.len(),
+            2,
+            "both partial salvages are recorded: {logged:?}"
+        );
+
+        assert_eq!(prune_settled(&path, 0).expect("prune"), 1);
+        assert!(with_table.exists(), "a table with no place in this build");
+        assert!(with_column.exists(), "a column with no place in this build");
+        assert!(
+            !clean.exists(),
+            "the clean one is pruned, so the test can tell"
+        );
+    }
+
     #[test]
     fn nothing_is_deleted_while_a_recovery_is_unfinished_or_the_log_is_unreadable() {
         let dir = temp_dir("prune-failclosed");
