@@ -17,8 +17,11 @@ import { createRequire as nodeRequire } from 'node:module'
 
 // The capture runs against the root install: the exact electron, y-leveldb and yjs the shipped
 // desktop app depends on, so no second Electron lockfile exists.
+// CAPTURE_MODULES_FROM points at another package.json whose node_modules hold electron 43.1.1,
+// y-leveldb and yjs: the Windows and Linux VMs have no checkout.
 const require = nodeRequire(
-  path.join(path.dirname(fileURLToPath(import.meta.url)), '../../apps/desktop/package.json')
+  process.env.CAPTURE_MODULES_FROM ??
+    path.join(path.dirname(fileURLToPath(import.meta.url)), '../../apps/desktop/package.json')
 )
 const here = path.dirname(fileURLToPath(import.meta.url))
 const args = process.argv.slice(2)
@@ -197,7 +200,14 @@ for (const { slug, appName } of RUNS) {
   )
   const plaintextsPath = path.join(userData, '.plaintexts.json')
   fs.writeFileSync(plaintextsPath, JSON.stringify(PLAINTEXTS))
-  const mockKeychain = process.platform === 'darwin' ? ['--use-mock-keychain'] : []
+  // Linux: Chromium picks its password store from the desktop environment and falls back to
+  // plaintext (safeStorage unavailable) outside GNOME and KDE, so libsecret is named.
+  const mockKeychain =
+    process.platform === 'darwin'
+      ? ['--use-mock-keychain']
+      : process.platform === 'linux'
+        ? ['--password-store=gnome-libsecret']
+        : []
   const run = spawnSync(
     electronBin,
     [

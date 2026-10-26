@@ -39,6 +39,24 @@ A `version` field other than 1 in `secure-secrets.json` or `app-identity.json` i
 
 Every entry that does not decrypt, and has no legacy keytar copy, is reported as unreadable with a reason (`WrongIdentity`, `KeySourceMissing`, `KeySourceDenied`, `CorruptCiphertext`). The reader never reports a secret as absent when it exists but could not be read. The migration uses this to refuse to mint a new master key over an unreadable one.
 
+## Where the key material comes from
+
+`ChromiumKeySource` has one real implementation per OS (`OsKeySource`), each read-only:
+
+- macOS: the Keychain generic password with service `<appName> Safe Storage` and account `<appName> Key`, then the legacy account `<appName>`. A refused prompt is `Denied`, a missing item is `None`. Only `SecItemCopyMatching` is used.
+- Windows: `Local State` holds `os_crypt.encrypted_key`, base64 of `DPAPI` and a `CryptProtectData` blob. `CryptUnprotectData` runs with `CRYPTPROTECT_UI_FORBIDDEN` and must return 32 bytes.
+- Linux: the Secret Service item with `xdg:schema=chrome_libsecret_os_crypt_password_v2` (then the v1 schema Chromium migrates from) and `application=<appName>`. A locked item is unlocked, which makes the service prompt. When no Secret Service answers, KWallet 6 then 5 is asked over D-Bus, but only when its bus name already has an owner, so the reader never starts the daemon.
+
+None of them stores a password, writes an entry or creates a collection, wallet or folder. Chromium mints a key when none exists and this code must not. A missing key makes the entries unreadable (`KeySourceMissing`), not absent.
+
+`Guarded` wraps a key source or keytar reader with a per-call timeout (5 s by default) and a latch, like `KEYCHAIN_READ_TIMEOUT_MS`: a call that timed out keeps running and holds the latch, so no further prompt piles on, and the latch lifts when it returns. A prompt the user is still answering needs a longer timeout than 5 s; the migration picks it.
+
+Legacy keytar items are read for the services the app wrote (`com.memry.sync`, `com.memry.readwise`, `com.memry.import.onenote`, `memry.voice-transcription`, `memry.agent.local-provider`, `com.memry.capture`) and the prefix `com.memry.calendar.`: a macOS generic password, a Windows `CRED_TYPE_GENERIC` credential with target `service/account`, or a libsecret item with schema `org.freedesktop.Secret.Generic` and attributes `service` and `account`. The macOS and Linux listings read attributes of all generic items to filter by service, and read a secret only for a matching one.
+
+`cargo run -p memry-desktop --example electron_profile_report` prints counts, verdicts and unreadable reasons for the local profile, never a value. It reads the real Keychain item of an installed Electron app, so the OS prompt appears once.
+
+Live tests (`--features live-os-secrets --test electron_secrets_live`) create their own throw-away items under test app names. The keytar ones read the real keytar service names, so they run only with `MEMRY_LIVE_KEYTAR=1`; CI sets it.
+
 ## `memry-config.json`
 
 The electron-store file (`apps/desktop/src/main/store.ts`, `StoredVaultInfo` and the sections beside it). The reader keeps the whole JSON object, so keys it does not know survive. Invalid JSON is an error that carries a byte offset and no content.
@@ -78,4 +96,4 @@ rusty-leveldb silently drops a log record whose checksum fails and opens with fe
 
 ## Fixtures
 
-`node scripts/electron-fixtures/capture.mjs --out <dir>` runs against the repo's own `pnpm install` (the desktop app's electron, y-leveldb and yjs, so the tool brings no second Electron lockfile). It launches the real Electron 43.1.1 with a fixture app name and writes a profile into `crates/memry-desktop/tests/fixtures/electron/<os>/`. It uses fixture names, never `memrynote` or `@memry/desktop`, so it cannot touch a real Safe Storage item. On macOS it passes `--use-mock-keychain`, which makes Chromium use a fixed password and leave the login keychain alone. The expected plaintexts and the throw-away key material sit in `<new|legacy>.json` beside each profile.
+`node scripts/electron-fixtures/capture.mjs --out <dir>` runs against the repo's own `pnpm install` (the desktop app's electron, y-leveldb and yjs, so the tool brings no second Electron lockfile). On a VM without a checkout, `CAPTURE_MODULES_FROM=<dir>/package.json` points it at a directory whose `node_modules` hold electron 43.1.1, y-leveldb and yjs (the Windows fixture came from the x64 build under emulation on the ARM64 VM, the Linux one from the arm64 build with `--password-store=gnome-libsecret`). It launches the real Electron 43.1.1 with a fixture app name and writes a profile into `crates/memry-desktop/tests/fixtures/electron/<os>/`. It uses fixture names, never `memrynote` or `@memry/desktop`, so it cannot touch a real Safe Storage item. On macOS it passes `--use-mock-keychain`, which makes Chromium use a fixed password and leave the login keychain alone. The expected plaintexts and the throw-away key material sit in `<new|legacy>.json` beside each profile.

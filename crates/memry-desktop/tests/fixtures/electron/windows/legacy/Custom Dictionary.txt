@@ -1,0 +1,4 @@
+memryfixtureword
+naïve
+zettelkasten
+checksum_v1 = 72e8155723446320d161f4d36cfbc5eb

@@ -1,6 +1,7 @@
 //! Cross-reader tests over the fixtures captured from real Electron 43.1.1 by
 //! `scripts/electron-fixtures/capture.mjs`, plus the read-only invariant and performance checks.
 
+mod all_os;
 mod perf;
 mod read_only;
 
@@ -25,6 +26,8 @@ pub(crate) struct Expected {
     pub flushed_id: String,
     pub vault_uuid: String,
     pub macos_password: Option<String>,
+    pub linux_password: Option<String>,
+    pub windows_key_base64: Option<String>,
 }
 
 pub(crate) fn fixture_root(os: &str) -> PathBuf {
