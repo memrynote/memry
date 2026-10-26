@@ -132,12 +132,15 @@ export async function smokeLaunch(
   })
 
   try {
-    const deadline = Date.now() + timeoutMs
+    const began = Date.now()
+    const deadline = began + timeoutMs
     let ready = false
     while (Date.now() < deadline && !state.exited) {
       const log = readLog(logFile)
       if (STARTUP_MARKER.test(log) && log.includes(RENDERER_MARKER)) {
         ready = true
+        // Keeps a slow start visible while the budget is generous.
+        console.log(`smoke-launch: renderer started ${Date.now() - began} ms after launch`)
         break
       }
       await sleep(POLL_MS)
