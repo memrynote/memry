@@ -2,13 +2,14 @@
 // Update-bridge rehearsal driver. Runs on Kaan's Mac (Windows packs are signed with the Certum key).
 //
 //   node scripts/rehearsal/rehearse.mjs build <version> [--previous-tag <tag>]
-//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>]
+//   node scripts/rehearsal/rehearse.mjs assemble <version> [--run <id>] [--previous-tag <tag>] [--no-windows]
 //   node scripts/rehearsal/rehearse.mjs publish <version> --confirm-repo memrynote/memry-update-rehearsal
 //   node scripts/rehearsal/rehearse.mjs electron-baseline <tag> [--run <id>]
 //
 // `build` dispatches .github/workflows/update-bridge-rehearsal.yml and waits. `assemble` downloads
 // the artifacts, packs and signs both Windows packs, writes the bridge feeds and leaves the final
-// asset set in `.rehearsal-state/<version>/assets`. `publish` creates the release and uploads it.
+// asset set in `.rehearsal-state/<version>/assets`. `--no-windows` skips the Certum-signed Windows
+// packs and `latest.yml`, for a macOS and Linux feed that needs no SimplySign session. `publish` creates the release and uploads it.
 // Creating the rehearsal repo and every publish need Kaan's explicit approval at that moment.
 import { execFileSync, spawnSync } from 'node:child_process'
 import {
@@ -238,7 +239,8 @@ function cmdAssemble(version, argv) {
   mkdirSync(assets, { recursive: true })
   const releaseDate = new Date().toISOString()
 
-  for (const target of ['win-x64', 'win-arm64']) {
+  const withWindows = !argv.includes('--no-windows')
+  for (const target of withWindows ? ['win-x64', 'win-arm64'] : []) {
     const outputDir = packWindows(target, version, artifactDir, workDir, previousTag)
     verifySignatures(outputDir, target, version, workDir)
     copyPackOutputs(outputDir, assets)
@@ -259,8 +261,10 @@ function cmdAssemble(version, argv) {
   copyFileSync(path.join(assets, linux.portable), path.join(assets, linux.appImage))
 
   // Feeds hash the exact bytes that get uploaded.
-  const winSetup = path.join(assets, assetNames('win-x64', version).setup)
-  copyFileSync(winSetup, path.join(assets, setupExeName(version)))
+  if (withWindows) {
+    const winSetup = path.join(assets, assetNames('win-x64', version).setup)
+    copyFileSync(winSetup, path.join(assets, setupExeName(version)))
+  }
   const entry = (name) => describeFile(path.join(assets, name))
   const feeds = {
     'latest-mac.yml': buildLatestMacYml({
@@ -274,7 +278,9 @@ function cmdAssemble(version, argv) {
       releaseDate,
       files: [entry(linux.appImage)]
     }),
-    'latest.yml': buildLatestYml({ version, releaseDate, setup: entry(setupExeName(version)) })
+    ...(withWindows && {
+      'latest.yml': buildLatestYml({ version, releaseDate, setup: entry(setupExeName(version)) })
+    })
   }
   for (const [name, text] of Object.entries(feeds)) writeFileSync(path.join(assets, name), text)
 
