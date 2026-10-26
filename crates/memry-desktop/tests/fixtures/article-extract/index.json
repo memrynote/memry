@@ -36,6 +36,49 @@
     ]
   },
   {
+    "name": "code-github-highlight",
+    "covers": [
+      "code",
+      "GitHub highlight",
+      "button removal"
+    ]
+  },
+  {
+    "name": "code-highlightjs",
+    "covers": [
+      "code",
+      "highlight.js",
+      "language class"
+    ]
+  },
+  {
+    "name": "code-line-numbers",
+    "covers": [
+      "code",
+      "language detection from class names",
+      "line numbers",
+      "Chroma",
+      "Rouge",
+      "syntaxhighlighter"
+    ]
+  },
+  {
+    "name": "code-prism",
+    "covers": [
+      "code",
+      "Prism",
+      "prismjs container"
+    ]
+  },
+  {
+    "name": "code-shiki",
+    "covers": [
+      "code",
+      "Shiki",
+      "line spans"
+    ]
+  },
+  {
     "name": "docs-page",
     "covers": [
       "documentation page",
@@ -67,6 +110,50 @@
     ]
   },
   {
+    "name": "footnotes-gutenberg",
+    "covers": [
+      "footnotes",
+      "Gutenberg-style notes",
+      "named anchors",
+      "generic id detection"
+    ]
+  },
+  {
+    "name": "footnotes-markdown-it",
+    "covers": [
+      "footnotes",
+      "Markdown-it footnotes",
+      "footnotes-list",
+      "backref"
+    ]
+  },
+  {
+    "name": "footnotes-sidenotes",
+    "covers": [
+      "footnotes",
+      "sidenotes",
+      "sidenote-container",
+      "sidenotes column"
+    ]
+  },
+  {
+    "name": "footnotes-substack",
+    "covers": [
+      "footnotes",
+      "Substack footnotes",
+      "FootnoteToDOM"
+    ]
+  },
+  {
+    "name": "footnotes-wikipedia",
+    "covers": [
+      "footnotes",
+      "Wikipedia references",
+      "cite_note",
+      "sup.reference"
+    ]
+  },
+  {
     "name": "forum-thread",
     "covers": [
       "forum thread",
@@ -91,6 +178,41 @@
       "hidden attribute",
       "aria-hidden",
       "responsive show class"
+    ]
+  },
+  {
+    "name": "images-lazy-data-src",
+    "covers": [
+      "images",
+      "lazy data-src",
+      "data-srcset",
+      "placeholder"
+    ]
+  },
+  {
+    "name": "images-relative-urls",
+    "covers": [
+      "images",
+      "relative URLs",
+      "figure caption"
+    ]
+  },
+  {
+    "name": "images-srcset-sizes",
+    "covers": [
+      "images",
+      "picture",
+      "srcset",
+      "sizes"
+    ]
+  },
+  {
+    "name": "images-svg-tracking",
+    "covers": [
+      "images",
+      "SVG",
+      "figure without caption",
+      "tracking pixel"
     ]
   },
   {

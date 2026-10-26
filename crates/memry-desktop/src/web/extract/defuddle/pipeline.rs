@@ -2,7 +2,7 @@
 
 use crate::web::extract::dom::NodeId;
 use crate::web::extract::elements::callouts::standardize_callouts;
-use crate::web::extract::elements::footnotes::FOOTNOTE_SECTION_RE;
+use crate::web::extract::elements::footnotes::{FOOTNOTE_SECTION_RE, standardize_footnotes};
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::removals::small_images::find_small_images;
 use crate::web::extract::removals::{Removal, remove_metadata_block, run_all};
@@ -92,7 +92,7 @@ impl Defuddle {
         )?;
         if settings.standardize {
             self.adopt_external_footnotes(main, clone)?;
-            // Stage 3: `standardizeFootnotes(main)` runs here, before the callouts.
+            standardize_footnotes(&mut self.doc, main)?;
             standardize_callouts(&mut self.doc, main)?;
         }
         let url = self.url.clone();

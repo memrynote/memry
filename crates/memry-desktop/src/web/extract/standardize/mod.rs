@@ -19,6 +19,8 @@ mod verso;
 mod whitespace;
 mod wrappers;
 
+pub use breaks::remove_orphaned_dividers;
+
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::headings::{
     copy_allowed_attributes, is_permalink_anchor, remove_permalink_anchors,

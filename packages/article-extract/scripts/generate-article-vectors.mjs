@@ -17,6 +17,8 @@ import { metadataVector } from './vectors/metadata.mjs'
 import { removalCases } from './vectors/removal-cases.mjs'
 import { removalsVectors, scoreVector } from './vectors/removals.mjs'
 import { standardizeCases } from './vectors/standardize-cases.mjs'
+import { elementCases } from './vectors/element-cases.mjs'
+import { elementsFuzzVectors } from './vectors/elements-fuzz.mjs'
 import { standardizeFuzzVectors } from './vectors/standardize-fuzz.mjs'
 import { standardizeUrl, standardizeVectors, standardizedContent } from './vectors/standardize.mjs'
 import { pipelineCases } from './vectors/pipeline-cases.mjs'
@@ -115,7 +117,7 @@ function buildFiles() {
   files.set(
     'standardize-cases.json',
     format(
-      standardizeCases.map(({ name, html, url }) => ({
+      [...standardizeCases, ...elementCases].map(({ name, html, url }) => ({
         name,
         html,
         url: url ?? standardizeUrl,
@@ -145,7 +147,10 @@ function buildFiles() {
   files.set(
     'pipeline-cases.json',
     format(
-      pipelineCases.map(({ name, html, url }) => ({
+      [
+        ...pipelineCases,
+        ...elementCases.map((c) => ({ ...c, url: 'https://example.com/blog/2024/post' }))
+      ].map(({ name, html, url }) => ({
         name,
         html,
         ...pipelineVector(html, url, '2025-01-02T03:04:05.000Z')
@@ -176,7 +181,10 @@ function buildFiles() {
     })
   )
   files.set('dom-fuzz.json', format(fuzzVectors(600)))
-  files.set('standardize-fuzz.json', format(standardizeFuzzVectors(400)))
+  files.set(
+    'standardize-fuzz.json',
+    format([...standardizeFuzzVectors(400), ...elementsFuzzVectors(800)])
+  )
   return files
 }
 

@@ -2,19 +2,18 @@
 //! `code > pre`, arXiv LaTeXML, tables, video and `lite-youtube`.
 //!
 //! The JS rule table starts with the math and code rules and has the image rules between the
-//! heading and role rules; stages 3 and 4 add them, with `wrapRawLatexDelimiters` and the LaTeX
-//! image conversion that open the JS function, where those comments mark.
+//! heading and role rules.
 
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::headings::clean_heading;
+use crate::web::extract::elements::rule::{Rule, Transform};
+use crate::web::extract::elements::{code, images};
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::utils::dom::is_direct_table_child;
 use crate::web::extract::utils::js::trim;
 
 use super::lists;
 use super::verso::merge_adjacent_verso_code_blocks;
-
-type Transform = fn(&mut Document, NodeId) -> Result<NodeId, ExtractError>;
 
 /// One `ELEMENT_STANDARDIZATION_RULES` entry: every match is replaced by what `transform` makes.
 fn apply_rule(
@@ -30,6 +29,18 @@ fn apply_rule(
     for el in matches {
         let transformed = transform(doc, el)?;
         doc.replace_with(el, &[transformed])?;
+    }
+    Ok(())
+}
+
+fn apply_rules(doc: &mut Document, element: NodeId, rules: &[Rule]) -> Result<(), ExtractError> {
+    for rule in rules {
+        if let Some(fast_check) = rule.fast_check
+            && doc.query_selector(element, fast_check)?.is_none()
+        {
+            continue;
+        }
+        apply_rule(doc, element, rule.selector, rule.transform)?;
     }
     Ok(())
 }
@@ -223,10 +234,11 @@ fn convert_lite_youtube(doc: &mut Document, element: NodeId) -> Result<(), Extra
 
 /// `standardizeElements(element, doc)`.
 pub fn standardize_elements(doc: &mut Document, element: NodeId) -> Result<(), ExtractError> {
-    // Stage 3 and 4: `wrapRawLatexDelimiters` and the LaTeX-image conversion, then the math and
-    // code block rules, run here in JS.
+    // Stage 4: `wrapRawLatexDelimiters`, the LaTeX-image conversion and the math rules run here
+    // in JS.
+    apply_rules(doc, element, code::RULES)?;
     apply_rule(doc, element, "h1, h2, h3, h4, h5, h6", clean_heading)?;
-    // Stage 3: the image rules run here in JS.
+    apply_rules(doc, element, images::RULES)?;
     apply_rule(doc, element, lists::PARAGRAPH_SELECTOR, lists::paragraph)?;
     apply_rule(doc, element, lists::LIST_SELECTOR, lists::list)?;
     apply_rule(doc, element, lists::LIST_ITEM_SELECTOR, lists::list_item)?;
