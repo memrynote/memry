@@ -118,8 +118,10 @@ jobs:
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
 
+      # macos-15-intel runs tests only: the Apple Silicon runner already lints the same macOS
+      # code, and Intel Mac runner slots are the scarcest.
       - name: Clippy
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && matrix.os != 'macos-15-intel'
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       # `crates/memry-cli/src/session.rs` imports `std::os::unix`, so memry-cli never builds on
@@ -141,7 +143,9 @@ jobs:
         env:
           MEMRY_LIVE_KEYTAR: '1'
         run: |
-          cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          fi
           cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
 
       # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
@@ -168,12 +172,14 @@ jobs:
       # Release only: the latency assertions are meaningless in a debug build. Proves reads
       # through the pool do not wait behind a held write transaction.
       - name: Test (memry-core, read pool contention, release)
+        if: matrix.os != 'macos-15-intel'
         run: cargo test -p memry-core --release --test read_pool_contention
 
       # The markdown converter (cargo feature `markdown`) is off by default so iOS links none
       # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
       # the core is linted and tested with the feature explicitly.
       - name: Clippy (memry-core, markdown feature)
+        if: matrix.os != 'macos-15-intel'
         run: cargo clippy -p memry-core --all-targets --features markdown -- -D warnings
 
       - name: Test (memry-core, markdown feature)

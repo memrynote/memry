@@ -55,6 +55,8 @@ import { buildPortalResolve } from './vectors/portal-resolve'
 import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
 import { buildRecreateClock } from './vectors/recreate-clock'
+import { buildRedact, buildSafeDimension } from './vectors/redact'
+import { buildSettingsGroups } from './vectors/settings-groups'
 import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildTagFold } from './vectors/tag-fold'
 import { buildTagSchemaRefs } from './vectors/tag-schema-refs'
@@ -86,6 +88,17 @@ const CLASSES: readonly VectorClass[] = [
   { name: 'cbor-canonical', files: [{ path: 'cbor-canonical.json', build: buildCborCanonical }] },
   { name: 'compression', files: [{ path: 'compression.json', build: buildCompression }] },
   { name: 'field-merge', files: [{ path: 'field-merge.json', build: buildFieldMerge }] },
+  {
+    name: 'redact',
+    files: [
+      { path: 'redact.json', build: buildRedact },
+      { path: 'safe-dimension.json', build: buildSafeDimension }
+    ]
+  },
+  {
+    name: 'settings-groups',
+    files: [{ path: 'settings-groups.json', build: buildSettingsGroups }]
+  },
   { name: 'settings-merge', files: [{ path: 'settings-merge.json', build: buildSettingsMerge }] },
   { name: 'recreate-clock', files: [{ path: 'recreate-clock.json', build: buildRecreateClock }] },
   {

@@ -10,6 +10,7 @@
 //! parses it (chapter 12 §12.1.0). `extract_text` is the core's only
 //! document-to-text operation (chapter 12 §12.1).
 
+pub mod app_settings;
 pub mod attachments;
 pub mod body_tags;
 pub mod body_write;
