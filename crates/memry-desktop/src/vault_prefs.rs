@@ -55,6 +55,40 @@ fn read_config(vault: &Path) -> Option<Map<String, Value>> {
     }
 }
 
+/// The config for a read-modify-write. Only a missing file is an empty config; an unreadable
+/// file or JSON that is not an object is an error, so a write never replaces what it could not
+/// parse (it holds the keys of Electron and of Step 12).
+fn load_for_write(vault: &Path) -> std::io::Result<Map<String, Value>> {
+    let bytes = match fs::read(config_path(vault)) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Map::new()),
+        Err(error) => return Err(error),
+    };
+    match serde_json::from_slice(&bytes) {
+        Ok(Value::Object(map)) => Ok(map),
+        Ok(_) => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "config.json is not a JSON object",
+        )),
+        Err(error) => Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            format!("config.json is not valid JSON: {error}"),
+        )),
+    }
+}
+
+/// Flushes a rename to disk: fsync of the containing directory. Windows cannot open a directory
+/// for this, so it is a no-op there.
+pub(crate) fn sync_parent_dir(path: &Path) -> std::io::Result<()> {
+    #[cfg(unix)]
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent)?.sync_all()?;
+    }
+    #[cfg(not(unix))]
+    let _ = path;
+    Ok(())
+}
+
 /// Whether `config.json` already carries a `preferences` object. This, not the values, is the
 /// marker that the vault's settings have been written once.
 pub fn has_stored(vault: &Path) -> bool {
@@ -145,7 +179,11 @@ pub fn read(
 
 /// Merges portable `general` and `editor` fields into `preferences` (read, merge, write to a
 /// sibling, rename). Fields the vault file already has and the patch does not name stay as
-/// written, including unknown ones.
+/// written, including unknown ones. A config that exists but cannot be read or parsed is an
+/// error and stays untouched.
+///
+/// Known limitation: the read-modify-write holds no lock, so a concurrent Electron write to the
+/// same file between the read and the rename can be lost.
 pub fn write(
     vault: &Path,
     general: &Map<String, Value>,
@@ -155,7 +193,7 @@ pub fn write(
         return Ok(());
     }
     let path = config_path(vault);
-    let mut config = read_config(vault).unwrap_or_default();
+    let mut config = load_for_write(vault)?;
     let mut prefs = match config.remove("preferences") {
         Some(Value::Object(map)) => map,
         _ => Map::new(),
@@ -191,7 +229,8 @@ pub fn write(
         let mut file = options.open(&temp)?;
         file.write_all(serde_json::to_string_pretty(&Value::Object(config))?.as_bytes())?;
         file.sync_all()?;
-        fs::rename(&temp, &path)
+        fs::rename(&temp, &path)?;
+        sync_parent_dir(&path)
     })();
     if result.is_err() {
         let _ = fs::remove_file(&temp);
@@ -243,6 +282,23 @@ mod tests {
             read(dir.path(), &none(), &none()).expect("stored").0["fontSizePx"],
             16
         );
+    }
+
+    #[test]
+    fn a_write_never_replaces_a_config_it_cannot_parse() {
+        let general = json!({"theme": "dark"}).as_object().cloned().expect("o");
+        for corrupt in ["{not json", "[1,2]", ""] {
+            let dir = seeded(corrupt);
+            let err = write(dir.path(), &general, &none()).expect_err("must refuse");
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidData);
+            assert_eq!(
+                fs::read_to_string(config_path(dir.path())).expect("read"),
+                corrupt
+            );
+        }
+        let dir = tempfile::tempdir().expect("tmp");
+        write(dir.path(), &general, &none()).expect("missing file is empty");
+        assert!(has_stored(dir.path()));
     }
 
     #[test]
