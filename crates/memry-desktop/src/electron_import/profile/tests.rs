@@ -354,7 +354,7 @@ fn touch(path: &Path, age_secs: u64) {
 }
 
 /// The signed release 2026.1025.1 ran on one Mac with userData `~/Library/Application
-/// Support/Chromium` and the Keychain item `Chromium Safe Storage`, so the app name is `Chromium`.
+/// Support/Chromium`; its secrets decrypt under `memrynote`/`@memry/desktop`.
 #[test]
 fn a_chromium_named_profile_with_memry_files_is_found_with_its_own_app_name() {
     for host in [HostOs::MacOs, HostOs::Linux, HostOs::Windows] {
@@ -364,7 +364,10 @@ fn a_chromium_named_profile_with_memry_files_is_found_with_its_own_app_name() {
         write_store(&dir);
         let profile = locate_profile(&env(root.path(), host)).unwrap().unwrap();
         assert_eq!(profile.dir, dir);
-        assert_eq!(names(&profile), [CHROMIUM_APP_NAME]);
+        // The usual names first, `Chromium` last (the directory name does not key the store).
+        let found = names(&profile);
+        assert_eq!(found.last(), Some(&CHROMIUM_APP_NAME), "{host:?}");
+        assert!(found.contains(&MEMRYNOTE_APP_NAME), "{host:?}");
         assert!(profile.other_candidates.is_empty());
     }
 }

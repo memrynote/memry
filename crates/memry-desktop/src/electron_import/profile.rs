@@ -17,9 +17,9 @@ pub const PROFILE_DIR_VAR: &str = "MEMRY_ELECTRON_PROFILE_DIR";
 pub const MEMRYNOTE_APP_NAME: &str = "memrynote";
 /// Byte-identical to `apps/desktop/package.json` `name`; Chromium derives its key names from it.
 pub const LEGACY_APP_NAME: &str = "@memry/desktop";
-/// userData of one real macOS install of the release 2026.1025.1: `<appData>/Chromium`, with the
-/// Keychain item `Chromium Safe Storage`. Chromium's default product name, used when Electron
-/// resolved no app name; the app's identity migration leaves such a profile alone.
+/// userData of one real macOS install of the release 2026.1025.1 is `<appData>/Chromium`
+/// (Chromium's default product name), while its secrets decrypt under the usual app names. Tried
+/// last for such a profile, in case the store was keyed by `Chromium Safe Storage` itself.
 pub const CHROMIUM_APP_NAME: &str = "Chromium";
 pub const SECRET_STORE_FILENAME: &str = "secure-secrets.json";
 pub const IDENTITY_PIN_FILENAME: &str = "app-identity.json";
@@ -319,11 +319,13 @@ pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, Impor
     };
     let pin = IdentityPin::read(&dir)?;
     let has_ciphertexts = store_has_ciphertexts(&dir);
-    let app_names = if is_chromium {
-        AppNameCandidates(vec![CHROMIUM_APP_NAME])
-    } else {
-        app_names(env.host, pin.as_ref(), has_ciphertexts, born_at_new_path)
-    };
+    let mut app_names = app_names(env.host, pin.as_ref(), has_ciphertexts, born_at_new_path);
+    if is_chromium {
+        // The directory name says nothing about the app name that keyed the store: on the one
+        // known install the store decrypts under the usual names, not under `Chromium`. Try the
+        // usual names first and `Chromium` last.
+        app_names.0.push(CHROMIUM_APP_NAME);
+    }
     let crdt_store_dirs = list_dirs(&dir.join("crdt-stores"))?;
     Ok(Some(ElectronProfile {
         host: env.host,
