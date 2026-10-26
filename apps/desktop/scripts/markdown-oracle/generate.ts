@@ -16,6 +16,23 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { bnParseCases, htmlToBlocksCases, mdToHtmlCases, type MarkdownSource } from './cases-bn'
+import { urlCases } from './cases-url'
+import { writeGrammarCorpus } from './gen-grammar-corpus'
+import { grammarCorpusCases, seedCorpusCases } from './cases-corpus'
+import { memryParseCases } from './cases-parse'
+import { serializeCases } from './cases-serialize'
+import { blocksCases } from './fns/blocks'
+import { criticCases } from './fns/critic'
+import { markersCases } from './fns/markers'
+import { textCases } from './fns/text'
+import {
+  blocksCases as docBlocksCases,
+  replaceBodyCases,
+  roundtripCases,
+  seedDocCases,
+  serializeDocCases
+} from './cases-doc'
 import { pmSchemaCases, yxmlCases } from './cases-pm'
 import { frontmatterCases, markdownClassCases, type OracleCase } from './cases-frontmatter'
 
@@ -35,7 +52,7 @@ interface VectorFile {
   cases: OracleCase[]
 }
 
-function vectorFiles(): VectorFile[] {
+function vectorFiles(external: MarkdownSource[]): VectorFile[] {
   return [
     {
       path: 'frontmatter.json',
@@ -56,6 +73,86 @@ function vectorFiles(): VectorFile[] {
       path: 'yxml.json',
       note: 'y-prosemirror 1.3.7 reading a Yjs fragment into a ProseMirror document (yXmlFragmentToProseMirrorRootNode: unbuildable elements are removed) and writing that document back (prosemirrorToYXmlFragment), as canonical fragment text. Updates are authored under client id 0x6d656d72.',
       cases: yxmlCases()
+    },
+    {
+      path: 'md-to-html.json',
+      note: 'BlockNote 0.54.2 markdownToHtml (the hand-written parser that replaced remark): markdown in, HTML string out, byte for byte. Sources: a hand-written grammar covering every branch, the 275 markdown-roundtrip cases and the 288 expanded fuzz cases.',
+      cases: mdToHtmlCases(external)
+    },
+    {
+      path: 'html-to-blocks.json',
+      note: 'BlockNote HTMLToBlocks on the memry schema: nestedListsToBlockNoteStructure, whitespace normalisation, the ProseMirror DOMParser with the rules of all 39 node types and 8 marks, and nodeToBlock. Blocks are canonical JSON: ids dropped, props sorted, null and undefined props omitted.',
+      cases: [...htmlToBlocksCases(), ...urlCases()]
+    },
+    {
+      path: 'parse.json',
+      note: 'BlockNote markdown parse (markdownToHtml then HTMLToBlocks) as canonical block JSON, without the memry layers. memryLayerNoop says whether blocknote-converter.ts markdownToBlocks returns the same blocks; where it is false, the memry layers of a later stage change the result.',
+      cases: bnParseCases(external)
+    },
+    {
+      path: 'memry-parse.json',
+      note: 'prepareFragmentSeed of blocknote-converter.ts: markdown to blocks plus CriticMarkup marks, link reference definitions and usages, plain text and writing sentinels, as canonical JSON (block ids dropped).',
+      cases: memryParseCases(external)
+    },
+    {
+      path: 'serialize.json',
+      note: 'serializeBlocks of blocknote-converter.ts (extractInlineColorRuns, HTML comment and emphasis tokens, BlockNote blocksToMarkdownLossy, normalizeSerializedMarkdown): hand-written blocks of every type, and the blocks prepareFragmentSeed builds from the memry-parse inputs, to markdown byte for byte. status "error" means the oracle threw (the converter answers null).',
+      cases: serializeCases(external)
+    },
+    {
+      path: 'seed-doc.json',
+      note: 'The Y.Doc a markdown seed writes (markdownToYFragment): the fragment as canonical text with block ids removed, and the side roots as JSON (markdownSource, criticMarkupMarks, link reference definitions and usages, writing tools records). A writing tools anchor is stated as the text run and index it resolves to, since Yjs ids are free.',
+      cases: seedDocCases(external)
+    },
+    {
+      path: 'roundtrip.json',
+      note: 'Markdown seeded into a Y.Doc and read back: yDocToMarkdown (bytes and SourceRestoreOutcome), yDocToCanonicalMarkdown, serializeNoteBody (body and writing frontmatter) and findUnrepresentableNodes. markdown is compared byte for byte; it is the contract for what lands in users vault files.',
+      cases: roundtripCases(external)
+    },
+    {
+      path: 'serialize-doc.json',
+      note: 'yDocToMarkdown over documents authored from Yjs trees (note-blocks documents, hand cases, fail-closed shapes) and over seeded documents edited before they are read: the three way source merge, record states, file spelling and the empty-conversion guard. status "error" means the oracle threw. doc-repair-ids is repairEmptyBlockIds.',
+      cases: serializeDocCases(external)
+    },
+    {
+      path: 'blocks.json',
+      note: 'yFragmentToBlocks (y-prosemirror read, then nodeToBlock) as canonical block JSON, ids dropped, over seeded documents and Yjs-authored ones.',
+      cases: docBlocksCases(external)
+    },
+    {
+      path: 'replace-body.json',
+      note: 'replaceDocBody of crdt-feed.ts (re-implemented over the exported converter functions because the original is coupled to the CRDT provider): large-file refusal, the unlessChangedFrom guard, the empty-body paragraph, and the side roots after the replace.',
+      cases: replaceBodyCases()
+    },
+    {
+      path: 'grammar-corpus.json',
+      note: 'One positive and one negative note per rule of protocol 12.6 to 12.8 (grammar-rules.ts; the same bytes are the corpus/*.md files and corpus/manifest.json), seeded and read back as seed-corpus.json does.',
+      cases: grammarCorpusCases()
+    },
+    {
+      path: 'seed-corpus.json',
+      note: 'The synthetic vault of seed-bench-vault.ts (generateBulkVault, seed 0x1848, every fourth note of 1000) seeded and read back as roundtrip.json does. expected.output holds the outcome, and markdown and canonical only where they differ from the input; an absent field means the converter answers the input unchanged.',
+      cases: seedCorpusCases()
+    },
+    {
+      path: 'layer-text.json',
+      note: 'Function-level cases of the shared text layers (empty-lines, html-comments, hard-breaks, block-nesting, link-references) and the inline masks of editor-schema (token-masking, link-destinations, link-code-spans, cell-code-spaces).',
+      cases: textCases(external)
+    },
+    {
+      path: 'layer-markers.json',
+      note: 'Function-level cases of the marker layers of packages/shared (block-markers, block-colors, inline-colors, task-block, plain-checkbox, obsidian-tasks, link-card-marker).',
+      cases: markersCases(external)
+    },
+    {
+      path: 'layer-blocks.json',
+      note: 'Function-level cases of the editor-schema block layers (callout types, blocks/markdown.ts, quote, columns) and shared youtube.',
+      cases: blocksCases(external)
+    },
+    {
+      path: 'layer-critic.json',
+      note: 'Function-level cases of CriticMarkup parsing and writing tools marker decoding (packages/shared critic-markup and writing-tools).',
+      cases: criticCases(external)
     }
   ]
 }
@@ -125,7 +222,13 @@ function render(file: VectorFile, results: Map<string, OracleResult>): string {
 
 function main(): void {
   const check = process.argv.includes('--check')
-  const files = vectorFiles()
+  const sources = runOracle([
+    { id: 'sources/markdown-sources/all', op: 'markdown-sources', input: {} }
+  ])
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- written by oracle-serve.oracle.ts
+  const external = sources.get('sources/markdown-sources/all')?.output as MarkdownSource[]
+  const files = vectorFiles(external)
+  if (!check) writeGrammarCorpus()
   const results = runOracle(files.flatMap((f) => f.cases))
   const target = check ? mkdtempSync(join(tmpdir(), 'memry-markdown-convert-')) : COMMITTED_DIR
   const drifted: string[] = []

@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Ends inside a closing tag</p> </body>",
+  "markdown": "Ends inside a closing tag"
+}

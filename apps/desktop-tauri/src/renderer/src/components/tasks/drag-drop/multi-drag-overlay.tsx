@@ -157,7 +157,7 @@ export const MultiDragOverlay = ({
             <div
               key={task.id}
               data-testid="overlay-ghost-row"
-              className="absolute left-0 top-0 transition-transform duration-150"
+              className="absolute start-0 top-0 transition-transform duration-150"
               style={{
                 transform: `translate(${offset}px, ${offset}px)`,
                 zIndex
@@ -178,7 +178,7 @@ export const MultiDragOverlay = ({
 
         <div
           className={cn(
-            'absolute -top-2 -right-2 z-50',
+            'absolute -top-2 -end-2 z-50',
             'flex items-center justify-center min-w-6 h-6 px-1.5',
             'rounded-full bg-[#4C9EFF] text-white text-xs font-semibold shadow-md'
           )}
@@ -228,7 +228,7 @@ export const MultiDragOverlay = ({
 
       <div
         className={cn(
-          'absolute -top-2 -right-2 z-40',
+          'absolute -top-2 -end-2 z-40',
           'flex items-center justify-center',
           'w-6 h-6 bg-primary text-primary-foreground',
           'text-xs font-bold rounded-full shadow-md'

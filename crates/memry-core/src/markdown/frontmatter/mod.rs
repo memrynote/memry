@@ -3,7 +3,7 @@
 //! `packages/app-core/src/markdown.ts`. Specified in
 //! `docs/protocol/12-note-body-format.md` section 12.4.
 
-mod js;
+pub(crate) mod js;
 mod note;
 mod scalar;
 mod split;
@@ -16,6 +16,8 @@ pub use note::{
     stringify_frontmatter_block, write_markdown_note,
 };
 pub use split::{FrontmatterSplit, split_frontmatter_block};
+#[doc(hidden)]
+pub use value::depth_visits;
 pub use value::{YamlMap, YamlValue};
 pub use yaml_dump::safe_dump;
 pub use yaml_load::{YamlError, safe_load};

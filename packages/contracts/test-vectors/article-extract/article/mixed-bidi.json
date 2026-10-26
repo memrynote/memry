@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://example.com/i18n/bidi","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://example.com/i18n/bidi","mode":"article","contentMarkdown":"English with عربي and עברית inside, 123 numbers, and a right-to-left span (מקוטע) in the middle.\n\nשלום world mixed ‮override‬ end.\n\nEmoji 👩👩👧👦 and flags 🇳🇴 and skin 👍🏽 and combining é (e + U+0301), Å (A + U+030A), and a zero width joiner here.\n\nSpaces: nbsp here, thin space, em space, ideographic　space, BOM inside.","excerpt":"English with عربي and עברית inside, 123 numbers, and a right-to-left span (מקוטע) in the middle.\n\nשלום world mixed ‮override‬ end.\n\nEmoji 👩👩👧👦 and flags 🇳🇴 and skin 👍🏽 and combining é (e + U+0","extractionStatus":"partial","properties":{"title":"Mixed ⁦bidi⁩ title","source":"https://example.com/i18n/bidi","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Mixed ⁦bidi⁩ title","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":53,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

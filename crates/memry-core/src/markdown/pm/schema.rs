@@ -304,6 +304,11 @@ impl Schema {
         ContentMatch::new(self, self.node_ty(ty).content_match)
     }
 
+    /// The match at a state of a node's own automaton, as `ContentMatch.next` reaches it.
+    pub fn content_match_at(&self, id: StateId) -> ContentMatch<'_> {
+        ContentMatch::new(self, id)
+    }
+
     /// `MarkType.excludes`.
     pub fn mark_excludes(&self, mark: MarkTypeId, other: MarkTypeId) -> bool {
         self.mark_ty(mark).excludes[other.0 as usize]

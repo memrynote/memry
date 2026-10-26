@@ -40,6 +40,9 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 velopack = { workspace = true }
+# Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
+tauri-plugin-dialog = "2.8.3"
+tauri-plugin-opener = "2.7.2"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 

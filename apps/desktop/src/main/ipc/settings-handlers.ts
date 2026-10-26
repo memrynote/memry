@@ -25,6 +25,9 @@ import {
   FEATURES_SETTINGS_DEFAULTS,
   INBOX_SETTINGS_DEFAULTS,
   STICKY_SETTINGS_DEFAULTS,
+  GENERAL_SYNCABLE_FIELDS,
+  INBOX_SYNCABLE_FIELDS,
+  EDITOR_SYNCABLE_FIELDS,
   GetCalendarProviderSettingsSchema,
   SetCalendarProviderSettingsSchema,
   ShortcutBindingSchema
@@ -161,39 +164,6 @@ import { applyTraySetting } from '../tray'
 // ============================================================================
 
 const logger = createLogger('IPC:Settings')
-
-const GENERAL_SYNCABLE_FIELDS: (keyof GeneralSettings)[] = [
-  'theme',
-  'fontSize',
-  'fontSizePx',
-  'fontFamily',
-  'customFontFamily',
-  'accentColor',
-  'colorTheme',
-  'useThemeAccent',
-  'backgroundLight',
-  'foregroundLight',
-  'backgroundDark',
-  'foregroundDark',
-  'language',
-  'createInSelectedFolder',
-  'openPagesInNewTab',
-  'minimizeToTray'
-]
-
-const INBOX_SYNCABLE_FIELDS: (keyof InboxSettings)[] = [
-  'reviewReminderEnabled',
-  'reviewReminderTime'
-]
-
-// Checklist conversion decides what a note's checkboxes become, and two devices
-// that disagree would convert the same note differently. The PDF display
-// default is pushed so a PDF added on any device starts the same way.
-const EDITOR_SYNCABLE_FIELDS: (keyof EditorSettings)[] = [
-  'convertChecklistsToTasks',
-  'convertAgentChecklistsToTasks',
-  'pdfDisplayMode'
-]
 
 const SETTINGS_KEYS = {
   JOURNAL_DEFAULT_TEMPLATE: JOURNAL_DEFAULT_TEMPLATE_KEY,

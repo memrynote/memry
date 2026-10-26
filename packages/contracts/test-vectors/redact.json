@@ -1,0 +1,4157 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "redact",
+    "implementation": "packages/contracts/src/redact.ts",
+    "salt": "00112233445566778899aabbccddeeff",
+    "textCases": 354,
+    "lineCases": 62,
+    "sensitiveCases": 28
+  },
+  "hashes": [
+    {
+      "value": "",
+      "expected": "be94cad7ce"
+    },
+    {
+      "value": "a",
+      "expected": "aceb152e73"
+    },
+    {
+      "value": "kaan@example.com",
+      "expected": "0747e46d2c"
+    },
+    {
+      "value": "日本語",
+      "expected": "6ee8ec6940"
+    },
+    {
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "expected": "763c923cac"
+    }
+  ],
+  "text": [
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "",
+      "expected": ""
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "",
+      "expected": ""
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "",
+      "expected": ""
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "plain text with nothing to hide",
+      "expected": "plain text with nothing to hide"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "plain text with nothing to hide",
+      "expected": "plain text with nothing to hide"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "plain text with nothing to hide",
+      "expected": "plain text with nothing to hide"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF end",
+      "expected": "token <redacted> end"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF end",
+      "expected": "token <redacted> end"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF end",
+      "expected": "token <redacted> end"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "Authorization: Bearer abc.def-ghi_jkl~mno+pqr/stu=",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "Authorization: Bearer abc.def-ghi_jkl~mno+pqr/stu=",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "Authorization: Bearer abc.def-ghi_jkl~mno+pqr/stu=",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "authorization: Basic dXNlcjpwYXNz",
+      "expected": "<redacted> dXNlcjpwYXNz"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "authorization: Basic dXNlcjpwYXNz",
+      "expected": "<redacted> dXNlcjpwYXNz"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "authorization: Basic dXNlcjpwYXNz",
+      "expected": "<redacted> dXNlcjpwYXNz"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "bearer lowercase.token.value",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "bearer lowercase.token.value",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "bearer lowercase.token.value",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "BEARER UPPER",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "BEARER UPPER",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "BEARER UPPER",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "password=hunter2 next",
+      "expected": "<redacted> next"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "password=hunter2 next",
+      "expected": "<redacted> next"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "password=hunter2 next",
+      "expected": "<redacted> next"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "client_secret: s3cr3t-value and more",
+      "expected": "<redacted> and more"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "client_secret: s3cr3t-value and more",
+      "expected": "<redacted> and more"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "client_secret: s3cr3t-value and more",
+      "expected": "<redacted> and more"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "id_token=abc refresh_token=def",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "id_token=abc refresh_token=def",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "id_token=abc refresh_token=def",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "x-api-key: key-123",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "x-api-key: key-123",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "x-api-key: key-123",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "api_key=ABC api-key=DEF apikey=GHI",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "api_key=ABC api-key=DEF apikey=GHI",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "api_key=ABC api-key=DEF apikey=GHI",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "sortKey=abc cacheKey: 1 tokenCount=5",
+      "expected": "sortKey=abc cacheKey: 1 tokenCount=5"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "sortKey=abc cacheKey: 1 tokenCount=5",
+      "expected": "sortKey=abc cacheKey: 1 tokenCount=5"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "sortKey=abc cacheKey: 1 tokenCount=5",
+      "expected": "sortKey=abc cacheKey: 1 tokenCount=5"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "secret = spaced value",
+      "expected": "<redacted> value"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "secret = spaced value",
+      "expected": "<redacted> value"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "secret = spaced value",
+      "expected": "<redacted> value"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "PASSWD:upper",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "PASSWD:upper",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "PASSWD:upper",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "key sk-abcdefgh12345 and pk_live_abcdef123456",
+      "expected": "key <redacted> and <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "key sk-abcdefgh12345 and pk_live_abcdef123456",
+      "expected": "key <redacted> and <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "key sk-abcdefgh12345 and pk_live_abcdef123456",
+      "expected": "key <redacted> and <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ghp_ABCDEFGH12345678 gho-ABCDEFGH12345678 xoxb_ABCDEFGH12345678",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ghp_ABCDEFGH12345678 gho-ABCDEFGH12345678 xoxb_ABCDEFGH12345678",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ghp_ABCDEFGH12345678 gho-ABCDEFGH12345678 xoxb_ABCDEFGH12345678",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "short sk-abc stays",
+      "expected": "short sk-abc stays"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "short sk-abc stays",
+      "expected": "short sk-abc stays"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "short sk-abc stays",
+      "expected": "short sk-abc stays"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "https://example.com/path?token=abc&x=1",
+      "expected": "https://example.com/path"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "https://example.com/path?token=abc&x=1",
+      "expected": "https://example.com/path"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "https://example.com/path?token=abc&x=1",
+      "expected": "https://example.com/path"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "https://example.com/a/b?q=1#frag",
+      "expected": "https://example.com/a/b"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "https://example.com/a/b?q=1#frag",
+      "expected": "https://example.com/a/b"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "https://example.com/a/b?q=1#frag",
+      "expected": "https://example.com/a/b"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "http://host.test:8080/p#frag",
+      "expected": "http://host.test:8080/p"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "http://host.test:8080/p#frag",
+      "expected": "http://host.test:8080/p"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "http://host.test:8080/p#frag",
+      "expected": "http://host.test:8080/p"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "HTTPS://EXAMPLE.COM/PATH?Q=1",
+      "expected": "HTTPS://EXAMPLE.COM/PATH"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "HTTPS://EXAMPLE.COM/PATH?Q=1",
+      "expected": "HTTPS://EXAMPLE.COM/PATH"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "HTTPS://EXAMPLE.COM/PATH?Q=1",
+      "expected": "HTTPS://EXAMPLE.COM/PATH"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "see /api?access_token=zzz&other=1 and &sig=abc",
+      "expected": "see /api?<redacted> and &sig=<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "see /api?access_token=zzz&other=1 and &sig=abc",
+      "expected": "see /api?<redacted> and &sig=<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "see /api?access_token=zzz&other=1 and &sig=abc",
+      "expected": "see /api?<redacted> and &sig=<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "url ?key=value&password=p1 &auth=a1",
+      "expected": "url ?key=<redacted>&<redacted> &auth=<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "url ?key=value&password=p1 &auth=a1",
+      "expected": "url ?key=<redacted>&<redacted> &auth=<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "url ?key=value&password=p1 &auth=a1",
+      "expected": "url ?key=<redacted>&<redacted> &auth=<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "before https://a.test/x?y=1 middle https://b.test/z#q after",
+      "expected": "before https://a.test/x middle https://b.test/z after"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "before https://a.test/x?y=1 middle https://b.test/z#q after",
+      "expected": "before https://a.test/x middle https://b.test/z after"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "before https://a.test/x?y=1 middle https://b.test/z#q after",
+      "expected": "before https://a.test/x middle https://b.test/z after"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "key material aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa here",
+      "expected": "key material <redacted> here"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "key material aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa here",
+      "expected": "key material <redacted> here"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "key material aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa here",
+      "expected": "key material <redacted> here"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "b64 QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5+/== here",
+      "expected": "b64 <redacted>+/== here"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "b64 QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5+/== here",
+      "expected": "b64 <redacted>+/== here"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "b64 QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVowMTIzNDU2Nzg5+/== here",
+      "expected": "b64 <redacted>+/== here"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx short of the limit",
+      "expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx short of the limit"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx short of the limit",
+      "expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx short of the limit"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx short of the limit",
+      "expected": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx short of the limit"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "mail kaan@example.com now",
+      "expected": "mail [email:0747e46d] now"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "mail kaan@example.com now",
+      "expected": "mail <email> now"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "mail kaan@example.com now",
+      "expected": "mail [email:0747e46d] now"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "KAAN@EXAMPLE.COM and a.b+c@sub.example.co.uk",
+      "expected": "[email:bdd86356] and [email:0f42fa0f]"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "KAAN@EXAMPLE.COM and a.b+c@sub.example.co.uk",
+      "expected": "<email> and <email>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "KAAN@EXAMPLE.COM and a.b+c@sub.example.co.uk",
+      "expected": "[email:bdd86356] and [email:0f42fa0f]"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "kaan@gmail.com.pdf",
+      "expected": "[email:409587b1]"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "kaan@gmail.com.pdf",
+      "expected": "<email>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "kaan@gmail.com.pdf",
+      "expected": "[email:409587b1]"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "not an email: user@localhost and @handle",
+      "expected": "not an email: user@localhost and @handle"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "not an email: user@localhost and @handle",
+      "expected": "not an email: user@localhost and @handle"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "not an email: user@localhost and @handle",
+      "expected": "not an email: user@localhost and @handle"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ip 192.168.1.10 and 10.0.0.255 and 999.1.1.1",
+      "expected": "ip <ip> and <ip> and 999.1.1.1"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ip 192.168.1.10 and 10.0.0.255 and 999.1.1.1",
+      "expected": "ip <ip> and <ip> and 999.1.1.1"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ip 192.168.1.10 and 10.0.0.255 and 999.1.1.1",
+      "expected": "ip <ip> and <ip> and 999.1.1.1"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "version 1.2.3.4.5 and 256.256.256.256",
+      "expected": "version <ip>.5 and 256.256.256.256"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "version 1.2.3.4.5 and 256.256.256.256",
+      "expected": "version <ip>.5 and 256.256.256.256"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "version 1.2.3.4.5 and 256.256.256.256",
+      "expected": "version <ip>.5 and 256.256.256.256"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "v6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 end",
+      "expected": "v6 <ip> end"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "v6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 end",
+      "expected": "v6 <ip> end"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "v6 2001:0db8:85a3:0000:0000:8a2e:0370:7334 end",
+      "expected": "v6 <ip> end"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "v6 short fe80::1 and ::1 and 2001:db8::ff00:42:8329",
+      "expected": "v6 short <ip> and ::1 and <ip>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "v6 short fe80::1 and ::1 and 2001:db8::ff00:42:8329",
+      "expected": "v6 short <ip> and ::1 and <ip>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "v6 short fe80::1 and ::1 and 2001:db8::ff00:42:8329",
+      "expected": "v6 short <ip> and ::1 and <ip>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "time 12:34:56 stays and 01:02 too",
+      "expected": "time 12:34:56 stays and 01:02 too"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "time 12:34:56 stays and 01:02 too",
+      "expected": "time 12:34:56 stays and 01:02 too"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "time 12:34:56 stays and 01:02 too",
+      "expected": "time 12:34:56 stays and 01:02 too"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "id 123e4567-e89b-12d3-a456-426614174000 end",
+      "expected": "id 763c923cac end"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "id 123e4567-e89b-12d3-a456-426614174000 end",
+      "expected": "id <id> end"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "id 123e4567-e89b-12d3-a456-426614174000 end",
+      "expected": "id 763c923cac end"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "UPPER 123E4567-E89B-12D3-A456-426614174000",
+      "expected": "UPPER 4361762d20"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "UPPER 123E4567-E89B-12D3-A456-426614174000",
+      "expected": "UPPER <id>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "UPPER 123E4567-E89B-12D3-A456-426614174000",
+      "expected": "UPPER 4361762d20"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "123e4567-e89b-12d3-a456-426614174000123e4567-e89b-12d3-a456-426614174000",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "123e4567-e89b-12d3-a456-426614174000123e4567-e89b-12d3-a456-426614174000",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "123e4567-e89b-12d3-a456-426614174000123e4567-e89b-12d3-a456-426614174000",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "home /Users/kaan/Documents/x.txt",
+      "expected": "home ~/Documents/[name:157aabbd].txt"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "home /Users/kaan/Documents/x.txt",
+      "expected": "home ~/Documents/[name].txt"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "home /Users/kaan/Documents/x.txt",
+      "expected": "home ~/Documents/[name:157aabbd].txt"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "home /home/kaan and /home/kaan/notes",
+      "expected": "home ~ and ~/notes"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "home /home/kaan and /home/kaan/notes",
+      "expected": "home ~ and ~/notes"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "home /home/kaan and /home/kaan/notes",
+      "expected": "home ~ and ~/notes"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "root /root/secrets and /root and /rootfs and /root.",
+      "expected": "root ~/secrets and ~ and /rootfs and ~."
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "root /root/secrets and /root and /rootfs and /root.",
+      "expected": "root ~/secrets and ~ and /rootfs and ~."
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "root /root/secrets and /root and /rootfs and /root.",
+      "expected": "root ~/secrets and ~ and /rootfs and ~."
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "/root",
+      "expected": "~"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "/root",
+      "expected": "~"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "/root",
+      "expected": "~"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "tail /root",
+      "expected": "tail ~"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "tail /root",
+      "expected": "tail ~"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "tail /root",
+      "expected": "tail ~"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "win C:\\Users\\Kaan\\Documents\\a.md",
+      "expected": "win ~\\Documents\\[name:aceb152e].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "win C:\\Users\\Kaan\\Documents\\a.md",
+      "expected": "win ~\\Documents\\[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "win C:\\Users\\Kaan\\Documents\\a.md",
+      "expected": "win ~\\Documents\\[name:aceb152e].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "win lower c:\\users\\kaan",
+      "expected": "win lower ~"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "win lower c:\\users\\kaan",
+      "expected": "win lower ~"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "win lower c:\\users\\kaan",
+      "expected": "win lower ~"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "quote \"/Users/kaan\" and (/home/kaan) and /Users/kaan:12",
+      "expected": "quote \"~\" and (~) and ~:12"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "quote \"/Users/kaan\" and (/home/kaan) and /Users/kaan:12",
+      "expected": "quote \"~\" and (~) and ~:12"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "quote \"/Users/kaan\" and (/home/kaan) and /Users/kaan:12",
+      "expected": "quote \"~\" and (~) and ~:12"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "vault /home/kaan/My Vault/notes/a.md and /home/kaan/My Vault",
+      "expected": "vault ~/My Vault/notes/[name:aceb152e].md and ~/My Vault"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "vault /home/kaan/My Vault/notes/a.md and /home/kaan/My Vault",
+      "expected": "vault ~/My Vault/notes/[name].md and ~/My Vault"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "vault /home/kaan/My Vault/notes/a.md and /home/kaan/My Vault",
+      "expected": "vault <vault>/notes/[name:aceb152e].md and <vault>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "vault under home /home/kaan/My Vault/x",
+      "expected": "vault under home ~/My Vault/x"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "vault under home /home/kaan/My Vault/x",
+      "expected": "vault under home ~/My Vault/x"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "vault under home /home/kaan/My Vault/x",
+      "expected": "vault under home <vault>/x"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "My Note Title.md",
+      "expected": "[name:ef8a001f].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "My Note Title.md",
+      "expected": "[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "My Note Title.md",
+      "expected": "[name:ef8a001f].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "notes/Meeting (final) v2.pdf end",
+      "expected": "notes/[name:34f451d7].pdf end"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "notes/Meeting (final) v2.pdf end",
+      "expected": "notes/[name].pdf end"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "notes/Meeting (final) v2.pdf end",
+      "expected": "notes/[name:34f451d7].pdf end"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "photo.PNG and archive.zip and sheet.xlsx",
+      "expected": "[name:4fee54c0].xlsx"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "photo.PNG and archive.zip and sheet.xlsx",
+      "expected": "[name].xlsx"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "photo.PNG and archive.zip and sheet.xlsx",
+      "expected": "[name:4fee54c0].xlsx"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "Müller Übersicht.docx",
+      "expected": "[name:ec1b98d2].docx"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "Müller Übersicht.docx",
+      "expected": "[name].docx"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "Müller Übersicht.docx",
+      "expected": "[name:ec1b98d2].docx"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "日本語のノート.md",
+      "expected": "[name:70799e9e].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "日本語のノート.md",
+      "expected": "[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "日本語のノート.md",
+      "expected": "[name:70799e9e].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ノート 2025.txt and 笔记.csv",
+      "expected": "[name:19e076ed].csv"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ノート 2025.txt and 笔记.csv",
+      "expected": "[name].csv"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ノート 2025.txt and 笔记.csv",
+      "expected": "[name:19e076ed].csv"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "script.ts and app.js stay",
+      "expected": "script.ts and app.js stay"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "script.ts and app.js stay",
+      "expected": "script.ts and app.js stay"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "script.ts and app.js stay",
+      "expected": "script.ts and app.js stay"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "at fn (/Users/kaan/app/main.ts:12:5)",
+      "expected": "at fn (~/app/main.ts:12:5)"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "at fn (/Users/kaan/app/main.ts:12:5)",
+      "expected": "at fn (~/app/main.ts:12:5)"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "at fn (/Users/kaan/app/main.ts:12:5)",
+      "expected": "at fn (~/app/main.ts:12:5)"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "file.mdx and file.mdd",
+      "expected": "file.mdx and file.mdd"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "file.mdx and file.mdd",
+      "expected": "file.mdx and file.mdd"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "file.mdx and file.mdd",
+      "expected": "file.mdx and file.mdd"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "a.json b.html c.htm d.mp3 e.mp4 f.m4a g.mov h.tif i.tiff j.jpeg k.jpg l.gif m.webp n.svg o.heic",
+      "expected": "[name:09471aec].heic"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "a.json b.html c.htm d.mp3 e.mp4 f.m4a g.mov h.tif i.tiff j.jpeg k.jpg l.gif m.webp n.svg o.heic",
+      "expected": "[name].heic"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "a.json b.html c.htm d.mp3 e.mp4 f.m4a g.mov h.tif i.tiff j.jpeg k.jpg l.gif m.webp n.svg o.heic",
+      "expected": "[name:09471aec].heic"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "title with trailing .md.",
+      "expected": "[name:0335aa38].md."
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "title with trailing .md.",
+      "expected": "[name].md."
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "title with trailing .md.",
+      "expected": "[name:0335aa38].md."
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "emoji 📝 note.md",
+      "expected": "emoji 📝 [name:8a8e8344].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "emoji 📝 note.md",
+      "expected": "emoji 📝 [name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "emoji 📝 note.md",
+      "expected": "emoji 📝 [name:8a8e8344].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "mixed kaan@example.com eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF 10.0.0.1 /Users/kaan/n.md",
+      "expected": "mixed [email:0747e46d] <redacted> <ip> ~/[name:12ae04c0].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "mixed kaan@example.com eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF 10.0.0.1 /Users/kaan/n.md",
+      "expected": "mixed <email> <redacted> <ip> ~/[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "mixed kaan@example.com eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF 10.0.0.1 /Users/kaan/n.md",
+      "expected": "mixed [email:0747e46d] <redacted> <ip> ~/[name:12ae04c0].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "line one\nline two kaan@example.com\r\nline three",
+      "expected": "line one\nline two [email:0747e46d]\r\nline three"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "line one\nline two kaan@example.com\r\nline three",
+      "expected": "line one\nline two <email>\r\nline three"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "line one\nline two kaan@example.com\r\nline three",
+      "expected": "line one\nline two [email:0747e46d]\r\nline three"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "tab\tseparated\tpassword=abc\tend",
+      "expected": "tab\tseparated\t<redacted>\tend"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "tab\tseparated\tpassword=abc\tend",
+      "expected": "tab\tseparated\t<redacted>\tend"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "tab\tseparated\tpassword=abc\tend",
+      "expected": "tab\tseparated\t<redacted>\tend"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "nbsp password=abc end",
+      "expected": "nbsp <redacted> end"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "nbsp password=abc end",
+      "expected": "nbsp <redacted> end"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "nbsp password=abc end",
+      "expected": "nbsp <redacted> end"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "zwnbsp﻿password=abc﻿end",
+      "expected": "zwnbsp﻿<redacted>﻿end"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "zwnbsp﻿password=abc﻿end",
+      "expected": "zwnbsp﻿<redacted>﻿end"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "zwnbsp﻿password=abc﻿end",
+      "expected": "zwnbsp﻿<redacted>﻿end"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "em space password=abc",
+      "expected": "em space <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "em space password=abc",
+      "expected": "em space <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "em space password=abc",
+      "expected": "em space <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ab password=abcend",
+      "expected": "ab <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ab password=abcend",
+      "expected": "ab <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ab password=abcend",
+      "expected": "ab <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "secret= padded",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "secret= padded",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "secret= padded",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "https://x.test/p?q=1 after",
+      "expected": "https://x.test/p after"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "https://x.test/p?q=1 after",
+      "expected": "https://x.test/p after"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "https://x.test/p?q=1 after",
+      "expected": "https://x.test/p after"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ünïcödé wörds 한국어 العربية",
+      "expected": "ünïcödé wörds 한국어 العربية"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ünïcödé wörds 한국어 العربية",
+      "expected": "ünïcödé wörds 한국어 العربية"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ünïcödé wörds 한국어 العربية",
+      "expected": "ünïcödé wörds 한국어 العربية"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "Bearer token.value",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "Bearer token.value",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "Bearer token.value",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "password=",
+      "expected": "password="
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "password=",
+      "expected": "password="
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "password=",
+      "expected": "password="
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "password= ",
+      "expected": "password= "
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "password= ",
+      "expected": "password= "
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "password= ",
+      "expected": "password= "
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "token:",
+      "expected": "token:"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "token:",
+      "expected": "token:"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "token:",
+      "expected": "token:"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "tokenize=notasecret",
+      "expected": "tokenize=notasecret"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "tokenize=notasecret",
+      "expected": "tokenize=notasecret"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "tokenize=notasecret",
+      "expected": "tokenize=notasecret"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "mytoken=1 my-token=2 my_token=3",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "mytoken=1 my-token=2 my_token=3",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "mytoken=1 my-token=2 my_token=3",
+      "expected": "<redacted> <redacted> <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "x@y.zz",
+      "expected": "[email:5cb3ef76]"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "x@y.zz",
+      "expected": "<email>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "x@y.zz",
+      "expected": "[email:5cb3ef76]"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "email at end kaan@example.com",
+      "expected": "email at end [email:0747e46d]"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "email at end kaan@example.com",
+      "expected": "email at end <email>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "email at end kaan@example.com",
+      "expected": "email at end [email:0747e46d]"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "(kaan@example.com)",
+      "expected": "([email:0747e46d])"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "(kaan@example.com)",
+      "expected": "(<email>)"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "(kaan@example.com)",
+      "expected": "([email:0747e46d])"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "a@b.c",
+      "expected": "a@b.c"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "a@b.c",
+      "expected": "a@b.c"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "a@b.c",
+      "expected": "a@b.c"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "1.2.3.4",
+      "expected": "<ip>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "1.2.3.4",
+      "expected": "<ip>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "1.2.3.4",
+      "expected": "<ip>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "0.0.0.0 255.255.255.255",
+      "expected": "<ip> <ip>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "0.0.0.0 255.255.255.255",
+      "expected": "<ip> <ip>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "0.0.0.0 255.255.255.255",
+      "expected": "<ip> <ip>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "01.02.03.004",
+      "expected": "01.02.03.004"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "01.02.03.004",
+      "expected": "01.02.03.004"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "01.02.03.004",
+      "expected": "01.02.03.004"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "sk-",
+      "expected": "sk-"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "sk-",
+      "expected": "sk-"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "sk-",
+      "expected": "sk-"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "sk-12345678",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "sk-12345678",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "sk-12345678",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "sk_12345678 rk-12345678",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "sk_12345678 rk-12345678",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "sk_12345678 rk-12345678",
+      "expected": "<redacted> <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "xoxs_12345678 xoxz_12345678",
+      "expected": "<redacted> xoxz_12345678"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "xoxs_12345678 xoxz_12345678",
+      "expected": "<redacted> xoxz_12345678"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "xoxs_12345678 xoxz_12345678",
+      "expected": "<redacted> xoxz_12345678"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "?token=a",
+      "expected": "?<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "?token=a",
+      "expected": "?<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "?token=a",
+      "expected": "?<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "&key=b&secret=c",
+      "expected": "&key=<redacted>&<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "&key=b&secret=c",
+      "expected": "&key=<redacted>&<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "&key=b&secret=c",
+      "expected": "&key=<redacted>&<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "token=a&key=b",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "token=a&key=b",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "token=a&key=b",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "http://",
+      "expected": "http://"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "http://",
+      "expected": "http://"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "http://",
+      "expected": "http://"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "http://a",
+      "expected": "http://a"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "http://a",
+      "expected": "http://a"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "http://a",
+      "expected": "http://a"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "https://a.test?x=1",
+      "expected": "https://a.test"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "https://a.test?x=1",
+      "expected": "https://a.test"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "https://a.test?x=1",
+      "expected": "https://a.test"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "https://a.test#y",
+      "expected": "https://a.test"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "https://a.test#y",
+      "expected": "https://a.test"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "https://a.test#y",
+      "expected": "https://a.test"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ftp://a.test/x?y=1",
+      "expected": "ftp://a.test/x?y=1"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ftp://a.test/x?y=1",
+      "expected": "ftp://a.test/x?y=1"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ftp://a.test/x?y=1",
+      "expected": "ftp://a.test/x?y=1"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+      "expected": "Bearer <redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+      "expected": "Bearer <redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+      "expected": "Bearer <redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "eyJaaaaa.bbbbb.ccccc",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "eyJaaaaa.bbbbb.ccccc",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "eyJaaaaa.bbbbb.ccccc",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "eyJaaaa.bbbbb.ccccc",
+      "expected": "eyJaaaa.bbbbb.ccccc"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "eyJaaaa.bbbbb.ccccc",
+      "expected": "eyJaaaa.bbbbb.ccccc"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "eyJaaaa.bbbbb.ccccc",
+      "expected": "eyJaaaa.bbbbb.ccccc"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "C:\\Users\\a b\\c",
+      "expected": "~ b\\c"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "C:\\Users\\a b\\c",
+      "expected": "~ b\\c"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "C:\\Users\\a b\\c",
+      "expected": "~ b\\c"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "/Users//x",
+      "expected": "/Users//x"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "/Users//x",
+      "expected": "/Users//x"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "/Users//x",
+      "expected": "/Users//x"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "/home/",
+      "expected": "/home/"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "/home/",
+      "expected": "/home/"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "/home/",
+      "expected": "/home/"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "/Users/a/b /Users/c/d",
+      "expected": "~/b ~/d"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "/Users/a/b /Users/c/d",
+      "expected": "~/b ~/d"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "/Users/a/b /Users/c/d",
+      "expected": "~/b ~/d"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "name.md name.md.md",
+      "expected": "[name:3f5bbe5c].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "name.md name.md.md",
+      "expected": "[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "name.md name.md.md",
+      "expected": "[name:3f5bbe5c].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": " leading space.md",
+      "expected": " [name:d1505b43].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": " leading space.md",
+      "expected": " [name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": " leading space.md",
+      "expected": " [name:d1505b43].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "(paren).md",
+      "expected": "([name:a3fcaa83].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "(paren).md",
+      "expected": "([name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "(paren).md",
+      "expected": "([name:a3fcaa83].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": ".md",
+      "expected": ".md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": ".md",
+      "expected": ".md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": ".md",
+      "expected": ".md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "-dash-.md",
+      "expected": "-[name:e6ef8589].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "-dash-.md",
+      "expected": "-[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "-dash-.md",
+      "expected": "-[name:e6ef8589].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md",
+      "expected": "[name:a35f2319].md"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md",
+      "expected": "[name].md"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.md",
+      "expected": "[name:a35f2319].md"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": "<redacted>"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y ",
+      "expected": "y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y "
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y ",
+      "expected": "y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y "
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y ",
+      "expected": "y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y y "
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "ok 1234567890123456789012345678901234567890123456789 tail",
+      "expected": "ok <redacted> tail"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "ok 1234567890123456789012345678901234567890123456789 tail",
+      "expected": "ok <redacted> tail"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "ok 1234567890123456789012345678901234567890123456789 tail",
+      "expected": "ok <redacted> tail"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "12345678-1234-1234-1234-123456789abc",
+      "expected": "4ab41ae0f0"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "12345678-1234-1234-1234-123456789abc",
+      "expected": "<id>"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "12345678-1234-1234-1234-123456789abc",
+      "expected": "4ab41ae0f0"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "12345678-1234-1234-1234-123456789abg",
+      "expected": "12345678-1234-1234-1234-123456789abg"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "12345678-1234-1234-1234-123456789abg",
+      "expected": "12345678-1234-1234-1234-123456789abg"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "12345678-1234-1234-1234-123456789abg",
+      "expected": "12345678-1234-1234-1234-123456789abg"
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": "abcdefab-1234-1234-1234-123456789abcd",
+      "expected": "abcdefab-1234-1234-1234-123456789abcd"
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": "abcdefab-1234-1234-1234-123456789abcd",
+      "expected": "abcdefab-1234-1234-1234-123456789abcd"
+    },
+    {
+      "mode": "vault",
+      "options": {
+        "hash": true,
+        "vaultRoot": "/home/kaan/My Vault"
+      },
+      "input": "abcdefab-1234-1234-1234-123456789abcd",
+      "expected": "abcdefab-1234-1234-1234-123456789abcd"
+    }
+  ],
+  "lines": [
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "hello"
+      },
+      "expected": {
+        "message": "hello",
+        "fields": {}
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "hello"
+      },
+      "expected": {
+        "message": "hello",
+        "fields": {}
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "hello kaan@example.com",
+        "fields": {
+          "scope": "Sync",
+          "level": "warn"
+        }
+      },
+      "expected": {
+        "message": "hello [email:0747e46d]",
+        "fields": {
+          "scope": "Sync",
+          "level": "warn"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "hello kaan@example.com",
+        "fields": {
+          "scope": "Sync",
+          "level": "warn"
+        }
+      },
+      "expected": {
+        "message": "hello <email>",
+        "fields": {
+          "scope": "Sync",
+          "level": "warn"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "errorCode": "SQLITE_BUSY",
+          "action": "push",
+          "reason": "timeout"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "errorCode": "SQLITE_BUSY",
+          "action": "push",
+          "reason": "timeout"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "errorCode": "SQLITE_BUSY",
+          "action": "push",
+          "reason": "timeout"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "errorCode": "SQLITE_BUSY",
+          "action": "push",
+          "reason": "timeout"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "errorCode": "path /Users/kaan/x",
+          "status": 7,
+          "kind": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "errorCode": "path ~/x",
+          "status": 7,
+          "kind": true
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "errorCode": "path /Users/kaan/x",
+          "status": 7,
+          "kind": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "errorCode": "path ~/x",
+          "status": 7,
+          "kind": true
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "noteId": "123e4567-e89b-12d3-a456-426614174000",
+          "taskId": 42,
+          "deviceId": "",
+          "vaultId": null
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "noteId": "763c923cac",
+          "taskId": "f958828b56",
+          "deviceId": "",
+          "vaultId": ""
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "noteId": "123e4567-e89b-12d3-a456-426614174000",
+          "taskId": 42,
+          "deviceId": "",
+          "vaultId": null
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "noteId": "<id>",
+          "taskId": "<id>",
+          "deviceId": "",
+          "vaultId": ""
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "itemId": {
+            "a": 1
+          },
+          "sessionId": [
+            "x"
+          ],
+          "installId": "abc"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "itemId": "04309504cd",
+          "sessionId": "079f31f298",
+          "installId": "73ab6931a2"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "itemId": {
+            "a": 1
+          },
+          "sessionId": [
+            "x"
+          ],
+          "installId": "abc"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "itemId": "<id>",
+          "sessionId": "<id>",
+          "installId": "<id>"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "durationMs": 12,
+          "count": 3,
+          "size": 0,
+          "exitCode": -1,
+          "attempt": 2
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "durationMs": 12,
+          "count": 3,
+          "size": 0,
+          "exitCode": -1,
+          "attempt": 2
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "durationMs": 12,
+          "count": 3,
+          "size": 0,
+          "exitCode": -1,
+          "attempt": 2
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "durationMs": 12,
+          "count": 3,
+          "size": 0,
+          "exitCode": -1,
+          "attempt": 2
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "latitude": 52,
+          "longitude": 13,
+          "other": 1
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "latitude": "52",
+          "longitude": "13",
+          "other": "1"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "latitude": 52,
+          "longitude": 13,
+          "other": 1
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "latitude": "52",
+          "longitude": "13",
+          "other": "1"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "flag": true,
+          "off": false
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "flag": true,
+          "off": false
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "flag": true,
+          "off": false
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "flag": true,
+          "off": false
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "path": "/Users/kaan/Notes/a.md",
+          "url": "https://a.test/x?token=abc"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "path": "~/Notes/[name:aceb152e].md",
+          "url": "https://a.test/x"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "path": "/Users/kaan/Notes/a.md",
+          "url": "https://a.test/x?token=abc"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "path": "~/Notes/[name].md",
+          "url": "https://a.test/x"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "unknown": "kaan@example.com",
+          "nested": {
+            "a": "b",
+            "z": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "unknown": "[email:0747e46d]",
+          "nested": "{\"a\":\"b\",\"z\":[1,2]}"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "unknown": "kaan@example.com",
+          "nested": {
+            "a": "b",
+            "z": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "unknown": "<email>",
+          "nested": "{\"a\":\"b\",\"z\":[1,2]}"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "empty": null,
+          "text": ""
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "empty": "",
+          "text": ""
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "empty": null,
+          "text": ""
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "empty": "",
+          "text": ""
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "long": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "long": "<redacted>"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "long": "zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "long": "<redacted>"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "scope": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "scope": "<redacted>"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "scope": "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "scope": "<redacted>"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+      },
+      "expected": {
+        "message": "<redacted>",
+        "fields": {}
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+      },
+      "expected": {
+        "message": "<redacted>",
+        "fields": {}
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "shownMs": 5200,
+          "vaultOpenPending": false,
+          "fallback": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "shownMs": 5200,
+          "vaultOpenPending": false,
+          "fallback": true
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "shownMs": 5200,
+          "vaultOpenPending": false,
+          "fallback": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "shownMs": 5200,
+          "vaultOpenPending": false,
+          "fallback": true
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "ready-to-show",
+          "appReadyMs": 120,
+          "windowCreatedMs": 340,
+          "vaultOpenStartMs": 350,
+          "vaultOpenReadyMs": 900,
+          "rendererLoadedMs": 1200,
+          "readyToShowMs": 1300,
+          "shownMs": 1350,
+          "fallback": false,
+          "vaultOpenPending": false
+        }
+      },
+      "expected": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "ready-to-show",
+          "appReadyMs": 120,
+          "windowCreatedMs": 340,
+          "vaultOpenStartMs": 350,
+          "vaultOpenReadyMs": 900,
+          "rendererLoadedMs": 1200,
+          "readyToShowMs": 1300,
+          "shownMs": 1350,
+          "fallback": false,
+          "vaultOpenPending": false
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "ready-to-show",
+          "appReadyMs": 120,
+          "windowCreatedMs": 340,
+          "vaultOpenStartMs": 350,
+          "vaultOpenReadyMs": 900,
+          "rendererLoadedMs": 1200,
+          "readyToShowMs": 1300,
+          "shownMs": 1350,
+          "fallback": false,
+          "vaultOpenPending": false
+        }
+      },
+      "expected": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "ready-to-show",
+          "appReadyMs": 120,
+          "windowCreatedMs": 340,
+          "vaultOpenStartMs": 350,
+          "vaultOpenReadyMs": 900,
+          "rendererLoadedMs": 1200,
+          "readyToShowMs": 1300,
+          "shownMs": 1350,
+          "fallback": false,
+          "vaultOpenPending": false
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "fallback-timeout",
+          "appReadyMs": 80,
+          "shownMs": 10000,
+          "fallback": true
+        }
+      },
+      "expected": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "fallback-timeout",
+          "appReadyMs": 80,
+          "shownMs": 10000,
+          "fallback": true
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "fallback-timeout",
+          "appReadyMs": 80,
+          "shownMs": 10000,
+          "fallback": true
+        }
+      },
+      "expected": {
+        "message": "launch timeline",
+        "fields": {
+          "reason": "fallback-timeout",
+          "appReadyMs": 80,
+          "shownMs": 10000,
+          "fallback": true
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "appReadyMs": "not a number",
+          "shownMs": null
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "appReadyMs": "not a number",
+          "shownMs": ""
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "appReadyMs": "not a number",
+          "shownMs": null
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "appReadyMs": "not a number",
+          "shownMs": ""
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "value": 1.5,
+          "droppedCount": 3,
+          "pageCount": 9,
+          "sequenceNum": 4
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "value": 1.5,
+          "droppedCount": 3,
+          "pageCount": 9,
+          "sequenceNum": 4
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "value": 1.5,
+          "droppedCount": 3,
+          "pageCount": 9,
+          "sequenceNum": 4
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "value": 1.5,
+          "droppedCount": 3,
+          "pageCount": 9,
+          "sequenceNum": 4
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "byteCount": 99,
+          "itemCount": 1,
+          "queueCount": 2,
+          "resultCount": 0
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "byteCount": 99,
+          "itemCount": 1,
+          "queueCount": 2,
+          "resultCount": 0
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "byteCount": 99,
+          "itemCount": 1,
+          "queueCount": 2,
+          "resultCount": 0
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "byteCount": 99,
+          "itemCount": 1,
+          "queueCount": 2,
+          "resultCount": 0
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "retryCount": 3,
+          "origin": "renderer",
+          "workerName": "w1"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "retryCount": 3,
+          "origin": "renderer",
+          "workerName": "w1"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "retryCount": 3,
+          "origin": "renderer",
+          "workerName": "w1"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "retryCount": 3,
+          "origin": "renderer",
+          "workerName": "w1"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "appVersion": "1.2.3",
+          "buildChannel": "staging",
+          "platform": "darwin"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "appVersion": "1.2.3",
+          "buildChannel": "staging",
+          "platform": "darwin"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "appVersion": "1.2.3",
+          "buildChannel": "staging",
+          "platform": "darwin"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "appVersion": "1.2.3",
+          "buildChannel": "staging",
+          "platform": "darwin"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "arch": "arm64",
+          "mode": "a",
+          "phase": "b",
+          "result": "ok"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "arch": "arm64",
+          "mode": "a",
+          "phase": "b",
+          "result": "ok"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "arch": "arm64",
+          "mode": "a",
+          "phase": "b",
+          "result": "ok"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "arch": "arm64",
+          "mode": "a",
+          "phase": "b",
+          "result": "ok"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "filePath": "C:\\Users\\Kaan\\a.md",
+          "dir": "/home/kaan",
+          "file": "a.pdf"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "filePath": "~\\[name:aceb152e].md",
+          "dir": "~",
+          "file": "[name:aceb152e].pdf"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "filePath": "C:\\Users\\Kaan\\a.md",
+          "dir": "/home/kaan",
+          "file": "a.pdf"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "filePath": "~\\[name].md",
+          "dir": "~",
+          "file": "[name].pdf"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "target": "kaan@example.com",
+          "attachmentPath": "/home/kaan/My Vault/a.png"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "target": "[email:0747e46d]",
+          "attachmentPath": "~/My Vault/[name:aceb152e].png"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "target": "kaan@example.com",
+          "attachmentPath": "/home/kaan/My Vault/a.png"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "target": "<email>",
+          "attachmentPath": "~/My Vault/[name].png"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "blockId": "b1",
+          "journalId": "j1",
+          "projectId": "p1",
+          "attachmentId": "a1"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "blockId": "a8e50d1c17",
+          "journalId": "7748f73400",
+          "projectId": "f07385c1e2",
+          "attachmentId": "01824071dc"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "blockId": "b1",
+          "journalId": "j1",
+          "projectId": "p1",
+          "attachmentId": "a1"
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "blockId": "<id>",
+          "journalId": "<id>",
+          "projectId": "<id>",
+          "attachmentId": "<id>"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "signerDeviceId": "dev",
+          "noteId": 5,
+          "taskId": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "signerDeviceId": "e45f8f3e78",
+          "noteId": "531f929cd9",
+          "taskId": "4ab96828c7"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "signerDeviceId": "dev",
+          "noteId": 5,
+          "taskId": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "signerDeviceId": "<id>",
+          "noteId": "<id>",
+          "taskId": "<id>"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "big": 12345678901,
+          "neg": -5,
+          "zero": 0
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "big": "12345678901",
+          "neg": "-5",
+          "zero": "0"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "big": 12345678901,
+          "neg": -5,
+          "zero": 0
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "big": "12345678901",
+          "neg": "-5",
+          "zero": "0"
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "x",
+        "fields": {
+          "count": "text",
+          "durationMs": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "count": "text",
+          "durationMs": true
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "x",
+        "fields": {
+          "count": "text",
+          "durationMs": true
+        }
+      },
+      "expected": {
+        "message": "x",
+        "fields": {
+          "count": "text",
+          "durationMs": true
+        }
+      }
+    },
+    {
+      "mode": "hash",
+      "options": {
+        "hash": true
+      },
+      "input": {
+        "message": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+        "fields": {
+          "text": "password=abc aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expected": {
+        "message": "Bearer <redacted>",
+        "fields": {
+          "text": "<redacted> <redacted>"
+        }
+      }
+    },
+    {
+      "mode": "mask",
+      "options": {},
+      "input": {
+        "message": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF",
+        "fields": {
+          "text": "password=abc aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      },
+      "expected": {
+        "message": "Bearer <redacted>",
+        "fields": {
+          "text": "<redacted> <redacted>"
+        }
+      }
+    }
+  ],
+  "sensitive": [
+    {
+      "input": "",
+      "expected": ""
+    },
+    {
+      "input": "plain",
+      "expected": "plain"
+    },
+    {
+      "input": "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF end",
+      "expected": "jwt <jwt> end"
+    },
+    {
+      "input": "Bearer abc.def_ghi-jkl==",
+      "expected": "Bearer <token>"
+    },
+    {
+      "input": "bearer lower",
+      "expected": "Bearer <token>"
+    },
+    {
+      "input": "Bearer  two spaces",
+      "expected": "Bearer <token> spaces"
+    },
+    {
+      "input": "Bearer x/y+z",
+      "expected": "Bearer <token>"
+    },
+    {
+      "input": "kaan@example.com and A@B.CO",
+      "expected": "<email> and <email>"
+    },
+    {
+      "input": "uuid 123e4567-e89b-12d3-a456-426614174000 end",
+      "expected": "uuid <uuid> end"
+    },
+    {
+      "input": "UPPER 123E4567-E89B-12D3-A456-426614174000",
+      "expected": "UPPER <uuid>"
+    },
+    {
+      "input": "home /Users/kaan/x /home/kaan/y /root/z",
+      "expected": "home ~/x ~/y ~"
+    },
+    {
+      "input": "/root",
+      "expected": "/root"
+    },
+    {
+      "input": "/rootfs",
+      "expected": "/rootfs"
+    },
+    {
+      "input": "/root/",
+      "expected": "/root/"
+    },
+    {
+      "input": "win C:\\Users\\Kaan\\x d:\\users\\b",
+      "expected": "win ~\\x ~"
+    },
+    {
+      "input": "quote \"/Users/kaan\" (/home/kaan)",
+      "expected": "quote \"~\" (~)"
+    },
+    {
+      "input": "mix eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abc123_-xyzDEF kaan@example.com 123e4567-e89b-12d3-a456-426614174000 /Users/kaan/f",
+      "expected": "mix <jwt> <email> <uuid> ~/f"
+    },
+    {
+      "input": "Bearer nbsp",
+      "expected": "Bearer <token>"
+    },
+    {
+      "input": "no change at all 1.2.3.4",
+      "expected": "no change at all 1.2.3.4"
+    },
+    {
+      "input": "/Users/kaan/Documents/My Note.md",
+      "expected": "~/Documents/My Note.md"
+    },
+    {
+      "input": "eyJabcde.eyJabcde.abcde",
+      "expected": "<jwt>"
+    },
+    {
+      "input": "eyJabc.eyJabcde.abcde",
+      "expected": "eyJabc.eyJabcde.abcde"
+    },
+    {
+      "input": "Bearer a.b.c=== tail",
+      "expected": "Bearer <token> tail"
+    },
+    {
+      "input": "kaan@gmail.com.pdf",
+      "expected": "<email>"
+    },
+    {
+      "input": "x@y.z",
+      "expected": "x@y.z"
+    },
+    {
+      "input": "/home//x",
+      "expected": "/home//x"
+    },
+    {
+      "input": "/Users/",
+      "expected": "/Users/"
+    },
+    {
+      "input": "line\nbreak /Users/a/b\n/home/c/d",
+      "expected": "line\nbreak ~/b\n~/d"
+    }
+  ]
+}

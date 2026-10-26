@@ -32,7 +32,7 @@ fn valid_review_time(time: &str) -> bool {
 #[uniffi::export]
 impl Inbox {
     pub fn review_settings(&self) -> Result<InboxReviewSettings, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             let enabled = crate::domain::settings::read(conn, "inbox.reviewReminderEnabled")?
                 .and_then(|v| v.as_bool())
                 .unwrap_or(false);

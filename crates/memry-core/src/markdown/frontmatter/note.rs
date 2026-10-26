@@ -176,35 +176,35 @@ pub fn serialize_parsed_markdown_note(
     parsed: &ParsedMarkdownNote,
     content: &str,
     frontmatter_edited: bool,
-) -> String {
+) -> Result<String, YamlError> {
     let block = if frontmatter_edited {
-        stringify_frontmatter_block(&entries_of(&parsed.frontmatter), parsed.eol)
+        stringify_frontmatter_block(&entries_of(&parsed.frontmatter), parsed.eol)?
     } else {
         parsed.raw_frontmatter_block.clone().unwrap_or_default()
     };
     if content == parsed.content {
-        return block + content;
+        return Ok(block + content);
     }
     let mut body = strip_trailing_newlines(&convert_newlines(content, parsed.eol)).to_owned();
     if parsed.had_trailing_newline {
         body.push_str(parsed.eol.as_str());
     }
     if block.is_empty() {
-        return body;
+        return Ok(body);
     }
     let separator = &parsed.content[..leading_newlines(&parsed.content)];
     let trimmed = &body[leading_newlines(&body)..];
-    format!("{block}{separator}{trimmed}")
+    Ok(format!("{block}{separator}{trimmed}"))
 }
 
 /// Obsidian-style emitter for the EDITED-frontmatter path. No keys, no block.
 /// Quoting, line width and scalar spelling are whatever js-yaml defaults
 /// produce; only the unedited path carries a byte guarantee.
-pub fn stringify_frontmatter_block(frontmatter: &YamlMap, eol: Eol) -> String {
+pub fn stringify_frontmatter_block(frontmatter: &YamlMap, eol: Eol) -> Result<String, YamlError> {
     if frontmatter.is_empty() {
-        return String::new();
+        return Ok(String::new());
     }
-    let matter = safe_dump(&YamlValue::map(frontmatter.clone()));
+    let matter = safe_dump(&YamlValue::map(frontmatter.clone()))?;
     let matter = js_trim(&matter);
     let newline = |text: &str| {
         if text.ends_with('\n') {
@@ -223,23 +223,27 @@ pub fn stringify_frontmatter_block(frontmatter: &YamlMap, eol: Eol) -> String {
         Eol::Lf => block,
         Eol::CrLf => block.replace('\n', "\r\n"),
     };
-    format!("{}{}", strip_trailing_newlines(&converted), eol.as_str())
+    Ok(format!(
+        "{}{}",
+        strip_trailing_newlines(&converted),
+        eol.as_str()
+    ))
 }
 
 /// Serialize a NEW file: LF endings, one trailing newline.
-pub fn write_markdown_note(frontmatter: &YamlMap, content: &str) -> String {
+pub fn write_markdown_note(frontmatter: &YamlMap, content: &str) -> Result<String, YamlError> {
     let body = strip_trailing_newlines(content);
-    let block = stringify_frontmatter_block(frontmatter, Eol::Lf);
+    let block = stringify_frontmatter_block(frontmatter, Eol::Lf)?;
     if block.is_empty() {
-        return if body.is_empty() {
+        return Ok(if body.is_empty() {
             String::new()
         } else {
             format!("{body}\n")
-        };
+        });
     }
     if body.is_empty() {
-        block
+        Ok(block)
     } else {
-        format!("{block}{body}\n")
+        Ok(format!("{block}{body}\n"))
     }
 }

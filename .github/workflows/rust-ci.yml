@@ -8,23 +8,29 @@ name: Rust CI
 
 on:
   pull_request:
+    # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
+    # other labeled event skips all jobs, so PRs into main see no change.
+    types: [opened, synchronize, reopened, labeled]
     paths:
       - 'crates/**'
       - 'apps/desktop-tauri/**'
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'packages/contracts/test-vectors/**'
+      - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
   push:
     branches:
       - main
+      - feat/tauri-v2
     paths:
       - 'crates/**'
       - 'apps/desktop-tauri/**'
       - 'pnpm-lock.yaml'
       - 'packages/swift/**'
       - 'packages/contracts/test-vectors/**'
+      - 'packages/article-extract/**'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/rust-ci.yml'
   workflow_dispatch:
@@ -33,22 +39,51 @@ permissions:
   contents: read
 
 concurrency:
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
+  # feat/tauri-v2 queues like main does elsewhere: every merge keeps its full-matrix result.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/tauri-v2' }}
 
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
 
 jobs:
+  # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
+  # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
+  plan:
+    name: CI tier
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.tier.outputs.full }}
+      tauri: ${{ steps.tier.outputs.tauri }}
+      swift: ${{ steps.tier.outputs.swift }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Decide tier
+        id: tier
+        uses: ./.github/actions/ci-tier
+        with:
+          token: ${{ github.token }}
+
   lint-and-test:
     name: fmt, clippy, test (${{ matrix.os }})
+    needs: plan
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-22.04, macos-15, macos-15-intel, windows-2022, windows-11-arm]
+        # Fast tier: one runner per OS family. Full adds the Intel Mac and the Windows ARM runner.
+        os: ${{ fromJSON(needs.plan.outputs.full == 'true' && '["ubuntu-22.04","macos-15","macos-15-intel","windows-2022","windows-11-arm"]' || '["ubuntu-22.04","macos-15","windows-2022"]') }}
     defaults:
       run:
         shell: bash
@@ -64,7 +99,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf
+            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf \
+            gnome-keyring libsecret-tools dbus-x11
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -76,13 +112,16 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       - name: Format
         if: runner.os == 'Linux'
         run: cargo fmt --all --check
 
+      # macos-15-intel runs tests only: the Apple Silicon runner already lints the same macOS
+      # code, and Intel Mac runner slots are the scarcest.
       - name: Clippy
-        if: runner.os != 'Windows'
+        if: runner.os != 'Windows' && matrix.os != 'macos-15-intel'
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       # `crates/memry-cli/src/session.rs` imports `std::os::unix`, so memry-cli never builds on
@@ -94,10 +133,53 @@ jobs:
       - name: Test
         run: cargo test -p memry-core -p memry-desktop -p memry-tauri
 
+      # Electron profile readers against the live OS secret store (#3523). Each test creates its
+      # own throw-away item under a test app name and removes it. macOS: a Keychain item named
+      # `<test app> Safe Storage`. Windows: a real CryptProtectData round trip through `Local
+      # State` and a keytar-style credential. The Windows legs decrypt with a key the test
+      # wraps itself, so the result does not depend on the machine.
+      - name: Electron profile readers, live OS secrets (macOS, Windows)
+        if: runner.os != 'Linux'
+        env:
+          MEMRY_LIVE_KEYTAR: '1'
+        run: |
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          fi
+          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+
+      # Linux: gnome-keyring unlocked under a private session bus, then a second run with no
+      # session bus at all, where the reader must answer "missing" and create nothing.
+      - name: Electron profile readers, live OS secrets (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
+          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --no-run
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live'
+          # Service stopped, in the SAME session as the keyring check: the reader is pointed at a
+          # bus socket that does not exist, must say "missing", and must not have created an item
+          # in the live keyring. A probe item first proves the search would show a memry-live item.
+          dbus-run-session -- bash -c '
+            set -e
+            echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            echo -n probe | secret-tool store --label probe xdg:schema chrome_libsecret_os_crypt_password_v2 application memry-live-probe
+            secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live-probe
+            secret-tool clear xdg:schema chrome_libsecret_os_crypt_password_v2 application memry-live-probe
+            DBUS_SESSION_BUS_ADDRESS=unix:path=/nonexistent MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live
+            ! secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live
+          '
+
+      # Release only: the latency assertions are meaningless in a debug build. Proves reads
+      # through the pool do not wait behind a held write transaction.
+      - name: Test (memry-core, read pool contention, release)
+        if: matrix.os != 'macos-15-intel'
+        run: cargo test -p memry-core --release --test read_pool_contention
+
       # The markdown converter (cargo feature `markdown`) is off by default so iOS links none
       # of it. The workspace clippy above only builds it where memry-desktop turns it on, so
       # the core is linted and tested with the feature explicitly.
       - name: Clippy (memry-core, markdown feature)
+        if: matrix.os != 'macos-15-intel'
         run: cargo clippy -p memry-core --all-targets --features markdown -- -D warnings
 
       - name: Test (memry-core, markdown feature)
@@ -112,8 +194,42 @@ jobs:
         working-directory: .
         run: node scripts/check-line-ceilings.mjs
 
+  # The article-extraction vectors and the entity table are generated from the TypeScript
+  # oracle (linkedom, Defuddle, htmlparser2). A change to the oracle or its pins that ships
+  # without regenerating them leaves the Rust port tested against a stale oracle.
+  article-extract-oracle-fresh:
+    name: Article-extraction vectors are current
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Vectors are current
+        run: pnpm --filter @memry/article-extract vectors --check
+
+      - name: Entity table is current
+        run: pnpm --filter @memry/article-extract entities --check
+
   swift-bindings-fresh:
     name: Generated Swift bindings are current
+    needs: plan
+    # Fast tier: only when the UniFFI surface or the iOS app can have changed.
+    if: needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true'
     # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
     # from the same build. Anything less proves nothing about what ships.
     runs-on: macos-26
@@ -133,6 +249,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       # Glob, not a fixed path: the runner image names it Xcode_26.x.app and the
       # patch version moves. Failing loudly with the available list beats a bare

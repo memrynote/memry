@@ -1,0 +1,936 @@
+[
+  {
+    "name": "attribute-quirks",
+    "covers": [
+      "attribute quirks",
+      "duplicate attributes",
+      "uppercase names",
+      "numeric keys",
+      "class normalization",
+      "empty attributes"
+    ]
+  },
+  {
+    "name": "blog-post",
+    "covers": [
+      "generic article",
+      "schema.org JSON-LD",
+      "sidebar",
+      "comments",
+      "script and style"
+    ]
+  },
+  {
+    "name": "cjk-chinese",
+    "covers": [
+      "Chinese",
+      "UTF-8"
+    ]
+  },
+  {
+    "name": "cjk-japanese",
+    "covers": [
+      "Japanese",
+      "ruby",
+      "fullwidth characters"
+    ]
+  },
+  {
+    "name": "code-github-highlight",
+    "covers": [
+      "code",
+      "GitHub highlight",
+      "button removal"
+    ]
+  },
+  {
+    "name": "code-highlightjs",
+    "covers": [
+      "code",
+      "highlight.js",
+      "language class"
+    ]
+  },
+  {
+    "name": "code-line-numbers",
+    "covers": [
+      "code",
+      "language detection from class names",
+      "line numbers",
+      "Chroma",
+      "Rouge",
+      "syntaxhighlighter"
+    ]
+  },
+  {
+    "name": "code-prism",
+    "covers": [
+      "code",
+      "Prism",
+      "prismjs container"
+    ]
+  },
+  {
+    "name": "code-shiki",
+    "covers": [
+      "code",
+      "Shiki",
+      "line spans"
+    ]
+  },
+  {
+    "name": "docs-page",
+    "covers": [
+      "documentation page",
+      "code blocks",
+      "table with tbody",
+      "admonition",
+      "toc"
+    ]
+  },
+  {
+    "name": "doctype-comments",
+    "covers": [
+      "doctype public and system",
+      "processing instruction",
+      "conditional comment",
+      "cdata becomes comment",
+      "unterminated comment",
+      "bogus declarations"
+    ]
+  },
+  {
+    "name": "entities",
+    "covers": [
+      "entities",
+      "named numeric invalid no semicolon",
+      "attribute entities",
+      "title entities",
+      "astral entities"
+    ]
+  },
+  {
+    "name": "extractor-bbcode-data",
+    "covers": [
+      "site extractor",
+      "BBCode announcement data"
+    ]
+  },
+  {
+    "name": "extractor-bilibili",
+    "covers": [
+      "site extractor",
+      "Bilibili",
+      "subtitle transcript"
+    ]
+  },
+  {
+    "name": "extractor-bilibili-fallback",
+    "covers": [
+      "site extractor",
+      "Bilibili",
+      "view fetch fails"
+    ]
+  },
+  {
+    "name": "extractor-bilibili-no-tracks",
+    "covers": [
+      "site extractor",
+      "Bilibili",
+      "no subtitle tracks"
+    ]
+  },
+  {
+    "name": "extractor-bluesky",
+    "covers": [
+      "site extractor",
+      "Bluesky",
+      "thread and replies"
+    ]
+  },
+  {
+    "name": "extractor-c2-wiki",
+    "covers": [
+      "site extractor",
+      "C2 wiki"
+    ]
+  },
+  {
+    "name": "extractor-c2-wiki-empty",
+    "covers": [
+      "site extractor",
+      "C2 wiki",
+      "empty page"
+    ]
+  },
+  {
+    "name": "extractor-chatgpt",
+    "covers": [
+      "site extractor",
+      "ChatGPT conversation",
+      "footnotes"
+    ]
+  },
+  {
+    "name": "extractor-claude",
+    "covers": [
+      "site extractor",
+      "Claude conversation"
+    ]
+  },
+  {
+    "name": "extractor-discourse",
+    "covers": [
+      "site extractor",
+      "Discourse"
+    ]
+  },
+  {
+    "name": "extractor-gemini",
+    "covers": [
+      "site extractor",
+      "Gemini conversation"
+    ]
+  },
+  {
+    "name": "extractor-gemini-sources",
+    "covers": [
+      "site extractor",
+      "Gemini conversation",
+      "browse-item throws in Node"
+    ]
+  },
+  {
+    "name": "extractor-github-issue",
+    "covers": [
+      "site extractor",
+      "GitHub",
+      "issue"
+    ]
+  },
+  {
+    "name": "extractor-github-issue-bare",
+    "covers": [
+      "site extractor",
+      "GitHub",
+      "issue without body"
+    ]
+  },
+  {
+    "name": "extractor-github-pull",
+    "covers": [
+      "site extractor",
+      "GitHub",
+      "pull request"
+    ]
+  },
+  {
+    "name": "extractor-grok",
+    "covers": [
+      "site extractor",
+      "Grok conversation",
+      "footnotes"
+    ]
+  },
+  {
+    "name": "extractor-hackernews-comment",
+    "covers": [
+      "site extractor",
+      "Hacker News",
+      "single comment"
+    ]
+  },
+  {
+    "name": "extractor-hackernews-listing",
+    "covers": [
+      "site extractor",
+      "Hacker News",
+      "listing page"
+    ]
+  },
+  {
+    "name": "extractor-hackernews-post",
+    "covers": [
+      "site extractor",
+      "Hacker News",
+      "comment tree"
+    ]
+  },
+  {
+    "name": "extractor-leetcode",
+    "covers": [
+      "site extractor",
+      "LeetCode",
+      "content selector"
+    ]
+  },
+  {
+    "name": "extractor-linkedin",
+    "covers": [
+      "site extractor",
+      "LinkedIn"
+    ]
+  },
+  {
+    "name": "extractor-lwn",
+    "covers": [
+      "site extractor",
+      "LWN",
+      "nested comments"
+    ]
+  },
+  {
+    "name": "extractor-mastodon",
+    "covers": [
+      "site extractor",
+      "Mastodon",
+      "thread and replies"
+    ]
+  },
+  {
+    "name": "extractor-medium",
+    "covers": [
+      "site extractor",
+      "Medium"
+    ]
+  },
+  {
+    "name": "extractor-nytimes",
+    "covers": [
+      "site extractor",
+      "New York Times",
+      "preloaded data"
+    ]
+  },
+  {
+    "name": "extractor-reddit-linkpost",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "bad status"
+    ]
+  },
+  {
+    "name": "extractor-reddit-old",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "old reddit page"
+    ]
+  },
+  {
+    "name": "extractor-reddit-shreddit",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "old.reddit fetch"
+    ]
+  },
+  {
+    "name": "extractor-reddit-shreddit-offline",
+    "covers": [
+      "site extractor",
+      "Reddit",
+      "rendered comments"
+    ]
+  },
+  {
+    "name": "extractor-substack-markup",
+    "covers": [
+      "site extractor",
+      "Substack",
+      "rendered post"
+    ]
+  },
+  {
+    "name": "extractor-substack-note",
+    "covers": [
+      "site extractor",
+      "Substack",
+      "note with image"
+    ]
+  },
+  {
+    "name": "extractor-substack-preload",
+    "covers": [
+      "site extractor",
+      "Substack",
+      "preloaded body_html",
+      "byline date"
+    ]
+  },
+  {
+    "name": "extractor-threads-pagelet",
+    "covers": [
+      "site extractor",
+      "Threads",
+      "pagelets"
+    ]
+  },
+  {
+    "name": "extractor-threads-region",
+    "covers": [
+      "site extractor",
+      "Threads",
+      "server rendered region"
+    ]
+  },
+  {
+    "name": "extractor-twitter-single",
+    "covers": [
+      "site extractor",
+      "Twitter",
+      "single tweet"
+    ]
+  },
+  {
+    "name": "extractor-twitter-timeline",
+    "covers": [
+      "site extractor",
+      "Twitter",
+      "thread and replies"
+    ]
+  },
+  {
+    "name": "extractor-wikipedia",
+    "covers": [
+      "site extractor",
+      "Wikipedia",
+      "content selector"
+    ]
+  },
+  {
+    "name": "extractor-x-article",
+    "covers": [
+      "site extractor",
+      "X article"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-article",
+    "covers": [
+      "site extractor",
+      "X FxTwitter",
+      "article blocks"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-fallback",
+    "covers": [
+      "site extractor",
+      "X oEmbed fallback"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-name-only",
+    "covers": [
+      "site extractor",
+      "X oEmbed fallback",
+      "no author_url"
+    ]
+  },
+  {
+    "name": "extractor-x-oembed-tweet",
+    "covers": [
+      "site extractor",
+      "X FxTwitter",
+      "facets",
+      "emoji offsets"
+    ]
+  },
+  {
+    "name": "extractor-youtube-api",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "inline and InnerTube captions",
+      "chapters from next"
+    ]
+  },
+  {
+    "name": "extractor-youtube-dom",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "transcript from DOM",
+      "chapters from page data"
+    ]
+  },
+  {
+    "name": "extractor-youtube-mobile",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "mobile transcript",
+      "Shorts URL",
+      "Open Graph fallback"
+    ]
+  },
+  {
+    "name": "extractor-youtube-offline",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "all fetches fail",
+      "JSON-LD fallback"
+    ]
+  },
+  {
+    "name": "extractor-youtube-speakers",
+    "covers": [
+      "site extractor",
+      "YouTube",
+      "speaker turns",
+      "text caption format"
+    ]
+  },
+  {
+    "name": "footnotes-gutenberg",
+    "covers": [
+      "footnotes",
+      "Gutenberg-style notes",
+      "named anchors",
+      "generic id detection"
+    ]
+  },
+  {
+    "name": "footnotes-markdown-it",
+    "covers": [
+      "footnotes",
+      "Markdown-it footnotes",
+      "footnotes-list",
+      "backref"
+    ]
+  },
+  {
+    "name": "footnotes-sidenotes",
+    "covers": [
+      "footnotes",
+      "sidenotes",
+      "sidenote-container",
+      "sidenotes column"
+    ]
+  },
+  {
+    "name": "footnotes-substack",
+    "covers": [
+      "footnotes",
+      "Substack footnotes",
+      "FootnoteToDOM"
+    ]
+  },
+  {
+    "name": "footnotes-wikipedia",
+    "covers": [
+      "footnotes",
+      "Wikipedia references",
+      "cite_note",
+      "sup.reference"
+    ]
+  },
+  {
+    "name": "forum-thread",
+    "covers": [
+      "forum thread",
+      "nested lists",
+      "quote",
+      "buttons"
+    ]
+  },
+  {
+    "name": "gallery-figure",
+    "covers": [
+      "gallery",
+      "figure without caption",
+      "figure with empty caption"
+    ]
+  },
+  {
+    "name": "hidden-content",
+    "covers": [
+      "hidden content",
+      "display none",
+      "hidden attribute",
+      "aria-hidden",
+      "responsive show class"
+    ]
+  },
+  {
+    "name": "images-lazy-data-src",
+    "covers": [
+      "images",
+      "lazy data-src",
+      "data-srcset",
+      "placeholder"
+    ]
+  },
+  {
+    "name": "images-relative-urls",
+    "covers": [
+      "images",
+      "relative URLs",
+      "figure caption"
+    ]
+  },
+  {
+    "name": "images-srcset-sizes",
+    "covers": [
+      "images",
+      "picture",
+      "srcset",
+      "sizes"
+    ]
+  },
+  {
+    "name": "images-svg-tracking",
+    "covers": [
+      "images",
+      "SVG",
+      "figure without caption",
+      "tracking pixel"
+    ]
+  },
+  {
+    "name": "jsonld-only",
+    "covers": [
+      "page with only JSON-LD metadata",
+      "multiple authors",
+      "image array"
+    ]
+  },
+  {
+    "name": "long-read-images",
+    "covers": [
+      "lazy images",
+      "noscript fallback",
+      "picture and srcset",
+      "tracking pixel",
+      "svg image"
+    ]
+  },
+  {
+    "name": "malformed-html",
+    "covers": [
+      "malformed html",
+      "unclosed p and li",
+      "table without tbody",
+      "stray end tags",
+      "implied closes",
+      "</p> and </br> without opens"
+    ]
+  },
+  {
+    "name": "math-arxiv-equation-tables",
+    "covers": [
+      "math",
+      "arXiv ltx_equation",
+      "ltx_eqn_table",
+      "figure caption math",
+      "nested equations"
+    ]
+  },
+  {
+    "name": "math-katex",
+    "covers": [
+      "math",
+      "KaTeX with annotation",
+      "katex-display"
+    ]
+  },
+  {
+    "name": "math-latex-script",
+    "covers": [
+      "math",
+      "math/tex script",
+      "raw LaTeX delimiters",
+      "LaTeX image"
+    ]
+  },
+  {
+    "name": "math-mathjax-v2",
+    "covers": [
+      "math",
+      "MathJax v2",
+      "math/tex script"
+    ]
+  },
+  {
+    "name": "math-mathjax-v3",
+    "covers": [
+      "math",
+      "MathJax v3",
+      "assistive MathML",
+      "CHTML reconstruction"
+    ]
+  },
+  {
+    "name": "math-mathml",
+    "covers": [
+      "math",
+      "plain MathML",
+      "alttext",
+      "tagged equation"
+    ]
+  },
+  {
+    "name": "math-mathml-failures",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "invalid arity",
+      "xmldom recovery"
+    ]
+  },
+  {
+    "name": "math-mathml-structures",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "mtable",
+      "mfenced",
+      "scripts",
+      "roots"
+    ]
+  },
+  {
+    "name": "math-mathml-symbols",
+    "covers": [
+      "math",
+      "MathML to LaTeX",
+      "symbols",
+      "mathvariant",
+      "mtext"
+    ]
+  },
+  {
+    "name": "math-temml-aligned",
+    "covers": [
+      "math",
+      "temml",
+      "align",
+      "gather",
+      "multline",
+      "tag",
+      "label",
+      "display mode"
+    ]
+  },
+  {
+    "name": "math-temml-cd",
+    "covers": [
+      "math",
+      "temml",
+      "CD",
+      "column separators",
+      "arraycolsep"
+    ]
+  },
+  {
+    "name": "math-temml-enclose",
+    "covers": [
+      "math",
+      "temml",
+      "cancel",
+      "boxed",
+      "sout",
+      "colorbox",
+      "textcircled"
+    ]
+  },
+  {
+    "name": "math-temml-matrices",
+    "covers": [
+      "math",
+      "temml",
+      "matrix environments",
+      "array",
+      "cases",
+      "bordermatrix",
+      "smallmatrix"
+    ]
+  },
+  {
+    "name": "math-temml-unsupported",
+    "covers": [
+      "math",
+      "temml",
+      "untrusted",
+      "unknown environment",
+      "unbalanced",
+      "hline"
+    ]
+  },
+  {
+    "name": "math-wikipedia-mwe",
+    "covers": [
+      "math",
+      "Wikipedia mwe-math",
+      "fallback image"
+    ]
+  },
+  {
+    "name": "mixed-bidi",
+    "covers": [
+      "mixed bidi",
+      "emoji and ZWJ sequences",
+      "unicode spaces",
+      "combining marks"
+    ]
+  },
+  {
+    "name": "nested-tables",
+    "covers": [
+      "nested tables",
+      "colspan and rowspan",
+      "table caption and tfoot"
+    ]
+  },
+  {
+    "name": "news-sidebar",
+    "covers": [
+      "generic article",
+      "news layout",
+      "figure with caption",
+      "related links",
+      "ads"
+    ]
+  },
+  {
+    "name": "newsletter",
+    "covers": [
+      "newsletter page",
+      "layout table",
+      "nested tables",
+      "br"
+    ]
+  },
+  {
+    "name": "og-only",
+    "covers": [
+      "page with og: only metadata",
+      "no doctype",
+      "protocol-relative image"
+    ]
+  },
+  {
+    "name": "persian-windows-1256",
+    "covers": [
+      "RTL Persian",
+      "declared windows-1256 saved as UTF-8"
+    ]
+  },
+  {
+    "name": "product-page",
+    "covers": [
+      "product page",
+      "unclosed option",
+      "form controls",
+      "schema.org Product"
+    ]
+  },
+  {
+    "name": "recipe-schema",
+    "covers": [
+      "recipe with schema.org",
+      "JSON-LD array",
+      "microdata",
+      "onclick handler"
+    ]
+  },
+  {
+    "name": "relative-canonical",
+    "covers": [
+      "page with relative canonical",
+      "base href",
+      "relative urls"
+    ]
+  },
+  {
+    "name": "rtl-arabic",
+    "covers": [
+      "RTL Arabic",
+      "UTF-8",
+      "bidi marks"
+    ]
+  },
+  {
+    "name": "rtl-hebrew",
+    "covers": [
+      "RTL Hebrew",
+      "UTF-8"
+    ]
+  },
+  {
+    "name": "scripts-styles",
+    "covers": [
+      "scripts and styles",
+      "inline event handlers",
+      "textarea and title raw text",
+      "unterminated script",
+      "uppercase tags"
+    ]
+  },
+  {
+    "name": "svg-math",
+    "covers": [
+      "svg",
+      "foreignObject",
+      "mathml",
+      "template",
+      "self-closing in foreign content",
+      "custom element"
+    ]
+  },
+  {
+    "name": "tables-layout",
+    "covers": [
+      "tables",
+      "layout table",
+      "single cell"
+    ]
+  },
+  {
+    "name": "tables-simple",
+    "covers": [
+      "tables",
+      "caption",
+      "pipe in cell"
+    ]
+  },
+  {
+    "name": "tables-spans",
+    "covers": [
+      "tables",
+      "rowspan",
+      "colspan",
+      "line break in cell"
+    ]
+  },
+  {
+    "name": "tiny-page",
+    "covers": [
+      "tiny page under 50 words",
+      "both retry paths"
+    ]
+  },
+  {
+    "name": "truncated-closing",
+    "covers": [
+      "truncated in a closing tag"
+    ]
+  },
+  {
+    "name": "truncated-eof",
+    "covers": [
+      "truncated at EOF",
+      "unfinished attribute"
+    ]
+  },
+  {
+    "name": "truncated-slash",
+    "covers": [
+      "truncated after tag name and slash",
+      "slice(-1) text"
+    ]
+  }
+]

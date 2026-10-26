@@ -10,7 +10,8 @@
  * coverage is a red build rather than a quiet diff:
  *
  *  1. case counts per file and per op;
- *  2. the coverage list: every frontmatter rule of protocol 12.4 has a case;
+ *  2. the coverage lists: every frontmatter rule of protocol 12.4 has a case, and
+ *     every grammar rule of 12.6 to 12.8 has a positive and a negative note;
  *  3. the SHA-256 of every committed file (`vectors:digest`-style: update the
  *     constant in the same change that regenerates the file).
  */
@@ -40,7 +41,38 @@ const DIGESTS: Record<string, string> = {
     '1641fc52c860c385dde2d0a54145880e6f6edef84f92e494621563a47ea0744f',
   'markdown-convert/pm-schema.json':
     '5e524687c59e0e435db25c72248be9723b11fe3721602a6d65027f11de801836',
-  'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb'
+  'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb',
+  'markdown-convert/md-to-html.json':
+    '816cfb5da51485e40e08780863ff38e7a682cb25965204c529a2f3df833b3605',
+  'markdown-convert/html-to-blocks.json':
+    '37bf20a7918d2d044def932431fee277e2b2c597a716781ea8b2c5558203947a',
+  'markdown-convert/parse.json': '0f4003e2d32f27cd1e839c0e652a21a3650bb2010bd37f7d9112eab789db4d0a',
+  'markdown-convert/memry-parse.json':
+    'bbd0c7d816af1a5af80553a3c2561b97ee4c4fdacfb2dd668deb0aa80a5e1f09',
+  'markdown-convert/serialize.json':
+    'b89250832f0599bb53852880897504e37fe3c52a25b2c357f39a9ce95fca57c7',
+  'markdown-convert/layer-text.json':
+    'b744daa9b37d3c8453fff565d7e48ff1b097ce05fb06bef33974b48954e90ce1',
+  'markdown-convert/layer-markers.json':
+    '92a83da5c6e6b698e8014d2da5c8e302987e06dfba35cf9e7e9925e6211e5396',
+  'markdown-convert/layer-blocks.json':
+    '2b4b5848352528f4e4ee885e0f793bd3df84854410c2b3242061afa05873b9f6',
+  'markdown-convert/layer-critic.json':
+    'ec32ce283c197c9c0091c804e69cb4e31eda5655971ac7b0cadf4801dfde0b79',
+  'markdown-convert/grammar-corpus.json':
+    'ddb8b07bfd6973c7b3e57f7260842246f09da783bd2f69b9945f2bc0fd7f77bc',
+  'markdown-convert/seed-corpus.json':
+    'bbd5a8ffc5a6e114e1d6ea4a380b4223d926225a134a4c0ac047dc4d52f0d4cd',
+  'markdown-convert/seed-doc.json':
+    'e10844e1cff0d323f5b8d19ae0b2c37e1f05fe2a0a785ad980524b2a9f4b3b3b',
+  'markdown-convert/roundtrip.json':
+    '7f5a95f0a4ccab2687e1fc86a4def42cf68a97c40273f8d8d178f920fbf6ed3a',
+  'markdown-convert/blocks.json':
+    '96fe1f186e4d267df874ae97e6649c20ec3531e50214a36278ce14669db7fafd',
+  'markdown-convert/serialize-doc.json':
+    '9d0527a32c2004c8e24b757654f9a91f925034a87450443d080cf2cfb203971a',
+  'markdown-convert/replace-body.json':
+    '390ab5b912181900f9651c3cfd1c12703e656d675b05e0e517e1c898a2197db2'
 }
 
 const OPS_PER_FILE: Record<string, Record<string, number>> = {
@@ -54,7 +86,23 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   },
   'markdown-convert/markdown-class.json': { classify: 23 },
   'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
-  'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 }
+  'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 },
+  'markdown-convert/md-to-html.json': { 'md-to-html': 833 },
+  'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 216 },
+  'markdown-convert/parse.json': { 'bn-parse': 833 },
+  'markdown-convert/memry-parse.json': { 'memry-parse': 736 },
+  'markdown-convert/serialize.json': { 'serialize-blocks': 189, 'serialize-seed': 736 },
+  'markdown-convert/layer-text.json': { fn: 13066 },
+  'markdown-convert/layer-markers.json': { fn: 3243 },
+  'markdown-convert/layer-blocks.json': { fn: 5116 },
+  'markdown-convert/layer-critic.json': { fn: 2944 },
+  'markdown-convert/grammar-corpus.json': { 'corpus-note': 454 },
+  'markdown-convert/seed-corpus.json': { 'corpus-note': 250 },
+  'markdown-convert/seed-doc.json': { 'doc-seed': 751 },
+  'markdown-convert/roundtrip.json': { 'doc-serialize': 751 },
+  'markdown-convert/blocks.json': { 'doc-blocks': 812 },
+  'markdown-convert/serialize-doc.json': { 'doc-serialize': 504, 'doc-repair-ids': 1 },
+  'markdown-convert/replace-body.json': { 'doc-replace': 44 }
 }
 
 function opCounts(file: VectorFile): Record<string, number> {
@@ -76,7 +124,7 @@ describe('markdown-convert class', () => {
       const ids = file.cases.map((entry) => entry.id)
       expect(new Set(ids).size).toBe(ids.length)
       for (const entry of file.cases) {
-        expect(entry.id).toMatch(/^[a-z-]+\/[a-z-]+\/[a-z0-9-]+$/)
+        expect(entry.id).toMatch(/^[a-z-]+\/[a-z-]+\/[a-z0-9.-]+$/)
         expect(['ok', 'error']).toContain(entry.expected.status)
       }
     })
@@ -149,6 +197,62 @@ describe('markdown-convert class', () => {
     it('reads every note-blocks document', () => {
       const reads = file.cases.filter((entry) => entry.id.startsWith('yxml/read/note-blocks-'))
       expect(reads).toHaveLength(35)
+    })
+  })
+  describe('grammar coverage (protocol 12.6 to 12.8)', () => {
+    const file = loadVectorFile<VectorFile>('markdown-convert/grammar-corpus.json')
+    const read = (path: string): string =>
+      readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
+    // The protocol is the source of the rule ids: its index table (12.8.1), not
+    // the generator's list.
+    const chapter = read('../../docs/protocol/12-note-body-format.md')
+    const index = chapter.slice(
+      chapter.indexOf('### 12.8.1 Rule index of the conformance corpus'),
+      chapter.indexOf('\n## 12.9')
+    )
+    const rules = [...index.matchAll(/^\| `([a-z0-9-]+)`\s+\| §(12\.[678])\s+\|/gm)].map((m) => ({
+      id: m[1],
+      section: m[2]
+    }))
+    const manifest = JSON.parse(read('test-vectors/markdown-convert/corpus/manifest.json')) as {
+      id: string
+      section: string
+    }[]
+    const bodies = new Map(file.cases.map((entry) => [entry.id, entry.input.markdown]))
+    const corpusFile = (name: string): string =>
+      read(`test-vectors/markdown-convert/corpus/${name}`)
+
+    it('indexes at least 200 rules, so at least 400 notes, in the three sections', () => {
+      expect(rules.length).toBeGreaterThanOrEqual(200)
+      expect(new Set(rules.map((rule) => rule.section))).toEqual(new Set(['12.6', '12.7', '12.8']))
+      expect(new Set(rules.map((rule) => rule.id)).size).toBe(rules.length)
+    })
+
+    it('has a positive and a negative note for every rule of the protocol index', () => {
+      const problems: string[] = []
+      for (const { id } of rules) {
+        for (const kind of ['pos', 'neg']) {
+          const body = bodies.get(`grammar-corpus/corpus-note/${id}.${kind}`)
+          if (body === undefined) problems.push(`${id}.${kind}: no case`)
+          else if (body !== corpusFile(`${id}.${kind}.md`))
+            problems.push(`${id}.${kind}: file differs`)
+        }
+      }
+      expect(problems).toEqual([])
+    })
+
+    it('has no note and no manifest entry for a rule the protocol does not index', () => {
+      expect(manifest).toEqual(rules)
+      expect(file.cases).toHaveLength(rules.length * 2)
+    })
+
+    it('has a negative note that differs from its positive one', () => {
+      const same = rules.filter(
+        ({ id }) =>
+          bodies.get(`grammar-corpus/corpus-note/${id}.pos`) ===
+          bodies.get(`grammar-corpus/corpus-note/${id}.neg`)
+      )
+      expect(same).toEqual([])
     })
   })
 })

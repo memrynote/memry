@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { IndexRecoveredEvent } from '../../../preload/index.d'
 import { useIndexRecoveryNotice } from './use-index-recovery-notice'
@@ -49,10 +49,12 @@ describe('useIndexRecoveryNotice', () => {
     expect(toastFn).not.toHaveBeenCalled()
   })
 
-  it('unsubscribes on unmount', () => {
+  it('unsubscribes on unmount', async () => {
     const { unmount } = renderHook(() => useIndexRecoveryNotice())
+    // A Tauri subscription registers asynchronously; the unlisten follows once it has.
+    await waitFor(() => expect(recoveredCb).not.toBeNull())
     unmount()
 
-    expect(unsubscribe).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(unsubscribe).toHaveBeenCalledTimes(1))
   })
 })

@@ -153,7 +153,10 @@ describe('useVault', () => {
   it('stores and clears index recovery info after the timeout', async () => {
     vi.useFakeTimers()
     const api = vaultApi()
-    let recoveredHandler: (event: { recovered: number }) => void = () => {}
+    // The Tauri event carries `reason` (`missing` or `corrupt`) and the core's `detail`; the
+    // service maps it to the contract's `IndexRecoveredEvent`.
+    type Wire = { reason: string; detail: string }
+    let recoveredHandler: (event: Wire) => void = () => {}
     api.onVaultIndexRecovered.mockImplementation((handler) => {
       recoveredHandler = handler
       return () => {}
@@ -162,13 +165,13 @@ describe('useVault', () => {
     const { result } = renderHook(() => useVault())
     await waitFor(() => expect(result.current.isLoading).toBe(false))
 
-    act(() => recoveredHandler({ recovered: 3 }))
-    expect(result.current.recoveryInfo).toEqual({ recovered: 3 })
+    act(() => recoveredHandler({ reason: 'corrupt', detail: 'integrity check failed' }))
+    expect(result.current.recoveryInfo).toEqual({ reason: 'corrupt', filesIndexed: 0, duration: 0 })
 
     act(() => result.current.clearRecoveryInfo())
     expect(result.current.recoveryInfo).toBeNull()
 
-    act(() => recoveredHandler({ recovered: 5 }))
+    act(() => recoveredHandler({ reason: 'corrupt', detail: 'again' }))
     await act(async () => {
       await vi.advanceTimersByTimeAsync(10000)
     })

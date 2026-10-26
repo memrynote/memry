@@ -18,7 +18,7 @@ impl Tasks {
     /// The task's tag field groups, in desktop's drawer order, each field
     /// holding the task's value. Empty for a task this vault does not hold.
     pub fn tag_fields(&self, id: String) -> Result<Vec<TagFieldGroup>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let Some(task) = task_records::get(conn, &id)? else {
                 return Ok(Vec::new());
             };

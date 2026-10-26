@@ -18,6 +18,8 @@
     "dev:mobile:device": "bash scripts/dev-mobile-device.sh",
     "dev:emails": "pnpm --filter @memry/marketing-emails dev",
     "staging": "MEMRY_ENV=staging pnpm --filter @memry/desktop dev:staging",
+    "staging:tauri": "pnpm --filter @memry/desktop-tauri dev:staging",
+    "staging:tauri:debug": "pnpm --filter @memry/desktop-tauri dev:staging:debug",
     "deploy:sync:staging": "pnpm --filter @memry/sync-server deploy:staging",
     "deploy:sync:production": "pnpm --filter @memry/sync-server deploy:production",
     "docs:dev": "pnpm --filter @memry/docs dev",

@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://example.org/data/prices","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://example.org/data/prices","mode":"article","contentMarkdown":"Tables carry data that the converter must keep aligned, so this paragraph supplies enough words for the extractor to treat the page as an article rather than boilerplate.\n\n| Item | Price |\n| --- | --- |\n| Tea | 3 \\| 4 |\n| Coffee | **5** |\n\nAfter the table.","excerpt":"Tables carry data that the converter must keep aligned, so this paragraph supplies enough words for the extractor to treat the page as an article rather than boilerplate.\n\n| Item | Price |\n| --- | ---","extractionStatus":"partial","properties":{"title":"Price list","source":"https://example.org/data/prices","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Price list","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":40,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

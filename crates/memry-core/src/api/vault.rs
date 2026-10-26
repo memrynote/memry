@@ -50,7 +50,7 @@ use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
 use crate::seams::secure_store::SecureStore;
-use crate::storage::{Db, open_data};
+use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 
 /// One vault's local database, opened.
 ///
@@ -70,11 +70,41 @@ pub struct Vault {
 }
 
 impl Vault {
+    /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
+    ///
+    /// Desktop's session opens with `verify_integrity: true` because it also offers the
+    /// recovery that a `Corrupt` result needs; iOS keeps the default open. The vault's id is
+    /// the one stored in `meta.vault.id` (minted on first open, see
+    /// [`crate::storage::vault_identity`]), not a caller-supplied label, so it does not
+    /// change when the folder moves.
+    pub fn open_with(directory: String, options: OpenOptions) -> Result<Self, StorageError> {
+        let db = open_data_with(&PathBuf::from(&directory).join("data.db"), options)?;
+        let id = db.call_blocking(crate::storage::vault_identity::resolve)?;
+        Ok(Self { id, db, directory })
+    }
+
+    /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
+    /// was reused or migrated in place). Not on the FFI surface.
+    pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
+        let (search, reason) = Search::over_reporting(self.db.clone(), &self.directory)?;
+        Ok((Arc::new(search), reason))
+    }
+
     /// The database handle, for integration tests that seed a peer's records
     /// through the real apply path. Not on the FFI surface.
     #[doc(hidden)]
     pub fn db_handle(&self) -> Db {
         self.db.clone()
+    }
+
+    /// Every settings group of this vault, local and synced (desktop Step 09).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn app_settings(
+        &self,
+        store: Arc<dyn SecureStore>,
+    ) -> Result<crate::domain::app_settings::AppSettings, AuthError> {
+        crate::domain::app_settings::AppSettings::over(self.db.clone(), &store)
     }
 }
 

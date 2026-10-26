@@ -3,7 +3,15 @@
 
 pub mod command_failure;
 pub mod e2e;
+pub mod electron_import;
+pub mod error;
 pub mod http;
+pub mod i18n;
 pub mod launch_env;
+pub mod launch_timeline;
 pub mod logging;
 pub mod paths;
+pub mod redact;
+pub mod registry;
+pub mod session;
+pub mod web;

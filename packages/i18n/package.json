@@ -15,7 +15,9 @@
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "node ../../scripts/typecheck.mjs"
+    "typecheck": "node ../../scripts/typecheck.mjs",
+    "vectors:generate": "tsx scripts/gen-i18n-vectors.ts",
+    "vectors:check": "tsx scripts/gen-i18n-vectors.ts --check"
   },
   "devDependencies": {
     "@memry/typescript-config": "workspace:*",

@@ -1,0 +1,2 @@
+> [!abstract]
+> body of abstract

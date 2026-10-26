@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://www.reddit.com/r/rust/comments/abc/why_rust/","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<article data-defuddle=\"\">\n\t\t\t<div class=\"reddit post\">\n\t\t\t\t<div class=\"post-content\">\n\t\t\t\t\t<p>Short body.</p>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t\t\n\t\t</article>",
+  "markdown": "Short body.",
+  "raw": {"title":"Why Rust?","author":"alice","published":"","description":"Short body.","image":"","site":"r/rust","language":"en","wordCount":2},
+  "expected": {"url":"https://www.reddit.com/r/rust/comments/abc/why_rust/","mode":"article","contentMarkdown":"Short body.","excerpt":"Short body.","extractionStatus":"partial","properties":{"title":"Why Rust?","source":"https://www.reddit.com/r/rust/comments/abc/why_rust/","created":"2025-03-04T05:06:07.000Z","author":"alice","description":"Short body."},"tags":["clippings"]}
+}

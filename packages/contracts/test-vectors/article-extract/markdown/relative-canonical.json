@@ -1,0 +1,4 @@
+{
+  "html": "<article> <p>See <a href=\"../x/y.html\">a sibling</a>, <a href=\"/root.html\">the root</a>, <a href=\"//cdn.example.com/z\">a protocol-relative link</a>, <a href=\"#frag\">a fragment</a> and <a href=\"mailto:me@example.com\">an address</a>.</p> <img src=\"img/p.png\" alt=\"relative image\"> <img src=\"/img/q.png\" alt=\"rooted image\"></article>",
+  "markdown": "See [a sibling](../x/y.html), [the root](/root.html), [a protocol-relative link](//cdn.example.com/z), [a fragment](#frag) and [an address](mailto:me@example.com).\n\n![relative image](img/p.png) ![rooted image](/img/q.png)"
+}

@@ -1,0 +1,4 @@
+{
+  "html": "<body> <div>   <img src=\"/images/cake.jpg\" alt=\"Sliced lemon cake\"> <H2>Ingredients</H2> <ul><li>3 eggs</li> <li>200 g sugar</li> <li>120 ml olive oil</li> <li>zest of 2 lemons</li> <li>220 g flour</li></ul> <H2>Method</H2> <ol><li>Whisk eggs and sugar until pale.</li><li>Fold in oil, zest and flour.</li><li>Bake at 170°C for 45 minutes.</li></ol> <p>Tip: the cake tastes better the next day.</p> </div>  </body>",
+  "markdown": "![Sliced lemon cake](/images/cake.jpg)\n\n## Ingredients\n\n- 3 eggs\n- 200 g sugar\n- 120 ml olive oil\n- zest of 2 lemons\n- 220 g flour\n\n## Method\n\n1. Whisk eggs and sugar until pale.\n2. Fold in oil, zest and flour.\n3. Bake at 170°C for 45 minutes.\n\nTip: the cake tastes better the next day."
+}

@@ -6,10 +6,14 @@
 mod app;
 mod clipboard;
 pub mod commands;
+mod debug;
+mod dialog;
+mod reveal;
 mod window;
 
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::e2e::control::{self, ControlError};
+use memry_desktop::e2e::dialog_queue::DialogQueue;
 use memry_desktop::launch_env::LaunchEnv;
 use tauri::ipc::Invoke;
 use tauri::{AppHandle, Builder, Manager, Runtime, Wry};
@@ -38,6 +42,11 @@ pub fn install<R: Runtime>(builder: Builder<R>, gate: E2eGate) -> Builder<R> {
     builder
         .plugin(tauri_plugin_wdio::init())
         .plugin(tauri_plugin_wdio_webdriver::init())
+}
+
+/// `vault_reveal` under an open gate: records the path and reports `true`.
+pub fn record_reveal<R: Runtime>(app: &AppHandle<R>, path: &str) -> bool {
+    reveal::record(app, path)
 }
 
 pub fn disabled() -> CommandError {
@@ -71,6 +80,22 @@ pub fn dispatcher<R: Runtime>(
 /// is written before logging exists, so this one is what the no-driver smoke looks for.
 pub fn register_stages() {
     startup::register(Stage::Plugins, "e2e driver", log_driver);
+    startup::register(Stage::Plugins, "e2e dialog queue", manage_dialog_queue);
+}
+
+/// The dialog queue and the reveal log exist only with an open gate; `shell/dialogs.rs` and
+/// `vault_reveal` consult them when they do.
+fn manage_dialog_queue(app: &AppHandle<Wry>) -> Result<(), CommandError> {
+    let env = app.state::<LaunchEnv>();
+    if !E2eGate::from_env(&env).is_open() {
+        return Ok(());
+    }
+    let queue = DialogQueue::from_env(&env).map_err(|error| {
+        CommandError::new(ErrorKind::Invalid, "e2e_dialog_queue", error.to_string())
+    })?;
+    app.manage(std::sync::Arc::new(queue));
+    app.manage(reveal::RevealLog::default());
+    Ok(())
 }
 
 fn log_driver(app: &AppHandle<Wry>) -> Result<(), CommandError> {

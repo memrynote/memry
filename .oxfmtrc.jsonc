@@ -13,6 +13,12 @@
     "build",
     "coverage",
     "pnpm-lock.yaml",
+    // Profiles captured from real Electron installs, read by byte (electron_import tests).
+    "crates/memry-desktop/tests/fixtures/electron/**",
+
+    // Grammar corpus notes of the markdown converter: their bytes are the test input.
+    "packages/contracts/test-vectors/markdown-convert/corpus/**",
+
     // Golden files for the i18n codemod tests, compared byte for byte.
     "apps/desktop/scripts/i18n/fixtures/**",
     "package-lock.json",
@@ -51,6 +57,12 @@
     "packages/contracts/test-vectors/*.json",
     "packages/contracts/test-vectors/markdown-roundtrip/*.json",
     "packages/contracts/test-vectors/markdown-convert/*.json",
+    "packages/contracts/test-vectors/article-extract/",
+    "crates/memry-desktop/src/web/extract/elements/math/mathml/tables.json",
+    "crates/memry-desktop/src/web/extract/elements/math/temml/tables.json",
+
+    // Saved pages of the article-extraction corpus, parsed byte for byte by the Rust tests.
+    "crates/memry-desktop/tests/fixtures/article-extract/",
 
     // Generated minified bundle (scripts/generate-ios-article-extract.mjs); a formatter
     // reflows 1.2 MB of minified JS into 27k lines with trailing whitespace.

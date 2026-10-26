@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Craft is patience.</p><p>The page already has the rendered post body, so no injection happens.</p></body>",
+  "markdown": "Craft is patience.\n\nThe page already has the rendered post body, so no injection happens."
+}

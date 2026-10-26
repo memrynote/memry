@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://example.com/code/scripts","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<body> <p>handlers</p> <p>Text before. Text after.</p>  <title>title in body</title>  <iframe src=\"https://example.com/frame\"></iframe>   </body>",
+  "markdown": "handlers\n\nText before. Text after.\n\ntitle in body<iframe src=\"https://example.com/frame\"></iframe>",
+  "raw": {"title":"Scripts & styles","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":8},
+  "expected": {"url":"https://example.com/code/scripts","mode":"article","contentMarkdown":"handlers\n\nText before. Text after.\n\ntitle in body<iframe src=\"https://example.com/frame\"></iframe>","excerpt":"handlers\n\nText before. Text after.\n\ntitle in body<iframe src=\"https://example.com/frame\"></iframe>","extractionStatus":"partial","properties":{"title":"Scripts & styles","source":"https://example.com/code/scripts","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

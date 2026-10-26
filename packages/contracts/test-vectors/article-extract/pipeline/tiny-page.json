@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://example.com/notes/hello","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<body><p>Just a few words here.</p></body>",
+  "markdown": "Just a few words here.",
+  "raw": {"title":"Hello","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":5},
+  "expected": {"url":"https://example.com/notes/hello","mode":"article","contentMarkdown":"Just a few words here.","excerpt":"Just a few words here.","extractionStatus":"partial","properties":{"title":"Hello","source":"https://example.com/notes/hello","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

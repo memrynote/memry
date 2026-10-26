@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Ends with a slash after a tag name</p> /</body>",
+  "markdown": "Ends with a slash after a tag name\n\n/"
+}

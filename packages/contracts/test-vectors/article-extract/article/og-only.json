@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://example.com/share/7","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://example.com/share/7","mode":"article","contentMarkdown":"The body is plain and carries no title of its own, so the title comes from the og tag. It has two sentences. Here is the second one.","excerpt":"Only og: tags describe this page.","extractionStatus":"partial","properties":{"title":"Open Graph & friends","source":"https://example.com/share/7","created":"2025-03-04T05:06:07.000Z","author":"Ola Nordmann","published":"2021-12-24","description":"Only og: tags describe this page."},"tags":["clippings"],"heroImage":"//cdn.example.com/og.png"},
+  "raw": {"title":"Open Graph & friends","author":"Ola Nordmann","published":"2021-12-24","description":"Only og: tags describe this page.","image":"//cdn.example.com/og.png","site":"Example","language":"","wordCount":28,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

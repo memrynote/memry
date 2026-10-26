@@ -1,0 +1,2 @@
+> [!warning]
+> body of warning

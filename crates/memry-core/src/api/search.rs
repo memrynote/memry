@@ -117,11 +117,30 @@ impl Search {
     /// Built by [`crate::api::vault::Vault::search`], which holds the data
     /// handle and knows the directory the index belongs beside.
     pub(crate) fn over(data: Db, directory: &str) -> Result<Self, StorageError> {
+        Self::over_reporting(data, directory).map(|(search, _)| search)
+    }
+
+    /// [`Search::over`] plus the reason `index.db` was rebuilt, when it was.
+    pub(crate) fn over_reporting(
+        data: Db,
+        directory: &str,
+    ) -> Result<(Self, Option<String>), StorageError> {
         let opened = open_index(&PathBuf::from(directory).join("index.db"))?;
-        Ok(Self {
-            data,
-            index: opened.db,
-        })
+        Ok((
+            Self {
+                data,
+                index: opened.db,
+            },
+            opened.rebuild_reason,
+        ))
+    }
+}
+
+impl Search {
+    /// The `index.db` handle, for the desktop e2e debug query. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn index_handle(&self) -> Db {
+        self.index.clone()
     }
 }
 
@@ -145,7 +164,7 @@ impl Search {
         order: BacklinkOrder,
     ) -> Result<Vec<Backlink>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
+        self.data.read_blocking(move |data| {
             let note: Option<(String, Option<String>)> = data
                 .query_row(
                     "SELECT title, folder_path FROM notes WHERE id = ?1 AND deleted_at IS NULL",
@@ -167,7 +186,7 @@ impl Search {
                         what: error.to_string(),
                     })?;
 
-            let sources: Vec<(String, String)> = index.call_blocking(|index| {
+            let sources: Vec<(String, String)> = index.read_blocking(|index| {
                 let mut statement = index
                     .prepare(
                         "SELECT source_id, target_title FROM note_links \
@@ -258,8 +277,8 @@ impl Search {
         order: BacklinkOrder,
     ) -> Result<Vec<BacklinkRow>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| links::backlinks(data, index, &target_id, order))
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| links::backlinks(data, index, &target_id, order))
         })
     }
 
@@ -267,8 +286,8 @@ impl Search {
     /// journal day, or nothing (a broken link).
     pub fn links_from(&self, source_id: String) -> Result<Vec<OutgoingLink>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| links::outgoing_links(data, index, &source_id))
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| links::outgoing_links(data, index, &source_id))
         })
     }
 
@@ -280,8 +299,8 @@ impl Search {
         target_id: String,
     ) -> Result<Vec<UnlinkedMention>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
                 unlinked_mentions::unlinked_mentions(data, index, &target_id)
             })
         })
@@ -294,8 +313,15 @@ impl Search {
     pub fn notes(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
         let index = self.index.clone();
         let limit = limit as usize;
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
+        // Two pooled readers, so two snapshots: one of `data.db` and one of
+        // `index.db`, each the last commit when its reader started the call. A
+        // write landing between them can show a hit whose note was just edited
+        // or deleted; the next search sees both sides. `index.db` is derived and
+        // trails `data.db` by design (a reindex moves it forward), so the ranking
+        // was never a single-snapshot promise. A caller that needs one view
+        // routes through the writer, as the pre-pool code did.
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
                 Ok(search::search_notes(data, index, &query, limit)?
                     .into_iter()
                     .map(SearchResult::from)
@@ -312,8 +338,8 @@ impl Search {
     pub fn tasks(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
         let index = self.index.clone();
         let limit = limit as usize;
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
                 Ok(search::search_tasks(data, index, &query, limit)?
                     .into_iter()
                     .map(SearchResult::from)

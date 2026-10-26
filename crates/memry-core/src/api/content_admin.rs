@@ -60,7 +60,7 @@ impl Tasks {
     // ---- tags ---------------------------------------------------------------
 
     pub fn tag_list(&self) -> Result<Vec<TagItem>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(tag_admin::list(conn)?
                 .into_iter()
                 .map(|t| TagItem {
@@ -110,7 +110,7 @@ impl Tasks {
     // ---- properties ---------------------------------------------------------
 
     pub fn property_definitions(&self) -> Result<Vec<PropertyDefinitionItem>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(property_admin::list(conn)?
                 .into_iter()
                 .map(|p| PropertyDefinitionItem {
@@ -216,7 +216,7 @@ impl Tasks {
     // ---- templates ----------------------------------------------------------
 
     pub fn template_list(&self) -> Result<Vec<TemplateItem>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(template_admin::list(conn)?
                 .into_iter()
                 .map(|t| TemplateItem {

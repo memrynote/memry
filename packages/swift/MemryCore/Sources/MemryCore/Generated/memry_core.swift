@@ -30021,8 +30021,8 @@ enum StorageError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
      */
     case MissingFts5
     /**
-     * `index.db` is missing, corrupt, or at an unexpected version. Not fatal:
-     * the file is deleted and rebuilt from `data.db`, which is the whole
+     * `index.db` is missing, damaged, or written by a newer build. Not fatal:
+     * the file is set aside and rebuilt from `data.db`, which is the whole
      * reason the index lives in its own file (data-model §A.0).
      */
     case IndexRebuildRequired(what: String
@@ -30044,6 +30044,22 @@ enum StorageError: Swift.Error, Equatable, Hashable, Foundation.LocalizedError {
      * for the log, not for the user.
      */
     case Invalid(what: String
+    )
+    /**
+     * The file at `path` is not a readable SQLite database, or `quick_check`
+     * found damage. The file's contents were not changed. The shell offers
+     * recovery, which
+     * quarantines the file and salvages its rows (`storage::recovery`).
+     */
+    case Corrupt(path: String
+    )
+    /**
+     * The file at `path` was written by the Electron app's drizzle schema,
+     * which shares table names with the core's and not their columns. Opening
+     * it would run `IF NOT EXISTS` migrations over it and produce a broken
+     * hybrid, so the core refuses and leaves the file untouched.
+     */
+    case ForeignSchema(path: String
     )
 
     
@@ -30096,6 +30112,12 @@ public struct FfiConverterTypeStorageError: FfiConverterRustBuffer {
         case 8: return .Invalid(
             what: try FfiConverterString.read(from: &buf)
             )
+        case 9: return .Corrupt(
+            path: try FfiConverterString.read(from: &buf)
+            )
+        case 10: return .ForeignSchema(
+            path: try FfiConverterString.read(from: &buf)
+            )
 
          default: throw UniffiInternalError.unexpectedEnumCase
         }
@@ -30146,6 +30168,16 @@ public struct FfiConverterTypeStorageError: FfiConverterRustBuffer {
         case let .Invalid(what):
             writeInt(&buf, Int32(8))
             FfiConverterString.write(what, into: &buf)
+            
+        
+        case let .Corrupt(path):
+            writeInt(&buf, Int32(9))
+            FfiConverterString.write(path, into: &buf)
+            
+        
+        case let .ForeignSchema(path):
+            writeInt(&buf, Int32(10))
+            FfiConverterString.write(path, into: &buf)
             
         }
     }

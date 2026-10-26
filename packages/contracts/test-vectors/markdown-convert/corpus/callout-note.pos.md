@@ -1,0 +1,2 @@
+> [!note]
+> body of note

@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://gemini.google.com/app/778","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<div class=\"conversation-container\"><user-query><div class=\"query-text\">Sources?</div></user-query><model-response><div class=\"model-response-text\"><div class=\"markdown\"><p>See sources.</p></div></div></model-response></div><browse-item><a href=\"https://example.com/s\"><span class=\"domain\">example.com</span><span class=\"title\">S</span></a></browse-item>",
+  "markdown": "Sources?\n\nSee sources.\n\n[example.comS](https://example.com/s)",
+  "raw": {"title":"Gemini","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":5},
+  "expected": {"url":"https://gemini.google.com/app/778","mode":"article","contentMarkdown":"Sources?\n\nSee sources.\n\n[example.comS](https://example.com/s)","excerpt":"Sources?\n\nSee sources.\n\n[example.comS](https://example.com/s)","extractionStatus":"partial","properties":{"title":"Gemini","source":"https://gemini.google.com/app/778","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://he.example.com/posts/7","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://he.example.com/posts/7","mode":"article","contentMarkdown":"כל כמה שנים פלטפורמה חדשה מבטיחה להחליף עשרה כלים בכלי אחד. זה כמעט אף פעם לא קורה. הכלים ששורדים הם אלה שעושים דבר אחד היטב.\n\n> עשה דבר אחד, והשלם אותו.\n\nראו גם [הקישור](https://example.org/%D7%90) ו־ *הדגשה*.","excerpt":"כל כמה שנים פלטפורמה חדשה מבטיחה להחליף עשרה כלים בכלי אחד. זה כמעט אף פעם לא קורה. הכלים ששורדים הם אלה שעושים דבר אחד היטב.\n\n> עשה דבר אחד, והשלם אותו.\n\nראו גם [הקישור](https://example.org/%D7%90) ו","extractionStatus":"partial","properties":{"title":"כלים קטנים מנצחים","source":"https://he.example.com/posts/7","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"כלים קטנים מנצחים","author":"","published":"","description":"","image":"","site":"","language":"he","wordCount":36,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

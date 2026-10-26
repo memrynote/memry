@@ -1,0 +1,2 @@
+<!-- colors:{"textColor":"red"} -->
+text

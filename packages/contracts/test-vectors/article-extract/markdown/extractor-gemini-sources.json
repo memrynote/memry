@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Sources?</p><p>See sources.</p><p><a href=\"https://example.com/s\">example.comS</a></p></body>",
+  "markdown": "Sources?\n\nSee sources.\n\n[example.comS](https://example.com/s)"
+}

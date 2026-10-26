@@ -1,0 +1,4 @@
+{
+  "url": "https://example.com/share/7",
+  "variants": {"direct":{"input":{"url":"https://example.com/share/7","title":"Open Graph & friends","description":"Only og: tags describe this page.","hasPublishedOrAuthor":true,"options":{},"smallImages":[],"mainPath":[0,1,0],"variant":"direct"},"steps":{"footnotes":null,"callouts":null,"standardize":null}},"pipeline":{"input":{"url":"https://example.com/share/7","title":"Open Graph & friends","description":"Only og: tags describe this page.","hasPublishedOrAuthor":true,"options":{},"smallImages":[],"mainPath":[0,1,0],"variant":"pipeline"},"steps":{"metadataBlock":null,"footnotes":null,"callouts":null,"smallImages":null,"hidden":null,"eyebrow":null,"selectors":null,"lowScoring":null,"contentPatterns":null,"standardize":null}}}
+}

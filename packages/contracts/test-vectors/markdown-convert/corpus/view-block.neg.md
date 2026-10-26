@@ -1,0 +1,3 @@
+```memry-views
+{"query":"x"}
+```

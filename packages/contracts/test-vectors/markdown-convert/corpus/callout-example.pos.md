@@ -1,0 +1,2 @@
+> [!example]
+> body of example

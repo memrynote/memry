@@ -9,3 +9,18 @@ apps/ios/Memry/Resources/BlockRender.bundle/vendor/** -diff -merge -whitespace l
 # The iOS whiteboard editor, desktop's Excalidraw bundled with its fonts
 # (apps/ios/scripts/generate-whiteboard.mjs). Rebuilt, never hand-merged.
 apps/ios/Memry/Resources/Whiteboard.bundle/** -diff -merge -whitespace linguist-generated
+
+# Patches carry context lines that are a single space.
+docs/agents/skill-patches/*.patch -whitespace
+
+# Article-extraction corpus (Step 26): saved pages, byte for byte. Line endings, trailing
+# whitespace and truncated endings are part of what the parser is tested on.
+crates/memry-desktop/tests/fixtures/article-extract/** -text -whitespace
+# Conformance vectors generated from linkedom and Defuddle (packages/article-extract).
+packages/contracts/test-vectors/article-extract/** linguist-generated
+
+# Captured Electron profiles are read byte for byte (md5 checksums, LevelDB CURRENT); no EOL conversion.
+crates/memry-desktop/tests/fixtures/electron/** -text -whitespace
+# Notes of the markdown converter's grammar corpus: their bytes are the test input
+# (CRLF, trailing spaces, BOMs), so git neither converts nor flags them.
+packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace

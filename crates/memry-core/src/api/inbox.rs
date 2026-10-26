@@ -61,18 +61,18 @@ impl Inbox {
     /// snoozed, newest first.
     pub fn list(&self, include_snoozed: bool) -> Result<Vec<InboxItemRecord>, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(records(inbox::list_active(conn, include_snoozed)?)))
+            .read_blocking(move |conn| Ok(records(inbox::list_active(conn, include_snoozed)?)))
     }
 
     /// One capture, or `nil` when none by that id is live here.
     pub fn get(&self, id: String) -> Result<Option<InboxItemRecord>, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(inbox::get(conn, &id)?.map(InboxItemRecord::from)))
+            .read_blocking(move |conn| Ok(inbox::get(conn, &id)?.map(InboxItemRecord::from)))
     }
 
     /// Active captures per type, all nine types, zeros included.
     pub fn type_counts(&self) -> Result<Vec<InboxTypeCount>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(inbox::type_counts(conn)?
                 .into_iter()
                 .map(|(item_type, count)| InboxTypeCount { item_type, count })
@@ -88,7 +88,7 @@ impl Inbox {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<InboxItemRecord>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(records(inbox::archived(
                 conn,
                 search.as_deref(),
@@ -101,19 +101,19 @@ impl Inbox {
     /// Snoozed, unfiled captures, soonest first.
     pub fn snoozed(&self) -> Result<Vec<InboxItemRecord>, StorageError> {
         self.db
-            .call_blocking(|conn| Ok(records(inbox::snoozed(conn)?)))
+            .read_blocking(|conn| Ok(records(inbox::snoozed(conn)?)))
     }
 
     /// The Snoozed & reminders view at `now_ms`.
     pub fn panel(&self, now_ms: i64) -> Result<InboxPanelRecord, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(panel::panel(conn, now_ms)?.into()))
+            .read_blocking(move |conn| Ok(panel::panel(conn, now_ms)?.into()))
     }
 
     /// Every statistic the chrome, Insights and Inbox Zero read, at `now_ms`
     /// with `stale_days` (desktop's default is 7).
     pub fn stats(&self, now_ms: i64, stale_days: i64) -> Result<InboxStatsRecord, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let computed = stats::stats(conn, now_ms, stale_days)?;
             Ok(InboxStatsRecord::new(
                 computed,
@@ -126,24 +126,24 @@ impl Inbox {
     /// The capture heatmap and type shares over the last 84 days.
     pub fn patterns(&self, now_ms: i64) -> Result<InboxPatternRecord, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(stats::patterns(conn, now_ms)?.into()))
+            .read_blocking(move |conn| Ok(stats::patterns(conn, now_ms)?.into()))
     }
 
     /// Filed captures, most recently filed first.
     pub fn filing_history(&self, limit: i64) -> Result<Vec<InboxItemRecord>, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(records(inbox::filing_history(conn, limit)?)))
+            .read_blocking(move |conn| Ok(records(inbox::filing_history(conn, limit)?)))
     }
 
     /// Folders captures were recently filed to, most recent first.
     pub fn recent_folders(&self, limit: u32) -> Result<Vec<String>, StorageError> {
         self.db
-            .call_blocking(move |conn| inbox::recent_folders(conn, limit as usize))
+            .read_blocking(move |conn| inbox::recent_folders(conn, limit as usize))
     }
 
     /// Every device-local tag with its count, most used first.
     pub fn tags(&self) -> Result<Vec<InboxTypeCount>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(inbox::all_tags(conn)?
                 .into_iter()
                 .map(|(item_type, count)| InboxTypeCount { item_type, count })
@@ -153,7 +153,7 @@ impl Inbox {
 
     /// The live capture already holding `url`, if any.
     pub fn duplicate_by_url(&self, url: String) -> Result<Option<InboxItemRecord>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(inbox::duplicate_by_url(conn, &url)?.map(InboxItemRecord::from))
         })
     }

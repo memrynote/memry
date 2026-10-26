@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
@@ -53,6 +53,47 @@ describe('smokeLaunch', () => {
 
     assert.equal(result.ok, false)
     assert.match(result.log, /starting \(packaged\)/)
+    assert.equal(result.phase, 'startup marker logged, renderer never called app_info')
+  })
+
+  it(
+    'kills the whole process group, grandchildren included',
+    { skip: process.platform === 'win32' },
+    async () => {
+      const pidFile = join(dir, 'grandchild.pid')
+      const file = join(dir, 'group.mjs')
+      writeFileSync(
+        file,
+        `#!/usr/bin/env node
+import { spawn } from 'node:child_process'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+const logDir = process.env.MEMRY_TEST_LOG_DIR
+mkdirSync(logDir, { recursive: true })
+const grandchild = spawn('sleep', ['600'], { stdio: 'inherit' })
+writeFileSync(${JSON.stringify(pidFile)}, String(grandchild.pid))
+appendFileSync(join(logDir, 'main.log'), 'MemryNote 0.0.0 starting (dev)\\nrenderer started\\n')
+setInterval(() => {}, 1000)
+`
+      )
+      chmodSync(file, 0o755)
+
+      const result = await smokeLaunch(file, { timeoutMs: 10_000, settleMs: 100, xvfb: false })
+
+      assert.equal(result.ok, true)
+      const pid = Number(readFileSync(pidFile, 'utf8'))
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' })
+    }
+  )
+
+  it('names the startup phase when nothing is logged', async () => {
+    const binary = fakeBinary('silent.mjs', [])
+
+    const result = await smokeLaunch(binary, { timeoutMs: 1_000, settleMs: 100, xvfb: false })
+
+    assert.equal(result.ok, false)
+    assert.equal(result.phase, 'no startup marker')
   })
 
   it('with expectNoDriver passes when MEMRY_E2E starts no server', async () => {

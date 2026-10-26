@@ -39,7 +39,7 @@ impl Notes {
     pub fn large_notes(&self) -> Result<Vec<LargeNote>, StorageError> {
         let warn = warn_bytes();
         let max = NOTE_SYNC_MAX_BYTES as i64;
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let mut statement = conn
                 .prepare(
                     "SELECT item_id, item_type,

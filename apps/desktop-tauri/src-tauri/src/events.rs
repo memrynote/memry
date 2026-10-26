@@ -2,6 +2,7 @@
 //! `<Domain><Noun><Verb>Event` (`CalendarChangedEvent`, `SyncStatusChangedEvent`). Domain steps
 //! add their events here and list them in `registry.rs`; none calls `emit` directly.
 
+use memry_desktop::session::response::VaultStatus;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, EventTarget, Runtime};
 
@@ -28,4 +29,29 @@ where
     if let Err(error) = app.emit_to(EventTarget::webview_window(label), E::NAME, &event) {
         tracing::warn!("Failed to deliver {} to {label}: {error}", E::NAME);
     }
+}
+
+/// The open vault changed (`vault:status-changed`). The renderer reads the status once after
+/// it subscribes, because events before that are not replayed.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct VaultStatusChangedEvent(pub VaultStatus);
+
+/// A vault operation failed (`vault:error`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultErrorEvent {
+    pub message: String,
+}
+
+/// The registry list or a vault's icon changed (`vault:list-changed`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+pub struct VaultListChangedEvent;
+
+/// `index.db` was rebuilt empty (`vault:index-recovered`). `reason` is `missing` for a first
+/// open (nothing was repaired) and `corrupt` otherwise; `detail` is the core's text.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct VaultIndexRecoveredEvent {
+    pub reason: String,
+    pub detail: String,
 }

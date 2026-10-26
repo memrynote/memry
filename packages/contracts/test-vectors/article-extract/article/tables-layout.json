@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://example.org/data/layout","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://example.org/data/layout","mode":"article","contentMarkdown":"| Layout cell one holds prose, not data, with enough words to be a paragraph of its own. | Layout cell two holds more prose that should read as ordinary text. |\n| --- | --- |\n\nTables carry data that the converter must keep aligned, so this paragraph supplies enough words for the extractor to treat the page as an article rather than boilerplate.\n\nx","excerpt":"| Layout cell one holds prose, not data, with enough words to be a paragraph of its own. | Layout cell two holds more prose that should read as ordinary text. |\n| --- | --- |\n\nTables carry data that t","extractionStatus":"partial","properties":{"title":"Layout table","source":"https://example.org/data/layout","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Layout table","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":58,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

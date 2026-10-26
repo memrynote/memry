@@ -235,7 +235,7 @@ impl NotesWriter {
     ) -> Result<Option<String>, CrdtError> {
         let device_id = self.device_id.clone();
         self.db
-            .call_blocking(move |conn| {
+            .read_blocking(move |conn| {
                 if !crate::domain::reads::note_exists(conn, &note_id) {
                     return Ok(Ok(None));
                 }

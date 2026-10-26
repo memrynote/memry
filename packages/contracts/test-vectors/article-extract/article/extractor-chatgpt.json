@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://chatgpt.com/c/abc-123","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://chatgpt.com/c/abc-123","mode":"article","contentMarkdown":"**You said**\n\nExplain lifetimes\n\n---\n\n**ChatGPT said**\n\nA lifetime names a scope.[^1] Also see [^2] and again [^1].\n\n---\n\nThanks\n\n[^1]: [doc.rust-lang.org](https://doc.rust-lang.org/book/ch10-03.html#:~:text=lifetimes,syntax) — lifetimes...\n\n[^2]: [example.com](https://www.example.com/x)","excerpt":"ChatGPT conversation with 3 messages","extractionStatus":"partial","properties":{"title":"Rust lifetimes","source":"https://chatgpt.com/c/abc-123","created":"2025-03-04T05:06:07.000Z","description":"ChatGPT conversation with 3 messages"},"tags":["clippings"]},
+  "raw": {"title":"Rust lifetimes","author":"","published":"","description":"ChatGPT conversation with 3 messages","image":"","site":"ChatGPT","language":"en","wordCount":27,"schemaOrgData":"[]","extractorType":"chatgpt"},
+  "requests": []
+}

@@ -29,7 +29,7 @@ export const ChordIndicator = ({
   return (
     <div
       className={cn(
-        'fixed bottom-4 right-4 z-50',
+        'fixed bottom-4 end-4 z-50',
         'bg-primary',
         'text-primary-foreground',
         'px-4 py-2 rounded-md shadow-lg',

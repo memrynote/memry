@@ -44,13 +44,13 @@ impl Notes {
 impl Notes {
     /// Every live folder, parent before child.
     pub fn folders(&self) -> Result<Vec<FolderSummary>, StorageError> {
-        self.db.call_blocking(|conn| reads::folders(conn))
+        self.db.read_blocking(reads::folders)
     }
 
     /// Every live note, newest first. No folder filter — [`reads::notes`] says
     /// why one cannot be given an honest signature.
     pub fn list(&self) -> Result<Vec<NoteSummary>, StorageError> {
-        self.db.call_blocking(|conn| reads::notes(conn))
+        self.db.read_blocking(reads::notes)
     }
 
     /// The tasks linked to one note (N807).
@@ -61,19 +61,19 @@ impl Notes {
     /// this task" and "this task mentions this note" are different facts.
     pub fn linked_tasks(&self, note_id: String) -> Result<Vec<LinkedTask>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::tasks_for_note(conn, &note_id))
+            .read_blocking(move |conn| reads::tasks_for_note(conn, &note_id))
     }
 
     /// The card a `taskBlock` draws for its task: tick, priority, project
     /// and due date. `None` when this vault does not hold the task.
     pub fn task(&self, task_id: String) -> Result<Option<TaskCard>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::task_card(conn, &task_id))
+            .read_blocking(move |conn| reads::task_card(conn, &task_id))
     }
 
     /// Every template a note can be made from (N803).
     pub fn templates(&self) -> Result<Vec<TemplateSummary>, StorageError> {
-        self.db.call_blocking(|conn| reads::templates(conn))
+        self.db.read_blocking(reads::templates)
     }
 
     /// The reminders pointing at one note (N804).
@@ -84,7 +84,7 @@ impl Notes {
     /// sync, and both are here.
     pub fn reminders(&self, note_id: String) -> Result<Vec<ReminderSummary>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::reminders_for(conn, &note_id))
+            .read_blocking(move |conn| reads::reminders_for(conn, &note_id))
     }
 
     /// Every tag in this vault, with the number of live notes carrying it
@@ -93,21 +93,21 @@ impl Notes {
     /// Ordered by count then name — the tags a user actually uses first, with
     /// a stable tie-break so two reads of an unchanged vault agree.
     pub fn tags(&self) -> Result<Vec<TagSummary>, StorageError> {
-        self.db.call_blocking(|conn| reads::tags(conn))
+        self.db.read_blocking(reads::tags)
     }
 
     /// The sidebar's bookmarks that resolve to something this vault holds,
     /// in the user's order. Written through
     /// [`crate::api::notes_write::NotesWriter::toggle_bookmark`].
     pub fn bookmarks(&self) -> Result<Vec<BookmarkEntry>, StorageError> {
-        self.db.call_blocking(|conn| bookmarks::list(conn))
+        self.db.read_blocking(bookmarks::list)
     }
 
     /// Whether a live bookmark names `(item_type, item_id)`: the page menu's
     /// "Add to favorites" / "Remove from favorites".
     pub fn is_bookmarked(&self, item_type: String, item_id: String) -> Result<bool, StorageError> {
         self.db
-            .call_blocking(move |conn| bookmarks::is_bookmarked(conn, &item_type, &item_id))
+            .read_blocking(move |conn| bookmarks::is_bookmarked(conn, &item_type, &item_id))
     }
 
     /// The live notes carrying one tag (N600).
@@ -118,7 +118,7 @@ impl Notes {
     /// desktop".
     pub fn notes_tagged(&self, tag: String) -> Result<Vec<NoteSummary>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::notes_tagged(conn, &tag))
+            .read_blocking(move |conn| reads::notes_tagged(conn, &tag))
     }
 
     /// The live journal days carrying one tag, each titled by its
@@ -126,7 +126,7 @@ impl Notes {
     /// desktop does; [`Notes::notes_tagged`] holds notes only.
     pub fn journals_tagged(&self, tag: String) -> Result<Vec<NoteSummary>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::journals_tagged(conn, &tag))
+            .read_blocking(move |conn| reads::journals_tagged(conn, &tag))
     }
 
     /// One note's tags, typed properties and aliases.
@@ -141,7 +141,7 @@ impl Notes {
     /// dropping the property.
     pub fn metadata(&self, id: String) -> Result<Option<NoteMetadata>, StorageError> {
         self.db
-            .call_blocking(move |conn| note_meta::metadata(conn, &id))
+            .read_blocking(move |conn| note_meta::metadata(conn, &id))
     }
 
     /// What a `[[wiki link]]` points at: by vault path when the note half
@@ -157,7 +157,7 @@ impl Notes {
         target: String,
     ) -> Result<Option<note_meta::NoteLinkTarget>, StorageError> {
         self.db
-            .call_blocking(move |conn| note_meta::resolve_wiki_target(conn, &target))
+            .read_blocking(move |conn| note_meta::resolve_wiki_target(conn, &target))
     }
 
     /// One note and its body, or `nil` when this vault holds no live note by
@@ -177,7 +177,7 @@ impl Notes {
         // out whole and unwrapped here. Mapping it to `StorageError` on the way
         // through would collapse `Undecodable` into "storage failure".
         self.db
-            .call_blocking(|conn| Ok(reads::note(conn, &id)))
+            .read_blocking(|conn| Ok(reads::note(conn, &id)))
             .map_err(CrdtError::from)?
     }
 
@@ -194,7 +194,7 @@ impl Notes {
     /// log, and `tests/crdt_blocks.rs` holds them to the same lines.
     pub fn blocks(&self, id: String) -> Result<Option<Vec<Block>>, CrdtError> {
         self.db
-            .call_blocking(|conn| Ok(reads::note_blocks(conn, &id)))
+            .read_blocking(|conn| Ok(reads::note_blocks(conn, &id)))
             .map_err(CrdtError::from)?
     }
 
@@ -228,7 +228,7 @@ impl Notes {
     /// that holds something else.
     pub fn table(&self, id: String, block_id: String) -> Result<Option<TableContent>, CrdtError> {
         self.db
-            .call_blocking(move |conn| Ok(reads::note_table(conn, &id, &block_id)))
+            .read_blocking(move |conn| Ok(reads::note_table(conn, &id, &block_id)))
             .map_err(CrdtError::from)?
     }
 
@@ -243,7 +243,7 @@ impl Notes {
     /// so binding one to a block is the shell's job.
     pub fn comments(&self, id: String) -> Result<Vec<ReviewComment>, CrdtError> {
         self.db
-            .call_blocking(move |conn| Ok(reads::note_comments(conn, &id)))
+            .read_blocking(move |conn| Ok(reads::note_comments(conn, &id)))
             .map_err(CrdtError::from)?
     }
 
@@ -255,7 +255,7 @@ impl Notes {
     /// (chapter 13 §13.4). A shell must not render the two the same way.
     pub fn attachments(&self, id: String) -> Result<Vec<CachedAttachment>, StorageError> {
         self.db
-            .call_blocking(move |conn| attachments::for_note(conn, &id))
+            .read_blocking(move |conn| attachments::for_note(conn, &id))
     }
 
     /// What one body block's `url` points at (Q4).
@@ -276,7 +276,7 @@ impl Notes {
         url: String,
     ) -> Result<BlockAttachment, StorageError> {
         self.db
-            .call_blocking(move |conn| attachments::resolve_for_block(conn, &id, &url))
+            .read_blocking(move |conn| attachments::resolve_for_block(conn, &id, &url))
     }
 }
 

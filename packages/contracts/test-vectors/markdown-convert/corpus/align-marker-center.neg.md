@@ -1,0 +1,2 @@
+<!-- align:middle -->
+text

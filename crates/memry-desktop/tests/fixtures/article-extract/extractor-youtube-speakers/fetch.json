@@ -1,0 +1,35 @@
+[
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"WEB\",\"clientVersion\":\"2.20240101.00.00\"}},\"videoId\":\"speakerTalk1\"}",
+    "error": "down"
+  },
+  {
+    "method": "GET",
+    "url": "https://www.youtube.com/api/timedtext?v=speakerTalk1",
+    "status": 200,
+    "text": "<transcript><text start=\"0\" dur=\"2\">&gt;&gt; Welcome to the show. Today we have a guest.</text><text start=\"3\" dur=\"2\">&gt;&gt; Thanks for having me.</text><text start=\"6.5\" dur=\"2\">Happy to be here. It is a long story that started a few years ago when we first built the prototype and then rewrote it twice because the first design did not scale well enough for what people wanted to do with it every day.</text><text start=\"12\" dur=\"2\">Mhm. And then what happened next with the project after the rewrite, was it a hard transition for the whole team to go through, and did you lose anyone along the way because of the change?</text><text start=\"20\" dur=\"2\">- Yes it was hard. We lost some people but we gained more. Does that make sense?</text><text start=\"24\" dur=\"2\">Sure.</text><text start=\"27\" dur=\"2\">- Okay, so what is next?</text><text start=\"60\" dur=\"2\">We ship in the spring.<b>x</b></text><text start=\"90\" dur=\"2\">&gt;&gt; Last, a long unpunctuated tail that keeps going and going without any end so the break logic has to find a natural place to cut it</text><text start=\"100\" dur=\"2\">second tail piece. Another sentence starts here and runs</text><text start=\"118\" dur=\"2\">long enough to pass the limit again with more words</text></transcript>"
+  },
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"IOS\",\"clientVersion\":\"20.10.3\"}},\"videoId\":\"speakerTalk1\"}",
+    "status": 200,
+    "text": "{}"
+  },
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"ANDROID\",\"clientVersion\":\"20.10.38\"}},\"videoId\":\"speakerTalk1\"}",
+    "status": 200,
+    "text": "{}"
+  },
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"WEB\",\"clientVersion\":\"2.20240101.00.00\"}},\"videoId\":\"speakerTalk1\"}",
+    "status": 200,
+    "text": "{}"
+  }
+]

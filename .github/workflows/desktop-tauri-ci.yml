@@ -4,6 +4,20 @@ name: Desktop Tauri CI
 
 on:
   pull_request:
+    # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
+    # other labeled event skips all jobs, so PRs into main see no change.
+    types: [opened, synchronize, reopened, labeled]
+    paths:
+      - 'apps/desktop-tauri/**'
+      - 'crates/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'oxlint.config.mts'
+      - '.github/workflows/desktop-tauri-ci.yml'
+  # The full matrix runs on every merge into feat/tauri-v2.
+  push:
+    branches:
+      - feat/tauri-v2
     paths:
       - 'apps/desktop-tauri/**'
       - 'crates/**'
@@ -17,8 +31,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/tauri-v2' }}
 
 env:
   CI: true
@@ -27,8 +41,35 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
+  # workflow_dispatch run everything. Every other trigger gets full = tauri = swift = true.
+  plan:
+    name: CI tier
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      full: ${{ steps.tier.outputs.full }}
+      tauri: ${{ steps.tier.outputs.tauri }}
+      swift: ${{ steps.tier.outputs.swift }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Decide tier
+        id: tier
+        uses: ./.github/actions/ci-tier
+        with:
+          token: ${{ github.token }}
+
   static:
     name: Static checks
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -59,6 +100,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -81,6 +123,7 @@ jobs:
 
   renderer-tests:
     name: Renderer tests
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -105,22 +148,22 @@ jobs:
       - name: Script tests
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
+  # Fast tier: linux-x64 only, and only when the diff can change app behavior. Full: every leg.
+  # Entries that name an existing `platform` add their keys to that platform's legs. Each leg
+  # builds and then tests on its own runner, so a platform waits only for itself and a macOS
+  # platform takes one runner slot per variant: `Build debug` also runs the launch smoke and the
+  # no-driver smoke, `Build e2e` also runs the E2E specs. linux-arm64 builds the artifacts the
+  # arm64 Ubuntu VM runs (tart; the vm-repro skill downloads its e2e one); it has no smoke or
+  # specs. macos-x64 has no e2e leg: nothing downloads it.
   build:
     name: Build ${{ matrix.variant }} (${{ matrix.platform }})
+    needs: plan
+    if: needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix:
-        variant: [debug, e2e]
-        platform: [macos-arm64, macos-x64, windows-x64, windows-arm64, linux-x64]
-        # Entries that name an existing `platform` add their keys to that platform's legs.
-        include:
-          - { platform: macos-arm64, os: macos-15, triple: aarch64-apple-darwin }
-          - { platform: macos-x64, os: macos-15-intel, triple: x86_64-apple-darwin }
-          - { platform: windows-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
-          - { platform: windows-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
-          - { platform: linux-x64, os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu }
+      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"exclude":[{"platform":"macos-x64","variant":"e2e"}],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
@@ -144,7 +187,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf xvfb
+            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf xvfb gnome-keyring dbus-x11
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -157,6 +200,7 @@ jobs:
         with:
           workspaces: crates
           key: ${{ matrix.variant }}-${{ matrix.triple }}
+          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -184,8 +228,25 @@ jobs:
           echo "path=$bin" >> "$GITHUB_OUTPUT"
 
       - name: Launch smoke
-        if: matrix.variant == 'debug'
+        timeout-minutes: 5
+        if: matrix.variant == 'debug' && matrix.platform != 'linux-arm64'
         run: node apps/desktop-tauri/scripts/smoke-launch.mjs "${{ steps.binary.outputs.path }}"
+
+      # A build without the `e2e` cargo feature, as a release is, started the way a test starts
+      # the app (`MEMRY_E2E=1`, a driver port), must not listen, must not log a driver and must
+      # carry no `e2e_` command.
+      - name: No e2e command in the binary
+        if: matrix.variant == 'debug' && contains(fromJSON('["macos-arm64","windows-x64","linux-x64"]'), matrix.platform)
+        run: |
+          if grep -c e2e_request_quit "${{ steps.binary.outputs.path }}" | grep -qv '^0$'; then
+            echo "the binary carries e2e_request_quit"
+            exit 1
+          fi
+
+      - name: Launch smoke (carries no driver)
+        timeout-minutes: 5
+        if: matrix.variant == 'debug' && contains(fromJSON('["macos-arm64","windows-x64","linux-x64"]'), matrix.platform)
+        run: node apps/desktop-tauri/scripts/smoke-launch.mjs "${{ steps.binary.outputs.path }}" --expect-no-driver
 
       - name: Upload app
         uses: actions/upload-artifact@v4
@@ -194,75 +255,24 @@ jobs:
           path: ${{ steps.binary.outputs.path }}
           retention-days: 14
 
-  e2e:
-    name: E2E (${{ matrix.platform }})
-    needs: build
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { platform: macos-arm64, os: macos-15, triple: aarch64-apple-darwin }
-          - { platform: windows-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
-          - { platform: windows-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
-          - { platform: linux-x64, os: ubuntu-22.04, triple: x86_64-unknown-linux-gnu }
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: ./.github/actions/setup-pnpm
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install Linux system libraries
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev xvfb gnome-keyring dbus-x11
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
-
-      - name: Download the e2e app
-        uses: actions/download-artifact@v4
-        with:
-          name: memry-tauri-e2e-${{ matrix.platform }}
-          path: e2e-app
-
-      - name: Locate the e2e app
-        run: |
-          # The platform overlays (tauri.<os>.conf.json) set mainBinaryName.
-          case "${{ runner.os }}" in
-            Windows) bin="$GITHUB_WORKSPACE/e2e-app/Memrynote.exe" ;;
-            macOS) bin="$GITHUB_WORKSPACE/e2e-app/MemryNote" ;;
-            *) bin="$GITHUB_WORKSPACE/e2e-app/memrynote" ;;
-          esac
-          if [ "${{ runner.os }}" != "Windows" ]; then chmod +x "$bin"; fi
-          echo "MEMRY_E2E_BINARY=$bin" >> "$GITHUB_ENV"
-
       - name: Harness unit tests
+        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
         run: pnpm --filter @memry/desktop-tauri test:e2e:harness
 
       # `dbus-run-session` gives libsecret a session bus; the keyring is unlocked with an empty
       # password. Every other OS has its keychain already.
       - name: E2E specs
-        if: runner.os != 'Linux'
+        if: matrix.variant == 'e2e' && matrix.platform != 'linux-arm64' && runner.os != 'Linux'
+        env:
+          MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
         run: |
           pnpm --filter @memry/desktop-tauri test:e2e
           pnpm --filter @memry/desktop-tauri test:e2e:multi
 
       - name: E2E specs (Linux)
-        if: runner.os == 'Linux'
+        if: matrix.variant == 'e2e' && matrix.platform == 'linux-x64'
+        env:
+          MEMRY_E2E_BINARY: ${{ github.workspace }}/${{ steps.binary.outputs.path }}
         run: |
           dbus-run-session -- bash -c "
             echo '' | gnome-keyring-daemon --unlock --components=secrets >/dev/null
@@ -270,74 +280,14 @@ jobs:
           "
 
       - name: Purge leaked e2e keychain items
-        if: always()
+        if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
         run: pnpm --filter @memry/desktop-tauri keychain:purge-e2e || true
 
       - name: Upload e2e results
-        if: always()
+        if: always() && matrix.variant == 'e2e' && matrix.platform != 'linux-arm64'
         uses: actions/upload-artifact@v4
         with:
           name: e2e-results-${{ matrix.platform }}
           path: apps/desktop-tauri/test-results/e2e
           if-no-files-found: ignore
           retention-days: 7
-
-  # A build without the `e2e` cargo feature, as a release is, started the way a test starts the
-  # app (`MEMRY_E2E=1`, a driver port), must not listen, must not log a driver and must carry no
-  # `e2e_` command.
-  no-driver-smoke:
-    name: No driver (${{ matrix.platform }})
-    needs: build
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { platform: macos-arm64, os: macos-15 }
-          - { platform: windows-x64, os: windows-2022 }
-          - { platform: linux-x64, os: ubuntu-22.04 }
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Install Linux system libraries
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-0 libsoup-3.0-0 libayatana-appindicator3-1 xvfb
-
-      - name: Download the app
-        uses: actions/download-artifact@v4
-        with:
-          name: memry-tauri-debug-${{ matrix.platform }}
-          path: app
-
-      - name: Locate the app
-        run: |
-          # The platform overlays (tauri.<os>.conf.json) set mainBinaryName.
-          case "${{ runner.os }}" in
-            Windows) bin="$GITHUB_WORKSPACE/app/Memrynote.exe" ;;
-            macOS) bin="$GITHUB_WORKSPACE/app/MemryNote" ;;
-            *) bin="$GITHUB_WORKSPACE/app/memrynote" ;;
-          esac
-          if [ "${{ runner.os }}" != "Windows" ]; then chmod +x "$bin"; fi
-          echo "BIN=$bin" >> "$GITHUB_ENV"
-
-      - name: No e2e command in the binary
-        run: |
-          if grep -c e2e_request_quit "$BIN" | grep -qv '^0$'; then
-            echo "the binary carries e2e_request_quit"
-            exit 1
-          fi
-
-      - name: Launch smoke (carries no driver)
-        run: node apps/desktop-tauri/scripts/smoke-launch.mjs "$BIN" --expect-no-driver

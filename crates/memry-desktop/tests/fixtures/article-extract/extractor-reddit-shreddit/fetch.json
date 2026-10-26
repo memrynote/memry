@@ -1,0 +1,8 @@
+[
+  {
+    "method": "GET",
+    "url": "https://old.reddit.com/r/rust/comments/abc/why_rust/",
+    "status": 200,
+    "text": "<html><head><title>Old</title></head><body><div class=\"thing link\" data-author=\"alice\" data-subreddit=\"rust\"><a class=\"title\">Why Rust?</a><div class=\"usertext-body\"><div class=\"md\"><p>I am <b>curious</b> about it.</p></div></div></div><div class=\"commentarea\"><div class=\"sitetable\"><div class=\"thing comment\" data-author=\"bob\" data-permalink=\"/r/rust/comments/abc/why_rust/c1/\"><div class=\"entry\"><div class=\"tagline\"><span class=\"score unvoted\">12 points</span><time datetime=\"2025-02-01T10:00:00+00:00\"></time></div><div class=\"usertext-body\"><div class=\"md\"><p>Safety.</p></div></div></div><div class=\"child\"><div class=\"sitetable\"><div class=\"thing comment\" data-author=\"carol\" data-permalink=\"/r/rust/comments/abc/why_rust/c2/\"><div class=\"entry\"><div class=\"tagline\"><span class=\"score unvoted\">3 points</span></div><div class=\"usertext-body\"><div class=\"md\"><p>And speed.</p></div></div></div></div></div></div></div><div class=\"thing comment\" data-author=\"dave\"><div class=\"entry\"><div class=\"usertext-body\"><div class=\"md\"><p>No permalink</p></div></div></div></div></div></div></body></html>"
+  }
+]

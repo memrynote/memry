@@ -480,7 +480,7 @@ function FolderRow({
             isDragging && 'opacity-50',
             draggable && 'cursor-default'
           )}
-          style={{ paddingLeft: `${item.level * 16 + 8}px` }}
+          style={{ paddingInlineStart: `${item.level * 16 + 8}px` }}
           onClick={handleClick}
           onMouseDown={handleMiddleClick}
           onContextMenu={handleContextMenu}
@@ -911,7 +911,7 @@ function NoteRow({
             isDragging && 'opacity-50',
             draggable && 'cursor-default'
           )}
-          style={{ paddingLeft: `${item.level * 16 + 8}px` }} // Icon button's leading slot replaces the expander gap
+          style={{ paddingInlineStart: `${item.level * 16 + 8}px` }} // Icon button's leading slot replaces the expander gap
           onClick={handleClick}
           onMouseDown={handleMiddleClick}
           onContextMenu={handleContextMenu}

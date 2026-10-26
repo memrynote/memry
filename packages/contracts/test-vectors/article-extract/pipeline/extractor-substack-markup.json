@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://sam.substack.com/p/notes-on-craft","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<div><p>Craft is patience.</p><p>The page already has the rendered post body, so no injection happens.</p></div>",
+  "markdown": "Craft is patience.\n\nThe page already has the rendered post body, so no injection happens.",
+  "raw": {"title":"Notes on craft","author":"Sam Author","published":"2025-01-20T08:00:00.000Z","description":"A short essay","image":"","site":"Substack","language":"en","wordCount":15},
+  "expected": {"url":"https://sam.substack.com/p/notes-on-craft","mode":"article","contentMarkdown":"Craft is patience.\n\nThe page already has the rendered post body, so no injection happens.","excerpt":"A short essay","extractionStatus":"partial","properties":{"title":"Notes on craft","source":"https://sam.substack.com/p/notes-on-craft","created":"2025-03-04T05:06:07.000Z","author":"Sam Author","published":"2025-01-20T08:00:00.000Z","description":"A short essay"},"tags":["clippings"]}
+}

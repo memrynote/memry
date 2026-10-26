@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Body text with enough words to count as a paragraph of real content for the extractor to read.</p></body>",
+  "markdown": "Body text with enough words to count as a paragraph of real content for the extractor to read."
+}
