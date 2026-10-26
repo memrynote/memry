@@ -474,5 +474,63 @@
       "invalid arity",
       "xmldom recovery"
     ]
+  },
+  {
+    "name": "math-temml-matrices",
+    "covers": [
+      "math",
+      "temml",
+      "matrix environments",
+      "array",
+      "cases",
+      "bordermatrix",
+      "smallmatrix"
+    ]
+  },
+  {
+    "name": "math-temml-aligned",
+    "covers": [
+      "math",
+      "temml",
+      "align",
+      "gather",
+      "multline",
+      "tag",
+      "label",
+      "display mode"
+    ]
+  },
+  {
+    "name": "math-temml-enclose",
+    "covers": [
+      "math",
+      "temml",
+      "cancel",
+      "boxed",
+      "sout",
+      "colorbox",
+      "textcircled"
+    ]
+  },
+  {
+    "name": "math-temml-cd",
+    "covers": [
+      "math",
+      "temml",
+      "CD",
+      "column separators",
+      "arraycolsep"
+    ]
+  },
+  {
+    "name": "math-temml-unsupported",
+    "covers": [
+      "math",
+      "temml",
+      "untrusted",
+      "unknown environment",
+      "unbalanced",
+      "hline"
+    ]
   }
 ]

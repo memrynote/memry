@@ -4,7 +4,7 @@ use crate::electron_import::tests::macos_fixture;
 #[test]
 fn reads_the_renderer_entries_written_by_chromium() {
     let f = macos_fixture("new");
-    let snapshot = LocalStorageSnapshot::read(&f.profile, PACKAGED_ORIGIN)
+    let snapshot = LocalStorageSnapshot::read(&f.profile, PACKAGED_ORIGIN, &f.scratch)
         .unwrap()
         .unwrap();
     assert_eq!(snapshot.skipped, 0);
@@ -21,7 +21,7 @@ fn reads_the_renderer_entries_written_by_chromium() {
 #[test]
 fn another_origin_sees_nothing() {
     let f = macos_fixture("new");
-    let snapshot = LocalStorageSnapshot::read(&f.profile, "http://localhost:5174")
+    let snapshot = LocalStorageSnapshot::read(&f.profile, "http://localhost:5174", &f.scratch)
         .unwrap()
         .unwrap();
     assert!(snapshot.entries.is_empty());
@@ -32,7 +32,7 @@ fn no_store_is_none() {
     let mut f = macos_fixture("new");
     f.profile.has_local_storage = false;
     assert!(
-        LocalStorageSnapshot::read(&f.profile, PACKAGED_ORIGIN)
+        LocalStorageSnapshot::read(&f.profile, PACKAGED_ORIGIN, &f.scratch)
             .unwrap()
             .is_none()
     );

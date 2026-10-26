@@ -1,14 +1,11 @@
 /* oxlint-disable typescript/no-base-to-string -- linkedom ships no types */
 // Pipeline vectors: the whole generic path of `Defuddle` (`parse()` with its retries, then
-// `toMarkdown`, then `mapToArticleCapture`), the composition of `extractFromHtml`. The math
-// renderer (temml) is switched off, as in the standardize vectors, so that this class holds
-// exactly what the port reproduces so far.
+// `toMarkdown`, then `mapToArticleCapture`), the composition of `extractFromHtml`.
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { parseHTML } from 'linkedom'
 import { mapToArticleCapture } from '../../src/map.ts'
 import { Defuddle, dist } from './probes.mjs'
-import { withDeferredRulesOff } from './standardize.mjs'
 
 const require = createRequire(join(dist, 'x.js'))
 const { createMarkdownContent } = require('./markdown.js')
@@ -19,9 +16,7 @@ export function pipelineVector(html, url, now) {
   const { document } = parseHTML(html)
   let result
   try {
-    result = withDeferredRulesOff(() =>
-      new Defuddle(document, { url: url || 'about:blank' }).parse()
-    )
+    result = new Defuddle(document, { url: url || 'about:blank' }).parse()
   } catch (error) {
     // A page with no element at all: linkedom throws on `document.body`.
     return { input: { url, now }, error: error.constructor.name }

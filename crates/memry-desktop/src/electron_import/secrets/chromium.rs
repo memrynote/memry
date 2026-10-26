@@ -7,6 +7,8 @@ use aes_gcm::{Aes256Gcm, KeyInit, Nonce};
 use sha1::Sha1;
 use zeroize::Zeroizing;
 
+use crate::electron_import::profile::HostOs;
+
 const SALT: &[u8] = b"saltysalt";
 const CBC_IV: [u8; 16] = [0x20; 16];
 const GCM_NONCE_LEN: usize = 12;
@@ -20,6 +22,9 @@ const LINUX_EMPTY_KEY: [u8; 16] = [
     0xd0, 0xd0, 0xec, 0x9c, 0x7d, 0x77, 0xd4, 0x3a, 0xc5, 0x41, 0x87, 0xfa, 0x48, 0x18, 0xd1, 0x7f,
 ];
 
+/// A derived AES-128 key; wiped on drop.
+pub type CbcKey = Zeroizing<[u8; 16]>;
+
 type Aes128CbcDec = cbc::Decryptor<aes::Aes128>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -30,9 +35,9 @@ pub enum DecryptFailure {
     WrongKey,
 }
 
-fn derive(password: &[u8], iterations: u32) -> [u8; 16] {
-    let mut key = [0_u8; 16];
-    pbkdf2::pbkdf2_hmac::<Sha1>(password, SALT, iterations, &mut key);
+fn derive(password: &[u8], iterations: u32) -> CbcKey {
+    let mut key = Zeroizing::new([0_u8; 16]);
+    pbkdf2::pbkdf2_hmac::<Sha1>(password, SALT, iterations, key.as_mut());
     key
 }
 
@@ -50,21 +55,57 @@ fn split_prefix<'a>(
         .ok_or(DecryptFailure::Corrupt)
 }
 
-fn decrypt_cbc(key: &[u8; 16], body: &[u8]) -> Result<Zeroizing<String>, DecryptFailure> {
+/// AES-128-CBC keys to try for `ciphertext`, in Chromium's order. macOS: PBKDF2 of the Keychain
+/// password (1003 iterations), so `password` is required. Linux `v11`: PBKDF2 of the secret (1
+/// iteration) then the empty-password key; `v10`: the fixed key then the empty-password key.
+/// Windows ciphertexts are GCM and have no CBC keys.
+pub fn cbc_keys(
+    host: HostOs,
+    password: Option<&[u8]>,
+    ciphertext: &[u8],
+) -> Result<Vec<CbcKey>, DecryptFailure> {
+    match host {
+        HostOs::MacOs => {
+            split_prefix(ciphertext, &[b"v10"])?;
+            Ok(password.map(|p| derive(p, 1003)).into_iter().collect())
+        }
+        HostOs::Linux => {
+            let (prefix, _) = split_prefix(ciphertext, &[b"v10", b"v11"])?;
+            let mut keys = Vec::new();
+            if prefix == b"v10" {
+                keys.push(Zeroizing::new(LINUX_V10_KEY));
+            } else if let Some(password) = password {
+                keys.push(derive(password, 1));
+            }
+            if prefix == b"v10" || password.is_some() {
+                keys.push(Zeroizing::new(LINUX_EMPTY_KEY));
+            }
+            Ok(keys)
+        }
+        HostOs::Windows => Err(DecryptFailure::Corrupt),
+    }
+}
+
+/// Linux `v10` needs no key material; `v11` does.
+pub fn linux_needs_password(ciphertext: &[u8]) -> bool {
+    ciphertext.starts_with(b"v11")
+}
+
+/// Decrypts one CBC ciphertext with `key`. A valid PKCS7 padding and UTF-8 text is all this
+/// checks: unauthenticated CBC decrypts under a wrong key about once in 256 tries, so the caller
+/// must establish that the key is right ([`is_printable`] on some entry) before it believes a
+/// plaintext that is not printable. Electron accepts any decrypt in `decryptValue`; only
+/// `probeSecretStoreIdentity` applies the printable test.
+pub fn decrypt_cbc(key: &CbcKey, ciphertext: &[u8]) -> Result<Zeroizing<String>, DecryptFailure> {
+    let (_, body) = split_prefix(ciphertext, &[b"v10", b"v11"])?;
     if body.is_empty() || !body.len().is_multiple_of(16) {
         return Err(DecryptFailure::Corrupt);
     }
-    let plain = Aes128CbcDec::new(key.into(), (&CBC_IV).into())
+    let plain = Aes128CbcDec::new((&**key).into(), (&CBC_IV).into())
         .decrypt_padded_vec::<Pkcs7>(body)
         .map(Zeroizing::new)
         .map_err(|_| DecryptFailure::WrongKey)?;
-    printable(plain)
-}
-
-/// Unauthenticated CBC decrypts with a wrong key about once in 256 tries, so a result counts
-/// only when it is printable ASCII (`looksLikePlaintextSecret` in `secret-storage.ts`).
-fn printable(plain: Zeroizing<Vec<u8>>) -> Result<Zeroizing<String>, DecryptFailure> {
-    if plain.is_empty() || !plain.iter().all(|b| (0x20..=0x7e).contains(b)) {
+    if plain.is_empty() {
         return Err(DecryptFailure::WrongKey);
     }
     String::from_utf8(plain.to_vec())
@@ -72,45 +113,10 @@ fn printable(plain: Zeroizing<Vec<u8>>) -> Result<Zeroizing<String>, DecryptFail
         .map_err(|_| DecryptFailure::WrongKey)
 }
 
-/// macOS: `v10` + AES-128-CBC, key = PBKDF2-HMAC-SHA1(keychain password, `saltysalt`, 1003).
-pub fn decrypt_macos(
-    password: &[u8],
-    ciphertext: &[u8],
-) -> Result<Zeroizing<String>, DecryptFailure> {
-    let (_, body) = split_prefix(ciphertext, &[b"v10"])?;
-    decrypt_cbc(&derive(password, 1003), body)
-}
-
-/// Linux: `v11` uses PBKDF2(secret, 1 iteration), `v10` the fixed key; any failure retries with
-/// the empty-password key.
-pub fn decrypt_linux(
-    password: Option<&[u8]>,
-    ciphertext: &[u8],
-) -> Result<Zeroizing<String>, DecryptFailure> {
-    let (prefix, body) = split_prefix(ciphertext, &[b"v10", b"v11"])?;
-    let mut keys = Vec::with_capacity(2);
-    if prefix == b"v10" {
-        keys.push(LINUX_V10_KEY);
-    } else if let Some(password) = password {
-        keys.push(derive(password, 1));
-    } else {
-        return Err(DecryptFailure::WrongKey);
-    }
-    keys.push(LINUX_EMPTY_KEY);
-    let mut last = DecryptFailure::WrongKey;
-    for key in keys {
-        match decrypt_cbc(&key, body) {
-            Ok(plain) => return Ok(plain),
-            Err(DecryptFailure::Corrupt) => return Err(DecryptFailure::Corrupt),
-            Err(e) => last = e,
-        }
-    }
-    Err(last)
-}
-
-/// Linux `v10` needs no key material; `v11` does.
-pub fn linux_needs_password(ciphertext: &[u8]) -> bool {
-    ciphertext.starts_with(b"v11")
+/// `looksLikePlaintextSecret` in `secret-storage.ts`: every secret the app stores is base64 or
+/// hex text, so printable ASCII marks a decrypt as made with the right key.
+pub fn is_printable(plain: &str) -> bool {
+    !plain.is_empty() && plain.bytes().all(|b| (0x20..=0x7e).contains(&b))
 }
 
 /// Windows: `v10` + 12-byte nonce + AES-256-GCM ciphertext + 16-byte tag, no AAD. The tag

@@ -1,11 +1,5 @@
 //! The converters `math.full.js` calls: `MathMLToLaTeX.convert` (mathml-to-latex 1.8.0, in
-//! `mathml`) and `temml.renderToString` (temml 0.13.3, not ported yet).
-//!
-//! `temml_render` returns the error a throwing converter raises, so its caller takes the same
-//! `catch` branch as Defuddle does when temml throws: LaTeX-only elements keep their LaTeX as
-//! text. The oracle (`packages/article-extract/scripts/vectors/standardize.mjs`,
-//! `withDeferredRulesOff`) makes temml throw too, so the vectors hold exactly this behavior.
-//! Delete the patch and this body when the temml port lands.
+//! `mathml`) and `temml.renderToString` (temml 0.13.3, in `temml`).
 
 use crate::web::extract::error::ExtractError;
 
@@ -15,6 +9,9 @@ pub fn mathml_to_latex(mathml: &str) -> Result<String, ExtractError> {
 }
 
 /// `temml.renderToString(latex, { displayMode, throwOnError: false })`.
-pub fn temml_render(_latex: &str, _display_mode: bool) -> Result<String, ExtractError> {
-    Err(ExtractError::Dom("temml is not ported".to_string()))
+///
+/// An `Err` is a throw or temml's error span, which holds no `<math>`: the caller keeps the
+/// LaTeX as text either way.
+pub fn temml_render(latex: &str, display_mode: bool) -> Result<String, ExtractError> {
+    super::temml::render_to_string(latex, display_mode).map_err(ExtractError::Dom)
 }

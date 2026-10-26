@@ -10,6 +10,7 @@ pub mod convert;
 mod mathml;
 mod mjx;
 pub mod raw;
+pub mod temml;
 
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::rule::Rule;
