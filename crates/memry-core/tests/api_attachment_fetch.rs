@@ -13,7 +13,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -38,14 +37,12 @@ const MASTER_KEY: [u8; 32] = [7u8; 32];
 const SIGNING_SEED: [u8; 32] = [11u8; 32];
 const CHUNK: usize = 4;
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_vault() -> (Vault, PathBuf) {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-api-attachment-fetch-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-api-attachment-fetch-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (vault, dir)

@@ -15,8 +15,6 @@
 //! | unknown keys round-trip                                | D7                                             |
 //! | a tombstone deletes each type                          | `applyDelete`                                  |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::protocol::types::{ArrivingItemType, Declaration};
 use memry_core::storage::repositories::sync_items::{self, ApplyOutcome, InboundRecord};
 use memry_core::storage::{Db, open_data};
@@ -26,14 +24,12 @@ use serde_json::{Value, json};
 
 const NOW: i64 = 1_760_000_000_000;
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-calendar-sync-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-calendar-sync-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

@@ -8,7 +8,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::{FakeTransport, response};
 use memry_core::crdt::registry::UpdateSink;
@@ -30,18 +29,16 @@ use yrs::{
     XmlTextPrelim,
 };
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 const NOTE: &str = "abc123def456";
 const VAULT_KEY: [u8; 32] = [3u8; 32];
 const PACK_URL: &str = "https://r2.example/packs/p1";
 
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-pack-bootstrap-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-pack-bootstrap-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

@@ -10,8 +10,6 @@
 //! | a write equal to the stored value writes nothing   | no clock tick, no push  |
 //! | a retype is refused and a tombstone revives        | FR-048, D2              |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::errors::StorageError;
 use memry_core::domain::journal_ops::{metadata, reads};
 use memry_core::domain::properties::PropertyError;
@@ -36,14 +34,12 @@ const SCHEMA_KEYS: [&str; 8] = [
     "modifiedAt",
 ];
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-journal-metadata-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-journal-metadata-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

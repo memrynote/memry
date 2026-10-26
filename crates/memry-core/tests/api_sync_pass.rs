@@ -10,7 +10,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -27,14 +26,12 @@ const BASE: &str = "https://sync.example.com";
 const MASTER_KEY: [u8; 32] = [7u8; 32];
 const SIGNING_SEED: [u8; 32] = [11u8; 32];
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_vault() -> Vault {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-api-sync-pass-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix("memry-api-sync-pass-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }
@@ -309,11 +306,11 @@ async fn the_pass_pulls_owed_bodies_and_settles_only_the_merged_ones() {
         .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
         .expect("plant the signing key");
 
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-api-sync-pass-owed-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix("memry-api-sync-pass-owed-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");
@@ -388,11 +385,11 @@ fn vault_with_side(
     store
         .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
         .expect("plant the signing key");
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-api-sync-pass-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-api-sync-pass-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let side = memry_core::storage::open_data(&dir.join("data.db")).expect("a second handle");

@@ -10,7 +10,6 @@
 mod http_fakes;
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::FakeSecureStore;
 use memry_core::api::projects::ProjectDraft;
@@ -19,8 +18,6 @@ use memry_core::api::tasks_write::NewTaskInput;
 use memry_core::api::vault::Vault;
 use memry_core::crypto::sodium;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
-
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 struct Fixture {
     dir: std::path::PathBuf,
@@ -35,8 +32,11 @@ impl Drop for Fixture {
 }
 
 fn fixture() -> Fixture {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("memry-ryw-{}-{unique}", std::process::id()));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-ryw-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_owned(), dir.display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&[5u8; 32]).expect("a keypair");

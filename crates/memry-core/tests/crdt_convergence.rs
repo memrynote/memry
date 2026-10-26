@@ -38,7 +38,6 @@
 //! is what refuses that document.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::StorageError;
@@ -52,8 +51,6 @@ use yrs::{
     Doc, GetString as _, Map as _, ReadTxn as _, Transact as _, TransactionMut, Update, Xml as _,
     XmlElementPrelim, XmlElementRef, XmlFragment as _, XmlOut, XmlTextPrelim,
 };
-
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 /// A twelve-character lowercase note id, the form desktop mints (§7.1.0).
 const NOTE: &str = "abc123def456";
@@ -158,11 +155,11 @@ fn assert_layout(document: &Document, whose: &str) {
 // ------------------------------------------------------------------ plumbing
 
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-convergence-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-convergence-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

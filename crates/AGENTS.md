@@ -21,6 +21,7 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 
 - The vectors in `packages/contracts/test-vectors/` come out of the TypeScript production code paths (`packages/contracts/scripts/gen-protocol-vectors.ts`). `packages/contracts/src/__tests__/` verifies them on the TypeScript side, and `memry-core`'s tests, `memry-core/tests/*_vectors.rs` among them, reproduce them byte for byte. The `memry-core/src/api/*_conformance.rs` exports let the iOS conformance plan run the same vectors through the shell ([apps/ios](../apps/ios/AGENTS.md#tests)).
 - A change to a covered format updates its `docs/protocol/` chapter and its vectors in the same change. Regenerate one class with `npx tsx packages/contracts/scripts/gen-protocol-vectors.ts <class>`, then confirm the rest with `pnpm --filter @memry/contracts vectors:check`. The primitive crypto vectors from `gen-crypto-vectors.ts` are frozen.
+- A `memry-core` test that needs a scratch directory takes it from `tempfile::Builder` (unique per call). A path built from `std::process::id()` collides across test binaries on Windows, which recycles process ids, and the earlier run's database leaks in.
 - A failing vector means the Rust diverged from the protocol. Fix the Rust, unless the chapter and the TypeScript changed on purpose in the same change.
 - Byte compatibility reaches into dependencies. `flate2` builds against stock zlib because chapter 04 pins compressed frames to `pako.deflate`. Read the comments in `Cargo.toml` before changing a pinned dependency.
 

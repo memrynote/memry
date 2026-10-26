@@ -15,7 +15,6 @@
 mod http_fakes;
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -32,8 +31,6 @@ use rusqlite::Connection;
 use serde_json::json;
 
 const MASTER_KEY: [u8; 32] = [11u8; 32];
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 type Script = Vec<Result<HttpResponse, memry_core::api::errors::TransportError>>;
 
 fn session(transport: Arc<FakeTransport>, store: Arc<FakeSecureStore>) -> AuthSession {
@@ -128,9 +125,11 @@ fn a_locked_keychain_mints_nothing() {
 
 #[test]
 fn an_offline_write_is_queued_and_seeding_adds_nothing() {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir =
-        std::env::temp_dir().join(format!("memry-local-first-{}-{unique}", std::process::id()));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-local-first-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).unwrap();
     let vault = Vault::open("vault-local".into(), dir.display().to_string()).unwrap();
 

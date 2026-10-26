@@ -17,8 +17,6 @@
 //! | a dated subtask is its own row                    | `getTasksInDueWindow` rows    |
 //! | a task whose status will not resolve is open      | `status?.type !== 'done'`     |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::calendar::LocalDateTime;
 use memry_core::domain::task_views::{self, DueWindow, Selection, ViewTask};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
@@ -33,14 +31,12 @@ fn now() -> LocalDateTime {
     LocalDateTime::parse("2026-04-16T12:00:00").expect("a local instant")
 }
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-domain-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-domain-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

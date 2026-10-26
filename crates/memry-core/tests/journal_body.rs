@@ -10,7 +10,6 @@
 //! | an entry edit needs a live journal id              | JP003d liveness             |
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::registry::UpdateSink;
@@ -29,14 +28,12 @@ const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 const DAY: &str = "2026-04-16";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-journal-body-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-journal-body-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

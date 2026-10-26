@@ -10,8 +10,6 @@
 //! | re-writing the stored value writes nothing              | no-op writes                       |
 //! | two devices editing two weekdays both keep their edit   | §6.9 clock per day                 |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::errors::StorageError;
 use memry_core::domain::journal_ops::settings::{
     JournalTemplateSettingsView, journal_settings, set_default_template, set_weekday_template,
@@ -26,14 +24,12 @@ use serde_json::{Value, json};
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-b";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-journal-settings-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-journal-settings-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

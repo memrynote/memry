@@ -8,7 +8,6 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::{SecureStoreError, StorageError};
@@ -22,7 +21,6 @@ use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
 use serde_json::{Value, json};
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 const TODAY: &str = "2099-06-15";
 
 struct MemoryStore(Mutex<HashMap<String, Vec<u8>>>);
@@ -65,11 +63,11 @@ impl SecureStore for MemoryStore {
 }
 
 fn open(label: &str) -> (PathBuf, Vault, Arc<Journal>) {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-api-journal-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-api-journal-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("scratch dir");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let journal = vault.journal(MemoryStore::registered()).expect("journal");

@@ -17,7 +17,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::{FakeTransport, response};
 use memry_core::api::errors::StorageError;
@@ -35,8 +34,6 @@ use memry_core::sync::pull::{PullError, PullLoop, PullReport, RecordCipher};
 use serde_json::{Value as Json, json};
 use yrs::{ReadTxn as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 const NOTE: &str = "abc123def456";
 const DEVICE: &str = "device-core";
 const DELETED_AT: i64 = 1_700_000_500_000;
@@ -45,11 +42,11 @@ const NOW: i64 = 1_700_000_000_000;
 // ------------------------------------------------------------------ plumbing
 
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-tombstone-purge-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-tombstone-purge-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

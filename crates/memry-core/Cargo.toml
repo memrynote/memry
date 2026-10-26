@@ -79,6 +79,9 @@ dryoc = "1.0.0"
 tokio = { workspace = true, features = ["test-util"] }
 proptest = "1"
 insta = "1"
+# Scratch directories: unique name per call, so no test opens a database that an earlier
+# process left at the same path (Windows recycles process ids within seconds).
+tempfile = "3"
 # The vector harness reads the committed JSON directly; an integration test
 # links against the library, not against the library's dependency graph.
 # `float_roundtrip`: the default float parser can land one ULP off, which a

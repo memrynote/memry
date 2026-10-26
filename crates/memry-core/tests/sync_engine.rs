@@ -24,7 +24,7 @@
 mod http_fakes;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
@@ -47,16 +47,14 @@ use serde_json::{Value as Json, json};
 
 // ---------------------------------------------------------------- fixtures
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 /// A scratch `data.db`. Integration tests cannot see the crate's own
 /// `test_support`, so the directory is built and left for the OS to reap.
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-sync-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-sync-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

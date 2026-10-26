@@ -22,7 +22,6 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use memry_core::api::errors::StorageError;
@@ -37,17 +36,15 @@ const DEVICE: &str = "device-a";
 
 // ---------------------------------------------------------------- fixtures
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 /// A scratch directory. Left for the OS to reap: the process-death test needs
 /// the file to outlive a child process, so nothing here may be removed on
 /// drop.
 fn scratch_dir(label: &str) -> PathBuf {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-durability-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-durability-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     dir
 }

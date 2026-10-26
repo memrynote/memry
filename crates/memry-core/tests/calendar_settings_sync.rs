@@ -2,8 +2,6 @@
 //! synced `calendar.*` paths merge per key, and an older desktop whose schema
 //! strips a key it does not know cannot clear it.
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::settings;
 use memry_core::storage::repositories::sync_items::{ApplyOutcome, InboundRecord};
 use memry_core::storage::{Db, open_data};
@@ -11,14 +9,12 @@ use memry_core::sync::apply::apply_inbound;
 use serde_json::{Value, json};
 
 const NOW: i64 = 1_760_000_000_000;
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-cal-settings-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-cal-settings-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("scratch");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

@@ -14,8 +14,6 @@
 //! | the task list orders by instant; active drops dismissed| `activeReminders`                  |
 //! | the due window resolves targets and fire times         | `getDueReminders`, FR-061/062      |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::reminders::{self, NewTaskReminder, ReminderUpdate};
 use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
@@ -26,14 +24,12 @@ use serde_json::{Value, json};
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-domain-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-domain-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

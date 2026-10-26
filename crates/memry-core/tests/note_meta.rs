@@ -17,8 +17,6 @@
 //! | a link naming nothing is broken, not an error     | `nil` is an answer                  |
 //! | a deleted note resolves nothing                   | §7.15                               |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_meta;
@@ -30,14 +28,12 @@ use serde_json::{Map, Value, json};
 const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn vault(label: &str) -> (Db, Vault) {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-note-meta-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-note-meta-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let opened = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (

@@ -11,7 +11,6 @@
 //! | the update row and the outbox row are one  | FR-030, §C.4                  |
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::StorageError;
@@ -22,16 +21,14 @@ use memry_core::storage::{Db, open_data};
 use memry_core::sync::outbox;
 use yrs::{ReadTxn as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 const NOTE: &str = "abc123def456";
 
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-local-edit-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-local-edit-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

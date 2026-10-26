@@ -4,7 +4,6 @@
 //! source and drops the mirror, and the projection shows the feed's events.
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use memry_core::api::calendar_records::CalendarZone;
 use memry_core::domain::calendar_items::ical::{IcalZones, parse_feed};
@@ -14,11 +13,12 @@ use memry_core::domain::calendar_items::zone::FixedZone;
 use memry_core::storage::{Db, open_data};
 
 const NOW: i64 = 1_773_000_000_000; // 2026-03-08
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open() -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("memry-cal-feeds-{}-{unique}", std::process::id()));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-cal-feeds-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("scratch");
     open_data(&dir.join("data.db")).expect("open data.db")
 }
