@@ -18,3 +18,6 @@ docs/agents/skill-patches/*.patch -whitespace
 crates/memry-desktop/tests/fixtures/article-extract/** -text -whitespace
 # Conformance vectors generated from linkedom and Defuddle (packages/article-extract).
 packages/contracts/test-vectors/article-extract/** linguist-generated
+
+# Captured Electron profiles are read byte for byte (md5 checksums, LevelDB CURRENT); no EOL conversion.
+crates/memry-desktop/tests/fixtures/electron/** -text -whitespace
