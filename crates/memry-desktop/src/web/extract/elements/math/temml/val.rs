@@ -163,20 +163,6 @@ impl V {
         }
     }
 
-    /// `delete node[key]`.
-    pub fn remove(&self, key: &str) {
-        if let V::Obj(o) = self {
-            o.borrow_mut().remove(key);
-        }
-    }
-
-    pub fn has(&self, key: &str) -> bool {
-        match self {
-            V::Obj(o) => o.borrow().contains_key(key),
-            _ => false,
-        }
-    }
-
     /// `node.type`, or `""` when there is none.
     pub fn ty(&self) -> String {
         self.get("type").as_string().unwrap_or_default()
@@ -203,10 +189,6 @@ impl V {
             V::Num(n) => Some(*n),
             _ => None,
         }
-    }
-
-    pub fn as_bool(&self) -> bool {
-        self.truthy()
     }
 
     /// The items of an array value (a snapshot).
@@ -259,13 +241,6 @@ impl V {
         }
     }
 
-    /// `array.unshift(value)`.
-    pub fn unshift(&self, value: V) {
-        if let V::Arr(a) = self {
-            a.borrow_mut().insert(0, value);
-        }
-    }
-
     /// `array.includes(string)`.
     pub fn includes(&self, s: &str) -> bool {
         self.items()
@@ -281,14 +256,6 @@ impl V {
         match self {
             V::Arr(a) => a.borrow().len(),
             _ => 0,
-        }
-    }
-
-    pub fn ptr_eq(&self, other: &V) -> bool {
-        match (self, other) {
-            (V::Obj(a), V::Obj(b)) => Rc::ptr_eq(a, b),
-            (V::Arr(a), V::Arr(b)) => Rc::ptr_eq(a, b),
-            _ => false,
         }
     }
 

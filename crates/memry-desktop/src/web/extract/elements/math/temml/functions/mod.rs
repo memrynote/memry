@@ -28,6 +28,7 @@ mod html;
 mod mclass;
 mod misc;
 mod op;
+mod refs;
 mod spacing;
 mod supsub;
 mod symbols;
@@ -201,6 +202,7 @@ static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
     delimiter::register(&mut r);
     misc::register(&mut r);
     op::register(&mut r);
+    refs::register(&mut r);
     spacing::register(&mut r);
     symbols::register(&mut r);
     supsub::register(&mut r);

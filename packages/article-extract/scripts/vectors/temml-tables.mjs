@@ -30,6 +30,8 @@ import { smalls } from ${JSON.stringify(join(src, 'utils.js'))}
 export default { symbols, ATOMS, NON_ATOMS, ligatures, unicodeSymbols, uSubsAndSups, unicodeSubRegEx, asciiFromScript, macros, smalls }
 `
 
+const pairs = (obj) => Object.entries(obj)
+
 export async function temmlTablesText() {
   const result = await build({
     stdin: { contents: entry, resolveDir: src, loader: 'js' },
@@ -41,7 +43,6 @@ export async function temmlTablesText() {
   const code = result.outputFiles[0].text
   const mod = await import(`data:text/javascript;base64,${Buffer.from(code).toString('base64')}`)
   const t = mod.default
-  const pairs = (obj) => Object.entries(obj)
   const out = {
     symbols: {
       math: pairs(t.symbols.math).map(([k, v]) => [k, v.group, v.replace ?? null]),

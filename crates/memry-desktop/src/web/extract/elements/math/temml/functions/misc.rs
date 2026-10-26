@@ -2,7 +2,7 @@
 
 use super::{Ctx, Props, Registry, assert_node_type};
 use crate::node;
-use crate::web::extract::elements::math::temml::build::{build_expression, build_expression_row};
+use crate::web::extract::elements::math::temml::build::build_expression_row;
 use crate::web::extract::elements::math::temml::style::Style;
 use crate::web::extract::elements::math::temml::tree::{MathNode, Tree};
 use crate::web::extract::elements::math::temml::units::calculate_size;

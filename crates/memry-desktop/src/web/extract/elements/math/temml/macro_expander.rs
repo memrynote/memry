@@ -396,14 +396,6 @@ impl MacroExpander {
         }
     }
 
-    pub fn expand_macro(&mut self, name: &str) -> R<Option<Vec<Tok>>> {
-        if self.macros.has(name) {
-            Ok(Some(self.expand_tokens(vec![tok(name, None)])?))
-        } else {
-            Ok(None)
-        }
-    }
-
     pub fn expand_tokens(&mut self, tokens: Vec<Tok>) -> R<Vec<Tok>> {
         let mut output = Vec::new();
         let old = self.stack.len();

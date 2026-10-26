@@ -135,10 +135,6 @@ impl MathNode {
         }
     }
 
-    pub fn into_tree(self) -> Tree {
-        Tree::Math(self)
-    }
-
     fn markup(&self) -> String {
         let mut out = format!("<{}", self.ty);
         for (k, v) in &self.attributes {
@@ -186,10 +182,6 @@ pub fn create_class(classes: &[String]) -> String {
 }
 
 impl Tree {
-    pub fn text(s: impl Into<String>) -> Tree {
-        Tree::Text(s.into())
-    }
-
     pub fn frag(children: Vec<Tree>) -> Tree {
         Tree::Frag(Fragment {
             children,
@@ -290,11 +282,6 @@ impl Tree {
         }
         Ok(())
     }
-}
-
-/// `${undefined}` / `${string}` for a style value that may be unset.
-pub fn style_value(color: &Option<String>) -> String {
-    color.clone().unwrap_or_else(|| "undefined".to_string())
 }
 
 /// `wrapWithMstyle(expression)`.

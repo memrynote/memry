@@ -169,14 +169,6 @@ pub fn left_delimiter_names() -> Vec<&'static str> {
     seen
 }
 
-pub fn is_right_delimiter(text: &str) -> bool {
-    LEFT_TO_RIGHT.iter().any(|(_, r)| *r == text)
-}
-
-pub fn is_left_delimiter(text: &str) -> bool {
-    right_of(text).is_some()
-}
-
 pub fn check_symbol_node(node: &V) -> bool {
     let t = node.ty();
     t == "atom" || t == "delimiter" || (!t.is_empty() && tables().non_atoms.contains(&t))
