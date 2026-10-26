@@ -18,7 +18,6 @@
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::{AuthError, SecureStoreError, StorageError};
@@ -28,8 +27,6 @@ use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
-
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 /// A secure store held in memory, answering exactly what it was given.
 struct MemoryStore {
@@ -101,11 +98,11 @@ impl SecureStore for MemoryStore {
 }
 
 fn vault(label: &str) -> (PathBuf, Vault) {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-notes-write-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-notes-write-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let opened = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     (dir, opened)

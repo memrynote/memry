@@ -96,11 +96,10 @@ jobs:
       # Tauri's webview and the keyring need these system libraries on Linux.
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf \
-            gnome-keyring libsecret-tools dbus-x11
+        uses: ./.github/actions/apt-install
+        with:
+          packages: >-
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf gnome-keyring libsecret-tools dbus-x11
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -152,10 +151,24 @@ jobs:
       # session bus at all, where the reader must answer "missing" and create nothing.
       - name: Electron profile readers, live OS secrets (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 15
         run: |
-          cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live -- -D warnings
-          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --no-run
+          cargo clippy -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked -- -D warnings
+          cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live --test electron_secrets_locked --no-run
           dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_KEYTAR=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_live'
+          # A keyring that holds a keytar item but was never unlocked in this session (login without
+          # PAM unlock): a cold gnome-keyring hides the item's attributes, and the listing must say
+          # "denied", never "empty". The first session writes the item into an encrypted keyring, the
+          # daemon is replaced by one that has no password, and no prompter answers the unlock.
+          dbus-run-session -- bash -c '
+            set -e
+            echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            echo -n locked-value | secret-tool store --label keytar xdg:schema org.freedesktop.Secret.Generic service com.memry.sync account master-key
+            pkill -x gnome-keyring-d
+            sleep 1
+            gnome-keyring-daemon --start --components=secrets >/dev/null
+            MEMRY_LIVE_LOCKED_KEYRING=1 cargo test -p memry-desktop --features live-os-secrets --test electron_secrets_locked
+          '
           # Service stopped, in the SAME session as the keyring check: the reader is pointed at a
           # bus socket that does not exist, must say "missing", and must not have created an item
           # in the live keyring. A probe item first proves the search would show a memry-live item.

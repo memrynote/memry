@@ -8,7 +8,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::{FakeTransport, response};
 use memry_core::protocol::envelope::{EnvelopeError, RecordEnvelope};
@@ -22,14 +21,12 @@ use memry_core::sync::pull::{
 use memry_core::sync::store::{self, RECORD_CURSOR_SCOPE};
 use serde_json::json;
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-cursor-repair-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-cursor-repair-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

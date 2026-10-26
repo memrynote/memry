@@ -18,8 +18,6 @@
 //! | a record joins the caller's open transaction           | one commit with the task write  |
 //! | an inbound desktop row reads with unknown keys kept    | §13.2                           |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::task_activity::{
     self, ACTION_COMPLETED, ACTION_CREATED, ACTION_UPDATED, ActivityQuery, FieldChange,
 };
@@ -33,14 +31,12 @@ const NOW_ISO: &str = "2025-10-09T08:53:20.000Z";
 const DAY: i64 = 86_400_000;
 const DEVICE: &str = "device-a";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-domain-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-domain-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

@@ -8,7 +8,6 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use memry_core::api::errors::{SecureStoreError, StorageError};
@@ -20,8 +19,6 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_core::storage::{Db, open_data};
 use rusqlite::Connection;
 use yrs::{Any, ReadTxn as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlTextPrelim};
-
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 struct MemoryStore(Mutex<HashMap<String, Vec<u8>>>);
 
@@ -58,11 +55,11 @@ struct Fixture {
 }
 
 fn fixture(label: &str) -> Fixture {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-link-rewrite-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-link-rewrite-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let mut secret = vec![7u8; 32];

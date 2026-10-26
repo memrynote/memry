@@ -18,8 +18,6 @@
 //! | project chain: parent → token → note → settings →   | `resolveNoteTaskProjectId`            |
 //! | inbox → first                                       |                                       |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::crdt::blocks::Block;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::update_log;
@@ -42,14 +40,12 @@ const NOW: i64 = 1_760_000_000_000;
 const DEVICE: &str = "device-a";
 const NOTE: &str = "note-1";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-note-tasks-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-note-tasks-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

@@ -26,7 +26,6 @@ mod http_fakes;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
@@ -67,14 +66,12 @@ const OLD: &str = "2020-01-01T00:00:00.000Z";
 /// test's premise can quietly invert on some future afternoon (defect 133).
 const RECENT: &str = "2099-01-01T00:00:00.000Z";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_vault(label: &str) -> Vault {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-api-vault-sync-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-api-vault-sync-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open")
 }

@@ -28,7 +28,6 @@
 mod http_fakes;
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use http_fakes::{FakeTransport, response};
@@ -65,14 +64,12 @@ const NEWER_DESKTOP_NOTE: &str = concat!(
 
 // ---------------------------------------------------------------- fixtures
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-unknown-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-unknown-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }
