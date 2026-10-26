@@ -33,6 +33,12 @@ This builds a debug binary without a bundle at `crates/target/debug/memry-tauri`
 
 The log file is `main.log` in the profile's log directory: `~/Library/Logs/com.memrynote.memry` on macOS, `%LOCALAPPDATA%\com.memrynote.memry\logs` on Windows and `~/.local/share/com.memrynote.memry/logs` on Linux. A device profile adds `.<device>` to that name. The first line reads `MemryNote <version> starting (dev)` or `(packaged)`. Set `MEMRY_TEST_LOG_DIR` and `MEMRY_APP_DATA_DIR` to put the log and data somewhere else, for a test run.
 
+Each line reads `YYYY-MM-DD HH:MM:SS.mmm [level] [scope] text` in local time. `main.log` rotates at 5 MiB: `main.1.log` is the newest archive and `main.4.log` the oldest, so at most five files exist. A line identical to the one before it is counted and written once as `Previous line repeated N more times, the last at this time`. Packaged builds write `info` to the file and `warn` to the console; debug builds write `debug` and `info`, and `RUST_LOG` replaces the file level. A panic is logged at `error` with its backtrace. The launch timeline is one `launch timeline {` block with a `key: value,` line per phase (`scripts/launch-bench.mjs` parses it), logged at `warn` when the window took 5 seconds or more to show.
+
+## Redaction vectors
+
+`memry_desktop::redact` ports `packages/contracts/src/redact.ts` and must match it byte for byte. `packages/contracts/test-vectors/redact.json` and `safe-dimension.json` are generated from the TypeScript functions (`pnpm --filter @memry/contracts exec tsx scripts/gen-protocol-vectors.ts redact`) and `cargo test -p memry-desktop --test redact_vectors` compares every case. Change a pattern in one language and regenerate, or the test fails.
+
 ## Add a command
 
 A command is a Rust function that the renderer calls with a generated, typed function.

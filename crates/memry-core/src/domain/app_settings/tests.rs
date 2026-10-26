@@ -305,7 +305,8 @@ fn a_map_entry_has_its_own_clock_and_null_is_the_delete_marker() {
     let journal = group(&app, "journal");
     assert_eq!(
         journal["weekdayTemplates"],
-        json!({ "1": null, "3": "tpl-wed" })
+        json!({ "3": "tpl-wed" }),
+        "a delete marker reads as absent"
     );
     assert_eq!(journal["showTasks"], json!(false));
     assert_eq!(
@@ -427,20 +428,6 @@ fn a_corrupt_blob_resets_to_defaults_and_is_reported_once() {
     assert_eq!(blob(&app, "tasks"), None, "the bad row is gone");
     assert!(!app.get_group("tasks").expect("read").corrupt_reset);
 
-    // A blob that parses but is not an object is just as corrupt.
-    app.set_group("tasks", patch(json!({ "staleInboxDays": 2 })))
-        .expect("write");
-    app.db
-        .call_blocking(|conn| {
-            conn.execute(
-                "UPDATE local_settings SET value = '[1]' WHERE key = 'tasks'",
-                [],
-            )
-            .map_err(failed)?;
-            Ok(())
-        })
-        .expect("array blob");
-    assert!(app.get_group("tasks").expect("read").corrupt_reset);
     // Writing over a corrupt blob replaces it instead of failing.
     app.db
         .call_blocking(|conn| {
@@ -524,4 +511,50 @@ fn a_path_needs_a_group_and_a_field() {
         assert!(app.set_path(bad, json!(1)).is_err(), "{bad}");
     }
     assert_eq!(app.get_path("general.noSuchField").expect("absent"), None);
+}
+
+#[test]
+fn a_map_entry_value_of_the_wrong_type_is_refused() {
+    let (app, _dir) = open("app-settings-entry-types");
+    assert!(
+        app.set_path("journal.weekdayTemplates.0", json!(5))
+            .is_err()
+    );
+    assert!(
+        app.set_path("journal.weekdayTemplates.0", json!({ "a": 1 }))
+            .is_err()
+    );
+    assert!(app.set_path("sidebar.sortModes.tags", json!(true)).is_err());
+    assert!(app.set_path("sidebar.sortModes.tags", Value::Null).is_err());
+    assert!(app.set_path("editor.calloutTypes.ok", json!("x")).is_err());
+    assert_eq!(synced(&app, "journal.weekdayTemplates.0"), None);
+    assert!(
+        app.set_path("sidebar.sortModes.tags", json!("name-asc"))
+            .is_ok()
+    );
+}
+
+#[test]
+fn valid_json_that_is_not_an_object_is_kept_and_read_as_defaults() {
+    let (app, _dir) = open("app-settings-newer-shape");
+    app.set_group("tasks", patch(json!({ "staleInboxDays": 9 })))
+        .expect("write");
+    app.db
+        .call_blocking(|conn| {
+            conn.execute(
+                "UPDATE local_settings SET value = '[1]' WHERE key = 'tasks'",
+                [],
+            )
+            .map_err(failed)?;
+            Ok(())
+        })
+        .expect("newer shape");
+    let read = app.get_group("tasks").expect("read");
+    assert!(!read.corrupt_reset);
+    assert_eq!(read.value["staleInboxDays"], json!(7));
+    assert_eq!(
+        blob(&app, "tasks"),
+        Some(json!([1])),
+        "the row is not deleted"
+    );
 }

@@ -2,6 +2,7 @@
 //! promotion before the scripts go, duplicate removal after URLs are resolved, and the cover
 //! image that the metadata already holds.
 
+use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use regex::Regex;
@@ -287,6 +288,7 @@ pub(super) fn deduplicate_images(doc: &mut Document, body: NodeId) -> Result<(),
     }
 
     // Lightbox: `<a href="full.jpg"><img src="thumb.jpg"></a><img src="full.jpg">`.
+    let mut links_of: HashMap<NodeId, Vec<NodeId>> = HashMap::new();
     for img in doc.query_selector_all(body, "img")? {
         let Some(parent) = doc.parent_element(img) else {
             continue;
@@ -299,7 +301,26 @@ pub(super) fn deduplicate_images(doc: &mut Document, body: NodeId) -> Result<(),
             continue;
         }
         let normalized = normalize_src(&src).to_string();
-        for link in doc.query_selector_all(parent, ":scope > a[href]")? {
+        // `parent.querySelectorAll(':scope > a[href]')`, read from the children once per
+        // parent: the selector would walk every descendant of `parent` once per image. Only
+        // images are removed here, so the links of a parent do not change.
+        let links = links_of.entry(parent).or_insert_with(|| {
+            let mut links = Vec::new();
+            let mut next = doc.first_child(parent);
+            while let Some(c) = next {
+                if doc.is_element(c)
+                    && doc
+                        .local_name(c)
+                        .is_some_and(|n| n.eq_ignore_ascii_case("a"))
+                    && doc.has_attribute(c, "href")
+                {
+                    links.push(c);
+                }
+                next = doc.next_sibling(c);
+            }
+            links
+        });
+        for &link in links.iter() {
             if doc.query_selector(link, "img")?.is_none() {
                 continue;
             }

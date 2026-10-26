@@ -40,6 +40,15 @@ fn name_of(doc: &Document, element: NodeId) -> String {
     doc.local_name(element).unwrap_or_default().to_lowercase()
 }
 
+/// `adapter.getName(element) === name` without allocating the lower-cased name.
+fn name_is(doc: &Document, element: NodeId, name: &str) -> bool {
+    doc.local_name(element)
+        .unwrap_or_default()
+        .chars()
+        .flat_map(char::to_lowercase)
+        .eq(name.chars())
+}
+
 /// `adapter.getText`: only text nodes contribute.
 fn get_text(doc: &Document, node: NodeId) -> String {
     match &doc.node(node).kind {
@@ -204,7 +213,7 @@ fn eval_chain(
     let step = &steps[count - 1];
     let next = |target: NodeId, state: &mut State| eval_chain(doc, steps, count - 1, target, state);
     match step {
-        Step::Tag(name) => name_of(doc, element) == *name && next(element, state),
+        Step::Tag(name) => name_is(doc, element, name) && next(element, state),
         Step::Attr { name, rule } => {
             let ok = match rule {
                 super::attrs::AttrRule::Exists => doc.has_attribute(element, name),

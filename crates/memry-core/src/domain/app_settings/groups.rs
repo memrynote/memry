@@ -10,6 +10,8 @@ use super::{defaults, syncable};
 pub(super) struct MapField {
     pub name: &'static str,
     pub entry_ok: fn(&str) -> bool,
+    /// Accepts a value for an entry. `null` (the delete marker) only where peer readers take it.
+    pub value_ok: fn(&Value) -> bool,
     /// Whether `get_group` shows the field. `editor.calloutTypes` is read
     /// through its own path, as it is a separate setting on desktop.
     pub in_group: bool,
@@ -56,6 +58,7 @@ pub(super) const GROUPS: &[Group] = &[
         maps: &[MapField {
             name: "calloutTypes",
             entry_ok: syncable::is_callout_name,
+            value_ok: syncable::is_callout_value,
             in_group: false,
         }],
     },
@@ -87,6 +90,7 @@ pub(super) const GROUPS: &[Group] = &[
         maps: &[MapField {
             name: "weekdayTemplates",
             entry_ok: syncable::is_weekday_key,
+            value_ok: syncable::is_template_id,
             in_group: true,
         }],
     },
@@ -99,6 +103,7 @@ pub(super) const GROUPS: &[Group] = &[
         maps: &[MapField {
             name: "sortModes",
             entry_ok: syncable::is_sort_surface,
+            value_ok: syncable::is_sort_mode,
             in_group: true,
         }],
     },

@@ -255,6 +255,38 @@ fn corpus_covers_every_extractor_and_category() {
     assert!(generic >= 25, "{generic} generic pages");
 }
 
+/// 200 seeded whole pages (`vectors/article-fuzz.mjs`: metadata variants, chrome, assembled
+/// article blocks and tag soup) must give the capture the TypeScript extractor gave. A panic in
+/// the port fails the case with its index.
+#[test]
+fn seeded_random_pages_match_the_typescript_extractor() {
+    let cases = read("article-fuzz.json");
+    let cases = cases.as_array().unwrap();
+    assert_eq!(cases.len(), 200);
+    let mut failures = Vec::new();
+    for (i, case) in cases.iter().enumerate() {
+        let html = case["input"]["html"].as_str().unwrap();
+        let url = case["input"]["url"].as_str().unwrap();
+        let now = case["input"]["now"].as_str().unwrap();
+        let fetcher = Replay::new(&Value::Null);
+        let got = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            serde_json::to_string(&extract_article(html, url, now, &fetcher)).unwrap()
+        }));
+        let want = serde_json::to_string(&case["expected"]).unwrap();
+        match got {
+            Ok(got) if got == want => {}
+            Ok(got) => failures.push(format!("case {i}:\n  rust: {got}\n  node: {want}")),
+            Err(_) => failures.push(format!("case {i}: the port panicked")),
+        }
+    }
+    assert!(
+        failures.is_empty(),
+        "{} differences:\n{}",
+        failures.len(),
+        failures.join("\n")
+    );
+}
+
 /// Every vector's `expected` is an `ArticleCapture` the capture API accepts: it deserializes into
 /// the Rust mirror of `packages/contracts/src/capture-api.ts` and serializes back unchanged.
 #[test]

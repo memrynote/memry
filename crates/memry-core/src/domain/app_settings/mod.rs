@@ -12,6 +12,21 @@
 //! paths and the blob in one transaction, so a refused patch writes nothing and an
 //! accepted one is never half applied.
 //!
+//! ## Growing the synced list
+//!
+//! A field that becomes syncable in a later build is **stranded** in older local
+//! blobs: reads ignore a synced field found in the blob (one owner per field), so
+//! the old local value would silently vanish. Whoever adds the field to
+//! `syncable.rs` must also ship a one-time promotion on vault open (read the blob
+//! value, `Settings::set` it only when no device has a clock for the path, then
+//! drop it from the blob), like desktop's `seedFeaturesSyncedSettings`.
+//!
+//! ## Blob that is JSON but not an object
+//!
+//! Only a JSON **parse failure** resets a blob (row deleted, `corrupt_reset`).
+//! Valid JSON of another shape (a newer build's format) reads as defaults and is
+//! left on disk; a write to that group replaces it, since it cannot be merged into.
+//!
 //! Not exported through UniFFI: iOS reads and writes settings through
 //! [`crate::api::settings::Settings`].
 
@@ -148,6 +163,11 @@ impl AppSettings {
                     if !(map.entry_ok)(entry) {
                         return Err(invalid(format!(
                             "settings `{group}.{field}`: `{entry}` is not a valid entry"
+                        )));
+                    }
+                    if !(map.value_ok)(entry_value) {
+                        return Err(invalid(format!(
+                            "settings `{group}.{field}.{entry}`: wrong value type"
                         )));
                     }
                     synced.push((format!("{group}.{field}.{entry}"), entry_value.clone()));
@@ -294,7 +314,9 @@ fn read_group(
                     }
                 }
             }
-            _ => corrupt = Some(raw),
+            // Valid JSON that is not an object: keep the row, read defaults.
+            Ok(_) => {}
+            Err(_) => corrupt = Some(raw),
         }
     }
 
@@ -314,7 +336,8 @@ fn read_group(
                     continue;
                 };
                 for (entry, value) in entries {
-                    if (map_field.entry_ok)(entry) {
+                    // `null` is a delete marker, not a value: absent to readers.
+                    if (map_field.entry_ok)(entry) && !value.is_null() {
                         target.insert(entry.clone(), value.clone());
                     }
                 }

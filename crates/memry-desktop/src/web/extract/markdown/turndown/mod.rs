@@ -81,16 +81,16 @@ fn leading_newlines(s: &str) -> usize {
     s.len() - s.trim_start_matches('\n').len()
 }
 
-/// `join(output, replacement)`: at most two newlines between the pieces, the larger of what
-/// `output` ends with and `replacement` starts with.
-pub fn join(output: &str, replacement: &str) -> String {
+/// `output = join(output, replacement)`: at most two newlines between the pieces, the larger of
+/// what `output` ends with and `replacement` starts with. Appends in place, so reducing a long
+/// run of siblings stays linear.
+fn join(output: &mut String, replacement: &str) {
     let newlines = trailing_newlines(output)
         .max(leading_newlines(replacement))
         .min(2);
-    let mut joined = output.trim_end_matches('\n').to_string();
-    joined.push_str(&"\n\n"[..newlines]);
-    joined.push_str(replacement.trim_start_matches('\n'));
-    joined
+    output.truncate(output.trim_end_matches('\n').len());
+    output.push_str(&"\n\n"[..newlines]);
+    output.push_str(replacement.trim_start_matches('\n'));
 }
 
 /// `process(parentNode)`: reduces the child nodes to markdown.
@@ -109,7 +109,7 @@ fn process(dom: &mut Dom, parent: NodeId, root: NodeId) -> Result<String, Extrac
             node_type::ELEMENT => replacement_for_node(dom, child, root)?,
             _ => String::new(),
         };
-        output = join(&output, &replacement);
+        join(&mut output, &replacement);
     }
     Ok(output)
 }

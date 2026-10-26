@@ -5,6 +5,7 @@
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { parseHTML } from 'linkedom'
+import { ArticleCaptureSchema } from '../../../contracts/src/capture-api.ts'
 import { mapToArticleCapture } from '../../src/map.ts'
 import { extractFromHtml } from '../../src/node.ts'
 import { dist } from './probes.mjs'
@@ -58,6 +59,8 @@ export async function articleVector({ name, html, url, now, fetch: recorded }) {
     throw new Error(`${name}: requests without a recorded response: ${JSON.stringify(unmatched)}`)
   }
   const capture = JSON.parse(JSON.stringify(mapToArticleCapture(result, url, { now })))
+  // The capture API accepts every vector's capture (the extension and desktop server parse it).
+  ArticleCaptureSchema.parse(capture)
   const raw = Object.fromEntries(
     ['title', 'author', 'published', 'description', 'image', 'site', 'language'].map((k) => [
       k,
