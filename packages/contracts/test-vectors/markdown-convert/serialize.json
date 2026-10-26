@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "serializeBlocks of blocknote-converter.ts (extractInlineColorRuns, HTML comment and emphasis tokens, BlockNote blocksToMarkdownLossy, normalizeSerializedMarkdown): hand-written blocks of every type, and the blocks prepareFragmentSeed builds from the memry-parse inputs, to markdown byte for byte. status \"error\" means the oracle threw (the converter answers null).",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 912
+    "caseCount": 913
   },
   "cases": [
     {
@@ -7746,6 +7746,19 @@
         "status": "ok",
         "output": {
           "markdown": "a {++open\n"
+        }
+      }
+    },
+    {
+      "id": "parse-notes/serialize-seed/image-url-reserved-char",
+      "op": "serialize-seed",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z%7D5jdHi6B-myT)\n"
         }
       }
     },

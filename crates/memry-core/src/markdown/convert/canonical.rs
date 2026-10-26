@@ -4,7 +4,10 @@
 
 use serde_json::Value as Json;
 use yrs::updates::decoder::Decode as _;
-use yrs::{Doc, ReadTxn, StateVector, Transact as _, Update, XmlFragment, XmlFragmentRef, XmlOut};
+use yrs::{
+    Doc, OffsetKind, Options, ReadTxn, StateVector, Transact as _, Update, XmlFragment,
+    XmlFragmentRef, XmlOut,
+};
 
 use super::preserve::blocks_to_markdown_preserving;
 use super::roots::read_link_references;
@@ -23,8 +26,16 @@ pub const BODY_FRAGMENT: &str = "prosemirror";
 /// `new Y.Doc()` plus `Y.applyUpdate(snapshot, Y.encodeStateAsUpdate(doc))`: a
 /// detached copy a serialization may read and mutate without touching the live
 /// document.
+///
+/// The copy counts text in UTF-16 code units, the unit of a Yjs item's clock and
+/// of every JavaScript index. The registry's documents count bytes for text
+/// edits, and `StickyIndex` mixes the two kinds on a non-ASCII run, so the
+/// writing tools resolve and place anchors on this copy only.
 pub fn detach<T: ReadTxn>(txn: &T) -> Option<Doc> {
-    let snapshot = Doc::new();
+    let snapshot = Doc::with_options(Options {
+        offset_kind: OffsetKind::Utf16,
+        ..Options::default()
+    });
     let update = Update::decode_v1(&txn.encode_state_as_update_v1(&StateVector::default())).ok()?;
     snapshot.transact_mut().apply_update(update).ok()?;
     Some(snapshot)

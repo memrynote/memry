@@ -8,14 +8,16 @@ read by another must be byte-identical where this chapter says it is.
 
 ## 12.1 Who converts markdown — Q12.2
 
-> **Ownership change.** From the Tauri desktop build, the core owns markdown conversion in both directions, in `crates/memry-core/src/markdown/`, per `docs/adr/0001-desktop-on-tauri-v2.md`. The rules and citations below describe the TypeScript converter, which is frozen and stays the oracle for the conversion vectors. Step 05 (#3522) of the Tauri epic rewrites this section with citations to the Rust implementation.
+> **Ownership change.** From the Tauri desktop build, the core owns markdown conversion in both directions, in `crates/memry-core/src/markdown/`, per `docs/adr/0001-desktop-on-tauri-v2.md`. The converter is a Rust port of the TypeScript one, behind the cargo feature `markdown` (§12.1.4). The TypeScript converter named in the rules below is frozen until the cutover step, and it stays the oracle that generates the `markdown-convert` vectors. The citations below name the TypeScript the vectors were generated from; §12.1.4 names the Rust that reproduces them.
 
-**Normative. Desktop converts markdown in both directions, in its main process.
-The core never serialises a document to markdown, and it parses markdown in one
-module, `markdown_seed`, for the three writes of §12.1.0. Every other path carries
-markdown verbatim.**
+**Normative. A build of the core with the cargo feature `markdown` converts markdown in both
+directions, through `Converter` (`crates/memry-core/src/markdown/convert/api.rs:39`), and the
+`markdown-convert` vector class is the proof that it matches the TypeScript converter below. A
+build without the feature, which is the iOS build, never serialises a document to markdown, and
+it parses markdown in one module, `markdown_seed`, for the three writes of §12.1.0. Every other
+path carries markdown verbatim.**
 
-Desktop's converter is a headless BlockNote editor in the Electron main process
+The TypeScript converter is a headless BlockNote editor in the Electron main process
 (`apps/desktop/src/main/sync/blocknote-converter.ts:1` (`ServerBlockNoteEditor`), `:133-141`),
 built from the schema factory the renderer uses (`createMemrySchema`,
 `packages/editor-schema/src/schema.ts:126`;
@@ -25,11 +27,11 @@ converts no markdown. It changes a body through the core's block operations (`Bl
 
 The directions:
 
-| Direction              | Mechanism                                                                                                                                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| markdown to document   | desktop's `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the core, `markdown_seed` for the two writes of §12.1.0 and no others |
-| document to markdown   | desktop only, in the vault write-back (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                                      |
-| document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                          |
+| Direction              | Mechanism                                                                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| markdown to document   | `Converter::seed_body` (`crates/memry-core/src/markdown/convert/api.rs:102`), the port of `markdownToYFragment` (`apps/desktop/src/main/sync/blocknote-converter.ts:548`) with the repairs of §12.1.1; in the iOS build, `markdown_seed` for the two writes of §12.1.0 and no others |
+| document to markdown   | `Converter::serialize_note_body` (`crates/memry-core/src/markdown/convert/api.rs:152`), the port of the vault write-back's `serializeNoteBody` (`apps/desktop/src/main/sync/crdt-writeback.ts:603`)                                                                                  |
+| document to plain text | `extract_text`, a plain-text walk of the `prosemirror` fragment that keeps headings and list markers, drops everything else, and claims no markdown fidelity (§12.1.3)                                                                                                               |
 
 ### 12.1.0 The core's markdown seed
 
@@ -105,7 +107,8 @@ the whole text to literal paragraphs (§12.1.0).
 every shell over it. Such a client:
 
 - MUST NOT parse or serialise BlockNote markdown, except through `markdown_seed` for the two
-  writes of §12.1.0;
+  writes of §12.1.0, or through the Rust converter of §12.1.4 in a build that enables the feature
+  `markdown` (`crates/memry-core/Cargo.toml:23`);
 - carries a create's `content` and a template's body verbatim (§12.2 carve-out A);
 - duplicates a note by copying its document, never by serialising it. The core snapshots each
   top-level block into the copy and sends `content: ''`
@@ -117,6 +120,35 @@ every shell over it. Such a client:
   markdown grammar, is its whole obligation here.
 
 **Disposition of Q12.2: answered** (this section).
+
+### 12.1.4 The Rust converter and its proof
+
+**Normative.** The converter in `crates/memry-core/src/markdown/` MUST answer what the
+TypeScript converter of §12.1.1 answers for the same input, byte for byte for markdown and
+canonically for trees, and MUST fail closed, with `None`, where the TypeScript throws or answers
+`null`, so the caller keeps the vault file (`crates/memry-core/src/markdown/convert/api.rs:129`,
+`crates/memry-core/tests/markdown_fail_closed.rs:1`). It never edits the live document it
+reads: serialization works on a detached copy
+(`crates/memry-core/src/markdown/convert/canonical.rs:34`).
+
+The proof is the `markdown-convert` class in `packages/contracts/test-vectors/markdown-convert/`,
+generated by running the TypeScript in place (`apps/desktop/scripts/markdown-oracle/`) and
+reproduced by `crates/memry-core/tests/markdown_*_vectors.rs`:
+
+| File                                                                              | Pins                                                                                                                | Owner section         |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| `frontmatter.json`, `markdown-class.json`                                         | the split, parse, serialize, YAML dump and load, the large-file class                                               | §12.4                 |
+| `pm-schema.json`, `yxml.json`                                                     | the ProseMirror schema, content matching, and y-prosemirror's read and write of the fragment                        | §12.5.0               |
+| `md-to-html.json`, `html-to-blocks.json`, `parse.json`, `memry-parse.json`        | BlockNote's markdown parse, and the whole markdown-to-seed path with the repairs of §12.1.1                         | §12.1.1, §12.6, §12.7 |
+| `serialize.json`, `serialize-doc.json`, `roundtrip.json`                          | the block serializer, and the document read back as markdown with the restore outcome and the unrepresentable nodes | §12.1.1, §12.10       |
+| `seed-doc.json`, `blocks.json`, `replace-body.json`                               | the document a seed writes with its side roots, the block view, and the whole-body replace                          | §12.5, §12.8          |
+| `layer-text.json`, `layer-markers.json`, `layer-blocks.json`, `layer-critic.json` | the function-level marker, block and CriticMarkup layers                                                            | §12.6 to §12.8        |
+
+Update bytes, client ids and block ids are never compared (§12.5.0): two documents are equal
+when their canonical fragments and side roots are. Beyond the vectors, three oracle-free checks
+run on every change (`crates/memry-core/tests/markdown_proptest.rs:1`), and two oracle-backed runs
+(`crates/memry-core/tests/markdown_differential.rs:1`, `crates/memry-core/tests/markdown_corpus.rs:1`)
+run in the nightly job (`.github/workflows/rust-ci.yml`).
 
 ### 12.1.3 What `extract_text` does, rule by rule
 

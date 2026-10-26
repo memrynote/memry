@@ -7,6 +7,8 @@ members = [
     "uniffi-bindgen-swift",
     "../apps/desktop-tauri/src-tauri",
 ]
+# cargo-fuzz targets: nightly only, built on their own (`memry-core/fuzz`).
+exclude = ["memry-core/fuzz"]
 
 [workspace.package]
 edition = "2024"

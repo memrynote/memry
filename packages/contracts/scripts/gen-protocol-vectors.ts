@@ -158,7 +158,12 @@ const CLASSES: readonly VectorClass[] = [
       'layer-text.json',
       'layer-markers.json',
       'layer-blocks.json',
-      'layer-critic.json'
+      'layer-critic.json',
+      'seed-doc.json',
+      'roundtrip.json',
+      'blocks.json',
+      'serialize-doc.json',
+      'replace-body.json'
     ].map((name) => ({
       path: `markdown-convert/${name}`,
       build: () => committedVector(`markdown-convert/${name}`)

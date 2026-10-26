@@ -145,6 +145,7 @@ const NOTES: Record<string, string> = {
   'critic-astral': '😀 {++é++} 日本語 {--x--}\n',
   'critic-in-fence': `${FENCE}\n{++x++}\n${FENCE}\n`,
   'critic-unclosed': 'a {++open\n',
+  'image-url-reserved-char': '![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n',
   'writing-alt': 'Sabah <!--alt:k3x9q2-->ayaz<!--/alt:k3x9q2--> bir ruzgar.\n',
   'writing-ghost': 'Kahve <!--ghost-->biraz fazla<!--/ghost--> kalabalikti.\n',
   'writing-unpaired': 'a <!--alt:x1-->b\n\nc <!--/ghost--> d\n',

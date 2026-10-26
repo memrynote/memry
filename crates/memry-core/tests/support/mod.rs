@@ -23,6 +23,8 @@ use serde_json::Value as Json;
 #[cfg(feature = "markdown")]
 pub mod doc_case;
 #[cfg(feature = "markdown")]
+pub mod oracle;
+#[cfg(feature = "markdown")]
 pub mod vector_compare;
 #[cfg(feature = "markdown")]
 pub mod yaml_json;

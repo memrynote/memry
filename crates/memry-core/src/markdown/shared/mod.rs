@@ -1,6 +1,7 @@
 //! Ports of the `packages/shared/src` modules the converter uses.
 
 pub mod block_colors;
+pub mod block_copy;
 pub mod block_markers;
 pub mod block_nesting;
 pub mod critic_markup;

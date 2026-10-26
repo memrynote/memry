@@ -80,13 +80,18 @@ one-class change reviewable.
 | `markdown-convert/md-to-html.json`      |                                  833 | same                                        | same + Rust `markdown_md_to_html_vectors.rs`                                         |
 | `markdown-convert/html-to-blocks.json`  |                                  129 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/parse.json`           |                                  833 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
-| `markdown-convert/memry-parse.json`     |                                  723 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
-| `markdown-convert/serialize.json`       |                                  912 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
+| `markdown-convert/memry-parse.json`     |                                  724 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
+| `markdown-convert/serialize.json`       |                                  913 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
 | `markdown-convert/layer-text.json`      |                                13066 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`   |                                 3243 | same                                        | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`    |                                 5116 | same                                        | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
 | `markdown-convert/layer-critic.json`    |                                 2944 | same                                        | same + Rust `markdown_layer_critic_vectors.rs`                                       |
-| **Total**                               | **29033 cases plus 6 fuzz families** |                                             |                                                                                      |
+| `markdown-convert/seed-doc.json`        |                                  739 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
+| `markdown-convert/roundtrip.json`       |                                  739 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
+| `markdown-convert/blocks.json`          |                                  800 | same                                        | same + Rust `markdown_doc_vectors.rs`                                                |
+| `markdown-convert/serialize-doc.json`   |                                  499 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
+| `markdown-convert/replace-body.json`    |                                   44 | same                                        | same + Rust `markdown_doc_edit_vectors.rs`                                           |
+| **Total**                               | **31856 cases plus 6 fuzz families** |                                             |                                                                                      |
 
 ### `markdown-convert/`
 
@@ -104,6 +109,14 @@ the contract). YAML values travel in the JSON spelling described in each file's
 `meta.yamlJsonEncoding`.
 
 `serialize.json` is `serializeBlocks`: 189 hand-written block lists and the 723 seeds of `memry-parse.json` serialized, markdown byte for byte; an oracle error means the converter answers null and the Rust must fail closed.
+
+`seed-doc.json`, `roundtrip.json`, `blocks.json`, `serialize-doc.json` and
+`replace-body.json` are the Y.Doc half (protocol 12.1.1 to 12.1.3): the document a seed
+writes (canonical fragment without block ids, plus the side roots), what it reads back as
+markdown byte for byte (`yDocToMarkdown`, `yDocToCanonicalMarkdown`, `serializeNoteBody`,
+the restore outcome and the unrepresentable nodes), the block view, hand-built and edited
+documents, and `replaceDocBody`. Update bytes and client ids are never compared
+(12.5.0), and a writing tools anchor is stated as the run and index it resolves to.
 
 `memry-parse.json` is the whole markdown-to-seed path (`prepareFragmentSeed`); the Rust
 test compares every case, callout and structured-quote claims included. The

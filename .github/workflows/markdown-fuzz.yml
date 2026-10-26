@@ -1,0 +1,124 @@
+# Nightly proof of the Rust markdown converter beyond the committed vectors
+# (#3522 stage 7). The vectors pin a fixed set of inputs; this job feeds the
+# converter inputs nobody wrote and compares it with the Electron converter
+# running in place as the oracle, and lets cargo-fuzz look for panics.
+#
+#   differential  20000 mutated inputs, Rust against the oracle, zero mismatches
+#   corpus        the synthetic vault (generated from the repo's seed builders)
+#                 and the sandbox vault, Rust against the oracle
+#   fuzz          cargo-fuzz, 10 minutes per target; a crash is uploaded
+#
+# A mismatch is minimised and written to crates/target/markdown-fuzz/<hash>.json,
+# which the job uploads. The fix adds that input to the vectors
+# (apps/desktop/scripts/markdown-oracle/cases-parse.ts) and regenerates the class.
+name: Markdown fuzz
+
+on:
+  schedule:
+    - cron: '41 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: markdown-fuzz-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CI: true
+  HUSKY: 0
+
+jobs:
+  differential:
+    name: Rust against the Electron oracle
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+
+      - name: Differential, 20000 inputs
+        working-directory: crates
+        env:
+          TZ: UTC
+          MEMRY_DIFF_INPUTS: '20000'
+        run: cargo test -p memry-core --features markdown --release --test markdown_differential -- --ignored --nocapture
+
+      - name: Synthetic vault
+        working-directory: crates
+        env:
+          TZ: UTC
+        run: |
+          corpus="$RUNNER_TEMP/corpus"
+          mkdir -p "$corpus"
+          MEMRY_CORPUS_OUT="$corpus/synthetic.jsonl" MEMRY_CORPUS_SYNTHETIC="$corpus/synthetic" \
+            pnpm --filter @memry/desktop exec vitest run --config config/vitest.config.ts --project markdown-oracle
+          MEMRY_CORPUS_JSONL="$corpus/synthetic.jsonl" MEMRY_CORPUS_DIRS="$corpus/synthetic" \
+            cargo test -p memry-core --features markdown --release --test markdown_corpus -- --ignored --nocapture
+
+      - name: Upload mismatches
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdown-mismatches
+          path: crates/target/markdown-fuzz/
+          if-no-files-found: ignore
+
+  fuzz:
+    name: cargo-fuzz (${{ matrix.target }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [convert_roundtrip, frontmatter_split]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Rust (nightly, fuzz only)
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Install cargo-fuzz
+        run: cargo install cargo-fuzz --version 0.13.2 --locked
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates/memry-core/fuzz
+
+      - name: Fuzz, 10 minutes
+        working-directory: crates/memry-core
+        run: cargo +nightly fuzz run ${{ matrix.target }} -- -max_total_time=600 -len_control=10
+
+      - name: Upload crashes
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes-${{ matrix.target }}
+          path: crates/memry-core/fuzz/artifacts/
+          if-no-files-found: ignore

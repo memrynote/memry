@@ -8,6 +8,7 @@ use super::{
     with_cell_content,
 };
 use crate::markdown::shared::block_colors::js_value::{is_record, prop};
+use crate::markdown::shared::block_copy::clone_without;
 
 /// Underline is its OWN nested span, never merged into the color span: an old
 /// client rejects a whole span whose style holds a decl it does not know.
@@ -235,25 +236,28 @@ impl Wrapper {
         input
             .iter()
             .map(|block| {
-                let mut next = block.clone();
+                let mut next = clone_without(block, &["content", "children"]);
                 // Code content is literal: span html in a fence could never be unmasked.
-                if prop(block, "type").and_then(Json::as_str) != Some("codeBlock") {
-                    let content = prop(block, "content");
-                    let wrapped = match content {
+                let content = if prop(block, "type").and_then(Json::as_str) != Some("codeBlock") {
+                    match prop(block, "content") {
                         Some(Json::Array(items)) => Some(Json::Array(self.wrap_inline(items))),
                         Some(table) if is_table_content(table) => self.wrap_table(table),
                         _ => None,
-                    };
-                    if let (Some(wrapped), Some(map)) = (wrapped, next.as_object_mut()) {
-                        map.insert("content".to_owned(), wrapped);
                     }
-                }
-                if let Some(children) = prop(block, "children").and_then(Json::as_array)
-                    && !children.is_empty()
-                {
-                    let children = self.wrap_blocks(children);
-                    if let Some(map) = next.as_object_mut() {
-                        map.insert("children".to_owned(), Json::Array(children));
+                } else {
+                    None
+                };
+                let children = match prop(block, "children").and_then(Json::as_array) {
+                    Some(children) if !children.is_empty() => {
+                        Some(Json::Array(self.wrap_blocks(children)))
+                    }
+                    _ => None,
+                };
+                if let Some(map) = next.as_object_mut() {
+                    for (key, wrapped) in [("content", content), ("children", children)] {
+                        if let Some(original) = block.get(key) {
+                            map.insert(key.to_owned(), wrapped.unwrap_or_else(|| original.clone()));
+                        }
                     }
                 }
                 next

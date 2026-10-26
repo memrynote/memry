@@ -3,8 +3,12 @@
 //! [`super::writing`] for the write half and the position conventions.
 
 use yrs::branch::{Branch, BranchID};
-use yrs::{Assoc, IndexScope, StickyIndex, Text as _, TransactionMut, XmlFragmentRef};
+use yrs::{
+    Assoc, IndexScope, ReadTxn, StickyIndex, Text as _, Transact as _, TransactionMut,
+    XmlFragmentRef,
+};
 
+use super::canonical::detach;
 use super::writing::{
     RunPosition, TextRun, collect_text_runs, plain_text_of, previous_boundary, text_between,
     width_at,
@@ -31,7 +35,7 @@ struct SeededRange {
     shown_text: String,
 }
 
-fn anchor_of(txn: &TransactionMut, run: &TextRun, index: usize) -> Option<WritingAnchor> {
+fn anchor_of<T: ReadTxn>(txn: &T, run: &TextRun, index: usize) -> Option<WritingAnchor> {
     let branch = AsRef::<Branch>::as_ref(&run.text);
     let type_id = match branch.id() {
         BranchID::Nested(id) => Some(AnchorId {
@@ -128,6 +132,20 @@ fn extract_writing_ranges(
         }
     }
 
+    // Anchors come from a UTF-16 copy of the document with the sentinels gone:
+    // the item ids are the live document's, and `StickyIndex::at` counts the
+    // same unit as the indices above (see `canonical::detach`).
+    let BranchID::Root(name) = AsRef::<Branch>::as_ref(fragment).id() else {
+        return Vec::new();
+    };
+    let Some(snap_doc) = detach(&*txn) else {
+        return Vec::new();
+    };
+    let snap_fragment = snap_doc.get_or_insert_xml_fragment(&*name);
+    let snap_txn = snap_doc.transact();
+    let mut snap_runs: Vec<TextRun> = Vec::new();
+    collect_text_runs(&snap_fragment, &snap_txn, &mut snap_runs);
+
     let mut ranges = Vec::new();
     for Found {
         key,
@@ -173,8 +191,8 @@ fn extract_writing_ranges(
             continue;
         }
         let (Some(anchor_start), Some(mut anchor_end)) = (
-            anchor_of(txn, &runs[first.run], first.index),
-            anchor_of(txn, &runs[last.run], last.index),
+            anchor_of(&snap_txn, &snap_runs[first.run], first.index),
+            anchor_of(&snap_txn, &snap_runs[last.run], last.index),
         ) else {
             continue;
         };

@@ -4,7 +4,7 @@
     "oracle": "apps/desktop/scripts/markdown-oracle (Electron converter run in place; gray-matter 4.0.3, js-yaml 3.15.1)",
     "note": "The Y.Doc a markdown seed writes (markdownToYFragment): the fragment as canonical text with block ids removed, and the side roots as JSON (markdownSource, criticMarkupMarks, link reference definitions and usages, writing tools records). A writing tools anchor is stated as the text run and index it resolves to, since Yjs ids are free.",
     "yamlJsonEncoding": "Numbers that JSON cannot carry are {\"$num\": \"NaN\"|\"Infinity\"|\"-Infinity\"|\"-0\"}, a Date is {\"$date\": ISO}, a Buffer is {\"$bin\": base64}, a map with a \"$\"-prefixed key is wrapped as {\"$map\": {...}}. Key order is Object.keys order.",
-    "caseCount": 734
+    "caseCount": 739
   },
   "cases": [
     {
@@ -3092,6 +3092,32 @@
           "roots": {
             "markdownSource": {
               "source": "a {++open\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/image-url-reserved-char",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element image backgroundColor=\"default\" caption=\"\" name=\"whiteboard\" showPreview=true textAlignment=\"left\" url=\"memry://canvas/V1StGXR8_Z%7D5jdHi6B-myT\"",
+          "roots": {
+            "markdownSource": {
+              "source": "![whiteboard](memry://canvas/V1StGXR8_Z}5jdHi6B-myT)\n",
               "htmlComments": true
             },
             "criticMarkupMarks": [],
@@ -18118,6 +18144,194 @@
                   "assoc": -1
                 },
                 "original": "new",
+                "variants": [
+                  {
+                    "id": "v0",
+                    "text": "n",
+                    "source": "user",
+                    "createdAt": 0
+                  }
+                ],
+                "activeVariantId": null
+              }
+            ],
+            "writingGhosts": [],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/ghost-after-two-byte-char",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "<!--ghost-->a<!--/ghost-é-> and <!--ghost-->b<!--/ghost-->"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a<!--/ghost-é-> and b\"",
+          "roots": {
+            "markdownSource": null,
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [
+              {
+                "id": "ghost-0",
+                "anchorStart": {
+                  "run": 0,
+                  "index": 20,
+                  "assoc": 0
+                },
+                "anchorEnd": {
+                  "run": 0,
+                  "index": 21,
+                  "assoc": -1
+                }
+              }
+            ],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/ghost-after-three-byte-char",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "<!--ghost-->a <!--alt:q1-->b<!--/alt:q1--​> c<!--/ghost-->",
+        "writing": {
+          "alternatives": {
+            "q1": {
+              "versions": [
+                {
+                  "text": "x"
+                }
+              ]
+            }
+          },
+          "overflow": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"a b<!--/alt:q1--​> c\"",
+          "roots": {
+            "markdownSource": null,
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [
+              {
+                "id": "ghost-0",
+                "anchorStart": {
+                  "run": 0,
+                  "index": 0,
+                  "assoc": 0
+                },
+                "anchorEnd": {
+                  "run": 0,
+                  "index": 20,
+                  "assoc": -1
+                }
+              }
+            ],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/ghost-ends-on-astral-char",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "é <!--ghost-->go 😀<!--/ghost--> after\n"
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"é go 😀 after\"",
+          "roots": {
+            "markdownSource": {
+              "source": "é go 😀 after\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [],
+            "writingGhosts": [
+              {
+                "id": "ghost-0",
+                "anchorStart": {
+                  "run": 0,
+                  "index": 2,
+                  "assoc": 0
+                },
+                "anchorEnd": {
+                  "run": 0,
+                  "index": 7,
+                  "assoc": -1
+                }
+              }
+            ],
+            "writingOverflow": []
+          }
+        }
+      }
+    },
+    {
+      "id": "seed-doc/doc-seed/alt-after-non-ascii",
+      "op": "doc-seed",
+      "input": {
+        "markdown": "é日本 <!--alt:k1-->ayaz<!--/alt:k1--> bir 😀 ruzgar.\n",
+        "writing": {
+          "alternatives": {
+            "k1": {
+              "versions": [
+                {
+                  "text": "n"
+                }
+              ]
+            }
+          },
+          "overflow": []
+        }
+      },
+      "expected": {
+        "status": "ok",
+        "output": {
+          "seeded": true,
+          "fragment": "0 element blockGroup\n1 element blockContainer\n2 element paragraph backgroundColor=\"default\" textAlignment=\"left\" textColor=\"default\"\n3 text \"é日本 ayaz bir 😀 ruzgar.\"",
+          "roots": {
+            "markdownSource": {
+              "source": "é日本 ayaz bir 😀 ruzgar.\n",
+              "htmlComments": true
+            },
+            "criticMarkupMarks": [],
+            "linkReferenceDefinitions": [],
+            "linkReferenceUsages": [],
+            "writingAlternatives": [
+              {
+                "id": "k1",
+                "anchorStart": {
+                  "run": 0,
+                  "index": 4,
+                  "assoc": 0
+                },
+                "anchorEnd": {
+                  "run": 0,
+                  "index": 8,
+                  "assoc": -1
+                },
+                "original": "ayaz",
                 "variants": [
                   {
                     "id": "v0",

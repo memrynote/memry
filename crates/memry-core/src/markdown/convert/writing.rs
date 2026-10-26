@@ -12,9 +12,10 @@
 //! - seed: markers become sentinels before the parse, so they land in the
 //!   fragment's text; each one is read off as an anchor and deleted.
 //!
-//! Positions are UTF-16 code units, as in Yjs: `StickyIndex` counts them whatever
-//! the document's offset kind. The registry's documents count bytes for text
-//! edits, so an index becomes a byte offset only at an insert or a delete.
+//! Positions are UTF-16 code units, as in Yjs. The write side works on a
+//! detached UTF-16 copy of the document (`canonical::detach`); the seed side
+//! removes sentinels from the live document by byte offset (the registry's
+//! offset kind) and takes its anchors from such a copy.
 
 use yrs::branch::Branch;
 use yrs::types::text::YChange;
@@ -47,11 +48,6 @@ pub(super) fn plain_text_of<T: ReadTxn>(txn: &T, text: &XmlTextRef) -> Vec<u16> 
             _ => vec![0xfffc],
         })
         .collect()
-}
-
-/// The UTF-8 length of the first `units` code units of `plain`.
-fn byte_len(plain: &[u16], units: usize) -> usize {
-    String::from_utf16_lossy(&plain[..units.min(plain.len())]).len()
 }
 
 /// Every text run of the fragment, in document order.
@@ -155,12 +151,11 @@ fn resolve_position<T: ReadTxn>(
     let run = runs
         .iter()
         .position(|r| std::ptr::eq(AsRef::<Branch>::as_ref(&r.text), branch))?;
-    // `get_offset` answers in the document's offset kind (bytes).
-    let plain = String::from_utf16_lossy(&runs[run].plain);
-    let index = plain
-        .get(..offset.index as usize)
-        .map_or(offset.index as usize, |head| head.encode_utf16().count());
-    Some(RunPosition { run, index })
+    // The snapshot counts UTF-16 units (see `detach`).
+    Some(RunPosition {
+        run,
+        index: offset.index as usize,
+    })
 }
 
 fn resolve_range<T: ReadTxn>(
@@ -286,8 +281,7 @@ pub fn insert_writing_sentinels(
                 .collect();
             here.sort_by_key(|i| i.3);
             let text: String = here.iter().map(|i| i.2).collect();
-            let at = byte_len(&runs[run].plain, index) as u32;
-            runs[run].text.insert(&mut txn, at, &text);
+            runs[run].text.insert(&mut txn, index as u32, &text);
         }
     }
     EncodedWritingRanges {
