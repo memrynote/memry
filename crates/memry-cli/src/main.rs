@@ -78,3 +78,4 @@ async fn run(invocation: Invocation) -> Result<(), CliError> {
         } => journal::property(&cli, &date, &name, &value_json, vault.as_deref()),
     }
 }
+// proof
