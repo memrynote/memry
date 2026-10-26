@@ -246,6 +246,11 @@ fn projection_a_failed_reconcile_is_reported_and_rebuilt_once_without_stopping_t
         rx.recv_timeout(SETTLE).expect("reported"),
         ("bad".to_owned(), "index is broken".to_owned())
     );
+    // Let the pass reach the next projector before stopping, which cancels what is left.
+    let end = Instant::now() + SETTLE;
+    while good.fake.reconciled.load(Ordering::SeqCst) == 0 && Instant::now() < end {
+        std::thread::sleep(Duration::from_millis(2));
+    }
     runtime.stop(false);
     assert_eq!(bad.fake.rebuilt.load(Ordering::SeqCst), 1);
     assert_eq!(
