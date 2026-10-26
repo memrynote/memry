@@ -245,6 +245,57 @@
     ]
   },
   {
+    "name": "math-katex",
+    "covers": [
+      "math",
+      "KaTeX with annotation",
+      "katex-display"
+    ]
+  },
+  {
+    "name": "math-latex-script",
+    "covers": [
+      "math",
+      "math/tex script",
+      "raw LaTeX delimiters",
+      "LaTeX image"
+    ]
+  },
+  {
+    "name": "math-mathjax-v2",
+    "covers": [
+      "math",
+      "MathJax v2",
+      "math/tex script"
+    ]
+  },
+  {
+    "name": "math-mathjax-v3",
+    "covers": [
+      "math",
+      "MathJax v3",
+      "assistive MathML",
+      "CHTML reconstruction"
+    ]
+  },
+  {
+    "name": "math-mathml",
+    "covers": [
+      "math",
+      "plain MathML",
+      "alttext",
+      "tagged equation"
+    ]
+  },
+  {
+    "name": "math-wikipedia-mwe",
+    "covers": [
+      "math",
+      "Wikipedia mwe-math",
+      "fallback image"
+    ]
+  },
+  {
     "name": "mixed-bidi",
     "covers": [
       "mixed bidi",

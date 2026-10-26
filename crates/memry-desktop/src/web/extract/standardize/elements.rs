@@ -2,14 +2,19 @@
 //! `code > pre`, arXiv LaTeXML, tables, video and `lite-youtube`.
 //!
 //! The JS rule table starts with the math and code rules and has the image rules between the
-//! heading and role rules.
+//! heading and role rules; the raw LaTeX wrapper and the LaTeX image conversion open the
+//! function.
 
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::headings::clean_heading;
+use crate::web::extract::elements::math::base::{extract_latex_from_image_src, looks_like_latex};
+use crate::web::extract::elements::math::raw::wrap_raw_latex_delimiters;
+use crate::web::extract::elements::math::{self, create_clean_math_el};
+use crate::web::extract::elements::rule::attr_or_empty;
 use crate::web::extract::elements::rule::{Rule, Transform};
 use crate::web::extract::elements::{code, images};
 use crate::web::extract::error::ExtractError;
-use crate::web::extract::utils::dom::is_direct_table_child;
+use crate::web::extract::utils::dom::{is_direct_table_child, tag_lower};
 use crate::web::extract::utils::js::trim;
 
 use super::lists;
@@ -232,10 +237,44 @@ fn convert_lite_youtube(doc: &mut Document, element: NodeId) -> Result<(), Extra
     Ok(())
 }
 
-/// `standardizeElements(element, doc)`.
-pub fn standardize_elements(doc: &mut Document, element: NodeId) -> Result<(), ExtractError> {
-    // Stage 4: `wrapRawLatexDelimiters`, the LaTeX-image conversion and the math rules run here
-    // in JS.
+/// Images from LaTeX rendering services become `<math>`: the URL-encoded LaTeX of the `src`
+/// (no domain allowlist), else an `alt` that holds LaTeX commands.
+fn convert_latex_images(doc: &mut Document, element: NodeId) -> Result<(), ExtractError> {
+    for img in doc.query_selector_all(element, "img[src]")? {
+        let src = attr_or_empty(doc, img, "src");
+        if src.is_empty() {
+            continue;
+        }
+        let mut latex = extract_latex_from_image_src(&src);
+        if latex.is_none() {
+            let alt = attr_or_empty(doc, img, "alt");
+            if looks_like_latex(&alt) {
+                latex = Some(alt);
+            }
+        }
+        let Some(latex) = latex.filter(|l| !l.is_empty()) else {
+            continue;
+        };
+        let alone_in_paragraph = doc.parent_element(img).is_some_and(|parent| {
+            tag_lower(doc, parent) == "p" && doc.child_nodes(parent).len() == 1
+        });
+        let is_block = latex.contains("\\begin{") || alone_in_paragraph;
+        let math = create_clean_math_el(doc, None, Some(&latex), is_block)?;
+        doc.replace_with(img, &[math])?;
+    }
+    Ok(())
+}
+
+/// `standardizeElements(element, doc)`; `source` is the `doc` of the JS function, the document
+/// the page was parsed into.
+pub fn standardize_elements(
+    doc: &mut Document,
+    element: NodeId,
+    source: NodeId,
+) -> Result<(), ExtractError> {
+    wrap_raw_latex_delimiters(doc, element, source)?;
+    convert_latex_images(doc, element)?;
+    apply_rules(doc, element, math::RULES)?;
     apply_rules(doc, element, code::RULES)?;
     apply_rule(doc, element, "h1, h2, h3, h4, h5, h6", clean_heading)?;
     apply_rules(doc, element, images::RULES)?;

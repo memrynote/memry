@@ -2898,6 +2898,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "unicode-normalization",
  "url",
 ]
 

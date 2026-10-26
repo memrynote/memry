@@ -31,18 +31,20 @@ use crate::web::extract::utils::js::is_js_whitespace;
 use crate::web::extract::utils::text::normalize_text;
 
 /// `standardizeContent(element, metadata, doc)` with `debug` false. `title` is the metadata
-/// title.
+/// title; `source` is the document node `doc` of the JS function (the page as parsed), which
+/// the math wrapper reads scripts from.
 pub fn standardize_content(
     doc: &mut Document,
     element: NodeId,
     title: &str,
+    source: NodeId,
 ) -> Result<(), ExtractError> {
     spans::standardize_drop_caps(doc, element)?;
     whitespace::standardize_spaces(doc, element)?;
     whitespace::remove_html_comments(doc, element);
     standardize_headings(doc, element, title)?;
     wrap_preformatted_code(doc, element)?;
-    elements::standardize_elements(doc, element)?;
+    elements::standardize_elements(doc, element, source)?;
     svg::resolve_svg_colors(doc, element)?;
     wrappers::replace_custom_elements(doc, element)?;
     spans::convert_data_as_spans(doc, element)?;

@@ -1,6 +1,14 @@
 // Single-family pages for the element handlers of stage 3: each footnote markup, code block
 // highlighter and image wrapper on its own, plus the few combinations that change a branch.
-import { codeFamilies, footnoteFamilies, footnotePage, imageFamilies } from './element-families.mjs'
+import {
+  codeFamilies,
+  footnoteFamilies,
+  footnotePage,
+  imageFamilies,
+  mathFamilies,
+  rawLatexPages,
+  rawLatexScripts
+} from './element-families.mjs'
 import { page, prose, words } from './removal-pages.mjs'
 
 const body = (html) => page(`${prose(1)}${html}${prose(1)}`)
@@ -239,4 +247,58 @@ export const elementBoundaryCases = [
   }
 ]
 
-export const elementCases = [...elementCases0, ...elementBoundaryCases]
+const mathCases = [
+  ...Object.keys(mathFamilies).map((name) => ({
+    name: `math-${name}`,
+    html: body(`<p>${words(20)}</p>${mathFamilies[name]()}<p>${words(20, 2)}</p>`)
+  })),
+  ...Object.keys(mathFamilies).map((name) => ({
+    name: `math-inline-${name}`,
+    html: body(`<p>Inline ${words(5)} ${mathFamilies[name]()} and ${words(5, 2)}.</p>`)
+  })),
+  ...Object.keys(mathFamilies).map((name) => ({
+    name: `math-div-${name}`,
+    html: body(`<div>${mathFamilies[name]()}</div>`)
+  })),
+  ...[
+    ['class-display', `<span class="eq-display" data-latex="a">a</span>`],
+    ['class-block', `<span class="blockeq" data-latex="b">b</span>`],
+    ['class-upper', `<span class="DISPLAY" data-latex="c">c</span>`],
+    ['attr-true', `<span display="true" data-latex="d">d</span>`],
+    ['attr-false', `<span display="false" data-latex="e">e</span>`],
+    ['attr-block', `<span display="block" data-latex="f">f</span>`],
+    ['ancestor-true', `<div display="true"><span data-latex="g">g</span></div>`],
+    ['ancestor-false', `<div display="false"><span data-latex="h">h</span></div>`],
+    ['data-display', `<div data-display="block"><span data-latex="i">i</span></div>`],
+    ['katex-display-ancestor', `<span class="katex-display"><span class="katex">k</span></span>`],
+    [
+      'katex-inline-only',
+      `<span class="katex"><span class="katex-mathml"><math><mi>j</mi></math></span></span>`
+    ],
+    [
+      'mathjax-display-ancestor',
+      `<div class="MathJax_Display"><span data-latex="l">l</span></div>`
+    ],
+    ['mwe-display', `<span class="mwe-math-fallback-image-display" data-latex="m">m</span>`],
+    ['script-display', `<script type="math/tex; mode=display">n</script>`],
+    ['after-heading', `<h3>Head</h3><span data-latex="o">o</span>`]
+  ].map(([name, html]) => ({ name: `math-display-${name}`, html: body(`<div>${html}</div>`) })),
+  ...Object.entries(rawLatexPages).flatMap(([name, html]) =>
+    Object.entries(rawLatexScripts).map(([scriptName, script]) => ({
+      name: `math-raw-${name}-${scriptName}`,
+      html: page(`${prose(1)}${html}${prose(1)}`, { head: script })
+    }))
+  ),
+  {
+    name: 'math-raw-with-rendered',
+    html: page(`${prose(1)}<p>$\\alpha$</p>${mathFamilies.plainMathml()}`, {
+      head: rawLatexScripts.src
+    })
+  },
+  {
+    name: 'math-raw-script-in-body',
+    html: page(`${prose(1)}<p>$\\alpha$ and \\(b\\)</p>${rawLatexScripts.src}`)
+  }
+]
+
+export const elementCases = [...elementCases0, ...elementBoundaryCases, ...mathCases]

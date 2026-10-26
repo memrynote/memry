@@ -4,7 +4,8 @@
 //! of `standardize-fuzz.json`, in the `direct` variant (callouts and standardize on the content
 //! element) and the `pipeline` variant (the metadata block and removal steps first).
 //!
-//! The vectors leave out the math rules of `standardizeElements`, which stage 4 ports.
+//! The vectors make the two math converters (mathml-to-latex, temml) throw: they are ported in
+//! later stages.
 
 use std::{fs, path::PathBuf};
 
@@ -114,7 +115,8 @@ fn check(html: &str, variant: &Value) -> Vec<String> {
             compare(&doc, key);
         }
     }
-    standardize_content(&mut doc, main, &metadata.title).unwrap();
+    let source = doc.root();
+    standardize_content(&mut doc, main, &metadata.title, source).unwrap();
     compare(&doc, "standardize");
     diffs
 }

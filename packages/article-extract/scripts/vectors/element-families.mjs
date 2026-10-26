@@ -386,3 +386,141 @@ export const imageFamilies = {
     `<img src="data:image/gif;base64,R0lGODlhAQABAAAAACw=" class="lazy" alt="x"><noscript><img src="/real.jpg" alt="x"></noscript>`
 }
 export { nums }
+
+const mjxToken = (tag, text) =>
+  `<mjx-${tag} class="mjx-n"><mjx-c class="mjx-c1D465">${text}</mjx-c></mjx-${tag}>`
+const mjx = (inner, display = false) =>
+  `<mjx-container class="MathJax" jax="CHTML"${display ? ' display="true"' : ''}><mjx-math class="MJX-TEX">${inner}</mjx-math></mjx-container>`
+const mathml = (inner, attrs = '') =>
+  `<math xmlns="http://www.w3.org/1998/Math/MathML"${attrs}>${inner}</math>`
+
+/** Math families: one equation in one renderer's markup. */
+export const mathFamilies = {
+  katexInline: () =>
+    `<span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mn>2</mn></mrow><annotation encoding="application/x-tex">x = 2</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base">x=2</span></span></span>`,
+  katexDisplay: () =>
+    `<span class="katex-display"><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><semantics><mrow><mfrac><mn>1</mn><mn>2</mn></mfrac></mrow><annotation encoding="application/x-tex">\\frac{1}{2}</annotation></semantics></math></span><span class="katex-html" aria-hidden="true">1/2</span></span></span>`,
+  mathjaxV2Script: () =>
+    `<span class="MathJax_Preview" style="color: inherit;"></span><span class="MathJax" id="MathJax-Element-1-Frame" tabindex="0"><nobr><span class="math">x</span></nobr></span><script type="math/tex" id="MathJax-Element-1">e^{i\\pi} + 1 = 0</script>`,
+  mathjaxV2Display: () =>
+    `<div class="MathJax_Display"><span class="MathJax">x</span></div><script type="math/tex; mode=display">\\sum_{i=1}^n i</script>`,
+  mathjaxV3Assistive: () =>
+    `<mjx-container class="MathJax" jax="CHTML" display="true"><mjx-math>x</mjx-math><mjx-assistive-mml unselectable="on" display="block"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mi>a</mi><mo>+</mo><mi>b</mi></math></mjx-assistive-mml></mjx-container>`,
+  mathjaxV3AssistiveAlt: () =>
+    `<mjx-container class="MathJax"><mjx-assistive-mml><math alttext="a^2" xmlns="http://www.w3.org/1998/Math/MathML"><msup><mi>a</mi><mn>2</mn></msup></math></mjx-assistive-mml></mjx-container>`,
+  mathjaxChtmlFrac: () =>
+    mjx(
+      `<mjx-mfrac><mjx-frac><mjx-num><mjx-nstrut></mjx-nstrut>${mjxToken('mn', '1')}</mjx-num><mjx-dbox><mjx-dtable><mjx-line></mjx-line><mjx-row><mjx-den><mjx-dstrut></mjx-dstrut>${mjxToken('mn', '2')}</mjx-den></mjx-row></mjx-dtable></mjx-dbox></mjx-frac></mjx-mfrac>`,
+      true
+    ),
+  mathjaxChtmlSqrt: () =>
+    mjx(
+      `<mjx-msqrt><mjx-sqrt><mjx-surd><mjx-mo><mjx-c>\u221a</mjx-c></mjx-mo></mjx-surd><mjx-box><mjx-mrow>${mjxToken('mi', 'x')}${mjxToken('mo', '+')}${mjxToken('mn', '1')}</mjx-mrow></mjx-box></mjx-sqrt></mjx-msqrt>`
+    ),
+  mathjaxChtmlScripts: () =>
+    mjx(
+      `<mjx-msubsup>${mjxToken('mi', '\ud835\udc65')}<mjx-script><mjx-mn size="s">2</mjx-mn><mjx-mi size="s">i</mjx-mi></mjx-script></mjx-msubsup>` +
+        `<mjx-msup>${mjxToken('mi', 'y')}<mjx-script>${mjxToken('mn', '3')}</mjx-script></mjx-msup>` +
+        `<mjx-msub>${mjxToken('mi', 'z')}<mjx-script>${mjxToken('mi', 'k')}${mjxToken('mi', 'j')}</mjx-script></mjx-msub>`
+    ),
+  mathjaxChtmlLimits: () =>
+    mjx(
+      `<mjx-mrow><mjx-munderover><mjx-over>${mjxToken('mn', 'n')}</mjx-over><mjx-box><mjx-munder><mjx-row><mjx-base>${mjxToken('mo', '\u2211')}</mjx-base></mjx-row><mjx-row><mjx-under>${mjxToken('mi', 'i')}</mjx-under></mjx-row></mjx-munder></mjx-box></mjx-munderover>` +
+        `<mjx-mover><mjx-over>${mjxToken('mo', '^')}</mjx-over><mjx-base>${mjxToken('mi', 'a')}</mjx-base></mjx-mover>` +
+        `<mjx-munder><mjx-base>${mjxToken('mi', 'b')}</mjx-base><mjx-under>${mjxToken('mo', '_')}</mjx-under></mjx-munder>` +
+        `<mjx-mo><mjx-c>\u2061</mjx-c></mjx-mo><mjx-mspace></mjx-mspace></mjx-mrow>`
+    ),
+  mathjaxChtmlTagged: () =>
+    mjx(
+      `<mjx-mtable><mjx-table><mjx-mlabeledtr><mjx-mtd>${mjxToken('mtext', '(1)')}</mjx-mtd><mjx-mtd>${mjxToken('mi', 'x')}${mjxToken('mo', '=')}${mjxToken('mn', '1')}</mjx-mtd></mjx-mlabeledtr></mjx-table></mjx-mtable>`,
+      true
+    ),
+  mathjaxLazy: () => `<mjx-container class="MathJax"><mjx-lazy></mjx-lazy></mjx-container>`,
+  plainMathml: () => mathml(`<mi>a</mi><mo>+</mo><mi>b</mi>`),
+  plainMathmlAlttext: () =>
+    mathml(`<mfrac><mi>a</mi><mi>b</mi></mfrac>`, ' alttext="\\frac{a}{b}" display="block"'),
+  plainMathmlAnnotation: () =>
+    mathml(
+      `<semantics><mi>y</mi><annotation encoding="application/x-tex">y = mx + b</annotation></semantics>`
+    ),
+  plainMathmlUnicode: () => mathml(`<mi>f</mi><mo>\u2032</mo>`),
+  taggedMathml: () =>
+    mathml(
+      `<mtable><mlabeledtr><mtd><mtext>(2)</mtext></mtd><mtd><mi>E</mi><mo>=</mo><mi>m</mi></mtd></mlabeledtr></mtable>`
+    ),
+  multiRowMathml: () =>
+    mathml(`<mtable><mtr><mtd><mi>a</mi></mtd></mtr><mtr><mtd><mi>b</mi></mtd></mtr></mtable>`),
+  dataLatex: () => `<span data-latex="\\alpha + \\beta">alpha plus beta</span>`,
+  dataMath: () => `<span data-math="x^2">x squared</span>`,
+  dataTex: () => `<span data-tex="n!">n factorial</span>`,
+  dataMathml: () =>
+    `<span data-mathml="&lt;math display=&quot;block&quot; alttext=&quot;q&quot;&gt;&lt;mi&gt;q&lt;/mi&gt;&lt;/math&gt;">q</span>`,
+  hurmet: () =>
+    `<span class="hurmet-tex" data-entry="\\int_0^1 x\\,dx"><math><mi>x</mi></math></span>`,
+  wpLatexImg: () =>
+    `<img class="latex" src="https://s0.wp.com/latex.php?latex=x%5E2%2By%5E2&amp;bg=ffffff" alt="">`,
+  wpLatexImgAlt: () =>
+    `<img class="latex" src="https://s0.wp.com/latex.php?latex=a" alt="x^2 + y^2">`,
+  latexServiceImg: () =>
+    `<p><img src="https://latex.codecogs.com/png.latex?%5Cfrac%7Ba%7D%7Bb%7D" alt="fraction"></p>`,
+  latexServiceParam: () =>
+    `<img src="https://chart.apis.google.com/chart?cht=tx&chl=%5Calpha%2B1" alt="">`,
+  latexServicePath: () => `<img src="https://x.test/render/%5Cbeta%20%5Cgamma/img.png" alt="">`,
+  latexAltImg: () => `<img src="/eq/1.png" alt="\\sqrt{x}">`,
+  latexBeginImg: () =>
+    `<img src="https://x.test/e.png?tex=%5Cbegin%7Bmatrix%7Da%5Cend%7Bmatrix%7D" alt="">`,
+  mwe: () =>
+    `<span class="mwe-math-element"><span class="mwe-math-mathml-inline mwe-math-mathml-a11y" style="display: none;"><math xmlns="http://www.w3.org/1998/Math/MathML" alttext="{\\displaystyle E=mc^{2}}"><semantics><mrow><mi>E</mi><mo>=</mo><mi>m</mi><msup><mi>c</mi><mn>2</mn></msup></mrow><annotation encoding="application/x-tex">{\\displaystyle E=mc^{2}}</annotation></semantics></math></span><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/abc" class="mwe-math-fallback-image-inline" aria-hidden="true" alt="E=mc^2"></span>`,
+  mweDisplay: () =>
+    `<span class="mwe-math-element mwe-math-element-block"><img src="https://wikimedia.org/x.svg" class="mwe-math-fallback-image-display" alt="{\\displaystyle a}"></span>`,
+  katexScript: () => `<script type="math/katex">c = \\pm\\sqrt{a^2 + b^2}</script>`,
+  dataKatex: () => `<span data-katex="\\hbar">hbar</span>`,
+  annotationOnly: () => `<annotation encoding="application/x-tex">\\gamma</annotation>`,
+  blockAfterParagraph: () => `<p>Text before.</p><math><mi>z</mi></math>`,
+  mathjaxSvg: () =>
+    `<span class="MathJax_SVG"><svg><g></g></svg></span><script type="math/tex">k</script>`,
+  paramEq: () => `<img src="https://x.test/r.png?eq=%5Calpha+beta" alt="">`,
+  paramTex: () => `<img src="https://x.test/r.png?tex=%5Cgamma" alt="">`,
+  paramMath: () => `<img src="https://x.test/r.png?math=%5Cdelta" alt="">`,
+  paramPlain: () => `<img src="https://x.test/r.png?a=1&latex=%5Ceta&b=2" alt="">`,
+  paramNotLatex: () => `<img src="https://x.test/r.png?latex=plain" alt="">`,
+  queryBare: () => `<img src="https://x.test/r.png?%5Czeta%20x#frag" alt="">`,
+  mjxMathData: () => `<mjx-math data-latex="x"><mjx-mi><mjx-c>y</mjx-c></mjx-mi></mjx-math>`,
+  mjxInvisible: () =>
+    mjx(
+      `${mjxToken('mo', '\u2062')}${mjxToken('mo', '\u2063')}${mjxToken('mo', '\u2064')}${mjxToken('mi', 'q')}`
+    ),
+  emptyMtable: () => mathml(`<mtable></mtable>`),
+  mtableMixed: () =>
+    mathml(
+      `<mtable><mlabeledtr><mtd><mtext>(3)</mtext></mtd><mtd><mi>a</mi></mtd></mlabeledtr><mtr><mtd><mi>b</mi></mtd></mtr></mtable>`
+    ),
+  mtableEmptyLabel: () =>
+    mathml(`<mtable><mlabeledtr><mtd></mtd><mtd><mi>a</mi></mtd></mlabeledtr></mtable>`),
+  mtableOneCell: () => mathml(`<mtable><mlabeledtr><mtd><mi>a</mi></mtd></mlabeledtr></mtable>`),
+  mathjaxMathml: () => `<span class="MathJax_MathML"><math><mi>m</mi></math></span>`,
+  mathjaxDisplayScriptOnly: () => `<script type="math/tex; mode=display">\\int f</script>`,
+  emptyScript: () => `<script type="math/tex"> </script>`,
+  mathjaxScriptSibling: () =>
+    `<div><span class="MathJax">x</span><script type="text/javascript" src="https://cdn.mathjax.org/mathjax.js"></script><script type="math/tex">\\pi</script></div>`
+}
+
+/** Raw LaTeX in text: needs a MathJax or KaTeX script in the document. */
+export const rawLatexPages = {
+  dollars: `<p>Inline $\\alpha + \\beta$ and $x_1$ and costs $5 and $10.</p>`,
+  display: `<p>$$\\int_0^1 f(x)\\,dx$$</p>`,
+  displayInline: `<p>Text $$a^2$$ more</p><div>$$b^2$$<span>x</span></div>`,
+  backslash: `<p>See \\(a+b\\) and \\[c\\]</p>`,
+  currency: `<p>It costs $5 and then $10 later, $ x $.</p>`,
+  skipped: `<pre>$$\\alpha$$</pre><code>$x^2$</code><p>ok $y_2$</p>`,
+  mixed: `<p>$\\a$ $b$ $$d$$ \\(e\\) text</p>`,
+  closeBrace: `<p>costs $x}$ and $y$ and $a^b$ and $\\k$ text</p>`
+}
+export const rawLatexScripts = {
+  src: `<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>`,
+  katexSrc: `<script src="/js/KaTeX.min.js"></script>`,
+  inline: `<script>window.MathJax = { tex: {} }</script>`,
+  inlineKatex: `<script>renderKaTeX()</script>`,
+  none: ``,
+  other: `<script src="/app.js"></script><script>var x = 1</script>`
+}

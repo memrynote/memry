@@ -1,7 +1,13 @@
 // Seeded random pages for the element handlers of stage 3: prose with a few random footnote,
 // code and image families, some of them broken (a note without a reference, a reference without a
 // note, a note dropped), in the `direct` variant of the standardize vectors.
-import { codeFamilies, footnoteFamilies, imageFamilies, nums } from './element-families.mjs'
+import {
+  codeFamilies,
+  footnoteFamilies,
+  imageFamilies,
+  mathFamilies,
+  nums
+} from './element-families.mjs'
 import { rng } from './dom.mjs'
 import { page, prose } from './removal-pages.mjs'
 import { standardizeUrl, standardizeVector } from './standardize.mjs'
@@ -9,6 +15,7 @@ import { standardizeUrl, standardizeVector } from './standardize.mjs'
 const FOOTNOTES = Object.keys(footnoteFamilies)
 const CODE = Object.keys(codeFamilies)
 const IMAGES = Object.keys(imageFamilies)
+const MATH = Object.keys(mathFamilies)
 
 export function elementsFuzzVectors(count) {
   const random = rng(0x3543e1)
@@ -29,8 +36,12 @@ export function elementsFuzzVectors(count) {
         parts.push(random() < 0.15 ? defs + body.join('') : body.join('') + defs)
       } else if (roll < 0.75) {
         parts.push(`<p>intro words, more words.</p>${codeFamilies[pick(CODE)]()}`)
-      } else {
+      } else if (roll < 0.9) {
         parts.push(`<p>intro words, more words.</p>${imageFamilies[pick(IMAGES)]()}`)
+      } else {
+        const inline = random() < 0.5
+        const eq = mathFamilies[pick(MATH)]()
+        parts.push(inline ? `<p>Words here ${eq} and more words.</p>` : `<div>${eq}</div>`)
       }
       if (random() < 0.5) parts.push(prose(1, k + 1))
     }

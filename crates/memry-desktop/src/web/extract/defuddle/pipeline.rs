@@ -109,7 +109,7 @@ impl Defuddle {
             },
         )?;
         if settings.standardize {
-            standardize_content(&mut self.doc, main, &metadata.title)?;
+            standardize_content(&mut self.doc, main, &metadata.title, self.root)?;
         }
         self.resolve_relative_urls(main)?;
         // After URL resolution, so lazy-load copies compare by their final URLs.
