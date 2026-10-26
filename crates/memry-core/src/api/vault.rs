@@ -50,7 +50,7 @@ use crate::api::search::Search;
 use crate::api::sync::VaultSync;
 use crate::api::tasks::Tasks;
 use crate::seams::secure_store::SecureStore;
-use crate::storage::{Db, open_data};
+use crate::storage::{Db, OpenOptions, open_data, open_data_with};
 
 /// One vault's local database, opened.
 ///
@@ -70,6 +70,29 @@ pub struct Vault {
 }
 
 impl Vault {
+    /// [`Vault::open`] with explicit [`OpenOptions`]. Not on the FFI surface: desktop's
+    /// session opens with `verify_integrity: true` because it also offers the user the
+    /// recovery that a `Corrupt` result needs; iOS keeps the default open.
+    pub fn open_with(
+        vault_id: String,
+        directory: String,
+        options: OpenOptions,
+    ) -> Result<Self, StorageError> {
+        let db = open_data_with(&PathBuf::from(&directory).join("data.db"), options)?;
+        Ok(Self {
+            id: vault_id,
+            db,
+            directory,
+        })
+    }
+
+    /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file
+    /// was reused or migrated in place). Not on the FFI surface.
+    pub fn search_reporting(&self) -> Result<(Arc<Search>, Option<String>), StorageError> {
+        let (search, reason) = Search::over_reporting(self.db.clone(), &self.directory)?;
+        Ok((Arc::new(search), reason))
+    }
+
     /// The database handle, for integration tests that seed a peer's records
     /// through the real apply path. Not on the FFI surface.
     #[doc(hidden)]

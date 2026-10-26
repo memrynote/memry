@@ -3,8 +3,11 @@
 
 pub mod command_failure;
 pub mod e2e;
+pub mod error;
 pub mod http;
 pub mod launch_env;
 pub mod logging;
 pub mod paths;
+pub mod registry;
+pub mod session;
 pub mod web;

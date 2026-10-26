@@ -2886,6 +2886,7 @@ dependencies = [
  "rcgen",
  "regex",
  "reqwest",
+ "rusqlite",
  "rustls",
  "serde",
  "serde_json",
