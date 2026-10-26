@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { dirname, join, relative } from 'node:path'
 import { parseHTML } from 'linkedom'
 import { articleVector } from './vectors/article.mjs'
+import { articleFuzzVectors } from './vectors/article-fuzz.mjs'
 import { domVector, fuzzVectors } from './vectors/dom.mjs'
 import { mapVector } from './vectors/map.mjs'
 import { markdownCases } from './vectors/markdown-cases.mjs'
@@ -157,6 +158,7 @@ async function buildFiles() {
   for (const fixture of fixtures) {
     files.set(`article/${fixture.name}.json`, format(await articleVector(fixture)))
   }
+  files.set('article-fuzz.json', format(await articleFuzzVectors(200)))
   files.set(
     'pipeline-cases.json',
     format(
