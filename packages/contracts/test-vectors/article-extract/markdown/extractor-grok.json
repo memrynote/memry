@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>What is new in Rust 1.80?</p><p>See the <a href=\"https://blog.rust-lang.org/a\">release notes</a> and <a href=\"https://www.rust-lang.org/b\">site</a> and <a href=\"https://blog.rust-lang.org/a\">again</a> or .</p><p>card</p> <p>neither</p></body>",
+  "markdown": "What is new in Rust 1.80?\n\nSee the [release notes](https://blog.rust-lang.org/a) and [site](https://www.rust-lang.org/b) and [again](https://blog.rust-lang.org/a) or .\n\ncard\n\nneither"
+}

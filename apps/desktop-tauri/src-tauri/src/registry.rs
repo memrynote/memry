@@ -22,8 +22,26 @@ pub fn builder() -> Builder<Wry> {
         .commands(collect_commands![
             // app
             crate::commands::app::app_info,
+            // vault
+            crate::commands::vault::vault_close,
+            crate::commands::vault::vault_create,
+            crate::commands::vault::vault_get_default_parent,
+            crate::commands::vault::vault_get_status,
+            crate::commands::vault::vault_list,
+            crate::commands::vault::vault_remove,
+            crate::commands::vault::vault_reveal,
+            crate::commands::vault::vault_select,
+            crate::commands::vault::vault_set_default,
+            crate::commands::vault::vault_set_icon,
+            crate::commands::vault::vault_switch,
         ])
-        .events(collect_events![])
+        .events(collect_events![
+            // vault
+            crate::events::VaultErrorEvent,
+            crate::events::VaultIndexRecoveredEvent,
+            crate::events::VaultListChangedEvent,
+            crate::events::VaultStatusChangedEvent,
+        ])
         .typ::<StartupState>()
 }
 

@@ -1,0 +1,10 @@
+{
+  "metaTags": [],
+  "schemaOrgData": "[[{\"@type\":\"VideoObject\",\"url\":\"https://youtu.be/shortLink01\",\"name\":\"Comment only\",\"comment\":[{\"text\":\"c\"}],\"uploadDate\":\"2025-03-03\"},null],{\"@type\":\"VideoObject\",\"url\":\"https://other\",\"name\":\"Other video\",\"description\":\"no\"}]",
+  "schemaText": "",
+  "metadata": {"title":"Offline - YouTube","description":"no","domain":"youtu.be","favicon":"https://youtu.be/favicon.ico","image":"","language":"en","published":"","author":"","site":"youtu.be"},
+  "contentStart": null,
+  "contentStartNoTitle": null,
+  "contentStartHeading": null,
+  "above": "000000000"
+}

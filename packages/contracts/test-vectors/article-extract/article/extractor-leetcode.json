@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://leetcode.com/problems/two-sum/description/","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://leetcode.com/problems/two-sum/description/","mode":"article","contentMarkdown":"Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\n**Example 1:**\n\n```\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\n```\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.","excerpt":"Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\n\n**Example 1:**\n\n```\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]","extractionStatus":"partial","properties":{"title":"Two Sum","source":"https://leetcode.com/problems/two-sum/description/","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Two Sum","author":"","published":"","description":"","image":"","site":"LeetCode","language":"en","wordCount":56,"schemaOrgData":"[]","extractorType":"leetcode"},
+  "requests": []
+}

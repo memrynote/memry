@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://old.reddit.com/r/rust/comments/abc/why_rust/","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://old.reddit.com/r/rust/comments/abc/why_rust/","mode":"article","contentMarkdown":"I am **curious** about it.\n\n---\n\n## Comments\n\n> **bob** · [2025-02-01](https://reddit.com/r/rust/comments/abc/why_rust/c1/) · 12 points\n> \n> Safety.\n> \n> > **carol** · · 3 points\n> > \n> > And speed.\n\n> **dave** ·\n> \n> No permalink","excerpt":"I am curious about it.","extractionStatus":"partial","properties":{"title":"Why Rust?","source":"https://old.reddit.com/r/rust/comments/abc/why_rust/","created":"2025-03-04T05:06:07.000Z","author":"alice","published":"2025-02-01T10:00:00+00:00","description":"I am curious about it."},"tags":["clippings"]},
+  "raw": {"title":"Why Rust?","author":"alice","published":"2025-02-01T10:00:00+00:00","description":"I am curious about it.","image":"","site":"r/rust","language":"","wordCount":24,"schemaOrgData":"[]","extractorType":"reddit"},
+  "requests": []
+}

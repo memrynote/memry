@@ -136,6 +136,14 @@ impl Search {
     }
 }
 
+impl Search {
+    /// The `index.db` handle, for the desktop e2e debug query. Not on the FFI surface.
+    #[doc(hidden)]
+    pub fn index_handle(&self) -> Db {
+        self.index.clone()
+    }
+}
+
 #[uniffi::export]
 impl Search {
     /// Every note linking to this one (N800).

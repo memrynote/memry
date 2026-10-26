@@ -20,6 +20,8 @@
 mod hooks;
 mod open;
 pub mod projection;
+pub mod prompt;
+pub mod response;
 mod startup;
 
 use std::collections::HashMap;
@@ -136,6 +138,14 @@ pub struct OpenVault {
     pub name: String,
     pub vault: Arc<Vault>,
     pub search: Arc<Search>,
+}
+
+/// What [`Session::open_startup`] did. `Failed` carries the error so the shell can offer
+/// recovery for [`SessionError::Corrupt`]; the picker shows either way.
+pub enum StartupOutcome {
+    Opened(VaultOpened),
+    Picker,
+    Failed { path: PathBuf, error: SessionError },
 }
 
 pub struct VaultOpened {
@@ -374,13 +384,13 @@ impl Session {
     /// A vault that fails to open leaves the app on the picker: the failure is logged and in
     /// the status, and `currentVault` is cleared unless the database is damaged (then the
     /// next launch offers recovery again).
-    pub fn open_startup(&self, env: &crate::launch_env::LaunchEnv) -> Option<VaultOpened> {
+    pub fn open_startup(&self, env: &crate::launch_env::LaunchEnv) -> StartupOutcome {
         let StartupVault::Open(path) = resolve_startup_vault(self.inner.registry.config(), env)
         else {
-            return None;
+            return StartupOutcome::Picker;
         };
         match self.open(&path, OpenSource::Startup) {
-            Ok(opened) => Some(opened),
+            Ok(opened) => StartupOutcome::Opened(opened),
             Err(error) => {
                 tracing::error!(path = %path.display(), %error, "the last vault did not open");
                 // Only a vault that cannot be opened at all stops being the current one. A
@@ -394,12 +404,21 @@ impl Session {
                 if permanent && let Err(error) = self.inner.registry.clear_current() {
                     tracing::error!(%error, "could not clear currentVault");
                 }
-                None
+                StartupOutcome::Failed { path, error }
             }
         }
     }
 
     fn replace_locked(&self, path: &Path, source: OpenSource) -> Result<VaultOpened, SessionError> {
+        // `validateVaultPath` runs before the close in Electron too: a folder that is gone (a
+        // typo, an unmounted drive) must not take the vault the user is working in with it.
+        if !path.is_dir() {
+            let outcome = Err(SessionError::Invalid(
+                "Selected path is not a valid directory".into(),
+            ));
+            self.report_failure(&outcome);
+            return outcome;
+        }
         self.close_locked(false);
         let outcome = self.open_locked(path, source);
         self.report_failure(&outcome);
@@ -417,7 +436,10 @@ impl Session {
                 state.error = Some(error.to_string());
                 SessionStatus {
                     is_open: state.open.is_some(),
-                    path: None,
+                    path: state
+                        .open
+                        .as_ref()
+                        .map(|o| o.view.path.to_string_lossy().into_owned()),
                     error: state.error.clone(),
                 }
             };

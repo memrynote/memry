@@ -53,6 +53,9 @@ pub struct OpenedIndex {
 }
 
 /// Why a file cannot be reused, and what to call it when it is set aside.
+/// The `rebuild_reason` of a first open: no `index.db` existed, nothing was repaired.
+pub const MISSING_REASON: &str = "index.db does not exist";
+
 struct Rebuild {
     label: &'static str,
     reason: String,
@@ -76,7 +79,7 @@ pub fn open_or_rebuild(path: &Path) -> Result<OpenedIndex, StorageError> {
             }
         }
     } else {
-        "index.db does not exist".to_owned()
+        MISSING_REASON.to_owned()
     };
 
     let db = build(path)?;

@@ -14,6 +14,7 @@ pub mod defuddle;
 pub mod dom;
 pub mod elements;
 pub mod error;
+pub mod extractors;
 pub mod fetch;
 pub mod map;
 pub mod markdown;
@@ -97,21 +98,24 @@ pub enum ExtractionStatus {
 /// `Defuddle(document, url, { markdown: true })` without the markdown step: parses with
 /// linkedom's rules and runs `parseAsync`. `content` is the standardized HTML. An empty `url`
 /// becomes `about:blank`, as `node.js` does.
-pub fn run_defuddle(html: &str, url: &str) -> Result<DefuddleResponse, ExtractError> {
+pub fn run_defuddle(
+    html: &str,
+    url: &str,
+    fetcher: &dyn Fetcher,
+) -> Result<DefuddleResponse, ExtractError> {
     let page_url = if url.is_empty() { "about:blank" } else { url };
-    Defuddle::new(dom::Document::parse_html(html), page_url).parse_async()
+    Defuddle::new(dom::Document::parse_html(html), page_url).parse_async(fetcher)
 }
 
 /// `extractFromHtml(html, url, { now })` of `packages/article-extract/src/node.ts`, with the
-/// errors JS would reject with returned instead. The fetcher serves the async extractors, which
-/// arrive in stage 6; no extractor fetches yet.
+/// errors JS would reject with returned instead. The fetcher serves the async extractors.
 pub fn try_extract_article(
     html: &str,
     url: &str,
     now: &str,
-    _fetcher: &dyn Fetcher,
+    fetcher: &dyn Fetcher,
 ) -> Result<ArticleCapture, ExtractError> {
-    let mut response = run_defuddle(html, url)?;
+    let mut response = run_defuddle(html, url, fetcher)?;
     response.content = markdown::create_markdown_content(&response.content);
     Ok(to_article_capture(&response.to_map_input(), url, now))
 }

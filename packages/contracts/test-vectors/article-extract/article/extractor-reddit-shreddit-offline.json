@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://www.reddit.com/r/rust/comments/def/second/","now":"2025-03-04T05:06:07.000Z","fetch":[{"method":"GET","url":"https://old.reddit.com/r/rust/comments/def/second/","error":"network down"}]},
+  "expected": {"url":"https://www.reddit.com/r/rust/comments/def/second/","mode":"article","contentMarkdown":"Body [link](https://www.reddit.com/x).\n\n![pic](https://i.redd.it/a.png)\n\n---\n\n## Comments\n\n> **carol** · [2025-02-02](https://reddit.com/r/rust/comments/def/second/c1/) · 5 points\n> \n> First!\n> \n> > **dave** · 2025-02-03 · 1 points\n> > \n> > Reply\n\n> **erin** · · 0 points","excerpt":"Body link.","extractionStatus":"partial","properties":{"title":"Second post","source":"https://www.reddit.com/r/rust/comments/def/second/","created":"2025-03-04T05:06:07.000Z","author":"bob","published":"2025-02-03T00:00:00Z","description":"Body link."},"tags":["clippings"]},
+  "raw": {"title":"Second post","author":"bob","published":"2025-02-03T00:00:00Z","description":"Body link.","image":"","site":"r/rust","language":"en","wordCount":23,"schemaOrgData":"[]","extractorType":"reddit"},
+  "requests": [{"method":"GET","url":"https://old.reddit.com/r/rust/comments/def/second/","headers":[["User-Agent","Mozilla/5.0 (compatible; Defuddle/1.0)"]],"body":null}]
+}

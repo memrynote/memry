@@ -7,6 +7,7 @@ pub mod commands;
 pub mod e2e;
 pub mod events;
 pub mod registry;
+pub mod shell;
 pub mod startup;
 pub mod windows;
 
@@ -29,11 +30,13 @@ pub fn install_crypto_provider() {
     let _already_installed = rustls::crypto::ring::default_provider().install_default();
 }
 
-/// Registers the work this step owns. `Paths`, `Logging`, `Handlers` and `Window` only.
+/// Registers the boot work of the shell: paths, logging, events, the vault session and the
+/// window.
 fn register_stages() {
     startup::register(Stage::Paths, "resolve app paths", resolve_paths);
     startup::register(Stage::Logging, "init logging", init_logging);
     startup::register(Stage::Handlers, "mount events", mount_events);
+    shell::vault_boot::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
 }
 
@@ -66,7 +69,10 @@ fn mount_events(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 }
 
 fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
-    let state = StartupState::default();
+    let state = StartupState {
+        startup_vault: app.state::<shell::vault_boot::StartupVault>().get(),
+        ..StartupState::default()
+    };
     windows::create_main(app, &state)
         .map(|_| ())
         .map_err(|error| CommandError::new(ErrorKind::Internal, "create_window", error.to_string()))
@@ -88,7 +94,9 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     );
     #[cfg(not(feature = "e2e"))]
     let handler = registry::invoke_handler(&builder);
-    let app = tauri::Builder::default();
+    let app = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init());
     #[cfg(feature = "e2e")]
     let app = e2e::install(app, gate);
     let result = app

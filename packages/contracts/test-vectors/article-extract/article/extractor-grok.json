@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://grok.com/chat/55","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://grok.com/chat/55","mode":"article","contentMarkdown":"**You**\n\nWhat is new in Rust 1.80?\n\n---\n\n**Grok**\n\nSee the release notes [^1] and site [^2] and again [^1] or .\n\n[^1]: [blog.rust-lang.org](https://blog.rust-lang.org/a)\n\n[^2]: [rust-lang.org](https://www.rust-lang.org/b)","excerpt":"Grok conversation with 3 messages","extractionStatus":"partial","properties":{"title":"What is new in Rust 1.80?","source":"https://grok.com/chat/55","created":"2025-03-04T05:06:07.000Z","description":"Grok conversation with 3 messages"},"tags":["clippings"]},
+  "raw": {"title":"What is new in Rust 1.80?","author":"","published":"","description":"Grok conversation with 3 messages","image":"","site":"Grok","language":"en","wordCount":26,"schemaOrgData":"[]","extractorType":"grok"},
+  "requests": []
+}

@@ -46,7 +46,10 @@ export function loadFixtures() {
       html: page.toString('utf8'),
       htmlSha256: sha256(page),
       url: readFileSync(join(dir, 'url.txt'), 'utf8').trim(),
-      now: readFileSync(join(dir, 'now.txt'), 'utf8').trim()
+      now: readFileSync(join(dir, 'now.txt'), 'utf8').trim(),
+      fetch: existsSync(join(dir, 'fetch.json'))
+        ? JSON.parse(readFileSync(join(dir, 'fetch.json'), 'utf8'))
+        : null
     }
   })
 }

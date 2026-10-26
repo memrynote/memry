@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://www.nytimes.com/2025/02/14/technology/small-software.html","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://www.nytimes.com/2025/02/14/technology/small-software.html","mode":"article","contentMarkdown":"## Section\n\n### Sub <3>\n\n#### Deep\n\n![Alt \"q\"](https://static.example/j.jpg?a=1&b=2)\n\nCaption Photo: X\n\n![](https://static.example/o.jpg)\n\nA pull quote.\n\nClosing words for the article body.","excerpt":"Why small programs keep winning.","extractionStatus":"partial","properties":{"title":"The Quiet Rise of Small Software","source":"https://www.nytimes.com/2025/02/14/technology/small-software.html","created":"2025-03-04T05:06:07.000Z","author":"Jane Writer, Joe Editor","published":"2025-02-14T09:00:00.000Z","description":"Why small programs keep winning."},"tags":["clippings"]},
+  "raw": {"title":"The Quiet Rise of Small Software","author":"Jane Writer, Joe Editor","published":"2025-02-14T09:00:00.000Z","description":"Why small programs keep winning.","image":"","site":"","language":"en","wordCount":16,"schemaOrgData":"[]","extractorType":"nytimes"},
+  "requests": []
+}

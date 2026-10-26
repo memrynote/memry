@@ -1,0 +1,4 @@
+{
+  "url": "https://wiki.c2.com/",
+  "variants": {"direct":{"input":{"url":"https://wiki.c2.com/","title":"C2","description":"","hasPublishedOrAuthor":false,"options":{},"smallImages":[],"mainPath":[2,1],"variant":"direct"},"steps":{"footnotes":null,"callouts":null,"standardize":null}},"pipeline":{"input":{"url":"https://wiki.c2.com/","title":"C2","description":"","hasPublishedOrAuthor":false,"options":{},"smallImages":[],"mainPath":[2,1],"variant":"pipeline"},"steps":{"metadataBlock":null,"footnotes":null,"callouts":null,"smallImages":null,"hidden":null,"eyebrow":null,"selectors":null,"lowScoring":null,"contentPatterns":null,"standardize":null}}}
+}

@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>Where should we go in May?</p><p>Consider <strong>Lisbon</strong>.</p><p></p> <p>skipped</p> <p>skipped</p> <p>Plain answer without markdown wrapper.</p></body>",
+  "markdown": "Where should we go in May?\n\nConsider **Lisbon**.\n\nskipped\n\nskipped\n\nPlain answer without markdown wrapper."
+}

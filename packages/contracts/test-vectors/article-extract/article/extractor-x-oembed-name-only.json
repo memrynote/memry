@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://x.com/erin/status/1004","now":"2025-03-04T05:06:07.000Z","fetch":[{"method":"GET","url":"https://api.fxtwitter.com/erin/status/1004","status":200,"text":"{\"tweet\":{\"text\":\"\",\"author\":{\"screen_name\":\"erin\"}}}"},{"method":"GET","url":"https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Ferin%2Fstatus%2F1004&omit_script=true","status":200,"text":"{\"html\":\"<blockquote><p>Only text</p></blockquote>\",\"author_name\":\"Erin E\"}"}]},
+  "expected": {"url":"https://x.com/erin/status/1004","mode":"article","contentMarkdown":"Only text","excerpt":"Only text","extractionStatus":"partial","properties":{"title":"Post by Erin E on X","source":"https://x.com/erin/status/1004","created":"2025-03-04T05:06:07.000Z","author":"Erin E","description":"Only text"},"tags":["clippings"]},
+  "raw": {"title":"Post by Erin E on X","author":"Erin E","published":"","description":"Only text","image":"","site":"X (Twitter)","language":"en","wordCount":2,"schemaOrgData":"[]","extractorType":"xoembed"},
+  "requests": [{"method":"GET","url":"https://api.fxtwitter.com/erin/status/1004","headers":[["User-Agent","Mozilla/5.0 (compatible; Defuddle/1.0; +https://defuddle.md)"]],"body":null},{"method":"GET","url":"https://publish.twitter.com/oembed?url=https%3A%2F%2Fx.com%2Ferin%2Fstatus%2F1004&omit_script=true","headers":[],"body":null}]
+}

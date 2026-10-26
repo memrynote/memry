@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use memry_desktop::command_failure::{self, FailureDetails, FailureSink};
+use memry_desktop::error::{CoreError, FailureKind, map_core};
 use serde::Serialize;
 
 /// The class of a failure. Fixed set; the renderer branches on `kind`, never on message text.
@@ -65,6 +66,35 @@ impl CommandError {
     }
 }
 
+impl From<FailureKind> for ErrorKind {
+    fn from(kind: FailureKind) -> Self {
+        match kind {
+            FailureKind::Storage => Self::Storage,
+            FailureKind::Crypto => Self::Crypto,
+            FailureKind::Auth => Self::Auth,
+            FailureKind::Api => Self::Api,
+            FailureKind::Sync => Self::Sync,
+            FailureKind::Crdt => Self::Crdt,
+            FailureKind::Recovery => Self::Recovery,
+            FailureKind::PropertyWrite => Self::PropertyWrite,
+            FailureKind::SecureStore => Self::SecureStore,
+            FailureKind::Transport => Self::Transport,
+            FailureKind::Locked => Self::Locked,
+            FailureKind::NotFound => Self::NotFound,
+            FailureKind::Invalid => Self::Invalid,
+            FailureKind::Internal => Self::Internal,
+        }
+    }
+}
+
+impl CommandError {
+    /// A core error as the renderer sees it (`memry_desktop::error::map_core`).
+    pub fn from_core<E: CoreError>(error: &E) -> Self {
+        let failure = map_core(error);
+        Self::new(failure.kind.into(), failure.code, failure.message)
+    }
+}
+
 impl std::fmt::Display for CommandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.code, self.message)
@@ -76,6 +106,10 @@ impl std::error::Error for CommandError {}
 /// Log a command failure at warn level with the command name and forward it to the registered
 /// sink through the throttle. Adapters call it in their `map_err`.
 pub fn log_failure(command: &str, error: &CommandError) {
+    // `SQLITE_CORRUPT` from a query with the vault open: the user is offered repair, once.
+    if error.kind == ErrorKind::Recovery && error.code == "storage_corrupt" {
+        crate::shell::vault_boot::offer_runtime_repair_if_ready();
+    }
     command_failure::reporter().report(
         command,
         FailureDetails {

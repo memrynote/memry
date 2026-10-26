@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://www.bilibili.com/video/BV1BB411c7mB","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1BB411c7mB&page=1&high_quality=1&danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscreen></iframe>",
+  "markdown": "<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1BB411c7mB&amp;page=1&amp;high_quality=1&amp;danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscreen=\"\"></iframe>",
+  "raw": {"title":"B站视频 - bilibili","author":"","published":"","description":"","image":"","site":"Bilibili","language":"en","wordCount":0},
+  "expected": {"url":"https://www.bilibili.com/video/BV1BB411c7mB","mode":"article","contentMarkdown":"<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1BB411c7mB&amp;page=1&amp;high_quality=1&amp;danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscreen=\"\"></iframe>","excerpt":"<iframe width=\"560\" height=\"315\" src=\"https://player.bilibili.com/player.html?bvid=BV1BB411c7mB&amp;page=1&amp;high_quality=1&amp;danmaku=0\" title=\"Bilibili video player\" frameborder=\"0\" allowfullscre","extractionStatus":"partial","properties":{"title":"B站视频 - bilibili","source":"https://www.bilibili.com/video/BV1BB411c7mB","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]}
+}

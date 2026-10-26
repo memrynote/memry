@@ -1,0 +1,28 @@
+[
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/next?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"WEB\",\"clientVersion\":\"2.20240101.00.00\"}},\"videoId\":\"shortLink01\"}",
+    "error": "down"
+  },
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"IOS\",\"clientVersion\":\"20.10.3\"}},\"videoId\":\"shortLink01\"}",
+    "error": "down"
+  },
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"ANDROID\",\"clientVersion\":\"20.10.38\"}},\"videoId\":\"shortLink01\"}",
+    "status": 403,
+    "text": ""
+  },
+  {
+    "method": "POST",
+    "url": "https://www.youtube.com/youtubei/v1/player?prettyPrint=false",
+    "body": "{\"context\":{\"client\":{\"clientName\":\"WEB\",\"clientVersion\":\"2.20240101.00.00\"}},\"videoId\":\"shortLink01\"}",
+    "status": 200,
+    "text": "{\"captions\":{}}"
+  }
+]

@@ -162,6 +162,7 @@ describe('zero-covered leaf surfaces', () => {
     ;(window as any).api = {
       vault: {
         getStatus: vi.fn().mockResolvedValue({ path: '/Users/kaan/Vault' }),
+        getAll: vi.fn().mockResolvedValue({ vaults: [], currentVault: null }),
         getConfig: vi.fn().mockResolvedValue({}),
         reveal: vi.fn().mockResolvedValue(undefined)
       },
@@ -253,8 +254,9 @@ describe('zero-covered leaf surfaces', () => {
     expect(screen.getByText('vault.storage.categories.notes')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'vault.storage.refreshAria' }))
     await waitFor(() => expect(mocks.refreshStorage).toHaveBeenCalled())
+    // Reveal asks the shell to show the open vault, whose path the status carries.
     fireEvent.click(screen.getByRole('button', { name: 'vault.reveal' }))
-    expect((window as any).api.vault.reveal).toHaveBeenCalled()
+    await waitFor(() => expect((window as any).api.vault.reveal).toHaveBeenCalled())
   })
 
   it('confirms archive actions', () => {

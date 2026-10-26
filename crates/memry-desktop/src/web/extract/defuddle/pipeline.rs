@@ -26,6 +26,7 @@ impl Defuddle {
                 .clone()
                 .unwrap_or_else(|| unreachable!("set by parse_internal")),
             schema_org_data: schema,
+            extractor_type: None,
         }
     }
 
@@ -46,8 +47,12 @@ impl Defuddle {
                 &meta_tags,
             )?);
         }
-        // Stage 5 and 6 plug `ExtractorRegistry.findExtractor` in here; no extractor matches yet.
-        match self.run_pipeline(&schema, settings, content_selector) {
+        match self
+            .run_site_extractor(&schema)
+            .and_then(|extracted| match extracted {
+                Some(response) => Ok(response),
+                None => self.run_pipeline(&schema, settings, content_selector),
+            }) {
             Ok(response) => Ok(response),
             Err(error) => {
                 tracing::error!(%error, "Defuddle: error processing document");

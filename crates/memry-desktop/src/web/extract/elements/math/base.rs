@@ -8,7 +8,7 @@ use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::elements::rule::{attr, attr_or_empty};
 use crate::web::extract::error::ExtractError;
 use crate::web::extract::utils::dom::tag_lower;
-use crate::web::extract::utils::js::trim;
+use crate::web::extract::utils::js::{decode_uri_component, trim};
 
 use super::mjx::reconstruct_mathml_from_mjx;
 
@@ -144,29 +144,6 @@ pub fn get_mathml_from_element(
         Some(mjx) => reconstruct_mathml_from_mjx(doc, mjx),
         None => Ok(None),
     }
-}
-
-/// `decodeURIComponent(s)`; `None` for the `URIError` of a malformed escape or UTF-8 sequence.
-fn decode_uri_component(s: &str) -> Option<String> {
-    let bytes = s.as_bytes();
-    let mut out = Vec::with_capacity(bytes.len());
-    let mut i = 0;
-    while i < bytes.len() {
-        if bytes[i] == b'%' {
-            let hex = bytes.get(i + 1..i + 3)?;
-            let value = u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok()?;
-            // `from_str_radix` accepts a leading `+`; a hex pair does not.
-            if !hex.iter().all(u8::is_ascii_hexdigit) {
-                return None;
-            }
-            out.push(value);
-            i += 3;
-        } else {
-            out.push(bytes[i]);
-            i += 1;
-        }
-    }
-    String::from_utf8(out).ok()
 }
 
 /// `getBasicLatexFromElement(el)`.

@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://twitter.com/bob/status/2","now":"2025-03-04T05:06:07.000Z","fetch":[{"method":"GET","url":"https://api.fxtwitter.com/bob/status/2","error":"network down"},{"method":"GET","url":"https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2Fbob%2Fstatus%2F2&omit_script=true","error":"network down"}]},
+  "expected": {"url":"https://twitter.com/bob/status/2","mode":"article","contentMarkdown":"Just one tweet\n\n![Pic](https://pbs.twimg.com/media/b?name=large)","excerpt":"Just one tweet","extractionStatus":"partial","properties":{"title":"Post by @ on X","source":"https://twitter.com/bob/status/2","created":"2025-03-04T05:06:07.000Z","author":"@","description":"Just one tweet"},"tags":["clippings"]},
+  "raw": {"title":"Post by @ on X","author":"@","published":"","description":"Just one tweet","image":"","site":"X (Twitter)","language":"en","wordCount":3,"schemaOrgData":"[]","extractorType":"twitter"},
+  "requests": [{"method":"GET","url":"https://api.fxtwitter.com/bob/status/2","headers":[["User-Agent","Mozilla/5.0 (compatible; Defuddle/1.0; +https://defuddle.md)"]],"body":null},{"method":"GET","url":"https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2Fbob%2Fstatus%2F2&omit_script=true","headers":[],"body":null}]
+}

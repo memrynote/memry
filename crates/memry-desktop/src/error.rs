@@ -60,6 +60,9 @@ impl CoreError for StorageError {
             Self::MissingFts5 => (Storage, "missing_fts5"),
             Self::IndexRebuildRequired { .. } => (Storage, "index_rebuild_required"),
             Self::OutOfSpace { .. } => (Storage, "out_of_space"),
+            // The runtime corruption signal (`SQLITE_CORRUPT` from a query): the shell offers
+            // the same repair as a failed open.
+            Self::Failed { .. } if self.is_corrupt() => (Recovery, "storage_corrupt"),
             Self::Failed { .. } => (Storage, "storage_failed"),
             Self::NotFound { .. } => (NotFound, "not_found"),
             Self::Invalid { .. } => (Invalid, "invalid"),
@@ -166,6 +169,18 @@ mod tests {
 
     fn storage(error: StorageError) -> (FailureKind, &'static str) {
         error.kind_and_code()
+    }
+
+    #[test]
+    fn a_runtime_corruption_signal_is_the_recovery_error_and_other_failures_are_not() {
+        let corrupt = StorageError::Failed {
+            what: "database disk image is malformed".to_owned(),
+        };
+        assert_eq!(storage(corrupt), (FailureKind::Recovery, "storage_corrupt"));
+        let busy = StorageError::Failed {
+            what: "database is locked".to_owned(),
+        };
+        assert_eq!(storage(busy), (FailureKind::Storage, "storage_failed"));
     }
 
     #[test]

@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://claude.ai/chat/9a8b","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://claude.ai/chat/9a8b","mode":"article","contentMarkdown":"**You**\n\nWhere should we go in May?\n\n---\n\n**Claude**\n\nConsider **Lisbon**.\n\n- Mild weather\n- Good food\n\n---\n\n**Claude**\n\nPlain answer without markdown wrapper.","excerpt":"Claude conversation with 3 messages","extractionStatus":"partial","properties":{"title":"Planning a trip","source":"https://claude.ai/chat/9a8b","created":"2025-03-04T05:06:07.000Z","description":"Claude conversation with 3 messages"},"tags":["clippings"]},
+  "raw": {"title":"Planning a trip","author":"","published":"","description":"Claude conversation with 3 messages","image":"","site":"Claude","language":"en","wordCount":21,"schemaOrgData":"[]","extractorType":"claude"},
+  "requests": []
+}

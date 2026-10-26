@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://news.ycombinator.com/item?id=5200","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<article data-defuddle=\"\">\n\t\t\t<div class=\"hackernews post\">\n\t\t\t\t<div class=\"post-content\">\n\t\t\t\t\t<div class=\"comment\">\n\t<div class=\"comment-metadata\">\n\t\t<span class=\"comment-author\"><strong>zed</strong></span> · <span class=\"comment-date\">2025-01-05</span>\n\t</div>\n\t<div class=\"comment-content\">This comment is longer than fifty characters so that the title preview is cut off here.</div>\n</div>\n\t\t\t\t</div>\n\t\t\t</div>\n\t\t\t\n\t\t</article>",
+  "markdown": "**zed** · 2025-01-05\n\nThis comment is longer than fifty characters so that the title preview is cut off here.",
+  "raw": {"title":"Comment by zed: This comment is longer than fifty characters so th...","author":"zed","published":"2025-01-05","description":"Comment by zed on Hacker News","image":"","site":"Hacker News","language":"en","wordCount":19},
+  "expected": {"url":"https://news.ycombinator.com/item?id=5200","mode":"article","contentMarkdown":"**zed** · 2025-01-05\n\nThis comment is longer than fifty characters so that the title preview is cut off here.","excerpt":"Comment by zed on Hacker News","extractionStatus":"partial","properties":{"title":"Comment by zed: This comment is longer than fifty characters so th...","source":"https://news.ycombinator.com/item?id=5200","created":"2025-03-04T05:06:07.000Z","author":"zed","published":"2025-01-05","description":"Comment by zed on Hacker News"},"tags":["clippings"]}
+}

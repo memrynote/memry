@@ -1,0 +1,12 @@
+[
+  {
+    "method": "GET",
+    "url": "https://api.fxtwitter.com/bob/status/2",
+    "error": "network down"
+  },
+  {
+    "method": "GET",
+    "url": "https://publish.twitter.com/oembed?url=https%3A%2F%2Ftwitter.com%2Fbob%2Fstatus%2F2&omit_script=true",
+    "error": "network down"
+  }
+]

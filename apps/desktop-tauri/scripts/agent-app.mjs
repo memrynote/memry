@@ -6,6 +6,8 @@
 //   node apps/desktop-tauri/scripts/agent-app.mjs start
 //   node apps/desktop-tauri/scripts/agent-app.mjs eval "document.title"
 //   node apps/desktop-tauri/scripts/agent-app.mjs shot /tmp/agent.png
+//   node apps/desktop-tauri/scripts/agent-app.mjs query "SELECT count(*) AS n FROM sync_items"
+//   node apps/desktop-tauri/scripts/agent-app.mjs index-query "SELECT count(*) AS n FROM fts_notes"
 //   node apps/desktop-tauri/scripts/agent-app.mjs status
 //   node apps/desktop-tauri/scripts/agent-app.mjs stop
 //
@@ -34,6 +36,7 @@ import { basename, join, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { purgeKeychainForDevice } from '../e2e/harness/keychain-cleanup.mjs'
+import { seedVaultRegistry } from '../e2e/harness/seed-registry.mjs'
 import { evaluateInPage, INVOKE_SCRIPT } from './lib/page-scripts.mjs'
 import { createClient } from './lib/webdriver-client.mjs'
 
@@ -211,6 +214,7 @@ export async function start(/** @type {Context} */ ctx) {
   // The sidebar shows the vault folder's name, so the copy keeps the template's.
   const vaultPath = join(vaultRoot, basename(template))
   cpSync(template, vaultPath, { recursive: true })
+  if (!firstRun) seedVaultRegistry(appDataDir, vaultPath)
 
   mkdirSync(join(ctx.tmp, 'memry-e2e'), { recursive: true })
   writeFileSync(
@@ -349,6 +353,32 @@ export async function shot(/** @type {Context} */ ctx, /** @type {string} */ fil
 }
 
 /**
+ * Runs one read-only statement against the open vault's `data.db` (`e2e_debug_query`) or
+ * `index.db` (`e2e_debug_index_query`) and prints the rows as JSON. A write is refused by the
+ * app with `read-only`, which this prints before exiting 1.
+ */
+export async function query(
+  /** @type {Context} */ ctx,
+  /** @type {'e2e_debug_query' | 'e2e_debug_index_query'} */ command,
+  /** @type {string} */ sql
+) {
+  if (!sql) {
+    ctx.err(
+      `Usage: agent-app.mjs ${command === 'e2e_debug_query' ? 'query' : 'index-query'} "<sql>"`
+    )
+    return 1
+  }
+  const { client, sessionId } = await liveSession(ctx)
+  const outcome = await client.executeAsync(sessionId, INVOKE_SCRIPT, [command, { sql }])
+  if (!outcome?.ok) {
+    ctx.err(String(outcome?.error))
+    return 1
+  }
+  ctx.out(JSON.stringify(outcome.value, null, 2))
+  return 0
+}
+
+/**
  * @param {string[]} argv
  * @param {Context} ctx
  * @returns {Promise<number>} the exit code
@@ -367,8 +397,14 @@ export async function main(argv, ctx) {
         return await evaluate(ctx, rest.join(' '))
       case 'shot':
         return await shot(ctx, rest[0] ?? '')
+      case 'query':
+        return await query(ctx, 'e2e_debug_query', rest.join(' '))
+      case 'index-query':
+        return await query(ctx, 'e2e_debug_index_query', rest.join(' '))
       default:
-        ctx.err('Usage: agent-app.mjs <start|stop|status|eval "<javascript>"|shot <file.png>>')
+        ctx.err(
+          'Usage: agent-app.mjs <start|stop|status|eval "<javascript>"|shot <file.png>|query "<sql>"|index-query "<sql>">'
+        )
         return 1
     }
   } catch (error) {

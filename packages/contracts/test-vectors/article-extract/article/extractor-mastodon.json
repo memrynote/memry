@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://mastodon.social/@alice/111222","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://mastodon.social/@alice/111222","mode":"article","contentMarkdown":"Hello example.com/a world x\n\n![A cat](https://files.example/1.png) [![Example](https://example.com/c.png)](https://example.com/a)\n\n[Example](https://example.com/a)\n\nDesc\n\n---\n\nThread part 2\n\n---\n\n## Comments\n\n> **Bob @bob@example.org** · [2025-02-06](https://mastodon.social/@bob/333)\n> \n> Nice!\n> \n> > **@carol@example.org** ·> > \n> > Reply to Bob","excerpt":"Hello https://example.com/a world","extractionStatus":"partial","properties":{"title":"Post by Alice :) on Mastodon Social","source":"https://mastodon.social/@alice/111222","created":"2025-03-04T05:06:07.000Z","author":"Alice :)","published":"2025-02-05","description":"Hello https://example.com/a world"},"tags":["clippings"]},
+  "raw": {"title":"Post by Alice :) on Mastodon Social","author":"Alice :)","published":"2025-02-05","description":"Hello https://example.com/a world","image":"","site":"Mastodon Social","language":"en","wordCount":20,"schemaOrgData":"[]","extractorType":"mastodon"},
+  "requests": []
+}

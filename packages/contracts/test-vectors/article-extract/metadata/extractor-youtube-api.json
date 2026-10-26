@@ -1,0 +1,10 @@
+{
+  "metaTags": [{"name":null,"property":"og:url","content":"https://www.youtube.com/watch?v=abcDEF12345"}],
+  "schemaOrgData": "[{\"@type\":\"VideoObject\",\"embedUrl\":\"https://www.youtube.com/embed/abcDEF12345\",\"name\":\"How CRDTs merge\",\"description\":\"First line\\nSecond line with <b>html</b>\",\"uploadDate\":\"2025-02-10T08:00:00-08:00\",\"thumbnailUrl\":[\"https://i.ytimg.com/vi/a/maxres.jpg\"],\"author\":\"Ignored\"}]",
+  "schemaText": "",
+  "metadata": {"title":"How CRDTs merge","description":"First line\nSecond line with <b>html</b>","domain":"youtube.com","favicon":"https://www.youtube.com/favicon.ico","image":"","language":"en","published":"","author":"","site":"YouTube"},
+  "contentStart": null,
+  "contentStartNoTitle": null,
+  "contentStartHeading": null,
+  "above": "0000000000"
+}

@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://medium.com/@alice/building-small-tools-123","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://medium.com/@alice/building-small-tools-123","mode":"article","contentMarkdown":"## Building small tools\n\nWhy constraints help\n\nSmall tools are easier to hold in your head, and that is the whole argument of this post.\n\n![diagram](https://miro.medium.com/a.png)\n\nDiagram\n\ntip\n\nSecond paragraph with [a link](https://example.com/) and enough words to count.","excerpt":"Why constraints help","extractionStatus":"partial","properties":{"title":"Building small tools","source":"https://medium.com/@alice/building-small-tools-123","created":"2025-03-04T05:06:07.000Z","author":"Alice","description":"Why constraints help"},"tags":["clippings"]},
+  "raw": {"title":"Building small tools","author":"Alice","published":"","description":"Why constraints help","image":"","site":"Medium","language":"en","wordCount":36,"schemaOrgData":"[]","extractorType":"medium"},
+  "requests": []
+}

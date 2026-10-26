@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://forum.example.com/t/how-to-sync/321","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://forum.example.com/t/how-to-sync/321","mode":"article","contentMarkdown":"How do I sync two devices?\n\n---\n\n## Comments\n\n> · [2025-02-01](https://forum.example.com/t/how-to-sync/321/2) · 3 likes\n> \n> Use the pairing code.\n\n> **carol** ·\n> \n> +1","excerpt":"How do I sync two devices?","extractionStatus":"partial","properties":{"title":"How to sync?","source":"https://forum.example.com/t/how-to-sync/321","created":"2025-03-04T05:06:07.000Z","author":"alice","published":"2025-01-30","description":"How do I sync two devices?"},"tags":["clippings"]},
+  "raw": {"title":"How to sync?","author":"alice","published":"2025-01-30","description":"How do I sync two devices?","image":"","site":"Example Forum","language":"en","wordCount":19,"schemaOrgData":"[]","extractorType":"discourse"},
+  "requests": []
+}

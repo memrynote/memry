@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://wiki.c2.com/","now":"2025-03-04T05:06:07.000Z","fetch":[{"method":"GET","url":"https://c2.com/wiki/remodel/pages/WelcomeVisitors","status":200,"text":"{\"text\":\"\"}"}]},
+  "expected": {"url":"https://wiki.c2.com/","mode":"article","contentMarkdown":"","excerpt":"","extractionStatus":"failed","properties":{"title":"C2","source":"https://wiki.c2.com/","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"C2","author":"","published":"","description":"","image":"","site":"","language":"en","wordCount":0,"schemaOrgData":"[]","extractorType":"c2wiki"},
+  "requests": [{"method":"GET","url":"https://c2.com/wiki/remodel/pages/WelcomeVisitors","headers":[],"body":null}]
+}

@@ -47,6 +47,50 @@ vi.mock('@/lib/logger', () => {
 })
 
 // ============================================================================
+// The generated Tauri bindings, as the vault service reaches them. Component tests drive the
+// vault through the `window.api.vault` mock below, so the bindings forward to it: the
+// service's own tests (services/vault-service.test.ts) mock the bindings directly.
+// ============================================================================
+
+vi.mock('../src/generated/bindings', () => {
+  const vault = () => window.api.vault
+  const event = (
+    subscribe: () => (handler: (payload: unknown) => void) => () => void,
+    wrap = (p: unknown) => p
+  ) => ({
+    listen: async (handler: (received: { payload: unknown }) => void) =>
+      subscribe()((payload) => handler({ payload: wrap(payload) }))
+  })
+  return {
+    commands: {
+      appInfo: () => Promise.resolve({}),
+      vaultSelect: (path: string | null) => vault().select(path ?? undefined),
+      vaultCreate: (parent: string, name: string) => vault().create(parent, name),
+      vaultGetDefaultParent: () => vault().getDefaultParent(),
+      vaultList: () => vault().getAll(),
+      vaultGetStatus: () => vault().getStatus(),
+      vaultClose: () => vault().close(),
+      vaultSwitch: (path: string) => vault().switch(path),
+      vaultRemove: (path: string) => vault().remove(path),
+      vaultReveal: () => vault().reveal(),
+      vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon)
+    },
+    events: {
+      vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged),
+      vaultListChangedEvent: event(() => window.api.onVaultListChanged),
+      vaultErrorEvent: event(
+        () => window.api.onVaultError,
+        (message) => ({ message })
+      ),
+      vaultIndexRecoveredEvent: event(
+        () => window.api.onVaultIndexRecovered,
+        (recovered) => ({ ...(recovered as object), detail: '' })
+      )
+    }
+  }
+})
+
+// ============================================================================
 // Cleanup after each test
 // ============================================================================
 

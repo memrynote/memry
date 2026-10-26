@@ -21,6 +21,10 @@ function createLevel(callPath: string, name: string): unknown {
       // Symbols and `then` must stay undefined, or `await window.api` would treat the proxy
       // as a thenable and never settle.
       if (typeof property === 'symbol' || property === 'then') return undefined
+      // `fn.call(thisArg, ...)` and friends are the function's own, not a deeper path.
+      if (property === 'call' || property === 'apply' || property === 'bind') {
+        return Function.prototype[property]
+      }
       return createLevel(`${callPath}.${property}`, property)
     },
     apply() {
@@ -31,14 +35,17 @@ function createLevel(callPath: string, name: string): unknown {
         }
         return noopUnsubscribe
       }
-      throw new NotPortedError(callPath)
+      // Every `window.api` call is async IPC in Electron, so a caller handles a rejection
+      // (`await`, `.catch`). A synchronous throw escaped them and blanked the whole window at
+      // boot, which hid every ported domain behind the first unported one.
+      return Promise.reject(new NotPortedError(callPath))
     }
   })
 }
 
 /**
  * Defines `window.api` and `window.electron` as nested proxies for the development build.
- * Calling a leaf throws `NotPortedError`; an `onXxx` leaf returns a no-op unsubscribe function
+ * Calling a leaf returns a promise rejected with `NotPortedError`; an `onXxx` leaf returns a no-op unsubscribe function
  * and logs once per name. Step 43 (#3560) deletes this file.
  */
 /** What the shim is installed on: `window`, or a stand-in in tests. */

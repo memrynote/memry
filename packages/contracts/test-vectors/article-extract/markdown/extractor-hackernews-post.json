@@ -1,0 +1,4 @@
+{
+  "html": "<body><a href=\"https://example.com/small-tools\">Ask HN: Why do small tools win?</a> (<a href=\"from?site=example.com\">example.com</a>)120 points by <a href=\"user?id=alice\">alice</a> <span title=\"2025-02-01T10:00:00 1738404000\"><a href=\"item?id=4100\">3 days ago</a></span> I keep seeing it.<p>Anyone else <i>notice</i>?</p><p>Because they fit in your head. <a href=\"https://example.org/x\">more</a></p> <p>Agreed.<p>Mostly.</p></p><p>Not always.</p><p>A second thread.</p><table><tr><td></td> <td><a>frank</a></td></tr></table></body>",
+  "markdown": "[Ask HN: Why do small tools win?](https://example.com/small-tools) ([example.com](from?site=example.com))120 points by [alice](user?id=alice) [3 days ago](item?id=4100) I keep seeing it.\n\nAnyone else *notice*?\n\nBecause they fit in your head. [more](https://example.org/x)\n\nAgreed.\n\nMostly.\n\nNot always.\n\nA second thread.\n\n|  | frank |\n| --- | --- |"
+}

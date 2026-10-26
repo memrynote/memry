@@ -1,15 +1,16 @@
 //! The `Defuddle` class of `dist/defuddle.js` (generic path), ported across the stages of Step
 //! 26 (#3543).
 //!
-//! `parse` runs the pipeline of `parseInternal` and its retries on one document. The site
-//! extractors of `dist/extractors/` are stages 5 and 6: until they land no extractor matches
-//! (`findExtractor` returns nothing), and `parseAsync` reduces to `parse`. The browser-only
+//! `parse` runs the pipeline of `parseInternal` and its retries on one document; the site
+//! extractors of `extractors/` take a page before the generic pipeline (`extractor.rs`), and
+//! `parse_async` adds the ones that fetch. The browser-only
 //! branches stay out because linkedom never takes them: it has no shadow roots
 //! (`flattenShadowRoots` does nothing), no style sheets (`_evaluateMediaQueries` finds no mobile
 //! styles, so `applyMobileStyles` does nothing), and no `getComputedStyle`.
 
 pub mod boundary;
 mod content;
+mod extractor;
 mod images;
 mod pipeline;
 pub mod schema_org;
@@ -22,6 +23,8 @@ use std::sync::LazyLock;
 
 use super::dom::{Document, NodeId};
 use super::error::ExtractError;
+use super::extractors::Find;
+use super::fetch::Fetcher;
 use super::map::DefuddleResult;
 use super::metadata::Metadata;
 use super::removals::small_images::SmallImages;
@@ -39,6 +42,8 @@ pub struct DefuddleResponse {
     pub metadata: Metadata,
     pub schema_org_data: JsValue,
     pub word_count: usize,
+    /// `extractorType`: the extractor that produced the result, none for the generic path.
+    pub extractor_type: Option<&'static str>,
 }
 
 impl DefuddleResponse {
@@ -68,6 +73,9 @@ pub struct Defuddle {
     meta_tags: Option<Vec<MetaTag>>,
     pub(crate) metadata: Option<Metadata>,
     pub(crate) small_images: Option<SmallImages>,
+    /// `_inExtractorPipelineRun`: the pipeline run over an extractor's `contentSelector` does
+    /// not look for an extractor again.
+    pub(crate) in_extractor_pipeline_run: bool,
 }
 
 static HTML_TAG: LazyLock<Regex> = LazyLock::new(|| Regex::new("<[^>]*>").expect("static"));
@@ -105,6 +113,7 @@ impl Defuddle {
             meta_tags: None,
             metadata: None,
             small_images: None,
+            in_extractor_pipeline_run: false,
         }
     }
 
@@ -123,10 +132,20 @@ impl Defuddle {
         Ok(self.meta_tags.clone().unwrap_or_default())
     }
 
-    /// `parseAsync()`. No async extractor exists yet, so this is `parse()`; the `Fetcher` seam
-    /// of the extractors arrives with them.
-    pub fn parse_async(&mut self) -> Result<DefuddleResponse, ExtractError> {
-        self.parse()
+    /// `parseAsync()`: an extractor that prefers async (YouTube transcripts) first, then the
+    /// generic `parse()`, then the async extractors when that found no content. `useAsync` is
+    /// on, as in Electron.
+    pub fn parse_async(&mut self, fetcher: &dyn Fetcher) -> Result<DefuddleResponse, ExtractError> {
+        if let Some(response) = self.try_async_extractor(Find::PreferredAsync, fetcher) {
+            return Ok(response);
+        }
+        let result = self.parse()?;
+        if result.word_count > 0 {
+            return Ok(result);
+        }
+        Ok(self
+            .try_async_extractor(Find::Async, fetcher)
+            .unwrap_or(result))
     }
 
     /// `parse()`: the default run and the retries for pages that yield little content.

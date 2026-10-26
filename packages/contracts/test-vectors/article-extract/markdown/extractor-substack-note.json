@@ -1,0 +1,4 @@
+{
+  "html": "<body><p>A short note about <b>writing</b>.</p><img src=\"https://img.example/small.jpg\" srcset=\"https://img.example/a.jpg,w_424 424w, https://img.example/b.jpg,w_1456,c_limit 1456w\"></body>",
+  "markdown": "A short note about **writing**.\n\n![](https://img.example/b.jpg,w_1456,c_limit)"
+}

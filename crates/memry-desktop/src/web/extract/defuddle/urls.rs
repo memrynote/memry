@@ -8,7 +8,8 @@ use url::Url;
 
 use crate::web::extract::dom::{Document, NodeId};
 use crate::web::extract::error::ExtractError;
-use crate::web::extract::utils::js::{is_js_whitespace, split_whitespace_runs, trim};
+use crate::web::extract::utils::dom::is_dangerous_url;
+use crate::web::extract::utils::js::{split_whitespace_runs, trim};
 
 use super::Defuddle;
 use super::images::strip_leading_comma;
@@ -27,17 +28,6 @@ static LEADING_QUOTES: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"^\\?["']+"#).expect("static pattern"));
 static TRAILING_QUOTES: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"\\?["']+$"#).expect("static pattern"));
-
-/// `isDangerousUrl(url)`: `javascript:` and `data:text/html`, whitespace and control characters
-/// stripped first.
-pub(super) fn is_dangerous_url(url: &str) -> bool {
-    let normalized: String = url
-        .chars()
-        .filter(|&c| !is_js_whitespace(c) && c > '\u{1f}')
-        .collect::<String>()
-        .to_lowercase();
-    normalized.starts_with("javascript:") || normalized.starts_with("data:text/html")
-}
 
 /// `_stripUnsafeElements(body)`: dangerous elements, event handlers, `srcdoc` and dangerous
 /// URIs. Iframes stay (their attributes are cleaned here); math scripts stay for LaTeX.
@@ -186,7 +176,7 @@ impl Defuddle {
     }
 
     /// `resolveContentUrls(html)`.
-    fn resolve_content_urls(&mut self, html: &str) -> Result<String, ExtractError> {
+    pub(super) fn resolve_content_urls(&mut self, html: &str) -> Result<String, ExtractError> {
         if self.url.is_empty() {
             return Ok(html.to_string());
         }
@@ -201,14 +191,6 @@ impl Defuddle {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn dangerous_urls() {
-        assert!(is_dangerous_url(" java\tscript:alert(1)"));
-        assert!(is_dangerous_url("DATA:text/html;base64,xx"));
-        assert!(!is_dangerous_url("data:image/png;base64,xx"));
-        assert!(!is_dangerous_url("https://a.com"));
-    }
 
     #[test]
     fn resolves_like_new_url() {

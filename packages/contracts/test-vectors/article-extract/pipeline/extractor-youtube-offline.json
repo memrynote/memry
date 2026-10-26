@@ -1,0 +1,7 @@
+{
+  "input": {"url":"https://youtu.be/shortLink01","now":"2025-03-04T05:06:07.000Z"},
+  "content": "<iframe width=\"560\" height=\"315\" src=\"https://www.youtube.com/embed/shortLink01\" title=\"YouTube video player\" frameborder=\"0\" allow=\"accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share\" referrerpolicy=\"strict-origin-when-cross-origin\" allowfullscreen></iframe><p></p>",
+  "markdown": "![](https://www.youtube.com/watch?v=shortLink01)",
+  "raw": {"title":"Comment only","author":"Link Name","published":"2025-03-03","description":"no","image":"","site":"YouTube","language":"en","wordCount":0},
+  "expected": {"url":"https://youtu.be/shortLink01","mode":"article","contentMarkdown":"![](https://www.youtube.com/watch?v=shortLink01)","excerpt":"no","extractionStatus":"partial","properties":{"title":"Comment only","source":"https://youtu.be/shortLink01","created":"2025-03-04T05:06:07.000Z","author":"Link Name","published":"2025-03-03","description":"no"},"tags":["clippings"]}
+}

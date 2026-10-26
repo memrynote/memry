@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://docs.example.dev/guide/install","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://docs.example.dev/guide/install","mode":"article","contentMarkdown":"## Install\n\nThe toolkit ships as a single static binary. Pick the method that fits your platform.\n\n## macOS\n\n```bash\nbrew install example-toolkit\nexample --version\n```\n\nIf you use `MacPorts`, run `sudo port install example` instead.\n\n## Linux\n\n| Distro | Command |\n| --- | --- |\n| Debian | `apt install example` |\n| Fedora | `dnf install example` |\n\n> [!note] Note\n> Root is not required for the user install.\n\n### Verify the install\n\n1. Open a new shell.\n2. Run example doctor.\n3. Confirm all checks pass.","excerpt":"Install the toolkit on macOS, Linux or Windows.","extractionStatus":"partial","properties":{"title":"Install - Example Docs","source":"https://docs.example.dev/guide/install","created":"2025-03-04T05:06:07.000Z","description":"Install the toolkit on macOS, Linux or Windows."},"tags":["clippings"]},
+  "raw": {"title":"Install - Example Docs","author":"","published":"","description":"Install the toolkit on macOS, Linux or Windows.","image":"","site":"","language":"en","wordCount":68,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

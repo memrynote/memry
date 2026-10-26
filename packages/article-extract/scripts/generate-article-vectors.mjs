@@ -7,6 +7,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { parseHTML } from 'linkedom'
+import { articleVector } from './vectors/article.mjs'
+import { articleFuzzVectors } from './vectors/article-fuzz.mjs'
 import { domVector, fuzzVectors } from './vectors/dom.mjs'
 import { mapVector } from './vectors/map.mjs'
 import { markdownCases } from './vectors/markdown-cases.mjs'
@@ -44,6 +46,10 @@ import { temmlTablesText, temmlTablesTarget } from './vectors/temml-tables.mjs'
 import { temmlCases, temmlFuzzVectors, temmlVector } from './vectors/temml.mjs'
 import { temmlEnvCases, temmlEnvFuzzVectors } from './vectors/temml-envs.mjs'
 
+// JS `new Date(text)` reads a date without a zone as local time. Pin the zone so vectors do not
+// depend on the machine that generates them; the Rust port reads such dates as UTC.
+process.env.TZ = 'UTC'
+
 /** Every class, id and test attribute value of a page: what the partial selectors run on. */
 function attributeValues(html) {
   const { document } = parseHTML(html)
@@ -71,7 +77,7 @@ function format(value) {
   return `${JSON.stringify(value)}\n`
 }
 
-function buildFiles() {
+async function buildFiles() {
   const fixtures = loadFixtures()
   const selectors = buildSelectors()
   const files = new Map()
@@ -149,6 +155,10 @@ function buildFiles() {
       format(pipelineVector(fixture.html, fixture.url, fixture.now))
     )
   }
+  for (const fixture of fixtures) {
+    files.set(`article/${fixture.name}.json`, format(await articleVector(fixture)))
+  }
+  files.set('article-fuzz.json', format(await articleFuzzVectors(200)))
   files.set(
     'pipeline-cases.json',
     format(
@@ -217,7 +227,7 @@ function committedFiles() {
 // failed markdown conversion through console.log; the probes feed it such input on purpose.
 const { error, warn, log } = console
 console.error = console.warn = console.log = () => {}
-const files = buildFiles()
+const files = await buildFiles()
 Object.assign(console, { error, warn, log })
 const committed = committedFiles()
 
