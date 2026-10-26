@@ -21,3 +21,6 @@ packages/contracts/test-vectors/article-extract/** linguist-generated
 
 # Captured Electron profiles are read byte for byte (md5 checksums, LevelDB CURRENT); no EOL conversion.
 crates/memry-desktop/tests/fixtures/electron/** -text -whitespace
+# Notes of the markdown converter's grammar corpus: their bytes are the test input
+# (CRLF, trailing spaces, BOMs), so git neither converts nor flags them.
+packages/contracts/test-vectors/markdown-convert/corpus/** -text -whitespace
