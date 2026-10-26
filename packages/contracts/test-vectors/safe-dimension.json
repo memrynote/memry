@@ -1,0 +1,848 @@
+{
+  "meta": {
+    "spec": "002-native-foundation-ios",
+    "sodiumVersion": "1.0.21",
+    "encoding": "hex unless the field name says otherwise; *Base64/*B64 are standard base64 with padding",
+    "class": "safe-dimension",
+    "implementation": "packages/contracts/src/telemetry-api.ts",
+    "caseCount": 209
+  },
+  "cases": [
+    {
+      "value": "",
+      "expected": false
+    },
+    {
+      "value": "a",
+      "expected": true
+    },
+    {
+      "value": "ok_value",
+      "expected": true
+    },
+    {
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": true
+    },
+    {
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "expected": false
+    },
+    {
+      "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "expected": true
+    },
+    {
+      "value": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+      "expected": false
+    },
+    {
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",
+      "expected": false
+    },
+    {
+      "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",
+      "expected": true
+    },
+    {
+      "value": "éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "expected": true
+    },
+    {
+      "value": "ééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé",
+      "expected": false
+    },
+    {
+      "value": "a@b",
+      "expected": false
+    },
+    {
+      "value": "@",
+      "expected": false
+    },
+    {
+      "value": "a://b",
+      "expected": false
+    },
+    {
+      "value": "://",
+      "expected": false
+    },
+    {
+      "value": ":/",
+      "expected": false
+    },
+    {
+      "value": "a/b",
+      "expected": false
+    },
+    {
+      "value": "a\\b",
+      "expected": false
+    },
+    {
+      "value": "/",
+      "expected": false
+    },
+    {
+      "value": "\\",
+      "expected": false
+    },
+    {
+      "value": "line\nbreak",
+      "expected": false
+    },
+    {
+      "value": "cr\rreturn",
+      "expected": false
+    },
+    {
+      "value": "ls sep",
+      "expected": false
+    },
+    {
+      "value": "ps sep",
+      "expected": false
+    },
+    {
+      "value": "tab\tok",
+      "expected": true
+    },
+    {
+      "value": "vt\u000bok",
+      "expected": true
+    },
+    {
+      "value": "nelok",
+      "expected": true
+    },
+    {
+      "value": "123e4567-e89b-12d3-a456-426614174000",
+      "expected": false
+    },
+    {
+      "value": "123E4567-E89B-12D3-A456-426614174000",
+      "expected": false
+    },
+    {
+      "value": "prefix-123e4567-e89b-12d3-a456-426614174000",
+      "expected": false
+    },
+    {
+      "value": "123e4567-e89b-12d3-a456-426614174000-suffix",
+      "expected": false
+    },
+    {
+      "value": "123e4567-e89b-12d3-a456-42661417400",
+      "expected": true
+    },
+    {
+      "value": "123e4567-e89b-12d3-a456-42661417400g",
+      "expected": true
+    },
+    {
+      "value": "setting.general.theme",
+      "expected": true
+    },
+    {
+      "value": "general.fontSizePx",
+      "expected": true
+    },
+    {
+      "value": "journal.weekdayTemplates",
+      "expected": true
+    },
+    {
+      "value": "a b c",
+      "expected": true
+    },
+    {
+      "value": " ",
+      "expected": true
+    },
+    {
+      "value": "  leading",
+      "expected": true
+    },
+    {
+      "value": "trailing  ",
+      "expected": true
+    },
+    {
+      "value": "dash-and_under.dot:colon",
+      "expected": true
+    },
+    {
+      "value": "日本語",
+      "expected": true
+    },
+    {
+      "value": "日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日",
+      "expected": true
+    },
+    {
+      "value": "日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日日",
+      "expected": false
+    },
+    {
+      "value": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "expected": true
+    },
+    {
+      "value": "mail.to",
+      "expected": true
+    },
+    {
+      "value": "http",
+      "expected": true
+    },
+    {
+      "value": "http:",
+      "expected": true
+    },
+    {
+      "value": "http:/",
+      "expected": false
+    },
+    {
+      "value": "http//x",
+      "expected": false
+    },
+    {
+      "value": "a:b://c",
+      "expected": false
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": true
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": true
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": true
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": false
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": false
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": false
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": false
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": false
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": false
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": false
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": false
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": false
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": false
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": false
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": false
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": false
+    },
+    {
+      "value": "ccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": false
+    },
+    {
+      "value": "🙂ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": false
+    },
+    {
+      "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "expected": false
+    },
+    {
+      "value": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc🙂",
+      "expected": false
+    },
+    {
+      "value": "🙂dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "expected": false
+    },
+    {
+      "value": "a",
+      "expected": true
+    },
+    {
+      "value": ".é",
+      "expected": true
+    },
+    {
+      "value": "@:.",
+      "expected": false
+    },
+    {
+      "value": "1😀@:",
+      "expected": false
+    },
+    {
+      "value": "\\_ \n/",
+      "expected": false
+    },
+    {
+      "value": "éa\\_ \n",
+      "expected": false
+    },
+    {
+      "value": ":.éa\\_ ",
+      "expected": false
+    },
+    {
+      "value": "😀",
+      "expected": true
+    },
+    {
+      "value": "_ ",
+      "expected": true
+    },
+    {
+      "value": "a\\_",
+      "expected": false
+    },
+    {
+      "value": ".éa\\",
+      "expected": false
+    },
+    {
+      "value": "@:.éa",
+      "expected": false
+    },
+    {
+      "value": " \n/-1😀",
+      "expected": false
+    },
+    {
+      "value": "\\_ \n/-1",
+      "expected": false
+    },
+    {
+      "value": "é",
+      "expected": true
+    },
+    {
+      "value": ":.",
+      "expected": true
+    },
+    {
+      "value": "\n/-",
+      "expected": false
+    },
+    {
+      "value": "_ \n/",
+      "expected": false
+    },
+    {
+      "value": "a\\_ \n",
+      "expected": false
+    },
+    {
+      "value": ".éa\\_ ",
+      "expected": false
+    },
+    {
+      "value": "/-1😀@:.",
+      "expected": false
+    },
+    {
+      "value": " ",
+      "expected": true
+    },
+    {
+      "value": "\\_",
+      "expected": false
+    },
+    {
+      "value": "éa\\",
+      "expected": false
+    },
+    {
+      "value": "-1😀@",
+      "expected": false
+    },
+    {
+      "value": "\n/-1😀",
+      "expected": false
+    },
+    {
+      "value": "_ \n/-1",
+      "expected": false
+    },
+    {
+      "value": "a\\_ \n/-",
+      "expected": false
+    },
+    {
+      "value": "1",
+      "expected": true
+    },
+    {
+      "value": "/-",
+      "expected": false
+    },
+    {
+      "value": " \n/",
+      "expected": false
+    },
+    {
+      "value": "\\_ \n",
+      "expected": false
+    },
+    {
+      "value": "😀@:.é",
+      "expected": false
+    },
+    {
+      "value": "-1😀@:.",
+      "expected": false
+    },
+    {
+      "value": "\n/-1😀@:",
+      "expected": false
+    },
+    {
+      "value": "_",
+      "expected": true
+    },
+    {
+      "value": "@:",
+      "expected": false
+    },
+    {
+      "value": "1😀@",
+      "expected": false
+    },
+    {
+      "value": "/-1😀",
+      "expected": false
+    },
+    {
+      "value": " \n/-1",
+      "expected": false
+    },
+    {
+      "value": ":.éa\\_",
+      "expected": false
+    },
+    {
+      "value": "😀@:.éa\\",
+      "expected": false
+    },
+    {
+      "value": "-",
+      "expected": true
+    },
+    {
+      "value": "\n/",
+      "expected": false
+    },
+    {
+      "value": ".éa",
+      "expected": true
+    },
+    {
+      "value": "@:.é",
+      "expected": false
+    },
+    {
+      "value": "1😀@:.",
+      "expected": false
+    },
+    {
+      "value": "/-1😀@:",
+      "expected": false
+    },
+    {
+      "value": "éa\\_ \n/",
+      "expected": false
+    },
+    {
+      "value": ":",
+      "expected": true
+    },
+    {
+      "value": "😀@",
+      "expected": false
+    },
+    {
+      "value": "-1😀",
+      "expected": true
+    },
+    {
+      "value": "a\\_ ",
+      "expected": false
+    },
+    {
+      "value": ".éa\\_",
+      "expected": false
+    },
+    {
+      "value": "@:.éa\\",
+      "expected": false
+    },
+    {
+      "value": "1😀@:.éa",
+      "expected": false
+    },
+    {
+      "value": "\\",
+      "expected": false
+    },
+    {
+      "value": "éa",
+      "expected": true
+    },
+    {
+      "value": ":.é",
+      "expected": true
+    },
+    {
+      "value": "😀@:.",
+      "expected": false
+    },
+    {
+      "value": "_ \n/-",
+      "expected": false
+    },
+    {
+      "value": "a\\_ \n/",
+      "expected": false
+    },
+    {
+      "value": ".éa\\_ \n",
+      "expected": false
+    },
+    {
+      "value": "@",
+      "expected": false
+    },
+    {
+      "value": " \n",
+      "expected": false
+    },
+    {
+      "value": "\\_ ",
+      "expected": false
+    },
+    {
+      "value": "éa\\_",
+      "expected": false
+    },
+    {
+      "value": ":.éa\\",
+      "expected": false
+    },
+    {
+      "value": "\n/-1😀@",
+      "expected": false
+    },
+    {
+      "value": "_ \n/-1😀",
+      "expected": false
+    },
+    {
+      "value": "a",
+      "expected": true
+    },
+    {
+      "value": ".é",
+      "expected": true
+    },
+    {
+      "value": "/-1",
+      "expected": false
+    },
+    {
+      "value": " \n/-",
+      "expected": false
+    },
+    {
+      "value": "\\_ \n/",
+      "expected": false
+    },
+    {
+      "value": "éa\\_ \n",
+      "expected": false
+    },
+    {
+      "value": "-1😀@:.é",
+      "expected": false
+    },
+    {
+      "value": "\n",
+      "expected": false
+    },
+    {
+      "value": "_ ",
+      "expected": true
+    },
+    {
+      "value": "a\\_",
+      "expected": false
+    },
+    {
+      "value": "1😀@:",
+      "expected": false
+    },
+    {
+      "value": "/-1😀@",
+      "expected": false
+    },
+    {
+      "value": " \n/-1😀",
+      "expected": false
+    },
+    {
+      "value": "\\_ \n/-1",
+      "expected": false
+    },
+    {
+      "value": "😀",
+      "expected": true
+    },
+    {
+      "value": "-1",
+      "expected": true
+    },
+    {
+      "value": "\n/-",
+      "expected": false
+    },
+    {
+      "value": "_ \n/",
+      "expected": false
+    },
+    {
+      "value": "@:.éa",
+      "expected": false
+    },
+    {
+      "value": "1😀@:.é",
+      "expected": false
+    },
+    {
+      "value": "/-1😀@:.",
+      "expected": false
+    },
+    {
+      "value": " ",
+      "expected": true
+    },
+    {
+      "value": ":.",
+      "expected": true
+    },
+    {
+      "value": "😀@:",
+      "expected": false
+    },
+    {
+      "value": "-1😀@",
+      "expected": false
+    },
+    {
+      "value": "\n/-1😀",
+      "expected": false
+    },
+    {
+      "value": ".éa\\_ ",
+      "expected": false
+    },
+    {
+      "value": "@:.éa\\_",
+      "expected": false
+    },
+    {
+      "value": "1",
+      "expected": true
+    },
+    {
+      "value": "/-",
+      "expected": false
+    },
+    {
+      "value": "éa\\",
+      "expected": false
+    },
+    {
+      "value": ":.éa",
+      "expected": true
+    },
+    {
+      "value": "😀@:.é",
+      "expected": false
+    },
+    {
+      "value": "-1😀@:.",
+      "expected": false
+    },
+    {
+      "value": "a\\_ \n/-",
+      "expected": false
+    },
+    {
+      "value": ".",
+      "expected": true
+    },
+    {
+      "value": "@:",
+      "expected": false
+    },
+    {
+      "value": "1😀@",
+      "expected": false
+    },
+    {
+      "value": "\\_ \n",
+      "expected": false
+    },
+    {
+      "value": "éa\\_ ",
+      "expected": false
+    }
+  ]
+}
