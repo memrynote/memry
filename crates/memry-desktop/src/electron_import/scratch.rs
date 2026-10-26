@@ -108,7 +108,10 @@ impl ProfileLock {
     }
 }
 
+// `flock.l_type` and `F_UNLCK` are `i16` on Linux and differ in width on other Unixes, so the
+// widening is needed on some targets and a no-op on others.
 #[cfg(unix)]
+#[allow(clippy::useless_conversion)]
 fn is_held(lock: &Path) -> Result<bool, ImportError> {
     use std::os::fd::AsRawFd;
 
