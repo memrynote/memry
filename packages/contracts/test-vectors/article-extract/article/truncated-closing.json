@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://example.com/cut/closing","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://example.com/cut/closing","mode":"article","contentMarkdown":"Ends inside a closing tag","excerpt":"Ends inside a closing tag","extractionStatus":"partial","properties":{"title":"https://example.com/cut/closing","source":"https://example.com/cut/closing","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":5,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

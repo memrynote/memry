@@ -12,4 +12,8 @@ pub enum ExtractError {
     /// removing a node from a parent it does not have.
     #[error("dom error: {0}")]
     Dom(String),
+    /// An exception of the JavaScript the extractors run, such as `RangeError: Invalid time
+    /// value` from `toISOString()` or a `TypeError` on a value of an unexpected shape.
+    #[error("js error: {0}")]
+    Js(String),
 }

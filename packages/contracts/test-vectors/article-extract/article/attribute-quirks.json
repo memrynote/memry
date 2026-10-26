@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://example.com/attrs/quirks","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://example.com/attrs/quirks","mode":"article","contentMarkdown":"dups and case\n\nnumeric and special keys\n\n[self-closing slash](https://example.com/x \"spaced\")  tailwind\n\njson attr\n\nsecond class ignored\n\n**nameless** *quoted name* no space","excerpt":"dups and case\n\nnumeric and special keys\n\n[self-closing slash](https://example.com/x \"spaced\")  tailwind\n\njson attr\n\nsecond class ignored\n\n**nameless** *quoted name* no space","extractionStatus":"partial","properties":{"title":"https://example.com/attrs/quirks","source":"https://example.com/attrs/quirks","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":20,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

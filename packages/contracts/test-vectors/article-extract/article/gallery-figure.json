@@ -1,0 +1,6 @@
+{
+  "input": {"url":"https://photos.example.com/trips/iceland","now":"2025-03-04T05:06:07.000Z","fetch":null},
+  "expected": {"url":"https://photos.example.com/trips/iceland","mode":"article","contentMarkdown":"Eight days, one rental car, and more rain than the forecast allowed for.\n\n![Black beach](https://photos.example.com/thumb/1.jpg)\n\nBlack sand at Reynisfjara.\n\n![Waterfall](https://photos.example.com/thumb/2.jpg)\n\n![Lava field](https://photos.example.com/thumb/3.jpg)\n\n![Aurora](https://photos.example.com/i/aurora.jpg)\n\nThe aurora showed itself once, on the last night, for about ten minutes.","excerpt":"Eight days, one rental car, and more rain than the forecast allowed for.\n\n![Black beach](https://photos.example.com/thumb/1.jpg)\n\nBlack sand at Reynisfjara.\n\n![Waterfall](https://photos.example.com/th","extractionStatus":"partial","properties":{"title":"Iceland in October","source":"https://photos.example.com/trips/iceland","created":"2025-03-04T05:06:07.000Z"},"tags":["clippings"]},
+  "raw": {"title":"Iceland in October","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":30,"schemaOrgData":"[]","extractorType":null},
+  "requests": []
+}

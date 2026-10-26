@@ -53,6 +53,17 @@ impl JsValue {
         }
     }
 
+    /// `Number(value)` for scalars; arrays and objects are `NaN` here.
+    pub fn to_number(&self) -> f64 {
+        match self {
+            JsValue::Null => 0.0,
+            JsValue::Bool(b) => f64::from(u8::from(*b)),
+            JsValue::Number(n) => *n,
+            JsValue::String(s) => super::js::to_number(s),
+            JsValue::Array(_) | JsValue::Object(_) => f64::NAN,
+        }
+    }
+
     /// `String(value)`, which `Array#join` applies to each element (`null` joins as empty).
     pub fn to_js_string(&self) -> String {
         match self {
