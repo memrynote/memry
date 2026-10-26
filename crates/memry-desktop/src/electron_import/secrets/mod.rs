@@ -7,7 +7,16 @@
 
 pub mod chromium;
 pub mod key_source;
+pub mod keytar;
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
 mod merge;
+mod os;
+mod timeout;
+#[cfg(windows)]
+mod windows;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -17,7 +26,10 @@ use serde_json::Value;
 use zeroize::Zeroizing;
 
 pub use self::key_source::{ChromiumKeySource, FixedKeySource, KeySourceError};
+pub use self::keytar::{KeytarItem, KeytarSource, NoKeytar};
 pub use self::merge::read_all_secrets;
+pub use self::os::{OsKeySource, OsKeytar};
+pub use self::timeout::Guarded;
 use super::ImportError;
 use super::profile::ElectronProfile;
 
@@ -138,27 +150,6 @@ impl SecretsReport {
             .iter()
             .find(|e| e.service == service && e.account == account)
             .map(|e| e.value.as_str())
-    }
-}
-
-/// Legacy keytar items, read through the OS store. Nothing here lists or reads anything but the
-/// services the app wrote (`com.memry.sync`, `com.memry.calendar.*`, ...).
-pub trait KeytarSource {
-    fn items(&self) -> Result<Vec<KeytarItem>, ImportError>;
-}
-
-pub struct KeytarItem {
-    pub service: String,
-    pub account: String,
-    pub value: Zeroizing<String>,
-}
-
-/// No legacy items; for hosts where keytar never ran and for tests.
-pub struct NoKeytar;
-
-impl KeytarSource for NoKeytar {
-    fn items(&self) -> Result<Vec<KeytarItem>, ImportError> {
-        Ok(Vec::new())
     }
 }
 

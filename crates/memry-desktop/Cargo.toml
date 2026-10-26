@@ -47,6 +47,20 @@ tempfile = "3"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
+[target.'cfg(target_os = "macos")'.dependencies]
+security-framework = "3.7.0"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+secret-service = { version = "5.2.0", features = ["rt-async-io-crypto-rust"] }
+zbus = { version = "5.19.0", default-features = false, features = ["blocking-api", "async-io"] }
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62.2", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_Security_Credentials", "Win32_System_Memory"] }
+
+[features]
+# CI-only tests against the live OS secret store: tests/electron_secrets_live.rs.
+live-os-secrets = []
+
 [dev-dependencies]
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
