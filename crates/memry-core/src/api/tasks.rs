@@ -127,7 +127,7 @@ pub struct TaskTabCounts {
 impl Tasks {
     /// Every live task, archived ones included, in `position` order.
     pub fn all(&self) -> Result<Vec<TaskItem>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(task_records::all(conn)?
                 .into_iter()
                 .map(TaskItem::from)
@@ -144,7 +144,7 @@ impl Tasks {
 
     /// Every project with its statuses; archived ones only when asked.
     pub fn projects(&self, include_archived: bool) -> Result<Vec<ProjectItem>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let mut items = Vec::new();
             for project in projects::list(conn, include_archived)? {
                 let statuses = projects::statuses(conn, &project.id)?;
@@ -156,7 +156,7 @@ impl Tasks {
 
     /// One Tasks-page query, answered with desktop's rules end to end.
     pub fn view(&self, query: TaskViewQuery) -> Result<TaskViewResult, StorageError> {
-        self.db.call_blocking(move |conn| view(conn, &query))
+        self.db.read_blocking(move |conn| view(conn, &query))
     }
 }
 

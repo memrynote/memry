@@ -212,7 +212,7 @@ impl Tasks {
 
     /// The items linked to a project's hub, in position order.
     pub fn project_links(&self, id: String) -> Result<Vec<ProjectLinkItem>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(projects::links(conn, &id)?
                 .into_iter()
                 .map(ProjectLinkItem::from)
@@ -283,7 +283,7 @@ impl Tasks {
         include_archived: bool,
         today: String,
     ) -> Result<Vec<ProjectStats>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(projects::summaries(conn, include_archived, &today)?
                 .into_iter()
                 .map(ProjectStats::from)
@@ -294,7 +294,7 @@ impl Tasks {
     // ---- saved filters -------------------------------------------------------
 
     pub fn saved_filters(&self) -> Result<Vec<SavedFilterItem>, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             Ok(saved_filters::list(conn)?
                 .into_iter()
                 .map(SavedFilterItem::from)
@@ -377,7 +377,7 @@ impl Tasks {
 
     pub fn task_settings(&self) -> Result<TaskSettingsItem, StorageError> {
         self.db
-            .call_blocking(|conn| Ok(task_settings::read(conn)?.into()))
+            .read_blocking(|conn| Ok(task_settings::read(conn)?.into()))
     }
 
     pub fn set_default_project(

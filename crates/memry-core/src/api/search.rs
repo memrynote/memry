@@ -145,7 +145,7 @@ impl Search {
         order: BacklinkOrder,
     ) -> Result<Vec<Backlink>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
+        self.data.read_blocking(move |data| {
             let note: Option<(String, Option<String>)> = data
                 .query_row(
                     "SELECT title, folder_path FROM notes WHERE id = ?1 AND deleted_at IS NULL",
@@ -167,7 +167,7 @@ impl Search {
                         what: error.to_string(),
                     })?;
 
-            let sources: Vec<(String, String)> = index.call_blocking(|index| {
+            let sources: Vec<(String, String)> = index.read_blocking(|index| {
                 let mut statement = index
                     .prepare(
                         "SELECT source_id, target_title FROM note_links \
@@ -258,8 +258,8 @@ impl Search {
         order: BacklinkOrder,
     ) -> Result<Vec<BacklinkRow>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| links::backlinks(data, index, &target_id, order))
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| links::backlinks(data, index, &target_id, order))
         })
     }
 
@@ -267,8 +267,8 @@ impl Search {
     /// journal day, or nothing (a broken link).
     pub fn links_from(&self, source_id: String) -> Result<Vec<OutgoingLink>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| links::outgoing_links(data, index, &source_id))
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| links::outgoing_links(data, index, &source_id))
         })
     }
 
@@ -280,8 +280,8 @@ impl Search {
         target_id: String,
     ) -> Result<Vec<UnlinkedMention>, StorageError> {
         let index = self.index.clone();
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
                 unlinked_mentions::unlinked_mentions(data, index, &target_id)
             })
         })
@@ -319,8 +319,8 @@ impl Search {
     pub fn tasks(&self, query: String, limit: u32) -> Result<Vec<SearchResult>, StorageError> {
         let index = self.index.clone();
         let limit = limit as usize;
-        self.data.call_blocking(move |data| {
-            index.call_blocking(|index| {
+        self.data.read_blocking(move |data| {
+            index.read_blocking(|index| {
                 Ok(search::search_tasks(data, index, &query, limit)?
                     .into_iter()
                     .map(SearchResult::from)

@@ -186,12 +186,12 @@ impl Settings {
     /// does not model.
     pub fn snapshot(&self) -> Result<String, StorageError> {
         self.db
-            .call_blocking(|conn| Ok(Value::Object(settings::all(conn)?).to_string()))
+            .read_blocking(|conn| Ok(Value::Object(settings::all(conn)?).to_string()))
     }
 
     /// One dotted path as JSON text; `None` when absent, `"null"` when cleared.
     pub fn get(&self, path: String) -> Result<Option<String>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(settings::read(conn, &path)?.map(|value| value.to_string()))
         })
     }
@@ -228,7 +228,7 @@ impl Settings {
     /// The settings row's `updated_at`, or 0 when there is none. Moves on every
     /// local write and every applied inbound merge.
     pub fn revision(&self) -> Result<i64, StorageError> {
-        self.db.call_blocking(|conn| {
+        self.db.read_blocking(|conn| {
             conn.query_row(
                 "SELECT updated_at FROM sync_items WHERE item_type = ?1 AND item_id = ?2",
                 params![SETTINGS_ITEM_TYPE, SETTINGS_ITEM_ID],
@@ -246,7 +246,7 @@ impl Settings {
 
     pub fn journal_templates(&self) -> Result<JournalTemplateSettings, StorageError> {
         self.db
-            .call_blocking(|conn| Ok(journal_from(&settings::all(conn)?)))
+            .read_blocking(|conn| Ok(journal_from(&settings::all(conn)?)))
     }
 
     /// `None` clears to `null`, as desktop's `writeJournalSettings` does.
@@ -290,14 +290,14 @@ impl Settings {
     /// Read-only: iOS never pulls from Readwise or changes its settings (D13).
     pub fn readwise_status(&self) -> Result<ReadwiseStatus, StorageError> {
         self.db
-            .call_blocking(|conn| Ok(readwise_from(&settings::all(conn)?)))
+            .read_blocking(|conn| Ok(readwise_from(&settings::all(conn)?)))
     }
 
     // ---- inbox (ST12) --------------------------------------------------------
 
     pub fn review_reminder(&self) -> Result<ReviewReminderSettings, StorageError> {
         self.db
-            .call_blocking(|conn| Ok(review_from(&settings::all(conn)?)))
+            .read_blocking(|conn| Ok(review_from(&settings::all(conn)?)))
     }
 
     /// Writes both fields (each only if it changed). Refuses a time that is

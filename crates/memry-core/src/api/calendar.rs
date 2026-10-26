@@ -102,7 +102,7 @@ impl VaultCalendar {
         request: CalendarRangeRequest,
         zone: CalendarZone,
     ) -> Result<Vec<CalendarItem>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let input = range_input(request, &zone);
             Ok(projection::range(conn, &zone, &input)?
                 .into_iter()
@@ -120,7 +120,7 @@ impl VaultCalendar {
         zone: CalendarZone,
         now_ms: i64,
     ) -> Result<Vec<CalendarItem>, StorageError> {
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             let mut input = range_input(request, &zone);
             input.include_unselected_sources = true;
             Ok(
@@ -134,12 +134,12 @@ impl VaultCalendar {
 
     /// `LIST_SOURCES`: live accounts and calendars, accounts first.
     pub fn sources(&self) -> Result<Vec<CalendarSourceRecord>, StorageError> {
-        self.db.call_blocking(|conn| reads::sources(conn))
+        self.db.read_blocking(reads::sources)
     }
 
     /// `GET_EVENT`, with its live binding.
     pub fn event(&self, id: String) -> Result<Option<CalendarEventRecord>, StorageError> {
-        self.db.call_blocking(move |conn| reads::event(conn, &id))
+        self.db.read_blocking(move |conn| reads::event(conn, &id))
     }
 
     /// `GET_EXTERNAL_EVENT` (read-only card details).
@@ -148,7 +148,7 @@ impl VaultCalendar {
         id: String,
     ) -> Result<Option<CalendarExternalEventRecord>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::external_event(conn, &id))
+            .read_blocking(move |conn| reads::external_event(conn, &id))
     }
 
     /// Projects linking this event.
@@ -157,7 +157,7 @@ impl VaultCalendar {
         event_id: String,
     ) -> Result<Vec<CalendarLinkedProject>, StorageError> {
         self.db
-            .call_blocking(move |conn| reads::linked_projects(conn, &event_id))
+            .read_blocking(move |conn| reads::linked_projects(conn, &event_id))
     }
 
     /// `CREATE_EVENT`. Returns the new event.
@@ -258,7 +258,7 @@ impl VaultCalendar {
         if !path.starts_with("calendar.") {
             return Err(invalid("only calendar settings are read here"));
         }
-        self.db.call_blocking(move |conn| {
+        self.db.read_blocking(move |conn| {
             Ok(crate::domain::settings::read(conn, &path)?.map(|value| value.to_string()))
         })
     }

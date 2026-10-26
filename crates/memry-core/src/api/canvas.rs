@@ -108,7 +108,7 @@ impl Canvases {
     /// One live canvas, or `nil` when it is deleted or has not synced yet.
     pub fn canvas(&self, id: String) -> Result<Option<CanvasRecord>, StorageError> {
         self.db
-            .call_blocking(move |conn| Ok(canvas::get(conn, &id)?.map(CanvasRecord::from)))
+            .read_blocking(move |conn| Ok(canvas::get(conn, &id)?.map(CanvasRecord::from)))
     }
 }
 

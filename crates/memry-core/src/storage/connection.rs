@@ -138,7 +138,12 @@ impl Db {
                 f(&reader)
             }
             None => {
+                // Same contract as a pooled reader: a write inside a read
+                // closure fails here too, so tests on in-memory databases
+                // catch a misclassified site.
                 let writer = lock(&self.writer)?;
+                set_query_only(&writer, true)?;
+                let _restore = QueryOnlyOff(&writer);
                 f(&writer)
             }
         }
@@ -151,6 +156,24 @@ async fn join<T>(
     task.await.map_err(|err| StorageError::Failed {
         what: format!("database task did not finish: {err}"),
     })?
+}
+
+/// Turns `query_only` back off on every exit, an `Err` and a panic included.
+struct QueryOnlyOff<'a>(&'a Connection);
+
+impl Drop for QueryOnlyOff<'_> {
+    fn drop(&mut self) {
+        if let Err(err) = set_query_only(self.0, false) {
+            eprintln!("memry-core: {err:?}");
+        }
+    }
+}
+
+fn set_query_only(conn: &Connection, on: bool) -> Result<(), StorageError> {
+    conn.pragma_update(None, "query_only", on)
+        .map_err(|err| StorageError::Failed {
+            what: format!("could not set query_only on the in-memory database: {err}"),
+        })
 }
 
 fn lock(conn: &Arc<Mutex<Connection>>) -> Result<MutexGuard<'_, Connection>, StorageError> {
@@ -173,6 +196,37 @@ mod tests {
                 })
         })
         .expect("fts5 virtual table");
+    }
+
+    #[test]
+    fn an_in_memory_read_refuses_a_write_and_the_writer_works_again_after() {
+        let db = Db::open_in_memory().expect("open");
+        db.call_blocking(|conn| {
+            conn.execute_batch("CREATE TABLE t (x)")
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })
+        })
+        .expect("create");
+
+        let refused = db.read_blocking(|conn| {
+            conn.execute("INSERT INTO t VALUES (1)", [])
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })
+        });
+        assert!(
+            refused.is_err_and(|err| err.to_string().contains("readonly")),
+            "a write inside a read closure must fail like it does on a pooled reader"
+        );
+
+        db.call_blocking(|conn| {
+            conn.execute("INSERT INTO t VALUES (1)", [])
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })
+        })
+        .expect("the writer accepts writes again");
     }
 
     #[test]
