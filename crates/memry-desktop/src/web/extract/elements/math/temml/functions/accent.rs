@@ -30,7 +30,10 @@ pub fn unicode_accent(key: &str) -> Option<UnicodeAccent> {
         "\u{0327}" => ("\\c", None),
         _ => return None,
     };
-    Some(UnicodeAccent { text: Some(text), math })
+    Some(UnicodeAccent {
+        text: Some(text),
+        math,
+    })
 }
 
 const SMALL_NUDGE: &str = "DHKLUcegorsuvxyzΠΥΨαδηιμνοτυχϵ";
@@ -38,13 +41,42 @@ const MEDIUM_NUDGE: &str = "BCEGIMNOPQRSTXZlpqtwΓΘΞΣΦΩβεζθξρςφψϑ
 const LARGE_NUDGE: &str = "AFJdfΔΛ";
 
 const NON_STRETCHY: [&str; 14] = [
-    "\\acute", "\\check", "\\grave", "\\ddot", "\\dddot", "\\ddddot", "\\tilde", "\\bar",
-    "\\breve", "\\check", "\\hat", "\\vec", "\\dot", "\\mathring",
+    "\\acute",
+    "\\check",
+    "\\grave",
+    "\\ddot",
+    "\\dddot",
+    "\\ddddot",
+    "\\tilde",
+    "\\bar",
+    "\\breve",
+    "\\check",
+    "\\hat",
+    "\\vec",
+    "\\dot",
+    "\\mathring",
 ];
 
 const NEEDS_WEBKIT_SHIFT: [&str; 19] = [
-    "\\acute", "\\bar", "\\breve", "\\check", "\\dot", "\\ddot", "\\grave", "\\hat", "\\mathring",
-    "\\`", "\\'", "\\^", "\\=", "\\u", "\\.", "\\\"", "\\r", "\\H", "\\v",
+    "\\acute",
+    "\\bar",
+    "\\breve",
+    "\\check",
+    "\\dot",
+    "\\ddot",
+    "\\grave",
+    "\\hat",
+    "\\mathring",
+    "\\`",
+    "\\'",
+    "\\^",
+    "\\=",
+    "\\u",
+    "\\.",
+    "\\\"",
+    "\\r",
+    "\\H",
+    "\\v",
 ];
 
 fn combining_char(name: &str) -> Option<&'static str> {
@@ -119,7 +151,10 @@ fn mathml_builder(group: &V, style: &Style) -> R<Tree> {
         accent_node.classes.push("wbk-acc".to_string());
     }
     let base = build_group(&group.get("base"), style)?;
-    Ok(Tree::Math(MathNode::new(tag, vec![base, Tree::Math(accent_node)])))
+    Ok(Tree::Math(MathNode::new(
+        tag,
+        vec![base, Tree::Math(accent_node)],
+    )))
 }
 
 fn handler_stretchy(ctx: &mut Ctx, args: &[V], _opt: &[V]) -> R<V> {
@@ -175,26 +210,54 @@ fn under_builder(group: &V, style: &Style) -> R<Tree> {
     let mut accent_node = stretchy::accent_node(group);
     accent_node.set_style("math-depth", "0");
     let base = build_group(&group.get("base"), style)?;
-    Ok(Tree::Math(MathNode::new("munder", vec![base, Tree::Math(accent_node)])))
+    Ok(Tree::Math(MathNode::new(
+        "munder",
+        vec![base, Tree::Math(accent_node)],
+    )))
 }
 
 pub fn register(r: &mut Registry) {
     r.define(
         "accent",
         &[
-            "\\acute", "\\grave", "\\ddot", "\\dddot", "\\ddddot", "\\tilde", "\\bar", "\\breve",
-            "\\check", "\\hat", "\\vec", "\\dot", "\\mathring", "\\overparen", "\\widecheck",
-            "\\widehat", "\\wideparen", "\\widetilde", "\\overrightarrow", "\\overleftarrow",
-            "\\Overrightarrow", "\\overleftrightarrow", "\\overgroup", "\\overleftharpoon",
+            "\\acute",
+            "\\grave",
+            "\\ddot",
+            "\\dddot",
+            "\\ddddot",
+            "\\tilde",
+            "\\bar",
+            "\\breve",
+            "\\check",
+            "\\hat",
+            "\\vec",
+            "\\dot",
+            "\\mathring",
+            "\\overparen",
+            "\\widecheck",
+            "\\widehat",
+            "\\wideparen",
+            "\\widetilde",
+            "\\overrightarrow",
+            "\\overleftarrow",
+            "\\Overrightarrow",
+            "\\overleftrightarrow",
+            "\\overgroup",
+            "\\overleftharpoon",
             "\\overrightharpoon",
         ],
-        Props { num_args: 1, ..Props::D },
+        Props {
+            num_args: 1,
+            ..Props::D
+        },
         handler_stretchy,
         Some(mathml_builder),
     );
     r.define(
         "accent",
-        &["\\'", "\\`", "\\^", "\\~", "\\=", "\\c", "\\u", "\\.", "\\\"", "\\r", "\\H", "\\v"],
+        &[
+            "\\'", "\\`", "\\^", "\\~", "\\=", "\\c", "\\u", "\\.", "\\\"", "\\r", "\\H", "\\v",
+        ],
         Props {
             num_args: 1,
             allowed_in_text: true,
@@ -208,10 +271,17 @@ pub fn register(r: &mut Registry) {
     r.define(
         "accentUnder",
         &[
-            "\\underleftarrow", "\\underrightarrow", "\\underleftrightarrow", "\\undergroup",
-            "\\underparen", "\\utilde",
+            "\\underleftarrow",
+            "\\underrightarrow",
+            "\\underleftrightarrow",
+            "\\undergroup",
+            "\\underparen",
+            "\\utilde",
         ],
-        Props { num_args: 1, ..Props::D },
+        Props {
+            num_args: 1,
+            ..Props::D
+        },
         under_handler,
         Some(under_builder),
     );

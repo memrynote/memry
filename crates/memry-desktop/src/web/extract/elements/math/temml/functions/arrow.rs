@@ -60,7 +60,10 @@ fn munderover_node(f_name: &str, body: &V, below: &V, style: &Style) -> R<Tree> 
     let dummy_width = label_size(min_width.parse().expect("number"), 3);
     let empty_label = padding(&to_fixed(min_arrow_width, 4));
     let dummy_node = padding(&to_fixed(dummy_width, 4));
-    let space = to_fixed(label_size(if is_eq { 0.0 } else { 0.3 }, label_style.level), 4);
+    let space = to_fixed(
+        label_size(if is_eq { 0.0 } else { 0.3 }, label_style.level),
+        4,
+    );
     let mut upper_node = None;
     let mut lower_node = None;
     let got_upper = got_label(body);
@@ -68,7 +71,10 @@ fn munderover_node(f_name: &str, body: &V, below: &V, style: &Style) -> R<Tree> 
         let label = build_group(body, &label_style)?;
         let must_smash = f_name == "\\\\cdrightarrow" || f_name == "\\\\cdleftarrow";
         let label = padded_node(label, &space, must_smash);
-        upper_node = Some(Tree::Math(MathNode::new("mover", vec![label, dummy_node.clone()])));
+        upper_node = Some(Tree::Math(MathNode::new(
+            "mover",
+            vec![label, dummy_node.clone()],
+        )));
     }
     let got_lower = got_label(below);
     if got_lower {
@@ -101,9 +107,17 @@ fn x_arrow_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
 }
 
 fn x_arrow_builder(group: &V, style: &Style) -> R<Tree> {
-    let node = munderover_node(&group.text("name"), &group.get("body"), &group.get("below"), style)?;
+    let node = munderover_node(
+        &group.text("name"),
+        &group.get("body"),
+        &group.get("below"),
+        style,
+    )?;
     let gap = num_str(0.2778);
-    Ok(Tree::Math(MathNode::new("mrow", vec![padding(&gap), node, padding(&gap)])))
+    Ok(Tree::Math(MathNode::new(
+        "mrow",
+        vec![padding(&gap), node, padding(&gap)],
+    )))
 }
 
 fn arrow_component(name: &str) -> (&'static str, &'static str) {
@@ -116,21 +130,42 @@ fn arrow_component(name: &str) -> (&'static str, &'static str) {
 
 fn stacked_handler(ctx: &mut Ctx, args: &[V], opt: &[V]) -> R<V> {
     let mode = ctx.parser.mode;
-    let hphantom = |body: &V| node! {"type" => "hphantom", "mode" => mode}.with("body", body.clone());
-    let lower_arrow_body = if args[0].truthy() { hphantom(&args[0]) } else { V::Null };
-    let upper_arrow_below = if opt[0].truthy() { hphantom(&opt[0]) } else { V::Null };
-    Ok(node! {"type" => "stackedArrow", "mode" => mode, "name" => ctx.func_name.clone()}
-        .with("body", args[0].clone())
-        .with("upperArrowBelow", upper_arrow_below)
-        .with("lowerArrowBody", lower_arrow_body)
-        .with("below", opt[0].clone()))
+    let hphantom =
+        |body: &V| node! {"type" => "hphantom", "mode" => mode}.with("body", body.clone());
+    let lower_arrow_body = if args[0].truthy() {
+        hphantom(&args[0])
+    } else {
+        V::Null
+    };
+    let upper_arrow_below = if opt[0].truthy() {
+        hphantom(&opt[0])
+    } else {
+        V::Null
+    };
+    Ok(
+        node! {"type" => "stackedArrow", "mode" => mode, "name" => ctx.func_name.clone()}
+            .with("body", args[0].clone())
+            .with("upperArrowBelow", upper_arrow_below)
+            .with("lowerArrowBody", lower_arrow_body)
+            .with("below", opt[0].clone()),
+    )
 }
 
 fn stacked_builder(group: &V, style: &Style) -> R<Tree> {
     let name = group.text("name");
     let (top_label, bot_label) = arrow_component(&name);
-    let top_arrow = munderover_node(top_label, &group.get("body"), &group.get("upperArrowBelow"), style)?;
-    let bot_arrow = munderover_node(bot_label, &group.get("lowerArrowBody"), &group.get("below"), style)?;
+    let top_arrow = munderover_node(
+        top_label,
+        &group.get("body"),
+        &group.get("upperArrowBelow"),
+        style,
+    )?;
+    let bot_arrow = munderover_node(
+        bot_label,
+        &group.get("lowerArrowBody"),
+        &group.get("below"),
+        style,
+    )?;
     let gap = num_str(0.2778);
     let mut raise_node = MathNode::new("mpadded", vec![top_arrow]);
     raise_node.set_attribute("voffset", "0.3em");
@@ -142,13 +177,30 @@ fn stacked_builder(group: &V, style: &Style) -> R<Tree> {
         bot_node.set_attribute("width", "0.5em");
         wrapper = MathNode::new(
             "mpadded",
-            vec![padding(&gap), Tree::Math(bot_node), Tree::Math(raise_node), padding(&gap)],
+            vec![
+                padding(&gap),
+                Tree::Math(bot_node),
+                Tree::Math(raise_node),
+                padding(&gap),
+            ],
         );
     } else {
-        raise_node.set_attribute("width", if name == "\\equilibriumRight" { "0.5em" } else { "0" });
+        raise_node.set_attribute(
+            "width",
+            if name == "\\equilibriumRight" {
+                "0.5em"
+            } else {
+                "0"
+            },
+        );
         wrapper = MathNode::new(
             "mpadded",
-            vec![padding(&gap), Tree::Math(raise_node), bot_arrow, padding(&gap)],
+            vec![
+                padding(&gap),
+                Tree::Math(raise_node),
+                bot_arrow,
+                padding(&gap),
+            ],
         );
     }
     wrapper.set_attribute("voffset", "-0.18em");
@@ -161,22 +213,52 @@ pub fn register(r: &mut Registry) {
     r.define(
         "xArrow",
         &[
-            "\\xleftarrow", "\\xrightarrow", "\\xLeftarrow", "\\xRightarrow", "\\xleftrightarrow",
-            "\\xLeftrightarrow", "\\xhookleftarrow", "\\xhookrightarrow", "\\xmapsto",
-            "\\xrightharpoondown", "\\xrightharpoonup", "\\xleftharpoondown", "\\xleftharpoonup",
-            "\\xlongequal", "\\xtwoheadrightarrow", "\\xtwoheadleftarrow", "\\xtofrom",
-            "\\xleftrightharpoons", "\\xrightleftharpoons", "\\yields", "\\yieldsLeft",
-            "\\mesomerism", "\\longrightharpoonup", "\\longleftharpoondown", "\\yieldsLeftRight",
-            "\\chemequilibrium", "\\\\cdrightarrow", "\\\\cdleftarrow", "\\\\cdlongequal",
+            "\\xleftarrow",
+            "\\xrightarrow",
+            "\\xLeftarrow",
+            "\\xRightarrow",
+            "\\xleftrightarrow",
+            "\\xLeftrightarrow",
+            "\\xhookleftarrow",
+            "\\xhookrightarrow",
+            "\\xmapsto",
+            "\\xrightharpoondown",
+            "\\xrightharpoonup",
+            "\\xleftharpoondown",
+            "\\xleftharpoonup",
+            "\\xlongequal",
+            "\\xtwoheadrightarrow",
+            "\\xtwoheadleftarrow",
+            "\\xtofrom",
+            "\\xleftrightharpoons",
+            "\\xrightleftharpoons",
+            "\\yields",
+            "\\yieldsLeft",
+            "\\mesomerism",
+            "\\longrightharpoonup",
+            "\\longleftharpoondown",
+            "\\yieldsLeftRight",
+            "\\chemequilibrium",
+            "\\\\cdrightarrow",
+            "\\\\cdleftarrow",
+            "\\\\cdlongequal",
         ],
-        Props { num_args: 1, num_optional_args: 1, ..Props::D },
+        Props {
+            num_args: 1,
+            num_optional_args: 1,
+            ..Props::D
+        },
         x_arrow_handler,
         Some(x_arrow_builder),
     );
     r.define(
         "stackedArrow",
         &["\\equilibriumRight", "\\equilibriumLeft"],
-        Props { num_args: 1, num_optional_args: 1, ..Props::D },
+        Props {
+            num_args: 1,
+            num_optional_args: 1,
+            ..Props::D
+        },
         stacked_handler,
         Some(stacked_builder),
     );

@@ -67,10 +67,9 @@ pub fn consolidate_text(mrow: Tree) -> Tree {
                 copy_char(&mut new_row, c);
             }
             Tree::Math(c) if c.ty == "mrow" => {
-                let can = c
-                    .children
-                    .iter()
-                    .all(|g| matches!(g, Tree::Math(m) if m.ty == "mtext") && c.attributes.is_empty());
+                let can = c.children.iter().all(|g| {
+                    matches!(g, Tree::Math(m) if m.ty == "mtext") && c.attributes.is_empty()
+                });
                 if can {
                     for g in &c.children {
                         if let Tree::Math(m) = g {
@@ -265,7 +264,10 @@ pub fn build_expression(expression: &[V], style: &Style, semisimple: bool) -> R<
 }
 
 pub fn build_expression_row(expression: &[V], style: &Style, semisimple: bool) -> R<Tree> {
-    Ok(make_row(build_expression(expression, style, semisimple)?, semisimple))
+    Ok(make_row(
+        build_expression(expression, style, semisimple)?,
+        semisimple,
+    ))
 }
 
 /// `buildGroup(group, style)`.
@@ -350,7 +352,8 @@ pub fn build_mathml(mut tree: Vec<V>, style: &Style, settings: &Settings) -> R<T
         return Ok(expression.remove(0));
     }
     let wrap = "none";
-    let mut wrapper = if expression.len() == 1 && tag.is_none() && expression[0].as_math().is_some() {
+    let mut wrapper = if expression.len() == 1 && tag.is_none() && expression[0].as_math().is_some()
+    {
         expression.remove(0)
     } else {
         set_line_breaks(expression, wrap, settings.display_mode)?

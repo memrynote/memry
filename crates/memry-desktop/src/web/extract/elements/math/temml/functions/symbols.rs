@@ -4,7 +4,9 @@
 use super::Registry;
 use super::arrow::padding;
 use crate::web::extract::elements::math::temml::build::make_text;
-use crate::web::extract::elements::math::temml::replace::{small_caps, variant_char, variant_each_unit};
+use crate::web::extract::elements::math::temml::replace::{
+    small_caps, variant_char, variant_each_unit,
+};
 use crate::web::extract::elements::math::temml::style::Style;
 use crate::web::extract::elements::math::temml::tree::{MathNode, Tree};
 use crate::web::extract::elements::math::temml::val::{R, V, num_str, perr, ulen};
@@ -30,11 +32,20 @@ fn is_number(s: &str) -> bool {
     if b.len() == 1 {
         return true;
     }
-    b[b.len() - 1].is_ascii_digit() && b[1..b.len() - 1].iter().all(|c| c.is_ascii_digit() || *c == b',' || *c == b'.')
+    b[b.len() - 1].is_ascii_digit()
+        && b[1..b.len() - 1]
+            .iter()
+            .all(|c| c.is_ascii_digit() || *c == b',' || *c == b'.')
 }
 
 const PRIMES: [&str; 7] = [
-    "\\prime", "\\dprime", "\\trprime", "\\qprime", "\\backprime", "\\backdprime", "\\backtrprime",
+    "\\prime",
+    "\\dprime",
+    "\\trprime",
+    "\\qprime",
+    "\\backprime",
+    "\\backdprime",
+    "\\backtrprime",
 ];
 
 fn italic_number(text: String, variant: &str, tag: &str) -> Tree {
@@ -49,7 +60,11 @@ fn italic_number(text: String, variant: &str, tag: &str) -> Tree {
 }
 
 fn mathord_builder(group: &V, style: &Style) -> R<Tree> {
-    let mut text = text_of(&make_text(&group.text("text"), &group.text("mode"), Some(style)));
+    let mut text = text_of(&make_text(
+        &group.text("text"),
+        &group.text("mode"),
+        Some(style),
+    ));
     let default_variant = match first_code_point(&text) {
         Some(cp) if 0x0390 < cp && cp < 0x03aa => "normal",
         _ => "italic",
@@ -126,7 +141,11 @@ fn textord_builder(group: &V, style: &Style) -> R<Tree> {
 }
 
 const SHORT: [&str; 5] = [
-    "\\shortmid", "\\nshortmid", "\\shortparallel", "\\nshortparallel", "\\smallsetminus",
+    "\\shortmid",
+    "\\nshortmid",
+    "\\shortparallel",
+    "\\nshortparallel",
+    "\\smallsetminus",
 ];
 const ARROWS: [&str; 3] = ["\\Rsh", "\\Lsh", "\\restriction"];
 

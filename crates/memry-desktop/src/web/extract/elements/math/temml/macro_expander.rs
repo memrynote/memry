@@ -331,7 +331,9 @@ impl MacroExpander {
         let expansion = expansion.expect("expandable");
         self.expansion_count += 1;
         if self.expansion_count > self.settings.max_expand {
-            return perr("Too many expansions: infinite loop or need to increase maxExpand setting");
+            return perr(
+                "Too many expansions: infinite loop or need to increase maxExpand setting",
+            );
         }
         let mut tokens = expansion.tokens.clone();
         let args = self.consume_args(expansion.num_args, expansion.delimiters.as_ref())?;

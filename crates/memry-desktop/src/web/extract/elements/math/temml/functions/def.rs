@@ -178,7 +178,9 @@ fn newcommand_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
     };
     let exists = parser.gullet.is_defined(&name);
     if exists && func_name == "\\newcommand" {
-        return perr(format!("\\newcommand{{{name}}} attempting to redefine {name}; use \\renewcommand"));
+        return perr(format!(
+            "\\newcommand{{{name}}} attempting to redefine {name}; use \\renewcommand"
+        ));
     }
     if !exists && func_name == "\\renewcommand" {
         return perr(format!(
@@ -217,12 +219,43 @@ fn newcommand_handler(ctx: &mut Ctx, _args: &[V], _opt: &[V]) -> R<V> {
 }
 
 pub fn register(r: &mut Registry) {
-    let prefix = Props { allowed_in_text: true, ..Props::D };
-    let primitive = Props { allowed_in_text: true, primitive: true, ..Props::D };
-    r.define("internal", &["\\global", "\\long", "\\\\globallong"], prefix, global_handler, None);
-    r.define("internal", &["\\def", "\\gdef", "\\edef", "\\xdef"], primitive, def_handler, None);
-    r.define("internal", &["\\let", "\\\\globallet"], primitive, let_handler, None);
-    r.define("internal", &["\\futurelet", "\\\\globalfuture"], primitive, futurelet_handler, None);
+    let prefix = Props {
+        allowed_in_text: true,
+        ..Props::D
+    };
+    let primitive = Props {
+        allowed_in_text: true,
+        primitive: true,
+        ..Props::D
+    };
+    r.define(
+        "internal",
+        &["\\global", "\\long", "\\\\globallong"],
+        prefix,
+        global_handler,
+        None,
+    );
+    r.define(
+        "internal",
+        &["\\def", "\\gdef", "\\edef", "\\xdef"],
+        primitive,
+        def_handler,
+        None,
+    );
+    r.define(
+        "internal",
+        &["\\let", "\\\\globallet"],
+        primitive,
+        let_handler,
+        None,
+    );
+    r.define(
+        "internal",
+        &["\\futurelet", "\\\\globalfuture"],
+        primitive,
+        futurelet_handler,
+        None,
+    );
     r.define(
         "internal",
         &["\\newcommand", "\\renewcommand", "\\providecommand"],

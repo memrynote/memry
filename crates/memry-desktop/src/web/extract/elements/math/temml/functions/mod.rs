@@ -21,9 +21,10 @@ mod genfrac;
 mod mclass;
 mod misc;
 mod op;
+mod refs;
 mod spacing;
-mod symbols;
 mod supsub;
+mod symbols;
 mod text_font;
 
 pub use accent::unicode_accent;
@@ -134,6 +135,7 @@ static REGISTRY: LazyLock<Registry> = LazyLock::new(|| {
     delimiter::register(&mut r);
     misc::register(&mut r);
     op::register(&mut r);
+    refs::register(&mut r);
     spacing::register(&mut r);
     symbols::register(&mut r);
     supsub::register(&mut r);

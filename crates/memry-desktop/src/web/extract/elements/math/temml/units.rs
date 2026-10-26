@@ -31,7 +31,11 @@ pub fn to_fixed(x: f64, digits: usize) -> String {
         let up = (scaled + 1).to_string();
         let up = format!("{up:0>width$}", width = digits + 1);
         let (i, f) = up.split_at(up.len() - digits);
-        if digits == 0 { i.to_string() } else { format!("{i}.{f}") }
+        if digits == 0 {
+            i.to_string()
+        } else {
+            format!("{i}.{f}")
+        }
     } else {
         format!("{abs:.digits$}")
     };
@@ -68,13 +72,19 @@ fn pt_per_unit(unit: &str) -> f64 {
 pub fn calculate_size(number: f64, unit: &str, style: &Style) -> R<Size> {
     let mut number = number;
     if style.max_size[0] < 0.0 && number > 0.0 {
-        return Ok(Size { number: 0.0, unit: "em" });
+        return Ok(Size {
+            number: 0.0,
+            unit: "em",
+        });
     }
     match unit {
         "mm" | "cm" | "in" | "px" => {
             let in_css_pts = number * pt_per_unit(unit);
             if in_css_pts > style.max_size[1] {
-                return Ok(Size { number: style.max_size[1], unit: "pt" });
+                return Ok(Size {
+                    number: style.max_size[1],
+                    unit: "pt",
+                });
             }
             let unit = match unit {
                 "mm" => "mm",
@@ -89,7 +99,10 @@ pub fn calculate_size(number: f64, unit: &str, style: &Style) -> R<Size> {
                 number *= 0.431;
             }
             number = (number / em_scale(style.level)).min(style.max_size[0]);
-            Ok(Size { number: round(number), unit: "em" })
+            Ok(Size {
+                number: round(number),
+                unit: "em",
+            })
         }
         "bp" => {
             if number > style.max_size[1] {
@@ -99,11 +112,17 @@ pub fn calculate_size(number: f64, unit: &str, style: &Style) -> R<Size> {
         }
         "pt" | "pc" | "dd" | "cc" | "nd" | "nc" | "sp" => {
             number = (number * pt_per_unit(unit)).min(style.max_size[1]);
-            Ok(Size { number: round(number), unit: "pt" })
+            Ok(Size {
+                number: round(number),
+                unit: "pt",
+            })
         }
         "mu" => {
             number = (number / 18.0).min(style.max_size[0]);
-            Ok(Size { number: round(number), unit: "em" })
+            Ok(Size {
+                number: round(number),
+                unit: "em",
+            })
         }
         _ => perr(format!("Invalid unit: '{unit}'")),
     }

@@ -34,7 +34,8 @@ impl Parser {
             {
                 arg_type = Some("primitive");
             }
-            let arg = self.parse_group_of_type(&format!("argument to '{func}'"), arg_type, is_optional)?;
+            let arg =
+                self.parse_group_of_type(&format!("argument to '{func}'"), arg_type, is_optional)?;
             if is_optional {
                 opt_args.push(arg.unwrap_or(V::Null));
             } else if let Some(a) = arg {
@@ -174,7 +175,9 @@ impl Parser {
         };
         // The first replace's result is discarded in temml: the second one reads `res.text`.
         let url = res.borrow().text.replace("{\u{2044}}", "/");
-        Ok(Some(node! {"type" => "url", "mode" => self.mode, "url" => url}))
+        Ok(Some(
+            node! {"type" => "url", "mode" => self.mode, "url" => url},
+        ))
     }
 
     pub fn parse_argument_group(

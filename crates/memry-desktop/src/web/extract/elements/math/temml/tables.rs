@@ -56,12 +56,7 @@ fn symbols(root: &Value, mode: &str) -> HashMap<String, Symbol> {
 }
 
 fn set(root: &Value, name: &str) -> HashSet<String> {
-    root[name]
-        .as_array()
-        .expect("set")
-        .iter()
-        .map(s)
-        .collect()
+    root[name].as_array().expect("set").iter().map(s).collect()
 }
 
 static TABLES: LazyLock<Tables> = LazyLock::new(|| {

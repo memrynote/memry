@@ -24,15 +24,17 @@ pub fn get_variant(group: &V, style: &Style) -> Option<&'static str> {
     } else if style.font_family == "textsc" {
         return Some("normal");
     } else if style.font_family == "textsf" {
-        return Some(if style.font_shape == "textit" && style.font_weight == "textbf" {
-            "sans-serif-bold-italic"
-        } else if style.font_shape == "textit" {
-            "sans-serif-italic"
-        } else if style.font_weight == "textbf" {
-            "sans-serif-bold"
-        } else {
-            "sans-serif"
-        });
+        return Some(
+            if style.font_shape == "textit" && style.font_weight == "textbf" {
+                "sans-serif-bold-italic"
+            } else if style.font_shape == "textit" {
+                "sans-serif-italic"
+            } else if style.font_weight == "textbf" {
+                "sans-serif-bold"
+            } else {
+                "sans-serif"
+            },
+        );
     } else if style.font_shape == "textit" && style.font_weight == "textbf" {
         return Some("bold-italic");
     } else if style.font_shape == "textit" {
@@ -48,7 +50,11 @@ pub fn get_variant(group: &V, style: &Style) -> Option<&'static str> {
         "mathit" => return Some("italic"),
         "mathrm" => {
             let cp = group.text("text").chars().next().map_or(0, |c| c as u32);
-            return Some(if 0x03ab < cp && cp < 0x03cf { "italic" } else { "normal" });
+            return Some(if 0x03ab < cp && cp < 0x03cf {
+                "italic"
+            } else {
+                "normal"
+            });
         }
         "greekItalic" => return Some("italic"),
         "up@greek" => return Some("normal"),

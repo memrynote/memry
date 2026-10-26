@@ -77,7 +77,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
     } else if !sub.truthy() {
         if base.is_type("op") && base_limits && (style.level == DISPLAY || base_alt) {
             "mover"
-        } else if base.is_type("operatorname") && base_alt && (base_limits || style.level == DISPLAY) {
+        } else if base.is_type("operatorname")
+            && base_alt
+            && (base_limits || style.level == DISPLAY)
+        {
             "mover"
         } else {
             "msup"
@@ -87,7 +90,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
             "munder"
         } else if base.is_type("op") && base_limits && (style.level == DISPLAY || base_alt) {
             "munder"
-        } else if base.is_type("operatorname") && base_alt && (base_limits || style.level == DISPLAY) {
+        } else if base.is_type("operatorname")
+            && base_alt
+            && (base_limits || style.level == DISPLAY)
+        {
             "munder"
         } else {
             "msub"
@@ -104,7 +110,10 @@ fn builder(group: &V, style: &Style) -> R<Tree> {
     };
     let mut node = Tree::Math(MathNode::new(node_type, children));
     if append_apply_function {
-        let operator = Tree::Math(MathNode::new("mo", vec![make_text("\u{2061}", "text", None)]));
+        let operator = Tree::Math(MathNode::new(
+            "mo",
+            vec![make_text("\u{2061}", "text", None)],
+        ));
         let thin = || {
             let mut space = MathNode::new("mspace", Vec::new());
             space.set_attribute("width", "0.1667em");
