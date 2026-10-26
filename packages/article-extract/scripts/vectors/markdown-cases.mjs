@@ -1,7 +1,6 @@
 // Single-rule inputs for `createMarkdownContent`: each is written to reach one branch of
 // `dist/markdown.js` or of turndown 7.2.4 (escape, whitespace, flanking, joining, a rule, the
-// clean-up of the result) or one corner of the HTML parser turndown feeds. The math rules of
-// `markdown.js` are stage 5, so no case holds math markup.
+// clean-up of the result) or one corner of the HTML parser turndown feeds.
 const cases = [
   // Headings, paragraphs, emphasis
   ['title-heading-removed', '<h1>The Title</h1><p>Body text.</p>'],
@@ -578,6 +577,213 @@ const cases = [
   ['parse-heading-text-blocks', '<h2>a</h2>b<h3>c</h3>d'],
   ['parse-spaces-in-pre-code', '<pre>  a\n    b\n</pre><p><code>  keep  </code></p>'],
   ['parse-code-in-p-trailing', '<p>x <code>c</code>\n</p><p> <code>d</code></p>'],
+  // Math rules: `math`, `katex`, `extractLatex`, `handleNestedEquations`, figure captions
+  ['math-inline-mathml', '<p>Let <math><mi>x</mi><mo>=</mo><mn>1</mn></math> be.</p>'],
+  ['math-inline-attached', '<p>a<math><mi>x</mi></math>b</p>'],
+  ['math-inline-after-dollar', '<p>$<math><mi>x</mi></math>$</p>'],
+  ['math-inline-first', '<p><math><mi>x</mi></math> then text</p>'],
+  ['math-inline-last', '<p>text then <math><mi>x</mi></math></p>'],
+  [
+    'math-inline-blank-neighbours',
+    '<p> <math><mi>x</mi></math> </p><p>a<!-- c --><math><mi>y</mi></math><!-- d -->b</p>'
+  ],
+  ['math-inline-astral-neighbour', '<p>😀<math><mi>x</mi></math>😀</p>'],
+  [
+    'math-block-display',
+    '<p>Intro</p><math display="block"><mfrac><mn>1</mn><mn>2</mn></mfrac></math><p>Outro</p>'
+  ],
+  ['math-block-only-in-paragraph', '<p> <math><msup><mi>x</mi><mn>2</mn></msup></math> </p>'],
+  [
+    'math-not-only-in-paragraph',
+    '<p><math><mi>x</mi></math><span>y</span></p><p><math><mi>x</mi></math>t</p>'
+  ],
+  [
+    'math-in-table',
+    '<table><tr><td><math display="block"><mi>x</mi></math></td><td>b</td></tr></table>'
+  ],
+  ['math-data-latex', '<p>a <math data-latex="\\alpha + \\beta"><mi>x</mi></math> b</p>'],
+  [
+    'math-data-latex-prose',
+    '<p>a <math data-latex="fan-outfan-in"><mfrac><mi>a</mi><mi>b</mi></mfrac></math> b</p>'
+  ],
+  ['math-data-latex-simple', '<p>a <math data-latex="AB"><mi>A</mi><mi>B</mi></math> b</p>'],
+  [
+    'math-data-latex-hyphen-simple',
+    '<p>a <math data-latex="fan-outfan-in"><mi>f</mi></math> b</p>'
+  ],
+  ['math-data-latex-empty-mathml', '<p>a <math data-latex="x^2"></math> b</p>'],
+  ['math-alttext', '<p>a <math alttext="\\sqrt{2}"><msqrt><mn>2</mn></msqrt></math> b</p>'],
+  [
+    'math-alttext-untrusted',
+    '<p>a <math alttext="hello-world"><mfrac><mi>a</mi><mi>b</mi></mfrac></math> b</p>'
+  ],
+  [
+    'math-latex-fallback-after-failure',
+    '<p>a <math data-latex="word-fragment"><mfrac><mi>a</mi></mfrac></math> b</p>'
+  ],
+  [
+    'math-alttext-fallback-after-failure',
+    '<p>a <math alttext="word-fragment"><mfrac><mi>a</mi></mfrac></math> b</p>'
+  ],
+  ['math-failure-no-attrs', '<p>a <math><mfrac><mi>a</mi></mfrac></math> b</p>'],
+  ['math-data-latex-short-hyphen', '<p>a <math data-latex="ab-cd"><mi>q</mi></math> b</p>'],
+  [
+    'math-data-latex-double-backslash',
+    '<math display="block" data-latex="a \\\\ b"><mfrac><mi>a</mi><mi>b</mi></mfrac></math>'
+  ],
+  [
+    'math-annotation',
+    '<p>a <math><semantics><mi>x</mi><annotation encoding="application/x-tex">x^{2}</annotation></semantics></math> b</p>'
+  ],
+  [
+    'math-annotation-blank',
+    '<p>a <math data-latex="\\gamma"><semantics><mi>x</mi><annotation encoding="application/x-tex"> </annotation></semantics></math> b</p>'
+  ],
+  [
+    'math-annotation-other-encoding',
+    '<p>a <math><semantics><mi>x</mi><annotation encoding="text/plain">plain</annotation></semantics></math> b</p>'
+  ],
+  [
+    'math-matrix-block',
+    '<math display="block"><mtable><mtr><mtd><mi>a</mi></mtd><mtd><mi>b</mi></mtd></mtr></mtable></math>'
+  ],
+  [
+    'math-aligned-equation',
+    '<math display="block"><mtable columnalign="right left"><mtr><mtd><mi>a</mi></mtd><mtd><mo>=</mo><mi>b</mi></mtd></mtr></mtable></math>'
+  ],
+  [
+    'math-env-block',
+    '<math display="block" data-latex="\\begin{cases} a \\\\ b \\end{cases}"><mi>x</mi></math>'
+  ],
+  ['math-ampersand-block', '<math display="block" data-latex="a &amp; b"><mi>x</mi></math>'],
+  ['math-backslashes-block', '<math display="block" data-latex="a \\\\ b"><mi>x</mi></math>'],
+  [
+    'math-bare-matrix-latex',
+    '<math display="block" data-latex="\\begin{matrix}a &amp; b\\end{matrix}"><mi>x</mi></math>'
+  ],
+  [
+    'math-bare-matrix-nested-env',
+    '<math display="block" data-latex="\\begin{matrix}\\begin{array}{c}a\\end{array}\\end{matrix}"><mi>x</mi></math>'
+  ],
+  ['math-empty-block', '<math display="block"></math>'],
+  ['math-nbsp', '<p><math><mi>a</mi><mo>&nbsp;</mo><mi>b</mi></math></p>'],
+  ['math-nested-amp-nbsp', '<p><math><mtext>a&amp;nbsp;b</mtext></math></p>'],
+  [
+    'math-wikipedia-inline',
+    '<p>Let <span class="mwe-math-element"><math alttext="{\\displaystyle x}"><semantics><mi>x</mi><annotation encoding="application/x-tex">{\\displaystyle x}</annotation></semantics></math><img class="mwe-math-fallback-image-inline" alt="x"></span> be.</p>'
+  ],
+  [
+    'math-wikipedia-block-after-p',
+    '<p>Intro</p><span class="mwe-math-element"><math display="inline"><mi>x</mi></math></span>'
+  ],
+  [
+    'math-wikipedia-fallback-image',
+    '<p>a <span class="mwe-math-fallback-image-display" data-latex="x">y</span> b</p><span class="mwe-math-fallback-image-inline" data-latex="z">z</span>'
+  ],
+  [
+    'math-wikipedia-element-class',
+    '<p>a <span class="mwe-math-element" data-latex="q">q</span> b</p>'
+  ],
+  ['math-class-math-inline', '<p>a <span class="math math-inline" data-latex="k">k</span> b</p>'],
+  [
+    'katex-data-latex-inline',
+    '<p>a <span class="katex" data-latex="E=mc^2"><span class="katex-mathml"><math><semantics><mi>E</mi></semantics></math></span></span> b</p>'
+  ],
+  [
+    'katex-block',
+    '<span class="katex" data-latex="E=mc^2"><span class="katex-mathml"><math display="block"><mi>E</mi></math></span></span>'
+  ],
+  [
+    'katex-annotation',
+    '<span class="katex"><span class="katex-mathml"><math><semantics><mi>x</mi><annotation encoding="application/x-tex">x_1</annotation></semantics></math></span><span class="katex-html">x1</span></span>'
+  ],
+  [
+    'katex-annotation-outside-mathml',
+    '<span class="katex"><math><semantics><mi>x</mi><annotation encoding="application/x-tex">x_1</annotation></semantics></math></span>'
+  ],
+  ['katex-text-fallback', '<span class="katex">  plain text  </span>'],
+  ['katex-empty', '<span class="katex"></span>'],
+  [
+    'katex-math-inline-class',
+    '<div class="math math-inline">a+b</div><div class="math math-display">a-b</div>'
+  ],
+  [
+    'katex-no-latex-mathml-block',
+    '<span class="katex"><span class="katex-mathml"><math display="block"><mi>x</mi></math></span>t</span>'
+  ],
+  [
+    'katex-annotation-self',
+    '<annotation class="katex" encoding="application/x-tex">self</annotation>'
+  ],
+  [
+    'math-figure-caption',
+    '<figure><img src="f.png" alt="F"><figcaption>Value <math><mi>x</mi></math> here</figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-edges',
+    '<figure><img src="f.png" alt="F"><figcaption><math><mi>x</mi></math></figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-attached',
+    '<figure><img src="f.png" alt="F"><figcaption>a<math><mi>x</mi></math>b $<math><mi>y</mi></math>$ c</figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-two',
+    '<figure><img src="f.png" alt="F"><figcaption><math><mi>x</mi></math><math><mi>y</mi></math> text <math display="block" data-latex="\\alpha"><mi>z</mi></math></figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-tag',
+    '<figure><img src="f.png" alt="F"><figcaption><span class="ltx_tag_figure">Figure 1:</span> The <math alttext="\\beta"><mi>b</mi></math> curve.</figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-newline',
+    '<figure><img src="f.png" alt="F"><figcaption>a <math>\n<mi>x</mi></math> b</figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-unclosed',
+    '<figure><img src="f.png" alt="F"><figcaption>a <math><mi>x</mi> b</figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-failed',
+    '<figure><img src="f.png" alt="F"><figcaption>a <math><mfrac><mi>x</mi></mfrac></math> b</figcaption></figure>'
+  ],
+  [
+    'math-figure-caption-mathml-tag-lookalike',
+    '<figure><img src="f.png" alt="F"><figcaption>a <mathx>q</mathx> b</figcaption></figure>'
+  ],
+  [
+    'table-ltx-equation',
+    '<table class="ltx_equation"><tr><td><math alttext="a=b"><mi>a</mi></math></td></tr></table>'
+  ],
+  [
+    'table-ltx-eqn-table',
+    '<table class="ltx_eqn_table"><tr><td><span class="ltx_eqn_inline"><math><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math></span></td><td><math alttext="b"><mi>b</mi></math></td></tr></table>'
+  ],
+  [
+    'table-numblk',
+    '<table class="numblk"><tr><td><span class="mwe-math-element-inline"><math alttext="c"><mi>c</mi></math></span></td></tr></table>'
+  ],
+  ['table-ltx-equation-no-math', '<table class="ltx_equation"><tr><td>plain</td></tr></table>'],
+  [
+    'table-ltx-equation-no-latex',
+    '<table class="ltx_equation"><tr><td><math><mi>a</mi></math></td></tr></table>'
+  ],
+  ['table-class-near-miss', '<table class="ltx_equationx"><tr><td>a</td><td>b</td></tr></table>'],
+  ['math-svg-child', '<p>a <math><svg><title>t</title></svg></math> b</p>'],
+  ['math-foreign-child-no-mathml-names', '<p>a <math data-latex="x"><foo>q</foo></math> b</p>'],
+  [
+    'math-html-child',
+    '<math data-latex="x"><annotation-xml encoding="text/html"><div>d</div></annotation-xml></math>'
+  ],
+  [
+    'math-span-class-mi',
+    '<p>a <span class="mwe-math-element" data-latex="x"><mi>q</mi></span> b</p>'
+  ],
+  [
+    'math-complex-prose',
+    '<p><math data-latex="fan-outfan"><mfrac><mi>a</mi><mi>b</mi></mfrac></math></p>'
+  ],
+  ['math-simple-prose-no-complex', '<p><math data-latex="fan-outfan"><mi>a</mi></math></p>'],
   [
     'mixed-document',
     '<h1>Doc</h1><p>Intro with <a href="/a">link</a>, <em>em</em>.</p><h2>Items</h2><ul><li>One</li><li>Two <code>x</code></li></ul><blockquote><p>Quote</p></blockquote><pre><code class="language-js">a()</code></pre><table><tr><th>H</th><th>I</th></tr><tr><td>1</td><td>2</td></tr></table><figure><img src="f.png" alt="F"><figcaption>Cap</figcaption></figure>'

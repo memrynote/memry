@@ -1,5 +1,4 @@
 {
   "html": "<body> <p>dups and case</p> <p>numeric and special keys</p> <a href=\"/x\" title=\"spaced\">self-closing slash</a> <input type=\"checkbox\" checked> tailwind <p>json attr</p> <p>second class ignored</p> <b>nameless</b> <i>quoted name</i> <u>no space</u> </body>",
-  "math": false,
   "markdown": "dups and case\n\nnumeric and special keys\n\n[self-closing slash](/x \"spaced\")  tailwind\n\njson attr\n\nsecond class ignored\n\n**nameless** *quoted name* no space"
 }

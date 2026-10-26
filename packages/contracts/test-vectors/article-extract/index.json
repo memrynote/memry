@@ -48,5 +48,9 @@
   {"name":"tiny-page","covers":["tiny page under 50 words","both retry paths"],"htmlSha256":"9e73f9738fc73943f6454ac62a60841f9c035d17371ad40aea0efb9b2439c31f"},
   {"name":"truncated-closing","covers":["truncated in a closing tag"],"htmlSha256":"9a4831b77c64dd4f5f3dc76a4fd2455155a4918f1b0b72611083f01b0747396e"},
   {"name":"truncated-eof","covers":["truncated at EOF","unfinished attribute"],"htmlSha256":"c5d571870f39c3dc29ec4291eda32733a9dc964f18bc26a7ccfefefc0769ff18"},
-  {"name":"truncated-slash","covers":["truncated after tag name and slash","slice(-1) text"],"htmlSha256":"7864e3d488acb6dd0a0ba805a07bdf4af55f3102c9a07d7f9cf48bf03712d594"}
+  {"name":"truncated-slash","covers":["truncated after tag name and slash","slice(-1) text"],"htmlSha256":"7864e3d488acb6dd0a0ba805a07bdf4af55f3102c9a07d7f9cf48bf03712d594"},
+  {"name":"math-mathml-structures","covers":["math","MathML to LaTeX","mtable","mfenced","scripts","roots"],"htmlSha256":"18e61fa9b7ffe2827dbece39dbb19625edfb5fb7abdce4be112b74a3cdb9d592"},
+  {"name":"math-mathml-symbols","covers":["math","MathML to LaTeX","symbols","mathvariant","mtext"],"htmlSha256":"57a00dd57ab17db4a3609c953a6b859dc18793139cee58bbc536a882e005fbaf"},
+  {"name":"math-arxiv-equation-tables","covers":["math","arXiv ltx_equation","ltx_eqn_table","figure caption math","nested equations"],"htmlSha256":"e23e8d357408521645bd8761ad801a9272706ae69c2c9199e2648422d66bf8c7"},
+  {"name":"math-mathml-failures","covers":["math","MathML to LaTeX","invalid arity","xmldom recovery"],"htmlSha256":"5f6cb1b2dc85d6a97447d7926639a7c0c6b2383462990ec78539150442eb13a8"}
 ]

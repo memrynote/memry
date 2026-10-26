@@ -150,7 +150,7 @@ impl Dom {
             .collect()
     }
 
-    fn has_class_token(&self, id: NodeId, name: &str) -> bool {
+    pub fn has_class_token(&self, id: NodeId, name: &str) -> bool {
         let Some(class) = self.attr(id, "class") else {
             return false;
         };

@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/broken/markup","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body> <div><p>First paragraph without a close </p> <p>Second paragraph <br> after a break </p> <ul><li>one</li> <li>two</li> <li>three</li></ul> <table><tr><td>cell a</td> <td>cell b</td></tr> <tr><td>cell c</td></tr></table> </div> stray end tags <H2>Headingparagraph inside a heading</H2> <dl><dt>term</dt> <dd>definition</dd> <dt>term two</dt> <dd>definition two</dd></dl>  <p>unclosed span <p>block inside span</p></p> <a href=\"https://example.com/one\">link <a href=\"https://example.com/two\">nested link</a></a> </body>",
   "markdown": "First paragraph without a close\n\nSecond paragraph  \nafter a break\n\n- one\n- two\n- three\n\n| cell a | cell b |\n| --- | --- |\n| cell c |  |\n\nstray end tags\n\n## Headingparagraph inside a heading\n\nterm\n\ndefinition\n\nterm two\n\ndefinition two\n\nunclosed span\n\nblock inside span\n\n[link](https://example.com/one) [nested link](https://example.com/two)",
   "raw": {"title":"Broken markup","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":40},

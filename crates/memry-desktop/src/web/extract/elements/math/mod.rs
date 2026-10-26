@@ -1,12 +1,13 @@
 //! `dist/elements/math.js` and `math.full.js`: every rendered or raw math markup becomes
 //! `<math xmlns display data-latex>` holding MathML.
 //!
-//! The two converters Defuddle calls (`mathml-to-latex` 1.8.0 and `temml` 0.13.3) are ported in
-//! later stages; until then they fail the way a throwing converter does, and the oracle makes
-//! them throw too (see `convert`).
+//! The two converters Defuddle calls: `mathml-to-latex` 1.8.0 is ported (`mathml`); `temml`
+//! 0.13.3 is not yet, so it fails the way a throwing converter does and the oracle makes it
+//! throw too (see `convert`).
 
 pub mod base;
 pub mod convert;
+mod mathml;
 mod mjx;
 pub mod raw;
 
