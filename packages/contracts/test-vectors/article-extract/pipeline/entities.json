@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/text/entities","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body> <p>Named: &amp; &lt; &gt; \" ' | © ® ™ … — € é É ß</p> <p>No semicolon: © 2024, &amp; x, &amp;x, &lt;3, ¬it; ∉ ¬</p> <p>Numeric: ABC 😀 😀 � € € � � � &amp;#x;&amp;#;</p> <p>Unknown: &amp;nosuchname; &amp;; &amp; alone, AT&amp;T, a&amp;b=c</p> <p>Math: ≂̸ fj 𝔄 ℂ =⃥</p> <a href=\"https://example.com/search?q=a&lang=en&lang=de&copy=1&notit=2\" title=\"<t> & &quot;q&quot; © &amp=\">link</a> <p title=\"single 'quote'\">attr entities</p>    <xmp>&amp;amp; &lt;b&gt;raw&lt;/b&gt;</xmp> <p>Non-BMP: 𝔄 plus literal 😀 and 􏿿.</p> </body>",
   "markdown": "Named: & < > \" ' | © ® ™ … — € é É ß\n\nNo semicolon: © 2024, & x, &x, <3, ¬it; ∉ ¬\n\nNumeric: ABC 😀 😀 � € € � � � &#x;&#;\n\nUnknown: &nosuchname; &; & alone, AT&T, a&b=c\n\nMath: ≂̸ fj 𝔄 ℂ =⃥\n\n[link](https://example.com/search?q=a&lang=en&lang=de&copy=1&notit=2 \"<t> & \\\"q\\\" © &amp=\")\n\nattr entities\n\n&amp;amp; &lt;b&gt;raw&lt;/b&gt;\n\nNon-BMP: 𝔄 plus literal 😀 and 􏿿.",
   "raw": {"title":"Entities & escapes <test> © 2024","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":64},

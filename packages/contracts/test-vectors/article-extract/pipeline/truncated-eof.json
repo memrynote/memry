@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/cut/off","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<article><p>This page ends in the middle of a tag, which a network error or a size cap can cause.</p></article>",
   "markdown": "This page ends in the middle of a tag, which a network error or a size cap can cause.",
   "raw": {"title":"Cut off","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":19},

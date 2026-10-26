@@ -79,6 +79,9 @@ fn describe(tables: &[TableSalvage], salvage_error: Option<&str>) -> String {
         if let Some(err) = &table.read_error {
             parts.push(format!("{}: {err}", table.table));
         }
+        if let Some(skipped) = &table.skipped {
+            parts.push(format!("{}: {skipped}", table.table));
+        }
         if table.rejected > 0 {
             parts.push(format!("{}: {} rows refused", table.table, table.rejected));
         }
@@ -86,11 +89,11 @@ fn describe(tables: &[TableSalvage], salvage_error: Option<&str>) -> String {
     parts.join("; ")
 }
 
-fn marker_path(path: &Path) -> PathBuf {
+pub(crate) fn marker_path(path: &Path) -> PathBuf {
     PathBuf::from(format!("{}.recovering", path.display()))
 }
 
-fn io_failure(what: &str, path: &Path, err: &dyn std::fmt::Display) -> StorageError {
+pub(crate) fn io_failure(what: &str, path: &Path, err: &dyn std::fmt::Display) -> StorageError {
     StorageError::Failed {
         what: format!("recovery could not check {what} {}: {err}", path.display()),
     }

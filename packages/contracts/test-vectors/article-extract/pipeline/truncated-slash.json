@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://example.com/cut/slash","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body><p>Ends with a slash after a tag name</p> /</body>",
   "markdown": "Ends with a slash after a tag name\n\n/",
   "raw": {"title":"","author":"","published":"","description":"","image":"","site":"","language":"","wordCount":9},

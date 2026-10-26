@@ -8,7 +8,7 @@
 
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
 use html5ever::tendril::{StrTendril, TendrilSink};
@@ -41,6 +41,8 @@ type Ref = Rc<Handle>;
 struct Sink {
     doc: RefCell<Document>,
     templates: RefCell<HashMap<NodeId, NodeId>>,
+    /// `annotation-xml` elements whose `encoding` makes them HTML integration points.
+    integration_points: RefCell<HashSet<NodeId>>,
 }
 
 impl Sink {
@@ -85,8 +87,9 @@ impl Sink {
 
 fn attribute_name(attr: &HtmlAttribute) -> String {
     match &attr.name.prefix {
-        Some(prefix) => format!("{prefix}:{}", attr.name.local),
-        None => attr.name.local.to_string(),
+        // `xmlns` on a foreign element carries the empty prefix; domino names it `xmlns`.
+        Some(prefix) if !prefix.is_empty() => format!("{prefix}:{}", attr.name.local),
+        _ => attr.name.local.to_string(),
     }
 }
 
@@ -132,6 +135,9 @@ impl TreeSink for Sink {
                 .collect(),
             svg: &*name.ns != HTML_NS,
         });
+        if flags.mathml_annotation_xml_integration_point {
+            self.integration_points.borrow_mut().insert(id);
+        }
         if flags.template {
             let content = doc.create_document_fragment();
             self.templates.borrow_mut().insert(id, content);
@@ -197,6 +203,10 @@ impl TreeSink for Sink {
         )
     }
 
+    fn is_mathml_annotation_xml_integration_point(&self, handle: &Ref) -> bool {
+        self.integration_points.borrow().contains(&handle.id)
+    }
+
     fn same_node(&self, x: &Ref, y: &Ref) -> bool {
         x.id == y.id
     }
@@ -240,6 +250,7 @@ pub fn parse(html: &str) -> Dom {
     let sink = Sink {
         doc: RefCell::new(Document::new()),
         templates: RefCell::new(HashMap::new()),
+        integration_points: RefCell::new(HashSet::new()),
     };
     let mut opts = ParseOpts::default();
     opts.tree_builder.scripting_enabled = false;

@@ -1,6 +1,5 @@
 {
   "input": {"url":"https://zh.example.cn/posts/9","now":"2025-03-04T05:06:07.000Z"},
-  "math": false,
   "content": "<body>  <p>每隔几年，就会有新平台承诺用一个工具取代你桌上的十个工具。这很少成为现实。能够长久存在的，是那些只做好一件事的工具。</p> <p>两个程序之间的一根管道，胜过一千个设置页面。</p> </body>",
   "markdown": "每隔几年，就会有新平台承诺用一个工具取代你桌上的十个工具。这很少成为现实。能够长久存在的，是那些只做好一件事的工具。\n\n两个程序之间的一根管道，胜过一千个设置页面。",
   "raw": {"title":"为什么小工具会赢","author":"","published":"","description":"","image":"","site":"","language":"zh-CN","wordCount":80},

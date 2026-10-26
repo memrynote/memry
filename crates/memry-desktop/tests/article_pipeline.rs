@@ -1,7 +1,7 @@
 //! The generic path of `Defuddle` (`parse()` with its retries, markdown, `mapToArticleCapture`)
 //! against Defuddle 0.19.0 (`pnpm --filter @memry/article-extract vectors`), for every corpus
 //! page: the standardized content, the markdown, the metadata fields, the word count and the
-//! serialized `ArticleCapture`. The math handler of stage 4 is off in the oracle.
+//! serialized `ArticleCapture`. temml (LaTeX to MathML) is off in the oracle.
 
 use std::{fs, path::PathBuf};
 
@@ -70,18 +70,16 @@ fn check(name: &str, html: &str, vector: &Value) -> Vec<String> {
         response.word_count.to_string(),
         &raw["wordCount"],
     );
-    if !vector["math"].as_bool().unwrap() {
-        let capture = extract_article(html, url, now, &NoFetch);
-        cmp(
-            "markdown",
-            capture.content_markdown.clone(),
-            &vector["markdown"],
-        );
-        let got = serde_json::to_string(&capture).unwrap();
-        let want = serde_json::to_string(&vector["expected"]).unwrap();
-        if got != want {
-            failures.push(format!("{name} capture:\n  rust: {got}\n  node: {want}"));
-        }
+    let capture = extract_article(html, url, now, &NoFetch);
+    cmp(
+        "markdown",
+        capture.content_markdown.clone(),
+        &vector["markdown"],
+    );
+    let got = serde_json::to_string(&capture).unwrap();
+    let want = serde_json::to_string(&vector["expected"]).unwrap();
+    if got != want {
+        failures.push(format!("{name} capture:\n  rust: {got}\n  node: {want}"));
     }
     failures
 }
