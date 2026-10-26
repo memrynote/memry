@@ -346,3 +346,95 @@ fn a_pin_with_an_unknown_version_is_an_error_not_a_guess() {
             .is_some()
     );
 }
+
+fn touch(path: &Path, age_secs: u64) {
+    let file = fs::OpenOptions::new().write(true).open(path).unwrap();
+    file.set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(age_secs))
+        .unwrap();
+}
+
+/// The signed release 2026.1025.1 ran on one Mac with userData `~/Library/Application
+/// Support/Chromium`; its secrets decrypt under `memrynote`/`@memry/desktop`.
+#[test]
+fn a_chromium_named_profile_with_memry_files_is_found_with_its_own_app_name() {
+    for host in [HostOs::MacOs, HostOs::Linux, HostOs::Windows] {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("Chromium");
+        make_profile(&dir);
+        write_store(&dir);
+        let profile = locate_profile(&env(root.path(), host)).unwrap().unwrap();
+        assert_eq!(profile.dir, dir);
+        // The directory name does not key the store, and `Chromium Safe Storage` belongs to the
+        // Chromium browser: never a candidate.
+        assert!(!names(&profile).contains(&"Chromium"), "{host:?}");
+        assert!(profile.other_candidates.is_empty());
+    }
+}
+
+#[test]
+fn a_dangling_memrynote_link_does_not_hide_the_chromium_profile() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("Chromium");
+    make_profile(&dir);
+    write_store(&dir);
+    link_dir(&root.path().join("memrynote"), &legacy(root.path()));
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, dir);
+}
+
+#[test]
+fn a_chromium_directory_without_memry_markers_is_not_a_profile() {
+    let root = tempfile::tempdir().unwrap();
+    let dir = root.path().join("Chromium");
+    fs::create_dir_all(dir.join("Cache")).unwrap();
+    fs::write(dir.join("Local State"), "{}").unwrap();
+    assert!(
+        locate_profile(&env(root.path(), HostOs::MacOs))
+            .unwrap()
+            .is_none()
+    );
+}
+
+#[test]
+fn the_most_recently_used_qualifying_profile_wins_and_the_rest_are_reported() {
+    for (chromium_age, winner) in [(10, "Chromium"), (5000, "memrynote")] {
+        let root = tempfile::tempdir().unwrap();
+        let chromium = root.path().join("Chromium");
+        let memrynote = root.path().join("memrynote");
+        make_profile(&chromium);
+        make_profile(&memrynote);
+        touch(&chromium.join("memry-config.json"), chromium_age);
+        touch(&memrynote.join("memry-config.json"), 1000);
+        let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+            .unwrap()
+            .unwrap();
+        assert_eq!(profile.dir, root.path().join(winner));
+        let other = if winner == "Chromium" {
+            memrynote
+        } else {
+            chromium
+        };
+        assert_eq!(profile.other_candidates, [other]);
+    }
+}
+
+#[test]
+fn a_fresh_memrynote_directory_does_not_beat_a_chromium_profile_that_holds_the_data() {
+    let root = tempfile::tempdir().unwrap();
+    let chromium = root.path().join("Chromium");
+    let memrynote = root.path().join("memrynote");
+    make_profile(&chromium);
+    write_store(&chromium);
+    fs::create_dir_all(chromium.join("crdt-stores").join("v")).unwrap();
+    // Just launched: a newer config, no secrets, no stores.
+    make_profile(&memrynote);
+    touch(&chromium.join("memry-config.json"), 5000);
+    touch(&memrynote.join("memry-config.json"), 1);
+    let profile = locate_profile(&env(root.path(), HostOs::MacOs))
+        .unwrap()
+        .unwrap();
+    assert_eq!(profile.dir, chromium);
+    assert_eq!(profile.other_candidates, [memrynote]);
+}

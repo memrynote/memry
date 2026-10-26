@@ -140,6 +140,7 @@ fn report(
             "hasLegacyCrdtStore": profile.has_legacy_crdt_store,
             "hasCustomDictionary": profile.has_custom_dictionary,
             "crdtStoreDirs": profile.crdt_store_dirs.len(),
+            "otherCandidates": profile.other_candidates.iter().map(|p| p.file_name().map(|n| n.to_string_lossy().into_owned())).collect::<Vec<_>>(),
         },
         "config": config_json,
         "secrets": {

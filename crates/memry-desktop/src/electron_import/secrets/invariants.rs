@@ -41,8 +41,10 @@ fn recorded(f: &crate::electron_import::tests::Fixture) -> Vec<u8> {
 #[test]
 fn the_second_app_name_is_not_asked_when_the_first_decrypts_everything() {
     let f = macos_fixture("new");
-    let [first, second] = f.profile.app_names.0[..] else {
-        panic!("two candidates");
+    let (Some(&first), Some(&second)) =
+        (f.profile.app_names.0.first(), f.profile.app_names.0.get(1))
+    else {
+        panic!("two app name candidates");
     };
     let keys = Scripted {
         answers: BTreeMap::from([
