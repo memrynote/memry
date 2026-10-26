@@ -86,10 +86,10 @@ jobs:
           cache: pnpm
 
       - name: Install Linux system libraries
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf
+        uses: ./.github/actions/apt-install
+        with:
+          packages: >-
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -184,10 +184,10 @@ jobs:
 
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev \
-            librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf xvfb gnome-keyring dbus-x11
+        uses: ./.github/actions/apt-install
+        with:
+          packages: >-
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf xvfb gnome-keyring dbus-x11
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import type { StickyDraft } from '@memry/contracts/sticky-api'
 import { STICKY_SETTINGS_DEFAULTS } from '@memry/contracts/settings-schemas'
 import { StickyCapture } from './sticky-capture'
@@ -65,10 +65,20 @@ function setup(session: { draftId: string | null }, drafts: StickyDraft[] = []):
   }
 }
 
+/**
+ * findBy and waitFor resolve once the DOM shows the new state, which can be before React
+ * runs that render's passive effects. The window key listeners attach in those effects,
+ * so a key pressed straight away is lost under load. Flush them before pressing.
+ */
+async function settleEffects(): Promise<void> {
+  await act(async () => {})
+}
+
 async function renderSticky(): Promise<HTMLTextAreaElement> {
   render(<StickyCapture />)
   const input = screen.getByLabelText(INPUT) as HTMLTextAreaElement
   await waitFor(() => expect(input).not.toBeDisabled())
+  await settleEffects()
   return input
 }
 
@@ -138,6 +148,7 @@ describe('StickyCapture', () => {
       })
     )
     expect(await screen.findByText('sticky.sent.note')).toBeInTheDocument()
+    await settleEffects()
 
     fireEvent.keyDown(window, { key: 'z', metaKey: true })
     await waitFor(() => expect(sticky.undoSend).toHaveBeenCalledWith('undo-1'))
@@ -158,6 +169,7 @@ describe('StickyCapture', () => {
     fireEvent.keyDown(input, { key: 'Enter', metaKey: true })
     await screen.findByText('sticky.sent.journal')
     expect(screen.queryByText(/sticky\.undo/)).not.toBeInTheDocument()
+    await settleEffects()
 
     fireEvent.keyDown(window, { key: 'o', metaKey: true })
     expect(sticky.openTarget).toHaveBeenCalledWith({ kind: 'journal', targetId: '2026-05-01' })
