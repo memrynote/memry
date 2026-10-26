@@ -279,3 +279,16 @@ pub fn wrap_with_mstyle(mut expression: Vec<Tree>) -> Tree {
         Tree::Math(MathNode::new("mstyle", expression))
     }
 }
+
+impl Tree {
+    /// `node.toText()`.
+    pub fn to_text(&self) -> String {
+        match self {
+            Tree::Text(t) => t.clone(),
+            Tree::Math(m) => m.children.iter().map(Tree::to_text).collect(),
+            Tree::Frag(f) => f.children.iter().map(Tree::to_text).collect(),
+            Tree::Anchor(a) => a.children.iter().map(Tree::to_text).collect(),
+            Tree::Span(s) => s.children.iter().map(Tree::to_text).collect(),
+        }
+    }
+}

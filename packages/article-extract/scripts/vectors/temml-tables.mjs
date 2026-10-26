@@ -25,6 +25,7 @@ import unicodeSymbols from ${JSON.stringify(join(src, 'unicodeSymbols.js'))}
 import { uSubsAndSups, unicodeSubRegEx } from ${JSON.stringify(join(src, 'unicodeSupOrSub.js'))}
 import { asciiFromScript } from ${JSON.stringify(join(src, 'asciiFromScript.js'))}
 import macros from ${JSON.stringify(join(src, 'macros.js'))}
+import ${JSON.stringify(join(src, 'functions/operatorname.js'))}
 import { smalls } from ${JSON.stringify(join(src, 'utils.js'))}
 export default { symbols, ATOMS, NON_ATOMS, ligatures, unicodeSymbols, uSubsAndSups, unicodeSubRegEx, asciiFromScript, macros, smalls }
 `
