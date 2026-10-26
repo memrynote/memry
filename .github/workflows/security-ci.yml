@@ -73,7 +73,12 @@ jobs:
           # extract-zip 2.0.1 has no patched release. It is a dev-only transitive dependency of
           # @wdio/utils (@puppeteer/browsers), which only uses it to unpack browser downloads
           # the Tauri e2e harness never makes (#3520). Remove these when extract-zip is fixed.
-          allow-ghsas: GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3
+          #
+          # Electron 43.1.1 in scripts/electron-fixtures is the exact version users run, pinned so
+          # the capture tool writes the profile format they have. It opens only its own local
+          # fixture page and never loads remote content or a webview. The directory is an
+          # Electron-only tool that Step 43 (#3560) deletes; remove these GHSAs with it.
+          allow-ghsas: GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3, GHSA-qmv3-fv6v-rmhq, GHSA-9qh4-3jw8-366w, GHSA-j84w-jfhq-vhvj, GHSA-gr2m-v5gq-v685, GHSA-jr5w-w6x2-84p9
 
   codeql:
     name: CodeQL

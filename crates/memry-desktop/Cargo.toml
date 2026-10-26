@@ -31,8 +31,23 @@ markup5ever = "0.40.0"
 specta = { version = "=2.0.0-rc.26", features = ["derive"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider", "json", "http2", "stream", "system-proxy"] }
 
-[dev-dependencies]
+# Electron profile readers (read-only import of the previous app's data).
+base64 = { workspace = true }
+zeroize = { workspace = true }
+aes = "0.9.3"
+cbc = { version = "0.2.1", features = ["alloc"] }
+aes-gcm = "0.11.1"
+pbkdf2 = { version = "0.13.0", default-features = false, features = ["hmac"] }
+sha1 = "0.11.0"
+hmac = "0.13.0"
+md-5 = "0.11"
+rusty-leveldb = "4.0.2"
 tempfile = "3"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
 rusqlite = { workspace = true }
 tokio = { workspace = true, features = ["net", "io-util", "time", "macros", "rt-multi-thread"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }

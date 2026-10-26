@@ -13,6 +13,9 @@
     "build",
     "coverage",
     "pnpm-lock.yaml",
+    // Profiles captured from real Electron installs, read by byte (electron_import tests).
+    "crates/memry-desktop/tests/fixtures/electron/**",
+
     // Golden files for the i18n codemod tests, compared byte for byte.
     "apps/desktop/scripts/i18n/fixtures/**",
     "package-lock.json",

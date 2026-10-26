@@ -1,0 +1,33 @@
+{
+  "electron": "43.1.1",
+  "platform": "macos",
+  "appName": "memry-fixture-legacy",
+  "vaultUuid": "0b6f6f08-3f0a-4d7d-9d0e-1d2c3b4a5f60",
+  "plaintexts": {
+    "com.memry.sync": {
+      "master-key": "fixture-master-key-aGVsbG8=",
+      "device-signing-key": "fixture-device-signing-key-d29ybGQ=",
+      "access-token": "fixture.access.token",
+      "refresh-token": "fixture-refresh-token-0123456789abcdef",
+      "setup-token": "fixture-setup-token"
+    },
+    "com.memry.calendar.google": {
+      "refresh": "fixture-google-refresh"
+    },
+    "com.memry.readwise": {
+      "token": "fixture-readwise-token"
+    }
+  },
+  "docs": [
+    "Note_Fixture-ID-01",
+    "j2026-08-13",
+    "not-ğüşiöç-日本語",
+    "flushed_doc",
+    "__memry_crdt_store__"
+  ],
+  "noteId": "Note_Fixture-ID-01",
+  "journalId": "j2026-08-13",
+  "unicodeId": "not-ğüşiöç-日本語",
+  "flushedId": "flushed_doc",
+  "macosPassword": "mock_password"
+}

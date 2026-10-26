@@ -69,7 +69,7 @@ fn array_index(key: &str) -> Option<u32> {
 }
 
 /// `Object.entries` order: array-index keys ascending, then insertion order.
-fn js_entry_order<T>(entries: &mut [(String, T)]) {
+pub(crate) fn js_entry_order<T>(entries: &mut [(String, T)]) {
     entries.sort_by_key(|(key, _)| match array_index(key) {
         Some(index) => (0, u64::from(index)),
         None => (1, 0),

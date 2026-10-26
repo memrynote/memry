@@ -38,6 +38,14 @@ import {
   yxmlRead,
   yxmlRoundtrip
 } from './pm-oracle'
+import {
+  docBlocks,
+  docRepairIds,
+  docReplace,
+  docSeed,
+  docSerialize,
+  type DocInput
+} from './doc-oracle'
 import { decodeYaml, encodeYaml, type YamlJson } from './yaml-json'
 
 // The converter imports two Electron-coupled modules. The oracle runs it
@@ -166,6 +174,22 @@ async function run(job: Job): Promise<unknown> {
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-serialize.ts
       const blocks = input.blocks as Parameters<typeof serializeBlocks>[0]
       return { markdown: await serializeBlocks(blocks) }
+    }
+    case 'doc-seed':
+    case 'doc-serialize':
+    case 'doc-blocks':
+    case 'doc-replace':
+    case 'doc-repair-ids': {
+      for (const key of Object.keys(embedFiles)) delete embedFiles[key]
+      const files = input.embedFiles
+      if (files && typeof files === 'object') Object.assign(embedFiles, files)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-doc.ts
+      const doc = input as DocInput
+      if (job.op === 'doc-seed') return docSeed(doc)
+      if (job.op === 'doc-serialize') return docSerialize(doc)
+      if (job.op === 'doc-blocks') return docBlocks(doc)
+      if (job.op === 'doc-replace') return docReplace(doc)
+      return docRepairIds(doc)
     }
     case 'fn': {
       const name = text(input, 'fn')

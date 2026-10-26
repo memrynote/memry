@@ -21,6 +21,8 @@ use ciborium::value::Value;
 use serde_json::Value as Json;
 
 #[cfg(feature = "markdown")]
+pub mod doc_case;
+#[cfg(feature = "markdown")]
 pub mod vector_compare;
 #[cfg(feature = "markdown")]
 pub mod yaml_json;
@@ -142,6 +144,21 @@ pub fn vector_file(name: &str) -> Json {
         ),
         "markdown-convert/layer-critic" => include_str!(
             "../../../../packages/contracts/test-vectors/markdown-convert/layer-critic.json"
+        ),
+        "markdown-convert/seed-doc" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/seed-doc.json"
+        ),
+        "markdown-convert/roundtrip" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/roundtrip.json"
+        ),
+        "markdown-convert/serialize-doc" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/serialize-doc.json"
+        ),
+        "markdown-convert/blocks" => {
+            include_str!("../../../../packages/contracts/test-vectors/markdown-convert/blocks.json")
+        }
+        "markdown-convert/replace-body" => include_str!(
+            "../../../../packages/contracts/test-vectors/markdown-convert/replace-body.json"
         ),
         "markdown-convert/parse" => {
             include_str!("../../../../packages/contracts/test-vectors/markdown-convert/parse.json")

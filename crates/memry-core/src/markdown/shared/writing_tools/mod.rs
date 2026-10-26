@@ -5,6 +5,7 @@
 
 mod encode;
 mod frontmatter;
+pub(crate) use frontmatter::js_entry_order;
 mod markers;
 mod types;
 

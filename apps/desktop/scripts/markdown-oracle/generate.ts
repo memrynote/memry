@@ -23,6 +23,13 @@ import { blocksCases } from './fns/blocks'
 import { criticCases } from './fns/critic'
 import { markersCases } from './fns/markers'
 import { textCases } from './fns/text'
+import {
+  blocksCases as docBlocksCases,
+  replaceBodyCases,
+  roundtripCases,
+  seedDocCases,
+  serializeDocCases
+} from './cases-doc'
 import { pmSchemaCases, yxmlCases } from './cases-pm'
 import { frontmatterCases, markdownClassCases, type OracleCase } from './cases-frontmatter'
 
@@ -88,6 +95,31 @@ function vectorFiles(external: MarkdownSource[]): VectorFile[] {
       path: 'serialize.json',
       note: 'serializeBlocks of blocknote-converter.ts (extractInlineColorRuns, HTML comment and emphasis tokens, BlockNote blocksToMarkdownLossy, normalizeSerializedMarkdown): hand-written blocks of every type, and the blocks prepareFragmentSeed builds from the memry-parse inputs, to markdown byte for byte. status "error" means the oracle threw (the converter answers null).',
       cases: serializeCases(external)
+    },
+    {
+      path: 'seed-doc.json',
+      note: 'The Y.Doc a markdown seed writes (markdownToYFragment): the fragment as canonical text with block ids removed, and the side roots as JSON (markdownSource, criticMarkupMarks, link reference definitions and usages, writing tools records). A writing tools anchor is stated as the text run and index it resolves to, since Yjs ids are free.',
+      cases: seedDocCases(external)
+    },
+    {
+      path: 'roundtrip.json',
+      note: 'Markdown seeded into a Y.Doc and read back: yDocToMarkdown (bytes and SourceRestoreOutcome), yDocToCanonicalMarkdown, serializeNoteBody (body and writing frontmatter) and findUnrepresentableNodes. markdown is compared byte for byte; it is the contract for what lands in users vault files.',
+      cases: roundtripCases(external)
+    },
+    {
+      path: 'serialize-doc.json',
+      note: 'yDocToMarkdown over documents authored from Yjs trees (note-blocks documents, hand cases, fail-closed shapes) and over seeded documents edited before they are read: the three way source merge, record states, file spelling and the empty-conversion guard. status "error" means the oracle threw. doc-repair-ids is repairEmptyBlockIds.',
+      cases: serializeDocCases(external)
+    },
+    {
+      path: 'blocks.json',
+      note: 'yFragmentToBlocks (y-prosemirror read, then nodeToBlock) as canonical block JSON, ids dropped, over seeded documents and Yjs-authored ones.',
+      cases: docBlocksCases(external)
+    },
+    {
+      path: 'replace-body.json',
+      note: 'replaceDocBody of crdt-feed.ts (re-implemented over the exported converter functions because the original is coupled to the CRDT provider): large-file refusal, the unlessChangedFrom guard, the empty-body paragraph, and the side roots after the replace.',
+      cases: replaceBodyCases()
     },
     {
       path: 'layer-text.json',
