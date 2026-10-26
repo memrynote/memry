@@ -121,3 +121,6 @@ buildServer.json
 
 # Built by apps/desktop/scripts/build-eventkit-helper.mjs on macOS only (#1405).
 apps/desktop/native/eventkit/bin/
+
+# Captured Electron profiles read byte for byte by electron_import tests (LevelDB write-ahead logs).
+!crates/memry-desktop/tests/fixtures/electron/**
