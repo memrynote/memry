@@ -85,7 +85,7 @@ one-class change reviewable.
 | `markdown-convert/parse.json`           |                                  833 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/memry-parse.json`     |                                  736 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
 | `markdown-convert/serialize.json`       |                                  925 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
-| `markdown-convert/layer-text.json`      |                                13066 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
+| `markdown-convert/layer-text.json`      |                                13074 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`   |                                 3243 | same                                        | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`    |                                 5116 | same                                        | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
 | `markdown-convert/layer-critic.json`    |                                 2944 | same                                        | same + Rust `markdown_layer_critic_vectors.rs`                                       |
