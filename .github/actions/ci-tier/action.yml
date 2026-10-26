@@ -7,6 +7,12 @@ description: >-
   A tiered PR runs the fast tier unless it carries the `full-ci` label. The path outputs say
   whether the diff can change what a gate protects. If the file list cannot be read, they fail
   open (true).
+
+  Two more outputs serve the merge queue (#3517). `electron` says whether the diff touches what
+  the Electron Desktop CI heavy jobs protect; it is detected for PRs into feat/tauri-v2 (even
+  with `full-ci`), the merge queue and pushes to feat/tauri-v2, and is true everywhere else.
+  `intel` says whether Intel macOS legs run: false on PRs into feat/tauri-v2 and in the merge
+  queue, true everywhere else, so main and the nightly run keep them.
 inputs:
   token:
     description: Token that can read the pull request's files
@@ -21,6 +27,12 @@ outputs:
   swift:
     description: The diff can change the UniFFI surface or the iOS app, so the Swift bindings check runs
     value: ${{ steps.tier.outputs.swift }}
+  electron:
+    description: The diff can change Electron desktop behavior, so the Electron Desktop CI heavy jobs run
+    value: ${{ steps.tier.outputs.electron }}
+  intel:
+    description: Intel macOS legs run (false on PRs into feat/tauri-v2 and in the merge queue)
+    value: ${{ steps.tier.outputs.intel }}
 runs:
   using: composite
   steps:
@@ -29,24 +41,65 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.token }}
         EVENT: ${{ github.event_name }}
+        REF: ${{ github.ref }}
         BASE_REF: ${{ github.base_ref }}
         REPO: ${{ github.repository }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        MQ_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+        MQ_HEAD_SHA: ${{ github.event.merge_group.head_sha }}
+        PUSH_BEFORE: ${{ github.event.before }}
+        PUSH_AFTER: ${{ github.sha }}
       run: |
         set -euo pipefail
-        emit() { echo "full=$1" >> "$GITHUB_OUTPUT"; echo "tauri=$2" >> "$GITHUB_OUTPUT"; echo "swift=$3" >> "$GITHUB_OUTPUT"; echo "tier: full=$1 tauri=$2 swift=$3"; }
+        emit() {
+          { echo "full=$1"; echo "tauri=$2"; echo "swift=$3"; echo "electron=$4"; echo "intel=$5"; } >> "$GITHUB_OUTPUT"
+          echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5"
+        }
+
+        # Intel Macs run on push, nightly and dispatch only; a PR into feat/tauri-v2 and the merge queue skip them.
+        intel=true
+        if [ "$EVENT" = "merge_group" ] || { [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" = "feat/tauri-v2" ]; }; then
+          intel=false
+        fi
+
+        # Changed files, for the path outputs. Other events (main, dispatch, PRs into main) are not path-gated.
+        kind=none
+        if [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" = "feat/tauri-v2" ]; then kind=pr; fi
+        if [ "$EVENT" = "merge_group" ]; then kind=range; from="$MQ_BASE_SHA"; to="$MQ_HEAD_SHA"; fi
+        if [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; then kind=range; from="$PUSH_BEFORE"; to="$PUSH_AFTER"; fi
+
+        files=""
+        listed=false
+        if [ "$kind" = pr ]; then
+          if files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then listed=true; fi
+        elif [ "$kind" = range ]; then
+          if [[ ! "$from" =~ ^0*$ ]] && git fetch --no-tags --depth=1 --filter=blob:none origin "$from" "$to" \
+            && files=$(git diff --name-only --no-renames "$from" "$to"); then listed=true; fi
+        fi
+        if [ "$kind" != none ] && [ "$listed" != true ]; then
+          echo "::warning::could not list the changed files; running the path-gated jobs"
+        fi
+
+        # Electron desktop: the app, what it bundles or typechecks, root configs and locks, and this
+        # workflow's own definitions.
+        electron=true
+        if [ "$listed" = true ]; then
+          electron=false
+          if printf '%s\n' "$files" | grep -Eq '^(apps/(desktop|extension|cli)/|packages/|scripts/|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|tsconfig[^/]*\.json$|oxlint\.config\.mts$|\.oxfmtrc\.jsonc$|turbo\.json$|\.nvmrc$|\.github/(workflows/desktop-ci\.yml|actions/))'; then
+            electron=true
+          fi
+        fi
 
         if [ "$EVENT" != "pull_request" ] || [ "$BASE_REF" != "feat/tauri-v2" ]; then
-          emit true true true; exit 0
+          emit true true true "$electron" "$intel"; exit 0
         fi
         if [[ ",$LABELS," == *",full-ci,"* ]]; then
-          emit true true true; exit 0
+          emit true true true "$electron" "$intel"; exit 0
         fi
 
-        if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
-          echo "::warning::could not list the PR files; running the Tauri and Swift gates"
-          emit false true true; exit 0
+        if [ "$listed" != true ]; then
+          emit false true true "$electron" "$intel"; exit 0
         fi
 
         # App behavior: the Tauri app and its Rust shells, everything the renderer bundles
@@ -64,4 +117,4 @@ runs:
         if printf '%s\n' "$files" | grep -Eqi '^(crates/memry-core/|apps/ios/|packages/swift/|\.github/workflows/rust-ci\.yml$)|uniffi'; then
           swift=true
         fi
-        emit false "$tauri" "$swift"
+        emit false "$tauri" "$swift" "$electron" "$intel"

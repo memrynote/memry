@@ -57,6 +57,7 @@ jobs:
       full: ${{ steps.tier.outputs.full }}
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
+      intel: ${{ steps.tier.outputs.intel }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -167,7 +168,7 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"exclude":[{"platform":"macos-x64","variant":"e2e"}],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
+      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && (needs.plan.outputs.intel == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"exclude":[{"platform":"macos-x64","variant":"e2e"}],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["macos-arm64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}') || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:

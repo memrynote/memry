@@ -38,9 +38,35 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
+  # Heavy jobs run only when the diff touches what they protect (apps/desktop, packages, root configs).
+  # Detected here, in the job, so the workflow always runs and the gate always reports. Pushes to main,
+  # dispatch and PRs into main are not path-gated: the output is true.
+  changes:
+    name: Changed paths
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      electron: ${{ steps.tier.outputs.electron }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Detect changed paths
+        id: tier
+        uses: ./.github/actions/ci-tier
+        with:
+          token: ${{ github.token }}
+
   static:
     name: Static checks
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: changes
+    if: needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -181,11 +207,12 @@ jobs:
 
   unit:
     name: Unit & integration tests (${{ matrix.shard }}/4)
+    needs: changes
     # The desktop suite is CPU-bound in a single vitest run (~25 min on one
     # runner). Splitting it across 4 runners with `--shard` cuts the critical
     # path; each shard writes a blob report that `unit-merge` combines into
     # the same coverage output the single run used to produce.
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
@@ -257,8 +284,8 @@ jobs:
     name: Unit & integration tests
     # Merges the shard blob reports into one test summary and one coverage
     # report (json-summary for the thresholds job, lcov for Codecov).
-    needs: unit
-    if: ${{ !cancelled() && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    needs: [changes, unit]
+    if: ${{ !cancelled() && needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -324,8 +351,8 @@ jobs:
     # Gates the coverage ratchet floors (apps/desktop/config/coverage-thresholds.json)
     # against the summary produced by unit-merge — a distinct check so coverage
     # regressions never read as failing tests. Just reads JSON, so no install.
-    needs: unit-merge
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: [changes, unit-merge]
+    if: needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -695,7 +722,18 @@ jobs:
   # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
   gate:
     name: Desktop CI gate
-    needs: [static, unit, unit-merge, coverage, desktop-build, e2e-smoke, e2e-smoke-windows, e2e-full]
+    needs:
+      [
+        changes,
+        static,
+        unit,
+        unit-merge,
+        coverage,
+        desktop-build,
+        e2e-smoke,
+        e2e-smoke-windows,
+        e2e-full
+      ]
     if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
