@@ -170,7 +170,7 @@ fn lifecycle_a_close_hook_past_its_deadline_blocks_a_reopen_and_repair_until_it_
 }
 
 #[test]
-fn startup_opens_the_current_vault_and_clears_it_when_it_cannot_open() {
+fn startup_opens_the_current_vault_and_keeps_it_when_the_failure_may_be_transient() {
     let f = fixture();
     let vault = f.vault("v");
     f.session.open(&vault, OpenSource::Select).expect("open");
@@ -178,9 +178,29 @@ fn startup_opens_the_current_vault_and_clears_it_when_it_cannot_open() {
     let env = crate::launch_env::LaunchEnv::default();
     assert!(f.session.open_startup(&env).is_some());
     f.session.close();
-    // The folder is read-only to the core: a regular file where `.memry/core` must go.
+    // A regular file where `.memry/core` must go: an I/O failure, not a verdict on the vault.
     std::fs::remove_dir_all(vault.join(".memry/core")).expect("rm");
     std::fs::write(vault.join(".memry/core"), b"x").expect("block");
+    assert!(f.session.open_startup(&env).is_none());
+    assert_eq!(
+        f.session.registry().current().as_deref(),
+        Some(&*vault.to_string_lossy())
+    );
+}
+
+#[test]
+fn startup_forgets_a_vault_that_can_never_open() {
+    let f = fixture();
+    let vault = f.vault("v");
+    f.session.open(&vault, OpenSource::Select).expect("open");
+    f.session.close();
+    // An Electron-shaped database where the core's belongs.
+    std::fs::remove_file(vault.join(".memry/core/data.db")).expect("rm");
+    let conn = rusqlite::Connection::open(vault.join(".memry/core/data.db")).expect("db");
+    conn.execute_batch("CREATE TABLE __drizzle_migrations (id INTEGER)")
+        .expect("seed");
+    drop(conn);
+    let env = crate::launch_env::LaunchEnv::default();
     assert!(f.session.open_startup(&env).is_none());
     assert_eq!(f.session.registry().current(), None);
 }

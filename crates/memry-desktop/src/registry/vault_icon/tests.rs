@@ -139,3 +139,12 @@ fn the_config_file_is_written_with_mode_0600() {
         .mode();
     assert_eq!(mode & 0o777, 0o600);
 }
+
+#[test]
+fn icon_length_counts_utf16_units_like_the_contract() {
+    // 16 astral emoji = 32 units: valid. 17 = 34 units: invalid, though only 17 chars.
+    assert!(is_valid(&"😀".repeat(16)));
+    assert!(!is_valid(&"😀".repeat(17)));
+    assert!(is_valid(&format!("icon:{}", "a".repeat(59))));
+    assert!(!is_valid(&format!("icon:{}", "a".repeat(60))));
+}

@@ -29,11 +29,25 @@ impl CreateError {
 pub fn is_valid_folder_name(name: &str) -> bool {
     !name.is_empty()
         && !name.starts_with('.')
+        && !name.ends_with(['.', ' '])
         && !name.chars().any(|c| {
-            matches!(
-                c,
-                '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '\0'
-            )
+            c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
+        })
+        && !is_windows_reserved(name)
+}
+
+/// `CON`, `NUL`, `COM1` and the rest name devices on Windows, with or without an extension.
+fn is_windows_reserved(name: &str) -> bool {
+    let stem = name
+        .split('.')
+        .next()
+        .unwrap_or(name)
+        .trim_end()
+        .to_ascii_uppercase();
+    matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ["COM", "LPT"].iter().any(|prefix| {
+            stem.strip_prefix(prefix)
+                .is_some_and(|n| matches!(n, "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"))
         })
 }
 
@@ -53,7 +67,11 @@ pub fn create_vault_folder(parent: &Path, name: &str) -> Result<PathBuf, CreateE
         return Err(CreateError::AlreadyExists);
     }
     std::fs::create_dir_all(parent).map_err(|err| CreateError::Io(err.to_string()))?;
-    std::fs::create_dir(&target).map_err(|err| CreateError::Io(err.to_string()))?;
+    std::fs::create_dir(&target).map_err(|err| match err.kind() {
+        // Someone created it between the check and here.
+        std::io::ErrorKind::AlreadyExists => CreateError::AlreadyExists,
+        _ => CreateError::Io(err.to_string()),
+    })?;
     Ok(target)
 }
 
@@ -68,6 +86,7 @@ mod tests {
         }
         for bad in [
             "", ".hidden", "a/b", "a\\b", "a:b", "a*b", "a?b", "a\"b", "a<b", "a>b", "a|b", "a\0b",
+            "a\tb", "trail.", "trail ", "CON", "nul.txt", "Com3", "LPT9.md",
         ] {
             assert!(!is_valid_folder_name(bad), "{bad:?}");
         }

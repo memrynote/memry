@@ -80,6 +80,10 @@ struct LaneState {
 
 struct Lane {
     projector: Arc<dyn Projector>,
+    /// One projector runs one call at a time: `project`, `reconcile` and `rebuild` (from the
+    /// lane thread or the reconcile chain) all hold it, so a pass never reads rows an event
+    /// is rewriting.
+    work: Mutex<()>,
     state: Mutex<LaneState>,
     changed: Condvar,
 }
@@ -104,7 +108,10 @@ impl Lane {
                 state.busy = true;
                 drop(state);
                 if self.projector.handles(&event)
-                    && let Err(error) = self.projector.project(&event)
+                    && let Err(error) = {
+                        let _turn = lock(&self.work);
+                        self.projector.project(&event)
+                    }
                 {
                     tracing::error!(projector = self.projector.name(), %error, "projection failed");
                 }
@@ -129,7 +136,10 @@ impl Lane {
                 state.needs_reconcile = false;
                 state.busy = true;
                 drop(state);
-                let outcome = self.projector.reconcile(cancel);
+                let outcome = {
+                    let _turn = lock(&self.work);
+                    self.projector.reconcile(cancel)
+                };
                 state = lock(&self.state);
                 state.busy = false;
                 if let Err(error) = outcome {
@@ -173,13 +183,14 @@ pub struct ProjectionRuntime {
 }
 
 impl ProjectionRuntime {
-    pub fn start(projectors: Vec<Arc<dyn Projector>>, queue_limit: usize) -> Self {
+    pub fn start(projectors: Vec<Arc<dyn Projector>>, queue_limit: usize) -> std::io::Result<Self> {
         let cancel = CancelToken::default();
         let lanes: Vec<Arc<Lane>> = projectors
             .into_iter()
             .map(|projector| {
                 Arc::new(Lane {
                     projector,
+                    work: Mutex::new(()),
                     state: Mutex::new(LaneState {
                         bus: ProjectionBus::new(queue_limit),
                         needs_reconcile: false,
@@ -191,24 +202,34 @@ impl ProjectionRuntime {
                 })
             })
             .collect();
-        let threads = lanes
-            .iter()
-            .map(|lane| {
-                let (lane, cancel) = (lane.clone(), cancel.clone());
-                let name = lane.projector.name().to_owned();
-                let handle = std::thread::Builder::new()
-                    .name(format!("projection-{name}"))
-                    .spawn(move || lane.run(&cancel))
-                    .expect("spawn a projection lane");
-                (name, handle)
-            })
-            .collect();
-        Self {
+        let mut threads = Vec::new();
+        for lane in &lanes {
+            let (worker, cancel) = (lane.clone(), cancel.clone());
+            let name = worker.projector.name().to_owned();
+            let spawned = std::thread::Builder::new()
+                .name(format!("projection-{name}"))
+                .spawn(move || worker.run(&cancel));
+            match spawned {
+                Ok(handle) => threads.push((name, handle)),
+                Err(err) => {
+                    // Stop the lanes already running before reporting.
+                    for started in &lanes {
+                        lock(&started.state).stopped = true;
+                        started.changed.notify_all();
+                    }
+                    for (_, handle) in threads {
+                        let _ = handle.join();
+                    }
+                    return Err(err);
+                }
+            }
+        }
+        Ok(Self {
             lanes,
             threads: Mutex::new(threads),
             cancel,
             stopping: AtomicBool::new(false),
-        }
+        })
     }
 
     pub fn cancel_token(&self) -> CancelToken {
@@ -259,13 +280,18 @@ impl ProjectionRuntime {
     /// is reported through `on_failure(projector, error)` and the failing projector's
     /// `rebuild` runs once (`vault/index.ts:370-395`); the rest of the pass continues.
     /// Never awaited by the caller.
-    pub fn start_reconcile(&self, on_failure: ReconcileFailure) {
-        let projectors: Vec<_> = self.lanes.iter().map(|l| l.projector.clone()).collect();
+    pub fn start_reconcile(&self, on_failure: ReconcileFailure) -> std::io::Result<()> {
+        let lanes = self.lanes.clone();
         let cancel = self.cancel.clone();
         let handle = std::thread::Builder::new()
             .name("projection-reconcile".into())
             .spawn(move || {
-                for projector in projectors {
+                for lane in lanes {
+                    if cancel.is_cancelled() {
+                        break;
+                    }
+                    let projector = &lane.projector;
+                    let _turn = lock(&lane.work);
                     if cancel.is_cancelled() {
                         break;
                     }
@@ -278,9 +304,9 @@ impl ProjectionRuntime {
                         tracing::error!(projector = projector.name(), %error, "projection rebuild failed");
                     }
                 }
-            })
-            .expect("spawn the reconcile chain");
+            })?;
         lock(&self.threads).push(("reconcile".into(), handle));
+        Ok(())
     }
 
     /// Threads (lanes and the reconcile chain) that have not finished.

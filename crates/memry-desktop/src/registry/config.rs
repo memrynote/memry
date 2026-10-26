@@ -52,15 +52,18 @@ impl AppConfig {
             map: Map::new(),
             unreadable: None,
         };
-        match std::fs::read(&path) {
-            Ok(bytes) => match serde_json::from_slice::<Value>(&bytes) {
-                Ok(Value::Object(map)) => state.map = map,
-                _ => set_aside(&path),
-            },
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {}
-            Err(err) => {
-                tracing::error!(path = %path.display(), %err, "config file unreadable");
-                state.unreadable = Some(err.to_string());
+        match read_file(&path) {
+            Ok(map) => state.map = map,
+            Err(Unusable::NotAnObject) => {
+                // Moved aside, never deleted. If it cannot be moved, it is still the only
+                // copy of whatever it held, so no write may replace it.
+                if let Err(message) = set_aside(&path) {
+                    state.unreadable = Some(message);
+                }
+            }
+            Err(Unusable::Io(message)) => {
+                tracing::error!(path = %path.display(), %message, "config file unreadable");
+                state.unreadable = Some(message);
             }
         }
         Self {
@@ -78,27 +81,54 @@ impl AppConfig {
         f(&lock(&self.state).map)
     }
 
-    /// Applies `f` to a copy of the config, writes the result atomically, and only then keeps
-    /// it. `f` returning `Err` writes nothing.
+    /// Re-reads the file, applies `f` to that, writes the result atomically, and only then
+    /// keeps it. Reading under the mutex means a key that another process (an Electron build,
+    /// the CLI, a hand edit) wrote since the last update is carried over, not clobbered by an
+    /// older cache. `f` returning `Err` writes nothing. A file that cannot be read or is not a
+    /// JSON object refuses the update: the bytes in it may be the only copy.
     pub fn update<R, E: From<ConfigError>>(
         &self,
         f: impl FnOnce(&mut Map<String, Value>) -> Result<R, E>,
     ) -> Result<R, E> {
         let mut state = lock(&self.state);
+        let refuse = |message: String| ConfigError::Unreadable {
+            path: self.path.display().to_string(),
+            message,
+        };
         if let Some(message) = &state.unreadable {
-            return Err(ConfigError::Unreadable {
-                path: self.path.display().to_string(),
-                message: message.clone(),
+            return Err(refuse(message.clone()).into());
+        }
+        let current = match read_file(&self.path) {
+            Ok(map) => map,
+            Err(Unusable::NotAnObject) => {
+                return Err(refuse("the file changed and is not a JSON object".into()).into());
             }
-            .into());
-        }
-        let mut next = state.map.clone();
+            Err(Unusable::Io(message)) => return Err(refuse(message).into()),
+        };
+        let mut next = current.clone();
         let out = f(&mut next)?;
-        if next != state.map {
+        if next != current {
             write_atomic(&self.path, &next)?;
-            state.map = next;
         }
+        state.map = next;
         Ok(out)
+    }
+}
+
+enum Unusable {
+    NotAnObject,
+    Io(String),
+}
+
+/// The file as a JSON object; a missing file is an empty one.
+fn read_file(path: &Path) -> Result<Map<String, Value>, Unusable> {
+    match std::fs::read(path) {
+        Ok(bytes) => match serde_json::from_slice::<Value>(&bytes) {
+            Ok(Value::Object(map)) => Ok(map),
+            _ => Err(Unusable::NotAnObject),
+        },
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(Map::new()),
+        Err(err) => Err(Unusable::Io(err.to_string())),
     }
 }
 
@@ -123,18 +153,18 @@ fn remove_stale_temp(path: &Path) {
     let _ = std::fs::remove_file(temp_path(path));
 }
 
-fn set_aside(path: &Path) {
+fn set_aside(path: &Path) -> Result<(), String> {
     let bad = PathBuf::from(format!("{}.bad-{}", path.display(), now_ms()));
-    match std::fs::rename(path, &bad) {
-        Ok(()) => tracing::warn!(
-            from = %path.display(),
-            to = %bad.display(),
-            "config file is not a JSON object; moved aside and starting empty"
-        ),
-        Err(err) => {
-            tracing::error!(path = %path.display(), %err, "could not move a bad config aside")
-        }
-    }
+    std::fs::rename(path, &bad).map_err(|err| {
+        tracing::error!(path = %path.display(), %err, "could not move a bad config aside");
+        format!("the file is not a JSON object and could not be moved aside: {err}")
+    })?;
+    tracing::warn!(
+        from = %path.display(),
+        to = %bad.display(),
+        "config file is not a JSON object; moved aside and starting empty"
+    );
+    Ok(())
 }
 
 fn write_atomic(path: &Path, map: &Map<String, Value>) -> Result<(), ConfigError> {
@@ -158,22 +188,27 @@ fn write_atomic(path: &Path, map: &Map<String, Value>) -> Result<(), ConfigError
         // Keep the mode the user (or an older build) gave the file.
         let _ = std::fs::set_permissions(&temp, meta.permissions());
     }
+    if let Err(err) = rename_with_retry(&temp, &target) {
+        let _ = std::fs::remove_file(&temp);
+        return Err(fail(err.to_string()));
+    }
+    sync_directory(&target);
+    Ok(())
+}
+
+/// Renames over `to`, retrying a held target (Windows: antivirus, indexers) with backoff.
+pub(super) fn rename_with_retry(from: &Path, to: &Path) -> std::io::Result<()> {
     let mut attempt = 0;
     loop {
-        match std::fs::rename(&temp, &target) {
-            Ok(()) => break,
+        match std::fs::rename(from, to) {
+            Ok(()) => return Ok(()),
             Err(err) if attempt < RENAME_BACKOFF_MS.len() && is_transient_rename(&err) => {
                 std::thread::sleep(Duration::from_millis(RENAME_BACKOFF_MS[attempt]));
                 attempt += 1;
             }
-            Err(err) => {
-                let _ = std::fs::remove_file(&temp);
-                return Err(fail(err.to_string()));
-            }
+            Err(err) => return Err(err),
         }
     }
-    sync_directory(&target);
-    Ok(())
 }
 
 /// Windows reports a held target as access denied or a sharing violation (32).
@@ -182,7 +217,7 @@ fn is_transient_rename(err: &std::io::Error) -> bool {
         && (err.kind() == std::io::ErrorKind::PermissionDenied || err.raw_os_error() == Some(32))
 }
 
-fn sync_directory(path: &Path) {
+pub(super) fn sync_directory(path: &Path) {
     #[cfg(unix)]
     if let Some(dir) = path.parent()
         && let Ok(handle) = std::fs::File::open(dir)
@@ -325,5 +360,66 @@ mod tests {
         }
         let reloaded = AppConfig::load(config.path().to_path_buf());
         assert_eq!(reloaded.read(Map::len), 8);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_bad_file_that_cannot_be_moved_aside_is_never_replaced() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, b"{ truncated electron file").expect("seed");
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o500)).expect("ro");
+        let probe = dir.path().join("probe");
+        if std::fs::write(&probe, b"").is_ok() {
+            std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700))
+                .expect("rw");
+            return; // running as root: the permission does not bite
+        }
+        let config = AppConfig::load(path.clone());
+        std::fs::set_permissions(dir.path(), std::fs::Permissions::from_mode(0o700)).expect("rw");
+        let result = config.update(|map| -> Result<(), ConfigError> {
+            map.insert("currentVault".into(), Value::String("/v".into()));
+            Ok(())
+        });
+        assert!(matches!(result, Err(ConfigError::Unreadable { .. })));
+        assert_eq!(
+            std::fs::read(&path).expect("read"),
+            b"{ truncated electron file"
+        );
+    }
+
+    #[test]
+    fn a_key_written_by_someone_else_since_the_last_update_survives() {
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        std::fs::write(&path, r#"{"locale":"tr"}"#).expect("seed");
+        let config = AppConfig::load(path.clone());
+        // Another process (Electron, the CLI, a hand edit) adds a key after our load.
+        std::fs::write(&path, r#"{"locale":"tr","sync":{"deviceId":"d"}}"#).expect("external");
+        config
+            .update(|map| -> Result<(), ConfigError> {
+                map.insert("currentVault".into(), Value::String("/v".into()));
+                Ok(())
+            })
+            .expect("update");
+        let on_disk: Value =
+            serde_json::from_slice(&std::fs::read(&path).expect("read")).expect("json");
+        assert_eq!(on_disk["sync"]["deviceId"], "d");
+        assert_eq!(on_disk["currentVault"], "/v");
+    }
+
+    #[test]
+    fn a_file_that_became_unparseable_since_load_refuses_the_update() {
+        let dir = dir();
+        let path = dir.path().join("memry-config.json");
+        let config = AppConfig::load(path.clone());
+        std::fs::write(&path, b"{ half written").expect("external");
+        let result = config.update(|map| -> Result<(), ConfigError> {
+            map.insert("a".into(), Value::Null);
+            Ok(())
+        });
+        assert!(matches!(result, Err(ConfigError::Unreadable { .. })));
+        assert_eq!(std::fs::read(&path).expect("read"), b"{ half written");
     }
 }

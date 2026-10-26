@@ -70,20 +70,17 @@ pub struct Vault {
 }
 
 impl Vault {
-    /// [`Vault::open`] with explicit [`OpenOptions`]. Not on the FFI surface: desktop's
-    /// session opens with `verify_integrity: true` because it also offers the user the
-    /// recovery that a `Corrupt` result needs; iOS keeps the default open.
-    pub fn open_with(
-        vault_id: String,
-        directory: String,
-        options: OpenOptions,
-    ) -> Result<Self, StorageError> {
+    /// [`Vault::open`] with explicit [`OpenOptions`], for desktop. Not on the FFI surface.
+    ///
+    /// Desktop's session opens with `verify_integrity: true` because it also offers the
+    /// recovery that a `Corrupt` result needs; iOS keeps the default open. The vault's id is
+    /// the one stored in `meta.vault.id` (minted on first open, see
+    /// [`crate::storage::vault_identity`]), not a caller-supplied label, so it does not
+    /// change when the folder moves.
+    pub fn open_with(directory: String, options: OpenOptions) -> Result<Self, StorageError> {
         let db = open_data_with(&PathBuf::from(&directory).join("data.db"), options)?;
-        Ok(Self {
-            id: vault_id,
-            db,
-            directory,
-        })
+        let id = db.call_blocking(|conn| crate::storage::vault_identity::resolve(conn))?;
+        Ok(Self { id, db, directory })
     }
 
     /// [`Vault::search`] that also says why `index.db` was rebuilt (`None` when the file

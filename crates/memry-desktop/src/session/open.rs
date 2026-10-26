@@ -8,7 +8,6 @@ use memry_core::api::errors::StorageError;
 use memry_core::api::vault::Vault;
 use memry_core::storage::OpenOptions;
 use memry_core::storage::recovery_prune::prune_settled;
-use sha2::{Digest, Sha256};
 
 use super::projection::{DEFAULT_QUEUE_LIMIT, ProjectionRuntime};
 use super::{
@@ -45,21 +44,16 @@ fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     builder.recursive(true);
     #[cfg(unix)]
     std::os::unix::fs::DirBuilderExt::mode(&mut builder, 0o700);
-    builder.create(&core).map_err(|err| {
-        SessionError::Invalid(format!("No write permission for selected directory: {err}"))
+    builder.create(&core).map_err(|err| match err.kind() {
+        std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::ReadOnlyFilesystem => {
+            SessionError::Invalid(format!("No write permission for selected directory: {err}"))
+        }
+        // Anything else (a share that went away, an I/O error) may pass; not the vault's fault.
+        _ => SessionError::Storage(StorageError::Failed {
+            what: format!("could not create {}: {err}", core.display()),
+        }),
     })?;
     Ok(core)
-}
-
-/// The label core records for the vault. The server vault uuid replaces it once sync stamps
-/// one (Step 17); until then it is derived from the path, so it does not change between
-/// launches. Only a label in this process: nothing persists it.
-fn vault_id(uuid: Option<String>, path: &Path) -> String {
-    uuid.unwrap_or_else(|| {
-        let resolved = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
-        let digest = Sha256::digest(resolved.to_string_lossy().as_bytes());
-        format!("local:{}", &hex::encode(digest)[..32])
-    })
 }
 
 impl Session {
@@ -75,17 +69,9 @@ impl Session {
         let started = Instant::now();
         let core = prepare_core_dir(path)?;
         let path_text = path.to_string_lossy().into_owned();
-        let id = vault_id(
-            self.inner
-                .registry
-                .get(&path_text)
-                .and_then(|s| s.vault_uuid),
-            path,
-        );
 
         let data_db = core.join("data.db");
         let vault = Vault::open_with(
-            id.clone(),
             core.to_string_lossy().into_owned(),
             OpenOptions {
                 verify_integrity: true,
@@ -124,7 +110,7 @@ impl Session {
 
         let view = OpenVault {
             path: path.to_path_buf(),
-            vault_id: id,
+            vault_id: vault.id(),
             name: stored
                 .as_ref()
                 .map_or_else(|| basename(&path_text), |s| s.name.clone()),
@@ -132,7 +118,13 @@ impl Session {
             search,
         };
         let projectors = lock(&self.inner.projectors).clone();
-        let runtime = Arc::new(ProjectionRuntime::start(projectors, DEFAULT_QUEUE_LIMIT));
+        let runtime = Arc::new(
+            ProjectionRuntime::start(projectors, DEFAULT_QUEUE_LIMIT).map_err(|err| {
+                SessionError::Storage(StorageError::Failed {
+                    what: format!("could not start the projection lanes: {err}"),
+                })
+            })?,
+        );
 
         self.run_open_hooks(&view, |stage| stage.before_open());
         {
@@ -141,6 +133,7 @@ impl Session {
             state.open = Some(Open {
                 view: view.clone(),
                 runtime: runtime.clone(),
+                background: Vec::new(),
             });
         }
         self.emit(SessionEvent::StatusChanged(SessionStatus {
@@ -154,17 +147,18 @@ impl Session {
         });
         self.emit(SessionEvent::ListChanged);
 
-        self.run_open_hooks(&view, |stage| {
-            !stage.before_open() && stage != OpenStage::BackgroundIndex
-        });
+        self.run_open_hooks(&view, |stage| !stage.before_open());
         let session = self.clone();
-        runtime.start_reconcile(Arc::new(move |projector, error| {
+        let chained = runtime.start_reconcile(Arc::new(move |projector, error| {
             session.emit(SessionEvent::ProjectionReconcileFailed {
                 projector: projector.to_owned(),
                 error: error.to_owned(),
             });
         }));
-        self.spawn_background_hooks(&view);
+        if let Err(error) = chained {
+            tracing::error!(%error, "could not start the reconcile chain");
+        }
+        self.spawn_background_hooks(&view, &runtime);
         tracing::info!(elapsed = ?started.elapsed(), "vault open");
         Ok(VaultOpened {
             vault: view,
@@ -192,26 +186,29 @@ impl Session {
         }
     }
 
-    /// The background index build: spawned, never awaited.
-    fn spawn_background_hooks(&self, view: &OpenVault) {
-        let hooks: Vec<_> = lock(&self.inner.hooks)
-            .open
-            .iter()
-            .filter(|(_, stage, _)| *stage == OpenStage::BackgroundIndex)
-            .cloned()
-            .collect();
-        for (name, _, hook) in hooks {
-            let view = view.clone();
+    /// The background tasks: spawned, never awaited, cancelled and joined by close. A task
+    /// that cannot be spawned is logged; the vault stays open without it.
+    fn spawn_background_hooks(&self, view: &OpenVault, runtime: &ProjectionRuntime) {
+        let hooks = lock(&self.inner.hooks).background.clone();
+        let mut handles = Vec::new();
+        for (name, hook) in hooks {
+            let (view, cancel, task) = (view.clone(), runtime.cancel_token(), name.clone());
             let spawned = std::thread::Builder::new()
                 .name(format!("open-{name}"))
                 .spawn(move || {
-                    if let Err(error) = hook(&view) {
-                        tracing::error!(hook = %name, %error, "background open hook failed");
+                    if let Err(error) = hook(&view, &cancel) {
+                        tracing::error!(task = %task, %error, "background open hook failed");
                     }
                 });
-            if let Err(error) = spawned {
-                tracing::error!(%error, "could not start a background open hook");
+            match spawned {
+                Ok(handle) => handles.push((name, handle)),
+                Err(error) => {
+                    tracing::error!(task = %name, %error, "could not start a background task")
+                }
             }
+        }
+        if let Some(open) = lock(&self.inner.state).open.as_mut() {
+            open.background = handles;
         }
     }
 }

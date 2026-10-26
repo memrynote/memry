@@ -6,6 +6,7 @@ use std::sync::mpsc::channel;
 use std::time::{Duration, Instant};
 
 use super::OpenVault;
+use super::projection::CancelToken;
 
 /// Where an open hook runs, in the order of `vault/index.ts:613-968`. Hooks of one stage run
 /// in registration order.
@@ -21,8 +22,6 @@ pub enum OpenStage {
     Defaults,
     /// After the status is `is_open`: the sync supervisor start (Step 17).
     SyncStart,
-    /// Spawned on its own thread and never awaited: the background index build (Step 13).
-    BackgroundIndex,
 }
 
 impl OpenStage {
@@ -33,11 +32,16 @@ impl OpenStage {
 }
 
 pub type OpenHook = Arc<dyn Fn(&OpenVault) -> Result<(), String> + Send + Sync>;
+/// Runs on its own thread, never awaited by the open. It must watch the token and return
+/// promptly once it is cancelled: close cancels it and joins the thread.
+pub type BackgroundHook = Arc<dyn Fn(&OpenVault, &CancelToken) -> Result<(), String> + Send + Sync>;
 pub type CloseHook = Arc<dyn Fn(&OpenVault) + Send + Sync>;
 
 pub(super) struct Hooks {
     pub open: Vec<(String, OpenStage, OpenHook)>,
     pub close: Vec<(String, CloseHook)>,
+    /// The background index build (Step 13), spawned after the vault is open.
+    pub background: Vec<(String, BackgroundHook)>,
 }
 
 impl Hooks {
@@ -45,6 +49,7 @@ impl Hooks {
         Self {
             open: Vec::new(),
             close: Vec::new(),
+            background: Vec::new(),
         }
     }
 }

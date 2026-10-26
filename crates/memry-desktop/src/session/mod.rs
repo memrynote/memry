@@ -22,18 +22,20 @@ mod open;
 pub mod projection;
 mod startup;
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
-use std::time::Duration;
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use memry_core::api::errors::StorageError;
 use memry_core::api::search::Search;
 use memry_core::api::vault::Vault;
 use memry_core::storage::recovery::RecoveryReport;
 
-pub use hooks::{CloseHook, OpenHook, OpenStage};
+pub use hooks::{BackgroundHook, CloseHook, OpenHook, OpenStage};
 use hooks::{Hooks, run_with_deadline};
 use projection::{ProjectionRuntime, Projector};
 pub use startup::{FORCE_VAULT_PICKER_VAR, StartupVault, resolve_startup_vault};
@@ -153,6 +155,7 @@ pub enum RepairOutcome {
 struct Open {
     view: OpenVault,
     runtime: Arc<ProjectionRuntime>,
+    background: Vec<(String, JoinHandle<()>)>,
 }
 
 #[derive(Default)]
@@ -161,8 +164,8 @@ struct State {
     error: Option<String>,
 }
 
-/// The last vault that was open: its path and weak handles.
-type Held = (PathBuf, Weak<Vault>, Weak<Search>);
+/// A vault that was open: weak handles to what a stuck thread could still be holding.
+type Held = (Weak<Vault>, Weak<Search>);
 
 struct Inner {
     registry: VaultRegistry,
@@ -173,8 +176,9 @@ struct Inner {
     hooks: Mutex<Hooks>,
     projectors: Mutex<Vec<Arc<dyn Projector>>>,
     subscribers: Mutex<Vec<Sender<SessionEvent>>>,
-    /// The last vault that was open, to tell whether a stuck thread still holds it.
-    held: Mutex<Option<Held>>,
+    /// Every vault that was open, by canonical path, to tell whether a stuck thread still
+    /// holds one (invariant: no two live handles for one vault path).
+    held: Mutex<HashMap<PathBuf, Held>>,
     hook_deadline: Duration,
 }
 
@@ -213,7 +217,7 @@ impl Session {
                 hooks: Mutex::new(Hooks::new()),
                 projectors: Mutex::new(Vec::new()),
                 subscribers: Mutex::new(Vec::new()),
-                held: Mutex::new(None),
+                held: Mutex::new(HashMap::new()),
                 hook_deadline,
             }),
         }
@@ -271,6 +275,14 @@ impl Session {
         lock(&self.inner.hooks)
             .open
             .push((name.to_owned(), stage, hook));
+    }
+
+    /// A background task of the open vault (the index build). Spawned after the open and never
+    /// awaited; close cancels the token it is given and joins the thread.
+    pub fn on_background(&self, name: &str, hook: BackgroundHook) {
+        lock(&self.inner.hooks)
+            .background
+            .push((name.to_owned(), hook));
     }
 
     /// A hook that runs on every close, in reverse registration order, each with a deadline.
@@ -371,9 +383,15 @@ impl Session {
             Ok(opened) => Some(opened),
             Err(error) => {
                 tracing::error!(path = %path.display(), %error, "the last vault did not open");
-                if !matches!(error, SessionError::Corrupt { .. })
-                    && let Err(error) = self.inner.registry.clear_current()
-                {
+                // Only a vault that cannot be opened at all stops being the current one. A
+                // damaged database (recovery is offered again), a busy or unreadable one, or
+                // a stuck holder is not the vault's fault, and forgetting it would hide it.
+                let permanent = matches!(
+                    error,
+                    SessionError::Invalid(_)
+                        | SessionError::Storage(StorageError::ForeignSchema { .. })
+                );
+                if permanent && let Err(error) = self.inner.registry.clear_current() {
                     tracing::error!(%error, "could not clear currentVault");
                 }
                 None
@@ -413,7 +431,10 @@ impl Session {
     /// if it still reports damage quarantines and rebuilds. The caller reopens afterwards.
     pub fn repair(&self, vault_path: &Path) -> Result<RepairOutcome, SessionError> {
         let _queue = lock(&self.inner.lifecycle);
-        if self.status().path.as_deref() == Some(&*vault_path.to_string_lossy()) {
+        let open_here = self
+            .current()
+            .is_some_and(|open| canonical(&open.path) == canonical(vault_path));
+        if open_here {
             return Err(SessionError::Held(vault_path.display().to_string()));
         }
         self.ensure_not_held(vault_path)?;
@@ -439,19 +460,23 @@ impl Session {
         }
     }
 
+    /// Refuses while a thread that outlived an earlier close of this vault still holds its
+    /// databases. Retries for up to one hook deadline first: the thread is usually on its way
+    /// out, and an immediate error would turn a slow close into a failed switch.
     fn ensure_not_held(&self, path: &Path) -> Result<(), SessionError> {
-        let mut held = lock(&self.inner.held);
-        match held.as_ref() {
-            Some((held_path, vault, search))
-                if held_path == path && (vault.strong_count() > 0 || search.strong_count() > 0) =>
-            {
-                Err(SessionError::Held(path.display().to_string()))
+        let key = canonical(path);
+        let end = Instant::now() + self.inner.hook_deadline;
+        loop {
+            let mut held = lock(&self.inner.held);
+            held.retain(|_, (vault, search)| vault.strong_count() > 0 || search.strong_count() > 0);
+            if !held.contains_key(&key) {
+                return Ok(());
             }
-            Some((_, vault, search)) if vault.strong_count() == 0 && search.strong_count() == 0 => {
-                *held = None;
-                Ok(())
+            drop(held);
+            if Instant::now() >= end {
+                return Err(SessionError::Held(path.display().to_string()));
             }
-            _ => Ok(()),
+            std::thread::sleep(Duration::from_millis(10));
         }
     }
 
@@ -486,12 +511,29 @@ impl Session {
         if !report.stuck.is_empty() {
             tracing::warn!(stuck = ?report.stuck, "the vault stays held by projection threads");
         }
-        *lock(&self.inner.held) = Some((
-            open.view.path.clone(),
-            Arc::downgrade(&open.view.vault),
-            Arc::downgrade(&open.view.search),
-        ));
-        drop(open);
+        // Background tasks were told to stop with the runtime's token; give them the same
+        // deadline as a close hook. One that overruns keeps its clone of the vault, which
+        // `ensure_not_held` sees.
+        let end = Instant::now() + self.inner.hook_deadline;
+        for (name, handle) in open.background {
+            while !handle.is_finished() && Instant::now() < end {
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            if handle.is_finished() {
+                let _ = handle.join();
+            } else {
+                tracing::warn!(task = %name, "a background task did not stop before the deadline");
+            }
+        }
+        lock(&self.inner.held).insert(
+            canonical(&open.view.path),
+            (
+                Arc::downgrade(&open.view.vault),
+                Arc::downgrade(&open.view.search),
+            ),
+        );
+        drop(open.view);
+        drop(open.runtime);
         lock(&self.inner.state).error = None;
         if emit_status {
             self.emit(SessionEvent::StatusChanged(SessionStatus {
@@ -501,6 +543,12 @@ impl Session {
             }));
         }
     }
+}
+
+/// The path as the file system names it, so two spellings of one folder (a symlink, a
+/// different case on a case-insensitive volume) are one key.
+pub(crate) fn canonical(path: &Path) -> PathBuf {
+    std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf())
 }
 
 /// [`Session::create`] fails either creating the folder or opening it.
@@ -514,6 +562,8 @@ pub enum CreateOrOpenError {
 
 #[cfg(test)]
 mod fixture;
+#[cfg(test)]
+mod identity;
 #[cfg(test)]
 mod lifecycle;
 #[cfg(test)]

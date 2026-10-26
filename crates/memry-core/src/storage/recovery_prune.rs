@@ -9,8 +9,9 @@
 //!   marker is how a later launch learns what happened);
 //! - a quarantine with no `recovery_log` row (salvage never finished, or ran in a build
 //!   without the log);
-//! - a quarantine whose row says rows were refused or tables unreadable (`detail` is not
-//!   empty, `rows_rejected` is not 0): it holds what the live database lacks.
+//! - a quarantine whose row says rows were refused, tables unreadable, or tables and columns
+//!   this build has no place for (`detail` is not empty, `rows_rejected` is not 0): it holds
+//!   what the live database lacks.
 //!
 //! Anything that cannot be decided (an unreadable marker, directory or log) prunes nothing
 //! and returns the error: the files cost disk, a wrong delete costs the user's data.
@@ -52,12 +53,13 @@ pub fn prune_settled(path: &Path, keep: usize) -> Result<usize, StorageError> {
     let excess = settled.len().saturating_sub(keep);
     let mut removed = 0;
     for old in settled.into_iter().take(excess) {
-        let mut targets = vec![old.clone()];
-        targets.extend(
-            SIDECARS
-                .iter()
-                .map(|suffix| PathBuf::from(format!("{}{suffix}", old.display()))),
-        );
+        // Sidecars first: a main file left without its log is a quarantine, a log left
+        // without its file would be replayed onto whatever SQLite creates there.
+        let mut targets: Vec<PathBuf> = SIDECARS
+            .iter()
+            .map(|suffix| PathBuf::from(format!("{}{suffix}", old.display())))
+            .collect();
+        targets.push(old.clone());
         for target in targets {
             match std::fs::remove_file(&target) {
                 Ok(()) => {}

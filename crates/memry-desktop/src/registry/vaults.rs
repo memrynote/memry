@@ -103,11 +103,19 @@ impl VaultRegistry {
     /// own `.memry/config.json` (absent for a folder that is not there). The sandbox vault is
     /// never a list entry; the caller passes its state.
     pub fn list(&self, sandbox: SandboxInfo) -> GetVaultsResponse {
-        self.config.read(|map| GetVaultsResponse {
-            vaults: vault_objects(map).filter_map(to_info).collect(),
-            current_vault: current_of(map),
+        // Copy what the entries say under the lock; the folder checks and config reads below
+        // can block on a dead network share or a sleeping drive and must not hold it.
+        let (stored, current_vault) = self.config.read(|map| {
+            (
+                vault_objects(map).filter_map(to_stored).collect::<Vec<_>>(),
+                current_of(map),
+            )
+        });
+        GetVaultsResponse {
+            vaults: stored.into_iter().map(to_info).collect(),
+            current_vault,
             sandbox,
-        })
+        }
     }
 
     pub fn get(&self, path: &str) -> Option<StoredVault> {
@@ -137,6 +145,10 @@ impl VaultRegistry {
                 .find(|o| path_of(o) == Some(path))
                 .and_then(to_stored);
             let first = vault_objects(map).next().is_none();
+            // `noteCount` is carried, not recomputed: Electron counted markdown files on
+            // open (`createVaultInfo`), which needs the vault file walker and its exclude
+            // patterns. That is Step 12 (#3529)'s; until it lands the picker shows the
+            // count a previous build stored (0 for a vault this build registered).
             let stored = StoredVault {
                 path: path.to_owned(),
                 name: existing
@@ -243,10 +255,9 @@ fn to_stored(entry: &Map<String, Value>) -> Option<StoredVault> {
     })
 }
 
-fn to_info(entry: &Map<String, Value>) -> Option<VaultInfo> {
-    let stored = to_stored(entry)?;
+fn to_info(stored: StoredVault) -> VaultInfo {
     let reachable = Path::new(&stored.path).is_dir();
-    Some(VaultInfo {
+    VaultInfo {
         accent_color: reachable.then(|| accent_of(&stored.path)),
         icon: reachable
             .then(|| vault_icon::read(Path::new(&stored.path)).and_then(|icon| icon.value))
@@ -259,7 +270,7 @@ fn to_info(entry: &Map<String, Value>) -> Option<VaultInfo> {
         last_opened: stored.last_opened,
         is_default: stored.is_default,
         vault_uuid: stored.vault_uuid,
-    })
+    }
 }
 
 /// `preferences.accentColor` of the vault's config, else the default accent.

@@ -46,17 +46,20 @@ pub enum IconError {
     Write { path: String, message: String },
 }
 
-/// `VaultIconSchema`: `icon:<ASCII letters and digits>`, or an emoji of at most 32 bytes-as-
-/// chars without whitespace or control characters; `custom:` and anything over 64 are out.
+/// `VaultIconSchema`: `icon:<ASCII letters and digits>`, or an emoji of at most 32 UTF-16 units
+/// without whitespace or control characters; `custom:` and anything over 64 are out.
 pub fn is_valid(icon: &str) -> bool {
-    if icon.is_empty() || icon.chars().count() > MAX_LEN {
+    // Lengths are UTF-16 code units, as JavaScript's `string.length` counts them in
+    // `VaultIconSchema`, so an emoji outside the BMP counts 2.
+    let units = icon.encode_utf16().count();
+    if icon.is_empty() || units > MAX_LEN {
         return false;
     }
     if let Some(name) = icon.strip_prefix("icon:") {
         return !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric());
     }
     !icon.starts_with("custom:")
-        && icon.chars().count() <= MAX_EMOJI_LEN
+        && units <= MAX_EMOJI_LEN
         && !icon.chars().any(|c| c.is_whitespace() || c.is_control())
 }
 
@@ -178,11 +181,12 @@ fn write_atomic(file: &Path, config: &Map<String, Value>) -> Result<(), IconErro
     let result = options
         .open(&temp)
         .and_then(|mut f| f.write_all(&bytes).and_then(|()| f.sync_all()))
-        .and_then(|()| std::fs::rename(&temp, file));
+        .and_then(|()| super::config::rename_with_retry(&temp, file));
     if let Err(err) = result {
         let _ = std::fs::remove_file(&temp);
         return Err(fail(err.to_string()));
     }
+    super::config::sync_directory(file);
     Ok(())
 }
 

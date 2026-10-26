@@ -79,6 +79,9 @@ fn describe(tables: &[TableSalvage], salvage_error: Option<&str>) -> String {
         if let Some(err) = &table.read_error {
             parts.push(format!("{}: {err}", table.table));
         }
+        if let Some(skipped) = &table.skipped {
+            parts.push(format!("{}: {skipped}", table.table));
+        }
         if table.rejected > 0 {
             parts.push(format!("{}: {} rows refused", table.table, table.rejected));
         }
