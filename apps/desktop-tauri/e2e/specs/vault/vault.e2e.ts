@@ -2,12 +2,13 @@
 // `apps/desktop/tests/e2e/vault.e2e.ts`. The Vault Reindexing block needs `vault_reindex`,
 // which Step 13 (#3530) adds together with that block. Folder choices are answered through
 // the dialog queue; no native dialog opens.
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
 import { invokeTest } from '../../harness/invoke-test'
 import { restart } from '../../harness/tauri-lifecycle'
+import { removeDir } from '../../harness/remove-dir'
 import { test, expect } from '../../harness/test'
 import { invoke, type SelectResponse, vaultList, vaultStatus } from '../../harness/vault-commands'
 import { readMainLog } from '../../harness/wait'
@@ -58,7 +59,7 @@ test('creates a vault under a path with spaces and non-ASCII, and restores it af
     expect(real(status.path as string)).toBe(real(vaultPath))
     expect(readMainLog(app.dirs.logDir)).not.toMatch(/\sERROR\s/)
   } finally {
-    rmSync(join(parent, '..'), { recursive: true, force: true })
+    removeDir(join(parent, '..'))
   }
 })
 
@@ -79,7 +80,7 @@ test('refuses a taken, hidden or separator name with the contract error code', a
     // The open vault was not disturbed.
     expect((await vaultStatus(page)).isOpen).toBe(true)
   } finally {
-    rmSync(parent, { recursive: true, force: true })
+    removeDir(parent)
   }
 })
 
@@ -100,7 +101,9 @@ test('switches vaults without a closed status in between, forgets one and sets t
             event: { listen(name: string, cb: (e: { payload: unknown }) => void): Promise<unknown> }
           }
         }
-      ).__TAURI__.event.listen('vault-status-changed-event', (event) => seen.push(event.payload))
+      ).__TAURI__.event
+        .listen('vault-status-changed-event', (event) => seen.push(event.payload))
+        .then(() => true)
     })
 
     const switched = await invoke<SelectResponse>(page, 'vault_switch', { path: second })
@@ -136,7 +139,7 @@ test('switches vaults without a closed status in between, forgets one and sets t
     expect((await vaultStatus(page)).isOpen).toBe(false)
     expect(existsSync(join(second, '.memry', 'core', 'data.db'))).toBe(true)
   } finally {
-    rmSync(parent, { recursive: true, force: true })
+    removeDir(parent)
   }
 })
 
@@ -164,7 +167,7 @@ test('opens the folder the dialog queue answers, and reports a cancelled picker'
     // The vault the cancel left alone is still open.
     expect(real((await vaultStatus(page)).path as string)).toBe(real(folder))
   } finally {
-    rmSync(parent, { recursive: true, force: true })
+    removeDir(parent)
   }
 })
 
