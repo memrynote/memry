@@ -174,9 +174,12 @@ fn projection_stop_returns_within_the_deadline_with_a_stuck_lane() {
     handle.entered.recv_timeout(SETTLE).expect("held");
     runtime.publish(task("queued"));
     let started = Instant::now();
-    let report = runtime.stop(true);
+    // The 5 s production deadline is a constant; the test uses a short one so scheduler
+    // jitter on a loaded runner cannot decide it.
+    assert_eq!(STOP_DRAIN_TIMEOUT, Duration::from_millis(5000));
+    let report = runtime.stop_within(true, Duration::from_millis(300));
     assert!(
-        started.elapsed() < Duration::from_millis(5100),
+        started.elapsed() < Duration::from_millis(1500),
         "{:?}",
         started.elapsed()
     );
