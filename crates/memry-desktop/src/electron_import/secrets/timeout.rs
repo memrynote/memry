@@ -58,8 +58,10 @@ impl<T: Send + Sync + 'static> Guarded<T> {
         let spawned = std::thread::Builder::new()
             .name("electron-import-key-source".into())
             .spawn(move || {
-                let _release = release;
                 let result = catch_unwind(AssertUnwindSafe(|| call(&inner)));
+                // Lift the latch before the caller can see the result, so the next call never
+                // races a worker that has already finished.
+                drop(release);
                 // The receiver is gone after a timeout; the result is dropped (and zeroized).
                 let _ = tx.send(result.map_err(|_| ()));
             });
