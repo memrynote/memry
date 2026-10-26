@@ -1,38 +1,25 @@
 //! `markdown-convert/memry-parse.json`: `prepareFragmentSeed` of the Electron
 //! converter, markdown to blocks with every memry layer, as canonical JSON.
 //!
-//! Claiming a callout or a structured quote re-serializes the parsed body, which
-//! needs the block serializer of a later stage. The serializer given here fails
-//! and records that it was asked: such a case must be one the oracle marked
-//! `deferred` (its readers fired), and is not compared. Every other case must
-//! match whole.
+//! Claiming a callout or a structured quote re-serializes the parsed body, so
+//! every case runs through the real block serializer and every case is
+//! compared: a case that is not compared fails the test.
 
 #![cfg(feature = "markdown")]
 
 mod support;
 
-use std::cell::Cell;
 use std::collections::HashMap;
 
 use memry_core::markdown::bn::node_to_block::canonical_blocks;
+use memry_core::markdown::convert::EmbedResolver;
 use memry_core::markdown::convert::seed::{SeedEnv, prepare_fragment_seed};
-use memry_core::markdown::convert::{BlockSerializer, ConvertError, EmbedResolver};
+use memry_core::markdown::convert::serialize::BlockNoteSerializer;
 use memry_core::markdown::schema::callout_types::{CalloutTypeDefinition, CalloutTypes};
 use memry_core::markdown::shared::writing_tools::read_writing_frontmatter;
 use serde_json::{Map, Value as Json, json};
 use support::vector_compare::{Failures, json_equal};
 use support::vector_file;
-
-struct Probe {
-    asked: Cell<bool>,
-}
-
-impl BlockSerializer for Probe {
-    fn serialize_blocks(&self, _blocks: &[Json]) -> Result<String, ConvertError> {
-        self.asked.set(true);
-        Err(ConvertError::Serialize("serializer not available".into()))
-    }
-}
 
 struct Files(HashMap<String, String>);
 
@@ -50,13 +37,14 @@ fn to_json<T: serde::Serialize>(value: &T) -> Json {
 fn memry_parse_vectors() {
     let vectors = vector_file("markdown-convert/memry-parse");
     let mut failures = Failures::default();
-    let (mut compared, mut deferred) = (0, 0);
+    let mut compared = 0;
     for case in vectors["cases"].as_array().expect("cases") {
         let id = case["id"].as_str().expect("id");
         let input = &case["input"];
         let expected = &case["expected"];
         assert_eq!(expected["status"], "ok", "{id}: the oracle threw");
         let want = &expected["output"];
+        assert!(want.get("deferred").is_none(), "{id}: a deferred marker");
 
         let defs: Vec<CalloutTypeDefinition> = input["calloutTypes"]
             .as_array()
@@ -77,13 +65,10 @@ fn memry_parse_vectors() {
                 })
                 .unwrap_or_default(),
         );
-        let probe = Probe {
-            asked: Cell::new(false),
-        };
         let env = SeedEnv {
             callout_types: &types,
             embeds: &files,
-            serializer: &probe,
+            serializer: &BlockNoteSerializer,
         };
         let writing = input.get("writing").and_then(read_writing_frontmatter);
         let result = prepare_fragment_seed(
@@ -93,18 +78,6 @@ fn memry_parse_vectors() {
             writing,
         );
 
-        if probe.asked.get() {
-            deferred += 1;
-            failures.check(
-                id,
-                if want["deferred"] == true {
-                    Ok(())
-                } else {
-                    Err("serializer asked but the oracle read no callout or quote run".into())
-                },
-            );
-            continue;
-        }
         compared += 1;
         let outcome = match result {
             Err(e) => Err(format!("failed: {e}")),
@@ -126,6 +99,8 @@ fn memry_parse_vectors() {
         };
         failures.check(id, outcome);
     }
-    println!("memry-parse: {compared} compared, {deferred} deferred to the serializer stage");
+    let total = vectors["cases"].as_array().expect("cases").len();
+    assert_eq!(compared, total, "every memry-parse case is compared");
+    println!("memry-parse: {compared} of {total} compared");
     failures.finish("memry-parse.json");
 }

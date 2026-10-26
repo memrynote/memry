@@ -5,6 +5,7 @@
 
 pub mod body;
 pub mod seed;
+pub mod serialize;
 
 use serde_json::Value as Json;
 
@@ -40,8 +41,7 @@ impl EmbedResolver for NoEmbeds {
 /// The blocks-to-markdown serializer the claim proofs of callouts and
 /// structured quotes run through (`serializeBlocks` of the converter: inline
 /// colours, plain-checkbox markers, HTML comment tokens, BlockNote's own
-/// serializer, `normalizeSerializedMarkdown`). It arrives with the serializer
-/// stage; until then callers pass one that reports [`ConvertError::Serialize`].
+/// serializer, `normalizeSerializedMarkdown`): [`serialize::BlockNoteSerializer`].
 pub trait BlockSerializer {
     fn serialize_blocks(&self, blocks: &[Json]) -> Result<String, ConvertError>;
 }

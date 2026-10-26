@@ -27,10 +27,9 @@ import {
 } from '@memry/app-core/markdown'
 import { classifyMarkdownContent } from '@memry/shared/markdown-class'
 
-import type * as EditorBlocks from '@memry/editor-schema/blocks'
-
 import { FNS } from './fns'
-import { claims, memryParse, type MemryParseInput } from './memry-oracle'
+import { memryParse, type MemryParseInput } from './memry-oracle'
+import { serializeBlocks, serializeSeed } from './serialize-oracle'
 import { bnParse, htmlToBlocks, markdownSources, mdToHtml } from './bn-oracle'
 import {
   contentMatchSweep,
@@ -60,26 +59,6 @@ vi.mock('../../src/main/vault/resolve-embed', () => ({
     Object.fromEntries(refs.filter((ref) => ref in embedFiles).map((ref) => [ref, embedFiles[ref]]))
 }))
 const embedFiles: Record<string, string> = {}
-
-// Callouts and structured quotes are claimed only when re-serializing the
-// parsed run reproduces its bytes, which is the serializer of stage 5. The
-// readers' hits are counted so the vectors can say which cases need it.
-vi.mock('@memry/editor-schema/blocks', async (importOriginal) => {
-  const actual = await importOriginal<EditorBlocks>()
-  return {
-    ...actual,
-    readCalloutRun: (...args: Parameters<typeof actual.readCalloutRun>) => {
-      const found = actual.readCalloutRun(...args)
-      if (found) claims.count++
-      return found
-    },
-    readStructuredQuoteRun: (...args: Parameters<typeof actual.readStructuredQuoteRun>) => {
-      const found = actual.readStructuredQuoteRun(...args)
-      if (found) claims.count++
-      return found
-    }
-  }
-})
 
 // Block ids are `crypto.randomUUID()` (blocknote-converter.ts:501-509): a
 // counter makes every run reproducible. Vectors never compare ids anyway.
@@ -175,6 +154,18 @@ async function run(job: Job): Promise<unknown> {
       if (files && typeof files === 'object') Object.assign(embedFiles, files)
       // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-parse.ts
       return memryParse(memryParseInput(input))
+    }
+    case 'serialize-seed': {
+      for (const key of Object.keys(embedFiles)) delete embedFiles[key]
+      const files = input.embedFiles
+      if (files && typeof files === 'object') Object.assign(embedFiles, files)
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-serialize.ts
+      return serializeSeed(memryParseInput(input))
+    }
+    case 'serialize-blocks': {
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- job inputs are written by cases-serialize.ts
+      const blocks = input.blocks as Parameters<typeof serializeBlocks>[0]
+      return { markdown: await serializeBlocks(blocks) }
     }
     case 'fn': {
       const name = text(input, 'fn')

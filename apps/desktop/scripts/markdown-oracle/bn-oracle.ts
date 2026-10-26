@@ -19,7 +19,7 @@ import { markdownToBlocks } from '../../src/main/sync/blocknote-converter'
 
 let editor: ServerBlockNoteEditor | undefined
 
-function getEditor(): ServerBlockNoteEditor {
+export function getEditor(): ServerBlockNoteEditor {
   editor ??= ServerBlockNoteEditor.create({
     schema: createMemrySchema({
       codeBlock: memryCodeBlockOptions,
