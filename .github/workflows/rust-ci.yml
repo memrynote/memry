@@ -48,6 +48,8 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
+  # Fixed proptest seed on PR, merge_group and push runs; the nightly workflow uses a random one.
+  PROPTEST_RNG_SEED: "20261027"
 
 jobs:
   # Tiering: a PR into feat/tauri-v2 runs the fast tier; `full-ci`, a push to feat/tauri-v2 and
