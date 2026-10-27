@@ -317,6 +317,8 @@ jobs:
             gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets --method org.freedesktop.Secret.Service.Lock "[objectpath \"/org/freedesktop/secrets/collection/login\"]" >/dev/null
             MEMRY_LIVE_LOCKED_ITEM=1 MEMRY_LIVE_LOCKED_SUFFIX=lockeditem cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_keytar_item_that_cannot
           '
+          # The keyring daemon restarts under a running store: the next keytar lookup reconnects.
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && MEMRY_LIVE_RESTART_DAEMON=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_keyring_daemon'
           cat > "$RUNNER_TEMP/bare-bus.conf" <<'EOF'
           <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
           <busconfig>

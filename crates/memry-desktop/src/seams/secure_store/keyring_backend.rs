@@ -30,17 +30,10 @@ pub trait StoreFactory: Send + Sync + 'static {
         Ok(None)
     }
 
-    /// Asked after a write landed in `entry`. Linux tags the item with keytar's attribute and
+    /// Asked after a write landed in `entry`. Linux tags the item with keytar's attributes and
     /// deletes the item keytar wrote, so exactly one item answers for the pair and the Electron
-    /// app reads the new value.
-    fn after_set(
-        &self,
-        _entry: &Entry,
-        _service: &str,
-        _account: &str,
-    ) -> keyring_core::Result<()> {
-        Ok(())
-    }
+    /// app reads the new value. The value is stored by then, so this cannot fail the write.
+    fn after_set(&self, _entry: &Entry, _service: &str, _account: &str) {}
 
     /// Asked after the store deleted its item or found none. Linux deletes the items keytar
     /// wrote too, so the read fallback of [`Self::absent_check`] cannot bring a deleted secret
@@ -69,8 +62,8 @@ impl StoreFactory for Native {
     }
 
     #[cfg(target_os = "linux")]
-    fn after_set(&self, entry: &Entry, service: &str, account: &str) -> keyring_core::Result<()> {
-        super::linux_absent::after_set(&self.session, entry, service, account)
+    fn after_set(&self, entry: &Entry, service: &str, account: &str) {
+        super::linux_absent::after_set(&self.session, entry, service, account);
     }
 
     #[cfg(target_os = "linux")]

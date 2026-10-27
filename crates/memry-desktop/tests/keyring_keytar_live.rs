@@ -138,6 +138,30 @@ fn a_write_over_a_keytar_item_leaves_one_item_that_keytar_reads() {
     assert_eq!(native::count(&account(&suffix)), 1, "one item per account");
 }
 
+/// The Electron app writes after this app did (both installed, or a downgrade): keytar replaces
+/// the value, and the store reads the newer one, not an older item of its own.
+#[test]
+fn a_keytar_write_after_a_store_write_is_the_value_the_store_reads() {
+    if skip_on_a_developer_mac() {
+        return;
+    }
+    let suffix = unique();
+    let _remove = Remove(account(&suffix));
+    let store = store(&suffix);
+    store.set(SecureStoreKey::MasterKey, KEY.to_vec()).unwrap();
+    native::write_like_keytar(&account(&suffix), NEW_KEY_TEXT);
+    assert_eq!(
+        store.get(SecureStoreKey::MasterKey).unwrap(),
+        Some(NEW_KEY.to_vec())
+    );
+    assert_eq!(
+        native::read(&account(&suffix)).as_deref(),
+        Some(NEW_KEY_TEXT)
+    );
+    #[cfg(target_os = "linux")]
+    assert_eq!(native::count(&account(&suffix)), 1, "one item per account");
+}
+
 #[cfg(target_os = "macos")]
 mod native {
     use std::process::Command;
@@ -149,6 +173,7 @@ mod native {
             .args([
                 "add-generic-password",
                 "-A",
+                "-U",
                 "-s",
                 SERVICE,
                 "-a",
@@ -268,10 +293,19 @@ mod native {
         assert!(child.wait().unwrap().success(), "secret-tool store");
     }
 
-    /// What keytar reads: the item with `service` and `account`.
+    /// What keytar reads: libsecret adds the schema name of keytar's schema
+    /// (`SECRET_SCHEMA_NONE`, so the name is matched) to `service` and `account`.
     pub fn read(account: &str) -> Option<String> {
         let output = Command::new("secret-tool")
-            .args(["lookup", "service", SERVICE, "account", account])
+            .args([
+                "lookup",
+                "xdg:schema",
+                "org.freedesktop.Secret.Generic",
+                "service",
+                SERVICE,
+                "account",
+                account,
+            ])
             .output()
             .unwrap();
         output
@@ -368,6 +402,41 @@ fn a_keytar_item_that_cannot_be_unlocked_is_locked_for_every_call() {
         assert_eq!(
             store.delete(SecureStoreKey::MasterKey),
             Err(SecureStoreError::Locked)
+        );
+    }
+}
+
+/// The keyring daemon restarts while the app runs (`MEMRY_LIVE_RESTART_DAEMON=1`, alone in its
+/// session: it kills the daemon). The kept Secret Service session is gone with it, and the next
+/// keytar lookup runs again on a new connection instead of answering `Locked`.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_keyring_daemon_that_restarts_is_found_by_the_next_lookup() {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+
+    if std::env::var("MEMRY_LIVE_RESTART_DAEMON").is_ok_and(|v| v == "1") {
+        let suffix = unique();
+        let _remove = Remove(account(&suffix));
+        let store = store(&suffix);
+        // Nothing stored: the keytar lookup runs and its connection is kept.
+        assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
+        let _ = Command::new("pkill")
+            .args(["-x", "gnome-keyring-d"])
+            .status();
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let mut daemon = Command::new("gnome-keyring-daemon")
+            .args(["--unlock", "--components=secrets"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap();
+        daemon.stdin.take().unwrap().write_all(b"ci").unwrap();
+        assert!(daemon.wait().unwrap().success(), "gnome-keyring-daemon");
+        native::write_like_keytar(&account(&suffix), KEY_TEXT);
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey).unwrap(),
+            Some(KEY.to_vec())
         );
     }
 }

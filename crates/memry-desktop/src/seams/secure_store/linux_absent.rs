@@ -1,15 +1,19 @@
 //! Linux: the items Electron's keytar wrote, and what "no entry" has to rule out.
 //!
 //! The zbus store finds an item by the attributes `service` and `username`. Electron's keytar
-//! wrote and reads `service` and `account` (`keytar_posix.cc`). So that exactly one item answers
+//! wrote and reads `service` and `account` (`keytar_posix.cc`), and libsecret adds
+//! `xdg:schema = org.freedesktop.Secret.Generic` to each of its lookups and writes, because
+//! keytar's schema does not set `SECRET_SCHEMA_DONT_MATCH_NAME`. So that exactly one item answers
 //! for a (service, account) pair after any write, and both apps see it:
 //!
 //! - **get** ([`check`], when the store found nothing): a search for `service` + `account`. A hit
 //!   is the secret.
-//! - **set** ([`after_set`]): the store's item gets keytar's `account` attribute too, then every
-//!   other item with keytar's attributes is deleted, so the Electron app reads the new value and
-//!   no stale secret stays. A crash between the two leaves the store's item, which every read of
-//!   this app finds first, and the next write removes the other.
+//! - **set** ([`after_set`]): the store's item gets keytar's `account` and `xdg:schema`
+//!   attributes too, then every other item with keytar's attributes is deleted, so the Electron
+//!   app reads the new value and no stale secret stays. When the Electron app writes later, its
+//!   replace lands on that same item. Both steps are best effort once the value is stored: a
+//!   failure is logged and the write still succeeds, because every read of this app finds its own
+//!   item first and the next write retries.
 //! - **delete** ([`after_delete`]): every item with keytar's attributes is deleted, so the read
 //!   fallback cannot bring a deleted secret back.
 //!
@@ -23,10 +27,12 @@
 //! default alias after Electron wrote it) is not seen, and a read answers "absent". Counting every
 //! collection would answer `Locked` for every absent token while some unrelated keyring stays
 //! locked, with nothing that prompts the user to fix it. A caller that knows its secret must exist
-//! cannot take "absent" as proof that it does not.
+//! cannot take "absent" as proof that it does not: a key minted then sits beside the hidden item,
+//! seen with a KeePassXC or KWallet setup whose second database stays locked.
 //!
-//! The Secret Service connection is kept between calls and dropped after any failure, so a service
-//! that restarts is found again by the next call. Nothing here creates a collection.
+//! The Secret Service connection is kept between calls. A call that fails on the kept connection
+//! for a reason other than a lock or a prompt (the keyring daemon restarted, and its session is
+//! gone) runs once more on a new one. Nothing here creates a collection.
 
 use std::collections::HashMap;
 use std::sync::{Mutex, PoisonError};
@@ -34,6 +40,9 @@ use std::sync::{Mutex, PoisonError};
 use keyring_core::{Entry, Error};
 use secret_service::blocking::{Item, SecretService};
 use secret_service::{EncryptionType, Error as SsError};
+
+/// The schema name libsecret adds for keytar's schema.
+const KEYTAR_SCHEMA: &str = "org.freedesktop.Secret.Generic";
 
 /// The default collection: where keytar and this store both write. When the service has none,
 /// any locked collection counts.
@@ -47,17 +56,37 @@ fn unreachable(error: SsError) -> Error {
 #[derive(Default)]
 pub struct Session(Mutex<Option<SecretService<'static>>>);
 
+/// A failure of the connection or the session, not an answer about the keyring's contents.
+fn stale(error: &SsError) -> bool {
+    !matches!(
+        error,
+        SsError::Locked | SsError::NoResult | SsError::Prompt | SsError::PromptDisconnected
+    )
+}
+
 impl Session {
     fn run<T>(
         &self,
-        work: impl for<'s> FnOnce(&'s SecretService<'s>) -> Result<T, SsError>,
+        work: impl for<'s> Fn(&'s SecretService<'s>) -> Result<T, SsError>,
     ) -> keyring_core::Result<T> {
         let mut slot = self.0.lock().unwrap_or_else(PoisonError::into_inner);
-        let ss = match slot.take() {
-            Some(ss) => ss,
-            None => SecretService::connect(EncryptionType::Dh).map_err(unreachable)?,
+        let connect = || SecretService::connect(EncryptionType::Dh).map_err(unreachable);
+        let (ss, outcome) = match slot.take() {
+            Some(kept) => match work(&kept) {
+                Err(error) if stale(&error) => {
+                    drop(kept);
+                    let fresh = connect()?;
+                    let outcome = work(&fresh);
+                    (fresh, outcome)
+                }
+                outcome => (kept, outcome),
+            },
+            None => {
+                let fresh = connect()?;
+                let outcome = work(&fresh);
+                (fresh, outcome)
+            }
         };
-        let outcome = work(&ss);
         if outcome.is_ok() {
             *slot = Some(ss);
         }
@@ -99,9 +128,16 @@ fn written_by_keytar(item: &Item<'_>, account: &str) -> Result<bool, SsError> {
     Ok(item.get_attributes()?.get("username").map(String::as_str) != Some(account))
 }
 
-/// Deletes an item, unlocking it first: the service prompts once for a locked collection.
+/// The service prompts once for a locked collection.
+fn unlock_if_locked(item: &Item<'_>) -> Result<(), SsError> {
+    if item.is_locked()? {
+        item.unlock()?;
+    }
+    Ok(())
+}
+
 fn delete(item: &Item<'_>) -> Result<(), SsError> {
-    item.unlock()?;
+    unlock_if_locked(item)?;
     item.delete()
 }
 
@@ -116,28 +152,38 @@ pub fn check(
         let Some(item) = items.first() else {
             return Ok(None);
         };
-        // A locked item is unlocked here: the service prompts the user once for its collection.
-        item.unlock()?;
+        unlock_if_locked(item)?;
         item.get_secret().map(Some)
     })
 }
 
-pub fn after_set(
-    session: &Session,
-    entry: &Entry,
-    service: &str,
-    account: &str,
-) -> keyring_core::Result<()> {
-    entry.update_attributes(&HashMap::from([("account", account)]))?;
-    session.run(|ss| {
-        let found = ss.search_items(HashMap::from([("service", service), ("account", account)]))?;
-        for item in found.unlocked.iter().chain(&found.locked) {
-            if written_by_keytar(item, account)? {
-                delete(item)?;
+/// Runs once the value is stored, so it is best effort: a failure is logged and the write stands.
+/// The purge runs only after the tag landed, or the Electron app would find no item at all.
+pub fn after_set(session: &Session, entry: &Entry, service: &str, account: &str) {
+    let tagged = entry.update_attributes(&HashMap::from([
+        ("account", account),
+        ("xdg:schema", KEYTAR_SCHEMA),
+    ]));
+    let purged = tagged.and_then(|()| {
+        session.run(|ss| {
+            let found =
+                ss.search_items(HashMap::from([("service", service), ("account", account)]))?;
+            for item in found.unlocked.iter().chain(&found.locked) {
+                if written_by_keytar(item, account)? {
+                    delete(item)?;
+                }
             }
-        }
-        Ok(())
-    })
+            Ok(())
+        })
+    });
+    if let Err(error) = purged {
+        tracing::warn!(
+            scope = "Keychain",
+            service,
+            account,
+            "the secret was stored, but the copy the Electron app reads was not updated: {error}"
+        );
+    }
 }
 
 pub fn after_delete(session: &Session, service: &str, account: &str) -> keyring_core::Result<()> {

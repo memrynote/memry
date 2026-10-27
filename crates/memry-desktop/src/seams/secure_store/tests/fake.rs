@@ -260,8 +260,8 @@ impl StoreFactory for Factory {
             .cloned())
     }
 
-    fn after_set(&self, _: &Entry, service: &str, account: &str) -> keyring_core::Result<()> {
-        self.after_delete(service, account)
+    fn after_set(&self, _: &Entry, service: &str, account: &str) {
+        let _ = self.after_delete(service, account);
     }
 
     fn after_delete(&self, service: &str, account: &str) -> keyring_core::Result<()> {
