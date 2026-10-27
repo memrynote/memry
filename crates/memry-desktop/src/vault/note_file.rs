@@ -8,6 +8,7 @@
 //! block verbatim (protocol 12.4), and writes nothing when the bytes are already on disk:
 //! no mtime change, no watcher event, no sync item for a no-op save.
 
+use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -30,6 +31,11 @@ pub const MAX_NOTE_BYTES: u64 = 256 * 1024 * 1024;
 pub enum NoteFileError {
     #[error(transparent)]
     Open(#[from] OpenError),
+    /// The file has a second hard link. A save replaces the file with a new one and so would
+    /// cut the link, leaving the other name on the old text; the app refuses instead. The user
+    /// can copy the note to a new file.
+    #[error("this note is a hard link to another file, so it cannot be saved safely")]
+    HardLinked,
     #[error("note file is not valid UTF-8")]
     NotUtf8,
     #[error("note file is larger than {MAX_NOTE_BYTES} bytes")]
@@ -70,8 +76,15 @@ pub enum WriteOutcome {
     Unchanged,
 }
 
+fn open_note_file(vault: &Path, rel: &str) -> Result<Option<File>, NoteFileError> {
+    open_vault_file(vault, rel).map_err(|error| match error {
+        OpenError::HardLinked => NoteFileError::HardLinked,
+        other => other.into(),
+    })
+}
+
 fn read_bytes(vault: &Path, rel: &str) -> Result<Option<Vec<u8>>, NoteFileError> {
-    let Some(file) = open_vault_file(vault, rel)? else {
+    let Some(file) = open_note_file(vault, rel)? else {
         return Ok(None);
     };
     // One byte past the cap tells a file that grew after the open from one at the cap.
@@ -95,13 +108,13 @@ pub fn read_note(vault: &Path, rel: &str) -> Result<Option<NoteFile>, NoteFileEr
 
 /// The hash of the file at `rel` as Electron computes it, streamed; `None` when missing.
 pub fn hash_file(vault: &Path, rel: &str) -> Result<Option<String>, NoteFileError> {
-    let Some(file) = open_vault_file(vault, rel)? else {
+    let Some(file) = open_note_file(vault, rel)? else {
         return Ok(None);
     };
     Ok(Some(hash_reader(file)?.0))
 }
 
-fn target(vault: &Path, rel: &str) -> Result<(PathBuf, Resolution), NoteFileError> {
+pub(super) fn target(vault: &Path, rel: &str) -> Result<(PathBuf, Resolution), NoteFileError> {
     match resolve_vault_file(vault, rel)? {
         Resolution::Inside(path) => Ok((path.clone(), Resolution::Inside(path))),
         // A path linked outside the vault is never written over.
@@ -113,7 +126,7 @@ fn target(vault: &Path, rel: &str) -> Result<(PathBuf, Resolution), NoteFileErro
 /// The check that runs once more right before the rename: the path must still resolve inside
 /// the vault, and to the file the write was aimed at. A folder or file swapped for a link in
 /// the meantime stops the write instead of landing outside.
-fn still_contained<'a>(
+pub(super) fn still_contained<'a>(
     vault: &'a Path,
     rel: &'a str,
     path: &'a Path,

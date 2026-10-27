@@ -20,7 +20,7 @@ fn fixture(config: Option<&str>) -> Fixture {
         dir.path().join("memry-config.json"),
     )));
     let vault = vault.to_string_lossy().into_owned();
-    registry.record_open(&vault, 1).expect("register");
+    registry.record_open(&vault, 1, 0).expect("register");
     Fixture {
         dir,
         registry,
