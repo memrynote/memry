@@ -215,7 +215,7 @@ whole request is under the `/sync/*` body ceiling of 8 MiB
 no per-update verdict comes back and a resend fails the same way. Both clients
 therefore stop a request when the base64 of its updates would pass **6,000,000
 characters**, and the rest of the queue rides the next request: desktop in
-`MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:14`),
+`MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:16`),
 the Rust core in `MAX_REQUEST_PAYLOAD_CHARS` (`crates/memry-core/src/protocol/crdt_envelope.rs:75`)
 applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:429-448`).
 The Rust cost of an update is an upper bound taken without compressing (the frame
@@ -235,6 +235,32 @@ quota filled up after the first attempt
 (`apps/sync-server/src/services/crdt.ts:144-278`). Every packed envelope carries
 a fresh nonce (chapter 04 §4.11), so identical bytes are a retry, never a new
 edit. Rows written before the migration have no hash and are never matched.
+
+### 7.4.2 An update too large for the incremental route
+
+**Normative.** A client MUST NOT send an update whose base64 form is longer than
+**1,200,000 characters** to `POST /sync/crdt/updates` (desktop's
+`MAX_CRDT_UPDATE_PAYLOAD_CHARS`, `packages/sync-client/src/crdt-payload.ts:15`;
+the Rust core's `MAX_UPDATE_PAYLOAD_CHARS`, `crates/memry-core/src/protocol/crdt_envelope.rs`).
+The length is that of the base64 of the packed envelope (chapter 04 §4.11), as
+the request carries it, and an update of exactly 1,200,000 characters is sent.
+
+The reason is the server's store, not the route's 5 MiB check (§7.3): each update
+is kept inline in one D1 row (`apps/sync-server/src/services/crdt.ts:143`), and a
+D1 row is capped at 1,000,000 bytes, which 1,200,000 characters (900,000 bytes)
+leave room under. A longer update that is sent anyway fails the request, and a
+queue that retries it fails at it on every pass.
+
+**The update is not dropped and not retried: the document goes as a snapshot.**
+The edit is already in the local document, so the client pushes the whole
+document through §7.4's snapshot route instead (desktop:
+`apps/desktop/src/main/sync/runtime.ts:626-646`). The §7.13.2 gate applies in
+full, because a snapshot prunes the server's log. The Rust core sends every queued
+update of that batch with the snapshot and acks them together once the server
+stored it, and defers all of them, with the reason on the row and the retry
+ladder of chapter 00 §0.6.1, when the gate refuses or the server does not store
+it. Retiring such an update would lose the user's edit. The push wave for other
+documents is not held up (`crates/memry-core/src/sync/push/crdt.rs`).
 
 ## 7.5 Snapshot revision
 

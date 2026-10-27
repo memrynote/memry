@@ -33,8 +33,6 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use base64::Engine as _;
-use base64::engine::general_purpose::STANDARD as BASE64;
 use serde_json::{Value as Json, json};
 
 use crate::api::errors::{ApiError, StorageError};
@@ -47,8 +45,11 @@ use crate::protocol::types::Declaration;
 use crate::storage::Db;
 use crate::storage::repositories::sync_items::{self, SyncItemRow};
 
+mod crdt;
+
 use super::engine::PushWave;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
+pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
 
 /// Chapter 05 §5.6, `apps/desktop/src/main/sync/engine/sync-context.ts:126-132`.
 pub const PUSH_BATCH_SIZE: usize = 100;
@@ -126,6 +127,7 @@ pub struct PushCoordinator {
     sealer: Arc<dyn PushSealer>,
     declaration: Declaration,
     vault_id: Option<String>,
+    snapshot_fallback: Option<Arc<dyn SnapshotFallback>>,
     /// §5.6's ceiling. Lowered by a 5xx and **never raised**.
     ceiling: AtomicUsize,
     halvings: AtomicUsize,
@@ -144,6 +146,7 @@ impl PushCoordinator {
             sealer,
             declaration,
             vault_id: None,
+            snapshot_fallback: None,
             ceiling: AtomicUsize::new(PUSH_BATCH_SIZE),
             halvings: AtomicUsize::new(0),
         }
@@ -152,6 +155,13 @@ impl PushCoordinator {
     /// The `X-Memry-Vault-Id` header's value, when a vault is selected (§5.2).
     pub fn with_vault(mut self, vault_id: &str) -> Self {
         self.vault_id = Some(vault_id.to_owned());
+        self
+    }
+
+    /// Where an update too large for the incremental route goes (chapter 07
+    /// §7.4.2). Without one such rows are deferred, never retired.
+    pub fn with_snapshot_fallback(mut self, fallback: Arc<dyn SnapshotFallback>) -> Self {
+        self.snapshot_fallback = Some(fallback);
         self
     }
 
@@ -284,64 +294,6 @@ impl PushCoordinator {
         };
         let pending = PendingRecord { operation, row };
         Ok(self.sealer.seal_record(&pending).map_err(|e| e.to_string()))
-    }
-
-    /// One `POST /sync/crdt/updates` for one document (§7.2).
-    async fn push_crdt(
-        &self,
-        doc_id: &str,
-        rows: Vec<OutboxRow>,
-        report: &mut PushReport,
-    ) -> Result<(), PushError> {
-        let mut updates: Vec<String> = Vec::with_capacity(rows.len());
-        let mut sent: Vec<i64> = Vec::with_capacity(rows.len());
-        for row in rows {
-            let Some(update) = row.payload.as_deref() else {
-                // A CRDT row with no bytes is the one row that cannot be
-                // rebuilt from anywhere: the update is the change.
-                self.retire_one(row.id, "crdt outbox row carries no update bytes")
-                    .await?;
-                report.retired += 1;
-                continue;
-            };
-            match self.sealer.seal_crdt_update(doc_id, update) {
-                Ok(packed) => {
-                    updates.push(BASE64.encode(packed));
-                    sent.push(row.id);
-                }
-                Err(error) => {
-                    self.retire_one(row.id, &error.to_string()).await?;
-                    report.retired += 1;
-                }
-            }
-        }
-        if updates.is_empty() {
-            return Ok(());
-        }
-
-        let request = self
-            .request("POST", "/sync/crdt/updates")
-            // §7.10: every CRDT request is `maxRetries: 3`,
-            // `baseDelayMs: 2000`, `retryOn429: false`.
-            .retry(RetryPolicy::polled())
-            .json(&json!({ "noteId": doc_id, "updates": updates }));
-        let body: Json = self.http.send_json(request).await?;
-
-        // §7.4: the server assigns the sequence numbers and answers
-        // `{ sequences }`, one per update, in order. A row is acked against
-        // the sequence assigned to that specific update, which is what lets
-        // many rows for one document ride one wave; a short answer acks only
-        // the prefix it covers.
-        let assigned = body
-            .get("sequences")
-            .and_then(Json::as_array)
-            .map(Vec::len)
-            .unwrap_or(0);
-        sent.truncate(assigned);
-        report.accepted += sent.len();
-        report.crdt_updates += sent.len();
-        self.db.call(move |conn| outbox::ack(conn, &sent)).await?;
-        Ok(())
     }
 
     async fn retire_one(&self, id: i64, reason: &str) -> Result<(), PushError> {

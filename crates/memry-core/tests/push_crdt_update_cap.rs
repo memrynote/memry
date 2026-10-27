@@ -1,0 +1,210 @@
+//! The per-update cap of the incremental route, chapter 07 §7.4.2, at the
+//! push coordinator: where the line sits, and what each side of it does.
+//!
+//! Real SQLite and `HttpClient`; the sealer passes the update through (so the
+//! base64 length is exact) and the snapshot seam is the one the coordinator
+//! defines. The end-to-end path through `sync_now` is in
+//! `api_sync_oversized_update.rs`.
+
+mod http_fakes;
+
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+
+use http_fakes::{FakeTransport, response};
+use memry_core::api::errors::{ApiError, StorageError};
+use memry_core::protocol::crdt_envelope::MAX_UPDATE_PAYLOAD_CHARS;
+use memry_core::protocol::envelope::EnvelopeError;
+use memry_core::protocol::http::{ClientIdentity, HttpClient};
+use memry_core::protocol::types::Declaration;
+use memry_core::storage::{Db, open_data};
+use memry_core::sync::outbox::{self, Change};
+use memry_core::sync::push::{
+    PendingRecord, PushCoordinator, PushSealer, SnapshotFallback, SnapshotFallbackOutcome,
+};
+use serde_json::{Value as Json, json};
+
+/// Seals nothing: the packed bytes are the update, so base64 length is exact.
+struct Passthrough;
+
+impl PushSealer for Passthrough {
+    fn seal_record(&self, _item: &PendingRecord) -> Result<Json, EnvelopeError> {
+        unreachable!("CRDT rows only")
+    }
+
+    fn seal_crdt_update(&self, _doc_id: &str, update: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        Ok(update.to_vec())
+    }
+}
+
+struct Spy {
+    docs: Mutex<Vec<String>>,
+    answer: SnapshotFallbackOutcome,
+}
+
+#[async_trait::async_trait]
+impl SnapshotFallback for Spy {
+    async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
+        self.docs.lock().unwrap().push(doc_id.to_owned());
+        Ok(self.answer.clone())
+    }
+}
+
+fn spy(answer: SnapshotFallbackOutcome) -> Arc<Spy> {
+    Arc::new(Spy {
+        docs: Mutex::new(Vec::new()),
+        answer,
+    })
+}
+
+fn scratch_db() -> Db {
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix("memry-update-cap-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
+    open_data(&dir.join("data.db")).expect("open data.db")
+}
+
+/// Queues one update of `bytes` bytes, whose base64 is `4 * ceil(bytes / 3)`.
+fn queue(db: &Db, doc_id: &str, bytes: usize) {
+    let doc_id = doc_id.to_owned();
+    db.call_blocking(move |conn| {
+        outbox::commit(
+            conn,
+            &Change::crdt_update("note", &doc_id, vec![7u8; bytes]),
+            1,
+            |_| Ok::<(), StorageError>(()),
+        )?;
+        Ok(())
+    })
+    .expect("queue");
+}
+
+fn left(db: &Db) -> Vec<(i64, Option<String>)> {
+    db.call_blocking(|conn| {
+        let mut statement = conn
+            .prepare("SELECT attempt_count, last_error FROM outbox ORDER BY id")
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        let rows = statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        Ok(rows)
+    })
+    .expect("read the outbox")
+}
+
+fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
+    let http = HttpClient::new(
+        transport,
+        "https://sync.example",
+        ClientIdentity::new("ios", "1.2.3").expect("a valid identity"),
+    );
+    PushCoordinator::new(
+        Arc::new(http),
+        db.clone(),
+        Declaration::subscribed(),
+        Arc::new(Passthrough),
+    )
+}
+
+/// 900,000 bytes is exactly 1,200,000 characters of base64.
+const AT_THE_CAP: usize = MAX_UPDATE_PAYLOAD_CHARS / 4 * 3;
+
+#[tokio::test]
+async fn an_update_at_the_cap_rides_the_incremental_route() {
+    let db = scratch_db();
+    queue(&db, "n1", AT_THE_CAP);
+    let transport = FakeTransport::new(vec![response(200, &json!({"sequences": [1]}).to_string())]);
+    let snapshots = spy(SnapshotFallbackOutcome::Pushed);
+
+    let report = coordinator(&db, transport.clone())
+        .with_snapshot_fallback(snapshots.clone())
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    assert_eq!(report.crdt_updates, 1);
+    assert!(
+        snapshots.docs.lock().unwrap().is_empty(),
+        "no snapshot at the cap"
+    );
+    assert_eq!(transport.calls_to("/sync/crdt/updates").len(), 1);
+    assert!(left(&db).is_empty());
+}
+
+#[tokio::test]
+async fn one_character_past_the_cap_goes_as_a_snapshot_and_acks_the_whole_batch() {
+    let db = scratch_db();
+    queue(&db, "n1", 100);
+    queue(&db, "n1", AT_THE_CAP + 1);
+    // No script: any request to the updates route would panic.
+    let transport = FakeTransport::new(vec![]);
+    let snapshots = spy(SnapshotFallbackOutcome::Pushed);
+
+    let report = coordinator(&db, transport.clone())
+        .with_snapshot_fallback(snapshots.clone())
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    assert_eq!(*snapshots.docs.lock().unwrap(), vec!["n1".to_owned()]);
+    assert_eq!(
+        report.crdt_updates, 2,
+        "the small row rides the snapshot too"
+    );
+    assert_eq!(
+        transport.call_count(),
+        0,
+        "nothing went to the updates route"
+    );
+    assert!(left(&db).is_empty());
+}
+
+#[tokio::test]
+async fn a_refused_snapshot_defers_every_row_and_never_retires_one() {
+    let db = scratch_db();
+    queue(&db, "n1", 100);
+    queue(&db, "n1", AT_THE_CAP + 1);
+    let transport = FakeTransport::new(vec![]);
+    let snapshots = spy(SnapshotFallbackOutcome::Refused(
+        "the document owes a pull".to_owned(),
+    ));
+
+    let report = coordinator(&db, transport)
+        .with_snapshot_fallback(snapshots)
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    assert_eq!((report.rejected, report.retired), (2, 0));
+    let rows = left(&db);
+    assert_eq!(rows.len(), 2, "both rows stay queued");
+    assert!(rows.iter().all(|(attempts, reason)| *attempts == 1
+        && reason.as_deref() == Some("the document owes a pull")));
+}
+
+#[tokio::test]
+async fn without_a_snapshot_seam_an_oversized_row_is_deferred_and_the_queue_still_drains() {
+    let db = scratch_db();
+    queue(&db, "big", AT_THE_CAP + 1);
+    queue(&db, "small", 100);
+    let transport = FakeTransport::new(vec![response(200, &json!({"sequences": [1]}).to_string())]);
+
+    let report = coordinator(&db, transport.clone())
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    assert_eq!(report.crdt_updates, 1, "the small document went");
+    assert_eq!(report.retired, 0);
+    assert_eq!(left(&db).len(), 1, "the large row waits");
+}

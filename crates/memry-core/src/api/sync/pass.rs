@@ -26,7 +26,9 @@ use std::sync::{Arc, LazyLock, Mutex};
 use zeroize::Zeroizing;
 
 use super::VaultSync;
+use super::snapshot_fallback::PassSnapshots;
 use crate::api::errors::{StorageError, SyncError};
+use crate::crdt::SnapshotPusher;
 use crate::crypto::keys;
 use crate::protocol::account::{AccountSealer, DeviceSigner};
 use crate::protocol::types::Declaration;
@@ -146,8 +148,28 @@ impl VaultSync {
             what: e.to_string(),
         })?;
         let sealer = Arc::new(AccountSealer::new(vault_key.to_vec(), signer));
+        // An update too large for the incremental route goes as a snapshot of
+        // its document (chapter 07 §7.4.2). The gate is clean only when the
+        // pull above ran to its end with nothing refused or dropped.
+        let snapshots = PassSnapshots {
+            pusher: SnapshotPusher::new(
+                Arc::clone(&http),
+                self.db.clone(),
+                sealer.clone(),
+                Declaration::subscribed(),
+            )
+            .with_vault(&self.vault_id),
+            db: self.db.clone(),
+            device_id: self.session.device_id()?,
+            pull_completed_clean: !pulled.has_more
+                && !pulled.refused
+                && pulled.corrupt == 0
+                && pulled.dropped_pages == 0,
+            purged_documents: pulled.purged_documents.clone(),
+        };
         let push = PushCoordinator::new(http, self.db.clone(), Declaration::subscribed(), sealer)
-            .with_vault(&self.vault_id);
+            .with_vault(&self.vault_id)
+            .with_snapshot_fallback(Arc::new(snapshots));
         let report = push.drain_wave().await?;
         let pending = self
             .db
