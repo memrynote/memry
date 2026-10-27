@@ -254,7 +254,7 @@ pnpm --filter @memry/desktop-tauri test:e2e:harness # unit tests of the harness
 pnpm --filter @memry/desktop-tauri check:test-hooks # every Electron test hook is mapped
 ```
 
-`MEMRY_E2E_BINARY` points the harness at another binary; the default is `crates/target/debug/memry-tauri`. `--spec e2e/specs/shell/startup.e2e.ts` runs one spec. A JUnit file per worker lands in `apps/desktop-tauri/test-results/e2e`.
+`MEMRY_E2E_BINARY` points the harness at another binary; the default is the debug binary in `crates/target/debug/` (named like the desktop-tauri guide says). `--spec e2e/specs/shell/startup.e2e.ts` runs one spec. A JUnit file per worker lands in `apps/desktop-tauri/test-results/e2e`.
 
 ### How a test reaches the app
 

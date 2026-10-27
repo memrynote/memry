@@ -12,15 +12,20 @@
 // can be invoked by hand against any merged manifest.
 //
 // Usage:
-//   node scripts/validate-mac-update-manifest.mjs [path-to-latest-mac.yml]
+//   node scripts/validate-mac-update-manifest.mjs [path-to-latest-mac.yml] [--require-minimum-system-version]
 //   ASSET_DIR=/path/to/assets node scripts/validate-mac-update-manifest.mjs
 import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
+// Darwin 22 is macOS 13: electron-updater skips the release on macOS 12 and older. Only the
+// update-bridge feeds (Tauri needs macOS 13) require it; the Electron production manifest does not
+// carry the key, so the default check must not ask for it.
+export const MINIMUM_SYSTEM_VERSION = '22.0.0'
+
 const sha512Pattern = /^[A-Za-z0-9+/=]{80,}$/
 
 export function parseManifest(text) {
-  const manifest = { version: undefined, files: [] }
+  const manifest = { version: undefined, minimumSystemVersion: undefined, files: [] }
   let inFiles = false
   let current = null
 
@@ -45,6 +50,9 @@ export function parseManifest(text) {
       if (match[1] === 'version') {
         manifest.version = stripValue(match[2])
       }
+      if (match[1] === 'minimumSystemVersion') {
+        manifest.minimumSystemVersion = stripValue(match[2])
+      }
       continue
     }
 
@@ -67,7 +75,7 @@ export function parseManifest(text) {
   return manifest
 }
 
-export function validateManifest(manifest) {
+export function validateManifest(manifest, { requireMinimumSystemVersion = false } = {}) {
   const errors = []
 
   if (!manifest.version) {
@@ -75,6 +83,12 @@ export function validateManifest(manifest) {
   }
   if (!Array.isArray(manifest.files) || manifest.files.length < 2) {
     errors.push(`Manifest files[] must list both arch zips, found ${manifest.files?.length ?? 0}.`)
+  }
+
+  if (requireMinimumSystemVersion && manifest.minimumSystemVersion !== MINIMUM_SYSTEM_VERSION) {
+    errors.push(
+      `Manifest minimumSystemVersion must be ${MINIMUM_SYSTEM_VERSION}, found ${manifest.minimumSystemVersion ?? '<missing>'}.`
+    )
   }
 
   const zips = (manifest.files || []).filter(
@@ -132,8 +146,9 @@ function addPair(target, segment) {
 }
 
 function resolveManifestPath(argv) {
-  if (argv[0]) {
-    return argv[0]
+  const positional = argv.find((arg) => !arg.startsWith('--'))
+  if (positional) {
+    return positional
   }
   if (process.env.ASSET_DIR) {
     return path.join(process.env.ASSET_DIR, 'latest-mac.yml')
@@ -150,7 +165,8 @@ function fail(errors) {
 }
 
 function main() {
-  const manifestPath = resolveManifestPath(process.argv.slice(2))
+  const argv = process.argv.slice(2)
+  const manifestPath = resolveManifestPath(argv)
 
   if (!existsSync(manifestPath)) {
     fail([`Merged manifest not found: ${manifestPath}`])
@@ -162,7 +178,9 @@ function main() {
   }
 
   const manifest = parseManifest(text)
-  const { armZip, errors, x64Zip } = validateManifest(manifest)
+  const { armZip, errors, x64Zip } = validateManifest(manifest, {
+    requireMinimumSystemVersion: argv.includes('--require-minimum-system-version')
+  })
 
   if (errors.length > 0) {
     fail(errors)
