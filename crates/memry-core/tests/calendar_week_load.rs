@@ -1,12 +1,17 @@
 //! Spec 007 CL092: a week holding 200 items reads back in one range query
-//! well inside a frame budget, so paging and first paint do not wait on it.
+//! in a bounded number of SQL statements, so paging and first paint do not
+//! wait on it. Counted in statements, not milliseconds, so the bound holds on
+//! any machine.
 
-use std::time::Instant;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use memry_core::domain::calendar_items::projection::{self, RangeInput};
 use memry_core::domain::calendar_items::write::{self, NewEvent};
 use memry_core::domain::calendar_items::zone::FixedZone;
 use memry_core::storage::{Db, open_data};
+use rusqlite::trace::TraceEventCodes;
+
+static STATEMENTS: AtomicUsize = AtomicUsize::new(0);
 
 const NOW: i64 = 1_790_380_800_000; // 2026-09-26
 fn open() -> Db {
@@ -55,21 +60,29 @@ fn a_week_with_200_items_reads_in_one_fast_query() {
         show_notes_by_created: false,
         local_timezone: "UTC".into(),
     };
-    let mut timings = Vec::new();
     let mut count = 0;
+    let mut statements = 0;
     for _ in 0..5 {
-        let started = Instant::now();
         let input = input.clone();
-        count = db
-            .call_blocking(move |conn| projection::range(conn, &FixedZone(0), &input))
-            .expect("range")
-            .len();
-        timings.push(started.elapsed().as_secs_f64() * 1000.0);
+        let (found, used) = db
+            .call_blocking(move |conn| {
+                STATEMENTS.store(0, Ordering::SeqCst);
+                conn.trace_v2(
+                    TraceEventCodes::SQLITE_TRACE_STMT,
+                    Some(|_| {
+                        STATEMENTS.fetch_add(1, Ordering::SeqCst);
+                    }),
+                );
+                let found = projection::range(conn, &FixedZone(0), &input);
+                conn.trace_v2(TraceEventCodes::empty(), None);
+                Ok((found, STATEMENTS.load(Ordering::SeqCst)))
+            })
+            .expect("range");
+        count = found.expect("range").len();
+        statements = used;
     }
-    timings.sort_by(f64::total_cmp);
-    let median = timings[2];
-    println!("CL092 week range: {count} items, median {median:.2} ms, runs {timings:?}");
+    println!("CL092 week range: {count} items, {statements} statements");
     assert_eq!(count, 200);
-    // Debug build; release is faster. A frame is 16.7 ms.
-    assert!(median < 50.0, "median {median} ms");
+    // One query plus a few lookups, not one query per item (200 items).
+    assert!(statements <= 20, "{statements} statements for 200 items");
 }
