@@ -52,6 +52,30 @@ pub const CIPHERTEXT_OFFSET: usize = HEADER_BYTES;
 /// signature.
 pub const MIN_PACKED_BYTES: usize = HEADER_BYTES + 1;
 
+/// The Poly1305 tag XChaCha20-Poly1305 appends to the ciphertext.
+const AEAD_TAG_BYTES: usize = 16;
+
+/// The `/sync/*` request body ceiling, chapter 07 §7.4
+/// (`apps/sync-server/src/index.ts:66`), less headroom for the
+/// `{"noteId":…,"updates":[]}` wrapper. A body past the real ceiling is a 413
+/// before any route runs, so no per-update verdict comes back.
+pub const MAX_PUSH_BODY_BYTES: usize = 8 * 1024 * 1024 - 4096;
+
+/// The most [`pack`] can return for an update of `update_len` bytes.
+///
+/// The compression frame adds one flag byte and a compressed result is kept
+/// only when it is shorter than the input (§4.1), so the ciphertext never
+/// exceeds `update_len + 1` plus the AEAD tag.
+pub const fn max_packed_len(update_len: usize) -> usize {
+    HEADER_BYTES + 1 + update_len + AEAD_TAG_BYTES
+}
+
+/// What one update of `update_len` bytes adds to a `POST /sync/crdt/updates`
+/// body: the base64 of its packed envelope, two quotes and a comma.
+pub const fn push_body_bytes(update_len: usize) -> usize {
+    max_packed_len(update_len).div_ceil(3) * 4 + 3
+}
+
 /// The per-update key material, §4.3.
 ///
 /// A fresh file key per update, never reused and zeroed on drop.
@@ -215,6 +239,35 @@ mod tests {
         assert_eq!(SIGNATURE_OFFSET, 96);
         assert_eq!(HEADER_BYTES, 160);
         assert_eq!(MIN_PACKED_BYTES, 161);
+    }
+
+    #[test]
+    fn max_packed_len_bounds_pack_for_stored_and_compressed_updates() {
+        let (_, secret_key) = signer();
+        let vault_key = [3u8; 32];
+        let incompressible: Vec<u8> = (0..4096u32)
+            .map(|i| (i.wrapping_mul(2654435761) >> 13) as u8)
+            .collect();
+        for update in [vec![1u8], vec![0u8; 63], vec![7u8; 4096], incompressible] {
+            let packed = pack(
+                &CrdtRequest {
+                    note_id: "abc123def456",
+                    update: &update,
+                    vault_key: &vault_key,
+                    signing_secret_key: &secret_key,
+                },
+                &CrdtMaterial::random(),
+            )
+            .expect("pack");
+            assert!(packed.len() <= max_packed_len(update.len()));
+            if update.len() < compress::STORED_THRESHOLD_BYTES {
+                assert_eq!(
+                    packed.len(),
+                    max_packed_len(update.len()),
+                    "stored is exact"
+                );
+            }
+        }
     }
 
     #[test]

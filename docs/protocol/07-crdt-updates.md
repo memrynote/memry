@@ -209,6 +209,15 @@ envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice
 and the cap is applied to the encoded string. It answers `{ sequences: number[] }`
 (`apps/sync-server/src/routes/sync.ts:748`).
 
+**A client sizes a batch by its body, not only by count.** The whole request is
+under the `/sync/*` body ceiling of 8 MiB (`apps/sync-server/src/index.ts:66`),
+which answers 413 before the route runs, so no per-update verdict comes back and
+a resend fails the same way. The Rust client therefore stops a batch when the
+base64 of the next packed envelope would carry the body past 8 MiB less 4 KiB for
+the wrapper, and the rest of the queue rides the next request
+(`crates/memry-core/src/sync/outbox.rs:396`). One update always rides:
+batching cannot shrink an update that alone is over the ceiling.
+
 **The update store is idempotent per document** (#2296). The server stores the
 SHA-256 of each update's bytes and ignores a second insert of the same bytes for
 the same document (migration `0012_crdt_update_hash.sql`, a unique index on
