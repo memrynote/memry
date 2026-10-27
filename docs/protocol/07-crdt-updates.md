@@ -241,9 +241,10 @@ edit. Rows written before the migration have no hash and are never matched.
 **Normative.** A client MUST NOT send an update whose base64 form is longer than
 **1,200,000 characters** to `POST /sync/crdt/updates` (desktop's
 `MAX_CRDT_UPDATE_PAYLOAD_CHARS`, `packages/sync-client/src/crdt-payload.ts:15`;
-the Rust core's `MAX_UPDATE_PAYLOAD_CHARS`, `crates/memry-core/src/protocol/crdt_envelope.rs`).
-The length is that of the base64 of the packed envelope (chapter 04 §4.11), as
-the request carries it, and an update of exactly 1,200,000 characters is sent.
+the Rust core's `MAX_UPDATE_PAYLOAD_CHARS`,
+`crates/memry-core/src/protocol/crdt_envelope.rs:82`). The length is that of the
+base64 of the packed envelope (chapter 04 §4.11), as the request carries it, and an
+update of exactly 1,200,000 characters is sent.
 
 The reason is the server's store, not the route's 5 MiB check (§7.3): each update
 is kept inline in one D1 row (`apps/sync-server/src/services/crdt.ts:143`), and a
@@ -253,14 +254,36 @@ queue that retries it fails at it on every pass.
 
 **The update is not dropped and not retried: the document goes as a snapshot.**
 The edit is already in the local document, so the client pushes the whole
-document through §7.4's snapshot route instead (desktop:
+document through the snapshot route (§7.2) instead (desktop:
 `apps/desktop/src/main/sync/runtime.ts:626-646`). The §7.13.2 gate applies in
-full, because a snapshot prunes the server's log. The Rust core sends every queued
-update of that batch with the snapshot and acks them together once the server
-stored it, and defers all of them, with the reason on the row and the retry
-ladder of chapter 00 §0.6.1, when the gate refuses or the server does not store
-it. Retiring such an update would lose the user's edit. The push wave for other
-documents is not held up (`crates/memry-core/src/sync/push/crdt.rs`).
+full, because a snapshot prunes the server's log (§7.7). The Rust core sends every
+queued update of that batch with the snapshot and acks them together once the
+server stored it (`crates/memry-core/src/sync/push/crdt.rs:126`).
+
+**When the snapshot does not go, the batch waits and nothing is retired.** The
+gate refusing it, a log row that will not decode, a seal that fails, a snapshot
+over 5 MiB sealed (§7.3), or the server answering 413 or 5xx defers every update of
+the batch, with the reason on the row. Retiring one would lose the user's edit;
+failing the pass would stall every record behind it, because CRDT rows are claimed
+first. Only a network or policy error fails the pass, like any request. A deferred
+batch retries after the ladder of chapter 00 §0.6.1, **capped at 60 seconds**
+(desktop: `MAX_BACKOFF_MS`, `apps/desktop/src/main/sync/note-body-outbox.ts:31`;
+`crates/memry-core/src/sync/push/crdt.rs:46`), because a refusal such as an owed
+pull clears on its own. The 5 MiB check runs on the sealed bytes before any
+request, so a note that large costs no upload on a retry.
+
+**A snapshot claim bounds the race with an unclaimed replace.** A snapshot sent
+with `coversThrough` (and `baseRevision`) asserts what it merged (§7.7.1), and the
+server replaces a stored snapshot only when the claim is covered: the row has no
+cursor and no claim, `baseRevision` equals its revision, or its cursor is at or
+below `coversThrough`
+(`apps/sync-server/src/services/crdt-snapshot-write.ts:91-95`, `:334-336`). An
+unclaimed push replaces only a row that holds no claim, and prunes by the
+pre-#2299 watermark rule (`apps/sync-server/src/routes/sync.ts:1080`); once the
+server enforces claims (§7.7.1), an unclaimed push over a claimed row is refused.
+`CRDT_CLAIM_MIN_DESKTOP_VERSION` is not in the repository's configuration, so
+whether production enforces claims is not recorded here. A client that holds a
+claim for the document sends it with the snapshot.
 
 ## 7.5 Snapshot revision
 

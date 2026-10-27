@@ -20,6 +20,11 @@ use crate::crdt::{SnapshotGate, SnapshotOutcome, SnapshotPusher};
 use crate::storage::Db;
 use crate::sync::push::{SnapshotFallback, SnapshotFallbackOutcome};
 
+// TODO(too-large notice): desktop tells the user a note is too large to sync
+// (`emitNoteTooLarge`, `apps/desktop/src/main/sync/runtime.ts:663-671`). The
+// core has no per-note sync status to carry that yet, so the reason sits on
+// the deferred outbox row's `last_error` ([`crate::crdt::Refusal::TooLarge`]).
+// The consumer is the per-note sync status the shells read once it exists.
 pub(super) struct PassSnapshots {
     pub(super) pusher: SnapshotPusher,
     pub(super) db: Db,
@@ -35,19 +40,26 @@ impl SnapshotFallback for PassSnapshots {
     async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
         let id = doc_id.to_owned();
         let device_id = self.device_id.clone();
-        let document = self
+        let opened = self
             .db
             .call(move |conn| {
                 // The replay is durable, so the sink sees nothing.
                 let sink: UpdateSink = Arc::new(|_, _| {});
-                epoch::open_for_write(conn, &device_id, &id, sink).map_err(|error| {
-                    StorageError::Failed {
-                        what: error.to_string(),
-                    }
-                })
+                Ok(epoch::open_for_write(conn, &device_id, &id, sink)
+                    .map_err(|error| error.to_string()))
             })
             .await
             .map_err(local)?;
+        // A log row that will not decode is this document's problem: its batch
+        // waits, and the records and other documents behind it still go.
+        let document = match opened {
+            Ok(document) => document,
+            Err(reason) => {
+                return Ok(SnapshotFallbackOutcome::Refused(format!(
+                    "could not replay the document's update log: {reason}"
+                )));
+            }
+        };
         let gate = SnapshotGate {
             pull_completed_clean: self.pull_completed_clean,
             purged: self.purged_documents.iter().any(|purged| purged == doc_id),
@@ -62,6 +74,13 @@ impl SnapshotFallback for PassSnapshots {
                 refusal.reason().to_owned(),
             )),
             Err(SnapshotError::Rejected { reason }) => Ok(SnapshotFallbackOutcome::Refused(reason)),
+            // Local failures before any request, an undecodable update or a
+            // seal that failed: this document's batch waits (chapter 07
+            // §7.4.2). Failing the wave would stall every record behind it,
+            // because CRDT rows are claimed first.
+            Err(error @ (SnapshotError::Crdt { .. } | SnapshotError::Seal { .. })) => {
+                Ok(SnapshotFallbackOutcome::Refused(error.to_string()))
+            }
             // The server answered and said no: the rows wait instead of
             // failing every pass at this batch. Everything else, an offline
             // network or a policy block, fails the wave like any request.
@@ -72,9 +91,6 @@ impl SnapshotFallback for PassSnapshots {
             }
             Err(SnapshotError::Api { source }) => Err(source),
             Err(SnapshotError::Storage { source }) => Err(local(source)),
-            Err(other) => Err(ApiError::Storage {
-                what: other.to_string(),
-            }),
         }
     }
 }

@@ -42,6 +42,7 @@ use yrs::{ReadTxn as _, Transact as _, Update};
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::domain::note_files;
+use crate::protocol::account::MAX_UPDATE_BYTES;
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::{
     ApiRequest, Auth, HttpClient, RetryPolicy, SYNC_TYPES_HEADER, VAULT_ID_HEADER,
@@ -87,6 +88,10 @@ pub enum Refusal {
     Purged,
     /// Condition 3: the encoded state is empty.
     EmptyState,
+    /// The sealed snapshot is over the server's 5 MiB cap on one decoded
+    /// envelope (chapter 07 §7.3). Decided from the sealed bytes, before any
+    /// request, so a note this large costs no upload on any retry.
+    TooLarge,
 }
 
 impl Refusal {
@@ -96,6 +101,7 @@ impl Refusal {
             Self::LocalOnly => "the document is local-only",
             Self::Purged => "the document was purged",
             Self::EmptyState => "the encoded state is empty",
+            Self::TooLarge => "the document is too large to sync: its snapshot is over 5 MiB",
         }
     }
 }
@@ -348,6 +354,9 @@ impl SnapshotPusher {
         };
         let doc_id = document.id().to_owned();
         let packed = self.sealer.seal_snapshot(&doc_id, &state)?;
+        if packed.len() > MAX_UPDATE_BYTES {
+            return Ok(Err(Refusal::TooLarge));
+        }
 
         // §7.3's field name, §7.4's request shape: the payload base64 of the
         // same packed envelope an update travels in (§7.11). The batch route

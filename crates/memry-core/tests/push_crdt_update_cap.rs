@@ -37,6 +37,34 @@ impl PushSealer for Passthrough {
     }
 }
 
+/// A sealer whose update is past the cap the sealer itself enforces.
+struct TooLarge;
+
+impl PushSealer for TooLarge {
+    fn seal_record(&self, _item: &PendingRecord) -> Result<Json, EnvelopeError> {
+        unreachable!("CRDT rows only")
+    }
+
+    fn seal_crdt_update(&self, _doc_id: &str, _update: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        Err(EnvelopeError::ItemTooLarge {
+            bytes: 11 * 1024 * 1024,
+            max_bytes: 10 * 1024 * 1024,
+        })
+    }
+}
+
+/// A seam that fails the way a dead network or a policy block does.
+struct Offline;
+
+#[async_trait::async_trait]
+impl SnapshotFallback for Offline {
+    async fn push_snapshot(&self, _doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
+        Err(ApiError::WritesDisabled {
+            message: "writes are off".to_owned(),
+        })
+    }
+}
+
 struct Spy {
     docs: Mutex<Vec<String>>,
     answer: SnapshotFallbackOutcome,
@@ -103,6 +131,14 @@ fn left(db: &Db) -> Vec<(i64, Option<String>)> {
 }
 
 fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
+    coordinator_sealing(db, transport, Arc::new(Passthrough))
+}
+
+fn coordinator_sealing(
+    db: &Db,
+    transport: Arc<FakeTransport>,
+    sealer: Arc<dyn PushSealer>,
+) -> PushCoordinator {
     let http = HttpClient::new(
         transport,
         "https://sync.example",
@@ -112,7 +148,7 @@ fn coordinator(db: &Db, transport: Arc<FakeTransport>) -> PushCoordinator {
         Arc::new(http),
         db.clone(),
         Declaration::subscribed(),
-        Arc::new(Passthrough),
+        sealer,
     )
 }
 
@@ -207,4 +243,78 @@ async fn without_a_snapshot_seam_an_oversized_row_is_deferred_and_the_queue_stil
     assert_eq!(report.crdt_updates, 1, "the small document went");
     assert_eq!(report.retired, 0);
     assert_eq!(left(&db).len(), 1, "the large row waits");
+}
+
+#[tokio::test]
+async fn a_row_the_sealer_calls_too_large_is_deferred_and_not_retired() {
+    let db = scratch_db();
+    queue(&db, "n1", 100);
+    let snapshots = spy(SnapshotFallbackOutcome::Refused("owes a pull".to_owned()));
+
+    let report = coordinator_sealing(&db, FakeTransport::new(vec![]), Arc::new(TooLarge))
+        .with_snapshot_fallback(snapshots.clone())
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    assert_eq!(report.retired, 0, "an oversized edit is never dropped");
+    assert_eq!(*snapshots.docs.lock().unwrap(), vec!["n1".to_owned()]);
+    assert_eq!(left(&db).len(), 1);
+}
+
+#[tokio::test]
+async fn a_network_or_policy_error_from_the_snapshot_seam_fails_the_wave_and_touches_no_row() {
+    let db = scratch_db();
+    queue(&db, "n1", AT_THE_CAP + 1);
+
+    let outcome = coordinator(&db, FakeTransport::new(vec![]))
+        .with_snapshot_fallback(Arc::new(Offline))
+        .drain_wave()
+        .await;
+
+    assert!(outcome.is_err(), "the wave reports it like any request");
+    assert_eq!(
+        left(&db),
+        vec![(0, None)],
+        "no attempt counted, nothing deferred"
+    );
+}
+
+#[tokio::test]
+async fn a_deferred_batch_waits_at_most_a_minute_however_many_attempts_it_has() {
+    let db = scratch_db();
+    queue(&db, "n1", AT_THE_CAP + 1);
+    db.call_blocking(|conn| {
+        conn.execute("UPDATE outbox SET attempt_count = 12", [])
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        Ok(())
+    })
+    .expect("age the row");
+    let snapshots = spy(SnapshotFallbackOutcome::Refused("owes a pull".to_owned()));
+    let before = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+
+    coordinator(&db, FakeTransport::new(vec![]))
+        .with_snapshot_fallback(snapshots)
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    let next: i64 = db
+        .call_blocking(|conn| {
+            conn.query_row("SELECT next_attempt_at FROM outbox", [], |row| row.get(0))
+                .map_err(|e| StorageError::Failed {
+                    what: e.to_string(),
+                })
+        })
+        .expect("the retry time");
+    assert!(
+        next <= before + 60_000 + 5_000,
+        "waits {} ms",
+        next - before
+    );
 }

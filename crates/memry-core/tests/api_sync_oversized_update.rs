@@ -19,7 +19,7 @@ use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD as BASE64;
 use http_fakes::{FakeSecureStore, jwt, response};
 use memry_core::api::auth::{AuthSession, DeviceDescriptor};
-use memry_core::api::errors::TransportError;
+use memry_core::api::errors::{StorageError, TransportError};
 use memry_core::api::vault::Vault;
 use memry_core::crdt::{BODY_FRAGMENT, update_log};
 use memry_core::crypto::{keys, sodium};
@@ -105,6 +105,17 @@ impl Transport for Server {
                         .to_string(),
                 )
             }
+            "/sync/push" => {
+                let accepted: Vec<Json> = body["items"]
+                    .as_array()
+                    .map(|items| items.iter().map(|item| item["id"].clone()).collect())
+                    .unwrap_or_default();
+                response(
+                    200,
+                    &json!({"accepted": accepted, "rejected": [], "serverTime": 1, "maxCursor": 1})
+                        .to_string(),
+                )
+            }
             "/sync/crdt/updates" if request.method == "GET" => {
                 response(200, &json!({"updates": [], "hasMore": false}).to_string())
             }
@@ -138,7 +149,10 @@ impl Transport for Server {
     }
 }
 
-fn vault_with_side(label: &str, server: Arc<Server>) -> (Vault, Db, Arc<AuthSession>) {
+fn vault_with_side(
+    label: &str,
+    server: Arc<Server>,
+) -> (Vault, Db, Arc<AuthSession>, Arc<FakeSecureStore>) {
     let (_public, secret) = sodium::sign_seed_keypair(&SIGNING_SEED).expect("a keypair");
     let store = FakeSecureStore::new();
     store.put_text(
@@ -161,7 +175,7 @@ fn vault_with_side(label: &str, server: Arc<Server>) -> (Vault, Db, Arc<AuthSess
     let session = Arc::new(
         AuthSession::new(
             server,
-            store,
+            store.clone(),
             BASE.to_string(),
             "ios".to_string(),
             DeviceDescriptor {
@@ -174,7 +188,7 @@ fn vault_with_side(label: &str, server: Arc<Server>) -> (Vault, Db, Arc<AuthSess
         )
         .expect("a session"),
     );
-    (vault, side, session)
+    (vault, side, session, store)
 }
 
 /// `chars` printable characters a deflate cannot do much with, so the packed
@@ -245,7 +259,7 @@ fn queued(side: &Db) -> Vec<(String, Option<String>)> {
 #[tokio::test]
 async fn an_oversized_update_goes_as_a_snapshot_that_holds_the_whole_batch() {
     let server = Server::new(200);
-    let (vault, side, session) = vault_with_side("snapshot", server.clone());
+    let (vault, side, session, _store) = vault_with_side("snapshot", server.clone());
     queue_body_update(&side, "bigdoc000001", "small edit before");
     queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
     // The queue behind it: another document's small update.
@@ -288,8 +302,8 @@ async fn an_oversized_update_goes_as_a_snapshot_that_holds_the_whole_batch() {
 
 #[tokio::test]
 async fn a_refused_snapshot_defers_the_batch_and_the_queue_behind_it_still_drains() {
-    let server = Server::new(500);
-    let (vault, side, session) = vault_with_side("refused", server.clone());
+    let server = Server::new(413);
+    let (vault, side, session, _store) = vault_with_side("refused", server.clone());
     queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
     queue_body_update(&side, "smalldoc0001", "behind the large one");
 
@@ -321,7 +335,7 @@ async fn a_pull_that_stopped_at_its_page_cap_keeps_the_snapshot_gate_closed() {
     // A snapshot prunes the server's updates below its watermark, so it must
     // not go while the pull has not reached the head.
     let server = Server::endless();
-    let (vault, side, session) = vault_with_side("page-cap", server.clone());
+    let (vault, side, session, _store) = vault_with_side("page-cap", server.clone());
     queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
 
     let summary = vault
@@ -338,5 +352,89 @@ async fn a_pull_that_stopped_at_its_page_cap_keeps_the_snapshot_gate_closed() {
     assert_eq!(
         queued(&side)[0].1.as_deref(),
         Some("the document still holds unmerged remote state")
+    );
+}
+
+#[tokio::test]
+async fn a_document_whose_log_cannot_be_replayed_waits_and_the_records_behind_it_still_push() {
+    let server = Server::new(200);
+    let (vault, side, session, store) = vault_with_side("junk-log", server.clone());
+    queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
+    // A second update of the document that is not a Yjs update: replaying its
+    // log fails.
+    side.call_blocking(|conn| {
+        let junk = b"not a yjs update".to_vec();
+        outbox::commit(
+            conn,
+            &Change::crdt_update("note", "bigdoc000001", junk.clone()),
+            2,
+            |tx| {
+                update_log::append_local_update_in(tx, "bigdoc000001", &junk, 2).map_err(|error| {
+                    StorageError::Failed {
+                        what: error.to_string(),
+                    }
+                })
+            },
+        )?;
+        Ok(())
+    })
+    .expect("append the junk row");
+    // A record queued behind it. CRDT rows are claimed first, so a wave error
+    // from the document would stop this one for good.
+    let note_id = vault
+        .notes_writer(store)
+        .expect("a writer")
+        .create("Behind the large update".to_string(), None)
+        .expect("create");
+    tokio::time::sleep(std::time::Duration::from_millis(5)).await;
+
+    vault
+        .sync(session)
+        .sync_now()
+        .await
+        .expect("the pass completes");
+
+    let pushed = server.bodies("/sync/push");
+    assert_eq!(pushed.len(), 1, "the record went");
+    assert_eq!(pushed[0]["items"][0]["id"], json!(note_id));
+    assert!(server.bodies("/sync/crdt/snapshot").is_empty());
+    let big: Vec<_> = queued(&side)
+        .into_iter()
+        .filter(|(id, _)| id == "bigdoc000001")
+        .collect();
+    assert_eq!(big.len(), 2, "both rows of the document wait");
+    assert!(big.iter().all(|(_, reason)| {
+        reason
+            .as_deref()
+            .is_some_and(|reason| reason.contains("replay"))
+    }));
+}
+
+#[tokio::test]
+async fn a_document_over_the_snapshot_cap_is_refused_before_any_request() {
+    let server = Server::new(200);
+    let (vault, side, session, _store) = vault_with_side("too-large", server.clone());
+    // 8 million characters seal to more than the server's 5 MiB per envelope.
+    queue_body_update(&side, "bigdoc000001", &noisy_text(8_000_000, "BIG EDIT"));
+
+    let summary = vault
+        .sync(session)
+        .sync_now()
+        .await
+        .expect("the pass completes");
+
+    assert!(server.bodies("/sync/crdt/snapshot").is_empty(), "no upload");
+    assert!(
+        server
+            .bodies("/sync/crdt/updates")
+            .iter()
+            .all(|b| b["noteId"] != json!("bigdoc000001"))
+    );
+    assert_eq!(summary.pending, 1, "{summary:?}");
+    assert!(
+        queued(&side)[0]
+            .1
+            .as_deref()
+            .is_some_and(|reason| reason.contains("too large to sync"))
     );
 }

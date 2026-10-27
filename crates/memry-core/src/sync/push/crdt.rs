@@ -42,6 +42,9 @@ pub trait SnapshotFallback: Send + Sync {
     async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError>;
 }
 
+/// The longest a deferred oversized batch waits before its next snapshot try.
+const SNAPSHOT_RETRY_CAP_MS: i64 = 60_000;
+
 const NO_FALLBACK: &str =
     "update too large for the incremental route and no snapshot push is set up";
 
@@ -139,7 +142,12 @@ impl PushCoordinator {
             }
             SnapshotFallbackOutcome::Refused(reason) => {
                 report.rejected += ids.len();
-                let at = retry_at(now_ms(), attempts);
+                // Capped like desktop's note-body outbox (`MAX_BACKOFF_MS`,
+                // `note-body-outbox.ts:31`): a refusal that clears on its own,
+                // a pull still owed or past its page cap, must not climb the
+                // record ladder to hours.
+                let now = now_ms();
+                let at = retry_at(now, attempts).min(now + SNAPSHOT_RETRY_CAP_MS);
                 self.db
                     .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
                     .await?;
