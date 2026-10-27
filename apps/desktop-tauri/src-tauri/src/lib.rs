@@ -83,6 +83,7 @@ fn register_stages() {
         "loopback server",
         shell::loopback::start_server,
     );
+    commands::unsplash::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
     shutdown::register_stages();

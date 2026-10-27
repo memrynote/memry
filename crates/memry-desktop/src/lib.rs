@@ -12,6 +12,7 @@ pub mod launch_env;
 pub mod launch_timeline;
 pub mod locale;
 pub mod logging;
+pub mod notes;
 pub mod paths;
 pub mod profile_store;
 pub mod redact;
