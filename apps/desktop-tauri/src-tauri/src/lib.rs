@@ -11,6 +11,7 @@ pub mod events;
 pub mod flush;
 pub mod guards;
 pub mod instance;
+pub mod menu;
 pub mod notifications;
 pub mod registry;
 pub mod shell;
@@ -105,6 +106,8 @@ fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 fn mount_events(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     registry::builder().mount_events(app);
     windows::events::manage(app);
+    app.manage(menu::MenuService::default());
+    app.manage(menu::popup::ContextMenuBroker::default());
     Ok(())
 }
 
@@ -119,6 +122,7 @@ fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         app,
         memry_desktop::launch_timeline::LaunchPhase::WindowCreated,
     );
+    menu::apply(app, false);
     Ok(())
 }
 
@@ -147,7 +151,8 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init());
     #[cfg(feature = "e2e")]
     let app = e2e::install(app, gate);
     let result = app
@@ -155,6 +160,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .manage(badge::BadgeService::default())
         .invoke_handler(handler)
         .on_window_event(windows::events::dispatch)
+        .on_menu_event(menu::on_menu_event)
         .setup(|app| {
             if let Err(failure) = startup::run_registered(app.handle()) {
                 tracing::error!(

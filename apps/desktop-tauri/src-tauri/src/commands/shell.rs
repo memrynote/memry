@@ -92,3 +92,31 @@ pub fn window_set_caption_rects(
 fn window_error(error: tauri::Error) -> CommandError {
     CommandError::new(ErrorKind::Internal, "window", error.to_string())
 }
+
+/// Shows a native context menu at the pointer and returns the clicked item id, or `None` when
+/// the menu closed without a choice.
+#[tauri::command]
+#[specta::specta]
+pub async fn shell_show_context_menu(
+    app: AppHandle<Wry>,
+    window: WebviewWindow<Wry>,
+    items: Vec<crate::menu::popup::ContextMenuItem>,
+) -> Result<Option<String>, CommandError> {
+    crate::menu::popup::show(app, window, items).await
+}
+
+/// Alt pressed and released alone (the renderer tells a bare Alt from an Alt chord). Linux
+/// shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
+#[tauri::command]
+#[specta::specta]
+pub fn menu_toggle_alt(app: AppHandle<Wry>) -> Result<bool, CommandError> {
+    Ok(crate::menu::toggle_alt(&app))
+}
+
+/// Escape pressed while the Linux menu bar shows.
+#[tauri::command]
+#[specta::specta]
+pub fn menu_hide_alt(app: AppHandle<Wry>) -> Result<(), CommandError> {
+    crate::menu::hide_bar(&app);
+    Ok(())
+}

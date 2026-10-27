@@ -101,3 +101,12 @@ E2E specs that look at the window size keep the harness from resizing it with `t
 Dragging uses `windows/scripts/drag-region.js`, an init script of the main frame only: a capture-phase `mousedown` on `.drag-region` (not on `.no-drag`, links, buttons or inputs) calls `plugin:window|start_dragging`, and a double click calls `toggle_maximize`. `-webkit-app-region` does not exist in these engines, so `.drag-region` and `.no-drag` are plain marker classes. The same script publishes `window.__MEMRY_SHELL__`.
 
 `window_minimize`, `window_toggle_maximize` and `window_close` act on the calling window. Back and forward come from mouse buttons 3 and 4 and the browser keys in the renderer, `WM_APPCOMMAND` on Windows and a local `NSEvent` swipe monitor on macOS, all as `AppNavigationRequestedEvent { direction }`.
+
+## Application menu
+
+`memry_desktop::shell::menu_spec` builds the menu as data from the generated command table (`menu_table.generated.rs`, produced by `pnpm ipc:generate` from `@memry/contracts`). `apps/desktop-tauri/src-tauri/src/menu/` turns it into a muda menu and rebuilds it on a language change, a vault change and a keyboard rebind.
+
+- A command item sends `MenuCommandInvokedEvent`; the renderer runs the command through `useMenuBridge`. Reload, DevTools, links, Back and Forward run in the shell.
+- macOS sets live accelerators. Windows and Linux put the shortcut in the label only, so the editor keeps its keys; F1 opens the docs from the shell.
+- Linux hides the menu bar until a bare Alt (`menu_toggle_alt`); Windows pops the menu up at the title row.
+- `shell_show_context_menu` shows a native context menu and returns the clicked item id. In an e2e build, `e2e_set_next_context_menu_selection` answers it and `e2e_menu_tree` reads the built menu.

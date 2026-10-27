@@ -29,7 +29,7 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
-tauri = { version = "2.12", features = ["specta", "tray-icon", "image-png"] }
+tauri = { version = "2.12", features = ["specta", "devtools", "tray-icon", "image-png"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
@@ -51,6 +51,8 @@ tauri-plugin-opener = "2.7.2"
 tauri-plugin-single-instance = { version = "2.5.4", features = ["deep-link"] }
 tauri-plugin-deep-link = "2.6.2"
 tauri-plugin-notification = "2.7.0"
+# The Paste and Match Style menu item reads the clipboard text.
+tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 # Native crashes leave a minidump: the app attaches `crash-handler` and an out-of-process

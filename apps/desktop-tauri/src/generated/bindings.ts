@@ -36,6 +36,13 @@ export const commands = {
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
 	logWrite: (level: LogLevel, scope: string, message: string, fields: Value | null) => __TAURI_INVOKE<null>("log_write", { level, scope, message, fields }),
+	/**  Escape pressed while the Linux menu bar shows. */
+	menuHideAlt: () => __TAURI_INVOKE<null>("menu_hide_alt"),
+	/**
+	 *  Alt pressed and released alone (the renderer tells a bare Alt from an Alt chord). Linux
+	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
+	 */
+	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
@@ -59,6 +66,11 @@ export const commands = {
 	shellFirstPaint: () => __TAURI_INVOKE<null>("shell_first_paint"),
 	/**  A liveness beat from the page, every 2 s. */
 	shellHeartbeat: () => __TAURI_INVOKE<null>("shell_heartbeat"),
+	/**
+	 *  Shows a native context menu at the pointer and returns the clicked item id, or `None` when
+	 *  the menu closed without a choice.
+	 */
+	shellShowContextMenu: (items: ContextMenuItem[]) => __TAURI_INVOKE<string | null>("shell_show_context_menu", { items }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -95,6 +107,7 @@ export const events = {
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
+	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
@@ -138,6 +151,15 @@ export type CommandError = {
 	kind: ErrorKind,
 	code: string,
 	message: string,
+};
+
+/**  The item shape of `window.api.showContextMenu`: `{ id, label, accelerator, disabled, type }`. */
+export type ContextMenuItem = {
+	id: string,
+	label: string,
+	accelerator: string | null,
+	disabled: boolean | null,
+	type: ItemKind | null,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -253,12 +275,22 @@ export type InboxOpenItemEvent = {
 	itemId: string,
 };
 
+export type ItemKind = "normal" | "separator";
+
 /**  The UI language changed (`locale:changed`). */
 export type LocaleChangedEvent = {
 	locale: string,
 };
 
 export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
+
+/**
+ *  A native menu item that the renderer runs as a command was clicked. `command` is the
+ *  command id (`tabs.closeTab`).
+ */
+export type MenuCommandInvokedEvent = {
+	command: string,
+};
 
 export type Metrics = {
 	durationMs?: number | null,

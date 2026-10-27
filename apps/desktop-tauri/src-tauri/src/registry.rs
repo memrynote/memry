@@ -41,6 +41,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell_integrations::notification_supported,
             // log
             crate::commands::logging::log_write,
+            // menu
+            crate::commands::shell::menu_hide_alt,
+            crate::commands::shell::menu_toggle_alt,
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_group,
@@ -52,6 +55,7 @@ pub fn builder() -> Builder<Wry> {
             // shell
             crate::commands::shell::shell_first_paint,
             crate::commands::shell::shell_heartbeat,
+            crate::commands::shell::shell_show_context_menu,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -88,6 +92,8 @@ pub fn builder() -> Builder<Wry> {
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,
+            // menu
+            crate::events::MenuCommandInvokedEvent,
             // vault
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexRecoveredEvent,
