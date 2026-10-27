@@ -112,6 +112,7 @@ import {
   markShutdownFailure,
   markShutdownStep
 } from './telemetry/crash-marker'
+import { recordHandoffDidNotApply } from './installer-handoff'
 import { detectFailedUpdateInstall } from './telemetry/update-install-marker'
 import {
   startGoogleCalendarSyncRunner,
@@ -1470,6 +1471,9 @@ const appReady = app.whenReady().then(async () => {
     // old version. Hand it to the updater state so the renderer can offer the
     // manual installer instead of silently looping.
     noteFailedUpdateInstall(failedInstall.toVersion ?? null)
+    if (failedInstall.installer === 'velopack-handoff' && failedInstall.toVersion) {
+      recordHandoffDidNotApply(failedInstall.toVersion)
+    }
   }
   installCrashMarker(telemetryRuntime.context.sessionId, app.getVersion())
   startActiveHeartbeat(() => BrowserWindow.getFocusedWindow() !== null)

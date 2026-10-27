@@ -15,6 +15,7 @@ vi.mock('./lib/logger', () => ({
 import {
   buildInstallerHandoffPlan,
   createInstallerHandoff,
+  recordHandoffDidNotApply,
   verifyAuthenticode,
   type InstallerHandoffDeps
 } from './installer-handoff'
@@ -125,6 +126,9 @@ function makeHarness(
       rmSync: vi.fn(),
       writeFileSync: vi.fn(),
       copyFileSync: vi.fn(),
+      readFileSync: vi.fn(() => {
+        throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' })
+      }),
       createWriteStream: vi.fn(
         () =>
           new Writable({
@@ -341,7 +345,7 @@ describe('createInstallerHandoff', () => {
     )
     expect(harness.spawn).toHaveBeenCalledWith(
       'cmd.exe',
-      ['/d', '/s', '/c', `""${scriptPath}""`],
+      ['/d', '/e:on', '/v:off', '/s', '/c', `""${scriptPath}""`],
       expect.objectContaining({
         detached: true,
         stdio: 'ignore',
@@ -446,6 +450,45 @@ describe('createInstallerHandoff', () => {
 
     expect(harness.fetch).not.toHaveBeenCalled()
     expect(handoff.armed()).toBe(false)
+    // Error tracking must see an install that can never migrate, as it does a failed download.
+    expect(harness.host.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'INSTALLER_HANDOFF_UNSUPPORTED_INSTALL_DIR' })
+    )
+  })
+
+  // The script's relaunch of Electron leaves the same version running; the next launch records it,
+  // and a session that downloads the update again must not repeat a 450 MB download and hand-off.
+  it('declines before any network access for a version whose hand-off already failed', async () => {
+    const harness = makeHarness()
+    vi.mocked(harness.deps.fs.readFileSync).mockReturnValue('v2026-09-11')
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo({ version: '2026.911.1' }), vi.fn())
+
+    expect(harness.fetch).not.toHaveBeenCalled()
+    expect(harness.host.onError).not.toHaveBeenCalled()
+    expect(handoff.armed()).toBe(false)
+  })
+
+  it('hands off a newer version than the one that failed', async () => {
+    const harness = makeHarness()
+    vi.mocked(harness.deps.fs.readFileSync).mockReturnValue('v2026-09-10')
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo({ version: '2026.911.1' }), vi.fn())
+
+    expect(handoff.armed()).toBe(true)
+  })
+
+  it('records the failed version where the next prepare reads it', () => {
+    const writeFileSync = vi.fn()
+
+    recordHandoffDidNotApply('v2026-09-11', USER_DATA, { writeFileSync })
+
+    expect(writeFileSync).toHaveBeenCalledWith(
+      path.win32.join(USER_DATA, 'installer-handoff-failed-version'),
+      'v2026-09-11'
+    )
   })
 
   it('declines before any network access when the release tag is unknown', async () => {

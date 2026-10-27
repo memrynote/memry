@@ -5,6 +5,7 @@ import path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import { app } from 'electron'
 import type { UpdateDownloadedEvent } from 'electron-updater'
+import { formatAppVersionForDisplay } from './lib/app-version-display'
 import { createLogger } from './lib/logger'
 import {
   GITHUB_RELEASE_DOWNLOAD_BASE,
@@ -26,6 +27,31 @@ import { NSIS_UNINSTALLER_FILENAME, detectWindowsInstallLayout } from './windows
 const logger = createLogger('InstallerHandoff')
 
 export const INSTALLER_HANDOFF_DIRNAME = 'installer-handoff'
+
+/**
+ * Holds the version whose hand-off ended with the old app still running (the script restarted
+ * Electron, or nothing could be restored). Outside INSTALLER_HANDOFF_DIRNAME, which is wiped at
+ * every start. Without it each session would re-download the 450 MB Setup and run the same
+ * hand-off again; with it the next prepare() declines and electron-updater installs through
+ * NSIS, which still delivers the update.
+ */
+const HANDOFF_FAILED_VERSION_FILENAME = 'installer-handoff-failed-version'
+
+/** The next launch's did-not-apply marker proves the hand-off for `version` did not take. */
+export function recordHandoffDidNotApply(
+  version: string,
+  userDataDir: string = app.getPath('userData'),
+  fsDeps: Pick<typeof fs, 'writeFileSync'> = fs
+): void {
+  try {
+    fsDeps.writeFileSync(path.win32.join(userDataDir, HANDOFF_FAILED_VERSION_FILENAME), version)
+  } catch (error) {
+    logger.warn('could not record the failed installer hand-off; it will be retried', {
+      version,
+      error
+    })
+  }
+}
 
 /**
  * A cold powershell.exe takes 20 to 35 s to start on a hosted windows-11-arm runner and
@@ -90,7 +116,10 @@ export interface InstallerHandoffDeps {
    * surface, which no injected stub can satisfy without a widening cast.
    */
   spawn: (command: string, args: readonly string[], options: SpawnOptions) => HandoffChild
-  fs: Pick<typeof fs, 'existsSync' | 'mkdirSync' | 'rmSync' | 'writeFileSync' | 'copyFileSync'> & {
+  fs: Pick<
+    typeof fs,
+    'existsSync' | 'mkdirSync' | 'rmSync' | 'writeFileSync' | 'copyFileSync' | 'readFileSync'
+  > & {
     /** Only ever piped into, so the Writable contract is the whole requirement. */
     createWriteStream: (path: string) => NodeJS.WritableStream
   }
@@ -117,7 +146,10 @@ interface HandoffChild {
   on(event: 'error', listener: (error: Error) => void): void
 }
 
-type SpawnDeps = Pick<InstallerHandoffDeps, 'spawn' | 'tmpDir' | 'pid' | 'fs'>
+/** The CLI spawns without reading the failed-version record, so its fs stub need not provide it. */
+type SpawnDeps = Pick<InstallerHandoffDeps, 'spawn' | 'tmpDir' | 'pid'> & {
+  fs: Omit<InstallerHandoffDeps['fs'], 'readFileSync'>
+}
 
 function defaultDeps(): InstallerHandoffDeps {
   return {
@@ -337,6 +369,16 @@ export function createInstallerHandoff(
     }
   }
 
+  function failedVersion(): string | null {
+    try {
+      return deps.fs
+        .readFileSync(path.win32.join(deps.userDataDir, HANDOFF_FAILED_VERSION_FILENAME), 'utf8')
+        .trim()
+    } catch {
+      return null // no record: nothing failed before
+    }
+  }
+
   async function run(
     info: UpdateDownloadedEvent,
     onProgress: (percent: number) => void
@@ -351,8 +393,21 @@ export function createInstallerHandoff(
     if (!tag) return decline('release tag unknown')
     const layout = detectWindowsInstallLayout(deps.execPath, deps.fs.existsSync)
     if (layout !== 'nsis') return decline(`install layout is ${layout}, not nsis`)
-    if (!isHandoffInstallDirSupported(path.win32.dirname(deps.execPath))) {
+    const installDir = path.win32.dirname(deps.execPath)
+    if (!isHandoffInstallDirSupported(installDir)) {
+      // Reported like a download or signature failure: this install can never migrate, and
+      // the decline alone leaves no trace in error tracking.
+      host.onError(
+        coded(
+          'INSTALLER_HANDOFF_UNSUPPORTED_INSTALL_DIR',
+          `install directory ${installDir} has a character the hand-off script cannot pass`
+        )
+      )
       return decline('install directory has a character the hand-off script cannot pass')
+    }
+    // The marker stores the display form of the version (updater state's availableVersion).
+    if (failedVersion() === formatAppVersionForDisplay(version)) {
+      return decline('a previous hand-off to this version left the old app running')
     }
 
     const url = velopackSetupUrl(tag)

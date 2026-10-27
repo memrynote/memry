@@ -90,7 +90,9 @@ export function isHandoffInstallDirSupported(installDir: string): boolean {
  * line, so the path needs two pairs (`/s /c ""C:\a & b\x.cmd""`) to stay quoted afterwards.
  */
 export function handoffCmdArgs(scriptPath: string): string[] {
-  return ['/d', '/s', '/c', `""${scriptPath}""`]
+  // /e:on /v:off: a machine- or user-level DelayedExpansion or EnableExtensions registry value
+  // must not turn `!` in a path into syntax or break `if exist ... if exist`.
+  return ['/d', '/e:on', '/v:off', '/s', '/c', `""${scriptPath}""`]
 }
 
 /**
@@ -152,7 +154,7 @@ export function handoffSpawnOptions(
 export function renderInstallerHandoffScript(): string {
   const lines = [
     '@echo off',
-    'setlocal',
+    'setlocal EnableExtensions DisableDelayedExpansion',
     'set "PSModulePath="',
     'rem MemryNote installer hand-off: wait for the app to exit, remove the NSIS install, install the Velopack build.',
     'rem Paths come from the environment (APP_PID, INSTALL_DIR, SETUP, ...), see installerHandoffEnv.',
@@ -192,7 +194,7 @@ export function renderInstallerHandoffScript(): string {
     ':fallback',
     'call :log "falling back to nsis"',
     'if defined NSIS_INSTALLER if exist "%NSIS_INSTALLER%" goto run_nsis',
-    'if exist "%INSTALL_DIR%\\%APP_EXE%" goto relaunch_original',
+    'if exist "%INSTALL_DIR%\\%APP_EXE%" if exist "%INSTALL_DIR%\\resources\\app.asar" goto relaunch_original',
     'call :log "result=failed no-nsis-fallback"',
     'goto cleanup',
     '',

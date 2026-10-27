@@ -62,6 +62,12 @@ describe('renderInstallerHandoffScript', () => {
     }
   })
 
+  // A DelayedExpansion or EnableExtensions registry value on the machine would otherwise make `!`
+  // in a path syntax and break `if exist ... if exist`.
+  it('pins extensions on and delayed expansion off', () => {
+    expect(render()).toContain('setlocal EnableExtensions DisableDelayedExpansion')
+  })
+
   it('records every step and its exit code', () => {
     const lines = render()
 
@@ -164,7 +170,7 @@ describe('renderInstallerHandoffScript', () => {
       ':fallback',
       'call :log "falling back to nsis"',
       'if defined NSIS_INSTALLER if exist "%NSIS_INSTALLER%" goto run_nsis',
-      'if exist "%INSTALL_DIR%\\%APP_EXE%" goto relaunch_original',
+      'if exist "%INSTALL_DIR%\\%APP_EXE%" if exist "%INSTALL_DIR%\\resources\\app.asar" goto relaunch_original',
       'call :log "result=failed no-nsis-fallback"',
       'goto cleanup',
       ''
@@ -233,6 +239,8 @@ describe('handoffSpawnOptions', () => {
     })
     expect(handoffCmdArgs(String.raw`C:\Users\a&b\x.cmd`)).toEqual([
       '/d',
+      '/e:on',
+      '/v:off',
       '/s',
       '/c',
       String.raw`""C:\Users\a&b\x.cmd""`
