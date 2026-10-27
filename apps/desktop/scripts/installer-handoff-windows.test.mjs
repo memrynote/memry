@@ -3,10 +3,10 @@
 // the previous script: non-ASCII, parentheses, `&` and `%`. Run in CI (velopack-smoke.yml) on x64 and
 // ARM64: `node --test apps/desktop/scripts/installer-handoff-windows.test.mjs`. Skipped elsewhere.
 //
-// The fakes are JScript files (run by wscript, a GUI host like the real installers) and copies of System32 exes, so this proves the script's control flow,
-// quoting and logging, not Velopack or NSIS themselves (the migrate job does that).
+// The fakes are a small compiled stub and copies of System32 exes, so this proves the script's
+// control flow, quoting and logging, not Velopack or NSIS themselves (the migrate job does that).
 import assert from 'node:assert/strict'
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import {
   copyFileSync,
   existsSync,
@@ -35,6 +35,36 @@ const seconds = (log, step) => {
   return Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3])
 }
 
+// Compiled once with the .NET Framework C# compiler that ships with Windows, x64 and ARM64.
+const stubExe = (() => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'handoff-stub-'))
+  const source = path.join(dir, 'stub.cs')
+  const exe = path.join(dir, 'stub.exe')
+  const whoami = path.join(system32, 'whoami.exe').replaceAll('\\', '\\\\')
+  writeFileSync(
+    source,
+    `using System; using System.IO;
+class Stub { static int Main() {
+  string self = System.Reflection.Assembly.GetExecutingAssembly().Location;
+  File.WriteAllText(self + ".ran", "x");
+  if (File.Exists(self + ".creates")) {
+    string dir = File.ReadAllText(self + ".creates");
+    Directory.CreateDirectory(dir);
+    File.Copy("${whoami}", Path.Combine(dir, "Memrynote.exe"), true);
+  }
+  return File.Exists(self + ".exit") ? int.Parse(File.ReadAllText(self + ".exit")) : 0;
+} }`
+  )
+  const windir = process.env.windir ?? 'C:\\Windows'
+  const csc = ['Framework64', 'Framework']
+    .map((framework) => path.join(windir, 'Microsoft.NET', framework, 'v4.0.30319', 'csc.exe'))
+    .find((candidate) => existsSync(candidate))
+  if (!windows || !csc) return null
+  const built = spawnSync(csc, ['/nologo', `/out:${exe}`, source], { encoding: 'utf8' })
+  assert.equal(built.status, 0, `csc failed: ${built.stdout}${built.stderr}`)
+  return exe
+})()
+
 async function exited(child) {
   if (child.exitCode === null) await new Promise((resolve) => child.once('exit', resolve))
 }
@@ -53,31 +83,16 @@ async function runHandoff({ setupExit, nsis, keepElectron = true, appAliveMs = 0
   if (keepElectron)
     copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'PING.EXE'))
 
-  // JScript run by wscript.exe, a GUI program like the real Setup.exe: a console-less cmd.exe
-  // (the script's own situation) cannot host a batch file started with `start /wait`.
-  const whoami = path.join(system32, 'whoami.exe').replaceAll('\\', '\\\\')
-  const setupPath = path.join(root, 'Setup (x).js')
-  writeFileSync(
-    setupPath,
-    [
-      "var sh = new ActiveXObject('WScript.Shell');",
-      "var fso = new ActiveXObject('Scripting.FileSystemObject');",
-      "var current = sh.ExpandEnvironmentStrings('%LOCALAPPDATA%') + '\\\\MemryNote\\\\current';",
-      "sh.Run('cmd.exe /c mkdir \"' + current + '\"', 0, true);",
-      `fso.CopyFile('${whoami}', current + '\\\\Memrynote.exe', true);`,
-      "fso.CreateTextFile(WScript.ScriptFullName + '.ran').Close();",
-      `WScript.Quit(${setupExit});`
-    ].join('\r\n')
-  )
-  const nsisPath = path.join(root, 'nsis (x).js')
-  writeFileSync(
-    nsisPath,
-    [
-      "var fso = new ActiveXObject('Scripting.FileSystemObject');",
-      "fso.CreateTextFile(WScript.ScriptFullName + '.ran').Close();",
-      'WScript.Quit(0);'
-    ].join('\r\n')
-  )
+  // Real executables, like the real Setup.exe and NSIS installer: `%errorlevel%` after
+  // `start /wait` of a script file is not the script's exit code. One compiled stub serves both;
+  // beside the copy, `.exit` holds its exit code, `.creates` the folder to put Memrynote.exe in,
+  // and it leaves `.ran` behind.
+  const setupPath = path.join(root, 'Setup (x).exe')
+  const nsisPath = path.join(root, 'nsis (x).exe')
+  copyFileSync(stubExe, setupPath)
+  copyFileSync(stubExe, nsisPath)
+  writeFileSync(`${setupPath}.exit`, String(setupExit))
+  writeFileSync(`${setupPath}.creates`, path.join(localAppData, 'MemryNote', 'current'))
 
   // A live app to wait for, or the PID of one that is already gone.
   const app = spawn(
