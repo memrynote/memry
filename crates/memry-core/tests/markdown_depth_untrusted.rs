@@ -12,8 +12,8 @@ use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::ReplaceOptions;
 use memry_core::markdown::convert::apply::ReplaceOutcome;
 use memry_core::markdown::frontmatter::{
-    Eol, YamlMap, YamlValue, depth_visits, key_probes, parse_markdown_note, safe_dump, safe_load,
-    stringify_frontmatter_block,
+    Eol, YamlMap, YamlValue, depth_visits, entries_scanned, parse_markdown_note, safe_dump,
+    safe_load, stringify_frontmatter_block,
 };
 use support::doc_case::{converter_for, open_document};
 
@@ -187,14 +187,16 @@ fn many_aliases_of_a_wide_anchor_do_not_hang() {
 }
 
 /// Keys cost O(1) each: 300000 plain keys and 100000 descending integer keys
-/// took minutes through a linear duplicate scan. Counted in key probes, so the
-/// bound holds on any machine: a scan makes n x n / 2 of them.
+/// took minutes through a linear duplicate scan. 20000 of each is enough to
+/// show it: the count, not the size, is what the test checks. Counted in map entries walked
+/// (every walk of a map's keys is counted), so the bound holds on any machine:
+/// a scan walks n x n / 2 of them, loading walks none.
 #[test]
 fn a_frontmatter_of_many_keys_does_not_hang() {
-    let plain: String = (0..300_000).map(|i| format!("k{i}: 1\n")).collect();
-    let indexed: String = (0..100_000).rev().map(|i| format!("{i}: 1\n")).collect();
+    let plain: String = (0..20_000).map(|i| format!("k{i}: 1\n")).collect();
+    let indexed: String = (0..20_000).rev().map(|i| format!("{i}: 1\n")).collect();
     on_small_stack(move || {
-        let before = key_probes();
+        let before = entries_scanned();
         assert!(safe_load(&plain).is_ok());
         let loaded = safe_load(&indexed).unwrap().unwrap();
         let YamlValue::Map(map) = loaded else {
@@ -204,9 +206,9 @@ fn a_frontmatter_of_many_keys_does_not_hang() {
             map.iter().next().map(|(k, _)| k.to_owned()),
             Some("0".to_owned())
         );
-        assert_eq!(map.len(), 100_000);
-        let probes = key_probes() - before;
-        // A handful of lookups per key (duplicate check, insert, read back).
-        assert!(probes <= 5 * 400_000, "{probes} key probes");
+        assert_eq!(map.len(), 20_000);
+        let walked = entries_scanned() - before;
+        // Loading walks no entry; the check above reads one back.
+        assert!(walked <= 10, "{walked} map entries walked");
     });
 }

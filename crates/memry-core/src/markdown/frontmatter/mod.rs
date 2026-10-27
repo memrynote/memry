@@ -18,6 +18,6 @@ pub use note::{
 pub use split::{FrontmatterSplit, split_frontmatter_block};
 pub use value::{YamlMap, YamlValue};
 #[doc(hidden)]
-pub use value::{depth_visits, key_probes};
+pub use value::{depth_visits, entries_scanned};
 pub use yaml_dump::safe_dump;
 pub use yaml_load::{YamlError, safe_load};

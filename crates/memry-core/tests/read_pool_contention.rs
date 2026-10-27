@@ -4,14 +4,16 @@
 //! read pool, every list the UI asked for queued on the writer's mutex behind
 //! it. This seeds a real vault, holds a write transaction over 50000
 //! `sync_items` rows on the writer, and runs reads through the public API
-//! while it is held. Nothing here reads the clock: the writer stays inside its
+//! while it is held. No assertion measures latency: the writer stays inside its
 //! transaction until the reads have finished, so a read that waited for the
-//! writer would never finish (the test hangs, and the job timeout reports it).
+//! writer never finishes, and a liveness guard fails the test with a message.
+//! The p50/p99 numbers live in an `#[ignore]`d release-build test that reports
+//! a miss and fails only under `MEMRY_PERF_ENFORCE=1`.
 //!
 //! | Test                                              | Rule                                      |
 //! | ------------------------------------------------- | ----------------------------------------- |
-//! | pooled reads finish under a held write            | every read returns before the writer is   |
-//! |                                                   | released                                  |
+//! | pooled reads finish under a held write            | every read returns while the writer is    |
+//! |                                                   | held (liveness guard, 120 s)              |
 //! | the same reads through the writer wait for it     | control: a writer-routed call runs after  |
 //! |                                                   | the held transaction's closure ends       |
 //! | a reader never sees the uncommitted rows          | snapshot isolation under WAL              |
@@ -22,6 +24,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 use http_fakes::FakeSecureStore;
 use memry_core::api::errors::StorageError;
@@ -207,6 +210,16 @@ fn warm_up(read: &impl Fn(usize)) {
     }
 }
 
+fn percentile(sorted: &[Duration], p: f64) -> Duration {
+    let rank = ((sorted.len() as f64) * p).ceil() as usize;
+    sorted[rank.clamp(1, sorted.len()) - 1]
+}
+
+/// How long the reads may take before the test calls them blocked. A liveness
+/// guard, not a latency bound: reads that wait for the writer never finish, so
+/// any value far above a run's real duration tells them apart.
+const LIVENESS: Duration = Duration::from_secs(120);
+
 #[test]
 fn pooled_reads_finish_while_the_writer_holds_a_sync_transaction() {
     let _turn = one_at_a_time();
@@ -217,18 +230,65 @@ fn pooled_reads_finish_while_the_writer_holds_a_sync_transaction() {
     let (release_tx, release_rx) = mpsc::channel();
     let (started, writer) = hold_writer(s.vault.db_handle(), release_rx);
     started.recv().expect("the writer holds its transaction");
-    for i in 0..READS {
-        read(i);
-    }
-    let finished_reads = tick();
-    release_tx.send(()).expect("release the writer");
-    let committed = writer.join().expect("the writer thread");
-
-    // Every read returned while the writer still held its transaction.
+    let (done_tx, done_rx) = mpsc::channel();
+    let finished = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            for i in 0..READS {
+                read(i);
+            }
+            let _ = done_tx.send(());
+        });
+        // The writer is still inside its transaction while this waits.
+        let finished = done_rx.recv_timeout(LIVENESS).is_ok();
+        // Release either way, so a blocked reader can end and the scope can join.
+        release_tx.send(()).expect("release the writer");
+        finished
+    });
+    writer.join().expect("the writer thread");
     assert!(
-        finished_reads < committed,
-        "the reads finished at {finished_reads}, after the commit at {committed}"
+        finished,
+        "the reads were still blocked after {LIVENESS:?} with the writer held: they waited for it"
     );
+}
+
+/// Latency of the pooled reads under the held write. Release builds only, and
+/// a miss is reported, not failed, unless `MEMRY_PERF_ENFORCE=1` (as in
+/// markdown_perf): `cargo test --release --test read_pool_contention
+/// pooled_read_latency -- --ignored --nocapture`.
+#[test]
+#[ignore = "timing: run in a release build, see the doc comment"]
+fn pooled_read_latency_under_a_held_write() {
+    let _turn = one_at_a_time();
+    let s = seeded(NOTES, TASKS);
+    let read = api_reads(&s);
+    warm_up(&read);
+    let (release_tx, release_rx) = mpsc::channel();
+    let (started, writer) = hold_writer(s.vault.db_handle(), release_rx);
+    started.recv().expect("the writer holds its transaction");
+    let mut latencies: Vec<Duration> = (0..READS)
+        .map(|i| {
+            let began = Instant::now();
+            read(i);
+            began.elapsed()
+        })
+        .collect();
+    release_tx.send(()).expect("release the writer");
+    writer.join().expect("the writer thread");
+    latencies.sort();
+    let (p50, p99, max) = (
+        percentile(&latencies, 0.50),
+        percentile(&latencies, 0.99),
+        *latencies.last().expect("latencies"),
+    );
+    println!("pooled reads while the writer is held: p50 {p50:?} p99 {p99:?} max {max:?}");
+    let missed = p50 >= Duration::from_millis(2)
+        || p99 >= Duration::from_millis(20)
+        || max >= Duration::from_millis(50);
+    if std::env::var("MEMRY_PERF_ENFORCE").is_ok_and(|v| v == "1") {
+        assert!(!missed, "p50 {p50:?} p99 {p99:?} max {max:?}");
+    } else if missed {
+        println!("over budget (not enforced)");
+    }
 }
 
 #[test]
