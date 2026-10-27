@@ -5,9 +5,9 @@
 //! target's place. A crash leaves the old file or the new one, never half of either.
 //!
 //! Two ways to take the place, and a writer picks by what it knows about the target:
-//! - [`atomic_write`] replaces the target (`rename`; on Windows `MoveFileExW` with
-//!   `MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH`). The successor keeps the replaced
-//!   file's permissions, owner and group, and on Unix its extended attributes (Finder tags,
+//! - [`atomic_write`] replaces the target (`rename`; on Windows std's rename with POSIX
+//!   semantics, which also replaces a file another process holds open). The successor keeps the
+//!   replaced file's permissions, owner and group, and on Unix its extended attributes (Finder tags,
 //!   quarantine flags), so a save does not quietly turn a 0644 note into 0600 or drop its tags.
 //!   Windows ACLs are not copied: the successor inherits the folder's, as a rename from the
 //!   Electron app did.
@@ -17,7 +17,8 @@
 //!   [`create_unique`] picks the first free `<name> N<ext>` that way.
 //!
 //! After a replace or create the directory is synced (Unix), so the rename itself survives a
-//! power cut, not only the file's bytes.
+//! power cut, not only the file's bytes. Windows has no directory sync; a create there is a
+//! `MOVEFILE_WRITE_THROUGH` move, a replace relies on the file's own `sync_all`.
 //!
 //! Cloud-sync clients and antivirus scanners lock files for a moment, so a sharing violation
 //! is retried after 50, 150 and 450 ms and then tried once more. The Step 14 lock guard calls
@@ -189,26 +190,16 @@ fn carry_over_attributes(target: &Path, temp: &Path) {
     }
 }
 
-#[cfg(unix)]
+/// `std::fs::rename` replaces the target on both platforms. On Windows it is the POSIX-semantics
+/// rename of `SetFileInformationByHandle`, which, unlike `MoveFileExW(REPLACE_EXISTING)`
+/// (access denied), replaces a file another process holds open with `FILE_SHARE_DELETE`:
+/// the antivirus-style reader the retry table exists for.
 fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
     fs::rename(temp, target)
 }
 
 #[cfg(windows)]
-fn replace_file(temp: &Path, target: &Path) -> io::Result<()> {
-    move_file(
-        temp,
-        target,
-        windows::Win32::Storage::FileSystem::MOVEFILE_REPLACE_EXISTING,
-    )
-}
-
-#[cfg(windows)]
-fn move_file(
-    from: &Path,
-    to: &Path,
-    replace: windows::Win32::Storage::FileSystem::MOVE_FILE_FLAGS,
-) -> io::Result<()> {
+fn move_file_no_replace(from: &Path, to: &Path) -> io::Result<()> {
     use std::os::windows::ffi::OsStrExt;
     use windows::Win32::Storage::FileSystem::{MOVEFILE_WRITE_THROUGH, MoveFileExW};
     use windows::core::PCWSTR;
@@ -219,7 +210,7 @@ fn move_file(
         MoveFileExW(
             PCWSTR(from.as_ptr()),
             PCWSTR(to.as_ptr()),
-            replace | MOVEFILE_WRITE_THROUGH,
+            MOVEFILE_WRITE_THROUGH,
         )
     }
     .map_err(crate::shell::file_open::win_io_error)
@@ -258,11 +249,7 @@ fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
 #[cfg(windows)]
 fn create_file(temp: &Path, target: &Path) -> io::Result<()> {
     // Without MOVEFILE_REPLACE_EXISTING the move fails when the target exists.
-    move_file(
-        temp,
-        target,
-        windows::Win32::Storage::FileSystem::MOVE_FILE_FLAGS(0),
-    )
+    move_file_no_replace(temp, target)
 }
 
 #[cfg(unix)]
