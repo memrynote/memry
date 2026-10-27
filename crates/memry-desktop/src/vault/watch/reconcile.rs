@@ -17,8 +17,10 @@
 //! - A removal is reported only after the rename window, with the vault reachable and the file
 //!   (and its iCloud placeholder) absent, whatever found it: an OS event, a respelled path or a
 //!   rescan of any kind. `confirm_removed` is the only exit and only `settle_expired` reaches it.
-//!   A delete that did not stay gone, or a note that was respelled in place, is never reported. A rescan withholds removals when too many are missing
-//!   at once or the walk was cut short.
+//!   A delete that did not stay gone, or a note that was respelled in place, is never reported.
+//!   Each window starts when its own absence was observed ([`observed`]). A rescan withholds
+//!   removals when too many are missing at once or the walk was cut short, and reports
+//!   `Rescanned` only after what it found has settled.
 //! - A removal that pairs with a new file by content hash is a rename, never a delete plus a new
 //!   file; a note whose row has no hash is never paired. A rename is reported once.
 //! - Every markdown file is read by hash, streamed, on the watcher's thread; a file that cannot
@@ -40,8 +42,9 @@ use super::event::{EventSink, VaultEvent};
 use super::filter::WatchFilter;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
 use super::home::{Home, spelling_listed};
-use super::rename::{Pending, RenameTracker};
+use super::rename::{Pending, RenameTracker, observed};
 use super::reported::{Reported, Seen};
+use super::rescan::RescanReport;
 use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::hash_file;
 use crate::vault::walk::{Limits, walk_from};
@@ -53,8 +56,8 @@ pub const ADD_GRACE: Duration = Duration::from_millis(300);
 /// Files held at once; past this a new file is reported at once and loses only the late pairing.
 pub const MAX_HELD_ADDS: usize = 10_000;
 
-struct HeldAdd {
-    path: String,
+pub(super) struct HeldAdd {
+    pub(super) path: String,
     file_type: FileType,
     size: u64,
     modified_ms: i64,
@@ -78,7 +81,9 @@ pub struct Reconciler {
     /// `all_rows` by folded path, built at most once per batch.
     pub(super) folded: Option<HashMap<String, Vec<usize>>>,
     pub(super) limits: Limits,
-    held_adds: Vec<HeldAdd>,
+    pub(super) held_adds: Vec<HeldAdd>,
+    /// Rescans whose `Rescanned` waits for their deletes and held adds.
+    pub(super) rescans: Vec<RescanReport>,
     pub(super) reported: Reported,
     /// Set when the watcher stops: long steps (a folder of a million files) end early and
     /// report nothing more.
@@ -132,6 +137,7 @@ impl Reconciler {
             folded: None,
             limits: Limits::DEFAULT,
             held_adds: Vec::new(),
+            rescans: Vec::new(),
             reported: Reported::default(),
             stop: Arc::new(AtomicBool::new(false)),
         }
@@ -166,6 +172,7 @@ impl Reconciler {
     pub fn clear(&mut self) {
         self.tracker.clear();
         self.held_adds.clear();
+        self.rescans.clear();
     }
 
     pub(super) fn emit(&self, event: VaultEvent) {
@@ -177,8 +184,7 @@ impl Reconciler {
     pub fn go_away(&mut self) {
         if !self.away {
             self.away = true;
-            self.tracker.clear();
-            self.held_adds.clear();
+            self.clear();
             tracing::warn!(
                 scope = "vault_watch",
                 "the vault is unreachable; removals are ignored"
@@ -274,7 +280,7 @@ impl Reconciler {
         // lives, which the rows may not know. Entries that name no note have nothing to remove.
         self.reported.forget_unowned_tree(rel);
         for home in homes {
-            self.tracker.track(home.pending(), now, None);
+            self.tracker.track(home.pending(), observed(now), None);
         }
     }
 
@@ -288,14 +294,7 @@ impl Reconciler {
         for pending in self.tracker.expired(now) {
             self.confirm_removed(pending);
         }
-    }
-
-    /// Tracks a delete found by a rescan. Every delete, live or found by a pass over the vault,
-    /// waits out the rename window here and is re-checked against the disk when it ends: a
-    /// vault mid-checkout looks like a mass delete for a moment, and a delete that did not stay
-    /// gone is not reported.
-    pub(super) fn track_removal(&mut self, pending: Pending, now: Instant) {
-        self.tracker.track(pending, now, None);
+        self.report_settled_rescans();
     }
 
     /// The one place a `Removed` leaves the reconciler, reached only from [`Self::settle_expired`]:
@@ -318,6 +317,7 @@ impl Reconciler {
             Ok(None) => {}
             Err(error) => return self.storage_failed(&error),
         }
+        self.count_removed(&pending.note_id);
         self.emit(VaultEvent::Removed {
             note_id: pending.note_id,
             path: pending.path,
@@ -525,7 +525,7 @@ impl Reconciler {
                 size: stat.0,
                 modified_ms: stat.1,
                 hash,
-                due: now + ADD_GRACE,
+                due: observed(now) + ADD_GRACE,
             });
             return;
         }

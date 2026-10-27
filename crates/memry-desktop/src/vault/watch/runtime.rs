@@ -90,7 +90,8 @@ impl VaultWatcher {
     /// (the Linux inotify limit) is the caller's error.
     ///
     /// The start rescan runs on the worker, after this returns, and always ends with a
-    /// [`VaultEvent::Rescanned`]. Electron ran it before the open's index walk (it replays the
+    /// [`VaultEvent::Rescanned`], sent once what it found has settled (the removals it found stayed
+    /// gone through the rename window, or did not). Electron ran it before the open's index walk (it replays the
     /// removals of files deleted while the app was closed). The consumer that applies events
     /// (12e) must run its open walk after that first `Rescanned`, or the walk indexes a file
     /// whose removal is still on its way.
@@ -485,5 +486,54 @@ mod tests {
                 .any(|e| matches!(e, VaultEvent::WatchFailed { .. })),
             "the failure is reported too: {events:?}"
         );
+    }
+
+    /// A re-arm that fails (the folder is momentarily gone, the OS is out of watches) keeps the
+    /// watch that still works: dropping it first would leave the vault unwatched.
+    #[test]
+    fn a_failed_re_arm_keeps_the_old_watch() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("vault");
+        let core = root.join(".memry/core");
+        std::fs::create_dir_all(&core).unwrap();
+        let vault =
+            Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+        let log: Arc<Mutex<Vec<VaultEvent>>> = Arc::default();
+        let events = log.clone();
+        let sink: EventSink = Arc::new(move |event| events.lock().unwrap().push(event));
+        let reconciler = Reconciler::new(
+            root.clone(),
+            vec![],
+            vault.note_files(),
+            Arc::new(EchoGuard::default()),
+            sink.clone(),
+        );
+        let (tx, rx) = sync_channel(8);
+        let overflow = Arc::<AtomicBool>::default();
+        let mut worker = Worker::new(
+            reconciler,
+            root.clone(),
+            sink,
+            Tuning::windows(),
+            (tx.clone(), rx),
+            overflow.clone(),
+            Arc::default(),
+        );
+        worker.watcher = Some(watch(&root, &tx, &overflow).unwrap());
+
+        worker.root = dir.path().join("not-there");
+        worker.rearm(Instant::now());
+        assert!(worker.watcher.is_some(), "the old watch was dropped");
+        assert!(
+            log.lock()
+                .unwrap()
+                .iter()
+                .any(|e| matches!(e, VaultEvent::WatchFailed { .. })),
+            "the failure is reported"
+        );
+
+        worker.root = root.clone();
+        worker.rearm(Instant::now());
+        assert!(worker.watcher.is_some());
     }
 }

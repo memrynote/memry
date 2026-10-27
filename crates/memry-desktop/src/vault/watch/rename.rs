@@ -20,6 +20,16 @@ use std::time::{Duration, Instant};
 
 pub const RENAME_WINDOW: Duration = Duration::from_millis(500);
 
+/// The instant a delete or a held new file is timed from: now, never earlier than the caller's
+/// own `started`. A window opens at the moment ITS absence was observed, not at the start of
+/// the operation that found it: a rescan of a big vault, or a batch of thousands of paths, can
+/// run longer than the window, and a delete timed from the start would be reported on the next
+/// tick without ever having stayed gone. (`started` keeps a caller that passes a later time,
+/// a test's clock, in charge.)
+pub fn observed(started: Instant) -> Instant {
+    Instant::now().max(started)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pending {
     pub note_id: String,
@@ -59,12 +69,17 @@ impl RenameTracker {
         self.entries.is_empty()
     }
 
+    pub fn has_note(&self, note_id: &str) -> bool {
+        self.by_note.contains_key(note_id)
+    }
+
     pub fn new_batch(&mut self) -> Batch {
         self.next += 1;
         Batch(self.next)
     }
 
-    /// Tracks a removed note. A note tracked again replaces its earlier entry.
+    /// Tracks a removed note; its window runs from `now`, which the caller took when it saw
+    /// the file gone (see [`observed`]). A note tracked again replaces its earlier entry.
     pub fn track(&mut self, pending: Pending, now: Instant, batch: Option<Batch>) {
         self.forget_note(&pending.note_id);
         self.next += 1;

@@ -733,7 +733,9 @@ fn files_held_for_pairing_are_bounded_and_none_is_lost() {
         50,
         "past the bound a file is reported at once"
     );
-    r.settle_expired(t0 + Duration::from_secs(2));
+    // The grace of each file runs from when it was looked at, which a batch this big spreads
+    // over seconds in a debug build.
+    r.settle_expired(Instant::now() + Duration::from_secs(2));
     assert_eq!(reported(&log), total);
 }
 
