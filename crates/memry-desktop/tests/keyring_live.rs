@@ -21,7 +21,12 @@ fn unique(tag: &str) -> String {
     format!("e2e-live-{tag}-{}-{nanos}", std::process::id())
 }
 
+/// Warnings of the store (why the keychain answered `Locked`) show in a failing test's output.
 fn store(suffix: &str) -> KeyringStore {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter("warn")
+        .with_writer(std::io::stderr)
+        .try_init();
     KeyringStore::new(
         Some(suffix.to_owned()),
         E2eGate::from_env(&LaunchEnv::default()),
@@ -151,6 +156,8 @@ fn a_secret_service_that_starts_late_is_found_by_the_next_call() {
         );
         assert_eq!(store.health(), SecureStoreHealth::Unavailable);
 
+        // The daemon outlives this test on purpose: the next call must find it running.
+        #[allow(clippy::zombie_processes)]
         let mut daemon = Command::new("gnome-keyring-daemon")
             .args(["--unlock", "--components=secrets"])
             .stdin(Stdio::piped())

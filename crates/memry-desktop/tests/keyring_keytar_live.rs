@@ -38,7 +38,12 @@ fn unique() -> String {
     format!("e2e-live-keytar-{}-{nanos}", std::process::id())
 }
 
+/// Warnings of the store (why the keychain answered `Locked`) show in a failing test's output.
 fn store(suffix: &str) -> KeyringStore {
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter("warn")
+        .with_writer(std::io::stderr)
+        .try_init();
     KeyringStore::new(
         Some(suffix.to_owned()),
         E2eGate::from_env(&LaunchEnv::default()),

@@ -267,6 +267,16 @@ jobs:
       # blob limit. `keyring_keytar_live` writes an item the way Electron's keytar did (`security`,
       # CredWriteW, secret-tool) and reads it with the store, then the reverse: the names keytar
       # reads are the names the store writes.
+      - name: Unlocked keychain for the keychain seam (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          KC="$RUNNER_TEMP/memry-ci.keychain-db"
+          security create-keychain -p ci "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p ci "$KC"
+          security default-keychain -d user -s "$KC"
+          security list-keychains -d user -s "$KC"
+
       - name: Keychain seam, live OS secrets (macOS, Windows)
         if: runner.os != 'Linux'
         run: |
