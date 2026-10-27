@@ -1,0 +1,177 @@
+//! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). Every test uses a
+//! device suffix and service of its own (`e2e-live-...`, `com.memry.test`) and removes what it
+//! wrote, so the real `com.memry.sync` accounts of a developer's machine are never touched. CI runs
+//! them: macOS (login keychain of the runner), Windows (Credential Manager) and Linux under a private
+//! session bus (`gnome-keyring-daemon --unlock`, and again with no Secret Service at all).
+#![cfg(feature = "live-os-secrets")]
+
+use std::sync::Arc;
+
+use memry_core::api::errors::SecureStoreError;
+use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
+use memry_desktop::e2e::E2eGate;
+use memry_desktop::launch_env::LaunchEnv;
+use memry_desktop::seams::secure_store::{GenericSecrets, KEYS, KeyringStore, SecureStoreHealth};
+
+fn unique(tag: &str) -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    format!("e2e-live-{tag}-{}-{nanos}", std::process::id())
+}
+
+fn store(suffix: &str) -> KeyringStore {
+    KeyringStore::new(
+        Some(suffix.to_owned()),
+        E2eGate::from_env(&LaunchEnv::default()),
+    )
+}
+
+/// Removes the entries of a test's device suffix when the test ends, pass or fail.
+struct Cleanup(Arc<KeyringStore>);
+
+impl Drop for Cleanup {
+    fn drop(&mut self) {
+        let _ = self.0.clear();
+    }
+}
+
+fn no_secret_service() -> bool {
+    std::env::var("MEMRY_LIVE_NO_SECRET_SERVICE").is_ok_and(|v| v == "1")
+}
+
+#[test]
+fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
+    if no_secret_service() {
+        return;
+    }
+    let store = Arc::new(store(&unique("sync")));
+    let _cleanup = Cleanup(store.clone());
+    for (n, key) in KEYS.into_iter().enumerate() {
+        let n = u8::try_from(n).unwrap();
+        for value in [vec![n; 32], (0..64_u8).map(|b| b ^ n).collect::<Vec<_>>()] {
+            store.set(key, value.clone()).unwrap();
+            assert_eq!(store.get(key).unwrap(), Some(value));
+        }
+    }
+    store.delete(SecureStoreKey::MasterKey).unwrap();
+    assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
+    store.clear().unwrap();
+    for key in KEYS {
+        assert_eq!(store.get(key).unwrap(), None);
+    }
+    assert_eq!(store.health(), SecureStoreHealth::Ready);
+}
+
+#[test]
+fn a_generic_secret_of_forty_raw_bytes_round_trips() {
+    if no_secret_service() {
+        return;
+    }
+    let store = store(&unique("generic"));
+    let account = unique("account");
+    let value: Vec<u8> = (0..40).map(|b| b * 5 + 1).collect();
+    assert_eq!(store.get_secret("com.memry.test", &account).unwrap(), None);
+    store
+        .set_secret("com.memry.test", &account, &value)
+        .unwrap();
+    let read = store.get_secret("com.memry.test", &account).unwrap();
+    store.delete_secret("com.memry.test", &account).unwrap();
+    assert_eq!(read, Some(value));
+    assert_eq!(store.get_secret("com.memry.test", &account).unwrap(), None);
+}
+
+/// Credential Manager holds a blob of at most 2560 bytes. The five real values are at most 90.
+#[cfg(windows)]
+#[test]
+fn a_big_generic_value_is_failed_not_locked_on_windows() {
+    let store = store(&unique("blob"));
+    let account = unique("account");
+    let fits = vec![7_u8; 1500];
+    store.set_secret("com.memry.test", &account, &fits).unwrap();
+    assert_eq!(
+        store.get_secret("com.memry.test", &account).unwrap(),
+        Some(fits)
+    );
+    let too_big = vec![7_u8; 3000];
+    let result = store.set_secret("com.memry.test", &account, &too_big);
+    store.delete_secret("com.memry.test", &account).unwrap();
+    assert!(
+        matches!(result, Err(SecureStoreError::Failed { .. })),
+        "a refused write is Failed, got {result:?}"
+    );
+}
+
+/// `MEMRY_LIVE_NO_SECRET_SERVICE=1`: the session bus has no Secret Service and none is started.
+#[test]
+fn with_no_secret_service_every_call_is_locked_and_nothing_is_stored() {
+    if !no_secret_service() {
+        return;
+    }
+    let store = store(&unique("none"));
+    for key in KEYS {
+        assert_eq!(store.get(key), Err(SecureStoreError::Locked));
+        assert_eq!(store.set(key, vec![1; 32]), Err(SecureStoreError::Locked));
+    }
+    assert_eq!(
+        store.get_secret("com.memry.test", "a"),
+        Err(SecureStoreError::Locked)
+    );
+    assert_eq!(store.health(), SecureStoreHealth::Unavailable);
+}
+
+/// `MEMRY_LIVE_LATE_SERVICE=1` (Linux): no Secret Service at first; the test starts
+/// `gnome-keyring-daemon` and the next call finds it, and the recovery listener fires.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_secret_service_that_starts_late_is_found_by_the_next_call() {
+    use std::io::Write;
+    use std::process::{Command, Stdio};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::time::{Duration, Instant};
+
+    if std::env::var("MEMRY_LIVE_LATE_SERVICE").is_ok_and(|v| v == "1") {
+        let store = Arc::new(store(&unique("late")));
+        let _cleanup = Cleanup(store.clone());
+        let fired = Arc::new(AtomicUsize::new(0));
+        let counter = fired.clone();
+        store.subscribe_recovered(move || {
+            counter.fetch_add(1, Ordering::SeqCst);
+        });
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+        assert_eq!(store.health(), SecureStoreHealth::Unavailable);
+
+        let mut daemon = Command::new("gnome-keyring-daemon")
+            .args(["--unlock", "--components=secrets"])
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .spawn()
+            .unwrap();
+        daemon.stdin.take().unwrap().write_all(b"ci").unwrap();
+
+        let start = Instant::now();
+        loop {
+            match store.set(SecureStoreKey::MasterKey, vec![4; 32]) {
+                Ok(()) => break,
+                Err(SecureStoreError::Locked) if start.elapsed() < Duration::from_secs(20) => {
+                    std::thread::sleep(Duration::from_millis(200));
+                }
+                Err(error) => panic!("the late service was not found: {error:?}"),
+            }
+        }
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey).unwrap(),
+            Some(vec![4; 32])
+        );
+        assert_eq!(store.health(), SecureStoreHealth::Ready);
+        let start = Instant::now();
+        while fired.load(Ordering::SeqCst) == 0 && start.elapsed() < Duration::from_secs(5) {
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert_eq!(fired.load(Ordering::SeqCst), 1);
+    }
+}

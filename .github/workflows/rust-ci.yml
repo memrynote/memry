@@ -237,6 +237,45 @@ jobs:
             ! secret-tool search --all xdg:schema chrome_libsecret_os_crypt_password_v2 2>&1 | grep -q memry-live
           '
 
+      # The desktop KeyringStore against the live OS keychain (#3532). The tests use their own
+      # `e2e-live-*` device suffix and the `com.memry.test` service and remove their items.
+      # macOS: the runner's login keychain. Windows: Credential Manager, including the 2560-byte
+      # blob limit.
+      - name: Keychain seam, live OS secrets (macOS, Windows)
+        if: runner.os != 'Linux'
+        run: |
+          if [ "${{ matrix.os }}" != "macos-15-intel" ]; then
+            cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
+          fi
+          cargo test -p memry-desktop --features live-os-secrets --test keyring_live
+
+      # Linux: an unlocked gnome-keyring under a private session bus; then a bus with no Secret
+      # Service at all (every call must answer "locked" and store nothing); then a bus where the
+      # daemon starts after the first call, which the next call must find. The two bus-less runs
+      # use a bus config with no service directory, so D-Bus never activates gnome-keyring itself.
+      - name: Keychain seam, live OS secrets (Linux)
+        if: runner.os == 'Linux'
+        timeout-minutes: 15
+        run: |
+          cargo clippy -p memry-desktop --features live-os-secrets --test keyring_live -- -D warnings
+          cargo test -p memry-desktop --features live-os-secrets --test keyring_live --no-run
+          dbus-run-session -- bash -c 'echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null && cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
+          cat > "$RUNNER_TEMP/bare-bus.conf" <<'EOF'
+          <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">
+          <busconfig>
+            <type>session</type>
+            <listen>unix:tmpdir=/tmp</listen>
+            <auth>EXTERNAL</auth>
+            <policy context="default">
+              <allow send_destination="*" eavesdrop="true"/>
+              <allow eavesdrop="true"/>
+              <allow own="*"/>
+            </policy>
+          </busconfig>
+          EOF
+          dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_NO_SECRET_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live'
+          dbus-run-session --config-file="$RUNNER_TEMP/bare-bus.conf" -- bash -c 'MEMRY_LIVE_LATE_SERVICE=1 cargo test -p memry-desktop --features live-os-secrets --test keyring_live a_secret_service_that_starts_late'
+
       # Release only: the latency assertions are meaningless in a debug build. Proves reads
       # through the pool do not wait behind a held write transaction.
       - name: Test (memry-core, read pool contention, release)

@@ -22,7 +22,7 @@ path = "src/bin/export_bindings.rs"
 
 [features]
 # The WDIO driver plugins and the `e2e_*` test commands. Never part of a release build.
-e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio", "dep:arboard"]
+e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio", "dep:arboard", "memry-desktop/e2e"]
 # Step 07 (#3524): rehearsal-only Velopack probe. Step 38 (#3555) replaces it with the real updater.
 update-probe = []
 
