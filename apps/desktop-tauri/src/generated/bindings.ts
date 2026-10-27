@@ -97,6 +97,11 @@ export const commands = {
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
 	telemetrySetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_enabled", { enabled }),
 	telemetryTrack: (event: TelemetryEvent) => __TAURI_INVOKE<null>("telemetry_track", { event }),
+	/**
+	 *  Searches photos. An empty `query` is the capability probe: it answers from the key alone
+	 *  without a request.
+	 */
+	unsplashSearch: (query: string, page: number | null) => __TAURI_INVOKE<UnsplashSearchResponse>("unsplash_search", { query, page }),
 	vaultClose: () => __TAURI_INVOKE<null>("vault_close"),
 	vaultCreate: (parentPath: string, name: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_create", { parentPath, name }),
 	/**  Next to the current vault when one is registered, else `<documents>/Memry`. */
@@ -446,6 +451,37 @@ export type TelemetrySettings = {
 	enabled: boolean,
 	autoSendDiagnostics: boolean,
 };
+
+/**
+ *  Why an Unsplash request produced nothing. The wire names are the contract's
+ *  `UnsplashFailureReason`; `NotConfigured` is "hide the Photos tab", not an error to show.
+ */
+export type UnsplashFailure = "not-configured" | "offline" | "rate-limited" | "failed";
+
+/**  A search result, in the contract's `UnsplashPhoto` shape. */
+export type UnsplashPhoto = {
+	id: string,
+	/**  `urls.thumb`, hotlinked by the picker. */
+	thumbUrl: string,
+	/**  `urls.small`, hotlinked by the picker. */
+	previewUrl: string,
+	/**  `urls.regular`, the bytes that land in the vault. */
+	fullUrl: string,
+	/**  `links.download_location`, the tracking endpoint pinged once per pick. */
+	downloadLocation: string,
+	authorName: string,
+	/**  `links.html`, the attribution link. */
+	htmlUrl: string,
+	blurHash: string | null,
+	width: number,
+	height: number,
+};
+
+/**
+ *  What a search came to. A failure reason is an answer the renderer branches on (it hides the
+ *  Photos tab on `notConfigured`), so it is a variant here and not a rejected call.
+ */
+export type UnsplashSearchResponse = { status: "photos"; photos: UnsplashPhoto[]; rateLimitRemaining: number | null } | { status: "unavailable"; reason: UnsplashFailure };
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
 

@@ -12,6 +12,7 @@ pub mod shell_integrations;
 pub mod shortcuts;
 pub mod spell;
 pub mod telemetry;
+pub mod unsplash;
 pub mod vault;
 
 use error::{CommandError, ErrorKind, log_failure};
