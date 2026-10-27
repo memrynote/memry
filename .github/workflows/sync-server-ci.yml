@@ -2,25 +2,6 @@ name: Sync Server CI
 
 on:
   pull_request:
-    paths:
-      - 'apps/sync-server/**'
-      - 'packages/contracts/**'
-      - 'packages/rpc/**'
-      - 'packages/shared/**'
-      - 'packages/sync-core/**'
-      - 'tests/sync-harness/**'
-      # The attachment client is exercised against the real Worker by the
-      # integration spec below, so a client-side change must re-run this job.
-      # http-client.ts owns binaryFetch and AttachmentTooLargeError, which the
-      # spec exercises just as directly as attachments.ts itself.
-      - 'apps/desktop/src/main/sync/attachments.ts'
-      - 'apps/desktop/src/main/sync/attachments.integration.test.ts'
-      - 'apps/desktop/src/main/sync/http-client.ts'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'turbo.json'
-      - '.github/workflows/sync-server-ci.yml'
   push:
     paths:
       - 'apps/sync-server/**'
@@ -60,8 +41,34 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
+  # Applies the path filter that used to sit on `pull_request`, in a job, so the workflow always runs
+  # and the gate always reports. Pushes keep their own `paths`; every other event outputs true.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.paths.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Detect changed paths
+        id: paths
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          include: '^(apps/sync-server/|packages/(contracts|rpc|shared|sync-core)/|tests/sync-harness/|apps/desktop/src/main/sync/(attachments\.ts|attachments\.integration\.test\.ts|http-client\.ts)$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|turbo\.json$|\.github/workflows/sync-server-ci\.yml$)'
+
   sync-server:
     name: Typecheck, test, and Worker bundle
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -117,7 +124,7 @@ jobs:
   # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
   gate:
     name: Sync Server CI gate
-    needs: [sync-server]
+    needs: [changes, sync-server]
     if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
@@ -125,6 +132,9 @@ jobs:
       - name: Fail when a needed job failed or was cancelled
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          DETECT_RESULT: ${{ needs.changes.result }}
         run: |
           echo "needed job results: $RESULTS"
+          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
+          if [ "$DETECT_RESULT" != success ]; then echo "::error::changes job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

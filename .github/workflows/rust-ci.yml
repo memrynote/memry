@@ -11,15 +11,6 @@ on:
     # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
     # other labeled event skips all jobs, so PRs into main see no change.
     types: [opened, synchronize, reopened, labeled]
-    paths:
-      - 'crates/**'
-      - 'apps/desktop-tauri/**'
-      - 'pnpm-lock.yaml'
-      - 'packages/swift/**'
-      - 'packages/contracts/test-vectors/**'
-      - 'packages/article-extract/**'
-      - 'scripts/check-line-ceilings.mjs'
-      - '.github/workflows/rust-ci.yml'
   push:
     branches:
       - main
@@ -67,6 +58,7 @@ jobs:
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
+      paths: ${{ steps.paths.outputs.changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -79,9 +71,19 @@ jobs:
         with:
           token: ${{ github.token }}
 
+      # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
+      # would never report. Pushes keep their own `paths`; every other event outputs true.
+      - name: Detect changed paths
+        id: paths
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          include: '^(crates/|apps/desktop-tauri/|pnpm-lock\.yaml$|packages/swift/|packages/contracts/test-vectors/|packages/article-extract/|scripts/check-line-ceilings\.mjs$|\.github/workflows/rust-ci\.yml$)'
+
   lint-and-test:
     name: fmt, clippy, test (${{ matrix.os }})
     needs: plan
+    if: needs.plan.outputs.paths == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -231,7 +233,8 @@ jobs:
   # without regenerating them leaves the Rust port tested against a stale oracle.
   article-extract-oracle-fresh:
     name: Article-extraction vectors are current
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: plan
+    if: needs.plan.outputs.paths == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
     runs-on: ubuntu-22.04
     timeout-minutes: 20
 
@@ -261,7 +264,7 @@ jobs:
     name: Generated Swift bindings are current
     needs: plan
     # Fast tier: only when the UniFFI surface or the iOS app can have changed.
-    if: needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true'
+    if: needs.plan.outputs.paths == 'true' && (needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true')
     # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
     # from the same build. Anything less proves nothing about what ships.
     runs-on: macos-26
@@ -330,6 +333,9 @@ jobs:
       - name: Fail when a needed job failed or was cancelled
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          DETECT_RESULT: ${{ needs.plan.result }}
         run: |
           echo "needed job results: $RESULTS"
+          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
+          if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

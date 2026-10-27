@@ -5,9 +5,6 @@ on:
     # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; the
     # jobs below skip every other labeled event, so PRs into main see no change.
     types: [opened, synchronize, reopened, labeled]
-    paths-ignore:
-      - 'apps/docs/**'
-      - 'apps/landing/**'
   push:
     branches:
       - main
@@ -50,7 +47,8 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      electron: ${{ steps.tier.outputs.electron }}
+      # Electron paths changed AND not only docs/landing (the old `paths-ignore`; main keeps it).
+      run: ${{ steps.run.outputs.run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -63,10 +61,27 @@ jobs:
         with:
           token: ${{ github.token }}
 
+      - name: Detect docs-only changes
+        id: docs
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          exclude: '^apps/(docs|landing)/'
+
+      - name: Decide
+        id: run
+        env:
+          ELECTRON: ${{ steps.tier.outputs.electron }}
+          CODE: ${{ steps.docs.outputs.changed }}
+        run: |
+          run=false
+          if [ "$ELECTRON" = true ] && [ "$CODE" = true ]; then run=true; fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   static:
     name: Static checks
     needs: changes
-    if: needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -212,7 +227,7 @@ jobs:
     # runner). Splitting it across 4 runners with `--shard` cuts the critical
     # path; each shard writes a blob report that `unit-merge` combines into
     # the same coverage output the single run used to produce.
-    if: needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
@@ -285,7 +300,7 @@ jobs:
     # Merges the shard blob reports into one test summary and one coverage
     # report (json-summary for the thresholds job, lcov for Codecov).
     needs: [changes, unit]
-    if: ${{ !cancelled() && needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -352,7 +367,7 @@ jobs:
     # against the summary produced by unit-merge — a distinct check so coverage
     # regressions never read as failing tests. Just reads JSON, so no install.
     needs: [changes, unit-merge]
-    if: needs.changes.outputs.electron == 'true' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci'))
+    if: ${{ !cancelled() && needs.unit-merge.result == 'success' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -741,6 +756,9 @@ jobs:
       - name: Fail when a needed job failed or was cancelled
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
+          DETECT_RESULT: ${{ needs.changes.result }}
         run: |
           echo "needed job results: $RESULTS"
+          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
+          if [ "$DETECT_RESULT" != success ]; then echo "::error::changes job result was $DETECT_RESULT"; exit 1; fi
           case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
