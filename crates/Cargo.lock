@@ -3508,6 +3508,7 @@ dependencies = [
  "insta",
  "libsodium-sys-stable",
  "markup5ever 0.40.0",
+ "memry-test-kit",
  "proptest",
  "regex",
  "rusqlite",
@@ -3545,6 +3546,7 @@ dependencies = [
  "markup5ever 0.40.0",
  "md-5",
  "memry-core",
+ "memry-test-kit",
  "mime_guess",
  "pbkdf2",
  "percent-encoding",
@@ -3621,6 +3623,13 @@ dependencies = [
  "webview2-com",
  "windows",
  "windows-core",
+]
+
+[[package]]
+name = "memry-test-kit"
+version = "0.1.0"
+dependencies = [
+ "proptest",
 ]
 
 [[package]]

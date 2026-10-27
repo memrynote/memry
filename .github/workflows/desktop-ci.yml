@@ -249,12 +249,10 @@ jobs:
           cache: pnpm
 
       - name: Install system dependencies
-        run: |
-          # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
-          # ("no longer signed") and break apt-get update. We don't need them.
-          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
-          sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with:
+          packages: libsecret-1-dev
 
       - name: Install dependencies
         env:
@@ -420,12 +418,10 @@ jobs:
         uses: ./.github/actions/cache-electron-binary
 
       - name: Install system dependencies
-        run: |
-          # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
-          # ("no longer signed") and break apt-get update. We don't need them.
-          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
-          sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with:
+          packages: libsecret-1-dev
 
       - name: Install dependencies
         env:
@@ -488,12 +484,10 @@ jobs:
         uses: ./.github/actions/cache-electron-binary
 
       - name: Install system dependencies
-        run: |
-          # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
-          # ("no longer signed") and break apt-get update. We don't need them.
-          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
-          sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev gnome-keyring dbus-x11 xvfb
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with:
+          packages: libsecret-1-dev gnome-keyring dbus-x11 xvfb
 
       - name: Install dependencies
         env:
@@ -685,12 +679,10 @@ jobs:
         uses: ./.github/actions/cache-electron-binary
 
       - name: Install system dependencies
-        run: |
-          # GitHub runners ship Microsoft/Azure apt repos that intermittently 403
-          # ("no longer signed") and break apt-get update. We don't need them.
-          sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
-          sudo apt-get update
-          sudo apt-get install -y libsecret-1-dev gnome-keyring dbus-x11 xvfb
+        uses: ./.github/actions/apt-install
+        timeout-minutes: 12
+        with:
+          packages: libsecret-1-dev gnome-keyring dbus-x11 xvfb
 
       - name: Install dependencies
         env:

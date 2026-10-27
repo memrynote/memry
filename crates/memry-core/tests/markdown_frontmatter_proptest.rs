@@ -7,18 +7,11 @@ use memry_core::markdown::frontmatter::{
     Eol, YamlMap, YamlValue, parse_markdown_note, safe_dump, safe_load, split_frontmatter_block,
     stringify_frontmatter_block,
 };
+use memry_test_kit::{DEFAULT_CASES, proptest_config};
 use proptest::prelude::*;
 
 fn config() -> ProptestConfig {
-    ProptestConfig {
-        // `PROPTEST_CASES` raises the count for the nightly run (nightly-proptest.yml). An explicit
-        // `cases` would otherwise shadow the variable proptest reads in `Config::default()`.
-        cases: std::env::var("PROPTEST_CASES")
-            .ok()
-            .and_then(|cases| cases.parse().ok())
-            .unwrap_or(2000),
-        ..ProptestConfig::default()
-    }
+    proptest_config(DEFAULT_CASES)
 }
 
 fn scalar_string() -> impl Strategy<Value = String> {
