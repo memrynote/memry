@@ -32,9 +32,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
-  # feat/tauri-v2 queues like main does elsewhere: every merge keeps its full-matrix result.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/feat/tauri-v2' }}
+  # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
+  # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
+  # by a push nor cancels one.
+  group: rust-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
+  # of the previous head. Every other ref behaves as before (main pushes cancelled before this change).
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -58,6 +62,8 @@ jobs:
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
+      macos: ${{ steps.tier.outputs.macos }}
+      os_matrix: ${{ steps.matrix.outputs.os }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
       - name: Checkout
@@ -70,6 +76,26 @@ jobs:
         uses: ./.github/actions/ci-tier
         with:
           token: ${{ github.token }}
+
+      # Fast tier: Linux and Windows. Full adds Windows ARM, plus Apple Silicon unless the run is a
+      # merge-queue run (macos=false) and Intel only where plan.intel is true (main, dispatch).
+      - name: Build the OS matrix
+        id: matrix
+        env:
+          FULL: ${{ steps.tier.outputs.full }}
+          MACOS: ${{ steps.tier.outputs.macos }}
+          INTEL: ${{ steps.tier.outputs.intel }}
+        run: |
+          os='["ubuntu-22.04","windows-2022"]'
+          if [ "$FULL" = true ]; then
+            os=$(jq -cn --arg macos "$MACOS" --arg intel "$INTEL" '
+              ["ubuntu-22.04"]
+              + (if $macos == "true" then ["macos-15"] else [] end)
+              + (if $intel == "true" then ["macos-15-intel"] else [] end)
+              + ["windows-2022","windows-11-arm"]')
+          fi
+          echo "os=$os" >> "$GITHUB_OUTPUT"
+          echo "OS matrix: $os"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
       # would never report. Pushes keep their own `paths`; every other event outputs true.
@@ -89,12 +115,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Fast tier (a PR into feat/tauri-v2 without `full-ci`): Linux and Windows. macOS is the scarcest
-        # runner pool, so the Apple Silicon leg runs from `full-ci` up: the merge queue, a push to
-        # feat/tauri-v2, `full-ci`, dispatch, nightly and main. Full adds the Windows ARM runner. The Intel
-        # Mac runs only on push, nightly and dispatch (plan.intel), never on a PR into feat/tauri-v2 or in
-        # the merge queue.
-        os: ${{ fromJSON(needs.plan.outputs.full == 'true' && (needs.plan.outputs.intel == 'true' && '["ubuntu-22.04","macos-15","macos-15-intel","windows-2022","windows-11-arm"]' || '["ubuntu-22.04","macos-15","windows-2022","windows-11-arm"]') || '["ubuntu-22.04","windows-2022"]') }}
+        # Built by the plan job (see "Build the OS matrix"). The fallback is the fast tier, for a plan
+        # job that failed. macOS is the scarcest runner pool: no Mac in the merge queue, Apple
+        # Silicon from `full-ci` up and on a push to feat/tauri-v2, Intel only on main and dispatch.
+        os: ${{ fromJSON(needs.plan.outputs.os_matrix || '["ubuntu-22.04","windows-2022"]') }}
     defaults:
       run:
         shell: bash
@@ -270,8 +294,10 @@ jobs:
   swift-bindings-fresh:
     name: Generated Swift bindings are current
     needs: plan
-    # Fast tier: only when the UniFFI surface or the iOS app can have changed.
-    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true') }}
+    # Fast tier: only when the UniFFI surface or the iOS app can have changed. Never in the merge queue
+    # (macos=false): this is a macOS-only check (the XCFramework needs the iOS SDK), so a UniFFI drift
+    # is caught on the PR when the diff touches the surface and on the push that follows the merge.
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && needs.plan.outputs.macos != 'false' && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.swift == 'true') }}
     # macOS: the XCFramework needs the iOS SDK, and the bindings are generated
     # from the same build. Anything less proves nothing about what ships.
     runs-on: macos-26
