@@ -131,3 +131,24 @@ fn counting_stops_at_its_step_caps_and_says_so() {
         "the note below the depth cap is not counted"
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn a_vault_folder_that_cannot_be_looked_at_counts_as_initialised() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let vault = dir.path().join("v");
+    fs::create_dir_all(&vault).unwrap();
+    fs::set_permissions(&vault, fs::Permissions::from_mode(0o000)).unwrap();
+    // Root passes every permission check, so there is nothing to observe.
+    let looked =
+        fs::metadata(vault.join(".memry")).is_err_and(|e| e.kind() != std::io::ErrorKind::NotFound);
+    let initialised = is_vault_initialized(&vault);
+    fs::set_permissions(&vault, fs::Permissions::from_mode(0o755)).unwrap();
+    if looked {
+        assert!(
+            initialised,
+            "no init into a folder that cannot be looked at"
+        );
+    }
+}

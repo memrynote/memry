@@ -22,9 +22,21 @@ pub const VAULT_FOLDERS: [&str; 4] = [
     "attachments/files",
 ];
 
-/// `isVaultInitialized`: the `.memry` folder exists.
+/// `isVaultInitialized`: the `.memry` folder exists. A folder that cannot be looked at
+/// (`EACCES`, `EIO`, a share that went away) counts as initialised: an init would then write
+/// into a vault this app cannot see, and the open reports the real failure.
 pub fn is_vault_initialized(vault: &Path) -> bool {
-    vault.join(MEMRY_DIR).exists()
+    match vault.join(MEMRY_DIR).try_exists() {
+        Ok(exists) => exists,
+        Err(error) => {
+            tracing::warn!(
+                scope = "vault_init",
+                "cannot look for .memry: {:?}",
+                error.kind()
+            );
+            true
+        }
+    }
 }
 
 /// `initVault`. Errors carry the OS error kind: `PermissionDenied` is a vault the user cannot

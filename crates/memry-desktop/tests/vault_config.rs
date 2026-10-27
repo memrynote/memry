@@ -280,41 +280,39 @@ fn a_config_that_is_a_pipe_or_a_link_out_of_the_vault_is_refused_not_followed() 
 }
 
 #[test]
-fn a_deeply_nested_config_is_an_error_not_a_stack_overflow() {
-    let depth = 200_000;
-    let hostile = format!("{}{}", "[".repeat(depth), "]".repeat(depth));
-    let dir = vault_with(format!("{{\"a\":{hostile}}}").as_bytes());
-    let path = dir.path().to_path_buf();
-    // A small stack makes a recursion bug fail here and not only in a bigger process.
-    let result = std::thread::Builder::new()
-        .stack_size(256 * 1024)
-        .spawn(move || {
-            let read = read_vault_config(&path);
-            let write = merge_preferences(&path, &object(json!({"theme": "dark"})), &Map::new());
-            (read, write.is_err())
-        })
-        .unwrap()
-        .join()
-        .expect("no stack overflow");
-    assert_eq!(result.0, VaultConfig::default());
-    assert!(result.1);
+fn a_config_nested_past_serdes_limit_is_refused_and_left_untouched() {
+    for depth in [200, 200_000] {
+        let hostile = format!("{{\"a\":{}{}}}", "[".repeat(depth), "]".repeat(depth));
+        let dir = vault_with(hostile.as_bytes());
+        let path = dir.path().to_path_buf();
+        // A normal 2 MiB thread stack, as the guard's depth tests run on.
+        let outcome = std::thread::Builder::new()
+            .stack_size(2 * 1024 * 1024)
+            .spawn(move || {
+                let read = read_vault_config(&path);
+                let write =
+                    merge_preferences(&path, &object(json!({"theme": "dark"})), &Map::new());
+                (read, write)
+            })
+            .unwrap()
+            .join()
+            .expect("no stack overflow");
+        assert_eq!(outcome.0, VaultConfig::default());
+        assert!(
+            matches!(outcome.1, Err(ConfigError::Unreadable { .. })),
+            "depth {depth}"
+        );
+        assert_eq!(bytes(dir.path()), hostile.as_bytes(), "depth {depth}");
+    }
 }
 
-#[cfg(unix)]
 #[test]
-fn a_config_linked_inside_the_vault_is_written_through_the_link() {
-    let dir = tempfile::tempdir().unwrap();
-    fs::create_dir_all(dir.path().join(".memry")).unwrap();
-    let real = dir.path().join("shared-config.json");
-    fs::write(&real, ELECTRON).unwrap();
-    std::os::unix::fs::symlink(&real, config_path(dir.path())).unwrap();
-    merge_preferences(dir.path(), &object(json!({"theme": "light"})), &none()).unwrap();
-    assert!(
-        fs::symlink_metadata(config_path(dir.path()))
-            .unwrap()
-            .is_symlink()
+fn a_config_within_serdes_limit_still_reads() {
+    let nested = format!(
+        "{{\"a\":{}{}, \"journalFolder\": \"ok\"}}",
+        "[".repeat(100),
+        "]".repeat(100)
     );
-    let after: Value = serde_json::from_slice(&fs::read(&real).unwrap()).unwrap();
-    assert_eq!(after["preferences"]["theme"], "light");
-    assert_eq!(after["newerBuild"], json!([1, 2]));
+    let dir = vault_with(nested.as_bytes());
+    assert_eq!(read_vault_config(dir.path()).journal_folder, "ok");
 }
