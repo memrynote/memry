@@ -4,9 +4,11 @@
 use std::fs;
 use std::path::Path;
 
-use memry_core::markdown::frontmatter::YamlMap;
+use memry_core::markdown::frontmatter::{YamlMap, parse_markdown_note};
 use memry_desktop::vault::fs_atomic::{atomic_create, atomic_create_checked, create_unique};
-use memry_desktop::vault::note_file::{NoteFileError, write_new_note, write_new_note_checked};
+use memry_desktop::vault::note_file::{
+    NoteFileError, hash_file, read_note, write_new_note, write_new_note_checked, write_note,
+};
 
 fn entries(dir: &Path) -> Vec<String> {
     let mut names: Vec<_> = fs::read_dir(dir)
@@ -183,4 +185,49 @@ mod attributes {
             "no temp file remains"
         );
     }
+}
+
+#[test]
+fn a_hard_linked_note_is_refused_with_its_own_error_and_both_names_keep_their_bytes() {
+    let dir = tempfile::tempdir().unwrap();
+    let note = dir.path().join("a.md");
+    fs::write(&note, "old\n").unwrap();
+    fs::hard_link(&note, dir.path().join("alias.md")).unwrap();
+    let parsed = parse_markdown_note("old\n").unwrap();
+
+    assert!(matches!(
+        write_note(dir.path(), "a.md", &parsed, "new\n", false),
+        Err(NoteFileError::HardLinked)
+    ));
+    assert!(matches!(
+        read_note(dir.path(), "alias.md"),
+        Err(NoteFileError::HardLinked)
+    ));
+    assert!(matches!(
+        hash_file(dir.path(), "a.md"),
+        Err(NoteFileError::HardLinked)
+    ));
+    assert_eq!(fs::read_to_string(&note).unwrap(), "old\n");
+    assert_eq!(
+        fs::read_to_string(dir.path().join("alias.md")).unwrap(),
+        "old\n"
+    );
+}
+
+/// A create links the new file into place and then drops the temp name. A reader in that
+/// window sees a second link on a file nobody linked, and must look again, not fail.
+#[test]
+fn a_reader_in_the_create_window_waits_for_the_temp_link_to_go() {
+    let dir = tempfile::tempdir().unwrap();
+    let note = dir.path().join("a.md");
+    fs::write(&note, "fresh\n").unwrap();
+    let temp = dir.path().join(".0123456789ab.tmp");
+    fs::hard_link(&note, &temp).unwrap();
+    let remover = std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(25));
+        fs::remove_file(temp).unwrap();
+    });
+    let read = read_note(dir.path(), "a.md").unwrap().expect("the note");
+    assert_eq!(read.raw, "fresh\n");
+    remover.join().unwrap();
 }

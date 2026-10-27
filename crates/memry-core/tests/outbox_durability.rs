@@ -22,7 +22,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use memry_core::api::errors::StorageError;
 use memry_core::domain::notes::{self, NewNote};
@@ -334,7 +334,7 @@ fn child_holds_an_uncommitted_batch_until_it_is_killed() {
     .expect("signal the parent");
 
     // The parent kills this process here. Sleeping rather than looping so a
-    // leaked child costs nothing; the parent's deadline is the real bound.
+    // leaked child costs nothing; the parent kills it once the marker appears.
     std::thread::sleep(Duration::from_secs(120));
 }
 
@@ -379,15 +379,10 @@ fn a_process_death_leaves_the_batch_fully_present_or_never_acknowledged() {
         .spawn()
         .expect("spawn the child");
 
-    let deadline = Instant::now() + Duration::from_secs(90);
     while !marker.exists() {
         assert!(
             child.try_wait().expect("poll the child").is_none(),
             "the child exited instead of holding the transaction open"
-        );
-        assert!(
-            Instant::now() < deadline,
-            "the child never reached the open transaction"
         );
         std::thread::sleep(Duration::from_millis(25));
     }

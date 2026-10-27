@@ -23,7 +23,7 @@ use memry_desktop::telemetry::lifecycle::{self, HEARTBEAT_SECONDS};
 use memry_desktop::telemetry::logship::{self, LOG_QUEUE_FILE};
 use memry_desktop::telemetry::service::{Context, FLUSH_INTERVAL, FlushReason, Sender, Service};
 use memry_desktop::telemetry::sink::TelemetryFailureSink;
-use memry_desktop::vault_prefs;
+use memry_desktop::vault::config as vault_config;
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Wry};
 
@@ -89,7 +89,7 @@ fn load_config_and_locale(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     });
     let vault_language = current
         .as_deref()
-        .and_then(|path| vault_prefs::language(Path::new(path)));
+        .and_then(|path| vault_config::preferences_language(Path::new(path)));
     let initial = locale::resolve_startup(
         &config,
         has_vaults,

@@ -10,7 +10,9 @@ fn main() {
     velopack::VelopackApp::build().run();
 
     // Step 35 (#3552): --cli dispatch
-    // Step 11 (#3528): --crash-monitor
+    if let Some(code) = memry_tauri::guards::crash_dump::monitor_entry() {
+        std::process::exit(code);
+    }
 
     memry_tauri::install_crypto_provider();
 

@@ -1,20 +1,15 @@
 //! A vault's icon, stored in its own `.memry/config.json` under the top-level `vaultIcon`
-//! key, and the minimal read-merge-write that sets it.
-//!
-//! The key sits beside `preferences`, not inside it: an older build that rewrites
-//! `preferences` from the fields it knows would drop an unknown key there. A write here
-//! replaces only `vaultIcon` and keeps every other top-level key in value and order. Step 12
-//! moves this onto its `vault::config` owner.
+//! key. The file, its atomic write and the keys this module leaves alone belong to
+//! [`crate::vault::config`]; this module owns the icon's rules: what a valid icon is and the
+//! `updatedAt` stamp.
 
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::path::Path;
 
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use super::vaults::{RegistryError, VaultRegistry};
+use crate::vault::config::{self, ConfigError};
 
-const KEY: &str = "vaultIcon";
 const MAX_LEN: usize = 64;
 const MAX_EMOJI_LEN: usize = 32;
 
@@ -63,22 +58,10 @@ pub fn is_valid(icon: &str) -> bool {
         && !icon.chars().any(|c| c.is_whitespace() || c.is_control())
 }
 
-fn config_path(vault: &Path) -> PathBuf {
-    vault.join(".memry").join("config.json")
-}
-
-/// The vault's config as a JSON object, or `None` when it is absent or unusable.
-pub fn read_config(vault: &Path) -> Option<Map<String, Value>> {
-    match serde_json::from_slice(&std::fs::read(config_path(vault)).ok()?).ok()? {
-        Value::Object(map) => Some(map),
-        _ => None,
-    }
-}
-
 /// The stored icon. Tolerant: a value this build cannot draw (a newer build wrote it) reads
 /// as no icon and keeps its change time, so sync ordering holds.
 pub fn read(vault: &Path) -> Option<StoredVaultIcon> {
-    stored_from(read_config(vault)?.get(KEY)?)
+    stored_from(&config::read_vault_icon(vault)?)
 }
 
 fn stored_from(raw: &Value) -> Option<StoredVaultIcon> {
@@ -118,76 +101,38 @@ pub fn set(
     if !vault.is_dir() {
         return Err(IconError::Unreachable(path.to_owned()));
     }
-    let file = config_path(vault);
-    let mut config = match std::fs::read(&file) {
-        Ok(bytes) => match serde_json::from_slice(&bytes) {
-            Ok(Value::Object(map)) => map,
-            _ => return Err(unreadable(&file, "not a JSON object")),
-        },
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Map::new(),
-        Err(err) => return Err(unreadable(&file, &err.to_string())),
-    };
-    let previous = config
-        .get(KEY)
-        .and_then(stored_from)
-        .map_or(i64::MIN, |i| i.updated_at);
-    let next = StoredVaultIcon {
-        value: icon.map(str::to_owned),
-        updated_at: now_ms.max(previous.saturating_add(1)),
-        pending_sync: true,
-    };
-    config.insert(
-        KEY.into(),
-        serde_json::json!({
+    // The stamp is computed from the value read under the config's write lock, so two
+    // changes in one millisecond stay ordered and a concurrent write cannot be overwritten.
+    let mut written = None;
+    config::write_vault_icon(vault, |previous| {
+        let previous = previous
+            .and_then(stored_from)
+            .map_or(i64::MIN, |i| i.updated_at);
+        let next = StoredVaultIcon {
+            value: icon.map(str::to_owned),
+            updated_at: now_ms.max(previous.saturating_add(1)),
+            pending_sync: true,
+        };
+        let raw = serde_json::json!({
             "value": next.value,
             "updatedAt": next.updated_at,
             "pendingSync": next.pending_sync,
-        }),
-    );
-    write_atomic(&file, &config)?;
-    Ok(next)
-}
-
-fn unreadable(file: &Path, message: &str) -> IconError {
-    IconError::Unreadable {
-        path: file.display().to_string(),
-        message: message.to_owned(),
-    }
-}
-
-/// A temp file created exclusively with mode 0600 in the same directory, then renamed over
-/// the config. It never follows a symlink planted at the temp name and never leaves a half
-/// written config.
-fn write_atomic(file: &Path, config: &Map<String, Value>) -> Result<(), IconError> {
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-    let fail = |message: String| IconError::Write {
-        path: file.display().to_string(),
-        message,
-    };
-    if let Some(dir) = file.parent() {
-        std::fs::create_dir_all(dir).map_err(|err| fail(err.to_string()))?;
-    }
-    let temp = PathBuf::from(format!(
-        "{}.{}-{}.tmp",
-        file.display(),
-        std::process::id(),
-        COUNTER.fetch_add(1, Ordering::Relaxed)
-    ));
-    let bytes = serde_json::to_vec_pretty(config).map_err(|err| fail(err.to_string()))?;
-    let mut options = std::fs::OpenOptions::new();
-    options.write(true).create_new(true);
-    #[cfg(unix)]
-    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-    let result = options
-        .open(&temp)
-        .and_then(|mut f| f.write_all(&bytes).and_then(|()| f.sync_all()))
-        .and_then(|()| super::config::rename_with_retry(&temp, file));
-    if let Err(err) = result {
-        let _ = std::fs::remove_file(&temp);
-        return Err(fail(err.to_string()));
-    }
-    super::config::sync_directory(file);
-    Ok(())
+        });
+        written = Some(next);
+        raw
+    })
+    .map_err(|error| match error {
+        ConfigError::Unreadable { path, message } => IconError::Unreadable { path, message },
+        ConfigError::PermissionDenied => IconError::Write {
+            path: vault.display().to_string(),
+            message: error.to_string(),
+        },
+        ConfigError::Write { path, message } => IconError::Write { path, message },
+    })?;
+    written.ok_or_else(|| IconError::Write {
+        path: vault.display().to_string(),
+        message: "the icon was not built".to_owned(),
+    })
 }
 
 #[cfg(test)]

@@ -50,6 +50,7 @@ pub fn arm(app: &AppHandle<Wry>, mode: StartupMode) {
                 scope = "Window",
                 "ready-to-show did not fire within 10s; revealing window as fallback"
             );
+            crate::guards::gpu::record_reveal_fallback(&for_timer);
             show(&for_timer, "fallback");
         }
     });

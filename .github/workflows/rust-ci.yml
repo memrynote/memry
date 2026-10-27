@@ -89,9 +89,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Fast tier: one runner per OS family. Full adds the Windows ARM runner. The Intel Mac runs only
-        # on push, nightly and dispatch (plan.intel), never on a PR into feat/tauri-v2 or in the merge queue.
-        os: ${{ fromJSON(needs.plan.outputs.full == 'true' && (needs.plan.outputs.intel == 'true' && '["ubuntu-22.04","macos-15","macos-15-intel","windows-2022","windows-11-arm"]' || '["ubuntu-22.04","macos-15","windows-2022","windows-11-arm"]') || '["ubuntu-22.04","macos-15","windows-2022"]') }}
+        # Fast tier (a PR into feat/tauri-v2 without `full-ci`): Linux and Windows. macOS is the scarcest
+        # runner pool, so the Apple Silicon leg runs from `full-ci` up: the merge queue, a push to
+        # feat/tauri-v2, `full-ci`, dispatch, nightly and main. Full adds the Windows ARM runner. The Intel
+        # Mac runs only on push, nightly and dispatch (plan.intel), never on a PR into feat/tauri-v2 or in
+        # the merge queue.
+        os: ${{ fromJSON(needs.plan.outputs.full == 'true' && (needs.plan.outputs.intel == 'true' && '["ubuntu-22.04","macos-15","macos-15-intel","windows-2022","windows-11-arm"]' || '["ubuntu-22.04","macos-15","windows-2022","windows-11-arm"]') || '["ubuntu-22.04","windows-2022"]') }}
     defaults:
       run:
         shell: bash
@@ -100,6 +103,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
 
       # Tauri's webview and the keyring need these system libraries on Linux.
       - name: Install Linux system libraries

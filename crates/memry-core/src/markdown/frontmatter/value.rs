@@ -52,6 +52,16 @@ impl PartialEq for YamlValue {
 
 thread_local! {
     static VISITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static ENTRIES_SCANNED: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Named-key entries the maps on this thread have walked: every entry `Named`
+/// hands out through `iter` counts, so a scan anywhere over a map's keys is
+/// counted whoever writes it. For tests that bound the loader's work by steps
+/// rather than by the clock.
+#[doc(hidden)]
+pub fn entries_scanned() -> usize {
+    ENTRIES_SCANNED.with(|v| v.get())
 }
 
 /// Collections the depth walk has measured on this thread, for tests that
@@ -142,6 +152,39 @@ impl YamlValue {
     }
 }
 
+/// The named entries in insertion order. The only way to walk them is `iter`,
+/// which counts each entry it yields (see [`entries_scanned`]).
+#[derive(Debug, Clone, Default, PartialEq)]
+struct Named(Vec<(String, YamlValue)>);
+
+impl Named {
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn push(&mut self, entry: (String, YamlValue)) {
+        self.0.push(entry);
+    }
+
+    fn at(&self, position: usize) -> &(String, YamlValue) {
+        &self.0[position]
+    }
+
+    fn value_mut(&mut self, position: usize) -> &mut YamlValue {
+        &mut self.0[position].1
+    }
+
+    fn remove(&mut self, position: usize) -> (String, YamlValue) {
+        self.0.remove(position)
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &(String, YamlValue)> {
+        self.0.iter().inspect(|_| {
+            ENTRIES_SCANNED.with(|v| v.set(v.get() + 1));
+        })
+    }
+}
+
 /// A JavaScript plain object: string keys, iterated in `Object.keys` order.
 /// Array-index keys ("0", "17", ... below 2^32 - 1) come first in ascending
 /// order, every other key follows in insertion order. Replacing a key keeps its
@@ -151,7 +194,7 @@ pub struct YamlMap {
     /// Array-index keys, ascending.
     indexed: BTreeMap<u32, (String, YamlValue)>,
     /// Every other key, in insertion order.
-    named: Vec<(String, YamlValue)>,
+    named: Named,
     /// Position of each named key in `named`: an insert costs O(1), not a scan
     /// (a 2 MiB frontmatter holds hundreds of thousands of keys).
     lookup: HashMap<String, usize>,
@@ -194,8 +237,13 @@ impl YamlMap {
     pub fn get(&self, key: &str) -> Option<&YamlValue> {
         match array_index(key) {
             Some(index) => self.indexed.get(&index).map(|(_, value)| value),
-            None => self.lookup.get(key).map(|at| &self.named[*at].1),
+            None => self.named_position(key).map(|at| &self.named.at(at).1),
         }
+    }
+
+    /// Position of a named key: one hash probe, not a scan of `named`.
+    fn named_position(&self, key: &str) -> Option<usize> {
+        self.lookup.get(key).copied()
     }
 
     pub fn contains_key(&self, key: &str) -> bool {
@@ -214,8 +262,8 @@ impl YamlMap {
             Some(index) => {
                 self.indexed.insert(index, (key, value));
             }
-            None => match self.lookup.get(&key) {
-                Some(at) => self.named[*at].1 = value,
+            None => match self.named_position(&key) {
+                Some(at) => *self.named.value_mut(at) = value,
                 None => {
                     self.lookup.insert(key.clone(), self.named.len());
                     self.named.push((key, value));
