@@ -100,7 +100,9 @@ test('a page that would stop, chain, redirect or open windows never runs, and op
     for (const path of ['/stop', '/chain', '/redirect', '/popup']) {
       // A script that assigns `location`: the renderer's click listener never sees it.
       await page.evaluate((url) => location.assign(url), `${site.origin}${path}`)
-      expected.push(`url ${site.origin}${path}`)
+      // WebKitGTK hands the main frame's URL over only once the load ended, after the redirect.
+      const opened = path === '/redirect' && process.platform === 'linux' ? '/landing' : path
+      expected.push(`url ${site.origin}${opened}`)
       await expect.poll(() => opens(app), { timeout: 15_000 }).toEqual(expected)
     }
     await page.waitForTimeout(SETTLE_MS)

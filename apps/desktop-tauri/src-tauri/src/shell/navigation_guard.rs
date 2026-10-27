@@ -9,9 +9,9 @@
 //!   `macos::install` decides the main frame's navigations ahead of wry, from the navigation
 //!   action's target frame, before the request is made.
 //! - WebKitGTK reports every frame's navigation too, and no navigation API says which frame asks.
-//!   `linux::install` hands the link to the OS at the main frame's load start (`load-changed`
-//!   STARTED, main frame only, before any response) and refuses the main resource's response
-//!   unless it is the app's (`is_main_frame_main_resource`), so nothing else commits.
+//!   `linux::install` refuses the main frame's main-resource response unless it is the app's
+//!   (`is_main_frame_main_resource`), so nothing else commits, and hands the link to the OS when
+//!   that load ends (`load-failed`, main frame only).
 //!
 //! On WKWebView and WebKitGTK [`on_navigation`] therefore answers for the frames of a note's
 //! embeds, which load in place and never reach the OS. [`check_commit`] stays behind all of this as

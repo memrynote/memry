@@ -20,8 +20,8 @@ function parseUrl(href: string): URL | null {
 /**
  * Sends a clicked web or mail link to the OS and keeps the page where it is. The shell would send
  * it there too (`shell::navigation_guard` decides every main-frame navigation before it commits),
- * but on WebKitGTK only after the page's `beforeunload` ran, and a `mailto:` link starts no load
- * there for the shell to see. It runs after the handlers of the editor and the components, which
+ * but on WebKitGTK only after the page's `beforeunload` ran and the remote server answered, and a
+ * `mailto:` link starts no load there for the shell to see. It runs after the handlers of the editor and the components, which
  * claim their own links with `preventDefault`. Returns the cleanup.
  */
 export function watchExternalLinks(
