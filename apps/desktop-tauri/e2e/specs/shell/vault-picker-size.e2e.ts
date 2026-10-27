@@ -39,11 +39,14 @@ test.describe('picker', () => {
     await expect
       .poll(async () => {
         const { width, height } = await mainWindow(app)
-        return fits(1550, 900)
+        const grown = fits(1550, 900)
           ? width === 1550 && height === 900
           : width > picker.width || height > picker.height
+        return grown
+          ? 'grown'
+          : `${width}x${height} from ${picker.width}x${picker.height} on ${avail}`
       })
-      .toBe(true)
+      .toBe('grown')
 
     await invoke(page, 'vault_close')
     await expect
