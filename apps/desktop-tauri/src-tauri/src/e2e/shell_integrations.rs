@@ -85,3 +85,30 @@ pub async fn e2e_tray_probe(
         visible_after_restore: visible(),
     })
 }
+
+/// What the global capture shortcut holds and how often it fired.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortcutState {
+    pub configured: Option<String>,
+    pub fallback: bool,
+    pub presses: u64,
+}
+
+#[tauri::command]
+pub fn e2e_global_shortcut_state(app: AppHandle<Wry>) -> ShortcutState {
+    let service = app.state::<crate::shortcuts::ShortcutService>();
+    let (configured, fallback) = service.held();
+    ShortcutState {
+        configured,
+        fallback,
+        presses: service.presses(),
+    }
+}
+
+/// Presses the shortcut's handler as a key press would: the OS delivers the real key to nobody
+/// in a headless run.
+#[tauri::command]
+pub fn e2e_fire_global_capture(app: AppHandle<Wry>) {
+    app.state::<crate::shortcuts::ShortcutService>().press(&app);
+}

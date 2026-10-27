@@ -190,6 +190,8 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
             // Windows leaves a ghost icon in the notification area if the process ends with a
             // live tray.
             crate::tray::destroy(app);
+            app.state::<crate::shortcuts::ShortcutService>()
+                .release_all(app);
             app.state::<ShutdownService>().core.apply_on_quit();
         }
         #[cfg(target_os = "macos")]

@@ -8,7 +8,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 /// What the OS did with a configured binding. Serialized as the renderer's `GlobalCaptureStatus`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
 pub enum ShortcutStatus {
     Unbound,
@@ -17,7 +17,7 @@ pub enum ShortcutStatus {
     Unsupported,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(default)]
 pub struct Modifiers {
     pub meta: bool,
@@ -27,7 +27,7 @@ pub struct Modifiers {
 }
 
 /// `keyboard.globalCapture` and `keyboard.stickyShortcut`, as stored.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 pub struct ShortcutBinding {
     pub key: String,
     #[serde(default)]
@@ -138,7 +138,7 @@ pub fn register_configured(
 }
 
 /// What a global-capture apply reports to Settings.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct GlobalCaptureResult {
     pub status: ShortcutStatus,
@@ -167,6 +167,11 @@ impl Default for GlobalCapture {
 }
 
 impl GlobalCapture {
+    /// Whether the built-in fallback currently holds quick capture.
+    pub fn fallback_held(&self) -> bool {
+        self.fallback_held
+    }
+
     /// Whether quick capture has no working shortcut at all after the last apply.
     pub fn is_dead(&self) -> bool {
         self.dead

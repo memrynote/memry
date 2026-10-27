@@ -15,6 +15,7 @@ pub mod menu;
 pub mod notifications;
 pub mod registry;
 pub mod shell;
+pub mod shortcuts;
 pub mod shutdown;
 pub mod startup;
 pub mod tray;
@@ -77,6 +78,7 @@ fn register_stages() {
     windows::close::register_stages();
     deep_link::register_stages();
     notifications::register_stages();
+    shortcuts::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
 }
 
@@ -150,6 +152,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     let app = instance::install(tauri::Builder::default(), single_instance_off)
         .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init());

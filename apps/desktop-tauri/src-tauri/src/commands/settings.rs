@@ -52,7 +52,7 @@ fn patch_of(value: Value) -> Result<Map<String, Value>, CommandError> {
 }
 
 /// Tells every window and telemetry what was written: names only.
-fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
+pub(crate) fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
     if let Some(service) = telemetry(app) {
         if fields.is_empty() {
             setting_changed(&service, key);
@@ -76,6 +76,7 @@ fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
     );
     if key == "keyboard" {
         crate::menu::apply(app, false);
+        crate::shortcuts::apply_from_settings(app);
     }
 }
 

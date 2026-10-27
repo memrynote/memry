@@ -51,6 +51,8 @@ tauri-plugin-opener = "2.7.2"
 tauri-plugin-single-instance = { version = "2.5.4", features = ["deep-link"] }
 tauri-plugin-deep-link = "2.6.2"
 tauri-plugin-notification = "2.7.0"
+# Rust-only use: the page registers no shortcut itself, so no capability grants the plugin.
+tauri-plugin-global-shortcut = "2.4.1"
 # The Paste and Match Style menu item reads the clipboard text.
 tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.

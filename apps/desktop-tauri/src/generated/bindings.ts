@@ -35,6 +35,13 @@ export const commands = {
 	 *  `org.freedesktop.Notifications`.
 	 */
 	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
+	/**  Registers the saved binding (or the fallback) and says what the OS did. */
+	shortcutRegisterGlobalCapture: () => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_register_global_capture"),
+	/**
+	 *  Register first, save second: a binding the OS refuses is not saved and the previous one is
+	 *  registered again. Fails with the localized no-vault text while no vault is open.
+	 */
+	shortcutSetGlobalCapture: (binding: ShortcutBinding | null) => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_set_global_capture", { binding }),
 	logWrite: (level: LogLevel, scope: string, message: string, fields: Value | null) => __TAURI_INVOKE<null>("log_write", { level, scope, message, fields }),
 	/**  Escape pressed while the Linux menu bar shows. */
 	menuHideAlt: () => __TAURI_INVOKE<null>("menu_hide_alt"),
@@ -267,6 +274,13 @@ export type GetVaultsResponse = {
 	sandbox: SandboxInfo,
 };
 
+/**  What a global-capture apply reports to Settings. */
+export type GlobalCaptureResult = {
+	status: ShortcutStatus,
+	/**  Whether the built-in fallback holds quick capture. */
+	fallbackRegistered: boolean,
+};
+
 /**
  *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
  *  (#3544), a clicked inbox notification.
@@ -301,6 +315,13 @@ export type Metrics = {
 	retryCount?: number | null,
 	activeSeconds?: number | null,
 	value?: number | null,
+};
+
+export type Modifiers = {
+	meta?: boolean,
+	ctrl?: boolean,
+	shift?: boolean,
+	alt?: boolean,
 };
 
 /**  Desktop needs no permission prompt: the plugin answers granted. */
@@ -346,6 +367,15 @@ export type SettingsChangedEvent = {
 export type SettingsOpenSectionEvent = {
 	section: string,
 };
+
+/**  `keyboard.globalCapture` and `keyboard.stickyShortcut`, as stored. */
+export type ShortcutBinding = {
+	key: string,
+	modifiers?: Modifiers,
+};
+
+/**  What the OS did with a configured binding. Serialized as the renderer's `GlobalCaptureStatus`. */
+export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported";
 
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in
