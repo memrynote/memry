@@ -8,8 +8,11 @@
 //! | a folder with no config still moves its notes | §13.7.10                       |
 //! | a move into itself and onto a used path fail | one transaction, nothing written |
 //! | a delete refuses a subtree that holds notes  | no chapter defines a cascade     |
+//! | a tree delete takes the subtree, notes stay  | desktop `rm -rf`, caller deletes notes |
+//! | a tree delete drops the subtree's order rows | no inherited slot                |
+//! | a tree delete of a folder with no config     | a folder made in a file manager  |
 
-use memry_core::domain::{folders, notes};
+use memry_core::domain::{folders, note_positions, notes};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
 use rusqlite::{Connection, params};
@@ -297,6 +300,72 @@ fn a_delete_refuses_while_the_subtree_still_holds_a_note_and_then_takes_the_subt
         Ok(())
     })
     .expect("delete");
+}
+
+#[test]
+fn a_tree_delete_takes_the_folder_records_and_order_rows_and_leaves_the_notes_to_the_caller() {
+    let db = open("folders-delete-tree");
+    db.call_blocking(|conn| {
+        folders::create(conn, "Notes", None, DEVICE, NOW)?;
+        folders::create(conn, "Notes/Protocol", None, DEVICE, NOW)?;
+        folders::create(conn, "Notes2", None, DEVICE, NOW)?;
+        note_in(conn, "note1", "Notes/Protocol")?;
+        note_positions::reorder(conn, "Notes", &["Notes/a.md".to_owned()])?;
+        note_positions::reorder(conn, "Notes2", &["Notes2/b.md".to_owned()])?;
+        conn.execute("DELETE FROM outbox", []).map_err(|error| {
+            memry_core::api::errors::StorageError::Failed {
+                what: error.to_string(),
+            }
+        })?;
+
+        let removed = folders::delete_tree(conn, "Notes", DEVICE, NOW + 1)?;
+
+        assert_eq!(
+            removed.folders,
+            vec!["Notes".to_owned(), "Notes/Protocol".to_owned()]
+        );
+        assert_eq!(live_folders(conn), vec!["Notes2".to_owned()]);
+        assert_eq!(
+            queued_keys(conn),
+            vec![
+                (
+                    "folder_config".to_owned(),
+                    "Notes".to_owned(),
+                    "delete".to_owned()
+                ),
+                (
+                    "folder_config".to_owned(),
+                    "Notes/Protocol".to_owned(),
+                    "delete".to_owned()
+                ),
+            ]
+        );
+        assert_eq!(folder_of(conn, "note1").as_deref(), Some("Notes/Protocol"));
+        let rows = note_positions::all(conn)?;
+        assert_eq!(
+            rows.iter().map(|row| row.path.as_str()).collect::<Vec<_>>(),
+            ["Notes2/b.md"],
+            "the sibling that shares the prefix keeps its order"
+        );
+        Ok(())
+    })
+    .expect("delete tree");
+}
+
+#[test]
+fn a_tree_delete_of_a_folder_with_no_config_row_is_not_an_error() {
+    let db = open("folders-delete-tree-bare");
+    db.call_blocking(|conn| {
+        note_positions::reorder(conn, "Made in Finder", &["Made in Finder/a.md".to_owned()])?;
+
+        let removed = folders::delete_tree(conn, "Made in Finder", DEVICE, NOW)?;
+
+        assert!(removed.folders.is_empty());
+        assert!(note_positions::all(conn)?.is_empty());
+        assert!(queued_keys(conn).is_empty());
+        Ok(())
+    })
+    .expect("delete tree");
 }
 
 // #2409: a folder re-created at a deleted path is a create over its own
