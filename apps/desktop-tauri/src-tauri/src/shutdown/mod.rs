@@ -145,6 +145,7 @@ pub fn begin_session_end(app: &AppHandle<Wry>) {
     app.state::<Session>().begin_shutdown();
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
+    tracing::info!(scope = "Shutdown", "starting graceful shutdown");
     service.core.arm_backstop(HARD_BACKSTOP, effects.clone());
     let core = service.core.clone();
     tauri::async_runtime::spawn(async move {
