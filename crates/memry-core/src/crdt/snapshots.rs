@@ -41,6 +41,7 @@ use yrs::updates::decoder::Decode as _;
 use yrs::{ReadTxn as _, Transact as _, Update};
 
 use crate::api::errors::{ApiError, StorageError};
+use crate::domain::note_files;
 use crate::protocol::envelope::EnvelopeError;
 use crate::protocol::http::{
     ApiRequest, Auth, HttpClient, RetryPolicy, SYNC_TYPES_HEADER, VAULT_ID_HEADER,
@@ -99,7 +100,11 @@ impl Refusal {
     }
 }
 
-/// The two facts §7.13.2 needs that a `yrs` document cannot answer for itself.
+/// The two facts §7.13.2 needs that a `yrs` document cannot answer for itself
+/// and the pusher cannot read: whether the pull ended clean, and whether the
+/// document was purged. The third, local-only, is read by the pusher from
+/// `note_files` ([`crate::domain::note_files::is_local_only`]) so no caller can
+/// forget it or get it wrong.
 ///
 /// `has_missing_updates` covers the third — a document holding an update whose
 /// antecedent never arrived — and [`SnapshotGate::check`] reads it directly,
@@ -112,8 +117,6 @@ pub struct SnapshotGate {
     /// document whose session ended holding debt.
     pub pull_completed_clean: bool,
     /// §7.13.2 condition 2.
-    pub local_only: bool,
-    /// §7.13.2 condition 2.
     pub purged: bool,
 }
 
@@ -123,12 +126,11 @@ impl SnapshotGate {
     pub fn clean() -> Self {
         Self {
             pull_completed_clean: true,
-            local_only: false,
             purged: false,
         }
     }
 
-    /// §7.13.2, all three conditions. `Ok(None)` means the push may proceed.
+    /// §7.13.2's conditions the gate holds (the pusher checks local-only). `Ok(None)` means the push may proceed.
     ///
     /// The encoded state is returned alongside rather than recomputed by the
     /// caller: condition 3 is about the very bytes that get pushed, and
@@ -137,9 +139,6 @@ impl SnapshotGate {
     pub fn check(&self, document: &Document) -> Result<Result<Vec<u8>, Refusal>, CrdtError> {
         if !self.pull_completed_clean || document.has_missing_updates()? {
             return Ok(Err(Refusal::UnmergedRemoteState));
-        }
-        if self.local_only {
-            return Ok(Err(Refusal::LocalOnly));
         }
         if self.purged {
             return Ok(Err(Refusal::Purged));
@@ -307,7 +306,7 @@ impl SnapshotPusher {
         // The claim is read before the log check and the encode (#2299): the
         // log only grows, so the state then holds every body at or below it.
         let owed_id = document.id().to_owned();
-        let (owed, covers_through, base_revision) = self
+        let (owed, covers_through, base_revision, local_only) = self
             .db
             .call(move |conn| {
                 let base = update_log::snapshot(conn, Namespace::Server, &owed_id)
@@ -317,9 +316,14 @@ impl SnapshotPusher {
                     body_debt::is_owed(conn, &owed_id)?,
                     note_body_feed::covers_through(conn, &owed_id)?,
                     base,
+                    note_files::is_local_only(conn, &owed_id)?,
                 ))
             })
             .await?;
+        // §7.13.2 condition 2, from the one place the flag lives.
+        if local_only {
+            return Ok(Err(Refusal::LocalOnly));
+        }
         if owed {
             return Ok(Err(Refusal::UnmergedRemoteState));
         }
