@@ -303,6 +303,40 @@ fn a_delete_refuses_while_the_subtree_still_holds_a_note_and_then_takes_the_subt
 }
 
 #[test]
+fn a_rename_and_a_delete_carry_the_manual_order_in_their_own_transaction() {
+    let db = open("folders-positions");
+    db.call_blocking(|conn| {
+        folders::create(conn, "Notes", None, DEVICE, NOW)?;
+        folders::create(conn, "Other", None, DEVICE, NOW)?;
+        note_positions::reorder(
+            conn,
+            "Notes",
+            &["Notes/a.md".to_owned(), "Notes/b.md".to_owned()],
+        )?;
+        note_positions::reorder(conn, "Other", &["Other/c.md".to_owned()])?;
+
+        folders::rename(conn, "Notes", "Archive", DEVICE, NOW + 1)?;
+        let paths =
+            |conn: &Connection| -> Result<Vec<String>, memry_core::api::errors::StorageError> {
+                Ok(note_positions::all(conn)?
+                    .into_iter()
+                    .map(|row| row.path)
+                    .collect())
+            };
+        assert_eq!(paths(conn)?, ["Archive/a.md", "Archive/b.md", "Other/c.md"]);
+
+        // A rename that is refused leaves the order rows where they were.
+        assert!(folders::rename(conn, "Archive", "Other", DEVICE, NOW + 2).is_err());
+        assert_eq!(paths(conn)?, ["Archive/a.md", "Archive/b.md", "Other/c.md"]);
+
+        folders::delete(conn, "Other", DEVICE, NOW + 3)?;
+        assert_eq!(paths(conn)?, ["Archive/a.md", "Archive/b.md"]);
+        Ok(())
+    })
+    .expect("positions follow the folder");
+}
+
+#[test]
 fn a_tree_delete_takes_the_folder_records_and_order_rows_and_leaves_the_notes_to_the_caller() {
     let db = open("folders-delete-tree");
     db.call_blocking(|conn| {

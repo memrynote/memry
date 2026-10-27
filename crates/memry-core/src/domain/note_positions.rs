@@ -7,6 +7,11 @@
 //! "last", so a row exists only for an item somebody ordered by hand; every
 //! function here keeps that rule instead of writing a row for everything.
 //!
+//! Every function runs on the caller's connection, in or out of a transaction:
+//! one that needs several statements to be all or nothing wraps them in a
+//! savepoint, which nests, so a folder rename in [`super::folders`] carries its
+//! order rows inside its own transaction.
+//!
 //! The table is device-local and never synced, so there is no outbox row and
 //! no clock. It is keyed by path, which is why a rename or a move has to carry
 //! the row ([`carry`], [`carry_folder`]) and a delete has to drop it
@@ -47,6 +52,29 @@ fn subtree(folder: &str) -> (String, String) {
 /// The parent folder of a vault-relative path; the root is `""`.
 fn parent_of(path: &str) -> &str {
     path.rsplit_once('/').map_or("", |(parent, _)| parent)
+}
+
+/// Runs `work` as one unit on `conn`, whether or not a transaction is open.
+fn atomically<T>(
+    conn: &Connection,
+    work: impl FnOnce() -> Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    conn.execute_batch("SAVEPOINT note_positions")
+        .map_err(failed)?;
+    match work() {
+        Ok(value) => {
+            conn.execute_batch("RELEASE note_positions")
+                .map_err(failed)?;
+            Ok(value)
+        }
+        Err(error) => {
+            // The unit failed; undo it and leave the caller's transaction as
+            // it was. A rollback that itself fails is not worth masking the
+            // first error for.
+            let _ = conn.execute_batch("ROLLBACK TO note_positions; RELEASE note_positions");
+            Err(error)
+        }
+    }
 }
 
 fn upsert(
@@ -103,11 +131,12 @@ pub fn all(conn: &Connection) -> Result<Vec<NotePosition>, StorageError> {
 /// Makes `paths` the order of `folder`: slot `i` for the item at index `i`.
 /// All or nothing.
 pub fn reorder(conn: &Connection, folder: &str, paths: &[String]) -> Result<(), StorageError> {
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    for (index, path) in paths.iter().enumerate() {
-        upsert(&tx, path, folder, index as i64)?;
-    }
-    tx.commit().map_err(failed)
+    atomically(conn, || {
+        for (index, path) in paths.iter().enumerate() {
+            upsert(conn, path, folder, index as i64)?;
+        }
+        Ok(())
+    })
 }
 
 /// Gives a new item the slot above every ordered sibling, so a new note opens
@@ -141,10 +170,10 @@ pub fn carry(conn: &Connection, old_path: &str, new_path: &str) -> Result<(), St
     let Some(existing) = row_at(conn, old_path)? else {
         return Ok(());
     };
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    remove(&tx, old_path)?;
-    upsert(&tx, new_path, &existing.folder_path, existing.position)?;
-    tx.commit().map_err(failed)
+    atomically(conn, || {
+        remove(conn, old_path)?;
+        upsert(conn, new_path, &existing.folder_path, existing.position)
+    })
 }
 
 /// Re-keys a renamed or moved folder: its own row and every row beneath it.
@@ -171,25 +200,26 @@ pub fn carry_folder(conn: &Connection, old_path: &str, new_path: &str) -> Result
         return Ok(());
     }
 
-    let tx = conn.unchecked_transaction().map_err(failed)?;
-    if let Some(own) = own {
-        remove(&tx, old_path)?;
-        upsert(&tx, new_path, parent_of(new_path), own.position)?;
-    }
-    for row in beneath {
-        let moved = format!("{new_path}/{}", &row.path[from.len()..]);
-        let folder = if row.folder_path == old_path {
-            new_path.to_owned()
-        } else {
-            match row.folder_path.strip_prefix(&from) {
-                Some(rest) => format!("{new_path}/{rest}"),
-                None => row.folder_path.clone(),
-            }
-        };
-        remove(&tx, &row.path)?;
-        upsert(&tx, &moved, &folder, row.position)?;
-    }
-    tx.commit().map_err(failed)
+    atomically(conn, || {
+        if let Some(own) = own {
+            remove(conn, old_path)?;
+            upsert(conn, new_path, parent_of(new_path), own.position)?;
+        }
+        for row in beneath {
+            let moved = format!("{new_path}/{}", &row.path[from.len()..]);
+            let folder = if row.folder_path == old_path {
+                new_path.to_owned()
+            } else {
+                match row.folder_path.strip_prefix(&from) {
+                    Some(rest) => format!("{new_path}/{rest}"),
+                    None => row.folder_path.clone(),
+                }
+            };
+            remove(conn, &row.path)?;
+            upsert(conn, &moved, &folder, row.position)?;
+        }
+        Ok(())
+    })
 }
 
 /// Drops one item's row. `true` when there was one.

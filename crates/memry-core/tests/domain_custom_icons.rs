@@ -268,6 +268,13 @@ fn an_icon_another_device_pushed_is_listed_and_unreadable_rows_are_reported() {
             )
             .map_err(|error| StorageError::Failed { what: error.to_string() })?;
         }
+        // A row the sync tier read and flagged corrupt keeps no payload.
+        conn.execute(
+            "INSERT INTO sync_items (item_type, item_id, payload, payload_state, clock, updated_at, corrupt_reason, corrupt_at)
+             VALUES ('custom_icon', 'remote-4', NULL, 'full', '{}', 1, 'bad clock', 1)",
+            [],
+        )
+        .map_err(|error| StorageError::Failed { what: error.to_string() })?;
         Ok(())
     });
 
@@ -282,7 +289,7 @@ fn an_icon_another_device_pushed_is_listed_and_unreadable_rows_are_reported() {
         [("remote-1", "svg"), ("remote-2", "webp")],
         "listed as stored, oldest first; the shell decides what to render"
     );
-    assert_eq!(found.skipped, ["remote-3"]);
+    assert_eq!(found.skipped, ["remote-3", "remote-4"]);
 }
 
 #[test]

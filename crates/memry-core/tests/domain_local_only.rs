@@ -18,11 +18,14 @@ use std::sync::Arc;
 use memry_core::api::errors::StorageError;
 use memry_core::crdt::body_edit::BlockEdit;
 use memry_core::crdt::registry::UpdateSink;
+use memry_core::crdt::update_log;
 use memry_core::crdt::{DocumentRegistry, extract_text};
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::domain::notes::local_only::{self, BodyPush, LocalOnlyChange};
 use memry_core::domain::{body_write, note_files, notes};
+use memry_core::storage::repositories::sync_items::{self, InboundRecord};
 use memry_core::storage::{Db, open_data};
+use memry_core::sync::apply::apply_inbound;
 use rusqlite::Connection;
 use serde_json::Value;
 
@@ -318,25 +321,154 @@ fn a_note_without_a_body_queues_only_its_record_when_cleared() {
     assert_eq!(ops(&db), ["upsert"]);
 }
 
+/// `len` bytes that deflate barely at all: a 64-symbol alphabet driven by an
+/// xorshift stream, about six bits of entropy per byte.
+fn incompressible(len: usize) -> String {
+    const ALPHABET: &[u8; 64] = b"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/";
+    let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+    (0..len)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            char::from(ALPHABET[(state % 64) as usize])
+        })
+        .collect()
+}
+
+fn is_local_only(db: &Db, id: &'static str) -> bool {
+    run(db, move |conn| note_files::is_local_only(conn, id))
+}
+
 #[test]
-fn a_body_over_the_update_cap_is_reported_and_never_queued() {
-    let db = open("big");
+fn a_body_the_server_would_refuse_refuses_the_toggle_and_writes_nothing() {
+    let db = open("refused");
     create_note(&db, "n1");
     set(&db, "n1", true).expect("on");
-    // Larger than the 5 MiB a single update may carry (chapter 07 §7.3).
-    type_line(&db, "n1", "a", "x".repeat(5 * 1024 * 1024 + 1));
+    // About 6 MiB of entropy-heavy text seals to more than the 5 MiB the
+    // server takes as one update (chapter 07 §7.3).
+    type_line(&db, "n1", "a", incompressible(8 * 1024 * 1024));
+
+    let change = set(&db, "n1", false).expect("answered");
+
+    match change {
+        LocalOnlyChange::TooLargeToSync { packed_bytes } => {
+            assert!(packed_bytes > 5 * 1024 * 1024, "{packed_bytes}");
+        }
+        other => panic!("expected TooLargeToSync, got {other:?}"),
+    }
+    assert_eq!(
+        queued(&db),
+        Vec::<(String, String)>::new(),
+        "no record without its body"
+    );
+    assert!(is_local_only(&db, "n1"), "the flag stayed on");
+
+    // The invariant that matters: the next edit cannot reach the server either,
+    // so no delta ever depends on history the server never got.
+    type_line(&db, "n1", "b", "a later line");
+    assert_eq!(queued(&db), Vec::<(String, String)>::new());
+}
+
+#[test]
+fn a_compressible_body_over_the_cap_raw_still_syncs() {
+    let db = open("compressible");
+    create_note(&db, "n1");
+    set(&db, "n1", true).expect("on");
+    type_line(&db, "n1", "a", "x".repeat(6 * 1024 * 1024));
 
     let change = set(&db, "n1", false).expect("off");
 
-    match change {
-        LocalOnlyChange::Disabled {
-            body: BodyPush::TooLarge { bytes },
-        } => assert!(bytes > 5 * 1024 * 1024, "{bytes}"),
-        other => panic!("expected TooLarge, got {other:?}"),
-    }
     assert_eq!(
-        ops(&db),
-        ["upsert"],
-        "the record only; the body is the caller's snapshot"
+        change,
+        LocalOnlyChange::Disabled {
+            body: BodyPush::Queued
+        }
     );
+    assert_eq!(ops(&db), ["upsert", "crdt-update"]);
+    assert!(!is_local_only(&db, "n1"));
+}
+
+#[test]
+fn a_peers_record_and_body_reach_a_local_only_note_and_queue_nothing() {
+    // The peer authors a body on its own device.
+    let peer = open("peer");
+    create_note(&peer, "n1");
+    type_line(&peer, "n1", "p", "typed on the other device");
+    let update: Vec<u8> = run(&peer, |conn| {
+        Ok(conn
+            .query_row(
+                "SELECT payload FROM outbox WHERE op = 'crdt-update'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("the peer's body row"))
+    });
+
+    let db = open("local");
+    create_note(&db, "n1");
+    set(&db, "n1", true).expect("on");
+    let mut record: Value =
+        run(&db, |conn| {
+            Ok(serde_json::from_str(
+                &sync_items::push_payload(conn, "note", "n1")?.expect("a payload"),
+            )
+            .expect("json"))
+        });
+    record["title"] = Value::from("Edited by the peer");
+    record["clock"] = serde_json::json!({"device-a": 1, "device-b": 1});
+    let inbound = InboundRecord {
+        item_type: "note".to_owned(),
+        item_id: "n1".to_owned(),
+        payload_json: record.to_string(),
+        server_cursor: Some(1),
+        signer_device_id: Some("device-b".to_owned()),
+        updated_at: NOW + 10,
+        deleted_at: None,
+    };
+
+    run(&db, move |conn| {
+        apply_inbound(conn, &inbound, NOW + 10)?;
+        update_log::append_server_update(conn, "n1", 1, &update, NOW + 10).map_err(|error| {
+            StorageError::Failed {
+                what: error.to_string(),
+            }
+        })
+    });
+
+    assert_eq!(title_of(&db, "n1"), "Edited by the peer");
+    assert_eq!(queued(&db), Vec::<(String, String)>::new());
+    assert!(is_local_only(&db, "n1"));
+    let body = run(&db, |conn| {
+        let sink: UpdateSink = Arc::new(|_, _| {});
+        let document = DocumentRegistry::new("device-a", sink)
+            .get_or_open("n1")
+            .expect("a document");
+        for blob in update_log::load_plan(conn, "n1")
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })?
+            .blobs()
+        {
+            document.apply_durable_update(blob).expect("apply");
+        }
+        Ok(extract_text(&document).expect("text"))
+    });
+    assert!(body.contains("typed on the other device"), "{body}");
+}
+
+#[test]
+fn turning_it_on_keeps_a_queued_delete() {
+    let db = open("keeps-delete");
+    create_note(&db, "n1");
+    run(&db, |conn| {
+        notes::delete(conn, "n1", DEVICE, NOW + 1)?.acknowledge();
+        Ok(())
+    });
+    assert_eq!(ops(&db), ["delete"]);
+
+    let change = set(&db, "n1", true).expect("on");
+
+    assert_eq!(change, LocalOnlyChange::Enabled { dropped: 0 });
+    assert_eq!(ops(&db), ["delete"], "a tombstone is not content");
 }

@@ -54,7 +54,9 @@ pub struct CustomIcon {
     pub created_at: Option<String>,
 }
 
-/// The live icons, and the ids of live rows that could not be read as one.
+/// The live icons, and the ids of live rows that could not be read as one (a
+/// row the sync tier marked corrupt included). A row known by metadata only,
+/// whose payload has not been pulled yet, is neither: it is not here yet.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct CustomIcons {
     pub icons: Vec<CustomIcon>,
@@ -103,22 +105,27 @@ fn text(payload: &Object, key: &str) -> Option<String> {
 pub fn list(conn: &Connection) -> Result<CustomIcons, StorageError> {
     let mut statement = conn
         .prepare(
-            "SELECT item_id, payload FROM sync_items
+            "SELECT item_id, payload, corrupt_at IS NOT NULL FROM sync_items
               WHERE item_type = ?1 AND deleted_at IS NULL
-                AND payload IS NOT NULL AND corrupt_at IS NULL
+                AND (payload IS NOT NULL OR corrupt_at IS NOT NULL)
               ORDER BY item_id",
         )
         .map_err(failed)?;
-    let rows: Vec<(String, String)> = statement
-        .query_map([ITEM_TYPE], |row| Ok((row.get(0)?, row.get(1)?)))
+    let rows: Vec<(String, Option<String>, bool)> = statement
+        .query_map([ITEM_TYPE], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)?;
 
     let mut found = CustomIcons::default();
-    for (id, raw) in rows {
-        let payload = serde_json::from_str::<Value>(&raw)
-            .ok()
+    for (id, raw, corrupt) in rows {
+        // A row the sync tier marked corrupt is reported like any unreadable
+        // one: it is the user's icon, not noise.
+        let payload = raw
+            .filter(|_| !corrupt)
+            .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
             .and_then(|value| value.as_object().cloned());
         let icon = payload.and_then(|payload| {
             Some(CustomIcon {

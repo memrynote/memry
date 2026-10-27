@@ -304,7 +304,10 @@ pub fn list_paths(conn: &Connection) -> Result<Vec<(String, String)>, StorageErr
         .map_err(failed)
 }
 
-pub fn set_local_only(
+/// Writes the flag and nothing else. [`crate::domain::notes::local_only::set`]
+/// is the one caller: the flag changes what is queued, and that is settled
+/// there in the same transaction.
+pub(crate) fn set_local_only(
     conn: &Connection,
     note_id: &str,
     local_only: bool,

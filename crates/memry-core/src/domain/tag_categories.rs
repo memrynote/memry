@@ -30,7 +30,7 @@ use crate::storage::repositories::schema::Object;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox;
 
-use super::notes::{self, edit_in, failed, insert_local, iso, next_clock, object, tombstone_local};
+use super::notes::{edit_in, failed, insert_local, iso, next_clock, object, tombstone_local};
 use super::tag_admin::upsert_definition_in;
 use super::tasks::model::new_task_id;
 
@@ -165,9 +165,12 @@ pub fn rename(
     now_ms: i64,
 ) -> Result<(), StorageError> {
     let name = clean_name(name)?;
-    require_live(conn, id)?;
-    notes::edit(
-        conn,
+    // The liveness check and the edit are one transaction: a peer's delete
+    // applied between them must not be edited back to life.
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    require_live(&tx, id)?;
+    edit_in(
+        &tx,
         ITEM_TYPE,
         id,
         vec![
@@ -176,9 +179,9 @@ pub fn rename(
         ],
         device_id,
         now_ms,
-    )?
-    .acknowledge();
-    Ok(())
+    )?;
+    outbox::enqueue(&tx, &outbox::Change::upsert(ITEM_TYPE, id), now_ms)?;
+    tx.commit().map_err(failed)
 }
 
 /// Deletes a category; the tags in it become uncategorised.
@@ -190,8 +193,8 @@ pub fn delete(
     device_id: &str,
     now_ms: i64,
 ) -> Result<usize, StorageError> {
-    require_live(conn, id)?;
     let tx = conn.unchecked_transaction().map_err(failed)?;
+    require_live(&tx, id)?;
 
     let mut statement = tx
         .prepare("SELECT name FROM tag_definitions WHERE category_id = ?1 AND deleted_at IS NULL")

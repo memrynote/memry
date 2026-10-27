@@ -201,6 +201,7 @@ pub fn delete(
         });
     }
     tombstone_all(&tx, &folders, device_id, now_ms)?;
+    note_positions::drop_folder(&tx, path)?;
     tx.commit().map_err(failed)?;
     Ok(Removal { folders })
 }
@@ -302,6 +303,9 @@ fn relocate(
         moved.push(note_id);
     }
 
+    // The manual order follows the folder, in the same transaction, so a
+    // rename or a move never leaves a row at a path that no longer exists.
+    note_positions::carry_folder(&tx, from, to)?;
     tx.commit().map_err(failed)?;
     // After the commit, as a note rename does: the links follow a folder that
     // really moved, and a link that fails to follow does not unmove it.

@@ -10,23 +10,29 @@
 //! caller that deletes a note's file row must do so **after** the core delete,
 //! or the delete is no longer withheld.
 //!
-//! [`set`] changes the flag and settles what was queued:
+//! [`set`] is the one owner of the flag and settles what was queued:
 //!
-//! - **On** drops every unsent outbox row of the note. A body update typed in
-//!   the second before the toggle is already queued, and would otherwise still
-//!   be pushed. What the server is owed is recomputed when the flag is cleared.
+//! - **On** drops every unsent record upsert and body update of the note. A
+//!   body update typed in the second before the toggle is already queued, and
+//!   would otherwise still be pushed. What the server is owed is recomputed
+//!   when the flag is cleared. A queued delete stays: it is not content.
 //! - **Off** queues the whole note, because nothing else will: the record (its
 //!   payload is rebuilt from `sync_items` at push time, so the server receives
 //!   the current state, not the state when the flag was set) and the body as one
 //!   full-state update. A full Yjs state merges idempotently with what peers
 //!   and the server already hold, so it is safe whatever they have.
 //!
-//! A body whose full state exceeds the 5 MiB update cap (chapter 07 §7.3)
-//! cannot ride as one update. It is reported as [`BodyPush::TooLarge`] and
-//! never queued: the caller sends it as a snapshot
-//! ([`crate::crdt::SnapshotPusher`]), which is the one route for a document of
-//! that size. A row the server would reject is retired by the push loop, which
-//! would lose the body silently.
+//! **The server never holds a record without its body.** A body that cannot
+//! ride as one update (the server caps the decoded sealed update at 5 MiB,
+//! chapter 07 §7.3, and measures the *compressed* frame) is refused **before
+//! anything is written**: the flag stays on, nothing is queued, and the answer
+//! is [`LocalOnlyChange::TooLargeToSync`] for the caller to show. Queuing the
+//! record and leaving the body to a return value would let a crash or an
+//! ignored answer put a record on the server whose later body deltas depend on
+//! history it never received. A note that large stays local-only until a later
+//! step pairs clearing the flag with a snapshot push under a durable marker of
+//! what is owed (the snapshot pusher refuses a local-only note, so it cannot
+//! be the first half of that pair today).
 
 use rusqlite::{Connection, params};
 use yrs::ReadTxn as _;
@@ -35,20 +41,19 @@ use crate::api::errors::StorageError;
 use crate::crdt::errors::CrdtError;
 use crate::domain::{note_files, reads};
 use crate::protocol::account::MAX_UPDATE_BYTES;
+use crate::protocol::crdt_envelope::packed_len;
 use crate::storage::repositories::sync_items;
 use crate::sync::outbox;
 
 use super::{ITEM_TYPE, failed};
 
-/// What happened to the note's body when the flag was cleared.
+/// What became of the note's body when the flag was cleared.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BodyPush {
     /// The full state is queued as one update.
     Queued,
     /// The note holds no body, or no record to send it with: nothing to queue.
     Empty,
-    /// The full state is `bytes` long, over the update cap: send a snapshot.
-    TooLarge { bytes: usize },
 }
 
 /// What [`set`] did.
@@ -61,6 +66,9 @@ pub enum LocalOnlyChange {
     /// The note syncs again; its record is queued, and `body` says what became
     /// of its body.
     Disabled { body: BodyPush },
+    /// The note stays local-only and **nothing was written**: its body sealed
+    /// is `packed_bytes` long, over the 5 MiB the server takes as one update.
+    TooLargeToSync { packed_bytes: usize },
 }
 
 /// Sets or clears the local-only flag of a note that has a `note_files` row.
@@ -81,42 +89,67 @@ pub fn set(
     if file.local_only == local_only {
         return Ok(LocalOnlyChange::Unchanged);
     }
-    note_files::set_local_only(&tx, note_id, local_only)?;
-
     let change = if local_only {
+        note_files::set_local_only(&tx, note_id, true)?;
         let dropped = tx
             .execute(
-                "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2",
-                params![ITEM_TYPE, note_id],
+                "DELETE FROM outbox WHERE item_type = ?1 AND item_id = ?2 AND op IN (?3, ?4)",
+                params![
+                    ITEM_TYPE,
+                    note_id,
+                    outbox::OP_UPSERT,
+                    outbox::OP_CRDT_UPDATE
+                ],
             )
             .map_err(failed)?;
         LocalOnlyChange::Enabled { dropped }
     } else {
+        // Decided before the first write: see the module doc.
+        let pushable = is_pushable(&tx, note_id)?;
+        let state = if pushable {
+            full_state(&tx, note_id).map_err(storage)?
+        } else {
+            None
+        };
+        if let Some(state) = &state {
+            let packed_bytes = packed_len(state);
+            if packed_bytes > MAX_UPDATE_BYTES {
+                return Ok(LocalOnlyChange::TooLargeToSync { packed_bytes });
+            }
+        }
+        note_files::set_local_only(&tx, note_id, false)?;
         LocalOnlyChange::Disabled {
-            body: queue_whole_note(&tx, note_id, now_ms)?,
+            body: queue_whole_note(&tx, note_id, pushable, state, now_ms)?,
         }
     };
     tx.commit().map_err(failed)?;
     Ok(change)
 }
 
-/// Queues the record and the body of a note that just stopped being
-/// local-only. A note with no payload yet (known by metadata only) or already
-/// deleted has nothing to send.
-fn queue_whole_note(tx: &Connection, note_id: &str, now_ms: i64) -> Result<BodyPush, StorageError> {
-    let live = sync_items::load(tx, ITEM_TYPE, note_id)?
-        .is_some_and(|row| row.payload.is_some() && row.deleted_at.is_none());
-    if !live {
+/// The note's live record exists and can be pushed: it has a payload and is
+/// not deleted. A note known by metadata only, or already deleted, has nothing
+/// to send.
+fn is_pushable(tx: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    Ok(sync_items::load(tx, ITEM_TYPE, note_id)?
+        .is_some_and(|row| row.payload.is_some() && row.deleted_at.is_none()))
+}
+
+/// Queues the record and, when there is one, the body of a note that just
+/// stopped being local-only.
+fn queue_whole_note(
+    tx: &Connection,
+    note_id: &str,
+    pushable: bool,
+    state: Option<Vec<u8>>,
+    now_ms: i64,
+) -> Result<BodyPush, StorageError> {
+    if !pushable {
         return Ok(BodyPush::Empty);
     }
     outbox::enqueue(tx, &outbox::Change::upsert(ITEM_TYPE, note_id), now_ms)?;
-
-    let Some(state) = full_state(tx, note_id).map_err(storage)? else {
+    let Some(state) = state else {
         return Ok(BodyPush::Empty);
     };
-    if state.len() > MAX_UPDATE_BYTES {
-        return Ok(BodyPush::TooLarge { bytes: state.len() });
-    }
     outbox::enqueue(
         tx,
         &outbox::Change::crdt_update(ITEM_TYPE, note_id, state),
