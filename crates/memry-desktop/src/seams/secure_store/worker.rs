@@ -6,10 +6,13 @@
 //!
 //! A call waits at most [`DEADLINE`] for its answer. When the deadline passes, the latch is set:
 //! every later call answers `Locked` at once, without queuing behind the stuck one. When the
-//! stuck call finally returns, the latch lifts. The recovery listeners fire once when the keychain
-//! goes from unreachable (latched, or the last call answered `Locked`) to answering, so a Secret
-//! Service that starts late is reported too. An unreadable secret is never reported absent:
-//! `NoEntry` is the only `Ok(None)`.
+//! stuck call finally returns, the latch lifts. The caller latches only while its job is not
+//! done, and the worker marks a job done and lifts the latch under the same lock, so a call that
+//! finishes at its deadline can never leave the latch set behind it. The recovery listeners fire
+//! once when the keychain goes from unreachable (latched, or a call answered `Locked`) to
+//! answering with a success, so a Secret Service that starts late is reported too; a panic or a
+//! `Failed` answer is not a recovery. An unreadable secret is never reported absent: `NoEntry`
+//! (after the store's own absent-check, see [`StoreFactory::absent_check`]) is the only `Ok(None)`.
 
 use std::collections::HashMap;
 use std::panic::AssertUnwindSafe;
@@ -26,6 +29,8 @@ use super::keyring_backend::{Store, StoreFactory, entry};
 
 /// How long a caller waits for the keychain (`KEYCHAIN_READ_TIMEOUT_MS`).
 pub const DEADLINE: Duration = Duration::from_secs(5);
+/// How long a caller that timed out at the instant its job finished waits for the answer.
+const ANSWER_GRACE: Duration = Duration::from_secs(1);
 
 pub type Secret = Zeroizing<Vec<u8>>;
 /// `None` is an absent entry for a read, and the answer of a write or delete.
@@ -40,24 +45,34 @@ pub enum Op {
 
 type Account = (String, String);
 
-/// The callers waiting on one queued read.
-type Waiters = Arc<Mutex<Vec<Sender<Reply>>>>;
+/// One caller waiting on a job, and whether it gave up.
+struct Waiter {
+    reply: Sender<Reply>,
+    abandoned: Arc<AtomicBool>,
+}
+
+/// A queued job and the callers waiting on it. A read has one flight that later readers of the
+/// same account join; a write or delete has a flight of its own with one waiter.
+struct Flight {
+    waiters: Mutex<Vec<Waiter>>,
+    /// Set by the worker, under this lock, when the job ran or was skipped. A caller that times
+    /// out latches only while this is false, under the same lock.
+    done: Mutex<bool>,
+}
+
+impl Flight {
+    fn new(waiter: Waiter) -> Arc<Self> {
+        Arc::new(Self {
+            waiters: Mutex::new(vec![waiter]),
+            done: Mutex::new(false),
+        })
+    }
+}
 
 struct Job {
     account: Account,
     op: Op,
-    /// Set by a caller that gave up. A write nobody waits for is skipped: the caller was told
-    /// `Locked`, and a write that lands afterwards would contradict that answer. (A write that is
-    /// already running when its caller gives up may still land: after `Locked` on a write, read
-    /// before writing a different value.)
-    abandoned: Arc<AtomicBool>,
-    /// A write answers its one caller. A read answers every caller in its `Waiters`.
-    reply: Answer,
-}
-
-enum Answer {
-    One(Sender<Reply>),
-    Flight(Waiters),
+    flight: Arc<Flight>,
 }
 
 #[derive(Default)]
@@ -65,10 +80,13 @@ struct Shared {
     latched: AtomicBool,
     /// The last call ended in a locked-class failure (no latch involved).
     failing: AtomicBool,
+    /// The keychain went unreachable and no call has succeeded since: the next success tells
+    /// the listeners.
+    outage: AtomicBool,
     listeners: Mutex<Vec<Listener>>,
     /// The queued read of each account that a new read may join. A read queued after a write or
     /// delete of the same account never joins one queued before it, or it would see the old value.
-    flights: Mutex<HashMap<Account, Waiters>>,
+    flights: Mutex<HashMap<Account, Arc<Flight>>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -117,46 +135,42 @@ impl Worker {
         let key = (service.to_owned(), account.to_owned());
         let (reply_to, reply) = mpsc::channel();
         let abandoned = Arc::new(AtomicBool::new(false));
-        let queued = {
+        let waiter = Waiter {
+            reply: reply_to,
+            abandoned: abandoned.clone(),
+        };
+        let (flight, queued) = {
             let mut flights = lock(&self.shared.flights);
-            if matches!(op, Op::Get) {
-                match flights.get(&key) {
-                    Some(waiters) => {
-                        lock(waiters).push(reply_to);
-                        None
-                    }
-                    None => {
-                        let waiters: Waiters = Arc::new(Mutex::new(vec![reply_to]));
-                        flights.insert(key.clone(), waiters.clone());
-                        Some(Job {
-                            account: key.clone(),
-                            op,
-                            abandoned: abandoned.clone(),
-                            reply: Answer::Flight(waiters),
-                        })
-                    }
+            match (matches!(op, Op::Get), flights.get(&key).cloned()) {
+                (true, Some(open)) => {
+                    lock(&open.waiters).push(waiter);
+                    (open, None)
                 }
-            } else {
-                flights.remove(&key);
-                Some(Job {
-                    account: key.clone(),
-                    op,
-                    abandoned: abandoned.clone(),
-                    reply: Answer::One(reply_to),
-                })
+                (is_read, _) => {
+                    let flight = Flight::new(waiter);
+                    if is_read {
+                        flights.insert(key.clone(), flight.clone());
+                    } else {
+                        flights.remove(&key);
+                    }
+                    let job = Job {
+                        account: key.clone(),
+                        op,
+                        flight: flight.clone(),
+                    };
+                    (flight, Some(job))
+                }
             }
         };
         if let Some(job) = queued
             && let Err(failed) = self.jobs.send(job)
         {
-            if let Answer::Flight(waiters) = &failed.0.reply {
-                let mut flights = lock(&self.shared.flights);
-                if flights
-                    .get(&key)
-                    .is_some_and(|open| Arc::ptr_eq(open, waiters))
-                {
-                    flights.remove(&key);
-                }
+            let mut flights = lock(&self.shared.flights);
+            if flights
+                .get(&key)
+                .is_some_and(|open| Arc::ptr_eq(open, &failed.0.flight))
+            {
+                flights.remove(&key);
             }
             return Err(stopped());
         }
@@ -164,6 +178,16 @@ impl Worker {
             Ok(reply) => reply,
             Err(RecvTimeoutError::Timeout) => {
                 abandoned.store(true, Ordering::Release);
+                let done = lock(&flight.done);
+                if *done {
+                    // The worker finished at the deadline: its answer, or the `Locked` of a
+                    // skipped job, is on the way. Nothing is stuck, so nothing is latched.
+                    drop(done);
+                    return reply
+                        .recv_timeout(ANSWER_GRACE)
+                        .unwrap_or(Err(SecureStoreError::Locked));
+                }
+                self.shared.outage.store(true, Ordering::Release);
                 if !self.shared.latched.swap(true, Ordering::AcqRel) {
                     tracing::warn!(
                         scope = "Keychain",
@@ -171,6 +195,7 @@ impl Worker {
                         self.deadline
                     );
                 }
+                drop(done);
                 Err(SecureStoreError::Locked)
             }
             Err(RecvTimeoutError::Disconnected) => Err(stopped()),
@@ -196,7 +221,7 @@ struct Runner {
 impl Runner {
     fn run(mut self, queue: Receiver<Job>) {
         while let Ok(job) = queue.recv() {
-            if !matches!(job.op, Op::Get) && job.abandoned.load(Ordering::Acquire) {
+            if self.skip(&job) {
                 continue;
             }
             let outcome = std::panic::catch_unwind(AssertUnwindSafe(|| self.execute(&job)))
@@ -206,17 +231,64 @@ impl Runner {
                         what: "the credential store panicked".to_owned(),
                     })
                 });
-            // The stuck call came back: lift the latch before answering, so the next caller is
-            // served, then tell the listeners.
-            let down = matches!(outcome, Err(SecureStoreError::Locked));
-            let was_down = self.shared.latched.swap(false, Ordering::AcqRel)
-                | self.shared.failing.swap(down, Ordering::AcqRel);
+            // The job is over, so the latch of a caller that gave up on it lifts (under the
+            // lock a late caller checks `done` with), then the callers are answered.
+            self.complete(&job.flight);
+            let recovered = match &outcome {
+                Ok(_) => {
+                    self.shared.failing.store(false, Ordering::Release);
+                    self.shared.outage.swap(false, Ordering::AcqRel)
+                }
+                Err(SecureStoreError::Locked) => {
+                    self.shared.failing.store(true, Ordering::Release);
+                    self.shared.outage.store(true, Ordering::Release);
+                    false
+                }
+                // The keychain answered but refused or broke: not a recovery, and not an outage.
+                Err(_) => {
+                    self.shared.failing.store(false, Ordering::Release);
+                    false
+                }
+            };
             self.deliver(job, outcome);
-            if was_down && !down {
+            if recovered {
                 tracing::info!(scope = "Keychain", "the OS keychain is readable again");
                 self.notify_recovered();
             }
         }
+    }
+
+    /// A job nobody waits for any more is not run: a write would land after its caller was told
+    /// `Locked`, and a read would show an orphan prompt. Its callers hear `Locked`.
+    fn skip(&self, job: &Job) -> bool {
+        let abandoned = {
+            let mut flights = lock(&self.shared.flights);
+            let all = lock(&job.flight.waiters)
+                .iter()
+                .all(|waiter| waiter.abandoned.load(Ordering::Acquire));
+            // No reader joins a flight that is being dropped.
+            if all
+                && flights
+                    .get(&job.account)
+                    .is_some_and(|open| Arc::ptr_eq(open, &job.flight))
+            {
+                flights.remove(&job.account);
+            }
+            all
+        };
+        if abandoned {
+            self.complete(&job.flight);
+            for waiter in lock(&job.flight.waiters).drain(..) {
+                let _ = waiter.reply.send(Err(SecureStoreError::Locked));
+            }
+        }
+        abandoned
+    }
+
+    fn complete(&self, flight: &Flight) {
+        let mut done = lock(&flight.done);
+        *done = true;
+        self.shared.latched.store(false, Ordering::Release);
     }
 
     /// Listeners run on a thread of their own, so one that calls back into the store (reload
@@ -242,24 +314,17 @@ impl Runner {
     }
 
     fn deliver(&self, job: Job, outcome: Reply) {
-        match job.reply {
-            Answer::One(answer) => {
-                let _ = answer.send(outcome);
-            }
-            Answer::Flight(waiters) => {
-                // Close the flight first: a read that arrives now starts a new one.
-                let mut flights = lock(&self.shared.flights);
-                if flights
-                    .get(&job.account)
-                    .is_some_and(|open| Arc::ptr_eq(open, &waiters))
-                {
-                    flights.remove(&job.account);
-                }
-                drop(flights);
-                for waiter in lock(&waiters).drain(..) {
-                    let _ = waiter.send(outcome.clone());
-                }
-            }
+        // Close the flight first: a read that arrives now starts a new one.
+        let mut flights = lock(&self.shared.flights);
+        if flights
+            .get(&job.account)
+            .is_some_and(|open| Arc::ptr_eq(open, &job.flight))
+        {
+            flights.remove(&job.account);
+        }
+        drop(flights);
+        for waiter in lock(&job.flight.waiters).drain(..) {
+            let _ = waiter.reply.send(outcome.clone());
         }
     }
 
@@ -273,10 +338,27 @@ impl Runner {
             entry(&store, self.names_target, service, account).and_then(|entry| match &job.op {
                 Op::Get => match entry.get_secret() {
                     Ok(bytes) => Ok(Some(Zeroizing::new(bytes))),
-                    Err(Error::NoEntry) => Ok(None),
+                    // Not found is not yet absent: the platform may hold the item where this
+                    // store does not look (Linux).
+                    Err(Error::NoEntry) => self
+                        .factory
+                        .absent_check(service, account)
+                        .map(|found| found.map(Zeroizing::new)),
                     Err(error) => Err(error),
                 },
-                Op::Set(value) => entry.set_secret(value).map(|()| None),
+                Op::Set(value) => entry
+                    .set_secret(value)
+                    .and_then(|()| {
+                        // keytar set `UserName` to the account on Windows, and the store leaves it
+                        // empty when the target is named.
+                        if self.names_target {
+                            entry
+                                .update_attributes(&HashMap::from([("username", account.as_str())]))
+                        } else {
+                            Ok(())
+                        }
+                    })
+                    .map(|()| None),
                 Op::Delete => match entry.delete_credential() {
                     Ok(()) | Err(Error::NoEntry) => Ok(None),
                     Err(error) => Err(error),

@@ -2,8 +2,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-#[cfg(feature = "e2e")]
-use crate::launch_env::LaunchEnv;
 use keyring_core::Error;
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -11,6 +9,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use super::*;
 
 mod fake;
+mod outage;
 use fake::{Gate, Mode, rig, rig_with};
 
 const SECRET: &[u8] = b"super-secret-bytes-0123456789abc";
@@ -491,23 +490,4 @@ fn a_listener_may_call_the_store() {
     wait_for("the listener to read the key", || {
         calls.load(Ordering::SeqCst) == 1
     });
-}
-
-#[cfg(feature = "e2e")]
-#[test]
-fn an_open_e2e_gate_uses_an_in_memory_store() {
-    let mut env = LaunchEnv::default();
-    env.set(crate::e2e::E2E_VAR, "1");
-    let store = KeyringStore::new(Some("e2e-memory-test".to_owned()), E2eGate::from_env(&env));
-    assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
-    store.set(SecureStoreKey::MasterKey, vec![3; 32]).unwrap();
-    assert_eq!(
-        store.get(SecureStoreKey::MasterKey).unwrap(),
-        Some(vec![3; 32])
-    );
-    store.set_secret("com.memry.test", "a", b"raw").unwrap();
-    assert_eq!(
-        store.get_secret("com.memry.test", "a").unwrap(),
-        Some(b"raw".to_vec())
-    );
 }

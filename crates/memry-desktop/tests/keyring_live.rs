@@ -25,6 +25,7 @@ fn store(suffix: &str) -> KeyringStore {
     KeyringStore::new(
         Some(suffix.to_owned()),
         E2eGate::from_env(&LaunchEnv::default()),
+        std::path::Path::new("."),
     )
 }
 
@@ -41,9 +42,14 @@ fn no_secret_service() -> bool {
     std::env::var("MEMRY_LIVE_NO_SECRET_SERVICE").is_ok_and(|v| v == "1")
 }
 
+/// The macOS rows write to the login keychain: they run on CI (`CI` is set) and nowhere else.
+fn skip_on_a_developer_mac() -> bool {
+    cfg!(target_os = "macos") && std::env::var_os("CI").is_none()
+}
+
 #[test]
 fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
-    if no_secret_service() {
+    if no_secret_service() || skip_on_a_developer_mac() {
         return;
     }
     let store = Arc::new(store(&unique("sync")));
@@ -66,7 +72,7 @@ fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
 
 #[test]
 fn a_generic_secret_of_forty_raw_bytes_round_trips() {
-    if no_secret_service() {
+    if no_secret_service() || skip_on_a_developer_mac() {
         return;
     }
     let store = store(&unique("generic"));

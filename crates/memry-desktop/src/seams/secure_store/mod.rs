@@ -20,9 +20,17 @@
 //! into the `keychain_unavailable` sync status and its retries; Step 19 (#3536) shows the same string
 //! when a sign-in write fails.
 
+// The file-backed e2e store is a plaintext secret file: it must never ship.
+#[cfg(all(feature = "e2e", not(debug_assertions)))]
+compile_error!("the `e2e` feature keeps secrets in a plain file and is for debug builds only");
+
 mod account;
+#[cfg(feature = "e2e")]
+mod e2e_file;
 mod generic;
 mod keyring_backend;
+#[cfg(target_os = "linux")]
+mod linux_absent;
 mod worker;
 
 use std::sync::Arc;
@@ -37,6 +45,11 @@ use zeroize::Zeroizing;
 pub use account::{KEYS, SERVICE, account};
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
+/// The Linux absent-check on its own, for the live test of a locked keyring (the store's search
+/// would wait for an unlock prompt first).
+#[cfg(all(target_os = "linux", feature = "live-os-secrets"))]
+#[doc(hidden)]
+pub use linux_absent::check as linux_absent_check;
 pub use worker::DEADLINE;
 use worker::{Op, Worker};
 
@@ -56,14 +69,24 @@ pub struct KeyringStore {
 
 impl KeyringStore {
     /// The keychain of the running OS. `device_suffix` is the `MEMRY_DEVICE` value. An e2e build
-    /// whose gate is open uses an in-memory store, so a headless CI box with no keyring never
-    /// hangs (Electron bounded each call to 400 ms under test); a release build links none of it.
-    pub fn new(device_suffix: Option<String>, gate: E2eGate) -> Self {
+    /// whose gate is open keeps its secrets in a file under `e2e_data_dir` instead, so a headless
+    /// CI box with no keyring never hangs (Electron bounded each call to 400 ms under test) and a
+    /// restart of the same e2e profile keeps its keys, as the Electron e2e run's persistent
+    /// staging profile does. A release build links none of it.
+    pub fn new(
+        device_suffix: Option<String>,
+        gate: E2eGate,
+        e2e_data_dir: &std::path::Path,
+    ) -> Self {
         #[cfg(feature = "e2e")]
         if gate.is_open() {
-            return Self::with_factory(memory::InMemory::new(), device_suffix, DEADLINE);
+            return Self::with_factory(
+                e2e_file::FileStore::new(e2e_data_dir),
+                device_suffix,
+                DEADLINE,
+            );
         }
-        let _ = gate;
+        let _ = (gate, e2e_data_dir);
         Self::with_factory(Native, device_suffix, DEADLINE)
     }
 
@@ -152,26 +175,6 @@ impl SecureStore for KeyringStore {
             }
         }
         first
-    }
-}
-
-#[cfg(feature = "e2e")]
-mod memory {
-    use super::{Store, StoreFactory};
-
-    /// One in-memory credential store for the life of the process.
-    pub struct InMemory(Store);
-
-    impl InMemory {
-        pub fn new() -> Self {
-            Self(keyring_core::mock::Store::new().expect("the mock store always builds"))
-        }
-    }
-
-    impl StoreFactory for InMemory {
-        fn build(&self) -> keyring_core::Result<Store> {
-            Ok(self.0.clone())
-        }
     }
 }
 

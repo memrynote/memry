@@ -9,6 +9,7 @@ use keyring_core::{Credential, Entry, Error};
 
 use super::super::{KeyringStore, Store, StoreFactory};
 
+pub type Absent = Arc<Mutex<Option<fn() -> keyring_core::Result<Option<Vec<u8>>>>>>;
 pub type BuildError = Arc<Mutex<Option<fn() -> Error>>>;
 type Data = Arc<Mutex<HashMap<(String, String), Vec<u8>>>>;
 
@@ -38,6 +39,8 @@ pub enum Mode {
     Normal,
     Fail(fn() -> Error),
     Block(Arc<Gate>),
+    /// Answers after this long, as a keychain that is slow, not stuck.
+    Sleep(Duration),
     Panic,
 }
 
@@ -48,6 +51,8 @@ pub struct Fake {
     pub reads: Arc<AtomicUsize>,
     pub reader_threads: Arc<Mutex<Vec<Option<String>>>>,
     pub targets: Arc<Mutex<Vec<Option<String>>>>,
+    /// The (account, `username` attribute) of each `update_attributes`.
+    pub usernames: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 pub struct FakeCred {
@@ -63,6 +68,7 @@ impl Fake {
             reads: Arc::default(),
             reader_threads: Arc::default(),
             targets: Arc::default(),
+            usernames: Arc::default(),
         }
     }
 
@@ -73,6 +79,7 @@ impl Fake {
             reads: self.reads.clone(),
             reader_threads: self.reader_threads.clone(),
             targets: self.targets.clone(),
+            usernames: self.usernames.clone(),
         }
     }
 
@@ -102,6 +109,10 @@ impl Fake {
             Mode::Fail(error) => Err(error()),
             Mode::Block(gate) => {
                 gate.wait();
+                Ok(())
+            }
+            Mode::Sleep(pause) => {
+                std::thread::sleep(pause);
                 Ok(())
             }
             Mode::Panic => panic!("a store that panics"),
@@ -149,6 +160,17 @@ impl CredentialApi for FakeCred {
             Some(_) => Ok(()),
             None => Err(Error::NoEntry),
         }
+    }
+
+    fn update_attributes(&self, attributes: &HashMap<&str, &str>) -> keyring_core::Result<()> {
+        if let Some(name) = attributes.get("username") {
+            self.fake
+                .usernames
+                .lock()
+                .unwrap()
+                .push((self.key.1.clone(), (*name).to_owned()));
+        }
+        Ok(())
     }
 
     fn get_credential(&self) -> keyring_core::Result<Option<Arc<Credential>>> {
@@ -207,6 +229,7 @@ pub struct Factory {
     pub builds: Arc<AtomicUsize>,
     pub build_error: BuildError,
     pub names_target: bool,
+    pub absent: Absent,
 }
 
 impl StoreFactory for Factory {
@@ -221,6 +244,13 @@ impl StoreFactory for Factory {
     fn names_target(&self) -> bool {
         self.names_target
     }
+
+    fn absent_check(&self, _: &str, _: &str) -> keyring_core::Result<Option<Vec<u8>>> {
+        match *self.absent.lock().unwrap() {
+            Some(check) => check(),
+            None => Ok(None),
+        }
+    }
 }
 
 pub struct Rig {
@@ -228,17 +258,20 @@ pub struct Rig {
     pub fake: Fake,
     pub builds: Arc<AtomicUsize>,
     pub build_error: BuildError,
+    pub absent: Absent,
 }
 
 pub fn rig_with(suffix: Option<&str>, deadline: Duration, names_target: bool) -> Rig {
     let fake = Fake::new();
     let builds = Arc::new(AtomicUsize::new(0));
     let build_error = Arc::new(Mutex::new(None));
+    let absent: Absent = Arc::default();
     let factory = Factory {
         fake: fake.share(),
         builds: builds.clone(),
         build_error: build_error.clone(),
         names_target,
+        absent: absent.clone(),
     };
     Rig {
         store: Arc::new(KeyringStore::with_factory(
@@ -249,6 +282,7 @@ pub fn rig_with(suffix: Option<&str>, deadline: Duration, names_target: bool) ->
         fake,
         builds,
         build_error,
+        absent,
     }
 }
 

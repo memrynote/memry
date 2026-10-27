@@ -17,6 +17,18 @@ pub trait StoreFactory: Send + Sync + 'static {
     fn names_target(&self) -> bool {
         false
     }
+
+    /// Asked when a read found no entry, before the store answers "absent". It returns the secret
+    /// when the platform holds it where the store did not look, and an error of the "could not
+    /// reach" class (mapped to `Locked`) when the item may exist but cannot be seen. The default
+    /// trusts the store.
+    fn absent_check(
+        &self,
+        _service: &str,
+        _account: &str,
+    ) -> keyring_core::Result<Option<Vec<u8>>> {
+        Ok(None)
+    }
 }
 
 /// The store of the running OS.
@@ -25,6 +37,11 @@ pub struct Native;
 impl StoreFactory for Native {
     fn names_target(&self) -> bool {
         cfg!(windows)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn absent_check(&self, service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
+        super::linux_absent::check(service, account)
     }
 
     #[cfg(target_os = "macos")]
