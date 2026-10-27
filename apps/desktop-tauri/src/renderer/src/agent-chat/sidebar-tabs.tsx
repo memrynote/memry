@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Bot, CalendarDays, Expand, MoreHorizontal, PlusSignIcon, X } from '@/lib/icons'
 import { cn } from '@/lib/utils'
-import { useWindowControlsOverlayVisible } from '@/lib/window-controls-overlay'
+import { useCaptionButtonsVisible } from '@/lib/window-chrome'
 import { useAgentOptional } from './agent-context'
 import { preferredConversationDefaults } from './agent-model-preference'
 import { ConversationList } from './conversation-list'
@@ -64,7 +64,7 @@ export function SidebarTabs({
   // Windows caption buttons take ~138px of this header. The full agent action row
   // no longer fits at the default panel width, so it folds into one menu; the
   // close button goes too, since the Day switch next to it does the same.
-  const compactAgentActions = useWindowControlsOverlayVisible()
+  const compactAgentActions = useCaptionButtonsVisible()
   const dayTabLabel = t('agentChat.sidebar.day')
   const agentTabLabel = t('agentChat.sidebar.agent')
   const resolvedActive = aiEnabled ? active : active === 'agent' ? 'day' : active

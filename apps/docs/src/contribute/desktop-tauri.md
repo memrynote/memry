@@ -93,3 +93,20 @@ The main window is built hidden and `reveal.rs` shows it when the renderer's `Sh
 The window opens at 1550x900, or at the size and position saved in `windowBounds` of `memry-config.json` when a display still shows at least 100x50 px of it. The vault picker is 900x720, grows to the saved size when a vault opens and shrinks back when it closes (not during a vault switch). `memry_desktop::shell::bounds` holds the pure rules. Bounds are logical units, written 1.5 s after the last resize or move and on close, only while a vault is open, and every key of the stored object that this build does not know is kept. The size stored is the inner size, which is what the builder applies; Electron stored the outer size, so a Linux window differs by its title bar once, the first time it moves between builds. `app_set_zoom_factor` stores the factor and applies it to every app window.
 
 E2E specs that look at the window size keep the harness from resizing it with `test.use({ keepWindowRect: true })`.
+
+## Window chrome
+
+`windows/chrome.rs` sets the frame per OS: macOS a hidden title bar with the traffic lights at (12, 12) drawn over the title row, Linux the native frame, Windows no frame (`decorations(false)`, shadow on) with WebView2 browser accelerator keys off. Windows draws its caption buttons in React (`components/caption-buttons.tsx`, 46x36 each) and reports their physical-pixel rectangles with `window_set_caption_rects`. `windows/win32_caption.rs` subclasses the top-level window and the WebView2 render child so `WM_NCHITTEST` answers `HTMINBUTTON`, `HTMAXBUTTON` and `HTCLOSE` inside them (Windows 11 shows its snap layouts over maximize); hover and press arrive as `WindowCaptionHoverChangedEvent` and `WindowCaptionPressedChangedEvent` because the page gets no mouse events for those regions. `--caption-reserve-end` is 138px on Windows outside fullscreen (`data-fullscreen` follows `WindowChromeStateChangedEvent`).
+
+Dragging uses `windows/scripts/drag-region.js`, an init script of the main frame only: a capture-phase `mousedown` on `.drag-region` (not on `.no-drag`, links, buttons or inputs) calls `plugin:window|start_dragging`, and a double click calls `toggle_maximize`. `-webkit-app-region` does not exist in these engines, so `.drag-region` and `.no-drag` are plain marker classes. The same script publishes `window.__MEMRY_SHELL__`.
+
+`window_minimize`, `window_toggle_maximize` and `window_close` act on the calling window. Back and forward come from mouse buttons 3 and 4 and the browser keys in the renderer, `WM_APPCOMMAND` on Windows and a local `NSEvent` swipe monitor on macOS, all as `AppNavigationRequestedEvent { direction }`.
+
+## Application menu
+
+`memry_desktop::shell::menu_spec` builds the menu as data from the generated command table (`menu_table.generated.rs`, produced by `pnpm ipc:generate` from `@memry/contracts`). `apps/desktop-tauri/src-tauri/src/menu/` turns it into a muda menu and rebuilds it on a language change, a vault change and a keyboard rebind.
+
+- A command item sends `MenuCommandInvokedEvent`; the renderer runs the command through `useMenuBridge`. Reload, DevTools, links, Back and Forward run in the shell.
+- macOS sets live accelerators. Windows and Linux put the shortcut in the label only, so the editor keeps its keys; F1 opens the docs from the shell.
+- Linux hides the menu bar until a bare Alt (`menu_toggle_alt`); Windows pops the menu up at the title row.
+- `shell_show_context_menu` shows a native context menu and returns the clicked item id. In an e2e build, `e2e_set_next_context_menu_selection` answers it and `e2e_menu_tree` reads the built menu.

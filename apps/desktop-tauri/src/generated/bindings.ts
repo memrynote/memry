@@ -23,6 +23,13 @@ export const commands = {
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
 	logWrite: (level: LogLevel, scope: string, message: string, fields: Value | null) => __TAURI_INVOKE<null>("log_write", { level, scope, message, fields }),
+	/**  Escape pressed while the Linux menu bar shows. */
+	menuHideAlt: () => __TAURI_INVOKE<null>("menu_hide_alt"),
+	/**
+	 *  Alt pressed and released alone (the renderer tells a bare Alt from an Alt chord). Linux
+	 *  shows or hides the menu bar, Windows pops the menu up. Returns whether a menu bar shows.
+	 */
+	menuToggleAlt: () => __TAURI_INVOKE<boolean>("menu_toggle_alt"),
 	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
 	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
 	/**  A group of the open vault, or its defaults while no vault is open. */
@@ -46,6 +53,11 @@ export const commands = {
 	shellFirstPaint: () => __TAURI_INVOKE<null>("shell_first_paint"),
 	/**  A liveness beat from the page, every 2 s. */
 	shellHeartbeat: () => __TAURI_INVOKE<null>("shell_heartbeat"),
+	/**
+	 *  Shows a native context menu at the pointer and returns the clicked item id, or `None` when
+	 *  the menu closed without a choice.
+	 */
+	shellShowContextMenu: (items: ContextMenuItem[]) => __TAURI_INVOKE<string | null>("shell_show_context_menu", { items }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -63,18 +75,34 @@ export const commands = {
 	vaultSetDefault: (path: string) => __TAURI_INVOKE<null>("vault_set_default", { path }),
 	vaultSetIcon: (path: string, icon: string | null) => __TAURI_INVOKE<null>("vault_set_icon", { path, icon }),
 	vaultSwitch: (path: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_switch", { path }),
+	/**  Closes the calling window. The `CloseRequested` handlers (flush, tray) decide what follows. */
+	windowClose: () => __TAURI_INVOKE<null>("window_close"),
+	/**  Minimizes the calling window. */
+	windowMinimize: () => __TAURI_INVOKE<null>("window_minimize"),
+	/**
+	 *  The renderer's measured caption buttons, for native hit testing (Windows; a no-op
+	 *  elsewhere).
+	 */
+	windowSetCaptionRects: (min: CaptionRect, max: CaptionRect, close: CaptionRect) => __TAURI_INVOKE<null>("window_set_caption_rects", { min, max, close }),
+	/**  Maximizes the calling window, or restores it when it is maximized. */
+	windowToggleMaximize: () => __TAURI_INVOKE<null>("window_toggle_maximize"),
 };
 
 /** Events */
 export const events = {
+	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
+	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
 	vaultStatusChangedEvent: makeEvent<VaultStatusChangedEvent, VaultStatusChangedEvent>("vault-status-changed-event"),
+	windowCaptionHoverChangedEvent: makeEvent<WindowCaptionHoverChangedEvent, WindowCaptionHoverChangedEvent>("window-caption-hover-changed-event"),
+	windowCaptionPressedChangedEvent: makeEvent<WindowCaptionPressedChangedEvent, WindowCaptionPressedChangedEvent>("window-caption-pressed-changed-event"),
+	windowChromeStateChangedEvent: makeEvent<WindowChromeStateChangedEvent, WindowChromeStateChangedEvent>("window-chrome-state-changed-event"),
 };
 
 /* Types */
@@ -86,7 +114,20 @@ export type AppInfo = {
 	e2e: boolean,
 };
 
+/**  Back or forward from a trackpad swipe or a browser key (`back` or `forward`). */
+export type AppNavigationRequestedEvent = {
+	direction: string,
+};
+
 export type BuildKind = "dev" | "packaged";
+
+/**  A caption button's rectangle in client coordinates, physical pixels. */
+export type CaptionRect = {
+	x: number | null,
+	y: number | null,
+	width: number | null,
+	height: number | null,
+};
 
 /**
  *  What the renderer sees when a command rejects. Tauri serializes it as JSON, the shape
@@ -96,6 +137,15 @@ export type CommandError = {
 	kind: ErrorKind,
 	code: string,
 	message: string,
+};
+
+/**  The item shape of `window.api.showContextMenu`: `{ id, label, accelerator, disabled, type }`. */
+export type ContextMenuItem = {
+	id: string,
+	label: string,
+	accelerator: string | null,
+	disabled: boolean | null,
+	type: ItemKind | null,
 };
 
 /**  One shipped line (`DiagnosticLogLineSchema`). */
@@ -203,12 +253,22 @@ export type GetVaultsResponse = {
 	sandbox: SandboxInfo,
 };
 
+export type ItemKind = "normal" | "separator";
+
 /**  The UI language changed (`locale:changed`). */
 export type LocaleChangedEvent = {
 	locale: string,
 };
 
 export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
+
+/**
+ *  A native menu item that the renderer runs as a command was clicked. `command` is the
+ *  command id (`tabs.closeTab`).
+ */
+export type MenuCommandInvokedEvent = {
+	command: string,
+};
 
 export type Metrics = {
 	durationMs?: number | null,
@@ -345,6 +405,28 @@ export type VaultStatus = {
  *  it subscribes, because events before that are not replayed.
  */
 export type VaultStatusChangedEvent = VaultStatus;
+
+/**
+ *  The pointer is over a native caption button (`minimize`, `maximize`, `close`) or left them.
+ *  Windows only: the page receives no mouse events for those hit-test regions.
+ */
+export type WindowCaptionHoverChangedEvent = {
+	button: string | null,
+};
+
+/**  A native caption button is held down, or released. */
+export type WindowCaptionPressedChangedEvent = {
+	button: string | null,
+};
+
+/**
+ *  The main window's maximized or fullscreen state changed (emitted on resize). The renderer
+ *  sets `data-fullscreen` on `<html>` and the caption button glyph from it.
+ */
+export type WindowChromeStateChangedEvent = {
+	fullscreen: boolean,
+	maximized: boolean,
+};
 
 /* Tauri Specta runtime */
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;

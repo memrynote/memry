@@ -68,6 +68,9 @@ fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
             fields,
         },
     );
+    if key == "keyboard" {
+        crate::menu::apply(app, false);
+    }
 }
 
 /// A group of the open vault, or its defaults while no vault is open.

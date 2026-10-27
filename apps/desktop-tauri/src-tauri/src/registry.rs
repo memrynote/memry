@@ -35,6 +35,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::locale::locale_set,
             // log
             crate::commands::logging::log_write,
+            // menu
+            crate::commands::shell::menu_hide_alt,
+            crate::commands::shell::menu_toggle_alt,
             // settings
             crate::commands::settings::app_set_zoom_factor,
             crate::commands::settings::settings_get_group,
@@ -46,6 +49,7 @@ pub fn builder() -> Builder<Wry> {
             // shell
             crate::commands::shell::shell_first_paint,
             crate::commands::shell::shell_heartbeat,
+            crate::commands::shell::shell_show_context_menu,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
@@ -64,8 +68,15 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_set_default,
             crate::commands::vault::vault_set_icon,
             crate::commands::vault::vault_switch,
+            // window
+            crate::commands::shell::window_close,
+            crate::commands::shell::window_minimize,
+            crate::commands::shell::window_set_caption_rects,
+            crate::commands::shell::window_toggle_maximize,
         ])
         .events(collect_events![
+            // app
+            crate::events::AppNavigationRequestedEvent,
             // flush
             crate::events::FlushRequestedEvent,
             // locale
@@ -73,11 +84,17 @@ pub fn builder() -> Builder<Wry> {
             // settings
             crate::events::SettingsChangedEvent,
             crate::events::SettingsOpenSectionEvent,
+            // menu
+            crate::events::MenuCommandInvokedEvent,
             // vault
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexRecoveredEvent,
             crate::events::VaultListChangedEvent,
             crate::events::VaultStatusChangedEvent,
+            // window
+            crate::events::WindowCaptionHoverChangedEvent,
+            crate::events::WindowCaptionPressedChangedEvent,
+            crate::events::WindowChromeStateChangedEvent,
         ])
         .typ::<StartupState>()
 }

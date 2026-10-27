@@ -5,4 +5,7 @@ interface Window {
   api: any
   /** Published by the Rust init script before first paint (`StartupState`). */
   __MEMRY_STARTUP__?: { theme: string; locale: string; direction: string }
+  /** Published by the shell's init script of the main window (`windows/scripts.rs`). */
+  __MEMRY_SHELL__?: { maximizable: boolean }
+  __TAURI_INTERNALS__: { invoke: (command: string, args?: unknown) => Promise<unknown> }
 }
