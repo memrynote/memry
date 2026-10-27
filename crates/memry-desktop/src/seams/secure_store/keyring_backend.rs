@@ -29,10 +29,34 @@ pub trait StoreFactory: Send + Sync + 'static {
     ) -> keyring_core::Result<Option<Vec<u8>>> {
         Ok(None)
     }
+
+    /// Asked after a write landed in `entry`. Linux tags the item with keytar's attribute and
+    /// deletes the item keytar wrote, so exactly one item answers for the pair and the Electron
+    /// app reads the new value.
+    fn after_set(
+        &self,
+        _entry: &Entry,
+        _service: &str,
+        _account: &str,
+    ) -> keyring_core::Result<()> {
+        Ok(())
+    }
+
+    /// Asked after the store deleted its item or found none. Linux deletes the items keytar
+    /// wrote too, so the read fallback of [`Self::absent_check`] cannot bring a deleted secret
+    /// back.
+    fn after_delete(&self, _service: &str, _account: &str) -> keyring_core::Result<()> {
+        Ok(())
+    }
 }
 
 /// The store of the running OS.
-pub struct Native;
+#[derive(Default)]
+pub struct Native {
+    /// The Secret Service connection of the keytar-item checks, kept between calls.
+    #[cfg(target_os = "linux")]
+    session: super::linux_absent::Session,
+}
 
 impl StoreFactory for Native {
     fn names_target(&self) -> bool {
@@ -41,7 +65,17 @@ impl StoreFactory for Native {
 
     #[cfg(target_os = "linux")]
     fn absent_check(&self, service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
-        super::linux_absent::check(service, account)
+        super::linux_absent::check(&self.session, service, account)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn after_set(&self, entry: &Entry, service: &str, account: &str) -> keyring_core::Result<()> {
+        super::linux_absent::after_set(&self.session, entry, service, account)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn after_delete(&self, service: &str, account: &str) -> keyring_core::Result<()> {
+        super::linux_absent::after_delete(&self.session, service, account)
     }
 
     #[cfg(target_os = "macos")]

@@ -11,7 +11,7 @@ use super::super::{KeyringStore, Store, StoreFactory};
 
 pub type Absent = Arc<Mutex<Option<fn() -> keyring_core::Result<Option<Vec<u8>>>>>>;
 pub type BuildError = Arc<Mutex<Option<fn() -> Error>>>;
-type Data = Arc<Mutex<HashMap<(String, String), Vec<u8>>>>;
+pub type Data = Arc<Mutex<HashMap<(String, String), Vec<u8>>>>;
 
 /// Blocks `get_secret` until opened.
 #[derive(Default)]
@@ -229,6 +229,9 @@ pub struct Factory {
     pub builds: Arc<AtomicUsize>,
     pub build_error: BuildError,
     pub names_target: bool,
+    /// Items the store does not see but the platform holds: what keytar wrote on Linux.
+    pub keytar: Data,
+    /// Replaces the keytar lookup of `absent_check` when set.
     pub absent: Absent,
 }
 
@@ -245,11 +248,28 @@ impl StoreFactory for Factory {
         self.names_target
     }
 
-    fn absent_check(&self, _: &str, _: &str) -> keyring_core::Result<Option<Vec<u8>>> {
-        match *self.absent.lock().unwrap() {
-            Some(check) => check(),
-            None => Ok(None),
+    fn absent_check(&self, service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
+        if let Some(check) = *self.absent.lock().unwrap() {
+            return check();
         }
+        Ok(self
+            .keytar
+            .lock()
+            .unwrap()
+            .get(&(service.to_owned(), account.to_owned()))
+            .cloned())
+    }
+
+    fn after_set(&self, _: &Entry, service: &str, account: &str) -> keyring_core::Result<()> {
+        self.after_delete(service, account)
+    }
+
+    fn after_delete(&self, service: &str, account: &str) -> keyring_core::Result<()> {
+        self.keytar
+            .lock()
+            .unwrap()
+            .remove(&(service.to_owned(), account.to_owned()));
+        Ok(())
     }
 }
 
@@ -258,6 +278,7 @@ pub struct Rig {
     pub fake: Fake,
     pub builds: Arc<AtomicUsize>,
     pub build_error: BuildError,
+    pub keytar: Data,
     pub absent: Absent,
 }
 
@@ -265,12 +286,14 @@ pub fn rig_with(suffix: Option<&str>, deadline: Duration, names_target: bool) ->
     let fake = Fake::new();
     let builds = Arc::new(AtomicUsize::new(0));
     let build_error = Arc::new(Mutex::new(None));
+    let keytar = Data::default();
     let absent: Absent = Arc::default();
     let factory = Factory {
         fake: fake.share(),
         builds: builds.clone(),
         build_error: build_error.clone(),
         names_target,
+        keytar: keytar.clone(),
         absent: absent.clone(),
     };
     Rig {
@@ -282,6 +305,7 @@ pub fn rig_with(suffix: Option<&str>, deadline: Duration, names_target: bool) ->
         fake,
         builds,
         build_error,
+        keytar,
         absent,
     }
 }

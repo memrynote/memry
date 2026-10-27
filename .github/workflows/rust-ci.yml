@@ -263,7 +263,8 @@ jobs:
 
       # The desktop KeyringStore against the live OS keychain (#3532). The tests use their own
       # `e2e-live-*` device suffix and the `com.memry.test` service and remove their items.
-      # macOS: the runner's login keychain. Windows: Credential Manager, including the 2560-byte
+      # macOS: a throw-away keychain the next step creates, unlocks and makes the default (never the
+      # login keychain). Windows: Credential Manager, including the 2560-byte
       # blob limit. `keyring_keytar_live` writes an item the way Electron's keytar did (`security`,
       # CredWriteW, secret-tool) and reads it with the store, then the reverse: the names keytar
       # reads are the names the store writes.
@@ -306,6 +307,15 @@ jobs:
             sleep 1
             gnome-keyring-daemon --start --components=secrets >/dev/null
             MEMRY_LIVE_LOCKED_KEYRING=1 MEMRY_LIVE_LOCKED_SUFFIX=lockedrun cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_locked_keyring
+          '
+          # A keytar item whose collection was locked after it was written: the search shows it as
+          # locked, the unlock prompt has no prompter and is dismissed, and get and delete say "locked".
+          dbus-run-session -- bash -c '
+            set -e
+            echo -n "ci" | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            echo -n AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8= | secret-tool store --label keytar xdg:schema org.freedesktop.Secret.Generic service com.memry.sync account master-key-lockeditem
+            gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets --method org.freedesktop.Secret.Service.Lock "[objectpath \"/org/freedesktop/secrets/collection/login\"]" >/dev/null
+            MEMRY_LIVE_LOCKED_ITEM=1 MEMRY_LIVE_LOCKED_SUFFIX=lockeditem cargo test -p memry-desktop --features live-os-secrets --test keyring_keytar_live a_keytar_item_that_cannot
           '
           cat > "$RUNNER_TEMP/bare-bus.conf" <<'EOF'
           <!DOCTYPE busconfig PUBLIC "-//freedesktop//DTD D-Bus Bus Configuration 1.0//EN" "http://www.freedesktop.org/standards/dbus/1.0/busconfig.dtd">

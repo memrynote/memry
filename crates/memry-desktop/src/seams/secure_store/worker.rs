@@ -358,9 +358,12 @@ impl Runner {
                             Ok(())
                         }
                     })
+                    .and_then(|()| self.factory.after_set(&entry, service, account))
                     .map(|()| None),
                 Op::Delete => match entry.delete_credential() {
-                    Ok(()) | Err(Error::NoEntry) => Ok(None),
+                    Ok(()) | Err(Error::NoEntry) => {
+                        self.factory.after_delete(service, account).map(|()| None)
+                    }
                     Err(error) => Err(error),
                 },
             });

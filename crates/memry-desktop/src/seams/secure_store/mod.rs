@@ -49,7 +49,9 @@ pub use keyring_backend::{Native, Store, StoreFactory};
 /// would wait for an unlock prompt first).
 #[cfg(all(target_os = "linux", feature = "live-os-secrets"))]
 #[doc(hidden)]
-pub use linux_absent::check as linux_absent_check;
+pub fn linux_absent_check(service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
+    linux_absent::check(&linux_absent::Session::default(), service, account)
+}
 pub use worker::DEADLINE;
 use worker::{Op, Worker};
 
@@ -87,7 +89,7 @@ impl KeyringStore {
             );
         }
         let _ = (gate, e2e_data_dir);
-        Self::with_factory(Native, device_suffix, DEADLINE)
+        Self::with_factory(Native::default(), device_suffix, DEADLINE)
     }
 
     /// A store over any credential store, and a chosen deadline. For tests and the e2e variant.

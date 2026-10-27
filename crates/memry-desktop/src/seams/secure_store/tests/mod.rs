@@ -81,6 +81,45 @@ fn an_absent_entry_is_none_and_deleting_it_is_fine() {
     rig.store.delete(SecureStoreKey::MasterKey).unwrap();
 }
 
+fn put_keytar(rig: &fake::Rig, account: &str, value: &[u8]) {
+    rig.keytar.lock().unwrap().insert(
+        ("com.memry.sync".to_owned(), account.to_owned()),
+        value.to_vec(),
+    );
+}
+
+const KEYTAR_TEXT: &[u8] = b"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
+
+#[test]
+fn a_deleted_secret_does_not_come_back_through_the_keytar_fallback() {
+    // Linux: the store deletes the item it finds by `username`, and keytar's item (`account`)
+    // used to survive, so the next read found it and a signed-out token came back.
+    let rig = rig();
+    put_keytar(&rig, "master-key", KEYTAR_TEXT);
+    assert!(rig.store.get(SecureStoreKey::MasterKey).unwrap().is_some());
+    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
+    assert_eq!(rig.store.get(SecureStoreKey::MasterKey).unwrap(), None);
+
+    put_keytar(&rig, "access-token", KEYTAR_TEXT);
+    rig.store.clear().unwrap();
+    assert_eq!(rig.store.get(SecureStoreKey::AccessToken).unwrap(), None);
+}
+
+#[test]
+fn a_write_replaces_the_item_keytar_wrote() {
+    let rig = rig();
+    put_keytar(&rig, "master-key", KEYTAR_TEXT);
+    rig.store
+        .set(SecureStoreKey::MasterKey, vec![5; 32])
+        .unwrap();
+    assert!(
+        rig.keytar.lock().unwrap().is_empty(),
+        "the stale item stays"
+    );
+    rig.store.delete(SecureStoreKey::MasterKey).unwrap();
+    assert_eq!(rig.store.get(SecureStoreKey::MasterKey).unwrap(), None);
+}
+
 #[test]
 fn clear_removes_all_five_entries() {
     let rig = rig();

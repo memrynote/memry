@@ -9,7 +9,8 @@
 //!
 //! macOS items are made with `security add-generic-password -A` (no trusted-app prompt on a CI
 //! runner) and are read through the Security framework. Run these only on CI or a throw-away VM:
-//! the macOS rows touch the login keychain.
+//! the macOS rows write to the user's default keychain (on CI, a throw-away keychain that
+//! `rust-ci.yml` creates and unlocks).
 #![cfg(feature = "live-os-secrets")]
 
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -24,8 +25,8 @@ const KEY: [u8; 32] = [
 ];
 const KEY_TEXT: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=";
 
-/// The macOS rows write to the login keychain: they run on CI (`CI` is set) and nowhere else, so
-/// a developer's `cargo test --features live-os-secrets` never touches their own keychain.
+/// The macOS rows write to the default keychain: they run on CI (`CI` is set) and nowhere else,
+/// so a developer's `cargo test --features live-os-secrets` never touches their own keychain.
 fn skip_on_a_developer_mac() -> bool {
     cfg!(target_os = "macos") && std::env::var_os("CI").is_none()
 }
@@ -92,6 +93,49 @@ fn an_item_the_store_wrote_is_read_natively_at_the_names_keytar_reads() {
         .set(SecureStoreKey::MasterKey, KEY.to_vec())
         .unwrap();
     assert_eq!(native::read(&account(&suffix)).as_deref(), Some(KEY_TEXT));
+}
+
+/// The new value after a write over a keytar item: the base64 text of 32 bytes of 5.
+const NEW_KEY: [u8; 32] = [5; 32];
+const NEW_KEY_TEXT: &str = "BQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU=";
+
+#[test]
+fn a_secret_the_store_deleted_is_gone_for_keytar_and_for_the_store() {
+    if skip_on_a_developer_mac() {
+        return;
+    }
+    let suffix = unique();
+    let _remove = Remove(account(&suffix));
+    native::write_like_keytar(&account(&suffix), KEY_TEXT);
+    let store = store(&suffix);
+    assert!(store.get(SecureStoreKey::MasterKey).unwrap().is_some());
+    store.delete(SecureStoreKey::MasterKey).unwrap();
+    assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
+    assert_eq!(native::read(&account(&suffix)), None);
+}
+
+#[test]
+fn a_write_over_a_keytar_item_leaves_one_item_that_keytar_reads() {
+    if skip_on_a_developer_mac() {
+        return;
+    }
+    let suffix = unique();
+    let _remove = Remove(account(&suffix));
+    native::write_like_keytar(&account(&suffix), KEY_TEXT);
+    let store = store(&suffix);
+    store
+        .set(SecureStoreKey::MasterKey, NEW_KEY.to_vec())
+        .unwrap();
+    assert_eq!(
+        native::read(&account(&suffix)).as_deref(),
+        Some(NEW_KEY_TEXT)
+    );
+    assert_eq!(
+        store.get(SecureStoreKey::MasterKey).unwrap(),
+        Some(NEW_KEY.to_vec())
+    );
+    #[cfg(target_os = "linux")]
+    assert_eq!(native::count(&account(&suffix)), 1, "one item per account");
 }
 
 #[cfg(target_os = "macos")]
@@ -224,15 +268,29 @@ mod native {
         assert!(child.wait().unwrap().success(), "secret-tool store");
     }
 
+    /// What keytar reads: the item with `service` and `account`.
     pub fn read(account: &str) -> Option<String> {
         let output = Command::new("secret-tool")
-            .args(["lookup", "service", SERVICE, "username", account])
+            .args(["lookup", "service", SERVICE, "account", account])
             .output()
             .unwrap();
         output
             .status
             .success()
             .then(|| String::from_utf8(output.stdout).unwrap())
+    }
+
+    /// The items with keytar's attributes.
+    pub fn count(account: &str) -> usize {
+        let output = Command::new("secret-tool")
+            .args(["search", "--all", "service", SERVICE, "account", account])
+            .output()
+            .unwrap();
+        String::from_utf8_lossy(&output.stdout)
+            .lines()
+            .chain(String::from_utf8_lossy(&output.stderr).lines())
+            .filter(|line| line.starts_with('['))
+            .count()
     }
 
     pub fn remove(account: &str) {
@@ -270,6 +328,45 @@ fn a_locked_keyring_is_locked_never_absent() {
         // ends at the store's deadline as `Locked`.
         assert_eq!(
             store(&suffix).get(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+    }
+}
+
+/// A keytar item the search shows as locked (its collection was locked after the item was
+/// written, `MEMRY_LIVE_LOCKED_ITEM=1` with `MEMRY_LIVE_LOCKED_SUFFIX`): the check asks the service
+/// to unlock it, nobody can answer the prompt in this session, and the answer is "could not
+/// reach", never "absent" and never a secret. Through the store that is `Locked`, and a delete
+/// is `Locked` too: it never reports success over an item it could not remove.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_keytar_item_that_cannot_be_unlocked_is_locked_for_every_call() {
+    use memry_core::api::errors::SecureStoreError;
+
+    if std::env::var("MEMRY_LIVE_LOCKED_ITEM").is_ok_and(|v| v == "1") {
+        let suffix = std::env::var("MEMRY_LIVE_LOCKED_SUFFIX").unwrap();
+        let (done, outcome) = std::sync::mpsc::channel();
+        let account = account(&suffix);
+        std::thread::spawn(move || {
+            let _ = done.send(memry_desktop::seams::secure_store::linux_absent_check(
+                SERVICE, &account,
+            ));
+        });
+        // gnome-keyring dismisses a prompt that no prompter can show.
+        let checked = outcome
+            .recv_timeout(std::time::Duration::from_secs(20))
+            .expect("the unlock prompt was dismissed");
+        assert!(
+            matches!(checked, Err(keyring_core::Error::NoStorageAccess(_))),
+            "{checked:?}"
+        );
+        let store = store(&suffix);
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey),
+            Err(SecureStoreError::Locked)
+        );
+        assert_eq!(
+            store.delete(SecureStoreKey::MasterKey),
             Err(SecureStoreError::Locked)
         );
     }
