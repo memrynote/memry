@@ -64,6 +64,15 @@ pub const DEFERRED_BACKOFF_MAX_MS: i64 = 60_000;
 const NO_FALLBACK: &str =
     "update too large for the incremental route and no snapshot push is set up";
 
+/// How one document's batch ended, for the wave that tries each document once.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum BatchEnd {
+    /// Sent and acked, or retired: nothing of it waits in the outbox.
+    Done,
+    /// Deferred or parked: the rest of this wave leaves the document alone.
+    Deferred,
+}
+
 impl PushCoordinator {
     /// One `POST /sync/crdt/updates` for one document (§7.2), or one snapshot
     /// when a row is too large to ride it.
@@ -72,7 +81,7 @@ impl PushCoordinator {
         doc_id: &str,
         rows: Vec<OutboxRow>,
         report: &mut PushReport,
-    ) -> Result<(), PushError> {
+    ) -> Result<BatchEnd, PushError> {
         let attempts = rows.iter().map(|row| row.attempt_count).max().unwrap_or(0);
         let mut updates: Vec<String> = Vec::with_capacity(rows.len());
         let mut sent: Vec<i64> = Vec::with_capacity(rows.len());
@@ -105,7 +114,7 @@ impl PushCoordinator {
             }
         }
         if sent.is_empty() {
-            return Ok(());
+            return Ok(BatchEnd::Done);
         }
         if oversized {
             return self.push_as_snapshot(doc_id, sent, attempts, report).await;
@@ -133,7 +142,7 @@ impl PushCoordinator {
         report.accepted += sent.len();
         report.crdt_updates += sent.len();
         self.db.call(move |conn| outbox::ack(conn, &sent)).await?;
-        Ok(())
+        Ok(BatchEnd::Done)
     }
 
     /// Acks every row of the batch when the snapshot is stored, defers every
@@ -145,7 +154,7 @@ impl PushCoordinator {
         ids: Vec<i64>,
         attempts: i64,
         report: &mut PushReport,
-    ) -> Result<(), PushError> {
+    ) -> Result<BatchEnd, PushError> {
         let outcome = match &self.snapshot_fallback {
             Some(fallback) => fallback.push_snapshot(doc_id).await?,
             None => SnapshotFallbackOutcome::Transient(NO_FALLBACK.to_owned()),
@@ -156,7 +165,7 @@ impl PushCoordinator {
                 report.accepted += ids.len();
                 report.crdt_updates += ids.len();
                 self.db.call(move |conn| outbox::ack(conn, &ids)).await?;
-                return Ok(());
+                return Ok(BatchEnd::Done);
             }
             SnapshotFallbackOutcome::Transient(reason) => (
                 reason,
@@ -170,6 +179,6 @@ impl PushCoordinator {
         self.db
             .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
             .await?;
-        Ok(())
+        Ok(BatchEnd::Deferred)
     }
 }

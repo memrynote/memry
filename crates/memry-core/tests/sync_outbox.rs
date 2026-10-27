@@ -344,7 +344,7 @@ fn the_wave_leads_with_crdt_rows_grouped_by_document() {
     // A body edit must never land after its own note's delete, so both of
     // `n1`'s updates precede the record wave that carries `n1`'s delete.
     let first = db
-        .call_blocking(|conn| outbox::next_batch(conn, 100, PUSH_BATCH_SIZE))
+        .call_blocking(|conn| outbox::next_batch(conn, 100, PUSH_BATCH_SIZE, &[]))
         .expect("a batch")
         .expect("a batch");
     match first {

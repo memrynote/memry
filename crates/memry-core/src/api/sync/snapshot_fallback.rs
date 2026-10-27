@@ -14,6 +14,7 @@ use async_trait::async_trait;
 
 use crate::api::errors::{ApiError, StorageError};
 use crate::crdt::epoch;
+use crate::crdt::errors::CrdtError;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::snapshots::SnapshotError;
 use crate::crdt::{Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher};
@@ -45,20 +46,13 @@ impl SnapshotFallback for PassSnapshots {
             .call(move |conn| {
                 // The replay is durable, so the sink sees nothing.
                 let sink: UpdateSink = Arc::new(|_, _| {});
-                Ok(epoch::open_for_write(conn, &device_id, &id, sink)
-                    .map_err(|error| error.to_string()))
+                Ok(epoch::open_for_write(conn, &device_id, &id, sink))
             })
             .await
             .map_err(local)?;
-        // A log row that will not decode is this document's problem: its batch
-        // waits, and the records and other documents behind it still go.
         let document = match opened {
             Ok(document) => document,
-            Err(reason) => {
-                return Ok(SnapshotFallbackOutcome::Parked(format!(
-                    "could not replay the document's update log: {reason}"
-                )));
-            }
+            Err(error) => return crdt_class(error, "could not replay the document's update log"),
         };
         let gate = SnapshotGate {
             pull_completed_clean: self.pull_completed_clean,
@@ -75,7 +69,8 @@ impl SnapshotFallback for PassSnapshots {
 /// The class of every way a snapshot push ends (chapter 07 §7.4.2), and the
 /// one place that decides which of them fail the pass. Only these do, and each
 /// is a failure of the device or the session rather than of one document:
-/// a network error, a 401, 402, 403, 426 or 429, and a local storage error
+/// a network error, a 401, 402, 403, 426 or 429, and a local storage error,
+/// including one under the document's log
 /// (the database is unreadable, and the pass cannot go on without it).
 /// Everything about one document defers that document's batch alone.
 fn classify(
@@ -94,9 +89,7 @@ fn classify(
             }
         }
         Err(SnapshotError::Rejected { reason }) => Rejected(reason),
-        // The log or the encode of this document will not decode, and no
-        // retry changes that until the document does.
-        Err(error @ SnapshotError::Crdt { .. }) => Parked(error.to_string()),
+        Err(SnapshotError::Crdt { source }) => return crdt_class(source, "could not encode"),
         Err(error @ SnapshotError::Seal { .. }) => Transient(error.to_string()),
         Err(SnapshotError::Storage { source }) => return Err(local(source)),
         Err(SnapshotError::Api { source }) => match source {
@@ -106,12 +99,33 @@ fn classify(
                 ..
             } if code == QUOTA_EXCEEDED => QuotaExceeded(format!("{QUOTA_EXCEEDED}: {source}")),
             ApiError::Status { status, .. } if status >= 500 => Transient(source.to_string()),
-            ApiError::Status { status, .. } if status != 429 && (400..500).contains(&status) => {
+            // 401, 402 (`SYNC_PAYMENT_REQUIRED`, `SYNC_VAULT_LIMIT_EXCEEDED`),
+            // 403 and 426 are the account's or the client's state, not this
+            // document's: the pass fails, whatever shape the answer arrives in.
+            // (A 429 arrives as `RateLimited`, never as a `Status`.)
+            ApiError::Status { status, .. }
+                if (400..500).contains(&status) && !matches!(status, 401 | 402 | 403 | 426) =>
+            {
                 Rejected(source.to_string())
             }
             other => return Err(other),
         },
     })
+}
+
+/// A document's own log or state that did not replay or encode. Only bytes that
+/// cannot decode or apply wait for an edit; a busy document is retried, and a
+/// storage failure is the device's, so it fails the pass.
+fn crdt_class(error: CrdtError, doing: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
+    match error {
+        CrdtError::Undecodable { .. } | CrdtError::NotApplicable { .. } => {
+            Ok(SnapshotFallbackOutcome::Parked(format!("{doing}: {error}")))
+        }
+        CrdtError::DocumentBusy { .. } => Ok(SnapshotFallbackOutcome::Transient(format!(
+            "{doing}: {error}"
+        ))),
+        CrdtError::Storage { source } => Err(local(source)),
+    }
 }
 
 /// `ErrorCodes.STORAGE_QUOTA_EXCEEDED` (`apps/sync-server/src/lib/errors.ts:79`),
@@ -197,13 +211,21 @@ mod tests {
 
     #[test]
     fn a_local_failure_of_one_document_defers_it_and_does_not_fail_the_pass() {
-        let crdt = SnapshotError::Crdt {
-            source: CrdtError::DocumentBusy {
+        let undecodable = SnapshotError::Crdt {
+            source: CrdtError::Undecodable {
                 doc_id: "d".to_owned(),
-                what: "undecodable".to_owned(),
+                what: "garbage".to_owned(),
             },
         };
-        assert!(matches!(class(Err(crdt)), Parked(_)));
+        assert!(matches!(class(Err(undecodable)), Parked(_)));
+        // A busy document is retried: it is not damaged.
+        let busy = SnapshotError::Crdt {
+            source: CrdtError::DocumentBusy {
+                doc_id: "d".to_owned(),
+                what: "transaction alive".to_owned(),
+            },
+        };
+        assert!(matches!(class(Err(busy)), Transient(_)));
         let seal = SnapshotError::Seal {
             source: EnvelopeError::Malformed {
                 what: "no key".to_owned(),
@@ -214,8 +236,20 @@ mod tests {
 
     #[test]
     fn only_a_failure_of_the_device_or_the_session_fails_the_pass() {
+        let storage_under_the_log = SnapshotError::Crdt {
+            source: CrdtError::Storage {
+                source: StorageError::Failed {
+                    what: "disk".to_owned(),
+                },
+            },
+        };
         for failing in [
-            status(429, None),
+            status(401, None),
+            status(402, Some("SYNC_PAYMENT_REQUIRED")),
+            status(402, Some("SYNC_VAULT_LIMIT_EXCEEDED")),
+            status(403, None),
+            status(426, None),
+            Err(storage_under_the_log),
             Err(SnapshotError::Storage {
                 source: StorageError::Failed {
                     what: "disk".to_owned(),

@@ -68,12 +68,22 @@ impl SnapshotFallback for Offline {
 struct Spy {
     docs: Mutex<Vec<String>>,
     answer: SnapshotFallbackOutcome,
+    /// How long the second call takes, so a short retry delay can run out
+    /// while the wave is still going.
+    second_call_takes: std::time::Duration,
 }
 
 #[async_trait::async_trait]
 impl SnapshotFallback for Spy {
     async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError> {
-        self.docs.lock().unwrap().push(doc_id.to_owned());
+        let call = {
+            let mut docs = self.docs.lock().unwrap();
+            docs.push(doc_id.to_owned());
+            docs.len()
+        };
+        if call == 2 {
+            tokio::time::sleep(self.second_call_takes).await;
+        }
         Ok(self.answer.clone())
     }
 }
@@ -82,6 +92,7 @@ fn spy(answer: SnapshotFallbackOutcome) -> Arc<Spy> {
     Arc::new(Spy {
         docs: Mutex::new(Vec::new()),
         answer,
+        second_call_takes: std::time::Duration::ZERO,
     })
 }
 
@@ -417,7 +428,7 @@ async fn a_parked_batch_is_released_by_the_next_edit_of_its_document() {
     // An edit of another document does not release it; an edit of this one does.
     queue(&db, "other", 100);
     let batch = |db: &Db| {
-        db.call_blocking(|conn| outbox::next_batch(conn, now_ms(), 100))
+        db.call_blocking(|conn| outbox::next_batch(conn, now_ms(), 100, &[]))
             .expect("a batch")
     };
     assert!(matches!(batch(&db), Some(outbox::Batch::Crdt { doc_id, .. }) if doc_id == "other"));
@@ -454,4 +465,27 @@ async fn a_document_with_a_deferred_row_does_not_send_its_later_rows() {
         2,
         "the later row waits behind the deferred one"
     );
+}
+
+/// A document whose batch was deferred is not tried again in the same wave,
+/// even when its retry delay (2 s at the first attempt) runs out while the wave
+/// is still going: one failed full-document upload per document per wave.
+#[tokio::test]
+async fn a_document_deferred_in_a_wave_is_not_tried_again_in_it() {
+    let db = scratch_db();
+    queue(&db, "a", AT_THE_CAP + 1);
+    queue(&db, "b", AT_THE_CAP + 1);
+    let snapshots = Arc::new(Spy {
+        docs: Mutex::new(Vec::new()),
+        answer: SnapshotFallbackOutcome::QuotaExceeded("quota".to_owned()),
+        second_call_takes: std::time::Duration::from_millis(2_300),
+    });
+
+    coordinator(&db, FakeTransport::new(vec![]))
+        .with_snapshot_fallback(snapshots.clone())
+        .drain_wave()
+        .await
+        .expect("the wave");
+
+    assert_eq!(*snapshots.docs.lock().unwrap(), ["a", "b"]);
 }

@@ -49,6 +49,7 @@ mod crdt;
 
 use super::engine::PushWave;
 use super::outbox::{self, Batch, Collapsed, OutboxRow};
+use crdt::BatchEnd;
 pub use crdt::{SnapshotFallback, SnapshotFallbackOutcome};
 
 /// Chapter 05 §5.6, `apps/desktop/src/main/sync/engine/sync-context.ts:126-132`.
@@ -174,12 +175,15 @@ impl PushCoordinator {
     /// Drains the queue: at most [`MAX_PUSH_ITERATIONS`] batches, CRDT first.
     pub async fn drain_wave(&self) -> Result<PushReport, PushError> {
         let mut report = PushReport::default();
+        // Documents whose batch was deferred in this wave: one try per wave.
+        let mut deferred_docs: Vec<String> = Vec::new();
         for _ in 0..MAX_PUSH_ITERATIONS {
             let ceiling = self.batch_ceiling();
             let now = now_ms();
+            let skip = deferred_docs.clone();
             let Some(batch) = self
                 .db
-                .call(move |conn| outbox::next_batch(conn, now, ceiling))
+                .call(move |conn| outbox::next_batch(conn, now, ceiling, &skip))
                 .await?
             else {
                 break;
@@ -187,7 +191,9 @@ impl PushCoordinator {
             report.iterations += 1;
             match batch {
                 Batch::Crdt { doc_id, rows, .. } => {
-                    self.push_crdt(&doc_id, rows, &mut report).await?
+                    if self.push_crdt(&doc_id, rows, &mut report).await? == BatchEnd::Deferred {
+                        deferred_docs.push(doc_id);
+                    }
                 }
                 Batch::Records { items } => self.push_records(items, &mut report).await?,
             }

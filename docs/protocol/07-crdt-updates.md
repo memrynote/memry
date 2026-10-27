@@ -217,7 +217,7 @@ therefore stop a request when the base64 of its updates would pass **6,000,000
 characters**, and the rest of the queue rides the next request: desktop in
 `MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:16`),
 the Rust core in `MAX_REQUEST_PAYLOAD_CHARS` (`crates/memry-core/src/protocol/crdt_envelope.rs:75`)
-applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:438-475`).
+applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:452-489`).
 The Rust cost of an update is an upper bound taken without compressing (the frame
 is never longer than the stored form, chapter 04 §4.1), so a batch is never
 over-full. The first update of a batch always rides.
@@ -259,21 +259,23 @@ document through the snapshot route (§7.2) instead (desktop:
 `apps/desktop/src/main/sync/runtime.ts:626-646`). The §7.13.2 gate applies in
 full, because a snapshot prunes the server's log (§7.7). The Rust core sends every
 queued update of that batch with the snapshot and acks them together once the
-server stored it (`crates/memry-core/src/sync/push/crdt.rs:142`).
+server stored it (`crates/memry-core/src/sync/push/crdt.rs:151`).
 
 **When the snapshot does not go, every update of the batch is deferred and none is
 retired.** Each way a snapshot push can end is in exactly one class, and the class
 decides how long the batch waits
-(`crates/memry-core/src/api/sync/snapshot_fallback.rs:81`):
+(`crates/memry-core/src/api/sync/snapshot_fallback.rs:76`):
 
-| Class     | Outcomes                                                                                               | Wait                                                      |
-| --------- | ------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| transient | the gate refuses for a pull still owed, a 409 `CRDT_SNAPSHOT_NOT_COVERED`, a 5xx, a seal that failed   | the ladder of chapter 00 §0.6.1, **capped at 60 seconds** |
-| quota     | a 413 `STORAGE_QUOTA_EXCEEDED` (`apps/sync-server/src/services/quota.ts:12`, `:44`)                    | the full ladder: only the user can clear it               |
-| rejected  | any other 4xx but 429, or an `accepted: false` for the document                                        | the full ladder                                           |
-| parked    | the sealed snapshot over 5 MiB, a log row that will not decode, a local-only, purged or empty document | until the document is edited: no replay, encode or upload |
+| Class     | Outcomes                                                                                                                  | Wait                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| transient | the gate refuses for a pull still owed, a 409 `CRDT_SNAPSHOT_NOT_COVERED`, a 5xx, a seal that failed, a document busy     | the ladder of chapter 00 §0.6.1, **capped at 60 seconds** |
+| quota     | a 413 `STORAGE_QUOTA_EXCEEDED` (`apps/sync-server/src/services/quota.ts:12`, `:44`)                                       | the full ladder: only the user can clear it               |
+| rejected  | any other 4xx except 401, 402, 403, 426 and 429, or an `accepted: false` for the document                                 | the full ladder                                           |
+| parked    | the sealed snapshot over 5 MiB, a log row or encode that will not decode or apply, a local-only, purged or empty document | no retry until the document is edited                     |
 
-The cap is desktop's note-body backoff ceiling
+A parked batch does no work on later passes. Each edit of its document queues a row
+that releases it, and costs one replay and encode of the document (and the 5 MiB
+check) to find it still parked, with no upload. The cap is desktop's note-body backoff ceiling
 (`apps/desktop/src/main/sync/note-body-outbox.ts:31`;
 `DEFERRED_BACKOFF_MAX_MS`, `crates/memry-core/src/sync/push/crdt.rs:62`). The
 5 MiB check runs on the sealed bytes before any request, so a note that large costs
@@ -282,14 +284,19 @@ HTTP client, because the batch's own ladder is the retry and a full upload is no
 multiplied by it.
 
 **What fails the pass.** Only a failure of the device or the session: a network
-error, a 401, 402, 403, 426 or 429, and a local storage error. Everything about one
+error, a 401, 402 (`SYNC_PAYMENT_REQUIRED`, `SYNC_VAULT_LIMIT_EXCEEDED`), 403,
+426 or 429, and a local storage error, including one under the document's log. Everything about one
 document defers that document's batch alone, so the records and the other
 documents behind it still go; failing the pass for it would stall them, because CRDT
 rows are claimed first. Retiring an update would lose the user's edit.
 
+**One try per document per wave.** A document whose batch was deferred is left
+alone for the rest of the wave, so a short retry delay cannot bring it back for a
+second full-document upload.
+
 **A document's rows go in order or not at all.** While one CRDT row of a document is
 deferred or parked, the document's later rows are not claimed
-(`crates/memry-core/src/sync/outbox.rs:396`): a peer given them without it
+(`crates/memry-core/src/sync/outbox.rs:398`): a peer given them without it
 holds pending structs until the earlier update arrives, and one that never does
 would never heal. The next edit of a parked document queues a row and releases the
 batch with it (`crates/memry-core/src/sync/outbox.rs:277`). Desktop's outbox is

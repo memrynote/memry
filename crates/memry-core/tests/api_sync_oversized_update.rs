@@ -255,6 +255,28 @@ fn queued(side: &Db) -> Vec<(String, Option<String>)> {
         .collect()
 }
 
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
+}
+
+fn age_rows(side: &Db, doc_id: &str, attempts: i64) {
+    let doc_id = doc_id.to_owned();
+    side.call_blocking(move |conn| {
+        conn.execute(
+            "UPDATE outbox SET attempt_count = ?1 WHERE item_id = ?2",
+            rusqlite::params![attempts, doc_id],
+        )
+        .map_err(|e| memry_core::api::errors::StorageError::Failed {
+            what: e.to_string(),
+        })?;
+        Ok(())
+    })
+    .expect("age the rows");
+}
+
 fn queued_at(side: &Db) -> Vec<(String, Option<String>, Option<i64>)> {
     side.call_blocking(|conn| {
         let mut statement = conn
@@ -325,6 +347,9 @@ async fn a_refused_snapshot_defers_the_batch_and_holds_the_documents_later_rows(
     let server = Server::new(413);
     let (vault, side, session, _store) = vault_with_side("refused", server.clone());
     queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
+    // Twelve failed tries put its retry far past this test's second pass, so a
+    // slow machine cannot make the deferred row due again and hide the hold.
+    age_rows(&side, "bigdoc000001", 12);
     queue_body_update(&side, "smalldoc0001", "behind the large one");
 
     let sync = vault.sync(session);
@@ -350,6 +375,11 @@ async fn a_refused_snapshot_defers_the_batch_and_holds_the_documents_later_rows(
     // a peer given it without the large update holds pending structs that
     // never heal when that update will not come.
     queue_body_update(&side, "bigdoc000001", "a later edit");
+    let held_until = queued_at(&side)[0].2.expect("the first row is deferred");
+    assert!(
+        held_until > now_ms() + 60_000,
+        "not due again during the test"
+    );
     sync.sync_now().await.expect("the second pass completes");
     assert!(
         server
@@ -407,10 +437,7 @@ async fn a_5xx_from_the_snapshot_route_is_one_upload_and_a_deferral() {
     assert!(started.elapsed() < std::time::Duration::from_secs(5));
     assert_eq!(server.bodies("/sync/crdt/snapshot").len(), 1, "one upload");
     assert_eq!(summary.pending, 1, "{summary:?}");
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_millis() as i64;
+    let now = now_ms();
     let at = queued_at(&side)[0].2.expect("deferred");
     assert!(
         at <= now + 60_000 + 5_000,
