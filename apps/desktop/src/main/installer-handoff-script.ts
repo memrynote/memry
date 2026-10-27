@@ -85,9 +85,12 @@ export function isHandoffInstallDirSupported(installDir: string): boolean {
   return !/[&|<>^"]/.test(installDir)
 }
 
-/** cmd.exe arguments that run the script; the path is quoted (see handoffSpawnOptions). */
+/**
+ * cmd.exe arguments that run the script. `/s` strips the first and last quote of the command
+ * line, so the path needs two pairs (`/s /c ""C:\a & b\x.cmd""`) to stay quoted afterwards.
+ */
 export function handoffCmdArgs(scriptPath: string): string[] {
-  return ['/d', '/s', '/c', `"${scriptPath}"`]
+  return ['/d', '/s', '/c', `""${scriptPath}""`]
 }
 
 /**
@@ -109,7 +112,7 @@ export function handoffSpawnOptions(
     detached: true,
     stdio: 'ignore',
     windowsHide: true,
-    // The caller quotes the script path (`cmd /d /s /c ""path""`): node only quotes an argument
+    // handoffCmdArgs quotes the script path (`cmd /d /s /c ""path""`): node only quotes an argument
     // that contains a space, so a profile name with `&` would otherwise split the command.
     windowsVerbatimArguments: true,
     env: installerHandoffEnv(plan, base)

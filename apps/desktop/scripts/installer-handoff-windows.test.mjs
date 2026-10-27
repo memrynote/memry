@@ -27,7 +27,7 @@ import {
 
 const windows = process.platform === 'win32'
 const system32 = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32')
-const DONE_TIMEOUT_MS = 180_000
+const DONE_TIMEOUT_MS = 90_000
 
 const seconds = (log, step) => {
   const match = new RegExp(`(\\d+):(\\d+):(\\d+)\\.\\d+ ${step}`).exec(log)

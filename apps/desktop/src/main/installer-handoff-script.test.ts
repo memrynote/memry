@@ -228,7 +228,7 @@ describe('handoffSpawnOptions', () => {
       '/d',
       '/s',
       '/c',
-      String.raw`"C:\Users\a&b\x.cmd"`
+      String.raw`""C:\Users\a&b\x.cmd""`
     ])
   })
 })

@@ -341,7 +341,7 @@ describe('createInstallerHandoff', () => {
     )
     expect(harness.spawn).toHaveBeenCalledWith(
       'cmd.exe',
-      ['/d', '/s', '/c', `"${scriptPath}"`],
+      ['/d', '/s', '/c', `""${scriptPath}""`],
       expect.objectContaining({
         detached: true,
         stdio: 'ignore',
