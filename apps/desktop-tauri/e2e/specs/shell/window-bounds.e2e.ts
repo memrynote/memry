@@ -11,15 +11,17 @@ interface E2eWindow {
   height: number
 }
 
+// The rect fits a 1024x768 display: the OS shrinks a window that does not fit its screen, and
+// hosted runners have small displays.
 test.use({ keepWindowRect: true })
 
 test('a resized window reopens at its saved size and position', async ({ app }) => {
   await invokeTest(app, 'e2e_set_window_rect', {
     label: 'main',
-    x: 60,
-    y: 70,
-    width: 1111,
-    height: 733
+    x: 20,
+    y: 40,
+    width: 900,
+    height: 600
   })
   // The write is debounced by 1.5 s.
   await new Promise((resolve) => setTimeout(resolve, 2500))
@@ -35,5 +37,5 @@ test('a resized window reopens at its saved size and position', async ({ app }) 
       },
       { timeout: 30_000 }
     )
-    .toEqual([1111, 733, 60, 70])
+    .toEqual([900, 600, 20, 40])
 })

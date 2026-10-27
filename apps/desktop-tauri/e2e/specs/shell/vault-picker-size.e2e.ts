@@ -24,16 +24,26 @@ test.describe('picker', () => {
     testVaultPath
   }) => {
     await expect.poll(async () => (await mainWindow(app)).visible, { timeout: 30_000 }).toBe(true)
-    expect(await mainWindow(app)).toMatchObject({ width: 900, height: 720 })
+    // The OS shrinks a window that does not fit its screen (hosted macOS runners are 1024x768),
+    // so the picker is at most 900x720 and the exact size is held only where it fits.
+    const avail = await page.evaluate(() => [screen.availWidth, screen.availHeight])
+    const fits = (width: number, height: number): boolean =>
+      avail[0] >= width + 100 && avail[1] >= height + 100
+    const picker = await mainWindow(app)
+    expect(picker.width).toBeLessThanOrEqual(900)
+    expect(picker.height).toBeLessThanOrEqual(720)
+    if (fits(900, 720)) expect(picker).toMatchObject({ width: 900, height: 720 })
 
     await page.getByText(testVaultPath).click()
     await expect.poll(async () => (await vaultStatus(page)).isOpen, { timeout: 30_000 }).toBe(true)
     await expect
       .poll(async () => {
         const { width, height } = await mainWindow(app)
-        return [width, height]
+        return fits(1550, 900)
+          ? width === 1550 && height === 900
+          : width > picker.width || height > picker.height
       })
-      .toEqual([1550, 900])
+      .toBe(true)
 
     await invoke(page, 'vault_close')
     await expect
@@ -41,6 +51,6 @@ test.describe('picker', () => {
         const { width, height } = await mainWindow(app)
         return [width, height]
       })
-      .toEqual([900, 720])
+      .toEqual([picker.width, picker.height])
   })
 })
