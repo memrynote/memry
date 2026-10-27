@@ -1,8 +1,25 @@
+import { commands } from '../../../generated/bindings'
+import { createLogger } from '../lib/logger'
+import { wordAtPoint } from '../lib/word-at-point'
 import type {
   EditorContextMenuSpelling,
   WritingAssistInput,
   WritingAssistResult
 } from '@memry/contracts/writing-tools-api'
+
+const log = createLogger('WritingTools')
+
+export async function spellingFor(word: string): Promise<EditorContextMenuSpelling | null> {
+  try {
+    const result = await commands.spellCheckWord(word)
+    return result.available && result.misspelled
+      ? { misspelledWord: word, dictionarySuggestions: result.suggestions }
+      : null
+  } catch (error) {
+    log.warn('spell check failed', error)
+    return null
+  }
+}
 
 export const writingToolsService = {
   /** Throws with main's (localized) message when the request fails. */
@@ -12,17 +29,14 @@ export const writingToolsService = {
     return response.result
   },
   /**
-   * Claim this window's next native `context-menu` event for the note editor.
-   * False when the bridge is not there (tests, older preload), in which case
-   * no spelling data will arrive.
+   * The word under the pointer when it is misspelled, with the platform's suggestions. Null when
+   * the point is not on a word, the word is fine, or the platform has no dictionary.
    */
-  claimEditorContextMenu(): boolean {
-    return window.api?.writingTools?.claimEditorContextMenu?.() === true
-  },
-  onEditorContextMenu(callback: (spelling: EditorContextMenuSpelling) => void): () => void {
-    return window.api?.onEditorContextMenu?.(callback) ?? (() => {})
+  async spellingAt(x: number, y: number): Promise<EditorContextMenuSpelling | null> {
+    const hit = wordAtPoint(x, y)
+    return hit ? spellingFor(hit.word) : null
   },
   addWordToDictionary(word: string): Promise<boolean> {
-    return window.api.writingTools.addWordToDictionary(word)
+    return commands.spellAddWord(word)
   }
 }
