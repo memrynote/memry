@@ -65,6 +65,10 @@ impl NoteFiles {
         self.db.read_blocking(note_files::list_missing_candidates)
     }
 
+    pub fn list_paths(&self) -> Result<Vec<(String, String)>, StorageError> {
+        self.db.read_blocking(note_files::list_paths)
+    }
+
     pub fn set_local_only(&self, note_id: &str, local_only: bool) -> Result<(), StorageError> {
         let note_id = note_id.to_owned();
         self.db

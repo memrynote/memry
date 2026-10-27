@@ -6,6 +6,7 @@ pub mod bounds;
 pub mod caption;
 pub mod close;
 pub mod crash_dumps;
+pub mod file_open;
 pub mod flush;
 pub mod gpu_guard;
 pub mod heartbeat;
