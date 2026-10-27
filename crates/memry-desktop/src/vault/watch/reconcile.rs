@@ -15,7 +15,9 @@
 //!   reported, is always reported, whatever the own-write record says: that record absorbs only
 //!   content equal to what the app wrote.
 //! - A removal is reported only after the rename window, with the vault reachable and the file
-//!   (and its iCloud placeholder) absent. A rescan withholds removals when too many are missing
+//!   (and its iCloud placeholder) absent, whatever found it: an OS event, a respelled path or a
+//!   rescan of any kind. `confirm_removed` is the only exit and only `settle_expired` reaches it.
+//!   A delete that did not stay gone, or a note that was respelled in place, is never reported. A rescan withholds removals when too many are missing
 //!   at once or the walk was cut short.
 //! - A removal that pairs with a new file by content hash is a rename, never a delete plus a new
 //!   file; a note whose row has no hash is never paired. A rename is reported once.
@@ -288,7 +290,17 @@ impl Reconciler {
         }
     }
 
-    pub(super) fn confirm_removed(&mut self, pending: Pending) {
+    /// Tracks a delete found by a rescan. Every delete, live or found by a pass over the vault,
+    /// waits out the rename window here and is re-checked against the disk when it ends: a
+    /// vault mid-checkout looks like a mass delete for a moment, and a delete that did not stay
+    /// gone is not reported.
+    pub(super) fn track_removal(&mut self, pending: Pending, now: Instant) {
+        self.tracker.track(pending, now, None);
+    }
+
+    /// The one place a `Removed` leaves the reconciler, reached only from [`Self::settle_expired`]:
+    /// the window is over, and the file and the vault are checked again.
+    fn confirm_removed(&mut self, pending: Pending) {
         if !is_vault_reachable(&self.root) {
             self.go_away();
             return;
@@ -300,7 +312,7 @@ impl Reconciler {
             );
             return;
         }
-        self.reported.forget_tree(&pending.path);
+        self.reported.forget_note(&pending.note_id);
         match self.files.by_id(&pending.note_id) {
             Ok(Some(row)) => self.reported.mark_removed(&row),
             Ok(None) => {}
@@ -463,6 +475,10 @@ impl Reconciler {
         if spelling_listed(&self.root, &home.path) {
             return None;
         }
+        // The old spelling is not a delete: the file is the same note under a new one. A removal
+        // tracked for it in this batch (a volume that reports both paths) would settle into a
+        // `Removed` after this `Renamed`.
+        self.tracker.drop_note(&home.note_id);
         self.reported.put(Seen {
             path: rel.to_owned(),
             // The content baseline stays the old one: an edit with the move is still a change.

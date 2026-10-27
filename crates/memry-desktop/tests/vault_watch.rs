@@ -430,9 +430,12 @@ fn reconciler(e: &Env, limits: memry_desktop::vault::walk::Limits) -> (Reconcile
     (r, log)
 }
 
+/// Runs a rescan and lets the rename window of what it found run out.
 fn rescan(r: &mut Reconciler) {
     let stop = AtomicBool::new(false);
-    assert!(r.rescan(false, Instant::now(), &stop).unwrap());
+    let now = Instant::now();
+    assert!(r.rescan(false, now, &stop).unwrap());
+    r.settle_expired(now + Duration::from_secs(2));
 }
 
 fn rescanned(log: &Log) -> (usize, bool) {

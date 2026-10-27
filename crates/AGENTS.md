@@ -1,6 +1,6 @@
 # Rust core guide
 
-This directory owns the Rust workspace. `memry-core` is the shared core under the iOS and desktop apps; `memry-desktop` holds desktop-only services and has no tauri dependency; `memry-ml` holds the native ML libraries (ONNX Runtime, whisper, Tesseract, images, pdfium; OCR and pdfium run in its `memry-ml-worker` sidecar process, so a hung native call is killed without taking the app down); `memrynote-cli` builds the user-facing `memrynote` binary; `memry-cli` builds `memry`, the dev tool; `uniffi-bindgen-swift` generates the Swift bindings. The Tauri bin crate `memry-tauri` lives in `apps/desktop-tauri/src-tauri` and is a member of this workspace. Crates that Steps 02 (#3519), 23 (#3540) and 35 (#3552) create are named here before they exist so the guide is true when they land.
+This directory owns the Rust workspace. `memry-core` is the shared core under the iOS and desktop apps; `memry-desktop` holds desktop-only services and has no tauri dependency; `memry-ml` holds the native ML libraries (ONNX Runtime, whisper, Tesseract, images, pdfium; OCR and pdfium run in its `memry-ml-worker` sidecar process, so a hung native call is killed without taking the app down); `memrynote-cli` builds the user-facing `memrynote` binary; `memry-cli` builds `memry`, the dev tool; `uniffi-bindgen-swift` generates the Swift bindings; `memry-test-kit` holds the shared helpers of the untrusted-input tests and is a dev-dependency only. The Tauri bin crate `memry-tauri` lives in `apps/desktop-tauri/src-tauri` and is a member of this workspace. Crates that Steps 02 (#3519), 23 (#3540) and 35 (#3552) create are named here before they exist so the guide is true when they land.
 
 ## Ownership
 
@@ -38,6 +38,16 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 - Known divergence from domino (Turndown's parser, ported on html5ever 0.40, which follows the current HTML spec): `<select>` with non-option content (domino drops the elements and keeps their text) and a stray `</p>` or `</br>` inside `<svg>` (domino inserts `<p>` or `<br>` inside the svg, html5ever leaves it first). The generic pipeline does not reach either (`select` is an exact selector and linkedom writes no stray end tags), so the vectors and the fuzz inputs avoid both. Accepted as known differences (Kaan, 2026-10-26); the repro is on #3543, and removing them needs a port of domino's parser.
 - Known approximations: `BilibiliExtractor.transcriptCache` (a process-wide map that only saves a refetch) is not ported; subtitle tracks that tie on every sort key compare by code point where JS uses `localeCompare`; the YouTube transcript-panel opener needs `MutationObserver`, which the Node DOM lacks, and yields nothing.
 
+## Untrusted-input tests
+
+A parser, decoder or converter of persisted or peer data (markdown, YAML, JSON, HTML, CRDT updates, sync payloads, vault files) ships with the guards below, built from `memry-test-kit` (`crates/memry-test-kit`, a dev-dependency). Do not copy a helper into a test file; extend the kit.
+
+- **Depth.** `on_small_stack(|| ...)` runs the case on a 2 MiB thread, which is what a spawned Rust thread gets. A stack overflow aborts the process and `catch_unwind` cannot stop it, so the case must fail closed with a typed outcome. Run depth suites in release too (`cargo test --release`) before you land a depth guard: frames are smaller there and the depth that overflows is larger. CI runs them in debug only (the worst case for frame size), so the release run is yours.
+- **Complexity.** Count steps or visits, never wall-clock time. The code under test keeps a thread-local counter (`#[doc(hidden)] pub fn depth_visits() -> usize` in `markdown/frontmatter/value.rs` is the model) and the test runs the work inside `assert_steps_at_most(what, counter, bound, || ...)`, on the thread that owns the counter. Pick the bound from the algorithm (`2 * n + 10` for a walk that visits each node once), so a quadratic scan fails by orders of magnitude in debug and release alike.
+- **Size.** Output stays within `output_bound(input_len)` (8 times the input plus 64 bytes): `assert_output_bounded(what, input_len, output_len)`, or `prop_assert!(out.len() <= output_bound(md.len()))` inside a property.
+- **Properties.** `proptest_config(default_cases)` takes the case count from `PROPTEST_CASES` (the nightly run raises it). A test sets no `cases` and no seed. CI sets `PROPTEST_RNG_SEED` for the whole `rust-ci.yml` run, so a red run replays with the seed in its log; `nightly-proptest.yml` draws a random seed and prints it in the issue it opens. Replay with `PROPTEST_RNG_SEED=<seed> cargo test ...`.
+- Show each guard test red without its production guard (remove the cap, reintroduce the scan), with the test's counters and asserts untouched, and say so in the PR.
+
 ## Bindings
 
 - After any change to the UniFFI API in `memry-core/src/api/` or `memry-core/src/seams/`, run `crates/memry-core/build-xcframework.sh` and commit the regenerated Swift in `packages/swift/MemryCore/Sources/MemryCore/Generated/`. The script also rebuilds `packages/swift/MemryCore/MemryCoreFFI.xcframework`, which is gitignored. `rust-ci.yml` regenerates the Swift and fails when it differs from the commit.
@@ -59,7 +69,7 @@ Run these from `crates/`, where `rust-toolchain.toml` pins the toolchain CI uses
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test -p <touched crates>   # CI runs the full workspace
+cargo test -p <touched crates>   # CI runs memry-core, memry-desktop, memry-tauri and memry-test-kit through nextest, memry-cli on Ubuntu only
 node ../scripts/check-line-ceilings.mjs
 ```
 

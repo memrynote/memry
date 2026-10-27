@@ -112,6 +112,7 @@ fn an_edit_no_os_event_announced_is_found_by_the_safety_net_rescan() {
     let tuning = Tuning {
         periodic: Some(Duration::from_millis(600)),
         burst: None,
+        rearm: false,
     };
     let _watcher = VaultWatcher::start_with(
         root,
@@ -139,4 +140,74 @@ fn an_edit_no_os_event_announced_is_found_by_the_safety_net_rescan() {
         );
         std::thread::sleep(Duration::from_millis(50));
     }
+}
+
+#[test]
+fn no_event_leaves_a_watcher_once_its_stop_has_begun_even_while_its_thread_is_mid_step() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("vault");
+    let core = root.join(".memry/core");
+    fs::create_dir_all(&core).unwrap();
+    let vault =
+        Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+    let log = Log::default();
+    let (entered_tx, entered_rx) = std::sync::mpsc::channel::<()>();
+    let release = Arc::new((Mutex::new(false), std::sync::Condvar::new()));
+    let (events, gate) = (log.clone(), release.clone());
+    // The first `Added` blocks inside the sink, so the worker is stopped in the middle of the
+    // step that reports three files in a row.
+    let slow: EventSink = Arc::new(move |event| {
+        let first = {
+            let mut seen = events.lock().unwrap();
+            let is_added = matches!(event, VaultEvent::Added { .. });
+            let first_added =
+                is_added && !seen.iter().any(|e| matches!(e, VaultEvent::Added { .. }));
+            seen.push(event);
+            first_added
+        };
+        if first {
+            entered_tx.send(()).unwrap();
+            let (held, wake) = &*gate;
+            let mut open = held.lock().unwrap();
+            while !*open {
+                open = wake.wait(open).unwrap();
+            }
+        }
+    });
+    let watcher = VaultWatcher::start(
+        root.clone(),
+        vec![],
+        vault.note_files(),
+        Arc::new(EchoGuard::default()),
+        slow,
+    )
+    .unwrap();
+    std::thread::sleep(Duration::from_millis(300));
+    for n in 0..3 {
+        fs::write(root.join(format!("n{n}.md")), format!("body {n}")).unwrap();
+    }
+    entered_rx
+        .recv_timeout(Duration::from_secs(25))
+        .expect("the first Added reached the sink");
+
+    let stopping = std::thread::spawn(move || watcher.stop_and_drop());
+    std::thread::sleep(Duration::from_millis(400));
+    {
+        let (held, wake) = &*release;
+        *held.lock().unwrap() = true;
+        wake.notify_all();
+    }
+    stopping.join().unwrap();
+    let added = log
+        .lock()
+        .unwrap()
+        .iter()
+        .filter(|e| matches!(e, VaultEvent::Added { .. }))
+        .count();
+    assert_eq!(
+        added,
+        1,
+        "events left a stopping watcher: {:?}",
+        log.lock().unwrap()
+    );
 }

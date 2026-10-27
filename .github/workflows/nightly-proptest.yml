@@ -117,7 +117,7 @@ jobs:
           tool: nextest
 
       - name: Test
-        run: cargo nextest run -p memry-core -p memry-desktop -p memry-tauri --no-fail-fast --features memry-core/markdown
+        run: cargo nextest run -p memry-core -p memry-desktop -p memry-tauri -p memry-test-kit --no-fail-fast --features memry-core/markdown
 
   report:
     name: Report failure

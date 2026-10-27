@@ -19,8 +19,81 @@ use memry_desktop::vault::watch::{EchoGuard, EventSink, VaultEvent};
 
 type Log = Arc<Mutex<Vec<VaultEvent>>>;
 
+/// A folder where `Note.md` and `note.md` are two names. The temp dir of macOS and Windows is
+/// not one (APFS and NTFS fold case by default), so macOS mounts a case-sensitive APFS image;
+/// Linux temp dirs already are.
+struct CaseSensitiveVolume {
+    _dir: tempfile::TempDir,
+    mount: Option<PathBuf>,
+}
+
+// Only the non-Windows tests build one: NTFS folds case.
+#[cfg_attr(windows, allow(dead_code))]
+impl CaseSensitiveVolume {
+    fn new() -> (Self, PathBuf) {
+        let dir = tempfile::tempdir().unwrap();
+        if !cfg!(target_os = "macos") {
+            let root = dir.path().to_path_buf();
+            return (
+                Self {
+                    _dir: dir,
+                    mount: None,
+                },
+                root,
+            );
+        }
+        let image = dir.path().join("volume");
+        let mount = dir.path().join("mount");
+        fs::create_dir_all(&mount).unwrap();
+        let run = |args: &[&str]| {
+            let out = std::process::Command::new("hdiutil")
+                .args(args)
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "hdiutil {args:?}: {out:?}");
+        };
+        run(&[
+            "create",
+            "-size",
+            "40m",
+            "-fs",
+            "Case-sensitive APFS",
+            "-volname",
+            "memry",
+            "-type",
+            "SPARSE",
+            image.to_str().unwrap(),
+        ]);
+        run(&[
+            "attach",
+            &format!("{}.sparseimage", image.display()),
+            "-mountpoint",
+            mount.to_str().unwrap(),
+            "-nobrowse",
+        ]);
+        (
+            Self {
+                _dir: dir,
+                mount: Some(mount.clone()),
+            },
+            mount,
+        )
+    }
+}
+
+impl Drop for CaseSensitiveVolume {
+    fn drop(&mut self) {
+        if let Some(mount) = &self.mount {
+            let _ = std::process::Command::new("hdiutil")
+                .args(["detach", "-force", mount.to_str().unwrap()])
+                .output();
+        }
+    }
+}
+
 struct Fixture {
     _dir: tempfile::TempDir,
+    _volume: Option<CaseSensitiveVolume>,
     root: PathBuf,
     vault: Vault,
     log: Log,
@@ -29,14 +102,23 @@ struct Fixture {
 }
 
 fn fixture() -> Fixture {
+    fixture_in(None)
+}
+
+fn fixture_in(volume: Option<(CaseSensitiveVolume, PathBuf)>) -> Fixture {
     let dir = tempfile::tempdir().unwrap();
-    let root = dir.path().join("vault");
+    let (volume, base) = match volume {
+        Some((volume, base)) => (Some(volume), base),
+        None => (None, dir.path().to_path_buf()),
+    };
+    let root = base.join("vault");
     let core = root.join(".memry/core");
     fs::create_dir_all(&core).unwrap();
     let vault =
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
     Fixture {
         _dir: dir,
+        _volume: volume,
         root,
         vault,
         log: Log::default(),
@@ -95,6 +177,10 @@ impl Fixture {
         let at = self.t0 + Duration::from_secs(step * 10);
         r.batch(rels.iter().map(|s| (*s).to_owned()).collect(), at);
         r.settle_expired(at + Duration::from_secs(2));
+    }
+
+    fn settle(&self, r: &mut Reconciler, step: u64) {
+        r.settle_expired(self.t0 + Duration::from_secs(step * 10 + 2));
     }
 
     fn rescan(&self, r: &mut Reconciler, with_changes: bool, step: u64) {
@@ -306,5 +392,118 @@ fn a_rescan_after_an_overflow_finds_an_edit_that_kept_its_modification_time() {
     assert!(
         matches!(events.as_slice(), [VaultEvent::Changed { note_id, .. }] if note_id == "n1"),
         "{events:?}"
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_respell_on_a_case_sensitive_volume_is_one_rename_and_never_also_a_removal() {
+    let f = fixture_in(Some(CaseSensitiveVolume::new()));
+    let mut r = f.reconciler();
+    f.write("Note.md", "body");
+    f.index("n1", "Note.md", "body");
+    f.rename("Note.md", "note.md");
+    // This volume reports both names: one is gone, the other is new.
+    f.touch(&mut r, &["Note.md", "note.md"], 1);
+    let events = f.take();
+    assert!(
+        matches!(events.as_slice(), [e] if renamed("n1", "Note.md", "note.md")(e)),
+        "a Removed for a note that was only respelled: {events:?}"
+    );
+}
+
+#[cfg(not(windows))]
+#[test]
+fn a_respell_seen_before_its_old_name_is_gone_is_not_a_removal_either() {
+    let f = fixture_in(Some(CaseSensitiveVolume::new()));
+    let mut r = f.reconciler();
+    f.write("Note.md", "body");
+    f.index("n1", "Note.md", "body");
+    f.rename("Note.md", "note.md");
+    f.touch(&mut r, &["note.md"], 1);
+    f.touch(&mut r, &["Note.md"], 2);
+    f.rescan(&mut r, true, 3);
+    f.settle(&mut r, 3);
+    let events = without_rescanned(f.take());
+    assert!(
+        matches!(events.as_slice(), [e] if renamed("n1", "Note.md", "note.md")(e)),
+        "{events:?}"
+    );
+}
+
+#[test]
+fn a_rescan_finds_a_delete_but_reports_it_only_once_it_has_stayed_gone() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    let t0 = f.t0;
+    let stop = AtomicBool::new(false);
+    assert!(r.rescan(true, t0, &stop).unwrap());
+    assert!(
+        without_rescanned(f.take()).is_empty(),
+        "a rescan reported a removal at once"
+    );
+    // The checkout that deleted it puts it back inside the window.
+    f.write("a.md", "body");
+    r.settle_expired(t0 + Duration::from_millis(600));
+    assert!(
+        f.take().is_empty(),
+        "a delete that did not stay gone was reported"
+    );
+
+    // And one that does stay gone is reported, after the window and not before.
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    assert!(r.rescan(true, t0, &stop).unwrap());
+    r.settle_expired(t0 + Duration::from_millis(100));
+    assert!(without_rescanned(f.take()).is_empty());
+    r.settle_expired(t0 + Duration::from_millis(600));
+    assert_eq!(kinds(&f.take()), ["removed"]);
+}
+
+#[test]
+fn a_rescan_after_an_edit_and_a_move_pairs_by_the_reported_content() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "base");
+    f.index("n1", "a.md", "base");
+    f.write("a.md", "edited");
+    f.touch(&mut r, &["a.md"], 1);
+    assert_eq!(kinds(&f.take()), ["changed"]);
+    f.rename("a.md", "b.md");
+    f.rescan(&mut r, true, 2);
+    f.settle(&mut r, 2);
+    let events = without_rescanned(f.take());
+    assert!(
+        matches!(events.as_slice(), [e] if renamed("n1", "a.md", "b.md")(e)),
+        "{events:?}"
+    );
+}
+
+#[test]
+fn a_stopped_reconciler_tracks_no_removal_that_could_settle_later() {
+    let f = fixture();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    let stop = Arc::new(AtomicBool::new(false));
+    let mut r = f.reconciler().with_stop(stop.clone());
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    stop.store(true, std::sync::atomic::Ordering::Relaxed);
+    f.touch(&mut r, &["a.md"], 1);
+    assert!(f.take().is_empty());
+}
+
+#[test]
+fn every_rescan_ends_with_its_signal() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
+    f.rescan(&mut r, false, 1);
+    assert_eq!(
+        kinds(&f.take()),
+        ["rescanned"],
+        "even when nothing is missing"
     );
 }

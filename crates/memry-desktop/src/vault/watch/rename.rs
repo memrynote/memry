@@ -125,6 +125,14 @@ impl RenameTracker {
         };
     }
 
+    /// Drops the pending delete of a note that turned out not to be gone (it was respelled in
+    /// place). True when there was one.
+    pub fn drop_note(&mut self, note_id: &str) -> bool {
+        let had = self.by_note.contains_key(note_id);
+        self.forget_note(note_id);
+        had
+    }
+
     fn forget_note(&mut self, note_id: &str) {
         if let Some(seq) = self.by_note.get(note_id).copied() {
             self.take(seq);
