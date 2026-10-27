@@ -13,9 +13,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use memry_desktop::session::Session;
+#[cfg(target_os = "macos")]
+use memry_desktop::shell::shutdown::is_implicit_exit;
 use memry_desktop::shell::shutdown::{
     HARD_BACKSTOP, ShutdownCore, ShutdownEffects, ShutdownReason, StepFn, UnknownStep,
-    UpdateApplyHook, is_implicit_exit,
+    UpdateApplyHook,
 };
 use memry_desktop::telemetry::crash::{CrashMarker, ShutdownFailure};
 use tauri::{AppHandle, ExitRequestApi, Manager, RunEvent, Wry};
