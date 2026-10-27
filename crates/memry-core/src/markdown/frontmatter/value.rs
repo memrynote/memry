@@ -52,6 +52,15 @@ impl PartialEq for YamlValue {
 
 thread_local! {
     static VISITS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    static KEY_PROBES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+/// Key comparisons the maps on this thread made to find a key (one per
+/// lookup, however many keys the map holds), for tests that bound the
+/// loader's work by steps rather than by the clock.
+#[doc(hidden)]
+pub fn key_probes() -> usize {
+    KEY_PROBES.with(|v| v.get())
 }
 
 /// Collections the depth walk has measured on this thread, for tests that
@@ -194,8 +203,14 @@ impl YamlMap {
     pub fn get(&self, key: &str) -> Option<&YamlValue> {
         match array_index(key) {
             Some(index) => self.indexed.get(&index).map(|(_, value)| value),
-            None => self.lookup.get(key).map(|at| &self.named[*at].1),
+            None => self.named_position(key).map(|at| &self.named[at].1),
         }
+    }
+
+    /// Position of a named key: one hash probe, not a scan of `named`.
+    fn named_position(&self, key: &str) -> Option<usize> {
+        KEY_PROBES.with(|v| v.set(v.get() + 1));
+        self.lookup.get(key).copied()
     }
 
     pub fn contains_key(&self, key: &str) -> bool {
@@ -214,8 +229,8 @@ impl YamlMap {
             Some(index) => {
                 self.indexed.insert(index, (key, value));
             }
-            None => match self.lookup.get(&key) {
-                Some(at) => self.named[*at].1 = value,
+            None => match self.named_position(&key) {
+                Some(at) => self.named[at].1 = value,
                 None => {
                     self.lookup.insert(key.clone(), self.named.len());
                     self.named.push((key, value));
