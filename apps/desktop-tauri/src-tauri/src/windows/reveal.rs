@@ -122,6 +122,8 @@ pub fn first_paint(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
     if window.label() == MAIN_LABEL {
         mark_phase(app, LaunchPhase::WindowReadyToShow);
         show(app, "shown");
+        // Links that arrived before the page could act on them are delivered now.
+        crate::deep_link::on_first_paint(app);
     }
 }
 

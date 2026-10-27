@@ -98,7 +98,11 @@ pub fn confirm<R: Runtime>(
             .is_some_and(|word| word.as_os_str() == "confirm");
     }
     app.dialog()
-        .message(format!("{message}\n\n{detail}"))
+        .message(if detail.is_empty() {
+            message.to_owned()
+        } else {
+            format!("{message}\n\n{detail}")
+        })
         .title(title)
         .kind(MessageDialogKind::Warning)
         .buttons(MessageDialogButtons::OkCancelCustom(
