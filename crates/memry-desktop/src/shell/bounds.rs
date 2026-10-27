@@ -224,6 +224,12 @@ pub enum PickerTransition {
     ShrinkToPicker,
 }
 
+/// The picker size, or smaller: the OS shrinks a window that does not fit its screen (a 768 px
+/// laptop cannot hold 720 px under a taskbar), and such a window is still the picker.
+fn is_picker_size((width, height): (i32, i32)) -> bool {
+    width <= PICKER_SIZE.width && height <= PICKER_SIZE.height
+}
+
 /// Port of the `onVaultStatusChanged` handler of `apps/desktop/src/main/index.ts`. A window the
 /// user already sized or maximized is left alone: only the genuine picker to app transition
 /// acts. A vault switch closes one vault before it opens the next, and shrinking in that gap
@@ -236,13 +242,13 @@ pub fn picker_transition(
     saved: Option<&StoredWindowBounds>,
 ) -> PickerTransition {
     if !vault_open {
-        return if switching || size == (PICKER_SIZE.width, PICKER_SIZE.height) {
+        return if switching || is_picker_size(size) {
             PickerTransition::None
         } else {
             PickerTransition::ShrinkToPicker
         };
     }
-    if maximized || size != (PICKER_SIZE.width, PICKER_SIZE.height) {
+    if maximized || !is_picker_size(size) {
         return PickerTransition::None;
     }
     PickerTransition::Grow {
@@ -495,6 +501,14 @@ mod tests {
         assert_eq!(
             picker_transition(true, false, false, (1000, 700), Some(&s)),
             PickerTransition::None
+        );
+        // A picker the OS shrank to fit a small screen still grows.
+        assert_eq!(
+            picker_transition(true, false, false, (900, 686), None),
+            PickerTransition::Grow {
+                size: DEFAULT_MAIN_SIZE,
+                maximize: false
+            }
         );
         assert_eq!(
             picker_transition(true, false, true, picker, Some(&s)),
