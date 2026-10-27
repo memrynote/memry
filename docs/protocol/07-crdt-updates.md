@@ -217,7 +217,7 @@ therefore stop a request when the base64 of its updates would pass **6,000,000
 characters**, and the rest of the queue rides the next request: desktop in
 `MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:16`),
 the Rust core in `MAX_REQUEST_PAYLOAD_CHARS` (`crates/memry-core/src/protocol/crdt_envelope.rs:75`)
-applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:429-448`).
+applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:438-475`).
 The Rust cost of an update is an upper bound taken without compressing (the frame
 is never longer than the stored form, chapter 04 §4.1), so a batch is never
 over-full. The first update of a batch always rides.
