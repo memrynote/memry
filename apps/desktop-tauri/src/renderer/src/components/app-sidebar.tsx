@@ -73,6 +73,7 @@ import { getAllSupportedExtensions, getExtension, getFileType } from '@memry/sha
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
+import { withStagedFiles } from '@/lib/drop-stage'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { runCommand } from '@/commands'
 import { useT } from '@memry/i18n/renderer'
@@ -125,10 +126,13 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
 
   const { showFiles } = treeViewOptions
   const handleFileDrop = useCallback(
-    async (paths: string[], targetFolder: string) => {
+    async (files: File[], targetFolder: string) => {
       try {
-        // Where the file was dropped, not what happened to be selected.
-        const result = await notesService.importFiles(paths, targetFolder)
+        // Where the file was dropped, not what happened to be selected. A drop has no path, so
+        // the files are staged for the import and released when it settles.
+        const result = await withStagedFiles(files, (paths) =>
+          notesService.importFiles(paths, targetFolder)
+        )
         const tCommon = getI18n().getFixedT(null, 'common')
 
         if (result.imported > 0) {
@@ -136,7 +140,9 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
           // appear, which reads as a failed import unless the toast says why.
           const hidesSomeImports =
             !showFiles &&
-            paths.some((path) => (getFileType(getExtension(path)) ?? 'markdown') !== 'markdown')
+            files.some(
+              (file) => (getFileType(getExtension(file.name)) ?? 'markdown') !== 'markdown'
+            )
           const message = tCommon('toast.filesImported', { count: result.imported })
           if (hidesSomeImports) {
             toast.success(message, { description: tCommon('toast.filesHiddenInSidebar') })

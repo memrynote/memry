@@ -14,12 +14,13 @@ const DRAG_TIMEOUT_MS = 150
 export const FILE_DROP_FOLDER_ATTR = 'data-file-drop-folder'
 
 interface FileDropResult {
-  validPaths: string[]
+  validFiles: File[]
   skippedCount: number
 }
 
 interface UseFileDropOptions {
-  onDrop: (paths: string[], targetFolder: string) => Promise<void> | void
+  /** The dropped files the app can import. They have no path: stage them (`withStagedFiles`). */
+  onDrop: (files: File[], targetFolder: string) => Promise<void> | void
 }
 
 interface UseFileDropReturn {
@@ -48,49 +49,20 @@ export function resolveDropFolder(target: EventTarget | null): string {
   return target.closest(`[${FILE_DROP_FOLDER_ATTR}]`)?.getAttribute(FILE_DROP_FOLDER_ATTR) ?? ''
 }
 
-export function extractValidPaths(files: Array<{ path: string; name: string }>): FileDropResult {
-  const validPaths: string[] = []
+export function extractValidFiles(files: File[]): FileDropResult {
+  const validFiles: File[] = []
   let skippedCount = 0
 
   for (const file of files) {
-    const nameForExt = file.path || file.name
-
-    if (!nameForExt) {
+    const ext = getExtension(file.name)
+    if (ext && isSupported(ext)) {
+      validFiles.push(file)
+    } else {
       skippedCount++
-      continue
     }
-
-    const ext = getExtension(nameForExt)
-    if (!ext || !isSupported(ext)) {
-      skippedCount++
-      continue
-    }
-
-    if (!file.path) {
-      log.warn('Supported file missing filesystem path', { name: file.name, ext })
-      skippedCount++
-      continue
-    }
-
-    validPaths.push(file.path)
   }
 
-  return { validPaths, skippedCount }
-}
-
-function resolveDroppedFiles(fileList: FileList): Array<{ path: string; name: string }> {
-  const files = Array.from(fileList)
-
-  try {
-    const paths = window.api.getFileDropPaths(files)
-    return files.map((f, i) => ({ path: paths[i] || '', name: f.name }))
-  } catch (err) {
-    log.warn('webUtils.getPathForFile unavailable, falling back to file.path', err)
-    return files.map((f) => ({
-      path: (f as File & { path?: string }).path || '',
-      name: f.name
-    }))
-  }
+  return { validFiles, skippedCount }
 }
 
 export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
@@ -131,10 +103,9 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
       // Read the destination off the element under the pointer, not off the
       // sidebar selection — where the file lands is where it was dropped.
       const targetFolder = resolveDropFolder(e.target)
-      const resolved = resolveDroppedFiles(e.dataTransfer.files)
-      const { validPaths, skippedCount } = extractValidPaths(resolved)
+      const { validFiles, skippedCount } = extractValidFiles(Array.from(e.dataTransfer.files))
 
-      if (validPaths.length === 0) {
+      if (validFiles.length === 0) {
         if (skippedCount > 0) {
           const exts = getAllSupportedExtensions().join(', ')
           log.warn('No supported files in drop', { skippedCount, supported: exts })
@@ -143,11 +114,11 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
       }
 
       log.info('Files dropped', {
-        count: validPaths.length,
+        count: validFiles.length,
         skipped: skippedCount,
         targetFolder: targetFolder || '<vault root>'
       })
-      void onDrop(validPaths, targetFolder)
+      void onDrop(validFiles, targetFolder)
     },
     [onDrop]
   )

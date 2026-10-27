@@ -4,7 +4,15 @@ import type { Page } from './pw-compat/page'
 
 declare global {
   interface Window {
-    __TAURI__: { core: { invoke(command: string, args?: unknown): Promise<unknown> } }
+    __TAURI__: {
+      core: {
+        invoke(
+          command: string,
+          args?: unknown,
+          options?: { headers: Record<string, string> }
+        ): Promise<unknown>
+      }
+    }
   }
 }
 

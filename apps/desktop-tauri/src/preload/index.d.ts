@@ -2058,7 +2058,6 @@ interface MainInvokePayload {
 
 // Full API interface
 interface API extends WindowAPI, GeneratedRpcApi {
-  getFileDropPaths: (files: File[]) => string[]
   vault: VaultClientAPI
   properties: PropertiesClientAPI
   savedFilters: SavedFiltersClientAPI

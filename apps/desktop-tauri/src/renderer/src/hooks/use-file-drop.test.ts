@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import {
-  extractValidPaths,
+  extractValidFiles,
   resolveDropFolder,
   useFileDrop,
   FILE_DROP_FOLDER_ATTR
@@ -21,126 +21,27 @@ beforeEach(() => {
   vi.useRealTimers()
 })
 
-describe('extractValidPaths', () => {
-  describe('happy path', () => {
-    it('includes file with valid path and supported extension', () => {
-      // #given
-      const files = [{ path: '/home/user/note.md', name: 'note.md' }]
+const named = (...names: string[]): File[] => names.map((name) => new File(['x'], name))
 
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual(['/home/user/note.md'])
-      expect(result.skippedCount).toBe(0)
-    })
-
-    it('includes PDF files', () => {
-      // #given
-      const files = [{ path: '/tmp/doc.pdf', name: 'doc.pdf' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual(['/tmp/doc.pdf'])
-      expect(result.skippedCount).toBe(0)
-    })
-
-    it('handles uppercase extensions', () => {
-      // #given
-      const files = [{ path: '/docs/SCAN.PDF', name: 'SCAN.PDF' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual(['/docs/SCAN.PDF'])
-      expect(result.skippedCount).toBe(0)
-    })
+describe('extractValidFiles', () => {
+  it('keeps supported files, whatever the case of the extension', () => {
+    const files = named('note.md', 'doc.pdf', 'SCAN.PDF', 'photo.jpg')
+    const result = extractValidFiles(files)
+    expect(result.validFiles).toEqual(files)
+    expect(result.skippedCount).toBe(0)
   })
 
-  describe('skipping', () => {
-    it('skips unsupported extension', () => {
-      // #given
-      const files = [{ path: '/tmp/photo.exe', name: 'photo.exe' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual([])
-      expect(result.skippedCount).toBe(1)
-    })
-
-    it('skips file with no extension', () => {
-      // #given
-      const files = [{ path: '/project/Makefile', name: 'Makefile' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual([])
-      expect(result.skippedCount).toBe(1)
-    })
-
-    it('skips when both path and name are empty', () => {
-      // #given
-      const files = [{ path: '', name: '' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual([])
-      expect(result.skippedCount).toBe(1)
-    })
+  it('skips an unsupported extension, a file with none, and an empty name', () => {
+    const result = extractValidFiles(named('photo.exe', 'Makefile', ''))
+    expect(result.validFiles).toEqual([])
+    expect(result.skippedCount).toBe(3)
   })
 
-  describe('empty path with valid name (the PDF drop bug)', () => {
-    it('skips supported file with empty path', () => {
-      // #given — webUtils.getPathForFile failed to resolve a real path
-      const files = [{ path: '', name: 'document.pdf' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then — recognized as supported but cannot import without filesystem path
-      expect(result.validPaths).toEqual([])
-      expect(result.skippedCount).toBe(1)
-    })
-
-    it('skips unsupported file with empty path', () => {
-      // #given
-      const files = [{ path: '', name: 'virus.exe' }]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual([])
-      expect(result.skippedCount).toBe(1)
-    })
-  })
-
-  describe('mixed batch', () => {
-    it('correctly partitions valid and invalid files', () => {
-      // #given
-      const files = [
-        { path: '/docs/readme.md', name: 'readme.md' },
-        { path: '/pics/photo.jpg', name: 'photo.jpg' },
-        { path: '/bin/script.exe', name: 'script.exe' },
-        { path: '', name: 'report.pdf' }
-      ]
-
-      // #when
-      const result = extractValidPaths(files)
-
-      // #then
-      expect(result.validPaths).toEqual(['/docs/readme.md', '/pics/photo.jpg'])
-      expect(result.skippedCount).toBe(2)
-    })
+  it('partitions a mixed batch and keeps the order of the supported files', () => {
+    const [readme, photo] = named('readme.md', 'photo.jpg')
+    const result = extractValidFiles([readme, ...named('script.exe'), photo])
+    expect(result.validFiles).toEqual([readme, photo])
+    expect(result.skippedCount).toBe(1)
   })
 })
 
@@ -211,9 +112,6 @@ describe('useFileDrop', () => {
   it('tracks external file drags, clears the drag state, and drops supported paths', async () => {
     vi.useFakeTimers()
     const onDrop = vi.fn()
-    ;(
-      window.api as typeof window.api & { getFileDropPaths: (files: File[]) => string[] }
-    ).getFileDropPaths = vi.fn(() => ['/tmp/note.md', '/tmp/app.exe'])
     const { result } = renderHook(() => useFileDrop({ onDrop }))
 
     const over = dragEvent([new File(['note'], 'note.md')])
@@ -230,31 +128,28 @@ describe('useFileDrop', () => {
     })
     expect(result.current.isDraggingFiles).toBe(false)
 
-    const drop = dragEvent([new File(['note'], 'note.md'), new File(['exe'], 'app.exe')])
+    const note = new File(['note'], 'note.md')
+    const drop = dragEvent([note, new File(['exe'], 'app.exe')])
     await act(async () => {
       result.current.dropHandlers.onDrop(drop)
     })
-    expect(onDrop).toHaveBeenCalledWith(['/tmp/note.md'], '')
+    expect(onDrop).toHaveBeenCalledWith([note], '')
   })
 
   it('imports into the folder under the pointer, not into the vault root', async () => {
     // #given — the pointer is over a label inside the `projects` row
     const onDrop = vi.fn()
-    ;(
-      window.api as typeof window.api & { getFileDropPaths: (files: File[]) => string[] }
-    ).getFileDropPaths = vi.fn(() => ['/tmp/sample.pdf'])
     const { label } = sidebarDom('projects')
     const { result } = renderHook(() => useFileDrop({ onDrop }))
 
     // #when
+    const pdf = new File(['pdf'], 'sample.pdf')
     await act(async () => {
-      result.current.dropHandlers.onDrop(
-        dragEvent([new File(['pdf'], 'sample.pdf')], ['Files'], label)
-      )
+      result.current.dropHandlers.onDrop(dragEvent([pdf], ['Files'], label))
     })
 
     // #then — vault-relative, exactly the shape `importFiles` takes
-    expect(onDrop).toHaveBeenCalledWith(['/tmp/sample.pdf'], 'projects')
+    expect(onDrop).toHaveBeenCalledWith([pdf], 'projects')
   })
 
   it('reports the hovered folder while dragging and forgets it when the drag stops', () => {
@@ -280,48 +175,29 @@ describe('useFileDrop', () => {
   it('drops into the vault root when nothing under the pointer claims a folder', async () => {
     // #given — sidebar empty space, below every row
     const onDrop = vi.fn()
-    ;(
-      window.api as typeof window.api & { getFileDropPaths: (files: File[]) => string[] }
-    ).getFileDropPaths = vi.fn(() => ['/tmp/loose.pdf'])
     const { root } = sidebarDom('projects')
     const { result } = renderHook(() => useFileDrop({ onDrop }))
 
     // #when
+    const pdf = new File(['pdf'], 'loose.pdf')
     await act(async () => {
-      result.current.dropHandlers.onDrop(
-        dragEvent([new File(['pdf'], 'loose.pdf')], ['Files'], root)
-      )
+      result.current.dropHandlers.onDrop(dragEvent([pdf], ['Files'], root))
     })
 
     // #then — selection is irrelevant; empty space means root
-    expect(onDrop).toHaveBeenCalledWith(['/tmp/loose.pdf'], '')
+    expect(onDrop).toHaveBeenCalledWith([pdf], '')
   })
 
-  it('ignores non-file drops and falls back to file.path when preload path lookup fails', async () => {
+  it('ignores non-file drops and drops with nothing the app imports', async () => {
     const onDrop = vi.fn()
-    ;(
-      window.api as typeof window.api & { getFileDropPaths: (files: File[]) => string[] }
-    ).getFileDropPaths = vi.fn(() => {
-      throw new Error('path lookup failed')
-    })
     const { result } = renderHook(() => useFileDrop({ onDrop }))
 
-    const textDrop = dragEvent([], ['text/plain'])
     await act(async () => {
-      result.current.dropHandlers.onDrop(textDrop)
+      result.current.dropHandlers.onDrop(dragEvent([], ['text/plain']))
     })
-    expect(onDrop).not.toHaveBeenCalled()
-
-    const file = new File(['pdf'], 'report.pdf') as File & { path?: string }
-    file.path = '/tmp/report.pdf'
-    await act(async () => {
-      result.current.dropHandlers.onDrop(dragEvent([file]))
-    })
-    expect(onDrop).toHaveBeenCalledWith(['/tmp/report.pdf'], '')
-
     await act(async () => {
       result.current.dropHandlers.onDrop(dragEvent([new File(['bin'], 'app.exe')]))
     })
-    expect(onDrop).toHaveBeenCalledTimes(1)
+    expect(onDrop).not.toHaveBeenCalled()
   })
 })
