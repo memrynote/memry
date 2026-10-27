@@ -24,6 +24,7 @@ e2e_commands! {
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths],
     shell_integrations => [
+        e2e_apply_login_item,
         e2e_close_window,
         e2e_fire_global_capture,
         e2e_forget_spelled_word,

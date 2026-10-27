@@ -147,6 +147,13 @@ pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), Com
     Ok(())
 }
 
+/// Registers or removes the real login item, which the e2e gate otherwise keeps specs away from:
+/// for a VM row that reads the Run value or the autostart file. Remove it again afterwards.
+#[tauri::command]
+pub fn e2e_apply_login_item(app: AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
+    crate::autostart::apply_to_os(&app, enabled)
+}
+
 /// Takes a word a spec added back out of the personal dictionary (macOS; a no-op elsewhere).
 #[tauri::command]
 pub fn e2e_forget_spelled_word(app: AppHandle<Wry>, word: String) {

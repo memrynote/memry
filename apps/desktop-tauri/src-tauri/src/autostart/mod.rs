@@ -39,6 +39,12 @@ pub fn apply(app: &AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
         );
         return Ok(());
     }
+    apply_to_os(app, enabled)
+}
+
+/// The registration itself, with no e2e gate in front: the VM rows call it through
+/// `e2e_apply_login_item` to check the real Run value or `.desktop` file.
+pub(crate) fn apply_to_os(app: &AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
     platform::apply(app, enabled).map_err(|message| {
         tracing::warn!(
             scope = "Autostart",
