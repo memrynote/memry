@@ -8,8 +8,9 @@ use crate::vault::file_types::FileType;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VaultEvent {
-    /// A file no row names. Not read: `content_hash` is set only when a rename was being
-    /// looked for.
+    /// A file no row names and nothing reported yet. Markdown carries its content hash; the
+    /// event is held for a short grace, so a move whose removal is seen a moment later is a
+    /// [`VaultEvent::Renamed`] instead.
     Added {
         path: String,
         file_type: FileType,
@@ -60,6 +61,24 @@ pub enum VaultEvent {
     /// The OS watcher failed or could not start. `limit` is the Linux inotify watch limit
     /// (the user can raise it).
     WatchFailed { message: String, limit: bool },
+}
+
+impl VaultEvent {
+    /// The variant's name, for a log line: paths and ids are the user's and stay out of logs.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Self::Added { .. } => "added",
+            Self::Changed { .. } => "changed",
+            Self::Removed { .. } => "removed",
+            Self::Renamed { .. } => "renamed",
+            Self::Unsupported { .. } => "unsupported",
+            Self::Unreadable { .. } => "unreadable",
+            Self::Unreachable => "unreachable",
+            Self::Reachable => "reachable",
+            Self::Rescanned { .. } => "rescanned",
+            Self::WatchFailed { .. } => "watch_failed",
+        }
+    }
 }
 
 /// Where events go. Called on the watcher's thread: it must not block.

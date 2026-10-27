@@ -21,9 +21,8 @@ impl WatchFilter {
 
     /// Whether `rel` or any folder above it is ignored.
     pub fn ignores(&self, rel: &str) -> bool {
-        let mut parts = rel.split('/').peekable();
         let mut first = true;
-        while let Some(name) = parts.next() {
+        for name in rel.split('/') {
             if name.starts_with('.') {
                 return true;
             }

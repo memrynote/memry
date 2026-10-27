@@ -16,6 +16,7 @@ use memry_desktop::session::response::{VaultStatus, index_recovery_reason};
 use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
+use memry_desktop::vault::watch::{VaultEvent, VaultTier};
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
@@ -91,6 +92,28 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
     );
 }
 
+/// Starts the vault watcher with every open and stops it with every close. Its events have no
+/// consumer yet (the index update and the write-back's ingest are Step 12e and Step 13), so
+/// they are counted in the log by kind only. The tier is managed so those stages reach its
+/// own-write record.
+fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
+    let tier = VaultTier::new(Arc::new(|event: VaultEvent| match event {
+        VaultEvent::WatchFailed { limit, .. } => {
+            tracing::warn!(scope = "vault_watch", limit, "the vault watcher failed");
+        }
+        VaultEvent::Unreachable | VaultEvent::Reachable => {
+            tracing::warn!(
+                scope = "vault_watch",
+                kind = event.kind(),
+                "vault reachability changed"
+            );
+        }
+        other => tracing::debug!(scope = "vault_watch", kind = other.kind()),
+    }));
+    tier.register(session);
+    app.manage(tier);
+}
+
 pub fn register_stages() {
     startup::register(Stage::VaultOpen, "open the last vault", open_last_vault);
     startup::register(
@@ -110,6 +133,7 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let config = app.state::<Arc<AppConfig>>().inner().clone();
     let session = Session::new(VaultRegistry::new(config));
     register_settings_hook(app, &session);
+    register_vault_watcher(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());

@@ -176,7 +176,10 @@ mod tests {
         let mut t = RenameTracker::default();
         t.track(pending("1", "a.md", None), now, None);
         assert!(t.claim("").is_none());
-        assert!(t.expired(now + RENAME_WINDOW - Duration::from_millis(1)).is_empty());
+        assert!(
+            t.expired(now + RENAME_WINDOW - Duration::from_millis(1))
+                .is_empty()
+        );
         let due = t.expired(now + RENAME_WINDOW);
         assert_eq!(due.len(), 1);
         assert!(t.is_empty());
@@ -190,7 +193,10 @@ mod tests {
         t.track(pending("1", "a.md", Some("h1")), now, Some(batch));
         t.track(pending("2", "b.md", Some("h2")), now, Some(batch));
         t.track(pending("3", "c.md", Some("h3")), now, None);
-        assert!(t.expired(now + Duration::from_secs(60)).len() == 1, "only the live one");
+        assert!(
+            t.expired(now + Duration::from_secs(60)).len() == 1,
+            "only the live one"
+        );
         assert_eq!(t.claim("h1").unwrap().note_id, "1");
         let left = t.settle(batch);
         assert_eq!(left.len(), 1);

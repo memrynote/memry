@@ -32,7 +32,10 @@ pub fn is_gone_from_disk(path: &Path) -> bool {
     match presence(path) {
         Presence::Present => return false,
         Presence::Unreadable => {
-            tracing::warn!(scope = "vault_watch", "a file cannot be looked at; keeping it");
+            tracing::warn!(
+                scope = "vault_watch",
+                "a file cannot be looked at; keeping it"
+            );
             return false;
         }
         Presence::Gone => {}
@@ -49,4 +52,40 @@ pub fn is_gone_from_disk(path: &Path) -> bool {
 /// alone proves nothing, since a writer can recreate it where a vault used to be.
 pub fn is_vault_reachable(vault: &Path) -> bool {
     std::fs::metadata(vault.join(".memry/core/data.db")).is_ok_and(|m| m.is_file())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_vault_is_reachable_only_while_its_database_file_is_there() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(!is_vault_reachable(dir.path()));
+        std::fs::create_dir_all(dir.path().join(".memry/core")).unwrap();
+        assert!(
+            !is_vault_reachable(dir.path()),
+            "`.memry` alone proves nothing"
+        );
+        std::fs::write(dir.path().join(".memry/core/data.db"), "x").unwrap();
+        assert!(is_vault_reachable(dir.path()));
+    }
+
+    #[test]
+    fn a_file_is_gone_only_when_it_and_its_icloud_placeholder_are_absent() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("a.md");
+        assert!(is_gone_from_disk(&file));
+        std::fs::write(&file, "x").unwrap();
+        assert!(!is_gone_from_disk(&file));
+        std::fs::remove_file(&file).unwrap();
+        std::fs::write(dir.path().join(".a.md.icloud"), "stub").unwrap();
+        assert!(!is_gone_from_disk(&file), "evicted to iCloud, not deleted");
+    }
+
+    #[test]
+    fn a_missing_folder_above_the_file_counts_as_gone() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(is_gone_from_disk(&dir.path().join("no/such/a.md")));
+    }
 }

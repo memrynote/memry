@@ -106,10 +106,16 @@ mod tests {
         let echo = EchoGuard::default();
         echo.will_write("a.md", "h1");
         assert!(echo.absorbs_write("a.md", "h1"));
-        assert!(echo.absorbs_write("a.md", "h1"), "several events of one write");
+        assert!(
+            echo.absorbs_write("a.md", "h1"),
+            "several events of one write"
+        );
         assert!(!echo.absorbs_write("a.md", "h2"), "an outside edit passes");
         assert!(!echo.absorbs_write("a.md", "h1"), "and clears the record");
-        assert!(!echo.absorbs_write("b.md", "h1"), "another path is never absorbed");
+        assert!(
+            !echo.absorbs_write("b.md", "h1"),
+            "another path is never absorbed"
+        );
     }
 
     #[test]
@@ -117,7 +123,10 @@ mod tests {
         let echo = EchoGuard::default();
         echo.will_remove("a.md");
         assert!(echo.absorbs_removal("a.md"));
-        assert!(!echo.absorbs_write("a.md", "h"), "back with content: an outside create");
+        assert!(
+            !echo.absorbs_write("a.md", "h"),
+            "back with content: an outside create"
+        );
         assert!(!echo.absorbs_removal("a.md"));
     }
 

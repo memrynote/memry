@@ -55,7 +55,8 @@ impl Debouncer {
             .pending
             .iter()
             .filter(|(_, (first, last))| {
-                now.duration_since(*last) >= self.quiet || now.duration_since(*first) >= self.max_hold
+                now.duration_since(*last) >= self.quiet
+                    || now.duration_since(*first) >= self.max_hold
             })
             .map(|(path, (first, _))| (*first, path.clone()))
             .collect();
@@ -94,7 +95,10 @@ mod tests {
         d.touch("a.md".into(), t0);
         assert!(d.due(t0 + ms(99)).is_empty());
         d.touch("a.md".into(), t0 + ms(90));
-        assert!(d.due(t0 + ms(150)).is_empty(), "the second report reset the wait");
+        assert!(
+            d.due(t0 + ms(150)).is_empty(),
+            "the second report reset the wait"
+        );
         assert_eq!(d.due(t0 + ms(190)), ["a.md"]);
         assert!(d.is_idle());
     }

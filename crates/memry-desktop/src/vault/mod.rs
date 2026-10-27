@@ -13,3 +13,4 @@ pub mod note_file;
 pub mod path_key;
 pub mod paths;
 pub mod walk;
+pub mod watch;
