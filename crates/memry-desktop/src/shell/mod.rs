@@ -5,6 +5,7 @@ pub mod accelerator;
 pub mod bounds;
 pub mod caption;
 pub mod close;
+pub mod file_open;
 pub mod flush;
 pub mod heartbeat;
 pub mod menu_spec;

@@ -1,0 +1,5 @@
+﻿---
+tags:
+  - bom
+---
+BOM body.

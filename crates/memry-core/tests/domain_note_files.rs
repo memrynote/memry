@@ -247,3 +247,31 @@ fn missing_candidates_skip_attachments_that_never_arrived() {
     let ids: Vec<_> = paths(&files).into_iter().map(|(id, _)| id).collect();
     assert_eq!(ids, ["arrived", "empty-note", "note"]);
 }
+
+#[test]
+fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
+    // A crash between the migration's commit and the `user_version` pragma leaves the
+    // table in place at the old version; the next open runs 0015 again.
+    let Fixture { dir, vault } = fixture();
+    vault
+        .note_files()
+        .upsert_stat(stat("n1", "a.md"))
+        .expect("insert");
+    vault
+        .db_handle()
+        .call_blocking(|conn| {
+            conn.execute_batch("PRAGMA user_version = 14")
+                .map_err(|err| StorageError::Failed {
+                    what: err.to_string(),
+                })
+        })
+        .expect("rewind the counter");
+    drop(vault);
+
+    let files = open_at(dir.path()).note_files();
+    assert_eq!(paths(&files), [("n1".into(), "a.md".into())]);
+    files
+        .upsert_stat(stat("n2", "b.md"))
+        .expect("still writable");
+    assert_eq!(files.list_paths().expect("paths").len(), 2);
+}
