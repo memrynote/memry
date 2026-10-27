@@ -9,7 +9,7 @@
 
 mod support;
 
-use memry_test_kit::{assert_output_bounded, output_bound, proptest_config};
+use memry_test_kit::{DEFAULT_CASES, assert_output_bounded, output_bound, proptest_config};
 use proptest::prelude::*;
 use serde_json::Value as Json;
 use support::doc_case::{
@@ -19,7 +19,7 @@ use support::doc_case::{
 fn config() -> ProptestConfig {
     ProptestConfig {
         failure_persistence: None,
-        ..proptest_config(2000)
+        ..proptest_config(DEFAULT_CASES)
     }
 }
 

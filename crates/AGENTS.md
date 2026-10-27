@@ -40,9 +40,9 @@ This directory owns the Rust workspace. `memry-core` is the shared core under th
 
 ## Untrusted-input tests
 
-A parser, decoder or converter of persisted or peer data (markdown, YAML, JSON, HTML, CRDT updates, sync payloads, vault files) ships with the four guards below, built from `memry-test-kit` (`crates/memry-test-kit`, a dev-dependency). Do not copy a helper into a test file; extend the kit.
+A parser, decoder or converter of persisted or peer data (markdown, YAML, JSON, HTML, CRDT updates, sync payloads, vault files) ships with the guards below, built from `memry-test-kit` (`crates/memry-test-kit`, a dev-dependency). Do not copy a helper into a test file; extend the kit.
 
-- **Depth.** `on_small_stack(|| ...)` runs the case on a 2 MiB thread, which is what a spawned Rust thread gets. A stack overflow aborts the process and `catch_unwind` cannot stop it, so the case must fail closed with a typed outcome. Run depth suites in release too (`cargo test --release`): frames are smaller there and the depth that overflows is larger.
+- **Depth.** `on_small_stack(|| ...)` runs the case on a 2 MiB thread, which is what a spawned Rust thread gets. A stack overflow aborts the process and `catch_unwind` cannot stop it, so the case must fail closed with a typed outcome. Run depth suites in release too (`cargo test --release`) before you land a depth guard: frames are smaller there and the depth that overflows is larger. CI runs them in debug only (the worst case for frame size), so the release run is yours.
 - **Complexity.** Count steps or visits, never wall-clock time. The code under test keeps a thread-local counter (`#[doc(hidden)] pub fn depth_visits() -> usize` in `markdown/frontmatter/value.rs` is the model) and the test runs the work inside `assert_steps_at_most(what, counter, bound, || ...)`, on the thread that owns the counter. Pick the bound from the algorithm (`2 * n + 10` for a walk that visits each node once), so a quadratic scan fails by orders of magnitude in debug and release alike.
 - **Size.** Output stays within `output_bound(input_len)` (8 times the input plus 64 bytes): `assert_output_bounded(what, input_len, output_len)`, or `prop_assert!(out.len() <= output_bound(md.len()))` inside a property.
 - **Properties.** `proptest_config(default_cases)` takes the case count from `PROPTEST_CASES` (the nightly run raises it). A test sets no `cases` and no seed. CI sets `PROPTEST_RNG_SEED` for the whole `rust-ci.yml` run, so a red run replays with the seed in its log; `nightly-proptest.yml` draws a random seed and prints it in the issue it opens. Replay with `PROPTEST_RNG_SEED=<seed> cargo test ...`.
@@ -69,7 +69,7 @@ Run these from `crates/`, where `rust-toolchain.toml` pins the toolchain CI uses
 ```bash
 cargo fmt --all --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test -p <touched crates>   # CI runs the full workspace
+cargo test -p <touched crates>   # CI runs memry-core, memry-desktop, memry-tauri and memry-test-kit through nextest, memry-cli on Ubuntu only
 node ../scripts/check-line-ceilings.mjs
 ```
 

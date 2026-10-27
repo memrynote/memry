@@ -7,11 +7,11 @@ use memry_core::markdown::frontmatter::{
     Eol, YamlMap, YamlValue, parse_markdown_note, safe_dump, safe_load, split_frontmatter_block,
     stringify_frontmatter_block,
 };
-use memry_test_kit::proptest_config;
+use memry_test_kit::{DEFAULT_CASES, proptest_config};
 use proptest::prelude::*;
 
 fn config() -> ProptestConfig {
-    proptest_config(2000)
+    proptest_config(DEFAULT_CASES)
 }
 
 fn scalar_string() -> impl Strategy<Value = String> {
