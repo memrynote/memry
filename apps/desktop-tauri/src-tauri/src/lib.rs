@@ -1,6 +1,7 @@
 //! MemryNote desktop shell. `run()` owns the boot sequence; domain steps register startup work
 //! with `startup::register` and commands in `registry.rs`.
 
+pub mod autostart;
 pub mod badge;
 pub mod binary;
 pub mod commands;
@@ -156,6 +157,12 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init());
+    #[cfg(not(target_os = "macos"))]
+    let app = app.plugin(
+        tauri_plugin_autostart::Builder::new()
+            .app_name(memry_desktop::shell::autostart::APP_NAME)
+            .build(),
+    );
     #[cfg(feature = "e2e")]
     let app = e2e::install(app, gate);
     let result = app

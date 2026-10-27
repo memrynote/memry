@@ -62,6 +62,7 @@ pub(crate) fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
         }
     }
     if key == "general" {
+        crate::autostart::on_general_written(app, &fields);
         // `general.minimizeToTray` lives here; apply converges and ignores an unchanged value.
         if let Err(error) = crate::tray::apply_from_settings(app) {
             tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");

@@ -2,6 +2,7 @@
 //! depends on `tauri`; the adapters in `apps/desktop-tauri/src-tauri` apply them.
 
 pub mod accelerator;
+pub mod autostart;
 pub mod bounds;
 pub mod caption;
 pub mod close;

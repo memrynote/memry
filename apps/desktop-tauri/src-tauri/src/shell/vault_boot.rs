@@ -199,6 +199,9 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                     // The keyboard rebinds belong to the vault, so the menu follows it.
                     crate::menu::apply(&app, false);
                     crate::shortcuts::apply_from_settings(&app);
+                    if is_open {
+                        crate::autostart::on_vault_opened(&app);
+                    }
                     if let Err(error) = crate::tray::apply_from_settings(&app) {
                         tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
                     }
