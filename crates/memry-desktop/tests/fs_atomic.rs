@@ -4,6 +4,8 @@ use std::cell::Cell;
 use std::io;
 use std::time::Duration;
 
+#[cfg(windows)]
+use memry_desktop::vault::fs_atomic::atomic_write_checked;
 use memry_desktop::vault::fs_atomic::{
     atomic_write, atomic_write_with, is_transient, with_transient_retry,
 };
@@ -107,6 +109,19 @@ fn sharing_violations_are_transient() {
     );
 }
 
+/// Opens `path` for reading with a share mode that refuses `DELETE`, as a scanner or sync client
+/// that does not allow renames does: a rename over the file is denied while this handle lives.
+#[cfg(windows)]
+fn hold_without_share_delete(path: &std::path::Path) -> std::fs::File {
+    use std::os::windows::fs::OpenOptionsExt;
+    const FILE_SHARE_READ_WRITE: u32 = 0x1 | 0x2;
+    std::fs::OpenOptions::new()
+        .read(true)
+        .share_mode(FILE_SHARE_READ_WRITE)
+        .open(path)
+        .unwrap()
+}
+
 #[cfg(windows)]
 #[test]
 fn a_save_over_a_file_held_open_for_reading_succeeds() {
@@ -115,6 +130,54 @@ fn a_save_over_a_file_held_open_for_reading_succeeds() {
     let target = dir.path().join("note.md");
     std::fs::write(&target, "old").unwrap();
     let _held = std::fs::File::open(&target).unwrap();
-    atomic_write(&target, b"new").unwrap();
+    // The reader never lets go, so a failure here is not a lock window that closes: it is the
+    // replace itself. A runner can hold the file for longer than the default 650 ms schedule
+    // (this test failed once on windows-2022 with a persistent access denied and no other
+    // process of ours involved), so the budget is 50 attempts, not the production four.
+    let delays = [Duration::from_millis(100); 50];
+    atomic_write_with(&target, b"new", &delays).unwrap();
     assert_eq!(std::fs::read(&target).unwrap(), b"new");
+}
+
+#[cfg(windows)]
+#[test]
+fn a_lock_that_forbids_renames_is_retried_until_it_lifts() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("note.md");
+    std::fs::write(&target, "old").unwrap();
+    let mut lock = Some(hold_without_share_delete(&target));
+    let mut attempts = 0;
+    // The check runs once per attempt, right before the rename: the lock lifts before the third.
+    let mut before_commit = || {
+        attempts += 1;
+        if attempts == 3 {
+            lock.take();
+        }
+        Ok(())
+    };
+    atomic_write_checked(&target, b"new", &[Duration::ZERO; 3], &mut before_commit).unwrap();
+    assert_eq!(attempts, 3, "two denied attempts, then the save");
+    assert_eq!(std::fs::read(&target).unwrap(), b"new");
+    assert_eq!(dir_entries(dir.path()), ["note.md"]);
+}
+
+#[cfg(windows)]
+#[test]
+fn a_lock_that_never_lifts_fails_after_the_attempts_and_leaves_the_note_and_no_temp() {
+    let dir = tempfile::tempdir().unwrap();
+    let target = dir.path().join("note.md");
+    std::fs::write(&target, "old").unwrap();
+    let _lock = hold_without_share_delete(&target);
+    let mut attempts = 0;
+    let mut before_commit = || {
+        attempts += 1;
+        Ok(())
+    };
+    let err = atomic_write_checked(&target, b"new", &[Duration::ZERO; 3], &mut before_commit)
+        .unwrap_err();
+    assert!(is_transient(&err.source), "{:?}", err.source);
+    assert_eq!(err.path, target);
+    assert_eq!(attempts, 4, "three retries and one last attempt");
+    assert_eq!(std::fs::read(&target).unwrap(), b"old");
+    assert_eq!(dir_entries(dir.path()), ["note.md"]);
 }
