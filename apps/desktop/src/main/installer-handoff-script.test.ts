@@ -32,8 +32,15 @@ describe('renderInstallerHandoffScript', () => {
     // cmd.exe reads the .cmd in the OEM code page; the app writes UTF-8 (C:\Users\Kağan).
     expect(script).toMatch(/^[\x20-\x7e\r\n]*$/)
     expect(script.split('\r\n').join('')).not.toContain('\n')
-    const { appExeName: _exe, nsisInstallerPath, ...paths } = plan
-    const values = [...Object.values(paths), nsisInstallerPath ?? '']
+    const values = [
+      plan.installDir,
+      plan.uninstallerPath,
+      plan.workDir,
+      plan.setupExePath,
+      plan.setupLogPath,
+      plan.handoffLogPath,
+      plan.nsisInstallerPath ?? ''
+    ]
 
     expect(values.filter((value) => value !== '' && script.includes(value))).toEqual([])
   })
