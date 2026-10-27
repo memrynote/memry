@@ -27,6 +27,8 @@ struct CaseSensitiveVolume {
     mount: Option<PathBuf>,
 }
 
+// Only the non-Windows tests build one: NTFS folds case.
+#[cfg_attr(windows, allow(dead_code))]
 impl CaseSensitiveVolume {
     fn new() -> (Self, PathBuf) {
         let dir = tempfile::tempdir().unwrap();
