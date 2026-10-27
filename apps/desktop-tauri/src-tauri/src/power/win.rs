@@ -22,7 +22,7 @@ use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumThreadWindows, GetClassNameW, MSG, MsgWaitForMultipleObjects,
     PBT_APMRESUMEAUTOMATIC, PBT_APMRESUMESUSPEND, PBT_APMSUSPEND, PM_REMOVE, PeekMessageW,
-    PostQuitMessage, QS_ALLINPUT, SendMessageW, TranslateMessage, WM_ENDSESSION, WM_POWERBROADCAST,
+    PostQuitMessage, QS_ALLINPUT, TranslateMessage, WM_ENDSESSION, WM_POWERBROADCAST,
     WM_QUERYENDSESSION, WM_QUIT,
 };
 use windows::core::{BOOL, w};
@@ -236,7 +236,7 @@ pub fn post_end_session(main: HWND, event_target: bool) -> bool {
     std::thread::spawn(move || {
         // SAFETY: the window belongs to this process and lives as long as it.
         unsafe {
-            SendMessageW(
+            windows::Win32::UI::WindowsAndMessaging::SendMessageW(
                 HWND(raw as *mut _),
                 WM_ENDSESSION,
                 Some(WPARAM(1)),
