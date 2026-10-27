@@ -9,8 +9,8 @@
 
 use crate::api::errors::StorageError;
 use crate::domain::note_files::{self, NoteFile, NoteFileStat};
-use crate::domain::owed_file_body;
 use crate::domain::notes::local_only::{self, LocalOnlyChange};
+use crate::domain::owed_file_body;
 use crate::storage::Db;
 
 pub struct NoteFiles {

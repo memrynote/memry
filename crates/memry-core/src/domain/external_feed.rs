@@ -28,17 +28,26 @@
 //! text is its first body. (Electron answered "false" there and let the next
 //! editor open seed it; with no editor in the picture the feed is the seed.)
 //!
-//! Large-file-class markdown (over 1 MB, or a run of 128 KB with no blank line)
-//! is never fed: no document can take it. The caller must not treat the file as
-//! read. The same holds for [`FeedOutcome::Refused`].
+//! [`seed_body_if_empty`] is the same step for a file whose note record already
+//! exists (adopted by folder path and title, or left by a crash between the
+//! record and its seed): it writes only into an empty body, so it can never
+//! replace a body the document already holds.
+//!
+//! A body that cannot ride as one update is never fed: either the markdown is
+//! large-file class (over 1 MB, or a run of 128 KB with no blank line), or the
+//! update it authors packs past the server's 5 MiB cap
+//! ([`crate::protocol::crdt_envelope::packed_len`], the measure the server
+//! applies; the raw markdown length is wrong both ways). The caller must not
+//! treat the file as read. The same holds for [`FeedOutcome::Refused`].
 
 use std::sync::{Arc, Mutex, PoisonError};
 
 use rusqlite::Connection;
 
-use crate::crdt::errors::CrdtError;
-use crate::crdt::registry::UpdateSink;
 use crate::crdt::epoch;
+use crate::crdt::errors::CrdtError;
+use crate::crdt::markdown_seed::body_is_empty;
+use crate::crdt::registry::UpdateSink;
 use crate::domain::body_write::append_in;
 use crate::domain::notes::ITEM_TYPE;
 use crate::domain::{owed_file_body, reads};
@@ -46,6 +55,8 @@ use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::ReplaceOutcome;
 use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_markdown_content};
 use crate::markdown::shared::writing_tools::WritingFrontmatter;
+use crate::protocol::account::MAX_UPDATE_BYTES;
+use crate::protocol::crdt_envelope;
 use crate::sync::body_debt;
 
 /// What a feed did. Anything but [`FeedOutcome::Fed`] left the document and the
@@ -57,8 +68,11 @@ pub enum FeedOutcome {
     /// The note's server body is not here yet. Nothing was written; the note now
     /// owes its file body.
     Owed,
-    /// Large-file-class markdown: no document takes it.
+    /// No update can carry this markdown: large-file class, or its update packs
+    /// past [`MAX_UPDATE_BYTES`].
     LargeFile,
+    /// Seed only: the document already holds a body, which was left alone.
+    BodyPresent,
     /// The markdown did not convert, or the document refused the replace.
     Refused,
     /// This vault holds no live note by that id.
@@ -76,12 +90,49 @@ pub struct FeedInput<'a> {
     pub writing: Option<WritingFrontmatter>,
 }
 
+/// Replaces the body of the note with the file's text.
 pub fn feed_external_edit(
     conn: &Connection,
     converter: &Converter,
     input: FeedInput<'_>,
     device_id: &str,
     now_ms: i64,
+) -> Result<FeedOutcome, CrdtError> {
+    author(conn, converter, input, device_id, now_ms, Write::Replace)
+}
+
+/// Gives a note with an empty body the file's text, and does nothing to one that
+/// has a body.
+pub fn seed_body_if_empty(
+    conn: &Connection,
+    converter: &Converter,
+    input: FeedInput<'_>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<FeedOutcome, CrdtError> {
+    author(
+        conn,
+        converter,
+        input,
+        device_id,
+        now_ms,
+        Write::SeedIfEmpty,
+    )
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Write {
+    Replace,
+    SeedIfEmpty,
+}
+
+fn author(
+    conn: &Connection,
+    converter: &Converter,
+    input: FeedInput<'_>,
+    device_id: &str,
+    now_ms: i64,
+    write: Write,
 ) -> Result<FeedOutcome, CrdtError> {
     let FeedInput {
         note_id,
@@ -117,6 +168,9 @@ pub fn feed_external_edit(
         })
     };
     let document = epoch::open_for_write(&tx, device_id, note_id, sink)?;
+    if write == Write::SeedIfEmpty && !body_is_empty(&document)? {
+        return Ok(FeedOutcome::BodyPresent);
+    }
     let outcome = converter.replace_body(
         &document,
         markdown,
@@ -134,6 +188,9 @@ pub fn feed_external_edit(
     }
 
     let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
+    if !updates.iter().all(|update| rides_as_one_update(update)) {
+        return Ok(FeedOutcome::LargeFile);
+    }
     for update in &updates {
         append_in(&tx, ITEM_TYPE, note_id, update, now_ms)?;
     }
@@ -142,8 +199,35 @@ pub fn feed_external_edit(
     Ok(FeedOutcome::Fed)
 }
 
+/// Whether the server takes this update as one: it caps the packed length
+/// (header, compressed frame, AEAD tag), not the markdown or the raw update.
+fn rides_as_one_update(update: &[u8]) -> bool {
+    crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
+}
+
 fn storage_failed(error: rusqlite::Error) -> CrdtError {
     CrdtError::from(crate::api::errors::StorageError::Failed {
         what: error.to_string(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_cap_is_on_the_packed_length_not_the_raw_one() {
+        // Repetitive: 6 MiB raw packs far below the cap. Incompressible: 5 MiB raw packs above it.
+        assert!(rides_as_one_update(&vec![b'a'; 6 * 1024 * 1024]));
+        let mut state = 0x2545_F491_4F6C_DD1Du64;
+        let noise: Vec<u8> = (0..MAX_UPDATE_BYTES)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                state.to_le_bytes()[0]
+            })
+            .collect();
+        assert!(!rides_as_one_update(&noise));
+    }
 }

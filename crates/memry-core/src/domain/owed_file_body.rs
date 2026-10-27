@@ -113,7 +113,11 @@ mod tests {
                 )
                 .map_err(failed)?;
             assert_eq!(first, "10");
-            assert_eq!(list(conn)?, ["a", "b"], "a note that does not live is not listed");
+            assert_eq!(
+                list(conn)?,
+                ["a", "b"],
+                "a note that does not live is not listed"
+            );
             assert!(owes(conn, "a")? && !owes(conn, "zzz")?);
             assert!(clear(conn, "a")? && !clear(conn, "a")?);
             assert_eq!(list(conn)?, ["b"]);

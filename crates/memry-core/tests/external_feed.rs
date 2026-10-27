@@ -80,6 +80,20 @@ impl Fixture {
             .expect("the feed itself does not fail")
     }
 
+    fn seed(&self, note_id: &str, markdown: &str) -> FeedOutcome {
+        self.feed
+            .seed_body_if_empty(
+                &self.converter,
+                FeedInput {
+                    note_id,
+                    markdown,
+                    note_path: Some("a.md"),
+                    writing: None,
+                },
+            )
+            .expect("the seed itself does not fail")
+    }
+
     fn count(&self, sql: &str, id: &str) -> i64 {
         self.vault
             .db_handle()
@@ -92,7 +106,10 @@ impl Fixture {
     }
 
     fn updates(&self, id: &str) -> i64 {
-        self.count("SELECT COUNT(*) FROM yjs_updates WHERE doc_id = ?1", id)
+        self.count(
+            "SELECT COUNT(*) FROM yjs_updates WHERE doc_id LIKE '%' || ?1",
+            id,
+        )
     }
 
     fn queued_updates(&self, id: &str) -> i64 {
@@ -165,7 +182,10 @@ fn an_outside_edit_replaces_the_body_and_queues_exactly_its_update() {
 
     assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
     let body = f.body(&id);
-    assert!(body.contains("second text") && !body.contains("first text"), "{body}");
+    assert!(
+        body.contains("second text") && !body.contains("first text"),
+        "{body}"
+    );
     assert_eq!(
         (f.updates(&id), f.queued_updates(&id)),
         (2, 2),
@@ -179,9 +199,16 @@ fn a_note_whose_server_body_has_not_arrived_owes_its_file_and_nothing_is_written
     let id = f.note();
     f.owe_body_pull(&id);
     assert_eq!(f.feed(&id, "an edit made outside"), FeedOutcome::Owed);
-    assert_eq!((f.updates(&id), f.queued_updates(&id)), (0, 0), "no second copy to push (#2536)");
+    assert_eq!(
+        (f.updates(&id), f.queued_updates(&id)),
+        (0, 0),
+        "no second copy to push (#2536)"
+    );
     assert!(f.owes_file_body(&id));
-    assert_eq!(f.vault.note_files().owed_file_bodies().unwrap(), [id.clone()]);
+    assert_eq!(
+        f.vault.note_files().owed_file_bodies().unwrap(),
+        vec![id.clone()]
+    );
 
     f.settle_body_pull(&id);
     assert_eq!(f.feed(&id, "an edit made outside"), FeedOutcome::Fed);
@@ -221,7 +248,12 @@ fn markdown_nested_past_the_stack_is_refused_without_a_write() {
         .spawn(move || {
             let nested = format!("{}deep", "> ".repeat(20_000));
             let outcome = f.feed(&id, &nested);
-            (outcome, f.updates(&id), f.queued_updates(&id), f.owes_file_body(&id))
+            (
+                outcome,
+                f.updates(&id),
+                f.queued_updates(&id),
+                f.owes_file_body(&id),
+            )
         })
         .expect("spawn")
         .join()
@@ -259,7 +291,10 @@ fn the_update_and_its_outbox_row_commit_together_or_not_at_all() {
     );
     assert!(result.is_err(), "{result:?}");
     assert_eq!(f.updates(&id), 0, "no update row without its outbox row");
-    assert!(f.owes_file_body(&id), "the marker is untouched by the failed feed");
+    assert!(
+        f.owes_file_body(&id),
+        "the marker is untouched by the failed feed"
+    );
 }
 
 #[test]
@@ -271,4 +306,43 @@ fn a_marker_goes_with_the_files_row_of_its_note() {
     assert!(f.owes_file_body(&id));
     f.vault.note_files().remove(&id).expect("remove");
     assert!(!f.owes_file_body(&id));
+}
+
+#[test]
+fn a_seed_fills_an_empty_body_and_never_replaces_one() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.seed(&id, "the file's text"), FeedOutcome::Fed);
+    assert!(f.body(&id).contains("the file's text"));
+    assert_eq!((f.updates(&id), f.queued_updates(&id)), (1, 1));
+
+    // A crash replay of the same adoption, or a file edited since: the body stays.
+    assert_eq!(f.seed(&id, "a different text"), FeedOutcome::BodyPresent);
+    let body = f.body(&id);
+    assert!(
+        body.contains("the file's text") && !body.contains("a different text"),
+        "{body}"
+    );
+    assert_eq!((f.updates(&id), f.queued_updates(&id)), (1, 1));
+}
+
+#[test]
+fn a_seed_of_an_owed_note_writes_nothing_and_owes_the_file() {
+    let f = fixture();
+    let id = f.note();
+    f.owe_body_pull(&id);
+    assert_eq!(f.seed(&id, "text"), FeedOutcome::Owed);
+    assert_eq!((f.updates(&id), f.queued_updates(&id)), (0, 0));
+    assert!(f.owes_file_body(&id));
+}
+
+#[test]
+fn a_seed_of_a_large_file_is_refused_like_a_feed() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(
+        f.seed(&id, &"word ".repeat(300_000)),
+        FeedOutcome::LargeFile
+    );
+    assert_eq!(f.updates(&id), 0);
 }
