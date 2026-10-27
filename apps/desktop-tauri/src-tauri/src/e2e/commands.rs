@@ -25,6 +25,10 @@ e2e_commands! {
     reveal => [e2e_revealed_paths],
     shell_integrations => [
         e2e_close_window,
+        e2e_fire_global_capture,
+        e2e_forget_spelled_word,
+        e2e_global_shortcut_state,
+        e2e_post_power_event,
         e2e_tray_probe,
         e2e_request_flush,
         e2e_trigger_shutdown_overrun

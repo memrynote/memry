@@ -51,6 +51,7 @@ use crate::sync::store;
 mod attachments;
 mod duplicate;
 pub(crate) mod link_rewrite;
+pub mod local_only;
 mod metadata;
 pub mod names;
 
@@ -238,12 +239,23 @@ pub(crate) fn edit(
         conn,
         &outbox::Change::upsert(item_type, item_id),
         now_ms,
-        |tx| {
-            let mut merged = stamp(tx, item_type, item_id, device_id, now_ms)?;
-            merged.extend(changes);
-            sync_items::apply_local_edit_in(tx, item_type, item_id, &merged, now_ms)
-        },
+        |tx| edit_in(tx, item_type, item_id, changes, device_id, now_ms),
     )
+}
+
+/// [`edit`] inside a transaction the caller holds, for a write that changes
+/// several rows together. The outbox row is the caller's too.
+pub(crate) fn edit_in(
+    tx: &Connection,
+    item_type: &str,
+    item_id: &str,
+    changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<String, StorageError> {
+    let mut merged = stamp(tx, item_type, item_id, device_id, now_ms)?;
+    merged.extend(changes);
+    sync_items::apply_local_edit_in(tx, item_type, item_id, &merged, now_ms)
 }
 
 /// Writes a row that does not exist yet: the create half of §13.2 rule 3.

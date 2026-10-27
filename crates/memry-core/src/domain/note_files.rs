@@ -310,7 +310,10 @@ pub fn list_paths(conn: &Connection) -> Result<Vec<(String, String)>, StorageErr
         .map_err(failed)
 }
 
-pub fn set_local_only(
+/// Writes the flag and nothing else. [`crate::domain::notes::local_only::set`]
+/// is the one caller: the flag changes what is queued, and that is settled
+/// there in the same transaction.
+pub(crate) fn set_local_only(
     conn: &Connection,
     note_id: &str,
     local_only: bool,
@@ -325,6 +328,25 @@ pub fn set_local_only(
         return Err(not_found(note_id));
     }
     Ok(())
+}
+
+/// Whether the note is local-only: its changes and its body never leave this
+/// device. A note with no `note_files` row (every note on a shell that keeps no
+/// files, iOS among them) is not.
+///
+/// One primary-key probe. [`crate::sync::outbox::enqueue`] asks it for every
+/// note change, and so does a push gate ([`crate::crdt::SnapshotGate`]) built
+/// for a note.
+pub fn is_local_only(conn: &Connection, note_id: &str) -> Result<bool, StorageError> {
+    let flag: Option<i64> = conn
+        .query_row(
+            "SELECT local_only FROM note_files WHERE note_id = ?1",
+            params![note_id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(failed)?;
+    Ok(flag.is_some_and(|flag| flag != 0))
 }
 
 pub fn local_only_count(conn: &Connection) -> Result<i64, StorageError> {

@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -62,6 +62,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
         "meta",
         "note_bodies",
         "note_body_tags",
+        "note_positions",
         "outbox",
         "sync_cursors",
         "sync_items",
@@ -163,7 +164,7 @@ fn an_older_database_steps_forward_without_losing_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
 
     let (count, payload): (i64, String) = db
         .call_blocking(|conn| {
@@ -263,7 +264,7 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
 
     let (device, indexes): (String, i64) = db
         .call_blocking(|conn| {
@@ -323,7 +324,7 @@ fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
 
     let (device, rows): (String, i64) = db
         .call_blocking(|conn| {
@@ -409,7 +410,7 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 15);
+    assert_eq!(version, 16);
 
     let (kept, files): (i64, i64) = db
         .call_blocking(|conn| {
@@ -426,4 +427,51 @@ fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
         })
         .expect("read back");
     assert_eq!((kept, files), (1, 0));
+}
+
+#[test]
+fn note_positions_applies_to_a_version_15_database_and_keeps_its_rows() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..15]))
+        .expect("a database as the last shipped build left it");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO note_files (note_id, path, indexed_at) VALUES ('n1', 'a.md', 1)",
+            [],
+        )
+        .map_err(|err| StorageError::Failed {
+            what: err.to_string(),
+        })
+    })
+    .expect("a row to keep");
+    assert!(!table_names(&db).iter().any(|n| n == "note_positions"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+    assert_eq!(version, 16);
+    // The crash window of §A.0: the migration is a no-op the second time.
+    db.call_blocking(|conn| {
+        conn.execute_batch(DATA_MIGRATIONS[15].sql)
+            .map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+    })
+    .expect("idempotent");
+
+    let (kept, positions): (i64, i64) = db
+        .call_blocking(|conn| {
+            let read = |sql: &str| {
+                conn.query_row(sql, [], |row| row.get::<_, i64>(0))
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })
+            };
+            Ok((
+                read("SELECT COUNT(*) FROM note_files")?,
+                read("SELECT COUNT(*) FROM note_positions")?,
+            ))
+        })
+        .expect("read back");
+    assert_eq!((kept, positions), (1, 0));
 }

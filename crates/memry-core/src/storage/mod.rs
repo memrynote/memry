@@ -119,34 +119,27 @@ pub fn open_index(path: &Path) -> Result<OpenedIndex, StorageError> {
 
 #[cfg(test)]
 pub(crate) mod test_support {
-    use std::path::{Path, PathBuf};
-    use std::sync::atomic::{AtomicU64, Ordering};
+    use std::path::Path;
 
-    static COUNTER: AtomicU64 = AtomicU64::new(0);
-
-    /// A scratch directory removed when it goes out of scope.
-    pub(crate) struct TempDir {
-        path: PathBuf,
-    }
+    /// A unique scratch directory, removed when it goes out of scope.
+    pub(crate) struct TempDir(tempfile::TempDir);
 
     impl TempDir {
         pub(crate) fn path(&self) -> &Path {
-            &self.path
+            self.0.path()
         }
     }
 
-    impl Drop for TempDir {
-        fn drop(&mut self) {
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
-
+    /// `tempfile` names the directory: a name built from `std::process::id()` collides
+    /// across test binaries on Windows, which recycles process ids, and a database left
+    /// by the earlier run leaks in.
     pub(crate) fn temp_dir(label: &str) -> TempDir {
-        let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path =
-            std::env::temp_dir().join(format!("memry-{label}-{}-{unique}", std::process::id()));
-        std::fs::create_dir_all(&path).expect("create the scratch directory");
-        TempDir { path }
+        TempDir(
+            tempfile::Builder::new()
+                .prefix(&format!("memry-{label}-"))
+                .tempdir()
+                .expect("create the scratch directory"),
+        )
     }
 }
 

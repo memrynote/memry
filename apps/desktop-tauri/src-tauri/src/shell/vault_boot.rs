@@ -225,6 +225,12 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                     if let Err(error) = crate::tray::apply_from_settings(&app) {
                         tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
                     }
+                    // After the tray: registering a shortcut and the login item are slower, and
+                    // the tray must follow the vault as soon as the status changes.
+                    crate::shortcuts::apply_from_settings(&app);
+                    if is_open {
+                        crate::autostart::on_vault_opened(&app);
+                    }
                 }
                 SessionEvent::Error { message } => broadcast(&app, VaultErrorEvent { message }),
                 SessionEvent::IndexRecovered { reason } => broadcast(
