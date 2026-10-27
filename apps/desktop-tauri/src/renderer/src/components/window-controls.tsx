@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { runCommand } from '@/commands'
 import { ChevronLeft, ChevronRight, Search } from '@/lib/icons'
+import { CaptionButtons } from '@/components/caption-buttons'
 import { TrafficLights } from '@/components/traffic-lights'
 import { TabIcon } from '@/components/tabs/tab-icon'
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar'
@@ -86,6 +87,7 @@ export function WindowControls({ className }: WindowControlsProps): React.JSX.El
         className={cn('fixed top-0 end-0 drag-region h-9 bg-sidebar-rail', className)}
         style={{ width: 'var(--caption-reserve-end)' }}
       />
+      <CaptionButtons />
       <div
         className={cn(
           'fixed drag-region flex items-center gap-2 shrink-0 h-9 ps-1 pe-2',

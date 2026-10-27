@@ -2,11 +2,16 @@
 //! window-event dispatcher, first-paint reveal and zoom.
 
 pub mod bounds_store;
+pub mod chrome;
 pub mod close;
 pub mod events;
 pub mod main_window;
+pub mod nav_input;
 pub mod registry;
 pub mod reveal;
+pub mod scripts;
+#[cfg(windows)]
+pub mod win32_caption;
 pub mod zoom;
 
 pub use main_window::create_main;

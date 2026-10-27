@@ -3530,6 +3530,8 @@ name = "memry-tauri"
 version = "0.0.0"
 dependencies = [
  "arboard",
+ "arc-swap",
+ "block2",
  "crash-handler",
  "memry-desktop",
  "minidumper",
