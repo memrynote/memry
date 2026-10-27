@@ -44,12 +44,17 @@ fn act(app: &AppHandle<Wry>, url: &Url, decision: Navigation) {
 
 /// The loopback origin once the server listens; the guard is built after startup's `Protocols`
 /// stage, so it is set by then. A window built earlier simply has no embed page to allow.
-fn decide_for(app: &AppHandle<Wry>, origins: &[String], url: &Url) -> Navigation {
+fn decide_for(
+    app: &AppHandle<Wry>,
+    origins: &[String],
+    url: &Url,
+    sees_subframes: bool,
+) -> Navigation {
     let loopback_origin = loopback::origin(app);
     let guard = Guard {
         app_origins: origins,
         loopback_origin: loopback_origin.as_deref(),
-        sees_subframes: !cfg!(windows),
+        sees_subframes,
     };
     decide(url.as_str(), None, &guard)
 }
@@ -58,7 +63,8 @@ fn decide_for(app: &AppHandle<Wry>, origins: &[String], url: &Url) -> Navigation
 pub fn on_navigation(app: AppHandle<Wry>) -> impl Fn(&Url) -> bool + Send + 'static {
     let origins = app_origins(&app);
     move |url| {
-        let decision = decide_for(&app, &origins, url);
+        // The engine reports subframes too (macOS, Linux), so this may be a frame's own load.
+        let decision = decide_for(&app, &origins, url, !cfg!(windows));
         act(&app, url, decision);
         decision == Navigation::Allow
     }
@@ -70,7 +76,8 @@ pub fn on_new_window(
 ) -> impl Fn(Url, NewWindowFeatures) -> NewWindowResponse<Wry> + Send + 'static {
     let origins = app_origins(&app);
     move |url, _features| {
-        let decision = decide_for(&app, &origins, &url);
+        // A new window is never a subframe's navigation: a link the user opened goes to the OS.
+        let decision = decide_for(&app, &origins, &url, false);
         act(&app, &url, decision);
         NewWindowResponse::Deny
     }

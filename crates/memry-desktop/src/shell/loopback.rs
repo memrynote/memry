@@ -166,6 +166,8 @@ async fn media(state: &Shared, url: String, asked: Asked) -> Response<HttpBody> 
             range: asked.range.as_deref(),
             origin: asked.origin.as_deref(),
             fetch_dest: asked.fetch_dest.as_deref(),
+            // The loopback route is gated by its own URL token.
+            required_token: None,
         };
         let mut served = serve_file(&url, &request, &roots, windows, Caps::UNBOUNDED);
         // Position the file here, off the async threads, so the stream only reads.

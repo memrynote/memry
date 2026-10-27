@@ -802,7 +802,7 @@ describe('file block URLs the engine can load', () => {
       .container
   }
 
-  it('streams audio and video from the loopback server and loads a PDF from the scheme host', () => {
+  it('streams audio, video and PDF from the loopback server, which has no response cap', () => {
     root.setAttribute('data-platform', 'win32')
     window.__MEMRY_SHELL__ = {
       maximizable: true,
@@ -818,6 +818,14 @@ describe('file block URLs the engine can load', () => {
     expect(clip.querySelector('video')?.getAttribute('src')).toMatch(loopback)
     expect(clip.querySelector('video source')?.getAttribute('src')).toMatch(loopback)
 
+    // pdf.js asks for a PDF whole before any range, and the scheme answers a file over its
+    // response cap 413, so a large PDF would never open from it.
+    show('manual.pdf', 'application/pdf')
+    expect(screen.getAllByTestId('pdf-document')[0].getAttribute('data-file')).toMatch(loopback)
+  })
+
+  it('falls back to the scheme host for a PDF while no loopback server is known', () => {
+    root.setAttribute('data-platform', 'win32')
     show('manual.pdf', 'application/pdf')
     expect(screen.getAllByTestId('pdf-document')[0]).toHaveAttribute(
       'data-file',

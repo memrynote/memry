@@ -72,7 +72,7 @@ import {
 // oxlint-disable-next-line import/default -- Vite's `?url` suffix default-exports the asset URL; the linter cannot resolve the query import
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import { useT } from '@memry/i18n/renderer'
-import { toWebviewUrl } from '@/lib/memry-file-url'
+import { toMediaUrl } from '@/lib/memry-file-url'
 pdfjs.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 // ============================================================================
@@ -732,7 +732,9 @@ export function PdfViewer({ src, className, title, chips, actions }: PdfViewerPr
       {/* Main content - one Document shared by the rail and the page view, so
           the file is loaded into a single pdf.js document proxy */}
       <Document
-        file={toWebviewUrl(src)}
+        // The loopback server streams and answers ranges, so a PDF over the scheme's response cap
+        // loads too (pdf.js asks for the whole file first).
+        file={toMediaUrl(src)}
         onLoadSuccess={handleLoadSuccess}
         onLoadError={handleLoadError}
         loading={PDF_LOADING}

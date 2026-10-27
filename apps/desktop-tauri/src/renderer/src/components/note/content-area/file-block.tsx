@@ -28,7 +28,7 @@ import {
   RightToLeftBlockQuote
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
-import { toMediaUrl, toWebviewUrl } from '@/lib/memry-file-url'
+import { toMediaUrl } from '@/lib/memry-file-url'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
@@ -419,7 +419,9 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
         >
           <div className="bg-white dark:bg-zinc-900">
             <Document
-              file={toWebviewUrl(url)}
+              // Streamed by the loopback server: the scheme caps a whole-file answer, and pdf.js
+              // asks for the whole file first.
+              file={toMediaUrl(url)}
               onLoadSuccess={handleLoadSuccess}
               onLoadError={handleLoadError}
               loading={PDF_LOADING_INDICATOR}

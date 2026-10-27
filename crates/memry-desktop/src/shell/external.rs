@@ -20,8 +20,37 @@ pub fn is_allowed_external_url(raw: &str) -> bool {
 /// File types the OS runs when it "opens" them. A note's link or `shell_open_path` must never
 /// start a program, so these are refused (revealing one in the file manager is fine).
 const EXECUTABLE_EXTENSIONS: &[&str] = &[
-    "app", "bat", "cmd", "com", "command", "exe", "jar", "js", "lnk", "msi", "ps1", "scr", "sh",
+    "app",
+    "appimage",
+    "appref-ms",
+    "bat",
+    "cmd",
+    "com",
+    "command",
+    "cpl",
+    "desktop",
+    "exe",
+    "hta",
+    "jar",
+    "js",
+    "jse",
+    "lnk",
+    "msc",
+    "msi",
+    "pif",
+    "ps1",
+    "reg",
+    "run",
+    "scr",
+    "sh",
+    "terminal",
+    "url",
+    "vbe",
     "vbs",
+    "workflow",
+    "ws",
+    "wsf",
+    "wsh",
 ];
 
 /// Whether opening `path` would run a program: an executable extension (Windows ignores trailing
@@ -100,6 +129,23 @@ mod tests {
             "/v/Tool.app/Contents/MacOS/tool",
             "C:\\v\\a.exe.",
             "C:\\v\\a.exe ",
+            // Types a double click runs or installs, on each OS.
+            "C:\\v\\a.hta",
+            "C:\\v\\Link.URL",
+            "C:\\v\\a.pif",
+            "C:\\v\\a.cpl",
+            "C:\\v\\a.msc",
+            "C:\\v\\a.reg",
+            "C:\\v\\a.wsf",
+            "C:\\v\\a.jse",
+            "C:\\v\\a.vbe",
+            "C:\\v\\a.wsh",
+            "C:\\v\\a.appref-ms",
+            "/v/a.terminal",
+            "/v/Flow.workflow",
+            "/v/a.desktop",
+            "/v/Tool.AppImage",
+            "/v/installer.run",
         ] {
             assert!(is_executable_path(path), "{path}");
         }

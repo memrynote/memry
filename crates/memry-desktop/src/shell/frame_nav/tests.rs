@@ -137,7 +137,20 @@ fn an_embed_the_loopback_page_and_its_player_load_in_a_frame_without_leaving_the
         "memry-html://local/Users/kaan/vault/attachments/n/a.html",
         "https://memry-html.localhost/local/v/attachments/n/a.html",
         "http://127.0.0.1:41234/e/token/youtube/dQw4w9WgXcQ",
+    ] {
+        assert_eq!(go_in_any_frame(url), Navigation::Allow, "{url}");
+    }
+}
+
+/// An HTML attachment's `<iframe src="https://...">` or `meta refresh`, and the YouTube player
+/// the loopback page nests, are frames' own loads. Sending them to the OS browser would open it
+/// with no click, on a loop.
+#[test]
+fn a_frame_engine_lets_a_frame_load_a_web_page_instead_of_opening_the_browser() {
+    for url in [
         "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0",
+        "https://example.com/",
+        "http://example.com/a?b=c",
     ] {
         assert_eq!(go_in_any_frame(url), Navigation::Allow, "{url}");
     }
@@ -150,16 +163,15 @@ fn a_frame_engine_still_refuses_what_no_frame_of_the_app_loads() {
         "http://127.0.0.1:9/e/token/youtube/x",
         "http://127.0.0.1:41234/m/token/abc",
         "http://127.0.0.1:41234/",
-        "https://www.youtube-nocookie.com.evil.example/embed/x",
-        "http://www.youtube-nocookie.com/embed/x",
+        "http://localhost:5173/",
         "javascript:alert(1)",
         "data:text/html,<script>1</script>",
     ] {
         assert_ne!(go_in_any_frame(url), Navigation::Allow, "{url}");
     }
-    // A link to a web page still goes to the OS, and a file to its application.
+    // A file still goes to its application, a mail link to the mail client.
     assert_eq!(
-        go_in_any_frame("https://example.com/a"),
+        go_in_any_frame("mailto:hi@memrynote.com"),
         Navigation::OpenExternal
     );
     assert_eq!(

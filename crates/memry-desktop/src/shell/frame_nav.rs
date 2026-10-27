@@ -8,10 +8,14 @@
 //! WebView2 reports top-level navigations only. WKWebView and WebKitGTK report every frame's and
 //! wry passes the URL alone (`wkwebview/navigation.rs`, `webkitgtk/mod.rs`), so the guard cannot
 //! tell a subframe from the main frame there. [`Guard::sees_subframes`] says which engine this
-//! is; on those engines the targets the app's own frames load (a `memry-html` embed, the
-//! loopback YouTube page and the player it nests) are allowed instead of denied or sent to the OS
-//! browser. The CSP `frame-src` still bounds what a frame may load, and no embed is allowed to
-//! navigate the top frame (`sandbox` has no `allow-top-navigation`).
+//! is; on those engines the targets a frame loads on its own (a `memry-html` embed, the loopback
+//! YouTube page, and any web page a note's embed nests: a YouTube player, an `<iframe>` or a
+//! `meta refresh` of an HTML attachment) are allowed instead of denied or sent to the OS browser,
+//! which would open the user's browser with no click. The CSP `frame-src` still bounds what a
+//! frame may load, and no embed is allowed to navigate the top frame (`sandbox` has no
+//! `allow-top-navigation`). What this lets through in the main frame is a link the page itself
+//! did not intercept: the renderer routes every clicked web link to `shell_open_external`
+//! (`use-external-link-guard.ts`), and `on_new_window` always decides as the top level.
 
 use url::{Host, Url};
 
@@ -71,22 +75,15 @@ pub struct Guard<'a> {
     pub sees_subframes: bool,
 }
 
-/// The page of the YouTube player the loopback embed page nests.
-const YOUTUBE_PLAYER_PREFIX: &str = "https://www.youtube-nocookie.com/embed/";
-
 /// Whether `target` is a page one of the app's own frames loads, on an engine that cannot say which
-/// frame asked: a `memry-html` embed, the loopback embed page `/e/...`, and the player it nests.
+/// frame asked: a `memry-html` embed and the loopback embed page `/e/...`.
 fn is_own_frame_target(target: &Url, guard: &Guard<'_>) -> bool {
     if is_scheme_url(target, LocalScheme::Html) {
         return true;
     }
-    if guard
+    guard
         .loopback_origin
         .is_some_and(|origin| origin_of(target) == origin && target.path().starts_with("/e/"))
-    {
-        return true;
-    }
-    target.scheme() == "https" && target.as_str().starts_with(YOUTUBE_PLAYER_PREFIX)
 }
 
 /// `current` is the page the window shows now, if known.
@@ -120,6 +117,9 @@ pub fn decide(raw: &str, current: Option<&str>, guard: &Guard<'_>) -> Navigation
     match target.scheme() {
         // Never hand a loopback URL to the OS browser.
         "http" | "https" if is_loopback(&target) => Navigation::Deny,
+        // A frame loading a web page (see the module docs). The main frame never gets here by a
+        // click: the renderer intercepts those.
+        "http" | "https" if guard.sees_subframes => Navigation::Allow,
         "http" | "https" | "mailto" if is_allowed_external_url(raw) => Navigation::OpenExternal,
         // javascript:, data:, blob:, about:, file:, memry: (an OS deep link) and the rest.
         _ => Navigation::Deny,

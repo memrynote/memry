@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { toMediaUrl, toMemryFileUrl, toWebviewUrl, toYoutubeEmbedUrl } from './memry-file-url'
+import {
+  toCanonicalUrl,
+  toMediaUrl,
+  toMemryFileUrl,
+  toWebviewUrl,
+  toYoutubeEmbedUrl
+} from './memry-file-url'
 
 // Mirrors the main-process protocol handler (src/main/index.ts): it parses the
 // URL, decodes the pathname, and strips the leading slash for Windows drives.
@@ -80,6 +86,29 @@ describe('toWebviewUrl', () => {
     )
   })
 
+  it('adds the launch token to a Windows memry-file URL only, and only once the shell published it', () => {
+    const canonical = 'memry-file://local/C:/v/a.png'
+    expect(toWebviewUrl(canonical, 'win32')).toBe('https://memry-file.localhost/local/C:/v/a.png')
+    window.__MEMRY_SHELL__ = {
+      maximizable: true,
+      loopbackOrigin: 'http://127.0.0.1:4000',
+      loopbackToken: 'ab12'
+    }
+    try {
+      expect(toWebviewUrl(canonical, 'win32')).toBe(
+        'https://memry-file.localhost/local/C:/v/a.png?t=ab12'
+      )
+      // An embed is served without it: it needs no token and must not learn one.
+      expect(toWebviewUrl('memry-html://local/C:/v/attachments/n/a.html', 'win32')).toBe(
+        'https://memry-html.localhost/local/C:/v/attachments/n/a.html'
+      )
+      expect(toWebviewUrl(canonical, 'darwin')).toBe(canonical)
+      expect(toCanonicalUrl(toWebviewUrl(canonical, 'win32'))).toBe(canonical)
+    } finally {
+      delete window.__MEMRY_SHELL__
+    }
+  })
+
   it('leaves other URLs alone on every platform', () => {
     for (const url of ['https://example.com/a.png', 'data:image/png;base64,AAAA', 'a/b.png', '']) {
       expect(toWebviewUrl(url, 'win32')).toBe(url)
@@ -93,6 +122,26 @@ describe('toWebviewUrl', () => {
     expect(decodeURIComponent(webview.pathname.replace(/^\/local\//, ''))).toBe(
       'C:/Users/Leib.000/my file.pdf'
     )
+  })
+})
+
+describe('toCanonicalUrl', () => {
+  it('undoes toWebviewUrl, and leaves any other URL alone', () => {
+    for (const canonical of [
+      'memry-file://local/C:/v/a%20b.png',
+      'memry-html://local/C:/v/attachments/n/a.html',
+      'memry-file://local'
+    ]) {
+      expect(toCanonicalUrl(toWebviewUrl(canonical, 'win32'))).toBe(canonical)
+    }
+    for (const other of [
+      'memry-file://local/v/a.png',
+      'https://example.com/local/a',
+      'https://memry-file.localhost.evil.example/local/a',
+      'data:image/png;base64,AAAA'
+    ]) {
+      expect(toCanonicalUrl(other)).toBe(other)
+    }
   })
 })
 

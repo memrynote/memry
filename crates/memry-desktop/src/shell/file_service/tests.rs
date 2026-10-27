@@ -298,6 +298,7 @@ fn only_an_app_origin_may_read_a_file() {
                 range: None,
                 origin,
                 fetch_dest: dest,
+                ..FileRequest::default()
             },
             &fx.roots(),
             WINDOWS,
@@ -508,6 +509,8 @@ fn a_read_that_fails_answers_404_without_the_planned_length_or_range() {
         headers: vec![
             ("Content-Length", "10".to_owned()),
             ("Content-Range", "bytes 0-9/100".to_owned()),
+            ("Access-Control-Allow-Origin", APP.to_owned()),
+            ("Vary", "Origin".to_owned()),
         ],
         body: Body::File {
             file: dir,
@@ -518,7 +521,47 @@ fn a_read_that_fails_answers_404_without_the_planned_length_or_range() {
     };
     let settled = planned.settle();
     assert_eq!(settled.status, 404);
-    assert!(settled.headers.is_empty());
+    // The app's `fetch` still reads this 404: without the CORS header it would be a network error.
+    let names: Vec<&str> = settled.headers.iter().map(|(name, _)| *name).collect();
+    assert_eq!(names, ["Access-Control-Allow-Origin", "Vary"]);
     assert!(settled.bytes.is_empty());
     assert!(settled.failure.is_some());
+}
+
+/// WebView2 shows the handler neither `Origin` nor `Sec-Fetch-Dest`, so a sandboxed embed's
+/// `<script src>` or `<img>` looks like the app's own load. Only the app page knows the token.
+#[test]
+fn a_request_without_the_launch_token_is_refused_where_the_engine_names_no_requester() {
+    let fx = fixture();
+    let file = fx.vault.join("attachments/n1/abc123-leak.js");
+    fs::write(&file, b"var leaked = 1").unwrap();
+    let url = Fixture::url(&file);
+    let launch = "s3cret";
+    let ask = |url: &str| {
+        serve_file(
+            url,
+            &FileRequest {
+                required_token: Some(launch),
+                ..FileRequest::default()
+            },
+            &fx.roots(),
+            WINDOWS,
+            Caps::UNBOUNDED,
+        )
+    };
+    for wrong in [
+        url.clone(),
+        format!("{url}?t="),
+        format!("{url}?t=s3cre"),
+        format!("{url}?t=s3cretx"),
+        format!("{url}?token=s3cret"),
+        format!("{url}#t=s3cret"),
+    ] {
+        let refused = ask(&wrong);
+        assert_eq!(refused.status, 403, "{wrong}");
+        assert!(header(&refused, "Access-Control-Allow-Origin").is_none());
+    }
+    let allowed = ask(&format!("{url}?a=1&t=s3cret"));
+    assert_eq!(allowed.status, 200);
+    assert_eq!(bytes_of(allowed), b"var leaked = 1");
 }

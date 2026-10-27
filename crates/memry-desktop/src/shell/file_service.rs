@@ -12,6 +12,7 @@ use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 
 use base64::Engine;
+use url::Url;
 
 use super::file_open::{OpenError, open_under_root};
 use super::file_serve::{
@@ -49,6 +50,11 @@ pub struct FileRequest<'a> {
     pub origin: Option<&'a str>,
     /// The `Sec-Fetch-Dest` header, where the engine sends one.
     pub fetch_dest: Option<&'a str>,
+    /// The launch token the URL's `t` query parameter must carry, when the engine gives the
+    /// handler no `Origin` and no `Sec-Fetch-Dest` to tell the app's own loads from a sandboxed
+    /// embed's (WebView2). Only the app's page holds it (the init script of the top frame), so a
+    /// `<script src>`, `<link>` or `<img>` an embed points at a vault file is answered 403.
+    pub required_token: Option<&'a str>,
 }
 
 /// How much one response may hold. A custom scheme answers with bytes in memory, so it caps a
@@ -66,6 +72,14 @@ impl Caps {
         range_chunk: u64::MAX,
         whole_file: u64::MAX,
     };
+}
+
+/// Whether `url` carries `expected` in its `t` query parameter.
+fn carries_token(url: &str, expected: &str) -> bool {
+    Url::parse(url).is_ok_and(|url| {
+        url.query_pairs()
+            .any(|(name, value)| name == "t" && value == expected)
+    })
 }
 
 /// Loads that run or render a file instead of reading it as data. The embed's `<script src>` and
@@ -121,8 +135,10 @@ pub struct Settled {
 }
 
 impl Served {
-    /// Reads the body. A read that fails is a 404 with no headers and an error code (never a
-    /// path): the planned `Content-Length` and `Content-Range` described bytes that never came.
+    /// Reads the body. A read that fails is a 404 with an error code (never a path) and only the
+    /// CORS headers: the planned `Content-Length` and `Content-Range` described bytes that never
+    /// came, and without `Access-Control-Allow-Origin` the app's `fetch` would see a network error
+    /// instead of the 404.
     pub fn settle(self) -> Settled {
         let Self {
             status,
@@ -142,7 +158,12 @@ impl Served {
                 Err(error) => {
                     return Settled {
                         status: 404,
-                        headers: Vec::new(),
+                        headers: headers
+                            .into_iter()
+                            .filter(|(name, _)| {
+                                matches!(*name, "Access-Control-Allow-Origin" | "Vary")
+                            })
+                            .collect(),
                         bytes: Vec::new(),
                         failure: Some(format!("{:?}", error.kind())),
                     };
@@ -265,6 +286,12 @@ pub fn serve_file(
     windows: bool,
     caps: Caps,
 ) -> Served {
+    if request
+        .required_token
+        .is_some_and(|expected| !carries_token(url, expected))
+    {
+        return Served::status(403);
+    }
     if request.fetch_dest.is_some_and(|dest| {
         BLOCKED_FETCH_DESTS
             .iter()

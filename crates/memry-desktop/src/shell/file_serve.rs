@@ -21,7 +21,9 @@ const MAX_RANGE_HEADER_LEN: usize = 256;
 /// `https://memry-file.localhost` on Windows. What keeps the embed from reading a file there is
 /// the file server: it answers a request whose `Origin` is not the app's (`null` from a sandbox
 /// included) with 403 and no CORS header, and refuses script, style and frame loads by
-/// `Sec-Fetch-Dest`. No `http:`, so the loopback server and other local services stay out of
+/// `Sec-Fetch-Dest`. WebView2 sends the handler neither header, so there a request must carry the
+/// launch token the app's page puts in its URLs (`FileRequest::required_token`); an embed has
+/// none. No `http:`, so the loopback server and other local services stay out of
 /// reach; no `memry-file:` and no `memry-html:`.
 pub const HTML_EMBED_CSP: &str = "sandbox allow-scripts allow-forms allow-popups; \
 default-src https: data: blob: 'unsafe-inline' 'unsafe-eval'; \

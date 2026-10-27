@@ -18,6 +18,7 @@ use memry_desktop::telemetry::main_warning::Level;
 use tauri::http::{Method, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager, Wry};
 
+use crate::shell::loopback;
 use crate::shell::navigation_guard::{app_origins, page_origin};
 use crate::shell::services::telemetry;
 
@@ -63,10 +64,18 @@ pub fn register(builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
 
 fn answer_file(app: &AppHandle<Wry>, request: &Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {
     let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok());
+    // WebView2 names neither the requesting frame nor `Sec-Fetch-Dest`, so there the URL itself
+    // proves the app's page asked: it carries the launch token (`toWebviewUrl`), which an embed
+    // has no way to read.
+    let token = WINDOWS
+        .then(|| loopback::address(app))
+        .flatten()
+        .map(|(_, token)| token);
     let asked = FileRequest {
         range: header("range"),
         origin: header("origin"),
         fetch_dest: header("sec-fetch-dest"),
+        required_token: token.as_deref(),
     };
     let caps = Caps {
         range_chunk: MAX_RANGE_BYTES,

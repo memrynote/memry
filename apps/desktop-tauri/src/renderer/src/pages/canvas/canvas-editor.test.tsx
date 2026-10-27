@@ -1457,3 +1457,71 @@ describe('CanvasEditor Excalidraw prop identity', () => {
     expect(mocks.excalidrawProps.onChange).toBe(first.onChange)
   })
 })
+
+describe('CanvasEditor image URLs on Windows', () => {
+  const CANONICAL = 'memry-file://local/C:/v/attachments/c1/pic.png'
+  const WEBVIEW = 'https://memry-file.localhost/local/C:/v/attachments/c1/pic.png'
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    mocks.update.mockReset().mockResolvedValue({ id: 'c1' })
+    mocks.serializeAsJSON.mockClear()
+    mocks.api.elements = []
+    mocks.api.isLoading = true
+    mocks.onChange = null
+    mocks.liveOpened.mockReset().mockResolvedValue({ ok: true })
+    mocks.liveClosed.mockReset().mockResolvedValue({ ok: true })
+    installWindowApi()
+    document.documentElement.setAttribute('data-platform', 'win32')
+  })
+
+  afterEach(() => {
+    document.documentElement.removeAttribute('data-platform')
+    vi.useRealTimers()
+  })
+
+  it('loads a stored canonical image URL in the form WebView2 can load', () => {
+    const stored = JSON.stringify({
+      elements: [{ id: 'img-1', type: 'image' }],
+      files: { f1: { id: 'f1', mimeType: 'image/png', dataURL: CANONICAL } }
+    })
+    render(<CanvasEditor canvasId="c1" initialScene={stored} />)
+
+    const initialData = (mocks.excalidrawProps.initialData as () => { files: unknown })()
+    expect(initialData.files).toEqual({
+      f1: { id: 'f1', mimeType: 'image/png', dataURL: WEBVIEW }
+    })
+  })
+
+  it('saves the canonical form, so the https form never reaches the vault or sync', async () => {
+    const stored = JSON.stringify({
+      elements: [{ id: 'img-1', type: 'image' }],
+      files: { f1: { id: 'f1', mimeType: 'image/png', dataURL: CANONICAL } }
+    })
+    mocks.serializeAsJSON.mockImplementation((elements: unknown[]) =>
+      JSON.stringify(
+        { elements, files: { f1: { id: 'f1', mimeType: 'image/png', dataURL: WEBVIEW } } },
+        null,
+        2
+      )
+    )
+    render(<CanvasEditor canvasId="c1" initialScene={stored} />)
+    mocks.api.elements = [
+      { id: 'img-1', type: 'image' },
+      { id: 'stroke-2', type: 'freedraw' }
+    ]
+    mocks.api.isLoading = false
+    act(() => mocks.onChange?.())
+    await act(async () => {
+      await vi.runAllTimersAsync()
+    })
+
+    expect(mocks.update).toHaveBeenCalledTimes(1)
+    const saved = (mocks.update.mock.calls[0][0] as { scene: string }).scene
+    expect(saved).not.toContain('.localhost')
+    expect(JSON.parse(saved).files.f1.dataURL).toBe(CANONICAL)
+    mocks.serializeAsJSON.mockImplementation((elements: unknown[]) =>
+      JSON.stringify({ elements }, null, 2)
+    )
+  })
+})

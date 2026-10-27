@@ -3,8 +3,8 @@
 //!
 //! - Windows: `ICoreWebView2::add_PermissionRequested`. Every request is answered, allow or
 //!   deny, so none reaches WebView2's own prompt.
-//! - Linux: WebKitGTK's `permission-request`. Audio-only user media and notifications for a
-//!   trusted origin are allowed; everything else is denied.
+//! - Linux: WebKitGTK's `permission-request`. Audio-only user media for a trusted origin is
+//!   allowed; notifications and everything else are denied (see `linux_impl`).
 //! - macOS: wry hands the handler the kind of permission only, so the camera is denied for every
 //!   frame and the microphone keeps WKWebView's own prompt (the app's Info.plist names it).
 //!
@@ -167,7 +167,14 @@ mod linux_impl {
                         } else {
                             Permission::Other
                         };
-                    if allowed(permission, origin.as_deref(), dev_origin.as_deref()) {
+                    // The request names no frame, so `origin` is the top page whichever frame asked,
+                    // and no `Permissions-Policy` feature gates notifications: an embed's request
+                    // would be granted as the app's. The app notifies natively (Step 11) and calls
+                    // no web `Notification`, so none is allowed.
+                    let frame_blind_deny = permission == Permission::Notifications;
+                    if !frame_blind_deny
+                        && allowed(permission, origin.as_deref(), dev_origin.as_deref())
+                    {
                         request.allow();
                     } else {
                         log_denied(permission, origin.as_deref());

@@ -27,6 +27,11 @@ const LOCAL_URL = /^(memry-file|memry-html):\/\/local(\/.*)?$/
  * Windows WebView2 serves a custom scheme from `https://<scheme>.localhost`, so the canonical
  * form is rewritten there and left alone everywhere else. Comparisons such as
  * `startsWith('memry-file:')` keep the canonical form: apply this at the element, not before.
+ *
+ * A Windows `memry-file` URL also carries the launch token (`?t=`). WebView2 tells the handler
+ * neither which frame asked nor the load's kind, so the token is how the shell knows the app's
+ * page asked and not a sandboxed embed pointing a `<script src>` or `<img>` at a vault file. The
+ * token is in the top frame's init script only.
  */
 export function toWebviewUrl(
   url: string,
@@ -35,7 +40,23 @@ export function toWebviewUrl(
   if (platform !== 'win32') return url
   const match = LOCAL_URL.exec(url)
   if (!match) return url
-  return `https://${match[1]}.localhost/local${match[2] ?? ''}`
+  const webview = `https://${match[1]}.localhost/local${match[2] ?? ''}`
+  const token = match[1] === 'memry-file' ? shellGlobals()?.loopbackToken : undefined
+  return token ? `${webview}${webview.includes('?') ? '&' : '?'}t=${token}` : webview
+}
+
+const WEBVIEW_LOCAL_URL =
+  /^https:\/\/(memry-file|memry-html)\.localhost\/local(\/[^?#]*)?(?:[?&]t=[0-9a-f]+)?$/
+
+/**
+ * The inverse of [`toWebviewUrl`]: the canonical `memry-file://local/...` form of a URL a Windows
+ * webview element holds. Anything else comes back unchanged. Use it wherever a URL read back
+ * from the DOM or from a library's state is written to disk or sync: the `https` form must never
+ * reach a vault file, because another device or OS cannot load it.
+ */
+export function toCanonicalUrl(url: string): string {
+  const match = WEBVIEW_LOCAL_URL.exec(url)
+  return match ? `${match[1]}://local${match[2] ?? ''}` : url
 }
 
 /** URL-safe base64 without padding, of the UTF-8 bytes of `text` (what the loopback route reads). */
