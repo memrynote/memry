@@ -283,7 +283,7 @@ function liveTargetOf(distDir) {
 
 /**
  * Publish the staged tree as `dist/` so that a reader never sees `dist/` absent. On POSIX `dist`
- * is a symlink to a `.dist-live-<pid>` directory, and a rename over a symlink is atomic: the
+ * is a symlink to a `.dist-live-<random>` directory, and a rename over a symlink is atomic: the
  * reader gets the old tree or the new one. A real `dist/` directory (an install from before this
  * layout, or Windows, where symlinks need privileges) cannot be renamed over, so it is moved
  * aside first, which leaves a window of microseconds once.
@@ -298,9 +298,10 @@ function publishDist({ distDir, stagingDir, retiredDir }) {
   }
 
   const previous = liveTargetOf(distDir)
-  const liveName = `.dist-live-${process.pid}`
+  // Random, not the pid: a later install can reuse the pid of the one that made the live
+  // tree, and a name that collides would delete the tree `dist` points at.
+  const liveName = `.dist-live-${crypto.randomBytes(8).toString('hex')}`
   const linkPath = path.join(electronDir, `.dist-link-${process.pid}`)
-  fs.rmSync(path.join(electronDir, liveName), { recursive: true, force: true })
   fs.renameSync(stagingDir, path.join(electronDir, liveName))
   fs.rmSync(linkPath, { force: true })
   fs.symlinkSync(liveName, linkPath)

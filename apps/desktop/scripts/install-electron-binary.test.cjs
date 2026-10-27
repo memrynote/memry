@@ -189,6 +189,10 @@ test(
       clearInterval(poll)
 
       assert.equal(reinstall.code, 0, reinstall.output)
+      // The previous live tree is gone and the new one is what `dist` points at.
+      const live = fs.readdirSync(electronDir).filter((entry) => entry.startsWith('.dist-live-'))
+      assert.equal(live.length, 1, `expected one live tree, found ${live}`)
+      assert.equal(fs.readlinkSync(path.join(electronDir, 'dist')), live[0])
       assert.ok(samples > 20, `expected a meaningful sample window, got ${samples}`)
       assert.equal(broken, 0, `reader saw a broken install in ${broken}/${samples} samples`)
     })
