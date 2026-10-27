@@ -9,6 +9,7 @@
 
 mod support;
 
+use memry_test_kit::{DEFAULT_CASES, assert_output_bounded, output_bound, proptest_config};
 use proptest::prelude::*;
 use serde_json::Value as Json;
 use support::doc_case::{
@@ -17,14 +18,8 @@ use support::doc_case::{
 
 fn config() -> ProptestConfig {
     ProptestConfig {
-        // `PROPTEST_CASES` raises the count for the nightly run (nightly-proptest.yml). An explicit
-        // `cases` would otherwise shadow the variable proptest reads in `Config::default()`.
-        cases: std::env::var("PROPTEST_CASES")
-            .ok()
-            .and_then(|cases| cases.parse().ok())
-            .unwrap_or(2000),
         failure_persistence: None,
-        ..ProptestConfig::default()
+        ..proptest_config(DEFAULT_CASES)
     }
 }
 
@@ -223,7 +218,7 @@ proptest! {
         if let Ok(got) = roundtrip_of(&md) {
             for key in ["markdown", "canonical"] {
                 if let Some(out) = got[key].as_str() {
-                    prop_assert!(out.len() <= 8 * md.len() + 64, "{key}: {} from {}", out.len(), md.len());
+                    prop_assert!(out.len() <= output_bound(md.len()), "{key}: {} from {}", out.len(), md.len());
                 }
             }
         }
@@ -238,7 +233,7 @@ proptest! {
             let got = serialized(&converter, &doc, &input, &files);
             for key in ["markdown", "canonical"] {
                 if let Some(out) = got[key].as_str() {
-                    prop_assert!(out.len() <= 8 * md.len() + 64);
+                    prop_assert!(out.len() <= output_bound(md.len()));
                 }
             }
         }
@@ -256,12 +251,7 @@ fn fences_after_line_terminators_do_not_copy_text() {
         let got = roundtrip_of(md).expect("builds");
         for key in ["markdown", "canonical"] {
             let out = got[key].as_str().expect(key);
-            assert!(
-                out.len() <= 8 * md.len() + 64,
-                "{key}: {} from {}",
-                out.len(),
-                md.len()
-            );
+            assert_output_bounded(key, md.len(), out.len());
         }
     }
 }

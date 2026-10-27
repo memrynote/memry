@@ -78,6 +78,7 @@ dryoc = "1.0.0"
 # real seconds.
 tokio = { workspace = true, features = ["test-util"] }
 proptest = "1"
+memry-test-kit = { path = "../memry-test-kit" }
 insta = "1"
 # Scratch directories: unique name per call, so no test opens a database that an earlier
 # process left at the same path (Windows recycles process ids within seconds).
