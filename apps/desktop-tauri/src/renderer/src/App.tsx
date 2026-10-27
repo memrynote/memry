@@ -42,6 +42,8 @@ import { GlobalDayPanel } from '@/components/day-panel'
 import { TaskDragOverlay } from '@/components/tasks/drag-drop'
 import { taskViews } from '@/data/tasks-data'
 import { ThemeProvider } from 'next-themes'
+import { useAltMenuToggle } from '@/lib/alt-menu'
+import { useNativeEditMenu } from '@/lib/native-edit-menu'
 import { useWindowChromeSync } from '@/lib/window-chrome'
 
 // Tab System imports
@@ -841,6 +843,8 @@ function App(): React.JSX.Element {
   // Flush pending saves when main process requests it (Cmd+Q, window close)
   useFlushOnQuit()
   useWindowChromeSync()
+  useAltMenuToggle()
+  useNativeEditMenu()
   useCommandDispatcher()
 
   // Update state - show a dedicated "Installing update…" screen while quitting to

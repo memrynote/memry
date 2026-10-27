@@ -118,3 +118,11 @@ pub struct AppNavigationRequestedEvent {
 pub struct FlushRequestedEvent {
     pub request_id: String,
 }
+
+/// A native menu item that the renderer runs as a command was clicked. `command` is the
+/// command id (`tabs.closeTab`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct MenuCommandInvokedEvent {
+    pub command: String,
+}

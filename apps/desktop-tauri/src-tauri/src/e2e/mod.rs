@@ -9,6 +9,7 @@ pub mod commands;
 mod debug;
 mod dialog;
 mod reveal;
+mod shell;
 mod shell_integrations;
 mod window;
 
@@ -43,6 +44,15 @@ pub fn install<R: Runtime>(builder: Builder<R>, gate: E2eGate) -> Builder<R> {
     builder
         .plugin(tauri_plugin_wdio::init())
         .plugin(tauri_plugin_wdio_webdriver::init())
+}
+
+/// A context menu under test: records the items and answers from the queued selection. `None`
+/// when the gate is closed or no selection is queued, so the real menu shows.
+pub fn context_menu_override<R: Runtime>(
+    app: &AppHandle<R>,
+    items: &[crate::menu::popup::ContextMenuItem],
+) -> Option<Option<String>> {
+    shell::context_menu_override(app, items)
 }
 
 /// `vault_reveal` under an open gate: records the path and reports `true`.
@@ -96,6 +106,7 @@ fn manage_dialog_queue(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     })?;
     app.manage(std::sync::Arc::new(queue));
     app.manage(reveal::RevealLog::default());
+    app.manage(shell::ContextMenuProbe::default());
     Ok(())
 }
 

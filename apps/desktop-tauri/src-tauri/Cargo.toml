@@ -29,7 +29,7 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
-tauri = { version = "2.12", features = ["specta"] }
+tauri = { version = "2.12", features = ["specta", "devtools"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
@@ -46,6 +46,8 @@ tracing = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"
 tauri-plugin-opener = "2.7.2"
+# The Paste and Match Style menu item reads the clipboard text.
+tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 
