@@ -769,3 +769,27 @@ fn an_outside_edit_back_to_an_earlier_reported_state_is_not_hidden_by_an_own_wri
         [content_hash("outside one"), content_hash("outside one")]
     );
 }
+
+#[test]
+fn files_in_a_folder_that_appeared_are_reported_from_the_walk_unsupported_ones_too() {
+    let e = env_unwatched();
+    e.write("fresh/a.md", "x");
+    e.write("fresh/readme.xyz", "y");
+    e.write("fresh/.hidden.md", "z");
+    let (mut r, log) = reconciler(&e, memry_desktop::vault::walk::Limits::DEFAULT);
+    let t0 = Instant::now();
+    r.batch(vec!["fresh".into()], t0);
+    r.settle_expired(t0 + Duration::from_secs(1));
+    let events = log.lock().unwrap().clone();
+    assert!(
+        events
+            .iter()
+            .any(|ev| matches!(ev, VaultEvent::Added { path, .. } if path == "fresh/a.md"))
+    );
+    assert!(
+        events
+            .iter()
+            .any(|ev| matches!(ev, VaultEvent::Unsupported { path } if path == "fresh/readme.xyz"))
+    );
+    assert_eq!(events.len(), 2, "{events:?}");
+}

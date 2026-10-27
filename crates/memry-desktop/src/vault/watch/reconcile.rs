@@ -308,6 +308,13 @@ impl Reconciler {
         if walk.truncated.is_some() || walk.too_deep > 0 {
             self.rescan_owed = true;
         }
+        // The OS may not have armed the new folder's watch before a file landed in it, so the
+        // walk is the only report of that file: unsupported ones too.
+        for path in walk.unsupported {
+            if !self.filter.ignores(&path) {
+                self.emit(VaultEvent::Unsupported { path });
+            }
+        }
         for path in walk.files {
             if self.filter.ignores(&path) {
                 continue;
