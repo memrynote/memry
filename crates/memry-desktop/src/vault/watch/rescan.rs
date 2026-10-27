@@ -10,6 +10,7 @@ use super::event::VaultEvent;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
 use super::home::{Home, home_of_row};
 use super::reconcile::{Probe, Reconciler, modified_ms, probe};
+use super::rename::{Pending, observed};
 use crate::vault::walk::walk_vault_with;
 use memry_core::api::errors::StorageError;
 
@@ -89,6 +90,7 @@ impl Reconciler {
         if missing.is_empty() && !with_changes {
             self.emit(VaultEvent::Rescanned {
                 missing: 0,
+                removed: 0,
                 added: added.len(),
                 changed: 0,
                 removals_withheld: withheld,
@@ -118,7 +120,7 @@ impl Reconciler {
         let batch = self.tracker.new_batch();
         for home in &missing {
             self.tracker
-                .track((*home).clone().pending(), now, Some(batch));
+                .track((*home).clone().pending(), observed(now), Some(batch));
         }
         for path in &added {
             if stop.load(Ordering::Relaxed) {
@@ -132,11 +134,14 @@ impl Reconciler {
         // What no add claimed is a delete like any other: it waits out the rename window and is
         // checked against the disk again before it is reported, so a pass that ran while a
         // checkout or a copy was in the middle of the vault reports nothing it undoes.
-        let unclaimed = self.tracker.settle(batch);
+        let mut waiting_notes = HashSet::new();
         if !withheld {
-            for pending in unclaimed {
+            for pending in self.tracker.settle(batch) {
+                waiting_notes.insert(pending.note_id.clone());
                 self.track_removal(pending, now);
             }
+        } else {
+            self.tracker.settle(batch);
         }
         for home in &changed {
             if stop.load(Ordering::Relaxed) {
@@ -146,14 +151,67 @@ impl Reconciler {
                 self.file_present(&home.path, &meta, now);
             }
         }
-        self.emit(VaultEvent::Rescanned {
-            missing: missing.len(),
-            added: added.len(),
-            changed: changed.len(),
-            removals_withheld: withheld,
+        self.rescans.push(RescanReport {
+            event: VaultEvent::Rescanned {
+                missing: missing.len(),
+                removed: 0,
+                added: added.len(),
+                changed: changed.len(),
+                removals_withheld: withheld,
+            },
+            waiting_notes,
+            waiting_paths: self.held_adds.iter().map(|a| a.path.clone()).collect(),
         });
+        self.report_settled_rescans();
         Ok(true)
     }
+
+    /// Tracks a delete found by a rescan. Every delete, live or found by a pass over the vault,
+    /// waits out the rename window and is re-checked against the disk when it ends: a vault
+    /// mid-checkout looks like a mass delete for a moment, and a delete that did not stay gone
+    /// is not reported. The window starts here, after the pass looked at the disk, not when the
+    /// pass began ([`observed`]).
+    fn track_removal(&mut self, pending: Pending, started: Instant) {
+        self.tracker.track(pending, observed(started), None);
+    }
+
+    pub(super) fn count_removed(&mut self, note_id: &str) {
+        for report in &mut self.rescans {
+            if report.waiting_notes.contains(note_id)
+                && let VaultEvent::Rescanned { removed, .. } = &mut report.event
+            {
+                *removed += 1;
+            }
+        }
+    }
+
+    /// Emits the `Rescanned` of every pass whose deletes have settled and whose held new files
+    /// are out of their grace, so nothing the pass found arrives after it.
+    pub(super) fn report_settled_rescans(&mut self) {
+        let (done, waiting): (Vec<_>, Vec<_>) = std::mem::take(&mut self.rescans)
+            .into_iter()
+            .partition(|report| {
+                !report
+                    .waiting_notes
+                    .iter()
+                    .any(|note| self.tracker.has_note(note))
+                    && !self
+                        .held_adds
+                        .iter()
+                        .any(|add| report.waiting_paths.contains(&add.path))
+            });
+        self.rescans = waiting;
+        for report in done {
+            self.emit(report.event);
+        }
+    }
+}
+
+/// A finished pass whose `Rescanned` waits for what it found to settle.
+pub(super) struct RescanReport {
+    event: VaultEvent,
+    waiting_notes: HashSet<String>,
+    waiting_paths: HashSet<String>,
 }
 
 /// Whether `path` is inside one of the folders (vault-relative, `/`-separated).

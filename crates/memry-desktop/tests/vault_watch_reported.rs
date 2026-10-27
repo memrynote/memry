@@ -431,35 +431,114 @@ fn a_respell_seen_before_its_old_name_is_gone_is_not_a_removal_either() {
     );
 }
 
+/// A pass that began long before it looked at the file: its start is older than the window.
+fn long_ago() -> Instant {
+    Instant::now()
+        .checked_sub(Duration::from_secs(2))
+        .expect("a clock that has run for two seconds")
+}
+
+fn rescan_started_at(r: &mut Reconciler, with_changes: bool, started: Instant) {
+    let stop = AtomicBool::new(false);
+    assert!(r.rescan(with_changes, started, &stop).unwrap());
+}
+
 #[test]
-fn a_rescan_finds_a_delete_but_reports_it_only_once_it_has_stayed_gone() {
+fn a_rescan_finds_a_delete_but_reports_it_only_once_it_has_stayed_gone_from_its_own_check() {
     let f = fixture();
     let mut r = f.reconciler();
     f.write("a.md", "body");
     f.index("n1", "a.md", "body");
     fs::remove_file(f.root.join("a.md")).unwrap();
-    let t0 = f.t0;
-    let stop = AtomicBool::new(false);
-    assert!(r.rescan(true, t0, &stop).unwrap());
-    assert!(
-        without_rescanned(f.take()).is_empty(),
-        "a rescan reported a removal at once"
-    );
-    // The checkout that deleted it puts it back inside the window.
-    f.write("a.md", "body");
-    r.settle_expired(t0 + Duration::from_millis(600));
+    // The pass began 2 s ago (a vault that takes long to walk): a delete timed from that start
+    // would be reported on the next tick, without ever having stayed gone.
+    rescan_started_at(&mut r, true, long_ago());
+    r.settle_expired(Instant::now() + Duration::from_millis(100));
     assert!(
         f.take().is_empty(),
-        "a delete that did not stay gone was reported"
+        "reported at once, or its signal came first"
     );
 
-    // And one that does stay gone is reported, after the window and not before.
+    // The checkout that deleted it puts it back inside the window.
+    f.write("a.md", "body");
+    r.settle_expired(Instant::now() + Duration::from_millis(700));
+    let events = f.take();
+    assert_eq!(kinds(&events), ["rescanned"], "{events:?}");
+    assert!(matches!(
+        events[0],
+        VaultEvent::Rescanned {
+            missing: 1,
+            removed: 0,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn a_rescan_that_stays_gone_reports_the_removal_and_then_its_signal() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "body");
+    f.index("n1", "a.md", "body");
     fs::remove_file(f.root.join("a.md")).unwrap();
-    assert!(r.rescan(true, t0, &stop).unwrap());
-    r.settle_expired(t0 + Duration::from_millis(100));
-    assert!(without_rescanned(f.take()).is_empty());
-    r.settle_expired(t0 + Duration::from_millis(600));
-    assert_eq!(kinds(&f.take()), ["removed"]);
+    rescan_started_at(&mut r, true, long_ago());
+    r.settle_expired(Instant::now() + Duration::from_millis(100));
+    assert!(f.take().is_empty());
+    r.settle_expired(Instant::now() + Duration::from_millis(700));
+    let events = f.take();
+    assert_eq!(kinds(&events), ["removed", "rescanned"], "{events:?}");
+    assert!(matches!(
+        events[1],
+        VaultEvent::Rescanned {
+            missing: 1,
+            removed: 1,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn a_new_file_a_rescan_found_is_reported_before_its_signal_and_not_early() {
+    let f = fixture();
+    let mut r = f.reconciler();
+    f.write("a.md", "gone");
+    f.index("n1", "a.md", "gone");
+    fs::remove_file(f.root.join("a.md")).unwrap();
+    f.write("b.md", "something new");
+    rescan_started_at(&mut r, true, long_ago());
+    r.settle_expired(Instant::now() + Duration::from_millis(100));
+    assert!(
+        f.take().is_empty(),
+        "the grace of a held file starts when it was looked at"
+    );
+    r.settle_expired(Instant::now() + Duration::from_millis(700));
+    assert_eq!(kinds(&f.take()), ["added", "removed", "rescanned"]);
+}
+
+#[test]
+fn an_edit_and_a_delete_beside_a_surviving_file_do_not_wipe_its_baseline() {
+    // Two files on a case-sensitive volume whose names fold to one key. The removal of
+    // `Note.md` forgets that note's report and not the one of `note.md`, which would be
+    // reported as edited again.
+    let f = fixture_in(Some(CaseSensitiveVolume::new()));
+    let mut r = f.reconciler();
+    f.write("Note.md", "one");
+    f.write("note.md", "two");
+    f.index("n1", "Note.md", "one");
+    f.index("n2", "note.md", "two");
+    f.write("note.md", "two edited");
+    f.touch(&mut r, &["note.md"], 1);
+    assert_eq!(kinds(&f.take()), ["changed"]);
+    fs::remove_file(f.root.join("Note.md")).unwrap();
+    f.rescan(&mut r, false, 2);
+    f.settle(&mut r, 2);
+    let events = without_rescanned(f.take());
+    assert!(
+        matches!(events.as_slice(), [VaultEvent::Removed { note_id, .. }] if note_id == "n1"),
+        "{events:?}"
+    );
+    f.touch(&mut r, &["note.md"], 3);
+    assert!(f.take().is_empty(), "the surviving file was reported again");
 }
 
 #[test]
