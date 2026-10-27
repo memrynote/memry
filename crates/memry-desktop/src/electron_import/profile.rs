@@ -17,6 +17,11 @@ pub const PROFILE_DIR_VAR: &str = "MEMRY_ELECTRON_PROFILE_DIR";
 pub const MEMRYNOTE_APP_NAME: &str = "memrynote";
 /// Byte-identical to `apps/desktop/package.json` `name`; Chromium derives its key names from it.
 pub const LEGACY_APP_NAME: &str = "@memry/desktop";
+/// userData directory name of one real macOS install of the release 2026.1025.1 (Chromium's
+/// default product name). It names a directory only: that install's secrets decrypt under
+/// `@memry/desktop`, and `Chromium Safe Storage` is the real Chromium browser's Keychain item,
+/// which this reader never asks for.
+const CHROMIUM_DIR_NAME: &str = "Chromium";
 pub const SECRET_STORE_FILENAME: &str = "secure-secrets.json";
 pub const IDENTITY_PIN_FILENAME: &str = "app-identity.json";
 const CONFIG_FILENAME: &str = "memry-config.json";
@@ -142,6 +147,10 @@ pub struct ElectronProfile {
     pub has_custom_dictionary: bool,
     /// One directory per vault under `crdt-stores/`.
     pub crdt_store_dirs: Vec<PathBuf>,
+    /// Other directories that also hold a profile (never chosen, never read). More than one
+    /// means two installs left data behind. Step 37 must surface them to the user instead of
+    /// guessing; `locate_profile` logs a warning with the paths.
+    pub other_candidates: Vec<PathBuf>,
 }
 
 impl ElectronProfile {
@@ -262,29 +271,74 @@ fn app_names(
     both(MEMRYNOTE_APP_NAME)
 }
 
+/// Files only this app writes; a stray `Chromium` directory of another program has none.
+fn has_memry_files(dir: &Path) -> bool {
+    dir.join(CONFIG_FILENAME).is_file()
+        || dir.join(SECRET_STORE_FILENAME).is_file()
+        || is_real_dir(&dir.join("crdt-stores"))
+}
+
+/// The files whose loss the migration cannot undo: secret entries or CRDT stores.
+fn has_data(dir: &Path) -> bool {
+    store_has_ciphertexts(dir)
+        || fs::read_dir(dir.join("crdt-stores")).is_ok_and(|mut entries| entries.next().is_some())
+}
+
+/// Newest modification time of the files the running app rewrites.
+fn last_used(dir: &Path) -> Option<std::time::SystemTime> {
+    [CONFIG_FILENAME, "session-marker.json"]
+        .iter()
+        .filter_map(|name| fs::metadata(dir.join(name)).and_then(|m| m.modified()).ok())
+        .max()
+}
+
 /// Finds the profile. `Ok(None)` when none exists (a fresh install, or the dangling-symlink
 /// state). Nothing is created, moved or written.
 pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, ImportError> {
-    let (dir, born_at_new_path) = match &env.override_dir {
+    let (dir, born_at_new_path, other_candidates) = match &env.override_dir {
         Some(dir) => match resolve_candidate(dir) {
-            Some(dir) => (dir, false),
+            Some(dir) => (dir, false, Vec::new()),
             None => return Ok(None),
         },
         None => {
             let new_dir = env.app_data.join(MEMRYNOTE_APP_NAME);
             let legacy_dir = env.app_data.join("@memry").join("desktop");
-            if let Some(dir) = resolve_candidate(&new_dir) {
-                (dir, !is_symlink(&legacy_dir))
-            } else if let Some(dir) = resolve_candidate(&legacy_dir) {
-                (dir, false)
+            let chromium_dir = env.app_data.join(CHROMIUM_DIR_NAME);
+            let usual = if let Some(dir) = resolve_candidate(&new_dir) {
+                Some((dir, !is_symlink(&legacy_dir)))
             } else {
-                return Ok(None);
+                resolve_candidate(&legacy_dir).map(|dir| (dir, false))
+            };
+            // `Chromium` is a generic name: it counts only with files this app writes.
+            let chromium = resolve_candidate(&chromium_dir).filter(|d| has_memry_files(d));
+            match (usual, chromium) {
+                (None, None) => return Ok(None),
+                (Some((dir, born)), None) => (dir, born, Vec::new()),
+                (None, Some(dir)) => (dir, false, Vec::new()),
+                (Some((dir, born)), Some(other)) => {
+                    // A directory holding secrets or CRDT stores beats one without (a fresh
+                    // `memrynote` that a just-launched app created); only equals fall back to
+                    // the most recent use.
+                    let rank = |d: &Path| (has_data(d), last_used(d));
+                    if rank(&other) > rank(&dir) {
+                        (other, false, vec![dir])
+                    } else {
+                        (dir, born, vec![other])
+                    }
+                }
             }
         }
     };
     let pin = IdentityPin::read(&dir)?;
     let has_ciphertexts = store_has_ciphertexts(&dir);
     let app_names = app_names(env.host, pin.as_ref(), has_ciphertexts, born_at_new_path);
+    if !other_candidates.is_empty() {
+        tracing::warn!(
+            chosen = %dir.display(),
+            others = ?other_candidates,
+            "electron import: more than one Electron profile directory holds Memry data"
+        );
+    }
     let crdt_store_dirs = list_dirs(&dir.join("crdt-stores"))?;
     Ok(Some(ElectronProfile {
         host: env.host,
@@ -297,6 +351,7 @@ pub fn locate_profile(env: &ProfileEnv) -> Result<Option<ElectronProfile>, Impor
         has_legacy_crdt_store: is_real_dir(&dir.join("crdt-store")),
         has_custom_dictionary: dir.join(DICTIONARY_FILENAME).is_file(),
         crdt_store_dirs,
+        other_candidates,
         dir,
     }))
 }

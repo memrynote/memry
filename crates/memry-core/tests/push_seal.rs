@@ -26,7 +26,6 @@ mod support;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::{FakeTransport, body_json, error_response, response};
 use memry_core::api::errors::StorageError;
@@ -338,14 +337,12 @@ async fn a_sealed_crdt_update_opens_again_through_the_read_path() {
 
 // --------------------------------------- §6.5.2 P2 and §6.6, over the wave
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-push-seal-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-push-seal-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

@@ -228,9 +228,9 @@ fn disagreement(input: &str, oracle: &Option<Json>) -> Result<(), String> {
 }
 
 /// Deletes lines while the two sides still disagree.
-fn minimise(input: &str, tag: &str) -> String {
+fn minimise(input: &str) -> String {
     let mut best = input.to_owned();
-    for round in 0..12 {
+    for _ in 0..12 {
         let lines: Vec<&str> = best.split('\n').collect();
         if lines.len() < 2 {
             break;
@@ -246,7 +246,7 @@ fn minimise(input: &str, tag: &str) -> String {
                     .join("\n")
             })
             .collect();
-        let Ok(answers) = doc_serialize(&candidates, &format!("{tag}-min{round}")) else {
+        let Ok(answers) = doc_serialize(&candidates) else {
             break;
         };
         match candidates
@@ -283,10 +283,10 @@ fn markdown_differential() {
         let inputs: Vec<String> = (0..size)
             .map(|_| mutate(&mut rng, &seeds, &seeds))
             .collect();
-        let answers = doc_serialize(&inputs, "diff").expect("oracle batch");
+        let answers = doc_serialize(&inputs).expect("oracle batch");
         for (input, answer) in inputs.iter().zip(&answers) {
             if let Err(why) = disagreement(input, answer) {
-                let small = minimise(input, "diff");
+                let small = minimise(input);
                 let mut hasher = DefaultHasher::new();
                 small.hash(&mut hasher);
                 let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

@@ -17,7 +17,12 @@ use support::doc_case::{
 
 fn config() -> ProptestConfig {
     ProptestConfig {
-        cases: 2000,
+        // `PROPTEST_CASES` raises the count for the nightly run (nightly-proptest.yml). An explicit
+        // `cases` would otherwise shadow the variable proptest reads in `Config::default()`.
+        cases: std::env::var("PROPTEST_CASES")
+            .ok()
+            .and_then(|cases| cases.parse().ok())
+            .unwrap_or(2000),
         failure_persistence: None,
         ..ProptestConfig::default()
     }
@@ -236,6 +241,27 @@ proptest! {
                     prop_assert!(out.len() <= 8 * md.len() + 64);
                 }
             }
+        }
+    }
+}
+
+/// `splitByCodeFences` rescanned a fence after a `\r`, U+2028 or U+2029 inside the
+/// closing line and copied the tail again per fence: 31 bytes became 328 and
+/// 24 KB of such fences 24 MB. proptest found it on windows-2022 (PR #3613).
+#[test]
+fn fences_after_line_terminators_do_not_copy_text() {
+    let found = "```[[\r```\u{2028}```<!--``````|- ```";
+    let many = format!("```\n```\u{2028}{}", "```\u{2028}".repeat(4000));
+    for md in [found, many.as_str()] {
+        let got = roundtrip_of(md).expect("builds");
+        for key in ["markdown", "canonical"] {
+            let out = got[key].as_str().expect(key);
+            assert!(
+                out.len() <= 8 * md.len() + 64,
+                "{key}: {} from {}",
+                out.len(),
+                md.len()
+            );
         }
     }
 }

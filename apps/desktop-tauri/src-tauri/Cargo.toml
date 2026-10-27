@@ -31,24 +31,52 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
-tauri = { version = "2.12", features = ["specta"] }
+tauri = { version = "2.12", features = ["specta", "devtools"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
 specta-typescript = "=0.0.13"
 serde = { workspace = true }
 serde_json = { workspace = true }
+# The OS language of a first launch (`locale::resolve_startup`).
+sys-locale = "0.3.2"
+uuid = { workspace = true }
+# The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
+# SIGINT and SIGTERM.
+tokio = { workspace = true, features = ["time", "signal"] }
 tracing = { workspace = true }
 velopack = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"
 tauri-plugin-opener = "2.7.2"
+# The Paste and Match Style menu item reads the clipboard text.
+tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
 
 tauri-plugin-wdio-webdriver = { version = "=1.5.0", optional = true }
 tauri-plugin-wdio = { version = "=1.5.0", optional = true }
 arboard = { version = "3.7.0", optional = true, default-features = false }
+
+# Caption hit testing (`windows/win32_caption.rs`) and the WebView2 accelerator keys.
+[target.'cfg(windows)'.dependencies]
+arc-swap = "1.9"
+webview2-com = "0.39"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+# `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.
+# `windows/nav_input.rs` reads the trackpad swipe events.
+block2 = "0.6"
+objc2 = "0.6.5"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "block2", "objc2-core-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std"] }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }

@@ -222,7 +222,8 @@ function unifiedSidebar() {
         { text: 'Sync Item Handlers', link: '/architecture/sync-handlers' },
         { text: 'Calendar Providers', link: '/architecture/calendar-providers' },
         { text: 'Readwise Vault Formats', link: '/architecture/readwise-vault-formats' },
-        { text: 'Observability & Telemetry', link: '/architecture/observability' }
+        { text: 'Observability & Telemetry', link: '/architecture/observability' },
+        { text: 'Quit and Shutdown', link: '/architecture/shutdown' }
       ]
     },
     {

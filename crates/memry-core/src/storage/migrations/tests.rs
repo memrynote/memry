@@ -52,7 +52,7 @@ fn a_fresh_data_database_reaches_the_latest_version() {
     let version = db
         .call_blocking(|conn| user_version(conn))
         .expect("user_version");
-    assert_eq!(version, 14);
+    assert_eq!(version, 15);
 
     let names = table_names(&db);
     // Source of record, §A.2.
@@ -163,7 +163,7 @@ fn an_older_database_steps_forward_without_losing_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 14);
+    assert_eq!(version, 15);
 
     let (count, payload): (i64, String) = db
         .call_blocking(|conn| {
@@ -263,7 +263,7 @@ fn note_snapshots_applies_to_a_version_12_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 14);
+    assert_eq!(version, 15);
 
     let (device, indexes): (String, i64) = db
         .call_blocking(|conn| {
@@ -323,7 +323,7 @@ fn local_settings_applies_to_a_version_13_database_and_keeps_its_rows() {
     let version = db
         .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
         .expect("step forward");
-    assert_eq!(version, 14);
+    assert_eq!(version, 15);
 
     let (device, rows): (String, i64) = db
         .call_blocking(|conn| {
@@ -387,4 +387,43 @@ fn run_atomic_leaves_a_failed_migration_and_its_counter_untouched() {
         .expect("state");
     // Migration 1 committed with its counter; migration 2 rolled back whole.
     assert_eq!((version, rows, has_b), (1, 1, 0));
+}
+
+#[test]
+fn note_files_applies_to_a_version_14_database_and_keeps_its_rows() {
+    let db = Db::open_in_memory().expect("open");
+    db.call_blocking(|conn| run(conn, &DATA_MIGRATIONS[..14]))
+        .expect("a database as the last shipped build left it");
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO local_settings (key, value, updated_at) VALUES ('general', '{}', 1)",
+            [],
+        )
+        .map_err(|err| StorageError::Failed {
+            what: err.to_string(),
+        })
+    })
+    .expect("a row to keep");
+    assert!(!table_names(&db).iter().any(|n| n == "note_files"));
+
+    let version = db
+        .call_blocking(|conn| run(conn, DATA_MIGRATIONS))
+        .expect("step forward");
+    assert_eq!(version, 15);
+
+    let (kept, files): (i64, i64) = db
+        .call_blocking(|conn| {
+            let read = |sql: &str| {
+                conn.query_row(sql, [], |row| row.get::<_, i64>(0))
+                    .map_err(|err| StorageError::Failed {
+                        what: err.to_string(),
+                    })
+            };
+            Ok((
+                read("SELECT COUNT(*) FROM local_settings")?,
+                read("SELECT COUNT(*) FROM note_files")?,
+            ))
+        })
+        .expect("read back");
+    assert_eq!((kept, files), (1, 0));
 }

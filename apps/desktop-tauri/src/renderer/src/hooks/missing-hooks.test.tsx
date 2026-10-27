@@ -9,7 +9,6 @@ import { useCountdown } from './use-countdown'
 import { useDayContext } from './use-day-context'
 import { useEditorSettings } from './use-editor-settings'
 import { useExpandedTasks } from './use-expanded-tasks'
-import { useFlushOnQuit } from './use-flush-on-quit'
 import { useFocusTrap } from './use-focus-trap'
 import { useFolderViewEvents } from './use-folder-view-events'
 import { useGraphData, useGraphReactivity, useLocalGraphData } from './use-graph-data'
@@ -297,11 +296,6 @@ beforeEach(() => {
     mocks.taskListeners.apiCompleted = callback as never
     return mocks.unsubscribe
   })
-  api.onFlushRequested = vi.fn((callback) => {
-    mocks.taskListeners.flush = callback as never
-    return mocks.unsubscribe
-  })
-  api.notifyFlushDone = vi.fn()
   window.api.onSettingsChanged = vi.fn(() => mocks.unsubscribe)
   mocks.flushAllPendingSaves.mockResolvedValue(undefined)
   mocks.hasPendingSaves.mockReturnValue(false)
@@ -465,7 +459,7 @@ describe('navigation and keyboard hooks', () => {
     removeSpy.mockRestore()
   })
 
-  it('handles countdown and flush lifecycle hooks', async () => {
+  it('handles the countdown hook', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-05-10T12:00:00.000Z'))
     const countdown = renderHook(() =>
@@ -477,20 +471,6 @@ describe('navigation and keyboard hooks', () => {
     })
     expect(countdown.result.current.isExpired).toBe(true)
     countdown.unmount()
-
-    const flush = renderHook(() => useFlushOnQuit())
-    await act(async () => {
-      // oxlint-disable-next-line typescript/await-thenable -- the registered flush listener returns a promise; the mock type erases it
-      await mocks.taskListeners.flush('flush-1')
-    })
-    expect(mocks.flushAllPendingSaves).toHaveBeenCalled()
-    // The request id has to survive the round trip or main can't tell which
-    // flush was answered and falls back to its timeout.
-    expect(window.api.notifyFlushDone).toHaveBeenCalledWith('flush-1')
-    mocks.hasPendingSaves.mockReturnValueOnce(true)
-    fireEvent(window, new Event('beforeunload'))
-    expect(mocks.flushAllPendingSaves).toHaveBeenCalledTimes(2)
-    flush.unmount()
   })
 })
 

@@ -59,6 +59,7 @@ one-class change reviewable.
 | `settings-merge.json`                   |                                   18 | `../scripts/vectors/settings-merge.ts`      | `../src/__tests__/settings-merge.test.ts` + the Rust `settings_merge.rs` tests       |
 | `redact.json`                           |                            444 cases | `../scripts/vectors/redact.ts`              | the Rust `redact_vectors` test (`crates/memry-desktop/tests/redact_vectors.rs`)      |
 | `safe-dimension.json`                   |                           200+ cases | `../scripts/vectors/redact.ts`              | the same Rust test                                                                   |
+| `telemetry-events.json`                 |                   100 sanitize cases | `../scripts/vectors/telemetry-events.ts`    | the Rust `telemetry_vectors` test                                                    |
 | `settings-groups.json`                  |                            17 groups | `../scripts/vectors/settings-groups.ts`     | the Rust `domain/app_settings` parity test                                           |
 | `recreate-clock.json`                   |                                   11 | `../scripts/vectors/recreate-clock.ts`      | `../src/__tests__/recreate-clock.test.ts` + the Rust `recreate_clock_vectors.rs`     |
 | `versioned-values.json`                 |                                   43 | `../scripts/vectors/versioned-values.ts`    | `../src/__tests__/versioned-values.test.ts` + Rust `versioned_values_vectors.rs`     |
@@ -85,7 +86,7 @@ one-class change reviewable.
 | `markdown-convert/parse.json`           |                                  833 | same                                        | same + Rust `markdown_bn_parse_vectors.rs`                                           |
 | `markdown-convert/memry-parse.json`     |                                  736 | same                                        | same + Rust `markdown_memry_parse_vectors.rs`                                        |
 | `markdown-convert/serialize.json`       |                                  925 | same                                        | same + Rust `markdown_serialize_vectors.rs`                                          |
-| `markdown-convert/layer-text.json`      |                                13066 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
+| `markdown-convert/layer-text.json`      |                                13074 | same                                        | same + Rust `markdown_layer_text_vectors.rs`                                         |
 | `markdown-convert/layer-markers.json`   |                                 3243 | same                                        | same + Rust `markdown_layer_markers_vectors.rs`                                      |
 | `markdown-convert/layer-blocks.json`    |                                 5116 | same                                        | same + Rust `markdown_layer_blocks_vectors.rs`                                       |
 | `markdown-convert/layer-critic.json`    |                                 2944 | same                                        | same + Rust `markdown_layer_critic_vectors.rs`                                       |

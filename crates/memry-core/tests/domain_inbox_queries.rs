@@ -5,8 +5,6 @@
 //! (snoozed), `stats.ts` (stale, today, week, streak, age buckets, average),
 //! `reminder-panel.ts` (Upcoming / Past).
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::inbox::{self, panel, stats};
 use memry_core::storage::repositories::instants;
 use memry_core::storage::repositories::sync_items::InboundRecord;
@@ -20,14 +18,12 @@ const NOW: i64 = 1_790_251_200_000;
 const DAY: i64 = 86_400_000;
 const HOUR: i64 = 3_600_000;
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-inbox-queries-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-inbox-queries-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

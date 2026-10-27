@@ -4,7 +4,7 @@
 
 mod dedupe;
 mod format;
-mod localtime;
+pub mod localtime;
 mod rotate;
 
 use std::io;
@@ -57,6 +57,8 @@ pub fn init(paths: &AppPaths) -> LogGuard {
     let installed = tracing_subscriber::registry()
         .with(file)
         .with(console)
+        // Warn and error records, once telemetry installs a destination.
+        .with(crate::telemetry::logship::ShipLayer)
         .try_init();
     if let Err(error) = installed {
         eprintln!("MemryNote logging was already initialized: {error}");

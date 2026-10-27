@@ -135,7 +135,7 @@ fn img_src_matches_jsdom() {
         let size = 2_000.min(total - done);
         let urls: Vec<String> = (0..size).map(|_| random_url(&mut rng)).collect();
         let jobs: Vec<Json> = urls.iter().map(|u| json!({ "html": html_of(u) })).collect();
-        let answers = run_jobs("html-to-blocks", &jobs, "url").expect("oracle batch");
+        let answers = run_jobs("html-to-blocks", &jobs).expect("oracle batch");
         for (url, answer) in urls.iter().zip(answers) {
             let rust = html_to_blocks(&html_of(url)).ok();
             let same = match (&rust, &answer) {

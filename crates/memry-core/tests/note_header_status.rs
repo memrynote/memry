@@ -17,7 +17,6 @@
 mod http_fakes;
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use http_fakes::FakeSecureStore;
 use memry_core::api::errors::StorageError;
@@ -40,8 +39,6 @@ const DEVICE: &str = "device-a";
 const NOTE: &str = "note-1";
 const LOCAL_NOW: &str = "2026-01-14T12:00:00";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 struct World {
     vault: Vault,
     tasks: Arc<Tasks>,
@@ -49,11 +46,11 @@ struct World {
 }
 
 fn world() -> World {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-header-status-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-header-status-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_string(), dir.display().to_string()).expect("open");
     let (_public, secret) = sodium::sign_seed_keypair(&[3u8; 32]).expect("a keypair");

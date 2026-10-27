@@ -110,6 +110,11 @@ pub const DATA_MIGRATIONS: &[Migration] = &[
         name: "local_settings",
         sql: include_str!("migrations/data/0014_local_settings.sql"),
     },
+    Migration {
+        version: 15,
+        name: "note_files",
+        sql: include_str!("migrations/data/0015_note_files.sql"),
+    },
 ];
 
 /// `index.db`: the rebuildable search and link index.

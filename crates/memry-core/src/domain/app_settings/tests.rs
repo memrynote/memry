@@ -558,3 +558,22 @@ fn valid_json_that_is_not_an_object_is_kept_and_read_as_defaults() {
         "the row is not deleted"
     );
 }
+
+#[test]
+fn a_flat_local_key_round_trips_and_a_group_name_is_refused() {
+    let (app, _dir) = open("flat-local");
+    assert_eq!(app.get_local("tagSearches").expect("read"), None);
+    app.set_local("tagSearches", &json!([{"id": "a"}]))
+        .expect("write");
+    assert_eq!(
+        app.get_local("tagSearches").expect("read"),
+        Some(json!([{"id": "a"}]))
+    );
+    assert!(app.set_local("general", &json!({})).is_err());
+    assert!(app.get_local("bad key").is_err());
+    assert_eq!(
+        group_defaults("sidebar").expect("known")["showFiles"],
+        json!(true)
+    );
+    assert_eq!(group_defaults("nope"), None);
+}

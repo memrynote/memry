@@ -52,18 +52,16 @@ use yrs::{
 
 // ---------------------------------------------------------------- fixtures
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 const NOTE: &str = "abc123def456";
 const VAULT_KEY: [u8; 32] = [3u8; 32];
 const MODIFIED_AT: &str = "2026-09-10T00:00:00.000Z";
 
 fn scratch_db(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir: PathBuf = std::env::temp_dir().join(format!(
-        "memry-first-sync-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir: PathBuf = tempfile::Builder::new()
+        .prefix(&format!("memry-first-sync-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("create the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

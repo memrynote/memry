@@ -56,6 +56,7 @@ import { buildPayloadSchemas } from './vectors/payload-schemas'
 import { buildRecordEnvelope } from './vectors/record-envelope'
 import { buildRecreateClock } from './vectors/recreate-clock'
 import { buildRedact, buildSafeDimension } from './vectors/redact'
+import { buildTelemetryEvents } from './vectors/telemetry-events'
 import { buildSettingsGroups } from './vectors/settings-groups'
 import { buildSettingsMerge } from './vectors/settings-merge'
 import { buildTagFold } from './vectors/tag-fold'
@@ -94,6 +95,10 @@ const CLASSES: readonly VectorClass[] = [
       { path: 'redact.json', build: buildRedact },
       { path: 'safe-dimension.json', build: buildSafeDimension }
     ]
+  },
+  {
+    name: 'telemetry-events',
+    files: [{ path: 'telemetry-events.json', build: buildTelemetryEvents }]
   },
   {
     name: 'settings-groups',

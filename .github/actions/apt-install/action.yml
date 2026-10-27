@@ -1,0 +1,28 @@
+name: Install apt packages
+description: apt-get update and install with per-command timeouts and retries, so a stalled mirror fails fast and retries instead of running into the job timeout.
+inputs:
+  packages:
+    description: Space-separated apt packages
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Install apt packages
+      shell: bash
+      env:
+        PACKAGES: ${{ inputs.packages }}
+      run: |
+        # GitHub runners ship Microsoft/Azure apt repos that intermittently 403 or stall.
+        sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
+        opts=(-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+        for attempt in 1 2 3 4; do
+          # shellcheck disable=SC2086
+          if sudo timeout 180 apt-get "${opts[@]}" update &&
+            sudo timeout 600 apt-get "${opts[@]}" install -y $PACKAGES; then
+            exit 0
+          fi
+          echo "apt attempt $attempt failed; retrying in $((attempt * 10))s"
+          sleep $((attempt * 10))
+        done
+        echo "apt failed after 4 attempts" >&2
+        exit 1

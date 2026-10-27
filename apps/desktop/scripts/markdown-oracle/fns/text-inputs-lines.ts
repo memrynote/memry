@@ -5,6 +5,9 @@
 import type { MarkdownSegment } from '@memry/shared/empty-lines'
 
 export const FENCES: string[] = [
+  // Fences after a JS line terminator inside the closing line: no text is copied twice.
+  '```\n```\u2028```<!--|- ```',
+  '```\n```\r```\r```\u2029```\nb',
   '```\na\n```',
   '```\na\n```\n',
   '```\na\n```\n\n\nb',

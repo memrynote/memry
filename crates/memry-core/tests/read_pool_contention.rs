@@ -20,7 +20,6 @@ mod http_fakes;
 
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -42,8 +41,6 @@ const TASKS: usize = if RELEASE { 2_000 } else { 100 };
 const SYNC_ROWS: usize = if RELEASE { 50_000 } else { 2_000 };
 const HOLD: Duration = Duration::from_millis(2_000);
 const READS: usize = 300;
-
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
 
 /// The tests take turns: a neighbour seeding 5000 notes would load the CPU the
 /// latency test is timing.
@@ -68,8 +65,11 @@ struct Seeded {
 /// A file-backed vault filled through the same write APIs the app uses.
 fn seeded(note_count: usize, task_count: usize) -> Seeded {
     // One directory per test: the three run in parallel in one process.
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("memry-read-pool-{}-{unique}", std::process::id()));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-read-pool-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     let vault = Vault::open("vault-1".to_owned(), dir.display().to_string()).expect("open");
 

@@ -26,6 +26,7 @@ pub mod journal_records;
 pub mod large_notes;
 pub mod linking;
 pub mod linking_approver;
+pub mod note_files;
 pub mod notes;
 pub mod notes_write;
 pub mod projects;

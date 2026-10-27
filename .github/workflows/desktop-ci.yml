@@ -5,9 +5,6 @@ on:
     # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; the
     # jobs below skip every other labeled event, so PRs into main see no change.
     types: [opened, synchronize, reopened, labeled]
-    paths-ignore:
-      - 'apps/docs/**'
-      - 'apps/landing/**'
   push:
     branches:
       - main
@@ -15,6 +12,8 @@ on:
     paths-ignore:
       - 'apps/docs/**'
       - 'apps/landing/**'
+  # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -36,9 +35,53 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
+  # Heavy jobs run only when the diff touches what they protect (apps/desktop, packages, root configs).
+  # Detected here, in the job, so the workflow always runs and the gate always reports. Pushes to main,
+  # dispatch and PRs into main are not path-gated: the output is true.
+  changes:
+    name: Changed paths
+    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      # Electron paths changed AND not only docs/landing (the old `paths-ignore`; main keeps it).
+      run: ${{ steps.run.outputs.run }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Detect changed paths
+        id: tier
+        uses: ./.github/actions/ci-tier
+        with:
+          token: ${{ github.token }}
+
+      - name: Detect docs-only changes
+        id: docs
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          exclude: '^apps/(docs|landing)/'
+
+      - name: Decide
+        id: run
+        env:
+          ELECTRON: ${{ steps.tier.outputs.electron }}
+          CODE: ${{ steps.docs.outputs.changed }}
+        run: |
+          run=false
+          if [ "$ELECTRON" = true ] && [ "$CODE" = true ]; then run=true; fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+
   static:
     name: Static checks
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -179,11 +222,12 @@ jobs:
 
   unit:
     name: Unit & integration tests (${{ matrix.shard }}/4)
+    needs: changes
     # The desktop suite is CPU-bound in a single vitest run (~25 min on one
     # runner). Splitting it across 4 runners with `--shard` cuts the critical
     # path; each shard writes a blob report that `unit-merge` combines into
     # the same coverage output the single run used to produce.
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     strategy:
@@ -255,8 +299,8 @@ jobs:
     name: Unit & integration tests
     # Merges the shard blob reports into one test summary and one coverage
     # report (json-summary for the thresholds job, lcov for Codecov).
-    needs: unit
-    if: ${{ !cancelled() && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
+    needs: [changes, unit]
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -308,7 +352,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload desktop coverage to Codecov
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -322,8 +366,8 @@ jobs:
     # Gates the coverage ratchet floors (apps/desktop/config/coverage-thresholds.json)
     # against the summary produced by unit-merge — a distinct check so coverage
     # regressions never read as failing tests. Just reads JSON, so no install.
-    needs: unit-merge
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: [changes, unit-merge]
+    if: ${{ !cancelled() && needs.unit-merge.result == 'success' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -687,3 +731,35 @@ jobs:
           name: e2e-full-results-${{ strategy.job-index }}
           path: apps/desktop/test-results/
           if-no-files-found: ignore
+
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
+  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
+  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  gate:
+    name: Desktop CI gate
+    needs:
+      [
+        changes,
+        static,
+        unit,
+        unit-merge,
+        coverage,
+        desktop-build,
+        e2e-smoke,
+        e2e-smoke-windows,
+        e2e-full
+      ]
+    # Skipped (not red) in noop runs: the merge queue is the authoritative gate.
+    if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail when a needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+          DETECT_RESULT: ${{ needs.changes.result }}
+        run: |
+          echo "needed job results: $RESULTS"
+          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
+          if [ "$DETECT_RESULT" != success ]; then echo "::error::changes job result was $DETECT_RESULT"; exit 1; fi
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

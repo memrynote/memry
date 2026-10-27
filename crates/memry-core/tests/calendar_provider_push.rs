@@ -4,8 +4,6 @@
 //! nothing, a pulled object Memry wrote flows back into its item, a foreign
 //! object mirrors, and a deleted item plans a delete.
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::api::calendar_records::CalendarZone;
 use memry_core::domain::calendar_items::ical::{IcalWindow, IcalZones};
 use memry_core::domain::calendar_items::providers::{self, Target, bindings, caldav, ical_write};
@@ -15,11 +13,12 @@ use memry_core::storage::{Db, open_data};
 use serde_json::json;
 
 const NOW: i64 = 1_773_000_000_000; // 2026-03-08
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open() -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!("memry-cal-push-{}-{unique}", std::process::id()));
+    let dir = tempfile::Builder::new()
+        .prefix("memry-cal-push-")
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("scratch");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

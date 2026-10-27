@@ -8,8 +8,6 @@
 //! | template properties are not applied        | §13.7.6, shape unstated         |
 //! | a missing or deleted template writes nothing | one transaction               |
 
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use memry_core::domain::templates::{self, NewTemplate, NoteFromTemplate};
 use memry_core::storage::repositories::sync_items;
 use memry_core::storage::{Db, open_data};
@@ -22,14 +20,12 @@ const DEVICE: &str = "device-a";
 /// Two blocks and a list marker: markdown this tier must not understand.
 const BODY: &str = "# Daily\n\n- [ ] one\n- [ ] two\n";
 
-static SCRATCH: AtomicU64 = AtomicU64::new(0);
-
 fn open(label: &str) -> Db {
-    let unique = SCRATCH.fetch_add(1, Ordering::Relaxed);
-    let dir = std::env::temp_dir().join(format!(
-        "memry-domain-{label}-{}-{unique}",
-        std::process::id()
-    ));
+    let dir = tempfile::Builder::new()
+        .prefix(&format!("memry-domain-{label}-"))
+        .tempdir()
+        .expect("the scratch directory")
+        .keep();
     std::fs::create_dir_all(&dir).expect("the scratch directory");
     open_data(&dir.join("data.db")).expect("open data.db")
 }

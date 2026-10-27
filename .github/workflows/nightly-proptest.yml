@@ -1,0 +1,174 @@
+# Nightly random-seed, high-case proptest run for the markdown converter (#3517).
+#
+# PR, merge-queue and push runs of Rust CI use the fixed seed PROPTEST_RNG_SEED=20261027 so a red run
+# is reproducible. This workflow trades that for coverage: a fresh random seed and many more cases
+# each night. A failure opens (or comments on) one issue that carries the seed and the shrunk input,
+# which is enough to replay it locally with the same PROPTEST_RNG_SEED.
+#
+# Schedules fire only from the default branch, so the jobs check out feat/tauri-v2 explicitly.
+# The Intel Mac leg lives here too: Rust CI runs it on push, never on a PR or in the merge queue.
+name: Nightly proptest
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      cases:
+        description: Proptest cases per property
+        default: '50000'
+      ref:
+        description: Branch or sha to test
+        default: feat/tauri-v2
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-proptest
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  proptest:
+    name: Proptest (random seed)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || 'feat/tauri-v2' }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+
+      # Restore only: the nightly must not evict the push-saved caches.
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+          save-if: false
+
+      - name: Run the markdown proptests
+        env:
+          CASES: ${{ inputs.cases || '50000' }}
+        run: |
+          set -o pipefail
+          seed=$(od -An -N8 -tu8 /dev/urandom | tr -d ' ')
+          echo "seed=$seed cases=$CASES"
+          mkdir -p "$RUNNER_TEMP/proptest"
+          echo "$seed" > "$RUNNER_TEMP/proptest/seed.txt"
+          echo "$CASES" > "$RUNNER_TEMP/proptest/cases.txt"
+          PROPTEST_RNG_SEED="$seed" PROPTEST_CASES="$CASES" timeout 75m \
+            cargo test -p memry-core --features markdown --test markdown_proptest --test markdown_frontmatter_proptest 2>&1 \
+            | tee "$RUNNER_TEMP/proptest/output.txt"
+
+      - name: Upload output
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: proptest-nightly
+          path: |
+            ${{ runner.temp }}/proptest/
+            crates/memry-core/proptest-regressions/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  intel:
+    name: Tests (macos-15-intel)
+    runs-on: macos-15-intel
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+        working-directory: crates
+    env:
+      PROPTEST_RNG_SEED: '20261027'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.ref || 'feat/tauri-v2' }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+          save-if: false
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: nextest
+
+      - name: Test
+        run: cargo nextest run -p memry-core -p memry-desktop -p memry-tauri --no-fail-fast --features memry-core/markdown
+
+  report:
+    name: Report failure
+    needs: proptest
+    if: ${{ always() && needs.proptest.result == 'failure' }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    # Write access to issues only; no checkout, so nothing from the repo runs with it.
+    permissions:
+      issues: write
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Download output
+        uses: actions/download-artifact@v4
+        with:
+          name: proptest-nightly
+          path: out
+
+      - name: Open or update the issue
+        run: |
+          set -euo pipefail
+          out=$(find out -name output.txt | head -1)
+          seed=$(cat "$(find out -name seed.txt | head -1)")
+          cases=$(cat "$(find out -name cases.txt | head -1)")
+          failing=$(grep -E '^test .* FAILED$' "$out" | sed 's/^test //; s/ \.\.\. FAILED$//' | head -10 || true)
+          inputs=$(grep -E 'minimal failing input' "$out" | head -10 || true)
+          {
+            echo "The nightly proptest run failed."
+            echo
+            echo "- Run: $RUN_URL"
+            echo "- Seed: \`$seed\` (replay with \`PROPTEST_RNG_SEED=$seed PROPTEST_CASES=$cases cargo test -p memry-core --features markdown --test markdown_proptest --test markdown_frontmatter_proptest\`)"
+            echo "- Cases: $cases"
+            echo
+            echo "Failing tests:"
+            echo '```'
+            echo "${failing:-none parsed; see the run log}"
+            echo '```'
+            echo
+            echo "Minimal failing inputs:"
+            echo '```'
+            echo "${inputs:-none parsed; see the run log}"
+            echo '```'
+          } > body.md
+          gh label create proptest-nightly --description "Nightly random-seed proptest failure" --color D93F0B 2>/dev/null || true
+          existing=$(gh issue list --label proptest-nightly --state open --json number --jq '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body-file body.md
+          else
+            gh issue create --label proptest-nightly --title "Nightly proptest failure" --body-file body.md
+          fi

@@ -20,8 +20,13 @@ use super::key_source::{ChromiumKeySource, KeySourceError};
 use super::keytar::KeytarSource;
 use crate::electron_import::profile::ElectronProfile;
 
-/// The per-call budget of the Electron app (`KEYCHAIN_READ_TIMEOUT_MS`).
-pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(5);
+/// The per-call budget. Electron's `KEYCHAIN_READ_TIMEOUT_MS` is 5 s because its Keychain reads
+/// answer without a person; here the same call can show a Keychain, KWallet or "Unlock Login
+/// Keyring" prompt and wait for a typed password. A shorter budget makes a user who is still
+/// typing look declined and fails every later read with "a previous call is still pending". The
+/// latch still stops prompts from stacking, and a call that outlives this budget is reported as
+/// failed, never as missing.
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub struct Guarded<T> {
     inner: Arc<T>,

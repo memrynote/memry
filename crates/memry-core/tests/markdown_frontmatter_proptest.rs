@@ -11,7 +11,12 @@ use proptest::prelude::*;
 
 fn config() -> ProptestConfig {
     ProptestConfig {
-        cases: 2000,
+        // `PROPTEST_CASES` raises the count for the nightly run (nightly-proptest.yml). An explicit
+        // `cases` would otherwise shadow the variable proptest reads in `Config::default()`.
+        cases: std::env::var("PROPTEST_CASES")
+            .ok()
+            .and_then(|cases| cases.parse().ok())
+            .unwrap_or(2000),
         ..ProptestConfig::default()
     }
 }
