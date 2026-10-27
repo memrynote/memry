@@ -10,7 +10,8 @@ use crate::session::{OpenStage, Session};
 use crate::vault::config::read_vault_config;
 
 pub struct VaultTier {
-    echo: Arc<EchoGuard>,
+    /// The own-write record of the open vault session; every open and close starts a new one.
+    echo: Mutex<Arc<EchoGuard>>,
     sink: EventSink,
     running: Mutex<Option<VaultWatcher>>,
 }
@@ -18,19 +19,22 @@ pub struct VaultTier {
 impl VaultTier {
     pub fn new(sink: EventSink) -> Arc<Self> {
         Arc::new(Self {
-            echo: Arc::new(EchoGuard::default()),
+            echo: Mutex::new(Arc::default()),
             sink,
             running: Mutex::new(None),
         })
     }
 
     /// The record every writer tells before it changes a vault file, so the watcher does not
-    /// report the write back as an outside edit.
+    /// report the write back as an outside edit. It belongs to the open vault session: a record
+    /// made in one vault must never hide a change in the next, so a writer asks again for each
+    /// write instead of keeping the handle.
     pub fn echo(&self) -> Arc<EchoGuard> {
-        self.echo.clone()
+        self.echo.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     fn stop(&self) {
+        *self.echo.lock().unwrap_or_else(|e| e.into_inner()) = Arc::default();
         let running = self
             .running
             .lock()
@@ -54,7 +58,7 @@ impl VaultTier {
                     vault.path.clone(),
                     exclude,
                     vault.vault.note_files(),
-                    tier.echo.clone(),
+                    tier.echo(),
                     tier.sink.clone(),
                 )
                 .map_err(|error| error.to_string())?;

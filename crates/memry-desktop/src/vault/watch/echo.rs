@@ -86,6 +86,15 @@ impl EchoGuard {
         }
     }
 
+    /// `path` was seen present with no hash to compare (a file that is not markdown). The app's
+    /// removal of it is over: a later outside delete must pass.
+    pub fn seen_present(&self, path: &str) {
+        let mut state = self.lock();
+        if state.by_path.get(path) == Some(&Expected::Gone) {
+            state.forget(path);
+        }
+    }
+
     /// `path` was seen missing. True when the app removed it.
     pub fn absorbs_removal(&self, path: &str) -> bool {
         let mut state = self.lock();
@@ -128,6 +137,20 @@ mod tests {
             "back with content: an outside create"
         );
         assert!(!echo.absorbs_removal("a.md"));
+    }
+
+    #[test]
+    fn a_removal_record_is_spent_once_the_file_is_seen_back() {
+        let echo = EchoGuard::default();
+        echo.will_remove("a.pdf");
+        echo.seen_present("a.pdf");
+        assert!(!echo.absorbs_removal("a.pdf"));
+        echo.will_write("a.md", "h");
+        echo.seen_present("a.md");
+        assert!(
+            echo.absorbs_write("a.md", "h"),
+            "a write record is not touched"
+        );
     }
 
     #[test]

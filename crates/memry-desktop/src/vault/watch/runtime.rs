@@ -26,6 +26,7 @@ use super::echo::EchoGuard;
 use super::event::{EventSink, VaultEvent};
 use super::gone::is_vault_reachable;
 use super::reconcile::Reconciler;
+use super::safety::{SafetyNet, Tuning};
 
 /// Messages queued between the OS callback and the worker.
 pub const CHANNEL_CAPACITY: usize = 65_536;
@@ -52,14 +53,45 @@ enum Msg {
     Error(notify::Error),
 }
 
+/// Lets events through until the watcher is stopped. `stop` closes it before anything else, so
+/// no event leaves a watcher once its stop has begun, even while its thread is still finishing
+/// a step (a folder of a million files) and the next vault is already open: the sink is shared
+/// and an event carries no vault identity. Only a call already inside the sink can still land.
+#[derive(Clone)]
+struct Gate(Arc<AtomicBool>);
+
+impl Gate {
+    fn open() -> Self {
+        Self(Arc::new(AtomicBool::new(true)))
+    }
+
+    fn wrap(&self, sink: EventSink) -> EventSink {
+        let open = self.0.clone();
+        Arc::new(move |event| {
+            if open.load(Ordering::SeqCst) {
+                sink(event);
+            }
+        })
+    }
+
+    fn close(&self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
 pub struct VaultWatcher {
     stop: Arc<AtomicBool>,
+    gate: Gate,
     thread: Option<JoinHandle<()>>,
 }
 
 impl VaultWatcher {
     /// Starts watching `root`. The OS watcher is set up before this returns, so a failure
     /// (the Linux inotify limit) is the caller's error.
+    ///
+    /// The start rescan runs on the worker, after this returns. Electron ran it before the
+    /// open's index walk; the consumer that applies events (12e) must order its own open the
+    /// same way or tolerate the walk and the rescan reporting the same file.
     pub fn start(
         root: PathBuf,
         exclude: Vec<String>,
@@ -67,27 +99,42 @@ impl VaultWatcher {
         echo: Arc<EchoGuard>,
         sink: EventSink,
     ) -> Result<Self, WatchError> {
+        Self::start_with(root, exclude, files, echo, sink, Tuning::platform())
+    }
+
+    pub fn start_with(
+        root: PathBuf,
+        exclude: Vec<String>,
+        files: NoteFiles,
+        echo: Arc<EchoGuard>,
+        sink: EventSink,
+        tuning: Tuning,
+    ) -> Result<Self, WatchError> {
         let (tx, rx) = sync_channel(CHANNEL_CAPACITY);
         let overflow = Arc::new(AtomicBool::new(false));
         let watcher = watch(&root, &tx, &overflow)?;
         let stop = Arc::new(AtomicBool::new(false));
-        let worker = Worker {
-            reconciler: Reconciler::new(root.clone(), exclude, files, echo, sink.clone()),
-            canonical_root: std::fs::canonicalize(&root).ok(),
+        let gate = Gate::open();
+        let sink = gate.wrap(sink);
+        let reconciler = Reconciler::new(root.clone(), exclude, files, echo, sink.clone())
+            .with_stop(stop.clone());
+        let mut worker = Worker::new(
+            reconciler,
             root,
             sink,
-            tx,
-            rx,
+            tuning,
+            (tx, rx),
             overflow,
-            stop: stop.clone(),
-            watcher: Some(watcher),
-        };
+            stop.clone(),
+        );
+        worker.watcher = Some(watcher);
         let thread = std::thread::Builder::new()
             .name("vault-watcher".into())
             .spawn(move || worker.run())
             .map_err(WatchError::Thread)?;
         Ok(Self {
             stop,
+            gate,
             thread: Some(thread),
         })
     }
@@ -95,6 +142,7 @@ impl VaultWatcher {
     /// Stops the worker and waits for it. It looks at the flag every tick and between the
     /// steps of a rescan, so this returns promptly.
     pub fn stop(&mut self) {
+        self.gate.close();
         self.stop.store(true, Ordering::Relaxed);
         if let Some(thread) = self.thread.take()
             && thread.join().is_err()
@@ -151,9 +199,35 @@ struct Worker {
     stop: Arc<AtomicBool>,
     /// Held so the OS keeps delivering; replaced when the vault returns.
     watcher: Option<RecommendedWatcher>,
+    net: SafetyNet,
+    last_error: Option<Instant>,
 }
 
 impl Worker {
+    fn new(
+        reconciler: Reconciler,
+        root: PathBuf,
+        sink: EventSink,
+        tuning: Tuning,
+        (tx, rx): (SyncSender<Msg>, Receiver<Msg>),
+        overflow: Arc<AtomicBool>,
+        stop: Arc<AtomicBool>,
+    ) -> Self {
+        Self {
+            reconciler,
+            canonical_root: std::fs::canonicalize(&root).ok(),
+            root,
+            sink,
+            tx,
+            rx,
+            overflow,
+            stop,
+            watcher: None,
+            net: SafetyNet::new(tuning, Instant::now()),
+            last_error: None,
+        }
+    }
+
     fn run(mut self) {
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.work()));
         if outcome.is_err() {
@@ -168,7 +242,6 @@ impl Worker {
         let mut debounce = Debouncer::standard();
         let mut force_rescan = false;
         let mut last_poll = Instant::now();
-        let mut last_error: Option<Instant> = None;
         // Files removed while the app was closed get the removal a live unlink would have.
         self.rescan(false);
 
@@ -180,9 +253,11 @@ impl Worker {
             };
             let now = Instant::now();
             let mut taken = 0;
+            let mut paths_taken = 0;
             while let Some(msg) = next {
                 match msg {
                     Msg::Paths(paths) => {
+                        paths_taken += paths.len();
                         for path in paths {
                             match self.rel_of(&path) {
                                 Some(rel) if rel.is_empty() => self.reconciler.check_reachable(),
@@ -192,7 +267,10 @@ impl Worker {
                         }
                     }
                     Msg::Rescan => force_rescan = true,
-                    Msg::Error(error) => self.report(&error, now, &mut last_error),
+                    Msg::Error(error) => {
+                        self.report(&error, now);
+                        self.net.lost_events(now);
+                    }
                 }
                 taken += 1;
                 next = if taken < MAX_PER_TICK {
@@ -202,6 +280,7 @@ impl Worker {
                 };
             }
 
+            self.net.traffic(paths_taken, now);
             if self.reconciler.is_away() {
                 debounce.clear();
                 if now.duration_since(last_poll) >= RETURN_POLL {
@@ -209,6 +288,11 @@ impl Worker {
                     self.try_return();
                 }
                 continue;
+            }
+            if self.net.rescan_due(now) {
+                // Re-armed with it: a watch the OS dropped without saying so is back.
+                self.rearm(now);
+                force_rescan = true;
             }
             if self.overflow.swap(false, Ordering::Relaxed)
                 | debounce.take_overflow()
@@ -259,15 +343,27 @@ impl Worker {
         self.rescan(true);
     }
 
-    fn report(&self, error: &notify::Error, now: Instant, last: &mut Option<Instant>) {
+    /// Drops the OS watch and sets it up again.
+    fn rearm(&mut self, now: Instant) {
+        self.watcher = None;
+        match watch(&self.root, &self.tx, &self.overflow) {
+            Ok(watcher) => self.watcher = Some(watcher),
+            Err(error) => self.report(&error, now),
+        }
+    }
+
+    fn report(&mut self, error: &notify::Error, now: Instant) {
         tracing::warn!(
             scope = "vault_watch",
             "the OS watcher reported an error: {error}"
         );
-        if last.is_some_and(|at| now.duration_since(at) < ERROR_REPORT_EVERY) {
+        if self
+            .last_error
+            .is_some_and(|at| now.duration_since(at) < ERROR_REPORT_EVERY)
+        {
             return;
         }
-        *last = Some(now);
+        self.last_error = Some(now);
         (self.sink)(VaultEvent::WatchFailed {
             message: error.to_string(),
             limit: matches!(error.kind, notify::ErrorKind::MaxFilesWatch),
@@ -289,5 +385,99 @@ impl Worker {
             rel.push_str(part.as_os_str().to_str()?);
         }
         Some(rel)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Mutex;
+
+    use memry_core::api::vault::Vault;
+    use memry_core::domain::note_files::NoteFileStat;
+    use memry_core::storage::OpenOptions;
+
+    use super::*;
+    use crate::vault::hash::content_hash;
+
+    #[test]
+    fn a_closed_gate_lets_no_event_through() {
+        let seen = Arc::new(Mutex::new(0));
+        let counter = seen.clone();
+        let gate = Gate::open();
+        let sink = gate.wrap(Arc::new(move |_| *counter.lock().unwrap() += 1));
+        sink(VaultEvent::Reachable);
+        gate.close();
+        sink(VaultEvent::Reachable);
+        assert_eq!(*seen.lock().unwrap(), 1);
+    }
+
+    /// A backend error is the OS watcher saying it may have lost events and may be blind to
+    /// part of the vault: a rescan follows, and finds the edit no event announced.
+    #[test]
+    fn a_backend_error_ends_in_a_rescan_that_finds_what_no_event_announced() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path().join("vault");
+        let core = root.join(".memry/core");
+        std::fs::create_dir_all(&core).unwrap();
+        let vault =
+            Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+        std::fs::write(root.join("a.md"), "edited behind the watcher's back").unwrap();
+        vault
+            .note_files()
+            .upsert_stat(NoteFileStat {
+                note_id: "n1".into(),
+                path: "a.md".into(),
+                file_type: "markdown".into(),
+                mime_type: None,
+                file_size: Some(4),
+                content_hash: Some(content_hash("base")),
+                indexed_at: 1,
+            })
+            .unwrap();
+        let log: Arc<Mutex<Vec<VaultEvent>>> = Arc::default();
+        let events = log.clone();
+        let sink: EventSink = Arc::new(move |event| events.lock().unwrap().push(event));
+        let stop = Arc::new(AtomicBool::new(false));
+        let reconciler = Reconciler::new(
+            root.clone(),
+            vec![],
+            vault.note_files(),
+            Arc::new(EchoGuard::default()),
+            sink.clone(),
+        );
+        let (tx, rx) = sync_channel(8);
+        let mut worker = Worker::new(
+            reconciler,
+            root,
+            sink,
+            Tuning::none(),
+            (tx.clone(), rx),
+            Arc::default(),
+            stop.clone(),
+        );
+        tx.send(Msg::Error(notify::Error::generic("inotify said no")))
+            .unwrap();
+        let thread = std::thread::spawn(move || worker.work());
+
+        let deadline = Instant::now() + Duration::from_secs(20);
+        let changed = |log: &Mutex<Vec<VaultEvent>>| {
+            log.lock()
+                .unwrap()
+                .iter()
+                .any(|e| matches!(e, VaultEvent::Changed { note_id, .. } if note_id == "n1"))
+        };
+        while !changed(&log) && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        stop.store(true, Ordering::Relaxed);
+        thread.join().unwrap();
+        let events = log.lock().unwrap().clone();
+        assert!(changed(&log), "no rescan after the error: {events:?}");
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, VaultEvent::WatchFailed { .. })),
+            "the failure is reported too: {events:?}"
+        );
     }
 }

@@ -1,21 +1,37 @@
 //! What the watcher has already told the sink.
 //!
 //! The tier writes no row, so until a consumer records what an event described, `note_files`
-//! still shows the old state and the next OS event for the same file would repeat the
-//! report: a second `Added` for a file whose `Renamed` was just sent would create a duplicate
-//! note. This remembers, per path, the state last reported, and is the baseline a file is
-//! compared with before the row is.
+//! still shows the old state. This record is the overlay on top of it: the table as it would
+//! read had every report been applied. Every removal, rescan and pairing reads it before the
+//! row, so no later event contradicts an earlier one:
 //!
-//! Bounded: oldest entries go first past [`CAPACITY`]. An evicted path costs at most one
-//! repeated event, which is idempotent for the consumer (it compares hashes itself).
+//! - a path holds the state last reported for it (the baseline a file is compared with), and
+//!   the note it named, when it named one;
+//! - a note that was reported at another path (`Renamed`) has moved: its row, still at the old
+//!   path, is stale, and the note's removal is a removal at its new path;
+//! - a note reported `Removed` is gone: its row is skipped until the row itself changes.
+//!
+//! Paths are keyed by [`folded_key`], so a case-only or Unicode-normalization respelling of a
+//! path is the same entry. The record is scoped to one watcher, so one vault session.
+//!
+//! Bounded: oldest path entries go first past [`CAPACITY`], and the note index is derived from
+//! the entries, so an evicted entry takes its note mapping with it and the next rescan pairs the
+//! file again (a repeated, idempotent `Renamed`) instead of treating the stale row as a
+//! removal. Evicted removal marks cost one repeated `Removed`.
 
 use std::collections::{HashMap, VecDeque};
+
+use memry_core::domain::note_files::NoteFile;
+
+use crate::vault::path_key::folded_key;
 
 pub const CAPACITY: usize = 200_000;
 
 /// The state of a file as last reported.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Seen {
+    /// The spelling the OS reported.
+    pub path: String,
     /// Content hash, for markdown.
     pub hash: Option<String>,
     /// Size and modification time (ms), for every other kind.
@@ -24,50 +40,153 @@ pub struct Seen {
     pub note_id: Option<String>,
 }
 
+/// A row as it was when its note was reported removed. A row the consumer changes afterwards
+/// (restored, re-indexed) no longer matches, so the mark stops hiding it.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct RowSignature {
+    path: String,
+    indexed_at: i64,
+    content_hash: Option<String>,
+}
+
+impl RowSignature {
+    fn of(row: &NoteFile) -> Self {
+        Self {
+            path: row.path.clone(),
+            indexed_at: row.indexed_at,
+            content_hash: row.content_hash.clone(),
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct Reported {
+    /// Keys in the order they were first put; may hold keys already removed.
     order: VecDeque<String>,
-    by_path: HashMap<String, Seen>,
+    by_key: HashMap<String, Seen>,
+    /// note id -> key of the entry that names it.
+    by_note: HashMap<String, String>,
+    removed: HashMap<String, RowSignature>,
+    removed_order: VecDeque<String>,
 }
 
 impl Reported {
     pub fn get(&self, path: &str) -> Option<&Seen> {
-        self.by_path.get(path)
+        self.by_key.get(&folded_key(path))
     }
 
-    pub fn put(&mut self, path: &str, seen: Seen) {
-        if self.by_path.insert(path.to_owned(), seen).is_none() {
-            self.order.push_back(path.to_owned());
-            while self.order.len() > CAPACITY {
-                if let Some(oldest) = self.order.pop_front() {
-                    self.by_path.remove(&oldest);
+    /// Where the note was last reported.
+    pub fn of_note(&self, note_id: &str) -> Option<&Seen> {
+        self.by_key.get(self.by_note.get(note_id)?)
+    }
+
+    pub fn put(&mut self, seen: Seen) {
+        let key = folded_key(&seen.path);
+        if let Some(replaced) = self.by_key.get(&key)
+            && let Some(id) = &replaced.note_id
+            && self.by_note.get(id) == Some(&key)
+        {
+            self.by_note.remove(id);
+        }
+        if let Some(id) = &seen.note_id
+            && let Some(old_key) = self.by_note.insert(id.clone(), key.clone())
+            && old_key != key
+        {
+            // The note moved: its earlier entry is stale.
+            self.by_key.remove(&old_key);
+        }
+        if self.by_key.insert(key.clone(), seen).is_none() {
+            self.order.push_back(key);
+        }
+        self.evict();
+    }
+
+    fn evict(&mut self) {
+        while self.by_key.len() > CAPACITY {
+            let Some(oldest) = self.order.pop_front() else {
+                break;
+            };
+            self.drop_key(&oldest);
+        }
+        if self.order.len() > 2 * CAPACITY {
+            self.order.retain(|k| self.by_key.contains_key(k));
+        }
+    }
+
+    fn drop_key(&mut self, key: &str) {
+        if let Some(seen) = self.by_key.remove(key)
+            && let Some(id) = seen.note_id
+            && self.by_note.get(&id).is_some_and(|k| k == key)
+        {
+            self.by_note.remove(&id);
+        }
+    }
+
+    pub fn remove(&mut self, path: &str) {
+        self.drop_key(&folded_key(path));
+    }
+
+    fn keys_in_tree(&self, path: &str, only_unowned: bool) -> Vec<String> {
+        let (key, below) = (folded_key(path), format!("{}/", folded_key(path)));
+        self.by_key
+            .iter()
+            .filter(|(k, _)| **k == key || k.starts_with(&below))
+            .filter(|(_, seen)| !only_unowned || seen.note_id.is_none())
+            .map(|(k, _)| k.clone())
+            .collect()
+    }
+
+    /// Forgets `path` and everything below it (a folder that went).
+    pub fn forget_tree(&mut self, path: &str) {
+        for key in self.keys_in_tree(path, false) {
+            self.drop_key(&key);
+        }
+    }
+
+    /// Forgets the entries at and below `path` that name no note. The ones that name a note
+    /// stay until that note's removal is settled, since the note's home is what a removal
+    /// reads.
+    pub fn forget_unowned_tree(&mut self, path: &str) {
+        for key in self.keys_in_tree(path, true) {
+            self.drop_key(&key);
+        }
+    }
+
+    /// `row`'s note was reported removed.
+    pub fn mark_removed(&mut self, row: &NoteFile) {
+        let sig = RowSignature::of(row);
+        if self.removed.insert(row.note_id.clone(), sig).is_none() {
+            self.removed_order.push_back(row.note_id.clone());
+            while self.removed_order.len() > CAPACITY {
+                if let Some(oldest) = self.removed_order.pop_front() {
+                    self.removed.remove(&oldest);
                 }
             }
         }
     }
 
-    /// Forgets `path` and everything below it (a folder that went).
-    pub fn forget_tree(&mut self, path: &str) {
-        let below = format!("{path}/");
-        if self.by_path.remove(path).is_some() || self.by_path.keys().any(|p| p.starts_with(&below))
-        {
-            self.by_path
-                .retain(|p, _| p != path && !p.starts_with(&below));
-            self.order.retain(|p| self.by_path.contains_key(p));
-        }
+    /// Whether `row` is the row of a note already reported removed.
+    pub fn is_removed(&self, row: &NoteFile) -> bool {
+        self.removed
+            .get(&row.note_id)
+            .is_some_and(|sig| *sig == RowSignature::of(row))
     }
 
     pub fn clear(&mut self) {
-        self.order.clear();
-        self.by_path.clear();
+        *self = Self::default();
     }
 
     pub fn len(&self) -> usize {
-        self.by_path.len()
+        self.by_key.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.by_path.is_empty()
+        self.by_key.is_empty()
+    }
+
+    #[cfg(test)]
+    fn note_count(&self) -> usize {
+        self.by_note.len()
     }
 }
 
@@ -75,11 +194,25 @@ impl Reported {
 mod tests {
     use super::*;
 
-    fn seen(hash: &str) -> Seen {
+    fn seen(path: &str, note: Option<&str>) -> Seen {
         Seen {
-            hash: Some(hash.into()),
+            path: path.into(),
+            hash: Some("h".into()),
             stat: (1, 1),
-            note_id: None,
+            note_id: note.map(str::to_owned),
+        }
+    }
+
+    fn row(id: &str, path: &str, indexed_at: i64) -> NoteFile {
+        NoteFile {
+            note_id: id.into(),
+            path: path.into(),
+            file_type: "markdown".into(),
+            mime_type: None,
+            file_size: Some(1),
+            content_hash: Some("h".into()),
+            local_only: false,
+            indexed_at,
         }
     }
 
@@ -87,7 +220,7 @@ mod tests {
     fn a_folder_forgets_everything_below_it_and_nothing_beside_it() {
         let mut r = Reported::default();
         for p in ["a/x.md", "a/b/y.md", "ab/z.md", "a.md"] {
-            r.put(p, seen("h"));
+            r.put(seen(p, None));
         }
         r.forget_tree("a");
         assert!(r.get("a/x.md").is_none() && r.get("a/b/y.md").is_none());
@@ -95,13 +228,47 @@ mod tests {
     }
 
     #[test]
-    fn the_oldest_entries_go_past_the_capacity() {
+    fn the_oldest_entries_go_past_the_capacity_and_take_their_note_with_them() {
         let mut r = Reported::default();
-        for n in 0..CAPACITY + 5 {
-            r.put(&format!("{n}.md"), seen("h"));
+        r.put(seen("0.md", Some("n0")));
+        for n in 1..CAPACITY + 5 {
+            r.put(seen(&format!("{n}.md"), None));
         }
         assert_eq!(r.len(), CAPACITY);
         assert!(r.get("0.md").is_none());
+        assert!(
+            r.of_note("n0").is_none(),
+            "a note with no entry has no home"
+        );
         assert!(r.get(&format!("{}.md", CAPACITY + 4)).is_some());
+    }
+
+    #[test]
+    fn a_note_has_one_home_and_a_respelled_path_is_the_same_entry() {
+        let mut r = Reported::default();
+        r.put(seen("a.md", Some("n1")));
+        r.put(seen("b.md", Some("n1")));
+        assert!(r.get("a.md").is_none(), "the old entry is stale");
+        assert_eq!(r.of_note("n1").unwrap().path, "b.md");
+        assert_eq!(r.get("B.MD").unwrap().path, "b.md");
+        assert_eq!(r.note_count(), 1);
+    }
+
+    #[test]
+    fn a_folder_keeps_the_entries_that_name_a_note_until_the_removal_settles() {
+        let mut r = Reported::default();
+        r.put(seen("d/a.md", Some("n1")));
+        r.put(seen("d/b.md", None));
+        r.forget_unowned_tree("d");
+        assert!(r.get("d/a.md").is_some() && r.get("d/b.md").is_none());
+    }
+
+    #[test]
+    fn a_removal_mark_hides_the_row_it_was_made_for_and_not_a_changed_one() {
+        let mut r = Reported::default();
+        r.mark_removed(&row("n1", "a.md", 5));
+        assert!(r.is_removed(&row("n1", "a.md", 5)));
+        assert!(!r.is_removed(&row("n1", "a.md", 6)), "re-indexed since");
+        assert!(!r.is_removed(&row("n2", "a.md", 5)));
     }
 }

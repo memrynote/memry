@@ -5,9 +5,11 @@
 //! - [`reconcile`]: what is on disk against `note_files`, plus the rescan.
 //! - [`rename`]: a removed file whose content shows up elsewhere is a rename.
 //! - [`echo`]: the app's own writes do not come back as outside edits.
+//! - [`reported`]: what was already told, which every removal and rescan reads before the row.
 //! - [`gone`]: a removal is real only if the vault is there and the file (and its iCloud
 //!   placeholder) is not.
 //! - [`runtime`]: the `notify` watcher and the one thread that owns the reconciler.
+//! - [`safety`]: the rescans that stand in for events the OS watcher lost without saying so.
 //! - [`tier`]: registers the watcher on the session's open and close.
 //!
 //! The tier is inert for notes: it reads `note_files` and the files, changes neither, and
@@ -19,14 +21,17 @@ pub mod echo;
 pub mod event;
 pub mod filter;
 pub mod gone;
+mod home;
 pub mod reconcile;
 pub mod rename;
 pub mod reported;
 mod rescan;
 mod runtime;
+pub mod safety;
 mod tier;
 
 pub use echo::EchoGuard;
 pub use event::{EventSink, VaultEvent};
 pub use runtime::{VaultWatcher, WatchError};
+pub use safety::Tuning;
 pub use tier::VaultTier;

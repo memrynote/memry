@@ -31,12 +31,14 @@ pub enum VaultEvent {
     /// A note's file is gone for good: the rename window closed, the vault is there and the
     /// file is not on disk.
     Removed { note_id: String, path: String },
-    /// A removed note's content appeared at another path: the note keeps its id.
+    /// A removed note's content appeared at another path, or the path was respelled (case or
+    /// Unicode normalization): the note keeps its id. `content_hash` is `None` for a file that
+    /// is not markdown.
     Renamed {
         note_id: String,
         old_path: String,
         new_path: String,
-        content_hash: String,
+        content_hash: Option<String>,
     },
     /// A file of a type the vault does not index appeared.
     Unsupported { path: String },

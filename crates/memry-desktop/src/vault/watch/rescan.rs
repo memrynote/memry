@@ -6,13 +6,12 @@ use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
-use memry_core::api::errors::StorageError;
-use memry_core::domain::note_files::NoteFile;
-
 use super::event::VaultEvent;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
-use super::reconcile::{Probe, Reconciler, modified_ms, pending_of, probe};
+use super::home::{Home, home_of_row};
+use super::reconcile::{Probe, Reconciler, modified_ms, probe};
 use crate::vault::walk::walk_vault_with;
+use memry_core::api::errors::StorageError;
 
 /// A rescan that finds this many files missing at once, and more than this share of the rows,
 /// reports none of their removals. A half-copied or half-restored vault (`.memry/` landed, most
@@ -37,39 +36,49 @@ impl Reconciler {
             return Ok(true);
         }
         let rows = self.files.list_missing_candidates()?;
-        let known: HashSet<String> = self
+        // Each note where it was last reported, else where its row says: a move already
+        // reported leaves the row stale, and a removal already reported leaves nothing to
+        // remove again.
+        let homes: Vec<Home> = rows
+            .iter()
+            .filter_map(|row| home_of_row(&self.reported, row))
+            .collect();
+        let candidates: HashSet<&str> = rows.iter().map(|r| r.note_id.as_str()).collect();
+        let mut known: HashSet<String> = self
             .files
             .list_paths()?
             .into_iter()
+            .filter(|(note_id, _)| !candidates.contains(note_id.as_str()))
             .map(|(_, path)| path)
             .collect();
+        known.extend(homes.iter().map(|home| home.path.clone()));
         let walk = walk_vault_with(&self.root, &self.exclude, self.limits);
         let listed: HashSet<&str> = walk.files.iter().map(String::as_str).collect();
 
-        let mut missing: Vec<&NoteFile> = Vec::new();
-        for row in &rows {
+        let mut missing: Vec<&Home> = Vec::new();
+        for home in &homes {
             if stop.load(Ordering::Relaxed) {
                 return Ok(false);
             }
-            if listed.contains(row.path.as_str()) || under_any(&row.path, &walk.unreadable) {
+            if listed.contains(home.path.as_str()) || under_any(&home.path, &walk.unreadable) {
                 continue;
             }
             // The walk skips hidden, excluded and unreadable places; the disk has the last word.
-            if is_gone_from_disk(&self.root.join(&row.path)) {
-                missing.push(row);
+            if is_gone_from_disk(&self.root.join(&home.path)) {
+                missing.push(home);
             }
         }
         let added: Vec<&String> = walk.files.iter().filter(|p| !known.contains(*p)).collect();
         // A partial walk cannot say what is gone, so it never drives a delete.
         let cut_short = walk.truncated.is_some() || walk.too_deep > 0;
         let mass = missing.len() > MASS_REMOVAL_MIN_COUNT
-            && missing.len() as f64 > rows.len() as f64 * MASS_REMOVAL_MIN_SHARE;
+            && missing.len() as f64 > homes.len() as f64 * MASS_REMOVAL_MIN_SHARE;
         let withheld = cut_short || mass;
         if withheld {
             tracing::warn!(
                 scope = "vault_watch",
                 missing = missing.len(),
-                checked = rows.len(),
+                checked = homes.len(),
                 cut_short,
                 "too many files are missing at once; reporting no removals until the next open"
             );
@@ -79,12 +88,20 @@ impl Reconciler {
         if missing.is_empty() && !with_changes {
             return Ok(true);
         }
-        let changed: Vec<&NoteFile> = if with_changes {
-            rows.iter()
-                .filter(|row| listed.contains(row.path.as_str()))
-                .filter(|row| {
-                    std::fs::metadata(self.root.join(&row.path))
-                        .is_ok_and(|m| modified_ms(&m) > row.indexed_at)
+        // Edited since indexed: a later modification time, or another size. An edit that keeps
+        // both (a sync tool restoring times, a same-length change) is not seen here; reading
+        // every file for it would cost a vault-sized read on every rescan.
+        let changed: Vec<&Home> = if with_changes {
+            homes
+                .iter()
+                .filter(|home| listed.contains(home.path.as_str()))
+                .filter(|home| {
+                    std::fs::metadata(self.root.join(&home.path)).is_ok_and(|m| {
+                        modified_ms(&m) > home.indexed_at
+                            || home
+                                .size
+                                .is_some_and(|size| i64::try_from(m.len()) != Ok(size))
+                    })
                 })
                 .collect()
         } else {
@@ -92,9 +109,9 @@ impl Reconciler {
         };
 
         let batch = self.tracker.new_batch();
-        for row in &missing {
+        for home in &missing {
             self.tracker
-                .track(pending_of((*row).clone()), now, Some(batch));
+                .track((*home).clone().pending(), now, Some(batch));
         }
         for path in &added {
             if stop.load(Ordering::Relaxed) {
@@ -111,12 +128,12 @@ impl Reconciler {
                 self.confirm_removed(pending);
             }
         }
-        for row in &changed {
+        for home in &changed {
             if stop.load(Ordering::Relaxed) {
                 return Ok(false);
             }
-            if let Probe::File(meta) = probe(&self.root.join(&row.path)) {
-                self.file_present(&row.path, &meta, now);
+            if let Probe::File(meta) = probe(&self.root.join(&home.path)) {
+                self.file_present(&home.path, &meta, now);
             }
         }
         self.emit(VaultEvent::Rescanned {

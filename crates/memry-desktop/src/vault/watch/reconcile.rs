@@ -8,7 +8,9 @@
 //! becomes known a moment later still pairs with it. The reconciler reads `note_files` and the
 //! files and changes neither.
 //!
-//! Invariants, each with a test in `tests/vault_watch.rs`:
+//! Invariants, each with a test in `tests/vault_watch.rs` and `tests/vault_watch_reported.rs`:
+//! - No event contradicts an earlier one. A removal, a rescan and a rename pairing read what was
+//!   reported (`reported`, through `home`) before the row, which no consumer has updated yet.
 //! - A file whose content differs from what was last reported, or from its row when nothing was
 //!   reported, is always reported, whatever the own-write record says: that record absorbs only
 //!   content equal to what the app wrote.
@@ -20,9 +22,11 @@
 //! - Every markdown file is read by hash, streamed, on the watcher's thread; a file that cannot
 //!   be read is reported unreadable and left alone.
 
+use std::collections::HashMap;
 use std::fs::Metadata;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant, UNIX_EPOCH};
 
 use memry_core::api::errors::StorageError;
@@ -33,9 +37,10 @@ use super::echo::EchoGuard;
 use super::event::{EventSink, VaultEvent};
 use super::filter::WatchFilter;
 use super::gone::{is_gone_from_disk, is_vault_reachable};
+use super::home::{Home, spelling_listed};
 use super::rename::{Pending, RenameTracker};
 use super::reported::{Reported, Seen};
-use crate::vault::file_types::{FileType, extension, file_type_of_extension, is_supported_path};
+use crate::vault::file_types::{FileType, extension, file_type_of_extension};
 use crate::vault::note_file::hash_file;
 use crate::vault::walk::{Limits, walk_from};
 
@@ -67,10 +72,15 @@ pub struct Reconciler {
     /// A bounded step stopped short (a folder walk): a full rescan owes the rest.
     rescan_owed: bool,
     /// Every row, loaded at most once per batch: a vanished folder needs them all.
-    all_rows: Option<Vec<NoteFile>>,
+    pub(super) all_rows: Option<Vec<NoteFile>>,
+    /// `all_rows` by folded path, built at most once per batch.
+    pub(super) folded: Option<HashMap<String, Vec<usize>>>,
     pub(super) limits: Limits,
     held_adds: Vec<HeldAdd>,
-    reported: Reported,
+    pub(super) reported: Reported,
+    /// Set when the watcher stops: long steps (a folder of a million files) end early and
+    /// report nothing more.
+    stop: Arc<AtomicBool>,
 }
 
 pub(super) enum Probe {
@@ -98,14 +108,6 @@ pub(super) fn modified_ms(meta: &Metadata) -> i64 {
         .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
 }
 
-pub(super) fn pending_of(row: NoteFile) -> Pending {
-    Pending {
-        note_id: row.note_id,
-        path: row.path,
-        hash: row.content_hash,
-    }
-}
-
 impl Reconciler {
     pub fn new(
         root: PathBuf,
@@ -125,10 +127,23 @@ impl Reconciler {
             away: false,
             rescan_owed: false,
             all_rows: None,
+            folded: None,
             limits: Limits::DEFAULT,
             held_adds: Vec::new(),
             reported: Reported::default(),
+            stop: Arc::new(AtomicBool::new(false)),
         }
+    }
+
+    /// Ends every step early once `stop` is set.
+    #[must_use]
+    pub fn with_stop(mut self, stop: Arc<AtomicBool>) -> Self {
+        self.stop = stop;
+        self
+    }
+
+    pub(super) fn stopped(&self) -> bool {
+        self.stop.load(Ordering::Relaxed)
     }
 
     /// The step bounds of the folder walks (the defaults are the vault walk's).
@@ -199,9 +214,13 @@ impl Reconciler {
     /// files, so a moved file finds the delete it pairs with.
     pub fn batch(&mut self, rels: Vec<String>, now: Instant) {
         self.all_rows = None;
+        self.folded = None;
         let mut dirs = Vec::new();
         let mut present = Vec::new();
         for rel in rels {
+            if self.stopped() {
+                return;
+            }
             if self.filter.ignores(&rel) {
                 continue;
             }
@@ -219,6 +238,9 @@ impl Reconciler {
             self.dir_appeared(&rel, now);
         }
         for (rel, meta) in present {
+            if self.stopped() {
+                return;
+            }
             self.file_present(&rel, &meta, now);
         }
         self.resolve_adds(now);
@@ -229,46 +251,29 @@ impl Reconciler {
             self.go_away();
             return;
         }
-        // What was reported about it, and a file created and removed inside the grace, are
-        // history now.
-        self.reported.forget_tree(rel);
+        // A file created and removed inside the grace is history now.
         let below = format!("{rel}/");
         self.held_adds
             .retain(|a| a.path != rel && !a.path.starts_with(&below));
         if self.echo.absorbs_removal(rel) {
+            self.reported.forget_tree(rel);
             return;
         }
-        let rows = match self.files.by_path(rel) {
-            Ok(Some(row)) => vec![row],
-            // A folder that went: every note below it went with it.
-            Ok(None) => match self.rows_under(rel) {
-                Ok(rows) => rows,
+        let homes = match self.home_at(rel) {
+            Ok(Some(home)) => vec![home],
+            // A folder that went: every note whose home is below it went with it.
+            Ok(None) => match self.homes_under(rel) {
+                Ok(homes) => homes,
                 Err(error) => return self.storage_failed(&error),
             },
             Err(error) => return self.storage_failed(&error),
         };
-        for row in rows {
-            self.tracker.track(pending_of(row), now, None);
+        // What was reported for a note stays until its removal settles: it names where the note
+        // lives, which the rows may not know. Entries that name no note have nothing to remove.
+        self.reported.forget_unowned_tree(rel);
+        for home in homes {
+            self.tracker.track(home.pending(), now, None);
         }
-    }
-
-    fn rows_under(&mut self, rel: &str) -> Result<Vec<NoteFile>, StorageError> {
-        // A name with a supported extension is a file: no folder to look under. Editors' temp
-        // files (`a.md.sb-1234`) vanish by the dozen and must not each load the table.
-        if is_supported_path(rel) {
-            return Ok(Vec::new());
-        }
-        if self.all_rows.is_none() {
-            self.all_rows = Some(self.files.list_missing_candidates()?);
-        }
-        let prefix = format!("{rel}/");
-        Ok(self
-            .all_rows
-            .iter()
-            .flatten()
-            .filter(|row| row.path.starts_with(&prefix))
-            .cloned()
-            .collect())
     }
 
     /// Settles the live deletes whose rename window is over, and the held new files whose
@@ -296,6 +301,11 @@ impl Reconciler {
             return;
         }
         self.reported.forget_tree(&pending.path);
+        match self.files.by_id(&pending.note_id) {
+            Ok(Some(row)) => self.reported.mark_removed(&row),
+            Ok(None) => {}
+            Err(error) => return self.storage_failed(&error),
+        }
         self.emit(VaultEvent::Removed {
             note_id: pending.note_id,
             path: pending.path,
@@ -316,6 +326,9 @@ impl Reconciler {
             }
         }
         for path in walk.files {
+            if self.stopped() {
+                return;
+            }
             if self.filter.ignores(&path) {
                 continue;
             }
@@ -326,6 +339,9 @@ impl Reconciler {
     }
 
     pub(super) fn file_present(&mut self, rel: &str, meta: &Metadata, now: Instant) {
+        if self.stopped() {
+            return;
+        }
         if !self.filter.takes_file(rel) {
             if !self.filter.ignores(rel) && file_type_of_extension(&extension(rel)).is_none() {
                 self.emit(VaultEvent::Unsupported {
@@ -338,6 +354,7 @@ impl Reconciler {
             return;
         };
         let (size, modified) = (meta.len(), modified_ms(meta));
+        let stat = (size, modified);
         let is_markdown = file_type == FileType::Markdown;
 
         let hash = if is_markdown {
@@ -354,47 +371,48 @@ impl Reconciler {
                 }
             }
         } else {
+            self.echo.seen_present(rel);
             None
         };
-        let row = match self.files.by_path(rel) {
-            Ok(row) => row,
+        if let Some(hash) = &hash
+            && self.echo.absorbs_write(rel, hash)
+        {
+            // The app's write is the state now: an outside edit back to what was reported
+            // before it must not read as "unchanged". Only the cheap lookups run here: the
+            // app's own writes are the common case and must not scan the table.
+            let note_id = self.known_note(rel);
+            self.reported.put(Seen {
+                path: rel.to_owned(),
+                hash: Some(hash.clone()),
+                stat,
+                note_id,
+            });
+            return;
+        }
+        let home = match self.home_at(rel) {
+            Ok(home) => home,
             Err(error) => return self.storage_failed(&error),
+        };
+        let home = match home {
+            Some(home) if home.path != rel => self.respelled(home, rel, hash.as_deref(), stat),
+            home => home,
         };
         // The baseline is what was last reported, else the row. Comparing with the row alone
         // would repeat a report until a consumer updated it, and would miss an edit that
         // returns the file to the row's old content.
         let seen = self.reported.get(rel).cloned();
-        let known_id = seen
-            .as_ref()
-            .and_then(|s| s.note_id.clone())
-            .or_else(|| row.as_ref().map(|r| r.note_id.clone()));
-        if let Some(hash) = &hash
-            && self.echo.absorbs_write(rel, hash)
-        {
-            // The app's write is the state now: an outside edit back to what was reported
-            // before it must not read as "unchanged".
-            self.reported.put(
-                rel,
-                Seen {
-                    hash: Some(hash.clone()),
-                    stat: (size, modified),
-                    note_id: known_id,
-                },
-            );
-            return;
-        }
         let unchanged = if is_markdown {
-            let known_hash = match (&seen, &row) {
+            let known_hash = match (&seen, &home) {
                 (Some(seen), _) => seen.hash.as_ref(),
-                (None, Some(row)) => row.content_hash.as_ref(),
+                (None, Some(home)) => home.hash.as_ref(),
                 (None, None) => None,
             };
             hash.is_some() && known_hash == hash.as_ref()
         } else {
-            match (&seen, &row) {
-                (Some(seen), _) => seen.stat == (size, modified),
-                (None, Some(row)) => {
-                    row.file_size == i64::try_from(size).ok() && modified <= row.indexed_at
+            match (&seen, &home) {
+                (Some(seen), _) => seen.stat == stat,
+                (None, Some(home)) => {
+                    home.size == i64::try_from(size).ok() && modified <= home.indexed_at
                 }
                 (None, None) => false,
             }
@@ -402,18 +420,15 @@ impl Reconciler {
         if unchanged {
             return;
         }
-        let stat = (size, modified);
-        if let Some(note_id) = known_id {
-            self.reported.put(
-                rel,
-                Seen {
-                    hash: hash.clone(),
-                    stat,
-                    note_id: Some(note_id.clone()),
-                },
-            );
+        if let Some(home) = home {
+            self.reported.put(Seen {
+                path: rel.to_owned(),
+                hash: hash.clone(),
+                stat,
+                note_id: Some(home.note_id.clone()),
+            });
             self.emit(VaultEvent::Changed {
-                note_id,
+                note_id: home.note_id,
                 path: rel.to_owned(),
                 content_hash: hash,
                 size,
@@ -422,6 +437,53 @@ impl Reconciler {
             return;
         }
         self.unknown_file(rel, file_type, hash, stat, now);
+    }
+
+    /// The note named at `rel` by a report or by its row at exactly that path, without the
+    /// folded lookup.
+    fn known_note(&self, rel: &str) -> Option<String> {
+        if let Some(seen) = self.reported.get(rel) {
+            return seen.note_id.clone();
+        }
+        let row = self.files.by_path(rel).ok().flatten()?;
+        super::home::home_of_row(&self.reported, &row).map(|home| home.note_id)
+    }
+
+    /// `home` is the same file as `rel` under another case or normalization: the volume
+    /// reports the spelling the file was last given. A rename, unless the old spelling is
+    /// still an entry of its folder (two files on a case-sensitive volume), which leaves `rel`
+    /// a file of its own.
+    fn respelled(
+        &mut self,
+        home: Home,
+        rel: &str,
+        hash: Option<&str>,
+        stat: (u64, i64),
+    ) -> Option<Home> {
+        if spelling_listed(&self.root, &home.path) {
+            return None;
+        }
+        self.reported.put(Seen {
+            path: rel.to_owned(),
+            // The content baseline stays the old one: an edit with the move is still a change.
+            hash: if hash.is_some() {
+                home.hash.clone()
+            } else {
+                None
+            },
+            stat,
+            note_id: Some(home.note_id.clone()),
+        });
+        self.emit(VaultEvent::Renamed {
+            note_id: home.note_id.clone(),
+            old_path: home.path.clone(),
+            new_path: rel.to_owned(),
+            content_hash: hash.map(str::to_owned),
+        });
+        Some(Home {
+            path: rel.to_owned(),
+            ..home
+        })
     }
 
     fn unknown_file(
@@ -455,20 +517,18 @@ impl Reconciler {
     }
 
     fn report_rename(&mut self, from: Pending, to: String, hash: String, stat: (u64, i64)) {
-        self.reported.forget_tree(&from.path);
-        self.reported.put(
-            &to,
-            Seen {
-                hash: Some(hash.clone()),
-                stat,
-                note_id: Some(from.note_id.clone()),
-            },
-        );
+        self.reported.remove(&from.path);
+        self.reported.put(Seen {
+            path: to.clone(),
+            hash: Some(hash.clone()),
+            stat,
+            note_id: Some(from.note_id.clone()),
+        });
         self.emit(VaultEvent::Renamed {
             note_id: from.note_id,
             old_path: from.path,
             new_path: to,
-            content_hash: hash,
+            content_hash: Some(hash),
         });
     }
 
@@ -479,14 +539,12 @@ impl Reconciler {
         stat: (u64, i64),
         hash: Option<String>,
     ) {
-        self.reported.put(
-            &path,
-            Seen {
-                hash: hash.clone(),
-                stat,
-                note_id: None,
-            },
-        );
+        self.reported.put(Seen {
+            path: path.clone(),
+            hash: hash.clone(),
+            stat,
+            note_id: None,
+        });
         self.emit(VaultEvent::Added {
             path,
             file_type,
