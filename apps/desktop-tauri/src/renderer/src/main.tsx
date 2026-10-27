@@ -30,6 +30,7 @@ import { prefetchRestoredTabPage } from './lib/launch-restore'
 import { APP_QUERY_DEFAULT_OPTIONS } from './lib/query-client-options'
 import { createLogger } from './lib/logger'
 import { installNotPortedShim } from './lib/not-ported'
+import { installPortedApi } from './lib/ported-api'
 import { applyStartupState } from './lib/startup'
 import { commands } from '../../generated/bindings'
 import {
@@ -42,6 +43,7 @@ import {
 // The shim goes first: it stands in for `window.api`, which every ported domain replaces.
 // Step 43 (#3560) deletes it.
 if (import.meta.env.VITE_MEMRY_DEV_API_PROXY === '1') installNotPortedShim()
+installPortedApi()
 
 // The WDIO frontend plugin exists only in the e2e build; Vite removes this branch from every
 // other build, so a release bundle never contains it.

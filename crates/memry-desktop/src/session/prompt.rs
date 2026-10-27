@@ -9,22 +9,41 @@
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::i18n;
+
 use super::{OpenSource, RepairOutcome, Session, SessionError, VaultOpened};
 
-pub const TITLE: &str = "Repair vault database";
-pub const MESSAGE: &str = "Memry's database for this vault is damaged.";
-pub const BUTTON_REPAIR: &str = "Repair";
-pub const BUTTON_LATER: &str = "Not now";
+/// The dialog's strings in `locale` (`system:dialog.dataDbRecovery.*`).
+pub struct Text {
+    pub title: String,
+    pub message: String,
+    pub repair: String,
+    pub later: String,
+}
 
-/// `system:dialog.dataDbRecovery.detail` with its `{path}` filled. Step 09 (#3526) switches
-/// these English constants to `I18n::t`.
-pub fn detail(data_db: &Path) -> String {
-    format!(
-        "Your notes and journal files are not affected. Repair keeps the damaged database as a \
-         backup at {}.corrupt-<timestamp>, starts a fresh one, rebuilds what it can from your \
-         vault files, and restores synced items on the next sync. Changes that had not synced \
-         yet are recovered where possible.",
-        data_db.display()
+pub fn text(locale: &str) -> Text {
+    let t = |key: &str| {
+        i18n::t(
+            locale,
+            &format!("system:dialog.dataDbRecovery.{key}"),
+            &i18n::Args::new(),
+        )
+    };
+    Text {
+        title: t("title"),
+        message: t("message"),
+        repair: t("buttonRecover"),
+        later: t("buttonLater"),
+    }
+}
+
+/// The detail with the damaged database's path, where the backup will be kept.
+pub fn detail(locale: &str, data_db: &Path) -> String {
+    let backup = format!("{}.corrupt-<timestamp>", data_db.display());
+    i18n::t(
+        locale,
+        "system:dialog.dataDbRecovery.detail",
+        &i18n::Args::from([("path".to_owned(), i18n::Arg::from(backup.as_str()))]),
     )
 }
 
