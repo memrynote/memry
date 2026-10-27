@@ -34,6 +34,7 @@ use crate::api::errors::StorageError;
 use crate::storage::repositories::{Change, sync_items};
 use crate::sync::outbox::{self, Durable};
 
+use super::note_positions;
 use super::notes::link_rewrite::{self, LinkNames, Renamed};
 use super::notes::{self, failed, iso, object, stamp, tombstone_local};
 use super::recreate::write_over_tombstone;
@@ -199,12 +200,48 @@ pub fn delete(
             what: format!("no folder `{path}` to delete"),
         });
     }
-    for folder in &folders {
-        tombstone_local(&tx, ITEM_TYPE, folder, device_id, now_ms)?;
-        outbox::enqueue(&tx, &outbox::Change::delete(ITEM_TYPE, folder), now_ms)?;
-    }
+    tombstone_all(&tx, &folders, device_id, now_ms)?;
+    note_positions::drop_folder(&tx, path)?;
     tx.commit().map_err(failed)?;
     Ok(Removal { folders })
+}
+
+/// Tombstones a folder's whole subtree, for a shell whose folders are
+/// directories (desktop): deleting the directory deletes everything in it, and
+/// the notes follow through their own deletes. The shell removes the files
+/// and deletes the notes; this removes the folder records and the manual order
+/// of the subtree, in one transaction.
+///
+/// Unlike [`delete`] it neither refuses a subtree that still holds notes nor
+/// fails on a folder that has no `folder_config` row: a folder made in a file
+/// manager has none, and deleting it must still work. A note left live under a
+/// deleted folder is the caller's to delete, and is not touched here.
+pub fn delete_tree(
+    conn: &Connection,
+    path: &str,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<Removal, StorageError> {
+    let path = valid_path(path)?;
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    let folders = folders_within(&tx, path)?;
+    tombstone_all(&tx, &folders, device_id, now_ms)?;
+    note_positions::drop_folder(&tx, path)?;
+    tx.commit().map_err(failed)?;
+    Ok(Removal { folders })
+}
+
+fn tombstone_all(
+    tx: &Connection,
+    folders: &[String],
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    for folder in folders {
+        tombstone_local(tx, ITEM_TYPE, folder, device_id, now_ms)?;
+        outbox::enqueue(tx, &outbox::Change::delete(ITEM_TYPE, folder), now_ms)?;
+    }
+    Ok(())
 }
 
 /// The prefix rewrite both [`rename`] and [`move_to`] are.
@@ -266,6 +303,9 @@ fn relocate(
         moved.push(note_id);
     }
 
+    // The manual order follows the folder, in the same transaction, so a
+    // rename or a move never leaves a row at a path that no longer exists.
+    note_positions::carry_folder(&tx, from, to)?;
     tx.commit().map_err(failed)?;
     // After the commit, as a note rename does: the links follow a folder that
     // really moved, and a link that fails to follow does not unmove it.
