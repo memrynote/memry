@@ -1,0 +1,21 @@
+name: Free disk space
+description: Removes preinstalled Linux runner toolchains this repo never uses (.NET, Android SDK, GHC, CodeQL, Swift, Docker images) so a large Rust link does not run the runner out of disk. Prints df before and after. A no-op on macOS and Windows.
+runs:
+  using: composite
+  steps:
+    - name: Free disk space
+      if: runner.os == 'Linux'
+      shell: bash
+      run: |
+        echo "::group::df -h before"
+        df -h /
+        echo "::endgroup::"
+        # Each path is absent on some images (and on arm runners), so a miss is fine.
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+          /opt/hostedtoolcache/CodeQL /usr/share/swift 2>/dev/null || true
+        if command -v docker >/dev/null 2>&1; then
+          sudo docker system prune --all --force >/dev/null 2>&1 || true
+        fi
+        echo "::group::df -h after"
+        df -h /
+        echo "::endgroup::"

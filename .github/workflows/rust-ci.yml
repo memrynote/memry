@@ -101,6 +101,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
       # Tauri's webview and the keyring need these system libraries on Linux.
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
