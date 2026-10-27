@@ -1224,7 +1224,8 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   app's PID to exit (a `powershell.exe` process wait: the script runs in a console-less `cmd.exe`, where
   `tasklist | find` hangs), runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
   so the tolerant removal path runs, and the copy blocks until the old install, its shortcuts and
-  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`, and
+  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`,
+  starts the new app itself (`--silent` stops Setup from starting it), and
   falls back to the already-downloaded NSIS installer if no
   Velopack `Memrynote.exe` exists afterwards, so the user is never left without an app. Every
   refusal falls back to the plain NSIS install: a release without the Velopack asset (info log

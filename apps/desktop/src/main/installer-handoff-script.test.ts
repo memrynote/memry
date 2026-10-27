@@ -59,6 +59,8 @@ const scriptLines = (nsisInstaller: string): string[] => [
   '',
   'if exist "%VELOPACK_EXE%" (',
   '  call :log "result=velopack"',
+  String.raw`  start "" /d "%LocalAppData%\MemryNote\current" "%VELOPACK_EXE%"`,
+  '  call :log "relaunch exit=%errorlevel%"',
   '  goto cleanup',
   ')',
   '',
@@ -188,7 +190,21 @@ describe('renderInstallerHandoffScript', () => {
     const guardAt = lines.indexOf('if exist "%VELOPACK_EXE%" (')
 
     expect(lines[guardAt + 1]).toBe('  call :log "result=velopack"')
-    expect(lines[guardAt + 2]).toBe('  goto cleanup')
+    expect(lines[guardAt + 4]).toBe('  goto cleanup')
+  })
+
+  // `Setup.exe --silent` installs without starting the app, so without this line the user's app
+  // quits for the update and never comes back (W2: the app never relaunched).
+  it('starts the Velopack app itself once Setup has installed it', () => {
+    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+    const guardAt = lines.indexOf('if exist "%VELOPACK_EXE%" (')
+
+    expect(lines[guardAt + 2]).toBe(
+      String.raw`  start "" /d "%LocalAppData%\MemryNote\current" "%VELOPACK_EXE%"`
+    )
+    expect(
+      lines.indexOf('start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"')
+    ).toBeLessThan(guardAt)
   })
 })
 

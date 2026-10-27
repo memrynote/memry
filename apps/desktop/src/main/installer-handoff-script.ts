@@ -64,7 +64,9 @@ export const HANDOFF_SPAWN_OPTIONS = {
  * electron-builder's own installUtil.nsh uses) so it blocks and `RMDir /r $INSTDIR` can
  * remove the original; no `--updated`, so the tolerant removal path runs. Uninstall before
  * Setup: the NSIS uninstaller deletes the Start-menu and desktop `MemryNote.lnk`, the same
- * paths Velopack creates. Setup.exe launches the app itself.
+ * paths Velopack creates. `Setup.exe --silent` does not start the app (velopack
+ * commands/install.rs: `if !dialogs::get_silent() { start_package }`), so the script starts it,
+ * the way the NSIS fallback's `--force-run` does.
  *
  * Every step logs its exit code and every failure routes to the NSIS fallback
  * instead of running on. The previous version checked nothing, logged nothing of
@@ -114,6 +116,8 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     '',
     'if exist "%VELOPACK_EXE%" (',
     '  call :log "result=velopack"',
+    '  start "" /d "%LocalAppData%\\MemryNote\\current" "%VELOPACK_EXE%"',
+    '  call :log "relaunch exit=%errorlevel%"',
     '  goto cleanup',
     ')',
     '',

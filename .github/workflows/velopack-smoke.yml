@@ -268,7 +268,7 @@ jobs:
           if ($env:RUN_CLI_MIGRATION -ne 'true') {
             Get-Content installer-handoff.log
             $transcript = Get-Content installer-handoff.log -Raw
-            foreach ($step in 'app exited', 'uninstall exit=\d+', 'setup exit=\d+', 'result=velopack') {
+            foreach ($step in 'app exited', 'uninstall exit=\d+', 'setup exit=\d+', 'result=velopack', 'relaunch exit=\d+') {
               if ($transcript -notmatch $step) { throw "installer-handoff.log lacks '$step'" }
             }
           }
@@ -284,7 +284,7 @@ jobs:
           $running = @(Get-Process Memrynote -ErrorAction SilentlyContinue)
           $running | Format-Table Id, Path
           $fromVelopack = @($running | Where-Object { $_.Path -eq $velopackExe })
-          if ($fromVelopack.Count -eq 0) { throw 'Setup.exe did not leave Memrynote.exe running from the Velopack install' }
+          if ($fromVelopack.Count -eq 0) { throw 'the hand-off did not leave Memrynote.exe running from the Velopack install' }
           $running | Stop-Process -Force
 
       - name: Collect logs
