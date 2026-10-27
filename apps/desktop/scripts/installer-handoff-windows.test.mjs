@@ -49,8 +49,9 @@ async function runHandoff({ setupExit, nsis, keepElectron = true, appAliveMs = 0
   mkdirSync(logDir, { recursive: true })
   mkdirSync(localAppData, { recursive: true })
   copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'Uninstall MemryNote.exe'))
+  // The installed Electron app, named like the process the script waits for (APP_EXE).
   if (keepElectron)
-    copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'Memrynote.exe'))
+    copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'PING.EXE'))
 
   // JScript run by wscript.exe, a GUI program like the real Setup.exe: a console-less cmd.exe
   // (the script's own situation) cannot host a batch file started with `start /wait`.
