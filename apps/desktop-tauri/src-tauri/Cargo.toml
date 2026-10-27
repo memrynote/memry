@@ -52,6 +52,23 @@ tauri-plugin-wdio-webdriver = { version = "=1.5.0", optional = true }
 tauri-plugin-wdio = { version = "=1.5.0", optional = true }
 arboard = { version = "3.7.0", optional = true, default-features = false }
 
+# Caption hit testing (`windows/win32_caption.rs`) and the WebView2 accelerator keys.
+[target.'cfg(windows)'.dependencies]
+arc-swap = "1.9"
+webview2-com = "0.39"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_UI_Input_KeyboardAndMouse",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+# The trackpad swipe monitor (`windows/nav_input.rs`).
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2-app-kit = { version = "0.3.2", features = ["NSEvent", "block2", "objc2-core-foundation"] }
+
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"

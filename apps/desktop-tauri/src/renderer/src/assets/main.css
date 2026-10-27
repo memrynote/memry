@@ -10,16 +10,13 @@
      trafficLightPosition x: 12, ~54px wide, overflowing the 52px rail). Elsewhere
      the slot is empty, so they start near the window edge. */
   --window-controls-start: 68px;
-  /* Native caption buttons drawn over the title row (Windows Window Controls
-     Overlay, main/title-bar-overlay.ts). The env() values exist only while the
-     overlay is visible, so both reserves are 0 on macOS, Linux and in fullscreen.
-     The buttons sit at a physical edge, so start/end swap in RTL below. */
-  --caption-reserve-left: env(titlebar-area-x, 0px);
-  --caption-reserve-right: calc(
-    100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw)
-  );
-  --caption-reserve-start: var(--caption-reserve-left);
-  --caption-reserve-end: var(--caption-reserve-right);
+  /* Windows caption buttons (components/caption-buttons.tsx) sit at the physical right edge,
+     46px x 3, in both directions as native ones do. They are absent in fullscreen and on
+     macOS and Linux. Start/end swap in RTL below. */
+  --caption-reserve-left: 0px;
+  --caption-reserve-right: 0px;
+  --caption-reserve-start: 0px;
+  --caption-reserve-end: 0px;
   --direction: 1;
 
   /* Tab strip sizing — tabs share the strip evenly, growing to --tab-w-max and
@@ -33,6 +30,11 @@
   /* The buttons' own ps-1 + ms-1 (8px) then line the first one up with the rail
      icons below it (app-rail.tsx, 8px from the edge). */
   --window-controls-start: 0px;
+}
+
+:root[data-platform='win32']:not([data-fullscreen]) {
+  --caption-reserve-right: 138px;
+  --caption-reserve-end: 138px;
 }
 
 [dir='rtl'] {

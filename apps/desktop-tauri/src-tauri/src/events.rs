@@ -79,3 +79,34 @@ pub struct LocaleChangedEvent {
 pub struct SettingsOpenSectionEvent {
     pub section: String,
 }
+
+/// The main window's maximized or fullscreen state changed (emitted on resize). The renderer
+/// sets `data-fullscreen` on `<html>` and the caption button glyph from it.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowChromeStateChangedEvent {
+    pub fullscreen: bool,
+    pub maximized: bool,
+}
+
+/// The pointer is over a native caption button (`minimize`, `maximize`, `close`) or left them.
+/// Windows only: the page receives no mouse events for those hit-test regions.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowCaptionHoverChangedEvent {
+    pub button: Option<String>,
+}
+
+/// A native caption button is held down, or released.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct WindowCaptionPressedChangedEvent {
+    pub button: Option<String>,
+}
+
+/// Back or forward from a trackpad swipe or a browser key (`back` or `forward`).
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct AppNavigationRequestedEvent {
+    pub direction: String,
+}
