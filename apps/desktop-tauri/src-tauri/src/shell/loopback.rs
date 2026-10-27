@@ -22,6 +22,12 @@ pub fn start_server(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 }
 
 /// `(origin, token)` of the running server.
+/// The loopback server's origin, `http://127.0.0.1:<port>`.
+pub fn origin(app: &AppHandle<Wry>) -> Option<String> {
+    app.try_state::<LoopbackServer>()
+        .map(|server| server.origin())
+}
+
 pub fn address(app: &AppHandle<Wry>) -> Option<(String, String)> {
     app.try_state::<LoopbackServer>()
         .map(|server| (server.origin(), server.token().to_owned()))

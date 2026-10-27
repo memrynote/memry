@@ -1,13 +1,13 @@
 //! Keeps every window's main frame on the app and routes links out of it: the adapter of
-//! `memry_desktop::shell::frame_nav`. Tauri reports main-frame navigations only; a subframe is
-//! held by the CSP `frame-src` and by the embed's sandbox.
+//! `memry_desktop::shell::frame_nav`. wry calls the handler for every frame on macOS and Linux and
+//! for top-level navigations only on Windows; see `frame_nav` for what that changes.
 
-use memry_desktop::shell::frame_nav::{Navigation, decide};
+use memry_desktop::shell::frame_nav::{Guard, Navigation, decide};
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{AppHandle, Wry};
 use url::Url;
 
-use super::{external, permissions};
+use super::{external, loopback, permissions};
 
 /// The origins of the app's own pages: `tauri://localhost`, `https://tauri.localhost` (Windows,
 /// fixed by `use_https_scheme`) and, in `tauri dev`, the dev server.
@@ -31,11 +31,23 @@ fn act(app: &AppHandle<Wry>, url: &Url, decision: Navigation) {
     }
 }
 
+/// The loopback origin once the server listens; the guard is built after startup's `Protocols`
+/// stage, so it is set by then. A window built earlier simply has no embed page to allow.
+fn decide_for(app: &AppHandle<Wry>, origins: &[String], url: &Url) -> Navigation {
+    let loopback_origin = loopback::origin(app);
+    let guard = Guard {
+        app_origins: origins,
+        loopback_origin: loopback_origin.as_deref(),
+        sees_subframes: !cfg!(windows),
+    };
+    decide(url.as_str(), None, &guard)
+}
+
 /// `on_navigation`: true lets the webview navigate.
 pub fn on_navigation(app: AppHandle<Wry>) -> impl Fn(&Url) -> bool + Send + 'static {
     let origins = app_origins(&app);
     move |url| {
-        let decision = decide(url.as_str(), None, &origins);
+        let decision = decide_for(&app, &origins, url);
         act(&app, url, decision);
         decision == Navigation::Allow
     }
@@ -47,7 +59,7 @@ pub fn on_new_window(
 ) -> impl Fn(Url, NewWindowFeatures) -> NewWindowResponse<Wry> + Send + 'static {
     let origins = app_origins(&app);
     move |url, _features| {
-        let decision = decide(url.as_str(), None, &origins);
+        let decision = decide_for(&app, &origins, &url);
         act(&app, &url, decision);
         NewWindowResponse::Deny
     }

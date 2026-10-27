@@ -14,11 +14,28 @@ pub const CHUNK_SIZE: usize = 64 * 1024;
 /// A `Range` header longer than this is ignored. A real one is under 40 bytes.
 const MAX_RANGE_HEADER_LEN: usize = 256;
 
-/// The embedded document's policy: scripts run, but the document gets an opaque origin and can
-/// reach `https:` and nothing of the vault or the app.
+/// The embedded document's policy: scripts run, but the document gets an opaque origin and no
+/// access to the app, the vault or its own siblings.
+///
+/// A CSP source list cannot subtract a host, so `https:` still matches
+/// `https://memry-file.localhost` on Windows. What keeps the embed from reading a file there is
+/// the file server: it answers a request whose `Origin` is not the app's (`null` from a sandbox
+/// included) with 403 and no CORS header, and refuses script, style and frame loads by
+/// `Sec-Fetch-Dest`. No `http:`, so the loopback server and other local services stay out of
+/// reach; no `memry-file:` and no `memry-html:`.
 pub const HTML_EMBED_CSP: &str = "sandbox allow-scripts allow-forms allow-popups; \
 default-src https: data: blob: 'unsafe-inline' 'unsafe-eval'; \
 connect-src https: wss: data: blob:; form-action 'none'; object-src 'none'";
+
+/// The policy of every served file. Images, audio and video ignore it; a file the engine renders as
+/// a document (an SVG, an HTML file) gets an opaque origin and no scripts.
+pub const FILE_CSP: &str = "sandbox; default-src 'none'";
+
+/// What a document served by this app may ask of the engine: no camera, microphone, location,
+/// screen capture or clipboard. A frame it embeds (the YouTube player) inherits the limit unless
+/// the embedder delegates a feature with `allow`, which the app never does for these.
+pub const FRAME_PERMISSIONS_POLICY: &str = "camera=(), microphone=(), geolocation=(), \
+display-capture=(), clipboard-read=(), clipboard-write=()";
 
 /// A 1x1 transparent PNG, base64, answered for a missing image so a null thumbnail does not
 /// render as a broken-image icon.
@@ -166,12 +183,11 @@ pub fn head(path: &str, size: u64, plan: ServePlan) -> Head {
     let mut headers = vec![
         ("Content-Type", content_type(path)),
         ("Accept-Ranges", "bytes".to_owned()),
-        // The scheme's origin differs from the app's on Windows and Linux (`https://memry-file.localhost`).
-        ("Access-Control-Allow-Origin", "*".to_owned()),
+        ("X-Content-Type-Options", "nosniff".to_owned()),
+        // A file opened as a document (an SVG at a loopback URL) runs nothing and reads nothing.
+        ("Content-Security-Policy", FILE_CSP.to_owned()),
+        ("Permissions-Policy", FRAME_PERMISSIONS_POLICY.to_owned()),
     ];
-    if is_html_path(path) {
-        headers.push(("X-Content-Type-Options", "nosniff".to_owned()));
-    }
     let status = match plan {
         ServePlan::Full => 200,
         ServePlan::Partial { start, end } => {

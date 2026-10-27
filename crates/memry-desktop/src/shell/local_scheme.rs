@@ -20,7 +20,7 @@ pub const MAX_URL_LEN: usize = 16 * 1024;
 const STORED_PREFIX_LEN: usize = 7;
 
 /// A `memry-file` or `memry-html` URL as it reaches a handler: the canonical
-/// `memry-file://local/<path>` form, or the form WebView2 and WebKitGTK use,
+/// `memry-file://local/<path>` form (WebKit's and the stored one), or the form WebView2 uses,
 /// `https://memry-file.localhost/local/<path>`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalScheme {
@@ -36,7 +36,7 @@ impl LocalScheme {
         }
     }
 
-    /// The host Windows and Linux put in front of the scheme's path.
+    /// The host WebView2 (Windows) puts in front of the scheme's path. WebKitGTK keeps `scheme://`.
     pub const fn webview_host(self) -> &'static str {
         match self {
             Self::File => "memry-file.localhost",

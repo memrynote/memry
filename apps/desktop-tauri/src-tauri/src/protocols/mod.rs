@@ -2,26 +2,35 @@
 //! `memry_desktop::shell::file_service`, the same function the loopback media route calls; this
 //! module only reads a request and writes a response.
 //!
-//! A scheme response is bytes in memory (the engine takes no stream), so one response is capped
-//! at [`MAX_RESPONSE_BYTES`]. A player or the PDF viewer asks for ranges and reads the rest with
-//! further requests; video and audio go through the loopback server, which streams.
+//! A scheme response is bytes in memory (the engine takes no stream), so a range is capped at
+//! [`MAX_RANGE_BYTES`] and a whole file at [`MAX_WHOLE_FILE_BYTES`]. The PDF viewer asks for ranges
+//! and reads the rest with further requests; video and audio go through the loopback server,
+//! which streams.
 
 use std::borrow::Cow;
 
 use memry_desktop::paths::AppPaths;
 use memry_desktop::session::Session;
-use memry_desktop::shell::file_service::{Body, Roots, Served, read_range, serve_file, serve_html};
+use memry_desktop::shell::file_service::{
+    Caps, FileRequest, Roots, Served, Settled, serve_file, serve_html,
+};
 use memry_desktop::telemetry::main_warning::Level;
 use tauri::http::{Method, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager, Wry};
 
+use crate::shell::navigation_guard::app_origins;
 use crate::shell::services::telemetry;
 
 pub const FILE_SCHEME: &str = "memry-file";
 pub const HTML_SCHEME: &str = "memry-html";
 
-/// The most bytes one scheme response holds.
-pub const MAX_RESPONSE_BYTES: u64 = 16 * 1024 * 1024;
+/// The most bytes one range of a scheme response holds. A client reads the rest with further ranges.
+pub const MAX_RANGE_BYTES: u64 = 16 * 1024 * 1024;
+
+/// The largest file a scheme answers whole (200). The engine takes the body as bytes in memory, so
+/// a larger file asked for without a range gets 413, never a truncated 206; media goes through the
+/// streaming loopback server instead.
+pub const MAX_WHOLE_FILE_BYTES: u64 = 128 * 1024 * 1024;
 
 const WINDOWS: bool = cfg!(windows);
 
@@ -30,6 +39,7 @@ pub fn roots(app: &AppHandle<Wry>) -> Roots {
     Roots {
         vault: app.state::<Session>().current().map(|open| open.path),
         app_data: app.state::<AppPaths>().data_dir.clone(),
+        app_origins: app_origins(app),
     }
 }
 
@@ -51,16 +61,22 @@ pub fn register(builder: tauri::Builder<Wry>) -> tauri::Builder<Wry> {
 }
 
 fn answer_file(app: &AppHandle<Wry>, request: &Request<Vec<u8>>) -> Response<Cow<'static, [u8]>> {
-    let range = request
-        .headers()
-        .get("range")
-        .and_then(|value| value.to_str().ok());
+    let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok());
+    let asked = FileRequest {
+        range: header("range"),
+        origin: header("origin"),
+        fetch_dest: header("sec-fetch-dest"),
+    };
+    let caps = Caps {
+        range_chunk: MAX_RANGE_BYTES,
+        whole_file: MAX_WHOLE_FILE_BYTES,
+    };
     let served = serve_file(
         &request.uri().to_string(),
-        range,
+        &asked,
         &roots(app),
         WINDOWS,
-        MAX_RESPONSE_BYTES,
+        caps,
     );
     respond(app, served)
 }
@@ -79,27 +95,12 @@ fn answer_html(app: &AppHandle<Wry>, request: &Request<Vec<u8>>) -> Response<Cow
 /// A [`Served`] as a response, reading the body from its file. A read that fails answers 404 and
 /// leaves an error code (never a path) in telemetry.
 fn respond(app: &AppHandle<Wry>, served: Served) -> Response<Cow<'static, [u8]>> {
-    let Served {
+    let Settled {
         status,
         headers,
-        body,
-        mut failure,
-    } = served;
-    let (status, bytes) = match body {
-        Body::Empty => (status, Vec::new()),
-        Body::Bytes(bytes) => (status, bytes),
-        Body::File {
-            mut file,
-            start,
-            len,
-        } => match read_range(&mut file, start, len) {
-            Ok(bytes) => (status, bytes),
-            Err(error) => {
-                failure = Some(format!("{:?}", error.kind()));
-                (404, Vec::new())
-            }
-        },
-    };
+        bytes,
+        failure,
+    } = served.settle();
     if let Some(code) = failure {
         tracing::warn!(scope = "MemryFile", code, "serve failed");
         if let Some(service) = telemetry(app) {

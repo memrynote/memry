@@ -5,6 +5,15 @@ use tempfile::TempDir;
 
 use super::*;
 
+const APP: &str = "tauri://localhost";
+
+fn req(range: Option<&str>) -> FileRequest<'_> {
+    FileRequest {
+        range,
+        ..FileRequest::default()
+    }
+}
+
 struct Fixture {
     _dir: TempDir,
     vault: PathBuf,
@@ -30,6 +39,7 @@ impl Fixture {
         Roots {
             vault: Some(self.vault.clone()),
             app_data: self.data.clone(),
+            app_origins: vec![APP.to_owned(), "https://tauri.localhost".to_owned()],
         }
     }
 
@@ -43,7 +53,13 @@ impl Fixture {
     }
 
     fn serve(&self, path: &Path, range: Option<&str>) -> Served {
-        serve_file(&Self::url(path), range, &self.roots(), false, u64::MAX)
+        serve_file(
+            &Self::url(path),
+            &req(range),
+            &self.roots(),
+            false,
+            Caps::UNBOUNDED,
+        )
     }
 }
 
@@ -149,18 +165,18 @@ fn serves_a_path_written_on_another_device_from_this_vault() {
     let local = fx.vault.join("attachments/n1/abc123-photo.png");
     fs::write(&local, b"png").unwrap();
     let foreign = "memry-file://local/Users/other/Notes/attachments/n1/abc123-photo.png";
-    let served = serve_file(foreign, None, &fx.roots(), false, u64::MAX);
+    let served = serve_file(foreign, &req(None), &fx.roots(), false, Caps::UNBOUNDED);
     assert_eq!(served.status, 200);
     assert_eq!(bytes_of(served), b"png");
     // The file is not here: the remap answers 403, not a read outside the vault.
     let absent = "memry-file://local/Users/other/Notes/attachments/n1/none.png";
     assert_eq!(
-        serve_file(absent, None, &fx.roots(), false, u64::MAX).status,
+        serve_file(absent, &req(None), &fx.roots(), false, Caps::UNBOUNDED).status,
         403
     );
     let climb = "memry-file://local/Users/other/attachments/../../etc/passwd";
     assert_eq!(
-        serve_file(climb, None, &fx.roots(), false, u64::MAX).status,
+        serve_file(climb, &req(None), &fx.roots(), false, Caps::UNBOUNDED).status,
         403
     );
 }
@@ -211,19 +227,100 @@ fn an_attached_html_file_is_text_from_memry_file() {
 }
 
 #[test]
-fn a_bounded_response_is_a_chunk_of_the_file() {
+fn a_range_longer_than_the_chunk_is_a_shorter_partial_answer() {
     let fx = fixture();
     let file = fx.vault.join("attachments/n1/abc123-big.mp4");
     fs::write(&file, vec![7u8; 100]).unwrap();
     let url = Fixture::url(&file);
-    let whole = serve_file(&url, None, &fx.roots(), false, 40);
-    assert_eq!(whole.status, 206);
-    assert_eq!(header(&whole, "Content-Range"), Some("bytes 0-39/100"));
-    assert_eq!(bytes_of(whole).len(), 40);
-    let open = serve_file(&url, Some("bytes=50-"), &fx.roots(), false, 40);
+    let caps = Caps {
+        range_chunk: 40,
+        whole_file: u64::MAX,
+    };
+    let open = serve_file(&url, &req(Some("bytes=50-")), &fx.roots(), false, caps);
     assert_eq!(header(&open, "Content-Range"), Some("bytes 50-89/100"));
-    let small = serve_file(&url, Some("bytes=10-19"), &fx.roots(), false, 40);
+    let small = serve_file(&url, &req(Some("bytes=10-19")), &fx.roots(), false, caps);
     assert_eq!(header(&small, "Content-Range"), Some("bytes 10-19/100"));
+}
+
+#[test]
+fn a_whole_file_request_is_never_answered_with_a_truncated_206() {
+    let fx = fixture();
+    let file = fx.vault.join("attachments/n1/abc123-big.png");
+    fs::write(&file, vec![7u8; 100]).unwrap();
+    let url = Fixture::url(&file);
+    let small = Caps {
+        range_chunk: 40,
+        whole_file: 200,
+    };
+    let whole = serve_file(&url, &req(None), &fx.roots(), false, small);
+    assert_eq!(whole.status, 200);
+    assert_eq!(bytes_of(whole).len(), 100);
+    // Too big to answer in one body: a refusal the client can see, not a short 206.
+    let tight = Caps {
+        range_chunk: 40,
+        whole_file: 50,
+    };
+    let refused = serve_file(&url, &req(None), &fx.roots(), false, tight);
+    assert_eq!(refused.status, 413);
+    assert!(header(&refused, "Content-Range").is_none());
+}
+
+#[test]
+fn only_an_app_origin_may_read_a_file() {
+    let fx = fixture();
+    let file = fx.vault.join("attachments/n1/abc123-clip.txt");
+    fs::write(&file, b"0123").unwrap();
+    let url = Fixture::url(&file);
+    let ask = |origin: Option<&str>, dest: Option<&str>| {
+        serve_file(
+            &url,
+            &FileRequest {
+                range: None,
+                origin,
+                fetch_dest: dest,
+            },
+            &fx.roots(),
+            false,
+            Caps::UNBOUNDED,
+        )
+    };
+    let app = ask(Some(APP), Some("empty"));
+    assert_eq!(app.status, 200);
+    assert_eq!(header(&app, "Access-Control-Allow-Origin"), Some(APP));
+    assert_eq!(header(&app, "Vary"), Some("Origin"));
+    // A sandboxed embed sends `Origin: null`; another page sends its own.
+    for origin in [
+        "null",
+        "https://evil.example",
+        "https://memry-html.localhost",
+    ] {
+        let refused = ask(Some(origin), Some("empty"));
+        assert_eq!(refused.status, 403, "{origin}");
+        assert!(header(&refused, "Access-Control-Allow-Origin").is_none());
+    }
+    // No `Origin` is a plain subresource load: readable only as pixels or media, no CORS header.
+    let plain = ask(None, Some("image"));
+    assert_eq!(plain.status, 200);
+    assert!(header(&plain, "Access-Control-Allow-Origin").is_none());
+    // A file is data to the app, never a script, a style sheet, a frame or a document.
+    for dest in ["script", "style", "iframe", "document", "worker", "object"] {
+        assert_eq!(ask(None, Some(dest)).status, 403, "{dest}");
+    }
+}
+
+#[test]
+fn every_file_is_sandboxed_when_the_engine_renders_it_as_a_document() {
+    let fx = fixture();
+    let file = fx.vault.join("attachments/n1/abc123-pic.svg");
+    fs::write(&file, b"<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
+    let served = fx.serve(&file, None);
+    assert_eq!(
+        header(&served, "Content-Security-Policy"),
+        Some("sandbox; default-src 'none'")
+    );
+    assert_eq!(header(&served, "X-Content-Type-Options"), Some("nosniff"));
+    let permissions = header(&served, "Permissions-Policy").unwrap_or_default();
+    assert!(permissions.contains("microphone=()") && permissions.contains("camera=()"));
 }
 
 #[test]
@@ -236,7 +333,7 @@ fn urls_that_are_not_memry_file_are_404() {
         "memry-html://local/a.html",
     ] {
         assert_eq!(
-            serve_file(url, None, &fx.roots(), false, u64::MAX).status,
+            serve_file(url, &req(None), &fx.roots(), false, Caps::UNBOUNDED).status,
             404,
             "{url}"
         );
@@ -373,20 +470,28 @@ fn an_oversize_html_file_is_refused() {
 }
 
 #[test]
-fn a_refusal_and_the_blank_image_carry_the_cors_header() {
+fn a_read_that_fails_answers_404_without_the_planned_length_or_range() {
     let fx = fixture();
-    let outside = fx.vault.parent().unwrap().join("secret.txt");
-    fs::write(&outside, b"secret").unwrap();
-    for served in [
-        fx.serve(&outside, None),
-        fx.serve(&fx.vault.join("attachments/n1/none.pdf"), None),
-        fx.serve(&fx.vault.join("attachments/n1/none.png"), None),
-    ] {
-        assert_eq!(
-            header(&served, "Access-Control-Allow-Origin"),
-            Some("*"),
-            "{}",
-            served.status
-        );
-    }
+    // A directory opens as a file on Unix and fails on read; on Windows the open itself fails.
+    let Ok(dir) = fs::File::open(&fx.vault) else {
+        return;
+    };
+    let planned = Served {
+        status: 206,
+        headers: vec![
+            ("Content-Length", "10".to_owned()),
+            ("Content-Range", "bytes 0-9/100".to_owned()),
+        ],
+        body: Body::File {
+            file: dir,
+            start: 0,
+            len: 10,
+        },
+        failure: None,
+    };
+    let settled = planned.settle();
+    assert_eq!(settled.status, 404);
+    assert!(settled.headers.is_empty());
+    assert!(settled.bytes.is_empty());
+    assert!(settled.failure.is_some());
 }

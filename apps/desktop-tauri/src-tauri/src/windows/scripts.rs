@@ -11,13 +11,14 @@ pub struct ShellGlobals {
     pub loopback_token: String,
 }
 
-/// `window.__MEMRY_SHELL__`, then the drag-region listeners. Main-frame only: it is added with
-/// `initialization_script`, never the all-frames variant, so a `memry-html:` or YouTube frame
-/// sees none of it.
+/// `window.__MEMRY_SHELL__`, then the drag-region listeners, in the top frame only. wry runs init
+/// scripts in every frame on Windows whatever the builder asks (`for_main_frame_only` is ignored
+/// there), so the script checks `window.top === window` itself: a `memry-html:` embed or a YouTube
+/// frame must not see the loopback token.
 pub fn init_script(globals: ShellGlobals) -> String {
     let json = |text: &str| serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_owned());
     format!(
-        "window.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}",
+        "if (window.top === window) {{\nwindow.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}\n}}",
         globals.maximizable,
         json(&globals.loopback_origin),
         json(&globals.loopback_token)
@@ -43,8 +44,9 @@ mod tests {
             loopback_token,
         });
         assert!(script.starts_with(
-            "window.__MEMRY_SHELL__ = Object.freeze({ maximizable: false, loopbackOrigin: \"http://127.0.0.1:4000\", loopbackToken: \"ab12\" });"
+            "if (window.top === window) {\nwindow.__MEMRY_SHELL__ = Object.freeze({ maximizable: false, loopbackOrigin: \"http://127.0.0.1:4000\", loopbackToken: \"ab12\" });"
         ));
+        assert!(script.trim_end().ends_with('}'));
         assert!(script.contains("plugin:window|start_dragging"));
         assert!(script.contains("plugin:window|toggle_maximize"));
     }

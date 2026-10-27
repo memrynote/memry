@@ -4,8 +4,8 @@
 
 use std::path::{Path, PathBuf};
 
-use memry_desktop::shell::external::is_allowed_external_url;
-use memry_desktop::shell::file_open::{Resolution, resolve_under_root};
+use memry_desktop::shell::external::{is_allowed_external_url, is_executable_path, resolve_for_os};
+use memry_desktop::shell::file_open::Resolution;
 use memry_desktop::shell::local_scheme::{
     LocalScheme, locate, normalize_absolute, resolve_local_scheme_path,
 };
@@ -29,6 +29,10 @@ pub fn open_url(app: &AppHandle<Wry>, url: &str) -> Result<(), CommandError> {
             "refused a link with a scheme the app does not open"
         );
         return Err(refused("only web and mail links open outside the app"));
+    }
+    #[cfg(feature = "e2e")]
+    if crate::e2e::record_os_open(app, &format!("url {url}")) {
+        return Ok(());
     }
     app.opener()
         .open_url(url, None::<&str>)
@@ -54,7 +58,7 @@ fn allowed_path(app: &AppHandle<Wry>, path: &str) -> Result<PathBuf, CommandErro
         );
         refused("the path is outside the vault and the app data directory")
     })?;
-    match resolve_under_root(candidates[found.root], &found.rel) {
+    match resolve_for_os(candidates[found.root], &found.rel) {
         Ok(Resolution::Inside(real)) => Ok(real),
         Ok(_) => Err(refused("the path does not resolve inside its directory")),
         Err(error) => Err(CommandError::new(
@@ -74,6 +78,18 @@ pub fn open_memry_file(app: &AppHandle<Wry>, url: &str) -> Result<(), CommandErr
 
 pub fn open_path(app: &AppHandle<Wry>, path: &str) -> Result<(), CommandError> {
     let real = allowed_path(app, path)?;
+    // Opening a program would run it. Checked on the real path: a link cannot hide the extension.
+    if is_executable_path(&real.to_string_lossy()) || is_executable_path(path) {
+        tracing::warn!(
+            scope = "External",
+            "refused to open a file the OS would run"
+        );
+        return Err(refused("a program is not opened from here"));
+    }
+    #[cfg(feature = "e2e")]
+    if crate::e2e::record_os_open(app, &format!("path {}", real.to_string_lossy())) {
+        return Ok(());
+    }
     app.opener()
         .open_path(real.to_string_lossy(), None::<&str>)
         .map_err(|error| CommandError::new(ErrorKind::Internal, "open_failed", error.to_string()))

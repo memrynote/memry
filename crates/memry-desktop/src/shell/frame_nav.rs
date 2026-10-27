@@ -3,9 +3,15 @@
 //!
 //! The main frame stays on the app's own origin. A link to the web or to a mail address goes to
 //! the OS. A file of the app goes to the OS too, because replacing the page with the scheme's
-//! raw bytes would trap the window. Everything else is refused. Tauri reports the main frame
-//! only (a subframe's navigation is decided by the CSP `frame-src`), so there is no subframe
-//! branch here.
+//! raw bytes would trap the window. Everything else is refused.
+//!
+//! WebView2 reports top-level navigations only. WKWebView and WebKitGTK report every frame's and
+//! wry passes the URL alone (`wkwebview/navigation.rs`, `webkitgtk/mod.rs`), so the guard cannot
+//! tell a subframe from the main frame there. [`Guard::sees_subframes`] says which engine this
+//! is; on those engines the targets the app's own frames load (a `memry-html` embed, the
+//! loopback YouTube page and the player it nests) are allowed instead of denied or sent to the OS
+//! browser. The CSP `frame-src` still bounds what a frame may load, and no embed is allowed to
+//! navigate the top frame (`sandbox` has no `allow-top-navigation`).
 
 use url::{Host, Url};
 
@@ -46,17 +52,45 @@ fn without_fragment(url: &Url) -> Url {
     copy
 }
 
-/// `memry-file:` itself, or the `https://memry-file.localhost` form Windows and Linux use.
+/// `memry-file:` itself, or the `https://memry-file.localhost` form WebView2 uses.
 fn is_scheme_url(url: &Url, scheme: LocalScheme) -> bool {
     url.scheme() == scheme.name()
         || (matches!(url.scheme(), "http" | "https")
             && url.host_str() == Some(scheme.webview_host()))
 }
 
-/// `app_origins` are the origins of the app's own pages (`tauri://localhost`,
-/// `https://tauri.localhost`, and the dev server in dev), serialized as `scheme://host[:port]`.
+/// What the guard knows about the window and its engine.
+#[derive(Debug, Clone, Copy)]
+pub struct Guard<'a> {
+    /// The origins of the app's own pages (`tauri://localhost`, `https://tauri.localhost`, and the
+    /// dev server in dev), serialized as `scheme://host[:port]`.
+    pub app_origins: &'a [String],
+    /// The loopback server's origin, `http://127.0.0.1:<port>`, once it listens.
+    pub loopback_origin: Option<&'a str>,
+    /// True where the engine reports subframe navigations to the handler (macOS, Linux).
+    pub sees_subframes: bool,
+}
+
+/// The page of the YouTube player the loopback embed page nests.
+const YOUTUBE_PLAYER_PREFIX: &str = "https://www.youtube-nocookie.com/embed/";
+
+/// Whether `target` is a page one of the app's own frames loads, on an engine that cannot say which
+/// frame asked: a `memry-html` embed, the loopback embed page `/e/...`, and the player it nests.
+fn is_own_frame_target(target: &Url, guard: &Guard<'_>) -> bool {
+    if is_scheme_url(target, LocalScheme::Html) {
+        return true;
+    }
+    if guard
+        .loopback_origin
+        .is_some_and(|origin| origin_of(target) == origin && target.path().starts_with("/e/"))
+    {
+        return true;
+    }
+    target.scheme() == "https" && target.as_str().starts_with(YOUTUBE_PLAYER_PREFIX)
+}
+
 /// `current` is the page the window shows now, if known.
-pub fn decide(raw: &str, current: Option<&str>, app_origins: &[String]) -> Navigation {
+pub fn decide(raw: &str, current: Option<&str>, guard: &Guard<'_>) -> Navigation {
     let Some(target) = raw
         .len()
         .le(&(16 * 1024))
@@ -65,6 +99,9 @@ pub fn decide(raw: &str, current: Option<&str>, app_origins: &[String]) -> Navig
     else {
         return Navigation::Deny;
     };
+    if guard.sees_subframes && is_own_frame_target(&target, guard) {
+        return Navigation::Allow;
+    }
     // An embed is a frame's document. In the main frame it would replace the app.
     if is_scheme_url(&target, LocalScheme::Html) {
         return Navigation::Deny;
@@ -77,7 +114,7 @@ pub fn decide(raw: &str, current: Option<&str>, app_origins: &[String]) -> Navig
     {
         return Navigation::Allow;
     }
-    if app_origins.contains(&origin_of(&target)) {
+    if guard.app_origins.contains(&origin_of(&target)) {
         return Navigation::Allow;
     }
     match target.scheme() {

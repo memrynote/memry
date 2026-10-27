@@ -15,8 +15,8 @@ use base64::Engine;
 
 use super::file_open::{OpenError, open_under_root};
 use super::file_serve::{
-    HTML_EMBED_CSP, Head, ServePlan, TRANSPARENT_PNG_BASE64, head, html_content_type, is_html_path,
-    is_image_path, plan,
+    FRAME_PERMISSIONS_POLICY, HTML_EMBED_CSP, Head, ServePlan, TRANSPARENT_PNG_BASE64, head,
+    html_content_type, is_html_path, is_image_path, plan,
 };
 use super::local_scheme::{
     LocalScheme, Located, attachment_parts, find_heal_candidate, locate, normalize_absolute,
@@ -26,12 +26,63 @@ use super::local_scheme::{
 /// The most an embedded HTML file may weigh. Larger is refused rather than read into memory.
 const MAX_HTML_BYTES: u64 = 32 * 1024 * 1024;
 
-/// The directories a URL may name: the open vault and the app data directory.
+/// What a URL may name and who may read the answer: the open vault and the app data directory, and
+/// the origins of the app's own pages (`tauri://localhost`, `https://tauri.localhost`, the dev
+/// server). Only a request from one of those origins gets a CORS header.
 #[derive(Debug, Clone)]
 pub struct Roots {
     pub vault: Option<PathBuf>,
     pub app_data: PathBuf,
+    pub app_origins: Vec<String>,
 }
+
+/// The parts of a request that decide who may read: all of them are request input.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct FileRequest<'a> {
+    pub range: Option<&'a str>,
+    /// The `Origin` header. `null` comes from a sandboxed frame.
+    pub origin: Option<&'a str>,
+    /// The `Sec-Fetch-Dest` header, where the engine sends one.
+    pub fetch_dest: Option<&'a str>,
+}
+
+/// How much one response may hold. A custom scheme answers with bytes in memory, so it caps a
+/// range and refuses a whole file that is too big; the streaming loopback server caps nothing.
+#[derive(Debug, Clone, Copy)]
+pub struct Caps {
+    /// A longer range is answered with a shorter 206.
+    pub range_chunk: u64,
+    /// A request without a usable range for a larger file is answered 413, never a truncated 206.
+    pub whole_file: u64,
+}
+
+impl Caps {
+    pub const UNBOUNDED: Self = Self {
+        range_chunk: u64::MAX,
+        whole_file: u64::MAX,
+    };
+}
+
+/// Loads that run or render a file instead of reading it as data. The embed's `<script src>` and
+/// `<link>` reach `https://memry-file.localhost` on Windows; the app itself never loads a vault
+/// file this way.
+const BLOCKED_FETCH_DESTS: &[&str] = &[
+    "script",
+    "style",
+    "worker",
+    "sharedworker",
+    "serviceworker",
+    "audioworklet",
+    "paintworklet",
+    "iframe",
+    "frame",
+    "object",
+    "embed",
+    "document",
+    "xslt",
+    "manifest",
+    "report",
+];
 
 /// The body of an answer.
 #[derive(Debug)]
@@ -55,13 +106,55 @@ pub struct Served {
     pub failure: Option<String>,
 }
 
+/// A [`Served`] with its body read: what a scheme handler puts on the wire.
+#[derive(Debug)]
+pub struct Settled {
+    pub status: u16,
+    pub headers: Vec<(&'static str, String)>,
+    pub bytes: Vec<u8>,
+    pub failure: Option<String>,
+}
+
 impl Served {
+    /// Reads the body. A read that fails is a 404 with no headers and an error code (never a
+    /// path): the planned `Content-Length` and `Content-Range` described bytes that never came.
+    pub fn settle(self) -> Settled {
+        let Self {
+            status,
+            headers,
+            body,
+            failure,
+        } = self;
+        let bytes = match body {
+            Body::Empty => Vec::new(),
+            Body::Bytes(bytes) => bytes,
+            Body::File {
+                mut file,
+                start,
+                len,
+            } => match read_range(&mut file, start, len) {
+                Ok(bytes) => bytes,
+                Err(error) => {
+                    return Settled {
+                        status: 404,
+                        headers: Vec::new(),
+                        bytes: Vec::new(),
+                        failure: Some(format!("{:?}", error.kind())),
+                    };
+                }
+            },
+        };
+        Settled {
+            status,
+            headers,
+            bytes,
+            failure,
+        }
+    }
     fn status(status: u16) -> Self {
-        // A refusal still carries the CORS header: without it a `fetch` from the app's origin
-        // fails as a network error and the page cannot tell 403 from a dead server.
         Self {
             status,
-            headers: vec![("Access-Control-Allow-Origin", "*".to_owned())],
+            headers: Vec::new(),
             body: Body::Empty,
             failure: None,
         }
@@ -156,14 +249,45 @@ fn heal(root: &Path, rel: &str) -> Option<String> {
         .map(|healed| format!("attachments/{note}/{healed}"))
 }
 
-/// Answers `url` for `range`. `max_len` caps the bytes of one response (a scheme handler cannot
-/// stream, so it asks for a bounded chunk; the loopback server passes `u64::MAX`).
+/// Answers `url` for `request`. A request from an origin that is not the app's, or one that would
+/// run or render the file, is refused 403 without a CORS header: a sandboxed embed (origin
+/// `null`) cannot read a file even where the file's origin is an `https:` host its CSP allows.
+/// The answer to an app request carries `Access-Control-Allow-Origin` for that origin only.
 pub fn serve_file(
+    url: &str,
+    request: &FileRequest<'_>,
+    roots: &Roots,
+    windows: bool,
+    caps: Caps,
+) -> Served {
+    if request.fetch_dest.is_some_and(|dest| {
+        BLOCKED_FETCH_DESTS
+            .iter()
+            .any(|b| b.eq_ignore_ascii_case(dest))
+    }) {
+        return Served::status(403);
+    }
+    let allow_origin = match request.origin {
+        None => None,
+        Some(origin) if roots.app_origins.iter().any(|app| app == origin) => Some(origin),
+        Some(_) => return Served::status(403),
+    };
+    let mut served = serve_checked(url, request.range, roots, windows, caps);
+    if let Some(origin) = allow_origin {
+        served
+            .headers
+            .push(("Access-Control-Allow-Origin", origin.to_owned()));
+        served.headers.push(("Vary", "Origin".to_owned()));
+    }
+    served
+}
+
+fn serve_checked(
     url: &str,
     range: Option<&str>,
     roots: &Roots,
     windows: bool,
-    max_len: u64,
+    caps: Caps,
 ) -> Served {
     let Some(requested) = resolve_local_scheme_path(url, LocalScheme::File, windows) else {
         return Served::status(404);
@@ -204,7 +328,10 @@ pub fn serve_file(
         Ok(meta) => meta.len(),
         Err(error) => return Served::failed(&error),
     };
-    let planned = bounded(plan(range, size), size, max_len);
+    let planned = match plan(range, size) {
+        ServePlan::Full if size > caps.whole_file => return too_large(),
+        planned => bounded(planned, caps.range_chunk),
+    };
     let Head { status, headers } = head(&requested, size, planned);
     let body = match planned {
         ServePlan::Unsatisfiable => Body::Empty,
@@ -227,14 +354,10 @@ pub fn serve_file(
     }
 }
 
-/// A whole-file answer or a range longer than `max_len` becomes a partial answer of `max_len`
-/// bytes. A client reads the rest with further ranges, as it does from any server that caps one.
-fn bounded(planned: ServePlan, size: u64, max_len: u64) -> ServePlan {
+/// A range longer than `max_len` becomes a shorter 206 of `max_len` bytes; the client reads the
+/// rest with further ranges, as it does from any server that caps one.
+fn bounded(planned: ServePlan, max_len: u64) -> ServePlan {
     match planned {
-        ServePlan::Full if size > max_len => ServePlan::Partial {
-            start: 0,
-            end: max_len - 1,
-        },
         ServePlan::Partial { start, end } if end - start + 1 > max_len => ServePlan::Partial {
             start,
             end: start + max_len - 1,
@@ -243,16 +366,22 @@ fn bounded(planned: ServePlan, size: u64, max_len: u64) -> ServePlan {
     }
 }
 
+/// A file too big to answer in one body, asked for whole. Never a 206 the client did not ask for.
+fn too_large() -> Served {
+    tracing::warn!(
+        scope = "MemryFile",
+        "a whole-file request is over the response limit"
+    );
+    Served::status(413)
+}
+
 fn blank_png() -> Served {
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(TRANSPARENT_PNG_BASE64)
         .unwrap_or_default();
     Served {
         status: 200,
-        headers: vec![
-            ("Content-Type", "image/png".to_owned()),
-            ("Access-Control-Allow-Origin", "*".to_owned()),
-        ],
+        headers: vec![("Content-Type", "image/png".to_owned())],
         body: Body::Bytes(bytes),
         failure: None,
     }
@@ -326,6 +455,7 @@ fn read_html(file: File) -> Served {
                 ("Content-Type", html_content_type(&bytes).to_owned()),
                 ("Content-Security-Policy", HTML_EMBED_CSP.to_owned()),
                 // The URL carries this machine's absolute vault path (and username).
+                ("Permissions-Policy", FRAME_PERMISSIONS_POLICY.to_owned()),
                 ("Referrer-Policy", "no-referrer".to_owned()),
                 ("X-Content-Type-Options", "nosniff".to_owned()),
                 ("Cache-Control", "no-store".to_owned()),

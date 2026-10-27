@@ -51,6 +51,10 @@ pub fn create_main(
             .initialization_script(startup::script(state))
             .initialization_script(scripts::init_script(shell_globals(app)));
     builder = chrome::apply(builder);
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.on_permission_request(permissions::on_request);
+    }
     builder = match resolved.position {
         Some((x, y)) => builder.position(f64::from(x), f64::from(y)),
         None => builder.center(),

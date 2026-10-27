@@ -109,9 +109,12 @@ fn heads_carry_the_range_headers_and_the_body_length() {
         full.headers
             .contains(&("Accept-Ranges", "bytes".to_owned()))
     );
+    // Who may read the answer is the service's decision, not the head's.
     assert!(
-        full.headers
-            .contains(&("Access-Control-Allow-Origin", "*".to_owned()))
+        !full
+            .headers
+            .iter()
+            .any(|(name, _)| *name == "Access-Control-Allow-Origin")
     );
 
     let part = head("/v/a.mp4", 1000, ServePlan::Partial { start: 10, end: 19 });
@@ -144,11 +147,10 @@ fn an_attached_html_file_is_text_with_nosniff_never_a_page() {
                 .contains(&("X-Content-Type-Options", "nosniff".to_owned()))
         );
     }
-    let png = head("/v/a.png", 5, ServePlan::Full);
+    let svg = head("/v/a.svg", 5, ServePlan::Full);
     assert!(
-        !png.headers
-            .iter()
-            .any(|(name, _)| *name == "X-Content-Type-Options")
+        svg.headers
+            .contains(&("Content-Security-Policy", FILE_CSP.to_owned()))
     );
 }
 

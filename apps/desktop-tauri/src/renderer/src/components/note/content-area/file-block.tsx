@@ -28,6 +28,7 @@ import {
   RightToLeftBlockQuote
 } from '@/lib/icons'
 import { Button } from '@/components/ui/button'
+import { toMediaUrl, toWebviewUrl } from '@/lib/memry-file-url'
 import { cn } from '@/lib/utils'
 import { useSync } from '@/contexts/sync-context'
 import { useT } from '@memry/i18n/renderer'
@@ -418,7 +419,7 @@ function PdfPreview({ url, name, width, height, align, onResize, onAlign, menu }
         >
           <div className="bg-white dark:bg-zinc-900">
             <Document
-              file={url}
+              file={toWebviewUrl(url)}
               onLoadSuccess={handleLoadSuccess}
               onLoadError={handleLoadError}
               loading={PDF_LOADING_INDICATOR}
@@ -664,7 +665,7 @@ function AudioPreview({ url, name, menu }: FilePreviewProps) {
         <audio
           controls
           preload="metadata"
-          src={url}
+          src={toMediaUrl(url)}
           aria-label={name}
           className="h-9 w-full min-w-0 sm:max-w-xs"
         >
@@ -701,12 +702,12 @@ function VideoPreview({ url, name, mimeType, menu }: FilePreviewProps) {
       <video
         controls
         preload="metadata"
-        src={url}
+        src={toMediaUrl(url)}
         data-testid="video-embed"
         aria-label={name}
         className="max-h-[60vh] w-full rounded bg-black"
       >
-        <source src={url} type={mimeType} />
+        <source src={toMediaUrl(url)} type={mimeType} />
         <track kind="captions" />
       </video>
       <div className="mt-2 flex items-center gap-2">

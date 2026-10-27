@@ -84,6 +84,7 @@ async fn fixture() -> Fixture {
     let roots = Roots {
         vault: Some(vault.clone()),
         app_data: data,
+        app_origins: vec!["tauri://localhost".to_owned()],
     };
     let server = start(Arc::new(move || roots.clone()), false).await.unwrap();
     Fixture {
@@ -233,4 +234,52 @@ async fn a_dropped_server_stops_listening() {
     drop(fx);
     tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     assert!(TcpStream::connect(("127.0.0.1", port)).await.is_err());
+}
+
+#[tokio::test]
+async fn a_file_is_sandboxed_and_readable_only_by_the_app_origin() {
+    let fx = fixture().await;
+    let file = fx.vault.join("attachments/n1/abc123-pic.svg");
+    fs::write(&file, b"<svg xmlns='http://www.w3.org/2000/svg'/>").unwrap();
+    let path = fx.media_path(&file);
+    let port = fx.server.port();
+
+    // An SVG opened at its own URL is a document: it gets no scripts and an opaque origin, so
+    // it cannot read the token out of the page that links it.
+    let plain = send(port, "GET", &fx.host(), &path, &[]).await;
+    assert_eq!(plain.status, 200);
+    assert_eq!(
+        plain.headers["content-security-policy"],
+        "sandbox; default-src 'none'"
+    );
+    assert!(!plain.headers.contains_key("access-control-allow-origin"));
+
+    let app = send(
+        port,
+        "GET",
+        &fx.host(),
+        &path,
+        &[("Origin", "tauri://localhost")],
+    )
+    .await;
+    assert_eq!(
+        app.headers["access-control-allow-origin"],
+        "tauri://localhost"
+    );
+
+    for origin in ["null", "https://evil.example"] {
+        let refused = send(port, "GET", &fx.host(), &path, &[("Origin", origin)]).await;
+        assert_eq!(refused.status, 403, "{origin}");
+        assert!(!refused.headers.contains_key("access-control-allow-origin"));
+    }
+}
+
+#[tokio::test]
+async fn the_embed_page_switches_the_devices_off_for_the_player_it_nests() {
+    let fx = fixture().await;
+    let path = format!("/e/{}/youtube/dQw4w9WgXcQ", fx.server.token());
+    let page = send(fx.server.port(), "GET", &fx.host(), &path, &[]).await;
+    assert_eq!(page.status, 200);
+    let policy = &page.headers["permissions-policy"];
+    assert!(policy.contains("microphone=()") && policy.contains("camera=()"));
 }

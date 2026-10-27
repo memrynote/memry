@@ -18,8 +18,8 @@ use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 use tokio_util::io::ReaderStream;
 
-use super::file_serve::CHUNK_SIZE;
-use super::file_service::{Body, Roots, Served, serve_file};
+use super::file_serve::{CHUNK_SIZE, FRAME_PERMISSIONS_POLICY};
+use super::file_service::{Body, Caps, FileRequest, Roots, Served, serve_file};
 use super::loopback_route::{EMBED_CSP, Route, route, youtube_embed_html};
 
 type RootsFn = dyn Fn() -> Roots + Send + Sync;
@@ -60,7 +60,8 @@ impl Drop for LoopbackServer {
     }
 }
 
-/// 256 random bits as hex: two version-4 UUIDs, which draw from the OS random source.
+/// 244 random bits as hex: two version-4 UUIDs (122 random bits each), which draw from the OS
+/// random source.
 fn new_token() -> String {
     format!(
         "{}{}",
@@ -111,12 +112,8 @@ async fn handle(State(state): State<Shared>, request: Request<HttpBody>) -> Resp
         _ if !get => plain(StatusCode::METHOD_NOT_ALLOWED),
         Route::YoutubeEmbed(id) => embed_page(&id),
         Route::Media(url) => {
-            let range = request
-                .headers()
-                .get(header::RANGE)
-                .and_then(|v| v.to_str().ok())
-                .map(str::to_owned);
-            media(&state, url, range).await
+            let asked = asked_headers(request.headers());
+            media(&state, url, asked).await
         }
     }
 }
@@ -133,14 +130,44 @@ fn embed_page(video_id: &str) -> Response<HttpBody> {
         HeaderValue::from_static(EMBED_CSP),
     );
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
+    headers.insert(
+        header::HeaderName::from_static("permissions-policy"),
+        HeaderValue::from_static(FRAME_PERMISSIONS_POLICY),
+    );
     response
 }
 
-async fn media(state: &Shared, url: String, range: Option<String>) -> Response<HttpBody> {
+fn asked_headers(headers: &header::HeaderMap) -> Asked {
+    let text = |name: header::HeaderName| {
+        headers
+            .get(name)
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_owned)
+    };
+    Asked {
+        range: text(header::RANGE),
+        origin: text(header::ORIGIN),
+        fetch_dest: text(header::HeaderName::from_static("sec-fetch-dest")),
+    }
+}
+
+/// The request headers `serve_file` decides on, owned for the blocking thread.
+struct Asked {
+    range: Option<String>,
+    origin: Option<String>,
+    fetch_dest: Option<String>,
+}
+
+async fn media(state: &Shared, url: String, asked: Asked) -> Response<HttpBody> {
     let roots = (state.roots)();
     let windows = state.windows;
     let served = tokio::task::spawn_blocking(move || {
-        let mut served = serve_file(&url, range.as_deref(), &roots, windows, u64::MAX);
+        let request = FileRequest {
+            range: asked.range.as_deref(),
+            origin: asked.origin.as_deref(),
+            fetch_dest: asked.fetch_dest.as_deref(),
+        };
+        let mut served = serve_file(&url, &request, &roots, windows, Caps::UNBOUNDED);
         // Position the file here, off the async threads, so the stream only reads.
         if let Body::File { file, start, .. } = &mut served.body
             && let Err(error) = file.seek(SeekFrom::Start(*start))

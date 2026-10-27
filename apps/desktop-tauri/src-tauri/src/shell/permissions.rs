@@ -5,8 +5,12 @@
 //!   deny, so none reaches WebView2's own prompt.
 //! - Linux: WebKitGTK's `permission-request`. Audio-only user media and notifications for a
 //!   trusted origin are allowed; everything else is denied.
-//! - macOS: WKWebView grants media capture through wry. The app's Info.plist names the
-//!   microphone, and the page's origin is the app's own, so there is nothing to install.
+//! - macOS: wry hands the handler the kind of permission only, so the camera is denied for every
+//!   frame and the microphone keeps WKWebView's own prompt (the app's Info.plist names it).
+//!
+//! Linux and macOS cannot say which frame asked. Both engines refuse a cross-origin frame the
+//! embedder did not delegate the device to (`allow=\"microphone\"`), the app delegates none, and
+//! the loopback pages and `memry-html` embeds also send `Permissions-Policy` with the devices off.
 
 #[cfg(any(windows, target_os = "linux"))]
 use memry_desktop::shell::permissions::{Permission, allowed};
@@ -19,6 +23,19 @@ pub fn dev_origin(app: &tauri::AppHandle<Wry>) -> Option<String> {
     }
     let url = app.config().build.dev_url.as_ref()?;
     Some(url.origin().ascii_serialization())
+}
+
+/// macOS: deny the camera for every frame, anything but the microphone too.
+#[cfg(target_os = "macos")]
+pub fn on_request(
+    _webview: tauri::Webview<Wry>,
+    kind: tauri::webview::PermissionKind,
+) -> tauri::webview::PermissionResponse {
+    use tauri::webview::{PermissionKind, PermissionResponse};
+    match kind {
+        PermissionKind::Microphone => PermissionResponse::Default,
+        _ => PermissionResponse::Deny,
+    }
 }
 
 #[cfg(any(windows, target_os = "linux"))]

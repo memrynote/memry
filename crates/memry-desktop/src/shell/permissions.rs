@@ -36,9 +36,8 @@ pub fn is_trusted_origin(origin: Option<&str>, dev_origin: Option<&str>) -> bool
         return true;
     }
     match url.scheme() {
-        "memry-file" => true,
         "tauri" => host == "localhost",
-        "https" => matches!(host, "tauri.localhost" | "memry-file.localhost"),
+        "https" => host == "tauri.localhost",
         "http" => host == "tauri.localhost",
         _ => false,
     }
@@ -65,13 +64,11 @@ mod tests {
     const DEV: Option<&str> = Some("http://localhost:5173");
 
     #[test]
-    fn trusts_the_app_and_its_file_scheme_origins() {
+    fn trusts_the_apps_own_origins() {
         for origin in [
             "tauri://localhost",
             "https://tauri.localhost",
             "http://tauri.localhost",
-            "memry-file://local",
-            "https://memry-file.localhost",
         ] {
             assert!(is_trusted_origin(Some(origin), None), "{origin}");
         }
@@ -99,6 +96,9 @@ mod tests {
             "http://127.0.0.1:41234",
             "memry-html://local",
             "https://memry-html.localhost",
+            // A served file is data. A document the engine renders from it is not the app.
+            "memry-file://local",
+            "https://memry-file.localhost",
             "https://evil.tauri.localhost.example.com",
             "tauri://evil",
             "not a url",

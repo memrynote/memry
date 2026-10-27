@@ -7,8 +7,32 @@ fn origins() -> Vec<String> {
     ]
 }
 
+const LOOPBACK: &str = "http://127.0.0.1:41234";
+
+fn guard(origins: &[String], sees_subframes: bool) -> Guard<'_> {
+    Guard {
+        app_origins: origins,
+        loopback_origin: Some(LOOPBACK),
+        sees_subframes,
+    }
+}
+
+/// An engine that reports top-level navigations only (WebView2).
 fn go(url: &str) -> Navigation {
-    decide(url, Some("tauri://localhost/index.html"), &origins())
+    decide(
+        url,
+        Some("tauri://localhost/index.html"),
+        &guard(&origins(), false),
+    )
+}
+
+/// An engine that reports every frame's navigations (WKWebView, WebKitGTK).
+fn go_in_any_frame(url: &str) -> Navigation {
+    decide(
+        url,
+        Some("tauri://localhost/index.html"),
+        &guard(&origins(), true),
+    )
 }
 
 #[test]
@@ -23,7 +47,7 @@ fn the_app_origin_and_hash_changes_stay_in_the_window() {
         decide(
             "http://localhost:5173/",
             Some("http://localhost:5173/x"),
-            &["http://localhost:5173".to_owned()]
+            &guard(&["http://localhost:5173".to_owned()], false)
         ),
         Navigation::Allow
     );
@@ -98,11 +122,58 @@ fn an_oversize_url_is_refused() {
 #[test]
 fn without_a_current_page_only_origins_and_links_decide() {
     assert_eq!(
-        decide("tauri://localhost/", None, &origins()),
+        decide("tauri://localhost/", None, &guard(&origins(), false)),
         Navigation::Allow
     );
     assert_eq!(
-        decide("https://example.com", None, &origins()),
+        decide("https://example.com", None, &guard(&origins(), false)),
         Navigation::OpenExternal
     );
+}
+
+#[test]
+fn an_embed_the_loopback_page_and_its_player_load_in_a_frame_without_leaving_the_app() {
+    for url in [
+        "memry-html://local/Users/kaan/vault/attachments/n/a.html",
+        "https://memry-html.localhost/local/v/attachments/n/a.html",
+        "http://127.0.0.1:41234/e/token/youtube/dQw4w9WgXcQ",
+        "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0",
+    ] {
+        assert_eq!(go_in_any_frame(url), Navigation::Allow, "{url}");
+    }
+}
+
+#[test]
+fn a_frame_engine_still_refuses_what_no_frame_of_the_app_loads() {
+    for url in [
+        // Another port, another host, and the media route are not the embed page.
+        "http://127.0.0.1:9/e/token/youtube/x",
+        "http://127.0.0.1:41234/m/token/abc",
+        "http://127.0.0.1:41234/",
+        "https://www.youtube-nocookie.com.evil.example/embed/x",
+        "http://www.youtube-nocookie.com/embed/x",
+        "javascript:alert(1)",
+        "data:text/html,<script>1</script>",
+    ] {
+        assert_ne!(go_in_any_frame(url), Navigation::Allow, "{url}");
+    }
+    // A link to a web page still goes to the OS, and a file to its application.
+    assert_eq!(
+        go_in_any_frame("https://example.com/a"),
+        Navigation::OpenExternal
+    );
+    assert_eq!(
+        go_in_any_frame("memry-file://local/v/a.pdf"),
+        Navigation::OpenFile
+    );
+}
+
+#[test]
+fn an_engine_that_reports_the_top_level_only_keeps_embeds_out_of_the_main_frame() {
+    for url in [
+        "memry-html://local/v/attachments/n/a.html",
+        "http://127.0.0.1:41234/e/token/youtube/x",
+    ] {
+        assert_eq!(go(url), Navigation::Deny, "{url}");
+    }
 }
