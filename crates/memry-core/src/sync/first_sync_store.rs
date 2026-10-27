@@ -6,8 +6,6 @@
 //! the pass sequencing around them. Nothing here does I/O beyond one
 //! statement; the ordering decisions are the caller's.
 
-use std::collections::HashSet;
-
 use rusqlite::{Connection, OptionalExtension as _, params};
 
 use crate::api::errors::StorageError;
@@ -70,10 +68,10 @@ pub(super) fn recent_document_ids(
 }
 
 /// The background sweep (#3253): owes a body pull for every live note and
-/// journal document outside `pulled`, so each later pass's body step fetches
-/// them within its request budget. Desktop's paced catch-up queue is the
-/// reference; opening a note still fetches it at once.
-pub(super) fn owe_out_of_window(conn: &Connection, pulled: &[String]) -> Result<(), StorageError> {
+/// journal document, so each later pass's body step fetches the ones the
+/// bodies pass did not merge within its request budget. Desktop's paced
+/// catch-up queue is the reference; opening a note still fetches it at once.
+pub(super) fn owe_live_documents(conn: &Connection) -> Result<(), StorageError> {
     let mut statement = conn
         .prepare(
             "SELECT id FROM notes WHERE deleted_at IS NULL
@@ -86,8 +84,7 @@ pub(super) fn owe_out_of_window(conn: &Connection, pulled: &[String]) -> Result<
         .map_err(sqlite_failed)?
         .collect::<Result<Vec<String>, _>>()
         .map_err(sqlite_failed)?;
-    let pulled: HashSet<&str> = pulled.iter().map(String::as_str).collect();
-    for id in live.iter().filter(|id| !pulled.contains(id.as_str())) {
+    for id in &live {
         body_debt::owe(conn, id)?;
     }
     Ok(())

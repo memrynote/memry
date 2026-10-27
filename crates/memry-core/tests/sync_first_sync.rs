@@ -1106,3 +1106,268 @@ async fn a_note_outside_the_window_is_owed_a_body_pull() {
         .expect("debts");
     assert_eq!(owed, vec![NOTE.to_owned()]);
 }
+
+// ------------------------------------------- "owed" means "awaits its body"
+//
+// `body_debt`'s invariant: a live note or journal whose record came from the
+// server and whose server body this device's log does not wholly hold is owed.
+// The external feed and the snapshot push trust it, so every door the first
+// sync opens has a test: the metadata pass's apply, a run that dies before its
+// bodies, and a body pull that stopped in a run that still completed.
+
+fn is_owed(db: &Db, doc_id: &str) -> bool {
+    let id = doc_id.to_owned();
+    db.call_blocking(move |conn| memry_core::sync::body_debt::is_owed(conn, &id))
+        .expect("the debt")
+}
+
+const OTHER: &str = "def456abc789";
+const OLDER: &str = "2026-09-09T00:00:00.000Z";
+
+#[tokio::test]
+async fn a_document_record_the_metadata_pass_applies_is_owed_in_the_same_step() {
+    let db = scratch_db("metadata-owes");
+    let transport = FakeTransport::new(vec![response(
+        200,
+        &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+    )]);
+    let pull = PullLoop::new(
+        http(transport),
+        db.clone(),
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(NOTE, &note_payload())]),
+    );
+    let report = pull.fetch_ids(&[NOTE.to_owned()]).await.expect("the fetch");
+    assert_eq!(report.applied, 1);
+    assert!(
+        is_owed(&db, NOTE),
+        "the record is here and its body is not: nothing may build on the empty document"
+    );
+}
+
+#[tokio::test]
+async fn a_first_sync_that_dies_before_a_body_arrives_leaves_its_document_owed() {
+    let db = scratch_db("dies-before-body");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[29u8; 32]).expect("keypair");
+    let transport = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        // The bodies pass: the network is gone.
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let run = first_sync(&db, transport, public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    assert!(run.is_err(), "the run died in its bodies pass");
+    assert!(is_owed(&db, NOTE), "inside the window, and not merged");
+}
+
+/// A run an older build began applied its records without debts. The resumed
+/// run's bodies pass owes them before it pulls, so one that dies there still
+/// leaves the document owed.
+#[tokio::test]
+async fn a_record_applied_without_a_debt_is_owed_by_the_bodies_pass_before_it_pulls() {
+    let db = scratch_db("older-build-resume");
+    let (public_key, _secret) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[41u8; 32]).expect("keypair");
+    let older_build = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let run = first_sync(
+        &db,
+        older_build,
+        public_key.clone(),
+        RecordedProgress::new(),
+    )
+    .run(epoch(MODIFIED_AT) + 1_000)
+    .await;
+    assert!(run.is_err());
+    // What a build before this invariant left behind: the record, no debt.
+    db.call_blocking(|conn| memry_core::sync::body_debt::settle(conn, NOTE))
+        .expect("settle");
+
+    let resumed = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[], 10, false)),
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let run = first_sync(&db, resumed, public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 2_000)
+        .await;
+    assert!(run.is_err(), "the resumed run died in its bodies pass");
+    assert!(is_owed(&db, NOTE));
+}
+
+#[tokio::test]
+async fn a_window_document_whose_pull_stopped_stays_owed_and_a_merged_one_is_settled() {
+    let db = scratch_db("window-settle");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[31u8; 32]).expect("keypair");
+    let older = json!({"title": "Other", "modifiedAt": OLDER}).to_string();
+    let transport = FakeTransport::new(vec![
+        response(
+            200,
+            &changes_page(&[(NOTE, "note"), (OTHER, "note")], &[], 10, false),
+        ),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note"), record_envelope(OTHER, "note")]})
+                .to_string(),
+        ),
+        // Newest first: NOTE merges to the server's head.
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &body_update("merged"), &secret_key),
+                "signerDeviceId": "device-a"
+            }], "hasMore": false})
+            .to_string(),
+        ),
+        // OTHER stops at an update whose signer this device cannot resolve.
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [
+                {"sequenceNum": 1, "data": packed_base64(OTHER, &body_update("first"), &secret_key), "signerDeviceId": "device-a"},
+                {"sequenceNum": 2, "data": packed_base64(OTHER, &body_update("second"), &secret_key), "signerDeviceId": "device-unknown"}
+            ], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    let http = http(transport);
+    let pull = Arc::new(PullLoop::new(
+        Arc::clone(&http),
+        db.clone(),
+        Declaration::subscribed(),
+        ScriptedCipher::new(&[(NOTE, &note_payload()), (OTHER, &older)]),
+    ));
+    let bodies = Arc::new(BodyPull::new(
+        http,
+        db.clone(),
+        Declaration::subscribed(),
+        RealCrdtCipher::with("device-a", public_key),
+    ));
+    let report = FirstSync::new(pull, bodies, db.clone())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await
+        .expect("a stop does not fail the run");
+    assert_eq!(report.bodies.stopped, vec![OTHER.to_owned()]);
+    assert!(
+        !is_owed(&db, NOTE),
+        "its pull reached the head and stored it all"
+    );
+    assert!(
+        is_owed(&db, OTHER),
+        "its log holds update 1 and not update 2: a partial body is still owed"
+    );
+}
+
+/// The end of the chain the invariant protects: an outside edit of a note the
+/// first sync has typed but not given its body yet is held, and once the body
+/// has merged the same edit lands on top of it, so the text appears once.
+#[cfg(feature = "markdown")]
+#[tokio::test]
+async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() {
+    use memry_core::domain::external_feed::{
+        FeedInput, FeedOutcome, feed_external_edit, seed_body_if_empty,
+    };
+    use memry_core::markdown::convert::api::Converter;
+    use memry_core::markdown::schema::callout_types::CalloutTypes;
+
+    let db = scratch_db("feed-waits");
+    let (public_key, secret_key) =
+        memry_core::crypto::sodium::sign_seed_keypair(&[37u8; 32]).expect("keypair");
+    let dying = FakeTransport::new(vec![
+        response(200, &changes_page(&[(NOTE, "note")], &[], 10, false)),
+        response(
+            200,
+            &json!({"items": [record_envelope(NOTE, "note")]}).to_string(),
+        ),
+        Err(memry_core::api::errors::TransportError::Cancelled),
+    ]);
+    let run = first_sync(&db, dying, public_key.clone(), RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 1_000)
+        .await;
+    assert!(run.is_err());
+
+    let converter = Converter::new(CalloutTypes::new(Vec::new()));
+    let file = "Hello from the server\n\nA line typed in another editor";
+    let write = |seed: bool| {
+        db.call_blocking(|conn| {
+            let input = FeedInput {
+                note_id: NOTE,
+                markdown: file,
+                note_path: Some("A note.md"),
+                writing: None,
+            };
+            Ok(if seed {
+                seed_body_if_empty(conn, &converter, input, "device-local", 5)
+            } else {
+                feed_external_edit(conn, &converter, input, "device-local", 5)
+            })
+        })
+        .expect("storage")
+        .expect("the feed itself does not fail")
+    };
+    let local_updates = || {
+        db.call_blocking(|conn| {
+            Ok(conn
+                .query_row(
+                    "SELECT COUNT(*) FROM outbox WHERE item_id = ?1",
+                    [NOTE],
+                    |row| row.get::<_, i64>(0),
+                )
+                .expect("count"))
+        })
+        .expect("count")
+    };
+    assert_eq!(
+        write(true),
+        FeedOutcome::Owed,
+        "the seed of an adopted file"
+    );
+    assert_eq!(
+        write(false),
+        FeedOutcome::Owed,
+        "the feed of a changed file"
+    );
+    assert_eq!(local_updates(), 0, "no second copy of the body to push");
+
+    let resumed = FakeTransport::new(vec![
+        response(200, &changes_page(&[], &[], 10, false)),
+        response(200, &json!({"snapshot": Json::Null}).to_string()),
+        response(
+            200,
+            &json!({"updates": [{
+                "sequenceNum": 1,
+                "data": packed_base64(NOTE, &body_update("Hello from the server"), &secret_key),
+                "signerDeviceId": "device-a"
+            }], "hasMore": false})
+            .to_string(),
+        ),
+    ]);
+    first_sync(&db, resumed, public_key, RecordedProgress::new())
+        .run(epoch(MODIFIED_AT) + 2_000)
+        .await
+        .expect("the resumed run");
+    assert!(!is_owed(&db, NOTE));
+
+    assert_eq!(write(false), FeedOutcome::Fed);
+    let text = text_of(&db, NOTE);
+    assert_eq!(
+        text.matches("Hello from the server").count(),
+        1,
+        "the edit landed on the server body, not beside it: {text:?}"
+    );
+    assert!(text.contains("A line typed in another editor"), "{text:?}");
+}
