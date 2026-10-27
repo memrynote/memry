@@ -34,6 +34,7 @@ use std::collections::HashMap;
 use rusqlite::{Connection, params};
 
 use crate::api::errors::StorageError;
+use crate::protocol::crdt_envelope::{MAX_REQUEST_PAYLOAD_CHARS, max_payload_chars};
 
 /// The three `op` spellings data-model §A.2 defines.
 pub const OP_UPSERT: &str = "upsert";
@@ -425,10 +426,25 @@ pub fn next_batch(
     if head.is_crdt() {
         let item_type = head.item_type.clone();
         let doc_id = head.item_id.clone();
+        // A request carries at most `MAX_REQUEST_PAYLOAD_CHARS` of base64, or
+        // the server answers 413 before any route runs. The cost is an upper
+        // bound taken without compressing. The first row always rides, so a
+        // batch is never empty.
         let rows: Vec<OutboxRow> = rows
             .into_iter()
             .take_while(|row| row.is_crdt() && row.item_id == doc_id)
             .take(MAX_CRDT_UPDATES_PER_BATCH)
+            .scan(0usize, |chars, row| {
+                let cost = row
+                    .payload
+                    .as_deref()
+                    .map_or(0, |update| max_payload_chars(update.len()));
+                if *chars > 0 && *chars + cost > MAX_REQUEST_PAYLOAD_CHARS {
+                    return None;
+                }
+                *chars += cost;
+                Some(row)
+            })
             .collect();
         return Ok(Some(Batch::Crdt {
             item_type,

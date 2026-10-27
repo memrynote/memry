@@ -44,6 +44,29 @@ permissions:
   contents: read
 
 jobs:
+  handoff-scenarios:
+    name: Hand-off script scenarios (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-11-arm]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The real script, spawned with the app's options, against fakes, in directories with
+      # non-ASCII, parentheses, `&` and `%`; see the test file for the scenarios.
+      - name: Run the hand-off script on hostile paths
+        shell: pwsh
+        run: node --test apps/desktop/scripts/installer-handoff-windows.test.mjs
+
   smoke:
     name: Install, verify, update
     runs-on: windows-2022
@@ -161,9 +184,6 @@ jobs:
       RELEASE_TAG: ${{ inputs.release_tag }}
       NSIS_RELEASE_TAG: ${{ inputs.nsis_release_tag }}
       RUN_CLI_MIGRATION: ${{ inputs.run_cli_migration }}
-      # electron-builder keys the per-user uninstall entry by UUID v5 of the appId
-      # (com.memrynote.memry) under its own namespace, not by the appId itself.
-      NSIS_UNINSTALL_KEY: HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\c72afc79-ad45-5346-bedb-8907a549c673
     steps:
       # The checkout is only for apps/desktop/scripts/installer-handoff-script.mjs,
       # which renders the hand-off script from the same function the app uses. It
@@ -209,8 +229,16 @@ jobs:
           if (-not (Test-Path $exe)) { throw "missing $exe" }
           $uninstaller = Join-Path $env:LOCALAPPDATA 'Programs\MemryNote\Uninstall MemryNote.exe'
           if (-not (Test-Path $uninstaller)) { throw "missing $uninstaller" }
-          $entry = Get-ItemProperty $env:NSIS_UNINSTALL_KEY -ErrorAction Stop
-          Write-Host "NSIS uninstall entry: $($entry.DisplayName) $($entry.DisplayVersion)"
+          # electron-builder keys the per-user uninstall entry by a GUID that is not the appId and
+          # has changed between builder versions (c72afc79-... here once, ddabaefe-... in 2026.1015.1),
+          # so find it by the install directory its uninstall string points at.
+          $nsisKey = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' |
+            Where-Object { (Get-ItemProperty $_.PSPath).UninstallString -like '*\Programs\MemryNote\*' } |
+            Select-Object -First 1
+          if (-not $nsisKey) { throw 'no NSIS uninstall entry under HKCU' }
+          $entry = Get-ItemProperty $nsisKey.PSPath
+          Write-Host "NSIS uninstall entry $($nsisKey.PSChildName): $($entry.DisplayName) $($entry.DisplayVersion)"
+          "NSIS_UNINSTALL_KEY=$($nsisKey.PSPath)" | Out-File -FilePath $env:GITHUB_ENV -Append
           $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\MemryNote.lnk'
           if (-not (Test-Path $lnk)) { throw "missing Start menu shortcut $lnk" }
           "NSIS_EXE=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -235,17 +263,21 @@ jobs:
           $app = Start-Process -FilePath $env:NSIS_EXE -PassThru
           Start-Sleep -Seconds 5
           $setup = Resolve-Path .\assets\MemryNote-win-Setup.exe
+          # `--spawn` starts the script with the app's own spawn options (detached, no console).
+          # A hidden `Start-Process cmd` has a console and hid a `tasklist | find` that hangs
+          # without one.
           node apps/desktop/scripts/installer-handoff-script.mjs `
             --pid $app.Id `
             --exe Memrynote.exe `
             --install-dir (Join-Path $env:LOCALAPPDATA 'Programs\MemryNote') `
             --setup "$setup" `
             --log "$PWD\velopack-setup.log" `
-            --nsis-installer $env:NSIS_INSTALLER | Out-File -FilePath handoff.cmd -Encoding ascii
+            --nsis-installer $env:NSIS_INSTALLER `
+            --spawn "$PWD\handoff.cmd"
           Get-Content handoff.cmd
-          Start-Process -FilePath cmd.exe -ArgumentList '/c', "$PWD\handoff.cmd" -WindowStyle Hidden
           Start-Sleep -Seconds 3
           Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+          (Get-Date).ToString('o') | Set-Content killed-at.txt
 
       - name: Velopack install replaced the NSIS install
         shell: pwsh
@@ -257,6 +289,22 @@ jobs:
           Start-Sleep -Seconds 20
           if (Test-Path velopack-setup.log) { Get-Content velopack-setup.log -Tail 40 }
           if (-not (Test-Path $velopackExe)) { throw "hand-off did not produce $velopackExe" }
+          if ($env:RUN_CLI_MIGRATION -ne 'true') {
+            # Setup creates the exe early; the script's last line comes after Setup has finished.
+            while ((Get-Date) -lt $deadline -and -not ((Test-Path installer-handoff.log) -and (Select-String -Path installer-handoff.log -Pattern 'handoff done' -Quiet))) { Start-Sleep -Seconds 5 }
+            Get-Content installer-handoff.log
+            $transcript = Get-Content installer-handoff.log -Raw
+            foreach ($step in 'app exited', 'uninstall exit=\d+', 'setup exit=\d+', 'result=velopack', 'relaunch exit=\d+') {
+              if ($transcript -notmatch $step) { throw "installer-handoff.log lacks '$step'" }
+            }
+            # The uninstaller must start only after the app is gone: "app exited" cannot be logged
+            # before the kill, or the wait failed open and the uninstaller raced the running app.
+            $killedAt = [datetime]::Parse((Get-Content killed-at.txt)).TimeOfDay
+            $exitedLine = [regex]::Match($transcript, '(\d+:\d+:\d+)\.\d+ app exited')
+            $exitedAt = [timespan]::Parse($exitedLine.Groups[1].Value)
+            if ($exitedAt.TotalSeconds -lt [math]::Floor($killedAt.TotalSeconds)) { throw "'app exited' ($exitedAt) was logged before the app was killed ($killedAt)" }
+            if ($transcript.IndexOf('app exited') -gt $transcript.IndexOf('uninstall exit=')) { throw 'uninstall ran before the wait finished' }
+          }
           if (Test-Path $nsisDir) { Get-ChildItem $nsisDir -Recurse | Format-Table FullName; throw "NSIS install still present at $nsisDir" }
           if (Test-Path $env:NSIS_UNINSTALL_KEY) { throw "NSIS uninstall entry still present" }
           $sig = Get-AuthenticodeSignature $velopackExe
@@ -269,7 +317,7 @@ jobs:
           $running = @(Get-Process Memrynote -ErrorAction SilentlyContinue)
           $running | Format-Table Id, Path
           $fromVelopack = @($running | Where-Object { $_.Path -eq $velopackExe })
-          if ($fromVelopack.Count -eq 0) { throw 'Setup.exe did not leave Memrynote.exe running from the Velopack install' }
+          if ($fromVelopack.Count -eq 0) { throw 'the hand-off did not leave Memrynote.exe running from the Velopack install' }
           $running | Stop-Process -Force
 
       - name: Collect logs
@@ -280,6 +328,7 @@ jobs:
           path: |
             handoff.cmd
             velopack-setup.log
+            installer-handoff.log
             ${{ env.LOCALAPPDATA }}\MemryNote\*.log
             ${{ env.APPDATA }}\memrynote\logs\*.log
           if-no-files-found: ignore
