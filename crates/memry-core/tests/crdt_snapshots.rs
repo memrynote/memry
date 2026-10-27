@@ -307,15 +307,33 @@ async fn every_condition_of_the_gate_refuses_before_the_endpoint_is_called() {
         SnapshotOutcome::Refused(Refusal::UnmergedRemoteState)
     );
 
-    // Condition 2, both halves.
-    let local_only = SnapshotGate {
-        local_only: true,
-        ..SnapshotGate::clean()
-    };
+    // Condition 2, both halves. Local-only is not the caller's to say: the
+    // pusher reads it from `note_files`.
+    db.call_blocking(|conn| {
+        conn.execute(
+            "INSERT INTO note_files (note_id, path, local_only, indexed_at)
+             VALUES (?1, 'a.md', 1, 1)",
+            [NOTE],
+        )
+        .map_err(|error| StorageError::Failed {
+            what: error.to_string(),
+        })
+    })
+    .expect("a local-only note");
     assert_eq!(
-        pusher.push(&document, local_only, 1).await.expect("local"),
+        pusher
+            .push(&document, SnapshotGate::clean(), 1)
+            .await
+            .expect("local"),
         SnapshotOutcome::Refused(Refusal::LocalOnly)
     );
+    db.call_blocking(|conn| {
+        conn.execute("DELETE FROM note_files", [])
+            .map_err(|error| StorageError::Failed {
+                what: error.to_string(),
+            })
+    })
+    .expect("syncing again");
     let purged = SnapshotGate {
         purged: true,
         ..SnapshotGate::clean()

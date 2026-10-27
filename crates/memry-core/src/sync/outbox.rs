@@ -171,12 +171,13 @@ impl OutboxRow {
 #[derive(Debug)]
 pub struct Durable<T> {
     value: T,
-    outbox_id: i64,
+    outbox_id: Option<i64>,
 }
 
 impl<T> Durable<T> {
-    /// The `outbox.id` the change was queued under.
-    pub fn outbox_id(&self) -> i64 {
+    /// The `outbox.id` the change was queued under; `None` for a change of a
+    /// local-only note, which is never queued.
+    pub fn outbox_id(&self) -> Option<i64> {
         self.outbox_id
     }
 
@@ -188,7 +189,9 @@ impl<T> Durable<T> {
 }
 
 /// Writes the source row and the outbox row in **one** transaction and
-/// acknowledges only after it commits (FR-030, §C.4).
+/// acknowledges only after it commits (FR-030, §C.4). A change [`enqueue`]
+/// withholds (a local-only note's) still commits its source row and carries no
+/// outbox id.
 ///
 /// `source` runs **first** and receives the open transaction; the outbox
 /// insert follows it. The order is load-bearing in one direction only — a
@@ -211,18 +214,34 @@ where
 }
 
 /// Inserts one outbox row **inside a transaction the caller already holds**.
+/// Returns `None` when the change belongs to a local-only note and nothing was
+/// queued.
 ///
 /// Refusing autocommit is the structural guarantee: an outbox row written on
 /// its own is a change acknowledged before its source row is durable, which
 /// is the edge FR-030 exists to close. Use [`commit`] when there is no
 /// transaction yet.
-pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<i64, StorageError> {
+///
+/// **This is the one place a local-only note is kept off the server**, for its
+/// record rows and its body updates alike (both are `item_type` `note`, and a
+/// body's `doc_id` is the note id). Every writer reaches the outbox through
+/// here, so a writer cannot forget the rule, and the note's own `sync_items`
+/// row is still written: local state is complete, only the push is withheld.
+/// The flag is [`crate::domain::note_files`]'s; clearing it queues the whole
+/// note ([`crate::domain::notes::local_only`]).
+pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i64>, StorageError> {
     if tx.is_autocommit() {
         return Err(StorageError::Failed {
             what: "an outbox row must be written in the same transaction as its source row \
                    (FR-030, data-model §A.2, §C.4)"
                 .to_owned(),
         });
+    }
+
+    if change.item_type() == crate::domain::notes::ITEM_TYPE
+        && crate::domain::note_files::is_local_only(tx, change.item_id())?
+    {
+        return Ok(None);
     }
 
     // A record enqueue supersedes: the payload is the whole item, so an older
@@ -263,7 +282,7 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<i64, Sto
         ],
     )
     .map_err(failed)?;
-    Ok(tx.last_insert_rowid())
+    Ok(Some(tx.last_insert_rowid()))
 }
 
 /// How many rows are claimable now. Never removes one.
@@ -415,7 +434,7 @@ pub fn next_batch(
             .take_while(|row| row.is_crdt() && row.item_id == doc_id)
             .take(MAX_CRDT_UPDATES_PER_BATCH)
             .scan(0usize, |body_bytes, row| {
-                let cost = push_body_bytes(row.payload.as_ref().map_or(0, Vec::len));
+                let cost = row.payload.as_deref().map_or(0, push_body_bytes);
                 if *body_bytes > 0 && *body_bytes + cost > MAX_PUSH_BODY_BYTES {
                     return None;
                 }
@@ -536,64 +555,4 @@ fn truncate(reason: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn row(id: i64, item_type: &str, item_id: &str, op: &str) -> OutboxRow {
-        OutboxRow {
-            id,
-            item_type: item_type.to_owned(),
-            item_id: item_id.to_owned(),
-            op: op.to_owned(),
-            payload: None,
-            enqueued_at: 0,
-            attempt_count: 0,
-            last_error: None,
-            next_attempt_at: None,
-        }
-    }
-
-    #[test]
-    fn collapse_keeps_the_newest_row_per_key_and_drops_no_id() {
-        let collapsed = collapse_records(vec![
-            row(1, "task", "t1", OP_UPSERT),
-            row(2, "task", "t2", OP_UPSERT),
-            row(3, "task", "t1", OP_DELETE),
-        ]);
-        assert_eq!(collapsed.len(), 2);
-        assert_eq!(collapsed[0].row.id, 3);
-        assert_eq!(collapsed[0].row.op, OP_DELETE);
-        assert_eq!(collapsed[0].superseded, vec![1]);
-        assert_eq!(collapsed[0].ids(), vec![3, 1]);
-        assert_eq!(collapsed[1].row.id, 2);
-        assert!(collapsed[1].superseded.is_empty());
-    }
-
-    #[test]
-    fn collapse_never_touches_a_crdt_row() {
-        let collapsed = collapse_records(vec![
-            row(1, "note", "n1", OP_CRDT_UPDATE),
-            row(2, "note", "n1", OP_CRDT_UPDATE),
-        ]);
-        assert!(
-            collapsed.is_empty(),
-            "collapsing CRDT rows drops updates a peer has not seen"
-        );
-    }
-
-    #[test]
-    fn the_same_id_under_two_types_is_two_push_items() {
-        // §5.15: the bookkeeping key is `(type, id)` and never `id` alone.
-        let collapsed = collapse_records(vec![
-            row(1, "project", "inbox", OP_UPSERT),
-            row(2, "tag_definition", "inbox", OP_UPSERT),
-        ]);
-        assert_eq!(collapsed.len(), 2);
-    }
-
-    #[test]
-    fn last_error_is_truncated() {
-        let long = "x".repeat(MAX_LAST_ERROR_CHARS * 2);
-        assert_eq!(truncate(&long).chars().count(), MAX_LAST_ERROR_CHARS);
-    }
-}
+mod tests;

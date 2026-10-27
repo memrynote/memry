@@ -276,7 +276,7 @@ fn a_store_that_refuses_the_outbox_row_keeps_neither_half_and_acknowledges_nothi
         .expect("the same create succeeds once the store stops refusing");
     assert_eq!(
         outbox_ids(&db),
-        vec![durable.outbox_id()],
+        vec![durable.outbox_id().expect("a queued change")],
         "the refused attempt left no row behind for this one to sit after"
     );
     assert_eq!(source_rows(&db, "refusednote"), 1);

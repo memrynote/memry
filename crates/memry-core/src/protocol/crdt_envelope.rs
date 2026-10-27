@@ -52,8 +52,19 @@ pub const CIPHERTEXT_OFFSET: usize = HEADER_BYTES;
 /// signature.
 pub const MIN_PACKED_BYTES: usize = HEADER_BYTES + 1;
 
-/// The Poly1305 tag XChaCha20-Poly1305 appends to the ciphertext.
+/// The Poly1305 tag XChaCha20-Poly1305 appends to the ciphertext (§4.3).
 const AEAD_TAG_BYTES: usize = 16;
+
+/// The length [`pack`] returns for `update`, without any key: header, the
+/// compressed frame and the AEAD tag.
+///
+/// This is what the server measures against its 5 MiB cap on a decoded update
+/// (chapter 07 §7.3), so a caller deciding whether an update can ride as one
+/// asks here and not at the raw state length: a large, repetitive body
+/// compresses well under the cap and a random one can be refused far below it.
+pub fn packed_len(update: &[u8]) -> usize {
+    HEADER_BYTES + compress::compress(update).len() + AEAD_TAG_BYTES
+}
 
 /// The `/sync/*` request body ceiling, chapter 07 §7.4
 /// (`apps/sync-server/src/index.ts:66`), less headroom for the
@@ -61,19 +72,10 @@ const AEAD_TAG_BYTES: usize = 16;
 /// before any route runs, so no per-update verdict comes back.
 pub const MAX_PUSH_BODY_BYTES: usize = 8 * 1024 * 1024 - 4096;
 
-/// The most [`pack`] can return for an update of `update_len` bytes.
-///
-/// The compression frame adds one flag byte and a compressed result is kept
-/// only when it is shorter than the input (§4.1), so the ciphertext never
-/// exceeds `update_len + 1` plus the AEAD tag.
-pub const fn max_packed_len(update_len: usize) -> usize {
-    HEADER_BYTES + 1 + update_len + AEAD_TAG_BYTES
-}
-
-/// What one update of `update_len` bytes adds to a `POST /sync/crdt/updates`
-/// body: the base64 of its packed envelope, two quotes and a comma.
-pub const fn push_body_bytes(update_len: usize) -> usize {
-    max_packed_len(update_len).div_ceil(3) * 4 + 3
+/// What `update` adds to a `POST /sync/crdt/updates` body: the base64 of its
+/// packed envelope, two quotes and a comma.
+pub fn push_body_bytes(update: &[u8]) -> usize {
+    packed_len(update).div_ceil(3) * 4 + 3
 }
 
 /// The per-update key material, §4.3.
@@ -242,35 +244,6 @@ mod tests {
     }
 
     #[test]
-    fn max_packed_len_bounds_pack_for_stored_and_compressed_updates() {
-        let (_, secret_key) = signer();
-        let vault_key = [3u8; 32];
-        let incompressible: Vec<u8> = (0..4096u32)
-            .map(|i| (i.wrapping_mul(2654435761) >> 13) as u8)
-            .collect();
-        for update in [vec![1u8], vec![0u8; 63], vec![7u8; 4096], incompressible] {
-            let packed = pack(
-                &CrdtRequest {
-                    note_id: "abc123def456",
-                    update: &update,
-                    vault_key: &vault_key,
-                    signing_secret_key: &secret_key,
-                },
-                &CrdtMaterial::random(),
-            )
-            .expect("pack");
-            assert!(packed.len() <= max_packed_len(update.len()));
-            if update.len() < compress::STORED_THRESHOLD_BYTES {
-                assert_eq!(
-                    packed.len(),
-                    max_packed_len(update.len()),
-                    "stored is exact"
-                );
-            }
-        }
-    }
-
-    #[test]
     fn a_packet_round_trips() {
         let (public_key, secret_key) = signer();
         let vault_key = [3u8; 32];
@@ -289,6 +262,52 @@ mod tests {
         assert_eq!(
             unpack(&packed, "abc123def456", &vault_key, &public_key).expect("unpack"),
             update
+        );
+    }
+
+    #[test]
+    fn packed_len_is_the_length_pack_returns() {
+        let (_, secret_key) = signer();
+        let vault_key = [3u8; 32];
+        let random: Vec<u8> = sodium::random_bytes(4096);
+        for update in [Vec::new(), b"tiny".to_vec(), vec![b'a'; 100_000], random] {
+            let packed = pack(
+                &CrdtRequest {
+                    note_id: "abc123def456",
+                    update: &update,
+                    vault_key: &vault_key,
+                    signing_secret_key: &secret_key,
+                },
+                &CrdtMaterial::random(),
+            )
+            .expect("pack");
+            assert_eq!(packed_len(&update), packed.len(), "{} bytes", update.len());
+        }
+    }
+
+    #[test]
+    fn push_body_bytes_is_the_base64_entry_the_request_carries() {
+        let update = vec![b'a'; 1000];
+        let (_, secret_key) = signer();
+        let packed = pack(
+            &CrdtRequest {
+                note_id: "abc123def456",
+                update: &update,
+                vault_key: &[3u8; 32],
+                signing_secret_key: &secret_key,
+            },
+            &CrdtMaterial::random(),
+        )
+        .expect("pack");
+        let entry = serde_json::to_string(&base64::Engine::encode(
+            &base64::engine::general_purpose::STANDARD,
+            &packed,
+        ))
+        .expect("json");
+        assert_eq!(
+            push_body_bytes(&update),
+            entry.len() + 1,
+            "entry plus comma"
         );
     }
 
