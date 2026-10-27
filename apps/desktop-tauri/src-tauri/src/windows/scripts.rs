@@ -2,19 +2,25 @@
 
 const DRAG_REGION: &str = include_str!("scripts/drag-region.js");
 
-/// What the page may know about its window. Step 10d adds the loopback origin and token.
-#[derive(Debug, Clone, Copy)]
+/// What the page may know about its window: whether it maximizes, and where the loopback media
+/// server listens (`http://127.0.0.1:<port>` and the token its routes carry).
+#[derive(Debug, Clone)]
 pub struct ShellGlobals {
     pub maximizable: bool,
+    pub loopback_origin: String,
+    pub loopback_token: String,
 }
 
 /// `window.__MEMRY_SHELL__`, then the drag-region listeners. Main-frame only: it is added with
 /// `initialization_script`, never the all-frames variant, so a `memry-html:` or YouTube frame
 /// sees none of it.
 pub fn init_script(globals: ShellGlobals) -> String {
+    let json = |text: &str| serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_owned());
     format!(
-        "window.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {} }});\n{DRAG_REGION}",
-        globals.maximizable
+        "window.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}",
+        globals.maximizable,
+        json(&globals.loopback_origin),
+        json(&globals.loopback_token)
     )
 }
 
@@ -30,10 +36,15 @@ mod tests {
 
     #[test]
     fn the_script_publishes_the_globals_before_the_listeners() {
-        let script = init_script(ShellGlobals { maximizable: false });
-        assert!(
-            script.starts_with("window.__MEMRY_SHELL__ = Object.freeze({ maximizable: false });")
-        );
+        let loopback_token = "ab12".to_owned();
+        let script = init_script(ShellGlobals {
+            maximizable: false,
+            loopback_origin: "http://127.0.0.1:4000".to_owned(),
+            loopback_token,
+        });
+        assert!(script.starts_with(
+            "window.__MEMRY_SHELL__ = Object.freeze({ maximizable: false, loopbackOrigin: \"http://127.0.0.1:4000\", loopbackToken: \"ab12\" });"
+        ));
         assert!(script.contains("plugin:window|start_dragging"));
         assert!(script.contains("plugin:window|toggle_maximize"));
     }

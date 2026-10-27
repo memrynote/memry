@@ -17,6 +17,7 @@ use super::reveal::{self, StartupMode};
 use super::scripts::{self, ShellGlobals};
 use super::{MAIN_LABEL, bounds_store, chrome, nav_input, zoom};
 use crate::shell::services::mark_phase;
+use crate::shell::{navigation_guard, permissions};
 use crate::startup::{self, StartupState};
 
 /// Builds the main window, hidden: `windows::reveal` shows it at the renderer's first paint.
@@ -45,8 +46,10 @@ pub fn create_main(
                     super::win32_caption::install_child(window.app_handle());
                 }
             })
+            .on_navigation(navigation_guard::on_navigation(app.clone()))
+            .on_new_window(navigation_guard::on_new_window(app.clone()))
             .initialization_script(startup::script(state))
-            .initialization_script(scripts::init_script(ShellGlobals { maximizable: true }));
+            .initialization_script(scripts::init_script(shell_globals(app)));
     builder = chrome::apply(builder);
     builder = match resolved.position {
         Some((x, y)) => builder.position(f64::from(x), f64::from(y)),
@@ -54,6 +57,7 @@ pub fn create_main(
     };
     let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
     zoom::apply_to(&window, state.zoom);
+    permissions::install(&window, permissions::dev_origin(app));
     #[cfg(windows)]
     {
         super::win32_caption::install(app, &window);
@@ -68,6 +72,16 @@ pub fn create_main(
         },
     );
     Ok(window)
+}
+
+fn shell_globals(app: &AppHandle<Wry>) -> ShellGlobals {
+    let (loopback_origin, loopback_token) =
+        crate::shell::loopback::address(app).unwrap_or_default();
+    ShellGlobals {
+        maximizable: true,
+        loopback_origin,
+        loopback_token,
+    }
 }
 
 /// The picker keeps its compact size and never restores geometry; the app window restores the

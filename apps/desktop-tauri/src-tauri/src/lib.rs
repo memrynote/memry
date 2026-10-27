@@ -8,6 +8,7 @@ pub mod e2e;
 pub mod events;
 pub mod flush;
 pub mod menu;
+pub mod protocols;
 pub mod registry;
 pub mod shell;
 pub mod shutdown;
@@ -39,6 +40,11 @@ fn register_stages() {
     startup::register(Stage::Paths, "resolve app paths", resolve_paths);
     startup::register(Stage::Logging, "init logging", init_logging);
     shell::services::register_stages();
+    startup::register(
+        Stage::Protocols,
+        "loopback server",
+        shell::loopback::start_server,
+    );
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
     shutdown::register_stages();
@@ -108,7 +114,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     );
     #[cfg(not(feature = "e2e"))]
     let handler = registry::invoke_handler(&builder);
-    let app = tauri::Builder::default()
+    let app = protocols::register(tauri::Builder::default())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init());

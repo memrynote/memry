@@ -26,6 +26,9 @@ hex = { workspace = true }
 # `Type` for ArticleCapture, pinned with the Tauri crate (tauri-specta rc.26 needs this exact version).
 regex = "1"
 url = "2"
+percent-encoding = "2"
+# Content types of served attachments (the `mime-types` table of the Electron app).
+mime_guess = "2"
 # `String.prototype.normalize("NFKC")` of the MathJax glyph text in `elements/math`.
 unicode-normalization = "0.1.25"
 # Turndown parses its input with domino, a spec-conformant HTML parser: the one place html5ever
@@ -50,7 +53,10 @@ snap = "1.1.2"
 tempfile = "3"
 uuid = { workspace = true }
 # The shutdown sequence and the flush table are async and tauri-free.
-tokio = { workspace = true, features = ["time", "sync"] }
+tokio = { workspace = true, features = ["time", "sync", "net", "fs", "io-util"] }
+# The loopback media server (`shell/loopback.rs`): HTTP/1 on 127.0.0.1, streamed bodies.
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
+tokio-util = { version = "0.7.19", features = ["io"] }
 icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"

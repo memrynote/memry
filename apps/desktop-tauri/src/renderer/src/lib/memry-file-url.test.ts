@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { toMemryFileUrl } from './memry-file-url'
+import { afterEach, describe, expect, it } from 'vitest'
+import { toMediaUrl, toMemryFileUrl, toWebviewUrl, toYoutubeEmbedUrl } from './memry-file-url'
 
 // Mirrors the main-process protocol handler (src/main/index.ts): it parses the
 // URL, decodes the pathname, and strips the leading slash for Windows drives.
@@ -61,5 +61,78 @@ describe('toMemryFileUrl', () => {
     const url = toMemryFileUrl('/vault/50% off #1 draft?.pdf')
     expect(url).toBe('memry-file://local/vault/50%25%20off%20%231%20draft%3F.pdf')
     expect(decodeLikeProtocolHandler(url, 'darwin')).toBe('/vault/50% off #1 draft?.pdf')
+  })
+})
+
+describe('toWebviewUrl', () => {
+  it('rewrites a canonical local URL to the WebView2 form on Windows only', () => {
+    expect(toWebviewUrl('memry-file://local/C:/v/a%20b.png', 'win32')).toBe(
+      'https://memry-file.localhost/local/C:/v/a%20b.png'
+    )
+    expect(toWebviewUrl('memry-html://local/C:/v/attachments/n/a.html', 'win32')).toBe(
+      'https://memry-html.localhost/local/C:/v/attachments/n/a.html'
+    )
+    expect(toWebviewUrl('memry-file://local/Users/k/a.png', 'darwin')).toBe(
+      'memry-file://local/Users/k/a.png'
+    )
+    expect(toWebviewUrl('memry-file://local/Users/k/a.png', 'linux')).toBe(
+      'memry-file://local/Users/k/a.png'
+    )
+  })
+
+  it('leaves other URLs alone on every platform', () => {
+    for (const url of ['https://example.com/a.png', 'data:image/png;base64,AAAA', 'a/b.png', '']) {
+      expect(toWebviewUrl(url, 'win32')).toBe(url)
+    }
+    expect(toWebviewUrl('memry-file://other/a.png', 'win32')).toBe('memry-file://other/a.png')
+  })
+
+  it('round-trips with the path the scheme handler decodes', () => {
+    const canonical = toMemryFileUrl('C:\\Users\\Leib.000\\my file.pdf')
+    const webview = new URL(toWebviewUrl(canonical, 'win32'))
+    expect(decodeURIComponent(webview.pathname.replace(/^\/local\//, ''))).toBe(
+      'C:/Users/Leib.000/my file.pdf'
+    )
+  })
+})
+
+describe('toMediaUrl and toYoutubeEmbedUrl', () => {
+  const globals = {
+    maximizable: true,
+    loopbackOrigin: 'http://127.0.0.1:4000',
+    loopbackToken: 'tok'
+  }
+
+  afterEach(() => {
+    delete window.__MEMRY_SHELL__
+  })
+
+  it('routes a memry-file URL through the loopback server with the URL as url-safe base64', () => {
+    window.__MEMRY_SHELL__ = globals
+    const url = toMemryFileUrl('/Users/k/clip ü.mp4')
+    const media = toMediaUrl(url)
+    expect(media.startsWith('http://127.0.0.1:4000/m/tok/')).toBe(true)
+    const encoded = media.slice('http://127.0.0.1:4000/m/tok/'.length)
+    expect(encoded).not.toMatch(/[+/=]/)
+    const standard = encoded.replaceAll('-', '+').replaceAll('_', '/')
+    const bytes = Uint8Array.from(
+      atob(standard.padEnd(Math.ceil(standard.length / 4) * 4, '=')),
+      (c) => c.charCodeAt(0)
+    )
+    expect(new TextDecoder().decode(bytes)).toBe(url)
+  })
+
+  it('falls back to the webview URL without a server or for another scheme', () => {
+    expect(toMediaUrl('memry-file://local/a.mp4')).toBe('memry-file://local/a.mp4')
+    window.__MEMRY_SHELL__ = globals
+    expect(toMediaUrl('https://example.com/a.mp4')).toBe('https://example.com/a.mp4')
+  })
+
+  it('points a YouTube embed at the loopback page, or at YouTube when there is none', () => {
+    expect(toYoutubeEmbedUrl('dQw4w9WgXcQ')).toBe(
+      'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?autoplay=1&rel=0'
+    )
+    window.__MEMRY_SHELL__ = globals
+    expect(toYoutubeEmbedUrl('dQw4w9WgXcQ')).toBe('http://127.0.0.1:4000/e/tok/youtube/dQw4w9WgXcQ')
   })
 })

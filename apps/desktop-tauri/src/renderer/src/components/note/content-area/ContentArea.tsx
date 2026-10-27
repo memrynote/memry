@@ -103,6 +103,7 @@ import { useEditorTeardown } from '@/hooks/use-editor-teardown'
 import { useFeatureFlags } from '@/hooks/use-feature-flags'
 import { vaultService } from '@/services/vault-service'
 import { createNoteFileUrlResolver } from '@/lib/create-note-file-url-resolver'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 import { getAttachmentRevision, subscribeToAttachmentRevisions } from '@/lib/attachment-revision'
 import { NoteFileUrlProvider } from './note-file-url-context'
 import {
@@ -553,7 +554,9 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       if (revision <= 0) return
       const root = containerRef.current
       if (!root) return
-      for (const img of root.querySelectorAll<HTMLImageElement>('img[src^="memry-file:"]')) {
+      for (const img of root.querySelectorAll<HTMLImageElement>(
+        'img[src^="memry-file:"], img[src^="https://memry-file.localhost/"]'
+      )) {
         try {
           const next = new URL(img.src)
           next.searchParams.set('v', String(revision))
@@ -694,6 +697,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     )
   ).current
 
+  // The editor's own image blocks load the URL as an element source. File blocks take the
+  // canonical URL through `NoteFileUrlProvider` and convert at their viewer.
+  const resolveEditorFileUrl = useCallback(
+    async (url: string): Promise<string> => toWebviewUrl(await resolveFileUrl(url)),
+    [resolveFileUrl]
+  )
+
   // Create the BlockNote editor instance. `withCollaborationIfLive` is what
   // binds it to the Y.Doc — see that module for why a bare `collaboration`
   // option compiles but does nothing from BlockNote 0.52 on.
@@ -718,7 +728,7 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // link; BlockNote's own opener would open it a second time (BBF-112).
       links: { onClick: onLinkClick ? () => true : openLinkAddress },
       uploadFile,
-      resolveFileUrl,
+      resolveFileUrl: resolveEditorFileUrl,
       placeholders: {
         default: resolvedPlaceholder,
         heading: t('editor.content.headingPlaceholder'),

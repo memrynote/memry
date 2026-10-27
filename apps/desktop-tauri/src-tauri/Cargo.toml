@@ -39,6 +39,8 @@ serde_json = { workspace = true }
 # The OS language of a first launch (`locale::resolve_startup`).
 sys-locale = "0.3.2"
 uuid = { workspace = true }
+# Parses navigation targets for the guard and the permission origins.
+url = "2"
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
 tokio = { workspace = true, features = ["time", "signal"] }
@@ -78,3 +80,7 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }
 tempfile = "3"
+
+# The WebKitGTK permission handler (`shell/permissions.rs`). The version wry already resolves.
+[target.'cfg(target_os = "linux")'.dependencies]
+webkit2gtk = "=2.0.2"
