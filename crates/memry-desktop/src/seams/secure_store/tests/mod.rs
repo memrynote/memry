@@ -2,6 +2,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "e2e")]
+use crate::launch_env::LaunchEnv;
 use keyring_core::Error;
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -424,4 +426,88 @@ fn a_stuck_call_that_ends_in_an_error_is_not_a_recovery() {
             && rig.store.health() == SecureStoreHealth::Unavailable
     });
     assert_eq!(fired.load(Ordering::SeqCst), 0);
+}
+
+#[test]
+fn a_read_queued_after_a_write_does_not_join_a_read_queued_before_it() {
+    let rig = rig();
+    rig.store
+        .set(SecureStoreKey::MasterKey, vec![1; 32])
+        .unwrap();
+    let gate = Arc::new(Gate::default());
+    rig.fake.set_mode(Mode::Block(gate.clone()));
+    let reads_before = rig.fake.reads.load(Ordering::SeqCst);
+
+    let first = {
+        let store = rig.store.clone();
+        std::thread::spawn(move || store.get(SecureStoreKey::MasterKey))
+    };
+    wait_for("the first read to reach the store", || {
+        rig.fake.reads.load(Ordering::SeqCst) > reads_before
+    });
+    let write = {
+        let store = rig.store.clone();
+        std::thread::spawn(move || store.set(SecureStoreKey::MasterKey, vec![2; 32]))
+    };
+    std::thread::sleep(Duration::from_millis(100));
+    let second = {
+        let store = rig.store.clone();
+        std::thread::spawn(move || store.get(SecureStoreKey::MasterKey))
+    };
+    std::thread::sleep(Duration::from_millis(100));
+    gate.release();
+
+    assert_eq!(first.join().unwrap().unwrap(), Some(vec![1; 32]));
+    write.join().unwrap().unwrap();
+    assert_eq!(
+        second.join().unwrap().unwrap(),
+        Some(vec![2; 32]),
+        "a read that follows a write sees the write"
+    );
+}
+
+#[test]
+fn a_listener_may_call_the_store() {
+    let rig = rig();
+    let calls = Arc::new(AtomicUsize::new(0));
+    let (store, counter) = (rig.store.clone(), calls.clone());
+    rig.store.subscribe_recovered(move || {
+        assert_eq!(
+            store.get(SecureStoreKey::MasterKey).unwrap(),
+            Some(vec![6; 32])
+        );
+        counter.fetch_add(1, Ordering::SeqCst);
+    });
+    rig.store
+        .set(SecureStoreKey::MasterKey, vec![6; 32])
+        .unwrap();
+    rig.fake.set_mode(Mode::Fail(no_storage));
+    assert_eq!(
+        rig.store.get(SecureStoreKey::MasterKey),
+        Err(SecureStoreError::Locked)
+    );
+    rig.fake.set_mode(Mode::Normal);
+    rig.store.get(SecureStoreKey::MasterKey).unwrap();
+    wait_for("the listener to read the key", || {
+        calls.load(Ordering::SeqCst) == 1
+    });
+}
+
+#[cfg(feature = "e2e")]
+#[test]
+fn an_open_e2e_gate_uses_an_in_memory_store() {
+    let mut env = LaunchEnv::default();
+    env.set(crate::e2e::E2E_VAR, "1");
+    let store = KeyringStore::new(Some("e2e-memory-test".to_owned()), E2eGate::from_env(&env));
+    assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
+    store.set(SecureStoreKey::MasterKey, vec![3; 32]).unwrap();
+    assert_eq!(
+        store.get(SecureStoreKey::MasterKey).unwrap(),
+        Some(vec![3; 32])
+    );
+    store.set_secret("com.memry.test", "a", b"raw").unwrap();
+    assert_eq!(
+        store.get_secret("com.memry.test", "a").unwrap(),
+        Some(b"raw".to_vec())
+    );
 }

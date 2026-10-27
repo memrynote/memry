@@ -10,6 +10,12 @@
 //! key". There is no file fallback on any OS: on Linux without a Secret Service the app never
 //! writes a secret to disk, the rule that made Electron refuse Chromium's `basic_text` backend.
 //!
+//! **Unknown outcome.** A call that passes its deadline answers `Locked` and the keychain may still
+//! finish it later. After `Locked` on a write, read before writing a different value: a key that
+//! was minted and written may have landed. If the keychain never answers, every call answers
+//! `Locked` until the app restarts; there is no second thread to retry on, because a second call
+//! into a wedged D-Bus session or Credential Manager would hang as well.
+//!
 //! **Consumers.** Step 17 (#3534) turns [`KeyringStore::health`] and [`KeyringStore::subscribe_recovered`]
 //! into the `keychain_unavailable` sync status and its retries; Step 19 (#3536) shows the same string
 //! when a sign-in write fails.
@@ -82,9 +88,9 @@ impl KeyringStore {
         }
     }
 
-    /// `listener` runs on the keychain thread, once each time the keychain goes from unreachable
-    /// (a call passed its deadline, or the last call answered `Locked`) to answering. It must not
-    /// block and must not call this store.
+    /// `listener` runs once each time the keychain goes from unreachable (a call passed its
+    /// deadline, or the last call answered `Locked`) to answering, on a short-lived thread of its
+    /// own, so it may call this store.
     pub fn subscribe_recovered(&self, listener: impl Fn() + Send + Sync + 'static) {
         self.worker.on_recovered(Arc::new(listener));
     }
