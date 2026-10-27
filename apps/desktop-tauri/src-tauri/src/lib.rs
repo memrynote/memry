@@ -53,8 +53,8 @@ pub fn set_app_user_model_id() {
     };
     // SAFETY: a plain call with a valid, null-terminated string that lives for the call.
     let result = unsafe {
-        windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(
-            &windows::core::HSTRING::from(id),
+        ::windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(
+            &::windows::core::HSTRING::from(id),
         )
     };
     if let Err(error) = result {
