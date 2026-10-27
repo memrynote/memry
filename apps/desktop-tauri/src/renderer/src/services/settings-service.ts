@@ -13,7 +13,9 @@ import type {
   TaskSettingsDTO,
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
+import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import { commands, events, type Value } from '../../../generated/bindings'
+import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
 import { createLogger } from '../lib/logger'
 import { subscribeToEvent } from './tauri-event'
 
@@ -62,6 +64,38 @@ function group<T>(name: string): GroupApi<T> {
         return failure(error)
       }
     }
+  }
+}
+
+/**
+ * Callout types are a synced map (`name` to definition, one clock per entry) that the UI sees as
+ * a list, as in Electron's `callout-types-store.ts`: reads sanitize the map into a list.
+ */
+async function readCalloutTypeList(): Promise<CalloutTypeDefinition[]> {
+  return sanitizeCalloutTypeDefinitions(await commands.settingsGetPath('editor.calloutTypes'))
+}
+
+/** Writes the difference to the stored map; a removed type is a `null` entry (delete marker). */
+async function writeCalloutTypeList(input: unknown): Promise<Result> {
+  try {
+    const entries = Array.isArray(input)
+      ? input.filter((d): d is { name: string } => typeof d?.name === 'string')
+      : []
+    const next = sanitizeCalloutTypeDefinitions(Object.fromEntries(entries.map((d) => [d.name, d])))
+    const before = new Map((await readCalloutTypeList()).map((d) => [d.name, JSON.stringify(d)]))
+    const changed: Record<string, Value> = {}
+    for (const name of before.keys()) {
+      if (!next.some((d) => d.name === name)) changed[name] = null
+    }
+    for (const definition of next) {
+      if (before.get(definition.name) !== JSON.stringify(definition)) {
+        changed[definition.name] = { ...definition }
+      }
+    }
+    if (Object.keys(changed).length > 0) await writeField('editor', 'calloutTypes', changed)
+    return { success: true }
+  } catch (error) {
+    return failure(error)
   }
 }
 
@@ -166,12 +200,8 @@ export const settingsService = {
   setSidebarShowFiles: (showFiles: boolean): Promise<Result> =>
     writeField('sidebar', 'showFiles', showFiles),
 
-  getCalloutTypes: async (): Promise<unknown[]> =>
-    asShape<unknown[] | null>((await commands.settingsGetPath('editor.calloutTypes')) ?? null) ??
-    [],
-  setCalloutTypes: (definitions: unknown): Promise<Result> =>
-    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the definitions are JSON from the editor; core validates them
-    writeField('editor', 'calloutTypes', definitions as Value),
+  getCalloutTypes: readCalloutTypeList,
+  setCalloutTypes: writeCalloutTypeList,
 
   getTagSearches: async (): Promise<unknown[]> => {
     const stored = asShape<{ searches?: unknown[] } | null>(
@@ -230,7 +260,7 @@ async function announce(
   if (fields.includes('calloutTypes')) {
     callback({
       key: 'editor.calloutTypes',
-      value: (await commands.settingsGetPath('editor.calloutTypes')) ?? []
+      value: await readCalloutTypeList()
     })
   }
   if (fields.length > 0 && patchFields.length === 0) return
