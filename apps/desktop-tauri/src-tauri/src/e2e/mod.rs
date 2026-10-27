@@ -6,6 +6,7 @@
 mod app;
 mod clipboard;
 pub mod commands;
+mod crash;
 mod debug;
 mod dialog;
 mod reveal;
