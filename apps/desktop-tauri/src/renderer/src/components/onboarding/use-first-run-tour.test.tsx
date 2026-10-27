@@ -47,6 +47,16 @@ const settle = async (): Promise<void> => {
   await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
 }
 
+/**
+ * `settle` is one macrotask. The hook's `import('driver.js')` is not bound to that:
+ * once a test has swapped the mock with `vi.doMock`, vitest resolves the module
+ * again over a worker-to-main round trip that takes as long as the main thread is
+ * busy, so a loaded CI run is still waiting when `settle` returns. A test that needs
+ * the tour to be running waits on that, not on a tick count.
+ */
+const untilTourRuns = (): Promise<void> =>
+  vi.waitFor(() => expect(driveSpy).toHaveBeenCalledTimes(1), { timeout: 5000 })
+
 describe('useFirstRunTour', () => {
   beforeEach(() => {
     localStorage.clear()
@@ -311,7 +321,7 @@ describe('useFirstRunTour', () => {
      * Real rAF semantics: a queued callback runs on the next frame unless it is
      * cancelled first. `flush()` runs only the frames that survived.
      */
-    const deferFrames = (): (() => void) => {
+    const deferFrames = (): { untilQueued: () => Promise<void>; flush: () => void } => {
       const pending = new Map<number, FrameRequestCallback>()
       let nextHandle = 0
       vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
@@ -322,18 +332,22 @@ describe('useFirstRunTour', () => {
       vi.stubGlobal('cancelAnimationFrame', (handle: number) => {
         pending.delete(handle)
       })
-      return () => {
-        const frames = [...pending.values()]
-        pending.clear()
-        frames.forEach((cb) => cb(0))
+      return {
+        untilQueued: () =>
+          vi.waitFor(() => expect(pending.size).toBeGreaterThan(0), { timeout: 5000 }),
+        flush: () => {
+          const frames = [...pending.values()]
+          pending.clear()
+          frames.forEach((cb) => cb(0))
+        }
       }
     }
 
     it('cancels the queued frame when unmounted before the tour starts', async () => {
-      const flush = deferFrames()
+      const { untilQueued, flush } = deferFrames()
 
       const { unmount } = renderHook(() => useFirstRunTour())
-      await settle()
+      await untilQueued()
       unmount()
       flush()
 
@@ -350,8 +364,7 @@ describe('useFirstRunTour', () => {
 
     it('destroys the driver instance when unmounted while the tour is running', async () => {
       const { unmount } = renderHook(() => useFirstRunTour())
-      await settle()
-      expect(driveSpy).toHaveBeenCalledTimes(1)
+      await untilTourRuns()
 
       unmount()
 
@@ -363,7 +376,7 @@ describe('useFirstRunTour', () => {
       window.addEventListener(STAR_PROMPT_EVENT, announced)
 
       const { unmount } = renderHook(() => useFirstRunTour())
-      await settle()
+      await untilTourRuns()
       unmount()
 
       expect(localStorage.getItem(TOUR_KEY)).toBeNull()
@@ -375,10 +388,10 @@ describe('useFirstRunTour', () => {
     })
 
     it('still starts exactly one tour when effects are double-invoked', async () => {
-      const flush = deferFrames()
+      const { untilQueued, flush } = deferFrames()
 
       renderHook(() => useFirstRunTour(), { wrapper: StrictMode })
-      await settle()
+      await untilQueued()
       flush()
 
       expect(driveSpy).toHaveBeenCalledTimes(1)
