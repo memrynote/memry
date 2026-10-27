@@ -1,0 +1,25 @@
+2026-10-27 01:44:25.978 [info] [logging] MemryNote 0.0.0 starting (packaged)
+2026-10-27 01:44:25.978 [info] [Startup] launch mark app_ready at 0ms
+2026-10-27 01:44:25.978 [info] [e2e] WDIO WebDriver plugin initialized on port 9222
+2026-10-27 01:44:25.978 [info] [Locale] first run: adopting the OS locale as de
+2026-10-27 01:44:26.073 [info] [Config] runtime config: env development, sync server http://localhost:8787
+2026-10-27 01:44:26.074 [info] [Startup] launch mark vault_open_start at 96ms
+2026-10-27 01:44:26.074 [info] [Startup] launch mark vault_open_ready at 96ms
+2026-10-27 01:44:26.165 [debug] [linux] Registered script dialog handler for webview
+2026-10-27 01:44:26.165 [info] [Startup] launch mark window_created at 187ms
+2026-10-27 01:44:26.310 [info] [app] renderer started platform=linux
+2026-10-27 01:44:26.321 [info] [RendererBoot] app info {"version":"0.0.0","platform":"linux","arch":"aarch64","buildKind":"packaged","e2e":true}
+2026-10-27 01:44:26.407 [info] [NotPorted] window.api.onFlushRequested subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.407 [info] [NotPorted] window.api.onVaultStatusChanged subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.407 [info] [NotPorted] window.api.onUpdaterStateChanged subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.408 [info] [NotPorted] window.api.onVaultIndexProgress subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.408 [info] [NotPorted] window.api.onVaultConfigChanged subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.408 [info] [NotPorted] window.api.onCrdtWriteBackFailed subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.408 [info] [NotPorted] window.api.onSessionExpired subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.409 [info] [NotPorted] window.api.onOAuthError subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.409 [info] [NotPorted] window.api.onLinkingFinalized subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.409 [info] [NotPorted] window.api.onOAuthCallback subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.411 [warn] [Vault] Vault config unavailable window.api.vault.getConfig is not ported
+2026-10-27 01:44:26.411 [warn] [CrdtPersistenceNotice] Could not read CRDT persistence health window.api.syncCrdt.getHealth is not ported
+2026-10-27 01:44:26.417 [info] [NotPorted] window.api.onTokenRefreshed subscribed; no events arrive until it is ported
+2026-10-27 01:44:26.417 [info] [NotPorted] window.api.onSyncStatusChanged subscribed; no events arrive until it is ported
