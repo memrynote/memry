@@ -5,12 +5,8 @@ use std::fs;
 use std::path::Path;
 
 use memry_core::markdown::frontmatter::YamlMap;
-use memry_desktop::vault::fs_atomic::{
-    atomic_create, atomic_create_checked, atomic_write, create_unique,
-};
-use memry_desktop::vault::note_file::{
-    NoteFileError, read_note, write_new_note, write_new_note_checked, write_note_checked,
-};
+use memry_desktop::vault::fs_atomic::{atomic_create, atomic_create_checked, create_unique};
+use memry_desktop::vault::note_file::{NoteFileError, write_new_note, write_new_note_checked};
 
 fn entries(dir: &Path) -> Vec<String> {
     let mut names: Vec<_> = fs::read_dir(dir)
@@ -99,6 +95,8 @@ fn a_create_in_a_new_folder_makes_the_folder() {
 #[cfg(unix)]
 mod attributes {
     use super::*;
+    use memry_desktop::vault::fs_atomic::atomic_write;
+    use memry_desktop::vault::note_file::{read_note, write_note_checked};
     use std::os::unix::fs::PermissionsExt;
 
     #[test]
