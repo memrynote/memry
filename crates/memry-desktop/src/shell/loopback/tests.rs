@@ -85,6 +85,7 @@ async fn fixture() -> Fixture {
         vault: Some(vault.clone()),
         app_data: data,
         app_origins: vec!["tauri://localhost".to_owned()],
+        reply_origin: "tauri://localhost".to_owned(),
     };
     let server = start(Arc::new(move || roots.clone()), false).await.unwrap();
     Fixture {
@@ -252,7 +253,10 @@ async fn a_file_is_sandboxed_and_readable_only_by_the_app_origin() {
         plain.headers["content-security-policy"],
         "sandbox; default-src 'none'"
     );
-    assert!(!plain.headers.contains_key("access-control-allow-origin"));
+    assert_eq!(
+        plain.headers["access-control-allow-origin"],
+        "tauri://localhost"
+    );
 
     let app = send(
         port,

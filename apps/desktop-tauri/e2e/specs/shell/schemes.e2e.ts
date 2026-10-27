@@ -74,7 +74,9 @@ test('memry-file serves a vault file, ranges, and refuses a path outside the roo
 
   expect(await read(file)).toEqual({ status: 200, text: '0123456789' })
   expect(await read(file, 'bytes=2-4')).toEqual({ status: 206, text: '234' })
-  expect(await read(file, 'bytes=-3')).toEqual({ status: 206, text: '789' })
+  // A suffix range (`bytes=-3`) is not CORS-safelisted, so a cross-origin fetch would preflight; the
+  // unit tests cover it.
+  expect(await read(file, 'bytes=7-')).toEqual({ status: 206, text: '789' })
   expect((await read(file, 'bytes=50-')).status).toBe(416)
   expect((await read(outside)).status).toBe(403)
 })

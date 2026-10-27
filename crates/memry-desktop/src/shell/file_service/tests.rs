@@ -40,6 +40,7 @@ impl Fixture {
             vault: Some(self.vault.clone()),
             app_data: self.data.clone(),
             app_origins: vec![APP.to_owned(), "https://tauri.localhost".to_owned()],
+            reply_origin: APP.to_owned(),
         }
     }
 
@@ -298,10 +299,11 @@ fn only_an_app_origin_may_read_a_file() {
         assert_eq!(refused.status, 403, "{origin}");
         assert!(header(&refused, "Access-Control-Allow-Origin").is_none());
     }
-    // No `Origin` is a plain subresource load: readable only as pixels or media, no CORS header.
-    let plain = ask(None, Some("image"));
+    // No `Origin` (WebView2 shows the handler none): the answer allows the app's page origin only,
+    // so the browser's own check refuses a `null`-origin embed that reads it.
+    let plain = ask(None, Some("empty"));
     assert_eq!(plain.status, 200);
-    assert!(header(&plain, "Access-Control-Allow-Origin").is_none());
+    assert_eq!(header(&plain, "Access-Control-Allow-Origin"), Some(APP));
     // A file is data to the app, never a script, a style sheet, a frame or a document.
     for dest in ["script", "style", "iframe", "document", "worker", "object"] {
         assert_eq!(ask(None, Some(dest)).status, 403, "{dest}");

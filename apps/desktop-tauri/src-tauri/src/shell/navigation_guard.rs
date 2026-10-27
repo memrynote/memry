@@ -20,6 +20,17 @@ pub fn app_origins(app: &AppHandle<Wry>) -> Vec<String> {
     origins
 }
 
+/// The origin the main window's page has: the dev server in `tauri dev`, else the packaged app's.
+pub fn page_origin(app: &AppHandle<Wry>) -> String {
+    permissions::dev_origin(app).unwrap_or_else(|| {
+        if cfg!(windows) {
+            "https://tauri.localhost".to_owned()
+        } else {
+            "tauri://localhost".to_owned()
+        }
+    })
+}
+
 fn act(app: &AppHandle<Wry>, url: &Url, decision: Navigation) {
     let result = match decision {
         Navigation::OpenExternal => external::open_url(app, url.as_str()),

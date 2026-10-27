@@ -18,7 +18,7 @@ use memry_desktop::telemetry::main_warning::Level;
 use tauri::http::{Method, Request, Response, StatusCode};
 use tauri::{AppHandle, Manager, Wry};
 
-use crate::shell::navigation_guard::app_origins;
+use crate::shell::navigation_guard::{app_origins, page_origin};
 use crate::shell::services::telemetry;
 
 pub const FILE_SCHEME: &str = "memry-file";
@@ -40,6 +40,7 @@ pub fn roots(app: &AppHandle<Wry>) -> Roots {
         vault: app.state::<Session>().current().map(|open| open.path),
         app_data: app.state::<AppPaths>().data_dir.clone(),
         app_origins: app_origins(app),
+        reply_origin: page_origin(app),
     }
 }
 

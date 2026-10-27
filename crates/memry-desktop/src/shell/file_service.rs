@@ -28,12 +28,17 @@ const MAX_HTML_BYTES: u64 = 32 * 1024 * 1024;
 
 /// What a URL may name and who may read the answer: the open vault and the app data directory, and
 /// the origins of the app's own pages (`tauri://localhost`, `https://tauri.localhost`, the dev
-/// server). Only a request from one of those origins gets a CORS header.
+/// server). Only a page on one of those origins may read an answer.
 #[derive(Debug, Clone)]
 pub struct Roots {
     pub vault: Option<PathBuf>,
     pub app_data: PathBuf,
     pub app_origins: Vec<String>,
+    /// The origin the main window's page has on this platform and build: what an answer to a
+    /// request that shows no `Origin` header allows. WebView2 does not put `Origin` on the request
+    /// it hands a custom-scheme handler, so the browser's own CORS check against this value is what
+    /// stops a `null`-origin embed from reading the answer there.
+    pub reply_origin: String,
 }
 
 /// The parts of a request that decide who may read: all of them are request input.
@@ -252,7 +257,7 @@ fn heal(root: &Path, rel: &str) -> Option<String> {
 /// Answers `url` for `request`. A request from an origin that is not the app's, or one that would
 /// run or render the file, is refused 403 without a CORS header: a sandboxed embed (origin
 /// `null`) cannot read a file even where the file's origin is an `https:` host its CSP allows.
-/// The answer to an app request carries `Access-Control-Allow-Origin` for that origin only.
+/// Every answer carries `Access-Control-Allow-Origin` for one app origin only, never `*`.
 pub fn serve_file(
     url: &str,
     request: &FileRequest<'_>,
@@ -268,17 +273,15 @@ pub fn serve_file(
         return Served::status(403);
     }
     let allow_origin = match request.origin {
-        None => None,
-        Some(origin) if roots.app_origins.iter().any(|app| app == origin) => Some(origin),
+        None => roots.reply_origin.as_str(),
+        Some(origin) if roots.app_origins.iter().any(|app| app == origin) => origin,
         Some(_) => return Served::status(403),
     };
     let mut served = serve_checked(url, request.range, roots, windows, caps);
-    if let Some(origin) = allow_origin {
-        served
-            .headers
-            .push(("Access-Control-Allow-Origin", origin.to_owned()));
-        served.headers.push(("Vary", "Origin".to_owned()));
-    }
+    served
+        .headers
+        .push(("Access-Control-Allow-Origin", allow_origin.to_owned()));
+    served.headers.push(("Vary", "Origin".to_owned()));
     served
 }
 
