@@ -50,6 +50,18 @@ pub struct TrayProbe {
     pub visible_after_restore: bool,
 }
 
+/// Writes `general.minimizeToTray` through the settings command, so the tray follows the saved
+/// value. The page writes its own `general` fields at startup and each write converges the tray
+/// on the saved value, so a runtime-only `tray::apply` could be undone mid-probe.
+async fn set_tray_setting(app: &AppHandle<Wry>, enabled: bool) -> Result<(), CommandError> {
+    crate::commands::settings::settings_set_group(
+        app.clone(),
+        "general".to_owned(),
+        serde_json::json!({ "minimizeToTray": enabled }),
+    )
+    .await
+}
+
 /// Turns the tray on, closes the main window and restores it through `restore` (`deep-link` sends
 /// `memry://open`; `tray-off` turns the tray off). A hidden window cannot be driven by WebDriver,
 /// so the whole sequence runs here and reports back.
@@ -63,7 +75,7 @@ pub async fn e2e_tray_probe(
         .ok_or_else(|| invalid("e2e_window", "no main window"))?;
     let visible = || window.is_visible().unwrap_or(false);
     let settle = || tokio::time::sleep(std::time::Duration::from_millis(600));
-    crate::tray::apply(&app, true);
+    set_tray_setting(&app, true).await?;
     settle().await;
     let visible_before = visible();
     window
@@ -75,7 +87,7 @@ pub async fn e2e_tray_probe(
         "deep-link" => app
             .state::<crate::deep_link::DeepLinkRouter>()
             .handle(&app, "memry://open"),
-        "tray-off" => crate::tray::apply(&app, false),
+        "tray-off" => set_tray_setting(&app, false).await?,
         other => return Err(invalid("e2e_tray_restore", other)),
     }
     settle().await;
@@ -84,4 +96,62 @@ pub async fn e2e_tray_probe(
         visible_after_close,
         visible_after_restore: visible(),
     })
+}
+
+/// What the global capture shortcut holds and how often it fired.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortcutState {
+    pub configured: Option<String>,
+    pub fallback: bool,
+    pub presses: u64,
+}
+
+#[tauri::command]
+pub fn e2e_global_shortcut_state(app: AppHandle<Wry>) -> ShortcutState {
+    let service = app.state::<crate::shortcuts::ShortcutService>();
+    let (configured, fallback) = service.held();
+    ShortcutState {
+        configured,
+        fallback,
+        presses: service.presses(),
+    }
+}
+
+/// Presses the shortcut's handler as a key press would: the OS delivers the real key to nobody
+/// in a headless run.
+#[tauri::command]
+pub fn e2e_fire_global_capture(app: AppHandle<Wry>) {
+    app.state::<crate::shortcuts::ShortcutService>().press(&app);
+}
+
+/// Delivers a power event as the platform would: on macOS a real `NSWorkspace` notification
+/// (`sleep`, `wake`, `poweroff`), so the observers are what is under test. Elsewhere the event
+/// is published on the monitor, because a VM row covers the OS side.
+#[tauri::command]
+pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), CommandError> {
+    use memry_desktop::shell::power::PowerEvent;
+    let event = match kind.as_str() {
+        "sleep" => PowerEvent::Suspend,
+        "wake" => PowerEvent::Resume,
+        "poweroff" => PowerEvent::SessionEnding,
+        other => return Err(invalid("e2e_power_kind", other)),
+    };
+    #[cfg(target_os = "macos")]
+    {
+        let _ = &app;
+        crate::power::post_workspace_notification(event);
+    }
+    #[cfg(not(target_os = "macos"))]
+    app.state::<crate::power::PowerMonitor>().emit(event);
+    Ok(())
+}
+
+/// Takes a word a spec added back out of the personal dictionary (macOS; a no-op elsewhere).
+#[tauri::command]
+pub fn e2e_forget_spelled_word(app: AppHandle<Wry>, word: String) {
+    #[cfg(target_os = "macos")]
+    crate::spell::unlearn(&app, &word);
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, word);
 }

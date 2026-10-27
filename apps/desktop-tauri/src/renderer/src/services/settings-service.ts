@@ -8,11 +8,13 @@ import type {
   JournalSettings,
   KeyboardShortcutsDTO,
   NoteEditorSettings,
+  ShortcutBindingDTO,
   SyncSettingsDTO,
   TabSettings,
   TaskSettingsDTO,
   VoiceTranscriptionSettings
 } from '../../../preload/index.d'
+import type { GlobalCaptureResult } from '@memry/contracts/settings-schemas'
 import type { CalloutTypeDefinition } from '@memry/editor-schema/callout-types'
 import { commands, events, type Value } from '../../../generated/bindings'
 import { sanitizeCalloutTypeDefinitions } from '@memry/editor-schema/callout-types'
@@ -170,6 +172,10 @@ export const settingsService = {
   setTabSettings: tabs.set,
   getNoteEditorSettings: noteEditor.get,
   setNoteEditorSettings: noteEditor.set,
+  registerGlobalCapture: (): Promise<GlobalCaptureResult> =>
+    commands.shortcutRegisterGlobalCapture(),
+  setGlobalCapture: (binding: ShortcutBindingDTO | null): Promise<GlobalCaptureResult> =>
+    commands.shortcutSetGlobalCapture(binding),
   getVoiceTranscriptionSettings: voice.get,
   setVoiceTranscriptionSettings: voice.set,
 

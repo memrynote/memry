@@ -8,7 +8,7 @@ The desktop app is moving from Electron to Tauri v2 over the Rust core. The new 
 - The Rust toolchain pinned in `crates/rust-toolchain.toml`. Entering `crates/` installs it with rustup.
 - macOS: Xcode command line tools.
 - Windows: the Visual Studio C++ build tools and WebView2, which Windows 11 includes.
-- Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf`.
+- Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf`.
 
 ## Run it
 
@@ -112,3 +112,13 @@ Dragging uses `windows/scripts/drag-region.js`, an init script of the main frame
 - macOS sets live accelerators. Windows and Linux put the shortcut in the label only, so the editor keeps its keys; F1 opens the docs from the shell.
 - Linux hides the menu bar until a bare Alt (`menu_toggle_alt`); Windows pops the menu up at the title row.
 - `shell_show_context_menu` shows a native context menu and returns the clicked item id. In an e2e build, `e2e_set_next_context_menu_selection` answers it and `e2e_menu_tree` reads the built menu.
+
+## Shortcuts, autostart, power, spelling and fonts
+
+- **Global capture** (`shortcuts/`, rules in `memry_desktop::shell::shortcut`). The configured `globalCapture` binding registers first. `CommandOrControl+Shift+Space` is held only while that binding is not `registered`. A binding the OS refuses is not saved and the previous one is registered again. Wayland returns `unsupported` without calling the plugin, because a Wayland session has no global grab. The apply runs at startup, on a vault change and after a settings write, and the shortcuts are released at exit. `shortcut_unsupported` and `shortcut_in_use` are the telemetry events. The handler that opens quick capture is set with `GlobalCaptureRegistry::set_open_handler` (Step 27).
+- **Start on boot** (`autostart/`). macOS registers a login item with `SMAppService`; Windows and Linux use `tauri-plugin-autostart` (the `Run` value and an XDG `.desktop` file). Entries Electron left behind are removed first. The apply is skipped under the e2e gate, so a spec never registers a login item.
+- **Power** (`power/`). Sleep and wake suspend and resume the stall guard. macOS listens to `NSWorkspace`, Linux to logind over `zbus`, Windows to `WM_POWERBROADCAST` on a window subclass. Windows `WM_ENDSESSION` runs the same shutdown sequence as Quit.
+- **Spelling** (`spell/`). The system web views send no spelling data with a right-click, so the renderer finds the word at the point (`lib/word-at-point.ts`) and asks `spell_check_word`. macOS uses `NSSpellChecker`, Windows `ISpellChecker` on a COM thread, Linux Enchant loaded at run time: without it `available` is false and the menu shows no suggestions. `spell_add_word` writes the personal dictionary of the platform.
+- **Fonts** (`fonts.rs`). `system_fonts_list` enumerates installed families with `font-kit`; Linux needs `libfontconfig1-dev` to build.
+
+Specs: `e2e/specs/shell/{global-shortcut,autostart,power,spellcheck,system-fonts}.e2e.ts`. Real login-item registration, Wayland, Enchant present and absent, and the Windows `Run` value are checked by hand on the VM rows.

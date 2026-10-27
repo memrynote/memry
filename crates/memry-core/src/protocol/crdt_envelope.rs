@@ -52,6 +52,20 @@ pub const CIPHERTEXT_OFFSET: usize = HEADER_BYTES;
 /// signature.
 pub const MIN_PACKED_BYTES: usize = HEADER_BYTES + 1;
 
+/// The Poly1305 tag XChaCha20-Poly1305 appends to the ciphertext (§4.3).
+const AEAD_TAG_BYTES: usize = 16;
+
+/// The length [`pack`] returns for `update`, without any key: header, the
+/// compressed frame and the AEAD tag.
+///
+/// This is what the server measures against its 5 MiB cap on a decoded update
+/// (chapter 07 §7.3), so a caller deciding whether an update can ride as one
+/// asks here and not at the raw state length: a large, repetitive body
+/// compresses well under the cap and a random one can be refused far below it.
+pub fn packed_len(update: &[u8]) -> usize {
+    HEADER_BYTES + compress::compress(update).len() + AEAD_TAG_BYTES
+}
+
 /// The per-update key material, §4.3.
 ///
 /// A fresh file key per update, never reused and zeroed on drop.
@@ -237,6 +251,26 @@ mod tests {
             unpack(&packed, "abc123def456", &vault_key, &public_key).expect("unpack"),
             update
         );
+    }
+
+    #[test]
+    fn packed_len_is_the_length_pack_returns() {
+        let (_, secret_key) = signer();
+        let vault_key = [3u8; 32];
+        let random: Vec<u8> = sodium::random_bytes(4096);
+        for update in [Vec::new(), b"tiny".to_vec(), vec![b'a'; 100_000], random] {
+            let packed = pack(
+                &CrdtRequest {
+                    note_id: "abc123def456",
+                    update: &update,
+                    vault_key: &vault_key,
+                    signing_secret_key: &secret_key,
+                },
+                &CrdtMaterial::random(),
+            )
+            .expect("pack");
+            assert_eq!(packed_len(&update), packed.len(), "{} bytes", update.len());
+        }
     }
 
     #[test]
