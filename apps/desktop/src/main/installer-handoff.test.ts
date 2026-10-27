@@ -352,16 +352,16 @@ describe('createInstallerHandoff', () => {
   it('creates the log folder before the script appends to it', async () => {
     const harness = makeHarness()
     const handoff = createInstallerHandoff(harness.host, harness.deps)
+    const mkdir = vi.mocked(harness.deps.fs.mkdirSync)
 
     await handoff.prepare(makeInfo(), vi.fn())
-    harness.deps.fs.mkdirSync.mockClear()
+    mkdir.mockClear()
     handoff.launch()
 
-    expect(harness.deps.fs.mkdirSync).toHaveBeenCalledWith(path.win32.join(USER_DATA, 'logs'), {
-      recursive: true
-    })
-    const mkdirOrder = harness.deps.fs.mkdirSync.mock.invocationCallOrder[0]
-    expect(mkdirOrder).toBeLessThan(harness.spawn.mock.invocationCallOrder[0])
+    expect(mkdir).toHaveBeenCalledWith(path.win32.join(USER_DATA, 'logs'), { recursive: true })
+    expect(mkdir.mock.invocationCallOrder[0]).toBeLessThan(
+      harness.spawn.mock.invocationCallOrder[0]
+    )
   })
 
   it('launches once so a second quit path cannot uninstall and install twice', async () => {
