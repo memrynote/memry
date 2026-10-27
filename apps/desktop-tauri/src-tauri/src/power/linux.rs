@@ -28,9 +28,21 @@ pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
     let (app, sender) = (app.clone(), sender.clone());
     spawn("PrepareForShutdown", move || {
         listen("PrepareForShutdown", |start| {
+            let hook = crate::shutdown::update_hook(&app);
             if let Some(event) = from_prepare_for_shutdown(start) {
                 super::publish(&sender, event);
+                // An update must not start installing as the machine goes down.
+                if let Some(hook) = hook {
+                    hook.disable_install_on_quit();
+                }
                 crate::shutdown::begin_session_end(&app);
+            } else {
+                // Called off. The sequence that began at `true` is not undone (the app is
+                // already on its way out), but the install-on-quit decision is back.
+                tracing::info!(scope = "Power", "the announced shutdown was called off");
+                if let Some(hook) = hook {
+                    hook.enable_install_on_quit();
+                }
             }
         })
     });

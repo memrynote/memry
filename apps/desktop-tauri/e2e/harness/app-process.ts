@@ -60,6 +60,7 @@ export async function waitForDriver(port: number, child: ChildProcess | undefine
 }
 
 const spawned = new Set<ChildProcess>()
+const freshEnchantDirs = new Set<string>()
 
 process.once('exit', () => {
   for (const child of spawned) child.kill('SIGKILL')
@@ -73,7 +74,12 @@ export async function spawnApp(port: number): Promise<ChildProcess> {
   // Enchant keeps the personal dictionary under the user's config dir, so a spec that adds a word
   // would leave it in the machine's dictionary. A throwaway dir per launch keeps it out.
   const enchantDir = join(tmpdir(), 'memry-e2e', `enchant-${port}`)
-  rmSync(enchantDir, { recursive: true, force: true })
+  // Wiped on the first launch of this harness process only: a spec that restarts the app on the
+  // same port keeps the word it added.
+  if (!freshEnchantDirs.has(enchantDir)) {
+    rmSync(enchantDir, { recursive: true, force: true })
+    freshEnchantDirs.add(enchantDir)
+  }
   mkdirSync(enchantDir, { recursive: true })
   const child = spawn(binaryPath(), [], {
     env: {

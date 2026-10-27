@@ -56,6 +56,8 @@ fn publish(sender: &broadcast::Sender<PowerEvent>, event: PowerEvent) {
 
 #[cfg(all(target_os = "macos", feature = "e2e"))]
 pub use mac::post_workspace_notification;
+#[cfg(all(windows, feature = "e2e"))]
+pub use win::post_end_session;
 
 fn describe(event: PowerEvent) -> &'static str {
     match event {
