@@ -5,6 +5,7 @@ import { subscribeToEvent } from './tauri-event'
 const log = createLogger('WindowService')
 
 type NavigationCommand = { direction: 'back' | 'forward' }
+type ContextMenuItems = Parameters<typeof commands.shellShowContextMenu>[0]
 
 function report(command: string): (error: unknown) => void {
   return (error) => log.warn(`${command} failed`, error)
@@ -27,6 +28,11 @@ export const windowApi = {
   setZoomFactor: (factor: number): void => {
     commands.appSetZoomFactor(factor).catch(report('app_set_zoom_factor'))
   },
+  /** The id of the clicked item, or null when the menu closed without a choice. */
+  showContextMenu: (items: ContextMenuItems): Promise<string | null> =>
+    commands.shellShowContextMenu(items),
+  onMenuCommand: (callback: (event: { command: string }) => void): (() => void) =>
+    subscribeToEvent(events.menuCommandInvokedEvent, callback),
   onAppNavigationCommand: (callback: (command: NavigationCommand) => void): (() => void) =>
     subscribeToEvent(events.appNavigationRequestedEvent, ({ direction }) => {
       if (direction === 'back' || direction === 'forward') callback({ direction })

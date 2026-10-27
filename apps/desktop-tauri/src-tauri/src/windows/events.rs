@@ -51,7 +51,12 @@ pub fn dispatch(window: &Window<Wry>, event: &WindowEvent) {
     let app = window.app_handle();
     let is_main = window.label() == MAIN_LABEL;
     match event {
-        WindowEvent::Focused(focused) if is_main => services::on_focus(app, *focused),
+        WindowEvent::Focused(focused) if is_main => {
+            services::on_focus(app, *focused);
+            if !focused {
+                crate::menu::hide_bar(app);
+            }
+        }
         WindowEvent::Resized(_) | WindowEvent::Moved(_) if is_main => {
             if matches!(event, WindowEvent::Resized(_)) {
                 send_to(

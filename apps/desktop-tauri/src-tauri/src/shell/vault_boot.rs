@@ -196,6 +196,8 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                     let is_open = status.is_open;
                     broadcast(&app, VaultStatusChangedEvent(VaultStatus::from(status)));
                     crate::windows::main_window::on_vault_status(&app, is_open);
+                    // The keyboard rebinds belong to the vault, so the menu follows it.
+                    crate::menu::apply(&app, false);
                 }
                 SessionEvent::Error { message } => broadcast(&app, VaultErrorEvent { message }),
                 SessionEvent::IndexRecovered { reason } => broadcast(

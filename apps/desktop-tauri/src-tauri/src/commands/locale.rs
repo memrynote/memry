@@ -46,7 +46,7 @@ pub async fn locale_set(app: AppHandle<Wry>, locale: String) -> Result<(), Comma
     if !service.switch(supported) {
         return Ok(());
     }
-    // Step 10 (#3527) rebuilds the native menu here.
+    crate::menu::apply(&app, true);
     let config: Arc<AppConfig> = app.state::<Arc<AppConfig>>().inner().clone();
     let settings = app.state::<SettingsService>().inner().clone();
     let vault = app.state::<Session>().current();

@@ -7,6 +7,7 @@ pub mod commands;
 pub mod e2e;
 pub mod events;
 pub mod flush;
+pub mod menu;
 pub mod registry;
 pub mod shell;
 pub mod shutdown;
@@ -71,6 +72,8 @@ fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 fn mount_events(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     registry::builder().mount_events(app);
     windows::events::manage(app);
+    app.manage(menu::MenuService::default());
+    app.manage(menu::popup::ContextMenuBroker::default());
     Ok(())
 }
 
@@ -85,6 +88,7 @@ fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         app,
         memry_desktop::launch_timeline::LaunchPhase::WindowCreated,
     );
+    menu::apply(app, false);
     Ok(())
 }
 
@@ -106,13 +110,15 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     let handler = registry::invoke_handler(&builder);
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_clipboard_manager::init());
     #[cfg(feature = "e2e")]
     let app = e2e::install(app, gate);
     let result = app
         .manage(env)
         .invoke_handler(handler)
         .on_window_event(windows::events::dispatch)
+        .on_menu_event(menu::on_menu_event)
         .setup(|app| {
             if let Err(failure) = startup::run_registered(app.handle()) {
                 tracing::error!(
