@@ -13,14 +13,15 @@ import {
   VELOPACK_SETUP_ASSET_NAME,
   handoffCmdArgs,
   handoffSpawnOptions,
-  isHandoffInstallDirSupported,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
   velopackSetupUrl,
   type AuthenticodeVerdict,
+  unsupportedHandoffInstallDirChar,
   type InstallerHandoffPlan
 } from './installer-handoff-script'
+import type { UpdateInstallAttempt } from './telemetry/update-install-marker'
 import type { UpdaterHost } from './updater-backend'
 import { NSIS_UNINSTALLER_FILENAME, detectWindowsInstallLayout } from './windows-install-layout'
 
@@ -37,17 +38,26 @@ export const INSTALLER_HANDOFF_DIRNAME = 'installer-handoff'
  */
 const HANDOFF_FAILED_VERSION_FILENAME = 'installer-handoff-failed-version'
 
-/** The next launch's did-not-apply marker proves the hand-off for `version` did not take. */
-export function recordHandoffDidNotApply(
-  version: string,
+/**
+ * Called at startup with the previous session's failed install (see detectFailedUpdateInstall).
+ * Its marker is the proof: it names this build's hand-off and the version it was for, and the app
+ * still runs the old version. The version is stored in the display form the marker carries, which
+ * is the form prepare() compares against.
+ */
+export function noteFailedHandoffAttempt(
+  attempt: Pick<UpdateInstallAttempt, 'installer' | 'toVersion'>,
   userDataDir: string = app.getPath('userData'),
   fsDeps: Pick<typeof fs, 'writeFileSync'> = fs
 ): void {
+  if (attempt.installer !== 'velopack-handoff' || !attempt.toVersion) return
   try {
-    fsDeps.writeFileSync(path.win32.join(userDataDir, HANDOFF_FAILED_VERSION_FILENAME), version)
+    fsDeps.writeFileSync(
+      path.win32.join(userDataDir, HANDOFF_FAILED_VERSION_FILENAME),
+      attempt.toVersion
+    )
   } catch (error) {
     logger.warn('could not record the failed installer hand-off; it will be retried', {
-      version,
+      version: attempt.toVersion,
       error
     })
   }
@@ -266,11 +276,12 @@ export function spawnInstallerHandoff(
   }
   const scriptPath = path.win32.join(tmpDir, `memry-installer-handoff-${pid}.cmd`)
   try {
-    if (!isHandoffInstallDirSupported(plan.installDir)) {
+    const badChar = unsupportedHandoffInstallDirChar(plan.installDir)
+    if (badChar) {
       logger.error(
         'installer hand-off refused: install directory has a character cmd.exe would parse',
         {
-          installDir: plan.installDir
+          character: badChar
         }
       )
       return false
@@ -393,14 +404,15 @@ export function createInstallerHandoff(
     if (!tag) return decline('release tag unknown')
     const layout = detectWindowsInstallLayout(deps.execPath, deps.fs.existsSync)
     if (layout !== 'nsis') return decline(`install layout is ${layout}, not nsis`)
-    const installDir = path.win32.dirname(deps.execPath)
-    if (!isHandoffInstallDirSupported(installDir)) {
+    const badChar = unsupportedHandoffInstallDirChar(path.win32.dirname(deps.execPath))
+    if (badChar) {
       // Reported like a download or signature failure: this install can never migrate, and
-      // the decline alone leaves no trace in error tracking.
+      // the decline alone leaves no trace in error tracking. The message carries the character
+      // only: a path would reach telemetry, whose redaction stops at the first space of a profile name.
       host.onError(
         coded(
           'INSTALLER_HANDOFF_UNSUPPORTED_INSTALL_DIR',
-          `install directory ${installDir} has a character the hand-off script cannot pass`
+          `install directory contains '${badChar}'`
         )
       )
       return decline('install directory has a character the hand-off script cannot pass')
@@ -471,6 +483,14 @@ export function createInstallerHandoff(
       return decline('signature not verified')
     }
 
+    // This version hands off, so a record left by an older failed one is stale.
+    try {
+      deps.fs.rmSync(path.win32.join(deps.userDataDir, HANDOFF_FAILED_VERSION_FILENAME), {
+        force: true
+      })
+    } catch (error) {
+      logger.warn('could not clear the failed installer hand-off record', { error })
+    }
     logger.info('installer hand-off armed', { version, tag, signer: verdict.subject })
     return { status: 'armed', version, plan }
   }

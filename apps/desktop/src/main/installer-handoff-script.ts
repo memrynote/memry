@@ -55,7 +55,7 @@ const PLAN_ENV_NAMES = [
  * `%` is parsed as syntax. None of the plan's paths are written into the script: it is static
  * ASCII and reads them from its environment, which cmd takes from the wide environment block
  * untouched. The one use that stays unquoted (`_?=%INSTALL_DIR%`, the form NSIS needs) is
- * expanded before cmd parses `& | < > ^`, so `isHandoffInstallDirSupported` keeps those out.
+ * expanded before cmd parses `& | < > ^`, so `unsupportedHandoffInstallDirChar` keeps those out.
  */
 export function installerHandoffEnv(
   plan: InstallerHandoffPlan,
@@ -80,9 +80,13 @@ export function installerHandoffEnv(
   return env
 }
 
-/** False for an install directory the script cannot pass to the uninstaller (see above). */
-export function isHandoffInstallDirSupported(installDir: string): boolean {
-  return !/[&|<>^"]/.test(installDir)
+/**
+ * The first character that stops the script passing this install directory to the uninstaller
+ * (see above), or null. Callers report the character, never the path: a path in an error
+ * message reaches telemetry, where redaction cannot tell where a profile name with a space ends.
+ */
+export function unsupportedHandoffInstallDirChar(installDir: string): string | null {
+  return /[&|<>^"]/.exec(installDir)?.[0] ?? null
 }
 
 /**

@@ -3,7 +3,7 @@ import {
   handoffCmdArgs,
   handoffSpawnOptions,
   installerHandoffEnv,
-  isHandoffInstallDirSupported,
+  unsupportedHandoffInstallDirChar,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
@@ -217,14 +217,14 @@ describe('installerHandoffEnv', () => {
   })
 })
 
-describe('isHandoffInstallDirSupported', () => {
+describe('unsupportedHandoffInstallDirChar', () => {
   // `_?=%INSTALL_DIR%` must stay unquoted for NSIS, so cmd would parse these.
-  it('accepts parentheses, spaces, percent signs and non-ASCII, rejects cmd operators', () => {
-    expect(isHandoffInstallDirSupported(String.raw`D:\Apps (portable)\Kağan 100%\MemryNote`)).toBe(
-      true
-    )
-    expect(isHandoffInstallDirSupported(String.raw`C:\a&b\MemryNote`)).toBe(false)
-    expect(isHandoffInstallDirSupported(String.raw`C:\a^b`)).toBe(false)
+  it('accepts parentheses, spaces, percent signs and non-ASCII, names a cmd operator', () => {
+    expect(
+      unsupportedHandoffInstallDirChar(String.raw`D:\Apps (portable)\Kağan 100%\MemryNote`)
+    ).toBeNull()
+    expect(unsupportedHandoffInstallDirChar(String.raw`C:\a&b\MemryNote`)).toBe('&')
+    expect(unsupportedHandoffInstallDirChar(String.raw`C:\a^b`)).toBe('^')
   })
 })
 
