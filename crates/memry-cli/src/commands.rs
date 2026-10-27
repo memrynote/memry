@@ -478,10 +478,8 @@ mod tests {
 
     #[test]
     fn the_notes_read_is_newest_first_and_skips_tombstoned_rows() {
-        let dir = std::env::temp_dir().join(format!("memry-cli-notes-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("a scratch directory");
-        let db = open_data(&dir.join("data.db")).expect("open data.db");
+        let dir = tempfile::tempdir().expect("a scratch directory");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
 
         db.call_blocking(|conn| {
             conn.execute_batch(
@@ -511,15 +509,12 @@ mod tests {
             ]
         );
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn a_body_with_no_updates_extracts_to_nothing() {
-        let dir = std::env::temp_dir().join(format!("memry-cli-body-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("a scratch directory");
-        let db = open_data(&dir.join("data.db")).expect("open data.db");
+        let dir = tempfile::tempdir().expect("a scratch directory");
+        let db = open_data(&dir.path().join("data.db")).expect("open data.db");
 
         let document = open_body(&db, "note-1").expect("an empty document opens");
         assert_eq!(extract_text(&document).expect("extract"), "");
@@ -528,6 +523,5 @@ mod tests {
         assert!(vector.chars().all(|c| c.is_ascii_hexdigit()), "{vector}");
 
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }

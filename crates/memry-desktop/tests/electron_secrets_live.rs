@@ -23,7 +23,7 @@ const PLAIN: &str = "live-secret-value-aGVsbG8=";
 
 #[cfg(not(windows))]
 fn test_name(tag: &str) -> &'static str {
-    Box::leak(format!("memry-live-{tag}-{}", std::process::id()).into_boxed_str())
+    Box::leak(format!("memry-live-{tag}-{}", uuid::Uuid::new_v4().simple()).into_boxed_str())
 }
 
 /// Every `(service, account, value)` the keytar reader finds: the listing, then one read each.
