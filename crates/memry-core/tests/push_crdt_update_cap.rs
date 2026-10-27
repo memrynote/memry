@@ -152,6 +152,45 @@ fn coordinator_sealing(
     )
 }
 
+fn next_attempts(db: &Db) -> Vec<Option<i64>> {
+    db.call_blocking(|conn| {
+        let mut statement = conn
+            .prepare("SELECT next_attempt_at FROM outbox ORDER BY id")
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        let rows = statement
+            .query_map([], |row| row.get(0))
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        Ok(rows)
+    })
+    .expect("read the retry times")
+}
+
+fn age(db: &Db, attempts: i64) {
+    db.call_blocking(move |conn| {
+        conn.execute("UPDATE outbox SET attempt_count = ?1", [attempts])
+            .map_err(|e| StorageError::Failed {
+                what: e.to_string(),
+            })?;
+        Ok(())
+    })
+    .expect("age the row");
+}
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
+}
+
 /// 900,000 bytes is exactly 1,200,000 characters of base64.
 const AT_THE_CAP: usize = MAX_UPDATE_PAYLOAD_CHARS / 4 * 3;
 
@@ -211,7 +250,7 @@ async fn a_refused_snapshot_defers_every_row_and_never_retires_one() {
     queue(&db, "n1", 100);
     queue(&db, "n1", AT_THE_CAP + 1);
     let transport = FakeTransport::new(vec![]);
-    let snapshots = spy(SnapshotFallbackOutcome::Refused(
+    let snapshots = spy(SnapshotFallbackOutcome::Transient(
         "the document owes a pull".to_owned(),
     ));
 
@@ -249,7 +288,7 @@ async fn without_a_snapshot_seam_an_oversized_row_is_deferred_and_the_queue_stil
 async fn a_row_the_sealer_calls_too_large_is_deferred_and_not_retired() {
     let db = scratch_db();
     queue(&db, "n1", 100);
-    let snapshots = spy(SnapshotFallbackOutcome::Refused("owes a pull".to_owned()));
+    let snapshots = spy(SnapshotFallbackOutcome::Transient("owes a pull".to_owned()));
 
     let report = coordinator_sealing(&db, FakeTransport::new(vec![]), Arc::new(TooLarge))
         .with_snapshot_fallback(snapshots.clone())
@@ -292,7 +331,7 @@ async fn a_deferred_batch_waits_at_most_a_minute_however_many_attempts_it_has() 
         Ok(())
     })
     .expect("age the row");
-    let snapshots = spy(SnapshotFallbackOutcome::Refused("owes a pull".to_owned()));
+    let snapshots = spy(SnapshotFallbackOutcome::Transient("owes a pull".to_owned()));
     let before = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -316,5 +355,103 @@ async fn a_deferred_batch_waits_at_most_a_minute_however_many_attempts_it_has() 
         next <= before + 60_000 + 5_000,
         "waits {} ms",
         next - before
+    );
+}
+
+/// Each class waits as long as its kind of refusal does: a transient one at
+/// most a minute, quota and per-document rejections on the full ladder, and a
+/// parked one until the document changes.
+#[tokio::test]
+async fn each_class_waits_as_long_as_its_kind_of_refusal_does() {
+    for (outcome, check) in [
+        (
+            SnapshotFallbackOutcome::Transient("pull owed".to_owned()),
+            Box::new(|at: i64, now: i64| at <= now + 60_000 + 5_000)
+                as Box<dyn Fn(i64, i64) -> bool>,
+        ),
+        (
+            SnapshotFallbackOutcome::QuotaExceeded("quota".to_owned()),
+            Box::new(|at, now| at > now + 3_600_000),
+        ),
+        (
+            SnapshotFallbackOutcome::Rejected("refused".to_owned()),
+            Box::new(|at, now| at > now + 3_600_000),
+        ),
+        (
+            SnapshotFallbackOutcome::Parked("too large".to_owned()),
+            Box::new(|at, _| at == outbox::PARKED_UNTIL_EDIT),
+        ),
+    ] {
+        let db = scratch_db();
+        queue(&db, "n1", AT_THE_CAP + 1);
+        age(&db, 12);
+        let before = now_ms();
+
+        let report = coordinator(&db, FakeTransport::new(vec![]))
+            .with_snapshot_fallback(spy(outcome.clone()))
+            .drain_wave()
+            .await
+            .expect("the wave");
+
+        assert_eq!((report.rejected, report.retired), (1, 0), "{outcome:?}");
+        let at = next_attempts(&db)[0].expect("deferred");
+        assert!(check(at, before), "{outcome:?} waits until {at}");
+    }
+}
+
+#[tokio::test]
+async fn a_parked_batch_is_released_by_the_next_edit_of_its_document() {
+    let db = scratch_db();
+    queue(&db, "n1", AT_THE_CAP + 1);
+    queue(&db, "other", 100);
+    coordinator(
+        &db,
+        FakeTransport::new(vec![response(200, &json!({"sequences": [1]}).to_string())]),
+    )
+    .with_snapshot_fallback(spy(SnapshotFallbackOutcome::Parked("too large".to_owned())))
+    .drain_wave()
+    .await
+    .expect("the wave");
+    assert_eq!(left(&db).len(), 1, "only the parked row is left");
+
+    // An edit of another document does not release it; an edit of this one does.
+    queue(&db, "other", 100);
+    let batch = |db: &Db| {
+        db.call_blocking(|conn| outbox::next_batch(conn, now_ms(), 100))
+            .expect("a batch")
+    };
+    assert!(matches!(batch(&db), Some(outbox::Batch::Crdt { doc_id, .. }) if doc_id == "other"));
+    db.call_blocking(|conn| outbox::ack(conn, &[3]).map(|_| ()))
+        .expect("ack");
+    assert!(batch(&db).is_none(), "still parked");
+    queue(&db, "n1", 100);
+    let Some(outbox::Batch::Crdt { doc_id, rows, .. }) = batch(&db) else {
+        panic!("the edit releases the parked batch");
+    };
+    assert_eq!(
+        (doc_id.as_str(), rows.len()),
+        ("n1", 2),
+        "in order, together"
+    );
+}
+
+#[tokio::test]
+async fn a_document_with_a_deferred_row_does_not_send_its_later_rows() {
+    let db = scratch_db();
+    queue(&db, "n1", AT_THE_CAP + 1);
+    let snapshots = spy(SnapshotFallbackOutcome::Transient("pull owed".to_owned()));
+    let push = coordinator(&db, FakeTransport::new(vec![])).with_snapshot_fallback(snapshots);
+    push.drain_wave().await.expect("the first wave defers");
+
+    // The later small row would ride /sync/crdt/updates, which has no script.
+    queue(&db, "n1", 100);
+    push.drain_wave()
+        .await
+        .expect("the second wave sends nothing");
+
+    assert_eq!(
+        left(&db).len(),
+        2,
+        "the later row waits behind the deferred one"
     );
 }

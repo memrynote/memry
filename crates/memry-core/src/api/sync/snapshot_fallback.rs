@@ -16,15 +16,15 @@ use crate::api::errors::{ApiError, StorageError};
 use crate::crdt::epoch;
 use crate::crdt::registry::UpdateSink;
 use crate::crdt::snapshots::SnapshotError;
-use crate::crdt::{SnapshotGate, SnapshotOutcome, SnapshotPusher};
+use crate::crdt::{Refusal, SnapshotGate, SnapshotOutcome, SnapshotPusher};
 use crate::storage::Db;
 use crate::sync::push::{SnapshotFallback, SnapshotFallbackOutcome};
 
-// TODO(too-large notice): desktop tells the user a note is too large to sync
-// (`emitNoteTooLarge`, `apps/desktop/src/main/sync/runtime.ts:663-671`). The
-// core has no per-note sync status to carry that yet, so the reason sits on
-// the deferred outbox row's `last_error` ([`crate::crdt::Refusal::TooLarge`]).
-// The consumer is the per-note sync status the shells read once it exists.
+// TODO(#3664): desktop tells the user a note is too large to sync or over
+// quota (`emitNoteTooLarge`, `emitQuotaExceeded`,
+// `apps/desktop/src/main/sync/runtime.ts:661-671`). The core has no per-note
+// sync status to carry either yet, so the reason sits on the deferred outbox
+// row's `last_error` ([`crate::crdt::Refusal::TooLarge`]).
 pub(super) struct PassSnapshots {
     pub(super) pusher: SnapshotPusher,
     pub(super) db: Db,
@@ -55,7 +55,7 @@ impl SnapshotFallback for PassSnapshots {
         let document = match opened {
             Ok(document) => document,
             Err(reason) => {
-                return Ok(SnapshotFallbackOutcome::Refused(format!(
+                return Ok(SnapshotFallbackOutcome::Parked(format!(
                     "could not replay the document's update log: {reason}"
                 )));
             }
@@ -64,39 +64,176 @@ impl SnapshotFallback for PassSnapshots {
             pull_completed_clean: self.pull_completed_clean,
             purged: self.purged_documents.iter().any(|purged| purged == doc_id),
         };
-        match self
+        let pushed = self
             .pusher
             .push(&document, gate, crate::api::tasks_write::now_ms())
-            .await
-        {
-            Ok(SnapshotOutcome::Pushed { .. }) => Ok(SnapshotFallbackOutcome::Pushed),
-            Ok(SnapshotOutcome::Refused(refusal)) => Ok(SnapshotFallbackOutcome::Refused(
-                refusal.reason().to_owned(),
-            )),
-            Err(SnapshotError::Rejected { reason }) => Ok(SnapshotFallbackOutcome::Refused(reason)),
-            // Local failures before any request, an undecodable update or a
-            // seal that failed: this document's batch waits (chapter 07
-            // §7.4.2). Failing the wave would stall every record behind it,
-            // because CRDT rows are claimed first.
-            Err(error @ (SnapshotError::Crdt { .. } | SnapshotError::Seal { .. })) => {
-                Ok(SnapshotFallbackOutcome::Refused(error.to_string()))
-            }
-            // The server answered and said no: the rows wait instead of
-            // failing every pass at this batch. Everything else, an offline
-            // network or a policy block, fails the wave like any request.
-            Err(SnapshotError::Api {
-                source: error @ ApiError::Status { status, .. },
-            }) if status == 413 || status >= 500 => {
-                Ok(SnapshotFallbackOutcome::Refused(error.to_string()))
-            }
-            Err(SnapshotError::Api { source }) => Err(source),
-            Err(SnapshotError::Storage { source }) => Err(local(source)),
-        }
+            .await;
+        classify(pushed)
     }
 }
+
+/// The class of every way a snapshot push ends (chapter 07 §7.4.2), and the
+/// one place that decides which of them fail the pass. Only these do, and each
+/// is a failure of the device or the session rather than of one document:
+/// a network error, a 401, 402, 403, 426 or 429, and a local storage error
+/// (the database is unreadable, and the pass cannot go on without it).
+/// Everything about one document defers that document's batch alone.
+fn classify(
+    pushed: Result<SnapshotOutcome, SnapshotError>,
+) -> Result<SnapshotFallbackOutcome, ApiError> {
+    use SnapshotFallbackOutcome::{Parked, Pushed, QuotaExceeded, Rejected, Transient};
+    Ok(match pushed {
+        Ok(SnapshotOutcome::Pushed { .. }) => Pushed,
+        Ok(SnapshotOutcome::Refused(refusal)) => {
+            let reason = refusal.reason().to_owned();
+            match refusal {
+                Refusal::UnmergedRemoteState => Transient(reason),
+                Refusal::LocalOnly | Refusal::Purged | Refusal::EmptyState | Refusal::TooLarge => {
+                    Parked(reason)
+                }
+            }
+        }
+        Err(SnapshotError::Rejected { reason }) => Rejected(reason),
+        // The log or the encode of this document will not decode, and no
+        // retry changes that until the document does.
+        Err(error @ SnapshotError::Crdt { .. }) => Parked(error.to_string()),
+        Err(error @ SnapshotError::Seal { .. }) => Transient(error.to_string()),
+        Err(SnapshotError::Storage { source }) => return Err(local(source)),
+        Err(SnapshotError::Api { source }) => match source {
+            ApiError::Status {
+                status: 413,
+                code: Some(ref code),
+                ..
+            } if code == QUOTA_EXCEEDED => QuotaExceeded(format!("{QUOTA_EXCEEDED}: {source}")),
+            ApiError::Status { status, .. } if status >= 500 => Transient(source.to_string()),
+            ApiError::Status { status, .. } if status != 429 && (400..500).contains(&status) => {
+                Rejected(source.to_string())
+            }
+            other => return Err(other),
+        },
+    })
+}
+
+/// `ErrorCodes.STORAGE_QUOTA_EXCEEDED` (`apps/sync-server/src/lib/errors.ts:79`),
+/// answered with a 413 by `reserveStorage` (`services/quota.ts:12`, `:44`).
+const QUOTA_EXCEEDED: &str = "STORAGE_QUOTA_EXCEEDED";
 
 fn local(error: StorageError) -> ApiError {
     ApiError::Storage {
         what: error.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::crdt::errors::CrdtError;
+    use crate::protocol::envelope::EnvelopeError;
+    use SnapshotFallbackOutcome::{Parked, Pushed, QuotaExceeded, Rejected, Transient};
+
+    fn status(status: u16, code: Option<&str>) -> Result<SnapshotOutcome, SnapshotError> {
+        Err(SnapshotError::Api {
+            source: ApiError::Status {
+                status,
+                code: code.map(str::to_owned),
+                message: "refused".to_owned(),
+            },
+        })
+    }
+
+    fn class(pushed: Result<SnapshotOutcome, SnapshotError>) -> SnapshotFallbackOutcome {
+        classify(pushed).expect("a class, not a failed pass")
+    }
+
+    #[test]
+    fn every_refusal_is_transient_or_parked() {
+        for (refusal, transient) in [
+            (Refusal::UnmergedRemoteState, true),
+            (Refusal::LocalOnly, false),
+            (Refusal::Purged, false),
+            (Refusal::EmptyState, false),
+            (Refusal::TooLarge, false),
+        ] {
+            let label = format!("{refusal:?}");
+            let got = class(Ok(SnapshotOutcome::Refused(refusal)));
+            assert_eq!(matches!(got, Transient(_)), transient, "{label}");
+            assert!(transient || matches!(got, Parked(_)), "{label}");
+        }
+    }
+
+    #[test]
+    fn each_server_answer_has_one_class() {
+        assert!(matches!(class(status(500, None)), Transient(_)));
+        assert!(matches!(class(status(503, None)), Transient(_)));
+        assert!(matches!(
+            class(status(413, Some("STORAGE_QUOTA_EXCEEDED"))),
+            QuotaExceeded(_)
+        ));
+        // A 413 that is not the quota is the server refusing this document.
+        assert!(matches!(
+            class(status(413, Some("VALIDATION_BODY_TOO_LARGE"))),
+            Rejected(_)
+        ));
+        for refused in [400, 404, 409, 422] {
+            assert!(
+                matches!(class(status(refused, None)), Rejected(_)),
+                "{refused}"
+            );
+        }
+        assert!(matches!(
+            class(Err(SnapshotError::Rejected {
+                reason: "no".to_owned()
+            })),
+            Rejected(_)
+        ));
+        assert_eq!(
+            class(Ok(SnapshotOutcome::Pushed {
+                sequence_num: 1,
+                pruned: 0
+            })),
+            Pushed
+        );
+    }
+
+    #[test]
+    fn a_local_failure_of_one_document_defers_it_and_does_not_fail_the_pass() {
+        let crdt = SnapshotError::Crdt {
+            source: CrdtError::DocumentBusy {
+                doc_id: "d".to_owned(),
+                what: "undecodable".to_owned(),
+            },
+        };
+        assert!(matches!(class(Err(crdt)), Parked(_)));
+        let seal = SnapshotError::Seal {
+            source: EnvelopeError::Malformed {
+                what: "no key".to_owned(),
+            },
+        };
+        assert!(matches!(class(Err(seal)), Transient(_)));
+    }
+
+    #[test]
+    fn only_a_failure_of_the_device_or_the_session_fails_the_pass() {
+        for failing in [
+            status(429, None),
+            Err(SnapshotError::Storage {
+                source: StorageError::Failed {
+                    what: "disk".to_owned(),
+                },
+            }),
+            Err(SnapshotError::Api {
+                source: ApiError::WritesDisabled {
+                    message: "off".to_owned(),
+                },
+            }),
+            Err(SnapshotError::Api {
+                source: ApiError::Unauthorized {
+                    code: "AUTH".to_owned(),
+                    message: "no".to_owned(),
+                },
+            }),
+        ] {
+            assert!(classify(failing).is_err());
+        }
     }
 }

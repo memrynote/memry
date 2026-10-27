@@ -46,6 +46,10 @@ pub const OP_CRDT_UPDATE: &str = "crdt-update";
 /// pathological error body cannot grow the one table whose loss loses work.
 pub const MAX_LAST_ERROR_CHARS: usize = 500;
 
+/// `next_attempt_at` of a batch parked until its document changes: never due,
+/// released by the next [`enqueue`] of a CRDT update for the same document.
+pub const PARKED_UNTIL_EDIT: i64 = i64::MAX;
+
 /// §7.3: at most 100 updates ride one `POST /sync/crdt/updates`.
 pub const MAX_CRDT_UPDATES_PER_BATCH: usize = 100;
 
@@ -270,6 +274,16 @@ pub fn enqueue(tx: &Connection, change: &Change, now_ms: i64) -> Result<Option<i
 
     super::calendar_push::queue(tx, change, now_ms)?;
 
+    // An edit is what a parked batch waits for: release it with the new row.
+    if let Change::CrdtUpdate { doc_id, .. } = change {
+        tx.execute(
+            "UPDATE outbox SET next_attempt_at = NULL
+              WHERE item_id = ?1 AND op = ?2 AND next_attempt_at = ?3",
+            params![doc_id, OP_CRDT_UPDATE, PARKED_UNTIL_EDIT],
+        )
+        .map_err(failed)?;
+    }
+
     tx.execute(
         "INSERT INTO outbox (item_type, item_id, op, payload, enqueued_at)
          VALUES (?1, ?2, ?3, ?4, ?5)",
@@ -374,13 +388,22 @@ impl Batch {
 /// The order is what stops a body edit landing after its own note's delete.
 /// It is expressed in SQL rather than sorted afterwards so that `limit`
 /// truncates the tail of the wave and never its head.
+///
+/// **A document's rows go in order or not at all.** While one CRDT row of a
+/// document waits (a deferred or parked batch), its later rows are not
+/// claimed: a peer given them without it holds pending structs until the
+/// earlier update arrives, and one that never does would never heal.
 pub fn claim(conn: &Connection, now_ms: i64, limit: usize) -> Result<Vec<OutboxRow>, StorageError> {
     let mut statement = conn
         .prepare(
             "SELECT id, item_type, item_id, op, payload, enqueued_at,
                     attempt_count, last_error, next_attempt_at
                FROM outbox
-              WHERE next_attempt_at IS NULL OR next_attempt_at <= ?1
+              WHERE (next_attempt_at IS NULL OR next_attempt_at <= ?1)
+                AND NOT (op = ?2 AND EXISTS (
+                      SELECT 1 FROM outbox held
+                       WHERE held.op = ?2 AND held.item_id = outbox.item_id
+                         AND held.id < outbox.id AND held.next_attempt_at > ?1))
               ORDER BY (op <> ?2),
                        CASE WHEN op = ?2 THEN item_id ELSE '' END,
                        id

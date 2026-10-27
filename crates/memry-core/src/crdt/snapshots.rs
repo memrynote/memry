@@ -223,6 +223,8 @@ pub struct SnapshotPusher {
     /// server older than #1857 has only the single-note route.
     pub(super) batch_unsupported: AtomicBool,
     pub(super) http: Arc<HttpClient>,
+    /// The retry policy of the snapshot upload: §7.10's by default.
+    retry: RetryPolicy,
     db: Db,
     sealer: Arc<dyn SnapshotSealer>,
     declaration: Declaration,
@@ -239,11 +241,23 @@ impl SnapshotPusher {
         Self {
             batch_unsupported: AtomicBool::new(false),
             http,
+            retry: RetryPolicy::polled(),
             db,
             sealer,
             declaration,
             vault_id: None,
         }
+    }
+
+    /// One attempt per upload, no inner retries: a caller with its own retry
+    /// ladder would otherwise multiply a full upload by the policy's four.
+    pub fn with_single_attempt(mut self) -> Self {
+        self.retry = RetryPolicy {
+            max_retries: 0,
+            retry_on_5xx: false,
+            ..RetryPolicy::polled()
+        };
+        self
     }
 
     pub fn with_vault(mut self, vault_id: &str) -> Self {
@@ -279,8 +293,8 @@ impl SnapshotPusher {
         let request = self
             .request("POST", "/sync/crdt/snapshot")
             // §7.10: every CRDT request is `maxRetries: 3`, `baseDelayMs:
-            // 2000`, `retryOn429: false`.
-            .retry(RetryPolicy::polled())
+            // 2000`, `retryOn429: false`, unless the caller set its own.
+            .retry(self.retry)
             .json(&prepared.payload);
         let body: Json = match self.http.send_json(request).await {
             Ok(body) => body,

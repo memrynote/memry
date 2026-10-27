@@ -158,6 +158,7 @@ impl VaultSync {
                 sealer.clone(),
                 Declaration::subscribed(),
             )
+            .with_single_attempt()
             .with_vault(&self.vault_id),
             db: self.db.clone(),
             device_id: self.session.device_id()?,

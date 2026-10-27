@@ -23,13 +23,27 @@ use crate::sync::outbox::{self, OutboxRow};
 
 use super::{PushCoordinator, PushError, PushReport, now_ms, retry_at};
 
-/// What a snapshot push for one document did.
+/// What a snapshot push for one document did, in the one class each outcome
+/// belongs to (chapter 07 §7.4.2). The class decides how long the batch waits;
+/// every class but [`Self::Pushed`] defers all of the batch's rows and retires
+/// none.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SnapshotFallbackOutcome {
     /// The server stored a snapshot of the whole document.
     Pushed,
-    /// Nothing was stored, for this reason. The rows wait and try again.
-    Refused(String),
+    /// Clears by itself (a pull still owed, a 5xx, a seal that failed): the
+    /// retry waits at most [`DEFERRED_BACKOFF_MAX_MS`].
+    Transient(String),
+    /// The account is out of storage (413 `STORAGE_QUOTA_EXCEEDED`): only the
+    /// user can clear it, so the retry climbs the full ladder.
+    QuotaExceeded(String),
+    /// The server refused this document for a reason of its own (a 4xx that is
+    /// neither quota nor a pull owed): the full ladder, and the pass goes on.
+    Rejected(String),
+    /// Nothing changes until the document does (too large, an undecodable log,
+    /// local-only, purged, empty): parked, with no retry until the next edit
+    /// of the document queues a row ([`outbox::PARKED_UNTIL_EDIT`]).
+    Parked(String),
 }
 
 /// Pushes one document as a snapshot, chapter 07 §7.7 and §7.13.2.
@@ -42,8 +56,10 @@ pub trait SnapshotFallback: Send + Sync {
     async fn push_snapshot(&self, doc_id: &str) -> Result<SnapshotFallbackOutcome, ApiError>;
 }
 
-/// The longest a deferred oversized batch waits before its next snapshot try.
-const SNAPSHOT_RETRY_CAP_MS: i64 = 60_000;
+/// The longest a transiently deferred batch waits before its next snapshot
+/// try. Desktop's note-body outbox caps its backoff the same way
+/// (`apps/desktop/src/main/sync/note-body-outbox.ts:31`).
+pub const DEFERRED_BACKOFF_MAX_MS: i64 = 60_000;
 
 const NO_FALLBACK: &str =
     "update too large for the incremental route and no snapshot push is set up";
@@ -132,27 +148,28 @@ impl PushCoordinator {
     ) -> Result<(), PushError> {
         let outcome = match &self.snapshot_fallback {
             Some(fallback) => fallback.push_snapshot(doc_id).await?,
-            None => SnapshotFallbackOutcome::Refused(NO_FALLBACK.to_owned()),
+            None => SnapshotFallbackOutcome::Transient(NO_FALLBACK.to_owned()),
         };
-        match outcome {
+        let now = now_ms();
+        let (reason, at) = match outcome {
             SnapshotFallbackOutcome::Pushed => {
                 report.accepted += ids.len();
                 report.crdt_updates += ids.len();
                 self.db.call(move |conn| outbox::ack(conn, &ids)).await?;
+                return Ok(());
             }
-            SnapshotFallbackOutcome::Refused(reason) => {
-                report.rejected += ids.len();
-                // Capped like desktop's note-body outbox (`MAX_BACKOFF_MS`,
-                // `note-body-outbox.ts:31`): a refusal that clears on its own,
-                // a pull still owed or past its page cap, must not climb the
-                // record ladder to hours.
-                let now = now_ms();
-                let at = retry_at(now, attempts).min(now + SNAPSHOT_RETRY_CAP_MS);
-                self.db
-                    .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
-                    .await?;
-            }
-        }
+            SnapshotFallbackOutcome::Transient(reason) => (
+                reason,
+                retry_at(now, attempts).min(now + DEFERRED_BACKOFF_MAX_MS),
+            ),
+            SnapshotFallbackOutcome::QuotaExceeded(reason)
+            | SnapshotFallbackOutcome::Rejected(reason) => (reason, retry_at(now, attempts)),
+            SnapshotFallbackOutcome::Parked(reason) => (reason, outbox::PARKED_UNTIL_EDIT),
+        };
+        report.rejected += ids.len();
+        self.db
+            .call(move |conn| outbox::defer(conn, &ids, &reason, Some(at)))
+            .await?;
         Ok(())
     }
 }

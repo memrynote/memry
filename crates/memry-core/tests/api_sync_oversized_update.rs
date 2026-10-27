@@ -47,6 +47,7 @@ const DEVICE_ID: &str = "server-device-1";
 struct Server {
     calls: Mutex<Vec<(String, Json)>>,
     snapshot_status: u16,
+    snapshot_body: String,
     /// Every changes page says there is another, so the pass stops at its page cap.
     endless_changes: bool,
 }
@@ -56,6 +57,17 @@ impl Server {
         Arc::new(Self {
             calls: Mutex::new(Vec::new()),
             snapshot_status,
+            snapshot_body: "{}".to_owned(),
+            endless_changes: false,
+        })
+    }
+
+    /// The snapshot route answers `status` with the error `code`.
+    fn refusing(status: u16, code: &str) -> Arc<Self> {
+        Arc::new(Self {
+            calls: Mutex::new(Vec::new()),
+            snapshot_status: status,
+            snapshot_body: json!({"error": {"code": code, "message": "refused"}}).to_string(),
             endless_changes: false,
         })
     }
@@ -64,6 +76,7 @@ impl Server {
         Arc::new(Self {
             calls: Mutex::new(Vec::new()),
             snapshot_status: 200,
+            snapshot_body: "{}".to_owned(),
             endless_changes: true,
         })
     }
@@ -130,7 +143,7 @@ impl Transport for Server {
             "/sync/crdt/snapshot" if self.snapshot_status == 200 => {
                 response(200, &json!({"sequenceNum": 1, "revision": "r1"}).to_string())
             }
-            "/sync/crdt/snapshot" => response(self.snapshot_status, "{}"),
+            "/sync/crdt/snapshot" => response(self.snapshot_status, &self.snapshot_body),
             other if other.starts_with("/sync/crdt/snapshot/") => {
                 response(200, &json!({"snapshot": null}).to_string())
             }
@@ -236,14 +249,21 @@ fn queue_body_update(side: &Db, doc_id: &str, text: &str) {
 }
 
 fn queued(side: &Db) -> Vec<(String, Option<String>)> {
+    queued_at(side)
+        .into_iter()
+        .map(|(id, reason, _)| (id, reason))
+        .collect()
+}
+
+fn queued_at(side: &Db) -> Vec<(String, Option<String>, Option<i64>)> {
     side.call_blocking(|conn| {
         let mut statement = conn
-            .prepare("SELECT item_id, last_error FROM outbox ORDER BY id")
+            .prepare("SELECT item_id, last_error, next_attempt_at FROM outbox ORDER BY id")
             .map_err(|e| memry_core::api::errors::StorageError::Failed {
                 what: e.to_string(),
             })?;
         let rows = statement
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
             .map_err(|e| memry_core::api::errors::StorageError::Failed {
                 what: e.to_string(),
             })?
@@ -301,17 +321,14 @@ async fn an_oversized_update_goes_as_a_snapshot_that_holds_the_whole_batch() {
 }
 
 #[tokio::test]
-async fn a_refused_snapshot_defers_the_batch_and_the_queue_behind_it_still_drains() {
+async fn a_refused_snapshot_defers_the_batch_and_holds_the_documents_later_rows() {
     let server = Server::new(413);
     let (vault, side, session, _store) = vault_with_side("refused", server.clone());
     queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
     queue_body_update(&side, "smalldoc0001", "behind the large one");
 
-    let summary = vault
-        .sync(session)
-        .sync_now()
-        .await
-        .expect("the pass completes");
+    let sync = vault.sync(session);
+    let summary = sync.sync_now().await.expect("the pass completes");
 
     assert_eq!(summary.rejected, 1, "{summary:?}");
     assert_eq!(
@@ -327,6 +344,77 @@ async fn a_refused_snapshot_defers_the_batch_and_the_queue_behind_it_still_drain
             .bodies("/sync/crdt/updates")
             .iter()
             .all(|b| b["noteId"] == json!("smalldoc0001"))
+    );
+
+    // A later edit of the same document must not overtake the deferred row:
+    // a peer given it without the large update holds pending structs that
+    // never heal when that update will not come.
+    queue_body_update(&side, "bigdoc000001", "a later edit");
+    sync.sync_now().await.expect("the second pass completes");
+    assert!(
+        server
+            .bodies("/sync/crdt/updates")
+            .iter()
+            .all(|b| b["noteId"] != json!("bigdoc000001")),
+        "the later row was held behind the deferred one"
+    );
+    assert_eq!(queued(&side).len(), 2, "both rows still wait");
+}
+
+#[tokio::test]
+async fn a_quota_refusal_is_parked_on_the_full_ladder_and_does_not_stall_the_pass() {
+    let server = Server::refusing(413, "STORAGE_QUOTA_EXCEEDED");
+    let (vault, side, session, _store) = vault_with_side("quota", server.clone());
+    queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
+    queue_body_update(&side, "smalldoc0001", "behind the large one");
+
+    let summary = vault
+        .sync(session)
+        .sync_now()
+        .await
+        .expect("the pass completes");
+
+    assert_eq!(summary.rejected, 1, "{summary:?}");
+    assert_eq!(server.bodies("/sync/crdt/snapshot").len(), 1, "one upload");
+    let left = queued(&side);
+    assert_eq!(left.len(), 1);
+    assert!(
+        left[0]
+            .1
+            .as_deref()
+            .is_some_and(|reason| reason.contains("STORAGE_QUOTA_EXCEEDED")),
+        "{left:?}"
+    );
+}
+
+#[tokio::test]
+async fn a_5xx_from_the_snapshot_route_is_one_upload_and_a_deferral() {
+    // The upload is not retried inside the request: the pass's own ladder
+    // decides, so a full upload is never multiplied by the HTTP client's four
+    // attempts (and the test never sleeps through its delays).
+    let server = Server::new(503);
+    let (vault, side, session, _store) = vault_with_side("5xx", server.clone());
+    queue_body_update(&side, "bigdoc000001", &noisy_text(1_500_000, "BIG EDIT"));
+    queue_body_update(&side, "smalldoc0001", "behind the large one");
+
+    let started = std::time::Instant::now();
+    let summary = vault
+        .sync(session)
+        .sync_now()
+        .await
+        .expect("the pass completes");
+
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
+    assert_eq!(server.bodies("/sync/crdt/snapshot").len(), 1, "one upload");
+    assert_eq!(summary.pending, 1, "{summary:?}");
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64;
+    let at = queued_at(&side)[0].2.expect("deferred");
+    assert!(
+        at <= now + 60_000 + 5_000,
+        "a transient deferral waits <= 60 s"
     );
 }
 
@@ -403,6 +491,13 @@ async fn a_document_whose_log_cannot_be_replayed_waits_and_the_records_behind_it
         .filter(|(id, _)| id == "bigdoc000001")
         .collect();
     assert_eq!(big.len(), 2, "both rows of the document wait");
+    assert!(
+        queued_at(&side)
+            .iter()
+            .filter(|(id, ..)| id == "bigdoc000001")
+            .all(|(.., at)| *at == Some(outbox::PARKED_UNTIL_EDIT)),
+        "a log that cannot be replayed is parked, not retried every minute"
+    );
     assert!(big.iter().all(|(_, reason)| {
         reason
             .as_deref()
