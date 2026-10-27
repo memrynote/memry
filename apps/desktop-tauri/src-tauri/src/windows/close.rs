@@ -31,8 +31,9 @@ fn register(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 }
 
 fn on_close_requested(window: &Window<Wry>, api: &CloseRequestApi) {
-    // The app is quitting: the sequence already flushed every window.
-    if startup::shutdown_started() {
+    // The app is quitting: the sequence already flushed every window. A window the tray hides
+    // is not closing, so nothing is flushed or destroyed.
+    if startup::shutdown_started() || crate::tray::hides_on_close(window.app_handle()) {
         return;
     }
     api.prevent_close();
