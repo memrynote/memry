@@ -25,7 +25,13 @@ const logger = createLogger('InstallerHandoff')
 
 export const INSTALLER_HANDOFF_DIRNAME = 'installer-handoff'
 
-const AUTHENTICODE_TIMEOUT_MS = 60_000
+/**
+ * A cold powershell.exe takes 20 to 35 s to start on a hosted windows-11-arm runner and
+ * Get-AuthenticodeSignature of the 45 MB Setup took over 60 s there, which declined the hand-off
+ * as "signature not verified" twice (W2). The check runs while the update is still `downloading`,
+ * so a longer ceiling costs nothing on a machine that answers in seconds.
+ */
+const AUTHENTICODE_TIMEOUT_MS = 180_000
 
 /**
  * The Velopack installer is ~450 MB over a single GET. One dropped connection used
