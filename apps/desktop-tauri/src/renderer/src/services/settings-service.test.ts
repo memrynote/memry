@@ -57,6 +57,30 @@ describe('settingsService', () => {
     })
   })
 
+  it('reads callout types as a list and writes only the changed entries, null for a removal', async () => {
+    const note = { name: 'note-x', label: 'Note X', icon: 'info', color: '#336699' }
+    mocks.commands.settingsGetPath.mockResolvedValue({
+      'note-x': note,
+      gone: { ...note, name: 'gone' }
+    })
+
+    const list = await settingsService.getCalloutTypes()
+    expect(Array.isArray(list)).toBe(true)
+
+    mocks.commands.settingsSetGroup.mockResolvedValue(null)
+    mocks.commands.settingsGetPath.mockResolvedValue({
+      'note-x': note,
+      gone: { ...note, name: 'gone' }
+    })
+    await settingsService.setCalloutTypes(
+      list.filter((d) => (d as { name: string }).name !== 'gone')
+    )
+
+    expect(mocks.commands.settingsSetGroup).toHaveBeenCalledWith('editor', {
+      calloutTypes: { gone: null }
+    })
+  })
+
   it('hands a listener the written fields as { key, value }', async () => {
     const seen: unknown[] = []
     mocks.commands.settingsGetGroup.mockResolvedValue({ theme: 'dark', fontSizePx: 16 })

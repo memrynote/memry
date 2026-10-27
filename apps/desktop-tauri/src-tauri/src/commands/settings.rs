@@ -186,10 +186,11 @@ pub async fn settings_reset_keyboard(app: AppHandle<Wry>) -> Result<(), CommandE
 #[specta::specta]
 pub async fn app_set_zoom_factor(app: AppHandle<Wry>, factor: f64) -> Result<(), CommandError> {
     let config: Arc<AppConfig> = app.state::<Arc<AppConfig>>().inner().clone();
-    blocking("app_set_zoom_factor", move || {
+    let clamped = blocking("app_set_zoom_factor", move || {
         startup_values::set_zoom(&config, &Value::from(factor))
-            .map(|_| ())
             .map_err(|e| CommandError::new(ErrorKind::Storage, "config_write", e.to_string()))
     })
-    .await
+    .await?;
+    crate::windows::zoom::apply(&app, clamped);
+    Ok(())
 }

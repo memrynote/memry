@@ -32,6 +32,7 @@ import { createLogger } from './lib/logger'
 import { installNotPortedShim } from './lib/not-ported'
 import { installPortedApi } from './lib/ported-api'
 import { applyStartupState } from './lib/startup'
+import { ShellLifecycle } from './lib/shell-lifecycle'
 import { commands } from '../../generated/bindings'
 import {
   registerRendererDiagnostics,
@@ -164,6 +165,7 @@ async function boot(): Promise<void> {
       <I18nProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
           <RootComponent />
+          {isSecondaryWindow ? null : <ShellLifecycle />}
         </QueryClientProvider>
       </I18nProvider>
     </StrictMode>

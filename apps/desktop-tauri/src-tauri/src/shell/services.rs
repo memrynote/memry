@@ -299,19 +299,15 @@ pub fn startup_state(app: &AppHandle<Wry>) -> StartupState {
     }
 }
 
-/// Tracks focus for the heartbeat and reports `app_backgrounded` when focus leaves.
-pub fn watch_focus(app: &AppHandle<Wry>, window: &tauri::WebviewWindow<Wry>) {
-    let app = app.clone();
-    window.on_window_event(move |event| {
-        if let tauri::WindowEvent::Focused(focused) = event {
-            app.state::<WindowFocus>()
-                .0
-                .store(*focused, Ordering::Relaxed);
-            if !focused && let Some(service) = telemetry(&app) {
-                lifecycle::backgrounded(&service);
-            }
-        }
-    });
+/// Tracks focus for the heartbeat and reports `app_backgrounded` when focus leaves. Called by
+/// the window event dispatcher for the main window.
+pub fn on_focus(app: &AppHandle<Wry>, focused: bool) {
+    app.state::<WindowFocus>()
+        .0
+        .store(focused, Ordering::Relaxed);
+    if !focused && let Some(service) = telemetry(app) {
+        lifecycle::backgrounded(&service);
+    }
 }
 
 /// The clean end of a run: removes the crash marker, so the next launch does not report this

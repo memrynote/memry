@@ -66,13 +66,14 @@ fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 fn mount_events(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     registry::builder().mount_events(app);
+    windows::events::manage(app);
     Ok(())
 }
 
 fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let state = shell::services::startup_state(app);
     windows::create_main(app, &state)
-        .map(|window| shell::services::watch_focus(app, &window))
+        .map(|_| ())
         .map_err(|error| {
             CommandError::new(ErrorKind::Internal, "create_window", error.to_string())
         })?;
@@ -107,6 +108,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     let result = app
         .manage(env)
         .invoke_handler(handler)
+        .on_window_event(windows::events::dispatch)
         .setup(|app| {
             if let Err(failure) = startup::run_registered(app.handle()) {
                 tracing::error!(
