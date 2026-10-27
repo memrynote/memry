@@ -259,11 +259,66 @@ function sweepStaleWorkDirs(installDir) {
     return
   }
 
+  const live = liveTargetOf(path.join(installDir, 'dist'))
   for (const entry of entries) {
-    if (entry.startsWith('.dist-staging-') || entry.startsWith('.dist-retired-')) {
+    const stale =
+      entry.startsWith('.dist-staging-') ||
+      entry.startsWith('.dist-retired-') ||
+      entry.startsWith('.dist-link-') ||
+      (entry.startsWith('.dist-live-') && entry !== live)
+    if (stale) {
       fs.rmSync(path.join(installDir, entry), { recursive: true, force: true })
     }
   }
+}
+
+/** The directory name `dist` points at, or null when `dist` is absent or a real directory. */
+function liveTargetOf(distDir) {
+  try {
+    return fs.lstatSync(distDir).isSymbolicLink() ? fs.readlinkSync(distDir) : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Publish the staged tree as `dist/` so that a reader never sees `dist/` absent. On POSIX `dist`
+ * is a symlink to a `.dist-live-<pid>` directory, and a rename over a symlink is atomic: the
+ * reader gets the old tree or the new one. A real `dist/` directory (an install from before this
+ * layout, or Windows, where symlinks need privileges) cannot be renamed over, so it is moved
+ * aside first, which leaves a window of microseconds once.
+ */
+function publishDist({ distDir, stagingDir, retiredDir }) {
+  if (process.platform === 'win32') {
+    if (fs.existsSync(distDir)) {
+      fs.renameSync(distDir, retiredDir)
+    }
+    fs.renameSync(stagingDir, distDir)
+    return
+  }
+
+  const previous = liveTargetOf(distDir)
+  const liveName = `.dist-live-${process.pid}`
+  const linkPath = path.join(electronDir, `.dist-link-${process.pid}`)
+  fs.rmSync(path.join(electronDir, liveName), { recursive: true, force: true })
+  fs.renameSync(stagingDir, path.join(electronDir, liveName))
+  fs.rmSync(linkPath, { force: true })
+  fs.symlinkSync(liveName, linkPath)
+  if (previous === null && fs.existsSync(distDir)) {
+    fs.renameSync(distDir, retiredDir)
+  }
+  fs.renameSync(linkPath, distDir)
+  if (previous && previous !== liveName) {
+    fs.rmSync(path.join(electronDir, previous), { recursive: true, force: true })
+  }
+}
+
+/** `path.txt` is replaced by a rename: a plain write truncates it first, and a reader that lands
+ * between the truncate and the write sees an empty file. */
+function writePathFile(pathFile, platformPath) {
+  const pending = `${pathFile}.${process.pid}.tmp`
+  fs.writeFileSync(pending, platformPath)
+  fs.renameSync(pending, pathFile)
 }
 
 function main() {
@@ -333,20 +388,17 @@ function main() {
         fs.renameSync(typeDefinitionsPath, targetTypeDefinitionsPath)
       }
 
-      // Swap: two renames, so the window where `dist/` is absent is microseconds
-      // instead of the whole download+extract. `path.txt` is the commit marker and
-      // is written last — and never removed — so a reader either sees the previous
-      // install or the new one.
-      if (fs.existsSync(distDir)) {
-        fs.renameSync(distDir, retiredDir)
-      }
-      fs.renameSync(stagingDir, distDir)
-      fs.writeFileSync(pathFile, platformPath)
+      // `path.txt` is the commit marker and is written last, by rename, and never removed, so a
+      // reader either sees the previous install or the new one.
+      publishDist({ distDir, stagingDir, retiredDir })
+      writePathFile(pathFile, platformPath)
 
       console.log(`[electron] installed ${version} for ${platform}-${arch}: ${executablePath}`)
     } finally {
       fs.rmSync(stagingDir, { recursive: true, force: true })
       fs.rmSync(retiredDir, { recursive: true, force: true })
+      fs.rmSync(path.join(electronDir, `.dist-link-${process.pid}`), { force: true })
+      fs.rmSync(`${pathFile}.${process.pid}.tmp`, { force: true })
     }
   } finally {
     // `tempDir` is created before the lock, so it must be cleaned up on the

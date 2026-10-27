@@ -196,6 +196,33 @@ test(
 )
 
 test(
+  'a real dist/ directory from the previous layout is replaced and nothing is left behind',
+  { skip: unsupported },
+  async () => {
+    await withFixture(async ({ electronDir, install }) => {
+      const legacyExecutable = path.join(electronDir, 'dist', platformPath)
+      fs.mkdirSync(path.dirname(legacyExecutable), { recursive: true })
+      fs.writeFileSync(legacyExecutable, Buffer.alloc(16, POISONED_BYTE))
+      fs.writeFileSync(path.join(electronDir, 'path.txt'), platformPath)
+
+      const result = await settled(install())
+
+      assert.equal(result.code, 0, result.output)
+      assert.ok(readerSeesValidInstall(electronDir))
+      assert.equal(installedExecutableByte(electronDir), GENUINE_BYTE)
+      assert.deepEqual(
+        fs
+          .readdirSync(electronDir)
+          .filter((entry) => /^\.dist-(staging|retired|link)-/.test(entry)),
+        [],
+        'work directories were left behind'
+      )
+      assert.equal(fs.readdirSync(electronDir).filter((e) => e.startsWith('.dist-live-')).length, 1)
+    })
+  }
+)
+
+test(
   'concurrent installs are serialised instead of corrupting dist/',
   { skip: unsupported },
   async () => {
@@ -254,7 +281,7 @@ test('a failed download leaves the previous install intact', { skip: unsupported
       'lock file survived a failed install'
     )
     assert.deepEqual(
-      fs.readdirSync(electronDir).filter((entry) => entry.startsWith('.dist-')),
+      fs.readdirSync(electronDir).filter((entry) => /^\.dist-(staging|retired|link)-/.test(entry)),
       [],
       'staging directories were left behind'
     )
