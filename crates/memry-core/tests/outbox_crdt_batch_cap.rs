@@ -34,7 +34,6 @@ use serde_json::{Value as Json, json};
 use zeroize::Zeroizing;
 
 const SERVER_BODY_CEILING: usize = 8 * 1024 * 1024;
-const MIB: usize = 1024 * 1024;
 
 fn scratch_db() -> Db {
     let dir: PathBuf = tempfile::Builder::new()
