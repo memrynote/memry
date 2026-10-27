@@ -11,8 +11,11 @@ description: >-
   Two more outputs serve the merge queue (#3517). `electron` says whether the diff touches what
   the Electron Desktop CI heavy jobs protect; it is detected for PRs into feat/tauri-v2 (even
   with `full-ci`), the merge queue and pushes to feat/tauri-v2, and is true everywhere else.
-  `intel` says whether Intel macOS legs run: false on PRs into feat/tauri-v2 and in the merge
-  queue, true everywhere else, so main and the nightly run keep them.
+  `intel` says whether Intel macOS legs run: false on PRs into feat/tauri-v2, in the merge queue
+  and on a push to feat/tauri-v2; true everywhere else (main, workflow_dispatch), so main keeps
+  them and a dispatch is the way to run them for feat/tauri-v2. `macos` says whether Apple
+  Silicon macOS legs run: false only in the merge queue, where the macOS runner pool is the
+  bottleneck; PRs with `full-ci` and pushes to feat/tauri-v2 still run them.
 inputs:
   token:
     description: Token that can read the pull request's files
@@ -31,8 +34,11 @@ outputs:
     description: The diff can change Electron desktop behavior, so the Electron Desktop CI heavy jobs run
     value: ${{ steps.tier.outputs.electron }}
   intel:
-    description: Intel macOS legs run (false on PRs into feat/tauri-v2 and in the merge queue)
+    description: Intel macOS legs run (false on PRs into feat/tauri-v2, in the merge queue and on a push to feat/tauri-v2)
     value: ${{ steps.tier.outputs.intel }}
+  macos:
+    description: Apple Silicon macOS legs run (false in the merge queue only)
+    value: ${{ steps.tier.outputs.macos }}
 runs:
   using: composite
   steps:
@@ -53,15 +59,23 @@ runs:
       run: |
         set -euo pipefail
         emit() {
-          { echo "full=$1"; echo "tauri=$2"; echo "swift=$3"; echo "electron=$4"; echo "intel=$5"; } >> "$GITHUB_OUTPUT"
-          echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5"
+          { echo "full=$1"; echo "tauri=$2"; echo "swift=$3"; echo "electron=$4"; echo "intel=$5"; echo "macos=$6"; } >> "$GITHUB_OUTPUT"
+          echo "tier: full=$1 tauri=$2 swift=$3 electron=$4 intel=$5 macos=$6"
         }
 
-        # Intel Macs run on push, nightly and dispatch only; a PR into feat/tauri-v2 and the merge queue skip them.
+        # Intel Macs run on main and on workflow_dispatch only. A PR into feat/tauri-v2, the merge
+        # queue and a push to feat/tauri-v2 skip them (a scheduled run cannot target feat/tauri-v2:
+        # schedules fire from the default branch's workflow files).
         intel=true
-        if [ "$EVENT" = "merge_group" ] || { [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" = "feat/tauri-v2" ]; }; then
+        if [ "$EVENT" = "merge_group" ] \
+          || { [ "$EVENT" = "pull_request" ] && [ "$BASE_REF" = "feat/tauri-v2" ]; } \
+          || { [ "$EVENT" = "push" ] && [ "$REF" = "refs/heads/feat/tauri-v2" ]; }; then
           intel=false
         fi
+
+        # Apple Silicon Macs skip only the merge queue: the push that follows a merge runs them.
+        macos=true
+        if [ "$EVENT" = "merge_group" ]; then macos=false; fi
 
         # Changed files, for the path outputs. Other events (main, dispatch, PRs into main) are not path-gated.
         kind=none
@@ -92,14 +106,14 @@ runs:
         fi
 
         if [ "$EVENT" != "pull_request" ] || [ "$BASE_REF" != "feat/tauri-v2" ]; then
-          emit true true true "$electron" "$intel"; exit 0
+          emit true true true "$electron" "$intel" "$macos"; exit 0
         fi
         if [[ ",$LABELS," == *",full-ci,"* ]]; then
-          emit true true true "$electron" "$intel"; exit 0
+          emit true true true "$electron" "$intel" "$macos"; exit 0
         fi
 
         if [ "$listed" != true ]; then
-          emit false true true "$electron" "$intel"; exit 0
+          emit false true true "$electron" "$intel" "$macos"; exit 0
         fi
 
         # App behavior: the Tauri app and its Rust shells, everything the renderer bundles
@@ -117,4 +131,4 @@ runs:
         if printf '%s\n' "$files" | grep -Eqi '^(crates/memry-core/|apps/ios/|packages/swift/|\.github/workflows/rust-ci\.yml$)|uniffi'; then
           swift=true
         fi
-        emit false "$tauri" "$swift" "$electron" "$intel"
+        emit false "$tauri" "$swift" "$electron" "$intel" "$macos"

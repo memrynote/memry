@@ -23,6 +23,8 @@ pub mod shutdown;
 pub mod spell;
 pub mod startup;
 pub mod tray;
+#[cfg(feature = "update-probe")]
+pub mod update_probe;
 pub mod windows;
 
 use memry_desktop::launch_env::LaunchEnv;
@@ -132,6 +134,8 @@ fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
         memry_desktop::launch_timeline::LaunchPhase::WindowCreated,
     );
     menu::apply(app, false);
+    #[cfg(feature = "update-probe")]
+    update_probe::spawn();
     Ok(())
 }
 

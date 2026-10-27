@@ -1,5 +1,5 @@
+use std::sync::Mutex;
 use std::sync::atomic::AtomicUsize;
-use std::time::Instant;
 
 use super::*;
 
@@ -33,30 +33,75 @@ fn a_fast_call_returns_its_value() {
     assert_eq!(&**guarded.password("x").unwrap().unwrap(), b"pw");
 }
 
+/// A source whose first call blocks until the test releases it. The test waits on channels, never
+/// on the clock, so it holds however late the worker thread starts (on a loaded Windows runner the
+/// timeout can fire before the worker reaches the source).
+struct Stuck {
+    calls: AtomicUsize,
+    entered: Mutex<mpsc::Sender<()>>,
+    release: Mutex<mpsc::Receiver<()>>,
+}
+
+impl ChromiumKeySource for Stuck {
+    fn password(&self, _: &str) -> Result<Option<Zeroizing<Vec<u8>>>, KeySourceError> {
+        let call = self.calls.fetch_add(1, Ordering::SeqCst);
+        self.entered.lock().unwrap().send(()).unwrap();
+        if call == 0 {
+            self.release.lock().unwrap().recv().unwrap();
+        }
+        Ok(Some(Zeroizing::new(b"pw".to_vec())))
+    }
+
+    fn windows_key(
+        &self,
+        _: &ElectronProfile,
+    ) -> Result<Option<Zeroizing<[u8; 32]>>, KeySourceError> {
+        Ok(None)
+    }
+}
+
 #[test]
 fn a_stuck_call_times_out_and_blocks_new_calls_until_it_returns() {
+    let (entered_tx, entered_rx) = mpsc::channel();
+    let (release_tx, release_rx) = mpsc::channel();
     let guarded = Guarded::with_timeout(
-        Slow {
-            delay: Duration::from_millis(600),
+        Stuck {
             calls: AtomicUsize::new(0),
+            entered: Mutex::new(entered_tx),
+            release: Mutex::new(release_rx),
         },
-        Duration::from_millis(100),
+        Duration::from_millis(10),
     );
-    let start = Instant::now();
     assert!(
         matches!(guarded.password("x"), Err(KeySourceError::Failed(m)) if m.contains("timed out"))
     );
-    assert!(start.elapsed() < Duration::from_millis(500));
+    // The stuck call is inside the source now (the timeout may have fired before it got there).
+    entered_rx.recv().unwrap();
     // The latch is held: the next call fails at once and never reaches the inner source.
     assert!(
         matches!(guarded.password("x"), Err(KeySourceError::Failed(m)) if m.contains("pending"))
     );
     assert_eq!(guarded.inner.calls.load(Ordering::SeqCst), 1);
-    // The stuck call returns, the latch lifts, and a call goes through again.
-    std::thread::sleep(Duration::from_millis(700));
+    // The stuck call returns and the latch lifts (just after the source returns): a call is
+    // admitted again and reaches the source. It may itself time out if the worker starts late,
+    // so what counts is that it was admitted, not what it returned. A bounded number of
+    // attempts, not a time budget.
+    release_tx.send(()).unwrap();
+    let mut admitted = false;
+    for _ in 0..10_000_000 {
+        match guarded.password("x") {
+            Err(KeySourceError::Failed(m)) if m.contains("pending") => std::thread::yield_now(),
+            _ => {
+                admitted = true;
+                break;
+            }
+        }
+    }
     assert!(
-        matches!(guarded.password("x"), Err(KeySourceError::Failed(m)) if m.contains("timed out"))
+        admitted,
+        "the latch never lifted after the stuck call returned"
     );
+    entered_rx.recv().unwrap();
     assert_eq!(guarded.inner.calls.load(Ordering::SeqCst), 2);
 }
 

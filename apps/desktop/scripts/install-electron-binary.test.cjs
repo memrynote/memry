@@ -189,8 +189,39 @@ test(
       clearInterval(poll)
 
       assert.equal(reinstall.code, 0, reinstall.output)
+      // The previous live tree is gone and the new one is what `dist` points at.
+      const live = fs.readdirSync(electronDir).filter((entry) => entry.startsWith('.dist-live-'))
+      assert.equal(live.length, 1, `expected one live tree, found ${live}`)
+      assert.equal(fs.readlinkSync(path.join(electronDir, 'dist')), live[0])
       assert.ok(samples > 20, `expected a meaningful sample window, got ${samples}`)
       assert.equal(broken, 0, `reader saw a broken install in ${broken}/${samples} samples`)
+    })
+  }
+)
+
+test(
+  'a real dist/ directory from the previous layout is replaced and nothing is left behind',
+  { skip: unsupported },
+  async () => {
+    await withFixture(async ({ electronDir, install }) => {
+      const legacyExecutable = path.join(electronDir, 'dist', platformPath)
+      fs.mkdirSync(path.dirname(legacyExecutable), { recursive: true })
+      fs.writeFileSync(legacyExecutable, Buffer.alloc(16, POISONED_BYTE))
+      fs.writeFileSync(path.join(electronDir, 'path.txt'), platformPath)
+
+      const result = await settled(install())
+
+      assert.equal(result.code, 0, result.output)
+      assert.ok(readerSeesValidInstall(electronDir))
+      assert.equal(installedExecutableByte(electronDir), GENUINE_BYTE)
+      assert.deepEqual(
+        fs
+          .readdirSync(electronDir)
+          .filter((entry) => /^\.dist-(staging|retired|link)-/.test(entry)),
+        [],
+        'work directories were left behind'
+      )
+      assert.equal(fs.readdirSync(electronDir).filter((e) => e.startsWith('.dist-live-')).length, 1)
     })
   }
 )
@@ -254,7 +285,7 @@ test('a failed download leaves the previous install intact', { skip: unsupported
       'lock file survived a failed install'
     )
     assert.deepEqual(
-      fs.readdirSync(electronDir).filter((entry) => entry.startsWith('.dist-')),
+      fs.readdirSync(electronDir).filter((entry) => /^\.dist-(staging|retired|link)-/.test(entry)),
       [],
       'staging directories were left behind'
     )

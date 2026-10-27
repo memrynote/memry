@@ -49,7 +49,9 @@ const BUILD_HINT = 'Build it first: pnpm --filter @memry/desktop-tauri build:e2e
 const sleep = (/** @type {number} */ ms) => new Promise((done) => setTimeout(done, ms))
 
 export function defaultBinary() {
-  const name = process.platform === 'win32' ? 'memry-tauri.exe' : 'memry-tauri'
+  // The platform overlays (tauri.<os>.conf.json) set mainBinaryName, which renames the binary.
+  const names = { win32: 'Memrynote.exe', darwin: 'MemryNote' }
+  const name = names[process.platform] ?? 'memrynote'
   return resolve(APP_DIR, '../../crates/target/debug', name)
 }
 

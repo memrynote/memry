@@ -51,6 +51,8 @@ time = "0.3"
 # `name_key` composes to NFC before folding (chapter 12 §12.3), as desktop's
 # `String.prototype.normalize` does.
 unicode-normalization = "0.1.25"
+# Pinned with `vpk` (same version): the pack format and the client must agree.
+velopack = "=1.2.161"
 
 [profile.release]
 lto = true

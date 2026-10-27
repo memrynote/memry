@@ -23,6 +23,8 @@ path = "src/bin/export_bindings.rs"
 [features]
 # The WDIO driver plugins and the `e2e_*` test commands. Never part of a release build.
 e2e = ["dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio", "dep:arboard"]
+# Step 07 (#3524): rehearsal-only Velopack probe. Step 38 (#3555) replaces it with the real updater.
+update-probe = []
 
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
@@ -43,6 +45,7 @@ uuid = { workspace = true }
 # SIGINT and SIGTERM.
 tokio = { workspace = true, features = ["time", "signal", "sync"] }
 tracing = { workspace = true }
+velopack = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"
 tauri-plugin-opener = "2.7.2"

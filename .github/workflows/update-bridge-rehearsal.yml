@@ -1,0 +1,427 @@
+# Step 07 (#3524): update bridge rehearsal. This file also lives in memrynote/memry-update-rehearsal,
+# where the rehearsal-scoped signing secrets are set; every job checks out memrynote/memry. Builds and packs the Tauri scaffold with Velopack and
+# builds Electron rehearsal baselines whose update feed is fixed to the rehearsal repo. Uploads
+# workflow artifacts only, like publish-release.yml: Windows is signed on Kaan's Mac by
+# scripts/rehearsal/rehearse.mjs, which also writes the bridge feeds and publishes. Publishing to
+# memrynote/memry-update-rehearsal needs Kaan's explicit approval.
+name: Update Bridge Rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Rehearsal version, such as 2099.101.1
+        required: true
+      feed_repo:
+        description: Rehearsal feed repository
+        required: true
+        default: memrynote/memry-update-rehearsal
+      previous_tag:
+        description: Rehearsal tag whose full packages the deltas are built against (empty for the first pack)
+        required: false
+        default: ''
+      source_ref:
+        description: Branch or tag of memrynote/memry to build
+        required: false
+        default: feat/tauri-v2
+      electron_tag:
+        description: Production Electron tag to build rehearsal baselines from (empty to skip)
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-bridge-rehearsal
+  cancel-in-progress: false
+
+env:
+  CI: true
+  HUSKY: 0
+  NODE_OPTIONS: --max-old-space-size=4096
+  CARGO_TERM_COLOR: always
+  # Native modules are rebuilt once by the tag's build-packaged-app; skip the postinstall rebuild.
+  SKIP_ELECTRON_REBUILD: 1
+  VPK_VERSION: 1.2.161
+  MACOSX_DEPLOYMENT_TARGET: '13.0'
+  MEMRY_UPDATE_FEED_URL: https://github.com/${{ inputs.feed_repo }}
+  # Inputs reach scripts through the environment, never by interpolation into the script text.
+  # The `validate` job rejects anything that is not a rehearsal value.
+  VERSION: ${{ inputs.version }}
+  FEED_REPO: ${{ inputs.feed_repo }}
+  PREVIOUS_TAG: ${{ inputs.previous_tag }}
+  ELECTRON_TAG: ${{ inputs.electron_tag }}
+
+jobs:
+  validate:
+    name: Validate inputs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check the rehearsal inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^2099\.[0-9]{3,4}\.[0-9]+$ ]] || { echo "::error::version must look like 2099.101.1"; exit 1; }
+          [ "$FEED_REPO" = memrynote/memry-update-rehearsal ] || { echo "::error::feed_repo must be memrynote/memry-update-rehearsal"; exit 1; }
+          [ -z "$PREVIOUS_TAG" ] || [[ "$PREVIOUS_TAG" =~ ^rehearsal-2099\.[0-9]{3,4}\.[0-9]+$ ]] || { echo "::error::previous_tag must be a rehearsal tag"; exit 1; }
+          [ -z "$ELECTRON_TAG" ] || [[ "$ELECTRON_TAG" =~ ^v[0-9][0-9A-Za-z._-]*$ ]] || { echo "::error::electron_tag must be a production tag such as v2026-10-15"; exit 1; }
+
+  windows:
+    needs: validate
+    name: Windows payload (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: win-x64, os: windows-2022, triple: x86_64-pc-windows-msvc }
+          - { target: win-arm64, os: windows-11-arm, triple: aarch64-pc-windows-msvc }
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+          targets: ${{ matrix.triple }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --no-bundle --target ${{ matrix.triple }} -- --features update-probe
+      - name: Stage pack dir
+        run: node scripts/release/stage-payload.mjs win ${{ matrix.triple }} pack
+      - name: Zip pack dir
+        shell: pwsh
+        run: Compress-Archive -Path pack/* -DestinationPath "MemryNote-$env:VERSION-${{ matrix.target }}-payload.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-${{ matrix.target }}-payload
+          path: MemryNote-${{ inputs.version }}-${{ matrix.target }}-payload.zip
+          if-no-files-found: error
+
+  macos:
+    needs: validate
+    name: macOS pack (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: osx-arm64, os: macos-15, triple: aarch64-apple-darwin, arch: arm64 }
+          - { target: osx-x64, os: macos-15-intel, triple: x86_64-apple-darwin, arch: x64 }
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+          targets: ${{ matrix.triple }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Install vpk
+        run: |
+          dotnet tool update -g vpk --version "$VPK_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
+      - name: Build bundle (unsigned)
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --target ${{ matrix.triple }} --bundles app -- --features update-probe
+      - name: Import signing identity
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          keychain="$RUNNER_TEMP/rehearsal.keychain-db"
+          export KC_UNLOCK; KC_UNLOCK="$(uuidgen)"
+          security create-keychain -p "$KC_UNLOCK" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$KC_UNLOCK" "$keychain"
+          printf '%s' "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KC_UNLOCK" "$keychain"
+          security list-keychains -d user -s "$keychain" login.keychain-db
+          identity="$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)"
+          test -n "$identity"
+          xcrun notarytool store-credentials memry-notary --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" --keychain "$keychain"
+          { echo "KEYCHAIN=$keychain"; echo "IDENTITY=$identity"; } >> "$GITHUB_ENV"
+      - name: Sign nested code and the bundle
+        run: |
+          app="$(ls -d crates/target/${{ matrix.triple }}/release/bundle/macos/*.app)"
+          # Tauri bundles every [[bin]] of the package; export-bindings is a dev tool.
+          rm -f "$app/Contents/MacOS/export-bindings"
+          scripts/release/sign-macos-bundle.sh "$app" "$IDENTITY" apps/desktop-tauri/src-tauri/entitlements.mac.plist "$KEYCHAIN"
+          mkdir -p pack && rm -rf pack/MemryNote.app && cp -R "$app" pack/MemryNote.app
+      - name: Fetch previous full packages
+        if: inputs.previous_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "$PREVIOUS_TAG" --repo "$FEED_REPO" -p '*${{ matrix.target }}-full.nupkg' -D out
+      - name: Pack, sign, notarize
+        run: |
+          mkdir -p out
+          delta=BestSpeed; [ -z "$PREVIOUS_TAG" ] && delta=None
+          # vpk only accepts a .entitlements extension.
+          cp apps/desktop-tauri/src-tauri/entitlements.mac.plist "$RUNNER_TEMP/MemryNote.entitlements"
+          # Notarization is Accepted before `stapler staple` runs. Staple fetches the ticket from
+          # api.apple-cloudkit.com, and a dropped connection there (Error 68, NSURLErrorDomain
+          # -1005, run 40194565979 osx-x64) fails the whole pack although the build is fine.
+          # vpk does not retry, so pack again: notarizing the same bytes is idempotent.
+          for attempt in 1 2 3; do
+            if node scripts/release/vpk-pack.mjs ${{ matrix.target }} --version "$VERSION" \
+              --pack-dir pack/MemryNote.app --output-dir out --delta "$delta" \
+              --identity "$IDENTITY" --entitlements "$RUNNER_TEMP/MemryNote.entitlements" \
+              --notary-profile memry-notary --keychain "$KEYCHAIN"; then
+              exit 0
+            fi
+            echo "::warning::vpk pack attempt $attempt failed"
+            sleep 20
+          done
+          exit 1
+      - name: Entitlements and Info.plist of the packed bundle
+        run: |
+          unzip -q -o out/MemryNote-${{ matrix.target }}-Portable.zip -d inspect
+          codesign -d --entitlements - inspect/MemryNote.app
+          plutil -p inspect/MemryNote.app/Contents/Info.plist
+          lipo -archs inspect/MemryNote.app/Contents/MacOS/MemryNote
+          spctl -a -vv inspect/MemryNote.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-${{ matrix.target }}
+          path: out/
+          if-no-files-found: error
+
+  linux:
+    needs: validate
+    name: Linux pack
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.98.1'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: crates
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev squashfs-tools libfuse2
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+      - name: Install vpk
+        run: |
+          dotnet tool update -g vpk --version "$VPK_VERSION"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          "$HOME/.dotnet/tools/vpk" -h | head -3 | grep -F "Velopack CLI $VPK_VERSION"
+      - name: Build AppImage
+        run: pnpm --filter @memry/desktop-tauri exec tauri build --bundles appimage -- --features update-probe
+      - name: Extract AppDir
+        run: |
+          appimage="$(ls crates/target/release/bundle/appimage/*.AppImage)"
+          chmod +x "$appimage"
+          "$appimage" --appimage-extract
+          rm -rf MemryNote.AppDir && mv squashfs-root MemryNote.AppDir
+          # Tauri bundles every [[bin]] of the package; export-bindings is a dev tool.
+          rm -f MemryNote.AppDir/usr/bin/export-bindings
+          find MemryNote.AppDir -name '*.desktop' -exec grep -H '^Categories=' {} +
+      - name: Fetch previous full packages
+        if: inputs.previous_tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release download "$PREVIOUS_TAG" --repo "$FEED_REPO" -p '*linux-full.nupkg' -D out
+      - name: Pack
+        run: |
+          mkdir -p out
+          delta=BestSpeed; [ -z "$PREVIOUS_TAG" ] && delta=None
+          node scripts/release/vpk-pack.mjs linux-x64 --version "$VERSION" \
+            --pack-dir MemryNote.AppDir --output-dir out --delta "$delta"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rehearsal-linux-x64
+          path: out/
+          if-no-files-found: error
+
+  build-electron-rehearsal:
+    needs: validate
+    name: Electron rehearsal ${{ inputs.electron_tag }} (${{ matrix.os }})
+    if: inputs.electron_tag != ''
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel, windows-2022, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Build from the tag with the rehearsal feed
+        env:
+          CSC_LINK: ${{ runner.os == 'macOS' && secrets.MACOS_CERTIFICATE_P12 || '' }}
+          CSC_KEY_PASSWORD: ${{ runner.os == 'macOS' && secrets.MACOS_CERTIFICATE_PASSWORD || '' }}
+          APPLE_ID: ${{ runner.os == 'macOS' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && secrets.APPLE_TEAM_ID || '' }}
+        shell: pwsh
+        run: node scripts/rehearsal/build-electron-rehearsal.mjs "$env:ELECTRON_TAG" "$env:FEED_REPO" --keep
+      - name: Collect artifacts
+        shell: bash
+        run: |
+          out="electron-out"; mkdir -p "$out"
+          dist=".worktrees/electron-rehearsal-$ELECTRON_TAG/apps/desktop/dist"
+          case "$RUNNER_OS" in
+            macOS) cp "$dist"/*.zip "$out"/ ;;
+            Windows) cp "$dist"/*-setup.exe "$out"/ && cp -R "$dist/win-unpacked" "$out"/ ;;
+            Linux) cp "$dist"/*.AppImage "$out"/ ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MemryNote-${{ inputs.electron_tag }}-rehearsal-${{ matrix.os }}
+          path: electron-out/
+          if-no-files-found: error
+
+  # Dispatch after the rehearsal release for `version` is published: the Electron rehearsal build
+  # updates itself into the Tauri pack through the bridge feed.
+  proof-macos-x64:
+    name: M2 proof (macOS x64)
+    needs: [validate, build-electron-rehearsal]
+    if: ${{ !cancelled() && needs.validate.result == 'success' && inputs.electron_tag != '' }}
+    runs-on: macos-15-intel
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v4
+        with:
+          name: MemryNote-${{ inputs.electron_tag }}-rehearsal-macos-15-intel
+          path: electron
+      - name: Install the Electron rehearsal build
+        run: |
+          set -euo pipefail
+          ditto -x -k electron/*.zip /Applications
+          app=/Applications/MemryNote.app
+          codesign -dv "$app" 2>&1 | grep -E 'Identifier=com.memrynote.memry|TeamIdentifier'
+          spctl -a -vv "$app" 2>&1 | grep 'Notarized Developer ID'
+          cp -R "$app" "$RUNNER_TEMP/old.app"
+          mkdir -p "$HOME/Library/Application Support/MemryNote"
+          printf '00000000-0000-4000-8000-000000000000' > "$HOME/Library/Application Support/MemryNote/.updaterId"
+      - name: Designated requirement of the update bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "rehearsal-$VERSION" --repo "$FEED_REPO" -p "MemryNote-$VERSION-x64.zip" -D "$RUNNER_TEMP/feed"
+          ditto -x -k "$RUNNER_TEMP/feed/MemryNote-$VERSION-x64.zip" "$RUNNER_TEMP/feed/new"
+          scripts/release/check-mac-designated-requirement.sh "$RUNNER_TEMP/old.app" "$RUNNER_TEMP/feed/new/MemryNote.app"
+          spctl -a -vv "$RUNNER_TEMP/feed/new/MemryNote.app" 2>&1 | grep 'Notarized Developer ID'
+          lipo -archs "$RUNNER_TEMP/feed/new/MemryNote.app/Contents/MacOS/MemryNote" | grep -x x86_64
+      - name: Update through Squirrel.Mac
+        run: |
+          set -uo pipefail
+          open -a /Applications/MemryNote.app --args --remote-debugging-port=9222
+          sleep 30
+          node scripts/rehearsal/drive-electron-update.mjs 9222 --timeout-s 900
+          for i in $(seq 1 60); do
+            [ -f /Applications/MemryNote.app/Contents/Resources/sq.version ] && break
+            sleep 5
+          done
+          sleep 30
+          ls -la /Applications/MemryNote.app/Contents/Resources/sq.version
+          grep -E '<version>|<channel>' /Applications/MemryNote.app/Contents/Resources/sq.version
+          lipo -archs /Applications/MemryNote.app/Contents/MacOS/MemryNote
+          codesign -dv /Applications/MemryNote.app 2>&1 | grep -E 'Identifier|TeamIdentifier'
+          find "$HOME/Library/Logs" -name main.log -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
+          pgrep -fl MemryNote || true
+
+  proof-linux:
+    name: L1 proof (Linux AppImage)
+    needs: [validate, build-electron-rehearsal]
+    if: ${{ !cancelled() && needs.validate.result == 'success' && inputs.electron_tag != '' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          repository: memrynote/memry
+          ref: ${{ inputs.source_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@v4
+        with:
+          name: MemryNote-${{ inputs.electron_tag }}-rehearsal-ubuntu-24.04
+          path: electron
+      - name: Update the Electron AppImage into the Tauri scaffold
+        run: |
+          set -uo pipefail
+          sudo apt-get update && sudo apt-get install -y libfuse2t64 xvfb libwebkit2gtk-4.1-0 libayatana-appindicator3-1 || sudo apt-get install -y libfuse2 xvfb
+          appimage="$(ls "$PWD"/electron/*.AppImage)"
+          chmod +x "$appimage"
+          mkdir -p "$HOME/.config/MemryNote"
+          printf '00000000-0000-4000-8000-000000000000' > "$HOME/.config/MemryNote/.updaterId"
+          sha256sum "$appimage" | tee "$RUNNER_TEMP/before.sha"
+          export APPIMAGE="$appimage"
+          xvfb-run -a "$appimage" --no-sandbox --remote-debugging-port=9222 > "$RUNNER_TEMP/electron.log" 2>&1 &
+          sleep 40
+          node scripts/rehearsal/drive-electron-update.mjs 9222 --timeout-s 900
+          sleep 60
+          ls -la electron
+          # AppImageUpdater replaces the file with the update's own name.
+          new="$(ls "$PWD"/electron/MemryNote-$VERSION-x86_64.AppImage)"
+          sha256sum "$new"
+          chmod +x "$new"
+          (cd "$RUNNER_TEMP" && "$new" --appimage-extract usr/bin/memrynote >/dev/null && ls -la squashfs-root/usr/bin/memrynote && echo "the replacement is the Tauri AppImage")
+          pgrep -fl memrynote || xvfb-run -a "$new" > "$RUNNER_TEMP/tauri.log" 2>&1 &
+          sleep 45
+          find "$HOME" -name main.log -newer "$RUNNER_TEMP/before.sha" -exec sh -c 'echo "== $1"; tail -20 "$1"' _ {} \;
+          tail -20 "$RUNNER_TEMP/electron.log"
