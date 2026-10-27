@@ -3395,6 +3395,9 @@ version = "0.0.0"
 dependencies = [
  "arboard",
  "memry-desktop",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "rustls",
  "serde",
  "serde_json",
@@ -6221,6 +6224,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

@@ -79,3 +79,11 @@ pub struct LocaleChangedEvent {
 pub struct SettingsOpenSectionEvent {
     pub section: String,
 }
+
+/// Main asks a window to write its unsaved edits (`flush-requested-event`); the window answers with
+/// the `flush_done` command and the same id.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct FlushRequestedEvent {
+    pub request_id: String,
+}

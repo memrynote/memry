@@ -27,6 +27,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::diagnostics::diagnostics_send_report,
             // feedback
             crate::commands::telemetry::feedback_submit,
+            // flush
+            crate::commands::shell_integrations::flush_done,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -64,6 +66,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_switch,
         ])
         .events(collect_events![
+            // flush
+            crate::events::FlushRequestedEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings
