@@ -25,6 +25,8 @@ test('the shell publishes its globals to the main frame', async ({ page }) => {
 test('a double click on a drag region toggles maximize, and one on a button does not', async ({
   page
 }) => {
+  // The Linux runner is Xvfb without a window manager, and nothing maximizes without one.
+  test.skip(process.platform === 'linux', 'no window manager to maximize')
   await appReady(page)
   expect(await isMaximized(page)).toBe(false)
 
