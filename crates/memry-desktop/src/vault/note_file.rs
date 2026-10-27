@@ -9,7 +9,8 @@
 //! no mtime change, no watcher event, no sync item for a no-op save.
 
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use memry_core::markdown::frontmatter::{
     FrontmatterSplit, ParsedMarkdownNote, YamlError, YamlMap, parse_markdown_note,
@@ -100,12 +101,33 @@ pub fn hash_file(vault: &Path, rel: &str) -> Result<Option<String>, NoteFileErro
     Ok(Some(hash_reader(file)?.0))
 }
 
-fn target(vault: &Path, rel: &str) -> Result<std::path::PathBuf, NoteFileError> {
+fn target(vault: &Path, rel: &str) -> Result<(PathBuf, Resolution), NoteFileError> {
     match resolve_vault_file(vault, rel)? {
-        Resolution::Inside(path) => Ok(path),
+        Resolution::Inside(path) => Ok((path.clone(), Resolution::Inside(path))),
         // A path linked outside the vault is never written over.
         Resolution::Outside => Err(OpenError::Outside.into()),
-        Resolution::Missing => Ok(vault.join(rel)),
+        Resolution::Missing => Ok((vault.join(rel), Resolution::Missing)),
+    }
+}
+
+/// The check that runs once more right before the rename: the path must still resolve inside
+/// the vault, and to the file the write was aimed at. A folder or file swapped for a link in
+/// the meantime stops the write instead of landing outside.
+fn still_contained<'a>(
+    vault: &'a Path,
+    rel: &'a str,
+    path: &'a Path,
+    aimed_at: Resolution,
+    between: &'a mut dyn FnMut(),
+) -> impl FnMut() -> std::io::Result<()> + 'a {
+    move || {
+        between();
+        let outside = || std::io::Error::other("the target resolves outside the vault");
+        match (resolve_vault_file(vault, rel)?, &aimed_at) {
+            (Resolution::Outside, _) => Err(outside()),
+            (Resolution::Inside(now), Resolution::Inside(_)) if now != path => Err(outside()),
+            _ => Ok(()),
+        }
     }
 }
 
@@ -113,12 +135,14 @@ fn write_if_changed(
     vault: &Path,
     rel: &str,
     output: String,
+    between: &mut dyn FnMut(),
 ) -> Result<WriteOutcome, NoteFileError> {
-    let path = target(vault, rel)?;
+    let (path, aimed_at) = target(vault, rel)?;
     if read_bytes(vault, rel)?.is_some_and(|existing| existing == output.as_bytes()) {
         return Ok(WriteOutcome::Unchanged);
     }
-    fs_atomic::atomic_write(&path, output.as_bytes())?;
+    let mut check = still_contained(vault, rel, &path, aimed_at, between);
+    fs_atomic::atomic_write_checked(&path, output.as_bytes(), &default_delays(), &mut check)?;
     Ok(WriteOutcome::Written)
 }
 
@@ -131,22 +155,58 @@ pub fn write_note(
     content: &str,
     frontmatter_edited: bool,
 ) -> Result<WriteOutcome, NoteFileError> {
-    let output = serialize_parsed_markdown_note(parsed, content, frontmatter_edited)?;
-    write_if_changed(vault, rel, output)
+    write_note_checked(vault, rel, parsed, content, frontmatter_edited, &mut || {})
 }
 
-/// Creates a new note file; an existing file at the path is never replaced.
+/// [`write_note`] with a hook that runs after the temp file is written and before the
+/// containment re-check, so a test can swap a folder for a link in that window.
+#[doc(hidden)]
+pub fn write_note_checked(
+    vault: &Path,
+    rel: &str,
+    parsed: &ParsedMarkdownNote,
+    content: &str,
+    frontmatter_edited: bool,
+    between: &mut dyn FnMut(),
+) -> Result<WriteOutcome, NoteFileError> {
+    let output = serialize_parsed_markdown_note(parsed, content, frontmatter_edited)?;
+    write_if_changed(vault, rel, output, between)
+}
+
+/// Creates a new note file; a file at the path, even one that appears while this runs, is
+/// never replaced.
 pub fn write_new_note(
     vault: &Path,
     rel: &str,
     frontmatter: &YamlMap,
     content: &str,
 ) -> Result<(), NoteFileError> {
+    write_new_note_checked(vault, rel, frontmatter, content, &mut || {})
+}
+
+/// [`write_new_note`] with a hook that runs after the temp file is written, so a test can
+/// create the target in the window a check-then-write would lose.
+#[doc(hidden)]
+pub fn write_new_note_checked(
+    vault: &Path,
+    rel: &str,
+    frontmatter: &YamlMap,
+    content: &str,
+    between: &mut dyn FnMut(),
+) -> Result<(), NoteFileError> {
     let output = write_markdown_note(frontmatter, content)?;
-    let path = target(vault, rel)?;
-    if path.symlink_metadata().is_ok() {
-        return Err(NoteFileError::AlreadyExists);
-    }
-    fs_atomic::atomic_write(&path, output.as_bytes())?;
-    Ok(())
+    let (path, aimed_at) = target(vault, rel)?;
+    let mut check = still_contained(vault, rel, &path, aimed_at, between);
+    fs_atomic::atomic_create_checked(&path, output.as_bytes(), &default_delays(), &mut check)
+        .map_err(|err| {
+            if err.already_exists() {
+                NoteFileError::AlreadyExists
+            } else {
+                err.into()
+            }
+        })
+}
+
+fn default_delays() -> [Duration; 3] {
+    fs_atomic::RETRY_DELAYS_MS.map(Duration::from_millis)
 }

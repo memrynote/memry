@@ -94,3 +94,27 @@ fn the_key_is_nfc_then_lowercase() {
     assert_eq!(folded_key("Cafe\u{301}"), "caf\u{e9}");
     assert_eq!(folded_key("A/B"), "a/b");
 }
+
+#[test]
+fn rows_that_already_collide_stay_in_the_index_and_removing_one_never_evicts_the_other() {
+    let (_dir, files) = vault();
+    // The table accepts both (it compares bytes): a vault copied from a case-sensitive volume.
+    files.upsert_stat(stat("n1", "Note.md")).unwrap();
+    files.upsert_stat(stat("n2", "note.md")).unwrap();
+    let mut index = PathIndex::load(&files).unwrap();
+    assert_eq!(index.len(), 2, "both notes are known");
+    assert_eq!(index.collisions().len(), 1);
+    assert_eq!(index.collisions()[0].note_ids, ["n1", "n2"]);
+
+    // A third note is refused whichever of the two is asked about.
+    assert!(index.check("n3", "NOTE.md").is_err());
+    index.remove_note("n1");
+    let still = index
+        .check("n3", "NOTE.md")
+        .expect_err("n2 still holds the key");
+    assert_eq!(still.existing_note_id, "n2");
+    assert!(index.collisions().is_empty());
+    // And removing a note that was never indexed touches nothing.
+    index.remove_note("ghost");
+    assert_eq!(index.len(), 1);
+}

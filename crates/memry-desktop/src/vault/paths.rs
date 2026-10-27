@@ -98,19 +98,75 @@ pub fn sanitize_filename(filename: &str) -> String {
     if sanitized.is_empty() {
         return "untitled".to_owned();
     }
+    truncate_utf16(sanitized, MAX_FILENAME_UTF16).to_owned()
+}
+
+/// The longest prefix of `text` of at most `max` UTF-16 units, cut between characters.
+fn truncate_utf16(text: &str, max: usize) -> &str {
     let mut units = 0;
     let mut end = 0;
-    for (index, c) in sanitized.char_indices() {
+    for (index, c) in text.char_indices() {
         units += c.len_utf16();
-        if units > MAX_FILENAME_UTF16 {
+        if units > max {
             break;
         }
         end = index + c.len_utf8();
     }
-    sanitized[..end].to_owned()
+    &text[..end]
 }
 
-/// `generateNotePath`. The folder is joined as given (`..` collapses): the caller checks
+/// The name of a **new** file for `title`: [`sanitize_filename`] (Electron's rule, pinned by
+/// vectors) plus what Windows needs of a name that did not exist before:
+/// - control characters are dropped (the rule already turns white space into spaces);
+/// - dots and spaces at the end go, because Windows strips them and two names become one;
+/// - a reserved device name (`CON`, `NUL`, `COM1` ... with or without an extension) gets a
+///   `_` after its base, because `nul.md` opens the device on Windows.
+///
+/// A file that already exists keeps its name: nothing renames existing files through this.
+pub fn sanitize_new_filename(title: &str) -> String {
+    let without_controls: String = title
+        .chars()
+        .filter(|c| !c.is_control() || is_js_space(*c))
+        .collect();
+    let name = sanitize_filename(&without_controls);
+    let name = name.trim_end_matches(['.', ' ']);
+    if name.is_empty() {
+        return "untitled".to_owned();
+    }
+    let base_end = name.find('.').unwrap_or(name.len());
+    let (base, rest) = name.split_at(base_end);
+    let hardened = if is_reserved_windows_name(base.trim_end_matches(' ')) {
+        format!("{base}_{rest}")
+    } else {
+        name.to_owned()
+    };
+    truncate_utf16(&hardened, MAX_FILENAME_UTF16).to_owned()
+}
+
+fn is_reserved_windows_name(base: &str) -> bool {
+    let upper = base.to_uppercase();
+    matches!(upper.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ["COM", "LPT"].iter().any(|device| {
+            upper.strip_prefix(device).is_some_and(|digit| {
+                matches!(
+                    digit,
+                    "1" | "2"
+                        | "3"
+                        | "4"
+                        | "5"
+                        | "6"
+                        | "7"
+                        | "8"
+                        | "9"
+                        | "\u{b9}"
+                        | "\u{b2}"
+                        | "\u{b3}"
+                )
+            })
+        })
+}
+
+/// `generateNotePath`, for a new note (see [`sanitize_new_filename`]). The folder is joined as given (`..` collapses): the caller checks
 /// that the result stays inside the vault.
 pub fn generate_note_path(notes_dir: &Path, title: &str, folder: Option<&str>) -> PathBuf {
     generate_file_path(notes_dir, title, "md", folder)
@@ -123,7 +179,7 @@ pub fn generate_file_path(
     extension: &str,
     folder: Option<&str>,
 ) -> PathBuf {
-    let filename = format!("{}.{extension}", sanitize_filename(title));
+    let filename = format!("{}.{extension}", sanitize_new_filename(title));
     let mut path = notes_dir.to_path_buf();
     if let Some(folder) = folder.filter(|f| !f.is_empty()) {
         path.push(folder);
@@ -139,22 +195,29 @@ fn js_ext_split(file_name: &str) -> (&str, &str) {
     }
 }
 
-/// `generateUniquePath`: `base` when nothing is there, else the first of `<name> 1<ext>`,
-/// `<name> 2<ext>`, and so on. A dangling link counts as taken, so a new file is never
-/// created through it.
-pub fn generate_unique_path(base: &Path) -> PathBuf {
-    let taken = |p: &Path| p.symlink_metadata().is_ok();
-    if !taken(base) {
-        return base.to_path_buf();
-    }
-    let dir = base.parent().unwrap_or_else(|| Path::new(""));
+/// `base`, then `<name> 1<ext>`, `<name> 2<ext>`, ... without looking at the file system.
+pub fn unique_candidates(base: &Path) -> impl Iterator<Item = PathBuf> {
+    let dir = base.parent().unwrap_or_else(|| Path::new("")).to_path_buf();
     let file_name = base
         .file_name()
         .map(|n| n.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let (name, ext) = js_ext_split(&file_name);
-    (1u64..)
-        .map(|counter| dir.join(format!("{name} {counter}{ext}")))
-        .find(|candidate| !taken(candidate))
+    let (name, ext) = {
+        let (name, ext) = js_ext_split(&file_name);
+        (name.to_owned(), ext.to_owned())
+    };
+    std::iter::once(base.to_path_buf())
+        .chain((1u64..).map(move |counter| dir.join(format!("{name} {counter}{ext}"))))
+}
+
+/// `generateUniquePath`: `base` when nothing is there, else the first of `<name> 1<ext>`,
+/// `<name> 2<ext>`, and so on. A dangling link counts as taken.
+///
+/// This is a suggestion, not a reservation: another process can create the file before the
+/// caller does. A caller that writes the file uses [`super::fs_atomic::create_unique`], which
+/// claims the name in the same step.
+pub fn generate_unique_path(base: &Path) -> PathBuf {
+    unique_candidates(base)
+        .find(|candidate| candidate.symlink_metadata().is_err())
         .expect("a free name exists")
 }

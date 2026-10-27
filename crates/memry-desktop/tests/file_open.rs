@@ -5,7 +5,9 @@ use std::fs;
 use std::io::Read;
 use std::path::Path;
 
-use memry_desktop::shell::file_open::{OpenError, Resolution, open_under_root, resolve_under_root};
+use memry_desktop::shell::file_open::{
+    LinkPolicy, OpenError, Resolution, open_under_root, open_under_root_with, resolve_under_root,
+};
 
 struct Dirs {
     _tmp: tempfile::TempDir,
@@ -179,7 +181,12 @@ mod links {
             symlink(&outside, &path).unwrap();
         };
         assert!(matches!(
-            open_checked(&d.vault, "notes/a.md", &mut swap),
+            open_checked(
+                &d.vault,
+                "notes/a.md",
+                LinkPolicy::RejectHardLinks,
+                &mut swap
+            ),
             Err(OpenError::Outside)
         ));
     }
@@ -199,7 +206,15 @@ mod links {
             swaps.set(swaps.get() + 1);
         };
         assert_eq!(
-            text(open_checked(&d.vault, "notes/a.md", &mut once).unwrap()),
+            text(
+                open_checked(
+                    &d.vault,
+                    "notes/a.md",
+                    LinkPolicy::RejectHardLinks,
+                    &mut once
+                )
+                .unwrap()
+            ),
             "replacement"
         );
         assert_eq!(swaps.get(), 2);
@@ -212,11 +227,62 @@ mod links {
             fs::rename(d.vault.join("notes/tmp"), &path).unwrap();
         };
         assert!(matches!(
-            open_checked(&d.vault, "notes/a.md", &mut always),
+            open_checked(
+                &d.vault,
+                "notes/a.md",
+                LinkPolicy::RejectHardLinks,
+                &mut always
+            ),
             Err(OpenError::KeptChanging)
         ));
         assert_eq!(count.get(), 3, "three attempts");
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn a_file_swapped_for_a_fifo_between_the_open_and_the_recheck_never_blocks() {
+    let d = dirs();
+    let vault = d.vault.clone();
+    let mut swap = move || {
+        let path = vault.join("notes/a.md");
+        fs::remove_file(&path).unwrap();
+        let status = std::process::Command::new("mkfifo")
+            .arg(&path)
+            .status()
+            .unwrap();
+        assert!(status.success());
+    };
+    let root = d.vault.clone();
+    let (tx, rx) = std::sync::mpsc::channel();
+    // A blocking open never returns, so the call runs on its own thread.
+    std::thread::spawn(move || {
+        let result = memry_desktop::shell::file_open::open_checked(
+            &root,
+            "notes/a.md",
+            LinkPolicy::RejectHardLinks,
+            &mut swap,
+        );
+        let _ = tx.send(result.map(|_| ()));
+    });
+    let outcome = rx
+        .recv_timeout(std::time::Duration::from_secs(10))
+        .expect("the open must not block on a FIFO");
+    assert!(matches!(outcome, Err(OpenError::NotRegular)), "{outcome:?}");
+}
+
+#[test]
+fn a_file_with_a_second_hard_link_is_refused_unless_the_caller_allows_it() {
+    let d = dirs();
+    fs::hard_link(d.vault.join("notes/a.md"), d.vault.join("notes/alias.md")).unwrap();
+    for rel in ["notes/a.md", "notes/alias.md"] {
+        assert!(
+            matches!(open_under_root(&d.vault, rel), Err(OpenError::HardLinked)),
+            "{rel}"
+        );
+    }
+    let file = open_under_root_with(&d.vault, "notes/alias.md", LinkPolicy::Allow).unwrap();
+    assert_eq!(text(file), "inside");
 }
 
 #[cfg(windows)]

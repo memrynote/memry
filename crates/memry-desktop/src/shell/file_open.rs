@@ -19,7 +19,8 @@
 //!    over the note, so on a mismatch the open is retried, three times, then
 //!    [`OpenError::KeptChanging`].
 //! 4. Only a regular file is returned. A FIFO or a device named like a note never blocks or
-//!    reads.
+//!    reads, including when one is swapped in between the open and the re-check.
+//! 5. A file with more than one hard link is refused unless the caller says [`LinkPolicy::Allow`].
 
 use std::fs::{self, File, OpenOptions};
 use std::io;
@@ -46,6 +47,8 @@ pub enum OpenError {
     KeptChanging,
     #[error("not a regular file")]
     NotRegular,
+    #[error("file has more than one hard link")]
+    HardLinked,
     #[error("{0}")]
     Io(#[from] io::Error),
 }
@@ -99,17 +102,38 @@ pub fn resolve_under_root(root: &Path, rel: &str) -> io::Result<Resolution> {
     }
 }
 
-/// Opens the file `rel` names under `root` for reading, or `None` when it does not exist.
-pub fn open_under_root(root: &Path, rel: &str) -> Result<Option<File>, OpenError> {
-    open_checked(root, rel, &mut || {})
+/// What to do with a file that has more than one hard link.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LinkPolicy {
+    /// Refuse it. A hard link is a second name for a file the vault tier did not put under
+    /// the root: containment cannot be checked by path, and a save that renames over it
+    /// would quietly split the two names. The default; logged without the path.
+    RejectHardLinks,
+    /// Serve it. For a folder that deliberately holds linked files (deduplicated attachments).
+    Allow,
 }
 
-/// `open_under_root` with a hook that runs between the open and the re-check, so a test can
-/// swap the file in that window.
+/// Opens the file `rel` names under `root` for reading, or `None` when it does not exist.
+/// Refuses a file with more than one hard link ([`LinkPolicy::RejectHardLinks`]).
+pub fn open_under_root(root: &Path, rel: &str) -> Result<Option<File>, OpenError> {
+    open_under_root_with(root, rel, LinkPolicy::RejectHardLinks)
+}
+
+pub fn open_under_root_with(
+    root: &Path,
+    rel: &str,
+    links: LinkPolicy,
+) -> Result<Option<File>, OpenError> {
+    open_checked(root, rel, links, &mut || {})
+}
+
+/// `open_under_root_with` and a hook that runs between the open and the re-check, so a test
+/// can swap the file in that window.
 #[doc(hidden)]
 pub fn open_checked(
     root: &Path,
     rel: &str,
+    links: LinkPolicy,
     between: &mut dyn FnMut(),
 ) -> Result<Option<File>, OpenError> {
     for attempt in 1..=REPLACED_RETRIES {
@@ -127,12 +151,20 @@ pub fn open_checked(
             return Err(OpenError::NotRegular);
         }
         between();
-        let opened = file_id(&file)?;
+        let (opened, link_count) = file_identity(&file)?;
+        if link_count > 1 && links == LinkPolicy::RejectHardLinks {
+            tracing::warn!(
+                scope = "file_open",
+                "refusing a file with {link_count} hard links"
+            );
+            return Err(OpenError::HardLinked);
+        }
         match resolve_under_root(root, rel)? {
             Resolution::Outside => return Err(OpenError::Outside),
             Resolution::Inside(now) => {
-                if let Ok(current) = File::open(&now)
-                    && file_id(&current)? == opened
+                // Opened the same way as the file: a FIFO swapped in meanwhile must not block.
+                if let Ok(current) = open_read(&now)
+                    && file_identity(&current)?.0 == opened
                 {
                     return Ok(Some(file));
                 }
@@ -162,30 +194,67 @@ fn open_read(path: &Path) -> io::Result<File> {
     OpenOptions::new().read(true).open(path)
 }
 
-/// Identity of an open file.
+/// Identity of an open file: the volume and the file on it. 128 bits for the file, because
+/// ReFS and some network file systems have no 64-bit index.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct FileId(u64, u64);
+pub struct FileId(u64, u128);
 
+/// The identity of an open file and its number of hard links.
 #[cfg(unix)]
-pub fn file_id(file: &File) -> io::Result<FileId> {
+pub fn file_identity(file: &File) -> io::Result<(FileId, u64)> {
     use std::os::unix::fs::MetadataExt;
     let meta = file.metadata()?;
-    Ok(FileId(meta.dev(), meta.ino()))
+    Ok((FileId(meta.dev(), u128::from(meta.ino())), meta.nlink()))
+}
+
+/// A Win32 error carried by a `windows` crate `Result`, as the `io::Error` of that code, so its
+/// kind (`AlreadyExists`, `PermissionDenied`, ...) is the one std would report.
+#[cfg(windows)]
+pub(crate) fn win_io_error(err: windows::core::Error) -> io::Error {
+    let code = err.code().0 as u32;
+    // HRESULT_FROM_WIN32: facility 7 in the high word, the Win32 code in the low word.
+    if code >> 16 == 0x8007 {
+        io::Error::from_raw_os_error((code & 0xFFFF) as i32)
+    } else {
+        io::Error::other(err)
+    }
 }
 
 #[cfg(windows)]
-pub fn file_id(file: &File) -> io::Result<FileId> {
+pub fn file_identity(file: &File) -> io::Result<(FileId, u64)> {
     use std::os::windows::io::AsRawHandle;
     use windows::Win32::Foundation::HANDLE;
     use windows::Win32::Storage::FileSystem::{
-        BY_HANDLE_FILE_INFORMATION, GetFileInformationByHandle,
+        BY_HANDLE_FILE_INFORMATION, FILE_ID_INFO, FileIdInfo, GetFileInformationByHandle,
+        GetFileInformationByHandleEx,
     };
+    let handle = HANDLE(file.as_raw_handle());
     let mut info = BY_HANDLE_FILE_INFORMATION::default();
     // SAFETY: the handle is open for the duration of the call and `info` is a valid out value.
-    unsafe { GetFileInformationByHandle(HANDLE(file.as_raw_handle()), &mut info) }
-        .map_err(io::Error::from)?;
-    Ok(FileId(
+    unsafe { GetFileInformationByHandle(handle, &mut info) }.map_err(win_io_error)?;
+    let narrow = FileId(
         u64::from(info.dwVolumeSerialNumber),
-        (u64::from(info.nFileIndexHigh) << 32) | u64::from(info.nFileIndexLow),
-    ))
+        (u128::from(info.nFileIndexHigh) << 32) | u128::from(info.nFileIndexLow),
+    );
+    let mut wide = FILE_ID_INFO::default();
+    // SAFETY: `wide` is a valid out buffer of the size passed. Windows 8 and later; a volume
+    // that does not answer keeps the 64-bit index.
+    let wide_ok = unsafe {
+        GetFileInformationByHandleEx(
+            handle,
+            FileIdInfo,
+            std::ptr::from_mut(&mut wide).cast(),
+            std::mem::size_of::<FILE_ID_INFO>() as u32,
+        )
+    }
+    .is_ok();
+    let id = if wide_ok {
+        FileId(
+            wide.VolumeSerialNumber,
+            u128::from_le_bytes(wide.FileId.Identifier),
+        )
+    } else {
+        narrow
+    };
+    Ok((id, u64::from(info.nNumberOfLinks)))
 }

@@ -55,6 +55,8 @@ icu_decimal = "2.4.0"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+# Copies a replaced file's extended attributes (Finder tags, quarantine) onto its successor.
+xattr = "1.6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 security-framework = "3.7.0"

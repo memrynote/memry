@@ -2,7 +2,7 @@
 
 use std::fs;
 
-use memry_desktop::vault::walk::walk_vault;
+use memry_desktop::vault::walk::{Cap, Limits, walk_vault, walk_vault_with};
 
 fn touch(root: &std::path::Path, rel: &str) {
     let path = root.join(rel);
@@ -102,4 +102,72 @@ fn the_unsupported_list_is_bounded_but_counted() {
     let walk = walk_vault(dir.path(), &[]);
     assert_eq!(walk.unsupported_count, 30);
     assert!(walk.unsupported.len() <= memry_desktop::vault::walk::UNSUPPORTED_COLLECT_LIMIT);
+}
+
+#[test]
+fn the_entry_cap_stops_the_walk_and_says_so() {
+    let dir = tempfile::tempdir().unwrap();
+    for i in 0..50 {
+        touch(dir.path(), &format!("f{i:02}.md"));
+    }
+    let limits = Limits {
+        max_entries: 10,
+        ..Limits::DEFAULT
+    };
+    let walk = walk_vault_with(dir.path(), &[], limits);
+    assert_eq!(walk.truncated, Some(Cap::Entries));
+    assert_eq!(walk.visited, 10, "steps are counted, not time");
+    assert!(walk.files.len() <= 10);
+    // Under the cap nothing is flagged.
+    assert_eq!(walk_vault(dir.path(), &[]).truncated, None);
+}
+
+#[test]
+fn the_file_cap_stops_the_walk_and_counts_supported_and_unsupported_together() {
+    let dir = tempfile::tempdir().unwrap();
+    for i in 0..10 {
+        touch(dir.path(), &format!("a{i}.md"));
+        touch(dir.path(), &format!("b{i}.txt"));
+    }
+    let limits = Limits {
+        max_files: 7,
+        ..Limits::DEFAULT
+    };
+    let walk = walk_vault_with(dir.path(), &[], limits);
+    assert_eq!(walk.truncated, Some(Cap::Files));
+    assert_eq!(walk.files.len() + walk.unsupported_count, 7);
+}
+
+#[test]
+fn folders_below_the_depth_cap_are_left_unread_and_counted() {
+    let dir = tempfile::tempdir().unwrap();
+    touch(dir.path(), "top.md");
+    touch(dir.path(), "a/b/c/deep.md");
+    touch(dir.path(), "a/near.md");
+    let limits = Limits {
+        max_depth: 2,
+        ..Limits::DEFAULT
+    };
+    let walk = walk_vault_with(dir.path(), &[], limits);
+    // The root is depth 0, `a` 1, `a/b` 2, `a/b/c` 3.
+    assert_eq!(walk.files, ["a/near.md", "top.md"]);
+    assert_eq!(walk.too_deep, 1);
+    assert_eq!(walk.truncated, None);
+}
+
+// APFS refuses non-UTF-8 names, so the case runs on Linux (CI).
+#[cfg(target_os = "linux")]
+#[test]
+fn a_name_that_is_not_utf8_is_skipped_and_counted_not_listed_lossily() {
+    use std::ffi::OsStr;
+    use std::os::unix::ffi::OsStrExt;
+    let dir = tempfile::tempdir().unwrap();
+    touch(dir.path(), "good.md");
+    // Two distinct bad names that a lossy decode would give the same spelling.
+    for bytes in [&b"bad\xff.md"[..], &b"bad\xfe.md"[..]] {
+        fs::write(dir.path().join(OsStr::from_bytes(bytes)), "x").unwrap();
+    }
+    let walk = walk_vault(dir.path(), &[]);
+    assert_eq!(walk.files, ["good.md"]);
+    assert_eq!(walk.non_utf8, 2);
 }

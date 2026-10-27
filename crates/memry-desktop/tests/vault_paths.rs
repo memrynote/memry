@@ -164,3 +164,75 @@ mod hostile_titles {
         }
     }
 }
+
+mod new_names {
+    use super::*;
+    use memry_desktop::vault::paths::sanitize_new_filename;
+    use proptest::prelude::*;
+
+    #[test]
+    fn windows_device_names_control_characters_and_trailing_dots_are_neutralized() {
+        for (title, expected) in [
+            ("con", "con_"),
+            ("CON", "CON_"),
+            ("Nul", "Nul_"),
+            ("com1", "com1_"),
+            ("LPT9", "LPT9_"),
+            ("COM\u{b9}", "COM\u{b9}_"),
+            ("nul.txt", "nul_.txt"),
+            ("aux.tar.gz", "aux_.tar.gz"),
+            ("con .x", "con _.x"),
+            ("a\u{1}b\u{7f}c", "abc"),
+            ("a\tb", "a b"),
+            ("name.", "name"),
+            ("name. . ", "name"),
+            ("trail..", "trail"),
+            ("\u{1}\u{2}", "untitled"),
+            ("...", "untitled"),
+            // Not reserved: other names that merely start like one.
+            ("console", "console"),
+            ("com10", "com10"),
+            ("com", "com"),
+            ("My Note", "My Note"),
+        ] {
+            assert_eq!(sanitize_new_filename(title), expected, "{title:?}");
+        }
+        let dir = Path::new("/v");
+        assert_eq!(generate_note_path(dir, "con", None), dir.join("con_.md"));
+    }
+
+    #[test]
+    fn the_electron_rule_alone_is_unchanged_for_existing_names() {
+        // `sanitize_filename` stays the pinned port; only new names get the extra rules.
+        assert_eq!(sanitize_filename("con"), "con");
+        assert_eq!(sanitize_filename("name."), "name.");
+    }
+
+    fn is_windows_safe(name: &str) -> bool {
+        let base = name.split('.').next().unwrap_or("").trim_end_matches(' ');
+        let upper = base.to_uppercase();
+        let reserved = ["CON", "PRN", "AUX", "NUL"].contains(&upper.as_str())
+            || (upper.len() == 4
+                && (upper.starts_with("COM") || upper.starts_with("LPT"))
+                && upper.ends_with(|c: char| c.is_ascii_digit() && c != '0'));
+        !name.is_empty()
+            && !reserved
+            && !name.ends_with(['.', ' '])
+            && !name.chars().any(|c| c.is_control())
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig { cases: 4000, ..ProptestConfig::default() })]
+
+        #[test]
+        fn a_new_name_is_always_safe_on_windows(title in "\\PC{0,300}|[ .a-zA-Z0-9\\u{1}\\u{7f}]{0,40}|(con|nul|com1|lpt3|aux|prn)[ .a-z]{0,6}") {
+            let name = sanitize_new_filename(&title);
+            // A cut at 200 units can end on a space exactly as Electron's does; the
+            // property holds for every name below the cut.
+            if name.encode_utf16().count() < 199 {
+                prop_assert!(is_windows_safe(&name), "{name:?}");
+            }
+            prop_assert!(name.encode_utf16().count() <= 200);
+        }
+    }
+}

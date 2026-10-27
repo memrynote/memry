@@ -3386,6 +3386,7 @@ dependencies = [
  "url",
  "uuid",
  "windows",
+ "xattr",
  "zbus",
  "zeroize",
 ]
