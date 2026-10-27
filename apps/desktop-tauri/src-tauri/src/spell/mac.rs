@@ -20,9 +20,12 @@ pub struct MacSpell {
 static DOCUMENT_TAG: OnceLock<isize> = OnceLock::new();
 
 fn checker() -> objc2::rc::Retained<NSSpellChecker> {
+    // The checker's own language, the user's first spelling language. Not
+    // `automaticallyIdentifiesLanguages`: guessing the language of a single word reads a typo
+    // like "teh" as a word of some other language, and the user's whole preferred list includes
+    // languages with no dictionary installed, which accept every word.
     let checker = NSSpellChecker::sharedSpellChecker();
-    // The language follows the text, so a French word is checked as French.
-    checker.setAutomaticallyIdentifiesLanguages(true);
+    checker.setAutomaticallyIdentifiesLanguages(false);
     checker
 }
 
