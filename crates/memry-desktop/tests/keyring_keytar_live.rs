@@ -31,14 +31,16 @@ fn skip_on_a_developer_mac() -> bool {
 }
 
 fn unique() -> String {
+    // The clock of macOS ticks in microseconds, so two tests can read the same nanosecond.
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    format!("e2e-live-keytar-{}-{nanos}", std::process::id())
+    let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!("e2e-live-keytar-{}-{nanos}-{n}", std::process::id())
 }
 
-/// Warnings of the store (why the keychain answered `Locked`) show in a failing test's output.
 fn store(suffix: &str) -> KeyringStore {
     let _ = tracing_subscriber::fmt()
         .with_env_filter("warn")
