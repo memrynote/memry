@@ -515,6 +515,7 @@ fn a_new_file_a_rescan_found_is_reported_before_its_signal_and_not_early() {
     assert_eq!(kinds(&f.take()), ["added", "removed", "rescanned"]);
 }
 
+#[cfg(not(windows))]
 #[test]
 fn an_edit_and_a_delete_beside_a_surviving_file_do_not_wipe_its_baseline() {
     // Two files on a case-sensitive volume whose names fold to one key. The removal of
