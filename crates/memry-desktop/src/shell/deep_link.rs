@@ -8,6 +8,40 @@ use url::Url;
 /// Longer URLs are not ours: a clipper or checkout link is a few hundred bytes.
 pub const MAX_URL_LEN: usize = 8192;
 
+/// Links held while the main window is not ready. Anything can open a `memry://` URL, so the queue
+/// is bounded: past this the oldest are dropped.
+pub const MAX_PENDING: usize = 32;
+
+/// Links that arrived before the main window could act on them.
+#[derive(Debug, Default)]
+pub struct PendingLinks {
+    urls: std::collections::VecDeque<String>,
+    dropped: usize,
+}
+
+impl PendingLinks {
+    /// Queues `url`. An identical repeat of the newest link is ignored; past [`MAX_PENDING`] the
+    /// oldest is dropped and counted.
+    pub fn push(&mut self, url: &str) {
+        if self.urls.back().is_some_and(|last| last == url) {
+            return;
+        }
+        if self.urls.len() == MAX_PENDING {
+            self.urls.pop_front();
+            self.dropped += 1;
+        }
+        self.urls.push_back(url.to_owned());
+    }
+
+    /// Everything queued, oldest first, and how many were dropped since the last drain.
+    pub fn drain(&mut self) -> (Vec<String>, usize) {
+        (
+            self.urls.drain(..).collect(),
+            std::mem::take(&mut self.dropped),
+        )
+    }
+}
+
 /// Links the renderer resolves itself (`lib/memry-links.ts`): the shell only brings the window
 /// forward.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -234,5 +268,36 @@ mod tests {
         assert_eq!(parse(&deep), None);
         let nested = format!("memry://open?item={}", "%25".repeat(2000));
         let _ = parse(&nested);
+    }
+
+    #[test]
+    fn a_flood_keeps_only_the_newest_links_and_counts_the_drops() {
+        let mut pending = PendingLinks::default();
+        for n in 0..(MAX_PENDING + 10) {
+            pending.push(&format!("memry://open?item={n}"));
+        }
+        let (urls, dropped) = pending.drain();
+        assert_eq!(urls.len(), MAX_PENDING);
+        assert_eq!(dropped, 10);
+        assert_eq!(urls[0], "memry://open?item=10");
+        assert_eq!(
+            urls.last().unwrap(),
+            &format!("memry://open?item={}", MAX_PENDING + 9)
+        );
+        assert_eq!(pending.drain(), (vec![], 0));
+    }
+
+    #[test]
+    fn an_identical_repeat_of_the_newest_link_is_queued_once() {
+        let mut pending = PendingLinks::default();
+        for _ in 0..100 {
+            pending.push("memry://open");
+        }
+        pending.push("memry://pair");
+        pending.push("memry://open");
+        assert_eq!(
+            pending.drain().0,
+            ["memry://open", "memry://pair", "memry://open"]
+        );
     }
 }

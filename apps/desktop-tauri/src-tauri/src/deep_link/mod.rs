@@ -10,7 +10,8 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use memry_desktop::i18n::{self, Args};
 use memry_desktop::locale::LocaleService;
-use memry_desktop::shell::deep_link::{self, DeepLink};
+use memry_desktop::session::Session;
+use memry_desktop::shell::deep_link::{self, DeepLink, PendingLinks};
 use memry_desktop::telemetry::service::Service;
 use tauri::{AppHandle, Manager, Wry};
 use tauri_plugin_deep_link::DeepLinkExt;
@@ -26,7 +27,7 @@ pub type DeepLinkHandler = Arc<dyn Fn(&AppHandle<Wry>, &DeepLink) + Send + Sync>
 
 #[derive(Default)]
 pub struct DeepLinkRouter {
-    pending: Mutex<Vec<String>>,
+    pending: Mutex<PendingLinks>,
     ready: AtomicBool,
     handlers: Mutex<HashMap<&'static str, DeepLinkHandler>>,
 }
@@ -94,7 +95,7 @@ impl DeepLinkRouter {
         self.pending
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .push(url.to_owned());
+            .push(url);
         #[cfg(target_os = "macos")]
         if self.ready.swap(false, Ordering::SeqCst) {
             // The window was closed (macOS keeps the app alive): build it again, and the link
@@ -107,8 +108,17 @@ impl DeepLinkRouter {
     /// through.
     pub fn on_first_paint(&self, app: &AppHandle<Wry>) {
         self.ready.store(true, Ordering::SeqCst);
-        let queued =
-            std::mem::take(&mut *self.pending.lock().unwrap_or_else(PoisonError::into_inner));
+        let (queued, dropped) = self
+            .pending
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .drain();
+        if dropped > 0 {
+            tracing::warn!(
+                scope = "DeepLink",
+                "dropped {dropped} queued links over the limit"
+            );
+        }
         for url in queued {
             if let Some(link) = deep_link::parse(&url) {
                 self.deliver(app, &link);
@@ -129,7 +139,10 @@ impl DeepLinkRouter {
         match link {
             DeepLink::Open { item_id } => {
                 tracing::info!(scope = "DeepLink", "launch requested via memry://open");
-                if let Some(item_id) = item_id {
+                // No vault open: the page has no inbox to focus, so only the window comes forward.
+                if let Some(item_id) = item_id
+                    && app.state::<Session>().current().is_some()
+                {
                     broadcast(
                         app,
                         InboxOpenItemEvent {
