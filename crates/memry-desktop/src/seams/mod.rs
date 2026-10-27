@@ -5,3 +5,5 @@
 //! session hands `<vault>/.memry/core/` to `Vault::open`.
 
 pub mod secure_store;
+pub mod tls;
+pub mod transport;
