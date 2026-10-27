@@ -106,6 +106,16 @@ impl LaunchTimeline {
         elapsed
     }
 
+    /// Seconds since the process started (`process.uptime()`).
+    pub fn uptime_seconds(&self) -> f64 {
+        self.started.elapsed().as_secs_f64()
+    }
+
+    /// Every phase stamped so far with its offset, in the order they were reached.
+    pub fn marks(&self) -> Vec<(LaunchPhase, u64)> {
+        self.lock().marks.clone()
+    }
+
     /// The phase reached last, so a stall can name the startup step it interrupted.
     pub fn latest(&self) -> Option<LaunchPhase> {
         self.lock().marks.last().map(|(phase, _)| *phase)

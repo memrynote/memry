@@ -6,23 +6,19 @@
 //! removes the mirror.
 
 use std::path::Path;
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Mutex, PoisonError};
 use std::time::Duration;
 
 use serde::Serialize;
 
 use super::config::TelemetryConfig;
 use super::events::{TelemetryEvent, sanitize_dimensions, sanitize_failure};
-use super::journal::Journal;
+use super::ship_queue::ShipQueue;
 use super::time::{iso, now_ms};
-use crate::launch_env::LaunchEnv;
 
-pub const QUEUE_LIMIT: usize = 500;
-pub const BATCH_LIMIT: usize = 50;
 pub const FLUSH_INTERVAL: Duration = Duration::from_secs(30);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 pub const EVENT_QUEUE_FILE: &str = "telemetry-event-queue.json";
-const PRODUCTION_ENDPOINT: &str = "https://sync.memrynote.com/telemetry/batch";
 
 /// What is true of this launch, sent with every batch.
 #[derive(Debug, Clone)]
@@ -48,7 +44,16 @@ pub struct FlushResult {
 }
 
 impl FlushResult {
-    fn idle() -> Self {
+    pub(super) fn failed(attempted: usize, error: String) -> Self {
+        Self {
+            success: false,
+            attempted,
+            accepted: 0,
+            error: Some(error),
+        }
+    }
+
+    pub(super) fn idle() -> Self {
         Self {
             success: true,
             attempted: 0,
@@ -97,31 +102,8 @@ impl Sender {
     }
 }
 
-/// `explicit override`, `TELEMETRY_ENDPOINT`, `SYNC_SERVER_URL` + `/telemetry/batch`, then the
-/// production default (`runtime.ts`).
-pub fn resolve_endpoint(explicit: Option<&str>, env: &LaunchEnv) -> String {
-    let non_empty = |value: Option<&str>| value.filter(|v| !v.is_empty()).map(str::to_owned);
-    non_empty(explicit)
-        .or_else(|| non_empty(env.get("TELEMETRY_ENDPOINT")))
-        .or_else(|| {
-            non_empty(env.get("SYNC_SERVER_URL"))
-                .map(|url| format!("{}/telemetry/batch", url.trim_end_matches('/')))
-        })
-        .unwrap_or_else(|| PRODUCTION_ENDPOINT.to_owned())
-}
-
-/// Enabled when the stored flag says so; else `MEMRY_TELEMETRY_ENABLED=true`; else on only for
-/// the production channel.
-pub fn resolve_enabled(stored: Option<bool>, env: &LaunchEnv, build_channel: &str) -> bool {
-    stored.unwrap_or_else(|| {
-        env.get("MEMRY_TELEMETRY_ENABLED") == Some("true") || build_channel == "production"
-    })
-}
-
-struct State {
-    enabled: bool,
-    queue: Vec<TelemetryEvent>,
-    journal: Journal,
+/// Mutable context of a batch: it changes while the app runs.
+struct Live {
     auth_state: &'static str,
     sync_state: &'static str,
     locale: String,
@@ -132,8 +114,8 @@ pub struct Service {
     pub(super) vault_root: Mutex<Option<String>>,
     config: TelemetryConfig,
     context: Context,
-    sender: Sender,
-    state: Mutex<State>,
+    queue: ShipQueue<TelemetryEvent>,
+    live: Mutex<Live>,
 }
 
 #[derive(Serialize)]
@@ -158,29 +140,15 @@ impl Service {
     /// Restores what the previous process left in the journal (only when enabled; a disabled
     /// install removes it).
     pub fn start(data_dir: &Path, context: Context, sender: Sender, enabled: bool) -> Self {
-        let mut journal = Journal::new(data_dir.join(EVENT_QUEUE_FILE));
-        let mut queue = Vec::new();
-        if enabled {
-            queue = journal.load::<TelemetryEvent>();
-            if queue.len() > QUEUE_LIMIT {
-                queue.drain(..queue.len() - QUEUE_LIMIT);
-                journal.save(&queue);
-            }
-        } else {
-            journal.clear();
-        }
-        let locale = context.locale.clone();
         let config = TelemetryConfig::new(data_dir);
+        let locale = context.locale.clone();
         Self {
             salt: config.diagnostics_salt(),
             vault_root: Mutex::new(None),
             config,
             context,
-            sender,
-            state: Mutex::new(State {
-                enabled,
-                queue,
-                journal,
+            queue: ShipQueue::restore(data_dir.join(EVENT_QUEUE_FILE), sender, enabled),
+            live: Mutex::new(Live {
                 auth_state: "anonymous",
                 sync_state: "unknown",
                 locale,
@@ -188,8 +156,8 @@ impl Service {
         }
     }
 
-    fn state(&self) -> MutexGuard<'_, State> {
-        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+    fn live(&self) -> std::sync::MutexGuard<'_, Live> {
+        self.live.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     pub fn config(&self) -> &TelemetryConfig {
@@ -201,12 +169,12 @@ impl Service {
     }
 
     pub fn enabled(&self) -> bool {
-        self.state().enabled
+        self.queue.is_enabled()
     }
 
     /// A copy of the queue, oldest first.
     pub fn queued(&self) -> Vec<TelemetryEvent> {
-        self.state().queue.clone()
+        self.queue.items()
     }
 
     /// The open vault's root, collapsed to `<vault>` in reported text.
@@ -218,19 +186,31 @@ impl Service {
     }
 
     pub fn queue_depth(&self) -> usize {
-        self.state().queue.len()
+        self.queue.depth()
+    }
+
+    pub fn locale(&self) -> String {
+        self.live().locale.clone()
     }
 
     pub fn set_locale(&self, locale: &str) {
-        self.state().locale = locale.to_owned();
+        self.live().locale = locale.to_owned();
+    }
+
+    pub fn auth_state(&self) -> &'static str {
+        self.live().auth_state
     }
 
     pub fn set_auth_state(&self, state: &'static str) {
-        self.state().auth_state = state;
+        self.live().auth_state = state;
+    }
+
+    pub fn sync_state(&self) -> &'static str {
+        self.live().sync_state
     }
 
     pub fn set_sync_state(&self, state: &'static str) {
-        self.state().sync_state = state;
+        self.live().sync_state = state;
     }
 
     /// Queues `event` when telemetry is on and the event is a known one. Dimensions and failure
@@ -245,28 +225,13 @@ impl Service {
         }
         event.dimensions = sanitize_dimensions(event.dimensions.as_ref());
         event.failure = sanitize_failure(event.failure.as_ref());
-        let mut state = self.state();
-        if !state.enabled {
-            return;
-        }
-        state.queue.push(event.clone());
-        let over = state.queue.len().saturating_sub(QUEUE_LIMIT);
-        if over > 0 {
-            state.queue.drain(..over);
-        }
-        let State { journal, queue, .. } = &mut *state;
-        journal.append(&event, queue);
+        self.queue.push(event);
     }
 
     /// Switches telemetry on or off and stores the choice. Off empties the queue and the mirror.
     pub fn set_enabled(&self, enabled: bool) {
         self.config.set_enabled(enabled);
-        let mut state = self.state();
-        state.enabled = enabled;
-        if !enabled {
-            state.queue.clear();
-            state.journal.clear();
-        }
+        self.queue.set_enabled(enabled);
     }
 
     /// An event with a fresh id and timestamp, the common shape of every main-process event.
@@ -288,92 +253,30 @@ impl Service {
         }
     }
 
-    /// Ships one batch. The lock is not held across the request.
+    /// Ships one batch.
     pub async fn flush(&self, reason: FlushReason) -> FlushResult {
-        let (body, size) = {
-            let state = self.state();
-            if !state.enabled || state.queue.is_empty() {
-                return FlushResult::idle();
-            }
-            let size = state.queue.len().min(BATCH_LIMIT);
-            let batch = Batch {
-                schema_version: 1,
-                install_id: &self.context.install_id,
-                session_id: &self.context.session_id,
-                app_version: &self.context.app_version,
-                build_channel: &self.context.build_channel,
-                platform: &self.context.platform,
-                arch: &self.context.arch,
-                locale: &state.locale,
-                timezone_offset_minutes: self.context.timezone_offset_minutes,
-                auth_state: state.auth_state,
-                sync_state: state.sync_state,
-                client_queue_depth: state.queue.len(),
-                events: &state.queue[..size],
-            };
-            match serde_json::to_string(&batch) {
-                Ok(body) => (body, size),
-                Err(error) => {
-                    return FlushResult {
-                        success: false,
-                        attempted: size,
-                        accepted: 0,
-                        error: Some(error.to_string()),
-                    };
-                }
-            }
+        let (locale, auth_state, sync_state) = {
+            let live = self.live();
+            (live.locale.clone(), live.auth_state, live.sync_state)
         };
-
-        match self.sender.post(body).await {
-            Ok(status) if (200..300).contains(&status) => {
-                self.drop_front(size);
-                tracing::info!(
-                    scope = "Telemetry",
-                    "telemetry batch accepted: {size} events (HTTP {status})"
-                );
-                FlushResult {
-                    success: true,
-                    attempted: size,
-                    accepted: size,
-                    error: None,
-                }
-            }
-            Ok(status) => {
-                let permanent = (400..500).contains(&status) && status != 429;
-                if permanent {
-                    self.drop_front(size);
-                }
-                tracing::warn!(
-                    scope = "Telemetry",
-                    "telemetry batch rejected: status={status} reason={reason:?} dropped={permanent}"
-                );
-                FlushResult {
-                    success: false,
-                    attempted: size,
-                    accepted: 0,
-                    error: Some(format!("HTTP {status}")),
-                }
-            }
-            Err(error) => {
-                tracing::warn!(
-                    scope = "Telemetry",
-                    "telemetry flush failed: reason={reason:?} {error}"
-                );
-                FlushResult {
-                    success: false,
-                    attempted: size,
-                    accepted: 0,
-                    error: Some(error),
-                }
-            }
-        }
-    }
-
-    fn drop_front(&self, count: usize) {
-        let mut state = self.state();
-        let count = count.min(state.queue.len());
-        state.queue.drain(..count);
-        let State { journal, queue, .. } = &mut *state;
-        journal.save(queue);
+        self.queue
+            .flush(reason, |events, depth| {
+                serde_json::to_string(&Batch {
+                    schema_version: 1,
+                    install_id: &self.context.install_id,
+                    session_id: &self.context.session_id,
+                    app_version: &self.context.app_version,
+                    build_channel: &self.context.build_channel,
+                    platform: &self.context.platform,
+                    arch: &self.context.arch,
+                    locale: &locale,
+                    timezone_offset_minutes: self.context.timezone_offset_minutes,
+                    auth_state,
+                    sync_state,
+                    client_queue_depth: depth,
+                    events,
+                })
+            })
+            .await
     }
 }

@@ -6,11 +6,16 @@ use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use memry_desktop::launch_env::LaunchEnv;
+use memry_desktop::launch_timeline::LaunchPhase;
+use memry_desktop::locale::LocaleService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::session::OpenStage;
 use memry_desktop::session::prompt::{self, Asker, RecoveryPrompt};
 use memry_desktop::session::response::{VaultStatus, index_recovery_reason};
 use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
+use memry_desktop::settings::SettingsService;
+use memry_desktop::telemetry::service::Service;
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
@@ -18,7 +23,7 @@ use crate::events::{
     VaultErrorEvent, VaultIndexRecoveredEvent, VaultListChangedEvent, VaultStatusChangedEvent,
     broadcast,
 };
-use crate::shell::dialogs;
+use crate::shell::{dialogs, services};
 use crate::startup::{self, Stage};
 
 /// The registry file, beside the rest of the app data (`memry-config.json` of Electron).
@@ -50,19 +55,40 @@ struct DialogAsker(AppHandle<Wry>);
 
 impl Asker for DialogAsker {
     fn confirm_repair(&self, data_db: &Path) -> bool {
+        let locale = self.0.state::<Arc<LocaleService>>().get();
+        let text = prompt::text(locale);
         dialogs::confirm(
             &self.0,
-            prompt::TITLE,
-            prompt::MESSAGE,
-            &prompt::detail(data_db),
-            prompt::BUTTON_REPAIR,
-            prompt::BUTTON_LATER,
+            &text.title,
+            &text.message,
+            &prompt::detail(locale, data_db),
+            &text.repair,
+            &text.later,
         )
     }
 }
 
 pub fn asker(app: &AppHandle<Wry>) -> impl Asker + use<> {
     DialogAsker(app.clone())
+}
+
+/// Seeds a vault's settings from its `config.json` preferences when it opens. A failure is
+/// logged and never blocks the open: the settings read as defaults.
+fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
+    let settings = app.state::<SettingsService>().inner().clone();
+    session.on_open(
+        "settings",
+        OpenStage::Settings,
+        Arc::new(move |vault| {
+            if let Err(error) = settings.on_open(vault) {
+                tracing::warn!(
+                    scope = "Settings",
+                    "vault settings were not seeded: {error}"
+                );
+            }
+            Ok(())
+        }),
+    );
 }
 
 pub fn register_stages() {
@@ -80,8 +106,10 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     std::fs::create_dir_all(&paths.data_dir).map_err(|error| {
         CommandError::new(ErrorKind::Storage, "app_data_dir", error.to_string())
     })?;
-    let config = AppConfig::load(paths.data_dir.join(CONFIG_FILE));
-    let session = Session::new(VaultRegistry::new(Arc::new(config)));
+    // Loaded by the `I18n` stage, which needs it for the language.
+    let config = app.state::<Arc<AppConfig>>().inner().clone();
+    let session = Session::new(VaultRegistry::new(config));
+    register_settings_hook(app, &session);
     // Subscribed before the first open, so the launch's own events reach the renderer's
     // listeners; the renderer reads `status()` once after it subscribes.
     forward_events(app.clone(), session.subscribe());
@@ -91,10 +119,14 @@ fn open_last_vault(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
     let env = app.state::<LaunchEnv>();
     let startup = StartupVault::default();
-    match session.open_startup(&env) {
+    services::mark_phase(app, LaunchPhase::VaultOpenStart);
+    let outcome = session.open_startup(&env);
+    services::mark_phase(app, LaunchPhase::VaultOpenReady);
+    match outcome {
         StartupOutcome::Opened(opened) => {
-            *startup.0.lock().unwrap_or_else(PoisonError::into_inner) =
-                Some(opened.vault.path.to_string_lossy().into_owned());
+            let root = opened.vault.path.to_string_lossy().into_owned();
+            services::set_vault_root(app, Some(root.clone()));
+            *startup.0.lock().unwrap_or_else(PoisonError::into_inner) = Some(root);
         }
         StartupOutcome::Picker => {}
         StartupOutcome::Failed { path, error } => {
@@ -161,7 +193,9 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
         for event in events {
             match event {
                 SessionEvent::StatusChanged(status) => {
+                    let is_open = status.is_open;
                     broadcast(&app, VaultStatusChangedEvent(VaultStatus::from(status)));
+                    crate::windows::main_window::on_vault_status(&app, is_open);
                 }
                 SessionEvent::Error { message } => broadcast(&app, VaultErrorEvent { message }),
                 SessionEvent::IndexRecovered { reason } => broadcast(
@@ -172,11 +206,38 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
                     },
                 ),
                 SessionEvent::ListChanged => broadcast(&app, VaultListChangedEvent),
-                // Telemetry and warnings are Step 09 (#3526)'s subscribers.
-                SessionEvent::Opened { .. }
-                | SessionEvent::Created { .. }
-                | SessionEvent::ProjectionReconcileFailed { .. } => {}
+                SessionEvent::Opened { source, path } => {
+                    services::set_vault_root(&app, Some(path));
+                    // The launch's own open is not a user action.
+                    if let Some(source) = source_name(source) {
+                        track_vault(&app, "vault_opened", "opened", source);
+                    }
+                }
+                SessionEvent::Created { .. } => {
+                    track_vault(&app, "vault_created", "created", "create")
+                }
+                // The projection owners report these (Step 13).
+                SessionEvent::ProjectionReconcileFailed { .. } => {}
             }
         }
     });
+}
+
+fn source_name(source: OpenSource) -> Option<&'static str> {
+    match source {
+        OpenSource::Startup => None,
+        OpenSource::Select => Some("select"),
+        OpenSource::Switch => Some("switch"),
+        OpenSource::Create => Some("create"),
+    }
+}
+
+fn track_vault(app: &AppHandle<Wry>, name: &str, action: &str, source: &str) {
+    let Some(telemetry) = services::telemetry(app) else {
+        return;
+    };
+    let mut event = Service::event(name, "vault", action);
+    event.source = Some(source.to_owned());
+    event.result = Some("success".to_owned());
+    telemetry.track(event);
 }

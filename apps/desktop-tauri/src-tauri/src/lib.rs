@@ -18,7 +18,7 @@ use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::app::BuildKind;
 use crate::commands::error::{CommandError, ErrorKind};
-use crate::startup::{Stage, StartupState};
+use crate::startup::Stage;
 
 /// Process exit code when a startup stage fails.
 const EXIT_STARTUP_FAILED: i32 = 2;
@@ -35,6 +35,7 @@ pub fn install_crypto_provider() {
 fn register_stages() {
     startup::register(Stage::Paths, "resolve app paths", resolve_paths);
     startup::register(Stage::Logging, "init logging", init_logging);
+    shell::services::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
@@ -65,17 +66,22 @@ fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 fn mount_events(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     registry::builder().mount_events(app);
+    windows::events::manage(app);
     Ok(())
 }
 
 fn create_main_window(app: &AppHandle<Wry>) -> Result<(), CommandError> {
-    let state = StartupState {
-        startup_vault: app.state::<shell::vault_boot::StartupVault>().get(),
-        ..StartupState::default()
-    };
+    let state = shell::services::startup_state(app);
     windows::create_main(app, &state)
         .map(|_| ())
-        .map_err(|error| CommandError::new(ErrorKind::Internal, "create_window", error.to_string()))
+        .map_err(|error| {
+            CommandError::new(ErrorKind::Internal, "create_window", error.to_string())
+        })?;
+    shell::services::mark_phase(
+        app,
+        memry_desktop::launch_timeline::LaunchPhase::WindowCreated,
+    );
+    Ok(())
 }
 
 /// Builds and runs the app. `context` carries the profile identifier `main.rs` set.
@@ -102,6 +108,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     let result = app
         .manage(env)
         .invoke_handler(handler)
+        .on_window_event(windows::events::dispatch)
         .setup(|app| {
             if let Err(failure) = startup::run_registered(app.handle()) {
                 tracing::error!(
@@ -115,7 +122,14 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
             }
             Ok(())
         })
-        .run(context);
+        .build(context)
+        .map(|app| {
+            app.run(|handle, event| {
+                if matches!(event, tauri::RunEvent::Exit) {
+                    shell::services::on_exit(handle);
+                }
+            });
+        });
     if let Err(error) = result {
         tracing::error!("tauri runtime failed: {error}");
         eprintln!("tauri runtime failed: {error}");

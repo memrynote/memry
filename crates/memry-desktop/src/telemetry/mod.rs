@@ -7,8 +7,13 @@ pub mod crash;
 pub mod diagnostics;
 pub mod events;
 pub mod journal;
+pub mod lifecycle;
+pub mod logship;
 pub mod main_warning;
+pub mod report;
 pub mod service;
+pub mod ship_queue;
+pub mod sink;
 pub mod time;
 
 pub use config::TelemetryConfig;

@@ -41,7 +41,7 @@ interface Recipe {
 }
 
 /** Launch options of the current file, set with `test.use`. */
-let launchOptions: Pick<FreshOptions, 'syncServerUrl' | 'extraEnv'> = {}
+let launchOptions: Pick<FreshOptions, 'syncServerUrl' | 'extraEnv' | 'keepWindowRect'> = {}
 
 interface MultiBrowser {
   isMultiremote?: boolean
@@ -216,7 +216,7 @@ interface TestApi<F> {
   }
   slow(): void
   setTimeout(ms: number): void
-  use(options: Pick<FreshOptions, 'syncServerUrl' | 'extraEnv'>): void
+  use(options: Pick<FreshOptions, 'syncServerUrl' | 'extraEnv' | 'keepWindowRect'>): void
   /** Adds or overrides fixtures, as Playwright's `test.extend`. */
   extend<T extends Record<string, unknown>>(defs: {
     [K in keyof T]: FixtureDef<T[K], F & T>

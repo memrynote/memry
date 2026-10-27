@@ -22,6 +22,34 @@ pub fn builder() -> Builder<Wry> {
         .commands(collect_commands![
             // app
             crate::commands::app::app_info,
+            // diagnostics
+            crate::commands::diagnostics::diagnostics_preview_report,
+            crate::commands::diagnostics::diagnostics_send_report,
+            // feedback
+            crate::commands::telemetry::feedback_submit,
+            // locale
+            crate::commands::locale::locale_get,
+            crate::commands::locale::locale_list,
+            crate::commands::locale::locale_set,
+            // log
+            crate::commands::logging::log_write,
+            // settings
+            crate::commands::settings::app_set_zoom_factor,
+            crate::commands::settings::settings_get_group,
+            crate::commands::settings::settings_get_local,
+            crate::commands::settings::settings_get_path,
+            crate::commands::settings::settings_reset_keyboard,
+            crate::commands::settings::settings_set_group,
+            crate::commands::settings::settings_set_local,
+            // shell
+            crate::commands::shell::shell_first_paint,
+            crate::commands::shell::shell_heartbeat,
+            // telemetry
+            crate::commands::telemetry::telemetry_flush,
+            crate::commands::telemetry::telemetry_get_settings,
+            crate::commands::telemetry::telemetry_set_auto_send_diagnostics,
+            crate::commands::telemetry::telemetry_set_enabled,
+            crate::commands::telemetry::telemetry_track,
             // vault
             crate::commands::vault::vault_close,
             crate::commands::vault::vault_create,
@@ -36,6 +64,11 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_switch,
         ])
         .events(collect_events![
+            // locale
+            crate::events::LocaleChangedEvent,
+            // settings
+            crate::events::SettingsChangedEvent,
+            crate::events::SettingsOpenSectionEvent,
             // vault
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexRecoveredEvent,

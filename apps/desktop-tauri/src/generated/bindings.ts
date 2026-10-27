@@ -6,6 +6,46 @@ import * as __TAURI_EVENT from "@tauri-apps/api/event";
 /** Commands */
 export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
+	diagnosticsPreviewReport: (trigger: DiagnosticTrigger) => __TAURI_INVOKE<DiagnosticPreview>("diagnostics_preview_report", { trigger }),
+	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
+	/**  Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer). */
+	feedbackSubmit: (input: FeedbackSubmit) => __TAURI_INVOKE<FeedbackSubmitResult>("feedback_submit", { input }),
+	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
+	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
+	/**
+	 *  Switches the language, then stores it in the app config, the open vault's preferences and
+	 *  the synced `general.language`, and tells every window.
+	 */
+	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	logWrite: (level: LogLevel, scope: string, message: string, fields: Value | null) => __TAURI_INVOKE<null>("log_write", { level, scope, message, fields }),
+	/**  Stores the zoom factor for the next launch's first paint (`startupValues`). */
+	appSetZoomFactor: (factor: number | null) => __TAURI_INVOKE<null>("app_set_zoom_factor", { factor }),
+	/**  A group of the open vault, or its defaults while no vault is open. */
+	settingsGetGroup: (group: string) => __TAURI_INVOKE<Value>("settings_get_group", { group }),
+	/**  A flat device-local key (`tagSearches`, `graphViews`). */
+	settingsGetLocal: (key: string) => __TAURI_INVOKE<Value | null>("settings_get_local", { key }),
+	/**  One value by `<group>.<field>` or `<group>.<field>.<entry>`. */
+	settingsGetPath: (path: string) => __TAURI_INVOKE<Value | null>("settings_get_path", { path }),
+	/**
+	 *  Restores the shortcut defaults. The folder shortcuts are entries the user added, not
+	 *  departures from a default, so they stay.
+	 */
+	settingsResetKeyboard: () => __TAURI_INVOKE<null>("settings_reset_keyboard"),
+	/**
+	 *  Merges `patch` into a group. A value the group refuses rejects with `settings_invalid_value`
+	 *  and nothing is written.
+	 */
+	settingsSetGroup: (group: string, patch: Value) => __TAURI_INVOKE<null>("settings_set_group", { group, patch }),
+	settingsSetLocal: (key: string, value: Value) => __TAURI_INVOKE<null>("settings_set_local", { key, value }),
+	/**  The renderer painted its first frame: reveals the main window once. */
+	shellFirstPaint: () => __TAURI_INVOKE<null>("shell_first_paint"),
+	/**  A liveness beat from the page, every 2 s. */
+	shellHeartbeat: () => __TAURI_INVOKE<null>("shell_heartbeat"),
+	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
+	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
+	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
+	telemetrySetEnabled: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_enabled", { enabled }),
+	telemetryTrack: (event: TelemetryEvent) => __TAURI_INVOKE<null>("telemetry_track", { event }),
 	vaultClose: () => __TAURI_INVOKE<null>("vault_close"),
 	vaultCreate: (parentPath: string, name: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_create", { parentPath, name }),
 	/**  Next to the current vault when one is registered, else `<documents>/Memry`. */
@@ -22,6 +62,9 @@ export const commands = {
 
 /** Events */
 export const events = {
+	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
+	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
+	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
@@ -49,13 +92,119 @@ export type CommandError = {
 	message: string,
 };
 
+/**  One shipped line (`DiagnosticLogLineSchema`). */
+export type DiagnosticLine = {
+	ts: string,
+	level: string,
+	scope: string,
+	message: string,
+	errorCode?: string | null,
+	fields?: { [key in string]: FieldValue } | null,
+	origin: string,
+};
+
+export type DiagnosticPreview = {
+	success: boolean,
+	report: DiagnosticReport | null,
+	error: string | null,
+};
+
+export type DiagnosticReport = {
+	schemaVersion: number,
+	installId: string,
+	sessionId: string,
+	appVersion: string,
+	buildChannel: string,
+	platform: string,
+	arch: string,
+	incidentId: string,
+	trigger: DiagnosticTrigger,
+	snapshot: DiagnosticSnapshot,
+	lines: DiagnosticLine[],
+};
+
+export type DiagnosticSendResult = {
+	success: boolean,
+	incidentId: string | null,
+	error: string | null,
+};
+
+export type DiagnosticSnapshot = {
+	appVersion: string,
+	buildChannel: string,
+	platform: string,
+	arch: string,
+	locale: string,
+	uptimeSeconds: number | null,
+	syncEnabled: boolean,
+	syncState: string,
+	queueDepth: number,
+	vaultOpen: boolean,
+	authState: string,
+};
+
+export type DiagnosticTrigger = {
+	source: string,
+	errorCode?: string | null,
+	stack?: string | null,
+};
+
+export type ErrorDetail = {
+	message?: string | null,
+	stack?: string | null,
+	componentStack?: string | null,
+};
+
 /**  The class of a failure. Fixed set; the renderer branches on `kind`, never on message text. */
 export type ErrorKind = "storage" | "crypto" | "auth" | "api" | "sync" | "crdt" | "recovery" | "propertyWrite" | "secureStore" | "transport" | "locked" | "notFound" | "invalid" | "internal";
+
+export type FailureDetail = {
+	httpStatus?: number | null,
+	serverCode?: string | null,
+	retryable?: boolean | null,
+};
+
+/**
+ *  The user's feedback (`FeedbackSubmitSchema`): the message trimmed and 1 to 5000 characters, an
+ *  optional email that looks like one.
+ */
+export type FeedbackSubmit = {
+	message: string,
+	email?: string | null,
+	appVersion?: string | null,
+	platform?: string | null,
+};
+
+export type FeedbackSubmitResult = {
+	success: boolean,
+	error: string | null,
+};
+
+/**  A redacted field: the schema allows a string, a number or a boolean. */
+export type FieldValue = boolean | number | null | string;
 
 export type GetVaultsResponse = {
 	vaults: VaultInfo[],
 	currentVault: string | null,
 	sandbox: SandboxInfo,
+};
+
+/**  The UI language changed (`locale:changed`). */
+export type LocaleChangedEvent = {
+	locale: string,
+};
+
+export type LogLevel = "error" | "warn" | "info" | "verbose" | "debug";
+
+export type Metrics = {
+	durationMs?: number | null,
+	itemCount?: number | null,
+	byteCount?: number | null,
+	queueCount?: number | null,
+	resultCount?: number | null,
+	retryCount?: number | null,
+	activeSeconds?: number | null,
+	value?: number | null,
 };
 
 export type SandboxInfo = {
@@ -72,6 +221,23 @@ export type SelectVaultResponse = {
 };
 
 /**
+ *  A settings group or flat key was written (`settings:changed`). Names only, never values; the
+ *  renderer reads the current value through the get commands.
+ */
+export type SettingsChangedEvent = {
+	key: string,
+	fields: string[],
+};
+
+/**
+ *  Open the settings modal at a section (`settings:open-section`). Emitted by the steps that own
+ *  the deep links and the menu.
+ */
+export type SettingsOpenSectionEvent = {
+	section: string,
+};
+
+/**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in
  *  place; no second startup type exists. The renderer reads it from `window.__MEMRY_STARTUP__`
  *  before first paint.
@@ -82,7 +248,38 @@ export type StartupState = {
 	zoom: number | null,
 	platform: string,
 	colorTheme: Value | null,
+	accentColor: string | null,
+	/**  `ltr` or `rtl`, from the locale. */
+	direction: string,
 	startupVault: string | null,
+};
+
+export type TelemetryEvent = {
+	id: string,
+	name: string,
+	occurredAt: string,
+	surface: string,
+	action: string,
+	objectType?: string | null,
+	source?: string | null,
+	result?: string | null,
+	errorCode?: string | null,
+	dimensions?: { [key in string]: string } | null,
+	metrics?: Metrics | null,
+	error?: ErrorDetail | null,
+	failure?: FailureDetail | null,
+};
+
+export type TelemetryFlushResult = {
+	success: boolean,
+	attempted: number,
+	accepted: number,
+	error: string | null,
+};
+
+export type TelemetrySettings = {
+	enabled: boolean,
+	autoSendDiagnostics: boolean,
 };
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
