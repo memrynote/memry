@@ -9,57 +9,45 @@ fn origins() -> Vec<String> {
 
 const LOOPBACK: &str = "http://127.0.0.1:41234";
 
-fn guard(origins: &[String], sees_subframes: bool) -> Guard<'_> {
+fn guard(origins: &[String]) -> Guard<'_> {
     Guard {
         app_origins: origins,
         loopback_origin: Some(LOOPBACK),
-        sees_subframes,
     }
 }
 
-/// An engine that reports top-level navigations only (WebView2).
-fn go(url: &str) -> Navigation {
-    decide(
-        url,
-        Some("tauri://localhost/index.html"),
-        &guard(&origins(), false),
-    )
+fn main(url: &str) -> Navigation {
+    decide_main(url, &guard(&origins()))
 }
 
-/// An engine that reports every frame's navigations (WKWebView, WebKitGTK).
-fn go_in_any_frame(url: &str) -> Navigation {
-    decide(
-        url,
-        Some("tauri://localhost/index.html"),
-        &guard(&origins(), true),
-    )
+fn frame(url: &str) -> bool {
+    frame_may_load(url, &guard(&origins()))
 }
 
 #[test]
-fn the_app_origin_and_hash_changes_stay_in_the_window() {
-    assert_eq!(go("tauri://localhost/index.html"), Navigation::Allow);
+fn the_app_origin_stays_in_the_main_frame() {
+    assert_eq!(main("tauri://localhost/index.html"), Navigation::Allow);
     assert_eq!(
-        go("tauri://localhost/index.html#/notes/1"),
+        main("tauri://localhost/index.html#/notes/1"),
         Navigation::Allow
     );
-    assert_eq!(go("https://tauri.localhost/"), Navigation::Allow);
+    assert_eq!(main("https://tauri.localhost/"), Navigation::Allow);
     assert_eq!(
-        decide(
-            "http://localhost:5173/",
-            Some("http://localhost:5173/x"),
-            &guard(&["http://localhost:5173".to_owned()], false)
+        decide_main(
+            "http://localhost:5173/x",
+            &guard(&["http://localhost:5173".to_owned()])
         ),
         Navigation::Allow
     );
     // The dev server is not an app origin in a packaged build.
-    assert_eq!(go("http://localhost:5173/"), Navigation::Deny);
+    assert_eq!(main("http://localhost:5173/"), Navigation::Deny);
 }
 
 #[test]
 fn web_and_mail_links_go_to_the_os() {
-    assert_eq!(go("https://example.com/a"), Navigation::OpenExternal);
-    assert_eq!(go("http://example.com"), Navigation::OpenExternal);
-    assert_eq!(go("mailto:hi@memrynote.com"), Navigation::OpenExternal);
+    assert_eq!(main("https://example.com/a"), Navigation::OpenExternal);
+    assert_eq!(main("http://192.168.1.20:8080/x"), Navigation::OpenExternal);
+    assert_eq!(main("mailto:hi@memrynote.com"), Navigation::OpenExternal);
 }
 
 #[test]
@@ -67,17 +55,18 @@ fn loopback_targets_never_reach_the_os_browser() {
     for url in [
         "http://localhost:5173/",
         "http://127.0.0.1:9999/m/token/abc",
+        "http://127.0.0.1:41234/e/token/youtube/x",
         "http://127.1/",
         "http://[::1]:80/",
         "http://0.0.0.0/",
         "https://a.localhost/",
     ] {
-        assert_eq!(go(url), Navigation::Deny, "{url}");
+        assert_eq!(main(url), Navigation::Deny, "{url}");
     }
 }
 
 #[test]
-fn script_data_file_and_unknown_schemes_are_refused() {
+fn script_data_file_and_unknown_schemes_are_refused_in_the_main_frame() {
     for url in [
         "javascript:alert(1)",
         "data:text/html,<script>1</script>",
@@ -89,26 +78,26 @@ fn script_data_file_and_unknown_schemes_are_refused() {
         "",
         "not a url",
     ] {
-        assert_eq!(go(url), Navigation::Deny, "{url}");
+        assert_eq!(main(url), Navigation::Deny, "{url}");
     }
 }
 
 #[test]
 fn a_memry_file_navigation_opens_the_file_and_an_embed_is_refused() {
     assert_eq!(
-        go("memry-file://local/Users/kaan/vault/a.pdf"),
+        main("memry-file://local/Users/kaan/vault/a.pdf"),
         Navigation::OpenFile
     );
     assert_eq!(
-        go("https://memry-file.localhost/local/C:/v/a.pdf"),
+        main("https://memry-file.localhost/local/C:/v/a.pdf"),
         Navigation::OpenFile
     );
     assert_eq!(
-        go("memry-html://local/Users/kaan/vault/attachments/n/a.html"),
+        main("memry-html://local/Users/kaan/vault/attachments/n/a.html"),
         Navigation::Deny
     );
     assert_eq!(
-        go("https://memry-html.localhost/local/v/attachments/n/a.html"),
+        main("https://memry-html.localhost/local/v/attachments/n/a.html"),
         Navigation::Deny
     );
 }
@@ -116,48 +105,40 @@ fn a_memry_file_navigation_opens_the_file_and_an_embed_is_refused() {
 #[test]
 fn an_oversize_url_is_refused() {
     let long = format!("https://example.com/{}", "a".repeat(20_000));
-    assert_eq!(go(&long), Navigation::Deny);
+    assert_eq!(main(&long), Navigation::Deny);
+    assert!(!frame(&long));
+    assert!(!is_app_page(
+        &format!("tauri://localhost/{}", "a".repeat(20_000)),
+        &origins()
+    ));
 }
 
 #[test]
-fn without_a_current_page_only_origins_and_links_decide() {
-    assert_eq!(
-        decide("tauri://localhost/", None, &guard(&origins(), false)),
-        Navigation::Allow
-    );
-    assert_eq!(
-        decide("https://example.com", None, &guard(&origins(), false)),
-        Navigation::OpenExternal
-    );
-}
-
-#[test]
-fn an_embed_the_loopback_page_and_its_player_load_in_a_frame_without_leaving_the_app() {
+fn an_embed_the_loopback_page_and_its_player_load_in_a_frame() {
     for url in [
         "memry-html://local/Users/kaan/vault/attachments/n/a.html",
         "https://memry-html.localhost/local/v/attachments/n/a.html",
         "http://127.0.0.1:41234/e/token/youtube/dQw4w9WgXcQ",
-    ] {
-        assert_eq!(go_in_any_frame(url), Navigation::Allow, "{url}");
-    }
-}
-
-/// An HTML attachment's `<iframe src="https://...">` or `meta refresh`, and the YouTube player
-/// the loopback page nests, are frames' own loads. Sending them to the OS browser would open it
-/// with no click, on a loop.
-#[test]
-fn a_frame_engine_lets_a_frame_load_a_web_page_instead_of_opening_the_browser() {
-    for url in [
         "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0",
-        "https://example.com/",
-        "http://example.com/a?b=c",
+        "about:blank",
+        "about:srcdoc",
+        "tauri://localhost/index.html",
     ] {
-        assert_eq!(go_in_any_frame(url), Navigation::Allow, "{url}");
+        assert!(frame(url), "{url}");
+    }
+}
+
+/// An HTML attachment's `<iframe src="https://...">` or `meta refresh` is a frame's own load.
+/// Sending it to the OS browser would open the browser with no click, on a loop.
+#[test]
+fn a_frame_loads_a_web_page_in_place() {
+    for url in ["https://example.com/", "http://example.com/a?b=c"] {
+        assert!(frame(url), "{url}");
     }
 }
 
 #[test]
-fn a_frame_engine_still_refuses_what_no_frame_of_the_app_loads() {
+fn a_frame_never_loads_scripts_local_files_or_other_loopback_routes() {
     for url in [
         // Another port, another host, and the media route are not the embed page.
         "http://127.0.0.1:9/e/token/youtube/x",
@@ -166,49 +147,60 @@ fn a_frame_engine_still_refuses_what_no_frame_of_the_app_loads() {
         "http://localhost:5173/",
         "javascript:alert(1)",
         "data:text/html,<script>1</script>",
+        "blob:https://x/abc",
+        "file:///etc/passwd",
+        "memry://open?x=1",
+        // A frame's mail link would reach the OS without a click; the main frame decides its own.
+        "mailto:hi@memrynote.com",
+        "not a url",
     ] {
-        assert_ne!(go_in_any_frame(url), Navigation::Allow, "{url}");
-    }
-    // A file still goes to its application, a mail link to the mail client.
-    assert_eq!(
-        go_in_any_frame("mailto:hi@memrynote.com"),
-        Navigation::OpenExternal
-    );
-    assert_eq!(
-        go_in_any_frame("memry-file://local/v/a.pdf"),
-        Navigation::OpenFile
-    );
-}
-
-#[test]
-fn an_engine_that_reports_the_top_level_only_keeps_embeds_out_of_the_main_frame() {
-    for url in [
-        "memry-html://local/v/attachments/n/a.html",
-        "http://127.0.0.1:41234/e/token/youtube/x",
-    ] {
-        assert_eq!(go(url), Navigation::Deny, "{url}");
+        assert!(!frame(url), "{url}");
     }
 }
 
 #[test]
-fn the_main_frame_leaves_the_app_for_any_web_page_outside_its_origins() {
+fn only_an_app_origin_is_the_app() {
     let origins = origins();
-    for url in [
-        "https://example.com/a",
-        "http://example.com/",
-        "http://127.0.0.1:41234/m/token/notes/a.md",
-        "https://tauri.localhost.evil.test/",
-        "http://tauri.localhost/",
-    ] {
-        assert!(leaves_app(url, &origins), "{url}");
-    }
     for url in [
         "tauri://localhost/index.html#/notes",
         "https://tauri.localhost/index.html",
+    ] {
+        assert!(is_app_page(url, &origins), "{url}");
+    }
+    for url in [
+        "https://example.com/a",
+        "http://127.0.0.1:41234/m/token/notes/a.md",
+        "https://tauri.localhost.evil.test/",
+        "http://tauri.localhost/",
+        "tauri://localhost.evil/",
         "about:blank",
+        "data:text/html,x",
         "memry-file://localhost/x",
+        "memry-html://local/v/attachments/n/a.html",
+        "https://memry-html.localhost/local/v/a.html",
         "not a url",
     ] {
-        assert!(!leaves_app(url, &origins), "{url}");
+        assert!(!is_app_page(url, &origins), "{url}");
+    }
+}
+
+/// Whatever the main frame may show is what it shows the app on.
+#[test]
+fn the_main_frame_is_allowed_exactly_the_app_pages() {
+    let origins = origins();
+    for url in [
+        "tauri://localhost/",
+        "https://tauri.localhost/x",
+        "https://example.com/",
+        "memry-html://local/v/a.html",
+        "memry-file://local/v/a.pdf",
+        "about:blank",
+        "http://127.0.0.1:41234/e/t/youtube/x",
+    ] {
+        assert_eq!(
+            main(url) == Navigation::Allow,
+            is_app_page(url, &origins),
+            "{url}"
+        );
     }
 }

@@ -29,6 +29,9 @@ pub fn create_main(
     state: &StartupState,
 ) -> tauri::Result<WebviewWindow<Wry>> {
     let resolved = startup_bounds(app, state);
+    let origins = navigation_guard::app_origins(app);
+    let off_app = navigation_guard::OffApp::default();
+    let commit_off_app = off_app.clone();
     let mut builder =
         WebviewWindowBuilder::new(app, MAIN_LABEL, WebviewUrl::App("index.html".into()))
             .title("MemryNote")
@@ -39,18 +42,29 @@ pub fn create_main(
             .use_https_scheme(true)
             // OS file drops arrive as DOM `File` objects.
             .disable_drag_drop_handler()
-            .on_page_load(|window, payload| {
-                navigation_guard::pin_main_frame(&window, payload.event(), payload.url());
+            .on_page_load(move |window, payload| {
+                navigation_guard::check_commit(
+                    &window,
+                    payload.event(),
+                    payload.url(),
+                    &commit_off_app,
+                );
                 if matches!(payload.event(), PageLoadEvent::Finished) {
                     mark_phase(window.app_handle(), LaunchPhase::WindowDidFinishLoad);
                     #[cfg(windows)]
                     super::win32_caption::install_child(window.app_handle());
                 }
             })
-            .on_navigation(navigation_guard::on_navigation(app.clone()))
-            .on_new_window(navigation_guard::on_new_window(app.clone()))
-            .initialization_script(startup::script(state))
-            .initialization_script(scripts::init_script(shell_globals(app)));
+            .on_navigation(navigation_guard::on_navigation(
+                app.clone(),
+                off_app.clone(),
+            ))
+            .on_new_window(navigation_guard::on_new_window(app.clone(), off_app))
+            .initialization_script(scripts::app_page_only(&origins, &startup::script(state)))
+            .initialization_script(scripts::app_page_only(
+                &origins,
+                &scripts::init_script(shell_globals(app)),
+            ));
     builder = chrome::apply(builder);
     #[cfg(target_os = "macos")]
     {
@@ -65,6 +79,7 @@ pub fn create_main(
         builder = builder.additional_browser_args(&args);
     }
     let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
+    navigation_guard::install(app, &window);
     #[cfg(any(windows, target_os = "linux"))]
     crate::guards::gpu::watch_process_failures(app, &window);
     zoom::apply_to(&window, state.zoom);
@@ -92,7 +107,6 @@ fn shell_globals(app: &AppHandle<Wry>) -> ShellGlobals {
         maximizable: true,
         loopback_origin,
         loopback_token,
-        app_origins: navigation_guard::app_origins(app),
     }
 }
 

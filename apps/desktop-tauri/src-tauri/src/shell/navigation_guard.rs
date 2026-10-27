@@ -1,8 +1,33 @@
 //! Keeps every window's main frame on the app and routes links out of it: the adapter of
-//! `memry_desktop::shell::frame_nav`. wry calls the handler for every frame on macOS and Linux and
-//! for top-level navigations only on Windows; see `frame_nav` for what that changes.
+//! `memry_desktop::shell::frame_nav`.
+//!
+//! The main frame is decided before it commits a document, so no page outside the app ever runs
+//! in the window. A page that ran could cancel the way back with `window.stop()`, chain
+//! `location.replace` hops that each reach the OS browser, or open windows. Per engine:
+//! - WebView2 reports top-level navigations only, so [`on_navigation`] decides them.
+//! - WKWebView reports every frame's navigation, and wry hands its handler the URL alone.
+//!   `macos::install` decides the main frame's navigations ahead of wry, from the navigation
+//!   action's target frame, before the request is made.
+//! - WebKitGTK reports every frame's navigation too, and no navigation API says which frame asks.
+//!   `linux::install` hands the link to the OS at the main frame's load start (`load-changed`
+//!   STARTED, main frame only, before any response) and refuses the main resource's response
+//!   unless it is the app's (`is_main_frame_main_resource`), so nothing else commits.
+//!
+//! On WKWebView and WebKitGTK [`on_navigation`] therefore answers for the frames of a note's
+//! embeds, which load in place and never reach the OS. [`check_commit`] stays behind all of this as
+//! defence in depth.
 
-use memry_desktop::shell::frame_nav::{Guard, Navigation, decide, leaves_app};
+#[cfg(target_os = "linux")]
+mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
+
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+
+use memry_desktop::shell::frame_nav::{
+    Guard, Navigation, decide_main, frame_may_load, is_app_page,
+};
 use tauri::webview::PageLoadEvent;
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
 use tauri::{AppHandle, Manager, WebviewWindow, Wry};
@@ -32,10 +57,31 @@ pub fn page_origin(app: &AppHandle<Wry>) -> String {
     })
 }
 
-fn act(app: &AppHandle<Wry>, url: &Url, decision: Navigation) {
+/// Set while a window's main frame shows a page outside the app, which only a pre-commit guard
+/// that failed lets happen. While it is set the window goes nowhere but back to the app and hands
+/// nothing more to the OS, so the page cannot chain hops or open windows.
+#[derive(Debug, Clone, Default)]
+pub struct OffApp(Arc<AtomicBool>);
+
+impl OffApp {
+    fn is_set(&self) -> bool {
+        self.0.load(Ordering::SeqCst)
+    }
+
+    /// True when the flag was clear: this is the first page off the app.
+    fn set(&self) -> bool {
+        !self.0.swap(true, Ordering::SeqCst)
+    }
+
+    fn clear(&self) {
+        self.0.store(false, Ordering::SeqCst);
+    }
+}
+
+fn act(app: &AppHandle<Wry>, url: &str, decision: Navigation) {
     let result = match decision {
-        Navigation::OpenExternal => external::open_url(app, url.as_str()),
-        Navigation::OpenFile => external::open_memry_file(app, url.as_str()),
+        Navigation::OpenExternal => external::open_url(app, url),
+        Navigation::OpenFile => external::open_memry_file(app, url),
         Navigation::Allow | Navigation::Deny => return,
     };
     if let Err(error) = result {
@@ -45,62 +91,101 @@ fn act(app: &AppHandle<Wry>, url: &Url, decision: Navigation) {
 
 /// The loopback origin once the server listens; the guard is built after startup's `Protocols`
 /// stage, so it is set by then. A window built earlier simply has no embed page to allow.
-fn decide_for(
-    app: &AppHandle<Wry>,
-    origins: &[String],
-    url: &Url,
-    sees_subframes: bool,
-) -> Navigation {
+fn with_guard<T>(app: &AppHandle<Wry>, origins: &[String], f: impl FnOnce(&Guard<'_>) -> T) -> T {
     let loopback_origin = loopback::origin(app);
-    let guard = Guard {
+    f(&Guard {
         app_origins: origins,
         loopback_origin: loopback_origin.as_deref(),
-        sees_subframes,
-    };
-    decide(url.as_str(), None, &guard)
+    })
+}
+
+/// The main frame is about to navigate to `raw`, or a page asks for a new window: hands a link
+/// to the OS, and returns whether the navigation may go on.
+#[cfg(target_os = "macos")]
+fn main_frame_may_load(app: &AppHandle<Wry>, raw: &str) -> bool {
+    let decision = with_guard(app, &app_origins(app), |guard| decide_main(raw, guard));
+    act(app, raw, decision);
+    decision == Navigation::Allow
+}
+
+/// Decides the main frame before it commits, where the navigation handler cannot (macOS, Linux).
+pub fn install(app: &AppHandle<Wry>, window: &WebviewWindow<Wry>) {
+    #[cfg(target_os = "macos")]
+    macos::install(app, window);
+    #[cfg(target_os = "linux")]
+    linux::install(app, window);
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let _ = (app, window);
 }
 
 /// `on_navigation`: true lets the webview navigate.
-pub fn on_navigation(app: AppHandle<Wry>) -> impl Fn(&Url) -> bool + Send + 'static {
+pub fn on_navigation(
+    app: AppHandle<Wry>,
+    off_app: OffApp,
+) -> impl Fn(&Url) -> bool + Send + 'static {
     let origins = app_origins(&app);
     move |url| {
-        // The engine reports subframes too (macOS, Linux), so this may be a frame's own load.
-        let decision = decide_for(&app, &origins, url, !cfg!(windows));
-        act(&app, url, decision);
-        decision == Navigation::Allow
+        if off_app.is_set() {
+            return is_app_page(url.as_str(), &origins);
+        }
+        if cfg!(windows) {
+            // Top-level navigations only.
+            let decision = with_guard(&app, &origins, |guard| decide_main(url.as_str(), guard));
+            act(&app, url.as_str(), decision);
+            decision == Navigation::Allow
+        } else {
+            with_guard(&app, &origins, |guard| frame_may_load(url.as_str(), guard))
+        }
     }
 }
 
-/// `on_new_window`: never a new webview window. A link goes to the OS as a navigation would.
+/// `on_new_window`: never a new webview window. A link goes to the OS as a main-frame navigation
+/// would (on macOS the navigation action has decided it already, and nothing reaches here).
 pub fn on_new_window(
     app: AppHandle<Wry>,
+    off_app: OffApp,
 ) -> impl Fn(Url, NewWindowFeatures) -> NewWindowResponse<Wry> + Send + 'static {
     let origins = app_origins(&app);
     move |url, _features| {
-        // A new window is never a subframe's navigation: a link the user opened goes to the OS.
-        let decision = decide_for(&app, &origins, &url, false);
-        act(&app, &url, decision);
+        if !off_app.is_set() {
+            let decision = with_guard(&app, &origins, |guard| decide_main(url.as_str(), guard));
+            act(&app, url.as_str(), decision);
+        }
         NewWindowResponse::Deny
     }
 }
 
-/// Keeps the main frame on the app whatever started the navigation. The click listener of the
-/// renderer and `on_navigation` cannot do it alone: on WKWebView and WebKitGTK the navigation
-/// handler also sees the frames of a note's embed and so lets web pages through, while a native
-/// "Open Link" menu entry, a link dragged in from a browser, a handler that stops propagation and a
-/// script assigning `location` all bypass the listener. The page-load start is reported for the
-/// main frame only (WKWebView reports it at commit, WebKitGTK at the provisional start). The link
-/// goes to the OS and the window returns to the app, so a remote page stays on screen for a moment
-/// at most. It never gets the shell's globals (`windows::scripts`) or a Tauri command (the
-/// capabilities name the app's origins).
-pub fn pin_main_frame(window: &WebviewWindow<Wry>, event: PageLoadEvent, url: &Url) {
+/// `on_page_load` of the main frame, behind the pre-commit guard: a page outside the app that
+/// committed anyway (the guard failed to install, or an engine changed) is logged, the first one
+/// is handed to the OS, and the window returns to the app. The return is sent again when the page
+/// finishes, since the page's own `window.stop()` cancels a return sent at commit. It never gets the
+/// shell's globals (`windows::scripts`) or a Tauri command (the capabilities name the app's origins).
+pub fn check_commit(
+    window: &WebviewWindow<Wry>,
+    event: PageLoadEvent,
+    url: &Url,
+    off_app: &OffApp,
+) {
     let app = window.app_handle();
     let origins = app_origins(app);
-    if event != PageLoadEvent::Started || !leaves_app(url.as_str(), &origins) {
+    if is_app_page(url.as_str(), &origins) {
+        if event == PageLoadEvent::Started {
+            off_app.clear();
+        }
         return;
     }
-    let decision = decide_for(app, &origins, url, false);
-    act(app, url, decision);
+    if event == PageLoadEvent::Started {
+        tracing::error!(
+            scope = "Navigation",
+            "a page outside the app committed in the main frame; returning to the app"
+        );
+        if off_app.set() {
+            let decision = with_guard(app, &origins, |guard| decide_main(url.as_str(), guard));
+            act(app, url.as_str(), decision);
+        }
+    } else if !off_app.is_set() {
+        return;
+    }
     let home = format!("{}/", page_origin(app));
     match Url::parse(&home) {
         Ok(home) => {

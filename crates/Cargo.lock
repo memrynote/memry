@@ -3766,6 +3766,7 @@ dependencies = [
  "objc2-app-kit",
  "objc2-foundation",
  "objc2-service-management",
+ "objc2-web-kit",
  "rust-ini",
  "rustls",
  "serde",

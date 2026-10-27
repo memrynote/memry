@@ -9,7 +9,7 @@ use std::thread;
 
 use memry_desktop::shell::external::is_allowed_external_url;
 use memry_desktop::shell::file_serve::{ServePlan, plan};
-use memry_desktop::shell::frame_nav::{Guard, Navigation, decide};
+use memry_desktop::shell::frame_nav::{Guard, Navigation, decide_main, frame_may_load};
 use memry_desktop::shell::local_scheme::{
     LocalScheme, MAX_URL_LEN, find_heal_candidate, locate, normalize_absolute, remap_cross_device,
     resolve_local_scheme_path,
@@ -21,7 +21,6 @@ fn guard(origins: &[String]) -> Guard<'_> {
     Guard {
         app_origins: origins,
         loopback_origin: Some("http://127.0.0.1:41234"),
-        sees_subframes: true,
     }
 }
 
@@ -97,7 +96,7 @@ fn the_other_parsers_survive_deep_input_on_a_small_stack() {
         );
         let nested = format!("https://example.com/{}", "(".repeat(1_000_000));
         assert_eq!(
-            decide(&nested, None, &guard(&[])),
+            decide_main(&nested, &guard(&[])),
             Navigation::Deny,
             "over the size bound"
         );
@@ -160,13 +159,16 @@ fn every_parser_refuses_input_over_its_bound_without_reading_it() {
         None
     );
     assert_eq!(
-        decide(
+        decide_main(
             &format!("https://e.com/{}", "a".repeat(MAX_URL_LEN)),
-            None,
             &guard(&[])
         ),
         Navigation::Deny
     );
+    assert!(!frame_may_load(
+        &format!("https://e.com/{}", "a".repeat(MAX_URL_LEN)),
+        &guard(&[])
+    ));
     assert!(!is_allowed_external_url(&format!(
         "https://e.com/{}",
         "a".repeat(MAX_URL_LEN)
@@ -291,10 +293,23 @@ proptest! {
     #[test]
     fn a_navigation_is_denied_unless_it_is_the_app_a_link_or_a_file(url in "\\PC{0,60}") {
         let origins = vec!["tauri://localhost".to_owned()];
-        match decide(&url, None, &guard(&origins)) {
+        match decide_main(&url, &guard(&origins)) {
             Navigation::OpenExternal => prop_assert!(is_allowed_external_url(&url)),
             Navigation::OpenFile => prop_assert!(url.to_ascii_lowercase().contains("memry-file")),
             Navigation::Allow | Navigation::Deny => {}
+        }
+    }
+
+    /// A frame only ever loads a web page, an embed, a vault file, `about:` or the app.
+    #[test]
+    fn a_frame_loads_no_script_data_or_mail_url(url in "\\PC{0,60}") {
+        let origins = vec!["tauri://localhost".to_owned()];
+        if frame_may_load(&url, &guard(&origins)) {
+            let scheme = url.split(':').next().unwrap_or("").to_ascii_lowercase();
+            prop_assert!(
+                ["http", "https", "about", "memry-html", "memry-file", "tauri"].contains(&scheme.as_str()),
+                "{url}"
+            );
         }
     }
 

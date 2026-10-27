@@ -9,24 +9,28 @@ pub struct ShellGlobals {
     pub maximizable: bool,
     pub loopback_origin: String,
     pub loopback_token: String,
-    /// The origins of the app's own pages. Init scripts run in whatever page the main frame shows,
-    /// so a page that got there anyway (see `shell::navigation_guard::pin_main_frame`) must not
-    /// be handed the token.
-    pub app_origins: Vec<String>,
 }
 
-/// `window.__MEMRY_SHELL__`, then the drag-region listeners, in the top frame of an app page only.
-/// wry runs init scripts in every frame on Windows whatever the builder asks
-/// (`for_main_frame_only` is ignored there), so the script checks `window.top === window` itself:
-/// a `memry-html:` embed or a YouTube frame must not see the loopback token.
+/// `window.__MEMRY_SHELL__`, then the drag-region listeners.
 pub fn init_script(globals: ShellGlobals) -> String {
     let json = |text: &str| serde_json::to_string(text).unwrap_or_else(|_| "\"\"".to_owned());
-    let origins = serde_json::to_string(&globals.app_origins).unwrap_or_else(|_| "[]".to_owned());
     format!(
-        "if (window.top === window && {origins}.includes(location.protocol + '//' + location.host)) {{\nwindow.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}\n}}",
+        "window.__MEMRY_SHELL__ = Object.freeze({{ maximizable: {}, loopbackOrigin: {}, loopbackToken: {} }});\n{DRAG_REGION}",
         globals.maximizable,
         json(&globals.loopback_origin),
         json(&globals.loopback_token)
+    )
+}
+
+/// Runs `body` in the top frame of an app page only. wry runs init scripts in every frame on
+/// Windows whatever the builder asks (`for_main_frame_only` is ignored there), and in whatever page
+/// the main frame shows, so a `memry-html:` embed, a YouTube frame, or a page that reached the main
+/// frame anyway (`shell::navigation_guard::check_commit`) never sees the loopback token or the
+/// startup state (the vault path, which names the OS user).
+pub fn app_page_only(app_origins: &[String], body: &str) -> String {
+    let origins = serde_json::to_string(app_origins).unwrap_or_else(|_| "[]".to_owned());
+    format!(
+        "if (window.top === window && {origins}.includes(location.protocol + '//' + location.host)) {{\n{body}\n}}"
     )
 }
 
@@ -47,13 +51,20 @@ mod tests {
             maximizable: false,
             loopback_origin: "http://127.0.0.1:4000".to_owned(),
             loopback_token,
-            app_origins: vec!["tauri://localhost".to_owned()],
         });
         assert!(script.starts_with(
-            "if (window.top === window && [\"tauri://localhost\"].includes(location.protocol + '//' + location.host)) {\nwindow.__MEMRY_SHELL__ = Object.freeze({ maximizable: false, loopbackOrigin: \"http://127.0.0.1:4000\", loopbackToken: \"ab12\" });"
+            "window.__MEMRY_SHELL__ = Object.freeze({ maximizable: false, loopbackOrigin: \"http://127.0.0.1:4000\", loopbackToken: \"ab12\" });"
         ));
-        assert!(script.trim_end().ends_with('}'));
         assert!(script.contains("plugin:window|start_dragging"));
         assert!(script.contains("plugin:window|toggle_maximize"));
+    }
+
+    #[test]
+    fn a_gated_script_runs_in_the_top_frame_of_an_app_page_only() {
+        let script = app_page_only(&["tauri://localhost".to_owned()], "window.x = 1;");
+        assert_eq!(
+            script,
+            "if (window.top === window && [\"tauri://localhost\"].includes(location.protocol + '//' + location.host)) {\nwindow.x = 1;\n}"
+        );
     }
 }

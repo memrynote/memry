@@ -18,12 +18,11 @@ function parseUrl(href: string): URL | null {
 }
 
 /**
- * Sends a clicked web or mail link to the OS and keeps the page where it is. WKWebView and
- * WebKitGTK report a frame's own navigation and the main frame's alike, so the shell lets every
- * web navigation through for the frames of a note's HTML embed (`frame_nav`). This listener is
- * what keeps a link the app itself rendered from replacing the app. It runs after the handlers
- * of the editor and the components, which claim their own links with `preventDefault`.
- * Returns the cleanup.
+ * Sends a clicked web or mail link to the OS and keeps the page where it is. The shell would send
+ * it there too (`shell::navigation_guard` decides every main-frame navigation before it commits),
+ * but on WebKitGTK only after the page's `beforeunload` ran, and a `mailto:` link starts no load
+ * there for the shell to see. It runs after the handlers of the editor and the components, which
+ * claim their own links with `preventDefault`. Returns the cleanup.
  */
 export function watchExternalLinks(
   host: ClickHost,
@@ -44,40 +43,10 @@ export function watchExternalLinks(
   return () => host.removeEventListener('click', onClick)
 }
 
-interface DropHost {
-  addEventListener(type: 'drop', listener: (event: DragEvent) => void, capture: boolean): void
-  removeEventListener(type: 'drop', listener: (event: DragEvent) => void, capture: boolean): void
-}
-
-const EDITABLE = 'input, textarea, [contenteditable], .ProseMirror'
-
-function cancelLinkDrop(event: DragEvent): void {
-  const types = event.dataTransfer?.types ?? []
-  if (!types.includes('text/uri-list') || types.includes('Files')) return
-  if (event.target instanceof Element && event.target.closest(EDITABLE)) return
-  event.preventDefault()
-}
-
-/**
- * Stops a link dragged in from a browser from navigating the window. A drop nothing handles makes
- * WebKit load the dragged URL, and the main window's drag-drop handler is off, so nothing else
- * sees it. The editor and the text fields take a dropped link as text, and a file drop (which
- * carries `Files` as well) belongs to the file-drop zones. Returns the cleanup.
- */
-export function watchLinkDrops(host: DropHost): () => void {
-  host.addEventListener('drop', cancelLinkDrop, true)
-  return () => host.removeEventListener('drop', cancelLinkDrop, true)
-}
-
 export function installExternalLinkGuard(): () => void {
-  const stopLinks = watchExternalLinks(
+  return watchExternalLinks(
     document,
     (url) => commands.shellOpenExternal(url),
     window.location.origin
   )
-  const stopDrops = watchLinkDrops(document)
-  return () => {
-    stopLinks()
-    stopDrops()
-  }
 }

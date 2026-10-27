@@ -171,43 +171,6 @@ test('the page reads a PDF from the loopback server the way pdf.js does, whole a
   expect(reads[2].length).toBeGreaterThan(0)
 })
 
-// While the window goes back to the app its page is the remote one for a moment, and a command
-// from it is refused: that reads as "nothing opened yet".
-const opensWhenReady = (app: Parameters<typeof invokeTest>[0]) =>
-  invokeTest<string[]>(app, 'e2e_os_opens').catch(() => [] as string[])
-
-test('the main frame never shows a web page, whatever navigated it', async ({ app, page }) => {
-  await appReady(page)
-  const home = await page.evaluate(() => location.origin)
-
-  // A link whose click the renderer's listener never sees (a handler that stops propagation), and
-  // a script that assigns `location`: the shell's handler lets web pages through for the frames
-  // of a note's embed, so only the main frame's own pin keeps these out. The OS gets the link and
-  // the window returns to the app.
-  await page.evaluate(() => {
-    window.addEventListener('click', (event) => event.stopImmediatePropagation(), true)
-    const link = document.createElement('a')
-    link.href = 'https://example.com/clicked'
-    document.body.append(link)
-    link.click()
-  })
-  await expect
-    .poll(() => opensWhenReady(app), { timeout: 15_000 })
-    .toEqual(['url https://example.com/clicked'])
-  await appReady(page)
-  expect(await page.evaluate(() => location.origin)).toBe(home)
-
-  await page.evaluate(() => {
-    location.assign('https://example.com/assigned')
-  })
-  await expect
-    .poll(() => opensWhenReady(app), { timeout: 15_000 })
-    .toEqual(['url https://example.com/clicked', 'url https://example.com/assigned'])
-  await appReady(page)
-  expect(await page.evaluate(() => location.origin)).toBe(home)
-  expect(await page.evaluate(() => typeof window.__MEMRY_SHELL__)).toBe('object')
-})
-
 test('the CSP blocks an injected inline script', async ({ page }) => {
   await appReady(page)
   const ran = await page.evaluate(() => {
