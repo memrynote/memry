@@ -5,8 +5,10 @@
 //     --setup S --log L [--nsis-installer P] > handoff.cmd
 //   node scripts/installer-handoff-script.mjs ... --spawn handoff.cmd
 //
-// `--spawn P` writes the script to P and starts it detached with HANDOFF_SPAWN_OPTIONS, the exact
-// options the app uses, then exits like the quitting app does. Starting it any other way (the
+// `--spawn P` writes the script to P and starts it detached with handoffSpawnOptions (which also
+// carries the plan's paths in the environment, the only place the script reads them from), the
+// exact options the app uses, then exits like the quitting app does. Without `--spawn` the script
+// text is static and the plan arguments are only validated. Starting it any other way (the
 // smoke workflow used `Start-Process -WindowStyle Hidden`) gives cmd.exe a console, which hides
 // every problem a console-less cmd.exe has.
 //
@@ -17,7 +19,8 @@ import { writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import {
-  HANDOFF_SPAWN_OPTIONS,
+  handoffCmdArgs,
+  handoffSpawnOptions,
   renderInstallerHandoffScript
 } from '../src/main/installer-handoff-script.ts'
 
@@ -50,7 +53,7 @@ if (!Number.isInteger(appPid) || appPid <= 0) {
   process.exit(2)
 }
 
-const script = renderInstallerHandoffScript({
+const plan = {
   appPid,
   appExeName: options.exe,
   installDir: options['install-dir'],
@@ -60,11 +63,11 @@ const script = renderInstallerHandoffScript({
   setupLogPath: options.log,
   handoffLogPath: path.win32.join(path.win32.dirname(options.log), 'installer-handoff.log'),
   nsisInstallerPath: options['nsis-installer'] ?? null
-})
+}
 
 if (options.spawn) {
-  writeFileSync(options.spawn, script)
-  spawn('cmd.exe', ['/c', options.spawn], HANDOFF_SPAWN_OPTIONS).unref()
+  writeFileSync(options.spawn, renderInstallerHandoffScript())
+  spawn('cmd.exe', handoffCmdArgs(options.spawn), handoffSpawnOptions(plan, process.env)).unref()
 } else {
-  process.stdout.write(script)
+  process.stdout.write(renderInstallerHandoffScript())
 }

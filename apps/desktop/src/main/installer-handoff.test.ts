@@ -337,13 +337,24 @@ describe('createInstallerHandoff', () => {
     const scriptPath = path.win32.join(TMP, 'memry-installer-handoff-1234.cmd')
     expect(harness.deps.fs.writeFileSync).toHaveBeenCalledWith(
       scriptPath,
-      renderInstallerHandoffScript(expectedPlan())
+      renderInstallerHandoffScript()
     )
-    expect(harness.spawn).toHaveBeenCalledWith('cmd.exe', ['/c', scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true
-    })
+    expect(harness.spawn).toHaveBeenCalledWith(
+      'cmd.exe',
+      ['/d', '/s', '/c', `"${scriptPath}"`],
+      expect.objectContaining({
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+        windowsVerbatimArguments: true,
+        // The plan reaches the script through the environment, not through its text.
+        env: expect.objectContaining({
+          APP_PID: '1234',
+          HANDOFF_LOG: expectedPlan().handoffLogPath,
+          SETUP: expectedPlan().setupExePath
+        })
+      })
+    )
     expect(harness.child.unref).toHaveBeenCalledTimes(1)
   })
 
@@ -420,6 +431,20 @@ describe('createInstallerHandoff', () => {
 
     expect(harness.fetch).not.toHaveBeenCalled()
     expect(harness.host.onError).not.toHaveBeenCalled()
+    expect(handoff.armed()).toBe(false)
+  })
+
+  // The uninstaller's `_?=<dir>` must stay unquoted, so cmd would parse an `&` in the directory.
+  it('declines before any network access when the install directory has a cmd operator', async () => {
+    const harness = makeHarness()
+    const handoff = createInstallerHandoff(harness.host, {
+      ...harness.deps,
+      execPath: String.raw`C:\Apps & Tools\MemryNote\Memrynote.exe`
+    })
+
+    await handoff.prepare(makeInfo(), vi.fn())
+
+    expect(harness.fetch).not.toHaveBeenCalled()
     expect(handoff.armed()).toBe(false)
   })
 

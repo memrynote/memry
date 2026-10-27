@@ -8,9 +8,11 @@ import type { UpdateDownloadedEvent } from 'electron-updater'
 import { createLogger } from './lib/logger'
 import {
   GITHUB_RELEASE_DOWNLOAD_BASE,
-  HANDOFF_SPAWN_OPTIONS,
   INSTALLER_HANDOFF_SIGNER_SUBJECT,
   VELOPACK_SETUP_ASSET_NAME,
+  handoffCmdArgs,
+  handoffSpawnOptions,
+  isHandoffInstallDirSupported,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
@@ -193,7 +195,7 @@ export function verifyAuthenticode(
   deps: Pick<InstallerHandoffDeps, 'execFile'> = { execFile: runExecFile }
 ): Promise<AuthenticodeVerdict> {
   const literal = `'${filePath.replace(/'/g, "''")}'`
-  const command = `Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
+  const command = `Microsoft.PowerShell.Security\\Get-AuthenticodeSignature -LiteralPath ${literal} | ConvertTo-Json -Compress`
   return new Promise((resolve) => {
     deps.execFile(
       'powershell.exe',
@@ -232,11 +234,24 @@ export function spawnInstallerHandoff(
   }
   const scriptPath = path.win32.join(tmpDir, `memry-installer-handoff-${pid}.cmd`)
   try {
+    if (!isHandoffInstallDirSupported(plan.installDir)) {
+      logger.error(
+        'installer hand-off refused: install directory has a character cmd.exe would parse',
+        {
+          installDir: plan.installDir
+        }
+      )
+      return false
+    }
     // The script's first line appends to this log, and a missing folder makes that fail silently.
     // The logger writes to its own folder, so <userData>\logs need not exist.
     fsDeps.mkdirSync(path.win32.dirname(plan.handoffLogPath), { recursive: true })
-    fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript(plan))
-    const child = spawn('cmd.exe', ['/c', scriptPath], HANDOFF_SPAWN_OPTIONS)
+    fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript())
+    const child = spawn(
+      'cmd.exe',
+      handoffCmdArgs(scriptPath),
+      handoffSpawnOptions(plan, process.env)
+    )
     child.on('error', (error) => {
       logger.error('installer hand-off script failed to start', error)
     })
@@ -336,6 +351,9 @@ export function createInstallerHandoff(
     if (!tag) return decline('release tag unknown')
     const layout = detectWindowsInstallLayout(deps.execPath, deps.fs.existsSync)
     if (layout !== 'nsis') return decline(`install layout is ${layout}, not nsis`)
+    if (!isHandoffInstallDirSupported(path.win32.dirname(deps.execPath))) {
+      return decline('install directory has a character the hand-off script cannot pass')
+    }
 
     const url = velopackSetupUrl(tag)
     // `tag` arrives on the update payload. velopackSetupUrl encodes it into a fixed

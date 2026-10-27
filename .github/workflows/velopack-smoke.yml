@@ -44,6 +44,29 @@ permissions:
   contents: read
 
 jobs:
+  handoff-scenarios:
+    name: Hand-off script scenarios (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-11-arm]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # The real script, spawned with the app's options, against fakes, in directories with
+      # non-ASCII, parentheses, `&` and `%`; see the test file for the scenarios.
+      - name: Run the hand-off script on hostile paths
+        shell: pwsh
+        run: node --test apps/desktop/scripts/installer-handoff-windows.test.mjs
+
   smoke:
     name: Install, verify, update
     runs-on: windows-2022
@@ -254,6 +277,7 @@ jobs:
           Get-Content handoff.cmd
           Start-Sleep -Seconds 3
           Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
+          (Get-Date).ToString('o') | Set-Content killed-at.txt
 
       - name: Velopack install replaced the NSIS install
         shell: pwsh
@@ -273,6 +297,13 @@ jobs:
             foreach ($step in 'app exited', 'uninstall exit=\d+', 'setup exit=\d+', 'result=velopack', 'relaunch exit=\d+') {
               if ($transcript -notmatch $step) { throw "installer-handoff.log lacks '$step'" }
             }
+            # The uninstaller must start only after the app is gone: "app exited" cannot be logged
+            # before the kill, or the wait failed open and the uninstaller raced the running app.
+            $killedAt = [datetime]::Parse((Get-Content killed-at.txt)).TimeOfDay
+            $exitedLine = [regex]::Match($transcript, '(\d+:\d+:\d+)\.\d+ app exited')
+            $exitedAt = [timespan]::Parse($exitedLine.Groups[1].Value)
+            if ($exitedAt.TotalSeconds -lt [math]::Floor($killedAt.TotalSeconds)) { throw "'app exited' ($exitedAt) was logged before the app was killed ($killedAt)" }
+            if ($transcript.IndexOf('app exited') -gt $transcript.IndexOf('uninstall exit=')) { throw 'uninstall ran before the wait finished' }
           }
           if (Test-Path $nsisDir) { Get-ChildItem $nsisDir -Recurse | Format-Table FullName; throw "NSIS install still present at $nsisDir" }
           if (Test-Path $env:NSIS_UNINSTALL_KEY) { throw "NSIS uninstall entry still present" }
