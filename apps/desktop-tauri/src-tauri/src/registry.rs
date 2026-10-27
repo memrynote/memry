@@ -42,6 +42,12 @@ pub fn builder() -> Builder<Wry> {
             // shortcut
             crate::commands::shortcuts::shortcut_register_global_capture,
             crate::commands::shortcuts::shortcut_set_global_capture,
+            // spell
+            crate::commands::spell::spell_check_word,
+            crate::commands::spell::spell_add_word,
+            crate::commands::spell::spell_add_words,
+            // fonts
+            crate::fonts::system_fonts_list,
             // log
             crate::commands::logging::log_write,
             // menu

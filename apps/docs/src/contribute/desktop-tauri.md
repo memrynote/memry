@@ -8,7 +8,7 @@ The desktop app is moving from Electron to Tauri v2 over the Rust core. The new 
 - The Rust toolchain pinned in `crates/rust-toolchain.toml`. Entering `crates/` installs it with rustup.
 - macOS: Xcode command line tools.
 - Windows: the Visual Studio C++ build tools and WebView2, which Windows 11 includes.
-- Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf`.
+- Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf`.
 
 ## Run it
 

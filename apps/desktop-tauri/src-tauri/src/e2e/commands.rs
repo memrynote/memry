@@ -26,6 +26,7 @@ e2e_commands! {
     shell_integrations => [
         e2e_close_window,
         e2e_fire_global_capture,
+        e2e_forget_spelled_word,
         e2e_global_shortcut_state,
         e2e_post_power_event,
         e2e_tray_probe,

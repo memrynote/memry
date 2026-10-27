@@ -42,6 +42,20 @@ export const commands = {
 	 *  registered again. Fails with the localized no-vault text while no vault is open.
 	 */
 	shortcutSetGlobalCapture: (binding: ShortcutBinding | null) => __TAURI_INVOKE<GlobalCaptureResult>("shortcut_set_global_capture", { binding }),
+	/**  Whether `word` is misspelled, with up to eight suggestions. */
+	spellCheckWord: (word: string) => __TAURI_INVOKE<SpellResult>("spell_check_word", { word }),
+	/**
+	 *  Adds `word` to the personal dictionary; false when it is not a valid word or the platform
+	 *  refused.
+	 */
+	spellAddWord: (word: string) => __TAURI_INVOKE<boolean>("spell_add_word", { word }),
+	/**  Adds each valid word and returns how many were taken (the Electron dictionary import). */
+	spellAddWords: (words: string[]) => __TAURI_INVOKE<number>("spell_add_words", { words }),
+	/**
+	 *  Every installed font family. Enumeration touches every font file, so it runs off the async
+	 *  runtime.
+	 */
+	systemFontsList: () => __TAURI_INVOKE<string[]>("system_fonts_list"),
 	logWrite: (level: LogLevel, scope: string, message: string, fields: Value | null) => __TAURI_INVOKE<null>("log_write", { level, scope, message, fields }),
 	/**  Escape pressed while the Linux menu bar shows. */
 	menuHideAlt: () => __TAURI_INVOKE<null>("menu_hide_alt"),
@@ -376,6 +390,17 @@ export type ShortcutBinding = {
 
 /**  What the OS did with a configured binding. Serialized as the renderer's `GlobalCaptureStatus`. */
 export type ShortcutStatus = "unbound" | "registered" | "in_use" | "unsupported";
+
+/**  What the page needs to build its menu. */
+export type SpellResult = {
+	/**
+	 *  False when no dictionary could be loaded (Enchant missing on Linux): the page shows no
+	 *  suggestions and no dictionary entry.
+	 */
+	available: boolean,
+	misspelled: boolean,
+	suggestions: string[],
+};
 
 /**
  *  The one startup type of the epic. Steps 08 (#3525) and 09 (#3526) extend this struct in

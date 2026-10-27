@@ -10,6 +10,7 @@ pub mod settings;
 pub mod shell;
 pub mod shell_integrations;
 pub mod shortcuts;
+pub mod spell;
 pub mod telemetry;
 pub mod vault;
 

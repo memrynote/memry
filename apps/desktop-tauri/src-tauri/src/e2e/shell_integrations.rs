@@ -134,3 +134,12 @@ pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), Com
     app.state::<crate::power::PowerMonitor>().emit(event);
     Ok(())
 }
+
+/// Takes a word a spec added back out of the personal dictionary (macOS; a no-op elsewhere).
+#[tauri::command]
+pub fn e2e_forget_spelled_word(app: AppHandle<Wry>, word: String) {
+    #[cfg(target_os = "macos")]
+    crate::spell::unlearn(&app, &word);
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, word);
+}

@@ -10,6 +10,7 @@ pub mod deep_link;
 pub mod e2e;
 pub mod events;
 pub mod flush;
+pub mod fonts;
 pub mod guards;
 pub mod instance;
 pub mod menu;
@@ -19,6 +20,7 @@ pub mod registry;
 pub mod shell;
 pub mod shortcuts;
 pub mod shutdown;
+pub mod spell;
 pub mod startup;
 pub mod tray;
 pub mod windows;
@@ -81,6 +83,7 @@ fn register_stages() {
     deep_link::register_stages();
     notifications::register_stages();
     shortcuts::register_stages();
+    spell::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
     // After the window exists: Windows subclasses its handle.
     power::register_stages();

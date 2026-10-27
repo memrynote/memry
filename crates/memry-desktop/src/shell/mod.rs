@@ -22,5 +22,6 @@ pub mod notifications;
 pub mod power;
 pub mod shortcut;
 pub mod shutdown;
+pub mod spell;
 pub mod stall;
 pub mod tray;

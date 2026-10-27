@@ -96,7 +96,7 @@ jobs:
         uses: ./.github/actions/apt-install
         with:
           packages: >-
-            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -201,7 +201,7 @@ jobs:
         uses: ./.github/actions/apt-install
         with:
           packages: >-
-            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf xvfb gnome-keyring dbus-x11
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf xvfb gnome-keyring dbus-x11
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable

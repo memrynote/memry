@@ -1,19 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { commands } from '../../../generated/bindings'
 import { sanitizeFontFamilyName } from '@/lib/interface-font'
 import { createLogger } from '@/lib/logger'
 
 const log = createLogger('SystemFonts')
-
-declare global {
-  interface Window {
-    /**
-     * Local Font Access API. Not in this project's TS lib, and only present in
-     * Chromium behind the `local-fonts` permission the main process allows for
-     * trusted app origins.
-     */
-    queryLocalFonts?: () => Promise<Array<{ family: string }>>
-  }
-}
 
 export type SystemFontsState =
   | { status: 'idle' }
@@ -37,22 +27,14 @@ export function useSystemFonts(enabled: boolean): SystemFontsState {
     // effect body, so this reads as the async operation it is: enumerating
     // fonts is a real side effect, not state derived from the `enabled` prop.
     void (async () => {
-      if (typeof window.queryLocalFonts !== 'function') {
-        setState({ status: 'unavailable' })
-        return
-      }
-
       setState({ status: 'loading' })
 
       // No cancel-on-cleanup guard: StrictMode tears the first effect down and
       // the `started` ref makes the remount a no-op, so cancelling here would
       // strand the state on `loading` forever.
       try {
-        const fonts = await window.queryLocalFonts()
-        // FontData keeps `family` on its prototype, so read the accessor per
-        // face rather than copying or spreading the object.
         const families = [
-          ...new Set(fonts.map((font) => sanitizeFontFamilyName(font.family)).filter(Boolean))
+          ...new Set((await commands.systemFontsList()).map(sanitizeFontFamilyName).filter(Boolean))
         ].toSorted((a, b) => a.localeCompare(b))
         setState(families.length > 0 ? { status: 'ready', families } : { status: 'unavailable' })
       } catch (error) {
