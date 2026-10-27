@@ -23,6 +23,7 @@ pub mod inbox;
 pub mod journal;
 pub mod journal_ops;
 pub mod journal_rules;
+pub mod note_files;
 pub mod note_meta;
 pub mod note_status;
 pub mod note_tasks;

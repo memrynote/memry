@@ -97,6 +97,13 @@ impl Vault {
         self.db.clone()
     }
 
+    /// Path identity and file state of this vault's files (desktop Step 12).
+    /// Not part of the FFI surface: the Rust desktop shell is its only caller.
+    #[doc(hidden)]
+    pub fn note_files(&self) -> crate::api::note_files::NoteFiles {
+        crate::api::note_files::NoteFiles::over(self.db.clone())
+    }
+
     /// Every settings group of this vault, local and synced (desktop Step 09).
     /// Not part of the FFI surface: the Rust desktop shell is its only caller.
     #[doc(hidden)]
