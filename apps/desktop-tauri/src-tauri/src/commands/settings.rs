@@ -52,7 +52,7 @@ fn patch_of(value: Value) -> Result<Map<String, Value>, CommandError> {
 }
 
 /// Tells every window and telemetry what was written: names only.
-fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
+pub(crate) fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
     if let Some(service) = telemetry(app) {
         if fields.is_empty() {
             setting_changed(&service, key);
@@ -62,6 +62,7 @@ fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
         }
     }
     if key == "general" {
+        crate::autostart::on_general_written(app, &fields);
         // `general.minimizeToTray` lives here; apply converges and ignores an unchanged value.
         if let Err(error) = crate::tray::apply_from_settings(app) {
             tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
@@ -76,6 +77,7 @@ fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
     );
     if key == "keyboard" {
         crate::menu::apply(app, false);
+        crate::shortcuts::apply_from_settings(app);
     }
 }
 

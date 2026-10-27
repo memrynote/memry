@@ -220,12 +220,6 @@ import { writingToolsService } from '@/services/writing-tools-service'
 
 const log = createLogger('ContentArea')
 
-/**
- * How long a claimed context menu waits for main to forward the spelling data
- * before it opens without it. The forward normally lands within a frame.
- */
-const EDITOR_MENU_SPELLING_WAIT_MS = 400
-
 /** The editor's own right-click menu, as captured when it opened. */
 interface EditorMenuTarget {
   x: number
@@ -2409,12 +2403,11 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     return writingTools.attach({ editor, doc: yjsDoc, container })
   }, [editor, writingTools, yjsDoc])
 
-  // The editor's own right-click menu for text. Only the note page has one
-  // (it needs the writing tools session); every other surface keeps the
-  // native menu. Spelling suggestions only exist in main's `context-menu`
-  // event, so the menu claims that event and opens once main forwards them.
+  // The editor's own right-click menu for text. Only the note page has one (it needs the writing
+  // tools session); every other surface keeps the native menu. The misspelled word under the
+  // pointer is looked up first, so the menu opens with its suggestions already in it.
   const [editorMenu, setEditorMenu] = useState<EditorMenuTarget | null>(null)
-  const pendingEditorMenuRef = useRef<{ x: number; y: number; timer: number } | null>(null)
+  const editorMenuRequestRef = useRef(0)
 
   // Read at open time, not at the click: on macOS the right-click selects the
   // word under the pointer, and the editor may not have caught up with that
@@ -2462,29 +2455,6 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
     [editor, review?.onAddComment, writingTools]
   )
 
-  const openPendingEditorMenu = useCallback(
-    (spelling: EditorContextMenuSpelling | null) => {
-      const pending = pendingEditorMenuRef.current
-      if (!pending) return
-      pendingEditorMenuRef.current = null
-      window.clearTimeout(pending.timer)
-      setEditorMenu(describeEditorMenu(pending.x, pending.y, spelling))
-    },
-    [describeEditorMenu]
-  )
-
-  useEffect(
-    () => writingToolsService.onEditorContextMenu((spelling) => openPendingEditorMenu(spelling)),
-    [openPendingEditorMenu]
-  )
-  useEffect(
-    () => () => {
-      const pending = pendingEditorMenuRef.current
-      if (pending) window.clearTimeout(pending.timer)
-    },
-    []
-  )
-
   const openEditorMenu = useCallback(
     (e: React.MouseEvent) => {
       if (!writingTools || !editable) return
@@ -2496,23 +2466,17 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
       // embeds, widgets) keep their own menu.
       if (target.closest('input, textarea, select, [contenteditable="false"]')) return
 
-      if (pendingEditorMenuRef.current) window.clearTimeout(pendingEditorMenuRef.current.timer)
-      const { clientX: x, clientY: y } = e
-      if (writingToolsService.claimEditorContextMenu()) {
-        // Not prevented: Chromium must still send `context-menu` to main,
-        // which answers with the spelling data instead of a native popup.
-        pendingEditorMenuRef.current = {
-          x,
-          y,
-          timer: window.setTimeout(() => openPendingEditorMenu(null), EDITOR_MENU_SPELLING_WAIT_MS)
-        }
-        return
-      }
       e.preventDefault()
-      pendingEditorMenuRef.current = null
-      setEditorMenu(describeEditorMenu(x, y, null))
+      const { clientX: x, clientY: y } = e
+      // A newer right-click replaces a lookup still in flight.
+      const request = ++editorMenuRequestRef.current
+      void writingToolsService.spellingAt(x, y).then((spelling) => {
+        if (request === editorMenuRequestRef.current) {
+          setEditorMenu(describeEditorMenu(x, y, spelling))
+        }
+      })
     },
-    [describeEditorMenu, editable, editor, openPendingEditorMenu, writingTools]
+    [describeEditorMenu, editable, editor, writingTools]
   )
 
   const replaceSpelling = useCallback(

@@ -45,7 +45,7 @@ uuid = { workspace = true }
 url = "2"
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
-tokio = { workspace = true, features = ["time", "signal"] }
+tokio = { workspace = true, features = ["time", "signal", "sync"] }
 tracing = { workspace = true }
 velopack = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
@@ -56,6 +56,10 @@ tauri-plugin-opener = "2.7.2"
 tauri-plugin-single-instance = { version = "2.5.4", features = ["deep-link"] }
 tauri-plugin-deep-link = "2.6.2"
 tauri-plugin-notification = "2.7.0"
+# Rust-only use: the page registers no shortcut itself, so no capability grants the plugin.
+tauri-plugin-global-shortcut = "2.4.1"
+# `fonts.rs`: the installed families. Linux builds need libfontconfig1-dev.
+font-kit = "0.14.3"
 # The Paste and Match Style menu item reads the clipboard text.
 tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
@@ -71,6 +75,8 @@ arboard = { version = "3.7.0", optional = true, default-features = false }
 
 # Caption hit testing (`windows/win32_caption.rs`) and the WebView2 accelerator keys.
 [target.'cfg(windows)'.dependencies]
+# Run-key cleanup of the Electron login item (`autostart/`).
+winreg = "0.56"
 arc-swap = "1.9"
 webview2-com = "0.39"
 # `guards/gpu.rs` reads `ProcessFailed` through these; same versions as wry.
@@ -78,12 +84,23 @@ windows-core = "0.62.2"
 windows = { version = "0.62", features = [
   "Win32_Foundation",
   "Win32_Graphics_Gdi",
+  "Win32_Globalization",
+  "Win32_System_Com",
   "Win32_UI_Input_KeyboardAndMouse",
   "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
 ] }
 
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
+# macOS registers through `SMAppService` (`autostart/mac.rs`), so the plugin is not linked there.
+tauri-plugin-autostart = "2.7.0"
+
 [target.'cfg(target_os = "linux")'.dependencies]
+# `power/linux.rs` listens to logind's `PrepareForSleep` and `PrepareForShutdown`. Same build as
+# memry-desktop's, so one zbus is compiled.
+zbus = { version = "5.19.0", default-features = false, features = ["blocking-api", "async-io"] }
+# `spell/linux.rs` loads Enchant at run time, so the app starts on machines without it.
+libloading = "0.9.0"
 # `guards/gpu.rs` reports `web-process-terminated`. Same version as wry.
 webkit2gtk = "2.0.2"
 # tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
@@ -95,8 +112,9 @@ rust-ini = "=0.21.1"
 # `windows/nav_input.rs` reads the trackpad swipe events.
 block2 = "0.6"
 objc2 = "0.6.5"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "block2", "objc2-core-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "block2", "objc2-core-foundation"] }
+objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray"] }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }

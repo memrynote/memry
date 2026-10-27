@@ -100,7 +100,7 @@ fn missing_rows_report_not_found_and_remove_is_idempotent() {
     for result in [
         files.set_hash("ghost", Some("x")),
         files.rename_path("ghost", "x.md"),
-        files.set_local_only("ghost", true),
+        files.set_local_only("ghost", true).map(drop),
     ] {
         assert!(matches!(result, Err(StorageError::NotFound { .. })));
     }
