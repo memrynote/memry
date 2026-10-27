@@ -20,9 +20,10 @@ const rendererReady = (page: Page) =>
     })
     .toBe('function')
 
-// Parallel runs share one keyboard: a chord no other spec or app binds.
-const BINDING = { key: 'F19', modifiers: { ctrl: true, alt: true, shift: true } }
-const ACCELERATOR = 'Control+Alt+Shift+F19'
+// Parallel runs share one keyboard: a chord no other spec or app binds. F9 is in every
+// keymap (the F19 grab was refused under the Linux CI Xvfb) and Windows reserves only F12.
+const BINDING = { key: 'F9', modifiers: { ctrl: true, alt: true, shift: true } }
+const ACCELERATOR = 'Control+Alt+Shift+F9'
 
 // Wayland has no global hotkeys; the unit tests cover that path.
 test.skip(process.env.XDG_SESSION_TYPE === 'wayland', 'global hotkeys do not work on Wayland')
@@ -45,7 +46,7 @@ test('a saved binding is registered, replaces the fallback, and survives a read'
   const stored = await page.evaluate(
     async () => (await window.api.settings.getKeyboardSettings()).globalCapture
   )
-  expect(stored).toMatchObject({ key: 'F19' })
+  expect(stored).toMatchObject({ key: 'F9' })
 
   const cleared = await page.evaluate(() => window.api.settings.setGlobalCapture(null))
   expect((cleared as CaptureResult).status).toBe('unbound')
@@ -65,7 +66,7 @@ test('a binding the OS cannot parse is refused and not saved', async ({ app, pag
   const stored = await page.evaluate(
     async () => (await window.api.settings.getKeyboardSettings()).globalCapture
   )
-  expect(stored).toMatchObject({ key: 'F19' })
+  expect(stored).toMatchObject({ key: 'F9' })
   expect((await invokeTest<ShortcutState>(app, 'e2e_global_shortcut_state')).configured).toBe(
     ACCELERATOR
   )
