@@ -17,6 +17,13 @@
       "devCsp": "default-src 'self' tauri: http://tauri.localhost https://tauri.localhost memry-file:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: memry-file: https:; media-src 'self' memry-file:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:5173 memry-file: https://cdn.syndication.twimg.com https://react-tweet.vercel.app http://127.0.0.1:*; frame-src https://www.youtube-nocookie.com memry-html:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
     }
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["memry"]
+      }
+    }
+  },
   "bundle": {
     "active": false
   }

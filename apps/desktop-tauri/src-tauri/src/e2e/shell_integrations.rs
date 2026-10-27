@@ -40,3 +40,48 @@ pub fn e2e_close_window(app: AppHandle<Wry>, label: String) -> Result<(), Comman
         .close()
         .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_window", error.to_string()))
 }
+
+/// What the main window did around a close with the tray on.
+#[derive(Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrayProbe {
+    pub visible_before: bool,
+    pub visible_after_close: bool,
+    pub visible_after_restore: bool,
+}
+
+/// Turns the tray on, closes the main window and restores it through `restore` (`deep-link` sends
+/// `memry://open`; `tray-off` turns the tray off). A hidden window cannot be driven by WebDriver,
+/// so the whole sequence runs here and reports back.
+#[tauri::command]
+pub async fn e2e_tray_probe(
+    app: AppHandle<Wry>,
+    restore: String,
+) -> Result<TrayProbe, CommandError> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| invalid("e2e_window", "no main window"))?;
+    let visible = || window.is_visible().unwrap_or(false);
+    let settle = || tokio::time::sleep(std::time::Duration::from_millis(600));
+    crate::tray::apply(&app, true);
+    settle().await;
+    let visible_before = visible();
+    window
+        .close()
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_window", error.to_string()))?;
+    settle().await;
+    let visible_after_close = visible();
+    match restore.as_str() {
+        "deep-link" => app
+            .state::<crate::deep_link::DeepLinkRouter>()
+            .handle(&app, "memry://open"),
+        "tray-off" => crate::tray::apply(&app, false),
+        other => return Err(invalid("e2e_tray_restore", other)),
+    }
+    settle().await;
+    Ok(TrayProbe {
+        visible_before,
+        visible_after_close,
+        visible_after_restore: visible(),
+    })
+}

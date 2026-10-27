@@ -12,6 +12,8 @@ fn main() {
     }
 
     memry_tauri::install_crypto_provider();
+    #[cfg(windows)]
+    memry_tauri::set_app_user_model_id();
 
     let env = launch_env();
     let mut context = tauri::generate_context!();

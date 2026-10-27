@@ -57,3 +57,14 @@ These run from the first moment of the launch and leave evidence for the next on
 - **GPU fallback.** On Windows and Linux, a GPU process that crashed, ended unexpectedly or failed to start (or a window that never painted within 10 seconds) writes `gpu-crash-guard.json` with the app version. The next launch of the same version renders in software: `--disable-gpu` on Windows, and `WEBKIT_DISABLE_COMPOSITING_MODE` and `WEBKIT_DISABLE_DMABUF_RENDERER` on Linux. An update retries hardware rendering. macOS has no such switch.
 - **Stall monitor.** A watchdog thread asks the main thread to answer every second. If it has not answered for 3 seconds, the log gets one `main thread stalled` line with the launch phase it interrupted. At most 20 lines are written, and none while the system sleeps.
 - **Webview process failures.** A webview process that ends is reported as a telemetry log event with the reason, never the page.
+
+## Tray, single instance, deep links and notifications
+
+The Tauri shell (`apps/desktop-tauri/src-tauri/src/`) owns these OS hooks; the pure rules are in `memry_desktop::shell`.
+
+- **Tray (`tray.rs`).** `general.minimizeToTray` creates the icon and hides the main window on close. `apply` runs on the main thread, because dropping a status item elsewhere traps in AppKit. Without a tray host (headless Linux) the close behaves normally. The close handler runs before the shutdown flush handler and skips it for a hide.
+- **Single instance (`instance.rs`).** The plugin is registered first. A second launch forwards its arguments to the deep-link plugin and shows the window. The e2e gate turns it off.
+- **Deep links (`deep_link/`).** `memry://` is parsed by `shell::deep_link`. A link that arrives before the first paint is queued and delivered after it. The telemetry event carries a coarse target, never the URL.
+- **Notifications (`notifications/`).** One path. The click handler is registered at boot; each shown notification has an id that maps to a route. The page may request only `Focus` or a registered handler.
+- **Badge (`badge.rs`).** Dock and launcher count; Windows has none, as in Electron.
+- **AppUserModelID.** A non-Velopack Windows layout sets `com.memrynote.memry` at process start.
