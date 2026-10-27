@@ -1,0 +1,38 @@
+--- a/winvm.sh	2026-10-24 23:41:01
++++ b/winvm.sh	2026-10-24 23:41:01
+@@ -138,6 +138,27 @@
+ "installed: \$exe  version: \$((Get-Item \$exe).VersionInfo.ProductVersion)"
+ EOF
+   echo "$tag" > "$STATE/tag"
++}
++
++# Installs a local installer file (a rehearsal baseline) with the same lines as cmd_install.
++# install-local <path> [--nsis]   (default: Velopack Setup, --silent)
++cmd_install_local() {
++  local file="" kind=velopack
++  for a in "$@"; do case $a in --nsis) kind=nsis ;; *) file=$a ;; esac; done
++  [ -f "$file" ] || die "usage: install-local <path> [--nsis]"
++  local asset; asset=$(basename "$file")
++  vscp_to "$file" "$asset"
++  local flag='--silent'; [ $kind = nsis ] && flag='/S'
++  vps <<EOF
++Start-Process -Wait -FilePath "\$env:USERPROFILE\\$asset" -ArgumentList '$flag'
++Start-Sleep 3
++Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
++Remove-Item "\$env:USERPROFILE\\$asset"
++\$exe = @("\$env:LOCALAPPDATA\MemryNote\current\Memrynote.exe", "\$env:LOCALAPPDATA\Programs\Memrynote\Memrynote.exe") | Where-Object { Test-Path \$_ } | Select-Object -First 1
++if (-not \$exe) { throw 'install produced no Memrynote.exe' }
++"installed: \$exe  version: \$((Get-Item \$exe).VersionInfo.ProductVersion)"
++EOF
++  echo "local:$asset" > "$STATE/tag"
+ }
+ 
+ # Launch inside the logged-on console session (SSH runs in a non-interactive one, so a
+@@ -278,6 +299,7 @@
+   status) if running; then echo "running ip=$(ip_of) tag=$(cat "$STATE/tag" 2>/dev/null || echo -)"; else echo stopped; fi ;;
+   tag-for) cmd_tag_for "$@" ;;
+   install) cmd_install "$@" ;;
++  install-local) cmd_install_local "$@" ;;
+   launch) cmd_launch "$@" ;;
+   cdp) cmd_cdp "$@" ;;
+   logs) cmd_logs "$@" ;;

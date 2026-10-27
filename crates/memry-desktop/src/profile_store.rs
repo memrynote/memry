@@ -10,7 +10,6 @@
 //! a new one, or clocks written before it would name a device that no longer exists.
 
 use std::fs;
-use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -66,29 +65,9 @@ impl SecureStore for ProfileDeviceKeyStore {
         if key != SecureStoreKey::DeviceSigningKey {
             return Err(refuse(key));
         }
-        if let Some(parent) = self.path.parent() {
-            fs::create_dir_all(parent).map_err(failed)?;
-        }
-        let temp = self
-            .path
-            .with_extension(format!("{}.tmp", std::process::id()));
-        let mut options = fs::OpenOptions::new();
-        options.write(true).create_new(true);
-        #[cfg(unix)]
-        std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
-        // A stale temp of an earlier crashed run with this pid is replaced, never reused.
-        let _ = fs::remove_file(&temp);
-        let result = (|| {
-            let mut file = options.open(&temp)?;
-            file.write_all(&value)?;
-            file.sync_all()?;
-            fs::rename(&temp, &self.path)?;
-            crate::vault_prefs::sync_parent_dir(&self.path)
-        })();
-        if result.is_err() {
-            let _ = fs::remove_file(&temp);
-        }
-        result.map_err(failed)
+        // Temp file, sync, rename over, folder sync: the one atomic writer of the vault tier.
+        crate::vault::fs_atomic::atomic_write(&self.path, &value)
+            .map_err(|error| failed(error.source))
     }
 
     fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {

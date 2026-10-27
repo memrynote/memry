@@ -9,7 +9,8 @@ use memry_desktop::profile_store::ProfileDeviceKeyStore;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::settings::{SettingsError, SettingsService};
-use memry_desktop::{startup_values, vault_prefs};
+use memry_desktop::startup_values;
+use memry_desktop::vault::config;
 use serde_json::{Map, Value, json};
 
 struct World {
@@ -92,7 +93,7 @@ fn a_write_round_trips_mirrors_the_portable_fields_and_caches_the_startup_theme(
     );
 
     let on_disk: Value = serde_json::from_slice(
-        &std::fs::read(vault_prefs::config_path(&vault.path)).expect("config.json"),
+        &std::fs::read(config::config_path(&vault.path)).expect("config.json"),
     )
     .expect("json");
     assert_eq!(on_disk["preferences"]["theme"], "dark");
@@ -122,7 +123,7 @@ fn opening_a_vault_with_stored_preferences_seeds_the_settings_once() {
     let path = w.vault("v2");
     std::fs::create_dir_all(path.join(".memry")).expect("mkdir");
     std::fs::write(
-        vault_prefs::config_path(&path),
+        config::config_path(&path),
         r#"{"preferences":{"theme":"light","fontSize":"large","editor":{"width":"full"}}}"#,
     )
     .expect("seed");

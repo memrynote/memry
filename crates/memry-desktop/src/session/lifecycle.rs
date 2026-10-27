@@ -41,6 +41,40 @@ fn lifecycle_open_lays_out_core_and_registers_the_vault() {
 }
 
 #[test]
+fn lifecycle_open_initialises_a_new_folder_counts_its_notes_and_leaves_a_known_vault_alone() {
+    let f = fixture();
+    let vault = f.vault("Fresh");
+    std::fs::write(vault.join("a.md"), "x").expect("note");
+    std::fs::create_dir_all(vault.join("sub")).expect("sub");
+    std::fs::write(vault.join("sub/b.md"), "x").expect("note");
+    std::fs::create_dir_all(vault.join("node_modules")).expect("excluded");
+    std::fs::write(vault.join("node_modules/c.md"), "x").expect("note");
+
+    let opened = f.session.open(&vault, OpenSource::Select).expect("open");
+    assert_eq!(opened.stored.clone().expect("registered").note_count, 2);
+    assert!(vault.join(".memry/config.json").is_file());
+    assert!(vault.join("attachments/images").is_dir());
+    drop(opened);
+    f.session.close();
+
+    // A user who removed the default folders, or edited the config, keeps that on reopen.
+    std::fs::remove_dir_all(vault.join("journal")).expect("remove");
+    std::fs::write(
+        vault.join(".memry/config.json"),
+        r#"{"journalFolder":"mine"}"#,
+    )
+    .expect("config");
+    std::fs::write(vault.join("c.md"), "x").expect("note");
+    let opened = f.session.open(&vault, OpenSource::Select).expect("reopen");
+    assert_eq!(opened.stored.clone().expect("registered").note_count, 3);
+    assert!(!vault.join("journal").exists());
+    assert_eq!(
+        std::fs::read_to_string(vault.join(".memry/config.json")).expect("config"),
+        r#"{"journalFolder":"mine"}"#
+    );
+}
+
+#[test]
 fn lifecycle_hooks_run_in_stage_order_is_open_is_true_before_sync_and_a_failing_hook_keeps_the_vault()
  {
     let f = fixture();

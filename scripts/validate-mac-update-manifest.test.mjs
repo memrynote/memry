@@ -19,7 +19,8 @@ function buildManifest({
   arm = true,
   x64 = true,
   armSha = SHA_ARM,
-  x64Sha = SHA_X64
+  x64Sha = SHA_X64,
+  minimumSystemVersion = '22.0.0'
 } = {}) {
   const lines = []
   if (includeVersion) lines.push('version: 2026.717.1')
@@ -45,6 +46,7 @@ function buildManifest({
     `sha512: ${armSha}`,
     "releaseDate: '2026-07-17T00:00:00.000Z'"
   )
+  if (minimumSystemVersion) lines.push(`minimumSystemVersion: ${minimumSystemVersion}`)
   return `${lines.join('\n')}\n`
 }
 
@@ -100,4 +102,22 @@ test('validateManifest rejects a manifest with no version', () => {
     errors.some((e) => /version/.test(e)),
     `expected a version error, got: ${errors.join('; ')}`
   )
+})
+
+test('the default check accepts the production manifest shape without minimumSystemVersion', () => {
+  const production = parseManifest(buildManifest({ minimumSystemVersion: null }))
+  assert.equal(production.minimumSystemVersion, undefined)
+  assert.deepEqual(validateManifest(production).errors, [])
+})
+
+test('the bridge check rejects a missing or wrong minimumSystemVersion', () => {
+  for (const minimumSystemVersion of [null, '21.0.0']) {
+    const { errors } = validateManifest(parseManifest(buildManifest({ minimumSystemVersion })), {
+      requireMinimumSystemVersion: true
+    })
+    assert.ok(
+      errors.some((e) => /minimumSystemVersion/.test(e)),
+      `expected a minimumSystemVersion error for ${minimumSystemVersion}, got: ${errors.join('; ')}`
+    )
+  }
 })

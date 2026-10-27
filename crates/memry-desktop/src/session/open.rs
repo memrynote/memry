@@ -15,6 +15,8 @@ use super::{
     VaultOpened, lock,
 };
 use crate::registry::vaults::basename;
+use crate::vault::config::{invalidate_vault_config_cache, read_vault_config};
+use crate::vault::init::{CountLimits, count_markdown_files, init_vault, is_vault_initialized};
 
 /// Settled `data.db.corrupt-*` quarantines kept. Core decides which are settled
 /// ([`prune_settled`]); this only says how many of those to keep.
@@ -32,12 +34,24 @@ fn now_ms() -> i64 {
         .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
 }
 
-/// Creates `.memry/core/` (mode 0700 on Unix) and proves the folder is writable by that.
+/// `initVault` for a folder with no `.memry` yet, then `.memry/core/` (mode 0700 on Unix),
+/// which proves the folder is writable. The init comes first: afterwards `.memry` exists and
+/// the folder would read as initialised.
 fn prepare_core_dir(path: &Path) -> Result<PathBuf, SessionError> {
     if !path.is_dir() {
         return Err(SessionError::Invalid(
             "Selected path is not a valid directory".into(),
         ));
+    }
+    if !is_vault_initialized(path) {
+        init_vault(path).map_err(|err| match err.kind() {
+            std::io::ErrorKind::PermissionDenied | std::io::ErrorKind::ReadOnlyFilesystem => {
+                SessionError::Invalid(format!("No write permission for selected directory: {err}"))
+            }
+            _ => SessionError::Storage(StorageError::Failed {
+                what: format!("could not initialise the vault: {err}"),
+            }),
+        })?;
     }
     let core = core_dir(path);
     let mut builder = std::fs::DirBuilder::new();
@@ -67,6 +81,8 @@ impl Session {
         }
         self.ensure_not_held(path)?;
         let started = Instant::now();
+        // Start from disk, never from what the previously open vault left in the cache.
+        invalidate_vault_config_cache();
         let core = prepare_core_dir(path)?;
         let path_text = path.to_string_lossy().into_owned();
 
@@ -97,7 +113,17 @@ impl Session {
             Err(error) => tracing::warn!(%error, "could not prune data.db quarantines"),
         }
 
-        let stored = match self.inner.registry.record_open(&path_text, now_ms()) {
+        let note_count = count_markdown_files(
+            path,
+            &read_vault_config(path).exclude_patterns,
+            CountLimits::DEFAULT,
+        )
+        .count;
+        let stored = match self
+            .inner
+            .registry
+            .record_open(&path_text, now_ms(), note_count)
+        {
             Ok(stored) => Some(stored),
             Err(error) => {
                 tracing::error!(%error, "the vault registry was not updated");

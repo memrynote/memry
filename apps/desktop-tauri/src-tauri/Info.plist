@@ -2,7 +2,17 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>NSMicrophoneUsageDescription</key>
-  <string>MemryNote records voice notes with the microphone.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>Application requests access to the device's camera.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Application requests access to the device's microphone.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Application requests access to the user's Documents folder.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Application requests access to the user's Downloads folder.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>MemryNote shows the events from your Mac's calendars next to your notes and tasks. They are read on this Mac only and never uploaded or synced.</string>
 </dict>
 </plist>
