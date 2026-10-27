@@ -159,7 +159,10 @@ mod linux_impl {
                                 audio: media.is_for_audio_device(),
                                 video: media.is_for_video_device(),
                             }
-                        } else if request.is::<NotificationPermissionRequest>() {
+                        } else if request
+                            .downcast_ref::<NotificationPermissionRequest>()
+                            .is_some()
+                        {
                             Permission::Notifications
                         } else {
                             Permission::Other

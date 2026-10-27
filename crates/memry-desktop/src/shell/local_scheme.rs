@@ -19,9 +19,11 @@ pub const MAX_URL_LEN: usize = 16 * 1024;
 /// The `{6-char nanoid}-` prefix every stored attachment name carries.
 const STORED_PREFIX_LEN: usize = 7;
 
-/// A `memry-file` or `memry-html` URL as it reaches a handler: the canonical
-/// `memry-file://local/<path>` form (WebKit's and the stored one), or the form WebView2 uses,
-/// `https://memry-file.localhost/local/<path>`.
+/// A `memry-file` or `memry-html` URL as it reaches a handler or the navigation guard: the
+/// canonical `memry-file://local/<path>` form (the stored one, and what WebKit loads), what a
+/// WebView2 handler receives, `memry-file://localhost/local/<path>` (wry reverts the
+/// `https://memry-file.localhost/local/<path>` workaround URL), and that workaround URL itself,
+/// which is what WebView2 reports to the navigation guard.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LocalScheme {
     File,
@@ -56,7 +58,13 @@ pub fn resolve_local_scheme_path(raw: &str, scheme: LocalScheme, windows: bool) 
     }
     let url = Url::parse(raw).ok()?;
     let encoded = if url.scheme() == scheme.name() {
-        url.path()
+        if url.host_str() == Some("localhost") {
+            // WebView2 loads `https://<scheme>.localhost/local/<path>` and wry reverts the
+            // workaround, so a Windows handler receives `<scheme>://localhost/local/<path>`.
+            url.path().strip_prefix("/local")?
+        } else {
+            url.path()
+        }
     } else if matches!(url.scheme(), "http" | "https")
         && url.host_str() == Some(scheme.webview_host())
     {

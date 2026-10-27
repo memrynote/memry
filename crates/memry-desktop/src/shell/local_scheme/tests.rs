@@ -263,3 +263,30 @@ fn only_the_exact_attachment_shape_is_healed() {
     assert_eq!(attachment_parts("notes/n1/a.png"), None);
     assert_eq!(attachment_parts("attachments//a.png"), None);
 }
+
+/// WebView2 loads `https://memry-file.localhost/local/<path>`; wry reverts the workaround
+/// (`revert_uri_work_around`) and hands the handler `memry-file://localhost/local/<path>`, which is
+/// the form a Windows handler really sees.
+#[test]
+fn resolves_the_form_a_windows_handler_receives() {
+    assert_eq!(
+        file(
+            "memry-file://localhost/local/C:/Users/kaan/vault/a%20b.png",
+            true
+        )
+        .as_deref(),
+        Some("C:\\Users\\kaan\\vault\\a b.png")
+    );
+    assert_eq!(
+        resolve_local_scheme_path(
+            "memry-html://localhost/local/C:/v/attachments/n/a.html",
+            LocalScheme::Html,
+            true
+        )
+        .as_deref(),
+        Some("C:\\v\\attachments\\n\\a.html")
+    );
+    // Not the app's form: the host `localhost` without the `/local` prefix names nothing.
+    assert_eq!(file("memry-file://localhost/C:/v/a.png", true), None);
+    assert_eq!(file("memry-file://localhost/Users/kaan/a.png", false), None);
+}
