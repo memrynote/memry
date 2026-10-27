@@ -1,11 +1,12 @@
-//! A CRDT push batch stays under the server's request body ceiling.
+//! A CRDT push batch stays inside the request payload budget.
 //!
-//! `POST /sync/crdt/updates` rides the `/sync/*` ceiling of 8 MiB, and the
+//! `POST /sync/crdt/updates` rides the `/sync/*` body ceiling of 8 MiB, and the
 //! server answers 413 before any route runs when a body is past it
-//! (`apps/sync-server/src/index.ts:66`). A note whose full state seals near
-//! 5 MiB plus a megabyte of later edits used to be claimed as one batch: the
-//! 413 neither retired nor deferred a row, so every wave failed at that batch
-//! and nothing behind it was ever sent.
+//! (`apps/sync-server/src/index.ts:66`). A note with many large pending updates
+//! used to be claimed as one batch of up to 100 rows with no byte cap: the 413
+//! neither retired nor deferred a row, so every wave failed at that batch and
+//! nothing behind it was ever sent. A batch is now cut at
+//! `MAX_REQUEST_PAYLOAD_CHARS` of base64, the number desktop uses.
 //!
 //! Real SQLite, real `HttpClient`, real packed envelopes. The transport plays
 //! the server's one relevant rule: a body past the ceiling is a 413.
@@ -144,12 +145,16 @@ fn enqueue_updates(db: &Db, doc_id: &str, sizes: &[usize]) {
     .expect("enqueue");
 }
 
+/// An update well under the per-update cap: 800 KB raw is about 1.09 million
+/// base64 characters, so a request holds five and the sixth starts the next.
+const UPDATE_BYTES: usize = 800 * 1024;
+
 #[tokio::test]
-async fn a_note_with_a_five_mib_state_and_more_edits_drains_under_the_body_ceiling() {
+async fn many_large_pending_updates_drain_under_the_body_ceiling() {
     let db = scratch_db();
-    // The full state at 5 MiB, then well over 1 MiB of later edits: together
-    // they seal past 8 MiB once base64 inflates them by four thirds.
-    enqueue_updates(&db, "n1", &[5 * MIB, 700 * 1024, 700 * 1024, 700 * 1024]);
+    // Ten updates are 10.9 million characters: one request of them would pass
+    // 8 MiB.
+    enqueue_updates(&db, "n1", &[UPDATE_BYTES; 10]);
     // A second document behind it, to prove the queue is not stalled.
     enqueue_updates(&db, "n2", &[1024]);
 
@@ -170,16 +175,13 @@ async fn a_note_with_a_five_mib_state_and_more_edits_drains_under_the_body_ceili
 
     let report = push.drain_wave().await.expect("the wave drains");
 
-    assert_eq!(report.crdt_updates, 5, "every update was accepted");
+    assert_eq!(report.crdt_updates, 11, "every update was accepted");
     let bodies = server.bodies.lock().unwrap().clone();
     assert!(
         bodies.iter().all(|len| *len <= SERVER_BODY_CEILING),
         "a request exceeded the server's body ceiling: {bodies:?}"
     );
-    assert!(
-        bodies.len() >= 3,
-        "the oversized note needs several requests"
-    );
+    assert_eq!(bodies.len(), 3, "n1 rides in two requests, n2 in one");
     let left = db
         .call_blocking(|conn| outbox::next_batch(conn, i64::MAX, 100))
         .expect("read the outbox");
@@ -187,14 +189,23 @@ async fn a_note_with_a_five_mib_state_and_more_edits_drains_under_the_body_ceili
 }
 
 #[test]
-fn a_batch_never_splits_a_row_and_a_single_oversized_row_still_rides_alone() {
+fn a_batch_is_cut_at_the_request_budget_and_keeps_every_row_in_order() {
     let db = scratch_db();
-    enqueue_updates(&db, "n1", &[5 * MIB, 5 * MIB, 100]);
-    // 6 MiB seals to 8 MiB of base64 on its own: batching cannot shrink it, so
-    // it rides alone and nothing joins it.
-    enqueue_updates(&db, "n2", &[6 * MIB, 100]);
+    enqueue_updates(
+        &db,
+        "n1",
+        &[
+            UPDATE_BYTES,
+            UPDATE_BYTES,
+            UPDATE_BYTES,
+            UPDATE_BYTES,
+            UPDATE_BYTES,
+            UPDATE_BYTES,
+            100,
+        ],
+    );
 
-    let sizes: Vec<usize> = std::iter::from_fn({
+    let batches: Vec<Vec<i64>> = std::iter::from_fn({
         let db = db.clone();
         move || {
             let batch = db
@@ -204,15 +215,20 @@ fn a_batch_never_splits_a_row_and_a_single_oversized_row_still_rides_alone() {
                 panic!("only CRDT rows are queued");
             };
             let ids: Vec<i64> = rows.iter().map(|row| row.id).collect();
-            let count = rows.len();
-            db.call_blocking(move |conn| outbox::ack(conn, &ids))
+            let acked = ids.clone();
+            db.call_blocking(move |conn| outbox::ack(conn, &acked))
                 .expect("ack");
-            Some(count)
+            Some(ids)
         }
     })
     .collect();
 
-    // n1: two 5 MiB updates seal past 8 MiB together, so the second starts a
-    // new request and the small edit joins it. n2: the oversized row is alone.
-    assert_eq!(sizes, vec![1, 2, 1, 1]);
+    // Five rows fill a request; the sixth and the small edit ride the next, in
+    // the order they were enqueued.
+    let lens: Vec<usize> = batches.iter().map(Vec::len).collect();
+    assert_eq!(lens, vec![5, 2]);
+    let flat: Vec<i64> = batches.concat();
+    let mut sorted = flat.clone();
+    sorted.sort_unstable();
+    assert_eq!(flat, sorted, "enqueue order is preserved across batches");
 }
