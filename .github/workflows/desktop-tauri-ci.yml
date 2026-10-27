@@ -183,6 +183,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      # Linux linking needs tens of GB; the image ships ~20 GB of toolchains we never use.
+      - name: Free disk space
+        uses: ./.github/actions/free-disk
+
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
 

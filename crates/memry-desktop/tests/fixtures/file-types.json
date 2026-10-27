@@ -1,0 +1,124 @@
+{
+  "cases": [
+    {
+      "path": "a.md",
+      "supported": true,
+      "fileType": "markdown",
+      "mime": "text/markdown"
+    },
+    {
+      "path": "A.MD",
+      "supported": true,
+      "fileType": "markdown",
+      "mime": "text/markdown"
+    },
+    {
+      "path": "x.pdf",
+      "supported": true,
+      "fileType": "pdf",
+      "mime": "application/pdf"
+    },
+    {
+      "path": "p.PNG",
+      "supported": true,
+      "fileType": "image",
+      "mime": "image/png"
+    },
+    {
+      "path": "x.jpeg",
+      "supported": true,
+      "fileType": "image",
+      "mime": "image/jpeg"
+    },
+    {
+      "path": "x.svg",
+      "supported": true,
+      "fileType": "image",
+      "mime": "image/svg+xml"
+    },
+    {
+      "path": "x.mp3",
+      "supported": true,
+      "fileType": "audio",
+      "mime": "audio/mpeg"
+    },
+    {
+      "path": "x.m4a",
+      "supported": true,
+      "fileType": "audio",
+      "mime": "audio/mp4"
+    },
+    {
+      "path": "x.mkv",
+      "supported": true,
+      "fileType": "video",
+      "mime": "video/x-matroska"
+    },
+    {
+      "path": "x.mov",
+      "supported": true,
+      "fileType": "video",
+      "mime": "video/quicktime"
+    },
+    {
+      "path": "x.txt",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": "x",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": ".md",
+      "supported": true,
+      "fileType": "markdown",
+      "mime": "text/markdown"
+    },
+    {
+      "path": "x.",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": "a.b.md",
+      "supported": true,
+      "fileType": "markdown",
+      "mime": "text/markdown"
+    },
+    {
+      "path": "dir.md/file",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": "x.excalidraw",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": "x.docx",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": "noext.",
+      "supported": false,
+      "fileType": null,
+      "mime": null
+    },
+    {
+      "path": "x.webp",
+      "supported": true,
+      "fileType": "image",
+      "mime": "image/webp"
+    }
+  ]
+}
