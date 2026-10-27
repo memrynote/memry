@@ -1,0 +1,85 @@
+//! Files dropped from the OS arrive as DOM `File` objects with no path. The renderer streams
+//! each one here in chunks, imports the staged path, and releases it (`shell/drop_stage.rs`).
+
+use std::sync::Arc;
+
+use memry_desktop::shell::drop_stage::DropStaging;
+use serde::Deserialize;
+use tauri::ipc::Request;
+use tauri::State;
+
+use super::blocking;
+use super::error::{CommandError, ErrorKind};
+use crate::binary;
+use crate::shell::drop_stage::stage_error;
+
+type Staging<'a> = State<'a, Arc<DropStaging>>;
+
+/// Starts a staged copy of a dropped file. Returns the id the other calls take.
+#[tauri::command]
+#[specta::specta]
+pub async fn drop_stage_begin(
+    staging: Staging<'_>,
+    name: String,
+    size: u64,
+) -> Result<String, CommandError> {
+    let staging = Arc::clone(&staging);
+    blocking("drop_stage_begin", move || {
+        staging.begin(&name, size).map_err(stage_error)
+    })
+    .await
+}
+
+/// Closes a staged copy once every byte arrived and returns its absolute path.
+#[tauri::command]
+#[specta::specta]
+pub async fn drop_stage_finish(staging: Staging<'_>, id: String) -> Result<String, CommandError> {
+    let staging = Arc::clone(&staging);
+    blocking("drop_stage_finish", move || {
+        staging
+            .finish(&id)
+            .map(|path| path.to_string_lossy().into_owned())
+            .map_err(stage_error)
+    })
+    .await
+}
+
+/// Deletes staged copies after their import settled.
+#[tauri::command]
+#[specta::specta]
+pub async fn drop_stage_release(
+    staging: Staging<'_>,
+    ids: Vec<String>,
+) -> Result<(), CommandError> {
+    let staging = Arc::clone(&staging);
+    blocking("drop_stage_release", move || {
+        staging.release(&ids).map_err(|error| {
+            CommandError::new(ErrorKind::Storage, "drop_release", error.to_string())
+        })
+    })
+    .await
+}
+
+#[derive(Deserialize)]
+struct ChunkMeta {
+    id: String,
+    offset: u64,
+}
+
+/// One chunk of a staged copy: the raw request body, with `{ id, offset }` in the metadata
+/// header (`invokeBinary`). Listed in `binary::COMMANDS`; not a specta command.
+#[tauri::command]
+pub async fn drop_stage_chunk(
+    staging: Staging<'_>,
+    request: Request<'_>,
+) -> Result<(), CommandError> {
+    let meta: ChunkMeta = binary::meta(&request)?;
+    let body = binary::raw_body(&request)?.to_vec();
+    let staging = Arc::clone(&staging);
+    blocking("drop_stage_chunk", move || {
+        staging
+            .write_chunk(&meta.id, meta.offset, &body)
+            .map_err(stage_error)
+    })
+    .await
+}

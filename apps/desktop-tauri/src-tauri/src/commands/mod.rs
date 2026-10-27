@@ -3,6 +3,7 @@
 
 pub mod app;
 pub mod diagnostics;
+pub mod drop_stage;
 pub mod error;
 pub mod locale;
 pub mod logging;

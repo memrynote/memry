@@ -8,6 +8,7 @@ pub mod caption;
 pub mod close;
 pub mod crash_dumps;
 pub mod deep_link;
+pub mod drop_stage;
 pub mod external;
 pub mod file_open;
 pub mod file_serve;

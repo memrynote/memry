@@ -2,6 +2,7 @@
 //! recovery glue of the vault session.
 
 pub mod dialogs;
+pub mod drop_stage;
 pub mod external;
 pub mod loopback;
 pub mod navigation_guard;

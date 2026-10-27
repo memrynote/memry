@@ -86,6 +86,7 @@ fn register_stages() {
     );
     commands::unsplash::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
+    startup::register(Stage::Handlers, "drop staging", shell::drop_stage::init);
     shell::vault_boot::register_stages();
     shutdown::register_stages();
     tray::register_stages();
