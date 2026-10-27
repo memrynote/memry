@@ -234,8 +234,13 @@ jobs:
       - name: Locate binary
         id: binary
         run: |
-          bin="crates/target/${{ matrix.triple }}/debug/memry-tauri"
-          if [ "${{ runner.os }}" = "Windows" ]; then bin="$bin.exe"; fi
+          # The platform overlays (tauri.<os>.conf.json) set mainBinaryName, which renames the binary.
+          case "${{ runner.os }}" in
+            Windows) name=Memrynote.exe ;;
+            macOS) name=MemryNote ;;
+            *) name=memrynote ;;
+          esac
+          bin="crates/target/${{ matrix.triple }}/debug/$name"
           echo "path=$bin" >> "$GITHUB_OUTPUT"
 
       - name: Launch smoke
