@@ -3311,18 +3311,11 @@ del.bn-inline-content {
   color: var(--destructive) !important;
 }
 
-/* macOS window drag region */
-.drag-region {
-  -webkit-app-region: drag;
-}
-
-.drag-region button,
-.drag-region a,
-.drag-region input,
-.drag-region textarea,
-.drag-region [role='button'],
+/* Window drag region. Plain marker classes: `windows/scripts/drag-region.js` of the shell reads
+   them, because `-webkit-app-region` does not exist in WebView2, WKWebView or WebKitGTK. */
+.drag-region,
 .no-drag {
-  -webkit-app-region: no-drag;
+  user-select: none;
 }
 
 /* ===== USER ACCENT COLOR (tint) ===== */

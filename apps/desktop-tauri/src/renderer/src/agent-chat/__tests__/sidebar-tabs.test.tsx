@@ -453,11 +453,7 @@ describe('SidebarTabs', () => {
   it('folds the agent actions into one menu while Windows caption buttons cover the header', async () => {
     const user = userEvent.setup()
     const { createConversation } = mockAgentWithConversations()
-    const overlay = Object.assign(new EventTarget(), { visible: true })
-    Object.defineProperty(navigator, 'windowControlsOverlay', {
-      value: overlay,
-      configurable: true
-    })
+    document.documentElement.setAttribute('data-platform', 'win32')
 
     try {
       renderTabs({ defaultTab: 'agent' })
@@ -476,7 +472,7 @@ describe('SidebarTabs', () => {
       )
       expect(mockCloseDayPanel).toHaveBeenCalledTimes(1)
     } finally {
-      Reflect.deleteProperty(navigator, 'windowControlsOverlay')
+      document.documentElement.removeAttribute('data-platform')
     }
   })
 

@@ -14,7 +14,8 @@ use tauri::{
 };
 
 use super::reveal::{self, StartupMode};
-use super::{MAIN_LABEL, bounds_store, zoom};
+use super::scripts::{self, ShellGlobals};
+use super::{MAIN_LABEL, bounds_store, chrome, nav_input, zoom};
 use crate::shell::services::mark_phase;
 use crate::startup::{self, StartupState};
 
@@ -40,15 +41,25 @@ pub fn create_main(
             .on_page_load(|window, payload| {
                 if matches!(payload.event(), PageLoadEvent::Finished) {
                     mark_phase(window.app_handle(), LaunchPhase::WindowDidFinishLoad);
+                    #[cfg(windows)]
+                    super::win32_caption::install_child(window.app_handle());
                 }
             })
-            .initialization_script(startup::script(state));
+            .initialization_script(startup::script(state))
+            .initialization_script(scripts::init_script(ShellGlobals { maximizable: true }));
+    builder = chrome::apply(builder);
     builder = match resolved.position {
         Some((x, y)) => builder.position(f64::from(x), f64::from(y)),
         None => builder.center(),
     };
     let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
     zoom::apply_to(&window, state.zoom);
+    #[cfg(windows)]
+    {
+        super::win32_caption::install(app, &window);
+        chrome::disable_browser_accelerators(&window);
+    }
+    nav_input::install(app);
     reveal::arm(
         app,
         StartupMode {

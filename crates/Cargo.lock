@@ -3394,6 +3394,8 @@ name = "memry-tauri"
 version = "0.0.0"
 dependencies = [
  "arboard",
+ "arc-swap",
+ "block2",
  "memry-desktop",
  "objc2",
  "objc2-app-kit",
@@ -3415,6 +3417,8 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]
