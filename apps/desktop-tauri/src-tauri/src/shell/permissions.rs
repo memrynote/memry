@@ -4,7 +4,7 @@
 //! - Windows: `ICoreWebView2::add_PermissionRequested`. Every request is answered, allow or
 //!   deny, so none reaches WebView2's own prompt.
 //! - Linux: WebKitGTK's `permission-request`. Audio-only user media for a trusted origin is
-//!   allowed; notifications and everything else are denied (see `linux_impl`).
+//!   allowed; notifications and everything else are denied (`allowed_without_frame`).
 //! - macOS: wry hands the handler the kind of permission only, so the camera is denied for every
 //!   frame and the microphone keeps WKWebView's own prompt (the app's Info.plist names it).
 //!
@@ -13,7 +13,11 @@
 //! the loopback pages and `memry-html` embeds also send `Permissions-Policy` with the devices off.
 
 #[cfg(any(windows, target_os = "linux"))]
-use memry_desktop::shell::permissions::{Permission, allowed};
+use memry_desktop::shell::permissions::Permission;
+#[cfg(windows)]
+use memry_desktop::shell::permissions::allowed;
+#[cfg(target_os = "linux")]
+use memry_desktop::shell::permissions::allowed_without_frame;
 use tauri::{WebviewWindow, Wry};
 
 /// The dev server's origin in a `tauri dev` run, `None` in a packaged or plain debug build.
@@ -145,7 +149,7 @@ mod linux_impl {
         UserMediaPermissionRequestExt, WebViewExt,
     };
 
-    use super::{Permission, WebviewWindow, Wry, allowed, log_denied};
+    use super::{Permission, WebviewWindow, Wry, allowed_without_frame, log_denied};
 
     pub fn install(window: &WebviewWindow<Wry>, dev_origin: Option<String>) {
         let result = window.with_webview(move |webview| {
@@ -167,14 +171,8 @@ mod linux_impl {
                         } else {
                             Permission::Other
                         };
-                    // The request names no frame, so `origin` is the top page whichever frame asked,
-                    // and no `Permissions-Policy` feature gates notifications: an embed's request
-                    // would be granted as the app's. The app notifies natively (Step 11) and calls
-                    // no web `Notification`, so none is allowed.
-                    let frame_blind_deny = permission == Permission::Notifications;
-                    if !frame_blind_deny
-                        && allowed(permission, origin.as_deref(), dev_origin.as_deref())
-                    {
+                    // The request names no frame, so `origin` is the top page whichever frame asked.
+                    if allowed_without_frame(permission, origin.as_deref(), dev_origin.as_deref()) {
                         request.allow();
                     } else {
                         log_denied(permission, origin.as_deref());

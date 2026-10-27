@@ -56,6 +56,19 @@ pub fn allowed(permission: Permission, origin: Option<&str>, dev_origin: Option<
     }
 }
 
+/// [`allowed`] for an engine that names no frame (WebKitGTK): `origin` is the top page whichever
+/// frame asked, so a permission no `Permissions-Policy` feature gates is refused. Notifications
+/// are that case: the app notifies natively, calls no web `Notification`, and a frame's request
+/// would otherwise be granted as the app's. The microphone is gated by the `Permissions-Policy`
+/// the app sends with every embed.
+pub fn allowed_without_frame(
+    permission: Permission,
+    origin: Option<&str>,
+    dev_origin: Option<&str>,
+) -> bool {
+    permission != Permission::Notifications && allowed(permission, origin, dev_origin)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,5 +181,20 @@ mod tests {
             assert!(!allowed(permission, youtube, DEV), "{permission:?}");
             assert!(!allowed(permission, None, DEV), "{permission:?}");
         }
+    }
+
+    #[test]
+    fn an_engine_that_names_no_frame_never_grants_notifications() {
+        assert!(allowed(Permission::Notifications, APP, None));
+        assert!(!allowed_without_frame(Permission::Notifications, APP, None));
+        assert!(allowed_without_frame(
+            Permission::Media {
+                audio: true,
+                video: false
+            },
+            APP,
+            None
+        ));
+        assert!(!allowed_without_frame(Permission::Other, APP, None));
     }
 }

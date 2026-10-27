@@ -258,48 +258,6 @@ test('a web page nested in an embed, or a meta refresh, never opens the OS brows
   expect(await invokeTest<string[]>(app, 'e2e_os_opens')).toEqual([])
 })
 
-test('a web notification is never granted on Linux, whichever frame asks', async ({
-  page,
-  testVaultPath
-}) => {
-  test.skip(
-    process.platform !== 'linux',
-    'only WebKitGTK cannot tell which frame asked; WebView2 checks the requesting frame'
-  )
-  await appReady(page)
-  const folder = join(testVaultPath, 'attachments', 'n1')
-  mkdirSync(folder, { recursive: true })
-  const embed = join(folder, 'abc123-notify.html')
-  writeFileSync(
-    embed,
-    `<!doctype html><script>Notification.requestPermission().then(
-  (result) => parent.postMessage(result, '*'))</script>`
-  )
-
-  const answers = await page.evaluate(
-    (src) =>
-      new Promise<string[]>((resolve) => {
-        const timer = setTimeout(() => resolve(['timeout']), 15000)
-        window.addEventListener(
-          'message',
-          (event) => {
-            clearTimeout(timer)
-            void Notification.requestPermission().then((own) => resolve([String(event.data), own]))
-          },
-          { once: true }
-        )
-        const frame = document.createElement('iframe')
-        frame.setAttribute('sandbox', 'allow-scripts')
-        frame.src = src
-        document.body.append(frame)
-      }),
-    webviewUrl('memry-html', embed)
-  )
-
-  // The embed, then the app's own page.
-  expect(answers).toEqual(['denied', 'denied'])
-})
-
 test('the YouTube embed page loads in the app and its player is not sent to the browser', async ({
   app,
   page
