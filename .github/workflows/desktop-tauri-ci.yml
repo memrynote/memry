@@ -26,8 +26,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '') }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/feat/tauri-v2' }}
+  # One group per workflow and ref; a PR with `full-ci` and the noop runs keep their own groups. A
+  # workflow_dispatch on feat/tauri-v2 gets its own group so a manual Intel run is neither cancelled
+  # by a push nor cancels one.
+  group: desktop-tauri-ci-${{ github.workflow }}-${{ github.ref }}${{ ((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && format('-noop-{0}', github.run_id) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feat/tauri-v2' && format('-dispatch-{0}', github.run_id) || (github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci') && '-full' || '')) }}
+  # A burst of merges into feat/tauri-v2 checks only the newest head: a push there cancels the run
+  # of the previous head. main pushes keep running to completion, as before.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   CI: true
@@ -51,6 +56,8 @@ jobs:
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
       intel: ${{ steps.tier.outputs.intel }}
+      macos: ${{ steps.tier.outputs.macos }}
+      build_matrix: ${{ steps.matrix.outputs.build }}
       paths: ${{ steps.paths.outputs.changed }}
     steps:
       - name: Checkout
@@ -63,6 +70,30 @@ jobs:
         uses: ./.github/actions/ci-tier
         with:
           token: ${{ github.token }}
+
+      # Fast tier: linux-x64 only. Full: every platform, minus Apple Silicon in the merge queue
+      # (macos=false) and minus Intel unless plan.intel is true (main, dispatch). macos-x64 has no
+      # e2e leg: nothing downloads it.
+      - name: Build the build matrix
+        id: matrix
+        env:
+          FULL: ${{ steps.tier.outputs.full }}
+          MACOS: ${{ steps.tier.outputs.macos }}
+          INTEL: ${{ steps.tier.outputs.intel }}
+        run: |
+          matrix=$(jq -cn --arg full "$FULL" --arg macos "$MACOS" --arg intel "$INTEL" '
+            [
+              {platform: "macos-arm64", os: "macos-15", triple: "aarch64-apple-darwin", on: ($macos == "true")},
+              {platform: "macos-x64", os: "macos-15-intel", triple: "x86_64-apple-darwin", on: ($intel == "true")},
+              {platform: "windows-x64", os: "windows-2022", triple: "x86_64-pc-windows-msvc", on: true},
+              {platform: "windows-arm64", os: "windows-11-arm", triple: "aarch64-pc-windows-msvc", on: true},
+              {platform: "linux-x64", os: "ubuntu-22.04", triple: "x86_64-unknown-linux-gnu", on: true},
+              {platform: "linux-arm64", os: "ubuntu-22.04-arm", triple: "aarch64-unknown-linux-gnu", on: true}
+            ]
+            | map(select(.on and ($full == "true" or .platform == "linux-x64")) | del(.on))
+            | {include: [.[] | . as $p | ("debug", "e2e") as $variant | select($p.platform != "macos-x64" or $variant != "e2e") | $p + {variant: $variant}]}')
+          echo "build=$matrix" >> "$GITHUB_OUTPUT"
+          echo "Build matrix: $matrix"
 
       # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
       # would never report. Pushes keep their own `paths`; every other event outputs true.
@@ -158,7 +189,8 @@ jobs:
       - name: Script tests
         run: pnpm --filter @memry/desktop-tauri test:scripts
 
-  # Fast tier: linux-x64 only, and only when the diff can change app behavior. Full: every leg.
+  # Fast tier: linux-x64 only, and only when the diff can change app behavior. Full: every leg the plan
+  # job lists (no Apple Silicon in the merge queue, no Intel except on main and dispatch).
   # Entries that name an existing `platform` add their keys to that platform's legs. Each leg
   # builds and then tests on its own runner, so a platform waits only for itself and a macOS
   # platform takes one runner slot per variant: `Build debug` also runs the launch smoke and the
@@ -173,7 +205,9 @@ jobs:
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && (needs.plan.outputs.intel == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"exclude":[{"platform":"macos-x64","variant":"e2e"}],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["macos-arm64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}') || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
+      # Built by the plan job (see "Build the build matrix"). The fallback is the fast tier, for a plan
+      # job that failed.
+      matrix: ${{ fromJSON(needs.plan.outputs.build_matrix || '{"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"debug"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu","variant":"e2e"}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
