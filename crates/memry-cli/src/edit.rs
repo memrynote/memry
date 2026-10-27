@@ -251,7 +251,7 @@ mod tests {
     /// state. What the peer ends up with is what a desktop ends up with.
     #[test]
     fn the_loaded_document_authors_one_update_that_carries_the_paragraph() {
-        let (dir, db) = scratch("end-to-end");
+        let (_dir, db) = scratch("end-to-end");
         let base = from_hex(PLAIN_PARAGRAPH_VECTOR);
         let seeded = base.clone();
         db.call_blocking(move |conn| {
@@ -292,24 +292,19 @@ mod tests {
         );
 
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     // ---------------------------------------------------------------------
     // The durable half: the refusals, and the one transaction.
     // ---------------------------------------------------------------------
 
-    fn scratch(label: &str) -> (std::path::PathBuf, Db) {
-        use std::sync::atomic::{AtomicU64, Ordering};
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!(
-            "memry-cli-edit-{label}-{}-{unique}",
-            std::process::id()
-        ));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("a scratch directory");
-        let db = memry_core::storage::open_data(&dir.join("data.db")).expect("open data.db");
+    /// The database is declared after the directory in every test, so it closes first.
+    fn scratch(label: &str) -> (tempfile::TempDir, Db) {
+        let dir = tempfile::Builder::new()
+            .prefix(&format!("memry-cli-edit-{label}-"))
+            .tempdir()
+            .expect("a scratch directory");
+        let db = memry_core::storage::open_data(&dir.path().join("data.db")).expect("open data.db");
         (dir, db)
     }
 
@@ -327,7 +322,7 @@ mod tests {
     /// Four different answers, and none of them is "an empty document".
     #[test]
     fn a_missing_deleted_or_corrupt_document_is_refused() {
-        let (dir, db) = scratch("refusals");
+        let (_dir, db) = scratch("refusals");
         seed_item(
             &db,
             "INSERT INTO sync_items (item_type, item_id, payload_state, updated_at, deleted_at)
@@ -352,14 +347,13 @@ mod tests {
         assert_eq!(live_item_type(&db, "alive").expect("a live note"), "note");
 
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// The read path's lesson, made a test: a body that is not in the log is
     /// an error, never an empty document one paragraph is then written over.
     #[test]
     fn a_body_that_is_not_in_the_log_is_never_appended_to() {
-        let (dir, db) = scratch("unpulled");
+        let (_dir, db) = scratch("unpulled");
         let refused = load_body(&db, "alive", "device-a");
         assert!(
             matches!(&refused, Err(CliError::Refused(message)) if message.contains("update log")),
@@ -368,7 +362,6 @@ mod tests {
         );
 
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// FR-030: the update row and the outbox row are one transaction, and the
@@ -376,7 +369,7 @@ mod tests {
     /// them from.
     #[test]
     fn the_update_row_and_its_outbox_row_commit_together() {
-        let (dir, db) = scratch("record");
+        let (_dir, db) = scratch("record");
         let update = vec![1u8, 2, 3];
         let seq = record(&db, "note", "note-1", &update, 1_700_000_000_000).expect("records");
         assert_eq!(seq, 1, "the first local sequence");
@@ -429,6 +422,5 @@ mod tests {
         assert_eq!(queued, 2);
 
         drop(db);
-        let _ = std::fs::remove_dir_all(&dir);
     }
 }
