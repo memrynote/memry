@@ -13,6 +13,7 @@ use memry_desktop::locale::LocaleService;
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
 use memry_desktop::shell::tray::should_hide_on_close;
+use memry_desktop::shell::tray_host::host_registered;
 use serde_json::Value;
 use tauri::image::Image;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
@@ -46,13 +47,16 @@ fn register(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     Ok(())
 }
 
-/// Whether a close of the main window hides it now.
+/// Whether a close of the main window hides it now. Asks the session for a tray host at the
+/// moment of the close (a Linux panel can start or stop after the app), so a window is never
+/// hidden under an icon nothing draws.
 pub fn hides_on_close(app: &AppHandle<Wry>) -> bool {
     let service = app.state::<TrayService>();
     should_hide_on_close(
         service.enabled.load(Ordering::SeqCst),
         service.active.load(Ordering::SeqCst),
         startup::shutdown_started(),
+        host_registered,
     )
 }
 
@@ -123,6 +127,12 @@ fn converge(app: &AppHandle<Wry>, enabled: bool) {
             Ok(()) => {
                 service.active.store(true, Ordering::SeqCst);
                 tracing::info!(scope = "Tray", "tray created");
+                if !host_registered() {
+                    tracing::warn!(
+                        scope = "Tray",
+                        "no tray host in this session; closing the window quits until one starts"
+                    );
+                }
             }
             Err(error) => tracing::warn!(
                 scope = "Tray",

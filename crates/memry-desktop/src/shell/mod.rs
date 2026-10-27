@@ -21,3 +21,4 @@ pub mod notifications;
 pub mod shutdown;
 pub mod stall;
 pub mod tray;
+pub mod tray_host;
