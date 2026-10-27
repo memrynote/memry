@@ -18,6 +18,7 @@ pub mod menu_table;
 pub mod menu_table_generated;
 pub mod nav_input;
 pub mod notifications;
+pub mod shortcut;
 pub mod shutdown;
 pub mod stall;
 pub mod tray;
