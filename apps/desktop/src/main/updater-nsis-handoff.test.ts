@@ -312,11 +312,11 @@ describe('NSIS to Velopack hand-off through the updater', () => {
       'C:\\Users\\kaan\\AppData\\Local\\Temp',
       `memry-installer-handoff-${process.pid}.cmd`
     )
-    expect(mocks.childProcess.spawn).toHaveBeenCalledWith('cmd.exe', ['/c', scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true
-    })
+    expect(mocks.childProcess.spawn).toHaveBeenCalledWith(
+      'cmd.exe',
+      ['/d', '/s', '/c', `""${scriptPath}""`],
+      expect.objectContaining({ detached: true, stdio: 'ignore', windowsHide: true })
+    )
     expect(vi.mocked(markUpdateInstallStarted).mock.invocationCallOrder[0]).toBeLessThan(
       mocks.childProcess.spawn.mock.invocationCallOrder[0]
     )
