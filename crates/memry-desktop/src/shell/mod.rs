@@ -2,4 +2,7 @@
 //! module never depends on `tauri`; the adapters in `apps/desktop-tauri/src-tauri` apply them.
 
 pub mod bounds;
+pub mod close;
+pub mod flush;
 pub mod heartbeat;
+pub mod shutdown;

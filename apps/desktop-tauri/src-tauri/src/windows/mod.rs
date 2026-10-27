@@ -2,6 +2,7 @@
 //! window-event dispatcher, first-paint reveal and zoom.
 
 pub mod bounds_store;
+pub mod close;
 pub mod events;
 pub mod main_window;
 pub mod registry;

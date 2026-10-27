@@ -309,35 +309,3 @@ pub fn on_focus(app: &AppHandle<Wry>, focused: bool) {
         lifecycle::backgrounded(&service);
     }
 }
-
-/// The clean end of a run: removes the crash marker, so the next launch does not report this
-/// one as a crash, and gives the queues one short chance to ship. Step 11 (#3528) moves this
-/// into its shutdown sequence, with the marker's step stamps.
-pub fn on_exit(app: &AppHandle<Wry>) {
-    if let Some(marker) = app.try_state::<Mutex<CrashMarker>>() {
-        marker
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .clear();
-    }
-    let Some(service) = telemetry(app) else {
-        return;
-    };
-    let ship = app
-        .try_state::<Arc<logship::LogShip>>()
-        .map(|s| s.inner().clone());
-    tauri::async_runtime::block_on(async move {
-        let flush = async {
-            service.flush(FlushReason::Shutdown).await;
-            if let Some(ship) = ship {
-                ship.flush().await;
-            }
-        };
-        if tokio::time::timeout(Duration::from_secs(2), flush)
-            .await
-            .is_err()
-        {
-            tracing::warn!(scope = "Telemetry", "the shutdown flush ran out of time");
-        }
-    });
-}

@@ -6,8 +6,10 @@ pub mod commands;
 #[cfg(feature = "e2e")]
 pub mod e2e;
 pub mod events;
+pub mod flush;
 pub mod registry;
 pub mod shell;
+pub mod shutdown;
 pub mod startup;
 pub mod windows;
 
@@ -38,6 +40,8 @@ fn register_stages() {
     shell::services::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
+    shutdown::register_stages();
+    windows::close::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
 }
 
@@ -124,11 +128,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         })
         .build(context)
         .map(|app| {
-            app.run(|handle, event| {
-                if matches!(event, tauri::RunEvent::Exit) {
-                    shell::services::on_exit(handle);
-                }
-            });
+            app.run(|handle, event| shutdown::on_run_event(handle, &event));
         });
     if let Err(error) = result {
         tracing::error!("tauri runtime failed: {error}");
