@@ -209,6 +209,19 @@ envelopes (chapter 04 §4.11), **at most 100 per call**, each capped at twice
 and the cap is applied to the encoded string. It answers `{ sequences: number[] }`
 (`apps/sync-server/src/routes/sync.ts:748`).
 
+**A client sizes a request by its base64 characters, not only by count.** The
+whole request is under the `/sync/*` body ceiling of 8 MiB
+(`apps/sync-server/src/index.ts:66`), which answers 413 before the route runs, so
+no per-update verdict comes back and a resend fails the same way. Both clients
+therefore stop a request when the base64 of its updates would pass **6,000,000
+characters**, and the rest of the queue rides the next request: desktop in
+`MAX_CRDT_REQUEST_PAYLOAD_CHARS` (`packages/sync-client/src/crdt-payload.ts:14`),
+the Rust core in `MAX_REQUEST_PAYLOAD_CHARS` (`crates/memry-core/src/protocol/crdt_envelope.rs:75`)
+applied by the claim in `next_batch` (`crates/memry-core/src/sync/outbox.rs:429-448`).
+The Rust cost of an update is an upper bound taken without compressing (the frame
+is never longer than the stored form, chapter 04 §4.1), so a batch is never
+over-full. The first update of a batch always rides.
+
 **The update store is idempotent per document** (#2296). The server stores the
 SHA-256 of each update's bytes and ignores a second insert of the same bytes for
 the same document (migration `0012_crdt_update_hash.sql`, a unique index on
