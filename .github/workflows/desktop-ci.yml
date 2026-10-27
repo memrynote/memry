@@ -250,7 +250,7 @@ jobs:
 
       - name: Install system dependencies
         uses: ./.github/actions/apt-install
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           packages: libsecret-1-dev
 
@@ -419,7 +419,7 @@ jobs:
 
       - name: Install system dependencies
         uses: ./.github/actions/apt-install
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           packages: libsecret-1-dev
 
@@ -485,7 +485,7 @@ jobs:
 
       - name: Install system dependencies
         uses: ./.github/actions/apt-install
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           packages: libsecret-1-dev gnome-keyring dbus-x11 xvfb
 
@@ -680,7 +680,7 @@ jobs:
 
       - name: Install system dependencies
         uses: ./.github/actions/apt-install
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           packages: libsecret-1-dev gnome-keyring dbus-x11 xvfb
 

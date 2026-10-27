@@ -1,5 +1,5 @@
 name: Install apt packages
-description: apt-get update and install with per-command timeouts and retries, so a stalled or trickling mirror fails within ~9 min instead of running into the job timeout.
+description: apt-get update and install with per-command timeouts and retries, so a stalled or trickling mirror fails within ~10 min instead of running into the job timeout.
 inputs:
   packages:
     description: Space-separated apt packages
@@ -19,23 +19,26 @@ runs:
         # (azure.archive.ubuntu.com) sometimes serves 60-130 kB/s for a whole job: it never
         # stalls, so no per-request timeout fires, and the ~57 MB install ran 12-27 min on
         # 27 Oct. Each attempt is cut short and keeps the .debs it already fetched, and the
-        # retries switch to Canonical's archive. Three attempts stay under ~9 min, inside the
-        # callers' 10 min step timeout.
+        # retries switch to Canonical's archive. Three attempts take at most ~10 min,
+        # inside the callers' 12 min step timeout.
         for attempt in 1 2 3; do
           if [ "$attempt" = 2 ]; then
             echo "switching apt to archive.ubuntu.com"
             sudo sed -i -E 's#mirror\+file:/etc/apt/apt-mirrors\.txt#http://archive.ubuntu.com/ubuntu#g; s#https?://azure\.archive\.ubuntu\.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' \
               /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
           fi
+          # The first attempt is the fast path; the archive's index is bigger to fetch from cold.
+          update_cap=45
+          [ "$attempt" = 1 ] || update_cap=90
           # shellcheck disable=SC2086
-          if sudo timeout 45 apt-get "${opts[@]}" update &&
+          if sudo timeout "$update_cap" apt-get "${opts[@]}" update &&
             sudo timeout 120 apt-get "${opts[@]}" install -y $PACKAGES; then
             exit 0
           fi
-          echo "apt attempt $attempt failed; retrying in $((attempt * 5))s"
+          echo "apt attempt $attempt failed"
           # A timeout that lands in the unpack phase leaves dpkg half-configured.
-          sudo dpkg --configure -a || true
-          sleep $((attempt * 5))
+          sudo timeout 60 dpkg --configure -a || true
+          [ "$attempt" = 3 ] || sleep $((attempt * 5))
         done
         echo "apt failed after 3 attempts" >&2
         exit 1

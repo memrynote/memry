@@ -136,7 +136,7 @@ jobs:
       - name: Install Linux system libraries
         if: runner.os == 'Linux'
         uses: ./.github/actions/apt-install
-        timeout-minutes: 10
+        timeout-minutes: 12
         with:
           packages: >-
             libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf gnome-keyring libsecret-tools dbus-x11
@@ -162,6 +162,7 @@ jobs:
       # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
       # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
+        id: cargo-cache
         uses: Swatinem/rust-cache@v2
         timeout-minutes: 8
         continue-on-error: true
@@ -170,6 +171,12 @@ jobs:
         with:
           workspaces: crates
           save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
+
+      # A restore cut off at the step timeout can leave half an archive on disk. Start the
+      # build cold rather than from files cargo might trust.
+      - name: Drop a partial cargo cache
+        if: steps.cargo-cache.outcome == 'failure'
+        run: rm -rf target "$HOME/.cargo/registry/cache" "$HOME/.cargo/registry/index" "$HOME/.cargo/git/db"
 
       - name: Format
         if: runner.os == 'Linux'
