@@ -168,3 +168,23 @@ fn isolate_webview_profile<'a, R: Runtime, M: Manager<R>>(
 ) -> WebviewWindowBuilder<'a, R, M> {
     builder
 }
+
+/// The macOS Dock icon was clicked with no window showing: shows the main window, or builds it
+/// again when it was closed.
+#[cfg(target_os = "macos")]
+pub fn reopen(app: &AppHandle<Wry>) {
+    if let Some(window) = super::registry::WindowRegistry::main_window(app) {
+        let shown = window
+            .unminimize()
+            .and_then(|()| window.show())
+            .and_then(|()| window.set_focus());
+        if let Err(error) = shown {
+            tracing::warn!("could not show the main window on reopen: {error}");
+        }
+        return;
+    }
+    let state = crate::shell::services::startup_state(app);
+    if let Err(error) = create_main(app, &state) {
+        tracing::error!("could not rebuild the main window on reopen: {error}");
+    }
+}

@@ -3,6 +3,7 @@
 
 pub mod bounds_store;
 pub mod chrome;
+pub mod close;
 pub mod events;
 pub mod main_window;
 pub mod nav_input;

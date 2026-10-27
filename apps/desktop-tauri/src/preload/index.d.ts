@@ -2249,8 +2249,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
     callback: (data: { vaultPath: string | null } | undefined) => void
   ) => () => void
   onCrdtWriteBackFailed: (callback: (event: CrdtWriteBackFailedEvent) => void) => () => void
-  onFlushRequested: (callback: (requestId?: string) => void) => () => void
-  notifyFlushDone: (requestId?: string) => void
 }
 
 interface ElectronShim {

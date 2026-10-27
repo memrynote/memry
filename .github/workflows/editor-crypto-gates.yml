@@ -14,16 +14,6 @@ name: Editor & crypto gates
 
 on:
   pull_request:
-    paths:
-      - 'apps/extension/src/**'
-      - 'apps/landing/src/**'
-      - 'packages/article-extract/**'
-      - 'packages/contracts/**'
-      - 'packages/editor-schema/**'
-      - 'crates/**'
-      - 'scripts/check-architecture-boundaries.js'
-      - 'scripts/check-line-ceilings.mjs'
-      - '.github/workflows/editor-crypto-gates.yml'
   push:
     branches:
       - main
@@ -37,6 +27,8 @@ on:
       - 'scripts/check-architecture-boundaries.js'
       - 'scripts/check-line-ceilings.mjs'
       - '.github/workflows/editor-crypto-gates.yml'
+  # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -53,8 +45,34 @@ env:
   TURBO_TELEMETRY_DISABLED: 1
 
 jobs:
+  # Applies the path filter that used to sit on `pull_request`, in a job, so the workflow always runs
+  # and the gate always reports. Pushes keep their own `paths`; every other event outputs true.
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.paths.outputs.changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github
+
+      - name: Detect changed paths
+        id: paths
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          include: '^(apps/extension/src/|apps/landing/src/|packages/(article-extract|contracts|editor-schema)/|crates/|scripts/check-architecture-boundaries\.js$|scripts/check-line-ceilings\.mjs$|\.github/workflows/editor-crypto-gates\.yml$)'
+
   inherited-gates:
     name: Editor and crypto gates
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -90,3 +108,23 @@ jobs:
 
       - name: Line ceilings
         run: node scripts/check-line-ceilings.mjs
+
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
+  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
+  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  gate:
+    name: Editor crypto CI gate
+    needs: [changes, inherited-gates]
+    if: ${{ always() && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail when a needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+          DETECT_RESULT: ${{ needs.changes.result }}
+        run: |
+          echo "needed job results: $RESULTS"
+          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
+          if [ "$DETECT_RESULT" != success ]; then echo "::error::changes job result was $DETECT_RESULT"; exit 1; fi
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac

@@ -10,6 +10,11 @@ export const commands = {
 	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
 	/**  Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer). */
 	feedbackSubmit: (input: FeedbackSubmit) => __TAURI_INVOKE<FeedbackSubmitResult>("feedback_submit", { input }),
+	/**
+	 *  The window finished the flush `request_id` asked for. Counts only from the window that was
+	 *  asked, with the id that was issued.
+	 */
+	flushDone: (requestId: string) => __TAURI_INVOKE<null>("flush_done", { requestId }),
 	localeGet: () => __TAURI_INVOKE<string>("locale_get"),
 	localeList: () => __TAURI_INVOKE<string[]>("locale_list"),
 	/**
@@ -74,6 +79,7 @@ export const commands = {
 /** Events */
 export const events = {
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
+	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
@@ -210,6 +216,14 @@ export type FeedbackSubmitResult = {
 
 /**  A redacted field: the schema allows a string, a number or a boolean. */
 export type FieldValue = boolean | number | null | string;
+
+/**
+ *  Main asks a window to write its unsaved edits (`flush-requested-event`); the window answers with
+ *  the `flush_done` command and the same id.
+ */
+export type FlushRequestedEvent = {
+	requestId: string,
+};
 
 export type GetVaultsResponse = {
 	vaults: VaultInfo[],

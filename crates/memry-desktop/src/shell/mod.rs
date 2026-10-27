@@ -3,5 +3,8 @@
 
 pub mod bounds;
 pub mod caption;
+pub mod close;
+pub mod flush;
 pub mod heartbeat;
 pub mod nav_input;
+pub mod shutdown;

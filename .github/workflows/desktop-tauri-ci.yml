@@ -7,13 +7,6 @@ on:
     # `labeled` starts the full matrix for a PR into feat/tauri-v2 once `full-ci` is added; every
     # other labeled event skips all jobs, so PRs into main see no change.
     types: [opened, synchronize, reopened, labeled]
-    paths:
-      - 'apps/desktop-tauri/**'
-      - 'crates/**'
-      - 'packages/**'
-      - 'pnpm-lock.yaml'
-      - 'oxlint.config.mts'
-      - '.github/workflows/desktop-tauri-ci.yml'
   # The full matrix runs on every merge into feat/tauri-v2.
   push:
     branches:
@@ -25,6 +18,8 @@ on:
       - 'pnpm-lock.yaml'
       - 'oxlint.config.mts'
       - '.github/workflows/desktop-tauri-ci.yml'
+  # The merge queue (feat/tauri-v2) runs the full matrix on the merge-group commit; `paths` do not apply.
+  merge_group:
   workflow_dispatch:
 
 permissions:
@@ -55,6 +50,8 @@ jobs:
       full: ${{ steps.tier.outputs.full }}
       tauri: ${{ steps.tier.outputs.tauri }}
       swift: ${{ steps.tier.outputs.swift }}
+      intel: ${{ steps.tier.outputs.intel }}
+      paths: ${{ steps.paths.outputs.changed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -67,9 +64,19 @@ jobs:
         with:
           token: ${{ github.token }}
 
+      # Replaces the `pull_request.paths` filter: a filtered workflow never runs, so its required gate
+      # would never report. Pushes keep their own `paths`; every other event outputs true.
+      - name: Detect changed paths
+        id: paths
+        uses: ./.github/actions/paths-changed
+        with:
+          token: ${{ github.token }}
+          include: '^(apps/desktop-tauri/|crates/|packages/|pnpm-lock\.yaml$|oxlint\.config\.mts$|\.github/workflows/desktop-tauri-ci\.yml$)'
+
   static:
     name: Static checks
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: plan
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -96,11 +103,13 @@ jobs:
         with:
           toolchain: '1.98.1'
 
+      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
-          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -123,7 +132,8 @@ jobs:
 
   renderer-tests:
     name: Renderer tests
-    if: (github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')
+    needs: plan
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -158,12 +168,12 @@ jobs:
   build:
     name: Build ${{ matrix.variant }} (${{ matrix.platform }})
     needs: plan
-    if: needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true'
+    if: ${{ !cancelled() && (needs.plan.outputs.paths == 'true' || needs.plan.result == 'failure') && (needs.plan.result == 'failure' || needs.plan.outputs.full == 'true' || needs.plan.outputs.tauri == 'true') }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"exclude":[{"platform":"macos-x64","variant":"e2e"}],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
+      matrix: ${{ fromJSON(needs.plan.outputs.full == 'true' && (needs.plan.outputs.intel == 'true' && '{"variant":["debug","e2e"],"platform":["macos-arm64","macos-x64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"exclude":[{"platform":"macos-x64","variant":"e2e"}],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"macos-x64","os":"macos-15-intel","triple":"x86_64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}' || '{"variant":["debug","e2e"],"platform":["macos-arm64","windows-x64","windows-arm64","linux-x64","linux-arm64"],"include":[{"platform":"macos-arm64","os":"macos-15","triple":"aarch64-apple-darwin"},{"platform":"windows-x64","os":"windows-2022","triple":"x86_64-pc-windows-msvc"},{"platform":"windows-arm64","os":"windows-11-arm","triple":"aarch64-pc-windows-msvc"},{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"},{"platform":"linux-arm64","os":"ubuntu-22.04-arm","triple":"aarch64-unknown-linux-gnu"}]}') || '{"variant":["debug","e2e"],"platform":["linux-x64"],"include":[{"platform":"linux-x64","os":"ubuntu-22.04","triple":"x86_64-unknown-linux-gnu"}]}') }}
     env:
       VITE_MEMRY_DEV_API_PROXY: '1'
     defaults:
@@ -195,12 +205,14 @@ jobs:
           toolchain: '1.98.1'
           targets: ${{ matrix.triple }}
 
+      # Saves only on push, dispatch and PRs into main. A PR into feat/tauri-v2 and a merge-queue run
+      # restore what the push to feat/tauri-v2 saved and write nothing (a save is 2-4 GB per job).
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: crates
           key: ${{ matrix.variant }}-${{ matrix.triple }}
-          save-if: ${{ github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2' }}
+          save-if: ${{ github.event_name != 'merge_group' && (github.event_name != 'pull_request' || github.base_ref != 'feat/tauri-v2') }}
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
@@ -286,3 +298,24 @@ jobs:
           path: apps/desktop-tauri/test-results/e2e
           if-no-files-found: ignore
           retention-days: 7
+
+  # The one check name a ruleset requires for this workflow (merge queue, #3517). Matrix legs and
+  # fast/full tiers change which jobs exist; this name does not. A skipped job counts as passed.
+  # Runs only for feat/tauri-v2 and the merge queue, so main and its PRs see no new check.
+  gate:
+    name: Desktop Tauri CI gate
+    needs: [plan, static, renderer-tests, build]
+    # Skipped (not red) in noop runs: the merge queue is the authoritative gate.
+    if: ${{ always() && !((github.event.action == 'labeled' && !(github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) || (github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) && (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' || github.base_ref == 'feat/tauri-v2' || github.ref == 'refs/heads/feat/tauri-v2') }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Fail when a needed job failed or was cancelled
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+          DETECT_RESULT: ${{ needs.plan.result }}
+        run: |
+          echo "needed job results: $RESULTS"
+          # A skipped detection job (a noop `labeled` or `opened` run) must not read as a pass.
+          if [ "$DETECT_RESULT" != success ]; then echo "::error::plan job result was $DETECT_RESULT"; exit 1; fi
+          case " $RESULTS " in *" failure "*|*" cancelled "*) exit 1 ;; esac
