@@ -27,12 +27,18 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::diagnostics::diagnostics_send_report,
             // feedback
             crate::commands::telemetry::feedback_submit,
+            // badge
+            crate::commands::shell_integrations::badge_set,
             // flush
             crate::commands::shell_integrations::flush_done,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
             crate::commands::locale::locale_set,
+            // notification
+            crate::commands::shell_integrations::notification_permission,
+            crate::commands::shell_integrations::notification_show,
+            crate::commands::shell_integrations::notification_supported,
             // log
             crate::commands::logging::log_write,
             // menu
@@ -79,6 +85,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::AppNavigationRequestedEvent,
             // flush
             crate::events::FlushRequestedEvent,
+            // inbox
+            crate::events::InboxOpenItemEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings

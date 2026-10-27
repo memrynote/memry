@@ -1,18 +1,23 @@
 //! MemryNote desktop shell. `run()` owns the boot sequence; domain steps register startup work
 //! with `startup::register` and commands in `registry.rs`.
 
+pub mod badge;
 pub mod binary;
 pub mod commands;
+pub mod deep_link;
 #[cfg(feature = "e2e")]
 pub mod e2e;
 pub mod events;
 pub mod flush;
 pub mod guards;
+pub mod instance;
 pub mod menu;
+pub mod notifications;
 pub mod registry;
 pub mod shell;
 pub mod shutdown;
 pub mod startup;
+pub mod tray;
 #[cfg(feature = "update-probe")]
 pub mod update_probe;
 pub mod windows;
@@ -36,6 +41,30 @@ pub fn install_crypto_provider() {
     let _already_installed = rustls::crypto::ring::default_provider().install_default();
 }
 
+/// A non-Velopack Windows layout names the process `com.memrynote.memry`, the id the shortcut and
+/// the toast carry. A Velopack install keeps the one its bootstrap set, or Windows would show a
+/// second taskbar icon (`apps/desktop/src/main/windows-install-layout.ts`).
+#[cfg(windows)]
+pub fn set_app_user_model_id() {
+    use memry_desktop::shell::install_layout::app_user_model_id_override;
+    let Ok(exe) = std::env::current_exe() else {
+        return;
+    };
+    let exists = |path: &str| std::path::Path::new(path).exists();
+    let Some(id) = app_user_model_id_override(&exe.to_string_lossy(), exists) else {
+        return;
+    };
+    // SAFETY: a plain call with a valid, null-terminated string that lives for the call.
+    let result = unsafe {
+        ::windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID(
+            &::windows::core::HSTRING::from(id),
+        )
+    };
+    if let Err(error) = result {
+        eprintln!("could not set the AppUserModelID: {error}");
+    }
+}
+
 /// Registers the boot work of the shell: paths, logging, events, the vault session and the
 /// window.
 fn register_stages() {
@@ -46,7 +75,10 @@ fn register_stages() {
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
     shutdown::register_stages();
+    tray::register_stages();
     windows::close::register_stages();
+    deep_link::register_stages();
+    notifications::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
 }
 
@@ -114,7 +146,14 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     );
     #[cfg(not(feature = "e2e"))]
     let handler = registry::invoke_handler(&builder);
-    let app = tauri::Builder::default()
+    // Single instance first: a second launch must hand off before anything else starts.
+    #[cfg(feature = "e2e")]
+    let single_instance_off = gate.is_open();
+    #[cfg(not(feature = "e2e"))]
+    let single_instance_off = false;
+    let app = instance::install(tauri::Builder::default(), single_instance_off)
+        .plugin(tauri_plugin_deep_link::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init());
@@ -122,6 +161,7 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     let app = e2e::install(app, gate);
     let result = app
         .manage(env)
+        .manage(badge::BadgeService::default())
         .invoke_handler(handler)
         .on_window_event(windows::events::dispatch)
         .on_menu_event(menu::on_menu_event)

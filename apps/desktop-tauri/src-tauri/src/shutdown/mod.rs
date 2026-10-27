@@ -186,7 +186,12 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
 pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
     match event {
         RunEvent::ExitRequested { code, api, .. } => on_exit_requested(app, *code, api),
-        RunEvent::Exit => app.state::<ShutdownService>().core.apply_on_quit(),
+        RunEvent::Exit => {
+            // Windows leaves a ghost icon in the notification area if the process ends with a
+            // live tray.
+            crate::tray::destroy(app);
+            app.state::<ShutdownService>().core.apply_on_quit();
+        }
         #[cfg(target_os = "macos")]
         RunEvent::Reopen {
             has_visible_windows: false,

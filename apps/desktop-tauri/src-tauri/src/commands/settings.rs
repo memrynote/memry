@@ -61,6 +61,12 @@ fn announce(app: &AppHandle<Wry>, key: &str, fields: Vec<String>) {
             setting_changed(&service, &format!("{key}.{field}"));
         }
     }
+    if key == "general" {
+        // `general.minimizeToTray` lives here; apply converges and ignores an unchanged value.
+        if let Err(error) = crate::tray::apply_from_settings(app) {
+            tracing::warn!(scope = "Tray", "could not apply the tray setting: {error}");
+        }
+    }
     broadcast(
         app,
         SettingsChangedEvent {
