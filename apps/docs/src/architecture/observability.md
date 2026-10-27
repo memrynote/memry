@@ -1220,12 +1220,19 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   `downloading` state) and verifies it with `Get-AuthenticodeSignature`: status `Valid` and a signer
   subject containing `CN=Open Source Developer Kaan Karaca`, or the file is deleted and never run.
   The install step then spawns a detached batch script (rendered by
-  `installer-handoff-script.ts`, so its exact command lines are pinned by tests) that waits for the
-  app's PID to exit, runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
+  `installer-handoff-script.ts`: static ASCII text, so no user name, code page or `)` in a path can
+  reach `cmd.exe`; the paths travel in the script's environment and the install directory is refused when
+  it holds `& | < > ^ "`) that waits for the
+  app's PID to exit (a `powershell.exe` process wait that fails closed, with `PSModulePath` cleared: the
+  script runs in a console-less `cmd.exe`, where `tasklist | find` hangs), runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
   so the tolerant removal path runs, and the copy blocks until the old install, its shortcuts and
-  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`, and
-  falls back to the already-downloaded NSIS installer if no
-  Velopack `Memrynote.exe` exists afterwards, so the user is never left without an app. Every
+  its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`,
+  starts the new app itself (`--silent` stops Setup from starting it, and it does not set
+  `VELOPACK_FIRSTRUN`), and falls back to the already-downloaded NSIS installer if Setup exited non-zero
+  or no Velopack `Memrynote.exe` exists afterwards (with no NSIS installer left, it starts the old
+  Electron app again), so the user is never left without a running app. Each step is logged to
+  `userData/logs/installer-handoff.log`; `installer-handoff-windows.test.mjs` runs the script on
+  hostile paths in the `handoff-scenarios` job of the smoke workflow. Every
   refusal falls back to the plain NSIS install: a release without the Velopack asset (info log
   only), a download failure (`INSTALLER_HANDOFF_DOWNLOAD_FAILED` through the updater error path) and
   a signature failure (`INSTALLER_HANDOFF_UNVERIFIED`). The next launch reads the marker: still the
