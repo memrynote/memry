@@ -68,7 +68,7 @@ jobs:
   sync-server:
     name: Typecheck, test, and Worker bundle
     needs: changes
-    if: needs.changes.outputs.run == 'true'
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 

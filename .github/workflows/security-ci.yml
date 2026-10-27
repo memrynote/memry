@@ -55,7 +55,7 @@ jobs:
   secret-scan:
     name: Secret scan
     needs: changes
-    if: needs.changes.outputs.run == 'true' && (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group')
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'merge_group') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -81,7 +81,7 @@ jobs:
   dependency-review:
     name: Dependency review
     needs: changes
-    if: needs.changes.outputs.run == 'true' && github.event_name == 'pull_request'
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -104,7 +104,7 @@ jobs:
   codeql:
     name: CodeQL
     needs: changes
-    if: needs.changes.outputs.run == 'true'
+    if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
