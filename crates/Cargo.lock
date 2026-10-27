@@ -3360,6 +3360,7 @@ dependencies = [
  "md-5",
  "memry-core",
  "pbkdf2",
+ "proptest",
  "rcgen",
  "regex",
  "reqwest",

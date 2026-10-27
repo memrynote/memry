@@ -291,6 +291,19 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
         .map_err(failed)
 }
 
+/// Every `(note_id, path)`, for a caller that builds its own lookup (the desktop vault tier
+/// keeps a case- and normalization-folded index, which the core does not).
+pub fn list_paths(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {
+    let mut statement = conn
+        .prepare("SELECT note_id, path FROM note_files")
+        .map_err(failed)?;
+    statement
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
 pub fn set_local_only(
     conn: &Connection,
     note_id: &str,
