@@ -121,6 +121,11 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     });
 }
 
+/// The registered update hook, `None` before Step 38 (#3555) registers one.
+pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
+    app.state::<ShutdownService>().core.update_hook()
+}
+
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the Windows session
 /// end. Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
@@ -190,6 +195,8 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
             // Windows leaves a ghost icon in the notification area if the process ends with a
             // live tray.
             crate::tray::destroy(app);
+            app.state::<crate::shortcuts::ShortcutService>()
+                .release_all(app);
             app.state::<ShutdownService>().core.apply_on_quit();
         }
         #[cfg(target_os = "macos")]
