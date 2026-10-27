@@ -31,7 +31,7 @@ tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 memry-desktop = { path = "../../../crates/memry-desktop" }
-tauri = { version = "2.12", features = ["specta", "devtools"] }
+tauri = { version = "2.12", features = ["specta", "devtools", "tray-icon", "image-png"] }
 # tauri-specta rc.26 requires exactly these versions.
 tauri-specta = { version = "=2.0.0-rc.26", features = ["derive", "typescript"] }
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json"] }
@@ -51,6 +51,11 @@ velopack = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"
 tauri-plugin-opener = "2.7.2"
+# The second launch hands its arguments to the deep-link plugin (`deep-link` feature); no
+# `semver` feature, so two versions never run side by side.
+tauri-plugin-single-instance = { version = "2.5.4", features = ["deep-link"] }
+tauri-plugin-deep-link = "2.6.2"
+tauri-plugin-notification = "2.7.0"
 # The Paste and Match Style menu item reads the clipboard text.
 tauri-plugin-clipboard-manager = "2.5.0"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
@@ -81,6 +86,9 @@ windows = { version = "0.62", features = [
 [target.'cfg(target_os = "linux")'.dependencies]
 # `guards/gpu.rs` reports `web-process-terminated`. Same version as wry.
 webkit2gtk = "2.0.2"
+# tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
+# to compile there. Drop the pin when the plugin moves to `..Default::default()`.
+rust-ini = "=0.21.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.

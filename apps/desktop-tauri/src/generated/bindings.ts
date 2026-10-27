@@ -10,6 +10,8 @@ export const commands = {
 	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
 	/**  Beta feedback, anonymous or with the account's token (Step 19, #3536, adds the bearer). */
 	feedbackSubmit: (input: FeedbackSubmit) => __TAURI_INVOKE<FeedbackSubmitResult>("feedback_submit", { input }),
+	/**  The unread count on the app icon; 0 clears it. */
+	badgeSet: (count: number) => __TAURI_INVOKE<void>("badge_set", { count }),
 	/**
 	 *  The window finished the flush `request_id` asked for. Counts only from the window that was
 	 *  asked, with the id that was issued.
@@ -22,6 +24,17 @@ export const commands = {
 	 *  the synced `general.language`, and tells every window.
 	 */
 	localeSet: (locale: string) => __TAURI_INVOKE<null>("locale_set", { locale }),
+	notificationPermission: () => __TAURI_INVOKE<NotificationPermission>("notification_permission"),
+	/**
+	 *  Shows a notification from the renderer. A click may only focus the window or run one of the
+	 *  handlers the inbox and reminders register.
+	 */
+	notificationShow: (request: NotificationRequest) => __TAURI_INVOKE<null>("notification_show", { request }),
+	/**
+	 *  Whether a notification can be shown: always on macOS and Windows, on Linux when a daemon owns
+	 *  `org.freedesktop.Notifications`.
+	 */
+	notificationSupported: () => __TAURI_INVOKE<boolean>("notification_supported"),
 	logWrite: (level: LogLevel, scope: string, message: string, fields: Value | null) => __TAURI_INVOKE<null>("log_write", { level, scope, message, fields }),
 	/**  Escape pressed while the Linux menu bar shows. */
 	menuHideAlt: () => __TAURI_INVOKE<null>("menu_hide_alt"),
@@ -98,6 +111,7 @@ export const commands = {
 export const events = {
 	appNavigationRequestedEvent: makeEvent<AppNavigationRequestedEvent, AppNavigationRequestedEvent>("app-navigation-requested-event"),
 	flushRequestedEvent: makeEvent<FlushRequestedEvent, FlushRequestedEvent>("flush-requested-event"),
+	inboxOpenItemEvent: makeEvent<InboxOpenItemEvent, InboxOpenItemEvent>("inbox-open-item-event"),
 	localeChangedEvent: makeEvent<LocaleChangedEvent, LocaleChangedEvent>("locale-changed-event"),
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
@@ -259,6 +273,14 @@ export type GetVaultsResponse = {
 	sandbox: SandboxInfo,
 };
 
+/**
+ *  Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
+ *  (#3544), a clicked inbox notification.
+ */
+export type InboxOpenItemEvent = {
+	itemId: string,
+};
+
 export type ItemKind = "normal" | "separator";
 
 /**  The UI language changed (`locale:changed`). */
@@ -286,6 +308,20 @@ export type Metrics = {
 	activeSeconds?: number | null,
 	value?: number | null,
 };
+
+/**  Desktop needs no permission prompt: the plugin answers granted. */
+export type NotificationPermission = "granted" | "denied";
+
+export type NotificationRequest = {
+	/**  A re-fire with the same key replaces the earlier notification where the platform allows. */
+	key: string,
+	title: string,
+	body: string,
+	silent: boolean,
+	route: NotificationRoute,
+};
+
+export type NotificationRoute = { kind: "focus" } | { kind: "deepLink"; value: string } | { kind: "handler"; value: string };
 
 export type SandboxInfo = {
 	path: string,

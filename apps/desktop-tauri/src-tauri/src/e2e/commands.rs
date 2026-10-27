@@ -23,7 +23,12 @@ e2e_commands! {
     debug => [e2e_debug_query, e2e_debug_index_query],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths, e2e_os_opens],
-    shell_integrations => [e2e_close_window, e2e_request_flush, e2e_trigger_shutdown_overrun],
+    shell_integrations => [
+        e2e_close_window,
+        e2e_tray_probe,
+        e2e_request_flush,
+        e2e_trigger_shutdown_overrun
+    ],
     shell => [
         e2e_set_next_context_menu_selection,
         e2e_last_context_menu_items,
