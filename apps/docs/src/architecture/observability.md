@@ -1221,7 +1221,8 @@ detail (stacks, operational messages) that a PostHog _event_ deliberately omits.
   subject containing `CN=Open Source Developer Kaan Karaca`, or the file is deleted and never run.
   The install step then spawns a detached batch script (rendered by
   `installer-handoff-script.ts`, so its exact command lines are pinned by tests) that waits for the
-  app's PID to exit, runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
+  app's PID to exit (a `powershell Wait-Process`: the script runs in a console-less `cmd.exe`, where
+  `tasklist | find` hangs), runs a copy of `Uninstall MemryNote.exe /S _?=INSTALLDIR` (no `--updated`,
   so the tolerant removal path runs, and the copy blocks until the old install, its shortcuts and
   its uninstall key are gone), runs `MemryNote-win-Setup.exe --silent --verbose --log userData/logs/velopack-setup.log`, and
   falls back to the already-downloaded NSIS installer if no

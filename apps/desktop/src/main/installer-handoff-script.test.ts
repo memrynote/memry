@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  HANDOFF_SPAWN_OPTIONS,
   judgeAuthenticode,
   renderInstallerHandoffScript,
   resolveReleaseTag,
@@ -36,11 +37,10 @@ const scriptLines = (nsisInstaller: string): string[] => [
   '',
   'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
   '',
-  ':wait_for_exit',
-  'tasklist /FI "PID eq %APP_PID%" /FI "IMAGENAME eq %APP_EXE%" /NH 2>nul | find /I "%APP_EXE%" >nul',
-  'if not errorlevel 1 (',
-  '  ping -n 2 127.0.0.1 >nul',
-  '  goto wait_for_exit',
+  "powershell -NoProfile -NonInteractive -Command \"Get-Process -Id %APP_PID% -ErrorAction SilentlyContinue | Where-Object { ($_.ProcessName + '.exe') -ieq '%APP_EXE%' } | Wait-Process -Timeout 300\" >nul 2>&1",
+  'if errorlevel 1 (',
+  '  call :log "wait-for-exit failed"',
+  '  goto fallback',
   ')',
   'call :log "app exited"',
   '',
@@ -78,7 +78,7 @@ const scriptLines = (nsisInstaller: string): string[] => [
   '(goto) 2>nul & del "%~f0"',
   '',
   ':log',
-  'echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"',
+  '(echo %DATE% %TIME% %~1)>>"%HANDOFF_LOG%"',
   'exit /b 0'
 ]
 
@@ -109,7 +109,65 @@ describe('renderInstallerHandoffScript', () => {
     expect(lines).toContain('call :log "setup exit=%errorlevel%"')
     expect(lines).toContain('call :log "handoff done"')
     // The transcript survives the script deleting itself.
-    expect(lines).toContain('echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"')
+    expect(lines).toContain('(echo %DATE% %TIME% %~1)>>"%HANDOFF_LOG%"')
+  })
+
+  // `echo ...exit=0>>file` parses the 0 as a redirected handle, so every exit code the log
+  // exists to record was written without its digit.
+  it('parenthesises the log echo so a trailing exit code is not a redirect handle', () => {
+    const logLine = renderInstallerHandoffScript(plan)
+      .split('\r\n')
+      .find((line) => line.includes('>>"%HANDOFF_LOG%"'))
+
+    expect(logLine?.startsWith('(echo ')).toBe(true)
+    expect(logLine?.includes(')>>"%HANDOFF_LOG%"')).toBe(true)
+  })
+
+  // The script runs in a console-less cmd.exe (HANDOFF_SPAWN_OPTIONS is detached). A console
+  // program started there without a console of its own breaks: `tasklist | find` hung forever on
+  // Windows 11 ARM64 and on windows-2022. Only cmd builtins, GUI programs and powershell.exe are
+  // safe, and the windows-smoke workflow runs the script with the real spawn options.
+  it('runs no console program other than powershell, which allocates its own console', () => {
+    const builtinsAndGui = new Set([
+      '@echo',
+      'setlocal',
+      'rem',
+      'set',
+      'call',
+      'if',
+      'goto',
+      'mkdir',
+      'copy',
+      'start',
+      'del',
+      'rmdir',
+      'exit',
+      '(goto)',
+      '(echo',
+      'powershell',
+      ')'
+    ])
+    const commands = renderInstallerHandoffScript(plan)
+      .split('\r\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '' && !line.startsWith(':'))
+      .map((line) => line.split(/\s+/)[0].toLowerCase())
+
+    expect(commands.filter((command) => !builtinsAndGui.has(command))).toEqual([])
+    expect(HANDOFF_SPAWN_OPTIONS).toEqual({ detached: true, stdio: 'ignore', windowsHide: true })
+  })
+
+  it('goes to the NSIS fallback when the wait for the app fails', () => {
+    const lines = renderInstallerHandoffScript(plan).split('\r\n')
+    const waitAt = lines.findIndex((line) => line.startsWith('powershell '))
+
+    expect(lines[waitAt]).toContain('Wait-Process -Timeout 300')
+    expect(lines.slice(waitAt + 1, waitAt + 5)).toEqual([
+      'if errorlevel 1 (',
+      '  call :log "wait-for-exit failed"',
+      '  goto fallback',
+      ')'
+    ])
   })
 
   it('routes a failed uninstaller copy to the NSIS fallback instead of running on', () => {

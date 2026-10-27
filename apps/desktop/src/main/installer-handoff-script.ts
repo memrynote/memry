@@ -37,22 +37,40 @@ export interface InstallerHandoffPlan {
 export type AuthenticodeVerdict = { ok: true; subject: string } | { ok: false; reason: string }
 
 /**
- * `ping -n 2 127.0.0.1` is the sleep: `timeout /t` aborts with "Input redirection
- * is not supported" when stdin is not a console, which it is not under
- * `stdio: 'ignore'`. `tasklist` is filtered by PID and image name so a recycled
- * PID cannot match. The uninstaller runs from a copy with `_?=` (last argument,
- * unquoted, the form electron-builder's own installUtil.nsh uses) so it blocks
- * and `RMDir /r $INSTDIR` can remove the original; no `--updated`, so the
- * tolerant removal path runs. Uninstall before Setup: the NSIS uninstaller
- * deletes the Start-menu and desktop `MemryNote.lnk`, the same paths Velopack
- * creates. Setup.exe launches the app itself.
+ * How the app spawns the script. `detached` is required: a non-detached child sits in
+ * libuv's kill-on-close job object and dies with the app, which is the moment the script
+ * starts its wait. The price is DETACHED_PROCESS, so the cmd.exe running the script has
+ * no console, and any console program it starts without one of its own misbehaves:
+ * `tasklist | find` hung forever (find never saw EOF) and a redirected `tasklist` printed
+ * nothing, so the script either never left its wait or left it at once. Every command the
+ * script runs must therefore be a cmd builtin, a GUI program, or powershell.exe, which
+ * allocates its own console. `scripts/installer-handoff-script.mjs --spawn` spawns with
+ * these exact options in the Windows smoke workflow.
+ */
+export const HANDOFF_SPAWN_OPTIONS = {
+  detached: true,
+  stdio: 'ignore',
+  windowsHide: true
+} as const
+
+/**
+ * The wait is `Get-Process | Wait-Process` in powershell.exe (the app already shells out to
+ * it to verify the signature), filtered by PID and image name so a recycled PID cannot
+ * match. It blocks until the app exits, for at most five minutes; a non-zero exit (timeout,
+ * or powershell unavailable) goes to the NSIS fallback like every other failure. The
+ * uninstaller runs from a copy with `_?=` (last argument, unquoted, the form
+ * electron-builder's own installUtil.nsh uses) so it blocks and `RMDir /r $INSTDIR` can
+ * remove the original; no `--updated`, so the tolerant removal path runs. Uninstall before
+ * Setup: the NSIS uninstaller deletes the Start-menu and desktop `MemryNote.lnk`, the same
+ * paths Velopack creates. Setup.exe launches the app itself.
  *
  * Every step logs its exit code and every failure routes to the NSIS fallback
  * instead of running on. The previous version checked nothing, logged nothing of
  * its own, and deleted itself on the way out, so a failed migration was
  * indistinguishable from one that never started: telemetry shows nine Windows
  * users stuck on 2026.912.1 and not one `handoff-applied` outcome, with no
- * evidence anywhere on disk explaining which step gave up.
+ * evidence anywhere on disk explaining which step gave up. The log line is
+ * parenthesised because `exit=0>>file` is a redirect of handle 0 and swallows the digit.
  */
 export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string {
   const lines = [
@@ -72,11 +90,10 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     '',
     'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
     '',
-    ':wait_for_exit',
-    'tasklist /FI "PID eq %APP_PID%" /FI "IMAGENAME eq %APP_EXE%" /NH 2>nul | find /I "%APP_EXE%" >nul',
-    'if not errorlevel 1 (',
-    '  ping -n 2 127.0.0.1 >nul',
-    '  goto wait_for_exit',
+    "powershell -NoProfile -NonInteractive -Command \"Get-Process -Id %APP_PID% -ErrorAction SilentlyContinue | Where-Object { ($_.ProcessName + '.exe') -ieq '%APP_EXE%' } | Wait-Process -Timeout 300\" >nul 2>&1",
+    'if errorlevel 1 (',
+    '  call :log "wait-for-exit failed"',
+    '  goto fallback',
     ')',
     'call :log "app exited"',
     '',
@@ -114,7 +131,7 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     '(goto) 2>nul & del "%~f0"',
     '',
     ':log',
-    'echo %DATE% %TIME% %~1>>"%HANDOFF_LOG%"',
+    '(echo %DATE% %TIME% %~1)>>"%HANDOFF_LOG%"',
     'exit /b 0'
   ]
   return `${lines.join('\r\n')}\r\n`

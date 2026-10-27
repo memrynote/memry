@@ -347,6 +347,23 @@ describe('createInstallerHandoff', () => {
     expect(harness.child.unref).toHaveBeenCalledTimes(1)
   })
 
+  // The script's first line appends to installer-handoff.log. userData differs from the logger's
+  // folder on a fresh install, so <userData>\logs may not exist, and the failed append is silent.
+  it('creates the log folder before the script appends to it', async () => {
+    const harness = makeHarness()
+    const handoff = createInstallerHandoff(harness.host, harness.deps)
+
+    await handoff.prepare(makeInfo(), vi.fn())
+    harness.deps.fs.mkdirSync.mockClear()
+    handoff.launch()
+
+    expect(harness.deps.fs.mkdirSync).toHaveBeenCalledWith(path.win32.join(USER_DATA, 'logs'), {
+      recursive: true
+    })
+    const mkdirOrder = harness.deps.fs.mkdirSync.mock.invocationCallOrder[0]
+    expect(mkdirOrder).toBeLessThan(harness.spawn.mock.invocationCallOrder[0])
+  })
+
   it('launches once so a second quit path cannot uninstall and install twice', async () => {
     const harness = makeHarness()
     const handoff = createInstallerHandoff(harness.host, harness.deps)
@@ -434,5 +451,30 @@ describe('verifyAuthenticode', () => {
       ok: false,
       reason: 'Get-AuthenticodeSignature failed: spawn powershell.exe ENOENT'
     })
+  })
+
+  // Started from a PowerShell 7 session, the app inherits PowerShell 7's PSModulePath, and
+  // Windows PowerShell 5.1 then cannot autoload Microsoft.PowerShell.Security: the hand-off
+  // declined a validly signed Setup.exe with "signature not verified" (W2, windows-2022).
+  it('does not pass an inherited PSModulePath to Windows PowerShell', async () => {
+    vi.stubEnv('PSModulePath', String.raw`C:\Program Files\PowerShell\7\Modules`)
+    vi.stubEnv('MEMRY_PROBE_KEPT', '1')
+    const execFile = vi.fn(
+      (
+        _file: string,
+        _args: readonly string[],
+        _options: ExecFileOptions,
+        callback: (error: Error | null, stdout: string, stderr: string) => void
+      ) => {
+        callback(null, JSON.stringify({ Status: 'Valid' }), '')
+      }
+    )
+
+    await verifyAuthenticode(String.raw`C:\x\Setup.exe`, { execFile })
+
+    const env = execFile.mock.calls[0][2].env ?? {}
+    expect(Object.keys(env).map((name) => name.toUpperCase())).not.toContain('PSMODULEPATH')
+    expect(env.MEMRY_PROBE_KEPT).toBe('1')
+    vi.unstubAllEnvs()
   })
 })

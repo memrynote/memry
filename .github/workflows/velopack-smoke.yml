@@ -235,15 +235,18 @@ jobs:
           $app = Start-Process -FilePath $env:NSIS_EXE -PassThru
           Start-Sleep -Seconds 5
           $setup = Resolve-Path .\assets\MemryNote-win-Setup.exe
+          # `--spawn` starts the script with the app's own spawn options (detached, no console).
+          # A hidden `Start-Process cmd` has a console and hid a `tasklist | find` that hangs
+          # without one.
           node apps/desktop/scripts/installer-handoff-script.mjs `
             --pid $app.Id `
             --exe Memrynote.exe `
             --install-dir (Join-Path $env:LOCALAPPDATA 'Programs\MemryNote') `
             --setup "$setup" `
             --log "$PWD\velopack-setup.log" `
-            --nsis-installer $env:NSIS_INSTALLER | Out-File -FilePath handoff.cmd -Encoding ascii
+            --nsis-installer $env:NSIS_INSTALLER `
+            --spawn "$PWD\handoff.cmd"
           Get-Content handoff.cmd
-          Start-Process -FilePath cmd.exe -ArgumentList '/c', "$PWD\handoff.cmd" -WindowStyle Hidden
           Start-Sleep -Seconds 3
           Get-Process Memrynote -ErrorAction SilentlyContinue | Stop-Process -Force
 
@@ -257,6 +260,13 @@ jobs:
           Start-Sleep -Seconds 20
           if (Test-Path velopack-setup.log) { Get-Content velopack-setup.log -Tail 40 }
           if (-not (Test-Path $velopackExe)) { throw "hand-off did not produce $velopackExe" }
+          if ($env:RUN_CLI_MIGRATION -ne 'true') {
+            Get-Content installer-handoff.log
+            $transcript = Get-Content installer-handoff.log -Raw
+            foreach ($step in 'app exited', 'uninstall exit=\d+', 'setup exit=\d+', 'result=velopack') {
+              if ($transcript -notmatch $step) { throw "installer-handoff.log lacks '$step'" }
+            }
+          }
           if (Test-Path $nsisDir) { Get-ChildItem $nsisDir -Recurse | Format-Table FullName; throw "NSIS install still present at $nsisDir" }
           if (Test-Path $env:NSIS_UNINSTALL_KEY) { throw "NSIS uninstall entry still present" }
           $sig = Get-AuthenticodeSignature $velopackExe
@@ -280,6 +290,7 @@ jobs:
           path: |
             handoff.cmd
             velopack-setup.log
+            installer-handoff.log
             ${{ env.LOCALAPPDATA }}\MemryNote\*.log
             ${{ env.APPDATA }}\memrynote\logs\*.log
           if-no-files-found: ignore

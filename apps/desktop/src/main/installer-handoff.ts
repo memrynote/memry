@@ -8,6 +8,7 @@ import type { UpdateDownloadedEvent } from 'electron-updater'
 import { createLogger } from './lib/logger'
 import {
   GITHUB_RELEASE_DOWNLOAD_BASE,
+  HANDOFF_SPAWN_OPTIONS,
   INSTALLER_HANDOFF_SIGNER_SUBJECT,
   VELOPACK_SETUP_ASSET_NAME,
   judgeAuthenticode,
@@ -91,6 +92,7 @@ export interface InstallerHandoffDeps {
 interface HandoffExecFileOptions {
   windowsHide?: boolean
   timeout?: number
+  env?: NodeJS.ProcessEnv
 }
 
 /**
@@ -165,6 +167,20 @@ export function buildInstallerHandoffPlan(input: {
   }
 }
 
+/**
+ * powershell.exe is Windows PowerShell 5.1. When the app was started from a PowerShell 7 session
+ * (or a launcher that copied its environment), the inherited PSModulePath lists PowerShell 7's
+ * module folders, and 5.1 then fails to autoload Microsoft.PowerShell.Security: "the
+ * 'Get-AuthenticodeSignature' command was found in the module, but the module could not be
+ * loaded". That declined the hand-off with `signature not verified` on a clean installer (W2,
+ * windows-2022). Dropping the variable makes 5.1 use its own default module path.
+ */
+function windowsPowerShellEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => name.toUpperCase() !== 'PSMODULEPATH')
+  )
+}
+
 /** Shared with the CLI. Runs powershell; resolves to a verdict, never rejects. */
 export function verifyAuthenticode(
   filePath: string,
@@ -176,7 +192,7 @@ export function verifyAuthenticode(
     deps.execFile(
       'powershell.exe',
       ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', command],
-      { windowsHide: true, timeout: AUTHENTICODE_TIMEOUT_MS },
+      { windowsHide: true, timeout: AUTHENTICODE_TIMEOUT_MS, env: windowsPowerShellEnv() },
       (error, stdout) => {
         if (error) {
           resolve({ ok: false, reason: `Get-AuthenticodeSignature failed: ${error.message}` })
@@ -210,12 +226,11 @@ export function spawnInstallerHandoff(
   }
   const scriptPath = path.win32.join(tmpDir, `memry-installer-handoff-${pid}.cmd`)
   try {
+    // The script's first line appends to this log, and a missing folder makes that fail silently.
+    // The logger writes to its own folder, so <userData>\logs need not exist.
+    fsDeps.mkdirSync(path.win32.dirname(plan.handoffLogPath), { recursive: true })
     fsDeps.writeFileSync(scriptPath, renderInstallerHandoffScript(plan))
-    const child = spawn('cmd.exe', ['/c', scriptPath], {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true
-    })
+    const child = spawn('cmd.exe', ['/c', scriptPath], HANDOFF_SPAWN_OPTIONS)
     child.on('error', (error) => {
       logger.error('installer hand-off script failed to start', error)
     })
