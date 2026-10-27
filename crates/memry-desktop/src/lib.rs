@@ -18,6 +18,7 @@ pub mod redact;
 pub mod registry;
 pub mod session;
 pub mod settings;
+pub mod shell;
 pub mod startup_values;
 pub mod telemetry;
 pub mod vault_prefs;

@@ -7,6 +7,7 @@ pub mod error;
 pub mod locale;
 pub mod logging;
 pub mod settings;
+pub mod shell;
 pub mod telemetry;
 pub mod vault;
 

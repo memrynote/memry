@@ -193,7 +193,9 @@ fn forward_events(app: AppHandle<Wry>, events: Receiver<SessionEvent>) {
         for event in events {
             match event {
                 SessionEvent::StatusChanged(status) => {
+                    let is_open = status.is_open;
                     broadcast(&app, VaultStatusChangedEvent(VaultStatus::from(status)));
+                    crate::windows::main_window::on_vault_status(&app, is_open);
                 }
                 SessionEvent::Error { message } => broadcast(&app, VaultErrorEvent { message }),
                 SessionEvent::IndexRecovered { reason } => broadcast(

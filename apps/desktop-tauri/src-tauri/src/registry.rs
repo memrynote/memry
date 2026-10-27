@@ -41,6 +41,9 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::settings::settings_reset_keyboard,
             crate::commands::settings::settings_set_group,
             crate::commands::settings::settings_set_local,
+            // shell
+            crate::commands::shell::shell_first_paint,
+            crate::commands::shell::shell_heartbeat,
             // telemetry
             crate::commands::telemetry::telemetry_flush,
             crate::commands::telemetry::telemetry_get_settings,
