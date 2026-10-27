@@ -3,7 +3,7 @@
 // the previous script: non-ASCII, parentheses, `&` and `%`. Run in CI (velopack-smoke.yml) on x64 and
 // ARM64: `node --test apps/desktop/scripts/installer-handoff-windows.test.mjs`. Skipped elsewhere.
 //
-// The fakes are batch files and copies of System32 exes, so this proves the script's control flow,
+// The fakes are JScript files (run by wscript, a GUI host like the real installers) and copies of System32 exes, so this proves the script's control flow,
 // quoting and logging, not Velopack or NSIS themselves (the migrate job does that).
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -52,19 +52,31 @@ async function runHandoff({ setupExit, nsis, keepElectron = true, appAliveMs = 0
   if (keepElectron)
     copyFileSync(path.join(system32, 'whoami.exe'), path.join(installDir, 'Memrynote.exe'))
 
-  const setupPath = path.join(root, 'Setup (x).cmd')
+  // JScript run by wscript.exe, a GUI program like the real Setup.exe: a console-less cmd.exe
+  // (the script's own situation) cannot host a batch file started with `start /wait`.
+  const whoami = path.join(system32, 'whoami.exe').replaceAll('\\', '\\\\')
+  const setupPath = path.join(root, 'Setup (x).js')
   writeFileSync(
     setupPath,
     [
-      '@echo off',
-      'echo ran>"%~dp0setup-ran.txt"',
-      'mkdir "%LOCALAPPDATA%\\MemryNote\\current"',
-      `copy /y "${path.join(system32, 'whoami.exe')}" "%LOCALAPPDATA%\\MemryNote\\current\\Memrynote.exe" >nul`,
-      `exit /b ${setupExit}`
+      "var sh = new ActiveXObject('WScript.Shell');",
+      "var fso = new ActiveXObject('Scripting.FileSystemObject');",
+      "var current = sh.ExpandEnvironmentStrings('%LOCALAPPDATA%') + '\\\\MemryNote\\\\current';",
+      "sh.Run('cmd.exe /c mkdir \"' + current + '\"', 0, true);",
+      `fso.CopyFile('${whoami}', current + '\\\\Memrynote.exe', true);`,
+      "fso.CreateTextFile(WScript.ScriptFullName + '.ran').Close();",
+      `WScript.Quit(${setupExit});`
     ].join('\r\n')
   )
-  const nsisPath = path.join(root, 'nsis (x).cmd')
-  writeFileSync(nsisPath, '@echo off\r\necho ran>"%~dp0nsis-ran.txt"\r\nexit /b 0\r\n')
+  const nsisPath = path.join(root, 'nsis (x).js')
+  writeFileSync(
+    nsisPath,
+    [
+      "var fso = new ActiveXObject('Scripting.FileSystemObject');",
+      "fso.CreateTextFile(WScript.ScriptFullName + '.ran').Close();",
+      'WScript.Quit(0);'
+    ].join('\r\n')
+  )
 
   // A live app to wait for, or the PID of one that is already gone.
   const app = spawn(
@@ -106,8 +118,8 @@ async function runHandoff({ setupExit, nsis, keepElectron = true, appAliveMs = 0
   assert.ok(log.includes('handoff done'), `script did not finish:\n${log}`)
   return {
     log,
-    setupRan: existsSync(path.join(root, 'setup-ran.txt')),
-    nsisRan: existsSync(path.join(root, 'nsis-ran.txt'))
+    setupRan: existsSync(`${setupPath}.ran`),
+    nsisRan: existsSync(`${nsisPath}.ran`)
   }
 }
 
