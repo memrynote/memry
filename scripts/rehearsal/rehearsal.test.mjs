@@ -7,6 +7,7 @@ import {
   assertPublishConfirmed,
   FEED_REPO,
   flag,
+  isPreviousFullOf,
   parseRehearsalVersion,
   rehearsalTag
 } from './rehearse.mjs'
@@ -90,6 +91,26 @@ describe('drive-electron-update', () => {
         { timeoutMs: 20, intervalMs: 5 }
       ),
       /Last state: \{"status":"downloading"\}/
+    )
+  })
+})
+
+describe('previous fulls', () => {
+  const fulls = [
+    'MemryNote-2099.101.1-full.nupkg',
+    'MemryNote-2099.101.1-win-arm64-full.nupkg',
+    'MemryNote-2099.101.1-osx-arm64-full.nupkg',
+    'MemryNote-2099.101.1-linux-full.nupkg'
+  ]
+
+  it('keeps only the pack target own full, so no foreign full leaks into its feed', () => {
+    assert.deepEqual(
+      fulls.filter((name) => isPreviousFullOf('win-x64', name)),
+      ['MemryNote-2099.101.1-full.nupkg']
+    )
+    assert.deepEqual(
+      fulls.filter((name) => isPreviousFullOf('win-arm64', name)),
+      ['MemryNote-2099.101.1-win-arm64-full.nupkg']
     )
   })
 })

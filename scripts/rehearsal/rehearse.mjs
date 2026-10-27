@@ -154,8 +154,19 @@ function downloadArtifacts(version, runId) {
   return dir
 }
 
-function previousFulls(previousTag, outDir) {
+/**
+ * The previous release carries the fulls of every channel. A pack run only gets its own: a
+ * foreign full makes vpk list it in this channel's `releases.<channel>.json`, and copying that
+ * output into the assets then overwrites the right feed file.
+ */
+export function isPreviousFullOf(target, name) {
+  const channel = target === 'win-x64' ? '' : `${target}-`
+  return new RegExp(`^MemryNote-[^-]+-${channel}full\\.nupkg$`).test(name)
+}
+
+function previousFulls(previousTag, outDir, target) {
   if (!previousTag) return
+  const downloads = path.join(outDir, '.previous')
   run('gh', [
     'release',
     'download',
@@ -165,8 +176,12 @@ function previousFulls(previousTag, outDir) {
     '-p',
     '*full.nupkg',
     '-D',
-    outDir
+    downloads
   ])
+  for (const name of readdirSync(downloads).filter((entry) => isPreviousFullOf(target, entry))) {
+    copyFileSync(path.join(downloads, name), path.join(outDir, name))
+  }
+  rmSync(downloads, { force: true, recursive: true })
 }
 
 function vpk(args, env = {}) {
@@ -183,7 +198,7 @@ function packWindows(target, version, artifactDir, workDir, previousTag) {
   const payload = path.join(artifactDir, `rehearsal-${target}-payload`)
   const zip = readdirSync(payload).find((name) => name.endsWith('.zip'))
   run('unzip', ['-q', path.join(payload, zip), '-d', packDir])
-  previousFulls(previousTag, outputDir)
+  previousFulls(previousTag, outputDir, target)
   const args = buildPackArgs(target, {
     version,
     packDir,
