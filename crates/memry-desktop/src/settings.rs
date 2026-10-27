@@ -16,7 +16,8 @@ use serde_json::{Map, Value};
 
 use crate::registry::AppConfig;
 use crate::session::OpenVault;
-use crate::{startup_values, vault_prefs};
+use crate::startup_values;
+use crate::vault::config;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SettingsError {
@@ -124,7 +125,7 @@ impl SettingsService {
     ) {
         match group {
             "general" => {
-                if let Err(error) = vault_prefs::write(&vault.path, patch, &Map::new()) {
+                if let Err(error) = config::merge_preferences(&vault.path, patch, &Map::new()) {
                     tracing::warn!(
                         scope = "Settings",
                         "could not write the vault preferences: {error}"
@@ -135,7 +136,7 @@ impl SettingsService {
                 }
             }
             "editor" => {
-                if let Err(error) = vault_prefs::write(&vault.path, &Map::new(), patch) {
+                if let Err(error) = config::merge_preferences(&vault.path, &Map::new(), patch) {
                     tracing::warn!(
                         scope = "Settings",
                         "could not write the vault preferences: {error}"
@@ -194,12 +195,12 @@ impl SettingsService {
         let editor_defaults = object(group_defaults("editor").unwrap_or_default());
 
         if let Some((general, editor)) =
-            vault_prefs::read(&vault.path, &general_defaults, &editor_defaults)
+            config::read_preferences(&vault.path, &general_defaults, &editor_defaults)
         {
-            let untouched = vault_prefs::PORTABLE_GENERAL
+            let untouched = config::PORTABLE_GENERAL
                 .iter()
                 .all(|f| general_now.get(*f) == general_defaults.get(*f))
-                && vault_prefs::PORTABLE_EDITOR
+                && config::PORTABLE_EDITOR
                     .iter()
                     .all(|f| editor_now.get(*f) == editor_defaults.get(*f));
             if untouched {
@@ -226,7 +227,7 @@ impl SettingsService {
             }
         } else if let Some(locale) = crate::locale::stored(&self.config) {
             let patch = Map::from_iter([("language".to_owned(), Value::from(locale))]);
-            if let Err(error) = vault_prefs::write(&vault.path, &patch, &Map::new()) {
+            if let Err(error) = config::merge_preferences(&vault.path, &patch, &Map::new()) {
                 tracing::warn!(
                     scope = "Settings",
                     "could not seed the vault language: {error}"

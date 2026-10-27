@@ -5,7 +5,10 @@ use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::paths::profile_identifier;
 
 fn main() {
-    // Step 07 (#3524): Velopack hook
+    // Must stay the first statement: on a Velopack install/update/uninstall hook it handles the
+    // hook argument and exits; outside a Velopack install it logs and returns.
+    velopack::VelopackApp::build().run();
+
     // Step 35 (#3552): --cli dispatch
     if let Some(code) = memry_tauri::guards::crash_dump::monitor_entry() {
         std::process::exit(code);

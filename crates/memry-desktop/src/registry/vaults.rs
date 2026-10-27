@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 
 use super::config::{AppConfig, ConfigError};
 use super::vault_icon;
+use crate::vault::config as vault_config;
 
 /// The accent the renderer draws when a vault's `config.json` names none
 /// (`DEFAULT_ACCENT_COLOR` in `packages/contracts/src/color-themes.ts`).
@@ -139,22 +140,23 @@ impl VaultRegistry {
 
     /// A vault was opened: registers it when new (first vault becomes the default), stamps
     /// `lastOpened`, and makes it the current vault. Returns the stored entry.
-    pub fn record_open(&self, path: &str, now_ms: i64) -> Result<StoredVault, RegistryError> {
+    pub fn record_open(
+        &self,
+        path: &str,
+        now_ms: i64,
+        note_count: u32,
+    ) -> Result<StoredVault, RegistryError> {
         self.config.update(|map| {
             let existing = vault_objects(map)
                 .find(|o| path_of(o) == Some(path))
                 .and_then(to_stored);
             let first = vault_objects(map).next().is_none();
-            // `noteCount` is carried, not recomputed: Electron counted markdown files on
-            // open (`createVaultInfo`), which needs the vault file walker and its exclude
-            // patterns. That is Step 12 (#3529)'s; until it lands the picker shows the
-            // count a previous build stored (0 for a vault this build registered).
             let stored = StoredVault {
                 path: path.to_owned(),
                 name: existing
                     .as_ref()
                     .map_or_else(|| basename(path), |e| e.name.clone()),
-                note_count: existing.as_ref().map_or(0, |e| e.note_count),
+                note_count,
                 task_count: existing.as_ref().map_or(0, |e| e.task_count),
                 last_opened: iso_millis(now_ms),
                 is_default: existing.as_ref().map_or(first, |e| e.is_default),
@@ -275,15 +277,7 @@ fn to_info(stored: StoredVault) -> VaultInfo {
 
 /// `preferences.accentColor` of the vault's config, else the default accent.
 fn accent_of(vault: &str) -> String {
-    vault_icon::read_config(Path::new(vault))
-        .and_then(|config| {
-            config
-                .get("preferences")?
-                .get("accentColor")?
-                .as_str()
-                .map(str::to_owned)
-        })
-        .unwrap_or_else(|| DEFAULT_ACCENT.to_owned())
+    vault_config::accent_color(Path::new(vault)).unwrap_or_else(|| DEFAULT_ACCENT.to_owned())
 }
 
 fn upsert_in(map: &mut Map<String, Value>, stored: &StoredVault) -> Result<(), RegistryError> {
