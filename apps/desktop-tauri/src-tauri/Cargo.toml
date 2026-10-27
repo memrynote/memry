@@ -48,10 +48,23 @@ tauri-plugin-dialog = "2.8.3"
 tauri-plugin-opener = "2.7.2"
 # `ring` only: the shared HTTP client and every later tungstenite client avoid aws-lc-rs.
 rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+# Native crashes leave a minidump: the app attaches `crash-handler` and an out-of-process
+# `minidumper` server (the same binary run with `--crash-monitor`) writes the file.
+crash-handler = "0.8.1"
+minidumper = "0.11.0"
 
 tauri-plugin-wdio-webdriver = { version = "=1.5.0", optional = true }
 tauri-plugin-wdio = { version = "=1.5.0", optional = true }
 arboard = { version = "3.7.0", optional = true, default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+# `guards/gpu.rs` subscribes to `ProcessFailed` on the main webview. Same versions as wry.
+webview2-com = "0.39.1"
+windows-core = "0.62.2"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# `guards/gpu.rs` reports `web-process-terminated`. Same version as wry.
+webkit2gtk = "2.0.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.

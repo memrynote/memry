@@ -7,6 +7,7 @@ pub mod commands;
 pub mod e2e;
 pub mod events;
 pub mod flush;
+pub mod guards;
 pub mod registry;
 pub mod shell;
 pub mod shutdown;
@@ -37,6 +38,7 @@ pub fn install_crypto_provider() {
 fn register_stages() {
     startup::register(Stage::Paths, "resolve app paths", resolve_paths);
     startup::register(Stage::Logging, "init logging", init_logging);
+    guards::register_stages();
     shell::services::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();

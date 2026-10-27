@@ -3,6 +3,9 @@
 
 pub mod bounds;
 pub mod close;
+pub mod crash_dumps;
 pub mod flush;
+pub mod gpu_guard;
 pub mod heartbeat;
 pub mod shutdown;
+pub mod stall;
