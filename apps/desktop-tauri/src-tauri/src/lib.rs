@@ -77,6 +77,7 @@ fn register_stages() {
     startup::register(Stage::Logging, "init logging", init_logging);
     guards::register_stages();
     shell::services::register_stages();
+    commands::unsplash::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
     shutdown::register_stages();
