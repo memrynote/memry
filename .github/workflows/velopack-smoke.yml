@@ -266,6 +266,8 @@ jobs:
           if (Test-Path velopack-setup.log) { Get-Content velopack-setup.log -Tail 40 }
           if (-not (Test-Path $velopackExe)) { throw "hand-off did not produce $velopackExe" }
           if ($env:RUN_CLI_MIGRATION -ne 'true') {
+            # Setup creates the exe early; the script's last line comes after Setup has finished.
+            while ((Get-Date) -lt $deadline -and -not ((Test-Path installer-handoff.log) -and (Select-String -Path installer-handoff.log -Pattern 'handoff done' -Quiet))) { Start-Sleep -Seconds 5 }
             Get-Content installer-handoff.log
             $transcript = Get-Content installer-handoff.log -Raw
             foreach ($step in 'app exited', 'uninstall exit=\d+', 'setup exit=\d+', 'result=velopack', 'relaunch exit=\d+') {
