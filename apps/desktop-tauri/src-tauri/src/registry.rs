@@ -27,6 +27,8 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::diagnostics::diagnostics_send_report,
             // feedback
             crate::commands::telemetry::feedback_submit,
+            // flush
+            crate::commands::shell_integrations::flush_done,
             // locale
             crate::commands::locale::locale_get,
             crate::commands::locale::locale_list,
@@ -62,8 +64,17 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::vault::vault_set_default,
             crate::commands::vault::vault_set_icon,
             crate::commands::vault::vault_switch,
+            // window
+            crate::commands::shell::window_close,
+            crate::commands::shell::window_minimize,
+            crate::commands::shell::window_set_caption_rects,
+            crate::commands::shell::window_toggle_maximize,
         ])
         .events(collect_events![
+            // app
+            crate::events::AppNavigationRequestedEvent,
+            // flush
+            crate::events::FlushRequestedEvent,
             // locale
             crate::events::LocaleChangedEvent,
             // settings
@@ -74,6 +85,10 @@ pub fn builder() -> Builder<Wry> {
             crate::events::VaultIndexRecoveredEvent,
             crate::events::VaultListChangedEvent,
             crate::events::VaultStatusChangedEvent,
+            // window
+            crate::events::WindowCaptionHoverChangedEvent,
+            crate::events::WindowCaptionPressedChangedEvent,
+            crate::events::WindowChromeStateChangedEvent,
         ])
         .typ::<StartupState>()
 }

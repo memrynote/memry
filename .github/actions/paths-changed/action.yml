@@ -1,0 +1,46 @@
+name: Paths changed
+description: >-
+  Say whether a pull request changes a file the calling workflow protects. This replaces a
+  workflow-level `paths` / `paths-ignore` filter on `pull_request`: a filtered workflow never runs,
+  so a required gate job never reports. Detected in a job, the workflow always runs and the gate
+  always reports. Every event other than `pull_request` outputs true (pushes keep their own
+  filters; the merge queue and dispatch run everything). If the file list cannot be read the
+  output fails open (true).
+inputs:
+  token:
+    description: Token that can read the pull request's files
+    required: true
+  include:
+    description: Extended regex; a changed file must match it (default every file)
+    default: '.'
+  exclude:
+    description: Extended regex; matching files are ignored (default none)
+    default: '^$'
+outputs:
+  changed:
+    description: The pull request changes a protected file (true for every other event)
+    value: ${{ steps.paths.outputs.changed }}
+runs:
+  using: composite
+  steps:
+    - id: paths
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        EVENT: ${{ github.event_name }}
+        REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        INCLUDE: ${{ inputs.include }}
+        EXCLUDE: ${{ inputs.exclude }}
+      run: |
+        set -euo pipefail
+        if [ "$EVENT" != "pull_request" ]; then
+          echo "changed=true" >> "$GITHUB_OUTPUT"; echo "paths: not a pull request, changed=true"; exit 0
+        fi
+        if ! files=$(gh api "repos/$REPO/pulls/$PR_NUMBER/files" --paginate --jq '.[].filename'); then
+          echo "::warning::could not list the PR files; running the path-gated jobs"
+          echo "changed=true" >> "$GITHUB_OUTPUT"; exit 0
+        fi
+        changed=false
+        if printf '%s\n' "$files" | grep -Ev "$EXCLUDE" | grep -Eq "$INCLUDE"; then changed=true; fi
+        echo "changed=$changed" >> "$GITHUB_OUTPUT"; echo "paths: changed=$changed"

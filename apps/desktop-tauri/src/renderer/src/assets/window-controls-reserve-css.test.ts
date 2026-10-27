@@ -26,3 +26,21 @@ describe('window-controls reserve in main.css', () => {
     expect(rule).toContain('--window-controls-start: 0px')
   })
 })
+
+describe('caption reserve in main.css', () => {
+  const css = readFileSync(MAIN_CSS, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+
+  it('reserves 138px at the end on Windows outside fullscreen and nothing elsewhere', () => {
+    const rule =
+      css.match(/:root\[data-platform='win32'\]:not\(\[data-fullscreen\]\) \{([\s\S]*?)\}/)?.[1] ??
+      ''
+    expect(rule).toContain('--caption-reserve-end: 138px')
+    const base = css.match(/:root \{([\s\S]*?)\n\}/)?.[1] ?? ''
+    expect(base).toContain('--caption-reserve-end: 0px')
+    expect(base).toContain('--caption-reserve-start: 0px')
+  })
+
+  it('no longer reads the Window Controls Overlay variables', () => {
+    expect(css).not.toContain('titlebar-area')
+  })
+})

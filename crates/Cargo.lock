@@ -3396,7 +3396,12 @@ name = "memry-tauri"
 version = "0.0.0"
 dependencies = [
  "arboard",
+ "arc-swap",
+ "block2",
  "memry-desktop",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "rustls",
  "serde",
  "serde_json",
@@ -3414,6 +3419,8 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "webview2-com",
+ "windows",
 ]
 
 [[package]]
@@ -6223,6 +6230,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",

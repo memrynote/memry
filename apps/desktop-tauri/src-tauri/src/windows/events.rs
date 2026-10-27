@@ -9,6 +9,7 @@ use tauri::{AppHandle, CloseRequestApi, Manager, Window, WindowEvent, Wry};
 use super::MAIN_LABEL;
 use super::bounds_store::BoundsPersister;
 use super::registry::WindowKind;
+use crate::events::{WindowChromeStateChangedEvent, send_to};
 use crate::shell::services;
 
 /// Runs on `CloseRequested`; it may call `api.prevent_close()`.
@@ -52,6 +53,16 @@ pub fn dispatch(window: &Window<Wry>, event: &WindowEvent) {
     match event {
         WindowEvent::Focused(focused) if is_main => services::on_focus(app, *focused),
         WindowEvent::Resized(_) | WindowEvent::Moved(_) if is_main => {
+            if matches!(event, WindowEvent::Resized(_)) {
+                send_to(
+                    app,
+                    MAIN_LABEL,
+                    WindowChromeStateChangedEvent {
+                        fullscreen: window.is_fullscreen().unwrap_or(false),
+                        maximized: window.is_maximized().unwrap_or(false),
+                    },
+                );
+            }
             if let Some(persister) = app.try_state::<Arc<BoundsPersister>>() {
                 // A minimized window reports a restored rectangle on Windows: write now,
                 // while the last trustworthy state is still known.
@@ -62,6 +73,7 @@ pub fn dispatch(window: &Window<Wry>, event: &WindowEvent) {
                 }
             }
         }
+        WindowEvent::Destroyed => crate::shutdown::on_window_destroyed(app, window.label()),
         WindowEvent::CloseRequested { api, .. } => {
             if is_main && let Some(persister) = app.try_state::<Arc<BoundsPersister>>() {
                 persister.flush(app);

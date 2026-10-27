@@ -54,6 +54,11 @@ impl WindowKind {
     }
 }
 
+/// Whether `label` names a window that shows app content.
+pub fn is_app_label(label: &str) -> bool {
+    WindowKind::of_label(label).is_some_and(WindowKind::is_app_window)
+}
+
 pub struct WindowRegistry;
 
 impl WindowRegistry {

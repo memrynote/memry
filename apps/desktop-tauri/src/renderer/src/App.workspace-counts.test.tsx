@@ -142,6 +142,8 @@ vi.mock('@/lib/icons', () => ({
   Loader2: () => <div data-testid="loader" />
 }))
 
+vi.mock('@/lib/window-chrome', () => ({ useWindowChromeSync: () => undefined }))
+
 vi.mock('@/lib/startup-theme', () => ({
   THEME_STORAGE_KEY: 'theme',
   getStartupTheme: () => 'system'
