@@ -54,10 +54,12 @@ export const HANDOFF_SPAWN_OPTIONS = {
 } as const
 
 /**
- * The wait is `Get-Process | Wait-Process` in powershell.exe (the app already shells out to
- * it to verify the signature), filtered by PID and image name so a recycled PID cannot
- * match. It blocks until the app exits, for at most five minutes; a non-zero exit (timeout,
- * or powershell unavailable) goes to the NSIS fallback like every other failure. The
+ * The wait is `Process.WaitForExit` in powershell.exe (the app already shells out to it to
+ * verify the signature), for a process matching both the PID and the image name so a
+ * recycled PID cannot match. It exits 0 once the app is gone, at once when it already is
+ * (a `Wait-Process` pipeline would exit 1 on the silenced Get-Process error), and 1 after
+ * five minutes; a non-zero exit (timeout, or powershell unavailable) goes to the NSIS
+ * fallback like every other failure. The
  * uninstaller runs from a copy with `_?=` (last argument, unquoted, the form
  * electron-builder's own installUtil.nsh uses) so it blocks and `RMDir /r $INSTDIR` can
  * remove the original; no `--updated`, so the tolerant removal path runs. Uninstall before
@@ -90,7 +92,7 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     '',
     'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
     '',
-    "powershell -NoProfile -NonInteractive -Command \"Get-Process -Id %APP_PID% -ErrorAction SilentlyContinue | Where-Object { ($_.ProcessName + '.exe') -ieq '%APP_EXE%' } | Wait-Process -Timeout 300\" >nul 2>&1",
+    "powershell -NoProfile -NonInteractive -Command \"$p = Get-Process -Id %APP_PID% -ErrorAction SilentlyContinue; if ($p -and ($p.ProcessName + '.exe') -ieq '%APP_EXE%' -and -not $p.WaitForExit(300000)) { exit 1 }; exit 0\" >nul 2>&1",
     'if errorlevel 1 (',
     '  call :log "wait-for-exit failed"',
     '  goto fallback',

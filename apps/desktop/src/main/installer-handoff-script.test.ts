@@ -37,7 +37,7 @@ const scriptLines = (nsisInstaller: string): string[] => [
   '',
   'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
   '',
-  "powershell -NoProfile -NonInteractive -Command \"Get-Process -Id %APP_PID% -ErrorAction SilentlyContinue | Where-Object { ($_.ProcessName + '.exe') -ieq '%APP_EXE%' } | Wait-Process -Timeout 300\" >nul 2>&1",
+  "powershell -NoProfile -NonInteractive -Command \"$p = Get-Process -Id %APP_PID% -ErrorAction SilentlyContinue; if ($p -and ($p.ProcessName + '.exe') -ieq '%APP_EXE%' -and -not $p.WaitForExit(300000)) { exit 1 }; exit 0\" >nul 2>&1",
   'if errorlevel 1 (',
   '  call :log "wait-for-exit failed"',
   '  goto fallback',
@@ -161,7 +161,7 @@ describe('renderInstallerHandoffScript', () => {
     const lines = renderInstallerHandoffScript(plan).split('\r\n')
     const waitAt = lines.findIndex((line) => line.startsWith('powershell '))
 
-    expect(lines[waitAt]).toContain('Wait-Process -Timeout 300')
+    expect(lines[waitAt]).toContain('WaitForExit(300000)')
     expect(lines.slice(waitAt + 1, waitAt + 5)).toEqual([
       'if errorlevel 1 (',
       '  call :log "wait-for-exit failed"',
