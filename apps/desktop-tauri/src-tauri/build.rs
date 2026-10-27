@@ -40,8 +40,17 @@ fn main() {
 
     compile_runtime_config(checkout_dir);
 
-    // Rehearsal builds bake the update feed in (`update_probe.rs`).
+    // Rehearsal builds bake the update feed in (`update_probe.rs`). The probe has no default:
+    // a build without a feed must not silently check the production releases.
     println!("cargo:rerun-if-env-changed=MEMRY_UPDATE_FEED_URL");
+    if std::env::var_os("CARGO_FEATURE_UPDATE_PROBE").is_some() {
+        let feed = std::env::var("MEMRY_UPDATE_FEED_URL").unwrap_or_default();
+        assert!(
+            !feed.is_empty(),
+            "the update-probe feature needs MEMRY_UPDATE_FEED_URL, such as https://github.com/memrynote/memry-update-rehearsal"
+        );
+        println!("cargo:rustc-env=MEMRY_UPDATE_FEED_URL={feed}");
+    }
 
     tauri_build::build();
 }

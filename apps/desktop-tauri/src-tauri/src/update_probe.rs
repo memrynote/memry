@@ -7,11 +7,9 @@ use velopack::locator::{self, LocationContext};
 use velopack::sources::AutoSource;
 use velopack::{UpdateCheck, UpdateInfo, UpdateManager};
 
-/// Build-time feed. Rehearsal builds set `MEMRY_UPDATE_FEED_URL` to the rehearsal repo.
-const FEED_URL: &str = match option_env!("MEMRY_UPDATE_FEED_URL") {
-    Some(url) => url,
-    None => "https://github.com/memrynote/memry",
-};
+/// Build-time feed. `build.rs` fails the build of the `update-probe` feature when
+/// `MEMRY_UPDATE_FEED_URL` is unset, so a rehearsal build never points at the production feed.
+const FEED_URL: &str = env!("MEMRY_UPDATE_FEED_URL");
 
 /// Delay between the main window being shown and the first check.
 const START_DELAY: Duration = Duration::from_secs(10);

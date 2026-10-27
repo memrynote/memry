@@ -104,9 +104,17 @@ test('validateManifest rejects a manifest with no version', () => {
   )
 })
 
-test('validateManifest rejects a missing or wrong minimumSystemVersion', () => {
+test('the default check accepts the production manifest shape without minimumSystemVersion', () => {
+  const production = parseManifest(buildManifest({ minimumSystemVersion: null }))
+  assert.equal(production.minimumSystemVersion, undefined)
+  assert.deepEqual(validateManifest(production).errors, [])
+})
+
+test('the bridge check rejects a missing or wrong minimumSystemVersion', () => {
   for (const minimumSystemVersion of [null, '21.0.0']) {
-    const { errors } = validateManifest(parseManifest(buildManifest({ minimumSystemVersion })))
+    const { errors } = validateManifest(parseManifest(buildManifest({ minimumSystemVersion })), {
+      requireMinimumSystemVersion: true
+    })
     assert.ok(
       errors.some((e) => /minimumSystemVersion/.test(e)),
       `expected a minimumSystemVersion error for ${minimumSystemVersion}, got: ${errors.join('; ')}`

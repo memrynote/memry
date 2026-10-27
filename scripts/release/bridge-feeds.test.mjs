@@ -59,7 +59,10 @@ describe('bridge feeds', () => {
       arm64Zip: entry(`MemryNote-${v}-arm64.zip`, 'A', 100),
       x64Zip: entry(`MemryNote-${v}-x64.zip`, 'C', 300)
     })
-    assert.deepEqual(validateManifest(parseManifest(text)).errors, [])
+    assert.deepEqual(
+      validateManifest(parseManifest(text), { requireMinimumSystemVersion: true }).errors,
+      []
+    )
   })
 
   it('writes latest-linux.yml with path and sha512 of the first listed file', () => {

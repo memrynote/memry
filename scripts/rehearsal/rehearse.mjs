@@ -299,7 +299,11 @@ function cmdAssemble(version, argv) {
   }
   for (const [name, text] of Object.entries(feeds)) writeFileSync(path.join(assets, name), text)
 
-  run('node', ['scripts/validate-mac-update-manifest.mjs', path.join(assets, 'latest-mac.yml')])
+  run('node', [
+    'scripts/validate-mac-update-manifest.mjs',
+    path.join(assets, 'latest-mac.yml'),
+    '--require-minimum-system-version'
+  ])
   console.log(`Assets ready: ${assets}\n${readdirSync(assets).join('\n')}`)
 }
 
