@@ -1,5 +1,5 @@
 name: Install apt packages
-description: apt-get update and install with per-command timeouts and retries, so a stalled or trickling mirror fails within ~10 min instead of running into the job timeout.
+description: apt-get update and install with per-command timeouts and retries, so a stalled or trickling mirror fails within ~9 min instead of running into the job timeout.
 inputs:
   packages:
     description: Space-separated apt packages
@@ -15,12 +15,20 @@ runs:
         # GitHub runners ship Microsoft/Azure apt repos that intermittently 403 or stall.
         sudo rm -f /etc/apt/sources.list.d/microsoft*.list /etc/apt/sources.list.d/azure-cli* 2>/dev/null || true
         opts=(-o Acquire::Retries=3 -o Acquire::http::Timeout=20 -o Acquire::https::Timeout=20 -o DPkg::Lock::Timeout=60)
-        # Healthy mirror: the whole install takes 20-60 s. A mirror that trickles (15 kB/s seen on
-        # 27 Oct) never finishes, so each attempt is cut short, keeps the .debs it already fetched
-        # and retries. Three attempts stay under ~9.5 min, inside the callers' 10 min step timeout.
+        # A healthy install takes 20-60 s. The runner image's default mirror
+        # (azure.archive.ubuntu.com) sometimes serves 60-130 kB/s for a whole job: it never
+        # stalls, so no per-request timeout fires, and the ~57 MB install ran 12-27 min on
+        # 27 Oct. Each attempt is cut short and keeps the .debs it already fetched, and the
+        # retries switch to Canonical's archive. Three attempts stay under ~9 min, inside the
+        # callers' 10 min step timeout.
         for attempt in 1 2 3; do
+          if [ "$attempt" = 2 ]; then
+            echo "switching apt to archive.ubuntu.com"
+            sudo sed -i -E 's#mirror\+file:/etc/apt/apt-mirrors\.txt#http://archive.ubuntu.com/ubuntu#g; s#https?://azure\.archive\.ubuntu\.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' \
+              /etc/apt/sources.list /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list 2>/dev/null || true
+          fi
           # shellcheck disable=SC2086
-          if sudo timeout 60 apt-get "${opts[@]}" update &&
+          if sudo timeout 45 apt-get "${opts[@]}" update &&
             sudo timeout 120 apt-get "${opts[@]}" install -y $PACKAGES; then
             exit 0
           fi
