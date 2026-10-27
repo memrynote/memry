@@ -85,7 +85,14 @@ impl Reconciler {
         }
 
         // With nothing missing no add can be a rename, and the open's index walk lists adds.
+        // The pass still ends with its signal: the consumer orders its own open walk after it.
         if missing.is_empty() && !with_changes {
+            self.emit(VaultEvent::Rescanned {
+                missing: 0,
+                added: added.len(),
+                changed: 0,
+                removals_withheld: withheld,
+            });
             return Ok(true);
         }
         // Edited since indexed: a later modification time, or another size. An edit that keeps
@@ -122,10 +129,13 @@ impl Reconciler {
                 self.file_present(path, &meta, now);
             }
         }
+        // What no add claimed is a delete like any other: it waits out the rename window and is
+        // checked against the disk again before it is reported, so a pass that ran while a
+        // checkout or a copy was in the middle of the vault reports nothing it undoes.
         let unclaimed = self.tracker.settle(batch);
         if !withheld {
             for pending in unclaimed {
-                self.confirm_removed(pending);
+                self.track_removal(pending, now);
             }
         }
         for home in &changed {

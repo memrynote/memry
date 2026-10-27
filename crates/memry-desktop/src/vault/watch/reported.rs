@@ -143,6 +143,14 @@ impl Reported {
         }
     }
 
+    /// Forgets the entry that names `note_id`, and no other: on a case-sensitive volume the
+    /// folded key of a removed path can belong to a different file.
+    pub fn forget_note(&mut self, note_id: &str) {
+        if let Some(key) = self.by_note.get(note_id).cloned() {
+            self.drop_key(&key);
+        }
+    }
+
     /// Forgets the entries at and below `path` that name no note. The ones that name a note
     /// stay until that note's removal is settled, since the note's home is what a removal
     /// reads.
@@ -252,6 +260,19 @@ mod tests {
         assert_eq!(r.of_note("n1").unwrap().path, "b.md");
         assert_eq!(r.get("B.MD").unwrap().path, "b.md");
         assert_eq!(r.note_count(), 1);
+    }
+
+    #[test]
+    fn forgetting_a_note_leaves_the_entry_of_another_file_with_the_same_folded_path() {
+        let mut r = Reported::default();
+        r.put(seen("note.md", Some("n1")));
+        r.forget_note("n2");
+        assert!(
+            r.get("note.md").is_some(),
+            "a note with no entry forgets nothing"
+        );
+        r.forget_note("n1");
+        assert!(r.get("note.md").is_none() && r.of_note("n1").is_none());
     }
 
     #[test]

@@ -89,9 +89,11 @@ impl VaultWatcher {
     /// Starts watching `root`. The OS watcher is set up before this returns, so a failure
     /// (the Linux inotify limit) is the caller's error.
     ///
-    /// The start rescan runs on the worker, after this returns. Electron ran it before the
-    /// open's index walk; the consumer that applies events (12e) must order its own open the
-    /// same way or tolerate the walk and the rescan reporting the same file.
+    /// The start rescan runs on the worker, after this returns, and always ends with a
+    /// [`VaultEvent::Rescanned`]. Electron ran it before the open's index walk (it replays the
+    /// removals of files deleted while the app was closed). The consumer that applies events
+    /// (12e) must run its open walk after that first `Rescanned`, or the walk indexes a file
+    /// whose removal is still on its way.
     pub fn start(
         root: PathBuf,
         exclude: Vec<String>,
@@ -139,8 +141,10 @@ impl VaultWatcher {
         })
     }
 
-    /// Stops the worker and waits for it. It looks at the flag every tick and between the
-    /// steps of a rescan, so this returns promptly.
+    /// Stops the worker and waits for it. No event leaves from the moment this is called
+    /// (`Gate`). The worker looks at the flag every tick, between the files of a batch and
+    /// between the steps of a rescan; the walk of the vault or of a new folder cannot be
+    /// interrupted (it is bounded by the walk caps), so the join can take as long as one walk.
     pub fn stop(&mut self) {
         self.gate.close();
         self.stop.store(true, Ordering::Relaxed);
@@ -290,8 +294,10 @@ impl Worker {
                 continue;
             }
             if self.net.rescan_due(now) {
-                // Re-armed with it: a watch the OS dropped without saying so is back.
-                self.rearm(now);
+                if self.net.rearms() {
+                    // A watch the OS dropped without saying so is back.
+                    self.rearm(now);
+                }
                 force_rescan = true;
             }
             if self.overflow.swap(false, Ordering::Relaxed)
@@ -343,9 +349,9 @@ impl Worker {
         self.rescan(true);
     }
 
-    /// Drops the OS watch and sets it up again.
+    /// Sets the OS watch up again. The old watch is replaced only once the new one is armed: a
+    /// failed re-arm leaves the watching that still works.
     fn rearm(&mut self, now: Instant) {
-        self.watcher = None;
         match watch(&self.root, &self.tx, &self.overflow) {
             Ok(watcher) => self.watcher = Some(watcher),
             Err(error) => self.report(&error, now),
