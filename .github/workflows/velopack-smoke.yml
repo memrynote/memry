@@ -161,9 +161,6 @@ jobs:
       RELEASE_TAG: ${{ inputs.release_tag }}
       NSIS_RELEASE_TAG: ${{ inputs.nsis_release_tag }}
       RUN_CLI_MIGRATION: ${{ inputs.run_cli_migration }}
-      # electron-builder keys the per-user uninstall entry by UUID v5 of the appId
-      # (com.memrynote.memry) under its own namespace, not by the appId itself.
-      NSIS_UNINSTALL_KEY: HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\c72afc79-ad45-5346-bedb-8907a549c673
     steps:
       # The checkout is only for apps/desktop/scripts/installer-handoff-script.mjs,
       # which renders the hand-off script from the same function the app uses. It
@@ -209,8 +206,16 @@ jobs:
           if (-not (Test-Path $exe)) { throw "missing $exe" }
           $uninstaller = Join-Path $env:LOCALAPPDATA 'Programs\MemryNote\Uninstall MemryNote.exe'
           if (-not (Test-Path $uninstaller)) { throw "missing $uninstaller" }
-          $entry = Get-ItemProperty $env:NSIS_UNINSTALL_KEY -ErrorAction Stop
-          Write-Host "NSIS uninstall entry: $($entry.DisplayName) $($entry.DisplayVersion)"
+          # electron-builder keys the per-user uninstall entry by a GUID that is not the appId and
+          # has changed between builder versions (c72afc79-... here once, ddabaefe-... in 2026.1015.1),
+          # so find it by the install directory its uninstall string points at.
+          $nsisKey = Get-ChildItem 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall' |
+            Where-Object { (Get-ItemProperty $_.PSPath).UninstallString -like '*\Programs\MemryNote\*' } |
+            Select-Object -First 1
+          if (-not $nsisKey) { throw 'no NSIS uninstall entry under HKCU' }
+          $entry = Get-ItemProperty $nsisKey.PSPath
+          Write-Host "NSIS uninstall entry $($nsisKey.PSChildName): $($entry.DisplayName) $($entry.DisplayVersion)"
+          "NSIS_UNINSTALL_KEY=$($nsisKey.PSPath)" | Out-File -FilePath $env:GITHUB_ENV -Append
           $lnk = Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs\MemryNote.lnk'
           if (-not (Test-Path $lnk)) { throw "missing Start menu shortcut $lnk" }
           "NSIS_EXE=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append
