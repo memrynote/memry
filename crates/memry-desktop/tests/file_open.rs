@@ -1,14 +1,11 @@
 //! The open-under-root rule (`shell::file_open`): what may be read through a vault-relative
 //! name, on real directories with real links.
 
-use std::cell::Cell;
 use std::fs;
 use std::io::Read;
 use std::path::Path;
 
-use memry_desktop::shell::file_open::{
-    OpenError, Resolution, open_checked, open_under_root, resolve_under_root,
-};
+use memry_desktop::shell::file_open::{OpenError, Resolution, open_under_root, resolve_under_root};
 
 struct Dirs {
     _tmp: tempfile::TempDir,
@@ -100,6 +97,8 @@ fn windows_prefixes_and_streams_are_outside() {
 #[cfg(unix)]
 mod links {
     use super::*;
+    use memry_desktop::shell::file_open::open_checked;
+    use std::cell::Cell;
     use std::os::unix::fs::symlink;
 
     #[test]
