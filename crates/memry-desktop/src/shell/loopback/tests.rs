@@ -9,6 +9,14 @@ use tokio::net::TcpStream;
 use super::*;
 use crate::shell::loopback_route::encode_media_target;
 
+/// `canonicalize` on Windows returns `\\?\C:\...`; the app's paths never carry that prefix.
+fn without_verbatim_prefix(path: std::path::PathBuf) -> std::path::PathBuf {
+    match path.to_string_lossy().strip_prefix(r"\\?\") {
+        Some(plain) => std::path::PathBuf::from(plain),
+        None => path,
+    }
+}
+
 struct Reply {
     status: u16,
     headers: HashMap<String, String>,
@@ -76,7 +84,7 @@ struct Fixture {
 
 async fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
-    let base = fs::canonicalize(dir.path()).unwrap();
+    let base = without_verbatim_prefix(fs::canonicalize(dir.path()).unwrap());
     let vault = base.join("vault");
     let data = base.join("data");
     fs::create_dir_all(vault.join("attachments/n1")).unwrap();
@@ -87,7 +95,9 @@ async fn fixture() -> Fixture {
         app_origins: vec!["tauri://localhost".to_owned()],
         reply_origin: "tauri://localhost".to_owned(),
     };
-    let server = start(Arc::new(move || roots.clone()), false).await.unwrap();
+    let server = start(Arc::new(move || roots.clone()), cfg!(windows))
+        .await
+        .unwrap();
     Fixture {
         _dir: dir,
         vault,
@@ -101,7 +111,11 @@ impl Fixture {
     }
 
     fn media_path(&self, file: &std::path::Path) -> String {
-        let url = format!("memry-file://local{}", file.to_string_lossy());
+        let url = format!(
+            "memry-file://local{}{}",
+            if cfg!(windows) { "/" } else { "" },
+            file.to_string_lossy().replace('\\', "/")
+        );
         format!("/m/{}/{}", self.server.token(), encode_media_target(&url))
     }
 }

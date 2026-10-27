@@ -5,6 +5,23 @@ use tempfile::TempDir;
 
 use super::*;
 
+const WINDOWS: bool = cfg!(windows);
+
+/// `canonicalize` on Windows returns `\\?\C:\...`; the app's paths never carry that prefix.
+fn without_verbatim_prefix(path: PathBuf) -> PathBuf {
+    match path.to_string_lossy().strip_prefix(r"\\?\") {
+        Some(plain) => PathBuf::from(plain),
+        None => path,
+    }
+}
+
+/// The root of a path written on another device, in the flavor of this host's URLs.
+const OTHER_DEVICE: &str = if WINDOWS {
+    "/C:/Users/other"
+} else {
+    "/Users/other"
+};
+
 const APP: &str = "tauri://localhost";
 
 fn req(range: Option<&str>) -> FileRequest<'_> {
@@ -22,7 +39,7 @@ struct Fixture {
 
 fn fixture() -> Fixture {
     let dir = tempfile::tempdir().unwrap();
-    let base = fs::canonicalize(dir.path()).unwrap();
+    let base = without_verbatim_prefix(fs::canonicalize(dir.path()).unwrap());
     let vault = base.join("vault");
     let data = base.join("data");
     fs::create_dir_all(vault.join("attachments/n1")).unwrap();
@@ -45,12 +62,13 @@ impl Fixture {
     }
 
     fn url(path: &Path) -> String {
-        let encoded: Vec<String> = path
-            .to_string_lossy()
-            .split('/')
-            .map(|s| s.replace(' ', "%20"))
-            .collect();
-        format!("memry-file://local{}", encoded.join("/"))
+        let slashed = path.to_string_lossy().replace('\\', "/");
+        let rooted = if slashed.starts_with('/') {
+            slashed
+        } else {
+            format!("/{slashed}")
+        };
+        format!("memry-file://local{}", rooted.replace(' ', "%20"))
     }
 
     fn serve(&self, path: &Path, range: Option<&str>) -> Served {
@@ -58,7 +76,7 @@ impl Fixture {
             &Self::url(path),
             &req(range),
             &self.roots(),
-            false,
+            WINDOWS,
             Caps::UNBOUNDED,
         )
     }
@@ -165,19 +183,20 @@ fn serves_a_path_written_on_another_device_from_this_vault() {
     let fx = fixture();
     let local = fx.vault.join("attachments/n1/abc123-photo.png");
     fs::write(&local, b"png").unwrap();
-    let foreign = "memry-file://local/Users/other/Notes/attachments/n1/abc123-photo.png";
-    let served = serve_file(foreign, &req(None), &fx.roots(), false, Caps::UNBOUNDED);
+    let foreign = format!("memry-file://local{OTHER_DEVICE}/Notes/attachments/n1/abc123-photo.png");
+    let foreign = foreign.as_str();
+    let served = serve_file(foreign, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED);
     assert_eq!(served.status, 200);
     assert_eq!(bytes_of(served), b"png");
     // The file is not here: the remap answers 403, not a read outside the vault.
-    let absent = "memry-file://local/Users/other/Notes/attachments/n1/none.png";
+    let absent = format!("memry-file://local{OTHER_DEVICE}/Notes/attachments/n1/none.png");
     assert_eq!(
-        serve_file(absent, &req(None), &fx.roots(), false, Caps::UNBOUNDED).status,
+        serve_file(&absent, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED).status,
         403
     );
-    let climb = "memry-file://local/Users/other/attachments/../../etc/passwd";
+    let climb = format!("memry-file://local{OTHER_DEVICE}/attachments/../../etc/passwd");
     assert_eq!(
-        serve_file(climb, &req(None), &fx.roots(), false, Caps::UNBOUNDED).status,
+        serve_file(&climb, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED).status,
         403
     );
 }
@@ -237,9 +256,9 @@ fn a_range_longer_than_the_chunk_is_a_shorter_partial_answer() {
         range_chunk: 40,
         whole_file: u64::MAX,
     };
-    let open = serve_file(&url, &req(Some("bytes=50-")), &fx.roots(), false, caps);
+    let open = serve_file(&url, &req(Some("bytes=50-")), &fx.roots(), WINDOWS, caps);
     assert_eq!(header(&open, "Content-Range"), Some("bytes 50-89/100"));
-    let small = serve_file(&url, &req(Some("bytes=10-19")), &fx.roots(), false, caps);
+    let small = serve_file(&url, &req(Some("bytes=10-19")), &fx.roots(), WINDOWS, caps);
     assert_eq!(header(&small, "Content-Range"), Some("bytes 10-19/100"));
 }
 
@@ -253,7 +272,7 @@ fn a_whole_file_request_is_never_answered_with_a_truncated_206() {
         range_chunk: 40,
         whole_file: 200,
     };
-    let whole = serve_file(&url, &req(None), &fx.roots(), false, small);
+    let whole = serve_file(&url, &req(None), &fx.roots(), WINDOWS, small);
     assert_eq!(whole.status, 200);
     assert_eq!(bytes_of(whole).len(), 100);
     // Too big to answer in one body: a refusal the client can see, not a short 206.
@@ -261,7 +280,7 @@ fn a_whole_file_request_is_never_answered_with_a_truncated_206() {
         range_chunk: 40,
         whole_file: 50,
     };
-    let refused = serve_file(&url, &req(None), &fx.roots(), false, tight);
+    let refused = serve_file(&url, &req(None), &fx.roots(), WINDOWS, tight);
     assert_eq!(refused.status, 413);
     assert!(header(&refused, "Content-Range").is_none());
 }
@@ -281,7 +300,7 @@ fn only_an_app_origin_may_read_a_file() {
                 fetch_dest: dest,
             },
             &fx.roots(),
-            false,
+            WINDOWS,
             Caps::UNBOUNDED,
         )
     };
@@ -335,7 +354,7 @@ fn urls_that_are_not_memry_file_are_404() {
         "memry-html://local/a.html",
     ] {
         assert_eq!(
-            serve_file(url, &req(None), &fx.roots(), false, Caps::UNBOUNDED).status,
+            serve_file(url, &req(None), &fx.roots(), WINDOWS, Caps::UNBOUNDED).status,
             404,
             "{url}"
         );
@@ -351,7 +370,7 @@ fn memry_html_serves_an_attachment_with_the_sandbox_policy() {
     let fx = fixture();
     let file = fx.vault.join("attachments/n1/abc123-page.html");
     fs::write(&file, "<html><body>hi</body></html>").unwrap();
-    let served = serve_html(&html_url(&file), true, Some(&fx.vault), false);
+    let served = serve_html(&html_url(&file), true, Some(&fx.vault), WINDOWS);
     assert_eq!(served.status, 200);
     assert_eq!(
         header(&served, "Content-Security-Policy"),
@@ -368,7 +387,7 @@ fn memry_html_serves_an_attachment_with_the_sandbox_policy() {
 
     let latin = fx.vault.join("attachments/n1/abc123-latin.htm");
     fs::write(&latin, "<meta charset=windows-1254>").unwrap();
-    let served = serve_html(&html_url(&latin), true, Some(&fx.vault), false);
+    let served = serve_html(&html_url(&latin), true, Some(&fx.vault), WINDOWS);
     assert_eq!(header(&served, "Content-Type"), Some("text/html"));
 }
 
@@ -378,38 +397,44 @@ fn memry_html_refuses_everything_but_get_of_a_vault_html_attachment() {
     let page = fx.vault.join("attachments/n1/abc123-page.html");
     fs::write(&page, "x").unwrap();
     assert_eq!(
-        serve_html(&html_url(&page), false, Some(&fx.vault), false).status,
+        serve_html(&html_url(&page), false, Some(&fx.vault), WINDOWS).status,
         405
     );
-    assert_eq!(serve_html(&html_url(&page), true, None, false).status, 404);
+    assert_eq!(
+        serve_html(&html_url(&page), true, None, WINDOWS).status,
+        404
+    );
 
     let text = fx.vault.join("attachments/n1/abc123-note.txt");
     fs::write(&text, "x").unwrap();
     assert_eq!(
-        serve_html(&html_url(&text), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&text), true, Some(&fx.vault), WINDOWS).status,
         404
     );
 
     let outside = fx.vault.join("notes.html");
     fs::write(&outside, "x").unwrap();
     assert_eq!(
-        serve_html(&html_url(&outside), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&outside), true, Some(&fx.vault), WINDOWS).status,
         404
     );
     let data = fx.data.join("a.html");
     fs::write(&data, "x").unwrap();
     assert_eq!(
-        serve_html(&html_url(&data), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&data), true, Some(&fx.vault), WINDOWS).status,
         404
     );
     let climb = format!(
         "{}/../../x.html",
         html_url(&page).trim_end_matches("/abc123-page.html")
     );
-    assert_eq!(serve_html(&climb, true, Some(&fx.vault), false).status, 404);
+    assert_eq!(
+        serve_html(&climb, true, Some(&fx.vault), WINDOWS).status,
+        404
+    );
     // memry-file is not memry-html.
     assert_eq!(
-        serve_html(&Fixture::url(&page), true, Some(&fx.vault), false).status,
+        serve_html(&Fixture::url(&page), true, Some(&fx.vault), WINDOWS).status,
         404
     );
 }
@@ -418,9 +443,9 @@ fn memry_html_refuses_everything_but_get_of_a_vault_html_attachment() {
 fn memry_html_remaps_and_heals_like_memry_file() {
     let fx = fixture();
     fs::write(fx.vault.join("attachments/n1/abc123-page.html"), "x").unwrap();
-    let foreign = "memry-html://local/Users/other/Notes/attachments/n1/abc123-page.html";
+    let foreign = format!("memry-html://local{OTHER_DEVICE}/Notes/attachments/n1/abc123-page.html");
     assert_eq!(
-        serve_html(foreign, true, Some(&fx.vault), false).status,
+        serve_html(&foreign, true, Some(&fx.vault), WINDOWS).status,
         200
     );
     // Renamed on disk after the note was written: the new prefix keeps the name.
@@ -431,7 +456,7 @@ fn memry_html_remaps_and_heals_like_memry_file() {
     .unwrap();
     let stale = fx.vault.join("attachments/n1/abc123-page.html");
     assert_eq!(
-        serve_html(&html_url(&stale), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&stale), true, Some(&fx.vault), WINDOWS).status,
         200
     );
     fs::rename(
@@ -440,7 +465,7 @@ fn memry_html_remaps_and_heals_like_memry_file() {
     )
     .unwrap();
     assert_eq!(
-        serve_html(&html_url(&stale), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&stale), true, Some(&fx.vault), WINDOWS).status,
         404
     );
 }
@@ -454,7 +479,7 @@ fn memry_html_refuses_a_link_out_of_the_vault() {
     let link = fx.vault.join("attachments/n1/abc123-evil.html");
     std::os::unix::fs::symlink(&outside, &link).unwrap();
     assert_eq!(
-        serve_html(&html_url(&link), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&link), true, Some(&fx.vault), WINDOWS).status,
         404
     );
 }
@@ -466,7 +491,7 @@ fn an_oversize_html_file_is_refused() {
     let file = fs::File::create(&big).unwrap();
     file.set_len(MAX_HTML_BYTES + 1).unwrap();
     assert_eq!(
-        serve_html(&html_url(&big), true, Some(&fx.vault), false).status,
+        serve_html(&html_url(&big), true, Some(&fx.vault), WINDOWS).status,
         404
     );
 }
