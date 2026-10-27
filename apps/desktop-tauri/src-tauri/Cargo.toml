@@ -79,6 +79,9 @@ windows = { version = "0.62", features = [
 [target.'cfg(target_os = "linux")'.dependencies]
 # `guards/gpu.rs` reports `web-process-terminated`. Same version as wry.
 webkit2gtk = "2.0.2"
+# tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
+# to compile there. Drop the pin when the plugin moves to `..Default::default()`.
+rust-ini = "=0.21.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 # `shutdown/mac_quit.rs` answers `applicationShouldTerminate:`, which tao does not implement.
