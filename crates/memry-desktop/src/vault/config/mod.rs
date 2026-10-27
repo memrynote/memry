@@ -18,8 +18,9 @@
 //!
 //! The file is untrusted input (a copied archive, a synced share): a read is capped at
 //! [`MAX_CONFIG_BYTES`], goes through `open_under_root` so it never blocks on a FIFO or leaves
-//! the vault, and nests no deeper than [`MAX_NESTING`]. The nesting is counted on the bytes
-//! before parsing: another crate in the build turns `serde_json`'s own recursion limit off.
+//! the vault, and parses with `serde_json`'s default recursion limit of 128, which turns a
+//! deeper file into an error. (The `unbounded_depth` feature the build enables only adds an
+//! opt-in `disable_recursion_limit`; nothing here calls it.)
 
 mod preferences;
 mod vault_config;
@@ -55,8 +56,6 @@ pub const PERMISSION_DENIED_KEY: &str = "errors:vault.permissionDenied";
 
 /// A real config is a few hundred bytes. Past this the file is not read at all.
 pub const MAX_CONFIG_BYTES: u64 = 4 * 1024 * 1024;
-/// A real config nests three or four levels (`preferences.editor.*`, the icon).
-pub const MAX_NESTING: usize = 64;
 
 /// `<vault>/.memry/config.json`, vault-relative with `/` separators.
 const CONFIG_REL: &str = ".memry/config.json";
@@ -129,43 +128,11 @@ pub(crate) fn read_object(file: File) -> Result<Map<String, Value>, String> {
     if bytes.len() as u64 > MAX_CONFIG_BYTES {
         return Err(format!("larger than {MAX_CONFIG_BYTES} bytes"));
     }
-    if nests_deeper_than(&bytes, MAX_NESTING) {
-        return Err(format!("nested deeper than {MAX_NESTING} levels"));
-    }
     match serde_json::from_slice(&bytes) {
         Ok(Value::Object(map)) => Ok(map),
         Ok(_) => Err("not a JSON object".to_owned()),
         Err(error) => Err(format!("not valid JSON: {error}")),
     }
-}
-
-/// Whether `[`/`{` nest deeper than `limit` outside strings. One pass over the bytes, no
-/// recursion, so the answer costs the same for any input.
-fn nests_deeper_than(bytes: &[u8], limit: usize) -> bool {
-    let (mut depth, mut in_string, mut escaped) = (0usize, false, false);
-    for &byte in bytes {
-        if in_string {
-            match (escaped, byte) {
-                (true, _) => escaped = false,
-                (false, b'\\') => escaped = true,
-                (false, b'"') => in_string = false,
-                _ => {}
-            }
-            continue;
-        }
-        match byte {
-            b'"' => in_string = true,
-            b'[' | b'{' => {
-                depth += 1;
-                if depth > limit {
-                    return true;
-                }
-            }
-            b']' | b'}' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-    }
-    false
 }
 
 pub(crate) fn load(vault: &Path) -> Stored {
