@@ -17,6 +17,10 @@
 //!
 //! The consumer of the marker (Step 17) sweeps [`list`] when a body pull settles
 //! and at startup, so a marker recorded just as the debt settled is still taken.
+//!
+//! A marker of a note deleted through sync stays until the note's file row goes
+//! ([`super::note_files::remove`]). It is harmless meanwhile: [`list`] leaves out
+//! a note that does not live, and nothing writes a deleted note's file.
 
 use rusqlite::{Connection, params};
 

@@ -18,6 +18,7 @@ pub mod bookmarks;
 pub mod calendar;
 pub mod calendar_items;
 pub mod canvas;
+pub mod content_hash;
 pub mod custom_icons;
 #[cfg(feature = "markdown")]
 pub mod external_feed;
@@ -29,6 +30,7 @@ pub mod journal_rules;
 pub mod note_files;
 pub mod note_meta;
 pub mod note_positions;
+pub mod note_snapshots;
 pub mod note_status;
 pub mod note_tasks;
 pub mod notes;

@@ -19,9 +19,11 @@
 //! body?", and an unowed document's log is the body to build on. Every door
 //! that lands such a record or a partial body keeps it:
 //!
-//! - a feed page owes its document records before it applies them
-//!   ([`super::pull::PullLoop`], `apply_all`), in the transaction that applies
-//!   them, and takes back only the debts of records it skipped;
+//! - a feed page owes its document records in the transaction before the one
+//!   that applies them, inside the same writer call ([`super::pull::PullLoop`],
+//!   `apply_all`), and takes back only the debts of records it skipped (a crash
+//!   between the two leaves a debt for a record not applied, which costs one
+//!   pull);
 //! - the first sync's metadata pass owes the same way (`PullLoop::fetch_ids`),
 //!   and its bodies pass owes every live document before it pulls any, so a run
 //!   that dies, or a document whose pull stops, leaves the debt standing;

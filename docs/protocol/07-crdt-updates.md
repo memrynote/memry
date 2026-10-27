@@ -1012,16 +1012,20 @@ names the documents whose log grew.
   - A stop or an error answer backs the document off for
     `2^(failures - 1)` passes, up to 32.
   - **Owed means "awaits its server body".** Every note or journal record a
-    feed page or the first sync applies is owed in the transaction that
-    applies it (`crates/memry-core/src/sync/pull.rs:344`). The first sync's
-    bodies pass owes every live document before its first pull
-    (`crates/memry-core/src/sync/first_sync.rs:415`) and settles a window
-    document by the rule above
+    feed page (`crates/memry-core/src/sync/pull.rs:285`) or the first sync's
+    metadata pass (`crates/memry-core/src/sync/pull.rs:344`) applies is owed
+    in a transaction just before the one that applies it, inside the same
+    writer call. The first sync's bodies pass owes every live document before
+    its first pull (`crates/memry-core/src/sync/first_sync.rs:415`) and
+    settles a window document by the rule above
     (`crates/memry-core/src/sync/first_sync/body_pass.rs:183`), so a run that
     dies, or a window pull that stops, leaves the document owed for the body
-    step. A document that is not owed holds its server body, and the desktop
-    external feed writes file text only into such a document
-    (`crates/memry-core/src/domain/external_feed.rs`).
+    step. A first sync and a pass hold the same per-vault lock
+    (`crates/memry-core/src/api/sync/mod.rs:387`,
+    `crates/memry-core/src/api/sync/pass.rs:108`), so neither settles a debt
+    the other is still writing. A document that is not owed
+    holds its server body, and the desktop external feed writes file text only
+    into such a document (`crates/memry-core/src/domain/external_feed.rs:191`).
 - **Settled means "in the log".** A settled debt says this device's update
   log holds every server update up to the head the pull saw. It does not say
   a resident document has loaded them.

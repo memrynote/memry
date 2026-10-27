@@ -12,7 +12,32 @@
 //! converter replaces its body, and the update the transaction authored is
 //! stored with its outbox row in one transaction. The whole step runs on the
 //! writer connection, so no sync apply can land between the replay and the
-//! append. Step 14 switches the caller to its resident editor.
+//! append. It holds the writer for one replay, one serialization and one
+//! conversion of the note: milliseconds for an ordinary note, longer for one
+//! near the large-file class, during which other writes of the vault wait. Step
+//! 14 switches the caller to its resident editor.
+//!
+//! **A feed never removes what the file cannot hold, and never removes a body
+//! without keeping it.** The replace empties the body and rebuilds it from the
+//! markdown, so:
+//!
+//! - a body this build cannot write out whole (a block type a newer build added,
+//!   a node the schema would drop) is refused ([`FeedOutcome::Refused`]), the way
+//!   the write-back refuses to write it: replacing it would delete the part no
+//!   file holds, on every device;
+//! - a body that already serializes to the file's text is not fed again
+//!   ([`FeedOutcome::Unchanged`]), so a device whose file merely caught up with
+//!   a synced body pushes no second copy;
+//! - a body that is replaced is first kept as a version
+//!   ([`super::note_snapshots::keep`]), so an edit this device holds and the file
+//!   does not (a peer's, merged after the file was last written) can be restored.
+//!
+//! The replace is not a merge. Two devices feeding the same new text into one
+//! body at the same time each delete the old body and insert their copy, and the
+//! merge holds both; a peer's edit inside a paragraph the feed replaced, not
+//! merged here yet, lands in deleted text. The version above is what recovers
+//! either. A diff-based feed that keeps unchanged blocks would avoid both and is
+//! not built.
 //!
 //! **A note whose server body is not here yet is not fed.** Its document is
 //! empty or partial, and a body replaced into it shares no Yjs items with the
@@ -46,15 +71,17 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use rusqlite::Connection;
 
+use crate::crdt::BODY_FRAGMENT;
 use crate::crdt::epoch;
 use crate::crdt::errors::CrdtError;
 use crate::crdt::markdown_seed::body_is_empty;
 use crate::crdt::registry::UpdateSink;
 use crate::domain::body_write::append_in;
 use crate::domain::notes::ITEM_TYPE;
-use crate::domain::{owed_file_body, reads};
+use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::ReplaceOutcome;
+use crate::markdown::convert::restore::SerializeOptions;
 use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_markdown_content};
 use crate::markdown::shared::writing_tools::WritingFrontmatter;
 use crate::protocol::account::MAX_UPDATE_BYTES;
@@ -75,16 +102,23 @@ pub enum FeedOutcome {
     LargeFile,
     /// Seed only: the document already holds a body, which was left alone.
     BodyPresent,
-    /// The markdown did not convert, or the document refused the replace.
+    /// The document's body already serializes to this markdown: nothing was
+    /// written, and the file counts as read.
+    Unchanged,
+    /// The markdown did not convert, the document refused the replace, or the
+    /// body holds what no file can (a block type this build does not know).
     Refused,
-    /// This vault holds no live note by that id.
+    /// This vault holds no live note by that id. A journal day's file answers
+    /// this too: journals are not fed (their documents live under `journal_entries`).
+    /// The caller must not treat the file as read.
     NoNote,
 }
 
 /// The file's text and where it lives.
 pub struct FeedInput<'a> {
     pub note_id: &'a str,
-    /// The body of the file, without the frontmatter block.
+    /// The body of the file, without the frontmatter block. A leading byte-order
+    /// mark is dropped; CRLF and LF line ends read the same.
     pub markdown: &'a str,
     /// The vault-relative path, which relative links in the body resolve against.
     pub note_path: Option<&'a str>,
@@ -142,6 +176,7 @@ fn author(
         note_path,
         writing,
     } = input;
+    let markdown = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
     if !reads::note_exists(conn, note_id) {
         return Ok(FeedOutcome::NoNote);
     }
@@ -170,9 +205,33 @@ fn author(
         })
     };
     let document = epoch::open_for_write(&tx, device_id, note_id, sink)?;
-    if write == Write::SeedIfEmpty && !body_is_empty(&document)? {
+    let empty = body_is_empty(&document)?;
+    if write == Write::SeedIfEmpty && !empty {
         return Ok(FeedOutcome::BodyPresent);
     }
+    // The body as the write-back would write it. One this build cannot write out
+    // whole (a block a newer build added, a node the schema would drop) is never
+    // replaced, and one the file already says is not fed again.
+    let replaced = if empty {
+        None
+    } else {
+        let options = SerializeOptions {
+            note_path,
+            ..SerializeOptions::default()
+        };
+        let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
+            return Ok(FeedOutcome::Refused);
+        };
+        if !body.unrepresentable.is_empty() || body.dropped_elements > 0 {
+            return Ok(FeedOutcome::Refused);
+        }
+        if same_text(&body.markdown, markdown) {
+            owed_file_body::clear(&tx, note_id)?;
+            tx.commit().map_err(storage_failed)?;
+            return Ok(FeedOutcome::Unchanged);
+        }
+        Some(body.markdown)
+    };
     let outcome = converter.replace_body(
         &document,
         markdown,
@@ -193,6 +252,15 @@ fn author(
     if !updates.iter().all(|update| rides_as_one_update(update)) {
         return Ok(FeedOutcome::LargeFile);
     }
+    if let Some(previous) = replaced {
+        let version = note_snapshots::Version {
+            note_id,
+            content: &previous,
+            title: &title(&tx, note_id)?,
+            reason: note_snapshots::SIGNIFICANT,
+        };
+        note_snapshots::keep(&tx, version, now_ms)?;
+    }
     for update in &updates {
         append_in(&tx, ITEM_TYPE, note_id, update, now_ms)?;
     }
@@ -201,10 +269,26 @@ fn author(
     Ok(FeedOutcome::Fed)
 }
 
+/// Whether the file's text is the body's: line ends and the trailing newlines a
+/// body cannot hold do not count.
+fn same_text(body: &str, file: &str) -> bool {
+    let normalize = |text: &str| text.replace("\r\n", "\n").trim_end_matches('\n').to_owned();
+    normalize(body) == normalize(file)
+}
+
 /// Whether the server takes this update as one: it caps the packed length
 /// (header, compressed frame, AEAD tag), not the markdown or the raw update.
 fn rides_as_one_update(update: &[u8]) -> bool {
     crdt_envelope::packed_len(update) <= MAX_UPDATE_BYTES
+}
+
+fn title(conn: &Connection, note_id: &str) -> Result<String, CrdtError> {
+    conn.query_row(
+        "SELECT title FROM notes WHERE id = ?1",
+        rusqlite::params![note_id],
+        |row| row.get(0),
+    )
+    .map_err(storage_failed)
 }
 
 fn storage_failed(error: rusqlite::Error) -> CrdtError {

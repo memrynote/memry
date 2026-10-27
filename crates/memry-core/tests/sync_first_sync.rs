@@ -1343,6 +1343,23 @@ async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() 
     );
     assert_eq!(local_updates(), 0, "no second copy of the body to push");
 
+    // The server body as a peer's editor wrote it (the converter's layout).
+    let authored: Arc<Mutex<Vec<Vec<u8>>>> = Arc::default();
+    let sink: UpdateSink = {
+        let authored = Arc::clone(&authored);
+        Arc::new(move |_, bytes: &[u8]| authored.lock().unwrap().push(bytes.to_vec()))
+    };
+    let peer = DocumentRegistry::new("device-a", sink)
+        .get_or_open(NOTE)
+        .expect("open");
+    assert!(converter.seed_body(
+        &peer,
+        "Hello from the server",
+        None,
+        None,
+        &memry_core::markdown::convert::NoEmbeds
+    ));
+    let seeded = authored.lock().unwrap().remove(0);
     let resumed = FakeTransport::new(vec![
         response(200, &changes_page(&[], &[], 10, false)),
         response(200, &json!({"snapshot": Json::Null}).to_string()),
@@ -1350,7 +1367,7 @@ async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() 
             200,
             &json!({"updates": [{
                 "sequenceNum": 1,
-                "data": packed_base64(NOTE, &body_update("Hello from the server"), &secret_key),
+                "data": packed_base64(NOTE, &seeded, &secret_key),
                 "signerDeviceId": "device-a"
             }], "hasMore": false})
             .to_string(),

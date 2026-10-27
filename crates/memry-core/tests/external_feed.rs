@@ -19,6 +19,7 @@ use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::crypto::sodium;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
@@ -345,4 +346,189 @@ fn a_seed_of_a_large_file_is_refused_like_a_feed() {
         FeedOutcome::LargeFile
     );
     assert_eq!(f.updates(&id), 0);
+}
+
+// ---------------------------------------------------------------------------
+// The feed never removes what the file cannot hold, and never removes a body
+// without keeping it: a block a newer build wrote stays, an unchanged file
+// writes nothing, and a replaced body is kept as a version first.
+
+/// A body another device authored from `markdown`, plus whatever `extend` adds
+/// to it raw, stored as the server sent it.
+fn server_body(
+    f: &Fixture,
+    id: &str,
+    markdown: &str,
+    extend: impl FnOnce(&mut yrs::TransactionMut),
+) {
+    let authored: Arc<std::sync::Mutex<Vec<Vec<u8>>>> = Arc::default();
+    let sink: UpdateSink = {
+        let authored = Arc::clone(&authored);
+        Arc::new(move |_, bytes: &[u8]| authored.lock().unwrap().push(bytes.to_vec()))
+    };
+    let peer = DocumentRegistry::new("peer-device", sink)
+        .get_or_open(id)
+        .expect("open");
+    assert!(
+        f.converter
+            .seed_body(&peer, markdown, None, None, &NoEmbeds)
+    );
+    peer.write(|txn| extend(txn)).expect("extend");
+    let updates = authored.lock().unwrap().clone();
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            for (seq, update) in updates.iter().enumerate() {
+                update_log::append_server_update(conn, id, seq as i64 + 1, update, 1)
+                    .expect("store");
+            }
+            Ok(())
+        })
+        .expect("store");
+}
+
+/// Appends `blockContainer > <tag> > text` to the body's block group.
+fn raw_block(txn: &mut yrs::TransactionMut, tag: &str, text: &str) {
+    use yrs::{XmlElementPrelim, XmlFragment as _, XmlOut, XmlTextPrelim};
+    let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
+    let Some(XmlOut::Element(group)) = fragment.get(txn, 0) else {
+        panic!("a seeded body starts with its block group");
+    };
+    let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+    let block = container.push_back(txn, XmlElementPrelim::empty(tag));
+    block.push_back(txn, XmlTextPrelim::new(text));
+}
+
+fn local_updates(f: &Fixture, id: &str) -> i64 {
+    f.count(
+        "SELECT COUNT(*) FROM yjs_updates WHERE doc_id = 'local.' || ?1",
+        id,
+    )
+}
+
+fn versions(f: &Fixture, id: &str) -> Vec<(String, String)> {
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            let mut statement = conn
+                .prepare(
+                    "SELECT content, reason FROM note_snapshots WHERE note_id = ?1
+                     ORDER BY created_at, rowid",
+                )
+                .expect("prepare");
+            Ok(statement
+                .query_map(params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+                .expect("query")
+                .collect::<Result<Vec<_>, _>>()
+                .expect("rows"))
+        })
+        .expect("versions")
+}
+
+#[test]
+fn a_body_holding_a_block_this_build_cannot_represent_is_never_replaced() {
+    let f = fixture();
+    let id = f.note();
+    server_body(&f, &id, "known", |txn| {
+        raw_block(txn, "futureBlock", "written by a newer build");
+    });
+    assert_eq!(f.feed(&id, "the file's text"), FeedOutcome::Refused);
+    assert_eq!((local_updates(&f, &id), f.queued_updates(&id)), (0, 0));
+    let sink: UpdateSink = Arc::new(|_, _| {});
+    let document = DocumentRegistry::new("reader", sink)
+        .get_or_open(&id)
+        .expect("open");
+    f.vault
+        .db_handle()
+        .call_blocking(|conn| {
+            for blob in update_log::load_plan(conn, &id).expect("plan").blobs() {
+                document.apply_durable_update(blob).expect("apply");
+            }
+            Ok(())
+        })
+        .expect("replay");
+    assert_eq!(
+        f.converter
+            .find_unrepresentable_nodes(&document, BODY_FRAGMENT),
+        vec!["futureBlock".to_owned()],
+        "the newer build's block is still there"
+    );
+}
+
+#[test]
+fn a_file_that_already_matches_the_body_writes_nothing() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.feed(&id, "the same text"), FeedOutcome::Fed);
+    assert_eq!(f.feed(&id, "the same text"), FeedOutcome::Unchanged);
+    assert_eq!(
+        (local_updates(&f, &id), f.queued_updates(&id)),
+        (1, 1),
+        "a peer that merged the first feed gets no second copy"
+    );
+}
+
+#[test]
+fn a_replaced_body_is_kept_as_a_version_once() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.feed(&id, "first text"), FeedOutcome::Fed);
+    assert!(
+        versions(&f, &id).is_empty(),
+        "an empty body is nothing to keep"
+    );
+    assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
+    assert_eq!(f.feed(&id, "first text"), FeedOutcome::Fed);
+    assert_eq!(f.feed(&id, "second text"), FeedOutcome::Fed);
+    let kept = versions(&f, &id);
+    assert_eq!(kept.len(), 2, "one version per distinct body: {kept:?}");
+    assert!(kept[0].0.contains("first text") && kept[1].0.contains("second text"));
+    assert!(kept.iter().all(|(_, reason)| reason == "significant"));
+}
+
+#[test]
+fn a_fed_body_merged_with_the_server_body_holds_the_file_text_once() {
+    let f = fixture();
+    let id = f.note();
+    server_body(&f, &id, "from the server", |_| {});
+    assert_eq!(
+        f.feed(&id, "from the server\n\nand a line added in another editor"),
+        FeedOutcome::Fed
+    );
+    // A peer that holds the server body and then receives the fed update.
+    let body = f.body(&id);
+    assert_eq!(body.matches("from the server").count(), 1, "{body:?}");
+    assert!(
+        body.contains("and a line added in another editor"),
+        "{body:?}"
+    );
+}
+
+#[test]
+fn crlf_line_ends_feed_like_lf_ones() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(
+        f.feed(&id, "line one\r\n\r\nline two\r\n"),
+        FeedOutcome::Fed
+    );
+    let body = f.body(&id);
+    assert!(
+        body.contains("line one") && body.contains("line two") && !body.contains('\r'),
+        "{body:?}"
+    );
+    assert_eq!(
+        f.feed(&id, "line one\r\n\r\nline two\r\n"),
+        FeedOutcome::Unchanged,
+        "the same text with CRLF line ends is the same body"
+    );
+}
+
+#[test]
+fn a_leading_byte_order_mark_is_not_part_of_the_body() {
+    let f = fixture();
+    let id = f.note();
+    assert_eq!(f.feed(&id, "\u{feff}text after a BOM"), FeedOutcome::Fed);
+    assert!(!f.body(&id).contains('\u{feff}'), "{:?}", f.body(&id));
+    assert_eq!(f.feed(&id, "text after a BOM"), FeedOutcome::Unchanged);
 }

@@ -84,10 +84,12 @@ pub(super) fn owe_live_documents(conn: &Connection) -> Result<(), StorageError> 
         .map_err(sqlite_failed)?
         .collect::<Result<Vec<String>, _>>()
         .map_err(sqlite_failed)?;
+    // One transaction: one commit for a vault of ten thousand notes, not one each.
+    let txn = conn.unchecked_transaction().map_err(sqlite_failed)?;
     for id in &live {
-        body_debt::owe(conn, id)?;
+        body_debt::owe(&txn, id)?;
     }
-    Ok(())
+    txn.commit().map_err(sqlite_failed)
 }
 
 pub fn read_meta(conn: &Connection, key: &str) -> Result<Option<String>, StorageError> {
