@@ -58,8 +58,10 @@ pub fn allowed(permission: Permission, origin: Option<&str>, dev_origin: Option<
 
 /// [`allowed`] for an engine that names no frame (WebKitGTK): `origin` is the top page whichever
 /// frame asked, so a permission no `Permissions-Policy` feature gates is refused. Notifications
-/// are that case: the app notifies natively, calls no web `Notification`, and a frame's request
-/// would otherwise be granted as the app's. The microphone is gated by the `Permissions-Policy`
+/// are that case. The app's own page still raises banners with `new Notification` (the inbox
+/// hook), but `tauri-plugin-notification` replaces `window.Notification` in the main frame, so
+/// that call never reaches the engine's permission request. A request that does reach it comes
+/// from a frame the app embeds, and would otherwise be granted as the app's. The microphone is gated by the `Permissions-Policy`
 /// the app sends with every embed.
 pub fn allowed_without_frame(
     permission: Permission,

@@ -44,10 +44,40 @@ export function watchExternalLinks(
   return () => host.removeEventListener('click', onClick)
 }
 
+interface DropHost {
+  addEventListener(type: 'drop', listener: (event: DragEvent) => void, capture: boolean): void
+  removeEventListener(type: 'drop', listener: (event: DragEvent) => void, capture: boolean): void
+}
+
+const EDITABLE = 'input, textarea, [contenteditable], .ProseMirror'
+
+function cancelLinkDrop(event: DragEvent): void {
+  const types = event.dataTransfer?.types ?? []
+  if (!types.includes('text/uri-list') || types.includes('Files')) return
+  if (event.target instanceof Element && event.target.closest(EDITABLE)) return
+  event.preventDefault()
+}
+
+/**
+ * Stops a link dragged in from a browser from navigating the window. A drop nothing handles makes
+ * WebKit load the dragged URL, and the main window's drag-drop handler is off, so nothing else
+ * sees it. The editor and the text fields take a dropped link as text, and a file drop (which
+ * carries `Files` as well) belongs to the file-drop zones. Returns the cleanup.
+ */
+export function watchLinkDrops(host: DropHost): () => void {
+  host.addEventListener('drop', cancelLinkDrop, true)
+  return () => host.removeEventListener('drop', cancelLinkDrop, true)
+}
+
 export function installExternalLinkGuard(): () => void {
-  return watchExternalLinks(
+  const stopLinks = watchExternalLinks(
     document,
     (url) => commands.shellOpenExternal(url),
     window.location.origin
   )
+  const stopDrops = watchLinkDrops(document)
+  return () => {
+    stopLinks()
+    stopDrops()
+  }
 }

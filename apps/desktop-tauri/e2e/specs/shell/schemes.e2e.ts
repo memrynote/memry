@@ -124,6 +124,90 @@ test('the loopback server streams with a token, refuses a foreign host, and fram
   expect(embed.body).toContain('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
 })
 
+test('the page reads a PDF from the loopback server the way pdf.js does, whole and by range', async ({
+  page,
+  testVaultPath
+}) => {
+  await appReady(page)
+  const shell = await page.evaluate(() => window.__MEMRY_SHELL__)
+  const folder = join(testVaultPath, 'attachments', 'n1')
+  mkdirSync(folder, { recursive: true })
+  const file = join(folder, 'abc123-doc.pdf')
+  writeFileSync(file, `%PDF-1.4\n${'x'.repeat(4096)}\n%%EOF\n`)
+  const canonical = `memry-file://local${file
+    .replaceAll('\\', '/')
+    .replace(/^([A-Za-z]):/, '/$1:')
+    .replace(/^\/\//, '/')}`
+  const url = `${shell!.loopbackOrigin}/m/${shell!.loopbackToken}/${toBase64Url(canonical)}`
+
+  // pdf.js reads in its worker with `fetch`, asks for the whole file first, then for ranges. The
+  // page is `tauri://localhost` or `https://tauri.localhost`, so this is the mixed-content and
+  // local-network check of each engine. A blob worker has the page's origin and CSP.
+  const reads = await page.evaluate(
+    (target) =>
+      new Promise<Array<{ status: number; head: string; length: number }>>((resolve, reject) => {
+        const source = `onmessage = async (event) => {
+          const out = []
+          for (const range of [null, 'bytes=0-1023', 'bytes=4096-']) {
+            const response = await fetch(event.data, range ? { headers: { Range: range } } : {})
+            const bytes = new Uint8Array(await response.arrayBuffer())
+            out.push({ status: response.status, head: new TextDecoder().decode(bytes.slice(0, 5)), length: bytes.length })
+          }
+          postMessage(out)
+        }`
+        const worker = new Worker(URL.createObjectURL(new Blob([source])))
+        worker.addEventListener('message', (event) => resolve(event.data))
+        worker.addEventListener('error', () =>
+          reject(new Error('the worker could not read the PDF'))
+        )
+        // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a Worker's postMessage has no target origin
+        worker.postMessage(target)
+      }),
+    url
+  )
+  expect(reads.map((r) => r.status)).toEqual([200, 206, 206])
+  expect(reads[0]).toMatchObject({ head: '%PDF-' })
+  expect(reads[1]).toMatchObject({ head: '%PDF-', length: 1024 })
+  expect(reads[2].length).toBeGreaterThan(0)
+})
+
+// While the window goes back to the app its page is the remote one for a moment, and a command
+// from it is refused: that reads as "nothing opened yet".
+const opensWhenReady = (app: Parameters<typeof invokeTest>[0]) =>
+  invokeTest<string[]>(app, 'e2e_os_opens').catch(() => [] as string[])
+
+test('the main frame never shows a web page, whatever navigated it', async ({ app, page }) => {
+  await appReady(page)
+  const home = await page.evaluate(() => location.origin)
+
+  // A link whose click the renderer's listener never sees (a handler that stops propagation), and
+  // a script that assigns `location`: the shell's handler lets web pages through for the frames
+  // of a note's embed, so only the main frame's own pin keeps these out. The OS gets the link and
+  // the window returns to the app.
+  await page.evaluate(() => {
+    window.addEventListener('click', (event) => event.stopImmediatePropagation(), true)
+    const link = document.createElement('a')
+    link.href = 'https://example.com/clicked'
+    document.body.append(link)
+    link.click()
+  })
+  await expect
+    .poll(() => opensWhenReady(app), { timeout: 15_000 })
+    .toEqual(['url https://example.com/clicked'])
+  await appReady(page)
+  expect(await page.evaluate(() => location.origin)).toBe(home)
+
+  await page.evaluate(() => {
+    location.assign('https://example.com/assigned')
+  })
+  await expect
+    .poll(() => opensWhenReady(app), { timeout: 15_000 })
+    .toEqual(['url https://example.com/clicked', 'url https://example.com/assigned'])
+  await appReady(page)
+  expect(await page.evaluate(() => location.origin)).toBe(home)
+  expect(await page.evaluate(() => typeof window.__MEMRY_SHELL__)).toBe('object')
+})
+
 test('the CSP blocks an injected inline script', async ({ page }) => {
   await appReady(page)
   const ran = await page.evaluate(() => {

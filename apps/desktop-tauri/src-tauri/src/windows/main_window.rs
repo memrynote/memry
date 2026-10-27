@@ -40,6 +40,7 @@ pub fn create_main(
             // OS file drops arrive as DOM `File` objects.
             .disable_drag_drop_handler()
             .on_page_load(|window, payload| {
+                navigation_guard::pin_main_frame(&window, payload.event(), payload.url());
                 if matches!(payload.event(), PageLoadEvent::Finished) {
                     mark_phase(window.app_handle(), LaunchPhase::WindowDidFinishLoad);
                     #[cfg(windows)]
@@ -91,6 +92,7 @@ fn shell_globals(app: &AppHandle<Wry>) -> ShellGlobals {
         maximizable: true,
         loopback_origin,
         loopback_token,
+        app_origins: navigation_guard::app_origins(app),
     }
 }
 

@@ -14,8 +14,12 @@
 //! which would open the user's browser with no click. The CSP `frame-src` still bounds what a
 //! frame may load, and no embed is allowed to navigate the top frame (`sandbox` has no
 //! `allow-top-navigation`). What this lets through in the main frame is a link the page itself
-//! did not intercept: the renderer routes every clicked web link to `shell_open_external`
-//! (`use-external-link-guard.ts`), and `on_new_window` always decides as the top level.
+//! did not intercept. The renderer routes the links it renders to `shell_open_external`
+//! (`external-link-guard.ts`), but a native context-menu "Open Link", a link dragged in from a
+//! browser, a handler that stops propagation and a script that assigns `location` all reach the
+//! handler, so the main frame is pinned on its own: [`leaves_app`] on the page-load start of the
+//! main frame (`windows::navigation_guard::pin_main_frame`), which only the main frame reports on
+//! WKWebView and WebKitGTK. `on_new_window` always decides as the top level.
 
 use url::{Host, Url};
 
@@ -86,6 +90,15 @@ fn is_own_frame_target(target: &Url, guard: &Guard<'_>) -> bool {
         .is_some_and(|origin| origin_of(target) == origin && target.path().starts_with("/e/"))
 }
 
+/// Whether the main frame is about to show a web page that is not the app: an `http(s)` URL
+/// outside `app_origins`. The page-load start of the main frame asks this; a subframe's load never
+/// reaches that event.
+pub fn leaves_app(raw: &str, app_origins: &[String]) -> bool {
+    Url::parse(raw).is_ok_and(|url| {
+        matches!(url.scheme(), "http" | "https") && !app_origins.contains(&origin_of(&url))
+    })
+}
+
 /// `current` is the page the window shows now, if known.
 pub fn decide(raw: &str, current: Option<&str>, guard: &Guard<'_>) -> Navigation {
     let Some(target) = raw
@@ -117,8 +130,8 @@ pub fn decide(raw: &str, current: Option<&str>, guard: &Guard<'_>) -> Navigation
     match target.scheme() {
         // Never hand a loopback URL to the OS browser.
         "http" | "https" if is_loopback(&target) => Navigation::Deny,
-        // A frame loading a web page (see the module docs). The main frame never gets here by a
-        // click: the renderer intercepts those.
+        // A frame loading a web page (see the module docs). The main frame is pinned separately,
+        // on its page-load start.
         "http" | "https" if guard.sees_subframes => Navigation::Allow,
         "http" | "https" | "mailto" if is_allowed_external_url(raw) => Navigation::OpenExternal,
         // javascript:, data:, blob:, about:, file:, memry: (an OS deep link) and the rest.

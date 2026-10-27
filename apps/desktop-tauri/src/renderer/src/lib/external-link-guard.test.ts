@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { watchExternalLinks } from './external-link-guard'
+import { watchExternalLinks, watchLinkDrops } from './external-link-guard'
 
 const ORIGIN = 'http://localhost:3000'
 
@@ -72,5 +72,41 @@ describe('watchExternalLinks', () => {
     stop()
     click(mount('<a id="l" href="https://example.com/">x</a>'))
     expect(open).not.toHaveBeenCalled()
+  })
+})
+
+describe('watchLinkDrops', () => {
+  let stop = (): void => undefined
+  afterEach(() => stop())
+
+  function drop(target: Element, types: string[]): DragEvent {
+    const event = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent
+    Object.defineProperty(event, 'dataTransfer', { value: { types } })
+    target.dispatchEvent(event)
+    return event
+  }
+
+  it('cancels a dragged link dropped outside the editor, so the window cannot navigate to it', () => {
+    stop = watchLinkDrops(document)
+    document.body.innerHTML = '<div id="l"></div>'
+    expect(
+      drop(document.getElementById('l') as Element, ['text/uri-list', 'text/plain'])
+        .defaultPrevented
+    ).toBe(true)
+  })
+
+  it('leaves the editor, text fields, file drops and other drags alone', () => {
+    stop = watchLinkDrops(document)
+    document.body.innerHTML =
+      '<div class="ProseMirror"><p id="p">x</p></div><input id="i" /><div id="l"></div>'
+    const link = ['text/uri-list']
+    expect(drop(document.getElementById('p') as Element, link).defaultPrevented).toBe(false)
+    expect(drop(document.getElementById('i') as Element, link).defaultPrevented).toBe(false)
+    expect(
+      drop(document.getElementById('l') as Element, ['text/uri-list', 'Files']).defaultPrevented
+    ).toBe(false)
+    expect(drop(document.getElementById('l') as Element, ['text/plain']).defaultPrevented).toBe(
+      false
+    )
   })
 })

@@ -66,11 +66,20 @@ fn answer_file(app: &AppHandle<Wry>, request: &Request<Vec<u8>>) -> Response<Cow
     let header = |name: &str| request.headers().get(name).and_then(|v| v.to_str().ok());
     // WebView2 names neither the requesting frame nor `Sec-Fetch-Dest`, so there the URL itself
     // proves the app's page asked: it carries the launch token (`toWebviewUrl`), which an embed
-    // has no way to read.
+    // has no way to read. With no loopback server there is no token to require, so the request is
+    // served on its other checks (and the page, which has no token to send either, keeps working):
+    // an embed then reads what a page reads. That only follows a failed bind, which startup
+    // reports; each request says so again.
     let token = WINDOWS
         .then(|| loopback::address(app))
         .flatten()
         .map(|(_, token)| token);
+    if WINDOWS && token.is_none() {
+        tracing::warn!(
+            scope = "Protocols",
+            "memry-file is served without the launch token: the loopback server is not running"
+        );
+    }
     let asked = FileRequest {
         range: header("range"),
         origin: header("origin"),

@@ -2,9 +2,10 @@
 //! `memry_desktop::shell::frame_nav`. wry calls the handler for every frame on macOS and Linux and
 //! for top-level navigations only on Windows; see `frame_nav` for what that changes.
 
-use memry_desktop::shell::frame_nav::{Guard, Navigation, decide};
+use memry_desktop::shell::frame_nav::{Guard, Navigation, decide, leaves_app};
+use tauri::webview::PageLoadEvent;
 use tauri::webview::{NewWindowFeatures, NewWindowResponse};
-use tauri::{AppHandle, Wry};
+use tauri::{AppHandle, Manager, WebviewWindow, Wry};
 use url::Url;
 
 use super::{external, loopback, permissions};
@@ -80,5 +81,36 @@ pub fn on_new_window(
         let decision = decide_for(&app, &origins, &url, false);
         act(&app, &url, decision);
         NewWindowResponse::Deny
+    }
+}
+
+/// Keeps the main frame on the app whatever started the navigation. The click listener of the
+/// renderer and `on_navigation` cannot do it alone: on WKWebView and WebKitGTK the navigation
+/// handler also sees the frames of a note's embed and so lets web pages through, while a native
+/// "Open Link" menu entry, a link dragged in from a browser, a handler that stops propagation and a
+/// script assigning `location` all bypass the listener. The page-load start is reported for the
+/// main frame only (WKWebView reports it at commit, WebKitGTK at the provisional start). The link
+/// goes to the OS and the window returns to the app, so a remote page stays on screen for a moment
+/// at most. It never gets the shell's globals (`windows::scripts`) or a Tauri command (the
+/// capabilities name the app's origins).
+pub fn pin_main_frame(window: &WebviewWindow<Wry>, event: PageLoadEvent, url: &Url) {
+    let app = window.app_handle();
+    let origins = app_origins(app);
+    if event != PageLoadEvent::Started || !leaves_app(url.as_str(), &origins) {
+        return;
+    }
+    let decision = decide_for(app, &origins, url, false);
+    act(app, url, decision);
+    let home = format!("{}/", page_origin(app));
+    match Url::parse(&home) {
+        Ok(home) => {
+            if let Err(error) = window.navigate(home) {
+                tracing::warn!(
+                    scope = "Navigation",
+                    "the app page did not return: {error:?}"
+                );
+            }
+        }
+        Err(error) => tracing::warn!(scope = "Navigation", "no app page to return to: {error}"),
     }
 }

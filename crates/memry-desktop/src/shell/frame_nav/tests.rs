@@ -189,3 +189,26 @@ fn an_engine_that_reports_the_top_level_only_keeps_embeds_out_of_the_main_frame(
         assert_eq!(go(url), Navigation::Deny, "{url}");
     }
 }
+
+#[test]
+fn the_main_frame_leaves_the_app_for_any_web_page_outside_its_origins() {
+    let origins = origins();
+    for url in [
+        "https://example.com/a",
+        "http://example.com/",
+        "http://127.0.0.1:41234/m/token/notes/a.md",
+        "https://tauri.localhost.evil.test/",
+        "http://tauri.localhost/",
+    ] {
+        assert!(leaves_app(url, &origins), "{url}");
+    }
+    for url in [
+        "tauri://localhost/index.html#/notes",
+        "https://tauri.localhost/index.html",
+        "about:blank",
+        "memry-file://localhost/x",
+        "not a url",
+    ] {
+        assert!(!leaves_app(url, &origins), "{url}");
+    }
+}
