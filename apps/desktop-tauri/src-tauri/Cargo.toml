@@ -41,7 +41,7 @@ sys-locale = "0.3.2"
 uuid = { workspace = true }
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
-tokio = { workspace = true, features = ["time", "signal"] }
+tokio = { workspace = true, features = ["time", "signal", "sync"] }
 tracing = { workspace = true }
 # Native dialogs and "show in folder", reached only through `shell/dialogs.rs` and `vault_reveal`.
 tauri-plugin-dialog = "2.8.3"
@@ -87,6 +87,9 @@ windows = { version = "0.62", features = [
 tauri-plugin-autostart = "2.7.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+# `power/linux.rs` listens to logind's `PrepareForSleep` and `PrepareForShutdown`. Same build as
+# memry-desktop's, so one zbus is compiled.
+zbus = { version = "5.19.0", default-features = false, features = ["blocking-api", "async-io"] }
 # `guards/gpu.rs` reports `web-process-terminated`. Same version as wry.
 webkit2gtk = "2.0.2"
 # tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
@@ -98,9 +101,9 @@ rust-ini = "=0.21.1"
 # `windows/nav_input.rs` reads the trackpad swipe events.
 block2 = "0.6"
 objc2 = "0.6.5"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "block2", "objc2-core-foundation"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "block2", "objc2-core-foundation"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString"] }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }

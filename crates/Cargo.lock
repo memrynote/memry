@@ -3666,6 +3666,7 @@ dependencies = [
  "windows",
  "windows-core",
  "winreg",
+ "zbus",
 ]
 
 [[package]]

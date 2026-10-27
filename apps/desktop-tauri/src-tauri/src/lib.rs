@@ -14,6 +14,7 @@ pub mod guards;
 pub mod instance;
 pub mod menu;
 pub mod notifications;
+pub mod power;
 pub mod registry;
 pub mod shell;
 pub mod shortcuts;
@@ -81,6 +82,8 @@ fn register_stages() {
     notifications::register_stages();
     shortcuts::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
+    // After the window exists: Windows subclasses its handle.
+    power::register_stages();
 }
 
 fn path_error(error: impl std::fmt::Display) -> CommandError {

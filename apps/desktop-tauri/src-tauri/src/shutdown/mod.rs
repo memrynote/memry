@@ -121,6 +121,11 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     });
 }
 
+/// The registered update hook, `None` before Step 38 (#3555) registers one.
+pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
+    app.state::<ShutdownService>().core.update_hook()
+}
+
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the Windows session
 /// end. Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {

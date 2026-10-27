@@ -112,3 +112,25 @@ pub fn e2e_global_shortcut_state(app: AppHandle<Wry>) -> ShortcutState {
 pub fn e2e_fire_global_capture(app: AppHandle<Wry>) {
     app.state::<crate::shortcuts::ShortcutService>().press(&app);
 }
+
+/// Delivers a power event as the platform would: on macOS a real `NSWorkspace` notification
+/// (`sleep`, `wake`, `poweroff`), so the observers are what is under test. Elsewhere the event
+/// is published on the monitor, because a VM row covers the OS side.
+#[tauri::command]
+pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), CommandError> {
+    use memry_desktop::shell::power::PowerEvent;
+    let event = match kind.as_str() {
+        "sleep" => PowerEvent::Suspend,
+        "wake" => PowerEvent::Resume,
+        "poweroff" => PowerEvent::SessionEnding,
+        other => return Err(invalid("e2e_power_kind", other)),
+    };
+    #[cfg(target_os = "macos")]
+    {
+        let _ = &app;
+        crate::power::post_workspace_notification(event);
+    }
+    #[cfg(not(target_os = "macos"))]
+    app.state::<crate::power::PowerMonitor>().emit(event);
+    Ok(())
+}
