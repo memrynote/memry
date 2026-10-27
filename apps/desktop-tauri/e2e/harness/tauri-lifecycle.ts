@@ -53,6 +53,8 @@ export interface FreshOptions {
   syncServerUrl?: string | null
   extraEnv?: Record<string, string>
   deviceId?: string
+  /** Leaves the window at the size the app chose, for specs about window geometry. */
+  keepWindowRect?: boolean
 }
 
 export interface TauriApp {
@@ -65,6 +67,7 @@ export interface TauriApp {
   /** Pid of the app instance running now. */
   pid: number
   label?: 'A' | 'B'
+  keepWindowRect?: boolean
 }
 
 const WINDOW_WIDTH = 1440
@@ -168,7 +171,14 @@ export async function fresh(executor: AppBrowser, options: FreshOptions = {}): P
   if (control.testVaultPath) seedVaultRegistry(dirs.appDataDir, control.testVaultPath)
   writeControl(port, control)
 
-  return start(executor, { port, device, dirs, control, label: options.label })
+  return start(executor, {
+    port,
+    device,
+    dirs,
+    control,
+    label: options.label,
+    keepWindowRect: options.keepWindowRect
+  })
 }
 
 /**
@@ -201,7 +211,16 @@ async function start(
   const info = await waitForApp(executor)
   assertControlApplied(info, base.control)
   const app: TauriApp = { ...base, executor, pid: info.pid }
-  await setWindowSize(app)
+  // The window is hidden until the renderer mounts; a spec starts from the shown app.
+  const shown = await pollUntil(
+    async () => {
+      const windows = await invokeTest<{ label: string; visible: boolean }[]>(app, 'e2e_windows')
+      return windows.some((window) => window.label === 'main' && window.visible) || undefined
+    },
+    { timeoutMs: READY_MS, intervalMs: 100 }
+  )
+  if (!shown) throw new HarnessError('the main window was not shown')
+  if (!base.keepWindowRect) await setWindowSize(app)
   return app
 }
 

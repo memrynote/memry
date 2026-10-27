@@ -37,6 +37,10 @@ export const commands = {
 	 */
 	settingsSetGroup: (group: string, patch: Value) => __TAURI_INVOKE<null>("settings_set_group", { group, patch }),
 	settingsSetLocal: (key: string, value: Value) => __TAURI_INVOKE<null>("settings_set_local", { key, value }),
+	/**  The renderer painted its first frame: reveals the main window once. */
+	shellFirstPaint: () => __TAURI_INVOKE<null>("shell_first_paint"),
+	/**  A liveness beat from the page, every 2 s. */
+	shellHeartbeat: () => __TAURI_INVOKE<null>("shell_heartbeat"),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
