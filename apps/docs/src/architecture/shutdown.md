@@ -48,3 +48,12 @@ If an update is waiting to install, the exit hands over to the installer instead
 ## Closing a window
 
 Closing the main window does not destroy it at once. The app asks the page to flush, runs the registered close hooks, then destroys the window. If the page does not answer in 2 seconds the window still closes, and the failure is logged and reported as `window_close_flush_failed`.
+
+## Crash and failure guards
+
+These run from the first moment of the launch and leave evidence for the next one.
+
+- **Minidumps.** The app starts a copy of itself with `--crash-monitor`. If the app crashes natively, that second process writes a minidump to `crash-dumps/` in the app data folder. The crashed process cannot be trusted to write its own memory. A dump is raw process memory, so it never uploads: only the diagnostic bundle you choose to send reads it. Startup keeps the newest 20 dumps and deletes those older than 30 days.
+- **GPU fallback.** On Windows and Linux, a GPU process that crashed, ended unexpectedly or failed to start (or a window that never painted within 10 seconds) writes `gpu-crash-guard.json` with the app version. The next launch of the same version renders in software: `--disable-gpu` on Windows, and `WEBKIT_DISABLE_COMPOSITING_MODE` and `WEBKIT_DISABLE_DMABUF_RENDERER` on Linux. An update retries hardware rendering. macOS has no such switch.
+- **Stall monitor.** A watchdog thread asks the main thread to answer every second. If it has not answered for 3 seconds, the log gets one `main thread stalled` line with the launch phase it interrupted. At most 20 lines are written, and none while the system sleeps.
+- **Webview process failures.** A webview process that ends is reported as a telemetry log event with the reason, never the page.
