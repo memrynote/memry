@@ -271,6 +271,8 @@ pub async fn run_shutdown_sequence(
 pub trait UpdateApplyHook: Send + Sync {
     /// The OS is ending the session: an install-on-quit must not start.
     fn disable_install_on_quit(&self);
+    /// The OS cancelled that session end: the install-on-quit decision is back as it was.
+    fn enable_install_on_quit(&self);
     /// The user asked to install, so the quit ends in the installer instead of an exit.
     fn install_requested(&self) -> bool;
     fn apply_and_restart(&self);

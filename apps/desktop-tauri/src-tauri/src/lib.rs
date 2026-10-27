@@ -167,7 +167,8 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_clipboard_manager::init());
-    #[cfg(not(target_os = "macos"))]
+    // macOS and Windows write their own login item (`autostart/`).
+    #[cfg(target_os = "linux")]
     let app = app.plugin(
         tauri_plugin_autostart::Builder::new()
             .app_name(memry_desktop::shell::autostart::APP_NAME)

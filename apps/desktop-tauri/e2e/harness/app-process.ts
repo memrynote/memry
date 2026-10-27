@@ -1,5 +1,7 @@
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
+import { mkdirSync, rmSync } from 'node:fs'
 import { createServer } from 'node:net'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -68,8 +70,18 @@ process.once('exit', () => {
  * everything else a test overrides travels through the control file of that port.
  */
 export async function spawnApp(port: number): Promise<ChildProcess> {
+  // Enchant keeps the personal dictionary under the user's config dir, so a spec that adds a word
+  // would leave it in the machine's dictionary. A throwaway dir per launch keeps it out.
+  const enchantDir = join(tmpdir(), 'memry-e2e', `enchant-${port}`)
+  rmSync(enchantDir, { recursive: true, force: true })
+  mkdirSync(enchantDir, { recursive: true })
   const child = spawn(binaryPath(), [], {
-    env: { ...process.env, MEMRY_E2E: '1', TAURI_WEBDRIVER_PORT: String(port) },
+    env: {
+      ...process.env,
+      MEMRY_E2E: '1',
+      TAURI_WEBDRIVER_PORT: String(port),
+      ENCHANT_CONFIG_DIR: enchantDir
+    },
     stdio: 'ignore'
   })
   spawned.add(child)

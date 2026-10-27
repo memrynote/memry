@@ -142,22 +142,22 @@ impl ShortcutService {
     pub fn set(
         &self,
         app: &AppHandle<Wry>,
-        previous: Option<&ShortcutBinding>,
+        read_previous: impl FnOnce() -> Option<ShortcutBinding>,
         binding: Option<&ShortcutBinding>,
         save: impl FnOnce() -> Result<(), String>,
     ) -> Result<GlobalCaptureResult, String> {
-        let result = self
-            .capture
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .set(
-                &PluginKeys(app),
-                wayland(app),
-                previous,
-                binding,
-                Self::on_fire(app),
-                save,
-            )?;
+        let mut capture = self.capture.lock().unwrap_or_else(PoisonError::into_inner);
+        // Read under the lock: two saves in flight would otherwise both restore the same old one.
+        let previous = read_previous();
+        let result = capture.set(
+            &PluginKeys(app),
+            wayland(app),
+            previous.as_ref(),
+            binding,
+            Self::on_fire(app),
+            save,
+        )?;
+        drop(capture);
         self.report(app, &result);
         Ok(result)
     }

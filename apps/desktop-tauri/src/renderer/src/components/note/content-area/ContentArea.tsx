@@ -2458,12 +2458,13 @@ const ContentAreaEditor = memo(function ContentAreaEditor({
 
       e.preventDefault()
       const { clientX: x, clientY: y } = e
-      // A newer right-click replaces a lookup still in flight.
+      // The menu opens at once; the spelling lookup is a round trip to the platform checker and
+      // fills in its suggestions when it lands. A newer right-click replaces a lookup in flight.
       const request = ++editorMenuRequestRef.current
+      setEditorMenu(describeEditorMenu(x, y, null))
       void writingToolsService.spellingAt(x, y).then((spelling) => {
-        if (request === editorMenuRequestRef.current) {
-          setEditorMenu(describeEditorMenu(x, y, spelling))
-        }
+        if (request !== editorMenuRequestRef.current || !spelling?.misspelledWord) return
+        setEditorMenu((open) => (open ? { ...open, spelling } : open))
       })
     },
     [describeEditorMenu, editable, editor, writingTools]
