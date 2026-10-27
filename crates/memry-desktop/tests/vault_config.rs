@@ -10,6 +10,7 @@ use memry_desktop::vault::config::{
     has_stored_preferences, invalidate_vault_config_cache, merge_preferences, preferences_language,
     read_preferences, read_vault_config, read_vault_icon, write_vault_config, write_vault_icon,
 };
+use memry_test_kit::on_small_stack;
 use serde_json::{Map, Value, json};
 
 fn vault_with(config: &[u8]) -> tempfile::TempDir {
@@ -285,18 +286,11 @@ fn a_config_nested_past_serdes_limit_is_refused_and_left_untouched() {
         let hostile = format!("{{\"a\":{}{}}}", "[".repeat(depth), "]".repeat(depth));
         let dir = vault_with(hostile.as_bytes());
         let path = dir.path().to_path_buf();
-        // A normal 2 MiB thread stack, as the guard's depth tests run on.
-        let outcome = std::thread::Builder::new()
-            .stack_size(2 * 1024 * 1024)
-            .spawn(move || {
-                let read = read_vault_config(&path);
-                let write =
-                    merge_preferences(&path, &object(json!({"theme": "dark"})), &Map::new());
-                (read, write)
-            })
-            .unwrap()
-            .join()
-            .expect("no stack overflow");
+        let outcome = on_small_stack(move || {
+            let read = read_vault_config(&path);
+            let write = merge_preferences(&path, &object(json!({"theme": "dark"})), &Map::new());
+            (read, write)
+        });
         assert_eq!(outcome.0, VaultConfig::default());
         assert!(
             matches!(outcome.1, Err(ConfigError::Unreadable { .. })),

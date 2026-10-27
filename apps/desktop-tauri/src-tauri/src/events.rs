@@ -119,6 +119,14 @@ pub struct FlushRequestedEvent {
     pub request_id: String,
 }
 
+/// Open an inbox item (`inbox-open-item-event`): `memry://open?item=<id>` and, with Step 27
+/// (#3544), a clicked inbox notification.
+#[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
+#[serde(rename_all = "camelCase")]
+pub struct InboxOpenItemEvent {
+    pub item_id: String,
+}
+
 /// A native menu item that the renderer runs as a command was clicked. `command` is the
 /// command id (`tabs.closeTab`).
 #[derive(Debug, Clone, Serialize, serde::Deserialize, specta::Type, tauri_specta::Event)]
