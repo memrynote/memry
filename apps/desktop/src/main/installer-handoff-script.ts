@@ -66,7 +66,9 @@ export const HANDOFF_SPAWN_OPTIONS = {
  * Setup: the NSIS uninstaller deletes the Start-menu and desktop `MemryNote.lnk`, the same
  * paths Velopack creates. `Setup.exe --silent` does not start the app (velopack
  * commands/install.rs: `if !dialogs::get_silent() { start_package }`), so the script starts it,
- * the way the NSIS fallback's `--force-run` does.
+ * the way the NSIS fallback's `--force-run` does. Inside a parenthesised block cmd expands
+ * `%errorlevel%` when it parses the whole block, so the relaunch's exit code is logged as
+ * `%%errorlevel%%`, which `call :log` expands when it runs.
  *
  * Every step logs its exit code and every failure routes to the NSIS fallback
  * instead of running on. The previous version checked nothing, logged nothing of
@@ -90,7 +92,8 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     `set "SETUP_LOG=${plan.setupLogPath}"`,
     `set "HANDOFF_LOG=${plan.handoffLogPath}"`,
     `set "NSIS_INSTALLER=${plan.nsisInstallerPath ?? ''}"`,
-    'set "VELOPACK_EXE=%LocalAppData%\\MemryNote\\current\\Memrynote.exe"',
+    'set "VELOPACK_DIR=%LocalAppData%\\MemryNote\\current"',
+    'set "VELOPACK_EXE=%VELOPACK_DIR%\\Memrynote.exe"',
     '',
     'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
     '',
@@ -116,8 +119,8 @@ export function renderInstallerHandoffScript(plan: InstallerHandoffPlan): string
     '',
     'if exist "%VELOPACK_EXE%" (',
     '  call :log "result=velopack"',
-    '  start "" /d "%LocalAppData%\\MemryNote\\current" "%VELOPACK_EXE%"',
-    '  call :log "relaunch exit=%errorlevel%"',
+    '  start "" /d "%VELOPACK_DIR%" "%VELOPACK_EXE%"',
+    '  call :log "relaunch exit=%%errorlevel%%"',
     '  goto cleanup',
     ')',
     '',

@@ -33,7 +33,8 @@ const scriptLines = (nsisInstaller: string): string[] => [
   String.raw`set "SETUP_LOG=C:\Users\kaan\AppData\Roaming\memrynote\logs\velopack-setup.log"`,
   String.raw`set "HANDOFF_LOG=C:\Users\kaan\AppData\Roaming\memrynote\logs\installer-handoff.log"`,
   `set "NSIS_INSTALLER=${nsisInstaller}"`,
-  String.raw`set "VELOPACK_EXE=%LocalAppData%\MemryNote\current\Memrynote.exe"`,
+  String.raw`set "VELOPACK_DIR=%LocalAppData%\MemryNote\current"`,
+  String.raw`set "VELOPACK_EXE=%VELOPACK_DIR%\Memrynote.exe"`,
   '',
   'call :log "handoff start pid=%APP_PID% dir=%INSTALL_DIR%"',
   '',
@@ -59,8 +60,8 @@ const scriptLines = (nsisInstaller: string): string[] => [
   '',
   'if exist "%VELOPACK_EXE%" (',
   '  call :log "result=velopack"',
-  String.raw`  start "" /d "%LocalAppData%\MemryNote\current" "%VELOPACK_EXE%"`,
-  '  call :log "relaunch exit=%errorlevel%"',
+  '  start "" /d "%VELOPACK_DIR%" "%VELOPACK_EXE%"',
+  '  call :log "relaunch exit=%%errorlevel%%"',
   '  goto cleanup',
   ')',
   '',
@@ -199,9 +200,9 @@ describe('renderInstallerHandoffScript', () => {
     const lines = renderInstallerHandoffScript(plan).split('\r\n')
     const guardAt = lines.indexOf('if exist "%VELOPACK_EXE%" (')
 
-    expect(lines[guardAt + 2]).toBe(
-      String.raw`  start "" /d "%LocalAppData%\MemryNote\current" "%VELOPACK_EXE%"`
-    )
+    expect(lines[guardAt + 2]).toBe('  start "" /d "%VELOPACK_DIR%" "%VELOPACK_EXE%"')
+    // Inside the block a plain %errorlevel% would be expanded at parse time, before the start ran.
+    expect(lines[guardAt + 3]).toBe('  call :log "relaunch exit=%%errorlevel%%"')
     expect(
       lines.indexOf('start "" /wait "%SETUP%" --silent --verbose --log "%SETUP_LOG%"')
     ).toBeLessThan(guardAt)

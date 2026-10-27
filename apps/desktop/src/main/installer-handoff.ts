@@ -386,7 +386,12 @@ export function createInstallerHandoff(
       return decline('download failed')
     }
 
+    const verifyStartedAt = Date.now()
     const verdict = await verifyAuthenticode(plan.setupExePath, deps)
+    logger.info('installer hand-off signature check finished', {
+      ok: verdict.ok,
+      elapsedMs: Date.now() - verifyStartedAt
+    })
     if (!verdict.ok) {
       removeHandoffDir()
       host.onError(coded('INSTALLER_HANDOFF_UNVERIFIED', verdict.reason))
