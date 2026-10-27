@@ -8,7 +8,7 @@ The desktop app is moving from Electron to Tauri v2 over the Rust core. The new 
 - The Rust toolchain pinned in `crates/rust-toolchain.toml`. Entering `crates/` installs it with rustup.
 - macOS: Xcode command line tools.
 - Windows: the Visual Studio C++ build tools and WebView2, which Windows 11 includes.
-- Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev patchelf`.
+- Linux: `libwebkit2gtk-4.1-dev libsoup-3.0-dev libayatana-appindicator3-dev librsvg2-dev libssl-dev libxdo-dev libsecret-1-dev libfontconfig1-dev patchelf`.
 
 ## Run it
 
@@ -121,3 +121,13 @@ Dragging uses `windows/scripts/drag-region.js`, an init script of the main frame
 - **Unreadable is not absent.** Only a missing entry is `Ok(None)`. A locked keychain, a missing Secret Service, a denied prompt and a timeout are `Locked`, which the core never treats as "no key". A malformed value or a refused write (a Credential Manager blob over 2560 bytes) is `Failed`. There is no file fallback: on Linux without a Secret Service no secret is ever written to disk.
 - **Other secrets.** `GenericSecrets` stores raw bytes under any service and account (AI provider keys, OAuth tokens) on the same thread with the same rules.
 - **Tests.** The unit tests run a blocking fake `CredentialStoreApi`. `cargo test -p memry-desktop --features live-os-secrets --test keyring_live --test keyring_keytar_live` uses the real keychain with its own `e2e-live-*` suffix and removes its items; CI runs it on macOS, Windows and Linux. `keyring_keytar_live` writes an item the way keytar did (`security`, `CredWriteW`, `secret-tool`) and reads it with the store, then writes with the store and reads with the OS, so a wrong name fails it. The macOS rows run only when `CI` is set: they write to the login keychain, so run them on a throw-away VM, never on a developer login keychain. An e2e build whose gate is open (`MEMRY_E2E=1`) keeps its secrets in `e2e-secure-store.json` under the e2e data dir, so a restart of the same profile keeps its keys; the cargo feature `e2e` does not compile in a release build.
+
+## Shortcuts, autostart, power, spelling and fonts
+
+- **Global capture** (`shortcuts/`, rules in `memry_desktop::shell::shortcut`). The configured `globalCapture` binding registers first. `CommandOrControl+Shift+Space` is held only while that binding is not `registered`. A binding the OS refuses is not saved and the previous one is registered again. Wayland returns `unsupported` without calling the plugin, because a Wayland session has no global grab. The apply runs at startup, on a vault change and after a settings write, and the shortcuts are released at exit. `shortcut_unsupported` and `shortcut_in_use` are the telemetry events. The handler that opens quick capture is set with `GlobalCaptureRegistry::set_open_handler` (Step 27).
+- **Start on boot** (`autostart/`). macOS registers a login item with `SMAppService`; Windows and Linux use `tauri-plugin-autostart` (the `Run` value and an XDG `.desktop` file). Entries Electron left behind are removed first. The apply is skipped under the e2e gate, so a spec never registers a login item.
+- **Power** (`power/`). Sleep and wake suspend and resume the stall guard. macOS listens to `NSWorkspace`, Linux to logind over `zbus`, Windows to `WM_POWERBROADCAST` on a window subclass. Windows `WM_ENDSESSION` runs the same shutdown sequence as Quit.
+- **Spelling** (`spell/`). The system web views send no spelling data with a right-click, so the renderer finds the word at the point (`lib/word-at-point.ts`) and asks `spell_check_word`. macOS uses `NSSpellChecker`, Windows `ISpellChecker` on a COM thread, Linux Enchant loaded at run time: without it `available` is false and the menu shows no suggestions. `spell_add_word` writes the personal dictionary of the platform.
+- **Fonts** (`fonts.rs`). `system_fonts_list` enumerates installed families with `font-kit`; Linux needs `libfontconfig1-dev` to build.
+
+Specs: `e2e/specs/shell/{global-shortcut,autostart,power,spellcheck,system-fonts}.e2e.ts`. Real login-item registration, Wayland, Enchant present and absent, and the Windows `Run` value are checked by hand on the VM rows.

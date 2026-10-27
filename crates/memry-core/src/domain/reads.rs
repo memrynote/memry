@@ -582,7 +582,7 @@ fn body(conn: &Connection, doc_id: &str) -> Result<NoteBody, CrdtError> {
 /// Shared by [`body`] and [`note_blocks`], so the text preview and the rendered
 /// blocks are two readings of the **same** document rather than two loads that
 /// could disagree about which updates had arrived.
-fn document_of(conn: &Connection, doc_id: &str) -> Result<Arc<Document>, CrdtError> {
+pub(crate) fn document_of(conn: &Connection, doc_id: &str) -> Result<Arc<Document>, CrdtError> {
     // The document id of a note body is the note record's id (chapter 07 §7.1).
     let plan = update_log::load_plan(conn, doc_id)?;
     let sink: UpdateSink = Arc::new(|_, _| {});

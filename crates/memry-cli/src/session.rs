@@ -324,20 +324,20 @@ impl SecureStore for FileSecureStore {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::atomic::{AtomicU64, Ordering};
 
-    fn scratch(label: &str) -> PathBuf {
-        static COUNTER: AtomicU64 = AtomicU64::new(0);
-        let unique = COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path =
-            std::env::temp_dir().join(format!("memry-cli-{label}-{}-{unique}", std::process::id()));
-        let _ = fs::remove_dir_all(&path);
-        path
+    /// A unique directory that removes itself. The store is opened on a path inside it that
+    /// does not exist yet, as a first run would find it.
+    fn scratch(label: &str) -> tempfile::TempDir {
+        tempfile::Builder::new()
+            .prefix(&format!("memry-cli-{label}-"))
+            .tempdir()
+            .expect("a scratch directory")
     }
 
     #[test]
     fn an_entry_round_trips_as_bytes_at_mode_600() {
-        let dir = scratch("secrets");
+        let scratch = scratch("secrets");
+        let dir = scratch.path().join("store");
         let store = FileSecureStore::open(dir.clone()).expect("a store");
 
         assert_eq!(store.get(SecureStoreKey::MasterKey).expect("read"), None);
@@ -358,13 +358,12 @@ mod tests {
 
         store.clear().expect("clear");
         assert_eq!(store.get(SecureStoreKey::MasterKey).expect("read"), None);
-        let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
     fn every_entry_has_its_own_file() {
-        let dir = scratch("entries");
-        let store = FileSecureStore::open(dir.clone()).expect("a store");
+        let scratch = scratch("entries");
+        let store = FileSecureStore::open(scratch.path().join("store")).expect("a store");
         for (key, value) in [
             (SecureStoreKey::DeviceSigningKey, b"signing".to_vec()),
             (SecureStoreKey::AccessToken, b"access".to_vec()),
@@ -374,6 +373,5 @@ mod tests {
             store.set(key, value.clone()).expect("write");
             assert_eq!(store.get(key).expect("read"), Some(value));
         }
-        let _ = fs::remove_dir_all(&dir);
     }
 }

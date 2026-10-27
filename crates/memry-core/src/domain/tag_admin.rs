@@ -18,7 +18,7 @@ use rusqlite::Connection;
 use serde_json::{Value, json};
 
 use crate::api::errors::StorageError;
-use crate::domain::notes::{self, edit, failed, iso, object, tombstone_local};
+use crate::domain::notes::{self, edit_in, failed, iso, object, tombstone_local};
 use crate::domain::recreate::write_over_tombstone;
 use crate::domain::{body_tags, tag_schema_refs, tags, tasks};
 use crate::storage::repositories::{Change, sync_items};
@@ -350,7 +350,8 @@ pub(crate) fn delete_definitions(
     Ok(())
 }
 
-/// Creates the definition when it is missing, or edits `changes` into it.
+/// Creates the definition when it is missing, or edits `changes` into it, in
+/// its own transaction.
 pub(crate) fn upsert_definition(
     conn: &Connection,
     name: &str,
@@ -359,9 +360,25 @@ pub(crate) fn upsert_definition(
     device_id: &str,
     now_ms: i64,
 ) -> Result<(), StorageError> {
-    if let Some(id) = definition_for(conn, name)? {
+    let tx = conn.unchecked_transaction().map_err(failed)?;
+    upsert_definition_in(&tx, name, template, changes, device_id, now_ms)?;
+    tx.commit().map_err(failed)
+}
+
+/// [`upsert_definition`] inside the caller's transaction, so several
+/// definitions change together (a category delete, a drag in the tag hub).
+pub(crate) fn upsert_definition_in(
+    tx: &Connection,
+    name: &str,
+    template: Option<&Value>,
+    changes: Vec<(&'static str, Change)>,
+    device_id: &str,
+    now_ms: i64,
+) -> Result<(), StorageError> {
+    if let Some(id) = definition_for(tx, name)? {
         if !changes.is_empty() {
-            edit(conn, DEFINITION_TYPE, &id, changes, device_id, now_ms)?.acknowledge();
+            edit_in(tx, DEFINITION_TYPE, &id, changes, device_id, now_ms)?;
+            outbox::enqueue(tx, &outbox::Change::upsert(DEFINITION_TYPE, &id), now_ms)?;
         }
         return Ok(());
     }
@@ -393,13 +410,8 @@ pub(crate) fn upsert_definition(
     map.insert("createdAt".into(), json!(iso(now_ms)?));
     map.remove("modifiedAt");
     let payload = object(payload);
-    outbox::commit(
-        conn,
-        &outbox::Change::upsert(DEFINITION_TYPE, &id),
-        now_ms,
-        |tx| write_over_tombstone(tx, DEFINITION_TYPE, &id, payload, device_id, now_ms),
-    )?
-    .acknowledge();
+    write_over_tombstone(tx, DEFINITION_TYPE, &id, payload, device_id, now_ms)?;
+    outbox::enqueue(tx, &outbox::Change::upsert(DEFINITION_TYPE, &id), now_ms)?;
     Ok(())
 }
 

@@ -9,6 +9,7 @@
 
 use crate::api::errors::StorageError;
 use crate::domain::note_files::{self, NoteFile, NoteFileStat};
+use crate::domain::notes::local_only::{self, LocalOnlyChange};
 use crate::storage::Db;
 
 pub struct NoteFiles {
@@ -69,10 +70,22 @@ impl NoteFiles {
         self.db.read_blocking(note_files::list_paths)
     }
 
-    pub fn set_local_only(&self, note_id: &str, local_only: bool) -> Result<(), StorageError> {
+    /// Sets or clears the note's local-only flag and settles its outbox rows
+    /// in the same transaction (see [`local_only::set`]).
+    pub fn set_local_only(
+        &self,
+        note_id: &str,
+        local_only: bool,
+    ) -> Result<LocalOnlyChange, StorageError> {
         let note_id = note_id.to_owned();
-        self.db
-            .call_blocking(move |conn| note_files::set_local_only(conn, &note_id, local_only))
+        self.db.call_blocking(move |conn| {
+            local_only::set(
+                conn,
+                &note_id,
+                local_only,
+                crate::api::tasks_write::now_ms(),
+            )
+        })
     }
 
     pub fn local_only_count(&self) -> Result<i64, StorageError> {
