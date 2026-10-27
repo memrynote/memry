@@ -1,0 +1,11 @@
+[package]
+name = "memry-test-kit"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Shared helpers for tests of untrusted-input handling. Dev-dependency only."
+
+[dependencies]
+proptest = "1"

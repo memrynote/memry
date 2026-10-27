@@ -9,16 +9,8 @@
 mod support;
 
 use memry_core::markdown::convert::NoEmbeds;
+use memry_test_kit::on_small_stack;
 use support::doc_case::{converter_for, open_document};
-
-fn on_small_stack(work: impl FnOnce() + Send + 'static) {
-    std::thread::Builder::new()
-        .stack_size(2 * 1024 * 1024)
-        .spawn(work)
-        .expect("spawn")
-        .join()
-        .expect("the conversion must not overflow the stack");
-}
 
 fn seeds(markdown: String) -> bool {
     let converter = converter_for(&serde_json::json!({}));

@@ -15,16 +15,8 @@ use memry_core::markdown::frontmatter::{
     Eol, YamlMap, YamlValue, depth_visits, entries_scanned, parse_markdown_note, safe_dump,
     safe_load, stringify_frontmatter_block,
 };
+use memry_test_kit::{assert_steps_at_most, on_small_stack};
 use support::doc_case::{converter_for, open_document};
-
-fn on_small_stack(work: impl FnOnce() + Send + 'static) {
-    std::thread::Builder::new()
-        .stack_size(2 * 1024 * 1024)
-        .spawn(work)
-        .expect("spawn")
-        .join()
-        .expect("must not overflow the stack");
-}
 
 fn note(yaml: &str) -> String {
     format!("---\n{yaml}\n---\nbody\n")
@@ -178,11 +170,10 @@ fn many_aliases_of_a_wide_anchor_do_not_hang() {
         yaml.push_str(&format!("b{i}: *a\n"));
     }
     on_small_stack(move || {
-        let before = depth_visits();
-        assert!(safe_load(&yaml).is_ok());
-        let visits = depth_visits() - before;
         // The anchored value and its n children, once: not n x n.
-        assert!(visits <= 2 * n + 10, "{visits} collections measured");
+        assert_steps_at_most("collections measured", depth_visits, 2 * n + 10, || {
+            assert!(safe_load(&yaml).is_ok());
+        });
     });
 }
 
@@ -196,19 +187,18 @@ fn a_frontmatter_of_many_keys_does_not_hang() {
     let plain: String = (0..20_000).map(|i| format!("k{i}: 1\n")).collect();
     let indexed: String = (0..20_000).rev().map(|i| format!("{i}: 1\n")).collect();
     on_small_stack(move || {
-        let before = entries_scanned();
-        assert!(safe_load(&plain).is_ok());
-        let loaded = safe_load(&indexed).unwrap().unwrap();
-        let YamlValue::Map(map) = loaded else {
-            panic!()
-        };
-        assert_eq!(
-            map.iter().next().map(|(k, _)| k.to_owned()),
-            Some("0".to_owned())
-        );
-        assert_eq!(map.len(), 20_000);
-        let walked = entries_scanned() - before;
-        // Loading walks no entry; the check above reads one back.
-        assert!(walked <= 10, "{walked} map entries walked");
+        // Loading walks no entry; the check inside reads one back.
+        assert_steps_at_most("map entries walked", entries_scanned, 10, || {
+            assert!(safe_load(&plain).is_ok());
+            let loaded = safe_load(&indexed).unwrap().unwrap();
+            let YamlValue::Map(map) = loaded else {
+                panic!()
+            };
+            assert_eq!(
+                map.iter().next().map(|(k, _)| k.to_owned()),
+                Some("0".to_owned())
+            );
+            assert_eq!(map.len(), 20_000);
+        });
     });
 }
