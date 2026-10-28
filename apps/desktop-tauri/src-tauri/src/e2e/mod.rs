@@ -12,6 +12,7 @@ mod dialog;
 mod reveal;
 mod shell;
 mod shell_integrations;
+mod updater;
 mod window;
 
 use memry_desktop::e2e::E2eGate;
@@ -54,6 +55,11 @@ pub fn context_menu_override<R: Runtime>(
     items: &[crate::menu::popup::ContextMenuItem],
 ) -> Option<Option<String>> {
     shell::context_menu_override(app, items)
+}
+
+/// A hand-off to the OS under an open gate: records it and reports `true`.
+pub fn record_os_open<R: Runtime>(app: &AppHandle<R>, what: &str) -> bool {
+    reveal::record_os_open(app, what)
 }
 
 /// `vault_reveal` under an open gate: records the path and reports `true`.
@@ -107,6 +113,7 @@ fn manage_dialog_queue(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     })?;
     app.manage(std::sync::Arc::new(queue));
     app.manage(reveal::RevealLog::default());
+    app.manage(reveal::OsOpenLog::default());
     app.manage(shell::ContextMenuProbe::default());
     Ok(())
 }

@@ -15,6 +15,7 @@ import {
   type WikiLinkRender
 } from '@memry/editor-schema/inline'
 import { wikiLinkDisplayProps } from '@memry/shared/wiki-link-props'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 import type { WikiLinkCardContent } from './wiki-link-card-content'
 import { hydrateWikiLinkCard } from './wiki-link-card-data'
 
@@ -52,7 +53,7 @@ export function fillWikiLinkCard(chip: HTMLElement, content: WikiLinkCardContent
     image.loading = 'lazy'
     // A cover that will not load leaves the card without one, not a broken image.
     image.addEventListener('error', () => image.remove())
-    image.src = content.cover.url
+    image.src = toWebviewUrl(content.cover.url)
     cover.append(image)
   }
 }

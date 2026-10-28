@@ -92,6 +92,17 @@ export const commands = {
 	 *  the menu closed without a choice.
 	 */
 	shellShowContextMenu: (items: ContextMenuItem[]) => __TAURI_INVOKE<string | null>("shell_show_context_menu", { items }),
+	/**  Opens an `https:`, `http:` or `mailto:` link in the OS. */
+	shellOpenExternal: (url: string) => __TAURI_INVOKE<null>("shell_open_external", { url }),
+	/**
+	 *  Follows a link activation the renderer kept from navigating the window: what the main frame's
+	 *  navigation would have done with it (`shell::navigation_guard::open_link`).
+	 */
+	shellOpenLink: (url: string) => __TAURI_INVOKE<null>("shell_open_link", { url }),
+	/**  Opens a file of the open vault or the app data directory in the OS. */
+	shellOpenPath: (path: string) => __TAURI_INVOKE<null>("shell_open_path", { path }),
+	/**  Shows a file of the open vault or the app data directory in the file manager. */
+	shellRevealPath: (path: string) => __TAURI_INVOKE<null>("shell_reveal_path", { path }),
 	telemetryFlush: () => __TAURI_INVOKE<TelemetryFlushResult>("telemetry_flush"),
 	telemetryGetSettings: () => __TAURI_INVOKE<TelemetrySettings>("telemetry_get_settings"),
 	telemetrySetAutoSendDiagnostics: (enabled: boolean) => __TAURI_INVOKE<null>("telemetry_set_auto_send_diagnostics", { enabled }),
@@ -102,6 +113,19 @@ export const commands = {
 	 *  without a request.
 	 */
 	unsplashSearch: (query: string, page: number | null) => __TAURI_INVOKE<UnsplashSearchResponse>("unsplash_search", { query, page }),
+	/**  A manual check: a skipped version may surface again. */
+	updaterCheckForUpdates: () => __TAURI_INVOKE<AppUpdateState>("updater_check_for_updates"),
+	updaterDownloadUpdate: () => __TAURI_INVOKE<AppUpdateState>("updater_download_update"),
+	updaterGetState: () => __TAURI_INVOKE<AppUpdateState>("updater_get_state"),
+	/**
+	 *  Restart to install: the state turns `installing`, then the quit runs and ends in the
+	 *  installer (`UpdateApplyHook`).
+	 */
+	updaterQuitAndInstall: () => __TAURI_INVOKE<null>("updater_quit_and_install"),
+	updaterSetAutoCheck: (enabled: boolean) => __TAURI_INVOKE<AppUpdateState>("updater_set_auto_check", { enabled }),
+	updaterSetAutoDownload: (enabled: boolean) => __TAURI_INVOKE<AppUpdateState>("updater_set_auto_download", { enabled }),
+	/**  `version` is the display version the renderer shows (`v2026-11-01`). */
+	updaterSkipVersion: (version: string) => __TAURI_INVOKE<AppUpdateState>("updater_skip_version", { version }),
 	vaultClose: () => __TAURI_INVOKE<null>("vault_close"),
 	vaultCreate: (parentPath: string, name: string) => __TAURI_INVOKE<SelectVaultResponse>("vault_create", { parentPath, name }),
 	/**  Next to the current vault when one is registered, else `<documents>/Memry`. */
@@ -137,6 +161,7 @@ export const events = {
 	menuCommandInvokedEvent: makeEvent<MenuCommandInvokedEvent, MenuCommandInvokedEvent>("menu-command-invoked-event"),
 	settingsChangedEvent: makeEvent<SettingsChangedEvent, SettingsChangedEvent>("settings-changed-event"),
 	settingsOpenSectionEvent: makeEvent<SettingsOpenSectionEvent, SettingsOpenSectionEvent>("settings-open-section-event"),
+	updaterStateChangedEvent: makeEvent<UpdaterStateChangedEvent, UpdaterStateChangedEvent>("updater-state-changed-event"),
 	vaultErrorEvent: makeEvent<VaultErrorEvent, VaultErrorEvent>("vault-error-event"),
 	vaultIndexRecoveredEvent: makeEvent<VaultIndexRecoveredEvent, VaultIndexRecoveredEvent>("vault-index-recovered-event"),
 	vaultListChangedEvent: makeEvent<VaultListChangedEvent, VaultListChangedEvent>("vault-list-changed-event"),
@@ -158,6 +183,27 @@ export type AppInfo = {
 /**  Back or forward from a trackpad swipe or a browser key (`back` or `forward`). */
 export type AppNavigationRequestedEvent = {
 	direction: string,
+};
+
+export type AppUpdateState = {
+	/**  Display version (`vYYYY-MM-DD[.N]`). */
+	currentVersion: string,
+	status: UpdaterStatus,
+	updateSupported: boolean,
+	availableVersion: string | null,
+	releaseName: string | null,
+	releaseDate: string | null,
+	/**  Plain text without the developer changelog, for the prompt. */
+	releaseNotes: string | null,
+	/**  The whole feed HTML, for the release notes tab. */
+	releaseNotesHtml: string | null,
+	downloadProgressPercent: number | null,
+	/**  Epoch milliseconds. */
+	lastCheckedAt: number | null,
+	error: string | null,
+	autoDownloadEnabled: boolean,
+	autoCheckEnabled: boolean,
+	installFailed: InstallFailed | null,
 };
 
 export type BuildKind = "dev" | "packaged";
@@ -316,6 +362,12 @@ export type GlobalCaptureResult = {
  */
 export type InboxOpenItemEvent = {
 	itemId: string,
+};
+
+/**  The previous session handed off an install that never applied. */
+export type InstallFailed = {
+	/**  The update that failed, or `None` when the marker did not record one. */
+	version: string | null,
 };
 
 export type ItemKind = "normal" | "separator";
@@ -492,6 +544,14 @@ export type UnsplashPhoto = {
  *  Photos tab on `notConfigured`), so it is a variant here and not a rejected call.
  */
 export type UnsplashSearchResponse = { status: "photos"; photos: UnsplashPhoto[]; rateLimitRemaining: number | null } | { status: "unavailable"; reason: UnsplashFailure };
+
+/**
+ *  The updater state changed (`updater:state-changed`). The whole state, which the renderer
+ *  replaces wholesale; a burst of progress ticks reaches it as the latest value only.
+ */
+export type UpdaterStateChangedEvent = AppUpdateState;
+
+export type UpdaterStatus = "unavailable" | "idle" | "checking" | "available" | "downloading" | "downloaded" | "installing" | "up-to-date" | "error";
 
 export type Value = null | boolean | number | string | Value[] | { [key in string]: Value };
 

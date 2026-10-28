@@ -17,6 +17,7 @@ use super::reveal::{self, StartupMode};
 use super::scripts::{self, ShellGlobals};
 use super::{MAIN_LABEL, bounds_store, chrome, nav_input, zoom};
 use crate::shell::services::mark_phase;
+use crate::shell::{navigation_guard, permissions};
 use crate::startup::{self, StartupState};
 
 /// Builds the main window, hidden: `windows::reveal` shows it at the renderer's first paint.
@@ -28,6 +29,9 @@ pub fn create_main(
     state: &StartupState,
 ) -> tauri::Result<WebviewWindow<Wry>> {
     let resolved = startup_bounds(app, state);
+    let origins = navigation_guard::app_origins(app);
+    let off_app = navigation_guard::OffApp::default();
+    let commit_off_app = off_app.clone();
     let mut builder =
         WebviewWindowBuilder::new(app, MAIN_LABEL, WebviewUrl::App("index.html".into()))
             .title("MemryNote")
@@ -38,16 +42,34 @@ pub fn create_main(
             .use_https_scheme(true)
             // OS file drops arrive as DOM `File` objects.
             .disable_drag_drop_handler()
-            .on_page_load(|window, payload| {
+            .on_page_load(move |window, payload| {
+                navigation_guard::check_commit(
+                    &window,
+                    payload.event(),
+                    payload.url(),
+                    &commit_off_app,
+                );
                 if matches!(payload.event(), PageLoadEvent::Finished) {
                     mark_phase(window.app_handle(), LaunchPhase::WindowDidFinishLoad);
                     #[cfg(windows)]
                     super::win32_caption::raise(window.app_handle());
                 }
             })
-            .initialization_script(startup::script(state))
-            .initialization_script(scripts::init_script(ShellGlobals { maximizable: true }));
+            .on_navigation(navigation_guard::on_navigation(
+                app.clone(),
+                off_app.clone(),
+            ))
+            .on_new_window(navigation_guard::on_new_window(app.clone(), off_app))
+            .initialization_script(scripts::app_page_only(&origins, &startup::script(state)))
+            .initialization_script(scripts::app_page_only(
+                &origins,
+                &scripts::init_script(shell_globals(app)),
+            ));
     builder = chrome::apply(builder);
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder.on_permission_request(permissions::on_request);
+    }
     builder = match resolved.position {
         Some((x, y)) => builder.position(f64::from(x), f64::from(y)),
         None => builder.center(),
@@ -57,7 +79,9 @@ pub fn create_main(
         builder = builder.additional_browser_args(&args);
     }
     let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
+    navigation_guard::install(app, &window);
     zoom::apply_to(&window, state.zoom);
+    permissions::install(&window, permissions::dev_origin(app));
     #[cfg(windows)]
     {
         super::win32_caption::install(app, &window);
@@ -72,6 +96,16 @@ pub fn create_main(
         },
     );
     Ok(window)
+}
+
+fn shell_globals(app: &AppHandle<Wry>) -> ShellGlobals {
+    let (loopback_origin, loopback_token) =
+        crate::shell::loopback::address(app).unwrap_or_default();
+    ShellGlobals {
+        maximizable: true,
+        loopback_origin,
+        loopback_token,
+    }
 }
 
 /// The picker keeps its compact size and never restores geometry; the app window restores the

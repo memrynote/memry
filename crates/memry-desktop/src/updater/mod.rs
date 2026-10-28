@@ -1,13 +1,17 @@
-//! The in-app updater's decisions, without Tauri or Velopack (`apps/desktop/src/main/updater*.ts`).
-//! The Tauri crate owns the Velopack calls, the process hooks and the commands; everything here
-//! is pure logic over values and three small files in the app data directory, which are
-//! contracts with the Electron build that writes them before handing over.
+//! The in-app updater without Tauri or Velopack (`apps/desktop/src/main/updater*.ts`): the
+//! service, its state and decisions, and three small files in the app data directory that keep
+//! Electron's formats. The Tauri crate owns the Velopack backend, the process hooks and the
+//! commands.
 
+pub mod backend;
 pub mod check_health;
 pub mod guard;
 pub mod health;
 pub mod marker;
 pub mod notes;
+#[cfg(any(test, feature = "e2e"))]
+pub mod scripted;
+pub mod service;
 pub mod severity;
 pub mod state;
 pub mod version;

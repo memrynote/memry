@@ -14,7 +14,7 @@
 
 import { useCallback, useSyncExternalStore } from 'react'
 import type { CustomIcon } from '@memry/contracts/custom-icons-api'
-import { toMemryFileUrl } from './memry-file-url'
+import { toMemryFileUrl, toWebviewUrl } from './memry-file-url'
 import { createLogger } from './logger'
 
 const log = createLogger('CustomIconsStore')
@@ -39,7 +39,7 @@ function publish(next: CustomIcon[]): void {
   entries = next.map((icon) => ({
     id: icon.id,
     name: icon.name,
-    url: toMemryFileUrl(icon.path),
+    url: toWebviewUrl(toMemryFileUrl(icon.path)),
     createdAt: icon.createdAt
   }))
   byId = new Map(entries.map((entry) => [entry.id, entry]))
