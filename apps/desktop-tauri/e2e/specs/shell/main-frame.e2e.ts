@@ -132,7 +132,7 @@ test('a page that would stop, chain, redirect or open windows never runs, and op
   }
 })
 
-test('a link whose click the renderer never sees opens once and leaves the app in place', async ({
+test('a link whose click an app handler stops still opens once, with no unload', async ({
   app,
   page
 }) => {
@@ -140,16 +140,26 @@ test('a link whose click the renderer never sees opens once and leaves the app i
   const site = await startSite()
   try {
     const href = await markDocument(page)
+    // App handlers that stop the click at every level after the guard's own window listener.
     await page.evaluate((url) => {
+      const state = window as unknown as { __unloaded?: boolean }
+      window.addEventListener('beforeunload', () => {
+        state.__unloaded = true
+      })
       window.addEventListener('click', (event) => event.stopImmediatePropagation(), true)
+      document.addEventListener('click', (event) => event.stopPropagation(), true)
       const link = document.createElement('a')
       link.href = url
+      link.addEventListener('click', (event) => event.stopPropagation())
       document.body.append(link)
       link.click()
     }, `${site.origin}/stop`)
     await expect.poll(() => opens(app), { timeout: 15_000 }).toEqual([`url ${site.origin}/stop`])
     await page.waitForTimeout(SETTLE_MS)
-    expect(site.hits.filter((path) => path.startsWith('/beacon/'))).toEqual([])
+    expect(site.hits).toEqual([])
+    expect(
+      await page.evaluate(() => (window as unknown as { __unloaded?: boolean }).__unloaded === true)
+    ).toBe(false)
     await expectSameDocument(page, href)
   } finally {
     await site.close()
@@ -212,10 +222,10 @@ test('about:blank, data: and blob: never replace the app', async ({ app, page })
   expect(await opens(app)).toEqual([])
 })
 
-// The engines' popup blockers decide whether a new window is asked for at all: WebDriver clicks
-// are untrusted, so WKWebView and WebKitGTK refuse these before the shell sees them. Whatever
-// reaches the shell opens once in the OS, and nothing ever loads in the window (a real click on a
-// target=_blank link was checked by hand on macOS; see the PR).
+// `window.open` goes to the engine, whose popup blocker decides whether a new window is asked for
+// at all. WebDriver clicks are untrusted, so WKWebView and WebKitGTK refuse the call before the
+// shell sees anything; on macOS a trusted click does not reach the shell either (#3675).
+// What reaches the shell opens once in the OS. A target=_blank link is the renderer's: one open.
 test('window.open and a target=_blank link never load in the window and open at most once', async ({
   app,
   page
@@ -231,14 +241,16 @@ test('window.open and a target=_blank link never load in the window and open at 
       const link = document.createElement('a')
       link.href = url
       link.target = '_blank'
-      // The renderer's listener never sees this click, so the shell decides it.
       link.addEventListener('click', (event) => event.stopPropagation())
       document.body.append(link)
       link.click()
     }, `${site.origin}/stop`)
     await page.waitForTimeout(SETTLE_MS)
     const opened = await opens(app)
-    expect(new Set(opened).size).toBe(opened.length)
+    expect(opened.filter((entry) => entry === `url ${site.origin}/stop`)).toHaveLength(1)
+    expect(
+      opened.filter((entry) => entry !== `url ${site.origin}/stop`).length
+    ).toBeLessThanOrEqual(1)
     for (const entry of opened) {
       expect([`url ${site.origin}/landing`, `url ${site.origin}/stop`]).toContain(entry)
     }

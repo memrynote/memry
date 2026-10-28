@@ -14,11 +14,18 @@
 //! page's `beforeunload` and stops all of its loads (`FrameLoader::continueLoadAfterNavigationPolicy`)
 //! before the request is made. An in-flight `ipc://` fetch is aborted, and Tauri resends the
 //! command over `postMessage`, so a command the shell already received can run twice. So on Linux
-//! no main-frame navigation may start in the first place: the renderer opens the links it renders
-//! and the links dropped on it itself (`external-link-guard.ts`), app code never assigns `location`,
-//! and the context menu loses WebKitGTK's "Open Link" here ("Open Link in New Window" asks for a
-//! new window, which `on_new_window` sends to the OS). A link click an app handler hides from the
-//! renderer's listener still reaches this guard, with those side effects.
+//! no main-frame navigation may start in the first place:
+//! - The renderer opens clicked and dropped links itself (`external-link-guard.ts`), from listeners
+//!   on `window` in the capture phase installed before the app renders, so no app handler that
+//!   stops propagation hides one.
+//! - The context menu loses WebKitGTK's "Open Link" here ("Open Link in New Window" asks for a new
+//!   window, which `on_new_window` sends to the OS).
+//! - App code never assigns `location` (no match in either renderer on 2026-10-28; the
+//!   `memry/no-location-navigation` lint keeps it so), and untrusted content cannot run in the app's
+//!   frame (CSP `script-src 'self'`; embeds are sandboxed frames).
+//!
+//! That leaves a script of the app's own page assigning `location` as the one way to reach this
+//! late refusal, with those side effects.
 //!
 //! `load-changed` STARTED cannot replace `load-failed`: for a navigation the page started, the
 //! view's `uri` still names the app page at that point (WebKitGTK 2.52, checked on Ubuntu 24.04).

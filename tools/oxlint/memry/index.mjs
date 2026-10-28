@@ -35,7 +35,35 @@ const noWindowFanout = {
   }
 }
 
+// The Tauri shell refuses a main-frame navigation off the app only after WebKitGTK ran the page's
+// beforeunload and cancelled its in-flight requests, and Tauri resends an aborted ipc:// command, so
+// a command can run twice (#3647, `shell::navigation_guard::linux`). Links and dropped links go
+// through `lib/external-link-guard.ts`; app code never moves the window itself. `location.reload()`
+// stays allowed: it reloads the app.
+const LOCATION = "[object.name='location'], [object.property.name='location']"
+const noLocationNavigation = {
+  meta: {
+    type: 'problem',
+    messages: {
+      navigates:
+        'Do not navigate the window from app code. Open a web link with commands.shellOpenExternal (or an <a href>, which external-link-guard.ts routes); on Linux a main-frame navigation cancels in-flight requests and can run an IPC command twice (#3647).'
+    },
+    schema: []
+  },
+  create(context) {
+    const report = (node) => context.report({ node, messageId: 'navigates' })
+    return {
+      [`CallExpression > MemberExpression.callee:matches(${LOCATION})[property.name=/^(assign|replace)$/]`]:
+        report,
+      [`AssignmentExpression > MemberExpression.left:matches(${LOCATION})[property.name='href']`]:
+        report,
+      "AssignmentExpression > MemberExpression.left[object.name=/^(window|document|globalThis|self|top)$/][property.name='location']":
+        report
+    }
+  }
+}
+
 export default {
   meta: { name: 'memry' },
-  rules: { 'no-window-fanout': noWindowFanout }
+  rules: { 'no-window-fanout': noWindowFanout, 'no-location-navigation': noLocationNavigation }
 }
