@@ -49,6 +49,7 @@ use std::sync::Arc;
 use serde_json::Value as Json;
 use zeroize::Zeroizing;
 
+use crate::crdt::SnapshotSealer;
 use crate::protocol::crdt_envelope::{self, CrdtMaterial, CrdtRequest};
 use crate::protocol::delete_attestation;
 use crate::protocol::envelope::{self, EnvelopeError, RecordMaterial, RecordRequest};
@@ -274,6 +275,22 @@ impl PushSealer for AccountSealer {
             });
         }
         Ok(packed)
+    }
+}
+
+impl SnapshotSealer for AccountSealer {
+    /// §7.11: there is no separate snapshot envelope, so a snapshot is packed
+    /// exactly as an update is, with no update-size gate.
+    fn seal_snapshot(&self, doc_id: &str, state: &[u8]) -> Result<Vec<u8>, EnvelopeError> {
+        crdt_envelope::pack(
+            &CrdtRequest {
+                note_id: doc_id,
+                update: state,
+                vault_key: &self.vault_key,
+                signing_secret_key: &self.signer.secret_key,
+            },
+            &self.entropy.crdt(),
+        )
     }
 }
 
