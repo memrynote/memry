@@ -8,6 +8,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 
 use super::*;
 
+mod device_identity;
 mod fake;
 mod outage;
 use fake::{Gate, Mode, rig, rig_with};

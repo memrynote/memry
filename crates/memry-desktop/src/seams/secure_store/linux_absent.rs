@@ -197,3 +197,43 @@ pub fn after_delete(session: &Session, service: &str, account: &str) -> keyring_
         Ok(())
     })
 }
+
+/// The Secret Service's bus name.
+const SECRETS_NAME: &str = "org.freedesktop.secrets";
+
+/// Whether this session has no Secret Service at all: no session bus, or the name is neither
+/// owned nor activatable. Any doubt (an error, no answer within `deadline`) is "one may exist".
+/// Runs on a thread of its own so a wedged bus cannot hold the caller past `deadline`.
+pub fn service_absent(deadline: std::time::Duration) -> bool {
+    let (done, answer) = std::sync::mpsc::channel();
+    let spawned = std::thread::Builder::new()
+        .name("memry-keyring-probe".to_owned())
+        .spawn(move || {
+            let _ = done.send(probe());
+        });
+    if spawned.is_err() {
+        return false;
+    }
+    answer.recv_timeout(deadline).unwrap_or(false)
+}
+
+fn probe() -> bool {
+    let Ok(connection) = zbus::blocking::Connection::session() else {
+        return true;
+    };
+    let Ok(bus) = zbus::blocking::fdo::DBusProxy::new(&connection) else {
+        return false;
+    };
+    let Ok(name) = zbus::names::BusName::try_from(SECRETS_NAME) else {
+        return false;
+    };
+    if bus.name_has_owner(name).unwrap_or(true) {
+        return false;
+    }
+    match bus.list_activatable_names() {
+        Ok(names) => !names
+            .iter()
+            .any(|activatable| activatable.as_str() == SECRETS_NAME),
+        Err(_) => false,
+    }
+}

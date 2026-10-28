@@ -25,6 +25,7 @@
 compile_error!("the `e2e` feature keeps secrets in a plain file and is for debug builds only");
 
 mod account;
+mod device_identity;
 #[cfg(feature = "e2e")]
 mod e2e_file;
 mod generic;
@@ -43,6 +44,7 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
 pub use account::{KEYS, SERVICE, account};
+pub use device_identity::DeviceIdentityStore;
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
 /// The Linux absent-check on its own, for the live test of a locked keyring (the store's search
@@ -53,6 +55,20 @@ pub fn linux_absent_check(service: &str, account: &str) -> keyring_core::Result<
     linux_absent::check(&linux_absent::Session::default(), service, account)
 }
 pub use worker::DEADLINE;
+
+/// Whether this system has no keychain at all, so a device key may live in a file
+/// ([`DeviceIdentityStore`]). Only Linux can answer yes: no session bus, or no Secret Service
+/// running or activatable. A locked keyring, an unanswered prompt or any doubt is "no".
+pub fn keychain_absent() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        linux_absent::service_absent(DEADLINE)
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
+}
 use worker::{Op, Worker};
 
 use crate::e2e::E2eGate;

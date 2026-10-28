@@ -1,7 +1,7 @@
 //! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). Every test uses a
 //! device suffix and service of its own (`e2e-live-...`, `com.memry.test`) and removes what it
 //! wrote, so the real `com.memry.sync` accounts of a developer's machine are never touched. CI runs
-//! them: macOS (login keychain of the runner), Windows (Credential Manager) and Linux under a private
+//! them: macOS (a throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a private
 //! session bus (`gnome-keyring-daemon --unlock`, and again with no Secret Service at all).
 #![cfg(feature = "live-os-secrets")]
 
@@ -11,7 +11,9 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
-use memry_desktop::seams::secure_store::{GenericSecrets, KEYS, KeyringStore, SecureStoreHealth};
+use memry_desktop::seams::secure_store::{
+    DeviceIdentityStore, GenericSecrets, KEYS, KeyringStore, SecureStoreHealth, keychain_absent,
+};
 
 fn unique(tag: &str) -> String {
     let nanos = std::time::SystemTime::now()
@@ -47,7 +49,7 @@ fn no_secret_service() -> bool {
     std::env::var("MEMRY_LIVE_NO_SECRET_SERVICE").is_ok_and(|v| v == "1")
 }
 
-/// The macOS rows write to the login keychain: they run on CI (`CI` is set) and nowhere else.
+/// The macOS rows write to the default keychain: they run on CI (`CI` is set) and nowhere else.
 fn skip_on_a_developer_mac() -> bool {
     cfg!(target_os = "macos") && std::env::var_os("CI").is_none()
 }
@@ -130,6 +132,67 @@ fn with_no_secret_service_every_call_is_locked_and_nothing_is_stored() {
         Err(SecureStoreError::Locked)
     );
     assert_eq!(store.health(), SecureStoreHealth::Unavailable);
+}
+
+/// The device key a build before Step 15 kept in `<profile>/device-key` moves into the real
+/// keychain, the file goes, and a restart reads the same key from the keychain.
+#[test]
+fn the_device_key_file_of_an_earlier_build_moves_into_the_real_keychain() {
+    if no_secret_service() || skip_on_a_developer_mac() {
+        return;
+    }
+    assert!(!keychain_absent(), "this system has a keychain");
+    let profile = tempfile::tempdir().unwrap();
+    let store = Arc::new(store(&unique("identity")));
+    let _cleanup = Cleanup(store.clone());
+    let key: Vec<u8> = (0..64).collect();
+    std::fs::write(profile.path().join("device-key"), &key).unwrap();
+    let identity = DeviceIdentityStore::new(store.clone(), profile.path());
+    assert_eq!(
+        identity.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        Some(key.clone())
+    );
+    assert!(!profile.path().join("device-key").exists());
+    assert_eq!(
+        store.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        Some(key.clone())
+    );
+    let restarted = DeviceIdentityStore::new(store.clone(), profile.path());
+    assert_eq!(
+        restarted.get(SecureStoreKey::DeviceSigningKey).unwrap(),
+        Some(key)
+    );
+}
+
+/// `MEMRY_LIVE_NO_SECRET_SERVICE=1` (Linux): with no Secret Service on the bus the system has no
+/// keychain, so a fresh profile's device key is minted into a 0600 file and the app can write.
+#[cfg(target_os = "linux")]
+#[test]
+fn with_no_secret_service_the_device_key_lives_in_a_private_file() {
+    use std::os::unix::fs::PermissionsExt;
+
+    if !no_secret_service() {
+        return;
+    }
+    assert!(keychain_absent());
+    let profile = tempfile::tempdir().unwrap();
+    let identity = Arc::new(DeviceIdentityStore::new(
+        Arc::new(store(&unique("nokeychain"))),
+        profile.path(),
+    ));
+    memry_core::api::auth::ensure_device_identity(identity.clone()).unwrap();
+    let file = profile.path().join("device-key");
+    assert_eq!(std::fs::read(&file).unwrap().len(), 64);
+    assert_eq!(
+        std::fs::metadata(&file).unwrap().permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(
+        identity
+            .get(SecureStoreKey::DeviceSigningKey)
+            .unwrap()
+            .is_some()
+    );
 }
 
 /// `MEMRY_LIVE_LATE_SERVICE=1` (Linux): no Secret Service at first; the test starts
