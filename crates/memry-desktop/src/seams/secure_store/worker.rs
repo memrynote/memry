@@ -12,7 +12,7 @@
 //! once when the keychain goes from unreachable (latched, or a call answered `Locked`) to
 //! answering with a success, so a Secret Service that starts late is reported too; a panic or a
 //! `Failed` answer is not a recovery. An unreadable secret is never reported absent: `NoEntry`
-//! (after the store's own absent-check, see [`StoreFactory::absent_check`]) is the only `Ok(None)`.
+//! (once the platform confirms it, see [`StoreFactory::confirm_absent`]) is the only `Ok(None)`.
 
 use std::collections::HashMap;
 use std::panic::AssertUnwindSafe;
@@ -338,34 +338,14 @@ impl Runner {
             entry(&store, self.names_target, service, account).and_then(|entry| match &job.op {
                 Op::Get => match entry.get_secret() {
                     Ok(bytes) => Ok(Some(Zeroizing::new(bytes))),
-                    // Not found is not yet absent: the platform may hold the item where this
-                    // store does not look (Linux).
-                    Err(Error::NoEntry) => self
-                        .factory
-                        .absent_check(service, account)
-                        .map(|found| found.map(Zeroizing::new)),
+                    // Not found is not yet absent: a locked collection hides its items (Linux).
+                    Err(Error::NoEntry) => self.factory.confirm_absent().map(|()| None),
                     Err(error) => Err(error),
                 },
-                Op::Set(value) => entry
-                    .set_secret(value)
-                    .and_then(|()| {
-                        // keytar set `UserName` to the account on Windows, and the store leaves it
-                        // empty when the target is named.
-                        if self.names_target {
-                            entry
-                                .update_attributes(&HashMap::from([("username", account.as_str())]))
-                        } else {
-                            Ok(())
-                        }
-                    })
-                    .map(|()| {
-                        self.factory.after_set(&entry, service, account);
-                        None
-                    }),
+                Op::Set(value) => entry.set_secret(value).map(|()| None),
                 Op::Delete => match entry.delete_credential() {
-                    Ok(()) | Err(Error::NoEntry) => {
-                        self.factory.after_delete(service, account).map(|()| None)
-                    }
+                    Ok(()) => Ok(None),
+                    Err(Error::NoEntry) => self.factory.confirm_absent().map(|()| None),
                     Err(error) => Err(error),
                 },
             });

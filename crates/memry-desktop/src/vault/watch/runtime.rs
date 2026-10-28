@@ -25,6 +25,7 @@ use super::debounce::Debouncer;
 use super::echo::EchoGuard;
 use super::event::{EventSink, VaultEvent};
 use super::gone::is_vault_reachable;
+use super::handle::{Gate, Msg, NewFiles, WatchHandle};
 use super::reconcile::Reconciler;
 use super::safety::{SafetyNet, Tuning};
 
@@ -47,41 +48,10 @@ pub enum WatchError {
     Thread(std::io::Error),
 }
 
-enum Msg {
-    Paths(Vec<PathBuf>),
-    Rescan,
-    Error(notify::Error),
-}
-
-/// Lets events through until the watcher is stopped. `stop` closes it before anything else, so
-/// no event leaves a watcher once its stop has begun, even while its thread is still finishing
-/// a step (a folder of a million files) and the next vault is already open: the sink is shared
-/// and an event carries no vault identity. Only a call already inside the sink can still land.
-#[derive(Clone)]
-struct Gate(Arc<AtomicBool>);
-
-impl Gate {
-    fn open() -> Self {
-        Self(Arc::new(AtomicBool::new(true)))
-    }
-
-    fn wrap(&self, sink: EventSink) -> EventSink {
-        let open = self.0.clone();
-        Arc::new(move |event| {
-            if open.load(Ordering::SeqCst) {
-                sink(event);
-            }
-        })
-    }
-
-    fn close(&self) {
-        self.0.store(false, Ordering::SeqCst);
-    }
-}
-
 pub struct VaultWatcher {
     stop: Arc<AtomicBool>,
     gate: Gate,
+    handle: WatchHandle,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -105,8 +75,17 @@ impl VaultWatcher {
         files: NoteFiles,
         echo: Arc<EchoGuard>,
         sink: EventSink,
+        new_files: NewFiles,
     ) -> Result<Self, WatchError> {
-        Self::start_with(root, exclude, files, echo, sink, Tuning::platform())
+        Self::start_with(
+            root,
+            exclude,
+            files,
+            echo,
+            sink,
+            Tuning::platform(),
+            new_files,
+        )
     }
 
     pub fn start_with(
@@ -116,6 +95,7 @@ impl VaultWatcher {
         echo: Arc<EchoGuard>,
         sink: EventSink,
         tuning: Tuning,
+        new_files: NewFiles,
     ) -> Result<Self, WatchError> {
         let (tx, rx) = sync_channel(CHANNEL_CAPACITY);
         let overflow = Arc::new(AtomicBool::new(false));
@@ -124,7 +104,8 @@ impl VaultWatcher {
         let gate = Gate::open();
         let sink = gate.wrap(sink);
         let reconciler = Reconciler::new(root.clone(), exclude, files, echo, sink.clone())
-            .with_stop(stop.clone());
+            .with_stop(stop.clone())
+            .with_new_files(new_files);
         let mut worker = Worker::new(
             reconciler,
             root,
@@ -135,6 +116,7 @@ impl VaultWatcher {
             stop.clone(),
         );
         worker.watcher = Some(watcher);
+        let handle = WatchHandle::new(worker.tx.clone(), worker.resync.clone());
         let thread = std::thread::Builder::new()
             .name("vault-watcher".into())
             .spawn(move || worker.run())
@@ -142,8 +124,13 @@ impl VaultWatcher {
         Ok(Self {
             stop,
             gate,
+            handle,
             thread: Some(thread),
         })
+    }
+
+    pub fn handle(&self) -> WatchHandle {
+        self.handle.clone()
     }
 
     /// Stops the worker and waits for it. No event leaves from the moment this is called
@@ -205,6 +192,8 @@ struct Worker {
     tx: SyncSender<Msg>,
     rx: Receiver<Msg>,
     overflow: Arc<AtomicBool>,
+    /// Set by [`WatchHandle::resync`].
+    resync: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
     /// Held so the OS keeps delivering; replaced when the vault returns.
     watcher: Option<RecommendedWatcher>,
@@ -230,6 +219,7 @@ impl Worker {
             tx,
             rx,
             overflow,
+            resync: Arc::default(),
             stop,
             watcher: None,
             net: SafetyNet::new(tuning, Instant::now()),
@@ -276,6 +266,10 @@ impl Worker {
                         }
                     }
                     Msg::Rescan => force_rescan = true,
+                    Msg::Forget(rel) => {
+                        self.reconciler.reported.remove(&rel);
+                        debounce.touch(rel, now);
+                    }
                     Msg::Error(error) => {
                         self.report(&error, now);
                         self.net.lost_events(now);
@@ -303,6 +297,11 @@ impl Worker {
                     // A watch the OS dropped without saying so is back.
                     self.rearm(now);
                 }
+                force_rescan = true;
+            }
+            if self.resync.swap(false, Ordering::Relaxed) {
+                self.reconciler.reported.clear();
+                self.reconciler.clear();
                 force_rescan = true;
             }
             if self.overflow.swap(false, Ordering::Relaxed)

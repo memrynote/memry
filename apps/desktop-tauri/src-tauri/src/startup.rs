@@ -169,7 +169,44 @@ pub fn shutdown_started() -> bool {
     SHUTDOWN_STARTED.load(Ordering::SeqCst)
 }
 
-/// Step 11 (#3528) calls this when shutdown begins.
-pub fn mark_shutdown_started() {
-    SHUTDOWN_STARTED.store(true, Ordering::SeqCst);
+/// Marks the shutdown sequence as started and returns whether it already was. A quit, a
+/// termination signal, logind and the session manager can each start it from their own thread,
+/// so only the caller that gets `false` starts it.
+pub fn mark_shutdown_started() -> bool {
+    mark_started(&SHUTDOWN_STARTED)
+}
+
+fn mark_started(flag: &AtomicBool) -> bool {
+    flag.swap(true, Ordering::SeqCst)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::AtomicBool;
+    use std::sync::{Arc, Barrier};
+
+    use super::mark_started;
+
+    #[test]
+    fn of_two_threads_starting_the_shutdown_at_once_exactly_one_starts_it() {
+        for _ in 0..1000 {
+            let flag = Arc::new(AtomicBool::new(false));
+            let barrier = Arc::new(Barrier::new(2));
+            let starters: Vec<_> = (0..2)
+                .map(|_| {
+                    let (flag, barrier) = (flag.clone(), barrier.clone());
+                    std::thread::spawn(move || {
+                        barrier.wait();
+                        !mark_started(&flag)
+                    })
+                })
+                .collect();
+            let started = starters
+                .into_iter()
+                .map(|starter| starter.join().expect("the starter thread panicked"))
+                .filter(|&first| first)
+                .count();
+            assert_eq!(started, 1);
+        }
+    }
 }

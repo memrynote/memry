@@ -12,10 +12,12 @@ import {
   parseCmdkeyList,
   parseKeychainDump,
   parseSecretToolSearch,
+  parseWindowsTarget,
   windowsTargetsForDevice
 } from './keychain-cleanup.mjs'
 
 const SYNC = 'com.memry.sync'
+const OWN = 'com.memrynote.memry'
 const UUID = 'acc474be-3e59-4621-a8ea-fba2ddd008cc'
 
 test('the account list matches KEYCHAIN_ENTRIES in @memry/contracts', () => {
@@ -48,17 +50,20 @@ test('only e2e device ids are purgeable', () => {
   }
 })
 
-test('accounts for a device carry the device suffix', () => {
-  assert.deepEqual(
-    keychainAccountsForDevice('e2e-x').map((entry) => entry.account),
-    KEYCHAIN_ACCOUNTS.map((account) => `${account}-e2e-x`)
-  )
+test('accounts for a device carry the device suffix, in both services', () => {
+  const suffixed = KEYCHAIN_ACCOUNTS.map((account) => `${account}-e2e-x`)
+  assert.deepEqual(keychainAccountsForDevice('e2e-x'), [
+    ...suffixed.map((account) => ({ service: OWN, account })),
+    ...suffixed.map((account) => ({ service: SYNC, account }))
+  ])
 })
 
-test('matches every e2e-suffixed com.memry.sync account', () => {
-  for (const entry of KEYCHAIN_ACCOUNTS) {
-    for (const device of [`e2e-${UUID}-A`, `e2e-${UUID}-B`, `e2e-vault-deletion-${UUID}`]) {
-      assert.equal(isPurgeableE2eEntry({ service: SYNC, account: `${entry}-${device}` }), true)
+test('matches every e2e-suffixed account of both sync services', () => {
+  for (const service of [OWN, SYNC]) {
+    for (const entry of KEYCHAIN_ACCOUNTS) {
+      for (const device of [`e2e-${UUID}-A`, `e2e-${UUID}-B`, `e2e-vault-deletion-${UUID}`]) {
+        assert.equal(isPurgeableE2eEntry({ service, account: `${entry}-${device}` }), true)
+      }
     }
   }
 })
@@ -80,6 +85,7 @@ test('never matches production or local dev accounts', () => {
     'access-token-kaan94karaca@gmail.com-dev-d9cfd05c'
   ]) {
     assert.equal(isPurgeableE2eEntry({ service: SYNC, account }), false, account)
+    assert.equal(isPurgeableE2eEntry({ service: OWN, account }), false, account)
   }
 })
 
@@ -89,6 +95,7 @@ test('ignores services outside memry', () => {
     false
   )
   assert.equal(isPurgeableE2eEntry({ service: 'AirPort', account: 'e2e-network' }), false)
+  assert.equal(isPurgeableE2eEntry({ service: `${OWN}.readwise`, account: 'token-e2e-x' }), false)
   assert.equal(isPurgeableE2eEntry({ service: SYNC, account: undefined }), false)
   assert.equal(isPurgeableE2eEntry({ service: undefined, account: 'master-key-e2e-x' }), false)
 })
@@ -153,6 +160,15 @@ const CMDKEY = [
   '    Target: LegacyGeneric:target=master-key.com.memry.sync',
   '    Type: Generic',
   '',
+  `    Target: LegacyGeneric:target=${OWN}/master-key-e2e-${UUID}-A`,
+  '    Type: Generic',
+  '',
+  `    Target: LegacyGeneric:target=${OWN}/device-signing-key-e2e-${UUID}-B`,
+  '    Type: Generic',
+  '',
+  `    Target: LegacyGeneric:target=${OWN}/device-signing-key`,
+  '    Type: Generic',
+  '',
   '    Target: Domain:target=TERMSRV/host',
   '    Type: Domain Password',
   ''
@@ -161,14 +177,29 @@ const CMDKEY = [
 test('parses cmdkey /list output and selects only this device (Windows)', () => {
   const targets = parseCmdkeyList(CMDKEY)
 
-  assert.equal(targets.length, 4)
+  assert.equal(targets.length, 7)
   assert.deepEqual(windowsTargetsForDevice(targets, `e2e-${UUID}-A`), [
-    `master-key-e2e-${UUID}-A.com.memry.sync`
+    `master-key-e2e-${UUID}-A.com.memry.sync`,
+    `${OWN}/master-key-e2e-${UUID}-A`
   ])
   assert.deepEqual(windowsTargetsForDevice(targets, `e2e-${UUID}-B`), [
-    `access-token-e2e-${UUID}-B.com.memry.sync`
+    `access-token-e2e-${UUID}-B.com.memry.sync`,
+    `${OWN}/device-signing-key-e2e-${UUID}-B`
   ])
   assert.deepEqual(windowsTargetsForDevice(targets, 'A'), [])
+})
+
+test('a Windows target names its service and account in either form', () => {
+  assert.deepEqual(parseWindowsTarget(`${OWN}/master-key-e2e-x`), {
+    service: OWN,
+    account: 'master-key-e2e-x'
+  })
+  assert.deepEqual(parseWindowsTarget('master-key-e2e-x.com.memry.sync'), {
+    service: SYNC,
+    account: 'master-key-e2e-x'
+  })
+  assert.equal(parseWindowsTarget(`${OWN}.readwise/token-e2e-x`), undefined)
+  assert.equal(parseWindowsTarget('TERMSRV/host'), undefined)
 })
 
 test('reads the older cmdkey form without a target= prefix (Windows)', () => {
@@ -190,14 +221,20 @@ const SECRET_TOOL = [
   '[/org/freedesktop/secrets/collection/login/14]',
   'attribute.service = com.memry.sync',
   'attribute.username = access-token-e2e-x-B',
+  '[/org/freedesktop/secrets/collection/login/15]',
+  `attribute.service = ${OWN}`,
+  'attribute.username = device-signing-key-e2e-x-A',
   ''
 ].join('\n')
 
 test('parses secret-tool search output and selects only this device (Linux)', () => {
   const entries = parseSecretToolSearch(SECRET_TOOL)
 
-  assert.equal(entries.length, 3)
-  assert.deepEqual(linuxAccountsForDevice(entries, 'e2e-x-A'), ['master-key-e2e-x-A'])
+  assert.equal(entries.length, 4)
+  assert.deepEqual(linuxAccountsForDevice(entries, 'e2e-x-A'), [
+    'master-key-e2e-x-A',
+    'device-signing-key-e2e-x-A'
+  ])
   assert.deepEqual(linuxAccountsForDevice(entries, 'e2e-x-B'), ['access-token-e2e-x-B'])
   assert.deepEqual(linuxAccountsForDevice(entries, 'dev'), [])
 })

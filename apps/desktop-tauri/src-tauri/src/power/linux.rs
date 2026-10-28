@@ -1,5 +1,6 @@
 //! logind on the system bus: `PrepareForSleep(start)` and `PrepareForShutdown(start)`. A machine
-//! with no system bus (a container) logs once and goes without power events.
+//! with no system bus (a container) logs once and goes without power events. logind announces no
+//! logout; the session manager does (`session_manager.rs`).
 //!
 //! A shutdown gives the app no signal it can finish work in: logind announces it and, unless a
 //! client holds a delay inhibitor, goes on at once. The shutdown listener therefore takes one
@@ -19,6 +20,7 @@ const PATH: &str = "/org/freedesktop/login1";
 const INTERFACE: &str = "org.freedesktop.login1.Manager";
 
 pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
+    super::session_manager::start(app, sender);
     let sleep_sender = sender.clone();
     spawn("PrepareForSleep", move || {
         listen("PrepareForSleep", |start| {

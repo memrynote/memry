@@ -4,6 +4,7 @@
 //! the config owner and init, and the watcher (`watch`), which reads `note_files` and writes nothing.
 
 pub mod config;
+pub mod consumer;
 pub mod file_types;
 pub mod fs_atomic;
 pub mod hash;
