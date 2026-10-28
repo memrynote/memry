@@ -198,6 +198,16 @@ impl Converter {
         })
     }
 
+    /// Whether a replace of this body would delete nothing a newer build wrote
+    /// ([`canonical::read_is_lossless`]). `false` when the read panics.
+    pub fn reads_losslessly(&self, doc: &Document, fragment: &str) -> bool {
+        guard(|| {
+            doc.read(|txn| canonical::read_is_lossless(txn, fragment))
+                .ok()
+        })
+        .unwrap_or(false)
+    }
+
     /// `findUnrepresentableNodes`.
     pub fn find_unrepresentable_nodes(&self, doc: &Document, fragment: &str) -> Vec<String> {
         guard(|| {

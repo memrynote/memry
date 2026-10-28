@@ -15,6 +15,17 @@ import type { OracleCase } from './cases-frontmatter'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const NOTE_BLOCKS = resolve(here, '../../../../packages/contracts/test-vectors/note-blocks.json')
+/**
+ * What shipped releases wrote (`blocknote-history.mts`): their documents are read by this
+ * build's schema, so a mark or attribute a release wrote and this schema dropped shows here.
+ */
+const RELEASE_DOCS = ['0.47.1'].map((version) => ({
+  version,
+  path: resolve(
+    here,
+    `../../../../packages/contracts/test-vectors/markdown-convert/blocknote-${version}.json`
+  )
+}))
 
 /**
  * One node per distinct content expression: `inline*` (paragraph), `text*`
@@ -264,6 +275,20 @@ export function yxmlCases(): OracleCase[] {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')}`
     sources.push({ slug, updateHex: entry.updateHex })
+  }
+  for (const release of RELEASE_DOCS) {
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the file is a committed vector
+    const file = JSON.parse(readFileSync(release.path, 'utf8')) as {
+      docs: { name: string; updateHex?: string }[]
+    }
+    for (const entry of file.docs) {
+      if (entry.updateHex === undefined) continue
+      const slug = entry.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+      sources.push({ slug: `bn-${release.version}-${slug}`, updateHex: entry.updateHex })
+    }
   }
   for (const hand of handCases())
     sources.push({ slug: hand.slug, updateHex: updateHex(hand.roots) })

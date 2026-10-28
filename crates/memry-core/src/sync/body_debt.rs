@@ -13,7 +13,29 @@
 //! its next load; the snapshot push checks that separately
 //! ([`crate::crdt::SnapshotPusher::push`]).
 //!
-//! Two readers depend on the debt:
+//! **Invariant: a live note or journal whose record came from the server and
+//! whose server body this device's log does not wholly hold is owed.** Owed is
+//! therefore the one answer to "does this document still await its server
+//! body?", and an unowed document's log is the body to build on. Every door
+//! that lands such a record or a partial body keeps it:
+//!
+//! - a feed page owes its document records in the transaction before the one
+//!   that applies them, inside the same writer call ([`super::pull::PullLoop`],
+//!   `apply_all`), and takes back only the debts of records it skipped (a crash
+//!   between the two leaves a debt for a record not applied, which costs one
+//!   pull);
+//! - the first sync's metadata pass owes the same way (`PullLoop::fetch_ids`),
+//!   and its bodies pass owes every live document before it pulls any, so a run
+//!   that dies, or a document whose pull stops, leaves the debt standing;
+//! - a body pull's outcome settles or keeps the debt through [`after_pull`],
+//!   for the pass's body step and the first sync's bodies pass alike;
+//! - the body feed owes a document whose entry did not land or landed past a
+//!   gap ([`super::note_body_feed`]).
+//!
+//! A record pulled by a loop that lands no bodies (the dev CLI's
+//! `PullLoop::run`, which pulls every body itself) is not owed.
+//!
+//! Three readers depend on the debt:
 //!
 //! - **The pass's body step** pulls the due documents.
 //!   A page re-pulled after a crash skips its identical records (chapter 06
@@ -22,6 +44,10 @@
 //! - **[`crate::crdt::SnapshotPusher::push`] refuses an owed document**
 //!   (§7.13.2 condition 1): a snapshot prunes the server's updates at or below
 //!   its watermark, and this device does not hold them yet.
+//! - **The desktop external feed** (`domain::external_feed`) writes no file
+//!   text into an owed document: text authored over an empty or partial body
+//!   shares no Yjs items with the server body, and the merge holds both
+//!   (#2536).
 //!
 //! A document whose pull keeps failing waits `2^(failures - 1)` passes, up to
 //! [`MAX_WAIT_PASSES`], before it is pulled again, so one broken document does
@@ -32,6 +58,7 @@ use rusqlite::{Connection, OptionalExtension as _, params};
 use crate::api::errors::StorageError;
 
 use super::apply::{DOCUMENT_TYPES, Pending};
+use super::body_pull::BodyPullReport;
 use super::store::BARE_TOMBSTONE_ITEM_TYPE;
 
 const OWED_PREFIX: &str = "sync.body_owed:";
@@ -89,6 +116,24 @@ pub fn owe_after_failure(conn: &Connection, doc_id: &str) -> Result<(), StorageE
         .unwrap_or(MAX_WAIT_PASSES)
         .min(MAX_WAIT_PASSES);
     write(conn, doc_id, failures, wait)
+}
+
+/// What a finished body pull of `doc_id` does to its debt. Settled only when
+/// the pull reached the server's head and stored everything
+/// ([`BodyPullReport::merged`]); a stop is backed off; a pull that only
+/// yielded at the page cap made progress and stays owed as it is.
+pub(crate) fn after_pull(
+    conn: &Connection,
+    doc_id: &str,
+    pulled: &BodyPullReport,
+) -> Result<(), StorageError> {
+    if pulled.merged() {
+        settle(conn, doc_id)
+    } else if !pulled.stopped.is_empty() {
+        owe_after_failure(conn, doc_id)
+    } else {
+        owe(conn, doc_id)
+    }
 }
 
 /// Clears the debt: after a pull that reached the end of the server's log and

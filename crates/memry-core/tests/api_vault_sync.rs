@@ -415,3 +415,31 @@ async fn a_device_that_has_never_unlocked_refuses_before_it_asks_anything() {
     assert_eq!(error, SyncError::Locked);
     assert_eq!(transport.call_count(), 0);
 }
+
+/// A first sync and a pass over one vault run one at a time. The pass's body
+/// step and the first sync's bodies pass both settle debts, so a pass running
+/// inside a first sync could see a merged pull settle a debt the pass's own
+/// feed page had just owed past a gap.
+#[tokio::test]
+async fn a_first_sync_and_a_pass_over_one_vault_run_one_at_a_time() {
+    let vault = scratch_vault("one-at-a-time");
+    let (public, secret) = keypair();
+    let mut script = first_sync_script(&public, secret, OLD);
+    let first_sync_requests = script.len();
+    // The pass's first request, answered once the first sync is done.
+    script.push(Err(memry_core::api::errors::TransportError::Cancelled));
+    let transport = FakeTransport::slow(script, 20);
+    let session = session(transport.clone(), true);
+    let first = vault.sync(Arc::clone(&session));
+    let pass = vault.sync(session);
+
+    let (synced, passed) = tokio::join!(first.first_sync(None), pass.sync_now());
+    synced.expect("the first sync was not interleaved with the pass");
+    assert!(
+        passed.is_err(),
+        "the pass ran after it, into the scripted failure"
+    );
+    let urls: Vec<String> = transport.calls().iter().map(|c| c.url.clone()).collect();
+    assert_eq!(urls.len(), first_sync_requests + 1, "{urls:?}");
+    assert!(urls[first_sync_requests].contains("/devices"), "{urls:?}");
+}
