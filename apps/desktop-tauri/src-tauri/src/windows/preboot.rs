@@ -31,8 +31,9 @@ pub(super) fn locale(app: &AppHandle<Wry>) -> &'static str {
         .unwrap_or_else(|| locale::resolve_os_locale(sys_locale::get_locale().as_deref()))
 }
 
+/// The copy of `key`, a full `ns:key` literal, so the i18n check sees it used.
 pub(super) fn text(locale: &str, key: &str, args: &Args) -> String {
-    i18n::t(locale, &format!("system:{key}"), args)
+    i18n::t(locale, key, args)
 }
 
 /// The script that fills the page. Every value is a JSON string literal and lands in

@@ -66,11 +66,11 @@ pub fn on_startup_failure(app: &AppHandle<Wry>, failure: &StageFailure) {
         vec![
             (
                 "title",
-                preboot::text(locale, "startup.failed.title", &Args::new()),
+                preboot::text(locale, "system:startup.failed.title", &Args::new()),
             ),
             (
                 "body",
-                preboot::text(locale, "startup.failed.body", &Args::new()),
+                preboot::text(locale, "system:startup.failed.body", &Args::new()),
             ),
             ("details", failure.error.to_string()),
             ("logs", log_folder(app, locale)),
@@ -102,15 +102,15 @@ pub fn show_crashed(app: &AppHandle<Wry>, count: usize, reason: &str) {
         vec![
             (
                 "title",
-                preboot::text(locale, "startup.crashed.title", &Args::new()),
+                preboot::text(locale, "system:startup.crashed.title", &Args::new()),
             ),
             (
                 "body",
-                preboot::text(locale, "startup.crashed.body", &Args::new()),
+                preboot::text(locale, "system:startup.crashed.body", &Args::new()),
             ),
             (
                 "details",
-                preboot::text(locale, "startup.crashed.details", &details),
+                preboot::text(locale, "system:startup.crashed.details", &details),
             ),
             ("logs", log_folder(app, locale)),
         ],
@@ -153,7 +153,7 @@ fn log_folder(app: &AppHandle<Wry>, locale: &str) -> String {
         .unwrap_or_default();
     preboot::text(
         locale,
-        "startup.logFolder",
+        "system:startup.logFolder",
         &Args::from([("path".to_owned(), Arg::from(path.as_str()))]),
     )
 }
