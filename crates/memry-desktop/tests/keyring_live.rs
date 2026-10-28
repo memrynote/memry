@@ -12,7 +12,8 @@ use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::seams::secure_store::{
-    DeviceIdentityStore, GenericSecrets, KEYS, KeyringStore, SecureStoreHealth, keychain_absent,
+    DeviceIdentityStore, GenericSecrets, IDENTITY_SERVICE, KeyringStore, STORE_KEYS,
+    SecureStoreHealth, keychain_absent,
 };
 
 fn unique(tag: &str) -> String {
@@ -61,7 +62,7 @@ fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
     }
     let store = Arc::new(store(&unique("sync")));
     let _cleanup = Cleanup(store.clone());
-    for (n, key) in KEYS.into_iter().enumerate() {
+    for (n, key) in STORE_KEYS.into_iter().enumerate() {
         let n = u8::try_from(n).unwrap();
         for value in [vec![n; 32], (0..64_u8).map(|b| b ^ n).collect::<Vec<_>>()] {
             store.set(key, value.clone()).unwrap();
@@ -71,7 +72,7 @@ fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
     store.delete(SecureStoreKey::MasterKey).unwrap();
     assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
     store.clear().unwrap();
-    for key in KEYS {
+    for key in STORE_KEYS {
         assert_eq!(store.get(key).unwrap(), None);
     }
     assert_eq!(store.health(), SecureStoreHealth::Ready);
@@ -123,7 +124,7 @@ fn with_no_secret_service_every_call_is_locked_and_nothing_is_stored() {
         return;
     }
     let store = store(&unique("none"));
-    for key in KEYS {
+    for key in STORE_KEYS {
         assert_eq!(store.get(key), Err(SecureStoreError::Locked));
         assert_eq!(store.set(key, vec![1; 32]), Err(SecureStoreError::Locked));
     }
@@ -143,25 +144,24 @@ fn the_device_key_file_of_an_earlier_build_moves_into_the_real_keychain() {
     }
     assert!(!keychain_absent(), "this system has a keychain");
     let profile = tempfile::tempdir().unwrap();
-    let store = Arc::new(store(&unique("identity")));
+    let suffix = unique("identity");
+    let store = Arc::new(store(&suffix));
+    let account = format!("device-signing-key-{suffix}");
     let _cleanup = Cleanup(store.clone());
     let key: Vec<u8> = (0..64).collect();
     std::fs::write(profile.path().join("device-key"), &key).unwrap();
     let identity = DeviceIdentityStore::new(store.clone(), profile.path());
-    assert_eq!(
-        identity.get(SecureStoreKey::DeviceSigningKey).unwrap(),
-        Some(key.clone())
-    );
-    assert!(!profile.path().join("device-key").exists());
-    assert_eq!(
-        store.get(SecureStoreKey::DeviceSigningKey).unwrap(),
-        Some(key.clone())
-    );
-    let restarted = DeviceIdentityStore::new(store.clone(), profile.path());
-    assert_eq!(
-        restarted.get(SecureStoreKey::DeviceSigningKey).unwrap(),
-        Some(key)
-    );
+    let moved = identity.get(SecureStoreKey::DeviceSigningKey);
+    let in_keychain = store.get_secret(IDENTITY_SERVICE, &account);
+    let restarted = DeviceIdentityStore::new(store.clone(), profile.path())
+        .get(SecureStoreKey::DeviceSigningKey);
+    let file_left = profile.path().join("device-key").exists();
+    identity.delete(SecureStoreKey::DeviceSigningKey).unwrap();
+    assert_eq!(moved.unwrap(), Some(key.clone()));
+    assert_eq!(in_keychain.unwrap(), Some(key.clone()));
+    assert_eq!(restarted.unwrap(), Some(key));
+    assert!(!file_left);
+    assert_eq!(store.get_secret(IDENTITY_SERVICE, &account).unwrap(), None);
 }
 
 /// `MEMRY_LIVE_NO_SECRET_SERVICE=1` (Linux): with no Secret Service on the bus the system has no

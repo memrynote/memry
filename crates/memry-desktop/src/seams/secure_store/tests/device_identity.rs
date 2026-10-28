@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use base64::Engine;
 use base64::engine::general_purpose::STANDARD;
+use keyring_core::Error;
 use memry_core::api::auth::ensure_device_identity;
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -18,6 +19,10 @@ use crate::seams::secure_store::DeviceIdentityStore;
 
 const DSK: SecureStoreKey = SecureStoreKey::DeviceSigningKey;
 const ACCOUNT: &str = "device-signing-key";
+/// This app's own namespace for the key.
+const OWN: &str = "com.memrynote.memry";
+/// Electron's, which Electron moves into its own file and deletes.
+const ELECTRON: &str = "com.memry.sync";
 
 fn key(byte: u8) -> Vec<u8> {
     vec![byte; 64]
@@ -41,7 +46,7 @@ impl World {
     /// A new store over the same keychain and profile, as after a restart.
     fn store(&self) -> DeviceIdentityStore {
         let probe = self.no_keychain.clone();
-        DeviceIdentityStore::with_probe(self.rig.store.clone(), self.dir.path(), move || {
+        DeviceIdentityStore::with_probe(&self.rig.store, self.dir.path(), move || {
             probe.load(Ordering::SeqCst)
         })
     }
@@ -63,16 +68,17 @@ impl World {
     }
 
     fn put_keychain(&self, bytes: &[u8]) {
-        self.rig
-            .fake
-            .put("com.memry.sync", ACCOUNT, STANDARD.encode(bytes).as_bytes());
+        self.rig.fake.put(OWN, ACCOUNT, bytes);
     }
 
     fn keychain(&self) -> Option<Vec<u8>> {
+        self.rig.fake.stored(OWN, ACCOUNT)
+    }
+
+    fn put_electron(&self, bytes: &[u8]) {
         self.rig
             .fake
-            .stored("com.memry.sync", ACCOUNT)
-            .map(|text| STANDARD.decode(text).unwrap())
+            .put(ELECTRON, ACCOUNT, STANDARD.encode(bytes).as_bytes());
     }
 
     fn legacy_bytes(&self) -> Option<Vec<u8>> {
@@ -173,7 +179,7 @@ fn a_locked_keychain_with_no_file_is_locked_and_nothing_is_minted() {
 }
 
 #[test]
-fn once_the_key_lived_in_the_keychain_a_file_is_never_used() {
+fn once_the_key_moved_a_locked_keychain_is_locked_even_with_a_file() {
     let w = world();
     w.mark();
     w.write_legacy(&key(1));
@@ -183,12 +189,85 @@ fn once_the_key_lived_in_the_keychain_a_file_is_never_used() {
     assert_eq!(store.get(DSK), Err(SecureStoreError::Locked));
     assert_eq!(store.set(DSK, key(3)), Err(SecureStoreError::Locked));
     assert_eq!(w.legacy_bytes(), Some(key(1)));
-    w.keychain_up();
-    assert_eq!(
-        store.get(DSK).unwrap(),
-        None,
-        "the file is not migrated either"
+}
+
+#[test]
+fn once_the_key_moved_an_empty_keychain_takes_the_file_back_never_a_new_key() {
+    let w = world();
+    w.mark();
+    w.write_legacy(&key(1));
+    assert_eq!(w.store().get(DSK).unwrap(), Some(key(1)));
+    assert_eq!(w.keychain(), Some(key(1)));
+    assert!(!exists(&w.legacy()));
+}
+
+#[test]
+fn once_the_key_moved_an_empty_keychain_is_failed_never_absent() {
+    let w = world();
+    w.mark();
+    let store: Arc<dyn SecureStore> = Arc::new(w.store());
+    let Err(SecureStoreError::Failed { what }) = store.get(DSK) else {
+        panic!("a key that moved and is gone is Failed");
+    };
+    assert!(what.contains("missing"), "{what}");
+    assert!(ensure_device_identity(store).is_err());
+    assert_eq!(w.keychain(), None, "nothing is minted");
+}
+
+#[test]
+fn electron_moving_its_keychain_item_never_changes_this_device_s_identity() {
+    // Electron keeps the device key in its own file and deletes the `com.memry.sync` item; an
+    // Electron run whose file is unreadable reads that item back. Neither may reach this key.
+    let w = world();
+    w.put_electron(&key(9));
+    let store: Arc<dyn SecureStore> = Arc::new(w.store());
+    ensure_device_identity(store.clone()).unwrap();
+    let mine = w.keychain().expect("minted in this app's namespace");
+    assert_ne!(
+        mine,
+        key(9),
+        "Electron's identity is adopted only by the Step 37 import"
     );
+    assert!(
+        w.rig.fake.stored(ELECTRON, ACCOUNT).is_some(),
+        "Electron's item is untouched"
+    );
+    w.rig
+        .fake
+        .data
+        .lock()
+        .unwrap()
+        .remove(&(ELECTRON.to_owned(), ACCOUNT.to_owned()));
+    assert_eq!(
+        w.store().get(DSK).unwrap(),
+        Some(mine.clone()),
+        "after a restart"
+    );
+    w.put_electron(&key(8));
+    assert_eq!(w.store().get(DSK).unwrap(), Some(mine));
+}
+
+#[test]
+fn a_refused_move_write_serves_the_file_and_keeps_it() {
+    let w = world();
+    w.write_legacy(&key(1));
+    *w.rig.fake.fail_writes.lock().unwrap() = Some(|| Error::TooLong("blob".to_owned(), 10));
+    assert_eq!(w.store().get(DSK).unwrap(), Some(key(1)));
+    assert_eq!(w.legacy_bytes(), Some(key(1)));
+    assert!(!exists(&w.marker()));
+}
+
+#[test]
+fn with_no_keychain_on_the_system_delete_removes_the_file() {
+    let w = world();
+    w.keychain_down();
+    w.no_keychain.store(true, Ordering::SeqCst);
+    let store: Arc<dyn SecureStore> = Arc::new(w.store());
+    ensure_device_identity(store.clone()).unwrap();
+    assert!(exists(&w.legacy()));
+    store.delete(DSK).unwrap();
+    assert!(!exists(&w.legacy()));
+    assert_eq!(store.get(DSK).unwrap(), None);
 }
 
 #[test]

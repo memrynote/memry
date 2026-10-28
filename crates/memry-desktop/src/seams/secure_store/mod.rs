@@ -43,7 +43,7 @@ use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
 use zeroize::Zeroizing;
 
-pub use account::{KEYS, SERVICE, account};
+pub use account::{IDENTITY_SERVICE, KEYS, SERVICE, STORE_KEYS, account};
 pub use device_identity::DeviceIdentityStore;
 pub use generic::GenericSecrets;
 pub use keyring_backend::{Native, Store, StoreFactory};
@@ -136,8 +136,21 @@ impl KeyringStore {
         self.worker.on_recovered(Arc::new(listener));
     }
 
-    fn account(&self, key: SecureStoreKey) -> String {
-        account(key, self.device_suffix.as_deref())
+    fn account(&self, key: SecureStoreKey) -> Result<String, SecureStoreError> {
+        if key == SecureStoreKey::DeviceSigningKey {
+            return Err(SecureStoreError::Denied {
+                what: "the device signing key is kept by the device identity store".to_owned(),
+            });
+        }
+        Ok(account(key, self.device_suffix.as_deref()))
+    }
+
+    /// The account of this device's signing key under [`IDENTITY_SERVICE`].
+    pub(crate) fn identity_account(&self) -> String {
+        account(
+            SecureStoreKey::DeviceSigningKey,
+            self.device_suffix.as_deref(),
+        )
     }
 }
 
@@ -163,7 +176,7 @@ fn decode(text: &[u8]) -> Result<Vec<u8>, SecureStoreError> {
 
 impl SecureStore for KeyringStore {
     fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
-        match self.worker.call(SERVICE, &self.account(key), Op::Get)? {
+        match self.worker.call(SERVICE, &self.account(key)?, Op::Get)? {
             Some(text) => decode(&text).map(Some),
             None => Ok(None),
         }
@@ -173,21 +186,21 @@ impl SecureStore for KeyringStore {
         let value = Zeroizing::new(value);
         let text = Zeroizing::new(STANDARD.encode(value.as_slice()).into_bytes());
         self.worker
-            .call(SERVICE, &self.account(key), Op::Set(text))
+            .call(SERVICE, &self.account(key)?, Op::Set(text))
             .map(|_| ())
     }
 
     fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
         self.worker
-            .call(SERVICE, &self.account(key), Op::Delete)
+            .call(SERVICE, &self.account(key)?, Op::Delete)
             .map(|_| ())
     }
 
-    /// Removes all five entries, one after another. A failure on one does not stop the rest;
-    /// the first failure is returned.
+    /// Removes the four entries this store serves, one after another. A failure on one does not
+    /// stop the rest; the first failure is returned. Electron's device key item is never touched.
     fn clear(&self) -> Result<(), SecureStoreError> {
         let mut first = Ok(());
-        for key in KEYS {
+        for key in STORE_KEYS {
             if let Err(error) = self.delete(key) {
                 first = first.and(Err(error));
             }

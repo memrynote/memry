@@ -230,7 +230,9 @@ fn tokio_interval(period: Duration) -> tokio::time::Interval {
 
 /// The app's one keychain worker, and the core's `SecureStore` over it: the device identity
 /// store, which also moves a device key the builds before Step 15 kept in `<profile>/device-key`.
-/// Later steps take both from managed state instead of opening a second keychain.
+/// Later steps take both from managed state instead of opening a second keychain. The raw
+/// `KeyringStore` refuses the device key, so every device-key operation goes through the identity
+/// store and its cache.
 fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let data_dir = app.state::<AppPaths>().data_dir.clone();
     let config = app.state::<Arc<AppConfig>>().inner().clone();
