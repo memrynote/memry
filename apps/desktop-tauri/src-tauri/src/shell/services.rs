@@ -8,13 +8,14 @@ use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
 use memry_desktop::config::{Compiled, MemryEnv, RuntimeConfig};
+use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::launch_timeline::{self, LaunchPhase};
 use memry_desktop::locale::{self, LocaleService};
 use memry_desktop::logging::localtime;
-use memry_desktop::paths::AppPaths;
-use memry_desktop::profile_store::ProfileDeviceKeyStore;
+use memry_desktop::paths::{AppPaths, DEVICE_VAR};
 use memry_desktop::registry::AppConfig;
+use memry_desktop::seams::secure_store::{DeviceIdentityStore, KeyringStore};
 use memry_desktop::session::Session;
 use memry_desktop::settings::SettingsService;
 use memry_desktop::startup_values;
@@ -227,13 +228,26 @@ fn tokio_interval(period: Duration) -> tokio::time::Interval {
     interval
 }
 
+/// The app's one keychain worker, and the core's `SecureStore` over it: the device identity
+/// store, which also moves a device key the builds before Step 15 kept in `<profile>/device-key`.
+/// Later steps take both from managed state instead of opening a second keychain. The raw
+/// `KeyringStore` refuses the device key, so every device-key operation goes through the identity
+/// store and its cache.
 fn manage_settings(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let data_dir = app.state::<AppPaths>().data_dir.clone();
     let config = app.state::<Arc<AppConfig>>().inner().clone();
-    app.manage(SettingsService::new(
-        ProfileDeviceKeyStore::shared(&data_dir),
-        config,
-    ));
+    let (device, gate) = {
+        let env = app.state::<LaunchEnv>();
+        (
+            env.get(DEVICE_VAR).map(str::to_owned),
+            E2eGate::from_env(&env),
+        )
+    };
+    let keychain = Arc::new(KeyringStore::new(device, gate, &data_dir));
+    let identity = Arc::new(DeviceIdentityStore::new(keychain.clone(), &data_dir));
+    app.manage(keychain);
+    app.manage(identity.clone());
+    app.manage(SettingsService::new(identity, config));
     Ok(())
 }
 
@@ -271,10 +285,18 @@ pub fn startup_state(app: &AppHandle<Wry>) -> StartupState {
     let config = app.state::<Arc<AppConfig>>().inner().clone();
     let general = app.try_state::<SettingsService>().and_then(|settings| {
         let vault = app.state::<Session>().current()?;
-        settings
-            .read_group(Some(&vault), "general")
-            .ok()
-            .map(|read| read.value)
+        match settings.read_group(Some(&vault), "general") {
+            Ok(read) => Some(read.value),
+            // The first paint uses the cached startup values; the error reaches the renderer on
+            // its own settings read, with its code (`device_identity_missing` and the others).
+            Err(error) => {
+                tracing::warn!(
+                    scope = "Settings",
+                    "the vault's settings could not be read for the first paint: {error}"
+                );
+                None
+            }
+        }
     });
     let values = startup_values::read(&config, general.as_ref());
     let locale = app.state::<Arc<LocaleService>>().get();

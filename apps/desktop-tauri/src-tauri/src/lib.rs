@@ -167,7 +167,8 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_clipboard_manager::init());
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(guards::process_gone::plugin());
     // macOS and Windows write their own login item (`autostart/`).
     #[cfg(target_os = "linux")]
     let app = app.plugin(

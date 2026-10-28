@@ -63,6 +63,9 @@ pub struct Fake {
     pub targets: Arc<Mutex<Vec<Option<String>>>>,
     /// The (account, `username` attribute) of each `update_attributes`.
     pub usernames: Arc<Mutex<Vec<(String, String)>>>,
+    /// Fails every write with this error, while reads and deletes answer.
+    pub fail_writes: BuildError,
+    pub writes: Arc<AtomicUsize>,
 }
 
 pub struct FakeCred {
@@ -79,6 +82,8 @@ impl Fake {
             reader_threads: Arc::default(),
             targets: Arc::default(),
             usernames: Arc::default(),
+            fail_writes: Arc::default(),
+            writes: Arc::default(),
         }
     }
 
@@ -90,6 +95,8 @@ impl Fake {
             reader_threads: self.reader_threads.clone(),
             targets: self.targets.clone(),
             usernames: self.usernames.clone(),
+            fail_writes: self.fail_writes.clone(),
+            writes: self.writes.clone(),
         }
     }
 
@@ -139,6 +146,10 @@ impl std::fmt::Debug for FakeCred {
 impl CredentialApi for FakeCred {
     fn set_secret(&self, secret: &[u8]) -> keyring_core::Result<()> {
         self.fake.act()?;
+        self.fake.writes.fetch_add(1, Ordering::SeqCst);
+        if let Some(error) = *self.fake.fail_writes.lock().unwrap() {
+            return Err(error());
+        }
         self.fake
             .data
             .lock()

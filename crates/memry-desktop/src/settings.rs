@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use memry_core::api::auth::ensure_device_identity;
-use memry_core::api::errors::StorageError;
+use memry_core::api::errors::{AuthError, StorageError};
 use memry_core::domain::app_settings::{AppSettings, SettingsChange, group_defaults};
 use memry_core::seams::secure_store::SecureStore;
 use serde_json::{Map, Value};
@@ -27,8 +27,24 @@ pub enum SettingsError {
     /// The value is not one the group accepts, or the group is unknown. Nothing was written.
     #[error("{0}")]
     Invalid(String),
+    /// This device's key moved into the keychain and is gone from it. Nothing synced can be
+    /// written, and no new key is minted over it; restoring the keychain item, or resetting the
+    /// device identity (Step 19, #3536), is the way back.
+    #[error("{}", crate::seams::secure_store::device_identity_missing())]
+    DeviceIdentityMissing,
     #[error("{0}")]
     Failed(String),
+}
+
+fn auth_failed(error: AuthError) -> SettingsError {
+    match error {
+        AuthError::SecureStore { source }
+            if crate::seams::secure_store::is_device_identity_missing(&source) =>
+        {
+            SettingsError::DeviceIdentityMissing
+        }
+        other => SettingsError::Failed(other.to_string()),
+    }
 }
 
 impl From<StorageError> for SettingsError {
@@ -71,12 +87,11 @@ impl SettingsService {
 
     fn settings(&self, vault: &OpenVault) -> Result<AppSettings, SettingsError> {
         // Mints the device key on the first synced write of a profile; sign-in reuses it.
-        ensure_device_identity(self.store.clone())
-            .map_err(|e| SettingsError::Failed(e.to_string()))?;
+        ensure_device_identity(self.store.clone()).map_err(auth_failed)?;
         vault
             .vault
             .app_settings(self.store.clone())
-            .map_err(|e| SettingsError::Failed(e.to_string()))
+            .map_err(auth_failed)
     }
 
     /// A group of the open vault, or its defaults while none is open.
