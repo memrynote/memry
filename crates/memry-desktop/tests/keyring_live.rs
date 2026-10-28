@@ -1,13 +1,16 @@
-//! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). Every test uses a
-//! device suffix of its own (`e2e-live-...`, so accounts like `master-key-e2e-live-...` under
-//! `com.memrynote.memry`) or the service `com.memrynote.memry.test`, and removes what it wrote, so
-//! the real accounts of a developer's machine are never touched. CI runs them: macOS (a
-//! throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a
+//! `KeyringStore` against the live OS keychain (`--features live-os-secrets`). CI runs them: macOS
+//! (a throw-away default keychain on the runner), Windows (Credential Manager) and Linux under a
 //! private session bus (`gnome-keyring-daemon --unlock`, a locked keyring, a restarted daemon, and
 //! again with no Secret Service at all).
+//!
+//! Every test reaches the keychain through a [`Live`], which is the isolation rule: a device
+//! suffix and accounts no other test of any run uses (`e2e-live-...`, so `master-key-e2e-live-...`
+//! under `com.memrynote.memry`, or accounts under `com.memrynote.memry.test`), one test on the
+//! keychain at a time, and everything written removed when the test ends, pass or fail. The real
+//! accounts of a developer's machine are never touched.
 #![cfg(feature = "live-os-secrets")]
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use memry_core::api::errors::SecureStoreError;
 use memry_core::seams::secure_store::{SecureStore, SecureStoreKey};
@@ -32,6 +35,8 @@ fn unique(tag: &str) -> String {
     format!("e2e-live-{tag}-{}-{nanos}-{n}", std::process::id())
 }
 
+const TEST_SERVICE: &str = "com.memrynote.memry.test";
+
 /// Warnings of the store (why the keychain answered `Locked`) show in a failing test's output.
 fn store(suffix: &str) -> KeyringStore {
     let _ = tracing_subscriber::fmt()
@@ -45,12 +50,81 @@ fn store(suffix: &str) -> KeyringStore {
     )
 }
 
-/// Removes the entries of a test's device suffix when the test ends, pass or fail.
-struct Cleanup(Arc<KeyringStore>);
+/// One test's hold on the live keychain: its store, the accounts it wrote, and its turn.
+///
+/// Turns, because Credential Manager loses updates when writers overlap. A delete that answered
+/// `Ok` left the item in the store, and a read in the same process found it again: the flake of
+/// `the_device_key_file_of_an_earlier_build_moves_into_the_real_keychain` on windows-2022. On
+/// Windows 11, 5 threads of 100 set, read, delete and read cycles each left 75 deleted items in
+/// the store, and 16 threads made reads right after a write miss it; one cycle at a time left
+/// none. The app makes every keychain call on one thread (`seams/secure_store/worker.rs`), so the
+/// tests take turns the same way.
+struct Live {
+    store: Arc<KeyringStore>,
+    /// The device suffix of [`Live::store`], for an item a Linux test writes with `secret-tool`.
+    #[cfg_attr(not(target_os = "linux"), expect(dead_code))]
+    suffix: String,
+    /// Accounts under [`TEST_SERVICE`] to remove at the end.
+    generic: Vec<String>,
+    /// Remove the store's entries at the end: off for a suffix CI prepared.
+    clean: bool,
+    _turn: MutexGuard<'static, ()>,
+}
 
-impl Drop for Cleanup {
+impl Live {
+    fn turn() -> MutexGuard<'static, ()> {
+        static TURN: Mutex<()> = Mutex::new(());
+        TURN.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// A store under a device suffix of its own; its entries go when the test ends.
+    fn new(tag: &str) -> Self {
+        let turn = Self::turn();
+        let suffix = unique(tag);
+        Self {
+            store: Arc::new(store(&suffix)),
+            suffix,
+            generic: Vec::new(),
+            clean: true,
+            _turn: turn,
+        }
+    }
+
+    /// The store of a suffix a CI step wrote before the test ran. Left as it is.
+    #[cfg(target_os = "linux")]
+    fn prepared(suffix: &str) -> Self {
+        let turn = Self::turn();
+        Self {
+            store: Arc::new(store(suffix)),
+            suffix: suffix.to_owned(),
+            generic: Vec::new(),
+            clean: false,
+            _turn: turn,
+        }
+    }
+
+    /// An account under [`TEST_SERVICE`] no other test uses, removed at the end.
+    fn account(&mut self) -> String {
+        let account = unique("account");
+        self.generic.push(account.clone());
+        account
+    }
+}
+
+impl Drop for Live {
     fn drop(&mut self) {
-        let _ = self.0.clear();
+        if !self.clean {
+            return;
+        }
+        let _ = self.store.clear();
+        let elsewhere = tempfile::tempdir();
+        if let Ok(dir) = &elsewhere {
+            let _ = DeviceIdentityStore::new(self.store.clone(), dir.path())
+                .delete(SecureStoreKey::DeviceSigningKey);
+        }
+        for account in &self.generic {
+            let _ = self.store.delete_secret(TEST_SERVICE, account);
+        }
     }
 }
 
@@ -68,8 +142,8 @@ fn the_five_sync_secrets_round_trip_in_the_real_keychain() {
     if no_secret_service() || skip_on_a_developer_mac() {
         return;
     }
-    let store = Arc::new(store(&unique("sync")));
-    let _cleanup = Cleanup(store.clone());
+    let live = Live::new("sync");
+    let store = &live.store;
     for (n, key) in STORE_KEYS.into_iter().enumerate() {
         let n = u8::try_from(n).unwrap();
         for value in [vec![n; 32], (0..64_u8).map(|b| b ^ n).collect::<Vec<_>>()] {
@@ -91,54 +165,34 @@ fn a_generic_secret_of_forty_raw_bytes_round_trips() {
     if no_secret_service() || skip_on_a_developer_mac() {
         return;
     }
-    let store = store(&unique("generic"));
-    let account = unique("account");
+    let mut live = Live::new("generic");
+    let account = live.account();
+    let store = &live.store;
     let value: Vec<u8> = (0..40).map(|b| b * 5 + 1).collect();
-    assert_eq!(
-        store
-            .get_secret("com.memrynote.memry.test", &account)
-            .unwrap(),
-        None
-    );
-    store
-        .set_secret("com.memrynote.memry.test", &account, &value)
-        .unwrap();
-    let read = store
-        .get_secret("com.memrynote.memry.test", &account)
-        .unwrap();
-    store
-        .delete_secret("com.memrynote.memry.test", &account)
-        .unwrap();
+    assert_eq!(store.get_secret(TEST_SERVICE, &account).unwrap(), None);
+    store.set_secret(TEST_SERVICE, &account, &value).unwrap();
+    let read = store.get_secret(TEST_SERVICE, &account).unwrap();
+    store.delete_secret(TEST_SERVICE, &account).unwrap();
     assert_eq!(read, Some(value));
-    assert_eq!(
-        store
-            .get_secret("com.memrynote.memry.test", &account)
-            .unwrap(),
-        None
-    );
+    assert_eq!(store.get_secret(TEST_SERVICE, &account).unwrap(), None);
 }
 
 /// Credential Manager holds a blob of at most 2560 bytes. The five real values are at most 90.
 #[cfg(windows)]
 #[test]
 fn a_big_generic_value_is_failed_not_locked_on_windows() {
-    let store = store(&unique("blob"));
-    let account = unique("account");
+    let mut live = Live::new("blob");
+    let account = live.account();
+    let store = &live.store;
     let fits = vec![7_u8; 1500];
-    store
-        .set_secret("com.memrynote.memry.test", &account, &fits)
-        .unwrap();
+    store.set_secret(TEST_SERVICE, &account, &fits).unwrap();
     assert_eq!(
-        store
-            .get_secret("com.memrynote.memry.test", &account)
-            .unwrap(),
+        store.get_secret(TEST_SERVICE, &account).unwrap(),
         Some(fits)
     );
     let too_big = vec![7_u8; 3000];
-    let result = store.set_secret("com.memrynote.memry.test", &account, &too_big);
-    store
-        .delete_secret("com.memrynote.memry.test", &account)
-        .unwrap();
+    let result = store.set_secret(TEST_SERVICE, &account, &too_big);
+    store.delete_secret(TEST_SERVICE, &account).unwrap();
     assert!(
         matches!(result, Err(SecureStoreError::Failed { .. })),
         "a refused write is Failed, got {result:?}"
@@ -151,13 +205,14 @@ fn with_no_secret_service_every_call_is_locked_and_nothing_is_stored() {
     if !no_secret_service() {
         return;
     }
-    let store = store(&unique("none"));
+    let live = Live::new("none");
+    let store = &live.store;
     for key in STORE_KEYS {
         assert_eq!(store.get(key), Err(SecureStoreError::Locked));
         assert_eq!(store.set(key, vec![1; 32]), Err(SecureStoreError::Locked));
     }
     assert_eq!(
-        store.get_secret("com.memrynote.memry.test", "a"),
+        store.get_secret(TEST_SERVICE, "a"),
         Err(SecureStoreError::Locked)
     );
     assert_eq!(store.health(), SecureStoreHealth::Unavailable);
@@ -171,10 +226,9 @@ fn the_device_key_file_of_an_earlier_build_moves_into_the_real_keychain() {
         return;
     }
     assert!(!keychain_absent(), "this system has a keychain");
+    let live = Live::new("identity");
+    let store = &live.store;
     let profile = tempfile::tempdir().unwrap();
-    let suffix = unique("identity");
-    let store = Arc::new(store(&suffix));
-    let _cleanup = Cleanup(store.clone());
     let key: Vec<u8> = (0..64).collect();
     std::fs::write(profile.path().join("device-key"), &key).unwrap();
     let identity = DeviceIdentityStore::new(store.clone(), profile.path());
@@ -209,10 +263,8 @@ fn with_no_secret_service_the_device_key_lives_in_a_private_file() {
     }
     assert!(keychain_absent());
     let profile = tempfile::tempdir().unwrap();
-    let identity = Arc::new(DeviceIdentityStore::new(
-        Arc::new(store(&unique("nokeychain"))),
-        profile.path(),
-    ));
+    let live = Live::new("nokeychain");
+    let identity = Arc::new(DeviceIdentityStore::new(live.store.clone(), profile.path()));
     memry_core::api::auth::ensure_device_identity(identity.clone()).unwrap();
     let file = profile.path().join("device-key");
     assert_eq!(std::fs::read(&file).unwrap().len(), 64);
@@ -239,8 +291,8 @@ fn a_secret_service_that_starts_late_is_found_by_the_next_call() {
     use std::time::{Duration, Instant};
 
     if std::env::var("MEMRY_LIVE_LATE_SERVICE").is_ok_and(|v| v == "1") {
-        let store = Arc::new(store(&unique("late")));
-        let _cleanup = Cleanup(store.clone());
+        let live = Live::new("late");
+        let store = &live.store;
         let fired = Arc::new(AtomicUsize::new(0));
         let counter = fired.clone();
         store.subscribe_recovered(move || {
@@ -329,7 +381,8 @@ fn a_locked_keyring_is_locked_never_absent() {
             matches!(checked, Err(keyring_core::Error::NoStorageAccess(_))),
             "{checked:?}"
         );
-        let store = store(&suffix);
+        let live = Live::prepared(&suffix);
+        let store = &live.store;
         assert_eq!(
             store.get(SecureStoreKey::MasterKey),
             Err(SecureStoreError::Locked)
@@ -350,7 +403,8 @@ fn a_locked_keyring_is_locked_never_absent() {
 fn an_item_that_cannot_be_unlocked_is_locked_for_every_call() {
     if std::env::var("MEMRY_LIVE_LOCKED_ITEM").is_ok_and(|v| v == "1") {
         let suffix = std::env::var("MEMRY_LIVE_LOCKED_SUFFIX").unwrap();
-        let store = store(&suffix);
+        let live = Live::prepared(&suffix);
+        let store = &live.store;
         assert_eq!(
             store.get(SecureStoreKey::MasterKey),
             Err(SecureStoreError::Locked)
@@ -374,9 +428,8 @@ fn a_keyring_daemon_that_restarts_is_found_by_the_next_call() {
     use std::process::{Command, Stdio};
 
     if std::env::var("MEMRY_LIVE_RESTART_DAEMON").is_ok_and(|v| v == "1") {
-        let suffix = unique("restart");
-        let store = Arc::new(store(&suffix));
-        let _cleanup = Cleanup(store.clone());
+        let live = Live::new("restart");
+        let store = &live.store;
         // Nothing stored: the check runs and its connection is kept.
         assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
         let _ = Command::new("pkill")
@@ -393,7 +446,7 @@ fn a_keyring_daemon_that_restarts_is_found_by_the_next_call() {
         assert!(daemon.wait().unwrap().success(), "gnome-keyring-daemon");
         assert_eq!(store.get(SecureStoreKey::MasterKey).unwrap(), None);
         secret_tool_store(
-            &format!("master-key-{suffix}"),
+            &format!("master-key-{}", live.suffix),
             "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
         );
         let first = store.get(SecureStoreKey::MasterKey);
