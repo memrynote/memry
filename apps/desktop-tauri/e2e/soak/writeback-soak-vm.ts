@@ -9,9 +9,10 @@
 // `launch-tauri` made. Options are those of `optionsFromEnv`. A pass prints `soak passed`; then
 // `winvm.sh logs` must show no `the write-back failed`.
 import { execFileSync } from 'node:child_process'
-import { resolve } from 'node:path'
+import { resolve, win32 } from 'node:path'
 
 import type { Executor } from '../harness/invoke-test'
+import { invokeTest } from '../harness/invoke-test'
 import { createClient } from '../../scripts/lib/webdriver-client.mjs'
 import { optionsFromEnv, soak } from './writeback-soak'
 
@@ -35,6 +36,15 @@ schtasks /run /tn memry-repro | Out-Null
 /** The relaunch script's own waits plus the SSH round trips. */
 const RELAUNCH_MS = 120_000
 const READY_MS = 120_000
+
+/** `vault_select`, the picker's command, which `invokeTest` does not call (it is not `e2e_`). */
+const SELECT_VAULT = `
+  const [path, done] = arguments;
+  window.__TAURI__.core.invoke('vault_select', { path }).then(
+    (value) => done({ ok: true, value }),
+    (error) => done({ ok: false, error })
+  );
+`
 
 export default async function run(): Promise<void> {
   const port = Number(process.env.WD_PORT)
@@ -62,6 +72,20 @@ export default async function run(): Promise<void> {
       await new Promise((done) => setTimeout(done, 1_000))
     }
     throw new Error('the app did not answer WebDriver after the relaunch')
+  }
+
+  // `launch-tauri` starts on the picker: it copies the vault but seeds no registry. The vault
+  // sits beside the data dir (SOAK_VAULT overrides); a relaunch reopens it as the last one.
+  const info = await invokeTest<{ appDataDir: string }>({ executor }, 'e2e_app_info')
+  const vault =
+    process.env.SOAK_VAULT ?? win32.join(win32.dirname(info.appDataDir), 'vault', 'test-vault')
+  const opened = (await executor.executeAsync(SELECT_VAULT, vault)) as {
+    ok: boolean
+    value?: { success: boolean; error?: string | null }
+    error?: unknown
+  }
+  if (!opened.ok || !opened.value?.success) {
+    throw new Error(`could not open ${vault}: ${JSON.stringify(opened)}`)
   }
 
   await soak(
