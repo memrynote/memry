@@ -4,8 +4,10 @@
 //! an install started by this very build is still in flight, the launch shows a splash and
 //! exits instead of booting.
 //!
-//! Electron corroborated with Squirrel's `ShipItState.plist`; Velopack's updater has no state
-//! file, so a live updater process is the only signal next to the marker.
+//! The guard is Tauri-only. It keeps Electron's file name and keys, but no shipped Electron
+//! build writes the file: `writePendingInstallMarker` lost its caller in #681. Electron
+//! corroborated with Squirrel's `ShipItState.plist`; Velopack's updater has no state file, so a
+//! live updater process is the only signal next to the marker.
 
 use std::path::{Path, PathBuf};
 
@@ -44,8 +46,8 @@ pub fn read(dir: &Path) -> Option<PendingInstall> {
     parse(&super::read_marker(&path(dir))?)
 }
 
-/// Records that this build handed the install to the updater. Best effort: a failed write only
-/// disables the guard.
+/// Records that this build handed the install to the updater. Best effort and not atomic: a
+/// failed or torn write only disables the guard.
 pub fn write(dir: &Path, from: &str, now_ms: i64) {
     let marker = PendingInstall {
         from_version: from.to_owned(),
@@ -87,9 +89,12 @@ pub fn should_guard(
     let Some(marker) = marker else {
         return false;
     };
-    marker.from_version == current
-        && now_ms - marker.created_at <= PENDING_INSTALL_FRESH_MS
-        && updater_alive()
+    // A marker from the future (clock moved back, hand-edited file) is not fresh, and an absurd
+    // timestamp must not overflow into "fresh".
+    let fresh = now_ms
+        .checked_sub(marker.created_at)
+        .is_some_and(|age| (0..=PENDING_INSTALL_FRESH_MS).contains(&age));
+    marker.from_version == current && fresh && updater_alive()
 }
 
 #[cfg(test)]
@@ -132,17 +137,52 @@ mod tests {
     }
 
     #[test]
+    fn does_not_fire_for_a_marker_from_the_future() {
+        let ahead = PendingInstall {
+            from_version: VERSION.into(),
+            created_at: 2_000 + 60 * 60 * 1000,
+        };
+        assert!(!should_guard(Some(&ahead), VERSION, 2_000, || panic!(
+            "no pgrep for a future marker"
+        )));
+    }
+
+    #[test]
+    fn an_absurd_timestamp_is_stale_and_never_overflows() {
+        let cases = [
+            (i64::MIN, [0, 2_000, i64::MAX]),
+            (i64::MAX, [i64::MIN, 0, 2_000]),
+        ];
+        for (created_at, nows) in cases {
+            let marker = PendingInstall {
+                from_version: VERSION.into(),
+                created_at,
+            };
+            for now in nows {
+                assert!(
+                    !should_guard(Some(&marker), VERSION, now, || true),
+                    "{created_at} {now}"
+                );
+            }
+        }
+        // `-1e300` in the file saturates to `i64::MIN`.
+        let parsed = parse(br#"{"fromVersion":"2026.702.2","createdAt":-1e300}"#).unwrap();
+        assert!(!should_guard(Some(&parsed), VERSION, 2_000, || true));
+    }
+
+    #[test]
     fn does_not_fire_when_no_updater_is_running() {
         assert!(!should_guard(Some(&marker()), VERSION, 2_000, || false));
     }
 
     #[test]
-    fn round_trips_the_file_electron_writes() {
-        let electron =
-            include_bytes!("../../tests/fixtures/electron/updater/pending-update-install.json");
+    fn round_trips_the_marker() {
         let dir = tempfile::tempdir().unwrap();
         write(dir.path(), "2026.1015.1", 1_793_525_415_123);
-        assert_eq!(std::fs::read(path(dir.path())).unwrap(), electron);
+        assert_eq!(
+            std::fs::read(path(dir.path())).unwrap(),
+            br#"{"fromVersion":"2026.1015.1","createdAt":1793525415123}"#
+        );
         assert_eq!(
             read(dir.path()),
             Some(PendingInstall {

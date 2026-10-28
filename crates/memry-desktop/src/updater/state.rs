@@ -3,7 +3,6 @@
 //! the renderer never learns which backend is installed. The serialized shape is the IPC
 //! contract `packages/contracts/src/ipc-updater.ts` `AppUpdateState`.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
@@ -70,7 +69,7 @@ pub struct AvailableUpdate {
 /// Owns [`AppUpdateState`]. Readers subscribe to the `watch` channel; every patch publishes.
 pub struct UpdaterCore {
     raw_version: String,
-    supported: AtomicBool,
+    supported: bool,
     state: watch::Sender<AppUpdateState>,
     check_health: Mutex<UpdaterCheckHealth>,
 }
@@ -101,7 +100,7 @@ impl UpdaterCore {
         };
         Self {
             raw_version: raw_version.to_owned(),
-            supported: AtomicBool::new(supported),
+            supported,
             state: watch::Sender::new(state),
             check_health: Mutex::new(UpdaterCheckHealth::new(now_ms)),
         }
@@ -123,15 +122,25 @@ impl UpdaterCore {
         self.state.subscribe()
     }
 
-    /// Applies `change`, then restores the two fields no caller may set, and publishes.
-    pub fn patch(&self, change: impl FnOnce(&mut AppUpdateState)) {
-        let supported = self.supported.load(Ordering::SeqCst);
+    /// Applies `change`, then restores the two fields no transition may set, and publishes.
+    fn patch(&self, change: impl FnOnce(&mut AppUpdateState)) {
+        let supported = self.supported;
         let current_version = self.display_version();
         self.state.send_modify(|state| {
             change(state);
             state.current_version = current_version;
             state.update_supported = supported;
         });
+    }
+
+    /// The persisted auto-download preference, as the service read or changed it.
+    pub fn set_auto_download_enabled(&self, enabled: bool) {
+        self.patch(|state| state.auto_download_enabled = enabled);
+    }
+
+    /// The persisted auto-check preference, as the service read or changed it.
+    pub fn set_auto_check_enabled(&self, enabled: bool) {
+        self.patch(|state| state.auto_check_enabled = enabled);
     }
 
     fn clear_available(state: &mut AppUpdateState) {

@@ -123,7 +123,8 @@ pub fn resolve_outcome(
 }
 
 /// Records that this build is handing off to the installer. Synchronous because the process is
-/// about to exit; a failed write is logged and never stops the install.
+/// about to exit; a failed write is logged and never stops the install. A plain write, as in
+/// Electron: a torn file reads as corrupt and is discarded, which only loses the diagnostic.
 pub fn write_started(
     dir: &Path,
     from: &str,

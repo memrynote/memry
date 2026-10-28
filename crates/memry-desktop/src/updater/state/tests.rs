@@ -198,6 +198,18 @@ fn the_failure_phase_follows_the_interrupted_status() {
 }
 
 #[test]
+fn preferences_are_published_and_leave_the_rest_alone() {
+    let core = UpdaterCore::new(RAW, true, NOW);
+    core.on_update_available(&update("2026.1101.1"), None, NOW);
+    core.set_auto_download_enabled(true);
+    core.set_auto_check_enabled(false);
+    let state = core.state();
+    assert!(state.auto_download_enabled);
+    assert!(!state.auto_check_enabled);
+    assert_eq!(state.status, UpdaterStatus::Available);
+}
+
+#[test]
 fn a_patch_cannot_change_the_version_or_support() {
     let core = UpdaterCore::new(RAW, false, NOW);
     core.patch(|state| {

@@ -1,8 +1,10 @@
 //! The install-failure streak across launches (`apps/desktop/src/main/updater-install-health.ts`,
 //! #1999). A failed install surfaces in a session that then quits normally, so only a file
-//! carries the streak to the next launch. The file is a contract with Electron: same name, same
-//! keys, same compact JSON. A missing or corrupt file means no streak and never fails the
-//! caller.
+//! carries the streak to the next launch. The file keeps Electron's name, keys and compact JSON,
+//! so the format reads the same in both apps; it lives in each app's own data directory, so a
+//! Tauri launch never sees an Electron streak. A missing or corrupt file means no streak and
+//! never fails the caller. Writes are plain, not atomic, as in Electron: a torn write reads as
+//! no streak.
 
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
@@ -264,14 +266,15 @@ mod tests {
     }
 
     #[test]
-    fn reads_and_writes_the_files_electron_writes() {
+    fn reads_and_writes_the_format_electron_writes() {
         let one =
             include_bytes!("../../tests/fixtures/electron/updater/update-install-health.1.json");
         let escalated = include_bytes!(
             "../../tests/fixtures/electron/updater/update-install-health.escalated.json"
         );
 
-        // Electron's streak continues here: two more failures escalate it.
+        // Format only: the Tauri app never reads Electron's directory. An Electron-written
+        // streak continues here, and two more failures escalate it.
         let d = dir();
         std::fs::write(path(d.path()), one).unwrap();
         assert_eq!(
@@ -285,8 +288,8 @@ mod tests {
         // The file this code wrote is byte for byte the one Electron writes.
         assert_eq!(std::fs::read(path(d.path())).unwrap(), escalated);
 
-        // An escalated Electron file surfaces its target on the same build and clears on the
-        // first launch of another one (the Tauri build after the update).
+        // An escalated file surfaces its target on the same build and clears on the first
+        // launch of another one.
         std::fs::write(path(d.path()), escalated).unwrap();
         assert_eq!(
             reconcile(d.path(), "v2026-10-15").as_deref(),

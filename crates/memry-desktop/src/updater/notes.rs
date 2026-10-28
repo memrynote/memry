@@ -88,12 +88,13 @@ fn is_js_space(c: char) -> bool {
 /// real feed never reaches it; anything longer is cut at a character boundary first.
 pub const MAX_NOTES_HTML_BYTES: usize = 512 * 1024;
 
+#[cfg(test)]
 thread_local! {
     static STRIP_PASSES: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
 }
 
 /// Tag-stripping passes run on this thread, for the complexity test.
-#[doc(hidden)]
+#[cfg(test)]
 pub fn strip_passes() -> usize {
     STRIP_PASSES.with(std::cell::Cell::get)
 }
@@ -120,6 +121,7 @@ pub fn html_to_plain_text(input: &str) -> String {
     // match runs from the leftmost `<` to the next `>`, so no `<` before a removed tag can
     // pair with a `>` after it, and the second pass always finds nothing.
     loop {
+        #[cfg(test)]
         STRIP_PASSES.with(|passes| passes.set(passes.get() + 1));
         let stripped = TAG.replace_all(&text, "").into_owned();
         if stripped == text {
