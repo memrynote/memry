@@ -11,7 +11,7 @@ use memry_desktop::shell::web_crash::{CrashAction, MAX_RELOADS, ReloadBudget};
 use memry_desktop::telemetry::main_warning::Level;
 use tauri::plugin::TauriPlugin;
 use tauri::webview::PageLoadEvent;
-use tauri::{AppHandle, Manager, Webview, Wry};
+use tauri::{AppHandle, Manager, RunEvent, Webview, WindowEvent, Wry};
 
 use crate::flush::FlushService;
 use crate::shell::services::telemetry;
@@ -33,6 +33,16 @@ pub fn plugin() -> TauriPlugin<Wry> {
         .on_page_load(|webview, payload| {
             if matches!(payload.event(), PageLoadEvent::Finished) && is_app_label(webview.label()) {
                 page_loaded(webview.app_handle(), webview.label());
+            }
+        })
+        .on_event(|_, event| {
+            if let RunEvent::WindowEvent {
+                label,
+                event: WindowEvent::Destroyed,
+                ..
+            } = event
+            {
+                forget(label);
             }
         })
         .build()
@@ -83,6 +93,14 @@ fn page_loaded(app: &AppHandle<Wry>, label: &str) {
     if let Some(flush) = app.try_state::<FlushService>() {
         flush.page_loaded(label);
     }
+}
+
+/// Window `label` is gone: a later window of that label starts with a full budget and nothing to
+/// tell.
+fn forget(label: &str) {
+    let mut recovery = RECOVERY.lock().unwrap_or_else(PoisonError::into_inner);
+    recovery.budgets.remove(label);
+    recovery.reloaded.remove(label);
 }
 
 /// True once for a page that was reloaded after its web process died, so it can tell the user.

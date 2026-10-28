@@ -64,10 +64,9 @@ async fn flush_windows(app: AppHandle<Wry>, deadline: Deadline) -> Result<(), St
 
 async fn close_vault(app: AppHandle<Wry>) -> Result<(), String> {
     // A startup that failed before the vault stage has no session.
-    tauri::async_runtime::spawn_blocking(move || {
-        if let Some(session) = app.try_state::<Session>() {
-            session.close();
-        }
+    tauri::async_runtime::spawn_blocking(move || match app.try_state::<Session>() {
+        Some(session) => session.close(),
+        None => tracing::debug!(scope = "Shutdown", "no vault session to close"),
     })
     .await
     .map_err(|error| error.to_string())
