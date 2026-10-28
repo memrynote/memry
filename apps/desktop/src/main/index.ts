@@ -135,7 +135,7 @@ import { decideEmbedRequestHeaders } from './lib/embed-referer'
 import { registerTestHooks } from './test-hooks'
 import { registerAgentDebugHandles } from './agent-debug'
 import {
-  computeSpkiHashFromPem,
+  sessionChainHashes,
   verifySessionCertificatePin,
   isPinningDisabled,
   getPinnedCertificateHashes,
@@ -668,10 +668,10 @@ function configureCertificatePinning(): void {
     }
 
     try {
-      if (!verifySessionCertificatePin(cert, pinsForHostname)) {
+      if (!verifySessionCertificatePin(request, pinsForHostname)) {
         certPinLog.error('Session certificate pin mismatch', {
           hostname: request.hostname,
-          hash: computeSpkiHashFromPem(cert.data)
+          chainHashes: sessionChainHashes(request)
         })
         callback(-2)
         return

@@ -82,7 +82,7 @@ const stopEmbeddingModelMock = vi.fn(async () => undefined)
 const startGoogleCalendarSyncRunnerMock = vi.fn(async () => undefined)
 const stopGoogleCalendarSyncRunnerMock = vi.fn()
 const triggerGoogleCalendarSyncNowMock = vi.fn()
-const computeSpkiHashFromPemMock = vi.fn(() => 'hash')
+const sessionChainHashesMock = vi.fn(() => ['hash'])
 const verifySessionCertificatePinMock = vi.fn(() => true)
 const isPinningDisabledMock = vi.fn(() => true)
 const getPinnedCertificateHashesMock = vi.fn(() => [] as string[])
@@ -289,7 +289,7 @@ vi.mock('./calendar/google/google-sync-runner', () => ({
 }))
 
 vi.mock('./sync/certificate-pinning', () => ({
-  computeSpkiHashFromPem: computeSpkiHashFromPemMock,
+  sessionChainHashes: sessionChainHashesMock,
   verifySessionCertificatePin: verifySessionCertificatePinMock,
   isPinningDisabled: isPinningDisabledMock,
   getPinnedCertificateHashes: getPinnedCertificateHashesMock,
@@ -563,7 +563,7 @@ describe('main index phase2 exports', () => {
     isPinningDisabledMock.mockReturnValue(true)
     getPinnedCertificateHashesMock.mockReturnValue([])
     getPinnedCertificateHashesForHostnameMock.mockReturnValue([])
-    computeSpkiHashFromPemMock.mockReturnValue('hash')
+    sessionChainHashesMock.mockReturnValue(['hash'])
     verifySessionCertificatePinMock.mockReturnValue(true)
     getOpenNoteIdsMock.mockReturnValue([])
     getProviderDocMock.mockReturnValue(undefined)
@@ -1324,6 +1324,7 @@ describe('main index phase2 exports', () => {
     verifySessionCertificatePinMock.mockReturnValueOnce(false)
     verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
     expect(callback).toHaveBeenLastCalledWith(-2)
+    expect(sessionChainHashesMock).toHaveBeenCalledTimes(1)
 
     verifySessionCertificatePinMock.mockImplementationOnce(() => {
       throw new Error('bad pem')
@@ -1332,8 +1333,15 @@ describe('main index phase2 exports', () => {
     expect(callback).toHaveBeenLastCalledWith(-2)
 
     // A pin match defers to Chromium's own verification (-3) instead of forcing success.
-    verify({ certificate: { data: 'pem' }, hostname: 'api.memrynote.com' }, callback)
+    const request = {
+      certificate: { data: 'pem' },
+      validatedCertificate: { data: 'validated' },
+      hostname: 'api.memrynote.com'
+    }
+    verify(request, callback)
     expect(callback).toHaveBeenLastCalledWith(-3)
+    // Both chains reach the pin check: the validated one carries the intermediate.
+    expect(verifySessionCertificatePinMock).toHaveBeenLastCalledWith(request, ['hash'])
   })
 
   it('lets unpinned external hosts use normal TLS in packaged builds', async () => {
@@ -1356,7 +1364,7 @@ describe('main index phase2 exports', () => {
     verify({ certificate: {}, hostname: 'react-tweet.vercel.app' }, callback)
 
     expect(callback).toHaveBeenCalledWith(0)
-    expect(computeSpkiHashFromPemMock).not.toHaveBeenCalled()
+    expect(verifySessionCertificatePinMock).not.toHaveBeenCalled()
   })
 
   it('leaves certificate verification unset when pinning has no pins', async () => {

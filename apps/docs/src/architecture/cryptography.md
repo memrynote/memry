@@ -241,9 +241,11 @@ time. Neither consults the configured `SYNC_SERVER_URL` host to decide whether t
 being verified is always the host whose pins were looked up.
 
 A pin is an SPKI hash that may match any certificate in the presented chain, not just the leaf, so
-pins on the issuing intermediate and its root survive leaf renewals. Matching walks from the leaf and
-only trusts a certificate when every link below it is signed by the next one up, so a peer cannot
-append a fake parent that carries a pinned key. The session verifier then defers to Chromium's own
+pins on the issuing intermediate and its root survive leaf renewals. Matching builds the path from the leaf
+and only trusts a certificate when the one below it is signed by it, so a peer cannot append a fake
+parent that carries a pinned key. The session verifier pools Chromium's validated chain with the
+server-sent chain; on macOS the validated chain stops below the root, so the root pin matches only
+while the server still sends the root cross-certificate. The session verifier then defers to Chromium's own
 verdict (chain, expiry, hostname) on a pin match instead of forcing success, because an intermediate
 pin matches every certificate that CA issues. Staging pins the Google Trust Services WE1
 intermediate and the GTS Root R4 key; add new pins before an issuer rotates, and never swap both at
