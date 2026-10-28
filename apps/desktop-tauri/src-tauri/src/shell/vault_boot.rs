@@ -10,13 +10,14 @@ use memry_desktop::launch_timeline::LaunchPhase;
 use memry_desktop::locale::LocaleService;
 use memry_desktop::paths::AppPaths;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
+use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::OpenStage;
 use memry_desktop::session::prompt::{self, Asker, RecoveryPrompt};
 use memry_desktop::session::response::{VaultStatus, index_recovery_reason};
 use memry_desktop::session::{OpenSource, Session, SessionEvent, StartupOutcome};
 use memry_desktop::settings::SettingsService;
 use memry_desktop::telemetry::service::Service;
-use memry_desktop::vault::watch::{VaultEvent, VaultTier};
+use memry_desktop::vault::consumer::VaultTier;
 use tauri::{AppHandle, Manager, Wry};
 
 use crate::commands::error::{CommandError, ErrorKind};
@@ -92,24 +93,20 @@ fn register_settings_hook(app: &AppHandle<Wry>, session: &Session) {
     );
 }
 
-/// Starts the vault watcher with every open and stops it with every close. Its events have no
-/// consumer yet (the index update and the write-back's ingest are Step 12e and Step 13), so
-/// they are counted in the log by kind only. The tier is managed so those stages reach its
-/// own-write record.
+/// Starts the vault watcher and its consumer with every open and stops them with every close.
+/// The consumer adopts no file and deletes no note until Step 13 sets its identity, and feeds
+/// no outside edit until the write-back (12e-3). The tier is managed so those stages reach its
+/// own-write record and its row lane.
 fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
-    let tier = VaultTier::new(Arc::new(|event: VaultEvent| match event {
-        VaultEvent::WatchFailed { limit, .. } => {
-            tracing::warn!(scope = "vault_watch", limit, "the vault watcher failed");
-        }
-        VaultEvent::Unreachable | VaultEvent::Reachable => {
-            tracing::warn!(
-                scope = "vault_watch",
-                kind = event.kind(),
-                "vault reachability changed"
-            );
-        }
-        other => tracing::debug!(scope = "vault_watch", kind = other.kind()),
-    }));
+    // Managed by the `Handlers` stage, which runs before this one.
+    let Some(store) = app.try_state::<Arc<DeviceIdentityStore>>() else {
+        tracing::error!(
+            scope = "vault_consumer",
+            "no device identity store: vaults open without file watching"
+        );
+        return;
+    };
+    let tier = VaultTier::new(store.inner().clone());
     tier.register(session);
     app.manage(tier);
 }
