@@ -83,11 +83,30 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: &lean-checkout
+          # Bounded checkout: one commit, blobless, and without the ~1.6 GB of marketing media that
+          # no job reads (the full-tree checkout took 2 to 22 minutes in a busy hour and consumed the
+          # job timeout). Text under marketing/ stays, so lint and format still see it. Other media
+          # stay: builds need them. `/*` first, then the exclusions.
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**/*.gif
+            !/marketing/**/*.jpeg
+            !/marketing/**/*.jpg
+            !/marketing/**/*.mov
+            !/marketing/**/*.mp3
+            !/marketing/**/*.mp4
+            !/marketing/**/*.png
+            !/marketing/**/*.wav
+            !/marketing/**/*.webm
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -229,7 +248,7 @@ jobs:
     # the same coverage output the single run used to produce.
     if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -238,6 +257,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -300,11 +320,12 @@ jobs:
     needs: [changes, unit]
     if: ${{ !cancelled() && (needs.changes.outputs.run == 'true' || needs.changes.result == 'failure') && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -367,11 +388,12 @@ jobs:
     needs: [changes, unit-merge]
     if: ${{ !cancelled() && needs.unit-merge.result == 'success' && ((github.event.action != 'labeled' && !(github.event.action == 'opened' && github.base_ref == 'feat/tauri-v2' && contains(github.event.pull_request.labels.*.name, 'full-ci'))) || (github.event.action == 'labeled' && github.base_ref == 'feat/tauri-v2' && github.event.label.name == 'full-ci')) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -404,6 +426,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -470,6 +493,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -550,6 +574,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
@@ -665,6 +690,7 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: *lean-checkout
 
       - name: Setup pnpm
         uses: ./.github/actions/setup-pnpm
