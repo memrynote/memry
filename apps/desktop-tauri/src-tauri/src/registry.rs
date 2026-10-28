@@ -66,6 +66,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::shell::shell_heartbeat,
             crate::commands::shell::shell_show_context_menu,
             crate::commands::shell::shell_open_external,
+            crate::commands::shell::shell_open_link,
             crate::commands::shell::shell_open_path,
             crate::commands::shell::shell_reveal_path,
             // telemetry

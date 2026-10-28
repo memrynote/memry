@@ -54,6 +54,14 @@ const NAVIGATING_PARTS = new Set([
 const NAVIGATING_CALLS = new Set(['assign', 'replace'])
 const TOP_FRAME_TARGETS = new Set(['_self', '_top', '_parent'])
 
+/** A string literal, or a template literal without expressions. */
+function staticString(node) {
+  if (node?.type === 'Literal' && typeof node.value === 'string') return node.value
+  if (node?.type === 'TemplateLiteral' && node.expressions.length === 0)
+    return node.quasis[0].value.cooked
+  return null
+}
+
 /** `a.b` or `a['b']`. */
 function propertyName(member) {
   if (!member.computed) return member.property.type === 'Identifier' ? member.property.name : null
@@ -118,13 +126,22 @@ const noLocationNavigation = {
         ) {
           return report(node)
         }
+        // `Object.assign(location, { href })` sets the parts one by one.
+        if (
+          callee.type === 'MemberExpression' &&
+          propertyName(callee) === 'assign' &&
+          isGlobal(callee.object, new Set(['Object'])) &&
+          node.arguments[0] &&
+          isLocation(node.arguments[0])
+        ) {
+          return report(node)
+        }
         const isOpen =
           isGlobal(callee, new Set(['open'])) ||
           (callee.type === 'MemberExpression' &&
             propertyName(callee) === 'open' &&
             isWindow(callee.object))
-        const target = node.arguments[1]
-        if (isOpen && target?.type === 'Literal' && TOP_FRAME_TARGETS.has(target.value)) {
+        if (isOpen && TOP_FRAME_TARGETS.has(staticString(node.arguments[1]))) {
           report(node)
         }
       }

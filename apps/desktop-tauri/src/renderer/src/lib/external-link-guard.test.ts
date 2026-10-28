@@ -4,6 +4,7 @@ import { watchDrops, watchExternalLinks, watchFormSubmits } from './external-lin
 
 const ORIGIN = 'http://localhost:3000'
 const WEB = 'https://example.com/a?b=1'
+const FILE = 'memry-file://local/v/attachments/a.zip'
 
 /** Whether the engine will skip the default action (the navigation), whatever the page sees. */
 const engineSkipsDefault = (event: Event): boolean =>
@@ -15,11 +16,7 @@ const afterDispatch = (): Promise<void> => new Promise((resolve) => setTimeout(r
 const open = vi.fn(() => Promise.resolve())
 let stops: Array<() => void> = []
 beforeEach(() => {
-  stops = [
-    watchExternalLinks(window, open, ORIGIN),
-    watchDrops(window, open, ORIGIN),
-    watchFormSubmits(window)
-  ]
+  stops = [watchExternalLinks(window, open), watchDrops(window, open), watchFormSubmits(window)]
 })
 afterEach(() => {
   for (const stop of stops) stop()
@@ -126,33 +123,34 @@ describe('link activation', () => {
       true,
       [WEB]
     ],
+    // Handed to the shell, which opens a vault file in its app and refuses the rest.
     [
       'vault file link',
-      '<a id="l" href="memry-file://local/v/a.pdf">x</a>',
+      `<a id="l" href="${FILE}">x</a>`,
       () => [mouse('click', byId('l'))],
       true,
-      []
+      [FILE]
     ],
     [
       'app page link',
       `<a id="l" href="${ORIGIN}/page">x</a>`,
       () => [mouse('click', byId('l'))],
       true,
-      []
+      [`${ORIGIN}/page`]
     ],
     [
       'javascript: link',
       '<a id="l" href="javascript:void(0)">x</a>',
       () => [mouse('click', byId('l'))],
       true,
-      []
+      ['javascript:void(0)']
     ],
     [
       'empty href (a reload)',
       '<a id="l" href="">x</a>',
       () => [mouse('click', byId('l'))],
       true,
-      []
+      [`${ORIGIN}/`]
     ],
     [
       'fragment of this document',
@@ -161,9 +159,38 @@ describe('link activation', () => {
       false,
       []
     ],
+    // The engines ignore `download` on another origin and navigate the window.
     [
-      'download link',
+      "a file block's Download (a vault file with download)",
+      `<a id="l" href="${FILE}" download="a.zip">x</a>`,
+      () => [mouse('click', byId('l'))],
+      true,
+      [FILE]
+    ],
+    [
+      'a web link with download',
       `<a id="l" href="${WEB}" download>x</a>`,
+      () => [mouse('click', byId('l'))],
+      true,
+      [WEB]
+    ],
+    [
+      'a download of this origin',
+      `<a id="l" href="${ORIGIN}/export.csv" download>x</a>`,
+      () => [mouse('click', byId('l'))],
+      false,
+      []
+    ],
+    [
+      'a blob: download (CSV export, recovery phrase)',
+      '<a id="l" href="blob:http://localhost:3000/1" download>x</a>',
+      () => [mouse('click', byId('l'))],
+      false,
+      []
+    ],
+    [
+      'a data: download',
+      '<a id="l" href="data:text/plain,x" download>x</a>',
       () => [mouse('click', byId('l'))],
       false,
       []
@@ -258,19 +285,34 @@ describe('drags', () => {
     expect(result).toEqual({ cancelled: [true, true, true], opened: [] })
   })
 
-  it('leaves drags over the editor and text fields to them', async () => {
-    document.body.innerHTML = `
-      <div class="ProseMirror" contenteditable="true"><p id="p">x</p></div>
-      <input id="text" /><input id="search" type="search" /><textarea id="area"></textarea>`
+  const EDITABLE = `
+    <div class="ProseMirror" contenteditable="true"><p id="p">x</p></div>
+    <input id="text" /><input id="search" type="search" /><textarea id="area"></textarea>`
+
+  it('leaves a link or text dragged over the editor and text fields to them', async () => {
+    document.body.innerHTML = EDITABLE
     for (const id of ['p', 'text', 'search', 'area']) {
-      for (const data of [link, file, text]) {
-        expect((await gesture(() => dragAll(byId(id), data))).cancelled, id).toEqual([
-          false,
-          false,
-          false
-        ])
+      for (const data of [link, text]) {
+        const { cancelled } = await gesture(() => dragAll(byId(id), data))
+        expect(cancelled, id).toEqual([false, false, false])
       }
     }
+    expect(open).not.toHaveBeenCalled()
+  })
+
+  it('takes a file dragged over the editor or a text field unless the editor claims it', async () => {
+    document.body.innerHTML = EDITABLE
+    for (const id of ['p', 'text', 'area']) {
+      const { cancelled } = await gesture(() => dragAll(byId(id), file))
+      expect(cancelled, id).toEqual([true, true, true])
+    }
+    const seen: boolean[] = []
+    byId('p').addEventListener('drop', (event) => {
+      seen.push(event.defaultPrevented)
+      event.preventDefault()
+    })
+    await gesture(() => dragAll(byId('p'), file))
+    expect(seen).toEqual([false])
     expect(open).not.toHaveBeenCalled()
   })
 

@@ -18,9 +18,13 @@
 //! - No event of the app keeps a default action that navigates the top frame
 //!   (`external-link-guard.ts`): link activation (`click`, `auxclick`; any button, modifier or
 //!   Enter), any drag outside a text field (`dragenter`, `dragover`, `drop`; links, files, images,
-//!   text) and form submission are cancelled unless a component claims them, and a web or mail
-//!   link is opened in the OS by the renderer. The listeners sit on `window` in the capture phase,
-//!   installed before the app renders, so no app handler that stops propagation hides an event.
+//!   text; over the editor or a text field only a drag with files) and form submission are
+//!   cancelled unless a component claims them. An activated link goes to `shell_open_link`, which
+//!   sends it where this guard would have ([`super::open_link`]). A `download` link keeps its
+//!   default only for the app's origin, `blob:` and `data:`: the engine ignores `download` on any
+//!   other origin and navigates, so a file block's Download (`memry-file:`) is such a link. The
+//!   listeners sit on `window` in the capture phase, installed before the app renders, so no app
+//!   handler that stops propagation hides an event.
 //! - The context menu loses WebKitGTK's "Open Link" here ("Open Link in New Window" asks for a new
 //!   window, which `on_new_window` sends to the OS).
 //! - App code never navigates the window by script (no match in either renderer on 2026-10-28; the

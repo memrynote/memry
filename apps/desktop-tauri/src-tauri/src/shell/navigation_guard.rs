@@ -36,6 +36,7 @@ use tauri::{AppHandle, Manager, WebviewWindow, Wry};
 use url::Url;
 
 use super::{external, loopback, permissions};
+use crate::commands::error::{CommandError, ErrorKind};
 
 /// The origins of the app's own pages: `tauri://localhost`, `https://tauri.localhost` (Windows,
 /// fixed by `use_https_scheme`) and, in `tauri dev`, the dev server.
@@ -80,15 +81,34 @@ impl OffApp {
     }
 }
 
-fn act(app: &AppHandle<Wry>, url: &str, decision: Navigation) {
-    let result = match decision {
+fn follow(app: &AppHandle<Wry>, url: &str, decision: Navigation) -> Result<(), CommandError> {
+    match decision {
         Navigation::OpenExternal => external::open_url(app, url),
         Navigation::OpenFile => external::open_memry_file(app, url),
-        Navigation::Allow | Navigation::Deny => return,
-    };
-    if let Err(error) = result {
+        Navigation::Allow | Navigation::Deny => Err(CommandError::new(
+            ErrorKind::Invalid,
+            "not_allowed",
+            "this link is not opened outside the app",
+        )),
+    }
+}
+
+fn act(app: &AppHandle<Wry>, url: &str, decision: Navigation) {
+    if matches!(decision, Navigation::Allow | Navigation::Deny) {
+        return;
+    }
+    if let Err(error) = follow(app, url, decision) {
         tracing::warn!(scope = "Navigation", "a link was not opened: {error:?}");
     }
+}
+
+/// A link the renderer took before the main frame could navigate to it (`external-link-guard.ts`):
+/// goes where the main frame's navigation would have sent it. A web or mail link opens in the OS
+/// browser, a vault file in its app (as Electron's `will-frame-navigate` did), anything else is
+/// refused.
+pub fn open_link(app: &AppHandle<Wry>, url: &str) -> Result<(), CommandError> {
+    let decision = with_guard(app, &app_origins(app), |guard| decide_main(url, guard));
+    follow(app, url, decision)
 }
 
 /// The loopback origin once the server listens; the guard is built after startup's `Protocols`

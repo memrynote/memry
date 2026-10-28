@@ -25,6 +25,9 @@ tester.run('no-location-navigation', plugin.rules['no-location-navigation'], {
     'let l = window.location; l = other',
     'window.open(url, "_blank", "noopener,noreferrer")',
     'window.open(url)',
+    'window.open(url, `_blank`)',
+    'Object.assign(route.location, { href })',
+    'Object.assign(location, rest)'.replace('location', 'options'),
     'function open(u, t) {} open(url, "_self")',
     'void commands.shellOpenExternal(url)'
   ],
@@ -55,6 +58,9 @@ tester.run('no-location-navigation', plugin.rules['no-location-navigation'], {
     'window.open(url, "_self")',
     'window.open(url, "_top")',
     'open(url, "_parent")',
-    'globalThis.open(url, "_self", "")'
+    'globalThis.open(url, "_self", "")',
+    'window.open(url, `_self`)',
+    'Object.assign(location, { href: url })',
+    'Object.assign(window.location, { pathname: "/x" })'
   ].map((code) => ({ code, errors: [{ messageId: 'navigates' }] }))
 })

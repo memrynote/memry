@@ -14,12 +14,17 @@ const log = createLogger('ExternalLinks')
  *
  * The listeners sit on `window` in the capture phase, installed before the app renders, so they
  * run before every handler of the app: one that stops propagation cannot hide an event from them.
- * They cancel the default action at once and, after the dispatch, open a web or mail link in the
- * OS unless a later handler claimed the event with `preventDefault` (the editor, a drop zone).
- * Those handlers see `defaultPrevented` exactly as they would without this guard.
+ * They cancel the default action at once and, after the dispatch, follow the link unless a later
+ * handler claimed the event with `preventDefault` (the editor, a drop zone). Those handlers see
+ * `defaultPrevented` exactly as they would without this guard. An activated link goes to the shell
+ * (`shell_open_link`), which sends it where the main frame's navigation would have: a web or mail
+ * link to the OS browser, a vault file to its app (a file block's Download, as in Electron);
+ * a dropped one only when it is a web or mail link.
  *
  * Left alone, because their default stays in the document: a link to a fragment of this document,
- * a `download` link, and any drag over an editable element (the editor and text fields insert it).
+ * a `download` link to this origin, `blob:` or `data:` (the engines ignore `download` on any other
+ * and navigate), and a drag over an editable element without files (the editor and text fields
+ * insert it; a file the editor does not claim would make WebKit load it instead).
  */
 
 type GuardedEvent = 'click' | 'auxclick' | 'dragenter' | 'dragover' | 'drop' | 'submit'
@@ -96,31 +101,40 @@ function staysInDocument(link: Link): boolean {
   return target.href === here.href
 }
 
-function openLink(open: Open, url: URL | null, origin: string): void {
-  if (!url || url.origin === origin || !OPENED.has(url.protocol)) {
-    log.warn('a link the app does not open from here was not followed', { scheme: url?.protocol })
+/** A download the engine performs: `download` is honored only for these URLs. */
+function downloads(link: Link): boolean {
+  if (!link.download || !link.url) return false
+  return (
+    link.url.protocol === 'blob:' ||
+    link.url.protocol === 'data:' ||
+    link.url.origin === parseUrl(document.URL)?.origin
+  )
+}
+
+function follow(open: Open, url: URL | null): void {
+  if (!url) {
+    log.warn('a link whose address does not parse was not followed')
     return
   }
-  open(url.href).catch((error: unknown) => log.warn('a link did not open', error))
+  open(url.href).catch((error: unknown) => log.warn('a link was not opened', error))
 }
 
 /**
- * Keeps every link activation from navigating the window, and sends a web or mail link a primary
- * or middle click activated to the OS. Returns the cleanup.
+ * Keeps every link activation from navigating the window, and follows a link a primary or middle
+ * click activated. Returns the cleanup.
  */
 export function watchExternalLinks(
   host: CaptureHost<'click' | 'auxclick', MouseEvent>,
-  open: Open,
-  origin: string
+  open: Open
 ): () => void {
   const onActivate = (event: MouseEvent): void => {
     if (event.defaultPrevented) return
     const link = linkOf(event)
-    if (!link || link.download || staysInDocument(link)) return
+    if (!link || downloads(link) || staysInDocument(link)) return
     // A middle click fires `auxclick`; a right click opens the context menu and nothing else.
     const opens = event.type === 'click' ? event.button === 0 : event.button === 1
     preventUnlessClaimed(event, () => {
-      if (opens) openLink(open, link.url, origin)
+      if (opens) follow(open, link.url)
     })
   }
   host.addEventListener('click', onActivate, true)
@@ -166,14 +180,15 @@ function droppedLink(event: Drag): URL | null {
  */
 export function watchDrops(
   host: CaptureHost<'dragenter' | 'dragover' | 'drop', Drag>,
-  open: Open,
-  origin: string
+  open: Open
 ): () => void {
   const onDrag = (event: Drag): void => {
-    if (event.defaultPrevented || isEditable(event.composedPath()[0])) return
+    if (event.defaultPrevented) return
+    const files = event.dataTransfer?.types.includes('Files') === true
+    if (!files && isEditable(event.composedPath()[0])) return
     const link = event.type === 'drop' ? droppedLink(event) : null
     preventUnlessClaimed(event, () => {
-      if (link) openLink(open, link, origin)
+      if (link && OPENED.has(link.protocol)) follow(open, link)
     })
   }
   for (const type of ['dragenter', 'dragover', 'drop'] as const) {
@@ -197,14 +212,13 @@ export function watchFormSubmits(host: CaptureHost<'submit', Event>): () => void
   return () => host.removeEventListener('submit', onSubmit, true)
 }
 
-const openInOs = (url: string): Promise<unknown> => commands.shellOpenExternal(url)
+const followInShell = (url: string): Promise<unknown> => commands.shellOpenLink(url)
 
 /** Installed before the app renders (`main.tsx`), so its listeners run first. */
 export function installExternalLinkGuard(): () => void {
-  const origin = window.location.origin
   const stops = [
-    watchExternalLinks(window, openInOs, origin),
-    watchDrops(window, openInOs, origin),
+    watchExternalLinks(window, followInShell),
+    watchDrops(window, followInShell),
     watchFormSubmits(window)
   ]
   return () => {

@@ -206,6 +206,46 @@ test('an embed never replaces the app, and a vault file in the main frame goes t
   await page.waitForTimeout(SETTLE_MS)
   expect(await opens(app)).toHaveLength(1)
   await expectSameDocument(page, href)
+
+  // A file block's Download: the engines ignore `download` on another origin and would navigate.
+  // The renderer takes the click, and the file opens in its app, as in Electron.
+  const zip = join(folder, 'abc123-archive.zip')
+  writeFileSync(zip, 'PK')
+  const site = await startSite()
+  await page.evaluate((url) => {
+    const state = window as unknown as { __unloaded?: boolean; __slow?: Promise<string> }
+    window.addEventListener('beforeunload', () => {
+      state.__unloaded = true
+    })
+    state.__slow = fetch(url).then(
+      (response) => response.text(),
+      (error: unknown) => `failed ${String(error)}`
+    )
+  }, `${site.loopback}/slow`)
+  await page.evaluate(
+    (url) => {
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'archive.zip'
+      link.textContent = 'Download'
+      document.body.append(link)
+      link.click()
+    },
+    webviewUrl('memry-file', zip)
+  )
+  await expect.poll(() => opens(app), { timeout: 15_000 }).toHaveLength(2)
+  expect((await opens(app))[1]).toMatch(/^path .*abc123-archive\.zip$/)
+  await page.waitForTimeout(SETTLE_MS)
+  expect(await opens(app)).toHaveLength(2)
+  // WebKitGTK refuses a started navigation only after beforeunload ran and the requests stopped.
+  const slow = await page.evaluate(() => (window as unknown as { __slow: Promise<string> }).__slow)
+  expect(slow).toBe('slow')
+  const unloaded = await page.evaluate(
+    () => (window as unknown as { __unloaded?: boolean }).__unloaded === true
+  )
+  expect(unloaded).toBe(false)
+  await site.close()
+  await expectSameDocument(page, href)
 })
 
 test('about:blank, data: and blob: never replace the app', async ({ app, page }) => {
