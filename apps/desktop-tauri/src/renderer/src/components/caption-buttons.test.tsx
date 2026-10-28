@@ -85,6 +85,20 @@ describe('CaptionButtons', () => {
     expect(button(container, 'maximize').textContent).toBe('\uE923')
   })
 
+  it('clears the native rectangles when the buttons hide, so nothing catches clicks there', async () => {
+    const rect = { x: 10, y: 0, width: 46, height: 36 } as DOMRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(rect)
+    const { container } = render(<CaptionButtons />)
+    shell.setRects.mockClear()
+    await act(async () => {
+      root.setAttribute('data-fullscreen', '')
+      await Promise.resolve()
+    })
+    expect(container.firstChild).toBeNull()
+    const none = { x: 0, y: 0, width: 0, height: 0 }
+    expect(shell.setRects).toHaveBeenCalledWith(none, none, none)
+  })
+
   it('renders nothing in fullscreen or off Windows', () => {
     root.setAttribute('data-fullscreen', '')
     expect(render(<CaptionButtons />).container.firstChild).toBeNull()

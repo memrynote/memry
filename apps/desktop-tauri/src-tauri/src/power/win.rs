@@ -1,4 +1,4 @@
-//! A second window subclass on the main window (the caption one is `win32_caption.rs`) for
+//! A second window subclass on the main window (the caption one is in `windows/win32_caption/`) for
 //! `WM_POWERBROADCAST` and the session-end messages.
 //!
 //! Windows sends `WM_ENDSESSION` to every top-level window of the process, and tao's hidden

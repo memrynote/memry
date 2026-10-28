@@ -4,6 +4,9 @@ import { commands, events } from '../../../generated/bindings'
 import { useCaptionButtonsVisible } from '@/lib/window-chrome'
 import { subscribeToEvent } from '@/services/tauri-event'
 import { cn } from '@/lib/utils'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('Component:CaptionButtons')
 
 type ButtonName = 'minimize' | 'maximize' | 'close'
 
@@ -101,6 +104,11 @@ export function CaptionButtons(): React.JSX.Element | null {
     return () => {
       observer.disconnect()
       window.removeEventListener('resize', report)
+      // Hidden buttons (full screen) must not leave the native input sink over the page.
+      const none = { x: 0, y: 0, width: 0, height: 0 }
+      void commands
+        .windowSetCaptionRects(none, none, none)
+        .catch((error: unknown) => log.warn('caption rectangles not cleared', error))
     }
   }, [visible])
 
