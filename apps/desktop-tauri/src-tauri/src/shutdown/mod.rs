@@ -42,7 +42,7 @@ impl ShutdownService {
         self.core.registry.register(name, run)
     }
 
-    /// Step 38 (#3555) registers its updater here; with none the calls are skipped.
+    /// The updater registers itself here (`crate::updater`); with none the calls are skipped.
     pub fn set_update_hook(&self, hook: Arc<dyn UpdateApplyHook>) {
         self.core.set_update_hook(hook);
     }
@@ -114,6 +114,7 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     }
     // The window is on its way out: a vault close must not flip the UI to the vault picker.
     app.state::<Session>().begin_shutdown();
+    crate::updater::stop(app);
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
     tracing::info!(scope = "Shutdown", "starting graceful shutdown");
@@ -124,28 +125,9 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     });
 }
 
-/// The registered update hook, `None` before Step 38 (#3555) registers one.
+/// The registered update hook, `None` before the updater registers it.
 pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
     app.state::<ShutdownService>().core.update_hook()
-}
-
-/// How long the event loop has to deliver the exit after an install hand-off before the process
-/// ends without it. The installer waits for this process, and gives up after 60 s.
-const HANDOFF_EXIT_FALLBACK: std::time::Duration = std::time::Duration::from_secs(5);
-
-/// Ends the process once the update hook handed the install off, which replaces the clean exit
-/// of the sequence and the forced exit of the backstop. The backstop may run while the event
-/// loop is wedged, so a plain thread ends the process if the exit does not arrive.
-pub fn exit_after_install(app: &AppHandle<Wry>) {
-    std::thread::spawn(|| {
-        std::thread::sleep(HANDOFF_EXIT_FALLBACK);
-        tracing::error!(
-            scope = "Shutdown",
-            "exit after the install hand-off did not arrive"
-        );
-        std::process::exit(0);
-    });
-    TauriEffects { app: app.clone() }.exit_clean();
 }
 
 /// The sequence ended cleanly and the exit it asked for may pass. The Windows session-end handler
@@ -165,6 +147,7 @@ pub fn begin_session_end(app: &AppHandle<Wry>) {
         return;
     }
     app.state::<Session>().begin_shutdown();
+    crate::updater::stop(app);
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
     tracing::info!(scope = "Shutdown", "starting graceful shutdown");

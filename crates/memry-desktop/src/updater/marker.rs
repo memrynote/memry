@@ -1,7 +1,7 @@
 //! Failed-install detection (`apps/desktop/src/main/telemetry/update-install-marker.ts`). The
 //! installer runs after this process exits and after telemetry is disposed, so a failed install
-//! reaches nobody. The quit path writes this marker synchronously; the next launch reads it and
-//! compares versions. The file is a contract with Electron: the last Electron build writes it
+//! reaches nobody. The quit path writes this marker before the hand-off, with a plain write and
+//! no fsync, as Electron does; the next launch reads it and compares versions. The file is a contract with Electron: the last Electron build writes it
 //! before handing over to the first Tauri build.
 
 use std::path::{Path, PathBuf};
@@ -122,9 +122,10 @@ pub fn resolve_outcome(
     }
 }
 
-/// Records that this build is handing off to the installer. Synchronous because the process is
-/// about to exit; a failed write is logged and never stops the install. A plain write, as in
-/// Electron: a torn file reads as corrupt and is discarded, which only loses the diagnostic.
+/// Records that this build is handing off to the installer, on the calling thread because the
+/// process is about to exit; a failed write is logged and never stops the install. A plain
+/// write with no fsync, as in Electron: a torn or lost file reads as no marker or a corrupt one,
+/// which only loses the diagnostic.
 pub fn write_started(
     dir: &Path,
     from: &str,

@@ -91,10 +91,7 @@ fn manage(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     app.manage(service.clone());
     app.manage(InitDelay(delay));
     app.state::<ShutdownService>()
-        .set_update_hook(Arc::new(Hook {
-            service: service.clone(),
-            app: app.clone(),
-        }));
+        .set_update_hook(Arc::new(Hook(service.clone())));
     forward_state(app, &service);
     Ok(())
 }
@@ -127,34 +124,36 @@ pub fn on_window_shown(app: &AppHandle<Wry>) {
     });
 }
 
-/// The shutdown sequence's view of the updater. A hand-off replaces the exit, so after it the
-/// process ends here.
-struct Hook {
-    service: Arc<UpdaterService>,
-    app: AppHandle<Wry>,
+/// The quit began: no check or download starts or lands after this.
+pub fn stop(app: &AppHandle<Wry>) {
+    if let Some(service) = app.try_state::<Arc<UpdaterService>>() {
+        service.stop();
+    }
 }
+
+/// The shutdown sequence's view of the updater.
+struct Hook(Arc<UpdaterService>);
 
 impl UpdateApplyHook for Hook {
     fn disable_install_on_quit(&self) {
-        self.service.disable_install_on_quit();
+        self.0.disable_install_on_quit();
     }
 
     fn enable_install_on_quit(&self) {
-        self.service.enable_install_on_quit();
+        self.0.enable_install_on_quit();
     }
 
     fn install_requested(&self) -> bool {
-        self.service.install_requested()
+        self.0.install_requested()
     }
 
+    /// A failed hand-off is in the state and the install streak; the sequence exits either way,
+    /// since the user's data is already flushed and the window is gone.
     fn apply_and_restart(&self) {
-        // A failed hand-off is in the state and the install streak; the quit goes on either way,
-        // since the user's data is already flushed and the window is gone.
-        self.service.apply_and_restart();
-        crate::shutdown::exit_after_install(&self.app);
+        self.0.apply_and_restart();
     }
 
     fn apply_on_quit(&self) {
-        self.service.apply_on_quit();
+        self.0.apply_on_quit();
     }
 }

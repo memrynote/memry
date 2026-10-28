@@ -266,15 +266,17 @@ pub async fn run_shutdown_sequence(
     }
 }
 
-/// Hands a downloaded update to the installer. Step 38 (#3555) registers its implementation;
-/// with none registered the calls are skipped.
+/// Hands a downloaded update to the installer; `crate::updater::service` implements it. With
+/// none registered the calls are skipped.
 pub trait UpdateApplyHook: Send + Sync {
     /// The OS is ending the session: an install-on-quit must not start.
     fn disable_install_on_quit(&self);
     /// The OS cancelled that session end: the install-on-quit decision is back as it was.
     fn enable_install_on_quit(&self);
-    /// The user asked to install, so the quit ends in the installer instead of an exit.
+    /// The user asked to install, so the quit hands off to the installer before the exit.
     fn install_requested(&self) -> bool;
+    /// Starts the installer, which waits for this process to exit. Returns without exiting: the
+    /// sequence ends the process after it.
     fn apply_and_restart(&self);
     /// Runs when the process is exiting normally.
     fn apply_on_quit(&self);
@@ -322,13 +324,18 @@ impl ShutdownCore {
         !self.claimed.swap(true, Ordering::SeqCst)
     }
 
-    /// A pending install survives a failed cleanup, otherwise the exit drops the update and the
-    /// prompt returns.
-    fn force_exit(&self, effects: &dyn ShutdownEffects) {
-        match self.update_hook().filter(|hook| hook.install_requested()) {
-            Some(hook) => hook.apply_and_restart(),
-            None => effects.terminate(),
+    /// Starts the installer the user asked for, before the process ends.
+    fn hand_off_install(&self) {
+        if let Some(hook) = self.update_hook().filter(|hook| hook.install_requested()) {
+            hook.apply_and_restart();
         }
+    }
+
+    /// A pending install survives a failed cleanup, otherwise the exit drops the update and the
+    /// prompt returns. The exit stays a forced one.
+    fn force_exit(&self, effects: &dyn ShutdownEffects) {
+        self.hand_off_install();
+        effects.terminate();
     }
 
     /// A timer on a plain thread, so a wedged async runtime cannot stop it. After `after` it
@@ -348,6 +355,14 @@ impl ShutdownCore {
     /// Runs the whole quit and ends in exactly one of: a clean exit, the installer, a forced
     /// exit. The caller has already armed the backstop.
     pub async fn run(&self, reason: ShutdownReason, effects: &Arc<dyn ShutdownEffects>) {
+        // A session end never installs on quit: Windows kills an installer started then, after
+        // it removed the old install (#1851). A forced sign-out (EWX_FORCE) skips
+        // WM_QUERYENDSESSION, so this is the one place every session end passes.
+        if reason == ShutdownReason::SessionEnd
+            && let Some(hook) = self.update_hook()
+        {
+            hook.disable_install_on_quit();
+        }
         let ctx = ShutdownContext {
             installing_update: self.installing_update(),
             reason,
@@ -369,10 +384,8 @@ impl ShutdownCore {
                     return;
                 }
                 effects.clear_marker();
-                match self.update_hook().filter(|hook| hook.install_requested()) {
-                    Some(hook) => hook.apply_and_restart(),
-                    None => effects.exit_clean(),
-                }
+                self.hand_off_install();
+                effects.exit_clean();
             }
             Ok(outcome) => {
                 // Stamped first: whatever happens next, the next launch can name the step.

@@ -122,14 +122,17 @@ impl UpdaterCore {
         self.state.subscribe()
     }
 
-    /// Applies `change`, then restores the two fields no transition may set, and publishes.
+    /// Applies `change`, then restores the two fields no transition may set, and publishes only
+    /// when the state changed: a progress tick that rounds to the shown percent reaches no window.
     fn patch(&self, change: impl FnOnce(&mut AppUpdateState)) {
         let supported = self.supported;
         let current_version = self.display_version();
-        self.state.send_modify(|state| {
+        self.state.send_if_modified(|state| {
+            let before = state.clone();
             change(state);
             state.current_version = current_version;
             state.update_supported = supported;
+            *state != before
         });
     }
 
@@ -170,6 +173,11 @@ impl UpdaterCore {
 
     pub fn reset_check_health(&self, now_ms: u64) {
         self.check_health().reset(now_ms);
+    }
+
+    /// A check reached the feed while the state stays as it is (an update already downloaded).
+    pub fn note_check_success(&self, now_ms: u64) {
+        self.check_health().record_check_success(now_ms);
     }
 
     /// Counts a failed check: the streak and whether it just became stuck.

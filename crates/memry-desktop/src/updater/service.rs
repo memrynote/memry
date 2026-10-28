@@ -20,6 +20,7 @@ use super::severity::{
     Severity, UpdateError, UpdateErrorKind, UpdaterErrorPhase, classify, describe_error, error_code,
 };
 use super::state::{AppUpdateState, AvailableUpdate, UpdaterCore, UpdaterStatus};
+use super::version::format_app_version_for_display;
 use crate::i18n::{self, Args};
 use crate::locale::LocaleService;
 use crate::registry::{AppConfig, ConfigError};
@@ -103,6 +104,8 @@ pub struct UpdaterService {
     pending: Mutex<Option<AvailableUpdate>>,
     timer: Mutex<Option<JoinHandle<()>>>,
     install_requested: AtomicBool,
+    /// The app is quitting: no new check or download, and none in flight may change the state.
+    stopped: AtomicBool,
     install_on_quit_disabled: AtomicBool,
     handed_off: AtomicBool,
 }
@@ -130,9 +133,22 @@ impl UpdaterService {
             pending: Mutex::new(None),
             timer: Mutex::new(None),
             install_requested: AtomicBool::new(false),
+            stopped: AtomicBool::new(false),
             install_on_quit_disabled: AtomicBool::new(false),
             handed_off: AtomicBool::new(false),
         })
+    }
+
+    /// The quit began: the timer goes, and no check or download starts or lands after this.
+    pub fn stop(&self) {
+        self.stopped.store(true, Ordering::SeqCst);
+        self.stop_timer();
+    }
+
+    /// Restart to install was asked for, or the app is quitting. The Installing screen must not
+    /// flip back to a check or a download.
+    fn halted(&self) -> bool {
+        self.stopped.load(Ordering::SeqCst) || self.install_requested.load(Ordering::SeqCst)
     }
 
     pub fn state(&self) -> AppUpdateState {
@@ -180,7 +196,7 @@ impl UpdaterService {
 
     fn start_timer(self: &Arc<Self>) {
         let mut timer = self.timer.lock().unwrap_or_else(PoisonError::into_inner);
-        if timer.is_some() {
+        if timer.is_some() || self.backend.is_none() || self.halted() {
             return;
         }
         let weak = Arc::downgrade(self);
@@ -215,28 +231,69 @@ impl UpdaterService {
 
     /// One feed check, joined by any caller that arrives while it runs. `clear_skip` (a manual
     /// check) lets a skipped version surface again. A failure is in the state and is returned.
+    ///
+    /// A downloaded update stays downloaded through a check that finds it again or fails:
+    /// install on quit acts only on `downloaded`, so a routine check would otherwise drop it.
     pub async fn check(self: &Arc<Self>, clear_skip: bool) -> Result<AppUpdateState, UpdateError> {
         let Some(backend) = self.backend.clone() else {
             return Ok(self.state());
         };
-        if clear_skip && let Err(error) = self.config.set_updater_skipped_version(None) {
-            tracing::warn!(
-                scope = "Updater",
-                "could not clear the skipped version: {error}"
-            );
+        if self.halted() {
+            return Ok(self.state());
+        }
+        if clear_skip {
+            let config = self.config.clone();
+            let cleared = self
+                .runtime
+                .spawn_blocking(move || config.set_updater_skipped_version(None))
+                .await;
+            if !matches!(cleared, Ok(Ok(()))) {
+                tracing::warn!(
+                    scope = "Updater",
+                    "could not clear the skipped version: {cleared:?}"
+                );
+            }
         }
         let this = self.clone();
         self.check
             .run(async move {
-                this.core.on_checking(now_ms());
-                match this.blocking(move || backend.check()).await {
-                    Ok(CheckOutcome::UpToDate) => this.core.on_up_to_date(now_ms()),
-                    Ok(CheckOutcome::Available(update)) => this.offer(update),
-                    Err(error) => return Err(this.fail(error)),
+                if this.halted() {
+                    return Ok(this.state());
+                }
+                let held = this.downloaded_version();
+                if held.is_none() {
+                    this.core.on_checking(now_ms());
+                }
+                let outcome = this.blocking(move || backend.check()).await;
+                if this.halted() {
+                    return Ok(this.state());
+                }
+                match (outcome, held) {
+                    (Ok(CheckOutcome::Available(update)), Some(held))
+                        if format_app_version_for_display(&update.version) == held =>
+                    {
+                        this.core.note_check_success(now_ms());
+                    }
+                    (Ok(CheckOutcome::UpToDate), Some(_)) => this.core.note_check_success(now_ms()),
+                    (Ok(CheckOutcome::UpToDate), None) => this.core.on_up_to_date(now_ms()),
+                    (Ok(CheckOutcome::Available(update)), _) => this.offer(update),
+                    (Err(error), Some(_)) => {
+                        this.log_and_report(&error, UpdaterErrorPhase::Check);
+                        return Err(error);
+                    }
+                    (Err(error), None) => return Err(this.fail(error)),
                 }
                 Ok(this.state())
             })
             .await
+    }
+
+    /// The display version of the update on disk, while the state is `downloaded`.
+    fn downloaded_version(&self) -> Option<String> {
+        let state = self.state();
+        (state.status == UpdaterStatus::Downloaded)
+            .then_some(state.available_version)
+            .flatten()
     }
 
     fn offer(self: &Arc<Self>, update: AvailableUpdate) {
@@ -263,7 +320,7 @@ impl UpdaterService {
         let Some(backend) = self.backend.clone() else {
             return Ok(self.state());
         };
-        if self.state().status == UpdaterStatus::Downloaded {
+        if self.halted() || self.state().status == UpdaterStatus::Downloaded {
             return Ok(self.state());
         }
         let Some(update) = self
@@ -277,16 +334,23 @@ impl UpdaterService {
         let this = self.clone();
         self.download
             .run(async move {
-                if this.state().status == UpdaterStatus::Downloaded {
+                if this.halted() || this.state().status == UpdaterStatus::Downloaded {
                     return Ok(this.state());
                 }
                 this.core.on_download_started();
                 let progress = this.clone();
                 let result = this
                     .blocking(move || {
-                        backend.download(&|percent| progress.core.on_download_progress(percent))
+                        backend.download(&|percent| {
+                            if !progress.halted() {
+                                progress.core.on_download_progress(percent);
+                            }
+                        })
                     })
                     .await;
+                if this.halted() {
+                    return Ok(this.state());
+                }
                 match result {
                     Ok(()) => {
                         this.core.on_downloaded(&update);
@@ -378,14 +442,7 @@ impl UpdaterService {
     /// belongs to an install. Returns the error for the caller to reject with.
     fn fail(&self, error: UpdateError) -> UpdateError {
         let phase = self.core.current_phase();
-        // The log line stays at error severity; only telemetry is classified.
-        tracing::error!(
-            scope = "Updater",
-            fields = %describe_error(&error, phase),
-            "updater error: {}",
-            error.message
-        );
-        self.report(&error, phase);
+        self.log_and_report(&error, phase);
         let locale = self.locale.get();
         let text = if error.kind == UpdateErrorKind::ReadOnlyVolume && self.outside_applications {
             i18n::t(locale, "system:error.updateReadOnlyVolume", &Args::new())
@@ -397,6 +454,17 @@ impl UpdaterService {
         self.core.on_error(text);
         self.note_install_attempt_failure(phase);
         error
+    }
+
+    /// The log line stays at error severity; only telemetry is classified.
+    fn log_and_report(&self, error: &UpdateError, phase: UpdaterErrorPhase) {
+        tracing::error!(
+            scope = "Updater",
+            fields = %describe_error(error, phase),
+            "updater error: {}",
+            error.message
+        );
+        self.report(error, phase);
     }
 
     /// A check that cannot reach the network is a warning, unless the install has been stuck

@@ -1,6 +1,7 @@
-// The Rust updater (`crates/memry-desktop/src/updater/`) reads and writes the install marker, the
-// install-health file and the updater preferences byte for byte as this code does. Its fixtures are the output of the
-// real functions below at a fixed clock; this test fails when either side drifts.
+// The Rust updater (`crates/memry-desktop/src/updater/`) reads the install marker, the
+// install-health file and the updater preferences this code writes, and writes the marker and the
+// health file in the same shape. The fixtures are the output of the real functions below at a
+// fixed clock, and the Rust tests read them; this test fails when the Electron output drifts.
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'

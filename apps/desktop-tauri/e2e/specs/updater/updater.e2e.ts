@@ -162,6 +162,21 @@ test('Restart to install shows the Installing screen and hands off once with a r
   expect(marker).toMatchObject({ toVersion: VERSION, installer: 'velopack' })
 })
 
+test('Restart to install on a quick quit hands off once with a relaunch', async ({ app, page }) => {
+  const { appDataDir } = await appInfo(app)
+  await download(app, page)
+
+  await page.getByRole('button', { name: /Update ready/ }).click()
+  await page.getByRole('button', { name: 'Restart now' }).click()
+
+  await waitForExit(app)
+  expect(applies(appDataDir)).toEqual([{ silent: true, restart: true }])
+  const marker = JSON.parse(
+    readFileSync(join(appDataDir, 'update-install-attempt.json'), 'utf8')
+  ) as { toVersion?: string; installer?: string }
+  expect(marker).toMatchObject({ toVersion: VERSION, installer: 'velopack' })
+})
+
 test('a normal quit installs a downloaded update without a relaunch', async ({ app, page }) => {
   const { appDataDir } = await appInfo(app)
   await download(app, page)

@@ -29,6 +29,7 @@ impl UpdaterService {
             self.state().available_version
         );
         self.install_requested.store(true, Ordering::SeqCst);
+        self.stop_timer();
         self.core.on_installing();
         Ok(())
     }

@@ -138,6 +138,20 @@ fn a_check_that_reached_the_feed_clears_the_failure_streak() {
 }
 
 #[test]
+fn a_progress_tick_that_rounds_to_the_shown_percent_reaches_no_window() {
+    let core = UpdaterCore::new(RAW, true, NOW);
+    core.on_download_started();
+    let mut states = core.subscribe();
+    core.on_download_progress(10.2);
+    assert!(states.has_changed().unwrap());
+    states.borrow_and_update();
+    core.on_download_progress(10.4);
+    assert!(!states.has_changed().unwrap());
+    core.on_download_progress(11.0);
+    assert!(states.has_changed().unwrap());
+}
+
+#[test]
 fn progress_is_rounded_half_up_and_clamped() {
     let core = UpdaterCore::new(RAW, true, NOW);
     for (percent, shown) in [

@@ -330,15 +330,20 @@ async fn a_failing_step_marks_cleanup_failure_and_still_runs_the_durable_flushes
 }
 
 #[tokio::test]
-async fn a_pending_install_replaces_the_exit_on_a_clean_quit() {
+async fn a_pending_install_hands_off_then_exits_cleanly() {
     let (core, log, effects) = setup();
     core.set_update_hook(Arc::new(FakeHook {
         install: AtomicBool::new(true),
         log: log.clone(),
     }));
     core.run(ShutdownReason::Quit, &effects).await;
-    assert!(log.has("clear") && log.has("hook:apply_and_restart"));
-    assert!(!log.has("exit_clean"));
+    // The hand-off only starts the installer; the shell still ends the process, cleanly.
+    let events = log.events();
+    assert!(log.has("clear"));
+    assert_eq!(
+        events[events.len() - 2..],
+        ["hook:apply_and_restart", "exit_clean"]
+    );
 }
 
 #[tokio::test(start_paused = true)]
@@ -352,8 +357,49 @@ async fn a_pending_install_survives_a_forced_exit() {
         .register("stop-sync-runtime", hangs())
         .unwrap();
     core.run(ShutdownReason::Quit, &effects).await;
-    assert!(log.has("hook:apply_and_restart"));
-    assert!(!log.has("terminate"));
+    // A forced exit stays forced: never reported as a clean quit.
+    let events = log.events();
+    assert_eq!(
+        events[events.len() - 2..],
+        ["hook:apply_and_restart", "terminate"]
+    );
+    assert!(!log.has("exit_clean"));
+}
+
+#[tokio::test]
+async fn a_session_end_turns_install_on_quit_off_before_any_step() {
+    // A forced sign-out (EWX_FORCE) skips WM_QUERYENDSESSION, so only the sequence sees it;
+    // an installer started then is killed after it removed the old install (#1851).
+    let (core, log, effects) = setup();
+    core.set_update_hook(Arc::new(FakeHook {
+        install: AtomicBool::new(false),
+        log: log.clone(),
+    }));
+    core.registry
+        .register("flush-windows", records(&log, "flush-windows"))
+        .unwrap();
+    core.run(ShutdownReason::SessionEnd, &effects).await;
+    let events = log.events();
+    let disabled = events
+        .iter()
+        .position(|e| e == "hook:disable")
+        .expect("disabled");
+    let first_step = events
+        .iter()
+        .position(|e| e.starts_with("start:"))
+        .expect("step");
+    assert!(disabled < first_step, "{events:?}");
+}
+
+#[tokio::test]
+async fn a_normal_quit_leaves_install_on_quit_alone() {
+    let (core, log, effects) = setup();
+    core.set_update_hook(Arc::new(FakeHook {
+        install: AtomicBool::new(false),
+        log: log.clone(),
+    }));
+    core.run(ShutdownReason::Quit, &effects).await;
+    assert!(!log.has("hook:disable"));
 }
 
 #[tokio::test]
