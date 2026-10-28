@@ -737,3 +737,47 @@ fn an_unchanged_file_over_a_body_this_build_cannot_read_whole_is_unchanged_and_o
     );
     assert_eq!((local_updates(&f, &id), f.queued_updates(&id)), (0, 0));
 }
+
+/// A note body exactly as a shipped release wrote it (`blocknote-history.mts`).
+fn release_body(f: &Fixture, id: &str, case: &str) {
+    let file: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../packages/contracts/test-vectors/markdown-convert/blocknote-0.47.1.json"
+    ))
+    .expect("json");
+    let doc = file["docs"]
+        .as_array()
+        .expect("docs")
+        .iter()
+        .find(|d| d["name"] == case)
+        .expect("case");
+    let update = hex::decode(doc["updateHex"].as_str().expect("hex")).expect("hex");
+    let id = id.to_owned();
+    f.vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            update_log::append_server_update(conn, &id, 1, &update, 1).expect("store");
+            Ok(())
+        })
+        .expect("store");
+}
+
+#[test]
+fn a_link_written_by_blocknote_0_47_is_fed_and_kept_whole() {
+    // 0.47.1 (tiptap link 3.19) wrote `target` and `rel` on every link; no file ever held them.
+    let f = fixture();
+    let id = f.note();
+    release_body(&f, &id, "link written by the editor");
+    assert_eq!(
+        f.feed(&id, "see [example](https://example.com) edited"),
+        FeedOutcome::Fed
+    );
+    assert!(!f.owes_file_body(&id));
+    assert_eq!(
+        versions(&f, &id),
+        [(
+            "see [example](https://example.com)\n".to_owned(),
+            "significant".to_owned()
+        )],
+        "the kept version lost what markdown holds"
+    );
+}

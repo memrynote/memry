@@ -11,7 +11,9 @@ use memry_core::crdt::DocumentRegistry;
 use memry_core::crdt::canonical::canonical_fragment;
 use memry_core::crdt::registry::{Document, UpdateSink};
 use memry_core::markdown::pm::Schema;
-use memry_core::markdown::yxml::{ReadFragment, YxmlError, read_fragment, write_fragment};
+use memry_core::markdown::yxml::{
+    RETIRED_MARK_ATTRS, ReadFragment, YxmlError, read_fragment, write_fragment,
+};
 use serde_json::json;
 use support::vector_compare::{Failures, bytes_equal};
 use support::{hex_field, str_field, vector_file};
@@ -185,4 +187,59 @@ fn a_read_counts_every_run_and_attribute_it_drops() {
         failures.check(id, outcome);
     }
     failures.finish("yxml lost counts");
+}
+
+/// The schema of every shipped release (`blocknote-<version>.json`, its real `pmSchema`)
+/// against this one. Each node attribute it declared is still declared. Each mark attribute
+/// it declared is declared, or listed in `RETIRED_MARK_ATTRS`, and every listed one comes from
+/// a release. A mark this schema does not have at all (the AI suggestion marks) is not
+/// retired: its text stays lost, and a feed refuses to replace it.
+#[test]
+fn every_attribute_a_shipped_release_wrote_is_declared_or_retired() {
+    let schema = Schema::memry();
+    let release = vector_file("markdown-convert/blocknote-0.47.1");
+    let mut seen_retired = Vec::new();
+    for (name, attrs) in release["nodes"].as_object().expect("nodes") {
+        let Some(id) = schema.node_type(name) else {
+            panic!("the release had node {name}, which this schema cannot build");
+        };
+        let declared = schema.node_ty(id).spec.attrs;
+        for attr in attrs.as_object().expect("attrs").keys() {
+            assert!(
+                declared.iter().any(|a| a.name == attr),
+                "{name}.{attr} was written by a release and is not declared"
+            );
+        }
+    }
+    for (name, attrs) in release["marks"].as_object().expect("marks") {
+        let Some(id) = schema.mark_type(name) else {
+            assert!(
+                !RETIRED_MARK_ATTRS.iter().any(|(mark, _)| mark == name),
+                "{name} is not in this schema; its text is content, not a retired attribute"
+            );
+            continue;
+        };
+        let declared = schema.mark_ty(id).spec.attrs;
+        for attr in attrs.as_object().expect("attrs").keys() {
+            if declared.iter().any(|a| a.name == attr) {
+                continue;
+            }
+            let retired = RETIRED_MARK_ATTRS
+                .iter()
+                .any(|(mark, list)| mark == name && list.contains(&attr.as_str()));
+            assert!(
+                retired,
+                "{name}.{attr} was written by a release and is neither declared nor retired"
+            );
+            seen_retired.push(format!("{name}.{attr}"));
+        }
+    }
+    for (mark, list) in RETIRED_MARK_ATTRS {
+        for attr in *list {
+            assert!(
+                seen_retired.contains(&format!("{mark}.{attr}")),
+                "{mark}.{attr} is listed as retired but no release wrote it"
+            );
+        }
+    }
 }

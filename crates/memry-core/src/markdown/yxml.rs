@@ -32,6 +32,26 @@ use yrs::{
 
 use super::pm::{Fragment, Mark, Node, Schema};
 
+/// Mark attributes a shipped desktop release wrote into Y formatting that this schema no
+/// longer declares, and that nothing ever read back: reading them is not a loss.
+///
+/// Derived from each release's real `pmSchema` (`apps/desktop/scripts/markdown-oracle/
+/// blocknote-history.mts`, committed as `markdown-convert/blocknote-<version>.json`), and
+/// checked against it by `tests/markdown_yxml_vectors.rs`:
+///
+/// - `link.{target, rel, class, title}`: BlockNote 0.47.1 (desktop releases v2026.4.28 to
+///   v2026-09-19) built its link mark from `@tiptap/extension-link` 3.19, which declares
+///   them with the defaults `_blank`, `noopener noreferrer nofollow`, null, null, so every
+///   link those releases wrote carries `target` and `rel`. The release turned a link mark
+///   into the block `{ type: "link", href, content }` (`nodeToBlock`) before any markdown
+///   was written, so no file ever held them, and 0.54.2 reads past them.
+///
+/// The AI suggestion marks of 0.47.1 (`insertion`, `deletion`, `modification`) are not
+/// here: they lived on a forked document (`ForkYDocExtension`) and were resolved before the
+/// merge, so one found in Y is unresolved content, which stays lost.
+pub const RETIRED_MARK_ATTRS: &[(&str, &[&str])] =
+    &[("link", &["target", "rel", "class", "title"])];
+
 #[derive(Debug, thiserror::Error, PartialEq)]
 pub enum YxmlError {
     /// A text node directly under the fragment, or a nested fragment anywhere:
@@ -53,9 +73,9 @@ pub struct ReadFragment {
     /// Content the read dropped inside what it kept, which `removed` does not
     /// count: a text run with a mark this schema does not know, a run that is not
     /// plain text, and an attribute of an element, a mark or an `XmlText` the
-    /// schema does not declare (a `Null` or `Undefined` value holds nothing and is
-    /// not counted). Zero together with `removed` means the document holds
-    /// everything the fragment does.
+    /// schema does not declare (a `Null` or `Undefined` value holds nothing, and a
+    /// [`RETIRED_MARK_ATTRS`] one was never read; neither is counted). Zero together
+    /// with `removed` means the document holds everything the fragment does.
     pub lost: usize,
 }
 
@@ -158,6 +178,13 @@ fn undeclared(given: &[(String, Any)], built: &[(String, Any)]) -> usize {
         .count()
 }
 
+fn retired_attrs(mark: &str) -> &'static [&'static str] {
+    RETIRED_MARK_ATTRS
+        .iter()
+        .find(|(name, _)| *name == mark)
+        .map_or(&[], |(_, attrs)| attrs)
+}
+
 fn holds_value(value: &Out) -> bool {
     !matches!(value, Out::Any(Any::Null | Any::Undefined))
 }
@@ -185,8 +212,12 @@ fn text_nodes<T: ReadTxn>(
                 let ty = schema.mark_type(mark_name(name))?;
                 let mark = schema.create_mark(ty, value).ok()?;
                 if let Any::Map(given) = value {
-                    let given: Vec<(String, Any)> =
-                        given.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                    let retired = retired_attrs(mark_name(name));
+                    let given: Vec<(String, Any)> = given
+                        .iter()
+                        .filter(|(k, _)| !retired.contains(&k.as_str()))
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect();
                     *lost += undeclared(&given, &mark.attrs);
                 }
                 marks.push(mark);

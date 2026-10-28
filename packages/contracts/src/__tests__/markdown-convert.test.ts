@@ -41,7 +41,7 @@ const DIGESTS: Record<string, string> = {
     '1641fc52c860c385dde2d0a54145880e6f6edef84f92e494621563a47ea0744f',
   'markdown-convert/pm-schema.json':
     '5e524687c59e0e435db25c72248be9723b11fe3721602a6d65027f11de801836',
-  'markdown-convert/yxml.json': '59593c92eb297ef41bb5c42234fbc25957be49985045d14e8dc3e92ed4fdadbb',
+  'markdown-convert/yxml.json': 'c65bd58e84b624c93d9f5b838649c12c99ad1b6565456edbc5a2c994facbe39b',
   'markdown-convert/md-to-html.json':
     '816cfb5da51485e40e08780863ff38e7a682cb25965204c529a2f3df833b3605',
   'markdown-convert/html-to-blocks.json':
@@ -68,9 +68,9 @@ const DIGESTS: Record<string, string> = {
   'markdown-convert/roundtrip.json':
     '7f5a95f0a4ccab2687e1fc86a4def42cf68a97c40273f8d8d178f920fbf6ed3a',
   'markdown-convert/blocks.json':
-    '96fe1f186e4d267df874ae97e6649c20ec3531e50214a36278ce14669db7fafd',
+    'bd6cd0349bdacb5a0ee8b9240b4724a34931aa92654a1529ccd9fd4a369ab206',
   'markdown-convert/serialize-doc.json':
-    '9d0527a32c2004c8e24b757654f9a91f925034a87450443d080cf2cfb203971a',
+    'f9058089211fcd1b7de35699f1999579880d083ab770907b4a138c28b0602a09',
   'markdown-convert/replace-body.json':
     '390ab5b912181900f9651c3cfd1c12703e656d675b05e0e517e1c898a2197db2'
 }
@@ -86,7 +86,7 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   },
   'markdown-convert/markdown-class.json': { classify: 23 },
   'markdown-convert/pm-schema.json': { schema: 1, 'match-sweep': 13, 'find-wrapping': 13 },
-  'markdown-convert/yxml.json': { 'yxml-read': 61, 'yxml-roundtrip': 61 },
+  'markdown-convert/yxml.json': { 'yxml-read': 93, 'yxml-roundtrip': 93 },
   'markdown-convert/md-to-html.json': { 'md-to-html': 833 },
   'markdown-convert/html-to-blocks.json': { 'html-to-blocks': 216 },
   'markdown-convert/parse.json': { 'bn-parse': 833 },
@@ -100,8 +100,8 @@ const OPS_PER_FILE: Record<string, Record<string, number>> = {
   'markdown-convert/seed-corpus.json': { 'corpus-note': 250 },
   'markdown-convert/seed-doc.json': { 'doc-seed': 751 },
   'markdown-convert/roundtrip.json': { 'doc-serialize': 751 },
-  'markdown-convert/blocks.json': { 'doc-blocks': 812 },
-  'markdown-convert/serialize-doc.json': { 'doc-serialize': 504, 'doc-repair-ids': 1 },
+  'markdown-convert/blocks.json': { 'doc-blocks': 844 },
+  'markdown-convert/serialize-doc.json': { 'doc-serialize': 536, 'doc-repair-ids': 1 },
   'markdown-convert/replace-body.json': { 'doc-replace': 44 }
 }
 
