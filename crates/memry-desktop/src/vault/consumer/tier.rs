@@ -242,15 +242,15 @@ impl VaultTier {
                 );
             })
             .ok();
-        let pass = Pass::new(
+        let pass = Arc::new(Pass::new(
             vault.path.clone(),
             vault.vault.clone(),
             self.rows.clone(),
             session,
             echo.clone(),
             vault.vault.app_settings(self.store.clone()).ok(),
-        );
-        let writeback = WriteBack::start(pass, self.failures.clone())
+        ));
+        let writeback = WriteBack::start(pass.clone(), self.failures.clone())
             .map(Arc::new)
             .map_err(|error| error.to_string())?;
         let applier = Applier {
@@ -263,8 +263,8 @@ impl VaultTier {
             settings: vault.vault.app_settings(self.store.clone()).ok(),
         };
         let after_walk: Box<dyn FnOnce() + Send> = {
-            let (vault, writeback) = (vault.vault.clone(), writeback.clone());
-            Box::new(move || reconcile(&vault, &writeback))
+            let writeback = writeback.clone();
+            Box::new(move || reconcile(&pass, &writeback))
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;

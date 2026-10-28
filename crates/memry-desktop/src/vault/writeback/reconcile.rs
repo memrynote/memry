@@ -4,16 +4,16 @@
 //! derives the same notes from the body stamps instead, so it also finds an edit made in the
 //! app whose pass never ran.
 
-use memry_core::api::vault::Vault;
-
-use super::WriteBack;
+use super::{Pass, WriteBack};
+use crate::vault::trash::move_to_trash;
 
 const SCOPE: &str = "vault_writeback";
 
-/// Schedules a pass for every note behind its body. The consumer calls it once the open walk
-/// ended.
-pub(crate) fn reconcile(vault: &Vault, writeback: &WriteBack) {
-    match vault.note_files().behind_bodies() {
+/// Moves the files of deleted notes to the trash, then schedules a pass for every note behind
+/// its body. The consumer calls it once the open walk ended.
+pub(crate) fn reconcile(pass: &Pass, writeback: &WriteBack) {
+    pass.trash_deleted(&move_to_trash);
+    match pass.vault.note_files().behind_bodies() {
         Ok(notes) => {
             if !notes.is_empty() {
                 tracing::info!(

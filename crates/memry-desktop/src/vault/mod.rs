@@ -13,6 +13,7 @@ pub mod layout;
 pub mod note_file;
 pub mod path_key;
 pub mod paths;
+pub mod trash;
 pub mod walk;
 pub mod watch;
 pub mod writeback;

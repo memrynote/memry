@@ -294,7 +294,7 @@ impl Lane<'_> {
         Ok(())
     }
 
-    pub(super) fn remove(&mut self, note_id: &str) -> Result<(), RowError> {
+    pub(crate) fn remove(&mut self, note_id: &str) -> Result<(), RowError> {
         let state = self.state_mut();
         state.files.remove(note_id)?;
         state.index.remove_note(note_id);

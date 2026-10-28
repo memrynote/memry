@@ -78,6 +78,15 @@
 //!   consumer stamps a feed when it records it, after the feed. The stamps are this device's
 //!   clock: an edit stamped in the same millisecond as its row's record, or before it by a
 //!   clock set back, is not seen, and that file waits for the note's next edit.
+//! - **A deleted note's file goes to the OS trash, never away for good, and only while it is
+//!   the file the note held** ([`Pass::trash_deleted`]). Before its passes, the open
+//!   reconcile moves to the trash the file of every tombstoned note and journal day
+//!   ([`memry_core::domain::note_files::rows_of_deleted_notes`]): a deletion made on another
+//!   device, or one whose file removal a crash cut short. The file goes only when its bytes
+//!   are still the ones its row read; a file edited since, or one the document never took,
+//!   holds bytes the note did not, and stays with its row. A row whose file is gone is
+//!   removed. A note with no record here is not a deleted one: its record may not have
+//!   arrived yet. A file the trash refuses stays, with its row, for the next open.
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the
@@ -87,12 +96,14 @@
 //! with the open reconcile (12e-3c). A file the note has no row or no file for is not
 //! created: the note records create files (Step 13).
 
+mod deleted;
 mod pass;
 mod reconcile;
 mod schedule;
 #[cfg(test)]
 mod tests;
 
+pub use deleted::Leftover;
 pub use pass::{Keep, Outcome, Pass};
 pub(crate) use reconcile::reconcile;
 pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};

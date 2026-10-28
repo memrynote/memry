@@ -319,6 +319,7 @@ pub(super) fn assert_kept(f: &mut Fixture, outcome: &Outcome, keep: Keep, rel: &
     assert!(f.facts().is_empty());
 }
 
+mod deleted;
 mod guards;
 mod reconcile;
 mod schedule;

@@ -1,8 +1,10 @@
-//! A crash between a body commit and its write-back (`vault::writeback`, "A crash or a
-//! forced exit leaves files behind their bodies" and "Every open brings the files left
-//! behind"): a child process opens the vault, commits a page from sync as the body pull does,
-//! schedules the write-back as the sync driver does, and aborts inside the debounce. The next
-//! open writes the file from the committed document, and the open after it writes nothing.
+//! A crash between a body commit and its write-back, and between a note's deletion and its
+//! file's (`vault::writeback`, "A crash or a forced exit leaves files behind their bodies",
+//! "Every open brings the files left behind" and "A deleted note's file goes to the OS
+//! trash"): a child process opens the vault, commits a page from sync as the body pull does,
+//! schedules the write-back as the sync driver does, deletes a second note, and aborts inside
+//! the debounce. The next open writes the first file from the committed document and moves
+//! the second to the OS trash, and the open after it writes nothing.
 
 mod device_key;
 mod vault_env;
@@ -26,6 +28,7 @@ use vault_env::{QUIET, WAIT, creates, env, indexed};
 const VAULT: &str = "MEMRY_CRASH_VAULT";
 const APP: &str = "MEMRY_CRASH_APP";
 const NOTE: &str = "MEMRY_CRASH_NOTE";
+const DELETED: &str = "MEMRY_CRASH_DELETED";
 const CHILD: &str = "the_child_commits_a_page_schedules_its_write_back_and_aborts";
 
 fn app_changed(id: &str) -> impl Fn(&Applied) -> bool + '_ {
@@ -41,10 +44,22 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
         Some(identity)
     });
     drop(made);
+    // A name of this run only, so the test finds its own file in the OS trash.
+    let gone = format!(
+        "gone-{}-{}.md",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
     e.write("n.md", "first words\n");
+    e.write(&gone, "deleted on another device\n");
     e.open();
     e.facts_until(indexed);
-    let id = e.rows()[0].0.clone();
+    let rows = e.rows();
+    let id_of = |path: &str| rows.iter().find(|(_, p)| p == path).unwrap().0.clone();
+    let (id, deleted) = (id_of("n.md"), id_of(&gone));
     e.close();
 
     let status = Command::new(std::env::current_exe().unwrap())
@@ -52,10 +67,15 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
         .env(VAULT, &e.vault)
         .env(APP, e.vault.parent().unwrap().join("app"))
         .env(NOTE, &id)
+        .env(DELETED, &deleted)
         .status()
         .unwrap();
     assert!(!status.success(), "the child did not abort: {status}");
     assert_eq!(e.read("n.md"), "first words\n", "the child wrote the file");
+    assert!(
+        e.vault.join(&gone).exists(),
+        "the child removed the deleted note's file"
+    );
 
     e.open();
     e.facts_until(app_changed(&id));
@@ -70,6 +90,12 @@ fn a_page_committed_before_a_crash_reaches_the_file_on_the_next_open() {
     // The file is the converter's markdown with the final newline the file had.
     assert_eq!(body.markdown, "first words\n\nfrom the page");
     assert_eq!(e.read("n.md"), format!("{}\n", body.markdown));
+    assert!(
+        !e.vault.join(&gone).exists(),
+        "the deleted note's file is still in the vault"
+    );
+    take_from_trash(&e.vault, &gone, "deleted on another device\n");
+    assert!(e.core().note_files().by_id(&deleted).unwrap().is_none());
 
     e.close();
     let mtime = modified(&e.vault.join("n.md"));
@@ -97,6 +123,7 @@ fn the_child_commits_a_page_schedules_its_write_back_and_aborts() {
     let vault = PathBuf::from(std::env::var(VAULT).unwrap());
     let app = PathBuf::from(std::env::var(APP).unwrap());
     let id = std::env::var(NOTE).unwrap();
+    let deleted = std::env::var(DELETED).unwrap();
     let registry = VaultRegistry::new(Arc::new(AppConfig::load(app.join("memry-config.json"))));
     let session = Session::new(registry);
     let tier = VaultTier::new(device_key::with_device_key());
@@ -113,6 +140,13 @@ fn the_child_commits_a_page_schedules_its_write_back_and_aborts() {
     }
     commit_page(&opened.vault.vault, &id, "from the page");
     tier.schedule(&id);
+    opened
+        .vault
+        .vault
+        .notes_writer(device_key::with_device_key())
+        .unwrap()
+        .delete(deleted)
+        .unwrap();
     std::process::abort();
 }
 
@@ -159,6 +193,41 @@ fn commit_page(core: &memry_core::api::vault::Vault, id: &str, text: &str) {
         Ok(())
     })
     .unwrap();
+}
+
+/// Finds `name`, taken from `vault`, in the OS trash with `text` in it, and empties it from
+/// there.
+#[cfg(any(windows, all(unix, not(target_os = "macos"))))]
+fn take_from_trash(vault: &Path, name: &str, text: &str) {
+    let _ = text;
+    let parent = vault.canonicalize().unwrap();
+    let items: Vec<_> = trash::os_limited::list()
+        .unwrap()
+        .into_iter()
+        .filter(|item| item.name == name)
+        .collect();
+    assert!(
+        items
+            .iter()
+            .any(|item| item.original_parent.canonicalize().ok().as_ref() == Some(&parent)),
+        "{name} is not in the trash: {items:?}"
+    );
+    trash::os_limited::purge_all(items).unwrap();
+}
+
+/// The Finder's Trash has no list call: the file is at `~/.Trash/<name>` (the name is this
+/// run's own, so the Finder has no reason to rename it).
+#[cfg(target_os = "macos")]
+fn take_from_trash(_vault: &Path, name: &str, text: &str) {
+    let path = PathBuf::from(std::env::var("HOME").unwrap())
+        .join(".Trash")
+        .join(name);
+    assert_eq!(
+        std::fs::read_to_string(&path).unwrap(),
+        text,
+        "{name} is not in the trash"
+    );
+    std::fs::remove_file(path).unwrap();
 }
 
 fn modified(path: &Path) -> SystemTime {

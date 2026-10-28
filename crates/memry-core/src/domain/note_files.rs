@@ -331,6 +331,29 @@ pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
         .map_err(failed)
 }
 
+/// The markdown rows of tombstoned notes and journal days, by path: files a deletion on
+/// another device, or one whose file operation a crash cut short, left in the vault. A note
+/// this vault has no record of is not among them: its record may not have arrived yet, and
+/// a file is not given up on an absence.
+pub fn rows_of_deleted_notes(conn: &Connection) -> Result<Vec<NoteFile>, StorageError> {
+    let mut statement = conn
+        .prepare(&format!(
+            "SELECT {COLUMNS} FROM note_files f
+              WHERE f.file_type = 'markdown'
+                AND (EXISTS (SELECT 1 FROM notes n
+                              WHERE n.id = f.note_id AND n.deleted_at IS NOT NULL)
+                  OR EXISTS (SELECT 1 FROM journal_entries j
+                              WHERE j.id = f.note_id AND j.deleted_at IS NOT NULL))
+              ORDER BY f.path"
+        ))
+        .map_err(failed)?;
+    statement
+        .query_map([], row_to_file)
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
 /// Every `(note_id, path)`, for a caller that builds its own lookup (the desktop vault tier
 /// keeps a case- and normalization-folded index, which the core does not).
 pub fn list_paths(conn: &Connection) -> Result<Vec<(String, String)>, StorageError> {

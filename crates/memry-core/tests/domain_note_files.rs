@@ -339,3 +339,39 @@ fn a_note_is_behind_its_body_when_a_body_entry_is_stamped_after_its_row() {
         ["local", "local-snap", "server", "server-snap"]
     );
 }
+
+/// The rows the open reconcile moves to the trash: markdown rows of a tombstoned note or
+/// journal day. A live note, a note this device has no record of (its record may not be
+/// pulled yet) and a file that is not markdown are not among them.
+#[test]
+fn the_rows_of_deleted_notes_are_the_markdown_rows_of_tombstoned_notes_and_days() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    for (id, path) in [
+        ("deleted", "deleted.md"),
+        ("j2024-01-02", "journal/2024-01-02.md"),
+        ("live", "live.md"),
+        ("live-day", "journal/2024-01-03.md"),
+        ("unknown", "unknown.md"),
+    ] {
+        files.upsert_stat(stat(id, path)).unwrap();
+    }
+    let mut image = stat("deleted-image", "image.png");
+    image.file_type = "image".to_owned();
+    files.upsert_stat(image).unwrap();
+    exec(
+        &vault,
+        "INSERT INTO notes (id, title, deleted_at) VALUES
+           ('deleted', 'a', 5), ('live', 'b', NULL), ('deleted-image', 'c', 5);
+         INSERT INTO journal_entries (id, date, deleted_at) VALUES
+           ('j2024-01-02', '2024-01-02', 5), ('live-day', '2024-01-03', NULL);",
+    );
+
+    let ids: Vec<String> = files
+        .rows_of_deleted_notes()
+        .unwrap()
+        .into_iter()
+        .map(|row| row.note_id)
+        .collect();
+    assert_eq!(ids, ["deleted", "j2024-01-02"]);
+}

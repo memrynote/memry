@@ -84,6 +84,8 @@ icu_plurals = "2.4.0"
 icu_locale = "2.4.0"
 icu_decimal = "2.4.0"
 notify = "8.2.1"
+# Deleted notes' files go to the OS trash, not an unlink (`vault::trash`).
+trash = "5.2.9"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
