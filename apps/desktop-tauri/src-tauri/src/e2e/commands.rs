@@ -49,6 +49,7 @@ e2e_commands! {
         e2e_app_terminate,
         e2e_note_body,
         e2e_note_edit,
+        e2e_note_schedule,
         e2e_vault_adopt_files,
         e2e_vault_note_files,
         e2e_vault_read_file,

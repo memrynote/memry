@@ -113,7 +113,8 @@ test('a Windows sign-out writes the edit scheduled just before it', async ({
   const id = await adopted(app, testVaultPath, 'notes/wb-sign-out.md')
 
   await invokeTest(app, 'e2e_note_edit', { noteId: id, text: 'typed before the sign-out' })
-  await invokeTest(app, 'e2e_send_session_end', { target: 'main' })
+  // Windows ends the WebView with the session too; the write-back must not need it.
+  await invokeTest(app, 'e2e_send_session_end', { target: 'main', killWebview: true })
   await exited(app)
   expect(readFileSync(join(testVaultPath, 'notes/wb-sign-out.md'), 'utf8')).toBe(
     'typed before the sign-out\n'

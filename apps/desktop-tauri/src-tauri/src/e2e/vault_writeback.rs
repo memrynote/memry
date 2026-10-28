@@ -13,6 +13,7 @@ use memry_desktop::paths::AppPaths;
 use memry_desktop::seams::secure_store::DeviceIdentityStore;
 use memry_desktop::session::{OpenSource, OpenVault, Session};
 use memry_desktop::vault::consumer::VaultTier;
+use memry_desktop::vault::hash::content_hash;
 use serde::Serialize;
 use tauri::{AppHandle, Manager, Wry};
 
@@ -45,19 +46,31 @@ fn open(app: &AppHandle<Wry>) -> Result<OpenVault, CommandError> {
         .ok_or_else(|| failed("e2e_no_vault", "no vault is open"))
 }
 
-/// `rel` under the open vault; a path that leaves it is refused.
+/// `rel` under the open vault; a path that leaves it, by its parts or through a link, is
+/// refused.
 fn in_vault(app: &AppHandle<Wry>, rel: &str) -> Result<PathBuf, CommandError> {
-    let inside = Path::new(rel)
+    let outside =
+        || CommandError::new(ErrorKind::Invalid, "e2e_path_outside_vault", rel.to_owned());
+    let plain = Path::new(rel)
         .components()
         .all(|part| matches!(part, Component::Normal(_)));
-    if !inside {
-        return Err(CommandError::new(
-            ErrorKind::Invalid,
-            "e2e_path_outside_vault",
-            rel.to_owned(),
-        ));
+    if !plain {
+        return Err(outside());
     }
-    Ok(open(app)?.path.join(rel))
+    let root =
+        std::fs::canonicalize(open(app)?.path).map_err(|error| failed("e2e_vault_root", error))?;
+    let target = root.join(rel);
+    // The deepest part that exists, resolved: a link anywhere on the way is followed.
+    let existing = target
+        .ancestors()
+        .find(|part| part.exists())
+        .ok_or_else(outside)?;
+    let resolved =
+        std::fs::canonicalize(existing).map_err(|error| failed("e2e_vault_path", error))?;
+    if !resolved.starts_with(&root) {
+        return Err(outside());
+    }
+    Ok(target)
 }
 
 /// Called before the first open: a launch after `e2e_vault_adopt_files` adopts files too.
@@ -109,7 +122,9 @@ pub fn e2e_vault_note_files(app: AppHandle<Wry>) -> Result<Vec<E2eNoteFile>, Com
         .collect())
 }
 
-/// Retypes the note's first block, as the editor does, and schedules its write-back.
+/// Retypes the note's first block and schedules its write-back. It edits through
+/// `NotesWriter::edit_block`, the path iOS uses; the desktop editor of Step 14 (#3531) applies
+/// Yjs updates (`Editor::apply_update`), and this command moves to that path then.
 #[tauri::command]
 pub async fn e2e_note_edit(
     app: AppHandle<Wry>,
@@ -126,6 +141,18 @@ pub async fn e2e_note_edit(
     })
     .await
     .map_err(|error| failed("e2e_note_edit", error))?
+}
+
+/// Schedules the notes' write-backs without editing them, as the sync driver does after every
+/// committed pull page (Step 17, #3534): a note whose file already says its body is not
+/// written.
+#[tauri::command]
+pub fn e2e_note_schedule(app: AppHandle<Wry>, note_ids: Vec<String>) -> Result<(), CommandError> {
+    let tier = tier(&app)?;
+    for note_id in &note_ids {
+        tier.schedule(note_id);
+    }
+    Ok(())
 }
 
 /// The text of the note's body, block by block, one line each.
@@ -158,14 +185,39 @@ pub fn e2e_vault_write_outside(
     written.map_err(|error| failed("e2e_write_outside", error))
 }
 
-/// The file's text, `None` when it is not there.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct E2eVaultFile {
+    pub text: String,
+    /// `content_hash` of the text, the hash a row records for it.
+    pub content_hash: String,
+    /// Modified time in ms: a rewrite with the same bytes still moves it.
+    pub mtime_ms: f64,
+    pub size: u64,
+}
+
+/// The file's text, hash, modified time and size, `None` when it is not there.
 #[tauri::command]
 pub fn e2e_vault_read_file(
     app: AppHandle<Wry>,
     path: String,
-) -> Result<Option<String>, CommandError> {
-    match std::fs::read_to_string(in_vault(&app, &path)?) {
-        Ok(text) => Ok(Some(text)),
+) -> Result<Option<E2eVaultFile>, CommandError> {
+    let target = in_vault(&app, &path)?;
+    let read = std::fs::metadata(&target).and_then(|meta| {
+        let text = std::fs::read_to_string(&target)?;
+        let mtime_ms = meta
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0.0, |since| since.as_secs_f64() * 1000.0);
+        Ok(E2eVaultFile {
+            content_hash: content_hash(&text),
+            text,
+            mtime_ms,
+            size: meta.len(),
+        })
+    });
+    match read {
+        Ok(file) => Ok(Some(file)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(failed("e2e_read_file", error)),
     }

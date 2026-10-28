@@ -1,26 +1,73 @@
 // The write-back soak (Step 12e-3h, #3529): hours of edits made in the app and by other
-// programs on one running app, which must never lose an edit, leave a file and its note apart,
-// or keep rewriting a file nobody changed. 12e-3c merges only after a 12-hour run on the
-// Windows VM passes.
+// programs on one profile, with a quit and relaunch every half hour. 12e-3c merges only after a
+// 12-hour run on the Windows VM passes (`writeback-soak-vm.ts`).
 //
-//   winvm.sh install-artifact <run-id> && winvm.sh launch-tauri
-//   SOAK_HOURS=12 winvm.sh cdp run e2e/soak/writeback-soak.ts
+// Every step knows what each note must hold after it, from the invariants of the write-back
+// (`crates/memry-desktop/src/vault/writeback/mod.rs`) and the feed
+// (`crates/memry-desktop/src/vault/consumer/mod.rs`), never "either may win":
 //
-// SOAK_HOURS (default 12), SOAK_NOTES (default 20) and SOAK_SEED (default the start time, printed)
-// shape a run; the same seed replays the same steps. It prints a JSON line per check and ends
-// with `soak passed` or throws at the first broken rule, naming the note, the step and both
-// texts. Afterwards `winvm.sh logs` must show no `the write-back failed`.
+// - An edit made in the app reaches the file: the pass writes a body that differs from a file
+//   its row still describes.
+// - A later outside save wins: it lands before the pass (the pass keeps the changed file and
+//   the feed brings its text into the body) or after it (the feed does). The app's edit is kept
+//   as a version, which this soak does not read.
+// - A save of the bytes the row already holds is no edit: the feed skips it, so an app edit
+//   still waiting for its pass reaches the file.
+// - A pass for a note whose file already says its body writes nothing: no new bytes, no new
+//   modified time (Step 17 schedules every note of a pulled page).
+// - A quit writes what was scheduled before it, on every way the app quits.
+// - Nothing rewrites a file nobody edited, across steps and relaunches.
+//
+// After each step every note is read twice, 3 s apart: the touched note must hold its
+// expected text in both file and body, and every other note must be exactly as before the
+// step, bytes and modified time. Any failure names the seed, the round and the step; the same
+// seed replays the same steps.
 import type { Executor } from '../harness/invoke-test'
 import { invokeTest } from '../harness/invoke-test'
 
-interface NoteFile {
-  noteId: string
-  path: string
-  contentHash: string | null
+/** How the soak reaches the app. */
+export interface SoakDriver {
+  executor(): Executor
+  /** After the app quit: fails unless it exited, then starts it on the same profile and vault. */
+  relaunch(): Promise<void>
 }
 
+export type Quit = 'request-quit' | 'session-end'
+
+export interface SoakOptions {
+  hours: number
+  notes: number
+  seed: number
+  /** Cycled through by the quit steps; `session-end` is Windows only. */
+  quits: Quit[]
+  quitEveryMs: number
+  checkEveryMs: number
+}
+
+export interface SoakReport {
+  rounds: number
+  steps: Record<Step, number>
+}
+
+const STEPS = [
+  'app-edit',
+  'app-burst',
+  'outside-write',
+  'outside-atomic-save',
+  'race',
+  'same-bytes-save',
+  'schedule-unchanged',
+  'quit'
+] as const
+type Step = (typeof STEPS)[number]
+
 const SETTLE_MS = 20_000
-const CHECK_EVERY_MS = 10 * 60_000
+const STABLE_MS = 3_000
+/** The write-back's debounce (`DEBOUNCE` of `writeback/schedule.rs`). */
+const DEBOUNCE_MS = 500
+/** Longer than the debounce plus the longest cooldown (`MAX_COOLDOWN`, 5 s). */
+const PASS_DUE_MS = 6_000
+const REOPEN_MS = 60_000
 
 const sleep = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms))
 
@@ -36,126 +83,275 @@ function random(seed: number): () => number {
   }
 }
 
-export default async function soak({ browser }: { browser: Executor }): Promise<void> {
-  const hours = Number(process.env.SOAK_HOURS ?? 12)
-  const count = Number(process.env.SOAK_NOTES ?? 20)
-  const seed = Number(process.env.SOAK_SEED ?? Date.now())
+/** SOAK_HOURS (12), SOAK_NOTES (20), SOAK_SEED (now), SOAK_QUIT_EVERY_MIN (30). */
+export function optionsFromEnv(env: NodeJS.ProcessEnv, quits: Quit[]): SoakOptions {
+  return {
+    hours: Number(env.SOAK_HOURS ?? 12),
+    notes: Number(env.SOAK_NOTES ?? 20),
+    seed: Number(env.SOAK_SEED ?? Date.now()),
+    quits,
+    quitEveryMs: Number(env.SOAK_QUIT_EVERY_MIN ?? 30) * 60_000,
+    checkEveryMs: 10 * 60_000
+  }
+}
+
+function validate(options: SoakOptions): void {
+  const bad: string[] = []
+  if (!Number.isFinite(options.hours) || options.hours <= 0) bad.push(`hours ${options.hours}`)
+  if (!Number.isInteger(options.notes) || options.notes < 1) bad.push(`notes ${options.notes}`)
+  if (!Number.isSafeInteger(options.seed)) bad.push(`seed ${options.seed}`)
+  if (options.quits.length === 0) bad.push('no way to quit')
+  if (!Number.isFinite(options.quitEveryMs) || options.quitEveryMs <= 0) {
+    bad.push(`quit every ${options.quitEveryMs} ms`)
+  }
+  if (bad.length > 0) throw new Error(`soak: bad options: ${bad.join(', ')}`)
+}
+
+interface NoteFile {
+  noteId: string
+  path: string
+  contentHash: string | null
+}
+
+interface VaultFile {
+  text: string
+  contentHash: string
+  mtimeMs: number
+  size: number
+}
+
+/** One note as read: its file, its row's hash and its body. */
+interface Seen {
+  file: VaultFile | null
+  hash: string | null
+  body: string
+}
+
+export async function soak(driver: SoakDriver, options: SoakOptions): Promise<SoakReport> {
+  validate(options)
+  const { seed } = options
   const next = random(seed)
-  const app = { executor: browser }
   const call = <T>(name: string, args: Record<string, unknown> = {}): Promise<T> =>
-    invokeTest<T>(app, name, args)
+    invokeTest<T>({ executor: driver.executor() }, name, args)
   const log = (event: string, extra: Record<string, unknown> = {}): void =>
-    console.log(JSON.stringify({ at: new Date().toISOString(), event, ...extra }))
+    console.log(JSON.stringify({ at: new Date().toISOString(), event, seed, ...extra }))
+  let round = 0
+  let step: Step | 'adopt' | 'check' = 'adopt'
+  const fail = (message: string): never => {
+    throw new Error(`soak seed=${seed} round=${round} step=${step}: ${message}`)
+  }
+  const show = (value: unknown): string => JSON.stringify(value)
 
   async function until<T>(what: string, probe: () => Promise<T | undefined>): Promise<T> {
     const deadline = Date.now() + SETTLE_MS
     for (;;) {
       const value = await probe()
       if (value !== undefined) return value
-      if (Date.now() > deadline) throw new Error(`soak: never ${what}`)
+      if (Date.now() > deadline) return fail(`never ${what}`)
       await sleep(200)
     }
   }
-  const file = (path: string): Promise<string | null> => call('e2e_vault_read_file', { path })
-  const body = (noteId: string): Promise<string> => call('e2e_note_body', { noteId })
   const rows = (): Promise<NoteFile[]> => call('e2e_vault_note_files')
+  const read = (path: string): Promise<VaultFile | null> => call('e2e_vault_read_file', { path })
+  const body = (noteId: string): Promise<string> => call('e2e_note_body', { noteId })
+  const edit = (noteId: string, text: string): Promise<void> =>
+    call('e2e_note_edit', { noteId, text })
+  const save = (path: string, text: string, replace: boolean): Promise<void> =>
+    call('e2e_vault_write_outside', { path, text, replace })
 
-  /** The note's file holds `text` and its body the same, and stays so while nobody edits. */
-  async function settled(note: NoteFile, text: string, step: string): Promise<void> {
-    await until(`${step}: ${note.path} settled on ${JSON.stringify(text)}`, async () => {
-      const [onDisk, inNote] = [await file(note.path), await body(note.noteId)]
-      return onDisk === `${text}\n` && inNote === text ? true : undefined
-    })
-    const hash = (await rows()).find((row) => row.noteId === note.noteId)?.contentHash
-    await sleep(3_000)
-    const [onDisk, again] = [
-      await file(note.path),
-      (await rows()).find((row) => row.noteId === note.noteId)?.contentHash
-    ]
-    if (onDisk !== `${text}\n` || again !== hash) {
-      throw new Error(
-        `soak: ${step}: ${note.path} changed with nobody editing: ${JSON.stringify(onDisk)}`
-      )
+  async function snapshot(notes: NoteFile[]): Promise<Map<string, Seen>> {
+    const hashes = new Map((await rows()).map((row) => [row.noteId, row.contentHash]))
+    const seen = new Map<string, Seen>()
+    for (const note of notes) {
+      seen.set(note.noteId, {
+        file: await read(note.path),
+        hash: hashes.get(note.noteId) ?? null,
+        body: await body(note.noteId)
+      })
     }
+    return seen
   }
 
-  log('start', { hours, notes: count, seed })
+  /** The note's file and body both say `text`, and its row describes that file. */
+  const holds = (seen: Seen | undefined, text: string): boolean =>
+    seen?.file?.text === `${text}\n` && seen.body === text && seen.hash === seen.file.contentHash
+  const same = (a: Seen | undefined, b: Seen | undefined): boolean =>
+    a !== undefined &&
+    b !== undefined &&
+    a.hash === b.hash &&
+    a.body === b.body &&
+    a.file?.text === b.file?.text &&
+    a.file?.size === b.file?.size &&
+    a.file?.mtimeMs === b.file?.mtimeMs
+
+  log('start', { ...options })
   await call('e2e_vault_adopt_files')
   const notes: NoteFile[] = []
-  for (let i = 0; i < count; i += 1) {
+  const expected = new Map<string, string>()
+  for (let i = 0; i < options.notes; i += 1) {
     const path = `soak/n${i}.md`
-    await call('e2e_vault_write_outside', { path, text: `n${i} start\n`, replace: false })
-    notes.push(
-      await until(`${path} became a note`, async () =>
-        (await rows()).find((row) => row.path === path && row.contentHash !== null)
-      )
+    await save(path, `n${i} start\n`, false)
+    const note = await until(`${path} became a note`, async () =>
+      (await rows()).find((row) => row.path === path && row.contentHash !== null)
+    )
+    notes.push(note)
+    expected.set(note.noteId, `n${i} start`)
+  }
+  for (const note of notes) {
+    const want = expected.get(note.noteId) as string
+    await until(`${note.path} held ${show(want)}`, async () =>
+      holds((await snapshot([note])).get(note.noteId), want) ? true : undefined
     )
   }
-  for (const note of notes) await settled(note, `${note.path.slice(5, -3)} start`, 'adopt')
 
-  const end = Date.now() + hours * 3_600_000
-  let round = 0
-  let lastCheck = Date.now()
-  const steps: Record<string, number> = {}
-  while (Date.now() < end) {
-    round += 1
-    const note = notes[Math.floor(next() * notes.length)]
-    const roll = next()
-    const tag = `r${round}`
-    let step: string
-    let want: string
-    if (roll < 0.35) {
-      step = 'app-edit'
-      want = `${tag} typed in the app`
-      await call('e2e_note_edit', { noteId: note.noteId, text: want })
-    } else if (roll < 0.55) {
-      step = 'app-burst'
-      for (let k = 0; k < 5; k += 1) {
-        want = `${tag} typed ${k}`
-        await call('e2e_note_edit', { noteId: note.noteId, text: want })
-        await sleep(Math.floor(next() * 150))
+  /** Every note as `expected` says, in file and body. */
+  async function checkAll(): Promise<void> {
+    const seen = await snapshot(notes)
+    for (const note of notes) {
+      const want = expected.get(note.noteId) as string
+      if (!holds(seen.get(note.noteId), want)) {
+        fail(`${note.path} is ${show(seen.get(note.noteId))}, expected ${show(want)}`)
       }
-      want = `${tag} typed 4`
-    } else if (roll < 0.75) {
-      step = 'outside-write'
-      want = `${tag} saved by another program`
-      await call('e2e_vault_write_outside', { path: note.path, text: `${want}\n`, replace: false })
-    } else if (roll < 0.9) {
-      step = 'outside-atomic-save'
-      want = `${tag} saved atomically`
-      await call('e2e_vault_write_outside', { path: note.path, text: `${want}\n`, replace: true })
-    } else {
-      // An app edit and an outside save at once: either may win, but the two must agree.
-      step = 'race'
-      await call('e2e_note_edit', { noteId: note.noteId, text: `${tag} app side` })
-      await sleep(Math.floor(next() * 600))
-      await call('e2e_vault_write_outside', {
-        path: note.path,
-        text: `${tag} outside side\n`,
-        replace: next() < 0.5
-      })
-      want = await until(`${step}: ${note.path} agreed`, async () => {
-        const [onDisk, inNote] = [await file(note.path), await body(note.noteId)]
-        return onDisk !== null && onDisk === `${inNote}\n` && inNote.startsWith(tag)
-          ? inNote
-          : undefined
-      })
-    }
-    await settled(note, want, step)
-    steps[step] = (steps[step] ?? 0) + 1
-
-    if (Date.now() - lastCheck > CHECK_EVERY_MS) {
-      lastCheck = Date.now()
-      for (const each of notes) {
-        const [onDisk, inNote] = [await file(each.path), await body(each.noteId)]
-        if (onDisk !== `${inNote}\n`) {
-          throw new Error(
-            `soak: check: ${each.path} ${JSON.stringify(onDisk)} != body ${JSON.stringify(inNote)}`
-          )
-        }
-      }
-      log('check', { round, steps, left_min: Math.round((end - Date.now()) / 60_000) })
     }
   }
-  log('soak passed', { rounds: round, steps, seed })
+
+  async function reopened(): Promise<void> {
+    const deadline = Date.now() + REOPEN_MS
+    for (;;) {
+      try {
+        const listed = await rows()
+        if (notes.every((note) => listed.some((row) => row.noteId === note.noteId))) return
+      } catch {
+        // The renderer or the vault is not up yet.
+      }
+      if (Date.now() > deadline) fail('the vault did not open again after the relaunch')
+      await sleep(500)
+    }
+  }
+
+  const start = Date.now()
+  const end = start + options.hours * 3_600_000
+  let nextQuit = start + Math.min(options.quitEveryMs, (end - start) / 2)
+  let nextCheck = start + options.checkEveryMs
+  let quitCount = 0
+  const steps = Object.fromEntries(STEPS.map((kind) => [kind, 0])) as Record<Step, number>
+  const others = STEPS.filter((kind) => kind !== 'quit')
+
+  while (Date.now() < end) {
+    round += 1
+    // The first rounds take every step once, so a short run covers them all.
+    step =
+      Date.now() >= nextQuit
+        ? 'quit'
+        : round <= others.length
+          ? others[round - 1]
+          : others[Math.floor(next() * others.length)]
+    const note = notes[Math.floor(next() * notes.length)]
+    const tag = `r${round}`
+    const before = await snapshot(notes)
+    let touched: string | null = note.noteId
+    let want = ''
+
+    switch (step) {
+      case 'app-edit':
+        want = `${tag} typed in the app`
+        await edit(note.noteId, want)
+        break
+      case 'app-burst':
+        for (let k = 0; k < 5; k += 1) {
+          want = `${tag} typed ${k}`
+          await edit(note.noteId, want)
+          await sleep(Math.floor(next() * 150))
+        }
+        break
+      case 'outside-write':
+        want = `${tag} saved by another program`
+        await save(note.path, `${want}\n`, false)
+        break
+      case 'outside-atomic-save':
+        want = `${tag} saved atomically`
+        await save(note.path, `${want}\n`, true)
+        break
+      case 'race': {
+        // The outside save lands around the debounce: before the pass, during it or after it.
+        await edit(note.noteId, `${tag} typed in the app`)
+        await sleep(Math.max(0, Math.round(DEBOUNCE_MS + (next() + next() - 1) * 350)))
+        want = `${tag} saved by another program`
+        await save(note.path, `${want}\n`, next() < 0.5)
+        break
+      }
+      case 'same-bytes-save': {
+        // Saved again unchanged while the edit waits for its pass, well inside the debounce.
+        const bytes = before.get(note.noteId)?.file?.text ?? fail(`${note.path} is missing`)
+        want = `${tag} typed in the app`
+        await edit(note.noteId, want)
+        await save(note.path, bytes, next() < 0.5)
+        break
+      }
+      case 'schedule-unchanged': {
+        touched = null
+        const chosen = notes.filter(() => next() < 0.3).map((each) => each.noteId)
+        await call('e2e_note_schedule', { noteIds: chosen.length > 0 ? chosen : [note.noteId] })
+        await sleep(PASS_DUE_MS)
+        break
+      }
+      case 'quit': {
+        const quit = options.quits[quitCount % options.quits.length]
+        quitCount += 1
+        want = `${tag} typed before the ${quit}`
+        await edit(note.noteId, want)
+        // The app may be gone before the reply.
+        await (
+          quit === 'request-quit'
+            ? call('e2e_request_quit')
+            : call('e2e_send_session_end', { target: 'main', killWebview: true })
+        ).catch(() => undefined)
+        await driver.relaunch()
+        await reopened()
+        nextQuit = Date.now() + options.quitEveryMs
+        log('relaunched', { round, quit })
+        break
+      }
+    }
+
+    if (touched !== null) {
+      const id = touched
+      await until(`${note.path} held ${show(want)}`, async () =>
+        holds((await snapshot([note])).get(id), want) ? true : undefined
+      )
+      expected.set(id, want)
+    }
+    const after = await snapshot(notes)
+    await sleep(STABLE_MS)
+    const again = await snapshot(notes)
+    for (const each of notes) {
+      const id = each.noteId
+      if (id === touched) {
+        if (!same(after.get(id), again.get(id))) {
+          fail(
+            `${each.path} changed after it settled: ${show(after.get(id))} -> ${show(again.get(id))}`
+          )
+        }
+      } else if (!same(before.get(id), again.get(id))) {
+        fail(`${each.path}, not edited, changed: ${show(before.get(id))} -> ${show(again.get(id))}`)
+      }
+    }
+    steps[step] += 1
+
+    if (Date.now() >= nextCheck) {
+      nextCheck = Date.now() + options.checkEveryMs
+      const kind = step
+      step = 'check'
+      await checkAll()
+      step = kind
+      log('check', { round, steps, leftMin: Math.round((end - Date.now()) / 60_000) })
+    }
+  }
+  step = 'check'
+  await checkAll()
+  if (round === 0) fail('no round ran')
+  const missing = STEPS.filter((kind) => steps[kind] === 0)
+  if (missing.length > 0) fail(`never took ${missing.join(', ')}`)
+  log('soak passed', { rounds: round, steps })
+  return { rounds: round, steps }
 }
