@@ -7,15 +7,20 @@
 //! - `apply`: one fact applied to the rows.
 //! - `run`: the thread that applies facts in the watcher's order, the open walk and retries.
 //!
-//! Invariants, each with a test in `tests/vault_consumer.rs`:
-//! - **A row's hash names text the note's document holds.** The consumer records a file's
-//!   hash only after the feed answered `Fed` or `Unchanged` for exactly the text that hash was
-//!   computed from. Every other answer (`Owed`, `Refused`, `LargeFile`, `NoNote`,
-//!   `BodyPresent`, an error) records no hash: the row keeps the one it had, and a new row
-//!   gets none. This holds for every way a file reaches the consumer: a watcher `Added` or
-//!   `Changed`, the open walk, and a retry. The write-back takes "the file's hash equals the
-//!   row's" for "the file holds nothing the document lacks" and writes over it, so a hash
-//!   recorded early loses the file's text.
+//! Invariants, each with a test in `tests/` here or in `tests/vault_consumer.rs`:
+//! - **A row's hash names a whole file the note's document holds.** The consumer records a
+//!   file's hash only after the feed answered `Fed` or `Unchanged` for exactly the text that
+//!   hash was computed from, and only for a file without a `writing` frontmatter, which the
+//!   feed is not told (12e-3). Every other answer (`Owed`, `Refused`, `LargeFile`, `NoNote`,
+//!   `BodyPresent`, no device key, an error) records no hash: the row keeps the one it had,
+//!   and a new row gets none. This holds for every way a file reaches the consumer: a watcher
+//!   `Added` or `Changed`, the open walk, and a retry. The write-back takes "the file's hash
+//!   equals the row's" for "the file holds nothing the document lacks" and writes over it, so
+//!   a hash recorded early loses the file's text.
+//! - **A row without a hash is never replaced from its file.** Its note's body may be one the
+//!   file never had (synced, owed and since pulled, a note kept when its file went), so the
+//!   file only fills an empty body; a conflict between the two is the write-back's (12e-3,
+//!   Step 17). A note the identity keeps when its file goes loses its row's hash.
 //! - **An outside edit is not fed before the write-back exists** ([`ConsumerOptions`]). A feed
 //!   replaces the body with the file's text; without the write-back bringing a synced body to
 //!   the file first, a stale file would replace edits that came through sync. Until 12e-3 a
@@ -24,13 +29,18 @@
 //!   under any spelling the volume folds together, read under the lane when the fact is
 //!   applied. A row the app reserved before writing its file, or one the open walk recorded,
 //!   turns the watcher's later `Added` for that path into a change of that note.
-//! - **A note's row goes only after its record.** A removal deletes the row once the identity
-//!   answered [`identity::Removal::Deleted`].
+//! - **A note's row goes only after its record, and moves only after it.** A removal deletes
+//!   the row once the identity answered [`identity::Removal::Deleted`]; a move moves it once
+//!   `on_renamed` answered `Ok`.
+//! - **The cost is the work there is.** An identity that adopts nothing
+//!   ([`identity::NoteIdentity::adopts`]) has no file without a row read: not by the open
+//!   walk, not by a watcher's rescan. A queue overflow keeps what was queued and costs one
+//!   resync per finished pass, spaced out while passes keep overflowing.
 //! - **Order.** Facts are applied one at a time in the order the watcher reported them. The
 //!   open walk runs after the session's first `Rescanned`, so the removals and moves found
-//!   while the app was closed are applied before it; a fact that arrives after the walk for a
-//!   path it covered is applied like any other. An [`Applied`] fact goes out after its row is
-//!   written, under the lane.
+//!   while the app was closed are applied before it; a fact that arrives during or after the
+//!   walk, for a path it covered or not, is applied like any other. An [`Applied`] fact goes
+//!   out after its row is written, under the lane.
 
 mod apply;
 pub mod identity;
@@ -89,7 +99,8 @@ pub enum Applied {
         new_path: String,
     },
     /// The open walk offered every file of the vault. `complete` is `false` when the walk hit
-    /// its caps; the next open walks again.
+    /// its caps, or when the identity adopts nothing (files without a row stay unindexed);
+    /// the next open walks again.
     Indexed {
         complete: bool,
     },

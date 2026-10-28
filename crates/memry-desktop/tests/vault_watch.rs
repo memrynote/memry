@@ -16,7 +16,7 @@ use memry_core::storage::OpenOptions;
 use memry_desktop::vault::file_types::FileType;
 use memry_desktop::vault::hash::content_hash;
 use memry_desktop::vault::watch::reconcile::Reconciler;
-use memry_desktop::vault::watch::{EchoGuard, EventSink, VaultEvent, VaultWatcher};
+use memry_desktop::vault::watch::{EchoGuard, EventSink, NewFiles, VaultEvent, VaultWatcher};
 
 const WAIT: Duration = Duration::from_secs(25);
 const QUIET: Duration = Duration::from_millis(2500);
@@ -73,6 +73,7 @@ impl Env {
                 self.vault.note_files(),
                 self.echo.clone(),
                 sink(&self.log),
+                NewFiles::Report,
             )
             .unwrap(),
         );

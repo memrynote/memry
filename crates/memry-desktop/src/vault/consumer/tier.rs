@@ -10,10 +10,10 @@ use tokio::sync::broadcast;
 use super::apply::Applier;
 use super::identity::{DeferIdentity, NoteIdentity};
 use super::rows::RowOwner;
-use super::{Applied, Consumer, ConsumerOptions, inbox};
+use super::{Applied, Consumer, ConsumerOptions, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::vault::config::read_vault_config;
-use crate::vault::watch::{EchoGuard, VaultWatcher};
+use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
 
 pub struct VaultTier {
     /// The own-write record of the open vault session; every open and close starts a new one.
@@ -94,13 +94,24 @@ impl VaultTier {
         self.rows
             .open(vault.vault.note_files())
             .map_err(|error| error.to_string())?;
-        let (sink, inbox) = inbox();
+        let identity = self
+            .identity
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone();
+        let new_files = if identity.adopts() {
+            NewFiles::Report
+        } else {
+            NewFiles::PairOnly
+        };
+        let (sink, inbox) = inbox(QUEUE_CAPACITY);
         let watcher = VaultWatcher::start(
             vault.path.clone(),
             exclude.clone(),
             vault.vault.note_files(),
             self.echo(),
             sink,
+            new_files,
         )
         .map_err(|error| error.to_string())?;
         let feed = vault
@@ -109,7 +120,7 @@ impl VaultTier {
             .inspect_err(|error| {
                 tracing::warn!(
                     scope = "vault_consumer",
-                    "no file's text can reach a note: {error}"
+                    "no file's text can reach a note in this session: {error}"
                 );
             })
             .ok();
@@ -117,11 +128,7 @@ impl VaultTier {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
             rows: self.rows.clone(),
-            identity: self
-                .identity
-                .lock()
-                .unwrap_or_else(|e| e.into_inner())
-                .clone(),
+            identity,
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
             feed_changes: self.options.feed_changes,

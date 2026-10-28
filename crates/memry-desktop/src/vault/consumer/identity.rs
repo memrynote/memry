@@ -5,6 +5,11 @@
 //!
 //! An implementation is called on the consumer's one thread, may block for one core write,
 //! reads `note_files` but never writes it, and never calls back into the consumer.
+//!
+//! An `Err` is logged with the note id and the fact is retried a few times in the session
+//! ([`super::MAX_RETRIES`]); a removal or rename that fails waits for the next open. The
+//! consumer has no user-facing surface: the implementation knows when it failed and is the one
+//! that tells the user (Step 13), a note that keeps failing included.
 
 use std::path::Path;
 
@@ -50,7 +55,8 @@ pub enum Adoption {
 pub enum Removal {
     /// The record was deleted. The consumer then removes the row.
     Deleted,
-    /// Record and row stay (a locked note, or policy). The next open reports the file again.
+    /// Record and row stay (a locked note, or policy); the row loses its hash, since it names
+    /// a file that is gone. The next open reports the file again.
     Kept,
 }
 
@@ -63,6 +69,12 @@ pub enum IdentityError {
 }
 
 pub trait NoteIdentity: Send + Sync {
+    /// Whether this identity names a note for a new file at all. `false` lets the watcher's
+    /// rescans and the open walk pass over files no row names without reading them.
+    fn adopts(&self) -> bool {
+        true
+    }
+
     /// The note of a new file. Never the id of a deleted record. Idempotent: called again for
     /// the same file after a crash, it returns the record it created then.
     fn adopt_or_create(
@@ -73,7 +85,9 @@ pub trait NoteIdentity: Send + Sync {
 
     /// The watcher reported the note's file removed (it passed the rename window and the
     /// mass-removal guard). Delete the record first: the consumer removes the row only after
-    /// [`Removal::Deleted`], so a local-only note's flag is still there to read.
+    /// [`Removal::Deleted`], so a local-only note's flag is still there to read. Idempotent: a
+    /// crash before the row is removed asks again at the next open, for a record already
+    /// deleted, and the answer is `Deleted`.
     fn on_removed(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -81,9 +95,10 @@ pub trait NoteIdentity: Send + Sync {
         path: &str,
     ) -> Result<Removal, IdentityError>;
 
-    /// The note's file moved or was respelled; the row already names `new_path`. Updates the
-    /// record (title, folder), never the file. A failure is logged and the next open's scan
-    /// repeats it.
+    /// The note's file moved or was respelled. Called before the row moves, once `new_path`
+    /// is known to be free; the row still names `old_path`. Updates the record (title,
+    /// folder), never the file. The row moves only after `Ok`: on an `Err` record and row both
+    /// stay at the old path, and the next open's rescan reports the move again.
     fn on_renamed(
         &self,
         ctx: &IdentityCtx<'_>,
@@ -98,6 +113,10 @@ pub trait NoteIdentity: Send + Sync {
 pub struct DeferIdentity;
 
 impl NoteIdentity for DeferIdentity {
+    fn adopts(&self) -> bool {
+        false
+    }
+
     fn adopt_or_create(
         &self,
         _: &IdentityCtx<'_>,

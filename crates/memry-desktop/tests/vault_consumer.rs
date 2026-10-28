@@ -237,6 +237,7 @@ fn a_file_written_while_open_gets_a_note_and_the_tier_stops_with_the_vault() {
     std::thread::sleep(Duration::from_millis(300));
     e.write("hello.md", "hi\n");
     e.facts_until(|f| matches!(f, Applied::Added { path, .. } if path == "hello.md"));
+    let session = e.tier.rows().session().unwrap();
     e.close();
 
     e.write("late.md", "x\n");
@@ -252,7 +253,7 @@ fn a_file_written_while_open_gets_a_note_and_the_tier_stops_with_the_vault() {
     };
     assert!(
         matches!(
-            e.tier.rows().reserve("n1", "late.md", stat),
+            e.tier.rows().reserve(session, "n1", "late.md", stat),
             Err(RowError::Closed)
         ),
         "a row was written into a closed vault"
@@ -275,7 +276,7 @@ fn the_shipped_tier_records_no_row_until_step_13_names_notes() {
     e.open();
     let facts = e.facts_until(indexed);
     assert!(
-        facts.contains(&Applied::Indexed { complete: true }),
+        facts.contains(&Applied::Indexed { complete: false }),
         "{facts:?}"
     );
     assert!(

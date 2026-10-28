@@ -16,7 +16,9 @@ use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::VaultTier;
 use memry_desktop::vault::hash::content_hash;
 use memry_desktop::vault::watch::reconcile::Reconciler;
-use memry_desktop::vault::watch::{EchoGuard, EventSink, Tuning, VaultEvent, VaultWatcher};
+use memry_desktop::vault::watch::{
+    EchoGuard, EventSink, NewFiles, Tuning, VaultEvent, VaultWatcher,
+};
 
 type Log = Arc<Mutex<Vec<VaultEvent>>>;
 
@@ -121,6 +123,7 @@ fn an_edit_no_os_event_announced_is_found_by_the_safety_net_rescan() {
         Arc::new(EchoGuard::default()),
         sink(&log),
         tuning,
+        NewFiles::Report,
     )
     .unwrap();
     let deadline = Instant::now() + Duration::from_secs(25);
@@ -180,6 +183,7 @@ fn no_event_leaves_a_watcher_once_its_stop_has_begun_even_while_its_thread_is_mi
         vault.note_files(),
         Arc::new(EchoGuard::default()),
         slow,
+        NewFiles::Report,
     )
     .unwrap();
     std::thread::sleep(Duration::from_millis(300));
@@ -259,6 +263,7 @@ fn a_resync_reports_again_what_the_rows_do_not_hold_and_a_forget_only_its_path()
         vault.note_files(),
         Arc::new(EchoGuard::default()),
         sink(&log),
+        NewFiles::Report,
     )
     .unwrap();
     wait_for(&log, "the start pass", |l| {
@@ -292,4 +297,60 @@ fn a_resync_reports_again_what_the_rows_do_not_hold_and_a_forget_only_its_path()
             && l.iter().filter(|e| removed(e)).count() == 2
     });
     watcher.stop_and_drop();
+}
+
+/// When nothing adopts new files, a rescan reads a file no row names only when it can be a
+/// moved note (its size is that of a missing one), and reports none of the others: a resync
+/// after a flood of such files costs no read and no report of them.
+#[test]
+fn a_rescan_that_adopts_nothing_looks_only_at_files_a_moved_note_can_be() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("vault");
+    let core = root.join(".memry/core");
+    fs::create_dir_all(&core).unwrap();
+    let vault =
+        Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap();
+    let body = "a note that moved";
+    fs::write(root.join("moved.md"), body).unwrap();
+    for n in 0..5 {
+        fs::write(root.join(format!("u{n}.md")), "x".repeat(40 + n)).unwrap();
+    }
+    vault
+        .note_files()
+        .upsert_stat(NoteFileStat {
+            note_id: "n1".into(),
+            path: "old.md".into(),
+            file_type: "markdown".into(),
+            mime_type: None,
+            file_size: Some(body.len() as i64),
+            content_hash: Some(content_hash(body)),
+            indexed_at: i64::MAX,
+        })
+        .unwrap();
+    let log = Log::default();
+    let watcher = VaultWatcher::start(
+        root.clone(),
+        vec![],
+        vault.note_files(),
+        Arc::new(EchoGuard::default()),
+        sink(&log),
+        NewFiles::PairOnly,
+    )
+    .unwrap();
+    let renamed = |e: &VaultEvent| matches!(e, VaultEvent::Renamed { new_path, .. } if new_path == "moved.md");
+    let rescanned = |e: &VaultEvent| matches!(e, VaultEvent::Rescanned { .. });
+    wait_for(&log, "the start pass", |l| l.iter().any(rescanned));
+    // The consumer applied nothing, so the resync finds the move again.
+    watcher.handle().resync();
+    wait_for(&log, "the resync", |l| {
+        l.iter().filter(|e| rescanned(e)).count() == 2
+    });
+    watcher.stop_and_drop();
+    assert_eq!(count(&log, renamed), 2, "{:?}", log.lock().unwrap());
+    assert_eq!(
+        count(&log, |e| matches!(e, VaultEvent::Added { .. })),
+        0,
+        "{:?}",
+        log.lock().unwrap()
+    );
 }

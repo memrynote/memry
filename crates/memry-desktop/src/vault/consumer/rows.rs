@@ -3,7 +3,16 @@
 //! [`RowOwner`]'s methods. Either way a write checks [`PathIndex`] first and keeps it in step,
 //! and the [`Applied`] fact goes out after the row is written, under the lane, so subscribers
 //! see the facts in the order the rows changed.
+//!
+//! An app operation names the vault session it started in ([`RowSession`]): one that
+//! finishes after its vault closed, or after another vault opened, writes nothing.
+//!
+//! Lock order: the lane, then the core's database writer (`call_blocking`). Never take the
+//! lane from inside `call_blocking`, and never while holding a lock that a caller waiting on
+//! the lane may hold. No `note_files` row is written anywhere else
+//! (`tests::note_files_is_written_only_through_the_lane`).
 
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -30,9 +39,14 @@ pub struct RowStat {
     pub content_hash: Option<String>,
 }
 
+/// One open of one vault, as the rows know it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RowSession(u64);
+
 #[derive(Debug, thiserror::Error)]
 pub enum RowError {
-    #[error("no vault is open")]
+    /// No vault is open, or not the session the operation started in.
+    #[error("the vault session of this operation is closed")]
     Closed,
     #[error(transparent)]
     Collision(#[from] PathCollision),
@@ -41,6 +55,7 @@ pub enum RowError {
 }
 
 struct RowState {
+    session: RowSession,
     files: NoteFiles,
     index: PathIndex,
 }
@@ -48,6 +63,7 @@ struct RowState {
 pub struct RowOwner {
     state: Mutex<Option<RowState>>,
     applied: broadcast::Sender<Applied>,
+    sessions: AtomicU64,
 }
 
 impl RowOwner {
@@ -55,6 +71,7 @@ impl RowOwner {
         Arc::new(Self {
             state: Mutex::new(None),
             applied: broadcast::channel(APPLIED_CAPACITY).0,
+            sessions: AtomicU64::new(0),
         })
     }
 
@@ -66,8 +83,22 @@ impl RowOwner {
 
     pub(super) fn open(&self, files: NoteFiles) -> Result<(), StorageError> {
         let index = PathIndex::load(&files)?;
-        *self.lock() = Some(RowState { files, index });
+        let session = RowSession(self.sessions.fetch_add(1, Ordering::Relaxed) + 1);
+        *self.lock() = Some(RowState {
+            session,
+            files,
+            index,
+        });
         Ok(())
+    }
+
+    /// The open session. An app operation takes it when it starts, with the vault it works
+    /// on, and hands it to each row write.
+    pub fn session(&self) -> Result<RowSession, RowError> {
+        self.lock()
+            .as_ref()
+            .map(|state| state.session)
+            .ok_or(RowError::Closed)
     }
 
     pub(super) fn close(&self) {
@@ -89,10 +120,24 @@ impl RowOwner {
         })
     }
 
+    fn lane_of(&self, session: RowSession) -> Result<Lane<'_>, RowError> {
+        let lane = self.lane()?;
+        if lane.state().session != session {
+            return Err(RowError::Closed);
+        }
+        Ok(lane)
+    }
+
     /// The row of a note the app just created, before its file is written: the watcher's
     /// report of that file then finds the row and mints no second note.
-    pub fn reserve(&self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
-        let mut lane = self.lane()?;
+    pub fn reserve(
+        &self,
+        session: RowSession,
+        note_id: &str,
+        path: &str,
+        stat: RowStat,
+    ) -> Result<(), RowError> {
+        let mut lane = self.lane_of(session)?;
         lane.put(note_id, path, stat)?;
         lane.publish(Applied::Added {
             note_id: note_id.to_owned(),
@@ -103,8 +148,14 @@ impl RowOwner {
     }
 
     /// The app wrote the note's file.
-    pub fn record_write(&self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
-        let mut lane = self.lane()?;
+    pub fn record_write(
+        &self,
+        session: RowSession,
+        note_id: &str,
+        path: &str,
+        stat: RowStat,
+    ) -> Result<(), RowError> {
+        let mut lane = self.lane_of(session)?;
         let content_hash = stat.content_hash.clone();
         lane.put(note_id, path, stat)?;
         lane.publish(Applied::Changed {
@@ -117,8 +168,13 @@ impl RowOwner {
     }
 
     /// The app moved the note's file. `false` when the note has no row.
-    pub fn rename(&self, note_id: &str, new_path: &str) -> Result<bool, RowError> {
-        let mut lane = self.lane()?;
+    pub fn rename(
+        &self,
+        session: RowSession,
+        note_id: &str,
+        new_path: &str,
+    ) -> Result<bool, RowError> {
+        let mut lane = self.lane_of(session)?;
         let Some(row) = lane.files().by_id(note_id)? else {
             return Ok(false);
         };
@@ -132,8 +188,8 @@ impl RowOwner {
     }
 
     /// The app deleted the note (record first, then this). `false` when it had no row.
-    pub fn remove(&self, note_id: &str) -> Result<bool, RowError> {
-        let mut lane = self.lane()?;
+    pub fn remove(&self, session: RowSession, note_id: &str) -> Result<bool, RowError> {
+        let mut lane = self.lane_of(session)?;
         let Some(row) = lane.files().by_id(note_id)? else {
             return Ok(false);
         };
@@ -176,6 +232,16 @@ impl Lane<'_> {
     /// `Ok` when no note holds `path` under any spelling the volume may fold.
     pub(super) fn check_free(&self, path: &str) -> Result<(), PathCollision> {
         self.state().index.check("", path)
+    }
+
+    /// `Ok` when no other note holds `path`.
+    pub(super) fn check(&self, note_id: &str, path: &str) -> Result<(), PathCollision> {
+        self.state().index.check(note_id, path)
+    }
+
+    /// The row no longer names content the document holds.
+    pub(super) fn forget_hash(&self, note_id: &str) -> Result<(), StorageError> {
+        self.files().set_hash(note_id, None)
     }
 
     pub(super) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {

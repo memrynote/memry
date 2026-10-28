@@ -10,9 +10,11 @@ use memry_core::api::vault::Vault;
 use memry_core::domain::app_settings::AppSettings;
 use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
 use memry_core::markdown::convert::api::Converter;
+use memry_core::markdown::frontmatter::YamlValue;
 use memry_core::markdown::schema::callout_types::{
     CalloutTypes, sanitize_callout_type_definitions,
 };
+use memry_core::markdown::shared::writing_tools::WRITING_FRONTMATTER_KEY;
 
 use super::identity::{Adoption, Candidate, IdentityCtx, NoteIdentity, Removal};
 use super::rows::{Lane, RowOwner, RowStat};
@@ -45,11 +47,36 @@ pub(super) struct Applier {
     pub(super) feed_changes: bool,
 }
 
-/// Whether the note's document now holds the file's text: only then does the row record the
+/// Whether the note's document now holds the whole file: only then does the row record the
 /// file's hash. `BodyPresent` is not: a seed answers it before it compares any text, so the
 /// body it left alone can differ from the file.
-fn holds_file(outcome: FeedOutcome) -> bool {
-    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged)
+fn holds_file(outcome: FeedOutcome, file: &NoteFile) -> bool {
+    matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) && !has_writing(file)
+}
+
+/// The feed is not told the `writing` frontmatter (12e-3 reads it), so its answer covers the
+/// body alone, and a file with one holds alternatives the document may not. A frontmatter
+/// that does not parse may hold one.
+fn has_writing(file: &NoteFile) -> bool {
+    if file.split().block.is_none() {
+        return false;
+    }
+    match file.parse() {
+        Ok(parsed) => matches!(
+            &parsed.frontmatter,
+            YamlValue::Map(map) if map.get(WRITING_FRONTMATTER_KEY).is_some()
+        ),
+        Err(_) => true,
+    }
+}
+
+/// What a body write came to.
+enum Body {
+    Wrote(FeedOutcome),
+    /// This device has no signing key: nothing was written (the tier said so once).
+    NoKey,
+    /// The write failed; the fact is retried.
+    Failed,
 }
 
 impl Applier {
@@ -140,6 +167,10 @@ impl Applier {
                 return Step::Retry(path.to_owned());
             }
         }
+        // Before the file is read: what nothing adopts costs nothing.
+        if !self.identity.adopts() {
+            return Step::Done;
+        }
         if let Err(collision) = lane.check_free(path) {
             tracing::warn!(
                 scope = SCOPE,
@@ -169,12 +200,14 @@ impl Applier {
             }
         };
         // Seeded on `Existing` too: a crash between a create and its seed leaves an empty
-        // body, and a body that is there is left alone.
+        // body, and a body that is there is left alone. Without a device key the row is
+        // still recorded, so the note is not named twice, and the next open seeds it.
         let content_hash = match &file {
             None => None,
             Some(file) => match self.write_body(&note_id, path, file, Write::Seed) {
-                Some(outcome) => holds_file(outcome).then(|| file.hash.clone()),
-                None => return Step::Retry(path.to_owned()),
+                Body::Wrote(outcome) => holds_file(outcome, file).then(|| file.hash.clone()),
+                Body::NoKey => None,
+                Body::Failed => return Step::Retry(path.to_owned()),
             },
         };
         let stat = RowStat {
@@ -230,13 +263,34 @@ impl Applier {
                 Ok(None) => return Step::Done,
                 Err(step) => return step,
             };
-            if row.content_hash.as_deref() == Some(file.hash.as_str()) {
-                return Step::Done;
-            }
-            match self.write_body(note_id, path, &file, Write::Replace) {
-                Some(outcome) if holds_file(outcome) => Some(file.hash),
-                Some(_) => return Step::Done,
-                None => return Step::Retry(path.to_owned()),
+            let write = match row.content_hash.as_deref() {
+                // Read back as recorded: only the row's time moves on, so the walk does not
+                // read it again.
+                Some(hash) if hash == file.hash => {
+                    let stat = RowStat {
+                        file_type,
+                        size,
+                        content_hash: Some(file.hash),
+                    };
+                    if let Err(error) = lane.put(note_id, path, stat) {
+                        tracing::warn!(
+                            scope = SCOPE,
+                            note_id,
+                            "the row was not refreshed: {error}"
+                        );
+                    }
+                    return Step::Done;
+                }
+                Some(_) => Write::Replace,
+                // The row names no text the document holds, so the body may be one the file
+                // never had (synced, kept, owed and since pulled): the file only fills an
+                // empty body. A conflict between the two is the write-back's (12e-3, Step 17).
+                None => Write::Seed,
+            };
+            match self.write_body(note_id, path, &file, write) {
+                Body::Wrote(outcome) if holds_file(outcome, &file) => Some(file.hash),
+                Body::Wrote(_) | Body::NoKey => return Step::Done,
+                Body::Failed => return Step::Retry(path.to_owned()),
             }
         } else {
             if row.file_size == i64::try_from(size).ok() && modified_ms <= row.indexed_at {
@@ -277,7 +331,18 @@ impl Applier {
         }
         match self.identity.on_removed(&self.ctx(), note_id, path) {
             Ok(Removal::Deleted) => {}
-            Ok(Removal::Kept) => return,
+            Ok(Removal::Kept) => {
+                // The row stays, naming a file that is gone: it names no text any more, so a
+                // file that shows up at its path later is not taken for this note's.
+                if let Err(error) = lane.forget_hash(note_id) {
+                    tracing::error!(
+                        scope = SCOPE,
+                        note_id,
+                        "a kept note's row kept its hash: {error}"
+                    );
+                }
+                return;
+            }
             Err(error) => {
                 // The row stays; the next open's rescan reports the removal again.
                 return tracing::error!(
@@ -309,21 +374,30 @@ impl Applier {
                 );
             }
         }
-        if let Err(error) = lane.rename(note_id, new_path) {
+        if let Err(collision) = lane.check(note_id, new_path) {
             return tracing::warn!(
                 scope = SCOPE,
                 note_id,
-                "a moved file's row was not moved: {error}"
+                "a moved file's row was not moved: {collision}"
             );
         }
+        // The record first: on a failure both stay at the old path, and the next open's
+        // rescan reports the move again.
         if let Err(error) = self
             .identity
             .on_renamed(&self.ctx(), note_id, old_path, new_path)
         {
-            tracing::error!(
+            return tracing::error!(
                 scope = SCOPE,
                 note_id,
                 "a moved file's note was not updated: {error}"
+            );
+        }
+        if let Err(error) = lane.rename(note_id, new_path) {
+            return tracing::error!(
+                scope = SCOPE,
+                note_id,
+                "a moved file's row was not moved: {error}"
             );
         }
         lane.publish(Applied::Renamed {
@@ -349,29 +423,19 @@ impl Applier {
         }
     }
 
-    /// Seeds or replaces the note's body with the file's text. `None` when the write failed.
-    fn write_body(
-        &self,
-        note_id: &str,
-        path: &str,
-        file: &NoteFile,
-        write: Write,
-    ) -> Option<FeedOutcome> {
+    /// Seeds or replaces the note's body with the file's text.
+    fn write_body(&self, note_id: &str, path: &str, file: &NoteFile, write: Write) -> Body {
         let Some(feed) = &self.feed else {
-            tracing::error!(
-                scope = SCOPE,
-                note_id,
-                "this device has no signing key, so a file's text cannot reach its note"
-            );
-            return None;
+            return Body::NoKey;
         };
         let split = file.split();
         let input = FeedInput {
             note_id,
             markdown: split.body,
             note_path: Some(path),
-            // The `writing` frontmatter is not read here (follow-up with 12e-3): `None` says
-            // nothing about it, so the writing state the document holds is kept.
+            // The `writing` frontmatter is not read here (12e-3): `None` says nothing about
+            // it, so the writing state the document holds is kept, and a file that has one
+            // is not taken as read (`holds_file`).
             writing: None,
             frontmatter: split.block,
         };
@@ -382,7 +446,7 @@ impl Applier {
         };
         match outcome {
             Ok(outcome) => {
-                if !holds_file(outcome) {
+                if !matches!(outcome, FeedOutcome::Fed | FeedOutcome::Unchanged) {
                     tracing::warn!(
                         scope = SCOPE,
                         note_id,
@@ -390,7 +454,7 @@ impl Applier {
                         "a file's text did not reach its note"
                     );
                 }
-                Some(outcome)
+                Body::Wrote(outcome)
             }
             Err(error) => {
                 tracing::error!(
@@ -398,7 +462,7 @@ impl Applier {
                     note_id,
                     "a file's text did not reach its note: {error}"
                 );
-                None
+                Body::Failed
             }
         }
     }
