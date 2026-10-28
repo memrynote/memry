@@ -49,9 +49,9 @@ pub fn stage_error(error: StageError) -> CommandError {
     CommandError::new(kind, code, error.to_string())
 }
 
-/// Records the files of each OS drag over `window` for `drop_stage_os_files`. WebKitGTK gives
-/// the page a file drag as `text/uri-list` with no `File` objects; the shell reads the same URIs
-/// off the native drag, which the page cannot forge. WebKit asks for the drag's data when it
+/// Records the files of each OS drag over `window` for `drop_os_drag_uris` and
+/// `drop_stage_os_files`. WebKitGTK gives the page a file drag as an empty `text/uri-list` with no
+/// `File` objects; the shell reads the URIs off the native drag, which the page cannot forge. WebKit asks for the drag's data when it
 /// enters the view, so the record is in place before the page sees `drop`. Other engines hand
 /// the page `File` objects, which it streams (`drop_stage_chunk`).
 #[cfg(target_os = "linux")]

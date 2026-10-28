@@ -1,7 +1,7 @@
 // Files dropped from the OS (inv09 #1: the webview's own drop handler is off, so a drop reaches the
-// page as DOM `File` objects with no path, or on WebKitGTK as `file://` URIs). The page streams
-// each file into the shell's staging area, or the shell copies a URI the OS drag carried; the
-// import gets the copies' paths, and the copies are deleted when the import settles.
+// page as DOM `File` objects with no path; WebKitGTK gives it no file at all). The page streams
+// each file into the shell's staging area, or the shell copies the files of the OS drag it
+// recorded; the import gets the copies' paths, and the copies are deleted when the import settles.
 import { createHash } from 'node:crypto'
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -47,22 +47,28 @@ async function stubImport(page: Page): Promise<void> {
   })
 }
 
-/** Drops a URI list on the sidebar's root zone: the form WebKitGTK gives an OS file drag. */
-async function dropUris(page: Page, uris: string[]): Promise<void> {
-  await page.evaluate(
-    ({ list }) => {
-      const zone = document.querySelector('[data-file-drop-folder=""]')
-      if (!zone) throw new Error('the sidebar drop zone is missing')
-      const transfer = new DataTransfer()
-      transfer.setData('text/uri-list', list)
-      for (const type of ['dragover', 'drop']) {
-        zone.dispatchEvent(
-          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: transfer })
-        )
-      }
-    },
-    { list: uris.join('\r\n') }
-  )
+/**
+ * Drops on the sidebar's root zone what WebKitGTK hands the page for an OS file drag: a URI list
+ * that reads empty, HTML, and no `File` objects. The event carries a stand-in `DataTransfer`, so
+ * every engine sees exactly that form.
+ */
+async function dropHiddenFileList(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const zone = document.querySelector('[data-file-drop-folder=""]')
+    if (!zone) throw new Error('the sidebar drop zone is missing')
+    const transfer = {
+      types: ['text/uri-list', 'text/html'],
+      files: [],
+      items: [],
+      dropEffect: 'none',
+      getData: (type: string) => (type === 'text/html' ? '<a href="#">file</a>' : '')
+    }
+    for (const type of ['dragover', 'drop']) {
+      const event = new DragEvent(type, { bubbles: true, cancelable: true })
+      Object.defineProperty(event, 'dataTransfer', { value: transfer })
+      zone.dispatchEvent(event)
+    }
+  })
 }
 
 test('a dropped file is staged with its bytes for the import, then deleted', async ({
@@ -111,38 +117,32 @@ test('a dropped file is staged with its bytes for the import, then deleted', asy
   await expect.poll(() => existsSync(notePath) || existsSync(pdfPath)).toBe(false)
 })
 
-test('a file the OS dropped as a file:// URI is copied by the shell; one it did not drop is refused', async ({
+test('a WebKitGTK file drop is staged from the OS drag the shell recorded', async ({
   app,
   page
 }) => {
   await appReady(page)
   const staging = join((await invokeTest<AppInfo>(app, 'e2e_app_info')).appDataDir, 'drop-staging')
-  const outside = mkdtempSync(join(tmpdir(), 'memry-os-drop-'))
-  const dropped = join(outside, 'from the file manager.md')
-  const secret = join(outside, 'secret.md')
-  writeFileSync(dropped, 'dropped on the window\n')
-  writeFileSync(secret, 'never dropped\n')
-  const droppedUri = pathToFileURL(dropped).href
-  const secretUri = pathToFileURL(secret).href
+  const outside = mkdtempSync(join(tmpdir(), 'memry-os-drag-'))
+  const note = join(outside, 'from the file manager.md')
+  const tool = join(outside, 'tool.exe')
+  writeFileSync(note, 'dropped on the window\n')
+  writeFileSync(tool, 'MZ')
   await stubImport(page)
 
-  // The page names a file the OS drag did not carry: the whole drop is refused, nothing staged.
-  await invokeTest(app, 'e2e_offer_os_drag', { uris: [droppedUri] })
-  await dropUris(page, [droppedUri, secretUri])
-  await expect
-    .poll(() => page.evaluate(() => document.body.innerText.includes('not dropped on the window')))
-    .toBe(true)
-  expect(await page.evaluate(() => window.__dropImport?.calls.length)).toBe(0)
+  // What the GTK hook records for a drag from a file manager; the page reads none of it.
+  const uris = [pathToFileURL(note).href, pathToFileURL(tool).href]
+  await invokeTest(app, 'e2e_offer_os_drag', { uris })
+  await dropHiddenFileList(page)
 
-  // The drag the shell saw (on Linux, from GTK): the file is copied into staging for the import.
-  await invokeTest(app, 'e2e_offer_os_drag', { uris: [droppedUri] })
-  await dropUris(page, [droppedUri])
   await expect
     .poll(() => page.evaluate(() => window.__dropImport?.calls.length ?? 0), { timeout: 15_000 })
     .toBe(1)
   const call = await page.evaluate(() => window.__dropImport?.calls[0])
-  const [copy = ''] = call?.paths ?? []
+  // The unsupported file is never copied; the note is, under staging, with its name and bytes.
+  expect(call?.folder).toBe('')
   expect(call?.paths.length).toBe(1)
+  const [copy = ''] = call?.paths ?? []
   expect(copy.startsWith(staging)).toBe(true)
   expect(copy.endsWith('from the file manager.md')).toBe(true)
   expect(readFileSync(copy, 'utf8')).toBe('dropped on the window\n')
@@ -150,7 +150,7 @@ test('a file the OS dropped as a file:// URI is copied by the shell; one it did 
   await page.evaluate(() => window.__dropImport?.finish())
   await expect.poll(() => existsSync(copy)).toBe(false)
   // A copy: the dropped file stays where it was.
-  expect(existsSync(dropped)).toBe(true)
+  expect(existsSync(note)).toBe(true)
   rmSync(outside, { recursive: true, force: true })
 })
 
@@ -213,41 +213,57 @@ test('a 120 MB file stages through the binary commands byte for byte, bounded in
   expect(existsSync(result.path)).toBe(false)
 })
 
-test('the staging commands refuse an oversize file and a chunk out of order', async ({ page }) => {
+test('the staging commands refuse an oversize file, a chunk out of order and a file not dropped', async ({
+  app,
+  page
+}) => {
   await appReady(page)
-  const outcome = await page.evaluate(async () => {
-    const invokeRaw = window.__TAURI__.core.invoke
-    const code = (promise: Promise<unknown>) =>
-      promise.then(
-        () => 'accepted',
-        (error: unknown) =>
-          typeof error === 'object' && error !== null && 'code' in error
-            ? String(error.code)
-            : 'rejected'
+  const outside = mkdtempSync(join(tmpdir(), 'memry-os-drag-'))
+  const dropped = pathToFileURL(join(outside, 'dropped.md')).href
+  const secret = pathToFileURL(join(outside, 'secret.md')).href
+  writeFileSync(join(outside, 'dropped.md'), 'a')
+  writeFileSync(join(outside, 'secret.md'), 'b')
+  await invokeTest(app, 'e2e_offer_os_drag', { uris: [dropped] })
+  const outcome = await page.evaluate(
+    async ({ notDropped }) => {
+      const invokeRaw = window.__TAURI__.core.invoke
+      const code = (promise: Promise<unknown>) =>
+        promise.then(
+          () => 'accepted',
+          (error: unknown) =>
+            typeof error === 'object' && error !== null && 'code' in error
+              ? String(error.code)
+              : 'rejected'
+        )
+      const tooLarge = await code(
+        invokeRaw('drop_stage_begin', { name: 'huge.bin', size: 2 * 1024 * 1024 * 1024 + 1 })
       )
-    const tooLarge = await code(
-      invokeRaw('drop_stage_begin', { name: 'huge.bin', size: 2 * 1024 * 1024 * 1024 + 1 })
-    )
-    const id = (await invokeRaw('drop_stage_begin', { name: 'a.md', size: 8 })) as string
-    const chunk = (offset: number) =>
-      code(
-        invokeRaw('drop_stage_chunk', new Uint8Array(4), {
-          headers: { 'x-memry-meta': JSON.stringify({ id, offset }) }
-        })
-      )
-    const skipped = await chunk(4)
-    const first = await chunk(0)
-    const unfinished = await code(invokeRaw('drop_stage_finish', { id }))
-    await invokeRaw('drop_stage_release', { ids: [id] })
-    const released = await chunk(4)
-    return { tooLarge, skipped, first, unfinished, released }
-  })
+      const id = (await invokeRaw('drop_stage_begin', { name: 'a.md', size: 8 })) as string
+      const chunk = (offset: number) =>
+        code(
+          invokeRaw('drop_stage_chunk', new Uint8Array(4), {
+            headers: { 'x-memry-meta': JSON.stringify({ id, offset }) }
+          })
+        )
+      const skipped = await chunk(4)
+      const first = await chunk(0)
+      const unfinished = await code(invokeRaw('drop_stage_finish', { id }))
+      await invokeRaw('drop_stage_release', { ids: [id] })
+      const released = await chunk(4)
+      // The page names a file the OS drag did not carry, next to one it did.
+      const outsideDrag = await code(invokeRaw('drop_stage_os_files', { uris: notDropped }))
+      return { tooLarge, skipped, first, unfinished, released, outsideDrag }
+    },
+    { notDropped: [dropped, secret] }
+  )
 
   expect(outcome).toEqual({
     tooLarge: 'drop_too_large',
     skipped: 'drop_out_of_order',
     first: 'accepted',
     unfinished: 'drop_incomplete',
-    released: 'drop_unknown'
+    released: 'drop_unknown',
+    outsideDrag: 'drop_not_dropped'
   })
+  rmSync(outside, { recursive: true, force: true })
 })

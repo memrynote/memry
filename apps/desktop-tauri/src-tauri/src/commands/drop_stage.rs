@@ -1,6 +1,7 @@
 //! Files dropped from the OS arrive as DOM `File` objects with no path. The renderer streams
 //! each one here in chunks, imports the staged path, and releases it (`shell/drop_stage.rs`).
-//! WebKitGTK hands the page `file://` URIs instead; `drop_stage_os_files` stages those.
+//! WebKitGTK hands the page no file at all; `drop_os_drag_uris` names the files of the OS drag and
+//! `drop_stage_os_files` stages them.
 
 use std::sync::Arc;
 
@@ -65,6 +66,13 @@ pub async fn drop_stage_release(
 pub struct StagedDrop {
     pub id: String,
     pub path: String,
+}
+
+/// The `file://` URIs of the OS drag over the window, which WebKitGTK hides from the page.
+#[tauri::command]
+#[specta::specta]
+pub fn drop_os_drag_uris(staging: Staging<'_>) -> Vec<String> {
+    staging.os_drag_uris()
 }
 
 /// Stages copies of files the page received as `file://` URIs. Only files of the OS drag the

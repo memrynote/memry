@@ -13,8 +13,8 @@ interface Staged {
 }
 
 /**
- * What an OS file drop hands the page: `File` objects with no path (WebKit on macOS, WebView2),
- * or the files' `file://` URIs (WebKitGTK gives a file drag no `File` objects).
+ * The files of an OS drop: `File` objects with no path (WebKit on macOS, WebView2), or the
+ * `file://` URIs the shell read off the native drag (WebKitGTK gives the page neither).
  */
 export type DroppedFiles = { files: File[] } | { uris: string[] }
 
@@ -59,7 +59,7 @@ async function release(ids: string[]): Promise<void> {
 /**
  * Runs `run` with the absolute paths of copies of the dropped files, and deletes the copies when
  * `run` settles. `File` objects are streamed into the shell; URIs are copied by the shell, which
- * takes only files of the OS drag it saw. The drop is all or nothing: if one file cannot be
+ * takes only files of the OS drag it recorded. The drop is all or nothing: if one file cannot be
  * staged, the ones already staged are released and the error is thrown.
  */
 export async function withStagedFiles<T>(

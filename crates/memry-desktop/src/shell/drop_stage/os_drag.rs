@@ -1,7 +1,9 @@
-//! Files dropped as `file://` URIs. WebKitGTK hands an OS file drag to the page as a URI list
-//! with no `File` objects, so the page can only name the files. A name from the page is not a
-//! grant: the shell records the files of the drag the OS is offering the window (from the native
-//! drag, before the page sees it), and stages only those. The page cannot reach any other file.
+//! Files dropped as `file://` URIs. WebKitGTK hands an OS file drag to the page with no `File`
+//! objects and an empty URI list (WebKit hides file URLs from a page), so the page cannot name
+//! the files. The shell records the files of the drag the OS is offering the window (from the
+//! native drag, before the page sees it); the page reads their URIs back, keeps the ones it can
+//! import, and has them staged. A URI from the page is not a grant: only files of the recorded
+//! drag are staged, so the page cannot reach any other file.
 
 use std::fs::File;
 use std::io::Read;
@@ -29,6 +31,15 @@ impl DropStaging {
             .iter()
             .filter_map(|uri| file_uri_path(uri.as_ref()))
             .collect();
+    }
+
+    /// The `file://` URIs of the drag recorded by [`offer_os_drag`](Self::offer_os_drag).
+    pub fn os_drag_uris(&self) -> Vec<String> {
+        lock(&self.os_drag)
+            .iter()
+            .filter_map(|path| url::Url::from_file_path(path).ok())
+            .map(String::from)
+            .collect()
     }
 
     /// Stages copies of the dropped files the page names by `file://` URI, and returns each

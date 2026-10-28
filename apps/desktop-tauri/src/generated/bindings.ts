@@ -8,6 +8,8 @@ export const commands = {
 	appInfo: () => __TAURI_INVOKE<AppInfo>("app_info"),
 	diagnosticsPreviewReport: (trigger: DiagnosticTrigger) => __TAURI_INVOKE<DiagnosticPreview>("diagnostics_preview_report", { trigger }),
 	diagnosticsSendReport: (report: DiagnosticReport) => __TAURI_INVOKE<DiagnosticSendResult>("diagnostics_send_report", { report }),
+	/**  The `file://` URIs of the OS drag over the window, which WebKitGTK hides from the page. */
+	dropOsDragUris: () => __TAURI_INVOKE<string[]>("drop_os_drag_uris"),
 	/**  Starts a staged copy of a dropped file. Returns the id the other calls take. */
 	dropStageBegin: (name: string, size: number) => __TAURI_INVOKE<string>("drop_stage_begin", { name, size }),
 	/**  Closes a staged copy once every byte arrived and returns its absolute path. */

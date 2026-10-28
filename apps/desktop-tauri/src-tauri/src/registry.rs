@@ -26,6 +26,7 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::diagnostics::diagnostics_preview_report,
             crate::commands::diagnostics::diagnostics_send_report,
             // drop staging
+            crate::commands::drop_stage::drop_os_drag_uris,
             crate::commands::drop_stage::drop_stage_begin,
             crate::commands::drop_stage::drop_stage_finish,
             crate::commands::drop_stage::drop_stage_os_files,

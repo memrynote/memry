@@ -256,6 +256,8 @@ fn files_of_the_offered_os_drag_stage_as_copies_by_their_uri() {
     let (note, note_uri) = source(&dir, "my note.md", b"dropped from the file manager");
     let (_, big_uri) = source(&dir, "scan.pdf", &big);
     staging.offer_os_drag(&[note_uri.as_str(), "https://example.org/x", big_uri.as_str()]);
+    // What the page reads back: the drag's files, in order, without the web link.
+    assert_eq!(staging.os_drag_uris(), [note_uri.clone(), big_uri.clone()]);
 
     let staged = staging
         .stage_os_drop(&[note_uri, big_uri])

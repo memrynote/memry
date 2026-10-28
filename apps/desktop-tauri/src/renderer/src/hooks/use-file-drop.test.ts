@@ -1,5 +1,8 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const { osDragUris } = vi.hoisted(() => ({ osDragUris: vi.fn() }))
+vi.mock('../../../generated/bindings', () => ({ commands: { dropOsDragUris: osDragUris } }))
 import {
   extractValidFiles,
   resolveDropFolder,
@@ -67,7 +70,7 @@ function dragEvent(files: File[], types = ['Files'], target?: EventTarget, uriLi
   } as unknown as React.DragEvent
 }
 
-/** WebKitGTK's form of an OS file drag: a URI list and HTML, no `File` objects. */
+/** WebKitGTK's form of an OS file drag: a URI list that reads empty and HTML, no `File` objects. */
 const gtkDrag = (uriList: string, target?: EventTarget) =>
   dragEvent([], ['text/uri-list', 'text/html'], target, uriList)
 
@@ -214,29 +217,42 @@ describe('useFileDrop', () => {
     expect(onDrop).not.toHaveBeenCalled()
   })
 
-  it('takes a WebKitGTK file drag by its file URIs, into the folder under the pointer', async () => {
-    // #given
+  it('takes a WebKitGTK file drag from the shell record, into the folder under the pointer', async () => {
+    // #given — the page sees an empty list; the shell read the files off the native drag
     vi.useFakeTimers()
+    osDragUris.mockResolvedValue(['file:///home/u/My%20Note.md', 'file:///home/u/app.exe'])
     const onDrop = vi.fn()
     const { label } = sidebarDom('projects')
     const { result } = renderHook(() => useFileDrop({ onDrop }))
-    const uris = 'file:///home/u/My%20Note.md\r\n# comment\r\nfile:///home/u/app.exe\r\n'
 
-    // #when — the list is unreadable while dragging, so the zone lights up on its type
+    // #when — the zone lights up on the list's type
     const over = gtkDrag('', label)
     act(() => {
       result.current.dropHandlers.onDragOver(over)
     })
     expect(over.preventDefault).toHaveBeenCalled()
     expect(result.current.dropFolder).toBe('projects')
-    const drop = gtkDrag(uris, label)
+    const drop = gtkDrag('', label)
     await act(async () => {
       result.current.dropHandlers.onDrop(drop)
     })
 
-    // #then
+    // #then — claimed at once, and only the file the app imports goes on
     expect(drop.preventDefault).toHaveBeenCalled()
     expect(onDrop).toHaveBeenCalledWith({ uris: ['file:///home/u/My%20Note.md'] }, 'projects')
+  })
+
+  it('imports nothing when the shell recorded no file for the drag', async () => {
+    osDragUris.mockResolvedValue([])
+    const onDrop = vi.fn()
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+
+    await act(async () => {
+      result.current.dropHandlers.onDrop(gtkDrag(''))
+    })
+
+    expect(osDragUris).toHaveBeenCalled()
+    expect(onDrop).not.toHaveBeenCalled()
   })
 
   it('leaves a dropped web link unclaimed, for the guard to open in the browser', async () => {
@@ -249,6 +265,7 @@ describe('useFileDrop', () => {
     })
 
     expect(onDrop).not.toHaveBeenCalled()
+    expect(osDragUris).not.toHaveBeenCalled()
     expect(drop.preventDefault).not.toHaveBeenCalled()
   })
 })
