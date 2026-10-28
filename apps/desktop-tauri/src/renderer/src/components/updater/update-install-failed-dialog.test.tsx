@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
@@ -130,16 +131,12 @@ describe('UpdateInstallFailedDialog', () => {
 
   it('hands the user the manual installer and closes', async () => {
     mocks.state = state({ installFailed: { version: 'v1.2.7' } })
-    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
 
     render(<UpdateInstallFailedDialog />)
     await userEvent.click(screen.getByRole('button', { name: /download v1\.2\.7 manually/i }))
 
-    expect(open).toHaveBeenCalledWith(
-      'https://memrynote.com/download/desktop',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(open).toHaveBeenCalledWith('https://memrynote.com/download/desktop')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     open.mockRestore()
   })

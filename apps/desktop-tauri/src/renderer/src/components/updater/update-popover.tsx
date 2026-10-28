@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Component:UpdatePopover')
 
@@ -110,9 +111,8 @@ export function UpdatePopover({
 
   const handleAllChanges = useCallback(() => {
     onClose()
-    // Routed to the OS browser by the main-process openExternal allowlist. The full
-    // changelog belongs on the release page, not in a tab the user has to close.
-    window.open(RELEASES_URL, '_blank', 'noopener,noreferrer')
+    // The full changelog belongs on the release page, opened in the OS browser.
+    openLink(RELEASES_URL)
   }, [onClose])
 
   const isReady = kind === 'ready'

@@ -11,6 +11,7 @@ import { trackTelemetry } from '@/lib/telemetry'
 import { isMac } from '@/lib/shortcut-catalog'
 import { CreateVaultForm } from '@/components/onboarding/create-vault-form'
 import { SyncVaultPanel } from '@/components/onboarding/sync-vault-panel'
+import { openLink } from '@/lib/external-link-guard'
 
 type Translate = (key: string) => string
 
@@ -39,7 +40,7 @@ function MemryMark({ className }: { className?: string }): React.JSX.Element {
 }
 
 const handleHelp = (): void => {
-  window.open('https://docs.memrynote.com', '_blank', 'noopener,noreferrer')
+  openLink('https://docs.memrynote.com')
 }
 
 export function VaultOnboarding(): React.JSX.Element {

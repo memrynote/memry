@@ -7,7 +7,6 @@ import {
   DeleteLinkButton,
   LinkToolbar,
   LinkToolbarController,
-  OpenLinkButton,
   useComponentsContext,
   useDictionary,
   useExtension,
@@ -16,6 +15,8 @@ import {
 import { linkDestination, withLinkDestination } from '@memry/editor-schema/inline'
 import { useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { Link, Type } from 'lucide-react'
+import { ExternalLink } from '@/lib/icons'
+import { openLink } from '@/lib/external-link-guard'
 
 /**
  * BlockNote's link toolbar, reading the address half of a link's `href`.
@@ -29,7 +30,7 @@ export function LinkAddressToolbar(props: LinkToolbarProps): React.JSX.Element {
   return (
     <LinkToolbar {...props}>
       <EditLinkAddressButton {...props} />
-      <OpenLinkButton url={linkDestination(props.url)} />
+      <OpenLinkAddressButton url={linkDestination(props.url)} />
       <DeleteLinkButton range={props.range} setToolbarOpen={props.setToolbarOpen} />
     </LinkToolbar>
   )
@@ -42,13 +43,29 @@ export function LinkAddressToolbar(props: LinkToolbarProps): React.JSX.Element {
 export function openLinkAddress(event: MouseEvent): boolean {
   const href =
     event.target instanceof Element ? event.target.closest('a')?.getAttribute('href') : undefined
-  if (href) window.open(linkDestination(href), '_blank')
+  if (href) openLink(linkDestination(href))
   return true
 }
 
 /** Mount inside `<BlockNoteView linkToolbar={false}>`. */
 export function LinkAddressToolbarController(): React.JSX.Element {
   return <LinkToolbarController linkToolbar={LinkAddressToolbar} />
+}
+
+/** BlockNote's `OpenLinkButton` calls `window.open`, which opens nothing on macOS (#3675). */
+function OpenLinkAddressButton({ url }: { url: string }): React.JSX.Element {
+  const Components = useComponentsContext()!
+  const dict = useDictionary()
+  return (
+    <Components.LinkToolbar.Button
+      className="bn-button"
+      mainTooltip={dict.link_toolbar.open.tooltip}
+      label={dict.link_toolbar.open.tooltip}
+      isSelected={false}
+      onClick={() => openLink(url)}
+      icon={<ExternalLink className="size-4" />}
+    />
+  )
 }
 
 function EditLinkAddressButton(props: LinkToolbarProps): React.JSX.Element {

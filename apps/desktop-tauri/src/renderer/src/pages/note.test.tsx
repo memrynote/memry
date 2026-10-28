@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
+import { commands } from '../../../generated/bindings'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '@tests/utils/render'
 import { TaskDetailHost } from '@/components/tasks/task-detail-host'
@@ -1304,7 +1305,7 @@ describe('NotePage', () => {
   })
 
   it('handles toolbar actions, external links, headings, and marquee focus', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const openSpy = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     renderWithProviders(<NotePage noteId="note-1" />)
 
     fireEvent.click(await screen.findByRole('button', { name: 'Pick reminder' }))
@@ -1314,7 +1315,7 @@ describe('NotePage', () => {
     expect(mocks.toggleBookmark).toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', { name: 'External link' }))
-    expect(openSpy).toHaveBeenCalledWith('https://memry.test', '_blank', 'noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith('https://memry.test')
 
     fireEvent.click(screen.getByRole('button', { name: 'Jump heading' }))
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledWith({

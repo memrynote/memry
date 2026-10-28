@@ -25,6 +25,7 @@ import '@blocknote/shadcn/style.css'
 
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Component:TaskDescriptionEditor')
 
@@ -125,15 +126,14 @@ export const TaskDescriptionEditor = memo(function TaskDescriptionEditor({
     }
   }, [editor, onContentChange])
 
-  // Open link clicks externally, like the note editor (window.open is routed
-  // to the OS browser by the main-process openExternal allowlist).
+  // Open link clicks externally, like the note editor.
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- mouse/keyboard event target is a DOM element in this handler; only closest()/tagName are read
     const link = (e.target as HTMLElement).closest('a')
     const href = link?.getAttribute('href')
     if (href && !href.startsWith('#')) {
       e.preventDefault()
-      window.open(href, '_blank', 'noopener,noreferrer')
+      openLink(href)
     }
   }, [])
 

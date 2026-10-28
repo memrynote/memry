@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../generated/bindings'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JournalPage } from './journal'
 import React from 'react'
@@ -790,8 +791,7 @@ describe('JournalPage', () => {
   })
 
   it('routes external links and every wiki-link resolution branch', async () => {
-    const open = vi.fn()
-    vi.stubGlobal('open', open)
+    const open = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     mocks.resolveWikiLink
       .mockResolvedValueOnce({
         type: 'file',
@@ -806,7 +806,7 @@ describe('JournalPage', () => {
     render(<JournalPage />)
 
     fireEvent.click(screen.getByText('external link'))
-    expect(open).toHaveBeenCalledWith('https://memry.test', '_blank', 'noopener,noreferrer')
+    expect(open).toHaveBeenCalledWith('https://memry.test')
 
     fireEvent.click(screen.getByText('internal link'))
     await waitFor(() =>

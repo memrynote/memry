@@ -7,6 +7,7 @@ import { Download } from '@/lib/icons'
 import { useAppUpdater } from '@/hooks/use-app-updater'
 import { createLogger } from '@/lib/logger'
 import { dismissInstallFailed, useInstallFailedDismissed } from './install-failed-dismissal'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Component:UpdateInstallFailedDialog')
 
@@ -39,8 +40,7 @@ export function UpdateInstallFailedDialog(): React.JSX.Element | null {
   const failedVersion = state.installFailed?.version ?? null
 
   const handleDownload = useCallback(() => {
-    // Routed to the OS browser by the main-process openExternal allowlist.
-    window.open(DOWNLOAD_URL, '_blank', 'noopener,noreferrer')
+    openLink(DOWNLOAD_URL)
     dismissInstallFailed()
   }, [])
 

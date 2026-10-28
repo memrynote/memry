@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { commands } from '../../../../generated/bindings'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { TaskDescriptionPreview } from './task-description-preview'
@@ -18,14 +19,14 @@ describe('TaskDescriptionPreview', () => {
   })
 
   it('renders a markdown link as a clickable anchor and opens it externally', async () => {
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+    const openSpy = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     render(<TaskDescriptionPreview markdown="see [the docs](https://memry.app)" />)
 
     const link = screen.getByRole('link', { name: 'the docs' })
     expect(link).toHaveAttribute('href', 'https://memry.app')
 
     await userEvent.click(link)
-    expect(openSpy).toHaveBeenCalledWith('https://memry.app', '_blank', 'noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith('https://memry.app')
     openSpy.mockRestore()
   })
 

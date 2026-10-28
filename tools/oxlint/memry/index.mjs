@@ -69,6 +69,19 @@ function propertyName(member) {
   return key.type === 'Literal' && typeof key.value === 'string' ? key.value : null
 }
 
+/** Whether a name is the window's own: no enclosing scope declares it. */
+function globals(sourceCode) {
+  const isUndeclared = (node) => {
+    for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+      if (scope.set.get(node.name)?.defs.length) return false
+    }
+    return true
+  }
+  const isGlobal = (node, names) =>
+    node.type === 'Identifier' && names.has(node.name) && isUndeclared(node)
+  return { isGlobal, isWindow: (node) => isGlobal(node, WINDOW_NAMES) }
+}
+
 const noLocationNavigation = {
   meta: {
     type: 'problem',
@@ -83,16 +96,7 @@ const noLocationNavigation = {
     const report = (node) => context.report({ node, messageId: 'navigates' })
     /** Identifiers that read a local bound to the window's Location (`const l = window.location`). */
     const aliasReads = new Set()
-    /** The name is the window's own: no enclosing scope declares it. */
-    const isUndeclared = (node) => {
-      for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
-        if (scope.set.get(node.name)?.defs.length) return false
-      }
-      return true
-    }
-    const isGlobal = (node, names) =>
-      node.type === 'Identifier' && names.has(node.name) && isUndeclared(node)
-    const isWindow = (node) => isGlobal(node, WINDOW_NAMES)
+    const { isGlobal, isWindow } = globals(sourceCode)
     const isWindowLocation = (node) =>
       node.type === 'MemberExpression' && propertyName(node) === 'location' && isWindow(node.object)
     const isLocation = (node) =>
@@ -149,7 +153,38 @@ const noLocationNavigation = {
   }
 }
 
+// `window.open` from the Tauri renderer: on macOS WKWebView opens nothing and the shell never
+// hears of it (#3675). `openLink` (`lib/external-link-guard.ts`) hands the URL to the shell, which
+// opens a web or mail link in the browser and a vault file in its app, as Electron's
+// `setWindowOpenHandler` did. Any read of the window's `open` is reported, a callback included.
+const noWindowOpen = {
+  meta: {
+    type: 'problem',
+    messages: {
+      opens:
+        "Do not call window.open: on macOS it opens nothing (#3675). Use openLink from '@/lib/external-link-guard', which opens a web or mail link in the OS browser and a vault file in its app."
+    },
+    schema: []
+  },
+  create(context) {
+    const { isGlobal, isWindow } = globals(context.sourceCode)
+    const report = (node) => context.report({ node, messageId: 'opens' })
+    return {
+      MemberExpression(node) {
+        if (propertyName(node) === 'open' && isWindow(node.object)) report(node)
+      },
+      CallExpression(node) {
+        if (isGlobal(node.callee, new Set(['open']))) report(node)
+      }
+    }
+  }
+}
+
 export default {
   meta: { name: 'memry' },
-  rules: { 'no-window-fanout': noWindowFanout, 'no-location-navigation': noLocationNavigation }
+  rules: {
+    'no-window-fanout': noWindowFanout,
+    'no-location-navigation': noLocationNavigation,
+    'no-window-open': noWindowOpen
+  }
 }

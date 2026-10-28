@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../generated/bindings'
 import { LOCALE_DISPLAY_NAMES, SUPPORTED_LOCALES } from '@memry/i18n/shared'
 
 import { AddSubtaskInput } from './tasks/add-subtask-input'
@@ -23,7 +24,6 @@ const mocks = vi.hoisted(() => ({
   clipboardWrite: vi.fn(),
   logError: vi.fn(),
   localeSet: vi.fn(),
-  openWindow: vi.fn(),
   i18n: {
     language: 'en',
     changeLanguage: vi.fn()
@@ -219,10 +219,7 @@ describe('missing small component surfaces', () => {
         set: mocks.localeSet
       }
     })
-    Object.defineProperty(window, 'open', {
-      configurable: true,
-      value: mocks.openWindow
-    })
+    vi.spyOn(commands, 'shellOpenLink').mockReset().mockResolvedValue(null)
   })
 
   it('adds subtasks, clears on Escape, and preserves focus for rapid entry', async () => {
@@ -281,11 +278,7 @@ describe('missing small component surfaces', () => {
 
     await user.click(screen.getByRole('button', { name: /helpAndDocs/ }))
 
-    expect(mocks.openWindow).toHaveBeenCalledWith(
-      'https://docs.memrynote.com',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(commands.shellOpenLink).toHaveBeenCalledWith('https://docs.memrynote.com')
   })
 
   it('renders unsaved changes dialog actions', () => {

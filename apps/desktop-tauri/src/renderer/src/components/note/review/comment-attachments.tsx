@@ -6,6 +6,7 @@ import { formatBytes } from '@/lib/format'
 import { toWebviewUrl } from '@/lib/memry-file-url'
 import { useT } from '@memry/i18n/renderer'
 import type { CriticMarkupCommentAttachmentRef, CriticMarkupMark } from '@memry/shared'
+import { openLink } from '@/lib/external-link-guard'
 
 // react-pdf is heavy and hard-crashes at module load outside a real DOM
 // (pdf.js needs DOMMatrix), so lazy-load it — it only mounts when a PDF is
@@ -88,7 +89,7 @@ export function CommentAttachments({ mark }: { mark: CriticMarkupMark }): React.
               if (kind === 'pdf') {
                 setActive(attachment)
               } else {
-                window.open(attachment.path, '_blank', 'noopener,noreferrer')
+                openLink(attachment.path)
               }
             }}
           >

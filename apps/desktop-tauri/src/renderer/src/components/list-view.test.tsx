@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../generated/bindings'
 
 import { ListView } from './list-view'
 import type { InboxItemListItem, InboxItemType } from '@/types'
@@ -10,8 +11,7 @@ import type { InboxItemListItem, InboxItemType } from '@/types'
 const mocks = vi.hoisted(() => ({
   retryTranscription: vi.fn(),
   updateInboxItem: vi.fn(),
-  inputFocused: false,
-  windowOpen: vi.fn()
+  inputFocused: false
 }))
 
 vi.mock('@/hooks/use-inbox', () => ({
@@ -182,10 +182,7 @@ describe('ListView', () => {
     vi.clearAllMocks()
     mocks.inputFocused = false
     window.api.notes.getFolders.mockResolvedValue([{ path: 'Work' }, { path: 'Archive/Read' }])
-    Object.defineProperty(window, 'open', {
-      value: mocks.windowOpen,
-      writable: true
-    })
+    vi.spyOn(commands, 'shellOpenLink').mockReset().mockResolvedValue(null)
   })
 
   it('drives keyboard preview, focus, archive, range selection, and external open shortcuts', async () => {
@@ -208,11 +205,7 @@ describe('ListView', () => {
     )
 
     await user.keyboard('{ArrowUp}o')
-    expect(mocks.windowOpen).toHaveBeenCalledWith(
-      'https://example.com/story',
-      '_blank',
-      'noopener,noreferrer'
-    )
+    expect(commands.shellOpenLink).toHaveBeenCalledWith('https://example.com/story')
 
     await user.click(screen.getByRole('button', { name: 'retry item-2' }))
     expect(mocks.retryTranscription).toHaveBeenCalledWith('item-2')

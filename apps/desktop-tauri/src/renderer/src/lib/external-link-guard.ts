@@ -214,6 +214,15 @@ export function watchFormSubmits(host: CaptureHost<'submit', Event>): () => void
 
 const followInShell = (url: string): Promise<unknown> => commands.shellOpenLink(url)
 
+/**
+ * Opens `url` where the main frame's navigation to it would go (`shell_open_link`): a web or mail
+ * link in the OS browser, a vault file in its app; anything else is refused and logged. App code
+ * calls this, never `window.open`, which on macOS opens nothing (#3675, `memry/no-window-open`).
+ */
+export function openLink(url: string): void {
+  followInShell(url).catch((error: unknown) => log.warn('a link was not opened', error))
+}
+
 /** Installed before the app renders (`main.tsx`), so its listeners run first. */
 export function installExternalLinkGuard(): () => void {
   const stops = [

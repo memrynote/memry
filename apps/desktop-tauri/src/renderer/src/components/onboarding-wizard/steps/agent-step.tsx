@@ -20,6 +20,7 @@ import {
   useDeviceLabel
 } from '../wizard-ui'
 import type { StepProps } from './basic-steps'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Onboarding:Agent')
 const K = 'onboardingWizard.agent'
@@ -214,5 +215,5 @@ export function AgentStep({ state, dispatch }: StepProps): React.JSX.Element {
 }
 
 function install(backend: AgentBackendId): void {
-  window.open(INSTALL_URL[backend], '_blank', 'noopener,noreferrer')
+  openLink(INSTALL_URL[backend])
 }

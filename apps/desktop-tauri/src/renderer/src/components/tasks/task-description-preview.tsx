@@ -12,16 +12,17 @@ import { marked, type Token, type Tokens } from 'marked'
 
 import { cn } from '@/lib/utils'
 import { createLogger } from '@/lib/logger'
+import { openLink } from '@/lib/external-link-guard'
 
 const log = createLogger('Component:TaskDescriptionPreview')
 
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-unnecessary-type-parameters -- marked's Tokens.Generic has `type: string`, which defeats discriminated-union narrowing on `token.type`
 const narrow = <T extends Token>(token: Token): T => token as T
 
-function openLink(e: React.MouseEvent, href: string): void {
+function followLink(e: React.MouseEvent, href: string): void {
   e.preventDefault()
   e.stopPropagation()
-  window.open(href, '_blank', 'noopener,noreferrer')
+  openLink(href)
 }
 
 function renderInline(tokens: Token[] | undefined, keyPrefix: string): ReactNode[] {
@@ -49,7 +50,7 @@ function renderInline(tokens: Token[] | undefined, keyPrefix: string): ReactNode
           <a
             key={key}
             href={link.href}
-            onClick={(e) => openLink(e, link.href)}
+            onClick={(e) => followLink(e, link.href)}
             className="text-primary underline underline-offset-2 hover:opacity-80"
           >
             {renderInline(link.tokens, key)}

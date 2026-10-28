@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { commands } from '../../../../../generated/bindings'
 import type { CriticMarkupCommentAttachmentRef, CriticMarkupMark } from '@memry/shared'
 import { formatBytes } from '@/lib/format'
 import { CommentAttachments, classifyCommentAttachment } from './comment-attachments'
@@ -69,7 +70,7 @@ describe('CommentAttachments', () => {
   })
 
   afterEach(() => {
-    // Restore spies (e.g. window.open) so a mock never leaks into a later test.
+    // Restore spies (e.g. shellOpenLink) so a mock never leaks into a later test.
     vi.restoreAllMocks()
   })
 
@@ -140,12 +141,12 @@ describe('CommentAttachments', () => {
     expect(viewer.getAttribute('data-src')).toBe(path)
   })
 
-  it('hands a non-viewable file to the OS via window.open — no in-app viewer, no trap', () => {
-    const openSpy = vi.spyOn(window, 'open').mockReturnValue(null)
+  it('hands a non-viewable file to the shell — no in-app viewer, no trap', () => {
+    const openSpy = vi.spyOn(commands, 'shellOpenLink').mockResolvedValue(null)
     const path = 'memry-file://local/vault/attachments/n1/notes.docx'
     render(<CommentAttachments mark={markWith([att({ name: 'notes.docx', path })])} />)
     fireEvent.click(screen.getByRole('button'))
-    expect(openSpy).toHaveBeenCalledWith(path, '_blank', 'noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith(path)
     expect(screen.queryByTestId('image-viewer')).toBeNull()
     expect(screen.queryByTestId('pdf-viewer')).toBeNull()
   })
