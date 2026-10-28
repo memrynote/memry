@@ -199,6 +199,10 @@ pub fn on_window_destroyed(app: &AppHandle<Wry>, label: &str) {
 
 /// The `run` callback of the app.
 pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
+    if crate::windows::startup_error::startup_failed() {
+        on_run_event_after_failed_startup(app, event);
+        return;
+    }
     match event {
         RunEvent::ExitRequested { code, api, .. } => on_exit_requested(app, *code, api),
         RunEvent::Exit => {
@@ -214,6 +218,22 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
             has_visible_windows: false,
             ..
         } => crate::windows::main_window::reopen(app),
+        _ => {}
+    }
+}
+
+/// The app runs only for the startup-error window: closing it quits with the failure's exit
+/// code, and no quit sequence runs over services that may never have started.
+fn on_run_event_after_failed_startup(app: &AppHandle<Wry>, event: &RunEvent) {
+    use crate::windows::startup_error::EXIT_STARTUP_FAILED;
+    match event {
+        RunEvent::ExitRequested {
+            code: None, api, ..
+        } => {
+            api.prevent_exit();
+            app.exit(EXIT_STARTUP_FAILED);
+        }
+        RunEvent::Exit => crate::tray::destroy(app),
         _ => {}
     }
 }

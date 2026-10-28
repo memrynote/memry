@@ -1,0 +1,115 @@
+<!doctype html>
+<!--
+  The preboot and startup-error windows (`src-tauri/src/windows/preboot.rs`). The page carries no
+  script: the shell fills it with `eval` after load, which sets `data-view`, `lang`, `dir` and the
+  text of the `[data-slot]` elements.
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+        background: #f6f5f0;
+        color: #191919;
+        font:
+          14px -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .view {
+        display: none;
+      }
+      [data-view='preboot'] .preboot,
+      [data-view='error'] .error {
+        display: block;
+      }
+      [data-view='error'] body {
+        padding: 28px;
+      }
+      .preboot {
+        text-align: center;
+        padding: 24px;
+      }
+      .spinner {
+        width: 22px;
+        height: 22px;
+        margin: 0 auto 16px;
+        border-radius: 50%;
+        border: 2px solid rgba(25, 25, 25, 0.15);
+        border-top-color: #ff671a;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .spinner {
+          animation: none;
+        }
+      }
+      .title {
+        font-weight: 600;
+        margin-bottom: 6px;
+      }
+      .sub {
+        opacity: 0.55;
+        font-size: 13px;
+      }
+      .error {
+        max-width: 420px;
+      }
+      .error .title {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+      .body {
+        opacity: 0.75;
+        line-height: 1.5;
+        margin-bottom: 14px;
+      }
+      .details {
+        font:
+          12px ui-monospace,
+          SFMono-Regular,
+          Menlo,
+          monospace;
+        opacity: 0.6;
+        background: rgba(25, 25, 25, 0.05);
+        border-radius: 6px;
+        padding: 10px;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 110px;
+        overflow: auto;
+        -webkit-user-select: text;
+        user-select: text;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="view preboot">
+      <div class="spinner"></div>
+      <div class="title" data-slot="title"></div>
+      <div class="sub" data-slot="subtitle"></div>
+    </div>
+    <div class="view error">
+      <div class="title" data-slot="title"></div>
+      <div class="body" data-slot="body"></div>
+      <div class="details" dir="ltr" data-slot="details"></div>
+    </div>
+  </body>
+</html>

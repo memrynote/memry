@@ -1,5 +1,5 @@
 //! Windows of the app: the registry that names them, the main window and its bounds, the one
-//! window-event dispatcher, first-paint reveal and zoom.
+//! window-event dispatcher, first-paint reveal, zoom, and the preboot and startup-error windows.
 
 pub mod bounds_store;
 pub mod chrome;
@@ -7,9 +7,11 @@ pub mod close;
 pub mod events;
 pub mod main_window;
 pub mod nav_input;
+pub mod preboot;
 pub mod registry;
 pub mod reveal;
 pub mod scripts;
+pub mod startup_error;
 #[cfg(windows)]
 pub mod win32_caption;
 pub mod zoom;

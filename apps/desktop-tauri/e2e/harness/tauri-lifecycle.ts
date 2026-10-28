@@ -55,6 +55,8 @@ export interface FreshOptions {
   deviceId?: string
   /** Leaves the window at the size the app chose, for specs about window geometry. */
   keepWindowRect?: boolean
+  /** The launch is expected to fail startup: no main window is awaited. */
+  startupFails?: boolean
 }
 
 export interface TauriApp {
@@ -68,6 +70,7 @@ export interface TauriApp {
   pid: number
   label?: 'A' | 'B'
   keepWindowRect?: boolean
+  startupFails?: boolean
 }
 
 const WINDOW_WIDTH = 1440
@@ -177,7 +180,8 @@ export async function fresh(executor: AppBrowser, options: FreshOptions = {}): P
     dirs,
     control,
     label: options.label,
-    keepWindowRect: options.keepWindowRect
+    keepWindowRect: options.keepWindowRect,
+    startupFails: options.startupFails
   })
 }
 
@@ -211,6 +215,7 @@ async function start(
   const info = await waitForApp(executor)
   assertControlApplied(info, base.control)
   const app: TauriApp = { ...base, executor, pid: info.pid }
+  if (base.startupFails) return app
   // The window is hidden until the renderer mounts; a spec starts from the shown app.
   const shown = await pollUntil(
     async () => {

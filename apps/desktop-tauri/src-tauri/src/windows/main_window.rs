@@ -52,13 +52,9 @@ pub fn create_main(
         Some((x, y)) => builder.position(f64::from(x), f64::from(y)),
         None => builder.center(),
     };
-    #[cfg(windows)]
-    if let Some(args) = crate::guards::gpu::browser_args(app) {
-        builder = builder.additional_browser_args(&args);
-    }
-    let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
+    let window = webview_profile(builder, app).build()?;
     #[cfg(any(windows, target_os = "linux"))]
-    crate::guards::gpu::watch_process_failures(app, &window);
+    crate::guards::process_gone::watch_process_failures(app, &window);
     zoom::apply_to(&window, state.zoom);
     #[cfg(windows)]
     {
@@ -146,6 +142,28 @@ pub fn on_vault_status(app: &AppHandle<Wry>, is_open: bool) {
     }
     if maximize && let Err(error) = window.maximize() {
         tracing::warn!(scope = "Window", "the window was not maximized: {error}");
+    }
+}
+
+/// The webview profile every window of the instance shares. WebView2 refuses a second webview
+/// in the process whose data folder or browser arguments differ from the first one's, so the
+/// startup-error window shown beside a live main window must take the same ones. Startup may
+/// have failed before the paths existed; no main window exists then.
+pub(super) fn webview_profile<'a>(
+    #[cfg_attr(not(windows), allow(unused_mut))] mut builder: WebviewWindowBuilder<
+        'a,
+        Wry,
+        AppHandle<Wry>,
+    >,
+    app: &AppHandle<Wry>,
+) -> WebviewWindowBuilder<'a, Wry, AppHandle<Wry>> {
+    #[cfg(windows)]
+    if let Some(args) = crate::guards::gpu::browser_args(app) {
+        builder = builder.additional_browser_args(&args);
+    }
+    match app.try_state::<AppPaths>() {
+        Some(paths) => isolate_webview_profile(builder, &paths),
+        None => builder,
     }
 }
 

@@ -26,3 +26,4 @@ pub mod spell;
 pub mod stall;
 pub mod tray;
 pub mod tray_host;
+pub mod web_crash;

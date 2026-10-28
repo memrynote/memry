@@ -91,7 +91,8 @@ pub enum Stage {
 
 pub type StageFn<R> = fn(&AppHandle<R>) -> Result<(), CommandError>;
 
-/// A stage that failed. `run()` logs it and exits with code 2.
+/// A stage that failed. `run()` shows it in the startup-error window
+/// (`windows::startup_error`).
 #[derive(Debug)]
 pub struct StageFailure {
     pub stage: Stage,
