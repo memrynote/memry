@@ -53,7 +53,6 @@ import type {
   Conversation,
   Message
 } from '@memry/contracts/ipc-agent'
-import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 import type { GlobalCaptureResult, StickyShortcutResult } from '@memry/contracts/settings-schemas'
 import type {
   AppleNotesFoldersInput,
@@ -2124,15 +2123,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
       ackErrorToast: () => Promise<{ first: boolean }>
     }
   }
-  updater: {
-    getState: () => Promise<AppUpdateState>
-    checkForUpdates: () => Promise<AppUpdateState>
-    downloadUpdate: () => Promise<AppUpdateState>
-    quitAndInstall: () => Promise<void>
-    skipVersion: (version: string) => Promise<AppUpdateState>
-    setAutoDownload: (enabled: boolean) => Promise<AppUpdateState>
-    setAutoCheck: (enabled: boolean) => Promise<AppUpdateState>
-  }
   syncCrdt: {
     openDoc: (input: { noteId: string; vaultPath?: string }) => Promise<CrdtOpenDocResult>
     closeDoc: (input: { noteId: string }) => Promise<void>
@@ -2232,7 +2222,6 @@ interface API extends WindowAPI, GeneratedRpcApi {
   onCertificatePinFailed: (callback: (event: CertificatePinFailedEvent) => void) => () => void
   onVaultRecoveryNeeded: (callback: (event: VaultRecoveryNeededEvent) => void) => () => void
   onVaultBindingChanged: (callback: (state: VaultBindingState) => void) => () => void
-  onUpdaterStateChanged: (callback: (state: AppUpdateState) => void) => () => void
   onImportProgress: (callback: (event: ImportProgressEvent) => void) => () => void
   onReadwiseStatusChanged: (callback: () => void) => () => void
   onAppNavigationCommand: (callback: (command: AppNavigationCommandEvent) => void) => () => void

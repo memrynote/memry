@@ -90,7 +90,9 @@ pub fn should_guard(
         return false;
     };
     // A marker from the future (clock moved back, hand-edited file) is not fresh, and an absurd
-    // timestamp must not overflow into "fresh".
+    // timestamp must not overflow into "fresh". So a clock stepped back after the write turns the
+    // guard off for that launch: the old build boots during the swap, which the guard exists to
+    // prevent, but only in that rare case.
     let fresh = now_ms
         .checked_sub(marker.created_at)
         .is_some_and(|age| (0..=PENDING_INSTALL_FRESH_MS).contains(&age));

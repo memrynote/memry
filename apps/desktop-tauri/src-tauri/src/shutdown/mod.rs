@@ -129,6 +129,25 @@ pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
     app.state::<ShutdownService>().core.update_hook()
 }
 
+/// How long the event loop has to deliver the exit after an install hand-off before the process
+/// ends without it. The installer waits for this process, and gives up after 60 s.
+const HANDOFF_EXIT_FALLBACK: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// Ends the process once the update hook handed the install off, which replaces the clean exit
+/// of the sequence and the forced exit of the backstop. The backstop may run while the event
+/// loop is wedged, so a plain thread ends the process if the exit does not arrive.
+pub fn exit_after_install(app: &AppHandle<Wry>) {
+    std::thread::spawn(|| {
+        std::thread::sleep(HANDOFF_EXIT_FALLBACK);
+        tracing::error!(
+            scope = "Shutdown",
+            "exit after the install hand-off did not arrive"
+        );
+        std::process::exit(0);
+    });
+    TauriEffects { app: app.clone() }.exit_clean();
+}
+
 /// The sequence ended cleanly and the exit it asked for may pass. The Windows session-end handler
 /// waits on this before it returns, because the OS ends the process soon after, and the Linux
 /// logout handler before it answers, because the session manager then takes the display down.

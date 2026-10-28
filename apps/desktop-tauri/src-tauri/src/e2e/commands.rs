@@ -44,5 +44,6 @@ e2e_commands! {
         e2e_menu_activate,
         e2e_menu_bar_visible
     ],
+    updater => [e2e_updater_script, e2e_updater_hook_calls],
     window => [e2e_windows, e2e_set_window_rect],
 }
