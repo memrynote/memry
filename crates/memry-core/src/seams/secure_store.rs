@@ -11,7 +11,7 @@
 
 use crate::api::errors::SecureStoreError;
 
-/// The five entries chapter 01 §1.8 defines, all under service `com.memry.sync`.
+/// The five entries chapter 01 §1.8 defines. The keychain service is each shell's own (§1.8).
 ///
 /// An enum rather than a string key, so a typo is a compile error and so the
 /// shell cannot invent a sixth entry the core does not know about.

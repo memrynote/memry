@@ -275,7 +275,7 @@ key can open every vault on the account, and choosing one is
 
 ## 1.8 Secret storage
 
-**Normative.** Five keychain entries, all under service `com.memry.sync`
+**Normative.** Five keychain entries
 (`packages/contracts/src/crypto.ts:70-76`):
 
 | Entry                | Account              | Value                          |
@@ -288,6 +288,19 @@ key can open every vault on the account, and choosing one is
 
 Tokens are UTF-8 encoded on the way in and decoded on the way out
 (`apps/desktop/src/main/sync/token-manager.ts:49-63`).
+
+The service is local to a device and never on the wire. iOS keeps the entries
+in its keychain under service `com.memry.sync`
+(`apps/ios/Memry/Seams/Keychain.swift:36`). The Electron desktop app names them
+with service `com.memry.sync` (`packages/contracts/src/crypto.ts:70-76`) in its
+encrypted file `secure-secrets.json`
+(`apps/desktop/src/main/secrets/secret-storage.ts:11`, `:353`); it moves each
+keychain item into that file and deletes the keychain copy (`:436`,
+`:518-521`), so only items left by older versions stay in its keychain. The
+Tauri desktop app keeps the entries in the keychain under its own service
+`com.memrynote.memry`
+(`crates/memry-desktop/src/seams/secure_store/account.rs:12`) and never writes
+`com.memry.sync`.
 
 Desktop appends a `-<device>` suffix to the account name in development
 (`apps/desktop/src/main/crypto/keychain-account.ts:26-32`). **That suffix is a

@@ -18,27 +18,10 @@ pub trait StoreFactory: Send + Sync + 'static {
         false
     }
 
-    /// Asked when a read found no entry, before the store answers "absent". It returns the secret
-    /// when the platform holds it where the store did not look, and an error of the "could not
-    /// reach" class (mapped to `Locked`) when the item may exist but cannot be seen. The default
-    /// trusts the store.
-    fn absent_check(
-        &self,
-        _service: &str,
-        _account: &str,
-    ) -> keyring_core::Result<Option<Vec<u8>>> {
-        Ok(None)
-    }
-
-    /// Asked after a write landed in `entry`. Linux tags the item with keytar's attributes and
-    /// deletes the item keytar wrote, so exactly one item answers for the pair and the Electron
-    /// app reads the new value. The value is stored by then, so this cannot fail the write.
-    fn after_set(&self, _entry: &Entry, _service: &str, _account: &str) {}
-
-    /// Asked after the store deleted its item or found none. Linux deletes the items keytar
-    /// wrote too, so the read fallback of [`Self::absent_check`] cannot bring a deleted secret
-    /// back.
-    fn after_delete(&self, _service: &str, _account: &str) -> keyring_core::Result<()> {
+    /// Asked when the store found no entry, before a read answers "absent" or a delete answers
+    /// done. An error of the "could not reach" class (mapped to `Locked`) means the item may
+    /// exist but cannot be seen. The default trusts the store.
+    fn confirm_absent(&self) -> keyring_core::Result<()> {
         Ok(())
     }
 }
@@ -46,7 +29,7 @@ pub trait StoreFactory: Send + Sync + 'static {
 /// The store of the running OS.
 #[derive(Default)]
 pub struct Native {
-    /// The Secret Service connection of the keytar-item checks, kept between calls.
+    /// The Secret Service connection of the locked-collection check, kept between calls.
     #[cfg(target_os = "linux")]
     session: super::linux_absent::Session,
 }
@@ -57,18 +40,8 @@ impl StoreFactory for Native {
     }
 
     #[cfg(target_os = "linux")]
-    fn absent_check(&self, service: &str, account: &str) -> keyring_core::Result<Option<Vec<u8>>> {
-        super::linux_absent::check(&self.session, service, account)
-    }
-
-    #[cfg(target_os = "linux")]
-    fn after_set(&self, entry: &Entry, service: &str, account: &str) {
-        super::linux_absent::after_set(&self.session, entry, service, account);
-    }
-
-    #[cfg(target_os = "linux")]
-    fn after_delete(&self, service: &str, account: &str) -> keyring_core::Result<()> {
-        super::linux_absent::after_delete(&self.session, service, account)
+    fn confirm_absent(&self) -> keyring_core::Result<()> {
+        super::linux_absent::confirm_absent(&self.session)
     }
 
     #[cfg(target_os = "macos")]
@@ -92,9 +65,9 @@ impl StoreFactory for Native {
     }
 }
 
-/// The entry of `service`/`account`. Windows names the credential `<service>/<account>` (the
-/// target keytar used), so an Electron-era item and this one are the same Credential Manager
-/// entry; macOS and Linux key on service and account.
+/// The entry of `service`/`account`. Windows names the credential `<service>/<account>`, the
+/// target `cmdkey /list` shows and the e2e keychain cleanup matches; macOS and Linux key on
+/// service and account.
 pub fn entry(
     store: &Store,
     names_target: bool,
