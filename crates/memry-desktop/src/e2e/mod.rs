@@ -5,5 +5,6 @@ pub mod control;
 pub mod debug;
 pub mod dialog_queue;
 mod gate;
+pub mod vault;
 
 pub use gate::{E2E_VAR, E2eGate};

@@ -110,6 +110,8 @@ fn register_vault_watcher(app: &AppHandle<Wry>, session: &Session) {
         return;
     };
     let tier = VaultTier::new(store.inner().clone());
+    #[cfg(feature = "e2e")]
+    crate::e2e::vault_writeback::adopt_at_launch(app, &tier, store.inner().clone());
     tier.register(session);
     register_writeback_flush(app, &tier);
     forward_writeback_failures(app.clone(), tier.subscribe_failures());
