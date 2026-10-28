@@ -16,6 +16,13 @@ test('three page crashes in a minute are three reloads, each told to the user', 
   for (let crash = 1; crash <= 3; crash += 1) {
     await app.executor.execute('window.__memryBeforeCrash = true')
     await invokeTest(app, 'e2e_kill_page')
+    // No WebDriver call until the shell has reloaded: on Windows a script in flight when the
+    // renderer dies hangs the session past the toast's 10 s.
+    const reloaded = await pollUntil(() => reloads(app.dirs.logDir) >= crash, {
+      timeoutMs: 15_000,
+      intervalMs: 100
+    })
+    expect(reloaded).toBe(true)
 
     const fresh = await pollUntil(
       async () => {
@@ -24,7 +31,7 @@ test('three page crashes in a minute are three reloads, each told to the user', 
             "return window.__memryBeforeCrash === undefined && document.readyState === 'complete'"
           )
         } catch {
-          // The page is between its dead process and the reload.
+          // The new document is not up yet.
           return false
         }
       },
