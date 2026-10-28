@@ -58,6 +58,16 @@ These run from the first moment of the launch and leave evidence for the next on
 - **Stall monitor.** A watchdog thread asks the main thread to answer every second. If it has not answered for 3 seconds, the log gets one `main thread stalled` line with the launch phase it interrupted. At most 20 lines are written, and none while the system sleeps.
 - **Webview process failures.** A webview process that ends is reported as a telemetry log event with the reason, never the page.
 
+## Sign-out, restart and power off
+
+The operating system gives an app a short, system-specific window at the end of a session. The same quit sequence runs in all three, started by the system's own signal:
+
+- **macOS** starts it when `NSWorkspace` announces power off, sign-out or restart.
+- **Windows** has two messages. `WM_QUERYENDSESSION` turns install-on-quit off, so an update does not start installing as the machine goes down, and sets a shutdown block reason ("MemryNote is saving your notes") so Windows waits for the app. `WM_ENDSESSION` then runs the sequence and holds the message for up to 4 seconds while the main thread keeps handling messages, because a step may need it. Windows sends the message to every top-level window of the process, and the framework's hidden event-target window would end the process at once, so the app takes the message on that window too and the first window asked does the waiting.
+- **Linux** takes a logind delay inhibitor when it starts and runs the sequence on `PrepareForShutdown(true)`; the process exit releases the lock and lets the machine go on, within logind's limit (5 seconds by default). A machine with no system bus goes without these events.
+
+Sleep and wake only log and pause the stall monitor.
+
 ## Tray, single instance, deep links and notifications
 
 The Tauri shell (`apps/desktop-tauri/src-tauri/src/`) owns these OS hooks; the pure rules are in `memry_desktop::shell`.
