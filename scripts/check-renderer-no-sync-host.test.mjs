@@ -38,6 +38,16 @@ test('check-renderer-no-sync-host', async (t) => {
     }
   })
 
+  await t.test('a comment marker inside a string does not hide the code after it', () => {
+    for (const source of [
+      "const accept = 'image/*'\nawait fetch('https://sync.memrynote.com/x')\nconst done = '*/'",
+      'const glob = "a/*"\nawait fetch(`https://sync.memrynote.com/x`)',
+      "const url = `https://example.com//path`\nawait fetch('https://sync.memrynote.com/x')"
+    ]) {
+      assert.equal(findSyncHostRequests(source).length, 1, source)
+    }
+  })
+
   await t.test('names the line of the offending call', () => {
     const [found] = findSyncHostRequests(
       "const a = 1\n\nawait fetch('https://sync.memrynote.com/x')"

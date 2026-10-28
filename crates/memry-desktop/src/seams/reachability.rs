@@ -10,7 +10,13 @@
 //! Addresses, not links: a network that goes away by removing its address (Wi-Fi off, a DHCP lease
 //! or NetworkManager connection dropped, an adapter disabled on Windows) reads as `Offline`. An
 //! interface whose link drops while it keeps a static IPv4 address reads as online, because the OS
-//! reports no address change; its requests fail and sync backs off as on any failed request.
+//! reports no address change (#3696). So does a machine whose only usable addresses belong to
+//! virtual adapters that stay up with no path out: `docker0`, a Hyper-V or WSL `vEthernet`,
+//! VMware's `vmnet`, a VPN's `utun` or `wg` interface. In both cases requests fail and sync backs
+//! off as on any failed request.
+//!
+//! After the watcher fails, the state reads as online for good (requests decide), and a suspend
+//! and resume come back to it.
 //!
 //! Step 17 (#3534) calls [`DesktopReachability::on_power_suspend`] and
 //! [`DesktopReachability::on_power_resume`] from the power monitor: a suspend reports `Offline` at
@@ -55,12 +61,28 @@ struct State {
     pending: Option<(Reachable, Instant)>,
     /// The OS has reported its first address set.
     settled: bool,
+    /// The watcher failed: requests decide from here on, so the addresses read as online.
+    failed: bool,
+}
+
+impl State {
+    /// What the addresses say now (online for good once the watcher failed).
+    fn current(&self) -> Reachable {
+        if self.failed {
+            Reachable::Wifi
+        } else {
+            classify(&self.addrs)
+        }
+    }
 }
 
 struct Shared {
     state: Mutex<State>,
     observers: Mutex<Vec<Arc<dyn ReachabilityObserver>>>,
-    /// Held while observers are told, so they hear the changes in the order they happened.
+    /// Held while observers are told, so they hear the changes in the order they happened. A
+    /// second change waits on it until the observers of the first returned, so an observer must be
+    /// quick (the core's only queues a pass) and must not call `on_power_suspend` or
+    /// `on_power_resume`.
     delivery: Mutex<()>,
     /// Wakes the watch task when `pending` changed outside it.
     wake: Notify,
@@ -95,7 +117,7 @@ impl Shared {
     /// reported state cancels it. The first set the OS reports applies at once.
     fn recompute(&self) {
         self.transition(|state, now| {
-            let current = classify(&state.addrs);
+            let current = state.current();
             if !state.settled {
                 state.settled = true;
                 state.pending = None;
@@ -118,7 +140,7 @@ impl Shared {
                 return None;
             }
             state.pending = None;
-            Some(classify(&state.addrs))
+            Some(state.current())
         });
     }
 
@@ -140,6 +162,7 @@ impl Shared {
         self.transition(|state, _| {
             state.pending = None;
             state.settled = true;
+            state.failed = true;
             Some(Reachable::Wifi)
         });
     }
@@ -159,17 +182,19 @@ impl DesktopReachability {
         };
         match watcher {
             Ok(watcher) => Self::with_events(runtime, watcher),
-            Err(error) => {
-                let reachability = Self::with_events(runtime, futures_util::stream::pending());
-                reachability.shared.give_up(&error);
-                reachability
-            }
+            Err(error) => Self::failed(runtime, &error),
         }
     }
 
+    /// A watcher that could not start: online from the start.
+    fn failed(runtime: &tokio::runtime::Handle, error: &io::Error) -> Self {
+        let reachability = Self::with_events(runtime, futures_util::stream::pending());
+        reachability.shared.give_up(error);
+        reachability
+    }
+
     /// The same over any stream of address events, for tests.
-    #[doc(hidden)]
-    pub fn with_events<S>(runtime: &tokio::runtime::Handle, events: S) -> Self
+    pub(crate) fn with_events<S>(runtime: &tokio::runtime::Handle, events: S) -> Self
     where
         S: Stream<Item = io::Result<IfEvent>> + Unpin + Send + 'static,
     {
@@ -179,6 +204,7 @@ impl DesktopReachability {
                 reported: Reachable::Offline,
                 pending: None,
                 settled: false,
+                failed: false,
             }),
             observers: Mutex::new(Vec::new()),
             delivery: Mutex::new(()),
@@ -229,6 +255,9 @@ async fn watch<S>(shared: Arc<Shared>, mut events: S)
 where
     S: Stream<Item = io::Result<IfEvent>> + Unpin,
 {
+    // After a failure the loop keeps running without the stream, so a debounce started by a
+    // resume still fires.
+    let mut watching = true;
     loop {
         let deadline = lock(&shared.state).pending.map(|(_, at)| at);
         let sleep = async {
@@ -238,24 +267,32 @@ where
             }
         };
         tokio::select! {
-            event = events.next() => {
+            event = events.next(), if watching => {
                 let mut next = event;
                 // Everything the stream has ready is one change: the first set at start, or the
                 // several addresses of one interface.
                 loop {
-                    match next {
-                        Some(Ok(event)) => shared.apply(event),
-                        Some(Err(error)) => return shared.give_up(&error),
-                        None => {
-                            return shared.give_up(&io::Error::other("the watcher stopped"));
+                    let failure = match next {
+                        Some(Ok(event)) => {
+                            shared.apply(event);
+                            None
                         }
+                        Some(Err(error)) => Some(error),
+                        None => Some(io::Error::other("the watcher stopped")),
+                    };
+                    if let Some(error) = failure {
+                        shared.give_up(&error);
+                        watching = false;
+                        break;
                     }
                     match events.next().now_or_never() {
                         Some(more) => next = more,
                         None => break,
                     }
                 }
-                shared.recompute();
+                if watching {
+                    shared.recompute();
+                }
             }
             () = sleep => shared.fire(),
             () = shared.wake.notified() => {}

@@ -5,8 +5,10 @@
  * The certificate pins live in the Rust transport (`crates/memry-desktop/src/seams/tls`); a
  * webview request to the sync server would skip them, and the webview has no pin of its own
  * (Electron pinned its renderer session, `apps/desktop/src/main/index.ts:655-689`). So every
- * sync, telemetry and feedback request goes through a Tauri command, and the CSP `connect-src`
- * names no memrynote.com host. This gate fails when a renderer source file calls `fetch`,
+ * sync, telemetry and feedback request goes through a Tauri command. The enforcement is the CSP:
+ * `connect-src` in `apps/desktop-tauri/src-tauri/tauri.conf.json` names no memrynote.com host, so
+ * the webview refuses such a request. This gate is the backstop that names the offending line
+ * before a reviewer has to find it, and it fails when a renderer source file calls `fetch`,
  * `XMLHttpRequest`, `WebSocket`, `EventSource` or `sendBeacon` with a memrynote.com URL, a
  * constant of the file that holds one, or the sync server URL. Links the user opens
  * (`window.open`, `href`) are not requests and are not flagged.
@@ -33,14 +35,45 @@ const REQUEST_CALL =
   /\b(?:fetch|new\s+WebSocket|new\s+EventSource|navigator\s*\.\s*sendBeacon|\.open)\s*\(/g
 const XHR = /\bXMLHttpRequest\b/
 
-/** Comments replaced by spaces, so offsets and line numbers stay put. */
+/**
+ * Comments replaced by spaces, so offsets and line numbers stay put. A scan that knows strings:
+ * `'image/*'` or `'https://x'` is a string, not the start of a comment. Template literals are
+ * taken whole; a regex literal holding `//` or a quote is the one shape it can misread, and none
+ * appears in a request call.
+ */
 function stripComments(text) {
-  return text
-    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
-    .replace(
-      /(^|[^:'"`\\])\/\/[^\n]*/g,
-      (line, lead) => lead + ' '.repeat(line.length - lead.length)
-    )
+  const out = text.split('')
+  const blank = (from, to) => {
+    for (let index = from; index < to; index += 1) {
+      if (out[index] !== '\n') out[index] = ' '
+    }
+  }
+  let index = 0
+  while (index < text.length) {
+    const char = text[index]
+    const next = text[index + 1]
+    if (char === "'" || char === '"' || char === '`') {
+      index += 1
+      while (index < text.length && text[index] !== char) {
+        if (char !== '`' && text[index] === '\n') break
+        index += text[index] === '\\' ? 2 : 1
+      }
+      index += 1
+    } else if (char === '/' && next === '/') {
+      const end = text.indexOf('\n', index)
+      const stop = end === -1 ? text.length : end
+      blank(index, stop)
+      index = stop
+    } else if (char === '/' && next === '*') {
+      const end = text.indexOf('*/', index + 2)
+      const stop = end === -1 ? text.length : end + 2
+      blank(index, stop)
+      index = stop
+    } else {
+      index += 1
+    }
+  }
+  return out.join('')
 }
 
 /** The text of the argument list that opens at `open` (the index of its `(`). */

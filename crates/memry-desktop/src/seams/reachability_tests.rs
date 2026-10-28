@@ -162,6 +162,41 @@ async fn suspend_is_offline_at_once_and_resume_reads_the_addresses_again() {
     );
 }
 
+/// M1 of the 15c review: after the watcher failed, a suspend and a resume come back online.
+#[tokio::test(start_paused = true)]
+async fn after_a_watcher_failure_mid_run_a_resume_comes_back_online() {
+    let rig = Rig::start(&["127.0.0.1/8"]).await;
+    rig.events
+        .send(Err(io::Error::other("netlink closed")))
+        .unwrap();
+    rig.settle().await;
+    rig.reachability.on_power_suspend();
+    assert_eq!(rig.current(), Reachable::Offline);
+    rig.reachability.on_power_resume();
+    rig.after(DEBOUNCE).await;
+    assert_eq!(rig.current(), Reachable::Wifi);
+}
+
+#[tokio::test(start_paused = true)]
+async fn after_a_watcher_that_never_started_a_resume_comes_back_online() {
+    let reachability = DesktopReachability::failed(
+        &tokio::runtime::Handle::current(),
+        &io::Error::other("no netlink"),
+    );
+    assert_eq!(reachability.current(), Reachable::Wifi);
+    reachability.on_power_suspend();
+    assert_eq!(reachability.current(), Reachable::Offline);
+    reachability.on_power_resume();
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+    tokio::time::advance(DEBOUNCE).await;
+    for _ in 0..10 {
+        tokio::task::yield_now().await;
+    }
+    assert_eq!(reachability.current(), Reachable::Wifi);
+}
+
 #[tokio::test(start_paused = true)]
 async fn a_failed_watcher_leaves_the_state_online() {
     let rig = Rig::start(&["127.0.0.1/8"]).await;
