@@ -98,6 +98,23 @@ pub async fn e2e_tray_probe(
     })
 }
 
+/// Turns the tray on and closes the main window, which then hides to the tray as its close
+/// button does. True when the window ended up hidden. WebDriver still runs scripts in it.
+#[tauri::command]
+pub async fn e2e_hide_to_tray(app: AppHandle<Wry>) -> Result<bool, CommandError> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| invalid("e2e_window", "no main window"))?;
+    let settle = || tokio::time::sleep(std::time::Duration::from_millis(600));
+    set_tray_setting(&app, true).await?;
+    settle().await;
+    window
+        .close()
+        .map_err(|error| CommandError::new(ErrorKind::Internal, "e2e_window", error.to_string()))?;
+    settle().await;
+    Ok(!window.is_visible().unwrap_or(true))
+}
+
 /// What the global capture shortcut holds and how often it fired.
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -152,13 +169,12 @@ pub fn e2e_post_power_event(app: AppHandle<Wry>, kind: String) -> Result<(), Com
 /// returns without waiting. Windows asks either one first, so a spec runs both: the quit sequence
 /// has to finish before the process ends, whichever it was. `kill_webview` ends the WebView2
 /// browser process between the two messages, as a real sign-out does (it ends itself on its own
-/// `WM_ENDSESSION`); `hidden` first hides the main window, as closing it to the tray does.
+/// `WM_ENDSESSION`).
 #[tauri::command]
 pub async fn e2e_send_session_end(
     app: AppHandle<Wry>,
     target: String,
     kill_webview: Option<bool>,
-    hidden: Option<bool>,
 ) -> Result<(), CommandError> {
     let event_target = match target.as_str() {
         "main" => false,
@@ -178,11 +194,6 @@ pub async fn e2e_send_session_end(
         let main = window
             .hwnd()
             .map_err(|error| invalid("e2e_no_main_window", error))?;
-        if hidden.unwrap_or(false) {
-            window
-                .hide()
-                .map_err(|error| invalid("e2e_window", error))?;
-        }
         if !crate::power::post_sign_out(main, event_target, kill_browser) {
             return Err(invalid("e2e_no_event_target", "no event target window"));
         }
@@ -190,7 +201,7 @@ pub async fn e2e_send_session_end(
     }
     #[cfg(not(windows))]
     {
-        let _ = (&app, event_target, kill_webview, hidden);
+        let _ = (&app, event_target, kill_webview);
         Err(invalid(
             "e2e_windows_only",
             "WM_ENDSESSION exists on Windows only",

@@ -18,7 +18,7 @@ use tauri::{AppHandle, Wry};
 use tokio::sync::broadcast::Sender;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::Shutdown::{ShutdownBlockReasonCreate, ShutdownBlockReasonDestroy};
-use windows::Win32::System::Threading::GetCurrentThreadId;
+use windows::Win32::System::Threading::{GetCurrentThreadId, SetProcessShutdownParameters};
 use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
 use windows::Win32::UI::WindowsAndMessaging::{
     DispatchMessageW, EnumThreadWindows, GetClassNameW, MSG, MsgWaitForMultipleObjects,
@@ -31,6 +31,13 @@ use windows::core::{BOOL, w};
 use crate::windows::registry::WindowRegistry;
 
 const SUBCLASS_ID: usize = 0x4D45_4D50;
+/// Windows ends a session's processes from the highest shutdown level down, and every process
+/// starts at 0x280. Chromium leaves the WebView2 browser process there and lowers its children to
+/// 0x27F (`content/app/content_main.cc`, `CommonSubprocessInit`), so at the same level the order
+/// of the app and its webview is unspecified: on the VM a sign-out ended the webview while the
+/// app was still answering `WM_QUERYENDSESSION`, and the page's edits were lost. One level above
+/// the browser, Windows asks the app first, while every page can still answer.
+const SHUTDOWN_LEVEL: u32 = 0x281;
 /// The class tao registers for the hidden window that receives the thread's events.
 const EVENT_TARGET_CLASS: &str = "Tao Thread Event Target";
 
@@ -110,9 +117,9 @@ fn hold(limit: Duration, done: impl Fn() -> bool) -> bool {
 
 /// Answers `WM_QUERYENDSESSION` only after every window has written the edits its page still
 /// holds. At a sign-out the WebView2 processes end themselves on their own `WM_ENDSESSION`, a few
-/// milliseconds into the app's quit sequence, so its `flush-windows` step finds no page to ask.
-/// Windows sends no `WM_ENDSESSION` to any process before every one has answered this message, so
-/// the pages are all alive here. A sign-out that is then cancelled has only saved early.
+/// milliseconds into the app's quit sequence, so its `flush-windows` step may find no page to
+/// ask. [`SHUTDOWN_LEVEL`] has Windows ask the app before it touches the webview, so the pages
+/// are alive here. A sign-out that is then cancelled has only saved early.
 fn flush_before_session_end(app: &AppHandle<Wry>) {
     if crate::startup::shutdown_started() {
         // The quit sequence is already running and flushed first.
@@ -320,8 +327,16 @@ pub fn post_sign_out(main: HWND, event_target: bool, kill_browser: Option<u32>) 
     true
 }
 
-/// Subclasses the main window and tao's event target. Runs on the thread that owns them.
+/// Puts the app ahead of its webview in the session-end order, then subclasses the main window
+/// and tao's event target. Runs on the thread that owns them.
 pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
+    // SAFETY: plain Win32 call that only changes this process's shutdown order.
+    if let Err(error) = unsafe { SetProcessShutdownParameters(SHUTDOWN_LEVEL, 0) } {
+        tracing::warn!(
+            scope = "Power",
+            "could not put the app ahead of its webview at a session end: {error}"
+        );
+    }
     let Some(window) = WindowRegistry::main_window(app) else {
         tracing::warn!(
             scope = "Power",

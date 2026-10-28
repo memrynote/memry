@@ -56,10 +56,11 @@ for (const hidden of [false, true]) {
   })`, async ({ app }) => {
     test.skip(process.platform !== 'win32', 'WM_QUERYENDSESSION is Windows-only')
 
+    if (hidden) expect(await invokeTest<boolean>(app, 'e2e_hide_to_tray')).toBe(true)
     const edit = `held-${Date.now()}`
     await app.executor.execute('window.__memryE2eHoldEdit(arguments[0])', edit)
     const startedAt = Date.now()
-    await invokeTest(app, 'e2e_send_session_end', { target: 'main', killWebview: true, hidden })
+    await invokeTest(app, 'e2e_send_session_end', { target: 'main', killWebview: true })
 
     const exited = await pollUntil(() => !isAlive(app.pid), { timeoutMs: 10_000, intervalMs: 50 })
     expect(exited).toBe(true)
