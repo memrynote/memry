@@ -142,7 +142,10 @@ vi.mock('@/lib/icons', () => ({
   Loader2: () => <div data-testid="loader" />
 }))
 
-vi.mock('@/lib/window-chrome', () => ({ useWindowChromeSync: () => undefined }))
+vi.mock('@/lib/window-chrome', () => ({
+  useWindowChromeSync: () => undefined,
+  useCaptionButtonsVisible: () => false
+}))
 vi.mock('@/lib/alt-menu', () => ({ useAltMenuToggle: () => undefined }))
 vi.mock('@/lib/native-edit-menu', () => ({ useNativeEditMenu: () => undefined }))
 
