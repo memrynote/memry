@@ -19,7 +19,12 @@ pub const PINNED_CERTIFICATE_HASHES_BY_HOST: &[(&str, &[&str])] = &[
     ),
     (
         "sync-staging.memrynote.com",
-        &["sha256/LUkXdP3NZ4aBKbFriRvHtAP2pzTAO9sMqzOnl24KZV4="],
+        // Google Trust Services WE1 (the issuing intermediate), then the GlobalSign-signed
+        // GTS Root R4 the server presents above WE1.
+        &[
+            "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=",
+            "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=",
+        ],
     ),
 ];
 
@@ -175,7 +180,8 @@ pub fn audit(hostname: &str, pins: &[String], strict: bool) -> Audit {
 mod tests {
     use super::*;
 
-    const REAL: &str = "sha256/LUkXdP3NZ4aBKbFriRvHtAP2pzTAO9sMqzOnl24KZV4=";
+    const REAL: &str = "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4=";
+    const BACKUP: &str = "sha256/mEflZT5enoR1FuXLgYYGqnVEoZvmf9c2bVBpiOjYQ0c=";
 
     fn owned(pins: &[&str]) -> Vec<String> {
         pins.iter().map(|p| (*p).to_owned()).collect()
@@ -231,7 +237,7 @@ mod tests {
         let table = PinTable::production();
         assert_eq!(
             table.policy("Sync-Staging.MemryNote.com."),
-            PinPolicy::Pinned(&owned(&[REAL]))
+            PinPolicy::Pinned(&owned(&[REAL, BACKUP]))
         );
         assert_eq!(table.policy("sync.memrynote.com"), PinPolicy::Placeholder);
         assert_eq!(table.policy("example.com"), PinPolicy::Unlisted);
@@ -256,7 +262,7 @@ mod tests {
         assert_eq!(audit("h", &placeholder, true).level, AuditLevel::Error);
         assert!(is_well_formed(REAL));
         assert!(!is_well_formed(
-            "sha256/LUkXdP3NZ4aBKbFriRvHtAP2pzTAO9sMqzOnl24KZV4"
+            "sha256/kIdp6NNEd8wsugYyyIYFsi1ylMCED3hZbSR8ZFsa/A4"
         ));
     }
 }
