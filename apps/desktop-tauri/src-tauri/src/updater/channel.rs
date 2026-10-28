@@ -1,6 +1,11 @@
 //! Which Velopack channel this install updates from. An x64 pack running emulated on an ARM64
 //! Windows PC (the only Windows build Electron shipped) moves to the native `win-arm64` pack on its
 //! next update; every other install keeps the channel its `sq.version` memorized.
+//!
+//! A release without the `win-arm64` pack leaves those installs where they are: the feed then
+//! holds no newer native release, the check reports up to date (`is_older` turns away an older
+//! one), and they update with the next release that carries the pack. Falling back to `win` would
+//! only reinstall x64 and move again later, so the release tooling publishes both Windows packs.
 
 use velopack::{UpdateInfo, UpdateOptions};
 
@@ -64,24 +69,46 @@ pub fn current() -> Switch {
     }
 }
 
-#[cfg(windows)]
+/// Only an x64 build asks. `IsWow64Process2` arrived in Windows 10 1709, so it is looked up at
+/// run time: a static import would keep the app from starting on an older Windows 10, where x64
+/// emulation on ARM64 does not exist anyway.
+#[cfg(all(windows, target_arch = "x86_64"))]
 fn native_machine() -> u16 {
+    use windows::Win32::Foundation::HANDLE;
+    use windows::Win32::System::LibraryLoader::{GetModuleHandleW, GetProcAddress};
     use windows::Win32::System::SystemInformation::IMAGE_FILE_MACHINE;
-    use windows::Win32::System::Threading::{GetCurrentProcess, IsWow64Process2};
+    use windows::Win32::System::Threading::GetCurrentProcess;
+    use windows::core::{BOOL, s, w};
 
+    type IsWow64Process2 =
+        unsafe extern "system" fn(HANDLE, *mut IMAGE_FILE_MACHINE, *mut IMAGE_FILE_MACHINE) -> BOOL;
+
+    // SAFETY: kernel32 is loaded in every process; the name is a static C string.
+    let Some(found) = (unsafe { GetModuleHandleW(w!("kernel32.dll")) })
+        .ok()
+        .and_then(|kernel32| unsafe { GetProcAddress(kernel32, s!("IsWow64Process2")) })
+    else {
+        return 0;
+    };
+    // SAFETY: the export of that name has this signature (Windows SDK `wow64apiset.h`).
+    let is_wow64_process2: IsWow64Process2 = unsafe { std::mem::transmute(found) };
     let mut process = IMAGE_FILE_MACHINE::default();
     let mut native = IMAGE_FILE_MACHINE::default();
     // SAFETY: the pseudo handle of this process and two out-parameters this frame owns.
-    match unsafe { IsWow64Process2(GetCurrentProcess(), &raw mut process, Some(&raw mut native)) } {
-        Ok(()) => native.0,
-        Err(error) => {
-            tracing::warn!(scope = "Updater", "IsWow64Process2 failed: {error}");
-            0
-        }
+    let ok = unsafe { is_wow64_process2(GetCurrentProcess(), &raw mut process, &raw mut native) };
+    if ok.as_bool() {
+        native.0
+    } else {
+        tracing::warn!(
+            scope = "Updater",
+            "IsWow64Process2 failed: {}",
+            windows::core::Error::from_thread()
+        );
+        0
     }
 }
 
-#[cfg(not(windows))]
+#[cfg(not(all(windows, target_arch = "x86_64")))]
 fn native_machine() -> u16 {
     0
 }
