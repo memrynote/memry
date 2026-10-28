@@ -37,7 +37,9 @@ pub struct VelopackBackend {
     manager: UpdateManager,
     switch: channel::Switch,
     current: semver::Version,
-    /// The release the last check found; `download` and `apply` act on it.
+    /// The release the last check found, or the one an earlier run left on disk; `download` and
+    /// `apply` act on it. An up-to-date check keeps it: the service keeps a downloaded update
+    /// through such a check (a release pulled from the feed), and the next quit installs this.
     pending: Mutex<Option<UpdateInfo>>,
 }
 
@@ -65,6 +67,10 @@ impl VelopackBackend {
     /// The installed version (`sq.version`), which the app reports as its own.
     pub fn current_version(&self) -> String {
         self.current.to_string()
+    }
+
+    fn set_pending(&self, info: Option<UpdateInfo>) {
+        *self.pending.lock().unwrap_or_else(PoisonError::into_inner) = info;
     }
 
     fn pending(&self) -> Result<UpdateInfo, UpdateError> {
@@ -113,8 +119,25 @@ impl UpdateBackend for VelopackBackend {
             return Ok(CheckOutcome::UpToDate);
         }
         let update = available_update(target);
-        *self.pending.lock().unwrap_or_else(PoisonError::into_inner) = Some(info);
+        self.set_pending(Some(info));
         Ok(CheckOutcome::Available(update))
+    }
+
+    /// Not while moving to the ARM64 pack: a package on disk is of the channel being left, and
+    /// the startup check finds the native one.
+    fn downloaded(&self) -> Option<AvailableUpdate> {
+        if self.switch == channel::Switch::ToArm64 {
+            return None;
+        }
+        let asset = self.manager.get_update_pending_restart()?;
+        let update = available_update(&asset);
+        self.set_pending(Some(UpdateInfo {
+            TargetFullRelease: asset,
+            BaseRelease: None,
+            DeltasToTarget: Vec::new(),
+            IsDowngrade: false,
+        }));
+        Some(update)
     }
 
     fn download(&self, progress: &dyn Fn(f64)) -> Result<(), UpdateError> {

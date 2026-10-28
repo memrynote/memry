@@ -6,8 +6,13 @@ use memry_desktop::paths::profile_identifier;
 
 fn main() {
     // Must stay the first statement: on a Velopack install/update/uninstall hook it handles the
-    // hook argument and exits; outside a Velopack install it logs and returns.
-    velopack::VelopackApp::build().run();
+    // hook argument and exits; outside a Velopack install it logs and returns. Never installs a
+    // downloaded update at launch: this may be a second instance (a deep link, a file open, the
+    // Start menu) or the crash monitor, and the install would kill the running instance before it
+    // saved. Only the running instance's quit installs (`UpdaterService::adopt_downloaded`).
+    velopack::VelopackApp::build()
+        .set_auto_apply_on_startup(false)
+        .run();
 
     // Step 35 (#3552): --cli dispatch
     if let Some(code) = memry_tauri::guards::crash_dump::monitor_entry() {

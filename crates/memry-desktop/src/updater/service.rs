@@ -161,8 +161,9 @@ impl UpdaterService {
         self.core.subscribe()
     }
 
-    /// Once, after the main window is shown: the failed-install streak, the timer and the
-    /// startup check. Without a backend the state stays `unavailable`.
+    /// Once, after the main window is shown: the failed-install streak, an update an earlier run
+    /// downloaded, the timer and the startup check. Without a backend the state stays
+    /// `unavailable`.
     pub fn init(self: &Arc<Self>) {
         if self.initialized.swap(true, Ordering::SeqCst) {
             return;
@@ -176,24 +177,62 @@ impl UpdaterService {
         if let Some(stranded) = health::reconcile(&self.data_dir, &self.core.display_version()) {
             self.core.note_install_failed(Some(stranded));
         }
-        if self.state().auto_check_enabled {
+        let auto_check = self.state().auto_check_enabled;
+        if auto_check {
             self.start_timer();
-            self.spawn_check(UpdaterErrorPhase::StartupCheck);
         }
+        let this = self.clone();
+        self.runtime.spawn(async move {
+            this.adopt_downloaded().await;
+            if auto_check {
+                this.logged_check(UpdaterErrorPhase::StartupCheck).await;
+            }
+        });
+    }
+
+    /// Only this service, at a normal quit or Restart to install, starts the installer. Velopack's
+    /// own install at launch is off (`main.rs`): a second launch would kill the running
+    /// instance before it saved. So an update an earlier run left on disk is `downloaded` again
+    /// and installs at the next normal quit, offline too. A version the user skipped stays.
+    async fn adopt_downloaded(self: &Arc<Self>) {
+        let Some(backend) = self.backend.clone() else {
+            return;
+        };
+        let Ok(Some(update)) = self.blocking(move || Ok(backend.downloaded())).await else {
+            return;
+        };
+        let skipped = self.config.updater().skipped_version;
+        let display = format_app_version_for_display(&update.version);
+        if self.halted()
+            || self.state().status != UpdaterStatus::Idle
+            || skipped.as_deref() == Some(display.as_str())
+        {
+            return;
+        }
+        tracing::info!(
+            scope = "Updater",
+            "update {} was downloaded by an earlier run",
+            update.version
+        );
+        *self.pending.lock().unwrap_or_else(PoisonError::into_inner) = Some(update.clone());
+        self.core.on_downloaded(&update);
     }
 
     fn spawn_check(self: &Arc<Self>, phase: UpdaterErrorPhase) {
         let this = self.clone();
-        self.runtime.spawn(async move {
-            if let Err(error) = this.check(false).await {
-                tracing::warn!(
-                    scope = "Updater",
-                    fields = %describe_error(&error, phase),
-                    "{} update check failed",
-                    phase.as_str()
-                );
-            }
-        });
+        self.runtime
+            .spawn(async move { this.logged_check(phase).await });
+    }
+
+    async fn logged_check(self: &Arc<Self>, phase: UpdaterErrorPhase) {
+        if let Err(error) = self.check(false).await {
+            tracing::warn!(
+                scope = "Updater",
+                fields = %describe_error(&error, phase),
+                "{} update check failed",
+                phase.as_str()
+            );
+        }
     }
 
     fn start_timer(self: &Arc<Self>) {
