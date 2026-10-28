@@ -40,6 +40,10 @@ reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no
 # starts after the app would stay unreachable; here a store is built again after any failure.
 keyring-core = "1.0.1"
 
+# `seams::reachability`: OS network events (macOS SCDynamicStore, Windows NotifyIpInterfaceChange,
+# Linux netlink) on the Tokio runtime. No polling.
+if-watch = { version = "3.2.2", features = ["tokio"] }
+
 # The sync seams (`seams/tls`, `seams/transport`): one rustls stack, `ring` only, no aws-lc-rs.
 # `rustls-platform-verifier` checks the chain against the OS trust store; `PinningVerifier` wraps it.
 # `x509-parser` (`verify`, which is ring) reads the SPKI of the presented chain and checks its links.
