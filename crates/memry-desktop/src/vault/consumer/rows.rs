@@ -1,6 +1,6 @@
 //! The one lane that writes `note_files`. The consumer takes it for each watcher event; the
-//! app's own file operations (Step 13's create, 12e-3's write-back) take it through
-//! [`RowOwner`]'s methods. Either way a write checks [`PathIndex`] first and keeps it in step,
+//! app's own file operations (Step 13's create) take it through [`RowOwner`]'s methods, and the
+//! write-back (`vault::writeback`) holds it for a whole pass. Either way a write checks [`PathIndex`] first and keeps it in step,
 //! and the [`Applied`] fact goes out after the row is written, under the lane, so subscribers
 //! see the facts in the order the rows changed.
 //!
@@ -84,7 +84,7 @@ impl RowOwner {
         self.applied.subscribe()
     }
 
-    pub(super) fn open(&self, vault: Arc<Vault>) -> Result<(), StorageError> {
+    pub(crate) fn open(&self, vault: Arc<Vault>) -> Result<(), StorageError> {
         let files = vault.note_files();
         let index = PathIndex::load(&files)?;
         let session = RowSession(self.sessions.fetch_add(1, Ordering::Relaxed) + 1);
@@ -109,7 +109,7 @@ impl RowOwner {
             .ok_or(RowError::Closed)
     }
 
-    pub(super) fn close(&self) {
+    pub(crate) fn close(&self) {
         *self.lock() = None;
     }
 
@@ -128,7 +128,7 @@ impl RowOwner {
         })
     }
 
-    fn lane_of(&self, session: RowSession) -> Result<Lane<'_>, RowError> {
+    pub(crate) fn lane_of(&self, session: RowSession) -> Result<Lane<'_>, RowError> {
         let lane = self.lane()?;
         if lane.state().session != session {
             return Err(RowError::Closed);
@@ -211,7 +211,7 @@ impl RowOwner {
 }
 
 /// The lane, held: one event's or one app operation's worth of row writes.
-pub(super) struct Lane<'a> {
+pub(crate) struct Lane<'a> {
     guard: MutexGuard<'a, Option<RowState>>,
     applied: &'a broadcast::Sender<Applied>,
 }
@@ -229,7 +229,7 @@ impl Lane<'_> {
             .expect("a lane exists only while a vault is open")
     }
 
-    pub(super) fn files(&self) -> &NoteFiles {
+    pub(crate) fn files(&self) -> &NoteFiles {
         &self.state().files
     }
 
@@ -252,7 +252,7 @@ impl Lane<'_> {
         self.files().set_hash(note_id, None)
     }
 
-    pub(super) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
+    pub(crate) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
         state.files.upsert_stat(NoteFileStat {
@@ -283,7 +283,7 @@ impl Lane<'_> {
         Ok(())
     }
 
-    pub(super) fn publish(&self, fact: Applied) {
+    pub(crate) fn publish(&self, fact: Applied) {
         // No subscriber is not an error: the facts are for whoever listens.
         let _ = self.applied.send(fact);
     }

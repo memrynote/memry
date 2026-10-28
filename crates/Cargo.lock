@@ -3806,6 +3806,7 @@ dependencies = [
  "windows",
  "windows-native-keyring-store",
  "xattr",
+ "yrs",
  "zbus",
  "zbus-secret-service-keyring-store",
  "zeroize",
