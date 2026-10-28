@@ -10,7 +10,7 @@ const WRITING: &str = "---\nwriting:\n  alternatives:\n    k3x9q2:\n      versio
 /// frontmatter that does not parse may hold some, so that file is not taken as read.
 #[test]
 fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_not_when_that_does_not_parse() {
-    let f = fixture(true);
+    let f = fixture();
     f.write("w.md", WRITING);
     assert_eq!(f.added("w.md"), Step::Done);
     assert_eq!(f.hash_of("w.md"), Some(content_hash(WRITING)));
@@ -45,7 +45,7 @@ fn a_file_is_taken_as_read_with_its_writing_frontmatter_and_not_when_that_does_n
 /// replaces the body. A row without a hash gets a seed, which leaves a body alone.
 #[test]
 fn a_row_without_a_hash_never_has_its_body_replaced_by_the_file() {
-    let f = fixture(true);
+    let f = fixture();
     let id = f.note();
     f.give_body(&id, "the synced body");
     *f.identity.next.lock().unwrap() = Some(Adoption::Existing(id.clone()));
@@ -69,7 +69,7 @@ fn a_row_without_a_hash_never_has_its_body_replaced_by_the_file() {
 /// Another file that shows up at that path is not that note's text.
 #[test]
 fn a_new_file_where_a_kept_note_lost_its_file_does_not_replace_its_body() {
-    let f = fixture(true);
+    let f = fixture();
     f.write("a.md", "the kept note\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -95,7 +95,7 @@ fn a_new_file_where_a_kept_note_lost_its_file_does_not_replace_its_body() {
 /// the one the row names, the row's time moves on, so the next walk does not read it again.
 #[test]
 fn a_file_read_back_unchanged_refreshes_its_row() {
-    let f = fixture(true);
+    let f = fixture();
     f.write("a.md", "same text\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -108,11 +108,10 @@ fn a_file_read_back_unchanged_refreshes_its_row() {
 }
 
 /// A row without a hash (here: the device had no key when the file was found) is seeded once
-/// it can be, while outside edits still wait for the write-back: a seed only fills an empty
-/// body, so it is not an edit.
+/// it can be.
 #[test]
-fn a_row_without_a_hash_is_seeded_while_outside_edits_wait() {
-    let mut f = fixture(false);
+fn a_row_without_a_hash_is_seeded_once_the_device_has_a_key() {
+    let mut f = fixture();
     f.applier.feed = None;
     f.write("a.md", "found without a key\n");
     assert_eq!(f.added("a.md"), Step::Done);

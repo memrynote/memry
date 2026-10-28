@@ -32,6 +32,8 @@ pub const FINAL_SNAPSHOT_PUSH: Duration = Duration::from_millis(2000);
 pub const CLOSE_VAULT_RESERVE: Duration = Duration::from_millis(2000);
 /// Ceiling on the telemetry and log-ship flush.
 pub const TELEMETRY_FLUSH: Duration = Duration::from_millis(1000);
+/// Ceiling on the write-back flush of `flush-writebacks`.
+pub const WRITEBACK_FLUSH: Duration = Duration::from_millis(2000);
 /// What `close-vault` keeps for the database close behind its projection drain.
 pub const DATABASE_CLOSE_RESERVE: Duration = Duration::from_millis(1000);
 const PROJECTION_DRAIN_CEILING: Duration = Duration::from_millis(5000);
@@ -53,13 +55,24 @@ pub const STEP_ORDER: [&str; 11] = [
 ];
 
 /// Re-run once the budget is gone, in this order, under [`LAST_CHANCE`]. Neither depends on the
-/// step that is wedged, and both are cheap.
-pub const LAST_CHANCE_STEPS: [&str; 2] = ["flush-writebacks", "flush-activity-log"];
+/// step that is wedged. The activity log's flush is a few appended lines, so it runs first; the
+/// write-back's passes take at most [`writeback_flush_timeout`] of what is left, which leaves
+/// the rest to the vault close behind them.
+pub const LAST_CHANCE_STEPS: [&str; 2] = ["flush-activity-log", "flush-writebacks"];
 const CLOSE_VAULT: &str = "close-vault";
 
 /// The final snapshot push's timeout inside `remaining`: zero skips it.
 pub fn final_snapshot_push_timeout(remaining: Duration) -> Duration {
     FINAL_SNAPSHOT_PUSH.min(remaining.saturating_sub(CLOSE_VAULT_RESERVE))
+}
+
+/// The write-back flush's timeout within `remaining`: half of it, at most [`WRITEBACK_FLUSH`],
+/// so the vault close behind keeps the other half. The final snapshot push does not always
+/// keep its share: in a Windows session end ([`SESSION_END_BUDGET`]) a flush that takes its
+/// whole timeout leaves less than [`CLOSE_VAULT_RESERVE`], and the push is skipped. The passes
+/// the flush leaves run in the vault close.
+pub fn writeback_flush_timeout(remaining: Duration) -> Duration {
+    WRITEBACK_FLUSH.min(remaining / 2)
 }
 
 /// The projection drain's timeout inside `close-vault` within `remaining`: zero skips the drain,

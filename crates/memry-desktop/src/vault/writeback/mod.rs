@@ -1,12 +1,14 @@
-//! The write-back (Step 12e-3a, #3529): a note's document body out to its vault file
+//! The write-back (Step 12e-3, #3529): a note's document body out to its vault file
 //! (`performWriteback` and `writebackExisting` of desktop `crdt-writeback.ts`).
 //!
 //! [`WriteBack::schedule`] is the seam: the editor (Step 14) calls it after a body edit is
-//! durable, the sync driver (Step 17) after a page commits. A scheduled note gets one pass on
-//! the write-back thread; the debounce, the cooldown and the flush on quit are 12e-3b's.
+//! durable, the sync driver (Step 17) after a page commits. A scheduled note gets a pass on
+//! the write-back thread once it is quiet (`schedule`).
 //!
 //! Invariants, each with a test in `tests/` here for every way a body changes (an edit in the
-//! app, a body merged from sync) and a file changes (an outside edit):
+//! app, a body merged from sync) and a file changes (an outside edit).
+//!
+//! **What** a pass writes:
 //! - **No byte the document does not hold is written over.** A pass writes only a file whose
 //!   bytes hash to its row's hash, which names a whole file the document holds
 //!   (`vault::consumer`). A row without a hash, a file whose hash differs (an outside edit
@@ -39,95 +41,44 @@
 //! - **One session.** A pass names the vault session it was started in and writes nothing
 //!   once that session closed.
 //!
+//! **When** a pass runs:
+//! - **Once the note is quiet.** A note's pass runs [`DEBOUNCE`] after its last schedule, and
+//!   not before the cooldown of its last pass ends: [`COOLDOWN_FACTOR`] times what that pass
+//!   took, at most [`MAX_COOLDOWN`]. One pass runs at a time; a schedule while the note's pass
+//!   runs gives it one more pass after it.
+//! - **Nothing scheduled waits out a quit or a close.** [`WriteBack::flush`] makes every
+//!   scheduled pass due now and waits for them and the one running. The `flush-writebacks`
+//!   shutdown step calls it on every way the app quits (the app menu, Cmd-Q, the Dock, a
+//!   session end, an update restart), within its share of the budget
+//!   ([`crate::shell::shutdown::writeback_flush_timeout`]) so the steps behind it still run,
+//!   and again in the last chance when a step before it wedged
+//!   ([`crate::vault::consumer::VaultTier::flush_step`]). A vault close, the quit's included,
+//!   runs every pass scheduled until the write-back stops, after the watcher and the consumer
+//!   stopped and before the rows close. A schedule during either is due at once. The close
+//!   has no bound of its own on those passes: the session goes on after its close hook
+//!   deadline and the quit after the sequence budget, and a pass still running when the
+//!   process ends is a forced exit (below). A close that ends after the next vault opened
+//!   stops only its own vault's write-back and rows.
+//! - **A crash or a forced exit leaves files behind their bodies, never the reverse.** The
+//!   body is durable in the document before its note is scheduled, and the queue is in
+//!   memory, so a process that ends before a pass leaves that note's file with older text and
+//!   a row hash that still matches it. The open reconcile (12e-3c) brings such files to their
+//!   bodies: a pass for every note whose body may be newer than its file writes exactly the
+//!   notes this left behind. Until it runs, an outside edit of such a file replaces the newer
+//!   body, which the feed keeps as a version.
+//! - **A failed write is told, once per run of failures.** The first failed pass of a note
+//!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
+//!   not retried on its own: the note's next schedule is its retry, and its body stays in the
+//!   document until then.
+//!
 //! A journal note's file is not written yet: its frontmatter rule (the date, the tags) comes
 //! with the open reconcile (12e-3c). A file the note has no row or no file for is not
 //! created: the note records create files (Step 13).
 
 mod pass;
+mod schedule;
 #[cfg(test)]
 mod tests;
 
 pub use pass::{Keep, Outcome, Pass};
-
-use std::collections::HashSet;
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
-use std::thread::JoinHandle;
-
-const SCOPE: &str = "vault_writeback";
-
-/// The write-back thread of one vault session.
-pub struct WriteBack {
-    tx: Option<mpsc::Sender<String>>,
-    /// Notes scheduled and not yet started: a second schedule of one is the same pass.
-    pending: Arc<Mutex<HashSet<String>>>,
-    thread: Option<JoinHandle<()>>,
-}
-
-impl WriteBack {
-    pub(crate) fn start(pass: Pass) -> std::io::Result<Self> {
-        let (tx, rx) = mpsc::channel::<String>();
-        let pending: Arc<Mutex<HashSet<String>>> = Arc::default();
-        let queued = pending.clone();
-        let thread = std::thread::Builder::new()
-            .name("vault-writeback".into())
-            .spawn(move || {
-                for note_id in rx {
-                    // Taken off before the pass, so an edit during it schedules another.
-                    queued
-                        .lock()
-                        .unwrap_or_else(|e| e.into_inner())
-                        .remove(&note_id);
-                    log(&note_id, &pass.run(&note_id));
-                }
-            })?;
-        Ok(Self {
-            tx: Some(tx),
-            pending,
-            thread: Some(thread),
-        })
-    }
-
-    /// Writes the note's body to its file, on the write-back thread.
-    pub fn schedule(&self, note_id: &str) {
-        let Some(tx) = &self.tx else { return };
-        let fresh = self
-            .pending
-            .lock()
-            .unwrap_or_else(|e| e.into_inner())
-            .insert(note_id.to_owned());
-        if fresh && tx.send(note_id.to_owned()).is_err() {
-            tracing::error!(scope = SCOPE, note_id, "the write-back thread is gone");
-        }
-    }
-
-    /// Lets the queued passes run, then joins the thread.
-    pub(crate) fn stop(&mut self) {
-        self.tx = None;
-        if let Some(thread) = self.thread.take()
-            && thread.join().is_err()
-        {
-            tracing::error!(scope = SCOPE, "the write-back thread panicked");
-        }
-    }
-}
-
-impl Drop for WriteBack {
-    fn drop(&mut self) {
-        self.stop();
-    }
-}
-
-fn log(note_id: &str, outcome: &Outcome) {
-    match outcome {
-        Outcome::Wrote { .. } | Outcome::Unchanged => {
-            tracing::debug!(scope = SCOPE, note_id, outcome = ?outcome);
-        }
-        Outcome::Kept(keep) => {
-            tracing::info!(scope = SCOPE, note_id, keep = ?keep, "the file was kept");
-        }
-        Outcome::Failed(reason) => {
-            tracing::error!(scope = SCOPE, note_id, "the write-back failed: {reason}");
-        }
-    }
-}
+pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};

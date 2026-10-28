@@ -270,7 +270,7 @@ impl Run {
                 self.after(step, Some(&path));
             }
         }
-        if let Ok(lane) = self.applier.rows.lane() {
+        if let Ok(lane) = self.applier.rows.lane_of(self.applier.session) {
             lane.publish(Applied::Indexed {
                 complete: complete && self.applier.identity.adopts(),
             });

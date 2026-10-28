@@ -14,7 +14,7 @@
 //!
 //! The file-side rules (the row's hash, the bytes on disk) are the shell's.
 
-use rusqlite::Connection;
+use rusqlite::{Connection, OptionalExtension};
 
 use crate::api::errors::StorageError;
 use crate::crdt::BODY_FRAGMENT;
@@ -89,15 +89,9 @@ pub fn keep_replaced(
     body: &str,
     now_ms: i64,
 ) -> Result<bool, StorageError> {
-    let title: String = conn
-        .query_row(
-            "SELECT title FROM notes WHERE id = ?1",
-            rusqlite::params![note_id],
-            |row| row.get(0),
-        )
-        .map_err(|error| StorageError::Failed {
-            what: error.to_string(),
-        })?;
+    let title = title(conn, note_id)?.ok_or_else(|| StorageError::Failed {
+        what: format!("no note {note_id}"),
+    })?;
     let version = note_snapshots::Version {
         note_id,
         content,
@@ -106,4 +100,17 @@ pub fn keep_replaced(
         reason: note_snapshots::SIGNIFICANT,
     };
     note_snapshots::keep(conn, version, now_ms)
+}
+
+/// The note's title, `None` for no note by that id.
+pub fn title(conn: &Connection, note_id: &str) -> Result<Option<String>, StorageError> {
+    conn.query_row(
+        "SELECT title FROM notes WHERE id = ?1",
+        rusqlite::params![note_id],
+        |row| row.get(0),
+    )
+    .optional()
+    .map_err(|error| StorageError::Failed {
+        what: error.to_string(),
+    })
 }

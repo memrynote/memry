@@ -9,10 +9,10 @@ use crate::vault::consumer::rows::RowError;
 /// vault opened, or the same one again) writes nothing.
 #[test]
 fn an_app_operation_writes_no_row_once_its_session_closed() {
-    let f = fixture(false);
+    let f = fixture();
     let id = f.note();
     let started_in = f.session();
-    f.rows.close();
+    f.rows.close_session(started_in);
     f.rows.open(f.vault.clone()).unwrap();
     let error = f
         .rows
@@ -33,7 +33,7 @@ fn an_app_operation_writes_no_row_once_its_session_closed() {
 /// reports it again.
 #[test]
 fn a_move_the_record_refused_leaves_the_row_at_the_old_path() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     f.write("a.md", "x\n");
     f.added("a.md");
     let id = only_note(&f, "a.md");
@@ -55,7 +55,7 @@ fn a_move_the_record_refused_leaves_the_row_at_the_old_path() {
 /// row, so it is not named again, and the row has no hash. The next open seeds it.
 #[test]
 fn without_a_signing_key_a_new_file_gets_a_row_without_a_hash_and_no_retry() {
-    let mut f = fixture(false);
+    let mut f = fixture();
     f.applier.feed = None;
     f.write("a.md", "x\n");
     assert_eq!(f.added("a.md"), Step::Done);
@@ -69,7 +69,7 @@ fn without_a_signing_key_a_new_file_gets_a_row_without_a_hash_and_no_retry() {
 /// watcher's `Added` pass over it. Here the file cannot be read at all.
 #[test]
 fn an_identity_that_adopts_nothing_reads_no_new_file() {
-    let f = fixture(false);
+    let f = fixture();
     f.identity.adopts.store(false, Ordering::SeqCst);
     std::fs::write(f.root.join("bad.md"), [0xff, 0xfe, 0x00]).unwrap();
     assert_eq!(f.added("bad.md"), Step::Done, "the file was read");
@@ -133,7 +133,7 @@ fn rust_files(dir: &std::path::Path) -> Vec<std::path::PathBuf> {
 /// for vault A cannot take the session of vault B.
 #[test]
 fn a_session_is_had_only_with_the_handle_of_the_open_vault() {
-    let f = fixture(false);
+    let f = fixture();
     let other_dir = tempfile::tempdir().unwrap();
     std::fs::create_dir_all(other_dir.path().join("core")).unwrap();
     let other = Arc::new(
@@ -146,7 +146,7 @@ fn a_session_is_had_only_with_the_handle_of_the_open_vault() {
     assert!(f.rows.session_for(&f.vault).is_ok());
     assert!(matches!(f.rows.session_for(&other), Err(RowError::Closed)));
     let in_a = f.rows.session_for(&f.vault).unwrap();
-    f.rows.close();
+    f.rows.close_session(in_a);
     f.rows.open(other.clone()).unwrap();
     assert!(matches!(
         f.rows.session_for(&f.vault),

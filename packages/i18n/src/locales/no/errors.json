@@ -69,6 +69,7 @@
     "persistenceDegradedBody": "Notatene dine er trygge – de ligger i hvelvet ditt som vanlige filer, og de åpnes og lagres fortsatt som normalt. Bare den lokale redigeringsloggen og flettetilstanden på denne enheten ligger i minnet, så de starter på nytt hver gang memrynote åpnes.",
     "writebackFailedTitle": "Filen til et notat på disken kunne ikke oppdateres",
     "writebackFailedTitleNamed": "«{title}» kunne ikke oppdateres på disken",
+    "writebackFailedTitleMany": "Filene til {count} notater på disken kunne ikke oppdateres",
     "writebackFailedBody": "Filen på disken ble ikke endret. Endringen din forblir åpen i memrynote så lenge appen kjører; memrynote prøver igjen ved neste endring."
   },
   "encryption": {
