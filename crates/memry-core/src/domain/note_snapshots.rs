@@ -22,8 +22,12 @@ pub const SIGNIFICANT: &str = "significant";
 /// One version to keep.
 pub struct Version<'a> {
     pub note_id: &'a str,
-    /// What the version restores to.
+    /// What the version restores to: the whole file, frontmatter block and body, as
+    /// desktop keeps it (`serializeNote(frontmatter, body)`; its restore writes this
+    /// column as the file, `notes-versions.ts`).
     pub content: &'a str,
+    /// The body within `content`, which the word count reads (`parseNote(..).content`).
+    pub body: &'a str,
     /// The note's title when the version was kept, for the list.
     pub title: &'a str,
     pub reason: &'a str,
@@ -55,7 +59,7 @@ pub fn keep(conn: &Connection, version: Version<'_>, now_ms: i64) -> Result<bool
             version.note_id,
             version.content,
             version.title,
-            i64::try_from(word_count(version.content)).unwrap_or(i64::MAX),
+            i64::try_from(word_count(version.body)).unwrap_or(i64::MAX),
             hash,
             version.reason,
             created_at,

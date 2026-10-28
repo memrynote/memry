@@ -122,6 +122,10 @@ fn note_blocks_documents_survive_a_round_trip_unchanged() {
         let outcome = match read(&document, "prosemirror") {
             Err(error) => Err(format!("read failed: {error}")),
             Ok(read) if read.removed != 0 => Err(format!("{} elements were removed", read.removed)),
+            // What BlockNote writes, this build reads whole: nothing lost reads as "lossy".
+            Ok(read) if read.lost != 0 => {
+                Err(format!("{} runs or attributes were lost", read.lost))
+            }
             Ok(read) => bytes_equal(
                 str_field(case, "expectedCanonical"),
                 &written_canonical(&read.doc),
@@ -153,4 +157,32 @@ fn writing_into_a_non_empty_fragment_is_refused() {
         })
         .expect("write transaction");
     assert_eq!(result, Err(YxmlError::NotEmpty));
+}
+
+/// `lost` counts every text run, mark and attribute the read drops inside the elements it
+/// keeps, so "removed 0" can never hide content: the external feed replaces a body only
+/// when the read lost nothing (12e-1). The oracle's lossy reads are exactly these.
+#[test]
+fn a_read_counts_every_run_and_attribute_it_drops() {
+    const LOSSY: &[&str] = &[
+        "yxml/read/extra-attribute-dropped",
+        "yxml/read/unknown-mark-drops-text",
+    ];
+    let file = vector_file("markdown-convert/yxml");
+    let mut failures = Failures::default();
+    for case in file["cases"].as_array().expect("cases") {
+        if case["op"] != "yxml-read" || case["expected"]["status"] == "error" {
+            continue;
+        }
+        let id = str_field(case, "id");
+        let input = &case["input"];
+        let document = open(&hex_field(input, "updateHex"));
+        let outcome = match read(&document, str_field(input, "fragment")) {
+            Err(error) => Err(format!("Rust failed: {error}")),
+            Ok(read) if LOSSY.contains(&id) == (read.lost > 0) => Ok(()),
+            Ok(read) => Err(format!("lost {}", read.lost)),
+        };
+        failures.check(id, outcome);
+    }
+    failures.finish("yxml lost counts");
 }

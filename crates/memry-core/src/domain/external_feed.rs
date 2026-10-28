@@ -21,15 +21,21 @@
 //! without keeping it.** The replace empties the body and rebuilds it from the
 //! markdown, so:
 //!
-//! - a body this build cannot write out whole (a block type a newer build added,
-//!   a node the schema would drop) is refused ([`FeedOutcome::Refused`]), the way
-//!   the write-back refuses to write it: replacing it would delete the part no
-//!   file holds, on every device;
-//! - a body that already serializes to the file's text is not fed again
-//!   ([`FeedOutcome::Unchanged`]), so a device whose file merely caught up with
+//! - a body this build cannot read whole is refused ([`FeedOutcome::Refused`]),
+//!   the way the write-back refuses to write it: replacing it would delete the
+//!   part no file holds, on every device. One structural check decides it
+//!   ([`crate::markdown::convert::canonical::read_is_lossless`]): every element,
+//!   text run, mark and attribute of the fragment must reach the document this
+//!   build reads, so a block type, a mark or an attribute a newer build added
+//!   refuses the feed, as does a block markdown cannot hold;
+//! - a refused feed owes the file body ([`super::owed_file_body`]), so the file,
+//!   which holds an edit the document did not take, is never written over: the
+//!   write-back (12e-3) skips a note that owes its file body;
+//! - a body that already serializes to the file's text, with the file's
+//!   `writing` frontmatter, is not fed again ([`FeedOutcome::Unchanged`]), so a device whose file merely caught up with
 //!   a synced body pushes no second copy;
-//! - a body that is replaced is first kept as a version
-//!   ([`super::note_snapshots::keep`]), so an edit this device holds and the file
+//! - a body that is replaced is first kept as a version of the whole file, under
+//!   the file's frontmatter ([`super::note_snapshots::keep`]), so an edit this device holds and the file
 //!   does not (a peer's, merged after the file was last written) can be restored.
 //!
 //! The replace is not a merge. Two devices feeding the same new text into one
@@ -105,13 +111,25 @@ pub enum FeedOutcome {
     /// The document's body already serializes to this markdown: nothing was
     /// written, and the file counts as read.
     Unchanged,
-    /// The markdown did not convert, the document refused the replace, or the
-    /// body holds what no file can (a block type this build does not know).
-    Refused,
+    /// Nothing was written, and the note now owes its file body: the file holds
+    /// an edit the document did not take. The caller logs it with the note id and
+    /// the reason, and does not treat the file as read.
+    Refused(Refusal),
     /// This vault holds no live note by that id. A journal day's file answers
     /// this too: journals are not fed (their documents live under `journal_entries`).
     /// The caller must not treat the file as read.
     NoNote,
+}
+
+/// Why a feed wrote nothing although the file differs from the body.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Refusal {
+    /// The body holds what this build cannot read whole (a block type, a mark or
+    /// an attribute a newer build added, or a node the schema would drop):
+    /// replacing it would delete that on every device.
+    BodyNotRepresentable,
+    /// The file's markdown does not convert, or the converter refused the replace.
+    FileNotConvertible,
 }
 
 /// The file's text and where it lives.
@@ -124,6 +142,9 @@ pub struct FeedInput<'a> {
     pub note_path: Option<&'a str>,
     /// The file's `writing` frontmatter, when the caller read the whole file.
     pub writing: Option<WritingFrontmatter>,
+    /// The file's frontmatter block, verbatim (`split_frontmatter_block`), which a
+    /// kept version carries above the body it replaced, as the file did.
+    pub frontmatter: Option<&'a str>,
 }
 
 /// Replaces the body of the note with the file's text.
@@ -175,6 +196,7 @@ fn author(
         markdown,
         note_path,
         writing,
+        frontmatter,
     } = input;
     let markdown = markdown.strip_prefix('\u{feff}').unwrap_or(markdown);
     if !reads::note_exists(conn, note_id) {
@@ -220,12 +242,15 @@ fn author(
             ..SerializeOptions::default()
         };
         let Some(body) = converter.serialize_note_body(&document, BODY_FRAGMENT, &options) else {
-            return Ok(FeedOutcome::Refused);
+            return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
         };
-        if !body.unrepresentable.is_empty() || body.dropped_elements > 0 {
-            return Ok(FeedOutcome::Refused);
+        if !body.unrepresentable.is_empty() || !converter.reads_losslessly(&document, BODY_FRAGMENT)
+        {
+            return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
         }
-        if same_text(&body.markdown, markdown) {
+        if same_text(&body.markdown, markdown)
+            && body.writing == writing.clone().unwrap_or_default()
+        {
             owed_file_body::clear(&tx, note_id)?;
             tx.commit().map_err(storage_failed)?;
             return Ok(FeedOutcome::Unchanged);
@@ -245,7 +270,9 @@ fn author(
     match outcome {
         ReplaceOutcome::Replaced => {}
         ReplaceOutcome::RefusedLargeFile => return Ok(FeedOutcome::LargeFile),
-        ReplaceOutcome::Changed | ReplaceOutcome::Failed => return Ok(FeedOutcome::Refused),
+        ReplaceOutcome::Changed | ReplaceOutcome::Failed => {
+            return refuse(tx, note_id, now_ms, Refusal::FileNotConvertible);
+        }
     }
 
     let updates = std::mem::take(&mut *authored.lock().unwrap_or_else(PoisonError::into_inner));
@@ -255,7 +282,8 @@ fn author(
     if let Some(previous) = replaced {
         let version = note_snapshots::Version {
             note_id,
-            content: &previous,
+            content: &as_file(frontmatter, &previous),
+            body: &previous,
             title: &title(&tx, note_id)?,
             reason: note_snapshots::SIGNIFICANT,
         };
@@ -267,6 +295,27 @@ fn author(
     owed_file_body::clear(&tx, note_id)?;
     tx.commit().map_err(storage_failed)?;
     Ok(FeedOutcome::Fed)
+}
+
+/// The file holds an edit the document did not take: it owes its body, so the
+/// write-back keeps the file rather than write the document over it.
+fn refuse(
+    tx: rusqlite::Transaction<'_>,
+    note_id: &str,
+    now_ms: i64,
+    refusal: Refusal,
+) -> Result<FeedOutcome, CrdtError> {
+    owed_file_body::record(&tx, note_id, now_ms)?;
+    tx.commit().map_err(storage_failed)?;
+    Ok(FeedOutcome::Refused(refusal))
+}
+
+/// A kept body as the file it was: the file's frontmatter block, verbatim, above
+/// it, and one trailing newline (`writeMarkdownNote`).
+fn as_file(frontmatter: Option<&str>, body: &str) -> String {
+    let body = body.trim_end_matches('\n');
+    let newline = if body.is_empty() { "" } else { "\n" };
+    format!("{}{body}{newline}", frontmatter.unwrap_or_default())
 }
 
 /// Whether the file's text is the body's: line ends and the trailing newlines a

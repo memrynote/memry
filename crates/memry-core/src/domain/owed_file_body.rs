@@ -9,6 +9,11 @@
 //! (12e write-back), and the step that merges the server body applies the file on
 //! top of it and clears the marker (Step 17, `takeOwedFile`).
 //!
+//! A feed this build refused records the marker too ([`super::external_feed::Refusal`]):
+//! the file holds an edit the document did not take, the same "file is ahead". The take
+//! is a feed, so a body this build cannot read whole stays refused, and the file stays
+//! unwritten, until a build that can read it.
+//!
 //! One `meta` row per note, `vault.owed_file_body:<noteId>`, whose value is the
 //! time it was first recorded (milliseconds). Device-local state that needs no
 //! table, the way `sync.body_owed:<docId>` ([`crate::sync::body_debt`]) needs

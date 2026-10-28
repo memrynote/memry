@@ -1309,6 +1309,7 @@ async fn an_outside_edit_waits_for_the_body_the_first_sync_has_not_pulled_yet() 
                 markdown: file,
                 note_path: Some("A note.md"),
                 writing: None,
+                frontmatter: None,
             };
             Ok(if seed {
                 seed_body_if_empty(conn, &converter, input, "device-local", 5)

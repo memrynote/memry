@@ -18,12 +18,22 @@ use memry_core::api::vault::Vault;
 use memry_core::crdt::registry::UpdateSink;
 use memry_core::crdt::{BODY_FRAGMENT, DocumentRegistry, update_log};
 use memry_core::crypto::sodium;
-use memry_core::domain::external_feed::{FeedInput, FeedOutcome};
+use memry_core::domain::external_feed::{FeedInput, FeedOutcome, Refusal};
 use memry_core::markdown::convert::NoEmbeds;
 use memry_core::markdown::convert::api::Converter;
 use memry_core::markdown::schema::callout_types::CalloutTypes;
 use memry_core::seams::secure_store::{SecureStore as _, SecureStoreKey};
 use rusqlite::params;
+
+fn input<'a>(note_id: &'a str, markdown: &'a str) -> FeedInput<'a> {
+    FeedInput {
+        note_id,
+        markdown,
+        note_path: Some("a.md"),
+        writing: None,
+        frontmatter: None,
+    }
+}
 
 struct Fixture {
     dir: std::path::PathBuf,
@@ -68,30 +78,18 @@ impl Fixture {
     }
 
     fn feed(&self, note_id: &str, markdown: &str) -> FeedOutcome {
+        self.feed_input(input(note_id, markdown))
+    }
+
+    fn feed_input(&self, input: FeedInput<'_>) -> FeedOutcome {
         self.feed
-            .feed(
-                &self.converter,
-                FeedInput {
-                    note_id,
-                    markdown,
-                    note_path: Some("a.md"),
-                    writing: None,
-                },
-            )
+            .feed(&self.converter, input)
             .expect("the feed itself does not fail")
     }
 
     fn seed(&self, note_id: &str, markdown: &str) -> FeedOutcome {
         self.feed
-            .seed_body_if_empty(
-                &self.converter,
-                FeedInput {
-                    note_id,
-                    markdown,
-                    note_path: Some("a.md"),
-                    writing: None,
-                },
-            )
+            .seed_body_if_empty(&self.converter, input(note_id, markdown))
             .expect("the seed itself does not fail")
     }
 
@@ -259,8 +257,13 @@ fn markdown_nested_past_the_stack_is_refused_without_a_write() {
         .expect("spawn")
         .join()
         .expect("no stack overflow");
-    assert_ne!(outcome.0, FeedOutcome::Fed, "{outcome:?}");
-    assert_eq!((outcome.1, outcome.2, outcome.3), (0, 0, false));
+    assert_eq!(
+        outcome.0,
+        FeedOutcome::Refused(Refusal::FileNotConvertible),
+        "{outcome:?}"
+    );
+    // Nothing was written, and the file, ahead of the document, owes its body.
+    assert_eq!((outcome.1, outcome.2, outcome.3), (0, 0, true));
 }
 
 #[test]
@@ -284,10 +287,8 @@ fn the_update_and_its_outbox_row_commit_together_or_not_at_all() {
     let result = f.feed.feed(
         &f.converter,
         FeedInput {
-            note_id: &id,
-            markdown: "text that must not half land",
             note_path: None,
-            writing: None,
+            ..input(&id, "text that must not half land")
         },
     );
     assert!(result.is_err(), "{result:?}");
@@ -432,7 +433,10 @@ fn a_body_holding_a_block_this_build_cannot_represent_is_never_replaced() {
     server_body(&f, &id, "known", |txn| {
         raw_block(txn, "futureBlock", "written by a newer build");
     });
-    assert_eq!(f.feed(&id, "the file's text"), FeedOutcome::Refused);
+    assert_eq!(
+        f.feed(&id, "the file's text"),
+        FeedOutcome::Refused(Refusal::BodyNotRepresentable)
+    );
     assert_eq!((local_updates(&f, &id), f.queued_updates(&id)), (0, 0));
     let sink: UpdateSink = Arc::new(|_, _| {});
     let document = DocumentRegistry::new("reader", sink)
@@ -531,4 +535,155 @@ fn a_leading_byte_order_mark_is_not_part_of_the_body() {
     assert_eq!(f.feed(&id, "\u{feff}text after a BOM"), FeedOutcome::Fed);
     assert!(!f.body(&id).contains('\u{feff}'), "{:?}", f.body(&id));
     assert_eq!(f.feed(&id, "text after a BOM"), FeedOutcome::Unchanged);
+}
+
+/// Appends `blockContainer > paragraph[attrs] > text` whose run carries `formats`.
+fn raw_paragraph(
+    txn: &mut yrs::TransactionMut,
+    attrs: &[(&str, &str)],
+    text: &str,
+    formats: &[(&str, yrs::Any)],
+) {
+    use yrs::{Text as _, Xml as _, XmlElementPrelim, XmlFragment as _, XmlOut, XmlTextPrelim};
+    let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
+    let Some(XmlOut::Element(group)) = fragment.get(txn, 0) else {
+        panic!("a seeded body starts with its block group");
+    };
+    let container = group.push_back(txn, XmlElementPrelim::empty("blockContainer"));
+    container.insert_attribute(txn, "id", "raw-block");
+    let paragraph = container.push_back(txn, XmlElementPrelim::empty("paragraph"));
+    for (key, value) in attrs {
+        paragraph.insert_attribute(txn, *key, *value);
+    }
+    let run = paragraph.push_back(txn, XmlTextPrelim::new(""));
+    let formats: yrs::types::Attrs = formats
+        .iter()
+        .map(|(key, value)| (std::sync::Arc::from(*key), value.clone()))
+        .collect();
+    run.insert_with_attributes(txn, 0, text, formats);
+}
+
+fn assert_refused_and_owed(f: &Fixture, id: &str) {
+    assert_eq!(
+        f.feed(id, "known\n\nadded outside"),
+        FeedOutcome::Refused(Refusal::BodyNotRepresentable)
+    );
+    assert_eq!((local_updates(f, id), f.queued_updates(id)), (0, 0));
+    assert!(
+        f.owes_file_body(id),
+        "a refused edit leaves its trace: the file is ahead of the document"
+    );
+}
+
+#[test]
+fn text_under_a_mark_this_build_does_not_know_is_never_replaced() {
+    let f = fixture();
+    let id = f.note();
+    server_body(&f, &id, "known", |txn| {
+        raw_paragraph(
+            txn,
+            &[],
+            "marked by a newer build",
+            &[("futureMark", yrs::Any::Bool(true))],
+        );
+    });
+    assert_refused_and_owed(&f, &id);
+}
+
+#[test]
+fn an_attribute_this_build_does_not_know_is_never_replaced() {
+    let f = fixture();
+    let id = f.note();
+    server_body(&f, &id, "known", |txn| {
+        raw_paragraph(
+            txn,
+            &[("futureAttr", "kept by a newer build")],
+            "plain",
+            &[],
+        );
+    });
+    assert_refused_and_owed(&f, &id);
+}
+
+#[test]
+fn an_attribute_of_a_known_mark_this_build_does_not_know_is_never_replaced() {
+    let f = fixture();
+    let id = f.note();
+    let link = yrs::Any::from(std::collections::HashMap::from([
+        ("href".to_owned(), yrs::Any::from("https://example.com")),
+        (
+            "futureAttr".to_owned(),
+            yrs::Any::from("kept by a newer build"),
+        ),
+    ]));
+    server_body(&f, &id, "known", |txn| {
+        raw_paragraph(txn, &[], "a link", &[("link", link)]);
+    });
+    assert_refused_and_owed(&f, &id);
+}
+
+#[test]
+fn an_attribute_on_a_text_run_itself_is_never_replaced() {
+    let f = fixture();
+    let id = f.note();
+    server_body(&f, &id, "known", |txn| {
+        use yrs::{Xml as _, XmlFragment as _, XmlOut};
+        raw_paragraph(txn, &[], "plain", &[]);
+        let fragment = yrs::WriteTxn::get_or_insert_xml_fragment(txn, BODY_FRAGMENT);
+        let run = fragment
+            .successors(txn)
+            .find_map(|node| match node {
+                XmlOut::Text(text) => Some(text),
+                _ => None,
+            })
+            .expect("a text run");
+        run.insert_attribute(txn, "futureAttr", "kept by a newer build");
+    });
+    assert_refused_and_owed(&f, &id);
+}
+
+#[test]
+fn a_file_whose_writing_frontmatter_changed_is_fed_although_its_body_did_not() {
+    let f = fixture();
+    let id = f.note();
+    let markdown = "one <!--alt:k3x9q2-->two<!--/alt:k3x9q2--> three\n";
+    let writing = memry_core::markdown::shared::writing_tools::read_writing_frontmatter(
+        &serde_json::json!({"alternatives": {"k3x9q2": {"versions": [{"text": "two"}, {"text": "zwei"}]}}}),
+    );
+    assert!(writing.is_some());
+    let with_writing = FeedInput {
+        writing: writing.clone(),
+        ..input(&id, markdown)
+    };
+    assert_eq!(f.feed_input(with_writing), FeedOutcome::Fed);
+    let same = FeedInput {
+        writing,
+        ..input(&id, markdown)
+    };
+    assert_eq!(f.feed_input(same), FeedOutcome::Unchanged);
+    // The editor outside dropped the alternative from the frontmatter.
+    assert_eq!(
+        f.feed(&id, markdown),
+        FeedOutcome::Fed,
+        "the removal was ignored"
+    );
+}
+
+#[test]
+fn a_kept_version_is_the_whole_file_the_replaced_body_was() {
+    let f = fixture();
+    let id = f.note();
+    let file = |markdown| FeedInput {
+        frontmatter: Some("---\ntags: [a]\n---\n"),
+        ..input(&id, markdown)
+    };
+    assert_eq!(f.feed_input(file("first text")), FeedOutcome::Fed);
+    assert_eq!(f.feed_input(file("second text")), FeedOutcome::Fed);
+    assert_eq!(
+        versions(&f, &id),
+        [(
+            "---\ntags: [a]\n---\nfirst text\n".to_owned(),
+            "significant".to_owned()
+        )]
+    );
 }

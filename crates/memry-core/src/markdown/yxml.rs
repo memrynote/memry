@@ -8,7 +8,10 @@
 //! take the whole branch with it, e.g. a `tableRow` that ends up childless.
 //! This function reads and never deletes: [`ReadFragment::removed`] counts
 //! what the TypeScript repair would have deleted, and the caller reads from a
-//! detached copy of the document (`blocknote-converter.ts:365-380`).
+//! detached copy of the document (`blocknote-converter.ts:365-380`). What the
+//! read drops inside the elements it keeps (a run under an unknown mark, an
+//! attribute the schema does not declare) is counted in [`ReadFragment::lost`],
+//! so the two together say whether the document holds the whole fragment.
 //!
 //! **Writing** is `prosemirrorToYXmlFragment` into an empty fragment: one
 //! element per node with its attributes (an `Undefined` value is written, a
@@ -47,6 +50,13 @@ pub struct ReadFragment {
     pub doc: Node,
     /// Elements that were in the fragment and are not in `doc`.
     pub removed: usize,
+    /// Content the read dropped inside what it kept, which `removed` does not
+    /// count: a text run with a mark this schema does not know, a run that is not
+    /// plain text, and an attribute of an element, a mark or an `XmlText` the
+    /// schema does not declare (a `Null` or `Undefined` value holds nothing and is
+    /// not counted). Zero together with `removed` means the document holds
+    /// everything the fragment does.
+    pub lost: usize,
 }
 
 /// `yXmlFragmentToProseMirrorRootNode`.
@@ -60,11 +70,12 @@ pub fn read_fragment<T: ReadTxn>(
     }
     let mut children = Vec::new();
     let mut total = 0;
+    let mut lost = 0;
     for child in fragment.children(txn) {
         match child {
             XmlOut::Element(element) => {
                 total += count_elements(&element, txn);
-                if let Some(node) = build_element(schema, txn, &element)? {
+                if let Some(node) = build_element(schema, txn, &element, &mut lost)? {
                     children.push(node);
                 }
             }
@@ -83,6 +94,7 @@ pub fn read_fragment<T: ReadTxn>(
     Ok(ReadFragment {
         doc,
         removed: total - kept,
+        lost,
     })
 }
 
@@ -108,13 +120,19 @@ fn build_element<T: ReadTxn>(
     schema: &Schema,
     txn: &T,
     element: &XmlElementRef,
+    lost: &mut usize,
 ) -> Result<Option<Node>, YxmlError> {
     let mut children = Vec::new();
     for child in element.children(txn) {
         match child {
-            XmlOut::Element(inner) => children.extend(build_element(schema, txn, &inner)?),
+            XmlOut::Element(inner) => children.extend(build_element(schema, txn, &inner, lost)?),
             XmlOut::Text(text) => {
-                children.extend(text_nodes(schema, txn, &text).into_iter().flatten())
+                // y-prosemirror reads no attribute of an `XmlText` itself.
+                *lost += text.attributes(txn).filter(|(_, v)| holds_value(v)).count();
+                match text_nodes(schema, txn, &text, lost) {
+                    Some(nodes) => children.extend(nodes),
+                    None => *lost += 1,
+                }
             }
             XmlOut::Fragment(_) => return Err(YxmlError::Unconvertible),
         }
@@ -123,12 +141,36 @@ fn build_element<T: ReadTxn>(
         .attributes(txn)
         .map(|(name, value)| (name.to_owned(), out_to_any(value, txn)))
         .collect();
-    Ok(schema.node(element.tag(), &attrs, children).ok())
+    let node = schema.node(element.tag(), &attrs, children).ok();
+    if let Some(node) = &node {
+        *lost += undeclared(&attrs, &node.attrs);
+    }
+    Ok(node)
+}
+
+/// The given attributes with a value that the built ones do not hold.
+fn undeclared(given: &[(String, Any)], built: &[(String, Any)]) -> usize {
+    given
+        .iter()
+        .filter(|(name, value)| {
+            !matches!(value, Any::Null | Any::Undefined) && !built.iter().any(|(k, _)| k == name)
+        })
+        .count()
+}
+
+fn holds_value(value: &Out) -> bool {
+    !matches!(value, Out::Any(Any::Null | Any::Undefined))
 }
 
 /// `createTextNodesFromYText`: `None` when a mark is unknown (the text is
-/// deleted), otherwise one text node per formatting run.
-fn text_nodes<T: ReadTxn>(schema: &Schema, txn: &T, text: &XmlTextRef) -> Option<Vec<Node>> {
+/// deleted), otherwise one text node per formatting run. A mark attribute the
+/// mark type does not declare is counted in `lost`.
+fn text_nodes<T: ReadTxn>(
+    schema: &Schema,
+    txn: &T,
+    text: &XmlTextRef,
+    lost: &mut usize,
+) -> Option<Vec<Node>> {
     let mut nodes = Vec::new();
     for chunk in text.diff(txn, YChange::identity) {
         let Out::Any(Any::String(value)) = &chunk.insert else {
@@ -141,7 +183,13 @@ fn text_nodes<T: ReadTxn>(schema: &Schema, txn: &T, text: &XmlTextRef) -> Option
             entries.sort_by(|a, b| a.0.cmp(b.0));
             for (name, value) in entries {
                 let ty = schema.mark_type(mark_name(name))?;
-                marks.push(schema.create_mark(ty, value).ok()?);
+                let mark = schema.create_mark(ty, value).ok()?;
+                if let Any::Map(given) = value {
+                    let given: Vec<(String, Any)> =
+                        given.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+                    *lost += undeclared(&given, &mark.attrs);
+                }
+                marks.push(mark);
             }
         }
         marks.sort_by_key(|m: &Mark| (schema.mark_ty(m.ty).rank, format!("{:?}", m.attrs)));
