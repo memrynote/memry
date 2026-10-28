@@ -80,6 +80,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with: &lean-checkout
+          # Bounded checkout: one commit, blobless, and without the ~1.6 GB of marketing media that
+          # no job reads (the full-tree checkout took 2 to 22 minutes in a busy hour and consumed the
+          # job timeout). Text under marketing/ stays, so lint and format still see it. Other media
+          # stay: builds need them. `/*` first, then the exclusions.
+          fetch-depth: 1
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/marketing/**/*.gif
+            !/marketing/**/*.jpeg
+            !/marketing/**/*.jpg
+            !/marketing/**/*.mov
+            !/marketing/**/*.mp3
+            !/marketing/**/*.mp4
+            !/marketing/**/*.png
+            !/marketing/**/*.wav
+            !/marketing/**/*.webm
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
