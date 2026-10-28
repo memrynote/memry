@@ -112,7 +112,10 @@ mod tests {
         Service::start(
             dir.path(),
             context,
-            Sender::new("http://127.0.0.1:1/x"),
+            Sender::new(
+                "http://127.0.0.1:1/x",
+                crate::seams::transport::NativeTransport::loopback(),
+            ),
             enabled,
         )
     }

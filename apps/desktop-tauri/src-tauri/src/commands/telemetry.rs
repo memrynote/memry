@@ -5,6 +5,7 @@
 use std::sync::Arc;
 
 use memry_desktop::config::RuntimeConfig;
+use memry_desktop::seams::transport::SyncTransport;
 use memry_desktop::telemetry::TelemetryEvent;
 use memry_desktop::telemetry::logship::LogShip;
 use memry_desktop::telemetry::report::{self, FeedbackSubmit};
@@ -120,7 +121,7 @@ pub async fn feedback_submit(
     let url = app.state::<RuntimeConfig>().server_url("/feedback");
     let body = serde_json::to_string(&input)
         .map_err(|e| CommandError::new(ErrorKind::Internal, "feedback_encode", e.to_string()))?;
-    match report::post_json(&url, body, None).await {
+    match report::post_json(app.state::<SyncTransport>().as_ref(), &url, body, None).await {
         Ok(()) => Ok(FeedbackSubmitResult {
             success: true,
             error: None,

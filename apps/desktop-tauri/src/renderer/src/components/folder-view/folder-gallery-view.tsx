@@ -18,6 +18,7 @@ import {
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useT } from '@memry/i18n/renderer'
 import { useVault } from '@/hooks/use-vault'
+import { toWebviewUrl } from '@/lib/memry-file-url'
 import { resolveNoteRelativeUrl } from '@/lib/resolve-note-relative-url'
 import { Folder } from '@/lib/icons'
 import { cn } from '@/lib/utils'
@@ -89,7 +90,7 @@ function GalleryCardCover({ cover, note, vaultPath }: GalleryCardCoverProps): Re
   }
   return (
     <img
-      src={src}
+      src={toWebviewUrl(src)}
       alt={t('cover.alt')}
       draggable={false}
       loading="lazy"

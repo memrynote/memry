@@ -14,7 +14,7 @@ import { AlertCircle, FileType2, Image, Music, Video } from '@/lib/icons'
 import type { AppIcon } from '@/lib/icons'
 import { cn } from '@/lib/utils'
 import { formatBytes } from '@/lib/format'
-import { toMemryFileUrl } from '@/lib/memry-file-url'
+import { toMemryFileUrl, toWebviewUrl, toMediaUrl } from '@/lib/memry-file-url'
 import type { FileMetadata } from '@/services/notes-service'
 import type { CanvasEntityState } from './use-canvas-entities'
 
@@ -122,7 +122,7 @@ function FilePreview({ state, media }: { state: FileState; media: boolean }): Re
   if (showMedia && state.fileType === 'image') {
     return (
       <img
-        src={src}
+        src={toWebviewUrl(src)}
         alt=""
         draggable={false}
         loading="lazy"
@@ -134,7 +134,7 @@ function FilePreview({ state, media }: { state: FileState; media: boolean }): Re
   if (showMedia && state.fileType === 'video') {
     return (
       <video
-        src={src}
+        src={toMediaUrl(src)}
         preload="metadata"
         muted
         onError={() => setFailed(true)}

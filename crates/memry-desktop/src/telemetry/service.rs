@@ -5,10 +5,12 @@
 //! drops the batch and anything else keeps it, and turning telemetry off empties the queue and
 //! removes the mirror.
 
+use std::collections::HashMap;
 use std::path::Path;
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
+use memry_core::seams::transport::{HttpRequest, Transport};
 use serde::Serialize;
 
 use super::config::TelemetryConfig;
@@ -71,16 +73,19 @@ pub enum FlushReason {
     Background,
 }
 
-/// Where a batch goes. The one HTTP client of the app, a ten second request timeout.
+/// Where a batch goes: the sync server, through the pinned transport (`seams::transport`), with a
+/// ten second request timeout.
 #[derive(Clone)]
 pub struct Sender {
     endpoint: String,
+    transport: Arc<dyn Transport>,
 }
 
 impl Sender {
-    pub fn new(endpoint: impl Into<String>) -> Self {
+    pub fn new(endpoint: impl Into<String>, transport: Arc<dyn Transport>) -> Self {
         Self {
             endpoint: endpoint.into(),
+            transport,
         }
     }
 
@@ -90,14 +95,17 @@ impl Sender {
 
     /// POSTs `body` as JSON and returns the status code.
     pub async fn post(&self, body: String) -> Result<u16, String> {
-        crate::http::client()
-            .post(&self.endpoint)
-            .timeout(REQUEST_TIMEOUT)
-            .header("Content-Type", "application/json")
-            .body(body)
-            .send()
+        let request = HttpRequest {
+            method: "POST".to_owned(),
+            url: self.endpoint.clone(),
+            headers: HashMap::from([("content-type".to_owned(), "application/json".to_owned())]),
+            body: Some(body.into_bytes()),
+            timeout_ms: u64::try_from(REQUEST_TIMEOUT.as_millis()).unwrap_or(u64::MAX),
+        };
+        self.transport
+            .send(request)
             .await
-            .map(|response| response.status().as_u16())
+            .map(|response| response.status)
             .map_err(|error| error.to_string())
     }
 }

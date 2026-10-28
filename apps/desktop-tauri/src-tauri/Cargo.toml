@@ -39,6 +39,8 @@ serde_json = { workspace = true }
 # The OS language of a first launch (`locale::resolve_startup`).
 sys-locale = "0.3.2"
 uuid = { workspace = true }
+# Parses navigation targets for the guard and the permission origins.
+url = "2"
 # The telemetry flush, marker and heartbeat timers run on Tauri's tokio runtime; `signal` is
 # SIGINT and SIGTERM.
 tokio = { workspace = true, features = ["time", "signal", "sync"] }
@@ -105,8 +107,10 @@ tauri-plugin-autostart = "2.7.0"
 zbus = { version = "5.19.0", default-features = false, features = ["blocking-api", "async-io"] }
 # `spell/linux.rs` loads Enchant at run time, so the app starts on machines without it.
 libloading = "0.9.0"
-# `guards/gpu.rs` reports `web-process-terminated`, and `menu/mod.rs` hooks the window's GTK `show` through its `glib`. Same version as wry.
-webkit2gtk = "2.0.2"
+# `guards/gpu.rs` reports `web-process-terminated`, and `menu/mod.rs` hooks the window's GTK `show`
+# through its `glib`. Same version as wry. `v2_40` (already on through tauri's `linux-body`):
+# `shell/navigation_guard/linux.rs` reads `is_main_frame_main_resource`.
+webkit2gtk = { version = "2.0.2", features = ["v2_40"] }
 # tauri-plugin-deep-link 2.6.2 builds `ini::ParseOption` by field; 0.21.2 added fields, so it fails
 # to compile there. Drop the pin when the plugin moves to `..Default::default()`.
 rust-ini = "=0.21.1"
@@ -118,7 +122,10 @@ block2 = "0.6"
 objc2 = "0.6.5"
 objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSApplication", "NSResponder", "NSEvent", "NSWorkspace", "NSSpellChecker", "block2", "objc2-core-foundation"] }
 objc2-service-management = { version = "0.3.2", default-features = false, features = ["std", "SMAppService", "objc2", "objc2-foundation"] }
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSNotification", "NSString", "NSRange", "NSArray", "NSURL", "NSURLRequest"] }
+# `shell/navigation_guard/macos.rs` decides the main frame from the navigation action's target
+# frame. Same version and features as wry's.
+objc2-web-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "objc2-app-kit", "objc2-core-foundation", "WKWebView", "WKNavigationAction", "WKFrameInfo", "WKNavigationDelegate"] }
 
 [dev-dependencies]
 tauri = { version = "2.12", features = ["specta", "test"] }

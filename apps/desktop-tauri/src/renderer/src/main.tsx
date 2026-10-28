@@ -33,6 +33,7 @@ import { installNotPortedShim } from './lib/not-ported'
 import { installPortedApi } from './lib/ported-api'
 import { applyStartupState } from './lib/startup'
 import { ShellLifecycle } from './lib/shell-lifecycle'
+import { installExternalLinkGuard } from './lib/external-link-guard'
 import { commands } from '../../generated/bindings'
 import {
   registerRendererDiagnostics,
@@ -61,6 +62,8 @@ if (import.meta.env.VITE_MEMRY_E2E === '1') {
       registerPendingSave('e2e-held-edit', () => invoke<void>('e2e_save_held_edit', { text }))
   })
 }
+
+installExternalLinkGuard()
 
 // Before first paint: theme, color theme, platform, zoom cache and locale.
 applyStartupState()

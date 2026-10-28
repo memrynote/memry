@@ -67,7 +67,10 @@ async fn warnings_are_redacted_throttled_shipped_and_off_ships_nothing() {
             locale: "en".into(),
             timezone_offset_minutes: 0,
         },
-        sender: Sender::new(url),
+        sender: Sender::new(
+            url,
+            memry_desktop::seams::transport::NativeTransport::loopback(),
+        ),
         salt: "0123456789abcdef0123456789abcdef".into(),
         level: None,
         ships: true,

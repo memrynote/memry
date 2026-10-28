@@ -121,3 +121,32 @@ pub fn menu_hide_alt(app: AppHandle<Wry>) -> Result<(), CommandError> {
     crate::menu::hide_bar(&app);
     Ok(())
 }
+
+/// Opens an `https:`, `http:` or `mailto:` link in the OS.
+#[tauri::command]
+#[specta::specta]
+pub fn shell_open_external(app: AppHandle<Wry>, url: String) -> Result<(), CommandError> {
+    crate::shell::external::open_url(&app, &url)
+}
+
+/// Follows a link activation the renderer kept from navigating the window: what the main frame's
+/// navigation would have done with it (`shell::navigation_guard::open_link`).
+#[tauri::command]
+#[specta::specta]
+pub fn shell_open_link(app: AppHandle<Wry>, url: String) -> Result<(), CommandError> {
+    crate::shell::navigation_guard::open_link(&app, &url)
+}
+
+/// Opens a file of the open vault or the app data directory in the OS.
+#[tauri::command]
+#[specta::specta]
+pub fn shell_open_path(app: AppHandle<Wry>, path: String) -> Result<(), CommandError> {
+    crate::shell::external::open_path(&app, &path)
+}
+
+/// Shows a file of the open vault or the app data directory in the file manager.
+#[tauri::command]
+#[specta::specta]
+pub fn shell_reveal_path(app: AppHandle<Wry>, path: String) -> Result<(), CommandError> {
+    crate::shell::external::reveal_path(&app, &path)
+}

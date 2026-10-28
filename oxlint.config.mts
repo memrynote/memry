@@ -436,6 +436,14 @@ export default defineConfig({
       rules: enableAll('memry/no-window-fanout')
     },
     {
+      // App code never navigates the window: see tools/oxlint/memry/index.mjs (#3647).
+      files: [
+        'apps/desktop-tauri/src/renderer/src/**/*.{ts,tsx}',
+        'apps/desktop/src/renderer/src/**/*.{ts,tsx}'
+      ],
+      rules: enableAll('memry/no-location-navigation')
+    },
+    {
       files: ['apps/desktop/src/main/lib/window-broadcast.ts'],
       rules: disable('memry/no-window-fanout')
     },

@@ -1,9 +1,11 @@
 //! User-triggered reports: the incident report (Path B, `diagnostics/incident-report.ts`) and
-//! beta feedback. Both go to the sync server through `http::client()`. The incident report is
+//! beta feedback. Both go to the sync server through the pinned transport (`seams::transport`). The incident report is
 //! built once, previewed, and the same value is sent, so the user sees what leaves.
 
+use std::collections::HashMap;
 use std::time::Duration;
 
+use memry_core::seams::transport::{HttpRequest, Transport};
 use serde::{Deserialize, Serialize};
 
 use super::logship::DiagnosticLine;
@@ -123,21 +125,32 @@ pub fn build_incident_report(trigger: &DiagnosticTrigger, inputs: BuildInputs) -
     }
 }
 
-/// POSTs `body` as JSON. A non-2xx answer is an error naming only the status.
-pub async fn post_json(url: &str, body: String, bearer: Option<&str>) -> Result<(), String> {
-    let mut request = crate::http::client()
-        .post(url)
-        .timeout(REQUEST_TIMEOUT)
-        .header("Content-Type", "application/json")
-        .body(body);
+/// POSTs `body` as JSON through the pinned transport. A non-2xx answer is an error naming only the
+/// status.
+pub async fn post_json(
+    transport: &dyn Transport,
+    url: &str,
+    body: String,
+    bearer: Option<&str>,
+) -> Result<(), String> {
+    let mut headers = HashMap::from([("content-type".to_owned(), "application/json".to_owned())]);
     if let Some(token) = bearer {
-        request = request.bearer_auth(token);
+        headers.insert("authorization".to_owned(), format!("Bearer {token}"));
     }
-    let response = request.send().await.map_err(|e| e.to_string())?;
-    if response.status().is_success() {
+    let response = transport
+        .send(HttpRequest {
+            method: "POST".to_owned(),
+            url: url.to_owned(),
+            headers,
+            body: Some(body.into_bytes()),
+            timeout_ms: u64::try_from(REQUEST_TIMEOUT.as_millis()).unwrap_or(u64::MAX),
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    if (200..300).contains(&response.status) {
         Ok(())
     } else {
-        Err(format!("status {}", response.status().as_u16()))
+        Err(format!("status {}", response.status))
     }
 }
 

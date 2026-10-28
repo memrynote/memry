@@ -58,6 +58,7 @@ import {
   createScenePersister,
   normalizeStoredScene
 } from './canvas-persistence'
+import { canonicalSceneJson, sceneFilesForWebview } from './canvas-file-urls'
 import { externalizeSceneAssets, retryCanvasAssetUploads } from './canvas-externalize'
 import { pickExcalidrawLangCode } from './excalidraw-lang'
 import { CanvasCardLayer } from './canvas-card-overlay'
@@ -306,7 +307,7 @@ export const CanvasEditor = ({
     return {
       elements: parsed.elements ?? [],
       appState: { ...parsed.appState, ...(viewport ? viewportAppState(viewport) : {}) },
-      files: parsed.files,
+      files: sceneFilesForWebview(parsed.files),
       // `scrollToContent` runs AFTER the appState restore and would undo it, so
       // it stays the fallback for a tab that has no camera of its own yet.
       scrollToContent: viewport === null
@@ -458,11 +459,13 @@ export const CanvasEditor = ({
           return null
         }
         try {
-          return serializeAsJSON(
-            liveApi.getSceneElements(),
-            liveApi.getAppState(),
-            liveApi.getFiles(),
-            'local'
+          return canonicalSceneJson(
+            serializeAsJSON(
+              liveApi.getSceneElements(),
+              liveApi.getAppState(),
+              liveApi.getFiles(),
+              'local'
+            )
           )
         } catch (err) {
           log.error('Failed to serialize canvas scene', err)

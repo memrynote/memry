@@ -16,6 +16,7 @@ pub mod instance;
 pub mod menu;
 pub mod notifications;
 pub mod power;
+pub mod protocols;
 pub mod registry;
 pub mod shell;
 pub mod shortcuts;
@@ -76,6 +77,11 @@ fn register_stages() {
     startup::register(Stage::Logging, "init logging", init_logging);
     guards::register_stages();
     shell::services::register_stages();
+    startup::register(
+        Stage::Protocols,
+        "loopback server",
+        shell::loopback::start_server,
+    );
     commands::unsplash::register_stages();
     startup::register(Stage::Handlers, "mount events", mount_events);
     shell::vault_boot::register_stages();
@@ -159,14 +165,23 @@ pub fn run(env: LaunchEnv, context: tauri::Context<Wry>) {
     let single_instance_off = gate.is_open();
     #[cfg(not(feature = "e2e"))]
     let single_instance_off = false;
-    let app = instance::install(tauri::Builder::default(), single_instance_off)
-        .plugin(tauri_plugin_deep_link::init())
-        .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_clipboard_manager::init())
-        .plugin(guards::process_gone::plugin());
+    let app = protocols::register(instance::install(
+        tauri::Builder::default(),
+        single_instance_off,
+    ))
+    .plugin(tauri_plugin_deep_link::init())
+    .plugin(tauri_plugin_notification::init())
+    .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+    .plugin(tauri_plugin_dialog::init())
+    // Its init script would take ctrl, shift and target=_blank link clicks for an `open_url` the
+    // capabilities deny; `external-link-guard.ts` owns every link click (#3647).
+    .plugin(
+        tauri_plugin_opener::Builder::new()
+            .open_js_links_on_click(false)
+            .build(),
+    )
+    .plugin(tauri_plugin_clipboard_manager::init())
+    .plugin(guards::process_gone::plugin());
     // macOS and Windows write their own login item (`autostart/`).
     #[cfg(target_os = "linux")]
     let app = app.plugin(
