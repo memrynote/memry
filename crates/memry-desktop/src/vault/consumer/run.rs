@@ -1,6 +1,7 @@
 //! The consumer's thread: takes the watcher's facts from a bounded queue and applies them one
-//! at a time, runs the open walk after the session's first `Rescanned`, and asks the watcher
-//! to report again a path whose fact could not be applied.
+//! at a time, runs the open walk after the session's first `Rescanned` and then the open's
+//! `after_walk` (the write-back's reconcile), and asks the watcher to report again a path
+//! whose fact could not be applied.
 //!
 //! The watcher's sink never blocks. When the queue is full the facts that do not fit are
 //! dropped; the queued ones are still applied, and the watcher is asked to resync: it forgets
@@ -66,6 +67,7 @@ impl Consumer {
         inbox: Inbox,
         watch: WatchHandle,
         exclude: Vec<String>,
+        after_walk: Box<dyn FnOnce() + Send>,
     ) -> std::io::Result<Self> {
         let stop = Arc::new(AtomicBool::new(false));
         let mut run = Run {
@@ -76,6 +78,7 @@ impl Consumer {
             watch,
             stop: stop.clone(),
             walk_owed: true,
+            after_walk: Some(after_walk),
             retries: Retries::default(),
             resync: Resync::default(),
         };
@@ -115,6 +118,9 @@ struct Run {
     stop: Arc<AtomicBool>,
     /// The open walk waits for the session's first `Rescanned`.
     walk_owed: bool,
+    /// Runs once the open walk ended, so the files edited while the vault was closed are fed
+    /// before it.
+    after_walk: Option<Box<dyn FnOnce() + Send>>,
     retries: Retries,
     resync: Resync,
 }
@@ -274,6 +280,9 @@ impl Run {
             lane.publish(Applied::Indexed {
                 complete: complete && self.applier.identity.adopts(),
             });
+        }
+        if let Some(after_walk) = self.after_walk.take() {
+            after_walk();
         }
     }
 }

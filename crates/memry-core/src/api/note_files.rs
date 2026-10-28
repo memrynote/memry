@@ -88,6 +88,11 @@ impl NoteFiles {
         self.db.read_blocking(note_files::list_missing_candidates)
     }
 
+    /// Every note whose file may be behind its body ([`note_files::behind_bodies`]).
+    pub fn behind_bodies(&self) -> Result<Vec<String>, StorageError> {
+        self.db.read_blocking(note_files::behind_bodies)
+    }
+
     pub fn list_paths(&self) -> Result<Vec<(String, String)>, StorageError> {
         self.db.read_blocking(note_files::list_paths)
     }

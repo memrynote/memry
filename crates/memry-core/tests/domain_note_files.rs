@@ -275,3 +275,67 @@ fn the_migration_runs_again_over_a_file_that_already_has_the_table() {
         .expect("still writable");
     assert_eq!(files.list_paths().expect("paths").len(), 2);
 }
+
+/// Runs `sql` against the vault's database.
+fn exec(vault: &Vault, sql: &'static str) {
+    vault
+        .db_handle()
+        .call_blocking(move |conn| {
+            conn.execute_batch(sql).map_err(|err| StorageError::Failed {
+                what: err.to_string(),
+            })
+        })
+        .expect(sql);
+}
+
+/// A note is behind its body when its row says the document holds the file (a markdown row
+/// with a hash) and an entry of its body log or snapshot, in either namespace, is stamped
+/// after the row. An entry stamped at or before the row, a row without a hash and a file
+/// that is not markdown are not.
+#[test]
+fn a_note_is_behind_its_body_when_a_body_entry_is_stamped_after_its_row() {
+    let Fixture { vault, .. } = fixture();
+    let files = vault.note_files();
+    let row = |id: &str, path: &str, at: i64| {
+        let mut row = stat(id, path);
+        row.indexed_at = at;
+        row
+    };
+    for (id, at) in [
+        ("server", 100),
+        ("local", 100),
+        ("server-snap", 100),
+        ("local-snap", 100),
+        ("same-ms", 100),
+        ("older", 100),
+        ("nothing", 100),
+    ] {
+        files.upsert_stat(row(id, &format!("{id}.md"), at)).unwrap();
+    }
+    let mut unread = row("unread", "unread.md", 100);
+    unread.content_hash = None;
+    files.upsert_stat(unread).unwrap();
+    let mut image = row("image", "image.png", 100);
+    image.file_type = "image".to_owned();
+    files.upsert_stat(image).unwrap();
+    exec(
+        &vault,
+        "INSERT INTO yjs_updates (doc_id, seq, update_blob, created_at) VALUES
+           ('server', 1, x'00', 101),
+           ('local.local', 1, x'00', 101),
+           ('same-ms', 1, x'00', 100),
+           ('older', 1, x'00', 99),
+           ('local.older', 1, x'00', 50),
+           ('unread', 1, x'00', 500),
+           ('image', 1, x'00', 500);
+         INSERT INTO yjs_snapshots (doc_id, snapshot, last_seq, compacted_at) VALUES
+           ('server-snap', x'00', 1, 101),
+           ('local.local-snap', x'00', 1, 101),
+           ('older', x'00', 1, 100);",
+    );
+
+    assert_eq!(
+        files.behind_bodies().unwrap(),
+        ["local", "local-snap", "server", "server-snap"]
+    );
+}

@@ -62,10 +62,22 @@
 //! - **A crash or a forced exit leaves files behind their bodies, never the reverse.** The
 //!   body is durable in the document before its note is scheduled, and the queue is in
 //!   memory, so a process that ends before a pass leaves that note's file with older text and
-//!   a row hash that still matches it. The open reconcile (12e-3c) brings such files to their
-//!   bodies: a pass for every note whose body may be newer than its file writes exactly the
-//!   notes this left behind. Until it runs, an outside edit of such a file replaces the newer
-//!   body, which the feed keeps as a version.
+//!   a row hash that still matches it. Until the next open's reconcile, an outside edit of
+//!   such a file replaces the newer body, which the feed keeps as a version.
+//! - **Every open brings the files left behind to their bodies, and touches no other file**
+//!   ([`reconcile`]). Once the open walk ends, so the outside edits made while the vault was
+//!   closed are fed, every note whose row says the document holds its file and whose body
+//!   moved after that row was stamped gets a pass ([`memry_core::domain::note_files::behind_bodies`]).
+//!   A note whose body did not move gets none, even when its document would write other
+//!   bytes (a file the read does not keep whole, seeded as the reference app seeds it): a
+//!   file the app did not change is never rewritten.
+//!
+//!   A row's stamp is when the document was last known to hold the file. A pass stamps the
+//!   time before it read the body, whether it wrote or found the file unchanged, so an edit
+//!   made while it ran is after the stamp and a reconciled note is not behind again; the
+//!   consumer stamps a feed when it records it, after the feed. The stamps are this device's
+//!   clock: an edit stamped in the same millisecond as its row's record, or before it by a
+//!   clock set back, is not seen, and that file waits for the note's next edit.
 //! - **A failed write is told, once per run of failures.** The first failed pass of a note
 //!   sends [`WriteBackFailed`]; the next pass that does not fail ends the run. A failed pass is
 //!   not retried on its own: the note's next schedule is its retry, and its body stays in the
@@ -76,9 +88,11 @@
 //! created: the note records create files (Step 13).
 
 mod pass;
+mod reconcile;
 mod schedule;
 #[cfg(test)]
 mod tests;
 
 pub use pass::{Keep, Outcome, Pass};
+pub(crate) use reconcile::reconcile;
 pub use schedule::{COOLDOWN_FACTOR, DEBOUNCE, MAX_COOLDOWN, WriteBack, WriteBackFailed};

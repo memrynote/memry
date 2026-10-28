@@ -259,6 +259,18 @@ impl Lane<'_> {
     }
 
     pub(crate) fn put(&mut self, note_id: &str, path: &str, stat: RowStat) -> Result<(), RowError> {
+        self.put_as_of(note_id, path, stat, now_ms())
+    }
+
+    /// [`Lane::put`] stamped `at`: the time the caller read what the row says, when that was
+    /// before now (the write-back's stamp, `vault::writeback`).
+    pub(crate) fn put_as_of(
+        &mut self,
+        note_id: &str,
+        path: &str,
+        stat: RowStat,
+        at: i64,
+    ) -> Result<(), RowError> {
         let state = self.state_mut();
         state.index.check(note_id, path)?;
         state.files.upsert_stat(NoteFileStat {
@@ -268,7 +280,7 @@ impl Lane<'_> {
             mime_type: mime_of_extension(&extension(path)).map(str::to_owned),
             file_size: i64::try_from(stat.size).ok(),
             content_hash: stat.content_hash,
-            indexed_at: now_ms(),
+            indexed_at: at,
         })?;
         state.index.insert(note_id, path);
         Ok(())
@@ -295,7 +307,7 @@ impl Lane<'_> {
     }
 }
 
-pub(super) fn now_ms() -> i64 {
+pub(crate) fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))

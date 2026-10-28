@@ -27,6 +27,7 @@
 use rusqlite::{Connection, OptionalExtension, Row, params};
 
 use crate::api::errors::StorageError;
+use crate::crdt::update_log;
 
 const COLUMNS: &str =
     "note_id, path, file_type, mime_type, file_size, content_hash, local_only, indexed_at";
@@ -292,6 +293,39 @@ pub fn list_missing_candidates(conn: &Connection) -> Result<Vec<NoteFile>, Stora
         .map_err(failed)?;
     statement
         .query_map([], row_to_file)
+        .map_err(failed)?
+        .collect::<Result<_, _>>()
+        .map_err(failed)
+}
+
+/// Every note whose file may be behind its body, in id order: the row says the document
+/// holds the file (a markdown row with a hash), and an entry of the note's body log or
+/// snapshot, in either namespace ([`update_log`]), is stamped after the row
+/// (`indexed_at`). The stamps are this device's clock at apply time, the same reading the
+/// search index's watermark relies on (`domain::search::maintenance`).
+///
+/// The desktop write-back stamps a row when it last knew the document held the file, so this
+/// names every note whose body moved after that: an edit or a merged page whose write-back
+/// never ran. An entry stamped in the same millisecond as the row is not counted, so the
+/// feed that recorded the row does not name its own note.
+pub fn behind_bodies(conn: &Connection) -> Result<Vec<String>, StorageError> {
+    let mut statement = conn
+        .prepare(
+            "SELECT f.note_id FROM note_files f
+              WHERE f.file_type = 'markdown' AND f.content_hash IS NOT NULL
+                AND (EXISTS (SELECT 1 FROM yjs_updates u
+                              WHERE u.doc_id IN (f.note_id, ?1 || f.note_id)
+                                AND u.created_at > f.indexed_at)
+                  OR EXISTS (SELECT 1 FROM yjs_snapshots s
+                              WHERE s.doc_id IN (f.note_id, ?1 || f.note_id)
+                                AND s.compacted_at > f.indexed_at))
+              ORDER BY f.note_id",
+        )
+        .map_err(failed)?;
+    statement
+        .query_map(params![update_log::LOCAL_NAMESPACE_PREFIX], |row| {
+            row.get(0)
+        })
         .map_err(failed)?
         .collect::<Result<_, _>>()
         .map_err(failed)

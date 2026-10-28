@@ -17,7 +17,7 @@ use crate::session::{OpenStage, OpenVault, Session};
 use crate::shell::shutdown::{StepFn, writeback_flush_timeout};
 use crate::vault::config::read_vault_config;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
-use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed};
+use crate::vault::writeback::{Pass, WriteBack, WriteBackFailed, reconcile};
 
 pub struct VaultTier {
     /// Holds the device key the feed writes under.
@@ -114,7 +114,7 @@ impl VaultTier {
     pub fn schedule(&self, note_id: &str) {
         match self.current() {
             Some(open) => open.writeback.schedule(note_id),
-            // Until the reconcile on open (12e-3c) writes such a note, its file lags its body.
+            // The next open's reconcile writes it: its body moved after its row was stamped.
             None => tracing::warn!(
                 scope = "vault_writeback",
                 note_id,
@@ -262,7 +262,11 @@ impl VaultTier {
             feed,
             settings: vault.vault.app_settings(self.store.clone()).ok(),
         };
-        let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude)
+        let after_walk: Box<dyn FnOnce() + Send> = {
+            let (vault, writeback) = (vault.vault.clone(), writeback.clone());
+            Box::new(move || reconcile(&vault, &writeback))
+        };
+        let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude, after_walk)
             .map_err(|error| error.to_string())?;
         Ok(Open {
             vault: vault.vault.clone(),
