@@ -107,7 +107,9 @@ fn resolve_paths(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 fn init_logging(app: &AppHandle<Wry>) -> Result<(), CommandError> {
     let guard: LogGuard = logging::init(&app.state::<AppPaths>());
-    app.manage(guard);
+    // Taken and dropped at `RunEvent::Exit` (`shutdown::flush_log`): the process ends without
+    // dropping managed state, which would lose the lines still queued for the writer thread.
+    app.manage(std::sync::Mutex::new(Some(guard)));
     logging::log_startup(env!("CARGO_PKG_VERSION"), BuildKind::current().into());
     Ok(())
 }

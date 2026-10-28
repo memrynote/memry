@@ -12,6 +12,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, PoisonError};
 
+use memry_desktop::logging::LogGuard;
 use memry_desktop::session::Session;
 #[cfg(target_os = "macos")]
 use memry_desktop::shell::shutdown::is_implicit_exit;
@@ -225,6 +226,7 @@ pub fn on_run_event(app: &AppHandle<Wry>, event: &RunEvent) {
             app.state::<crate::shortcuts::ShortcutService>()
                 .release_all(app);
             app.state::<ShutdownService>().core.apply_on_quit();
+            flush_log(app);
         }
         #[cfg(target_os = "macos")]
         RunEvent::Reopen {
@@ -251,7 +253,19 @@ fn on_run_event_after_failed_startup(app: &AppHandle<Wry>, event: &RunEvent) {
                 app.exit(EXIT_STARTUP_FAILED);
             }
         }
-        RunEvent::Exit => crate::tray::destroy(app),
+        RunEvent::Exit => {
+            crate::tray::destroy(app);
+            flush_log(app);
+        }
         _ => {}
+    }
+}
+
+/// Drops the log guard, which waits for the writer thread to drain. The process ends right after
+/// `Exit` without dropping managed state, so the quit sequence's own lines would otherwise be
+/// lost to the writer's queue.
+fn flush_log(app: &AppHandle<Wry>) {
+    if let Some(slot) = app.try_state::<Mutex<Option<LogGuard>>>() {
+        drop(slot.lock().unwrap_or_else(PoisonError::into_inner).take());
     }
 }
