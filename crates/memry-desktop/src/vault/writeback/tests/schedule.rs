@@ -196,7 +196,8 @@ fn a_flush_runs_every_scheduled_pass_now_and_waits_for_them() {
     }
     let started = Instant::now();
     assert!(writeback.flush(WAIT));
-    assert!(started.elapsed() < SOON, "{:?}", started.elapsed());
+    // Now: a flush that waited for the debounce would take at least that.
+    assert!(started.elapsed() < DEBOUNCE, "{:?}", started.elapsed());
     assert_eq!(fake.finished(), 3);
     assert!(writeback.flush(WAIT), "a flush with nothing scheduled");
 }

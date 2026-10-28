@@ -6,7 +6,6 @@ use std::time::{Duration, Instant};
 
 use memry_core::crdt::body_edit::BlockEdit;
 
-use super::super::rows::RowError;
 use super::*;
 use crate::registry::{AppConfig, VaultRegistry};
 use crate::session::{OpenSource, Session};
@@ -199,9 +198,14 @@ fn a_record_made_while_the_vault_opens_belongs_to_that_open() {
     t.session.close();
 }
 
-/// A start that fails leaves no rows open for a vault without a watcher.
+/// A start that fails leaves no rows open for a vault without a watcher. The watcher fails
+/// only on a folder that is gone, and Windows cannot move a folder whose database is open; the
+/// cleanup it checks is the same code on every platform.
+#[cfg(unix)]
 #[test]
 fn a_watcher_that_cannot_start_leaves_the_rows_closed() {
+    use super::super::rows::RowError;
+
     let t = two();
     let (root, aside) = (t.b.clone(), t.b.with_extension("aside"));
     let moved = (root.clone(), aside.clone());
