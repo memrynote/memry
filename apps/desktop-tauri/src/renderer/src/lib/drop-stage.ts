@@ -1,5 +1,7 @@
+import { getI18n } from 'react-i18next'
 import { commands } from '../../../generated/bindings'
 import { invokeBinary } from './ipc-binary'
+import { extractErrorMessage } from './ipc-error'
 import { createLogger } from './logger'
 
 const log = createLogger('DropStage')
@@ -44,6 +46,24 @@ async function stage(file: File): Promise<Staged> {
     await release([id])
     throw error
   }
+}
+
+/** The shell's drop refusals (`stage_error` in `shell/drop_stage.rs`) the user can act on. */
+const DROP_ERROR_KEYS: Record<string, string> = {
+  drop_too_large: 'toast.drop.tooLarge',
+  drop_too_many: 'toast.drop.tooMany',
+  drop_too_much_held: 'toast.drop.tooMany',
+  drop_not_a_file: 'toast.drop.notAFile',
+  drop_not_dropped: 'toast.drop.unreadable'
+}
+
+/** What to tell the user when a drop could not be staged or imported. */
+export function dropErrorMessage(error: unknown): string {
+  const t = getI18n().getFixedT(null, 'common')
+  const code =
+    typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : ''
+  const key = DROP_ERROR_KEYS[code]
+  return key ? t(key) : extractErrorMessage(error, t('phaseI.errors.failedToImportFiles'))
 }
 
 async function release(ids: string[]): Promise<void> {

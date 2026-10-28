@@ -6,8 +6,9 @@
 //! Layout: `<root>/<id>/<sanitized name>`, where `id` is 32 lowercase hex characters. Only ids
 //! this service issued name a directory (a caller cannot reach outside `root` through `release`),
 //! and files are written strictly in order, so a chunk can neither overwrite nor skip bytes.
-//! A drop that reaches the page as `file://` URIs instead is staged from the files themselves
-//! (`os_drag.rs`).
+//! On WebKitGTK the page gets no file; the shell stages the files of the OS drag it recorded
+//! (`os_drag.rs`). Staged copies held at once are capped in count and bytes, and on Unix the
+//! staging directories are private to the user (0700, files 0600).
 
 mod name;
 mod os_drag;
@@ -22,7 +23,7 @@ use std::time::{Duration, Instant, SystemTime};
 use uuid::Uuid;
 
 pub use name::sanitize_file_name;
-pub use os_drag::file_uri_path;
+pub use os_drag::{OS_DROP_TTL, file_uri_path};
 
 /// A staged file larger than this is refused at `begin`.
 pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
@@ -31,6 +32,10 @@ pub const MAX_OPEN: usize = 16;
 /// A transfer that has not moved for this long was abandoned (the page reloaded mid-drop), and
 /// its slot and directory are reclaimed by the next `begin`.
 pub const IDLE_LIMIT: Duration = Duration::from_secs(10 * 60);
+/// Staged copies (open or finished, not yet released) held at once, and their declared bytes.
+/// A drop is released as soon as its import settles, so only a runaway caller reaches these.
+pub const MAX_HELD_FILES: usize = 4096;
+pub const MAX_HELD_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 /// A staging directory this old is a leftover of an earlier run.
 pub const STALE_AFTER: Duration = Duration::from_secs(24 * 60 * 60);
 
@@ -40,6 +45,8 @@ pub enum StageError {
     TooLarge,
     #[error("too many files are being staged")]
     TooManyOpen,
+    #[error("too many dropped files are waiting for their import")]
+    TooMuchHeld,
     #[error("no such staged file")]
     UnknownId,
     #[error("the chunk does not continue the file")]
@@ -68,8 +75,10 @@ struct Transfer {
 pub struct DropStaging {
     root: PathBuf,
     open: Mutex<HashMap<String, Arc<Mutex<Transfer>>>>,
-    /// The files of the OS drag last offered to a window (`os_drag.rs`).
-    os_drag: Mutex<Vec<PathBuf>>,
+    /// Declared size of every copy not yet released, by id. Locked after `open` when both are.
+    held: Mutex<HashMap<String, u64>>,
+    /// The OS drag over the window (`os_drag.rs`).
+    os_drag: Mutex<Option<os_drag::OsDrag>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
@@ -89,7 +98,8 @@ impl DropStaging {
         Self {
             root,
             open: Mutex::new(HashMap::new()),
-            os_drag: Mutex::new(Vec::new()),
+            held: Mutex::new(HashMap::new()),
+            os_drag: Mutex::new(None),
         }
     }
 
@@ -104,18 +114,23 @@ impl DropStaging {
             .filter(|(_, transfer)| lock(transfer).touched.elapsed() >= IDLE_LIMIT)
             .map(|(id, _)| id.clone())
             .collect();
+        let mut held = lock(&self.held);
         for id in abandoned {
             open.remove(&id);
+            held.remove(&id);
             self.remove_dir(&id)?;
         }
         if open.len() >= MAX_OPEN {
             return Err(StageError::TooManyOpen);
         }
+        if held.len() >= MAX_HELD_FILES || held.values().sum::<u64>() + size > MAX_HELD_BYTES {
+            return Err(StageError::TooMuchHeld);
+        }
         let id = Uuid::new_v4().simple().to_string();
         let dir = self.root.join(&id);
-        fs::create_dir_all(&dir)?;
+        create_private_dir(&dir)?;
         let path = dir.join(sanitize_file_name(name));
-        let file = match OpenOptions::new().write(true).create_new(true).open(&path) {
+        let file = match private_file_options().open(&path) {
             Ok(file) => file,
             Err(error) => {
                 // The directory is this call's own, so nothing else is lost with it.
@@ -133,6 +148,7 @@ impl DropStaging {
                 touched: Instant::now(),
             })),
         );
+        held.insert(id.clone(), size);
         Ok(id)
     }
 
@@ -180,6 +196,7 @@ impl DropStaging {
         let mut first_error = None;
         for id in ids.iter().filter(|id| is_stage_id(id)) {
             lock(&self.open).remove(id.as_str());
+            lock(&self.held).remove(id.as_str());
             if let Err(error) = self.remove_dir(id) {
                 first_error.get_or_insert(error);
             }
@@ -188,7 +205,8 @@ impl DropStaging {
     }
 
     /// Deletes staging directories last touched `stale_after` before `now`: copies a closed
-    /// window or a crash never released. Returns how many it removed.
+    /// window or a crash never released. An entry that cannot be read or removed is logged and
+    /// skipped. Returns how many it removed.
     pub fn sweep(&self, now: SystemTime, stale_after: Duration) -> io::Result<usize> {
         let entries = match fs::read_dir(&self.root) {
             Ok(entries) => entries,
@@ -197,16 +215,25 @@ impl DropStaging {
         };
         let mut removed = 0;
         for entry in entries {
-            let entry = entry?;
-            let old = entry
-                .metadata()?
-                .modified()
-                .ok()
-                .and_then(|modified| now.duration_since(modified).ok())
-                .is_some_and(|age| age >= stale_after);
-            if old && entry.file_type()?.is_dir() {
-                fs::remove_dir_all(entry.path())?;
-                removed += 1;
+            let outcome = entry.and_then(|entry| {
+                let old = entry
+                    .metadata()?
+                    .modified()
+                    .ok()
+                    .and_then(|modified| now.duration_since(modified).ok())
+                    .is_some_and(|age| age >= stale_after);
+                if old && entry.file_type()?.is_dir() {
+                    fs::remove_dir_all(entry.path())?;
+                    return Ok(true);
+                }
+                Ok(false)
+            });
+            match outcome {
+                Ok(true) => removed += 1,
+                Ok(false) => {}
+                Err(error) => {
+                    tracing::warn!(scope = "DropStage", %error, "skipped a staging entry in the sweep");
+                }
             }
         }
         Ok(removed)
@@ -222,6 +249,30 @@ impl DropStaging {
             _ => Ok(()),
         }
     }
+}
+
+/// Creates `dir` and any missing parent; on Unix only the user can list or enter them.
+fn create_private_dir(dir: &Path) -> io::Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(dir)
+}
+
+/// A new file that must not exist yet; on Unix only the user can read it.
+fn private_file_options() -> OpenOptions {
+    let mut options = OpenOptions::new();
+    options.write(true).create_new(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.mode(0o600);
+    }
+    options
 }
 
 #[cfg(test)]

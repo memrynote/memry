@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Zamanı gelen # hatırlatıcı daha var} other {Zamanı gelen # hatırlatıcı daha var}}",
     "moreRemindersDueHint": "Ayrıntılar için hatırlatıcılar paneline bakın",
     "searchIndexRepaired": "Arama dizini onarıldı",
-    "searchIndexRepairedHint": "Arama dizininin bir kısmı bozulmuştu, bu yüzden Memry dizini yeniden oluşturdu. Notlarınıza dokunulmadı."
+    "searchIndexRepairedHint": "Arama dizininin bir kısmı bozulmuştu, bu yüzden Memry dizini yeniden oluşturdu. Notlarınıza dokunulmadı.",
+    "drop": {
+      "tooLarge": "Bırakılan dosyalardan biri 2 GB'tan büyük.",
+      "tooMany": "İçe aktarılmayı bekleyen çok fazla dosya var. Daha az dosya bırakıp tekrar deneyin.",
+      "notAFile": "Klasörler buraya bırakılamaz. Bunun yerine içindeki dosyaları bırakın.",
+      "unreadable": "Bırakılan dosyalar okunamadı. Tekrar bırakmayı deneyin."
+    }
   },
   "dateRelative": {
     "today": "Bugün",

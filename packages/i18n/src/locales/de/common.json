@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {# weitere Erinnerung fällig} other {# weitere Erinnerungen fällig}}",
     "moreRemindersDueHint": "Details findest du im Erinnerungsbereich",
     "searchIndexRepaired": "Suchindex repariert",
-    "searchIndexRepairedHint": "Ein Teil des Suchindex war beschädigt, deshalb hat Memry ihn neu aufgebaut. Deine Notizen wurden nicht verändert."
+    "searchIndexRepairedHint": "Ein Teil des Suchindex war beschädigt, deshalb hat Memry ihn neu aufgebaut. Deine Notizen wurden nicht verändert.",
+    "drop": {
+      "tooLarge": "Eine abgelegte Datei ist größer als 2 GB.",
+      "tooMany": "Zu viele Dateien warten auf den Import. Lege weniger Dateien ab und versuche es erneut.",
+      "notAFile": "Ordner können hier nicht abgelegt werden. Lege stattdessen die Dateien darin ab.",
+      "unreadable": "Die abgelegten Dateien konnten nicht gelesen werden. Lege sie erneut ab."
+    }
   },
   "dateRelative": {
     "today": "Heute",

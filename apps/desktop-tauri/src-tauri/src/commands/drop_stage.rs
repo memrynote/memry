@@ -4,6 +4,7 @@
 //! `drop_stage_os_files` stages them.
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use memry_desktop::shell::drop_stage::DropStaging;
 use serde::{Deserialize, Serialize};
@@ -68,15 +69,16 @@ pub struct StagedDrop {
     pub path: String,
 }
 
-/// The `file://` URIs of the OS drag over the window, which WebKitGTK hides from the page.
+/// The `file://` URIs of the files just dropped on the window from the OS, which WebKitGTK hides
+/// from the page. `drop_not_dropped` unless a drop happened within the last few seconds.
 #[tauri::command]
 #[specta::specta]
-pub fn drop_os_drag_uris(staging: Staging<'_>) -> Vec<String> {
-    staging.os_drag_uris()
+pub fn drop_os_drag_uris(staging: Staging<'_>) -> Result<Vec<String>, CommandError> {
+    staging.os_drop_uris(Instant::now()).map_err(stage_error)
 }
 
-/// Stages copies of files the page received as `file://` URIs. Only files of the OS drag the
-/// shell recorded are staged (`os_drag.rs` in memry-desktop); all or nothing.
+/// Stages copies of files just dropped from the OS, named by the URIs `drop_os_drag_uris` gave.
+/// Only files of that drop are staged (`os_drag.rs` in memry-desktop); all or nothing.
 #[tauri::command]
 #[specta::specta]
 pub async fn drop_stage_os_files(
@@ -85,7 +87,9 @@ pub async fn drop_stage_os_files(
 ) -> Result<Vec<StagedDrop>, CommandError> {
     let staging = Arc::clone(&staging);
     blocking("drop_stage_os_files", move || {
-        let staged = staging.stage_os_drop(&uris).map_err(stage_error)?;
+        let staged = staging
+            .stage_os_drop(&uris, Instant::now())
+            .map_err(stage_error)?;
         Ok(staged
             .into_iter()
             .map(|(id, path)| StagedDrop {

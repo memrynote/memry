@@ -73,7 +73,12 @@ import { getAllSupportedExtensions, getExtension, getFileType } from '@memry/sha
 import { createLogger } from '@/lib/logger'
 import { trackRendererError } from '@/lib/telemetry-diagnostics'
 import { useFileDrop, FILE_DROP_FOLDER_ATTR } from '@/hooks/use-file-drop'
-import { droppedNames, withStagedFiles, type DroppedFiles } from '@/lib/drop-stage'
+import {
+  dropErrorMessage,
+  droppedNames,
+  withStagedFiles,
+  type DroppedFiles
+} from '@/lib/drop-stage'
 import { extractErrorMessage } from '@/lib/ipc-error'
 import { runCommand } from '@/commands'
 import { useT } from '@memry/i18n/renderer'
@@ -157,12 +162,7 @@ function AppSidebarInner({ currentPage: _currentPage, viewCounts, ...props }: Ap
         }
       } catch (err) {
         log.error('Failed to import dropped files', err)
-        toast.error(
-          extractErrorMessage(
-            err,
-            getI18n().getFixedT(null, 'common')('phaseI.errors.failedToImportFiles')
-          )
-        )
+        toast.error(dropErrorMessage(err))
       }
     },
     [showFiles]

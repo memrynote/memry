@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, other {ほかにもリマインダーが # 件あります}}",
     "moreRemindersDueHint": "詳細はリマインダーパネルを確認してください",
     "searchIndexRepaired": "検索インデックスを修復しました",
-    "searchIndexRepairedHint": "検索インデックスの一部が破損していたため、Memry が再構築しました。ノートは変更されていません。"
+    "searchIndexRepairedHint": "検索インデックスの一部が破損していたため、Memry が再構築しました。ノートは変更されていません。",
+    "drop": {
+      "tooLarge": "ドロップしたファイルが 2 GB を超えています。",
+      "tooMany": "インポート待ちのファイルが多すぎます。ファイルを減らしてもう一度お試しください。",
+      "notAFile": "ここにフォルダはドロップできません。フォルダ内のファイルをドロップしてください。",
+      "unreadable": "ドロップしたファイルを読み取れませんでした。もう一度ドロップしてください。"
+    }
   },
   "dateRelative": {
     "today": "今日",

@@ -273,6 +273,7 @@ vi.mock('@/hooks/use-inbox', () => ({
 
 // A drop has no path: the real helper stages each file in the shell and hands the import the copies.
 vi.mock('@/lib/drop-stage', () => ({
+  dropErrorMessage: (error: Error) => error.message,
   droppedNames: (dropped: { files: File[] }) => dropped.files.map((file) => file.name),
   withStagedFiles: (dropped: { files: File[] }, run: (paths: string[]) => Promise<unknown>) =>
     run(dropped.files.map((file) => `/staged/${file.name}`))
@@ -513,7 +514,7 @@ describe('AppSidebar', () => {
     })
   })
 
-  it('reports an import that throws through the IPC error message', async () => {
+  it('reports an import that throws through the drop error message', async () => {
     render(<AppSidebar currentPage="inbox" viewCounts={{}} />, { wrapper: DndWrapper })
     mocks.importFiles.mockRejectedValueOnce(new Error('vault is read-only'))
 

@@ -1,8 +1,14 @@
 import { act, renderHook } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type * as DropStage from '@/lib/drop-stage'
 
-const { osDragUris } = vi.hoisted(() => ({ osDragUris: vi.fn() }))
+const { osDragUris, toastError } = vi.hoisted(() => ({ osDragUris: vi.fn(), toastError: vi.fn() }))
 vi.mock('../../../generated/bindings', () => ({ commands: { dropOsDragUris: osDragUris } }))
+vi.mock('sonner', () => ({ toast: { error: toastError } }))
+vi.mock('@/lib/drop-stage', async (importOriginal) => ({
+  ...(await importOriginal<typeof DropStage>()),
+  dropErrorMessage: (error: { code?: string }) => `drop error ${error.code ?? '?'}`
+}))
 import {
   extractValidFiles,
   resolveDropFolder,
@@ -242,7 +248,7 @@ describe('useFileDrop', () => {
     expect(onDrop).toHaveBeenCalledWith({ uris: ['file:///home/u/My%20Note.md'] }, 'projects')
   })
 
-  it('imports nothing when the shell recorded no file for the drag', async () => {
+  it('tells the user when the shell holds no file for the drop', async () => {
     osDragUris.mockResolvedValue([])
     const onDrop = vi.fn()
     const { result } = renderHook(() => useFileDrop({ onDrop }))
@@ -251,8 +257,22 @@ describe('useFileDrop', () => {
       result.current.dropHandlers.onDrop(gtkDrag(''))
     })
 
-    expect(osDragUris).toHaveBeenCalled()
     expect(onDrop).not.toHaveBeenCalled()
+    expect(toastError).toHaveBeenCalledWith('drop error drop_not_dropped')
+  })
+
+  it('tells the user when the shell refuses to name the dropped files', async () => {
+    // A drop older than the shell's few seconds, or no drop at all.
+    osDragUris.mockRejectedValue({ code: 'drop_not_dropped' })
+    const onDrop = vi.fn()
+    const { result } = renderHook(() => useFileDrop({ onDrop }))
+
+    await act(async () => {
+      result.current.dropHandlers.onDrop(gtkDrag(''))
+    })
+
+    expect(onDrop).not.toHaveBeenCalled()
+    expect(toastError).toHaveBeenCalledWith('drop error drop_not_dropped')
   })
 
   it('leaves a dropped web link unclaimed, for the guard to open in the browser', async () => {

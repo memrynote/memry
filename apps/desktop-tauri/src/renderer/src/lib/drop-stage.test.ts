@@ -16,11 +16,20 @@ vi.mock('../../../generated/bindings', () => ({
   }
 }))
 vi.mock('./ipc-binary', () => ({ invokeBinary }))
+vi.mock('react-i18next', () => ({
+  getI18n: () => ({ getFixedT: () => (key: string) => `t:${key}` })
+}))
 vi.mock('./logger', () => ({
   createLogger: () => ({ warn: vi.fn(), info: vi.fn(), error: vi.fn(), debug: vi.fn() })
 }))
 
-import { CHUNK_BYTES, droppedNames, uriFileName, withStagedFiles } from './drop-stage'
+import {
+  CHUNK_BYTES,
+  dropErrorMessage,
+  droppedNames,
+  uriFileName,
+  withStagedFiles
+} from './drop-stage'
 
 // jsdom's Blob has no `arrayBuffer`; every engine the app runs on does.
 if (!Blob.prototype.arrayBuffer) {
@@ -143,5 +152,21 @@ describe('droppedNames', () => {
       'résumé v2.pdf'
     ])
     expect(uriFileName('not a uri')).toBe('')
+  })
+})
+
+describe('dropErrorMessage', () => {
+  it('names the refusals a user can act on, in their language', () => {
+    expect(dropErrorMessage({ code: 'drop_too_large', message: 'the file is larger' })).toBe(
+      't:toast.drop.tooLarge'
+    )
+    expect(dropErrorMessage({ code: 'drop_too_much_held' })).toBe('t:toast.drop.tooMany')
+    expect(dropErrorMessage({ code: 'drop_not_a_file' })).toBe('t:toast.drop.notAFile')
+    expect(dropErrorMessage({ code: 'drop_not_dropped' })).toBe('t:toast.drop.unreadable')
+  })
+
+  it('passes any other failure through, with the generic import failure as fallback', () => {
+    expect(dropErrorMessage(new Error('vault is read-only'))).toBe('vault is read-only')
+    expect(dropErrorMessage({ code: 'drop_io' })).toBe('t:phaseI.errors.failedToImportFiles')
   })
 })

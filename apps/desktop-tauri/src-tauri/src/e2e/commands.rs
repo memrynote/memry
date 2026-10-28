@@ -21,7 +21,7 @@ e2e_commands! {
     clipboard => [e2e_clipboard_read, e2e_clipboard_write],
     crash => [e2e_trigger_crash],
     debug => [e2e_debug_query, e2e_debug_index_query],
-    os_drag => [e2e_offer_os_drag],
+    os_drag => [e2e_os_drag],
     dialog => [e2e_dialog_queue_push, e2e_dialog_queue_clear],
     reveal => [e2e_revealed_paths, e2e_os_opens],
     shell_integrations => [

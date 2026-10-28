@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Další # připomenutí} few {Další # připomenutí} other {Dalších # připomenutí}}",
     "moreRemindersDueHint": "Podrobnosti najdete v panelu připomenutí",
     "searchIndexRepaired": "Index vyhledávání byl opraven",
-    "searchIndexRepairedHint": "Část indexu vyhledávání byla poškozená, proto ho aplikace Memry znovu sestavila. Vašich poznámek se to nijak nedotklo."
+    "searchIndexRepairedHint": "Část indexu vyhledávání byla poškozená, proto ho aplikace Memry znovu sestavila. Vašich poznámek se to nijak nedotklo.",
+    "drop": {
+      "tooLarge": "Přetažený soubor je větší než 2 GB.",
+      "tooMany": "Na import čeká příliš mnoho souborů. Přetáhněte méně souborů a zkuste to znovu.",
+      "notAFile": "Složky sem přetáhnout nelze. Přetáhněte místo toho soubory, které obsahují.",
+      "unreadable": "Přetažené soubory se nepodařilo přečíst. Zkuste je přetáhnout znovu."
+    }
   },
   "dateRelative": {
     "today": "Dnes",

@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Još # podsjetnik na čekanju} few {Još # podsjetnika na čekanju} other {Još # podsjetnika na čekanju}}",
     "moreRemindersDueHint": "Pojedinosti potražite u panelu podsjetnika",
     "searchIndexRepaired": "Indeks pretraživanja popravljen",
-    "searchIndexRepairedHint": "Dio indeksa pretraživanja bio je oštećen pa ga je Memry ponovno izgradio. Vaše bilješke nisu mijenjane."
+    "searchIndexRepairedHint": "Dio indeksa pretraživanja bio je oštećen pa ga je Memry ponovno izgradio. Vaše bilješke nisu mijenjane.",
+    "drop": {
+      "tooLarge": "Ispuštena datoteka veća je od 2 GB.",
+      "tooMany": "Previše datoteka čeka na uvoz. Ispustite manje datoteka i pokušajte ponovno.",
+      "notAFile": "Mape se ne mogu ispustiti ovdje. Umjesto toga ispustite datoteke iz njih.",
+      "unreadable": "Ispuštene datoteke nije moguće pročitati. Pokušajte ih ponovno ispustiti."
+    }
   },
   "dateRelative": {
     "today": "Danas",

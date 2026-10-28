@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {# påmindelse mere forfalder} other {# påmindelser mere forfalder}}",
     "moreRemindersDueHint": "Se detaljer i påmindelsespanelet",
     "searchIndexRepaired": "Søgeindeks repareret",
-    "searchIndexRepairedHint": "En del af søgeindekset var beskadiget, så Memry genopbyggede det. Dine noter blev ikke berørt."
+    "searchIndexRepairedHint": "En del af søgeindekset var beskadiget, så Memry genopbyggede det. Dine noter blev ikke berørt.",
+    "drop": {
+      "tooLarge": "En trukket fil er større end 2 GB.",
+      "tooMany": "For mange filer venter på at blive importeret. Træk færre filer, og prøv igen.",
+      "notAFile": "Mapper kan ikke slippes her. Slip filerne i dem i stedet.",
+      "unreadable": "De trukne filer kunne ikke læses. Prøv at slippe dem igen."
+    }
   },
   "dateRelative": {
     "today": "I dag",

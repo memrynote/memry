@@ -130,9 +130,10 @@ test('a WebKitGTK file drop is staged from the OS drag the shell recorded', asyn
   writeFileSync(tool, 'MZ')
   await stubImport(page)
 
-  // What the GTK hook records for a drag from a file manager; the page reads none of it.
+  // What the GTK hooks record for a drag from a file manager dropped on the window; the page
+  // reads none of it.
   const uris = [pathToFileURL(note).href, pathToFileURL(tool).href]
-  await invokeTest(app, 'e2e_offer_os_drag', { uris })
+  await invokeTest(app, 'e2e_os_drag', { uris, dropped: true })
   await dropHiddenFileList(page)
 
   await expect
@@ -213,7 +214,7 @@ test('a 120 MB file stages through the binary commands byte for byte, bounded in
   expect(existsSync(result.path)).toBe(false)
 })
 
-test('the staging commands refuse an oversize file, a chunk out of order and a file not dropped', async ({
+test('the staging commands refuse an oversize file, a chunk out of order and files not dropped', async ({
   app,
   page
 }) => {
@@ -223,7 +224,29 @@ test('the staging commands refuse an oversize file, a chunk out of order and a f
   const secret = pathToFileURL(join(outside, 'secret.md')).href
   writeFileSync(join(outside, 'dropped.md'), 'a')
   writeFileSync(join(outside, 'secret.md'), 'b')
-  await invokeTest(app, 'e2e_offer_os_drag', { uris: [dropped] })
+  // A drag that only crossed the window: nothing may be read or staged from it.
+  await invokeTest(app, 'e2e_os_drag', { uris: [dropped], dropped: false })
+  const hovered = await page.evaluate(
+    async (uris) => {
+      const invokeRaw = window.__TAURI__.core.invoke
+      const code = (promise: Promise<unknown>) =>
+        promise.then(
+          () => 'accepted',
+          (error: unknown) =>
+            typeof error === 'object' && error !== null && 'code' in error
+              ? String(error.code)
+              : 'rejected'
+        )
+      return {
+        read: await code(invokeRaw('drop_os_drag_uris')),
+        stage: await code(invokeRaw('drop_stage_os_files', { uris }))
+      }
+    },
+    [dropped]
+  )
+  expect(hovered).toEqual({ read: 'drop_not_dropped', stage: 'drop_not_dropped' })
+
+  await invokeTest(app, 'e2e_os_drag', { uris: [dropped], dropped: true })
   const outcome = await page.evaluate(
     async ({ notDropped }) => {
       const invokeRaw = window.__TAURI__.core.invoke

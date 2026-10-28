@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, other {Còn # lời nhắc khác đến giờ}}",
     "moreRemindersDueHint": "Xem bảng lời nhắc để biết chi tiết",
     "searchIndexRepaired": "Đã sửa chỉ mục tìm kiếm",
-    "searchIndexRepairedHint": "Một phần chỉ mục tìm kiếm bị hỏng nên Memry đã tạo lại. Ghi chú của bạn không bị ảnh hưởng."
+    "searchIndexRepairedHint": "Một phần chỉ mục tìm kiếm bị hỏng nên Memry đã tạo lại. Ghi chú của bạn không bị ảnh hưởng.",
+    "drop": {
+      "tooLarge": "Một tệp được thả có dung lượng lớn hơn 2 GB.",
+      "tooMany": "Có quá nhiều tệp đang chờ nhập. Hãy thả ít tệp hơn rồi thử lại.",
+      "notAFile": "Không thể thả thư mục vào đây. Hãy thả các tệp bên trong thư mục.",
+      "unreadable": "Không thể đọc các tệp đã thả. Hãy thử thả lại."
+    }
   },
   "dateRelative": {
     "today": "Hôm nay",

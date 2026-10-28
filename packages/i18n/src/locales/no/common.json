@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {# påminnelse til venter} other {# påminnelser til venter}}",
     "moreRemindersDueHint": "Se påminnelsespanelet for detaljer",
     "searchIndexRepaired": "Søkeindeksen er reparert",
-    "searchIndexRepairedHint": "En del av søkeindeksen var skadet, så Memry bygde den opp på nytt. Notatene dine ble ikke rørt."
+    "searchIndexRepairedHint": "En del av søkeindeksen var skadet, så Memry bygde den opp på nytt. Notatene dine ble ikke rørt.",
+    "drop": {
+      "tooLarge": "En sluppet fil er større enn 2 GB.",
+      "tooMany": "For mange filer venter på import. Slipp færre filer og prøv igjen.",
+      "notAFile": "Mapper kan ikke slippes her. Slipp filene i dem i stedet.",
+      "unreadable": "Kunne ikke lese de sluppede filene. Prøv å slippe dem på nytt."
+    }
   },
   "dateRelative": {
     "today": "I dag",

@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef } from 'react'
 import { isSupported, getExtension, getAllSupportedExtensions } from '@memry/shared/file-types'
 import { createLogger } from '@/lib/logger'
-import { droppedNames, uriFileName, type DroppedFiles } from '@/lib/drop-stage'
+import { toast } from 'sonner'
+import { dropErrorMessage, droppedNames, uriFileName, type DroppedFiles } from '@/lib/drop-stage'
 import { commands } from '../../../generated/bindings'
 
 const log = createLogger('Hook:useFileDrop')
@@ -149,8 +150,18 @@ export function useFileDrop({ onDrop }: UseFileDropOptions): UseFileDropReturn {
         return
       }
       commands.dropOsDragUris().then(
-        (uris) => deliver({ uris }),
-        (error: unknown) => log.error('could not read the files of the OS drag', error)
+        (uris) => {
+          if (uris.length > 0) {
+            deliver({ uris })
+            return
+          }
+          log.warn('the OS drop holds no file')
+          toast.error(dropErrorMessage({ code: 'drop_not_dropped' }))
+        },
+        (error: unknown) => {
+          log.error('could not read the files of the OS drop', error)
+          toast.error(dropErrorMessage(error))
+        }
       )
     },
     [onDrop]

@@ -186,7 +186,13 @@
     "moreRemindersDue": "{count, plural, one {Jeszcze # przypomnienie} few {Jeszcze # przypomnienia} many {Jeszcze # przypomnień} other {Jeszcze # przypomnienia}}",
     "moreRemindersDueHint": "Szczegóły znajdziesz w panelu przypomnień",
     "searchIndexRepaired": "Naprawiono indeks wyszukiwania",
-    "searchIndexRepairedHint": "Część indeksu wyszukiwania była uszkodzona, więc aplikacja Memry go odbudowała. Twoje notatki pozostały nietknięte."
+    "searchIndexRepairedHint": "Część indeksu wyszukiwania była uszkodzona, więc aplikacja Memry go odbudowała. Twoje notatki pozostały nietknięte.",
+    "drop": {
+      "tooLarge": "Upuszczony plik jest większy niż 2 GB.",
+      "tooMany": "Zbyt wiele plików czeka na import. Upuść mniej plików i spróbuj ponownie.",
+      "notAFile": "Nie można tu upuszczać folderów. Upuść zamiast tego znajdujące się w nich pliki.",
+      "unreadable": "Nie udało się odczytać upuszczonych plików. Spróbuj upuścić je ponownie."
+    }
   },
   "dateRelative": {
     "today": "Dzisiaj",
