@@ -37,10 +37,30 @@ const noWindowFanout = {
 
 // The Tauri shell refuses a main-frame navigation off the app only after WebKitGTK ran the page's
 // beforeunload and cancelled its in-flight requests, and Tauri resends an aborted ipc:// command, so
-// a command can run twice (#3647, `shell::navigation_guard::linux`). Links and dropped links go
-// through `lib/external-link-guard.ts`; app code never moves the window itself. `location.reload()`
-// stays allowed: it reloads the app.
-const LOCATION = "[object.name='location'], [object.property.name='location']"
+// a command can run twice (#3647, `shell::navigation_guard::linux`). Links and drops go through
+// `lib/external-link-guard.ts`; app code never moves the window itself. Allowed: `location.reload()`
+// (it reloads the app) and `location.hash` (a fragment stays in the document).
+const WINDOW_NAMES = new Set(['window', 'document', 'globalThis', 'self', 'top', 'parent'])
+// Setting any of these loads another document.
+const NAVIGATING_PARTS = new Set([
+  'href',
+  'protocol',
+  'host',
+  'hostname',
+  'port',
+  'pathname',
+  'search'
+])
+const NAVIGATING_CALLS = new Set(['assign', 'replace'])
+const TOP_FRAME_TARGETS = new Set(['_self', '_top', '_parent'])
+
+/** `a.b` or `a['b']`. */
+function propertyName(member) {
+  if (!member.computed) return member.property.type === 'Identifier' ? member.property.name : null
+  const key = member.property
+  return key.type === 'Literal' && typeof key.value === 'string' ? key.value : null
+}
+
 const noLocationNavigation = {
   meta: {
     type: 'problem',
@@ -51,14 +71,63 @@ const noLocationNavigation = {
     schema: []
   },
   create(context) {
+    const { sourceCode } = context
     const report = (node) => context.report({ node, messageId: 'navigates' })
+    /** Identifiers that read a local bound to the window's Location (`const l = window.location`). */
+    const aliasReads = new Set()
+    /** The name is the window's own: no enclosing scope declares it. */
+    const isUndeclared = (node) => {
+      for (let scope = sourceCode.getScope(node); scope; scope = scope.upper) {
+        if (scope.set.get(node.name)?.defs.length) return false
+      }
+      return true
+    }
+    const isGlobal = (node, names) =>
+      node.type === 'Identifier' && names.has(node.name) && isUndeclared(node)
+    const isWindow = (node) => isGlobal(node, WINDOW_NAMES)
+    const isWindowLocation = (node) =>
+      node.type === 'MemberExpression' && propertyName(node) === 'location' && isWindow(node.object)
+    const isLocation = (node) =>
+      isGlobal(node, new Set(['location'])) || isWindowLocation(node) || aliasReads.has(node)
     return {
-      [`CallExpression > MemberExpression.callee:matches(${LOCATION})[property.name=/^(assign|replace)$/]`]:
-        report,
-      [`AssignmentExpression > MemberExpression.left:matches(${LOCATION})[property.name='href']`]:
-        report,
-      "AssignmentExpression > MemberExpression.left[object.name=/^(window|document|globalThis|self|top)$/][property.name='location']":
-        report
+      VariableDeclarator(node) {
+        if (!node.init || !isLocation(node.init)) return
+        for (const variable of sourceCode.getDeclaredVariables(node)) {
+          for (const reference of variable.references) {
+            if (reference.isRead()) aliasReads.add(reference.identifier)
+          }
+        }
+      },
+      AssignmentExpression(node) {
+        const { left } = node
+        if (isGlobal(left, new Set(['location'])) || isWindowLocation(left)) return report(node)
+        if (
+          left.type === 'MemberExpression' &&
+          NAVIGATING_PARTS.has(propertyName(left)) &&
+          isLocation(left.object)
+        ) {
+          report(node)
+        }
+      },
+      CallExpression(node) {
+        const { callee } = node
+        if (
+          callee.type === 'MemberExpression' &&
+          NAVIGATING_CALLS.has(propertyName(callee)) &&
+          isLocation(callee.object)
+        ) {
+          return report(node)
+        }
+        const isOpen =
+          isGlobal(callee, new Set(['open'])) ||
+          (callee.type === 'MemberExpression' &&
+            propertyName(callee) === 'open' &&
+            isWindow(callee.object))
+        const target = node.arguments[1]
+        if (isOpen && target?.type === 'Literal' && TOP_FRAME_TARGETS.has(target.value)) {
+          report(node)
+        }
+      }
     }
   }
 }

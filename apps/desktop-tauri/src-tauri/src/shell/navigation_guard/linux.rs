@@ -15,17 +15,24 @@
 //! before the request is made. An in-flight `ipc://` fetch is aborted, and Tauri resends the
 //! command over `postMessage`, so a command the shell already received can run twice. So on Linux
 //! no main-frame navigation may start in the first place:
-//! - The renderer opens clicked and dropped links itself (`external-link-guard.ts`), from listeners
-//!   on `window` in the capture phase installed before the app renders, so no app handler that
-//!   stops propagation hides one.
+//! - No event of the app keeps a default action that navigates the top frame
+//!   (`external-link-guard.ts`): link activation (`click`, `auxclick`; any button, modifier or
+//!   Enter), any drag outside a text field (`dragenter`, `dragover`, `drop`; links, files, images,
+//!   text) and form submission are cancelled unless a component claims them, and a web or mail
+//!   link is opened in the OS by the renderer. The listeners sit on `window` in the capture phase,
+//!   installed before the app renders, so no app handler that stops propagation hides an event.
 //! - The context menu loses WebKitGTK's "Open Link" here ("Open Link in New Window" asks for a new
 //!   window, which `on_new_window` sends to the OS).
-//! - App code never assigns `location` (no match in either renderer on 2026-10-28; the
-//!   `memry/no-location-navigation` lint keeps it so), and untrusted content cannot run in the app's
-//!   frame (CSP `script-src 'self'`; embeds are sandboxed frames).
+//! - App code never navigates the window by script (no match in either renderer on 2026-10-28; the
+//!   `memry/no-location-navigation` lint keeps it so: `location` and its parts, aliases, and
+//!   `window.open` into the top frame), and untrusted content cannot run in the app's frame (CSP
+//!   `script-src 'self'`; embeds are sandboxed frames).
 //!
-//! That leaves a script of the app's own page assigning `location` as the one way to reach this
-//! late refusal, with those side effects.
+//! Two ways remain, both by a script of the app's own page, with those side effects:
+//! - assigning `location` in a way the lint cannot see (a computed name, an alias it cannot
+//!   follow), which reaches this late refusal;
+//! - `location.reload()`, which the lint allows: the app page reloads, so nothing is refused, but
+//!   the old page's `beforeunload` runs and its in-flight requests are cancelled all the same.
 //!
 //! `load-changed` STARTED cannot replace `load-failed`: for a navigation the page started, the
 //! view's `uri` still names the app page at that point (WebKitGTK 2.52, checked on Ubuntu 24.04).

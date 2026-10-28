@@ -261,7 +261,9 @@ test('window.open and a target=_blank link never load in the window and open at 
   }
 })
 
-test('a link the renderer takes and a dropped link never unload the app or cancel its requests', async ({
+// The gestures dispatch the events a real one fires; a real mouse and a real drag from another app
+// were checked on the Ubuntu VM (see the PR).
+test('no link gesture or drop unloads the app, cancels its requests or loads in the window', async ({
   app,
   page
 }) => {
@@ -283,27 +285,72 @@ test('a link the renderer takes and a dropped link never unload the app or cance
       )
     }, `${site.loopback}/slow`)
 
-    await page.evaluate((url) => {
-      const link = document.createElement('a')
-      link.href = url
-      link.textContent = 'link'
-      document.body.append(link)
-      link.click()
-    }, `${site.origin}/stop`)
-    await page.evaluate((url) => {
-      const target = document.querySelector('[data-sidebar="trigger"]') ?? document.body
-      const data = new DataTransfer()
-      data.setData('text/uri-list', url)
-      for (const type of ['dragenter', 'dragover', 'drop']) {
-        target.dispatchEvent(
-          new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data })
+    const result = await page.evaluate((origin) => {
+      const header = document.querySelector('[data-sidebar="header"]')
+      const zone = document.querySelector('[data-tour="sidebar-collections"]')
+      if (!header || !zone)
+        return { missing: true, fileTypes: [] as string[], claims: [] as string[] }
+      // Who claims a drop after the guard: the sidebar's file-drop zone must keep its files.
+      const claims: string[] = []
+      for (const type of ['dragover', 'drop']) {
+        window.addEventListener(
+          type,
+          (event) => {
+            const claim = event.preventDefault.bind(event)
+            Object.defineProperty(event, 'preventDefault', {
+              configurable: true,
+              value: () => {
+                claims.push(`${type} ${zone.contains(event.target as Node) ? 'zone' : 'other'}`)
+                claim()
+              }
+            })
+          },
+          true
         )
       }
-    }, `${site.origin}/chain`)
+      const link = (path: string): HTMLAnchorElement => {
+        const anchor = document.createElement('a')
+        anchor.href = origin + path
+        anchor.textContent = path
+        header.append(anchor)
+        return anchor
+      }
+      const mouse = (target: Element, type: string, init: MouseEventInit): void => {
+        target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, ...init }))
+      }
+      mouse(link('/left'), 'click', { button: 0 })
+      mouse(link('/middle'), 'auxclick', { button: 1 })
+      mouse(link('/ctrl'), 'click', { button: 0, ctrlKey: true })
+      // Enter on a focused link fires this same click.
+      link('/enter').click()
+      const fileTypes: string[] = []
+      const dragAll = (target: Element, fill: (data: DataTransfer) => void): void => {
+        const data = new DataTransfer()
+        fill(data)
+        for (const type of ['dragenter', 'dragover', 'drop']) {
+          target.dispatchEvent(
+            new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: data })
+          )
+        }
+      }
+      const addFile = (data: DataTransfer): void => {
+        data.items.add(new File(['# x'], 'dropped.md', { type: 'text/markdown' }))
+        fileTypes.push(...data.types)
+      }
+      dragAll(header, (data) => data.setData('text/uri-list', `${origin}/dragged`))
+      dragAll(header, addFile)
+      dragAll(zone, addFile)
+      return { missing: false, fileTypes, claims }
+    }, site.origin)
 
+    expect(result.missing).toBe(false)
+    expect(result.fileTypes).toContain('Files')
+    expect(result.claims).toEqual(['dragover zone', 'drop zone'])
     await expect
       .poll(() => opens(app), { timeout: 15_000 })
-      .toEqual([`url ${site.origin}/stop`, `url ${site.origin}/chain`])
+      .toEqual(
+        ['/left', '/middle', '/ctrl', '/enter', '/dragged'].map((p) => `url ${site.origin}${p}`)
+      )
     const slow = await page.evaluate(
       () => (window as unknown as { __slow: Promise<string> }).__slow
     )
