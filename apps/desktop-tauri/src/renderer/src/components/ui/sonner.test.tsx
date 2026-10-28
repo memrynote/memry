@@ -21,6 +21,13 @@ describe('Toaster', () => {
     takeCrashReload.mockResolvedValue(true)
     render(<Toaster />)
     expect(await screen.findByText(NOTICE)).toBeTruthy()
+    // It stays until dismissed: the crash may have happened while the user looked elsewhere.
+    expect(screen.getByRole('button', { name: /close/i })).toBeTruthy()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    vi.useFakeTimers()
+    await vi.advanceTimersByTimeAsync(60_000)
+    vi.useRealTimers()
+    expect(screen.queryByText(NOTICE)).not.toBeNull()
   })
 
   it('says nothing after a normal load', async () => {

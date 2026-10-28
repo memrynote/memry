@@ -33,7 +33,8 @@ function useCrashReloadNotice(): void {
       .then((reloaded) => {
         if (!reloaded) return
         const t = getI18n().getFixedT(null, 'system')
-        toast.warning(t('startup.reloaded'), { duration: 10000 })
+        // Until dismissed: the crash may have happened while the user looked elsewhere.
+        toast.warning(t('startup.reloaded'), { duration: Infinity, closeButton: true })
       })
       .catch((error: unknown) => log.warn('shell_take_crash_reload failed', error))
   }, [])
