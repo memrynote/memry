@@ -88,8 +88,9 @@ use crate::domain::{note_snapshots, owed_file_body, reads};
 use crate::markdown::convert::api::{Converter, ReplaceOptions};
 use crate::markdown::convert::apply::ReplaceOutcome;
 use crate::markdown::convert::restore::SerializeOptions;
+use crate::markdown::frontmatter::{YamlValue, parse_markdown_note, stringify_frontmatter_block};
 use crate::markdown::shared::markdown_class::{MarkdownClassThresholds, classify_markdown_content};
-use crate::markdown::shared::writing_tools::WritingFrontmatter;
+use crate::markdown::shared::writing_tools::{WritingFrontmatter, merge_writing_yaml};
 use crate::protocol::account::MAX_UPDATE_BYTES;
 use crate::protocol::crdt_envelope;
 use crate::sync::body_debt;
@@ -258,7 +259,7 @@ fn author(
         {
             return refuse(tx, note_id, now_ms, Refusal::BodyNotRepresentable);
         }
-        Some(body.markdown)
+        Some(body)
     };
     let outcome = converter.replace_body(
         &document,
@@ -285,8 +286,11 @@ fn author(
     if let Some(previous) = replaced {
         let version = note_snapshots::Version {
             note_id,
-            content: &as_file(frontmatter, &previous),
-            body: &previous,
+            content: &as_file(
+                with_writing(frontmatter, &previous.writing).as_deref(),
+                &previous.markdown,
+            ),
+            body: &previous.markdown,
             title: &title(&tx, note_id)?,
             reason: note_snapshots::SIGNIFICANT,
         };
@@ -313,6 +317,35 @@ fn refuse(
     Ok(FeedOutcome::Refused(refusal))
 }
 
+/// The file's frontmatter block with the writing tools data the replaced body held, so a version
+/// keeps the alternatives its body's markers name, and no `writing` key the body did not hold:
+/// a feed of a file without them (an outside editor dropped the key, or they came through sync
+/// after the file was written) drops them from the document. The block is verbatim when it
+/// already says that data, or when it does not parse (the feed is then not told the file's
+/// data and keeps the document's); a block that is rewritten keeps its byte order mark.
+fn with_writing(frontmatter: Option<&str>, writing: &WritingFrontmatter) -> Option<String> {
+    let verbatim = || frontmatter.map(str::to_owned);
+    let Ok(parsed) = parse_markdown_note(frontmatter.unwrap_or_default()) else {
+        return verbatim();
+    };
+    let mut map = match &parsed.frontmatter {
+        YamlValue::Map(map) => (**map).clone(),
+        _ => return verbatim(),
+    };
+    if !merge_writing_yaml(&mut map, writing) {
+        return verbatim();
+    }
+    let Ok(block) = stringify_frontmatter_block(&map, parsed.eol) else {
+        return verbatim();
+    };
+    let bom = if frontmatter.is_some_and(|block| block.starts_with('\u{feff}')) {
+        "\u{feff}"
+    } else {
+        ""
+    };
+    Some(format!("{bom}{block}"))
+}
+
 /// A kept body as the file it was: the file's frontmatter block, verbatim, then the
 /// body and one trailing newline (`writeMarkdownNote`). A block that ends the file
 /// without a newline gets one, or its closing fence would run into the body. Desktop
@@ -332,8 +365,8 @@ fn as_file(frontmatter: Option<&str>, body: &str) -> String {
 }
 
 /// Whether the file's text is the body's: line ends and the trailing newlines a
-/// body cannot hold do not count.
-fn same_text(body: &str, file: &str) -> bool {
+/// body cannot hold do not count. The write-back keeps such a file as it is.
+pub fn same_text(body: &str, file: &str) -> bool {
     let normalize = |text: &str| text.replace("\r\n", "\n").trim_end_matches('\n').to_owned();
     normalize(body) == normalize(file)
 }
@@ -362,6 +395,19 @@ fn storage_failed(error: rusqlite::Error) -> CrdtError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_version_block_says_the_writing_data_of_its_body_and_keeps_its_byte_order_mark() {
+        let block =
+            "\u{feff}---\ntitle: t\nwriting: {alternatives: {k3x9q2: {versions: [two]}}}\n---\n";
+        let rewritten = with_writing(Some(block), &WritingFrontmatter::default()).unwrap();
+        assert_eq!(rewritten, "\u{feff}---\ntitle: t\n---\n");
+        assert_eq!(
+            with_writing(Some("---\ntitle: t\n---\n"), &WritingFrontmatter::default()).as_deref(),
+            Some("---\ntitle: t\n---\n")
+        );
+        assert_eq!(with_writing(None, &WritingFrontmatter::default()), None);
+    }
 
     #[test]
     fn the_cap_is_on_the_packed_length_not_the_raw_one() {

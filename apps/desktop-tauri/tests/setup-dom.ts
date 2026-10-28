@@ -47,13 +47,22 @@ vi.mock('@/lib/logger', () => {
 })
 
 // ============================================================================
-// The generated Tauri bindings, as the vault service reaches them. Component tests drive the
-// vault through the `window.api.vault` mock below, so the bindings forward to it: the
-// service's own tests (services/vault-service.test.ts) mock the bindings directly.
+// The generated Tauri bindings, as the vault service and the updater store reach them.
+// Component tests drive both through the `window.api.vault` and `window.api.updater` mocks
+// below, so the bindings forward to them: the owners' own tests (services/vault-service.test.ts,
+// hooks/use-app-updater.test.tsx) mock the bindings directly.
 // ============================================================================
 
 vi.mock('../src/generated/bindings', () => {
   const vault = () => window.api.vault
+  // The preload type no longer declares the ported updater; the mock below still provides it.
+  const updater = () =>
+    (window.api as unknown as { updater: Record<string, (...args: unknown[]) => unknown> }).updater
+  const api = () =>
+    window.api as unknown as Record<
+      string,
+      () => (handler: (payload: unknown) => void) => () => void
+    >
   const event = (
     subscribe: () => (handler: (payload: unknown) => void) => () => void,
     wrap = (p: unknown) => p
@@ -73,7 +82,14 @@ vi.mock('../src/generated/bindings', () => {
       vaultSwitch: (path: string) => vault().switch(path),
       vaultRemove: (path: string) => vault().remove(path),
       vaultReveal: () => vault().reveal(),
-      vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon)
+      vaultSetIcon: (path: string, icon: string | null) => vault().setIcon(path, icon),
+      updaterGetState: () => updater().getState(),
+      updaterCheckForUpdates: () => updater().checkForUpdates(),
+      updaterDownloadUpdate: () => updater().downloadUpdate(),
+      updaterQuitAndInstall: () => updater().quitAndInstall(),
+      updaterSkipVersion: (version: string) => updater().skipVersion(version),
+      updaterSetAutoDownload: (enabled: boolean) => updater().setAutoDownload(enabled),
+      updaterSetAutoCheck: (enabled: boolean) => updater().setAutoCheck(enabled)
     },
     events: {
       vaultStatusChangedEvent: event(() => window.api.onVaultStatusChanged),
@@ -82,6 +98,7 @@ vi.mock('../src/generated/bindings', () => {
         () => window.api.onVaultError,
         (message) => ({ message })
       ),
+      updaterStateChangedEvent: event(() => api().onUpdaterStateChanged),
       vaultIndexRecoveredEvent: event(
         () => window.api.onVaultIndexRecovered,
         (recovered) => ({ ...(recovered as object), detail: '' })

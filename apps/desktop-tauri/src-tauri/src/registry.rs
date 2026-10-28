@@ -74,6 +74,14 @@ pub fn builder() -> Builder<Wry> {
             crate::commands::telemetry::telemetry_track,
             // unsplash
             crate::commands::unsplash::unsplash_search,
+            // updater
+            crate::commands::updater::updater_check_for_updates,
+            crate::commands::updater::updater_download_update,
+            crate::commands::updater::updater_get_state,
+            crate::commands::updater::updater_quit_and_install,
+            crate::commands::updater::updater_set_auto_check,
+            crate::commands::updater::updater_set_auto_download,
+            crate::commands::updater::updater_skip_version,
             // vault
             crate::commands::vault::vault_close,
             crate::commands::vault::vault_create,
@@ -106,6 +114,8 @@ pub fn builder() -> Builder<Wry> {
             crate::events::SettingsOpenSectionEvent,
             // menu
             crate::events::MenuCommandInvokedEvent,
+            // updater
+            crate::events::UpdaterStateChangedEvent,
             // vault
             crate::events::VaultErrorEvent,
             crate::events::VaultIndexRecoveredEvent,

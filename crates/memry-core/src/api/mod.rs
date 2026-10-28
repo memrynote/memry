@@ -44,3 +44,5 @@ pub mod task_tree;
 pub mod tasks;
 pub mod tasks_write;
 pub mod vault;
+#[cfg(feature = "markdown")]
+pub mod write_back;

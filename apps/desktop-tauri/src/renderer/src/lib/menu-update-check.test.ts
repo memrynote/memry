@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AppUpdateState } from '@memry/contracts/ipc-updater'
 
-const { toast } = vi.hoisted(() => ({
+const { toast, checkForUpdates } = vi.hoisted(() => ({
   toast: {
     info: vi.fn(),
     success: vi.fn(),
     error: vi.fn()
-  }
+  },
+  checkForUpdates: vi.fn()
 }))
 
 vi.mock('sonner', () => ({ toast }))
+vi.mock('../../../generated/bindings', () => ({
+  commands: { updaterCheckForUpdates: checkForUpdates }
+}))
 vi.mock('react-i18next', () => ({
   getI18n: () => ({ getFixedT: () => (key: string) => key })
 }))
@@ -32,8 +36,6 @@ const baseState: AppUpdateState = {
   autoCheckEnabled: true
 }
 
-let checkForUpdates: ReturnType<typeof vi.fn>
-
 function mockUpdaterResult(result: Partial<AppUpdateState>): void {
   checkForUpdates.mockResolvedValue({ ...baseState, ...result })
 }
@@ -43,8 +45,7 @@ describe('runMenuUpdateCheck', () => {
     toast.info.mockClear()
     toast.success.mockClear()
     toast.error.mockClear()
-    checkForUpdates = vi.fn()
-    ;(window.api.updater as Record<string, unknown>).checkForUpdates = checkForUpdates
+    checkForUpdates.mockReset()
   })
 
   it('confirms an up-to-date install', async () => {

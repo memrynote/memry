@@ -1,5 +1,5 @@
-//! Hangs the watcher and the consumer on the session: both start at `OpenStage::Watcher` of
-//! every open and stop, joined, when the vault closes. The rows' lane lives across sessions
+//! Hangs the watcher, the consumer and the write-back on the session: all start at
+//! `OpenStage::Watcher` of every open and stop, joined, when the vault closes. The rows' lane lives across sessions
 //! (the app holds it), and is open only while a vault is.
 
 use std::sync::{Arc, Mutex};
@@ -14,6 +14,7 @@ use super::{Applied, Consumer, ConsumerOptions, QUEUE_CAPACITY, inbox};
 use crate::session::{OpenStage, OpenVault, Session};
 use crate::vault::config::read_vault_config;
 use crate::vault::watch::{EchoGuard, NewFiles, VaultWatcher};
+use crate::vault::writeback::{Pass, WriteBack};
 
 pub struct VaultTier {
     /// The own-write record of the open vault session; every open and close starts a new one.
@@ -29,6 +30,7 @@ pub struct VaultTier {
 struct Running {
     watcher: VaultWatcher,
     consumer: Consumer,
+    writeback: WriteBack,
 }
 
 impl VaultTier {
@@ -64,6 +66,21 @@ impl VaultTier {
         self.rows.subscribe()
     }
 
+    /// Writes the note's body to its vault file, on the write-back thread
+    /// ([`crate::vault::writeback`]). The editor (Step 14) calls it once a body edit is durable,
+    /// the sync driver (Step 17) once a page committed. Nothing happens while no vault is open.
+    pub fn schedule(&self, note_id: &str) {
+        match self
+            .running
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .as_ref()
+        {
+            Some(running) => running.writeback.schedule(note_id),
+            None => tracing::debug!(scope = "vault_writeback", note_id, "no vault is open"),
+        }
+    }
+
     /// The identity of the next open on ([`DeferIdentity`] until Step 13 sets its own).
     pub fn set_identity(&self, identity: Arc<dyn NoteIdentity>) {
         *self.identity.lock().unwrap_or_else(|e| e.into_inner()) = identity;
@@ -77,14 +94,17 @@ impl VaultTier {
             .unwrap_or_else(|e| e.into_inner())
             .take();
         // Joined outside the lock: each waits for its current step. The watcher first, so no
-        // fact reaches a consumer that is stopping.
+        // fact reaches a consumer that is stopping; the write-back runs what was scheduled
+        // while the rows are still open.
         if let Some(Running {
             watcher,
             mut consumer,
+            mut writeback,
         }) = running
         {
             watcher.stop_and_drop();
             consumer.stop();
+            writeback.stop();
         }
         self.rows.close();
     }
@@ -124,6 +144,19 @@ impl VaultTier {
                 );
             })
             .ok();
+        let session = self
+            .rows
+            .session_for(&vault.vault)
+            .map_err(|error| error.to_string())?;
+        let pass = Pass::new(
+            vault.path.clone(),
+            vault.vault.clone(),
+            self.rows.clone(),
+            session,
+            self.echo(),
+            vault.vault.app_settings(self.store.clone()).ok(),
+        );
+        let writeback = WriteBack::start(pass).map_err(|error| error.to_string())?;
         let applier = Applier {
             root: vault.path.clone(),
             vault: vault.vault.clone(),
@@ -135,7 +168,11 @@ impl VaultTier {
         };
         let consumer = Consumer::start(applier, inbox, watcher.handle(), exclude)
             .map_err(|error| error.to_string())?;
-        Ok(Running { watcher, consumer })
+        Ok(Running {
+            watcher,
+            consumer,
+            writeback,
+        })
     }
 
     /// Registers the open and close hooks. A watcher that cannot start fails its hook, which

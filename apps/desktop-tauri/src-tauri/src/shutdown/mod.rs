@@ -43,7 +43,7 @@ impl ShutdownService {
         self.core.registry.register(name, run)
     }
 
-    /// Step 38 (#3555) registers its updater here; with none the calls are skipped.
+    /// The updater registers itself here (`crate::updater`); with none the calls are skipped.
     pub fn set_update_hook(&self, hook: Arc<dyn UpdateApplyHook>) {
         self.core.set_update_hook(hook);
     }
@@ -123,6 +123,7 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     if let Some(session) = app.try_state::<Session>() {
         session.begin_shutdown();
     }
+    crate::updater::stop(app);
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
     tracing::info!(scope = "Shutdown", "starting graceful shutdown");
@@ -133,7 +134,7 @@ fn begin(app: &AppHandle<Wry>, api: &ExitRequestApi, reason: ShutdownReason) {
     });
 }
 
-/// The registered update hook, `None` before Step 38 (#3555) registers one.
+/// The registered update hook, `None` before the updater registers it.
 pub fn update_hook(app: &AppHandle<Wry>) -> Option<Arc<dyn UpdateApplyHook>> {
     app.state::<ShutdownService>().core.update_hook()
 }
@@ -151,12 +152,15 @@ pub fn is_completed(app: &AppHandle<Wry>) -> bool {
 /// Starts the sequence for a quit that did not come through `ExitRequested`: the session end.
 /// Without a request to hold, the app is kept alive by the latch alone.
 pub fn begin_session_end(app: &AppHandle<Wry>) {
+    // Before the latch: a quit that is already running must not install on its way out either.
+    app.state::<ShutdownService>().core.session_ending();
     if startup::mark_shutdown_started() {
         return;
     }
     if let Some(session) = app.try_state::<Session>() {
         session.begin_shutdown();
     }
+    crate::updater::stop(app);
     let service = app.state::<ShutdownService>();
     let effects: Arc<dyn ShutdownEffects> = Arc::new(TauriEffects { app: app.clone() });
     tracing::info!(scope = "Shutdown", "starting graceful shutdown");

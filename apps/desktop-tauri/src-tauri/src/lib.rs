@@ -25,6 +25,7 @@ pub mod startup;
 pub mod tray;
 #[cfg(feature = "update-probe")]
 pub mod update_probe;
+pub mod updater;
 pub mod windows;
 
 use memry_desktop::launch_env::LaunchEnv;
@@ -84,6 +85,7 @@ fn register_stages() {
     notifications::register_stages();
     shortcuts::register_stages();
     spell::register_stages();
+    updater::register_stages();
     startup::register(Stage::Window, "create main window", create_main_window);
     // After the window exists: Windows subclasses its handle.
     power::register_stages();

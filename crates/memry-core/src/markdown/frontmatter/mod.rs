@@ -4,6 +4,7 @@
 //! `docs/protocol/12-note-body-format.md` section 12.4.
 
 pub(crate) mod js;
+mod json;
 mod note;
 mod scalar;
 mod split;
@@ -11,6 +12,7 @@ mod value;
 mod yaml_dump;
 mod yaml_load;
 
+pub use json::{json_to_yaml, yaml_to_json};
 pub use note::{
     Eol, ParsedMarkdownNote, parse_markdown_note, serialize_parsed_markdown_note,
     stringify_frontmatter_block, write_markdown_note,

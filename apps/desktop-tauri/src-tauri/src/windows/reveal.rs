@@ -96,6 +96,7 @@ pub fn show(app: &AppHandle<Wry>, reason: &str) {
     }
     apply_mode(&reveal, &window);
     mark_phase(app, LaunchPhase::WindowShown);
+    crate::updater::on_window_shown(app);
     tracing::info!(scope = "Window", "main window shown ({reason})");
     launch_timeline::global().report(reason);
 }
