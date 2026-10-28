@@ -34,9 +34,9 @@ const SUBCLASS_ID: usize = 0x4D45_4D50;
 /// Windows ends a session's processes from the highest shutdown level down, and every process
 /// starts at 0x280. Chromium leaves the WebView2 browser process there and lowers its children to
 /// 0x27F (`content/app/content_main.cc`, `CommonSubprocessInit`), so at the same level the order
-/// of the app and its webview is unspecified: on the VM a sign-out ended the webview while the
-/// app was still answering `WM_QUERYENDSESSION`, and the page's edits were lost. One level above
-/// the browser, Windows asks the app first, while every page can still answer.
+/// of the app and its webview is unspecified. With the flush held in `WM_QUERYENDSESSION`, the
+/// VM's sign-outs still ended the webview while the app was holding it, before the page answered.
+/// One level above the browser, Windows asks the app first, while every page can still answer.
 const SHUTDOWN_LEVEL: u32 = 0x281;
 /// The class tao registers for the hidden window that receives the thread's events.
 const EVENT_TARGET_CLASS: &str = "Tao Thread Event Target";
@@ -53,6 +53,9 @@ struct Shared {
     main_hwnd: AtomicIsize,
     /// A `WM_ENDSESSION(TRUE)` is being or has been handled by one of the two windows.
     ending: AtomicBool,
+    /// A `WM_QUERYENDSESSION` is holding for the flush; a second one met while its messages are
+    /// pumped answers at once.
+    querying: AtomicBool,
 }
 
 impl Shared {
@@ -116,15 +119,20 @@ fn hold(limit: Duration, done: impl Fn() -> bool) -> bool {
 }
 
 /// Answers `WM_QUERYENDSESSION` only after every window has written the edits its page still
-/// holds. At a sign-out the WebView2 processes end themselves on their own `WM_ENDSESSION`, a few
-/// milliseconds into the app's quit sequence, so its `flush-windows` step may find no page to
-/// ask. [`SHUTDOWN_LEVEL`] has Windows ask the app before it touches the webview, so the pages
-/// are alive here. A sign-out that is then cancelled has only saved early.
-fn flush_before_session_end(app: &AppHandle<Wry>) {
+/// holds. Answering at once left the flush to the quit sequence on `WM_ENDSESSION`, and at a
+/// sign-out the WebView2 processes ended 12 to 130 ms into that sequence, before its
+/// `flush-windows` step reached the page. [`SHUTDOWN_LEVEL`] has Windows ask the app before it
+/// touches the webview, so the pages are alive here. A sign-out that is then cancelled has only
+/// saved early.
+fn flush_before_session_end(shared: &Shared) {
     if crate::startup::shutdown_started() {
         // The quit sequence is already running and flushed first.
         return;
     }
+    if shared.querying.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = &shared.app;
     let flushed = Arc::new(AtomicBool::new(false));
     let (handle, flag) = (app.clone(), flushed.clone());
     tauri::async_runtime::spawn(async move {
@@ -144,6 +152,7 @@ fn flush_before_session_end(app: &AppHandle<Wry>) {
             "the windows did not flush before the session end"
         );
     }
+    shared.querying.store(false, Ordering::SeqCst);
 }
 
 unsafe extern "system" fn proc(
@@ -189,7 +198,7 @@ unsafe extern "system" fn proc(
                     "could not set the shutdown block reason: {error}"
                 );
             }
-            flush_before_session_end(&shared.app);
+            flush_before_session_end(shared);
             return LRESULT(1);
         }
         WM_ENDSESSION => {
@@ -359,6 +368,7 @@ pub fn start(app: &AppHandle<Wry>, sender: &Sender<PowerEvent>) {
         edges: Mutex::new(SleepEdges::default()),
         main_hwnd: AtomicIsize::new(hwnd.0 as isize),
         ending: AtomicBool::new(false),
+        querying: AtomicBool::new(false),
     }));
     // SAFETY: the procedures and their refdata outlive the windows.
     let ok =

@@ -41,7 +41,6 @@ pub fn create_main(
             .on_page_load(|window, payload| {
                 if matches!(payload.event(), PageLoadEvent::Finished) {
                     mark_phase(window.app_handle(), LaunchPhase::WindowDidFinishLoad);
-                    crate::guards::process_gone::page_loaded(window.app_handle(), window.label());
                     #[cfg(windows)]
                     super::win32_caption::install_child(window.app_handle());
                 }
@@ -58,8 +57,6 @@ pub fn create_main(
         builder = builder.additional_browser_args(&args);
     }
     let window = isolate_webview_profile(builder, &app.state::<AppPaths>()).build()?;
-    #[cfg(any(windows, target_os = "linux"))]
-    crate::guards::gpu::watch_process_failures(app, &window);
     zoom::apply_to(&window, state.zoom);
     #[cfg(windows)]
     {

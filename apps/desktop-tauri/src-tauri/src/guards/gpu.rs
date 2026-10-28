@@ -118,11 +118,11 @@ pub fn record_reveal_fallback(app: &AppHandle<Wry>) {
     }
 }
 
-/// Subscribes to the main webview's process failures: every one is reported, a browser or
+/// Subscribes to an app webview's process failures: every one is reported, a browser or
 /// renderer process that ended releases the flush waits on the page, and a GPU process that
 /// crashed, ended unexpectedly or failed to launch is recorded.
 #[cfg(windows)]
-pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindow<Wry>) {
+pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
         COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED,
         COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED,
@@ -208,7 +208,7 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindo
 /// WebKitGTK reports a web process that crashed, ran out of memory or was killed; the page then
 /// has no script to answer a flush.
 #[cfg(target_os = "linux")]
-pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindow<Wry>) {
+pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::Webview<Wry>) {
     use webkit2gtk::{WebProcessTerminationReason, WebViewExt};
 
     let app = app.clone();
