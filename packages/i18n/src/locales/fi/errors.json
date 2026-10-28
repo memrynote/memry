@@ -69,6 +69,7 @@
     "persistenceDegradedBody": "Muistiinpanosi ovat turvassa – ne ovat holvissasi tavallisina tiedostoina, ja ne avautuvat ja tallentuvat edelleen normaalisti. Vain tämän laitteen paikallista muokkaushistoriaa ja yhdistämistilaa pidetään muistissa, joten ne alkavat alusta aina, kun memrynote avataan.",
     "writebackFailedTitle": "Muistiinpanon tiedostoa levyllä ei voitu päivittää",
     "writebackFailedTitleNamed": "Kohdetta ”{title}” ei voitu päivittää levylle",
+    "writebackFailedTitleMany": "Muistiinpanojen tiedostoja levyllä ei voitu päivittää: {count}",
     "writebackFailedBody": "Levyllä olevaa tiedostoa ei muutettu. Muokkauksesi pysyy avoinna memrynotessa niin kauan kuin sovellus on käynnissä; memrynote yrittää uudelleen seuraavan muokkauksesi yhteydessä."
   },
   "encryption": {
