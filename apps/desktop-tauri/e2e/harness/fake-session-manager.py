@@ -4,9 +4,11 @@ Usage: fake-session-manager.py gnome|xfce
 
 Owns org.gnome.SessionManager or org.xfce.SessionManager and speaks the client protocol both
 use: RegisterClient, then QueryEndSession, EndSession and Stop to the client, answered with
-EndSessionResponse. A line "logout" on stdin starts a logout. When the client answers EndSession
-or its connection closes, the session is over: the fake ends the client with SIGKILL, as the
-display server going away ends it with Xlib's IO error. Each step is a JSON line on stdout.
+EndSessionResponse. Specs in other workers share the session bus, so their apps register too:
+a line "logout <pid>" on stdin starts a logout for the client with that process id only. When
+that client answers EndSession or its connection closes, the session is over: the fake ends it
+with SIGKILL, as the display server going away ends it with Xlib's IO error. Each step is a JSON
+line on stdout.
 """
 
 import json
@@ -58,6 +60,8 @@ NODE = Gio.DBusNodeInfo.new_for_xml(
 )
 
 state = {"phase": "idle", "client": None, "pid": None}
+# Unique bus name of every registered client, by process id.
+clients = {}
 bus = Gio.bus_get_sync(Gio.BusType.SESSION)
 
 
@@ -90,17 +94,19 @@ def end_session(reason):
 def on_method(connection, sender, path, iface, method, params, invocation):
     if method == "RegisterClient":
         app_id, startup_id = params.unpack()
-        state["client"] = sender
-        state["pid"] = bus.call_sync(
+        pid = bus.call_sync(
             "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus",
             "GetConnectionUnixProcessID", GLib.Variant("(s)", (sender,)),
             GLib.VariantType("(u)"), 0, -1,
         ).unpack()[0]
-        report("registered", appId=app_id, startupId=startup_id, pid=state["pid"])
+        clients[pid] = sender
+        report("registered", appId=app_id, startupId=startup_id, pid=pid)
         invocation.return_value(GLib.Variant("(o)", (CLIENT_PATH,)))
     elif method == "EndSessionResponse":
         ok, reason = params.unpack()
         invocation.return_value(None)
+        if sender != state["client"]:
+            return
         report("answered", phase=state["phase"], ok=ok, reason=reason)
         if state["phase"] == "query":
             state["phase"] = "end"
@@ -122,8 +128,9 @@ def on_stdin(source, condition):
     if not line:
         loop.quit()
         return False
-    if line.strip() == "logout" and state["client"]:
-        state["phase"] = "query"
+    command, _, pid = line.strip().partition(" ")
+    if command == "logout" and int(pid) in clients:
+        state.update(phase="query", client=clients[int(pid)], pid=int(pid))
         emit("QueryEndSession")
     return True
 

@@ -20,9 +20,14 @@ export interface SessionManagerEvent {
 
 export interface FakeSessionManager {
   readonly events: SessionManagerEvent[]
-  /** The first event named `event`, once it has arrived. */
-  waitFor(event: string, timeoutMs?: number): Promise<SessionManagerEvent>
-  logout(): void
+  /** The first event named `event` that `matches`, once it has arrived. */
+  waitFor(
+    event: string,
+    matches?: (event: SessionManagerEvent) => boolean,
+    timeoutMs?: number
+  ): Promise<SessionManagerEvent>
+  /** Starts a logout for the registered client with process id `pid`. */
+  logout(pid: number): void
   stop(): void
 }
 
@@ -36,8 +41,8 @@ export async function startFakeSessionManager(desktop: Desktop): Promise<FakeSes
   })
   const manager: FakeSessionManager = {
     events,
-    async waitFor(event, timeoutMs = 10_000) {
-      const found = await pollUntil(() => events.find((e) => e.event === event), {
+    async waitFor(event, matches = () => true, timeoutMs = 10_000) {
+      const found = await pollUntil(() => events.find((e) => e.event === event && matches(e)), {
         timeoutMs,
         intervalMs: 50
       })
@@ -48,8 +53,8 @@ export async function startFakeSessionManager(desktop: Desktop): Promise<FakeSes
       }
       return found
     },
-    logout() {
-      child.stdin.write('logout\n')
+    logout(pid) {
+      child.stdin.write(`logout ${pid}\n`)
     },
     stop() {
       child.kill()

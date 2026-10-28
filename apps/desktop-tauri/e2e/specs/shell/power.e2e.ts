@@ -78,8 +78,9 @@ for (const hidden of [false, true]) {
 // handler then ends the app with _exit(1); logind announces nothing. The session manager asks
 // its registered clients first and keeps the display up until each has answered EndSession, so
 // by that answer the edit the page holds must be on disk. The fake ends the app with SIGKILL as
-// soon as it answers, as the display going away does. GNOME and Xfce speak the same protocol
-// under their own bus names.
+// soon as it answers, as the display going away does; an app that has already exited closed its
+// connection, which both session managers count as an answer. GNOME and Xfce speak the same
+// protocol under their own bus names.
 for (const desktop of ['gnome', 'xfce'] as const) {
   const logoutTest = test.extend<{ sessionManager: FakeSessionManager }>({
     sessionManager: async (_deps, use) => {
@@ -95,14 +96,15 @@ for (const desktop of ['gnome', 'xfce'] as const) {
   linuxTest(
     `an edit only the page holds survives a ${desktop} logout`,
     async ({ sessionManager, app }) => {
-      expect((await sessionManager.waitFor('registered')).pid).toBe(app.pid)
+      // Apps of specs in other workers register with the fake too.
+      await sessionManager.waitFor('registered', (e) => e.pid === app.pid)
       const edit = `held-${Date.now()}`
       await app.executor.execute('window.__memryE2eHoldEdit(arguments[0])', edit)
 
-      sessionManager.logout()
+      sessionManager.logout(app.pid)
       const over = await sessionManager.waitFor('over')
 
-      expect(over.reason).toBe('answered')
+      expect(['answered', 'disconnected']).toContain(over.reason)
       // GNOME counts a client that has not answered QueryEndSession within a second as blocking
       // the logout.
       const [query, answer] = ['sent', 'answered'].map((event) =>
