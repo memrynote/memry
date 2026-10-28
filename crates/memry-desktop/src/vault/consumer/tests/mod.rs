@@ -3,10 +3,12 @@
 //! `Added` or `Changed`, the open walk, a note whose body is owed by sync, a body synced
 //! before the file was seen, and a row the app reserved.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
+use memry_core::api::errors::SecureStoreError;
 use memry_core::api::notes_write::NotesWriter;
 use memry_core::api::vault::Vault;
 use memry_core::crdt::registry::UpdateSink;
@@ -23,10 +25,44 @@ use super::apply::{Applier, Step};
 use super::identity::{Adoption, Candidate, IdentityCtx, IdentityError, NoteIdentity, Removal};
 use super::rows::{RowOwner, RowSession, RowStat};
 use super::{Applied, ChangeSource};
-use crate::profile_store::ProfileDeviceKeyStore;
 use crate::vault::file_types::FileType;
 use crate::vault::hash::content_hash;
 use crate::vault::watch::VaultEvent;
+
+/// A device signing key held in memory: the device identity without the OS keychain.
+#[derive(Default)]
+struct MemoryStore(Mutex<HashMap<SecureStoreKey, Vec<u8>>>);
+
+impl SecureStore for MemoryStore {
+    fn get(&self, key: SecureStoreKey) -> Result<Option<Vec<u8>>, SecureStoreError> {
+        Ok(self.0.lock().unwrap().get(&key).cloned())
+    }
+
+    fn set(&self, key: SecureStoreKey, value: Vec<u8>) -> Result<(), SecureStoreError> {
+        self.0.lock().unwrap().insert(key, value);
+        Ok(())
+    }
+
+    fn delete(&self, key: SecureStoreKey) -> Result<(), SecureStoreError> {
+        self.0.lock().unwrap().remove(&key);
+        Ok(())
+    }
+
+    fn clear(&self) -> Result<(), SecureStoreError> {
+        self.0.lock().unwrap().clear();
+        Ok(())
+    }
+}
+
+/// A store holding this device's signing key.
+pub(crate) fn with_device_key() -> Arc<dyn SecureStore> {
+    let store = MemoryStore::default();
+    let (_, secret) = sodium::sign_seed_keypair(&[7u8; 32]).unwrap();
+    store
+        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
+        .unwrap();
+    Arc::new(store)
+}
 
 /// Creates a note per new file, deletes the record on removal, and records what it saw.
 pub(super) struct Recorder {
@@ -121,11 +157,7 @@ pub(super) fn fixture(feed_changes: bool) -> Fixture {
     let core = root.join(".memry/core");
     std::fs::create_dir_all(&core).unwrap();
     std::fs::create_dir_all(dir.path().join("app")).unwrap();
-    let store = ProfileDeviceKeyStore::shared(&dir.path().join("app"));
-    let (_, secret) = sodium::sign_seed_keypair(&[7u8; 32]).unwrap();
-    store
-        .set(SecureStoreKey::DeviceSigningKey, secret.to_vec())
-        .unwrap();
+    let store = with_device_key();
     let vault = Arc::new(
         Vault::open_with(core.to_string_lossy().into_owned(), OpenOptions::default()).unwrap(),
     );

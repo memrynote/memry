@@ -2,6 +2,8 @@
 //! (12d review): the own-write record does not outlive a session, a stopped watcher reports
 //! nothing, and an edit no OS event announced is found by the safety-net rescan.
 
+mod device_key;
+
 use std::fs;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -10,7 +12,6 @@ use std::time::{Duration, Instant};
 use memry_core::api::vault::Vault;
 use memry_core::domain::note_files::NoteFileStat;
 use memry_core::storage::OpenOptions;
-use memry_desktop::profile_store::ProfileDeviceKeyStore;
 use memry_desktop::registry::{AppConfig, VaultRegistry};
 use memry_desktop::session::{OpenSource, Session};
 use memry_desktop::vault::consumer::VaultTier;
@@ -38,7 +39,7 @@ fn the_own_write_record_does_not_outlive_the_vault_session() {
         dir.path().join("app/memry-config.json"),
     )));
     let session = Session::new(registry);
-    let tier = VaultTier::new(ProfileDeviceKeyStore::shared(&dir.path().join("app")));
+    let tier = VaultTier::new(device_key::with_device_key());
     tier.register(&session);
 
     let opened = session.open(&vault_a, OpenSource::Select).unwrap();
