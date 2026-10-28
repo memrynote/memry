@@ -212,24 +212,29 @@ async fn quit(
 
 /// The app menu's Quit, Cmd-Q and the Dock's Quit all start the sequence as a `Quit`, a
 /// Windows sign-out or shutdown as a `SessionEnd`, and "restart to update" as a `Quit` that
-/// ends in the installer. An edit scheduled just before is in the file when the process goes.
+/// starts the installer before its clean exit. An edit scheduled just before is in the file
+/// when the process goes, and when the installer starts.
 #[tokio::test(flavor = "multi_thread")]
 async fn every_way_the_app_quits_writes_the_scheduled_edit_first() {
-    let cases = [
-        (ShutdownReason::Quit, false, "exit_clean"),
-        (ShutdownReason::SessionEnd, false, "exit_clean"),
-        (ShutdownReason::Quit, true, "apply_and_restart"),
+    let cases: [(_, _, &[&str]); 3] = [
+        (ShutdownReason::Quit, false, &["exit_clean"]),
+        (ShutdownReason::SessionEnd, false, &["exit_clean"]),
+        (
+            ShutdownReason::Quit,
+            true,
+            &["apply_and_restart", "exit_clean"],
+        ),
     ];
-    for (reason, update, how) in cases {
+    for (reason, update, hows) in cases {
         let (e, identity, id) = one_note();
         e.edit_in_app(&identity.store, &id, "typed in the app");
         e.tier.schedule(&id);
         let exits = quit(&e, reason, update, vec![]).await;
-        assert_eq!(
-            exits,
-            vec![(how, "typed in the app\n".to_owned())],
-            "{reason:?}, update {update}"
-        );
+        let want: Vec<_> = hows
+            .iter()
+            .map(|how| (*how, "typed in the app\n".to_owned()))
+            .collect();
+        assert_eq!(exits, want, "{reason:?}, update {update}");
     }
 }
 
