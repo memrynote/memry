@@ -13,12 +13,18 @@ use memry_desktop::e2e::E2eGate;
 use memry_desktop::launch_env::LaunchEnv;
 use memry_desktop::seams::secure_store::{GenericSecrets, KEYS, KeyringStore, SecureStoreHealth};
 
+/// A name no other test of any run uses. The tests run in parallel threads, and the Windows clock
+/// ticks in 100 ns steps, so two calls can read the same time: the counter keeps them apart.
+/// (Two tests once shared the account `e2e-live-account-<pid>-<nanos>` on windows-11-arm and one
+/// read the other's value.)
 fn unique(tag: &str) -> String {
+    static COUNTER: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    format!("e2e-live-{tag}-{}-{nanos}", std::process::id())
+    let n = COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!("e2e-live-{tag}-{}-{nanos}-{n}", std::process::id())
 }
 
 /// Warnings of the store (why the keychain answered `Locked`) show in a failing test's output.
