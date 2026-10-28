@@ -7,7 +7,11 @@
 // that only this module reclaims. Best effort: a failure is logged and never thrown.
 import { spawnSync } from 'node:child_process'
 
-export const SYNC_SERVICE = 'com.memry.sync'
+/** The service of this app's sync secrets and device key (`secure_store/account.rs` `SERVICE`). */
+export const SYNC_SERVICE = 'com.memrynote.memry'
+/** Electron's service. The Tauri app never writes it; items an older e2e run left are reclaimed. */
+export const ELECTRON_SYNC_SERVICE = 'com.memry.sync'
+export const SYNC_SERVICES = [SYNC_SERVICE, ELECTRON_SYNC_SERVICE]
 
 /** The `KEYCHAIN_ENTRIES` accounts of `@memry/contracts/crypto`; a test keeps them in step. */
 export const KEYCHAIN_ACCOUNTS = [
@@ -65,10 +69,9 @@ export function isE2eDeviceId(deviceId) {
  * @returns {{ service: string, account: string }[]}
  */
 export function keychainAccountsForDevice(deviceId) {
-  return KEYCHAIN_ACCOUNTS.map((account) => ({
-    service: SYNC_SERVICE,
-    account: `${account}-${deviceId}`
-  }))
+  return SYNC_SERVICES.flatMap((service) =>
+    KEYCHAIN_ACCOUNTS.map((account) => ({ service, account: `${account}-${deviceId}` }))
+  )
 }
 
 /**
@@ -78,7 +81,7 @@ export function keychainAccountsForDevice(deviceId) {
 export function isPurgeableE2eEntry({ service, account }) {
   if (!service || !account) return false
   if (PROTECTED_ACCOUNTS.has(account)) return false
-  if (service === SYNC_SERVICE) {
+  if (SYNC_SERVICES.includes(service)) {
     return account.includes('-e2e-') && E2E_SYNC_ACCOUNT.test(account)
   }
   return E2E_SAFE_STORAGE_SERVICE.test(service)
@@ -130,19 +133,41 @@ export function parseCmdkeyList(text) {
 }
 
 /**
- * The Windows targets one e2e device minted: those naming the sync service and the device.
+ * A Credential Manager target of a sync service as `{ service, account }`: `<service>/<account>`
+ * is what this app writes (`secure_store/keyring_backend.rs` `entry`), `<account>.<service>` the
+ * store crate's default an older run wrote. Any other target is `undefined`.
+ * @param {string} target
+ * @returns {{ service: string, account: string } | undefined}
+ */
+export function parseWindowsTarget(target) {
+  for (const service of SYNC_SERVICES) {
+    if (target.startsWith(`${service}/`)) {
+      return { service, account: target.slice(service.length + 1) }
+    }
+    if (target.endsWith(`.${service}`)) {
+      return { service, account: target.slice(0, -(service.length + 1)) }
+    }
+  }
+  return undefined
+}
+
+/**
+ * The Windows targets one e2e device minted: a sync service's account with the device suffix.
  * @param {string[]} targets
  * @param {string} deviceId
  */
 export function windowsTargetsForDevice(targets, deviceId) {
   if (!isE2eDeviceId(deviceId)) return []
-  return targets.filter(
-    (target) => target.includes(SYNC_SERVICE) && target.includes(`-${deviceId}`)
-  )
+  return targets.filter((target) => {
+    const entry = parseWindowsTarget(target)
+    return (
+      !!entry && entry.account.endsWith(`-${deviceId}`) && !PROTECTED_ACCOUNTS.has(entry.account)
+    )
+  })
 }
 
 /**
- * `secret-tool search --all service com.memry.sync` output to `{ service, account }` pairs.
+ * `secret-tool search --all service <sync service>` output to `{ service, account }` pairs.
  * Items are blocks that start with `[/org/freedesktop/secrets/...]` and carry
  * `attribute.<name> = <value>` lines.
  * @param {string} text
@@ -174,7 +199,7 @@ export function linuxAccountsForDevice(entries, deviceId) {
   return entries
     .filter(
       (entry) =>
-        entry.service === SYNC_SERVICE &&
+        SYNC_SERVICES.includes(entry.service ?? '') &&
         entry.account?.endsWith(`-${deviceId}`) &&
         !PROTECTED_ACCOUNTS.has(entry.account)
     )
@@ -231,12 +256,14 @@ export function purgeKeychainForDevice(deviceId, options = {}) {
         run('cmdkey', [`/delete:${target}`], { log })
       }
     } else if (process.platform === 'linux') {
-      const listed = run('secret-tool', ['search', '--all', 'service', SYNC_SERVICE], { log })
-      for (const account of linuxAccountsForDevice(
-        parseSecretToolSearch(listed.stdout),
-        deviceId
-      )) {
-        run('secret-tool', ['clear', 'service', SYNC_SERVICE, 'username', account], { log })
+      for (const service of SYNC_SERVICES) {
+        const listed = run('secret-tool', ['search', '--all', 'service', service], { log })
+        for (const account of linuxAccountsForDevice(
+          parseSecretToolSearch(listed.stdout),
+          deviceId
+        )) {
+          run('secret-tool', ['clear', 'service', service, 'username', account], { log })
+        }
       }
     }
   } catch (error) {
