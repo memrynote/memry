@@ -118,12 +118,15 @@ pub fn record_reveal_fallback(app: &AppHandle<Wry>) {
     }
 }
 
-/// Subscribes to the main webview's process failures: every one is reported, and a GPU process
-/// that crashed, ended unexpectedly or failed to launch is recorded.
+/// Subscribes to the main webview's process failures: every one is reported, a browser or
+/// renderer process that ended releases the flush waits on the page, and a GPU process that
+/// crashed, ended unexpectedly or failed to launch is recorded.
 #[cfg(windows)]
 pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindow<Wry>) {
     use webview2_com::Microsoft::Web::WebView2::Win32::{
-        COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED, COREWEBVIEW2_PROCESS_FAILED_REASON,
+        COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED,
+        COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED,
+        COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED, COREWEBVIEW2_PROCESS_FAILED_REASON,
         COREWEBVIEW2_PROCESS_FAILED_REASON_CRASHED,
         COREWEBVIEW2_PROCESS_FAILED_REASON_LAUNCH_FAILED,
         COREWEBVIEW2_PROCESS_FAILED_REASON_OUT_OF_MEMORY,
@@ -135,6 +138,7 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindo
     use windows_core::Interface;
 
     let app = app.clone();
+    let label = window.label().to_owned();
     let result = window.with_webview(move |webview| {
         // SAFETY: the controller and its core are live COM objects owned by the webview, used on
         // the main thread that `with_webview` runs on.
@@ -173,6 +177,13 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindo
                     ("unknown", None)
                 };
                 super::process_gone::report(&app, name);
+                // The browser process takes every other one with it; a renderer that ended leaves
+                // the page without its script until it is reloaded.
+                if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_BROWSER_PROCESS_EXITED
+                    || kind == COREWEBVIEW2_PROCESS_FAILED_KIND_RENDER_PROCESS_EXITED
+                {
+                    super::process_gone::page_gone(&app, &label);
+                }
                 if kind == COREWEBVIEW2_PROCESS_FAILED_KIND_GPU_PROCESS_EXITED
                     && let Some(exit) = exit
                 {
@@ -194,12 +205,14 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindo
     }
 }
 
-/// WebKitGTK reports a web process that crashed, ran out of memory or was killed.
+/// WebKitGTK reports a web process that crashed, ran out of memory or was killed; the page then
+/// has no script to answer a flush.
 #[cfg(target_os = "linux")]
 pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindow<Wry>) {
     use webkit2gtk::{WebProcessTerminationReason, WebViewExt};
 
     let app = app.clone();
+    let label = window.label().to_owned();
     let result = window.with_webview(move |webview| {
         webview
             .inner()
@@ -211,6 +224,7 @@ pub fn watch_process_failures(app: &AppHandle<Wry>, window: &tauri::WebviewWindo
                     _ => "unknown",
                 };
                 super::process_gone::report(&app, name);
+                super::process_gone::page_gone(&app, &label);
             });
     });
     if let Err(error) = result {

@@ -11,8 +11,6 @@ use tauri::{AppHandle, Manager, Wry};
 
 use super::ShutdownService;
 use crate::commands::error::{CommandError, ErrorKind};
-use crate::flush::FlushService;
-use crate::windows::registry::WindowRegistry;
 
 fn step(
     app: &AppHandle<Wry>,
@@ -60,25 +58,7 @@ pub fn register(app: &AppHandle<Wry>) -> Result<(), CommandError> {
 
 /// Renderer edits still sitting in an editor reach main. Every window is asked at once.
 async fn flush_windows(app: AppHandle<Wry>, deadline: Deadline) -> Result<(), String> {
-    let labels: Vec<String> = WindowRegistry::app_windows(&app)
-        .iter()
-        .map(|window| window.label().to_owned())
-        .collect();
-    let asks: Vec<_> = labels
-        .into_iter()
-        .map(|label| {
-            let app = app.clone();
-            tauri::async_runtime::spawn(async move {
-                app.state::<FlushService>()
-                    .request(&app, &label, deadline)
-                    .await
-            })
-        })
-        .collect();
-    for ask in asks {
-        // A window that did not answer is logged by the request; the quit goes on.
-        let _answered = ask.await;
-    }
+    crate::flush::flush_app_windows(&app, deadline).await;
     Ok(())
 }
 

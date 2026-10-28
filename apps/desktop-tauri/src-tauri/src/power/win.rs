@@ -7,12 +7,13 @@
 //! runs the quit sequence and holds the message until it is done, the other answers at once, and
 //! tao's handler is never reached while a flush could still be under way.
 
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicIsize, AtomicU32, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use memry_desktop::shell::flush::FLUSH_WINDOW_TIMEOUT;
 use memry_desktop::shell::power::{PowerEvent, SleepEdges, wait_for};
-use memry_desktop::shell::shutdown::SESSION_END_BUDGET;
+use memry_desktop::shell::shutdown::{Deadline, SESSION_END_BUDGET};
 use tauri::{AppHandle, Wry};
 use tokio::sync::broadcast::Sender;
 use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
@@ -63,27 +64,10 @@ fn end_session(shared: &Shared, ending: bool) {
         }
         crate::shutdown::begin_session_end(&shared.app);
         // Windows ends the process soon after this returns (about five seconds in all), so the
-        // quit sequence has to finish here. The steps may need this thread (the webview flush),
-        // so its messages keep being dispatched meanwhile.
-        let mut quit = None;
-        let done = wait_for(
-            SESSION_END_BUDGET,
-            || crate::shutdown::is_completed(&shared.app),
-            |slice| {
-                if quit.is_none() {
-                    quit = pump_messages(slice);
-                } else {
-                    // The loop was asked to exit: leave its WM_QUIT for it, and wait without
-                    // spinning on the queue.
-                    std::thread::sleep(slice);
-                }
-            },
-        );
-        if let Some(code) = quit {
-            // The app asked to exit while the sequence ran: hand the request back to the real loop.
-            // SAFETY: plain Win32 call on the thread that owns the message queue.
-            unsafe { PostQuitMessage(code) };
-        }
+        // quit sequence has to finish here.
+        let done = hold(SESSION_END_BUDGET, || {
+            crate::shutdown::is_completed(&shared.app)
+        });
         if !done {
             tracing::warn!(
                 scope = "Power",
@@ -100,6 +84,59 @@ fn end_session(shared: &Shared, ending: bool) {
     let main = HWND(shared.main_hwnd.load(Ordering::SeqCst) as *mut _);
     // SAFETY: the window `ShutdownBlockReasonCreate` was called with.
     let _ = unsafe { ShutdownBlockReasonDestroy(main) };
+}
+
+/// Keeps the calling window procedure from returning until `done` is true or `limit` is spent,
+/// while this thread's messages keep being dispatched: the webview's IPC and the steps of the
+/// quit sequence need the main thread. True when `done`.
+fn hold(limit: Duration, done: impl Fn() -> bool) -> bool {
+    let mut quit = None;
+    let finished = wait_for(limit, done, |slice| {
+        if quit.is_none() {
+            quit = pump_messages(slice);
+        } else {
+            // The loop was asked to exit: leave its WM_QUIT for it, and wait without spinning on
+            // the queue.
+            std::thread::sleep(slice);
+        }
+    });
+    if let Some(code) = quit {
+        // The app asked to exit meanwhile: hand the request back to the real loop.
+        // SAFETY: plain Win32 call on the thread that owns the message queue.
+        unsafe { PostQuitMessage(code) };
+    }
+    finished
+}
+
+/// Answers `WM_QUERYENDSESSION` only after every window has written the edits its page still
+/// holds. At a sign-out the WebView2 processes end themselves on their own `WM_ENDSESSION`, a few
+/// milliseconds into the app's quit sequence, so its `flush-windows` step finds no page to ask.
+/// Windows sends no `WM_ENDSESSION` to any process before every one has answered this message, so
+/// the pages are all alive here. A sign-out that is then cancelled has only saved early.
+fn flush_before_session_end(app: &AppHandle<Wry>) {
+    if crate::startup::shutdown_started() {
+        // The quit sequence is already running and flushed first.
+        return;
+    }
+    let flushed = Arc::new(AtomicBool::new(false));
+    let (handle, flag) = (app.clone(), flushed.clone());
+    tauri::async_runtime::spawn(async move {
+        crate::flush::flush_app_windows(&handle, Deadline::after(FLUSH_WINDOW_TIMEOUT)).await;
+        flag.store(true, Ordering::SeqCst);
+    });
+    let started = Instant::now();
+    if hold(FLUSH_WINDOW_TIMEOUT, || flushed.load(Ordering::SeqCst)) {
+        tracing::info!(
+            scope = "Power",
+            "windows flushed before the session end in {} ms",
+            started.elapsed().as_millis()
+        );
+    } else {
+        tracing::warn!(
+            scope = "Power",
+            "the windows did not flush before the session end"
+        );
+    }
 }
 
 unsafe extern "system" fn proc(
@@ -145,6 +182,7 @@ unsafe extern "system" fn proc(
                     "could not set the shutdown block reason: {error}"
                 );
             }
+            flush_before_session_end(&shared.app);
             return LRESULT(1);
         }
         WM_ENDSESSION => {
